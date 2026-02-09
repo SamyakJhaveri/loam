@@ -1,0 +1,34 @@
+ParBench Phase 5 — Environment Check
+======================================
+Date: 2026-02-10
+
+System:
+  OS:   macOS (Darwin 25.2.0)
+  Arch: arm64 (Apple Silicon — M1 Pro)
+  Host: MacBookPro.lan
+
+Compilers & Tools:
+  gcc/g++:   Apple clang 17.0.0 (clang-1700.6.3.2) — NOT real GCC
+  make:      GNU Make 3.81
+  cmake:     cmake 4.2.2
+  python3:   Python 3.13.0
+  Homebrew LLVM: clang 21.1.8 (with OpenMP support via -fopenmp)
+
+GPU / Accelerator:
+  nvcc:       NOT AVAILABLE (no CUDA toolkit installed)
+  nvidia-smi: NOT AVAILABLE (no NVIDIA GPU — Apple Silicon)
+  hipcc:      NOT AVAILABLE (no AMD ROCm)
+  icpx:       NOT AVAILABLE (no Intel oneAPI)
+
+API Availability for Build Testing:
+  CUDA:    ✗  (no nvcc, no NVIDIA GPU)
+  HIP:     ✗  (no hipcc, no AMD GPU)
+  SYCL:    ✗  (no icpx)
+  OpenMP:  ✓  (Homebrew LLVM 21.1.8 at /opt/homebrew/opt/llvm/bin/clang++)
+
+NOTE: This machine is NOT the reference platform (Ubuntu 22.04 + RTX 4070).
+  - We CAN build and test OpenMP variants.
+  - We CANNOT build CUDA, HIP, or SYCL variants.
+  - All non-OpenMP specs will be validated structurally but marked build_skipped.
+  - The HeCBench OpenMP Makefiles expect GCC with -fopenmp; 
+    they will need CC/CXX overrides to use Homebrew LLVM clang++.
