@@ -12,7 +12,7 @@
       "commit": "archive-download",
       "branch": "master"
     },
-    "repo_root": "../ParBench/downloads/HeCBench_extracted/HeCBench-master",
+    "repo_root": "HeCBench-master/",
     "source_path": "src/particle-diffusion-cuda",
     "license": "MIT"
   },
@@ -94,14 +94,14 @@
     "method": "reference_comparison",
     "strategies": [
       {
+        "type": "stdout_pattern",
+        "pattern": "PASS",
+        "description": "GPU map compared element-wise to CPU reference (<=2 mismatches tolerated). Checked first because exit_code=0 even on verification failure."
+      },
+      {
         "type": "exit_code",
         "expected": 0,
         "description": "Process exits cleanly"
-      },
-      {
-        "type": "stdout_pattern",
-        "pattern": "PASS",
-        "description": "GPU map compared element-wise to CPU reference (<=2 mismatches tolerated)"
       }
     ],
     "floating_point": {
@@ -167,7 +167,26 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-11T12:00:00Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Average kernel execution time: 0.000495 (s)\nSimulation time: 0.142 (s)\nPASS",
+        "wall_time_seconds": 0.727
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.727,
+        "metrics": {
+          "kernel_time_s": 0.000495,
+          "simulation_time_s": 0.142
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Monte Carlo simulation of water molecule diffusion in tissue. Particles undergo random walks on a 2D grid; a per-particle map accumulates cell-hit counts, then reduces to a global grid.",
     "domain": "Monte Carlo simulation",

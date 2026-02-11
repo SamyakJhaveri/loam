@@ -12,7 +12,7 @@
       "commit": "archive-download",
       "branch": "master"
     },
-    "repo_root": "../ParBench/downloads/HeCBench_extracted/HeCBench-master",
+    "repo_root": "HeCBench-master/",
     "source_path": "src/scan-cuda",
     "license": "MIT"
   },
@@ -92,14 +92,14 @@
     "method": "self_checking",
     "strategies": [
       {
+        "type": "stdout_pattern",
+        "pattern": "PASS",
+        "description": "CPU-vs-GPU memcmp prints PASS for each type/block-size combination. Checked first for accuracy."
+      },
+      {
         "type": "exit_code",
         "expected": 0,
         "description": "Process exits cleanly"
-      },
-      {
-        "type": "stdout_pattern",
-        "pattern": "PASS",
-        "description": "CPU-vs-GPU memcmp prints PASS for each type/block-size combination"
       }
     ],
     "floating_point": null
@@ -161,7 +161,26 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-11T12:00:00Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "The number of elements to scan in a thread block: 128\nPASS\nPASS\n...",
+        "wall_time_seconds": 0.381
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.381,
+        "metrics": {
+          "scan_with_bc_us": 33.45,
+          "scan_without_bc_us": 30.67
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Work-efficient exclusive prefix sum (scan) using the Blelloch up-sweep/down-sweep algorithm with shared memory, benchmarking both bank-conflict and bank-conflict-avoidance-optimized variants.",
     "domain": "parallel primitives",

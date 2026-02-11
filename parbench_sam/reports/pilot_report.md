@@ -1,6 +1,6 @@
 # ParBench Pilot Report
 
-_Generated: 2026-02-09 20:55:26 UTC_
+_Generated: 2026-02-10 11:33:07 UTC_
 
 ## Summary
 
@@ -182,6 +182,19 @@ Running cross-kernel pairing checks...
     radixsort: cuda, hip, omp, sycl
     scan: cuda, hip, omp, sycl
   Total translation pairs: 60
+
+⚠ 10 warning(s):
+
+  specs/hecbench-binomial-cuda.json: ⚠ WARNING: [spec] files: orphan files in source dir not in any list: ['kernel.o', 'main', 'main.o', 'reference.o']
+  specs/hecbench-binomial-omp.json: ⚠ WARNING: [spec] files: orphan files in source dir not in any list: ['kernel.o', 'main', 'main.o', 'reference.o']
+  specs/hecbench-nn-cuda.json: ⚠ WARNING: [spec] files: orphan files in source dir not in any list: ['main', 'nearestNeighbor.o', 'utils.o']
+  specs/hecbench-nn-omp.json: ⚠ WARNING: [spec] files: orphan files in source dir not in any list: ['main', 'nearestNeighbor.o', 'utils.o']
+  specs/hecbench-particle-diffusion-cuda.json: ⚠ WARNING: [spec] files: orphan files in source dir not in any list: ['main', 'motionsim.o']
+  specs/hecbench-particle-diffusion-omp.json: ⚠ WARNING: [spec] files: orphan files in source dir not in any list: ['main', 'motionsim.o']
+  specs/hecbench-radixsort-cuda.json: ⚠ WARNING: [spec] files: orphan files in source dir not in any list: ['RadixSort.o', 'Scan.o', 'main', 'main.o']
+  specs/hecbench-radixsort-omp.json: ⚠ WARNING: [spec] files: orphan files in source dir not in any list: ['RadixSort.o', 'Scan.o', 'main', 'main.o']
+  specs/hecbench-scan-cuda.json: ⚠ WARNING: [spec] files: orphan files in source dir not in any list: ['main', 'main.o']
+  specs/hecbench-scan-omp.json: ⚠ WARNING: [spec] files: orphan files in source dir not in any list: ['main', 'main.o']
 
 ✓ All validations passed.
 ```

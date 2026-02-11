@@ -12,7 +12,7 @@
       "commit": "archive-download",
       "branch": "master"
     },
-    "repo_root": "../ParBench/downloads/HeCBench_extracted/HeCBench-master",
+    "repo_root": "HeCBench-master/",
     "source_path": "src/particle-diffusion-omp",
     "license": "MIT"
   },
@@ -50,8 +50,8 @@
     "working_directory": "src/particle-diffusion-omp",
     "commands": {
       "configure": null,
-      "build": "make",
-      "clean": "make clean"
+      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
+      "clean": "make -f Makefile.aomp clean"
     },
     "variables": null,
     "outputs": {
@@ -95,14 +95,14 @@
     "method": "reference_comparison",
     "strategies": [
       {
+        "type": "stdout_pattern",
+        "pattern": "PASS",
+        "description": "GPU map compared element-wise to CPU reference (<=2 mismatches tolerated). Checked first because exit_code=0 even on verification failure."
+      },
+      {
         "type": "exit_code",
         "expected": 0,
         "description": "Process exits cleanly"
-      },
-      {
-        "type": "stdout_pattern",
-        "pattern": "PASS",
-        "description": "GPU map compared element-wise to CPU reference (<=2 mismatches tolerated)"
       }
     ],
     "floating_point": {
@@ -167,7 +167,21 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-11T12:00:00Z",
+    "configurations": {
+      "correctness": {
+        "status": "fail",
+        "exit_code": 0,
+        "stdout_snippet": "FAIL",
+        "wall_time_seconds": null,
+        "fail_reason": "Verification FAIL (exit 0). Root cause: code relies on GPU device/host memory separation that does not exist on CPU fallback. Buffers particleX/Y are declared map(alloc:) which on GPU creates separate device copies; on CPU (GCC host fallback) they alias the same host memory. The kernel modifies particleX/Y in-place, so when motion_host() reference runs afterward it starts from already-modified particle positions instead of the original (10.0,10.0). Even with nRepeat=1 the verification fails because the sequential reference computes from corrupted initial state. The kernel computation itself is correct (uses distribute parallel for simd, thread-count-independent).",
+        "fail_category": "benchmark_source_gpu_memory_model",
+        "reproducibility": "deterministic"
+      }
+    }
+  },
   "metadata": {
     "description": "Monte Carlo simulation of water molecule diffusion in tissue. Particles undergo random walks on a 2D grid; a per-particle map accumulates cell-hit counts, then reduces to a global grid.",
     "domain": "Monte Carlo simulation",

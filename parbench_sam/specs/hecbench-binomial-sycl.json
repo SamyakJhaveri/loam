@@ -12,7 +12,7 @@
       "commit": "archive-download",
       "branch": "master"
     },
-    "repo_root": "../ParBench/downloads/HeCBench_extracted/HeCBench-master",
+    "repo_root": "HeCBench-master/",
     "source_path": "src/binomial-sycl",
     "license": "MIT"
   },
@@ -151,7 +151,19 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-11T12:00:00Z",
+    "configurations": {
+      "correctness": {
+        "status": "skip",
+        "exit_code": null,
+        "stdout_snippet": null,
+        "wall_time_seconds": null,
+        "skip_reason": "hipcc/icpx not available on reference platform"
+      }
+    }
+  },
   "metadata": {
     "description": "Prices European call options using the Cox-Ross-Rubinstein binomial tree on GPU. 1024 options over 2048 time steps with shared-memory tree traversal, verified against CPU binomial and Black-Scholes.",
     "domain": "computational finance",

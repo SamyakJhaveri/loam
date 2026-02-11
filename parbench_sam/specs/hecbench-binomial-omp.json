@@ -12,7 +12,7 @@
       "commit": "archive-download",
       "branch": "master"
     },
-    "repo_root": "../ParBench/downloads/HeCBench_extracted/HeCBench-master",
+    "repo_root": "HeCBench-master/",
     "source_path": "src/binomial-omp",
     "license": "MIT"
   },
@@ -24,7 +24,6 @@
     "support_files": [
       "Makefile",
       "Makefile.aomp",
-      "Makefile.nvc",
       "CMakeLists.txt",
       "binomialOptions.h",
       "realtype.h"
@@ -53,8 +52,8 @@
     "working_directory": "src/binomial-omp",
     "commands": {
       "configure": null,
-      "build": "make",
-      "clean": "make clean"
+      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
+      "clean": "make -f Makefile.aomp clean"
     },
     "variables": null,
     "outputs": {
@@ -153,7 +152,19 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-11T12:00:00Z",
+    "configurations": {
+      "correctness": {
+        "status": "fail",
+        "exit_code": null,
+        "stdout_snippet": null,
+        "wall_time_seconds": null,
+        "fail_reason": "binomial-omp hangs (>120s) when run on CPU via g++ (omp target fallback)"
+      }
+    }
+  },
   "metadata": {
     "description": "Prices European call options using the Cox-Ross-Rubinstein binomial tree on GPU. 1024 options over 2048 time steps with shared-memory tree traversal, verified against CPU binomial and Black-Scholes.",
     "domain": "computational finance",

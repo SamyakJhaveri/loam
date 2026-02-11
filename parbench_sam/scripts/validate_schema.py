@@ -38,6 +38,15 @@ MANIFEST_SCHEMA_PATH = SCHEMA_DIR / "manifest_schema.json"
 SPEC_SCHEMA_PATH = SCHEMA_DIR / "spec_schema.json"
 DEFAULT_MANIFEST_PATH = PROJECT_ROOT / "manifest.jsonl"
 
+# Load downloads_root from config/paths.json
+_config_path = PROJECT_ROOT / "config" / "paths.json"
+if _config_path.exists():
+    with open(_config_path, "r", encoding="utf-8") as _f:
+        _config = json.load(_f)
+    DOWNLOADS_ROOT = Path(_config.get("downloads_root", str(PROJECT_ROOT))).resolve()
+else:
+    DOWNLOADS_ROOT = PROJECT_ROOT
+
 
 # ---------------------------------------------------------------------------
 # Schema loading helpers
@@ -59,7 +68,7 @@ def _get_validator(schema_path: Path) -> Draft7Validator:
 
 def _resolve_source_dir(repo_root_rel: str, source_path: str) -> Path:
     """Resolve the absolute path to a kernel's source directory."""
-    return (PROJECT_ROOT / repo_root_rel / source_path).resolve()
+    return (DOWNLOADS_ROOT / repo_root_rel / source_path).resolve()
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +99,7 @@ def validate_manifest_entry(entry: dict[str, Any]) -> list[str]:
 
     # Cross-check: source_dir exists on disk
     if "source_dir" in entry:
-        source = (PROJECT_ROOT / entry["source_dir"]).resolve()
+        source = (DOWNLOADS_ROOT / entry["source_dir"]).resolve()
         if not source.exists():
             errors.append(
                 f"[manifest] source_dir: '{entry['source_dir']}' does not exist on disk"
@@ -172,7 +181,7 @@ def validate_spec(
     source_path = provenance.get("source_path", "")
 
     if repo_root_rel:
-        repo_root = (PROJECT_ROOT / repo_root_rel).resolve()
+        repo_root = (DOWNLOADS_ROOT / repo_root_rel).resolve()
     else:
         repo_root = None
 
@@ -564,8 +573,8 @@ def main() -> None:
         errors = _validate_all()
 
     # Separate true errors from warnings
-    true_errors = [e for e in errors if not e.startswith("⚠")]
-    warnings = [e for e in errors if e.startswith("⚠")]
+    true_errors = [e for e in errors if "⚠ WARNING:" not in e]
+    warnings = [e for e in errors if "⚠ WARNING:" in e]
 
     # Report warnings
     if warnings:

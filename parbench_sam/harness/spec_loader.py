@@ -8,6 +8,19 @@ from pathlib import Path
 from typing import Any
 
 
+def load_config(project_root: Path) -> dict[str, Any]:
+    """Load ``config/paths.json`` from the project root.
+
+    Returns
+    -------
+    dict:
+        Keys include ``project_root``, ``downloads_root``, ``hecbench_root``.
+    """
+    config_path = project_root / "config" / "paths.json"
+    with open(config_path, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
 def load_manifest(manifest_path: Path) -> list[dict[str, Any]]:
     """Load every entry from a ``manifest.jsonl`` file.
 
@@ -50,6 +63,10 @@ def load_spec(spec_path: Path) -> dict[str, Any]:
 def resolve_paths(spec: dict[str, Any], project_root: Path) -> dict[str, Any]:
     """Resolve all relative paths in *spec* to absolute paths.
 
+    Uses ``config/paths.json`` to locate ``downloads_root`` so that the
+    spec's ``repo_root`` (a relative path like ``HeCBench-master/``) is
+    resolved as ``downloads_root / repo_root``.
+
     The spec is **not** mutated — a shallow copy is returned with a new
     ``_resolved`` key added that contains the computed absolute paths:
 
@@ -73,11 +90,20 @@ def resolve_paths(spec: dict[str, Any], project_root: Path) -> dict[str, Any]:
         Shallow copy of *spec* with ``_resolved`` dict added.
     """
     project_root = project_root.resolve()
+
+    # Load config to get downloads_root
+    try:
+        config = load_config(project_root)
+        downloads_root = Path(config["downloads_root"]).resolve()
+    except (FileNotFoundError, KeyError):
+        # Fallback: resolve repo_root relative to project_root
+        downloads_root = project_root
+
     provenance = spec.get("provenance", {})
     repo_root_rel = provenance.get("repo_root", "")
     source_path_rel = provenance.get("source_path", "")
 
-    repo_root = (project_root / repo_root_rel).resolve()
+    repo_root = (downloads_root / repo_root_rel).resolve()
     source_dir = (
         (repo_root / source_path_rel).resolve() if source_path_rel else repo_root
     )

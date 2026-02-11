@@ -707,10 +707,7 @@
                     "additionalProperties": {
                         "type": "object",
                         "required": [
-                            "status",
-                            "exit_code",
-                            "stdout_snippet",
-                            "wall_time_seconds"
+                            "status"
                         ],
                         "additionalProperties": false,
                         "properties": {
@@ -720,26 +717,61 @@
                                     "pass",
                                     "fail",
                                     "error",
-                                    "timeout"
+                                    "timeout",
+                                    "skip"
                                 ],
                                 "description": "Outcome of the run."
                             },
                             "exit_code": {
-                                "type": "integer",
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ],
                                 "description": "Process exit code."
                             },
                             "stdout_snippet": {
-                                "type": "string",
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
                                 "description": "First N bytes of stdout for quick inspection."
                             },
                             "wall_time_seconds": {
-                                "type": "number",
+                                "type": [
+                                    "number",
+                                    "null"
+                                ],
                                 "description": "Wall-clock time in seconds."
                             },
                             "metrics": {
                                 "type": "object",
                                 "additionalProperties": true,
                                 "description": "Extracted performance metrics as key-value pairs."
+                            },
+                            "skip_reason": {
+                                "type": "string",
+                                "description": "Reason this configuration was skipped (when status=skip)."
+                            },
+                            "fail_reason": {
+                                "type": "string",
+                                "description": "Reason this configuration failed (when status=fail)."
+                            },
+                            "fail_category": {
+                                "type": "string",
+                                "description": "Category of failure (e.g., benchmark_source_gpu_assumption, benchmark_source_gpu_memory_model)."
+                            },
+                            "reproducibility": {
+                                "type": "string",
+                                "enum": [
+                                    "deterministic",
+                                    "flaky",
+                                    "unknown"
+                                ],
+                                "description": "Whether the failure is deterministic, flaky, or unknown."
+                            },
+                            "note": {
+                                "type": "string",
+                                "description": "Additional notes about this configuration result."
                             }
                         }
                     }

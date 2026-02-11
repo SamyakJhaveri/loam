@@ -1,34 +1,34 @@
 ParBench Phase 5 — Environment Check
-======================================
-Date: 2026-02-10
+Generated: 2026-02-10
 
-System:
-  OS:   macOS (Darwin 25.2.0)
-  Arch: arm64 (Apple Silicon — M1 Pro)
-  Host: MacBookPro.lan
+=== SYSTEM ===
+OS: Ubuntu (gcc reports Ubuntu 12.4.0-2ubuntu1~24.04)
+CPU: AMD Ryzen 9 7900X (12 cores / 24 threads)
+GPU: NVIDIA GeForce RTX 4070 (12GB VRAM, sm_89, Ada Lovelace)
 
-Compilers & Tools:
-  gcc/g++:   Apple clang 17.0.0 (clang-1700.6.3.2) — NOT real GCC
-  make:      GNU Make 3.81
-  cmake:     cmake 4.2.2
-  python3:   Python 3.13.0
-  Homebrew LLVM: clang 21.1.8 (with OpenMP support via -fopenmp)
+=== GPU / DRIVER ===
+NVIDIA-SMI 550.144.03
+Driver Version: 550.144.03
+CUDA Version (driver): 12.4
 
-GPU / Accelerator:
-  nvcc:       NOT AVAILABLE (no CUDA toolkit installed)
-  nvidia-smi: NOT AVAILABLE (no NVIDIA GPU — Apple Silicon)
-  hipcc:      NOT AVAILABLE (no AMD ROCm)
-  icpx:       NOT AVAILABLE (no Intel oneAPI)
+=== COMPILERS & TOOLS ===
+nvcc: NVIDIA CUDA compiler, release 12.3, V12.3.103
+gcc: (Ubuntu 12.4.0-2ubuntu1~24.04) 12.4.0
+g++: (Ubuntu 12.4.0-2ubuntu1~24.04) 12.4.0
+make: GNU Make 4.3
+cmake: 3.30.1
+python3: 3.12.3
+hipcc: NOT AVAILABLE
+icpx (SYCL): NOT AVAILABLE
+OpenMP: #define _OPENMP 201511
 
-API Availability for Build Testing:
-  CUDA:    ✗  (no nvcc, no NVIDIA GPU)
-  HIP:     ✗  (no hipcc, no AMD GPU)
-  SYCL:    ✗  (no icpx)
-  OpenMP:  ✓  (Homebrew LLVM 21.1.8 at /opt/homebrew/opt/llvm/bin/clang++)
+=== API AVAILABILITY ===
+CUDA:   AVAILABLE (nvcc 12.3)
+OpenMP: AVAILABLE (gcc -fopenmp, OpenMP 201511)
+HIP:    NOT AVAILABLE (hipcc not found)
+SYCL:   NOT AVAILABLE (icpx not found)
 
-NOTE: This machine is NOT the reference platform (Ubuntu 22.04 + RTX 4070).
-  - We CAN build and test OpenMP variants.
-  - We CANNOT build CUDA, HIP, or SYCL variants.
-  - All non-OpenMP specs will be validated structurally but marked build_skipped.
-  - The HeCBench OpenMP Makefiles expect GCC with -fopenmp; 
-    they will need CC/CXX overrides to use Homebrew LLVM clang++.
+=== PATH CONFIGURATION ===
+project_root:  /home/samyak/Desktop/parbench_sam/parbench_sam  -> EXISTS
+downloads_root: /home/samyak/Desktop/parbench_sam/parbench_sam/downloads -> EXISTS
+hecbench_root: /home/samyak/Desktop/parbench_sam/parbench_sam/downloads/HeCBench-master -> EXISTS

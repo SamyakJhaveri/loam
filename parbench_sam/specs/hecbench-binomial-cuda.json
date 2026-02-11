@@ -12,7 +12,7 @@
       "commit": "archive-download",
       "branch": "master"
     },
-    "repo_root": "../ParBench/downloads/HeCBench_extracted/HeCBench-master",
+    "repo_root": "HeCBench-master/",
     "source_path": "src/binomial-cuda",
     "license": "MIT"
   },
@@ -153,7 +153,26 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-11T12:00:00Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "[./main] - Starting...\nRunning GPU binomial tree...\nAverage kernel execution time : 770.83 (us)\nTest passed",
+        "wall_time_seconds": 1.006
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 1.006,
+        "metrics": {
+          "kernel_time_us": 770.83,
+          "total_gpu_time_ms": 818.2
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Prices European call options using the Cox-Ross-Rubinstein binomial tree on GPU. 1024 options over 2048 time steps with shared-memory tree traversal, verified against CPU binomial and Black-Scholes.",
     "domain": "computational finance",
