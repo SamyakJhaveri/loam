@@ -2,6 +2,12 @@
 ParBench.zip
 ParBench/downloads/
 
+# HeCBench downloads (1.4 GB source tree — re-download via wget script)
+parbench_sam/downloads/
+
+# Local machine-specific config (absolute paths)
+parbench_sam/config/paths.json
+
 # macOS
 .DS_Store
 .AppleDouble
@@ -24,3 +30,7 @@ env/
 .vscode/
 *.swp
 *.swo
+
+# Byte-compiled / temp
+*.log
+*.tmp
