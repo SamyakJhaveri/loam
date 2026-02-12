@@ -10,6 +10,10 @@ run, verification, and LLM evaluation workflows.
 
 ```
 parbench_sam/
+├── README.md                       # This file
+├── GUIDE.md                        # Complete guide: pipeline, commands, adding benchmarks
+├── manifest.jsonl                  # Level 1: Master index (one JSON object per line)
+│
 ├── schema/                         # JSON Schemas (draft-07)
 │   ├── manifest_schema.json        #   Schema for manifest.jsonl entries
 │   ├── spec_schema.json            #   Schema for Level 2 kernel spec files
@@ -18,17 +22,36 @@ parbench_sam/
 ├── specs/                          # Level 2 spec files (one per kernel variant)
 │   └── <suite>-<kernel>-<api>.json
 │
-├── manifest.jsonl                  # Master index — one JSON object per line
-│
 ├── templates/
 │   └── spec_template.json          # Blank spec with all fields & placeholder values
 │
-├── scripts/
-│   ├── init.py
-│   └── validate_schema.py          # Schema + cross-cutting validator
+├── harness/                        # Python harness: build, run, verify automation
+│   ├── cli.py                      #   Command-line interface
+│   ├── builder.py                  #   Compilation logic
+│   ├── runner.py                   #   Execution logic
+│   ├── verifier.py                 #   Verification strategies
+│   ├── spec_loader.py              #   JSON loading & path resolution
+│   ├── reporter.py                 #   Output formatting
+│   └── models.py                   #   Result data classes
 │
-└── README.md                       # This file
+├── scripts/                        # Utility scripts
+│   ├── validate_schema.py          #   Schema + cross-cutting validator
+│   ├── generate_pilot_specs.py     #   Generate pilot spec files
+│   └── generate_report.py          #   Generate summary reports
+│
+├── examples/                       # Reference data
+│   └── example_178_kernels.json    #   178 kernels in single-file format
+│
+├── analysis/                       # All analysis outputs
+│   ├── visualizations/             #   PNG charts and network graphs
+│   ├── reports/                    #   Markdown reports, presentations
+│   └── data/                       #   CSV matrices, Excel workbooks
+│
+└── config/                         # Machine-specific config (git-ignored)
+    └── paths.json                  #   Maps downloads_root to local path
 ```
+
+> **See [GUIDE.md](GUIDE.md) for the complete pipeline walkthrough, all commands, and instructions for adding new benchmarks.**
 
 ## Schemas
 
