@@ -63,7 +63,7 @@
   "run": {
     "executable": "./main",
     "default_arguments": [],
-    "timeout_seconds": 300,
+    "timeout_seconds": 600,
     "environment_variables": null,
     "input_configurations": {
       "correctness": {

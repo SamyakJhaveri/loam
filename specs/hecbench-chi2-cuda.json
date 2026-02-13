@@ -54,11 +54,11 @@
     },
     "variables": null,
     "outputs": {
-      "executable": "main"
+      "executable": "chi2"
     }
   },
   "run": {
-    "executable": "./main",
+    "executable": "./chi2",
     "default_arguments": [
       "4000",
       "400000",

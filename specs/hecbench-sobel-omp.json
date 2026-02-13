@@ -53,8 +53,8 @@
     "working_directory": "src/sobel-omp",
     "commands": {
       "configure": null,
-      "build": "make",
-      "clean": "make clean"
+      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
+      "clean": "make -f Makefile.aomp clean"
     },
     "variables": null,
     "outputs": {
