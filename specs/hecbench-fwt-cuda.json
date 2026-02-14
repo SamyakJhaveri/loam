@@ -156,7 +156,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Data length: 8388608; kernel length: 128\nInitializing data...\nRunning GPU dyadic convolution using Fast Walsh Transform...\nAverage device execution time 0.001885 (s)\nReading back GPU results...\nRunning straightforward CPU dyadic convolution...\nComparing the results...\nShutting down...\nL2 norm: 1.018209E-07\nPASS",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "kernel_time_s": 0.001885
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Fast Walsh-Hadamard Transform for dyadic convolution. Applies batched FWT to data and kernel arrays, modulates in transform domain, then inverse-transforms. Verified against CPU dyadic convolution via L2 norm.",
     "domain": "signal processing",

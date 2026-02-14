@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-nn-sycl",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 2.159,
+    "stdout": "rm -rf main nearestNeighbor.o utils.o\n\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 -c nearestNeighbor.cpp -o nearestNeighbor.o\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 -c utils.cpp -o utils.o\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 nearestNeighbor.o utils.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/nn-sycl/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.11,
+      "exit_code": 0,
+      "stdout": "Number of records: 42764\nFinding the 5 closest neighbors.\nAverage kernel execution time: 58997.371094 (us)\n1988 12 27  0 18 TONY       30.0  89.8  113   39 --> Distance=0.199997\n1980 10 22 18  3 ISAAC      30.1  90.4  110  778 --> Distance=0.412312\n1997 11 14 12 24 HELENE     30.5  89.8  134  529 --> Distance=0.538515\n2003  8 27 12 10 TONY       29.9  89.4  160  286 --> Distance=0.608275\n1974 12 22 18 24 JOYCE      30.6  89.9   80  593 --> Distance=0.608276\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Check for successful execution (no PASS/FAIL output for this kernel)"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 58997.371094,
+      "unit": "us"
+    }
+  ]
+}

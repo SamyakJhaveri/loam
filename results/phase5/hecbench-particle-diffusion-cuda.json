@@ -1,0 +1,37 @@
+{
+  "spec_id": "hecbench-particle-diffusion-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 1.037,
+    "stdout": "rm -rf main motionsim.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c motionsim.cu -o motionsim.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 motionsim.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/particle-diffusion-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.744,
+      "exit_code": 0,
+      "stdout": " Running on NVIDIA GeForce RTX 4070\n The device max work-group size is 1024\n The number of iterations is 100\n The number of kernel execution is 1\n The number of particles is 147456\n\nAverage kernel execution time: 0.000504814 (s)\n\nSimulation time: 0.143907 (s) \nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. GPU map compared element-wise to CPU reference (<=2 mismatches tolerated). Checked first because exit_code=0 even on verification failure."
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.000504814,
+      "unit": "s"
+    },
+    {
+      "name": "simulation_time",
+      "value": 0.143907,
+      "unit": "s"
+    }
+  ]
+}

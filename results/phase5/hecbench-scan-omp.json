@@ -1,0 +1,37 @@
+{
+  "spec_id": "hecbench-scan-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.887,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall  -O3 -fopenmp main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/scan-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 6.066,
+      "exit_code": 0,
+      "stdout": "\nThe number of elements to scan in a thread block: 128\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 128\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 50669.250000 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 54010.121094 (us). Reduce the time by -6.6%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 50296.281250 (us)\nElement size in bytes is 2. Average execution time of scan (w/o bank conflicts): 53655.761719 (us). Reduce the time by -6.7%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 50734.003906 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 53635.035156 (us). Reduce the time by -5.7%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 50215.050781 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 53643.480469 (us). Reduce the time by -6.8%\n\nThe number of elements to scan in a thread block: 256\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 256\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 60005.578125 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 63218.121094 (us). Reduce the time by -5.4%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 59771.363281 (us)\nElement size in bytes is 2. Average execution time of scan (w/o bank conflicts): 62916.359375 (us). Reduce the time by -5.3%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 59809.996094 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 63366.710938 (us). Reduce the time by -5.9%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 59816.335938 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 63445.910156 (us). Reduce the time by -6.1%\n\nThe number of elements to scan in a thread block: 512\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 512\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 69959.531250 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 73483.960938 (us). Reduce the time by -5.0%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 70619.656250 (us)\nElement size in bytes is 2. Average execution time of scan (w/o bank conflicts): 73589.648438 (us). Reduce the time by -4.2%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 70505.507812 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 73399.843750 (us). Reduce the time by -4.1%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 70414.578125 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 73316.671875 (us). Reduce the time by -4.1%\n\nThe number of elements to scan in a thread block: 1024\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 1024\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 83697.671875 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 86845.656250 (us). Reduce the time by -3.8%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 84441.367188 (us)\nElement size in bytes is 2. Average execution time of scan (w/o bank conflicts): 86402.507812 (us). Reduce the time by -2.3%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 84078.437500 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 87375.781250 (us). Reduce the time by -3.9%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 83326.570312 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 86072.578125 (us). Reduce the time by -3.3%\n\nThe number of elements to scan in a thread block: 2048\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 2048\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 104106.539062 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 110388.648438 (us). Reduce the time by -6.0%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 107135.210938 (us)\nElement size in bytes is 2. Average execution time of scan (w/o bank conflicts): 108384.976562 (us). Reduce the time by -1.2%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 105778.781250 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 109184.523438 (us). Reduce the time by -3.2%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 107088.992188 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 109273.437500 (us). Reduce the time by -2.0%\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. CPU-vs-GPU memcmp prints PASS for each type/block-size combination. Checked first because exit_code=0 even on verification failure."
+  },
+  "metrics": [
+    {
+      "name": "scan_with_bank_conflicts",
+      "value": 50669.25,
+      "unit": "us"
+    },
+    {
+      "name": "scan_without_bank_conflicts",
+      "value": 54010.121094,
+      "unit": "us"
+    }
+  ]
+}

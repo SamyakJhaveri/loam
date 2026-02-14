@@ -182,7 +182,26 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Starting warmup...\nStarting trial iterations...\nREPORT:\n\tnGPUs: 1\n\ttemperature: 0.100000 * 2.269185\n\tseed: 1234\n\twarmup iterations: 10\n\ttrial iterations: 100\n\tlattice dimensions: 512 x 512\n\telapsed time: 0.000560 sec\n\tupdates per ns: 46.811429\nStarting verification iterations ...\nPASS",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "elapsed_time_s": 0.00056,
+          "updates_per_ns_updates/ns": 46.811429
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "2D Ising model Monte Carlo simulation using checkerboard (black/white) lattice decomposition with Metropolis-Hastings spin flipping. Verified by comparing GPU lattice state against CPU reference.",
     "domain": "statistical physics",

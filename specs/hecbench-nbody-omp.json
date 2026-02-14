@@ -156,7 +156,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "===============================\n Initialize Gravity Simulation\n\n# Total Energy        : 14571.5\n# Total Time (s)      : 0.581718\n# Average Performance : 129.213 +- 8.51752\n===============================\n\nPASS",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "total_time_s": 0.581718
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Gravitational N-body simulation computing all-pairs particle interactions. GPU kernels accelerate force computation, position/velocity updates, and kinetic energy accumulation. Verified against CPU reference.",
     "domain": "physics simulation",

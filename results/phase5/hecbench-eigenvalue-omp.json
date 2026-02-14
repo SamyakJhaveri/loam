@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-eigenvalue-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.441,
+    "stdout": "rm -rf main main.o reference.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall  -O3 -fopenmp -c reference.cpp -o reference.o\ng++  -std=c++17 -Wall  -O3 -fopenmp main.o reference.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/eigenvalue-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.349,
+      "exit_code": 0,
+      "stdout": "Executing kernel for 1 iterations\n-------------------------------------------\nAverage kernel execution time 41118.2 (us)\nPASS\n\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. L2 norm comparison of GPU eigenvalues vs CPU reference"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 41118.2,
+      "unit": "us"
+    }
+  ]
+}

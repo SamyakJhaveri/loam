@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-convolutionseparable-sycl",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 4.399,
+    "stdout": "rm -rf main main.o conv.o conv_gold.o\n\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 -c main.cpp -o main.o\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 -c conv.cpp -o conv.o\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 -c conv_gold.cpp -o conv_gold.o\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 main.o conv.o conv_gold.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/convolutionSeparable-sycl/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 2.764,
+      "exit_code": 0,
+      "stdout": "Average kernel execution time 0.049136 (s)\nComparing against Host/C++ computation...\nRelative L2 norm: 0.000e+00\n\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. L2 norm < 1e-6 compared against CPU convolution reference"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.049136,
+      "unit": "s"
+    }
+  ]
+}

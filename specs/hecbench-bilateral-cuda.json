@@ -185,7 +185,27 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Average kernel execution time (3x3) 0.990973 (ms)\nAverage kernel execution time (6x6) 3.245698 (ms)\nAverage kernel execution time (9x9) 6.798562 (ms)\nPASS",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "kernel_time_3x3_ms": 0.990973,
+          "kernel_time_6x6_ms": 3.245698,
+          "kernel_time_9x9_ms": 6.798562
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Bilateral filter for edge-preserving image smoothing. Uses Gaussian kernels for both spatial proximity and intensity similarity. Runs 3 filter sizes (3x3, 6x6, 9x9), each verified against CPU reference.",
     "domain": "image processing",

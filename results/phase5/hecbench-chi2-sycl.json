@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-chi2-sycl",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 2.184,
+    "stdout": "rm -rf main chi2.o\n\nicpx  -std=c++17 -Wall -I../chi2-cuda -fsycl --gcc-toolchain= -O3 -c chi2.cpp -o chi2.o\nicpx  -std=c++17 -Wall -I../chi2-cuda -fsycl --gcc-toolchain= -O3 chi2.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/chi2-sycl/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 10.558,
+      "exit_code": 0,
+      "stdout": "Individuals=4000 SNPs=400000 cases=2000 controls=2000 nthreads=256\nSize of the data = 1600000000\nAverage kernel execution time = 0.101971 (s)\nHost execution time = 5.588945 (s)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU chi-squared statistics; tolerance 1e-4"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.101971,
+      "unit": "s"
+    }
+  ]
+}

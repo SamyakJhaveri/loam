@@ -161,7 +161,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "used_bytes=268435456, n_cmplx=16777216\nFFT PASS\niFFT PASS\nAverage kernel execution time 0.0153982 (s)",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "kernel_time_s": 0.0153982
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "1D FFT and inverse FFT of 512-point complex sequences using radix-8 decomposition with shared memory transposes. Verified element-wise against CPU reference implementation.",
     "domain": "signal processing",

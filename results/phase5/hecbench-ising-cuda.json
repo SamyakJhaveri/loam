@@ -1,0 +1,37 @@
+{
+  "spec_id": "hecbench-ising-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 1.011,
+    "stdout": "rm -rf main main.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -Xcompiler -fopenmp -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -Xcompiler -fopenmp -arch=sm_89 -O3 main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/ising-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.076,
+      "exit_code": 0,
+      "stdout": "Starting warmup...\nStarting trial iterations...\nREPORT:\n\tnGPUs: 1\n\ttemperature: 0.100000 * 2.269185\n\tseed: 1234\n\twarmup iterations: 10\n\ttrial iterations: 100\n\tlattice dimensions: 512 x 512\n\telapsed time: 0.000560 sec\n\tupdates per ns: 46.811429\nStarting verification iterations ...\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Element-wise lattice comparison between GPU and CPU reference"
+  },
+  "metrics": [
+    {
+      "name": "elapsed_time",
+      "value": 0.00056,
+      "unit": "s"
+    },
+    {
+      "name": "updates_per_ns",
+      "value": 46.811429,
+      "unit": "updates/ns"
+    }
+  ]
+}

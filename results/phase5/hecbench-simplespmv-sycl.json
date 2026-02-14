@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-simplespmv-sycl",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 2.515,
+    "stdout": "rm -rf main main.o kernels.o utils.o\n\nicpx  -std=c++17 -Wall --gcc-toolchain= -I../simpleSpmv-cuda -fsycl -O3 -c ../simpleSpmv-cuda/main.cpp -o main.o\nicpx  -std=c++17 -Wall --gcc-toolchain= -I../simpleSpmv-cuda -fsycl -O3 -c kernels.cpp -o kernels.o\nicpx  -std=c++17 -Wall --gcc-toolchain= -I../simpleSpmv-cuda -fsycl -O3 -c ../simpleSpmv-cuda/utils.cpp -o utils.o\nicpx  -std=c++17 -Wall --gcc-toolchain= -I../simpleSpmv-cuda -fsycl -O3 main.o kernels.o utils.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/simpleSpmv-sycl/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 4.471,
+      "exit_code": 0,
+      "stdout": "Number of non-zero elements: 16777216\nNumber of rows in a square matrix: 10240\nSparsity: 84.000000%\n\nThread block size: 32\nAverage dense, sparse, and vector sparse kernel execution time (ms): 165.247555 5.752437 4.982545\nError rate: 0.000001 0.000001 0.024887\n\nThread block size: 64\nAverage dense, sparse, and vector sparse kernel execution time (ms): 11.431184 5.740423 5.031337\nError rate: 0.000001 0.000001 0.024887\n\nThread block size: 128\nAverage dense, sparse, and vector sparse kernel execution time (ms): 10.929115 5.977137 4.884822\nError rate: 0.000001 0.000001 0.024887\n\nThread block size: 256\nAverage dense, sparse, and vector sparse kernel execution time (ms): 11.754760 5.984210 4.871287\nError rate: 0.000001 0.000001 0.024887\n\nThread block size: 512\nAverage dense, sparse, and vector sparse kernel execution time (ms): 11.898008 6.129672 4.852642\nError rate: 0.000001 0.000001 0.024887\n\nThread block size: 1024\nAverage dense, sparse, and vector sparse kernel execution time (ms): 18.854317 7.653895 4.813589\nError rate: 0.000001 0.000001 0.024887\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Exit code 0 indicates successful execution; error rates printed to stdout should be near 0.0"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 165.247555,
+      "unit": "ms"
+    }
+  ]
+}

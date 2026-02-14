@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-nbody-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.735,
+    "stdout": "rm -rf main main.o GSimulation.o\n\ng++  -std=c++17 -Wall -I../nbody-cuda -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall -I../nbody-cuda -O3 -fopenmp -c GSimulation.cpp -o GSimulation.o\ng++  -std=c++17 -Wall -I../nbody-cuda -O3 -fopenmp main.o GSimulation.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/nbody-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 6.784,
+      "exit_code": 0,
+      "stdout": "===============================\n Initialize Gravity Simulation\n\n# Total Energy        : 14571.5\n# Total Time (s)      : 0.581718\n# Average Performance : 129.213 +- 8.51752\n===============================\n\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Kinetic energy comparison: |GPU - CPU| < 1e-3"
+  },
+  "metrics": [
+    {
+      "name": "total_time",
+      "value": 0.581718,
+      "unit": "s"
+    }
+  ]
+}

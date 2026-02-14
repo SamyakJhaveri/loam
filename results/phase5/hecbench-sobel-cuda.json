@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-sobel-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 1.447,
+    "stdout": "rm -rf main main.o reference.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -I../include -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -I../include -O3 -c reference.cu -o reference.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -I../include -O3 main.o reference.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/sobel-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.075,
+      "exit_code": 0,
+      "stdout": "Image height = 512 and width = 512\nExecuting kernel for 1 iterations-------------------------------------------\nAverage kernel execution time: 58.219002 (us)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. L2 norm of GPU vs CPU Sobel output; PASS if within tolerance"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 58.219002,
+      "unit": "us"
+    }
+  ]
+}

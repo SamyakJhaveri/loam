@@ -172,7 +172,26 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Allocating and initializing host memory...\nPerforming Forward DCT8x8 of 8192 x 8192 image on the device\n\nAverage DCT8x8 kernel execution time 0.001232 (s)\nComparing against Host/C++ computation...\nRelative L2 norm: 3.553e-08\n\nPASS\nPerforming Inverse DCT8x8 of 8192 x 8192 image on the device\n\nAverage IDCT8x8 kernel execution time 0.001189 (s)\nComparing against Host/C++ computation...\nRelative L2 norm: 8.438e-08\n\nPASS",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "dct_time_s": 0.001232,
+          "idct_time_s": 0.001189
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Forward and inverse 8x8 Discrete Cosine Transform (DCT/IDCT) on 2D image data. Used in JPEG-like compression. GPU-accelerated with shared memory, verified against CPU gold standard via L2 norm.",
     "domain": "signal processing",

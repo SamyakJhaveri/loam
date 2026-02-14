@@ -163,7 +163,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Individuals=4000 SNPs=400000 cases=2000 controls=2000 nthreads=256\nSize of the data = 1600000000\nAverage kernel execution time = 0.392044 (s)\nHost execution time = 5.236550 (s)\nPASS",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "kernel_time_s": 0.392044
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Chi-squared independence test on SNP genotype data for genome-wide association studies (GWAS). Counts genotype occurrences in case/control groups and computes chi-squared statistics in parallel.",
     "domain": "bioinformatics / statistical genetics",

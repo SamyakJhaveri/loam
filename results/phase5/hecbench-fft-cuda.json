@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-fft-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 1.214,
+    "stdout": "rm -rf main main.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/fft-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.032,
+      "exit_code": 0,
+      "stdout": "used_bytes=268435456, n_cmplx=16777216\nFFT PASS\niFFT PASS\nAverage kernel execution time 0.0153982 (s)\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Element-wise comparison of GPU FFT/iFFT vs CPU reference; prints 'FFT PASS' and 'iFFT PASS'"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.0153982,
+      "unit": "s"
+    }
+  ]
+}

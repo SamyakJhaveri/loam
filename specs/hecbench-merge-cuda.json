@@ -154,7 +154,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "uint32_t 100000 :\n\terrors \t: 0\nPASS. Warmup run\n\nuint32_t 100000 :\n\terrors \t: 0\nPASS. Average kernel execution time: 16.621001 (us).\n\nfloat 100000 :\n\terrors \t: 0\nPASS. Warmup run\n\nfloat 100000 :\n\terrors \t: 0\nPASS. Average kernel execution time: 15.799001 (us).\n\nuint64_t 100000 :\n\terrors \t: 0\nPASS. Warmup run\n\nuint64_t 100000 :\n\terrors \t: 0\nPASS. Average kernel execution time: 25.528001 (us).\n\ndouble 100000 :\n\terrors \t: 0\nPASS. Warmup run\n\ndouble 100000 :\n\terrors \t: 0\nPASS. Average kernel executi",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "kernel_time_us": 16.621001
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "GPU merge of two sorted arrays using the merge path (diagonal intersection) algorithm. Tested across 4 data types (uint32, float, uint64, double). Verified by checking output is monotonically non-decreasing.",
     "domain": "parallel primitives",

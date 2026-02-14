@@ -1,0 +1,37 @@
+{
+  "spec_id": "hecbench-scan-sycl",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 3.96,
+    "stdout": "rm -rf main main.o\n\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 -c main.cpp -o main.o\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/scan-sycl/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 3.786,
+      "exit_code": 0,
+      "stdout": "\nThe number of elements to scan in a thread block: 128\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 128\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 1036.369995 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 391.372009 (us). Reduce the time by 62.2%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 1015.480042 (us)\nElement size in bytes is 2. Average execution time of scan (w/o bank conflicts): 464.589020 (us). Reduce the time by 54.2%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 962.842041 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 613.278015 (us). Reduce the time by 36.3%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 1059.984009 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 707.775024 (us). Reduce the time by 33.2%\n\nThe number of elements to scan in a thread block: 256\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 256\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 874.768066 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 419.806030 (us). Reduce the time by 52.0%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 1025.580078 (us)\nElement size in bytes is 2. Average execution time of scan (w/o bank conflicts): 497.181030 (us). Reduce the time by 51.5%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 843.820068 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 729.175049 (us). Reduce the time by 13.6%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 949.237061 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 777.405029 (us). Reduce the time by 18.1%\n\nThe number of elements to scan in a thread block: 512\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 512\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 1133.872070 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 480.008026 (us). Reduce the time by 57.7%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 939.147034 (us)\nElement size in bytes is 2. Average execution time of scan (w/o bank conflicts): 499.214020 (us). Reduce the time by 46.8%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 965.227051 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 747.990051 (us). Reduce the time by 22.5%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 1023.175049 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 838.510010 (us). Reduce the time by 18.0%\n\nThe number of elements to scan in a thread block: 1024\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 1024\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 962.080017 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 491.340027 (us). Reduce the time by 48.9%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 1075.102051 (us)\nElement size in bytes is 2. Average execution time of scan (w/o bank conflicts): 530.152039 (us). Reduce the time by 50.7%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 1063.791016 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 851.434021 (us). Reduce the time by 20.0%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 1105.980103 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 927.055054 (us). Reduce the time by 16.2%\n\nThe number of elements to scan in a thread block: 2048\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 2048\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 1082.786011 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 524.321045 (us). Reduce the time by 51.6%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 1154.411011 (us)\nElement size in bytes is 2. Average execution time of scan (w/o bank conflicts): 573.734009 (us). Reduce the time by 50.3%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 1158.688110 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 953.464050 (us). Reduce the time by 17.7%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 1180.319092 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 956.620056 (us). Reduce the time by 19.0%\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Process exits cleanly"
+  },
+  "metrics": [
+    {
+      "name": "scan_with_bank_conflicts",
+      "value": 1036.369995,
+      "unit": "us"
+    },
+    {
+      "name": "scan_without_bank_conflicts",
+      "value": 391.372009,
+      "unit": "us"
+    }
+  ]
+}

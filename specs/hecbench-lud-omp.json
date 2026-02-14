@@ -148,7 +148,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Generate input matrix internally, size =256\nCreating matrix internally size=256\nBefore LUD\nWG size of kernel = 16 X 16\nTotal kernel execution time : 0.058377 (s)\nDevice offloading time (s): 0.058470\nAfter LUD\n>>>Verify<<<<\nmismatch at (9, 16): (o)9.930244 (n)9.950047\nmismatch at (9, 17): (o)9.920320 (n)9.940102\nmismatch at (9, 18): (o)9.910403 (n)9.930165\nmismatch at (9, 19): (o)9.900498 (n)9.920241\nmismatch at (9, 20): (o)9.890603 (n)9.910325\nmismatch at (9, 21): (o)9.880717 (n)9.900420\nmismatc",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "kernel_time_s": 0.058377
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "LU Decomposition of a dense matrix using a blocked (tiled) algorithm with GPU-accelerated diagonal, perimeter, and internal update kernels using shared memory.",
     "domain": "dense linear algebra",

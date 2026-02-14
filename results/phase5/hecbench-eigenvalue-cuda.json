@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-eigenvalue-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 1.452,
+    "stdout": "rm -rf main main.o reference.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c reference.cu -o reference.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 main.o reference.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/eigenvalue-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.378,
+      "exit_code": 0,
+      "stdout": "Executing kernel for 1 iterations\n-------------------------------------------\nAverage kernel execution time 5489.42 (us)\nPASS\n\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. L2 norm comparison of GPU eigenvalues vs CPU reference"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 5489.42,
+      "unit": "us"
+    }
+  ]
+}

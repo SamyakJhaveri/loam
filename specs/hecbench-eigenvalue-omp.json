@@ -156,7 +156,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Executing kernel for 1 iterations\n-------------------------------------------\nAverage kernel execution time 41118.2 (us)\nPASS",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "kernel_time_us": 41118.2
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Eigenvalue computation of tridiagonal symmetric matrices using the bisection method with Gerschgorin intervals. GPU kernels compute eigenvalue counts per interval and recursively refine.",
     "domain": "numerical linear algebra",

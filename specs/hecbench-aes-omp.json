@@ -161,7 +161,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-02-14T06:29:14Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Image width and height: 512 512\nExecuting kernel for 10 iterations\n-------------------------------------------\nAverage kernel execution time 0.192382 (s)\nPass",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": null,
+        "metrics": {
+          "kernel_time_s": 0.192382
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "AES-128 ECB encryption/decryption of grayscale image data on GPU. Processes blocks in parallel with shared-memory S-box lookups, verified against CPU reference AES implementation.",
     "domain": "cryptography",

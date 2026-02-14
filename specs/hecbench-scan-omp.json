@@ -165,21 +165,20 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-02-11T12:00:00Z",
+    "timestamp": "2026-02-14T06:29:14Z",
     "configurations": {
       "correctness": {
         "status": "pass",
         "exit_code": 0,
-        "stdout_snippet": "PASS (with OMP_NUM_THREADS=1024 workaround)",
-        "wall_time_seconds": 6.108,
-        "note": "Requires OMP_NUM_THREADS=1024 environment variable; without it, correctness FAILs due to insufficient thread count for Blelloch scan"
+        "stdout_snippet": "The number of elements to scan in a thread block: 128\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 128\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 50669.250000 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 54010.121094 (us). Reduce the time by -6.6%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 50296.281250 (us)\nElement size in bytes is 2. ",
+        "wall_time_seconds": null
       },
       "performance": {
         "status": "pass",
-        "wall_time_seconds": 6.108,
+        "wall_time_seconds": null,
         "metrics": {
-          "scan_with_bc_us": 51815.06,
-          "scan_without_bc_us": 54975.28
+          "scan_with_bank_conflicts_us": 50669.25,
+          "scan_without_bank_conflicts_us": 54010.121094
         }
       }
     }
