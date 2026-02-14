@@ -48,7 +48,7 @@
         "working_directory": "src/simpleSpmv-sycl",
         "commands": {
             "configure": null,
-            "build": "make",
+            "build": "make CC=icpx GPU=no",
             "clean": "make clean"
         },
         "variables": null,

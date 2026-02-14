@@ -51,7 +51,7 @@
         "working_directory": "src/convolutionSeparable-sycl",
         "commands": {
             "configure": null,
-            "build": "make",
+            "build": "make CC=icpx GPU=no",
             "clean": "make clean"
         },
         "variables": null,

@@ -20,16 +20,22 @@ Command 'hipcc' not found, but can be installed with:
 sudo apt install hipcc
 NOT FOUND
 === SYCL (Intel oneAPI) ===
-Command 'icpx' not found, did you mean:
-  command 'icp' from deb renameutils (0.12.0-11)
-Try: sudo apt install <deb name>
-NOT FOUND
+Intel(R) oneAPI DPC++/C++ Compiler 2025.3.2 (2025.3.2.20260112)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /opt/intel/oneapi/compiler/2025.3/bin/compiler
+SYCL target: CPU (host device, no GPU backend)
+Installation: apt install intel-oneapi-compiler-dpcpp-cpp (via Intel oneAPI repo)
+Environment: source /opt/intel/oneapi/setvars.sh
 === SYCL (DPC++) ===
-Command 'dpcpp' not found, did you mean:
-  command 'pcpp' from deb pcc (1.2.0~DEVEL+20220331-1)
-Try: sudo apt install <deb name>
-NOT FOUND
+(dpcpp is deprecated; use icpx -fsycl instead)
 === GPU ===
 NVIDIA GeForce RTX 4070, 8.9, 12282 MiB
 === ARCH ===
 sm_89
+
+=== PHASE 4 NOTES (2026-02-13) ===
+HIP install: SKIPPED (user choice for this run)
+HIP verification: NOT RUN in Phase 4 (compiler unavailable on host)
+SYCL verification: RE-RUN in Phase 4 with `python -m harness --json -v verify ...`
+Important CLI note: in this harness, global flags (`--json`, `-v`) must appear before the subcommand.
