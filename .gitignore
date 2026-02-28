@@ -2,6 +2,9 @@
 ParBench.zip
 ParBench/downloads/
 
+# Meeting Notes
+meeting_notes/
+
 # HeCBench downloads (1.4 GB source tree — re-download via wget script)
 parbench_sam/downloads/
 
