@@ -155,20 +155,20 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-02-11T12:00:00Z",
+    "timestamp": "2026-02-14T06:29:14Z",
     "configurations": {
       "correctness": {
         "status": "pass",
         "exit_code": 0,
-        "stdout_snippet": "[./main] - Starting...\nRunning GPU binomial tree...\nAverage kernel execution time : 770.83 (us)\nTest passed",
-        "wall_time_seconds": 1.006
+        "stdout_snippet": "[/home/samyak/Desktop/downloads/HeCBench-master/src/binomial-cuda/main] - Starting...\nGenerating input data...\nRunning GPU binomial tree...\nAverage kernel execution time : 773.060913 (us)\nOptions count            : 1024     \nTime steps               : 2048     \nTotal binomialOptionsGPU() time: 819.367859 msec\nOptions per second       : 1249.743896     \nRunning CPU binomial tree...\nComparing the results...\nGPU binomial vs. Black-Scholes\nL1 norm: 2.220214E-04\nCPU binomial vs. Black-Scholes\nL1 norm",
+        "wall_time_seconds": null
       },
       "performance": {
         "status": "pass",
-        "wall_time_seconds": 1.006,
+        "wall_time_seconds": null,
         "metrics": {
-          "kernel_time_us": 770.83,
-          "total_gpu_time_ms": 818.2
+          "kernel_time_us": 773.060913,
+          "total_gpu_time_ms": 819.367859
         }
       }
     }

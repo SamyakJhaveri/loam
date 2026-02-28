@@ -49,7 +49,7 @@
     "working_directory": "src/particle-diffusion-sycl",
     "commands": {
       "configure": null,
-      "build": "make",
+      "build": "make CC=icpx GPU=no",
       "clean": "make clean"
     },
     "variables": null,
@@ -167,14 +167,21 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-02-11T12:00:00Z",
+    "timestamp": "2026-02-14T06:29:14Z",
     "configurations": {
       "correctness": {
-        "status": "skip",
-        "exit_code": null,
-        "stdout_snippet": null,
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Running on AMD Ryzen 9 7900X 12-Core Processor            \n The device max work-group size is 8192\n The number of iterations is 100\n The number of kernel execution is 1\n The number of particles is 147456\n\nAverage kernel execution time: 0.0692568 (s)\n\nSimulation time: 0.218402 (s) \nFAIL",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
         "wall_time_seconds": null,
-        "skip_reason": "hipcc/icpx not available on reference platform"
+        "metrics": {
+          "kernel_time_s": 0.0692568,
+          "simulation_time_s": 0.218402
+        }
       }
     }
   },

@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-aes-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.605,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall -I../include -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall -I../include -O3 -fopenmp main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/aes-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.931,
+      "exit_code": 0,
+      "stdout": "Image width and height: 512 512\nExecuting kernel for 10 iterations\n-------------------------------------------\nAverage kernel execution time 0.192382 (s)\nPass\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'Pass' matched. memcmp of GPU output vs CPU AES reference; prints 'Pass' or 'Fail'"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.192382,
+      "unit": "s"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-chi2-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.351,
+    "stdout": "rm -rf main chi2.o\n\ng++  -std=c++17 -Wall -I../chi2-cuda -O3 -fopenmp -c chi2.cpp -o chi2.o\ng++  -std=c++17 -Wall -I../chi2-cuda -O3 -fopenmp chi2.o -o main \n",
+    "stderr": "chi2.cpp: In function \u2018int main(int, char**)\u2019:\nchi2.cpp:56:25: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018unsigned int\u2019 [-Wsign-compare]\n   56 |       for (int i = 0; i < cols; i++) {\n      |                       ~~^~~~~~\n",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/chi2-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 13.656,
+      "exit_code": 0,
+      "stdout": "Individuals=4000 SNPs=400000 cases=2000 controls=2000 nthreads=256\nSize of the data = 1600000000\nAverage kernel execution time = 0.392044 (s)\nHost execution time = 5.236550 (s)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU chi-squared statistics; tolerance 1e-4"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.392044,
+      "unit": "s"
+    }
+  ]
+}

@@ -51,7 +51,7 @@
     "working_directory": "src/nn-sycl",
     "commands": {
       "configure": null,
-      "build": "make",
+      "build": "make CC=icpx GPU=no",
       "clean": "make clean"
     },
     "variables": null,
@@ -182,14 +182,20 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-02-11T12:00:00Z",
+    "timestamp": "2026-02-14T06:29:14Z",
     "configurations": {
       "correctness": {
-        "status": "skip",
-        "exit_code": null,
-        "stdout_snippet": null,
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Number of records: 42764\nFinding the 5 closest neighbors.\nAverage kernel execution time: 58997.371094 (us)\n1988 12 27  0 18 TONY       30.0  89.8  113   39 --> Distance=0.199997\n1980 10 22 18  3 ISAAC      30.1  90.4  110  778 --> Distance=0.412312\n1997 11 14 12 24 HELENE     30.5  89.8  134  529 --> Distance=0.538515\n2003  8 27 12 10 TONY       29.9  89.4  160  286 --> Distance=0.608275\n1974 12 22 18 24 JOYCE      30.6  89.9   80  593 --> Distance=0.608276",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
         "wall_time_seconds": null,
-        "skip_reason": "hipcc/icpx not available on reference platform"
+        "metrics": {
+          "kernel_time_us": 58997.371094
+        }
       }
     }
   },

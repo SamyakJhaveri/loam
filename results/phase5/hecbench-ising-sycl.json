@@ -1,0 +1,37 @@
+{
+  "spec_id": "hecbench-ising-sycl",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 2.175,
+    "stdout": "rm -rf main main.o\n\nicpx  -std=c++17 -Wall -fopenmp -I../ising-cuda -fsycl --gcc-toolchain= -O3 -c main.cpp -o main.o\nicpx  -std=c++17 -Wall -fopenmp -I../ising-cuda -fsycl --gcc-toolchain= -O3 main.o -o main \n",
+    "stderr": "icpx: warning: use of '-qopenmp' recommended over '-fopenmp' [-Wrecommended-option]\nicpx: warning: use of '-qopenmp' recommended over '-fopenmp' [-Wrecommended-option]\n",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/ising-sycl/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.171,
+      "exit_code": 0,
+      "stdout": "Starting warmup...\nStarting trial iterations...\nREPORT:\n\tnGPUs: 1\n\ttemperature: 0.100000 * 2.269185\n\tseed: 1234\n\twarmup iterations: 10\n\ttrial iterations: 100\n\tlattice dimensions: 512 x 512\n\telapsed time: 0.011530 sec\n\tupdates per ns: 2.273582\nStarting verification iterations ...\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Element-wise lattice comparison between GPU and CPU reference"
+  },
+  "metrics": [
+    {
+      "name": "elapsed_time",
+      "value": 0.01153,
+      "unit": "s"
+    },
+    {
+      "name": "updates_per_ns",
+      "value": 2.273582,
+      "unit": "updates/ns"
+    }
+  ]
+}

@@ -169,20 +169,20 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-02-11T12:00:00Z",
+    "timestamp": "2026-02-14T06:29:14Z",
     "configurations": {
       "correctness": {
         "status": "pass",
         "exit_code": 0,
-        "stdout_snippet": "Average kernel execution time: 0.000495 (s)\nSimulation time: 0.142 (s)\nPASS",
-        "wall_time_seconds": 0.727
+        "stdout_snippet": "Running on NVIDIA GeForce RTX 4070\n The device max work-group size is 1024\n The number of iterations is 100\n The number of kernel execution is 1\n The number of particles is 147456\n\nAverage kernel execution time: 0.000504814 (s)\n\nSimulation time: 0.143907 (s) \nPASS",
+        "wall_time_seconds": null
       },
       "performance": {
         "status": "pass",
-        "wall_time_seconds": 0.727,
+        "wall_time_seconds": null,
         "metrics": {
-          "kernel_time_s": 0.000495,
-          "simulation_time_s": 0.142
+          "kernel_time_s": 0.000504814,
+          "simulation_time_s": 0.143907
         }
       }
     }

@@ -157,19 +157,19 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-02-11T12:00:00Z",
+    "timestamp": "2026-02-14T06:29:14Z",
     "configurations": {
       "correctness": {
         "status": "pass",
         "exit_code": 0,
-        "stdout_snippet": "Average execution time of radixsort: 0.001405 (s)\nPASS",
-        "wall_time_seconds": 0.119
+        "stdout_snippet": "Average execution time of radixsort: 0.001406 (s)\nPASS",
+        "wall_time_seconds": null
       },
       "performance": {
         "status": "pass",
-        "wall_time_seconds": 0.119,
+        "wall_time_seconds": null,
         "metrics": {
-          "sort_time_s": 0.001405
+          "sort_time_s": 0.001406
         }
       }
     }

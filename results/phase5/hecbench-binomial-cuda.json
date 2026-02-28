@@ -1,0 +1,37 @@
+{
+  "spec_id": "hecbench-binomial-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 1.567,
+    "stdout": "rm -rf main kernel.o main.o reference.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c kernel.cu -o kernel.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c reference.cu -o reference.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 kernel.o main.o reference.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/binomial-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.009,
+      "exit_code": 0,
+      "stdout": "[/home/samyak/Desktop/downloads/HeCBench-master/src/binomial-cuda/main] - Starting...\nGenerating input data...\nRunning GPU binomial tree...\nAverage kernel execution time : 773.060913 (us)\nOptions count            : 1024     \nTime steps               : 2048     \nTotal binomialOptionsGPU() time: 819.367859 msec\nOptions per second       : 1249.743896     \nRunning CPU binomial tree...\nComparing the results...\nGPU binomial vs. Black-Scholes\nL1 norm: 2.220214E-04\nCPU binomial vs. Black-Scholes\nL1 norm: 2.220920E-04\nCPU binomial vs. GPU binomial\nAvg. diff: 1.978191E-06\nL1 norm: 7.997008E-07\nTest passed\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Exit code 0 on pass, 1 on failure"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 773.060913,
+      "unit": "us"
+    },
+    {
+      "name": "total_gpu_time",
+      "value": 819.367859,
+      "unit": "ms"
+    }
+  ]
+}

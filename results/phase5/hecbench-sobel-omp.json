@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-sobel-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.519,
+    "stdout": "rm -rf main main.o reference.o\n\ng++  -std=c++17 -Wall -I../include -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall -I../include -O3 -fopenmp -c reference.cpp -o reference.o\ng++  -std=c++17 -Wall -I../include -O3 -fopenmp main.o reference.o -o main \n",
+    "stderr": "main.cpp: In function \u2018int main(int, char**)\u2019:\nmain.cpp:113:26: warning: comparison of integer expressions of different signedness: \u2018uint\u2019 {aka \u2018unsigned int\u2019} and \u2018int\u2019 [-Wsign-compare]\n  113 |       for (uint y = 1; y < height - 1; y++)\n      |                        ~~^~~~~~~~~~~~\nmain.cpp:114:28: warning: comparison of integer expressions of different signedness: \u2018uint\u2019 {aka \u2018unsigned int\u2019} and \u2018int\u2019 [-Wsign-compare]\n  114 |         for (uint x = 1; x < width - 1; x++)\n      |                          ~~^~~~~~~~~~~\n",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/sobel-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.013,
+      "exit_code": 0,
+      "stdout": "Image height = 512 and width = 512\nExecuting kernel for 1 iterations-------------------------------------------\nAverage kernel execution time: 995.585022 (us)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. L2 norm of GPU vs CPU Sobel output; PASS if within tolerance"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 995.585022,
+      "unit": "us"
+    }
+  ]
+}

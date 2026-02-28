@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-aes-sycl",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 2.47,
+    "stdout": "rm -rf main main.o\n\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -I../include -O3 -c main.cpp -o main.o\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -I../include -O3 main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/aes-sycl/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.258,
+      "exit_code": 0,
+      "stdout": "Image width and height: 512 512\nExecuting kernel for 10 iterations\n-------------------------------------------\nAverage kernel execution time 0.0206942 (s)\nPass\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'Pass' matched. memcmp of GPU output vs CPU AES reference; prints 'Pass' or 'Fail'"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.0206942,
+      "unit": "s"
+    }
+  ]
+}

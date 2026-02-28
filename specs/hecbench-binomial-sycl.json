@@ -52,7 +52,7 @@
     "working_directory": "src/binomial-sycl",
     "commands": {
       "configure": null,
-      "build": "make",
+      "build": "make CC=icpx GPU=no",
       "clean": "make clean"
     },
     "variables": null,
@@ -153,14 +153,21 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-02-11T12:00:00Z",
+    "timestamp": "2026-02-14T06:29:14Z",
     "configurations": {
       "correctness": {
-        "status": "skip",
-        "exit_code": null,
-        "stdout_snippet": null,
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "[/home/samyak/Desktop/downloads/HeCBench-master/src/binomial-sycl/main] - Starting...\nGenerating input data...\nRunning GPU binomial tree...\nAverage kernel execution time : 17188.931641 (us)\nOptions count            : 1024     \nTime steps               : 2048     \nTotal binomialOptionsGPU() time: 17217.007812 msec\nOptions per second       : 59.476074     \nRunning CPU binomial tree...\nComparing the results...\nGPU binomial vs. Black-Scholes\nL1 norm: 2.189896E-04\nCPU binomial vs. Black-Scholes\nL1 no",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
         "wall_time_seconds": null,
-        "skip_reason": "hipcc/icpx not available on reference platform"
+        "metrics": {
+          "kernel_time_us": 17188.931641,
+          "total_gpu_time_ms": 17217.007812
+        }
       }
     }
   },

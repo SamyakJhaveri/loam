@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-eigenvalue-sycl",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 2.364,
+    "stdout": "rm -rf main main.o reference.o\n\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 -c main.cpp -o main.o\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 -c reference.cpp -o reference.o\nicpx  -std=c++17 -Wall -fsycl --gcc-toolchain= -O3 main.o reference.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/eigenvalue-sycl/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.314,
+      "exit_code": 0,
+      "stdout": "Executing kernel for 1 iterations\n-------------------------------------------\nAverage kernel execution time 79266.8 (us)\nPASS\n\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. L2 norm comparison of GPU eigenvalues vs CPU reference"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 79266.8,
+      "unit": "us"
+    }
+  ]
+}

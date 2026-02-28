@@ -47,7 +47,7 @@
     "working_directory": "src/scan-sycl",
     "commands": {
       "configure": null,
-      "build": "make",
+      "build": "make CC=icpx GPU=no",
       "clean": "make clean"
     },
     "variables": null,
@@ -161,14 +161,21 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-02-11T12:00:00Z",
+    "timestamp": "2026-02-14T06:29:14Z",
     "configurations": {
       "correctness": {
-        "status": "skip",
-        "exit_code": null,
-        "stdout_snippet": null,
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "The number of elements to scan in a thread block: 128\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\nPASS\n\nThe number of elements to scan in a thread block: 128\nElement size in bytes is 1. Average execution time of scan (w/  bank conflicts): 1036.369995 (us)\nElement size in bytes is 1. Average execution time of scan (w/o bank conflicts): 391.372009 (us). Reduce the time by 62.2%\nElement size in bytes is 2. Average execution time of scan (w/  bank conflicts): 1015.480042 (us)\nElement size in bytes is 2. Aver",
+        "wall_time_seconds": null
+      },
+      "performance": {
+        "status": "pass",
         "wall_time_seconds": null,
-        "skip_reason": "hipcc/icpx not available on reference platform"
+        "metrics": {
+          "scan_with_bank_conflicts_us": 1036.369995,
+          "scan_without_bank_conflicts_us": 391.372009
+        }
       }
     }
   },

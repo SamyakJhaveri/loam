@@ -1,0 +1,42 @@
+{
+  "spec_id": "hecbench-bilateral-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.701,
+    "stdout": "rm -rf main main.o\n\nnvcc  -std=c++17 -Xcompiler -fopenmp -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -fopenmp -Xcompiler -Wall -arch=sm_89 -O3 main.o -o main \n",
+    "stderr": "reference.h:22: warning: ignoring \u2018#pragma unroll \u2019 [-Wunknown-pragmas]\n   22 |       for(int i = -R; i <= R; i++)\n      | \nreference.h:24: warning: ignoring \u2018#pragma unroll \u2019 [-Wunknown-pragmas]\n   24 |         for(int j = -R; j <= R; j++) {\n      | \n",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/bilateral-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.25,
+      "exit_code": 0,
+      "stdout": "Average kernel execution time (3x3) 0.990973 (ms)\nAverage kernel execution time (6x6) 3.245698 (ms)\nAverage kernel execution time (9x9) 6.798562 (ms)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Element-wise comparison with tolerance 1e-3 for all 3 filter sizes"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time_3x3",
+      "value": 0.990973,
+      "unit": "ms"
+    },
+    {
+      "name": "kernel_time_6x6",
+      "value": 3.245698,
+      "unit": "ms"
+    },
+    {
+      "name": "kernel_time_9x9",
+      "value": 6.798562,
+      "unit": "ms"
+    }
+  ]
+}
