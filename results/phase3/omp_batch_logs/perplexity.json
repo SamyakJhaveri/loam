@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-perplexity-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.219,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall -I../perplexity-cuda -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall -I../perplexity-cuda -O3 -fopenmp main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/perplexity-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.181,
+      "exit_code": 0,
+      "stdout": "Average kernel execution time: 0.009556 (s)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Comparison of GPU perplexity scores vs CPU reference"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.009556,
+      "unit": "s"
+    }
+  ]
+}

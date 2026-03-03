@@ -1,0 +1,26 @@
+{
+  "spec_id": "hecbench-ccsd-trpdrv-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 3.661,
+    "stdout": "rm -rf main ccsd_tengy.o ccsd_trpdrv.o main.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c ccsd_tengy.cu -o ccsd_tengy.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c ccsd_trpdrv.cu -o ccsd_trpdrv.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 ccsd_tengy.o ccsd_trpdrv.o main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/ccsd-trpdrv-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.073,
+      "exit_code": 0,
+      "stdout": "Test driver for cbody with nocc=160, nvir=400, maxiter=1, nkpass=1\nThis test requires 1.293060 GB of memory.\nStopping after 1 iterations...\nKernel timing: min=0.000271, max=0.000271, avg=0.000271\nOPS: dgemm_flops= 7.168e+08 dgemm_mops= 6.144e+06 tengy_ops= 1.504e+07\nPERF: GF/s= 2.705e+03 GB/s= 6.264e+02\nThese are meaningless but should not vary for a particular input:\nemp4=111351.217902 emp5=-2179.053087\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Checksum comparison of GPU tensor contraction output vs CPU reference; prints PASS or FAIL"
+  },
+  "metrics": []
+}

@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-sobol-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 2.785,
+    "stdout": "rm -rf SobolQRNG sobol.o sobol_gold.o sobol_gpu.o sobol_primitives.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c sobol.cu -o sobol.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c sobol_gold.cu -o sobol_gold.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c sobol_gpu.cu -o sobol_gpu.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c sobol_primitives.cu -o sobol_primitives.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 sobol.o sobol_gold.o sobol_gpu.o sobol_primitives.o -o SobolQRNG \n",
+    "stderr": "sobol.cu: In function \u2018int main(int, char**)\u2019:\nsobol.cu:176:8: warning: \u2018void operator delete(void*, std::size_t)\u2019 called on pointer returned from a mismatched allocation function [-Wmismatched-new-delete]\n  176 |     delete h_directions;\n      |        ^~~~~~~~~~~~\nsobol.cu:80:48: note: returned from \u2018void* operator new [](std::size_t)\u2019\n   80 |         h_directions = new unsigned int [n_dimensions * n_directions];\n      |                                                ^\nsobol.cu:177:8: warning: \u2018void operator delete(void*, std::size_t)\u2019 called on pointer returned from a mismatched allocation function [-Wmismatched-new-delete]\n  177 |     delete h_outputCPU;\n      |        ^~~~~~~~~~~\nsobol.cu:81:51: note: returned from \u2018void* operator new [](std::size_t)\u2019\n   81 |         h_outputCPU  = new float [n_vectors * n_dimensions];\n      |                                                   ^\nsobol.cu:178:8: warning: \u2018void operator delete(void*, std::size_t)\u2019 called on pointer returned from a mismatched allocation function [-Wmismatched-new-delete]\n  178 |     delete h_outputGPU;\n      |        ^~~~~~~~~~~\nsobol.cu:82:51: note: returned from \u2018void* operator new [](std::size_t)\u2019\n   82 |         h_outputGPU  = new float [n_vectors * n_dimensions];\n      |                                                   ^\n",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/sobol-cuda/SobolQRNG"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 5.405,
+      "exit_code": 0,
+      "stdout": "Allocating CPU memory...\nAllocating GPU memory...\nInitializing direction numbers...\nExecuting QRNG on GPU...\nAverage kernel execution time: 0.0104468 (s)\n\nExecuting QRNG on CPU...\nChecking results...\nL1-Error: 0\nShutting down...\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Comparison of GPU Sobol sequences vs CPU gold reference implementation"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.0104468,
+      "unit": "s"
+    }
+  ]
+}

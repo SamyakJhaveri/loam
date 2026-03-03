@@ -155,7 +155,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "PASS\nPASS\nPASS\nPASS\nPASS\nPASS\nBatch size: 1, sequence length: 4096, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 134.652008 (us)\nBatch size: 1, sequence length: 4096, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 277.598999 (us)\nBatch size: 1, sequence length: 4096, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 545.351013 (us)\nBatch size: 1, sequence length: 8192, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 251.741013 (us)\nBa",
+        "wall_time_seconds": 18.674
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 18.674,
+        "metrics": {
+          "kernel_time_us": 134.652008
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "GELU-Gated Linear Unit (GeGLU) activation function on GPU. Applies element-wise GeGLU activation, verified against CPU reference implementation via tolerance comparison.",
     "domain": "machine learning",

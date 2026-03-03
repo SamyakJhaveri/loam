@@ -48,16 +48,16 @@
     "working_directory": "src/stencil1d-omp",
     "commands": {
       "configure": null,
-      "build": "make",
-      "clean": "make clean"
+      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
+      "clean": "make -f Makefile.aomp clean"
     },
     "variables": null,
     "outputs": {
-      "executable": "main"
+      "executable": "stencil_1d"
     }
   },
   "run": {
-    "executable": "./main",
+    "executable": "./stencil_1d",
     "default_arguments": [
       "134217728",
       "1000"
@@ -151,7 +151,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Average kernel execution time: 4.622653 (s)\nPASS\n",
+        "wall_time_seconds": 4.97
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 4.97,
+        "metrics": {
+          "kernel_time_s": 4.622653
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "1D stencil computation on GPU using shared memory with halo regions. Applies a 7-point stencil kernel, verified against CPU reference via element-wise comparison.",
     "domain": "stencil computation",

@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-tissue-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.635,
+    "stdout": "rm -rf main main.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/tissue-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 12.253,
+      "exit_code": 0,
+      "stdout": "PASS\nAverage kernel execution time: 0.064317 (s)\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Compares GPU tissue simulation output against CPU reference; prints PASS or FAIL"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.064317,
+      "unit": "s"
+    }
+  ]
+}

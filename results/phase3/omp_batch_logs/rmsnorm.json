@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-rmsnorm-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.19,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall -I../rmsnorm-cuda  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall -I../rmsnorm-cuda  -O3 -fopenmp main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/rmsnorm-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.133,
+      "exit_code": 0,
+      "stdout": "Checking block size 32.\nChecking block size 64.\nChecking block size 128.\nChecking block size 256.\nChecking block size 512.\nChecking block size 1024.\nAll results match. Starting benchmarks.\n\nblock_size   32 | time 12.5033 ms | bandwidth 0.01 GB/s\nblock_size   64 | time 1.7392 ms | bandwidth 0.08 GB/s\nblock_size  128 | time 4.3992 ms | bandwidth 0.03 GB/s\nblock_size  256 | time 8.7009 ms | bandwidth 0.02 GB/s\nblock_size  512 | time 14.1472 ms | bandwidth 0.01 GB/s\nblock_size 1024 | time 29.2147 ms | bandwidth 0.01 GB/s\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'All results match' matched. validate_result() compares GPU output vs CPU RMSNorm; prints 'All results match' or exits on mismatch"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 12.5033,
+      "unit": "ms"
+    }
+  ]
+}

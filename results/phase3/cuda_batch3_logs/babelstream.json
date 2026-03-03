@@ -1,0 +1,37 @@
+{
+  "spec_id": "hecbench-babelstream-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 1.498,
+    "stdout": "rm -rf main main.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/babelstream-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.489,
+      "exit_code": 0,
+      "stdout": "Running kernels 100 times\nPrecision: float\nArray size: 134.2 MB (=0.1 GB)\nTotal size: 402.7 MB (=0.4 GB)\nFunction    MBytes/sec  Min (sec)   Max         Average     \nCopy        484183.951  0.00055     0.00060     0.00056     \nMul         460880.082  0.00058     0.00063     0.00059     \nAdd         460555.091  0.00087     0.00091     0.00088     \nTriad       466191.873  0.00086     0.00090     0.00087     \nDot         437348.713  0.00061     0.00063     0.00062     \nNstream     481162.409  0.00112     0.00115     0.00112     \n\nRunning kernels 100 times\nPrecision: double\nArray size: 268.4 MB (=0.3 GB)\nTotal size: 805.3 MB (=0.8 GB)\nFunction    MBytes/sec  Min (sec)   Max         Average     \nCopy        471845.422  0.00114     0.00118     0.00115     \nMul         462024.751  0.00116     0.00121     0.00117     \nAdd         464462.186  0.00173     0.00177     0.00175     \nTriad       466697.904  0.00173     0.00176     0.00174     \nDot         457629.211  0.00117     0.00120     0.00118     \nNstream     475302.380  0.00226     0.00229     0.00227     \n\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'Function' matched. Output includes Function/MBytes/sec table header, indicating successful kernel execution"
+  },
+  "metrics": [
+    {
+      "name": "triad_bandwidth",
+      "value": 466191.873,
+      "unit": "MB/s"
+    },
+    {
+      "name": "copy_bandwidth",
+      "value": 484183.951,
+      "unit": "MB/s"
+    }
+  ]
+}

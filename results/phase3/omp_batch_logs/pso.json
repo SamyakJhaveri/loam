@@ -1,0 +1,26 @@
+{
+  "spec_id": "hecbench-pso-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.355,
+    "stdout": "rm -rf main main.o kernel_gpu.o kernel_cpu.o\n\ng++  -std=c++17 -Wall -I../pso-cuda -O3 -fopenmp -c ../pso-cuda/main.cpp -o main.o\ng++  -std=c++17 -Wall -I../pso-cuda -O3 -fopenmp -c kernel_gpu.cpp -o kernel_gpu.o\ng++  -std=c++17 -Wall -I../pso-cuda -O3 -fopenmp -c ../pso-cuda/kernel_cpu.cpp -o kernel_cpu.o\ng++  -std=c++17 -Wall -I../pso-cuda -O3 -fopenmp main.o kernel_gpu.o kernel_cpu.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/pso-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.154,
+      "exit_code": 0,
+      "stdout": "Number of particles is 30\nNumber of dimensions is 30\n\nExecute PSO on a device\nAverage kernel execution time 1511.484497 (us)\nResult=44306.292969\n\nExecute PSO on a host. This may take a while for large problem size..\nResult=22690.291016\n@0 0.275130 -0.049325\nFAIL\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "fail",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' NOT found in stdout. Compares GPU PSO best fitness against CPU PSO reference; prints PASS or FAIL"
+  },
+  "metrics": []
+}

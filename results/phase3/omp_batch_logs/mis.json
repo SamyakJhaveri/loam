@@ -1,0 +1,26 @@
+{
+  "spec_id": "hecbench-mis-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.133,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall -I../mis-cuda -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall -I../mis-cuda -O3 -fopenmp main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/mis-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "fail",
+      "configuration": "correctness",
+      "duration_seconds": 0.001,
+      "exit_code": 255,
+      "stdout": "ECL-MIS v1.3 (main.cpp)\nCopyright 2017-2020 Texas State University\n",
+      "stderr": "ERROR: could not open file internet.egr\n\n"
+    }
+  },
+  "verification": {
+    "status": "fail",
+    "strategy_used": "exit_code",
+    "details": "exit_code=255 != expected 0. Exit code 0 indicates valid MIS computed without errors"
+  },
+  "metrics": []
+}

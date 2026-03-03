@@ -1,0 +1,40 @@
+#	Kernel	Build	Build_Time	Run	Run_Time	Run_Exit	Verify	Verify_Strategy	Stdout_First5
+1	babelstream	PASS	0.743s	PASS	16.648s	0	PASS	stdout_pattern	Running kernels 100 times | Precision: float | Array size: 134.2 MB (=0.1 GB) | Total size: 402.7 MB (=0.4 GB) | Function    MBytes/sec  Min (sec)   Max         Average     
+2	backprop	PASS	0.545s	PASS	0.085s	0	FAIL	stdout_pattern	Random number generator seed: 7 | Input layer size : 65536 | Starting training kernel | Performing device offload | Device offloading time = 0.064987(s)
+3	ccsd-trpdrv	PASS	0.275s	PASS	0.993s	0	PASS	stdout_pattern	Test driver for cbody with nocc=160, nvir=400, maxiter=1, nkpass=1 | This test requires 1.293060 GB of memory. | Stopping after 1 iterations... | Kernel timing: min=0.001369, max=0.001369, avg=0.001369 | OPS: dgemm_flops= 7.168e+08 dgemm_mops= 6.144e+06 tengy_ops= 1.504e+07
+4	deredundancy	PASS	1.119s	PASS	547.865s	0	PASS	stdout_pattern	input:	../deredundancy-sycl/testData.fasta | output:	result.fasta | threshold:	0.95 | word length:	7 | reads count:	10000
+5	feynman-kac	PASS	0.179s	PASS	15.656s	0	PASS	stdout_pattern	FEYNMAN_KAC_2D: |  |   Program parameters: |  |   The calculation takes place inside a 2D ellipse.
+6	fpc	PASS	0.141s	PASS	0.641s	0	FAIL	stdout_pattern	fpc failed 743223 != 7924831 | fpc: average device offload time 0.074352 (s) | fpc2 failed 743223 != 7924831 | fpc2: average device offload time 0.075442 (s) | FAIL
+7	ga	PASS	0.176s	PASS	0.031s	0	PASS	stdout_pattern	Total kernel execution time 0.007535 (s) | PASS
+8	keccaktreehash	PASS	0.304s	PASS	8.137s	0	PASS	stdout_pattern	Number of threads per block             NB_THREADS           64  | Number of thread blocks                 NB_THREADS_BLOCKS    64  |  | Input block size of Keccak (in Byte)    INPUT_BLOCK_SIZE_B   32  | Output block size of Keccak (in Byte)   OUTPUT_BLOCK_SIZE_B  32 
+9	laplace3d	PASS	0.205s	PASS	0.387s	0	FAIL	stdout_pattern	Grid dimensions: 128 x 128 x 128 | Result verification enabled  | Average kernel execution time: 0.001633 (s) |  |  RMS error = 1656.121704 
+10	lulesh	PASS	0.741s	PASS	3.771s	0	PASS	stdout_pattern	Running problem size 45^3 per domain until completion | Num processors: 1 | Num threads (hardcoded): 2 | Total number of elements: 91125 | 
+11	maxpool3d	PASS	0.174s	PASS	2.96s	0	PASS	stdout_pattern	input image width 2048 Hstride 2 | input image height 2048 Vstride 2 | output image width 1024 | output image height 1024 | Average kernel execution time: 0.058474 (s)
+12	md5hash	PASS	0.401s	PASS	26.608s	0	PASS	stdout_pattern	Searching keys of length 7 bytes and 10 values per byte | |keyspace| = 10000000 (10M) |  | --- iteration 0 --- | Looking for random key:
+13	pathfinder	PASS	0.217s	PASS	0.003s	0	PASS	exit_code	Total kernel execution time: 0.000766 (s) | Device offloading time = 0.001314 (s)
+14	pso	PASS	0.355s	PASS	0.154s	0	FAIL	stdout_pattern	Number of particles is 30 | Number of dimensions is 30 |  | Execute PSO on a device | Average kernel execution time 1511.484497 (us)
+15	rmsnorm	PASS	0.19s	PASS	0.133s	0	PASS	stdout_pattern	Checking block size 32. | Checking block size 64. | Checking block size 128. | Checking block size 256. | Checking block size 512.
+16	secp256k1	PASS	0.234s	PASS	0.001s	0	PASS	stdout_pattern	Average kernel execution time: 0.000170 (s) | result = bbde464b6355ee6de6deba5ae860f8a66524937eee81dde224a0214efd795d09 | PASS
+17	softmax-online	PASS	0.213s	TIMEOUT	300.315s	-1	FAIL	stdout_pattern	
+18	thomas	PASS	0.326s	PASS	1.515s	0	PASS	stdout_pattern	Average serial execution time: 109.604279 (ms) | Average kernel execution time: 0.009818 (ms) | Maximum error: 1.800275e+00
+19	tissue	PASS	0.268s	PASS	37.154s	0	FAIL	stdout_pattern	@1365: 8202.758789 16415.328125 | FAIL | Average kernel execution time: 0.307190 (s)
+20	tsp	PASS	0.225s	PASS	2.861s	0	PASS	stdout_pattern	2-opt TSP OpenMP target offloading GPU code v2.3 | Copyright (c) 2014-2020, Texas State University. All rights reserved. | configuration: 493 cities, 24 restarts, ../tsp-cuda/d493.tsp input | number of threads per team: 128 | Average kernel time: 0.0000 s
+21	bezier-surface	PASS	0.323s	PASS	0.014s	0	PASS	stdout_pattern	Read data from file input/control.txt | host execution time: 10 ms | kernel execution time: 1 ms | PASS
+22	crc64	PASS	0.315s	PASS	0.197s	0	PASS	stdout_pattern	Running 1 tests with seed 1 | 1 34951314 pass pass | -nan MB/s
+23	floydwarshall	PASS	0.123s	PASS	1.297s	0	PASS	stdout_pattern	Average kernel execution time 0.823389 (s) | PASS
+24	gaussian	PASS	0.388s	PASS	0.396s	0	PASS	stdout_pattern	Create a square matrix (256 x 256) internally | Total kernel execution time 390437 (us) | Device offloading time 390508 (us) |  | Checking the results..
+25	geglu	PASS	0.276s	PASS	19.906s	0	PASS	stdout_pattern	PASS | PASS | PASS | PASS | PASS
+26	heat2d	PASS	0.167s	PASS	0.282s	0	PASS	stdout_pattern	Ly,Lx = 4096,4096 |  niter = 10 | Device: iters =       10, (Lx,Ly) =   4096,   4096, t =  11329.1 usec/iter, BW = 11.847 GB/s, P =  8.885 Gflop/s | PASS
+27	iso2dfd	PASS	0.354s	PASS	0.077s	0	PASS	stdout_pattern	Initializing ...  | Grid Sizes: 2048 2048 | Iterations: 10 |  | Computing wavefield in device ..
+28	jenkins-hash	PASS	0.123s	PASS	0.645s	0	PASS	stdout_pattern	input string: Four score and seven years ago hash is cd628161 | Average kernel execution time : 0.034731 (s) | Verify the results computed on the device.. | PASS
+29	knn	PASS	0.188s	PASS	8.263s	0	FAIL	stdout_pattern	Number of reference points      :   4096 | Number of query points          :   4096 | Dimension of points             :   68 | Number of neighbors to consider :   20 | Processing kNN search           :
+30	mandelbrot	PASS	0.27s	PASS	0.196s	0	PASS	stdout_pattern	No Print() output due to size too large |        serial time: 0.163091s | Average parallel time: 15.045 ms | Average kernel execution time: 15.0447 ms | Success
+31	mis	PASS	0.133s	FAIL	0.001s	255	FAIL	exit_code	ECL-MIS v1.3 (main.cpp) | Copyright 2017-2020 Texas State University
+32	murmurhash3	PASS	0.134s	PASS	0.495s	0	PASS	stdout_pattern	Average kernel execution time 0.010766 (s) | SUCCESS
+33	myocyte	PASS	0.404s	PASS	0.001s	0	PASS	exit_code	Provide time argument, example: -time 100
+34	nw	PASS	0.27s	PASS	35.566s	0	PASS	stdout_pattern	WG size of kernel = 16  | Total kernel execution time: 33.867554 (s) | PASS
+35	perplexity	PASS	0.219s	PASS	0.181s	0	PASS	stdout_pattern	Average kernel execution time: 0.009556 (s) | PASS
+36	popcount	PASS	0.169s	PASS	1.81s	0	PASS	exit_code	Average kernel execution time (pc1): 6869.598000 (us) | Success | Average kernel execution time (pc2): 5583.290000 (us) | Success | Average kernel execution time (pc3): 13154.341000 (us)
+37	sobol	PASS	0.588s	FAIL	1.164s	-11	FAIL	stdout_pattern	Allocating CPU memory... | Initializing direction numbers... | Executing QRNG on GPU...
+38	stencil1d	PASS	0.141s	PASS	4.97s	0	PASS	stdout_pattern	Average kernel execution time: 4.622653 (s) | PASS
+39	triad	PASS	1.837s	PASS	0.361s	0	PASS	stdout_pattern	>> Executing Triad with vectors of length 4194304 and block size of 16384 elements. | Block: 64KB | Average TriadFlops 167.057 GFLOPS/s | Average TriadBdwth 1002.34 GB/s | PASS

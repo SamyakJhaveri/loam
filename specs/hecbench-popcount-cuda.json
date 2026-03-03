@@ -152,7 +152,26 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Average kernel execution time (pc1): 586.778000 (us)\nSuccess\nAverage kernel execution time (pc2): 470.090000 (us)\nSuccess\nAverage kernel execution time (pc3): 458.167000 (us)\nSuccess\nAverage kernel execution time (pc4): 524.312000 (us)\nSuccess\nAverage kernel execution time (pc5): 2239.713000 (us)\nSuccess\nAverage kernel execution time (pc6): 441.477000 (us)\nSuccess\n",
+        "wall_time_seconds": 1.926
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 1.926,
+        "metrics": {
+          "kernel_time_pc1_us": 586.778,
+          "kernel_time_pc2_us": 470.09
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Population count (Hamming weight) computation on GPU using multiple algorithm variants. Counts set bits in large integer arrays, verified by comparing 5 GPU implementations against each other.",
     "domain": "bit manipulation",

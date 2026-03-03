@@ -1,0 +1,37 @@
+{
+  "spec_id": "hecbench-popcount-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.169,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall  -O3 -fopenmp main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/popcount-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.81,
+      "exit_code": 0,
+      "stdout": "Average kernel execution time (pc1): 6869.598000 (us)\nSuccess\nAverage kernel execution time (pc2): 5583.290000 (us)\nSuccess\nAverage kernel execution time (pc3): 13154.341000 (us)\nSuccess\nAverage kernel execution time (pc4): 12540.042000 (us)\nSuccess\nAverage kernel execution time (pc5): 6945.670000 (us)\nSuccess\nAverage kernel execution time (pc6): 5686.213000 (us)\nSuccess\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Exit code 0 indicates all 5 popcount variants produced matching results"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time_pc1",
+      "value": 6869.598,
+      "unit": "us"
+    },
+    {
+      "name": "kernel_time_pc2",
+      "value": 5583.29,
+      "unit": "us"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-pathfinder-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.835,
+    "stdout": "rm -rf main main.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/pathfinder-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.071,
+      "exit_code": 0,
+      "stdout": "Total kernel execution time: 0.000061 (s)\nDevice offloading time = 0.048985 (s)\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Process exits cleanly with code 0"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 6.1e-05,
+      "unit": "s"
+    }
+  ]
+}

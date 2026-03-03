@@ -160,7 +160,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nRunning on:: NVIDIA GeForce RTX 4070\nThe Device Max Work Group Size is : 1024\nTotal kernel execution time 1.47852 (ms)\nAverage kernel execution time 147.852 (us)\nComputing wavefield in CPU ..\nInitializing ... \nHost time: 20 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
+        "wall_time_seconds": 0.138
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.138,
+        "metrics": {
+          "kernel_time_us": 147.852
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "2D isotropic finite-difference wave propagation stencil on GPU. Applies 2nd-order time-stepping to a 2D grid, verified against CPU reference via Euclidean norm comparison.",
     "domain": "seismic / stencil computation",

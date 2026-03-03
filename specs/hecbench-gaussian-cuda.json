@@ -165,7 +165,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Workgroup size of kernel 1 = 256, Workgroup size of kernel 2= 16 X 16\nCreate a square matrix (256 x 256) internally\nTotal kernel execution time 874 (us)\nDevice offloading time 50674 (us)\n\nChecking the results..\nPASS\n",
+        "wall_time_seconds": 0.076
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.076,
+        "metrics": {
+          "kernel_time_us": 874.0
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Gaussian elimination with partial pivoting on GPU. Forward elimination and back substitution kernels solve a dense linear system, verified against CPU reference via element-wise comparison.",
     "domain": "dense linear algebra",

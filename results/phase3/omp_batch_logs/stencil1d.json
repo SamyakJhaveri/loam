@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-stencil1d-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.141,
+    "stdout": "rm -rf stencil_1d stencil_1d.o\n\ng++  -std=c++17 -Wall -O3 -fopenmp -c stencil_1d.cpp -o stencil_1d.o\ng++  -std=c++17 -Wall -O3 -fopenmp stencil_1d.o -o stencil_1d \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/stencil1d-omp/stencil_1d"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 4.97,
+      "exit_code": 0,
+      "stdout": "Average kernel execution time: 4.622653 (s)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU 1D stencil results"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 4.622653,
+      "unit": "s"
+    }
+  ]
+}

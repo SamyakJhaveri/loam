@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-geglu-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 1.069,
+    "stdout": "rm -rf main main.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/geglu-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 18.674,
+      "exit_code": 0,
+      "stdout": "PASS\nPASS\nPASS\nPASS\nPASS\nPASS\nBatch size: 1, sequence length: 4096, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 134.652008 (us)\nBatch size: 1, sequence length: 4096, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 277.598999 (us)\nBatch size: 1, sequence length: 4096, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 545.351013 (us)\nBatch size: 1, sequence length: 8192, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 251.741013 (us)\nBatch size: 1, sequence length: 8192, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 525.023010 (us)\nBatch size: 1, sequence length: 8192, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 1069.492065 (us)\nBatch size: 4, sequence length: 4096, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 519.693054 (us)\nBatch size: 4, sequence length: 4096, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 1075.223022 (us)\nBatch size: 4, sequence length: 4096, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 2164.341064 (us)\nBatch size: 4, sequence length: 8192, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 1060.765991 (us)\nBatch size: 4, sequence length: 8192, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 2178.699219 (us)\nBatch size: 4, sequence length: 8192, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 4328.494141 (us)\nBatch size: 16, sequence length: 4096, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 2152.930176 (us)\nBatch size: 16, sequence length: 4096, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 4405.437988 (us)\nBatch size: 16, sequence length: 4096, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 8733.409180 (us)\nBatch size: 16, sequence length: 8192, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 4329.986328 (us)\nBatch size: 16, sequence length: 8192, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 8754.629883 (us)\nBatch size: 16, sequence length: 8192, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 17379.988281 (us)\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Element-wise comparison of GPU GeGLU vs CPU reference"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 134.652008,
+      "unit": "us"
+    }
+  ]
+}

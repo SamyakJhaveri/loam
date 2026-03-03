@@ -58,16 +58,16 @@
     "working_directory": "src/triad-omp",
     "commands": {
       "configure": null,
-      "build": "make",
-      "clean": "make clean"
+      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
+      "clean": "make -f Makefile.aomp clean"
     },
     "variables": null,
     "outputs": {
-      "executable": "main"
+      "executable": "triad"
     }
   },
   "run": {
-    "executable": "./main",
+    "executable": "./triad",
     "default_arguments": [
       "--passes",
       "100",
@@ -164,7 +164,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": ">> Executing Triad with vectors of length 4194304 and block size of 16384 elements.\nBlock: 64KB\nAverage TriadFlops 167.057 GFLOPS/s\nAverage TriadBdwth 1002.34 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 32768 elements.\nBlock: 128KB\nAverage TriadFlops 247.795 GFLOPS/s\nAverage TriadBdwth 1486.77 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 65536 elements.\nBlock: 256KB\nAverage TriadFlops 435.41 GFLOPS/s\nAverage TriadBdwth 2612.46 GB",
+        "wall_time_seconds": 0.361
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.361,
+        "metrics": {
+          "triad_gflops_GFLOPS/s": 167.057
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "STREAM Triad memory bandwidth benchmark on GPU. Performs a[i] = b[i] + scalar*c[i] to measure sustained memory throughput, verified via element-wise comparison with CPU reference.",
     "domain": "memory bandwidth",

@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-stencil1d-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.604,
+    "stdout": "rm -rf stencil_1d stencil_1d.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c stencil_1d.cu -o stencil_1d.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 stencil_1d.o -o stencil_1d \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/stencil1d-cuda/stencil_1d"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.619,
+      "exit_code": 0,
+      "stdout": "Average kernel execution time: 0.002435 (s)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU 1D stencil results"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.002435,
+      "unit": "s"
+    }
+  ]
+}

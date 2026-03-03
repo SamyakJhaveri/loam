@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-knn-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.188,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall  -O3 -fopenmp main.o -o main \n",
+    "stderr": "main.cpp: In function \u2018int main(int, char**)\u2019:\nmain.cpp:254:44: warning: comparison of integer expressions of different signedness: \u2018unsigned int\u2019 and \u2018int\u2019 [-Wsign-compare]\n  254 |       for (unsigned int xIndex = 0; xIndex < query_nb; xIndex++) {\n      |                                     ~~~~~~~^~~~~~~~~~\nmain.cpp:310:34: warning: comparison of integer expressions of different signedness: \u2018unsigned int\u2019 and \u2018int\u2019 [-Wsign-compare]\n  310 |       for (unsigned int i = 0; i < query_nb * k; i++)\n      |                                ~~^~~~~~~~~~~~~~\n",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/knn-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 8.263,
+      "exit_code": 0,
+      "stdout": "Number of reference points      :   4096\nNumber of query points          :   4096\nDimension of points             :   68\nNumber of neighbors to consider :   20\nProcessing kNN search           :\nGround truth computation in progress...\n\nOn CPU: \n done in 3.668168 s for 1 iterations (3.668168 s by iteration)\non GPU: \n done in 0.912428 s for 1 iterations (0.912428 s by iteration)\nPrecision accuracy 0.000000\nIndex accuracy 0.000159\nFAIL\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "fail",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' NOT found in stdout. Precision accuracy == 1.0 comparing GPU vs CPU kNN classification"
+  },
+  "metrics": [
+    {
+      "name": "total_time",
+      "value": 3.668168,
+      "unit": "s"
+    }
+  ]
+}

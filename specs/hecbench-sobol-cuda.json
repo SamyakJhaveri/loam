@@ -60,11 +60,11 @@
     },
     "variables": null,
     "outputs": {
-      "executable": "main"
+      "executable": "SobolQRNG"
     }
   },
   "run": {
-    "executable": "./main",
+    "executable": "./SobolQRNG",
     "default_arguments": [
       "1000000",
       "1000",
@@ -163,7 +163,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Allocating CPU memory...\nAllocating GPU memory...\nInitializing direction numbers...\nExecuting QRNG on GPU...\nAverage kernel execution time: 0.0104468 (s)\n\nExecuting QRNG on CPU...\nChecking results...\nL1-Error: 0\nShutting down...\nPASS\n",
+        "wall_time_seconds": 5.405
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 5.405,
+        "metrics": {
+          "kernel_time_s": 0.0104468
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Sobol quasi-random number sequence generator on GPU. Generates low-discrepancy sequences using direction vectors for Monte Carlo integration, verified against CPU Sobol implementation.",
     "domain": "quasi-random number generation",

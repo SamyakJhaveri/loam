@@ -149,7 +149,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Number of reference points      :   4096\nNumber of query points          :   4096\nDimension of points             :   68\nNumber of neighbors to consider :   20\nProcessing kNN search           :\nGround truth computation in progress...\n\nOn CPU: \n done in 3.597176 s for 1 iterations (3.597176 s by iteration)\non GPU: \n done in 0.059841 s for 1 iterations (0.059841 s by iteration)\nPrecision accuracy 1.000000\nIndex accuracy 0.999976\nPASS\n",
+        "wall_time_seconds": 7.279
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 7.279,
+        "metrics": {
+          "total_time_s": 3.597176
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "k-Nearest Neighbours classification on GPU. Computes pairwise distances, selects k nearest neighbours, and performs majority vote; verified via precision accuracy comparison.",
     "domain": "machine learning",

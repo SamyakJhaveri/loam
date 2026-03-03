@@ -1,0 +1,37 @@
+{
+  "spec_id": "hecbench-babelstream-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.743,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall  -O3 -fopenmp main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/babelstream-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 16.648,
+      "exit_code": 0,
+      "stdout": "Running kernels 100 times\nPrecision: float\nArray size: 134.2 MB (=0.1 GB)\nTotal size: 402.7 MB (=0.4 GB)\nFunction    MBytes/sec  Min (sec)   Max         Average     \nCopy        34594.628   0.00776     0.01209     0.00806     \nMul         33963.248   0.00790     0.01657     0.00820     \nAdd         38744.097   0.01039     0.01836     0.01077     \nTriad       38432.800   0.01048     0.01697     0.01074     \nDot         49457.040   0.00543     0.01267     0.00585     \nNstream     52705.049   0.01019     0.01476     0.01052     \n\nRunning kernels 100 times\nPrecision: double\nArray size: 268.4 MB (=0.3 GB)\nTotal size: 805.3 MB (=0.8 GB)\nFunction    MBytes/sec  Min (sec)   Max         Average     \nCopy        33040.947   0.01625     0.02500     0.01661     \nMul         32635.690   0.01645     0.02442     0.01668     \nAdd         36753.817   0.02191     0.02637     0.02216     \nTriad       36813.253   0.02188     0.02870     0.02219     \nDot         48775.217   0.01101     0.01868     0.01132     \nNstream     49720.020   0.02160     0.02875     0.02191     \n\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'Function' matched. Output includes Function/MBytes/sec table header, indicating successful kernel execution"
+  },
+  "metrics": [
+    {
+      "name": "triad_bandwidth",
+      "value": 38432.8,
+      "unit": "MB/s"
+    },
+    {
+      "name": "copy_bandwidth",
+      "value": 34594.628,
+      "unit": "MB/s"
+    }
+  ]
+}

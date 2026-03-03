@@ -1,0 +1,26 @@
+{
+  "spec_id": "hecbench-secp256k1-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.234,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall  -O3 -fopenmp main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/secp256k1-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.001,
+      "exit_code": 0,
+      "stdout": "Average kernel execution time: 0.000170 (s)\nresult = bbde464b6355ee6de6deba5ae860f8a66524937eee81dde224a0214efd795d09\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Verifies GPU ECC results against known test vectors; prints PASS or FAIL"
+  },
+  "metrics": []
+}

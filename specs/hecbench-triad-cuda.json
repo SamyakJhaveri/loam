@@ -62,11 +62,11 @@
     },
     "variables": null,
     "outputs": {
-      "executable": "main"
+      "executable": "triad"
     }
   },
   "run": {
-    "executable": "./main",
+    "executable": "./triad",
     "default_arguments": [
       "--passes",
       "100",
@@ -169,7 +169,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": ">> Executing Triad with vectors of length 4194304 and block size of 16384 elements.\nBlock: 64KB\nAverage TriadFlops 2.57618 GFLOPS/s\nAverage TriadBdwth 15.4571 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 32768 elements.\nBlock: 128KB\nAverage TriadFlops 3.6588 GFLOPS/s\nAverage TriadBdwth 21.9528 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 65536 elements.\nBlock: 256KB\nAverage TriadFlops 4.79855 GFLOPS/s\nAverage TriadBdwth 28.7913 GB",
+        "wall_time_seconds": 0.184
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.184,
+        "metrics": {
+          "triad_gflops_GFLOPS/s": 2.57618
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "STREAM Triad memory bandwidth benchmark on GPU. Performs a[i] = b[i] + scalar*c[i] to measure sustained memory throughput, verified via element-wise comparison with CPU reference.",
     "domain": "memory bandwidth",

@@ -159,7 +159,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": " Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    298.5 usec/iter, BW = 449.641 GB/s, P = 337.230 Gflop/s\nPASS\n",
+        "wall_time_seconds": 0.231
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.231,
+        "metrics": {
+          "throughput_GB/s": 449.641
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "2D heat equation solver using explicit finite-difference stencil on GPU. Iteratively updates temperature grid with Jacobi-style 5-point stencil; verified against CPU reference.",
     "domain": "heat conduction / stencil computation",

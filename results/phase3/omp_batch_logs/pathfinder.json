@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-pathfinder-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.217,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall  -O3 -fopenmp main.o -o main \n",
+    "stderr": "main.cpp: In function \u2018main._omp_fn.1\u2019:\nmain.cpp:232:11: warning: \u2018computed\u2019 may be used uninitialized [-Wmaybe-uninitialized]\n  232 |           {\n      |           ^ \nmain.cpp:183:16: note: \u2018computed\u2019 was declared here\n  183 |           for (int i = 0; i < iteration; i++)\n      |                ^~~~~~~~\n",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/pathfinder-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.003,
+      "exit_code": 0,
+      "stdout": "Total kernel execution time: 0.000766 (s)\nDevice offloading time = 0.001314 (s)\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Process exits cleanly with code 0"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.000766,
+      "unit": "s"
+    }
+  ]
+}

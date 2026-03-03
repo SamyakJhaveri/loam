@@ -89,8 +89,8 @@
     "strategies": [
       {
         "type": "stdout_pattern",
-        "pattern": "FAIL",
-        "description": "Absence of 'FAIL' indicates memcmp passed; program prints FAIL only on mismatch"
+        "pattern": "SUCCESS",
+        "description": "Program prints SUCCESS when memcmp of GPU vs CPU hashes passes"
       },
       {
         "type": "exit_code",
@@ -148,7 +148,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Average kernel execution time 0.004432 (s)\nSUCCESS\n",
+        "wall_time_seconds": 0.573
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.573,
+        "metrics": {
+          "kernel_time_s": 0.004432
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "MurmurHash3 non-cryptographic hash function on GPU. Hashes large arrays in parallel, verified via memcmp against CPU MurmurHash3 reference implementation.",
     "domain": "hashing",

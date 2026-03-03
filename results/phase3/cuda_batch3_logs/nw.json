@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-nw-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.804,
+    "stdout": "rm -rf main nw.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c nw.cu -o nw.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 nw.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/nw-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.955,
+      "exit_code": 0,
+      "stdout": "WG size of kernel = 16 \nblock width = 1024\nTotal kernel execution time: 0.021946 (s)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. memcmp of GPU alignment result vs CPU Needleman-Wunsch reference"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.021946,
+      "unit": "s"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-myocyte-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 1.082,
+    "stdout": "rm -rf main main.o output.txt\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 main.o -o main \n",
+    "stderr": "file.c(103): warning #1650-D: result of call is not used\n          fscanf(fid, \"%f\", &temp);\n          ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nfile.c(111): warning #1650-D: result of call is not used\n          fscanf(fid, \"%f\", &temp);\n          ^\n\nfile.c(103): warning #1650-D: result of call is not used\n          fscanf(fid, \"%f\", &temp);\n          ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nfile.c(111): warning #1650-D: result of call is not used\n          fscanf(fid, \"%f\", &temp);\n          ^\n\nfile.c: In function \u2018void read(const char*, float*, int, int, int)\u2019:\nfile.c:103:7: warning: ignoring return value of \u2018int fscanf(FILE*, const char*, ...)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  103 |         fscanf(fid, \"%f\", &temp);\n      |       ^ ~~~~~~~~~~~~~~~~\nfile.c:111:7: warning: ignoring return value of \u2018int fscanf(FILE*, const char*, ...)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  111 |         fscanf(fid, \"%f\", &temp);\n      |       ^ ~~~~~~~~~~~~~~~~\n",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/myocyte-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.09,
+      "exit_code": 0,
+      "stdout": "Total kernel execution time 0.018142 (s)\n\nTime spent in different stages of the application:\n0.000000051000 s, 0.000076403667 % : SETUP VARIABLES\n0.042338340000 s, 63.427536010742 % : ALLOCATE CPU MEMORY AND GPU MEMORY\n0.000035026000 s, 0.052472837269 % : READ DATA FROM FILES\n0.024377035000 s, 36.519508361816 % : RUN COMPUTATION\n0.000000271000 s, 0.000405988103 % : FREE MEMORY\nTotal time:\n0.066750723000 s\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Exit code 0 indicates successful solver convergence"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.018142,
+      "unit": "s"
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "spec_id": "hecbench-lulesh-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 3.311,
+    "stdout": "rm -rf lulesh lulesh.o lulesh-viz.o lulesh-util.o lulesh-init.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c lulesh.cu -o lulesh.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c lulesh-viz.cu -o lulesh-viz.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c lulesh-util.cu -o lulesh-util.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c lulesh-init.cu -o lulesh-init.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 lulesh.o lulesh-viz.o lulesh-util.o lulesh-init.o -o lulesh \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/lulesh-cuda/lulesh"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.181,
+      "exit_code": 0,
+      "stdout": "Running problem size 45^3 per domain until completion\nNum processors: 1\nNum threads (hardcoded): 2\nTotal number of elements: 91125\n\nTo run other sizes, use -s <integer>.\nTo run a fixed number of iterations, use -i <integer>.\nTo run a more or less balanced region set, use -b <integer>.\nTo change the relative costs of regions, use -c <integer>.\nTo print out progress, use -p\nTo write an output file for VisIt, use -v\nTo only execute the first iteration, use -z (used when profiling: nvprof --metrics all)\nSee help (-h) for more options\n\nnumNode=97336 numElem=91125\nRun completed:  \n   Problem size        =  45 \n   MPI tasks           =  1 \n   Iteration count     =  40 \n   Final Origin Energy = 3.948746e+07 \n   Testing Plane 0 of Energy Array on rank 0:\n        MaxAbsDiff   = 0.000000e+00\n        TotalAbsDiff = 0.000000e+00\n        MaxRelDiff   = 0.000000e+00\n\n\nElapsed time         =       0.14 (s)\nGrind time (us/z/c)  = 0.039485322 (per dom)  (0.039485322 overall)\nFOM                  =  25325.866 (z/s)\n\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'TotalAbsDiff\\s*=\\s*[\\d.eE+-]+' matched. LULESH outputs TotalAbsDiff metric; small values indicate correct simulation"
+  },
+  "metrics": [
+    {
+      "name": "elapsed_time",
+      "value": 0.14,
+      "unit": "s"
+    },
+    {
+      "name": "grind_time",
+      "value": 0.039485322,
+      "unit": "us/z/c"
+    }
+  ]
+}

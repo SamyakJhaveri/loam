@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-iso2dfd-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.354,
+    "stdout": "rm -rf main iso2dfd.o *.txt *.bin\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c iso2dfd.cpp -o iso2dfd.o\ng++  -std=c++17 -Wall  -O3 -fopenmp iso2dfd.o -o main \n",
+    "stderr": "iso2dfd.cpp: In function \u2018void initialize(float*, float*, float*, size_t, size_t)\u2019:\niso2dfd.cpp:56:23: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n   56 |     for (int k = 0; k < nCols; k++) {\n      |                     ~~^~~~~~~\niso2dfd.cpp: In function \u2018void iso_2dfd_iteration_cpu(float*, float*, float*, float, int, int, int)\u2019:\niso2dfd.cpp:121:30: warning: comparison of integer expressions of different signedness: \u2018unsigned int\u2019 and \u2018int\u2019 [-Wsign-compare]\n  121 |   for (unsigned int k = 0; k < nIterations; k += 1) {\n      |                            ~~^~~~~~~~~~~~~\niso2dfd.cpp:122:26: warning: comparison of integer expressions of different signedness: \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} and \u2018int\u2019 [-Wsign-compare]\n  122 |     for (size_t i = 1; i < nRows - HALF_LENGTH; i += 1) {\niso2dfd.cpp:123:28: warning: comparison of integer expressions of different signedness: \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} and \u2018int\u2019 [-Wsign-compare]\n  123 |       for (size_t j = 1; j < nCols - HALF_LENGTH; j += 1) {\n",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/iso2dfd-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.077,
+      "exit_code": 0,
+      "stdout": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nTotal kernel execution time 11.9873 (ms)\nAverage kernel execution time 1198.73 (us)\nComputing wavefield in CPU ..\nInitializing ... \nCPU time: 19 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Euclidean norm of GPU vs CPU wavefield below threshold"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 1198.73,
+      "unit": "us"
+    }
+  ]
+}

@@ -48,8 +48,8 @@
     "working_directory": "src/geglu-omp",
     "commands": {
       "configure": null,
-      "build": "make",
-      "clean": "make clean"
+      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
+      "clean": "make -f Makefile.aomp clean"
     },
     "variables": null,
     "outputs": {
@@ -148,7 +148,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "PASS\nPASS\nPASS\nPASS\nPASS\nPASS\nBatch size: 1, sequence length: 4096, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 10208.417969 (us)\nBatch size: 1, sequence length: 4096, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 15633.562500 (us)\nBatch size: 1, sequence length: 4096, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 23919.171875 (us)\nBatch size: 1, sequence length: 8192, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 13689.212891",
+        "wall_time_seconds": 19.906
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 19.906,
+        "metrics": {
+          "kernel_time_us": 10208.417969
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "GELU-Gated Linear Unit (GeGLU) activation function on GPU. Applies element-wise GeGLU activation, verified against CPU reference implementation via tolerance comparison.",
     "domain": "machine learning",

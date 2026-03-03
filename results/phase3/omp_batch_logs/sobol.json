@@ -1,0 +1,26 @@
+{
+  "spec_id": "hecbench-sobol-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.588,
+    "stdout": "rm -rf SobolQRNG sobol.o sobol_gold.o sobol_gpu.o sobol_primitives.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c sobol.cpp -o sobol.o\ng++  -std=c++17 -Wall  -O3 -fopenmp -c sobol_gold.cpp -o sobol_gold.o\ng++  -std=c++17 -Wall  -O3 -fopenmp -c sobol_gpu.cpp -o sobol_gpu.o\ng++  -std=c++17 -Wall  -O3 -fopenmp -c sobol_primitives.cpp -o sobol_primitives.o\ng++  -std=c++17 -Wall  -O3 -fopenmp sobol.o sobol_gold.o sobol_gpu.o sobol_primitives.o -o SobolQRNG \n",
+    "stderr": "sobol.cpp: In function \u2018int main(int, char**)\u2019:\nsobol.cpp:166:12: warning: \u2018void operator delete(void*, std::size_t)\u2019 called on pointer returned from a mismatched allocation function [-Wmismatched-new-delete]\n  166 |     delete h_outputCPU;\n      |            ^~~~~~~~~~~\nsobol.cpp:81:59: note: returned from \u2018void* operator new [](std::size_t)\u2019\n   81 |         h_outputCPU  = new float [n_vectors * n_dimensions];\n      |                                                           ^\nsobol_gpu.cpp: In function \u2018double sobolGPU(int, int, int, unsigned int*, float*)\u2019:\nsobol_gpu.cpp:137:39: warning: comparison of integer expressions of different signedness: \u2018unsigned int\u2019 and \u2018int\u2019 [-Wsign-compare]\n  137 |           for (unsigned int k = 0 ; k < _ffs(stride) - 1 ; k++)\n      |                                     ~~^~~~~~~~~~~~~~~~~~\nsobol_gpu.cpp:180:49: warning: comparison of integer expressions of different signedness: \u2018unsigned int\u2019 and \u2018int\u2019 [-Wsign-compare]\n  180 |           for (unsigned int i = i0 + stride ; i < n_vectors ; i += stride)\n      |                                               ~~^~~~~~~~~~~\n",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/sobol-omp/SobolQRNG"
+  },
+  "runs": {
+    "correctness": {
+      "status": "fail",
+      "configuration": "correctness",
+      "duration_seconds": 1.164,
+      "exit_code": -11,
+      "stdout": "Allocating CPU memory...\nInitializing direction numbers...\nExecuting QRNG on GPU...\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "fail",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' NOT found in stdout. Comparison of GPU Sobol sequences vs CPU gold reference implementation"
+  },
+  "metrics": []
+}

@@ -1,0 +1,937 @@
+{
+  "generated": "2026-03-03T10:10:24.989628",
+  "total": 40,
+  "full_pass": 40,
+  "results": [
+    {
+      "kernel": "babelstream",
+      "build_status": "PASS",
+      "build_time": 1.498,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 1.489,
+      "run_exit_code": 0,
+      "run_stdout": "Running kernels 100 times\nPrecision: float\nArray size: 134.2 MB (=0.1 GB)\nTotal size: 402.7 MB (=0.4 GB)\nFunction    MBytes/sec  Min (sec)   Max         Average     \nCopy        484183.951  0.00055     0.00060     0.00056     \nMul         460880.082  0.00058     0.00063     0.00059     \nAdd         460555.091  0.00087     0.00091     0.00088     \nTriad       466191.873  0.00086     0.00090     0.00087     \nDot         437348.713  0.00061     0.00063     0.00062     \nNstream     481162.409  0.00112     0.00115     0.00112     \n\nRunning kernels 100 times\nPrecision: double\nArray size: 268.4 MB (=0.3 GB)\nTotal size: 805.3 MB (=0.8 GB)\nFunction    MBytes/sec  Min (sec)   Max         Average     \nCopy        471845.422  0.00114     0.00118     0.00115     \nMul         462024.751  0.00116     0.00121     0.00117     \nAdd         464462.186  0.00173     0.00177     0.00175     \nTriad       466697.904  0.00173     0.00176     0.00174     \nDot         457629.211  0.00117     0.00120     0.00118     \nNstream     475302.380  0.00226     0.00229     0.00227     \n\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'Function' matched. Output includes Function/MBytes/sec table header, indicating successful kernel execution",
+      "metrics": [
+        {
+          "name": "triad_bandwidth",
+          "value": 466191.873,
+          "unit": "MB/s"
+        },
+        {
+          "name": "copy_bandwidth",
+          "value": 484183.951,
+          "unit": "MB/s"
+        }
+      ],
+      "stdout_first5": "Running kernels 100 times\nPrecision: float\nArray size: 134.2 MB (=0.1 GB)\nTotal size: 402.7 MB (=0.4 GB)\nFunction    MBytes/sec  Min (sec)   Max         Average     ",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "backprop",
+      "build_status": "PASS",
+      "build_time": 2.043,
+      "build_stderr": "backprop.cu(438): warning #1650-D: result of call is not used\n    read(fd, (char *) &n1, sizeof(int));\n    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nbackprop.cu(439): warning #1650-D: result of call is not used\n    read(fd, (char *) &n2, sizeof(int));\n    ^\n\nbackprop.cu(440): warning #1650-D: result of call is not used\n    read(fd, (char *) &n3, sizeof(int));\n    ^\n\nbackprop.cu(448): warning #1650-D: result of call is not used\n    read(fd, mem, (n1+1) * (n2+1) * sizeof(float));\n    ^\n\nbackprop.cu(461): warning #1650-D: result of call is not used\n    read(fd, mem, (n2+1) * (n3+1) * sizeof(float));\n    ^\n\nbackprop.cu(438): warning #1650-D: result of call is not used\n    read(fd, (char *) &n1, sizeof(int));\n    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nbackprop.cu(439): warning #1650-D: result of call is not used\n    read(fd, (char *) &n2, sizeof(int));\n    ^\n\nbackprop.cu(440): warning #1650-D: result of call is not used\n    read(fd, (char *) &n3, sizeof(int));\n    ^\n\nbackprop.cu(448): warning #1650-D: result of call is not used\n    read(fd, mem, (n1+1) * (n2+1) * sizeof(float));\n    ^\n\nbackprop.cu(461): warning #1650-D: result of call is not used\n    read(fd, mem, (n2+1) * (n3+1) * sizeof(float));\n    ^\n\nbackprop.cu: In function \u2018BPNN* bpnn_read(char*)\u2019:\nbackprop.cu:438:5: warning: ignoring return value of \u2018ssize_t read(int, void*, size_t)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  438 |   read(fd, (char *) &n1, sizeof(int));\n      |   ~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nbackprop.cu:439:5: warning: ignoring return value of \u2018ssize_t read(int, void*, size_t)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  439 |   read(fd, (char *) &n2, sizeof(int));\n      |   ~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nbackprop.cu:440:5: warning: ignoring return value of \u2018ssize_t read(int, void*, size_t)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  440 |   read(fd, (char *) &n3, sizeof(int));\n      |   ~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nbackprop.cu:448:5: warning: ignoring return value of \u2018ssize_t read(int, void*, size_t)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  448 |   read(fd, mem, (n1+1) * (n2+1) * sizeof(float));\n      |   ~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   \nbackprop.cu:461:5: warning: ignoring return value of \u2018ssize_t read(int, void*, size_t)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  461 |   read(fd, mem, (n2+1) * (n3+1) * sizeof(float));\n      |   ~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~   \n",
+      "run_status": "PASS",
+      "run_time": 0.09,
+      "run_exit_code": 0,
+      "run_stdout": "Random number generator seed: 7\nInput layer size : 65536\nStarting training kernel\nPerforming device offload\nDevice offloading time = 0.048843(s)\nPerforming host execution \nPASS\n\nFinish the training for one iteration\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Compares GPU-trained weights against CPU reference; prints PASS or FAIL",
+      "metrics": [],
+      "stdout_first5": "Random number generator seed: 7\nInput layer size : 65536\nStarting training kernel\nPerforming device offload\nDevice offloading time = 0.048843(s)",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "ccsd-trpdrv",
+      "build_status": "PASS",
+      "build_time": 3.661,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 1.073,
+      "run_exit_code": 0,
+      "run_stdout": "Test driver for cbody with nocc=160, nvir=400, maxiter=1, nkpass=1\nThis test requires 1.293060 GB of memory.\nStopping after 1 iterations...\nKernel timing: min=0.000271, max=0.000271, avg=0.000271\nOPS: dgemm_flops= 7.168e+08 dgemm_mops= 6.144e+06 tengy_ops= 1.504e+07\nPERF: GF/s= 2.705e+03 GB/s= 6.264e+02\nThese are meaningless but should not vary for a particular input:\nemp4=111351.217902 emp5=-2179.053087\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Checksum comparison of GPU tensor contraction output vs CPU reference; prints PASS or FAIL",
+      "metrics": [],
+      "stdout_first5": "Test driver for cbody with nocc=160, nvir=400, maxiter=1, nkpass=1\nThis test requires 1.293060 GB of memory.\nStopping after 1 iterations...\nKernel timing: min=0.000271, max=0.000271, avg=0.000271\nOPS: dgemm_flops= 7.168e+08 dgemm_mops= 6.144e+06 tengy_ops= 1.504e+07",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "deredundancy",
+      "build_status": "PASS",
+      "build_time": 2.528,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 13.615,
+      "run_exit_code": 0,
+      "run_stdout": "input:\t../deredundancy-sycl/testData.fasta\noutput:\tresult.fasta\nthreshold:\t0.95\nword length:\t7\nreads count:\t10000\nDevice offload time 13.557056 secs \ncluster count: 1357\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'cluster count:\\s+\\d+' matched. Program outputs cluster count on successful completion",
+      "metrics": [
+        {
+          "name": "offload_time",
+          "value": 13.557056,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "input:\t../deredundancy-sycl/testData.fasta\noutput:\tresult.fasta\nthreshold:\t0.95\nword length:\t7\nreads count:\t10000",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "feynman-kac",
+      "build_status": "PASS",
+      "build_time": 0.65,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 195.036,
+      "run_exit_code": 0,
+      "run_stdout": "\n\nFEYNMAN_KAC_2D:\n\n  Program parameters:\n\n  The calculation takes place inside a 2D ellipse.\n  A rectangular grid of points will be defined.\n  The solution will be estimated for those grid points\n  that lie inside the ellipse.\n\n  Each solution will be estimated by computing 1000 trajectories\n  from the point to the boundary.\n\n    (X/A)^2 + (Y/B)^2 = 1\n\n  The ellipse parameters A, B are set to:\n\n    A = 2.000000\n    B = 1.000000\n  Stepsize H = 0.0010\n\n  X coordinate marked by 255 points\n  Y coordinate marked by 128 points\nAverage kernel time: 194.969857 (s)\n\n  RMS absolute error in solution = 2.271622e-02\n\nFEYNMAN_KAC_2D:\n  Normal end of execution.\n\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'RMS absolute error in solution' matched. Reports RMS absolute error; small values indicate convergence to analytical solution",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 194.969857,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "FEYNMAN_KAC_2D:\n\n  Program parameters:\n\n  The calculation takes place inside a 2D ellipse.",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "fpc",
+      "build_status": "PASS",
+      "build_time": 0.635,
+      "build_stderr": "main.cu(12): warning #1650-D: result of call is not used\n    posix_memalign((void**)&values, 1024, sizeof(ulong)*size/step);\n    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nmain.cu(12): warning #1650-D: result of call is not used\n    posix_memalign((void**)&values, 1024, sizeof(ulong)*size/step);\n    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nmain.cu: In function \u2018ulong* convertBuffer2Array(char*, unsigned int, unsigned int)\u2019:\nmain.cu:12:15: warning: ignoring return value of \u2018int posix_memalign(void**, size_t, size_t)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   12 |   posix_memalign((void**)&values, 1024, sizeof(ulong)*size/step);\n      |   ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~      \n",
+      "run_status": "PASS",
+      "run_time": 0.415,
+      "run_exit_code": 0,
+      "run_stdout": "fpc: average device offload time 0.002544 (s)\nfpc2: average device offload time 0.002346 (s)\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Round-trip compress/decompress verification; prints PASS or FAIL",
+      "metrics": [],
+      "stdout_first5": "fpc: average device offload time 0.002544 (s)\nfpc2: average device offload time 0.002346 (s)\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "ga",
+      "build_status": "PASS",
+      "build_time": 0.704,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.089,
+      "run_exit_code": 0,
+      "run_stdout": "Total kernel execution time 0.000273 (s)\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Compares GPU alignment results against CPU reference; prints PASS or FAIL",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.000273,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "Total kernel execution time 0.000273 (s)\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "keccaktreehash",
+      "build_status": "PASS",
+      "build_time": 2.462,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 7.42,
+      "run_exit_code": 0,
+      "run_stdout": "\nNumber of threads per block             NB_THREADS           64 \nNumber of thread blocks                 NB_THREADS_BLOCKS    64 \n\nInput block size of Keccak (in Byte)    INPUT_BLOCK_SIZE_B   32 \nOutput block size of Keccak (in Byte)   OUTPUT_BLOCK_SIZE_B  32 \n\nNumber of input blocks                  NB_INPUT_BLOCK       1024 \n\nCPU speed test started \n\n506f1eca ab60120a b402f830 ea46f6c2 75d8b317 0f7944a5 60b36a16 64d38a43 \nCPU speed : 149617.36 kB/s \n\nCPU time : 7.17659 s \n\nGPU speed test started\n\n506f1eca ab60120a b402f830 ea46f6c2 75d8b317 0f7944a5 60b36a16 64d38a43 \nGPU speed : 12637042.93 kB/s \n\nGPU time : 0.08497 s \n\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. isEqual_KS() compares GPU Keccak state vs CPU reference; prints PASS or FAIL",
+      "metrics": [],
+      "stdout_first5": "Number of threads per block             NB_THREADS           64 \nNumber of thread blocks                 NB_THREADS_BLOCKS    64 \n\nInput block size of Keccak (in Byte)    INPUT_BLOCK_SIZE_B   32 \nOutput block size of Keccak (in Byte)   OUTPUT_BLOCK_SIZE_B  32 ",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "laplace3d",
+      "build_status": "PASS",
+      "build_time": 0.677,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.279,
+      "run_exit_code": 0,
+      "run_stdout": "\nGrid dimensions: 128 x 128 x 128\nResult verification enabled \n\ndimGrid  = 4 16 1 \ndimBlock = 32 8 1 \nAverage kernel execution time: 0.000058 (s)\n\n RMS error = 0.000000 \n PASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. RMS error comparison of GPU stencil output vs CPU reference; prints PASS or FAIL",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 5.8e-05,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "Grid dimensions: 128 x 128 x 128\nResult verification enabled \n\ndimGrid  = 4 16 1 \ndimBlock = 32 8 1 ",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "lulesh",
+      "build_status": "PASS",
+      "build_time": 3.311,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.181,
+      "run_exit_code": 0,
+      "run_stdout": "Running problem size 45^3 per domain until completion\nNum processors: 1\nNum threads (hardcoded): 2\nTotal number of elements: 91125\n\nTo run other sizes, use -s <integer>.\nTo run a fixed number of iterations, use -i <integer>.\nTo run a more or less balanced region set, use -b <integer>.\nTo change the relative costs of regions, use -c <integer>.\nTo print out progress, use -p\nTo write an output file for VisIt, use -v\nTo only execute the first iteration, use -z (used when profiling: nvprof --metrics all)\nSee help (-h) for more options\n\nnumNode=97336 numElem=91125\nRun completed:  \n   Problem size        =  45 \n   MPI tasks           =  1 \n   Iteration count     =  40 \n   Final Origin Energy = 3.948746e+07 \n   Testing Plane 0 of Energy Array on rank 0:\n        MaxAbsDiff   = 0.000000e+00\n        TotalAbsDiff = 0.000000e+00\n        MaxRelDiff   = 0.000000e+00\n\n\nElapsed time         =       0.14 (s)\nGrind time (us/z/c)  = 0.039485322 (per dom)  (0.039485322 overall)\nFOM                  =  25325.866 (z/s)\n\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'TotalAbsDiff\\s*=\\s*[\\d.eE+-]+' matched. LULESH outputs TotalAbsDiff metric; small values indicate correct simulation",
+      "metrics": [
+        {
+          "name": "elapsed_time",
+          "value": 0.14,
+          "unit": "s"
+        },
+        {
+          "name": "grind_time",
+          "value": 0.039485322,
+          "unit": "us/z/c"
+        }
+      ],
+      "stdout_first5": "Running problem size 45^3 per domain until completion\nNum processors: 1\nNum threads (hardcoded): 2\nTotal number of elements: 91125\n",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "maxpool3d",
+      "build_status": "PASS",
+      "build_time": 0.613,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 3.245,
+      "run_exit_code": 0,
+      "run_stdout": "input image width 2048 Hstride 2\ninput image height 2048 Vstride 2\noutput image width 1024\noutput image height 1024\nAverage kernel execution time: 0.004418 (s)\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Element-wise comparison of GPU maxpool3d output vs CPU reference; prints PASS or FAIL",
+      "metrics": [],
+      "stdout_first5": "input image width 2048 Hstride 2\ninput image height 2048 Vstride 2\noutput image width 1024\noutput image height 1024\nAverage kernel execution time: 0.004418 (s)",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "md5hash",
+      "build_status": "PASS",
+      "build_time": 1.079,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.356,
+      "run_exit_code": 0,
+      "run_stdout": "Searching keys of length 7 bytes and 10 values per byte\n|keyspace| = 10000000 (10M)\n\n--- iteration 0 ---\nLooking for random key:\n randomIndex = 3100999\n randomKey   = 0x0909090000010300\n randomDigest= B51F8CE2F620E35F313044D6C42D8DCF\ntime = 49 ms, rate = 0.204082 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 3100999\n foundKey    = 0x0909090000010300\n foundDigest = B51F8CE2F620E35F313044D6C42D8DCF\n\nPASS\n\n--- iteration 1 ---\nLooking for random key:\n randomIndex = 8300821\n randomKey   = 0x0102080000030800\n randomDigest= 48CA9BA66B9DBD5879550A67F109BA4B\ntime = 0 ms, rate = inf GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 8300821\n foundKey    = 0x0102080000030800\n foundDigest = 48CA9BA66B9DBD5879550A67F109BA4B\n\nPASS\n\n--- iteration 2 ---\nLooking for random key:\n randomIndex = 7768173\n randomKey   = 0x0307010806070700\n randomDigest= EEE917686941132B5EED43D631BC049D\ntime = 0 ms, rate = inf GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 7768173\n foundKey    = 0x0307010806070700\n foundDigest = EEE917686941132B5EED43D631BC049D\n\nPASS\n\n--- iteration 3 ---\nLooking for random key:\n randomIndex = 5528251\n randomKey   = 0x0105020802050500\n randomDigest= 0FA6487C0F87C56650E46EA4E9AEC478\ntime = 0 ms, rate = inf GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 5528251\n foundKey    = 0x0105020802050500\n foundDigest = 0FA6487C0F87C56650E46EA4E9AEC478\n\nPASS\nSearching keys of length 5 bytes and 35 values per byte\n|keyspace| = 52521875 (52M)\n\n--- iteration 0 ---\nLooking for random key:\n randomIndex = 15447874\n randomKey   = 0x1D110A0A0A000000\n randomDigest= 8706C344B6E4D09B4ADFD074372F1A64\ntime = 1 ms, rate = 52.5219 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 15447874\n foundKey    = 0x1D110A0A0A000000\n foundDigest = 8706C344B6E4D09B4ADFD074372F1A64\n\nPASS\n\n--- iteration 1 ---\nLooking for random key:\n randomIndex = 17950821\n randomKey   = 0x151917210B000000\n randomDigest= EEDE12B0F68653B0F7C3D2BA1029816D\ntime = 1 ms, rate = 52.5219 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 17950821\n foundKey    = 0x151917210B000000\n foundDigest = EEDE12B0F68653B0F7C3D2BA1029816D\n\nPASS\n\n--- iteration 2 ---\nLooking for random key:\n randomIndex = 42636923\n randomKey   = 0x1C160F0E1C000000\n randomDigest= A5FA53F622F33E3E9572F1E139157755\ntime = 1 ms, rate = 52.5219 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 42636923\n foundKey    = 0x1C160F0E1C000000\n foundDigest = A5FA53F622F33E3E9572F1E139157755\n\nPASS\n\n--- iteration 3 ---\nLooking for random key:\n randomIndex = 35353251\n randomKey   = 0x1F1B131317000000\n randomDigest= 30E5C0550CB9B214B3E74CE9E5F4263A\ntime = 1 ms, rate = 52.5219 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 35353251\n foundKey    = 0x1F1B131317000000\n foundDigest = 30E5C0550CB9B214B3E74CE9E5F4263A\n\nPASS\nSearching keys of length 6 bytes and 25 values per byte\n|keyspace| = 244140625 (244M)\n\n--- iteration 0 ---\nLooking for random key:\n randomIndex = 138960374\n randomKey   = 0x180E0B12050E0000\n randomDigest= 0D8FE6C9AFE6549CC2736BD5DC906005\ntime = 7 ms, rate = 34.8772 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 138960374\n foundKey    = 0x180E0B12050E0000\n foundDigest = 0D8FE6C9AFE6549CC2736BD5DC906005\n\nPASS\n\n--- iteration 1 ---\nLooking for random key:\n randomIndex = 125878946\n randomKey   = 0x15070606160C0000\n randomDigest= 235D5889E14C67985A1DA07D32C5AAF7\ntime = 7 ms, rate = 34.8772 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 125878946\n foundKey    = 0x15070606160C0000\n foundDigest = 235D5889E14C67985A1DA07D32C5AAF7\n\nPASS\n\n--- iteration 2 ---\nLooking for random key:\n randomIndex = 113627548\n randomKey   = 0x170104160F0B0000\n randomDigest= 42EBB8BFB70B05E88C6B4B07535991A7\ntime = 7 ms, rate = 34.8772 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 113627548\n foundKey    = 0x170104160F0B0000\n foundDigest = 42EBB8BFB70B05E88C6B4B07535991A7\n\nPASS\n\n--- iteration 3 ---\nLooking for random key:\n randomIndex = 211387626\n randomKey   = 0x0105140310150000\n randomDigest= 6DC42C0FE74249F09B57D6974C04143D\ntime = 7 ms, rate = 34.8772 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 211387626\n foundKey    = 0x0105140310150000\n foundDigest = 6DC42C0FE74249F09B57D6974C04143D\n\nPASS\nSearching keys of length 5 bytes and 70 values per byte\n|keyspace| = 1680700000 (1680M)\n\n--- iteration 0 ---\nLooking for random key:\n randomIndex = 383100999\n randomKey   = 0x1D3D3F420F000000\n randomDigest= F70F2BB946361127369BC4A65BB1389A\ntime = 51 ms, rate = 32.9549 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 383100999\n foundKey    = 0x1D3D3F420F000000\n foundDigest = F70F2BB946361127369BC4A65BB1389A\n\nPASS\n\n--- iteration 1 ---\nLooking for random key:\n randomIndex = 858300821\n randomKey   = 0x151E173423000000\n randomDigest= 5FB175AC78478F117F69CE6B0D56D012\ntime = 51 ms, rate = 32.9549 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 858300821\n foundKey    = 0x151E173423000000\n foundDigest = 5FB175AC78478F117F69CE6B0D56D012\n\nPASS\n\n--- iteration 2 ---\nLooking for random key:\n randomIndex = 357768173\n randomKey   = 0x3F3F033F0E000000\n randomDigest= 799FB4CAB0573927ECD924016D2F701A\ntime = 47 ms, rate = 35.7596 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 357768173\n foundKey    = 0x3F3F033F0E000000\n foundDigest = 799FB4CAB0573927ECD924016D2F701A\n\nPASS\n\n--- iteration 3 ---\nLooking for random key:\n randomIndex = 455528251\n randomKey   = 0x1F42044412000000\n randomDigest= 5102F5B4ECABC84EDFBE3E0DF0772DBB\ntime = 47 ms, rate = 35.7596 GHash/sec\n\nSuccessfully found match (index, key, hash):\n foundIndex  = 455528251\n foundKey    = 0x1F42044412000000\n foundDigest = 5102F5B4ECABC84EDFBE3E0DF0772DBB\n\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Reports PASS if MD5 search completes and rate is valid; FAIL otherwise",
+      "metrics": [],
+      "stdout_first5": "Searching keys of length 7 bytes and 10 values per byte\n|keyspace| = 10000000 (10M)\n\n--- iteration 0 ---\nLooking for random key:",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "pathfinder",
+      "build_status": "PASS",
+      "build_time": 0.835,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.071,
+      "run_exit_code": 0,
+      "run_stdout": "Total kernel execution time: 0.000061 (s)\nDevice offloading time = 0.048985 (s)\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "exit_code",
+      "verify_details": "exit_code=0 == expected 0. Process exits cleanly with code 0",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 6.1e-05,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "Total kernel execution time: 0.000061 (s)\nDevice offloading time = 0.048985 (s)",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "pso",
+      "build_status": "PASS",
+      "build_time": 0.901,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.075,
+      "run_exit_code": 0,
+      "run_stdout": "Number of particles is 30\nNumber of dimensions is 30\n\nExecute PSO on a device\nAverage kernel execution time 21.066540 (us)\nResult=70587.851562\n\nExecute PSO on a host. This may take a while for large problem size..\nResult=70587.085938\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Compares GPU PSO best fitness against CPU PSO reference; prints PASS or FAIL",
+      "metrics": [],
+      "stdout_first5": "Number of particles is 30\nNumber of dimensions is 30\n\nExecute PSO on a device\nAverage kernel execution time 21.066540 (us)",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "rmsnorm",
+      "build_status": "PASS",
+      "build_time": 0.67,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.062,
+      "run_exit_code": 0,
+      "run_stdout": "Checking block size 32.\nChecking block size 64.\nChecking block size 128.\nChecking block size 256.\nChecking block size 512.\nChecking block size 1024.\nAll results match. Starting benchmarks.\n\nblock_size   32 | time 0.0151 ms | bandwidth 9.76 GB/s\nblock_size   64 | time 0.0103 ms | bandwidth 14.36 GB/s\nblock_size  128 | time 0.0076 ms | bandwidth 19.29 GB/s\nblock_size  256 | time 0.0064 ms | bandwidth 23.00 GB/s\nblock_size  512 | time 0.0065 ms | bandwidth 22.82 GB/s\nblock_size 1024 | time 0.0061 ms | bandwidth 24.32 GB/s\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'All results match' matched. validate_result() compares GPU output vs CPU RMSNorm; prints 'All results match' or exits on mismatch",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.0151,
+          "unit": "ms"
+        }
+      ],
+      "stdout_first5": "Checking block size 32.\nChecking block size 64.\nChecking block size 128.\nChecking block size 256.\nChecking block size 512.",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "secp256k1",
+      "build_status": "PASS",
+      "build_time": 126.192,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.083,
+      "run_exit_code": 0,
+      "run_stdout": "Average kernel execution time: 0.002539 (s)\nresult = bbde464b6355ee6de6deba5ae860f8a66524937eee81dde224a0214efd795d09\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Verifies GPU ECC results against known test vectors; prints PASS or FAIL",
+      "metrics": [],
+      "stdout_first5": "Average kernel execution time: 0.002539 (s)\nresult = bbde464b6355ee6de6deba5ae860f8a66524937eee81dde224a0214efd795d09\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "softmax-online",
+      "build_status": "PASS",
+      "build_time": 3.118,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 19.096,
+      "run_exit_code": 0,
+      "run_stdout": "Using kernel baseline 1\nLargest output is: 0.999878\nChecking block size 32.\nChecking block size 64.\nChecking block size 128.\nChecking block size 256.\nChecking block size 512.\nChecking block size 1024.\nAll results match. Starting benchmarks.\n\nblock_size   32 | time 16.1743 ms | per token 1.97 \u00b5s\nblock_size   64 | time 16.1827 ms | per token 1.98 \u00b5s\nblock_size  128 | time 16.1870 ms | per token 1.98 \u00b5s\nblock_size  256 | time 16.1881 ms | per token 1.98 \u00b5s\nblock_size  512 | time 16.2015 ms | per token 1.98 \u00b5s\nblock_size 1024 | time 16.1305 ms | per token 1.97 \u00b5s\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'All results match' matched. validate_result() compares GPU output against CPU softmax; prints 'All results match' on success",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 16.1743,
+          "unit": "ms"
+        }
+      ],
+      "stdout_first5": "Using kernel baseline 1\nLargest output is: 0.999878\nChecking block size 32.\nChecking block size 64.\nChecking block size 128.",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "thomas",
+      "build_status": "PASS",
+      "build_time": 1.555,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 1.541,
+      "run_exit_code": 0,
+      "run_stdout": "Average serial execution time: 103.030937 (ms)\nAverage kernel execution time: 2.782820 (ms)\nMaximum error: 1.110223e-16\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'Maximum error:' matched. Prints max L-infinity error of GPU solution vs analytical; small values indicate correctness",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 2.78282,
+          "unit": "ms"
+        }
+      ],
+      "stdout_first5": "Average serial execution time: 103.030937 (ms)\nAverage kernel execution time: 2.782820 (ms)\nMaximum error: 1.110223e-16",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "tissue",
+      "build_status": "PASS",
+      "build_time": 0.635,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 12.253,
+      "run_exit_code": 0,
+      "run_stdout": "PASS\nAverage kernel execution time: 0.064317 (s)\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Compares GPU tissue simulation output against CPU reference; prints PASS or FAIL",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.064317,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "PASS\nAverage kernel execution time: 0.064317 (s)",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "tsp",
+      "build_status": "PASS",
+      "build_time": 0.657,
+      "build_stderr": "main.cu(283): warning #1650-D: result of call is not used\n    fscanf(f, \"%s\\n\", str);\n    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nmain.cu(294): warning #1650-D: result of call is not used\n    fscanf(f, \"%s\\n\", str);\n    ^\n\nmain.cu(316): warning #1650-D: result of call is not used\n    fscanf(f, \"%s\", str);\n    ^\n\nmain.cu(283): warning #1650-D: result of call is not used\n    fscanf(f, \"%s\\n\", str);\n    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nmain.cu(294): warning #1650-D: result of call is not used\n    fscanf(f, \"%s\\n\", str);\n    ^\n\nmain.cu(316): warning #1650-D: result of call is not used\n    fscanf(f, \"%s\", str);\n    ^\n\nmain.cu: In function \u2018int main(int, char**)\u2019:\nmain.cu:283:7: warning: ignoring return value of \u2018int fscanf(FILE*, const char*, ...)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  283 |   fscanf(f, \"%s\\n\", str);\n      |   ~~~~^~~~~~~~~~~~~~~~\nmain.cu:294:7: warning: ignoring return value of \u2018int fscanf(FILE*, const char*, ...)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  294 |   fscanf(f, \"%s\\n\", str);\n      |   ~~~~^~~~~~~~~~~~~~~~\nmain.cu:316:7: warning: ignoring return value of \u2018int fscanf(FILE*, const char*, ...)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  316 |   fscanf(f, \"%s\", str);\n      |   ~~~~^~~~~~~~~~~~~~\n",
+      "run_status": "PASS",
+      "run_time": 0.099,
+      "run_exit_code": 0,
+      "run_stdout": "2-opt TSP CUDA GPU code v2.3\nCopyright (c) 2014-2020, Texas State University. All rights reserved.\nconfiguration: 493 cities, 24 restarts, ../tsp-cuda/d493.tsp input\nthread block size: 128\nAverage kernel time: 0.0171 s\n96.766 Gmoves/s\nBest found tour length is 36963 with 13684 climbers\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Verifies GPU 2-opt tour against reference; prints PASS or FAIL",
+      "metrics": [],
+      "stdout_first5": "2-opt TSP CUDA GPU code v2.3\nCopyright (c) 2014-2020, Texas State University. All rights reserved.\nconfiguration: 493 cities, 24 restarts, ../tsp-cuda/d493.tsp input\nthread block size: 128\nAverage kernel time: 0.0171 s",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "bezier-surface",
+      "build_status": "PASS",
+      "build_time": 1.013,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.081,
+      "run_exit_code": 0,
+      "run_stdout": "Read data from file input/control.txt\nhost execution time: 10 ms\nkernel execution time: 1 ms\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU Bezier surface points",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 1.0,
+          "unit": "ms"
+        }
+      ],
+      "stdout_first5": "Read data from file input/control.txt\nhost execution time: 10 ms\nkernel execution time: 1 ms\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "convolution3d",
+      "build_status": "PASS",
+      "build_time": 0.964,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.09,
+      "run_exit_code": 0,
+      "run_stdout": "3D convolution (FP32)\n\n========== Warmup start ==========\ninput dimensions: C=1 Win=32 Hin=32\noutput dimensions: M=6 Wout=28 Hout=28\n3D grid dimensions: N=32 M=6 Z=4\nAverage kernel execution time of conv3d_s1 kernel: 7.454094 (us)\nPASS\nAverage kernel execution time of conv3d_s2 kernel: 7.514458 (us)\nPASS\nAverage kernel execution time of conv3d_s3 kernel: 7.536409 (us)\nPASS\n\n========== Warmup done ==========\ninput dimensions: C=1 Win=32 Hin=32\noutput dimensions: M=6 Wout=28 Hout=28\n3D grid dimensions: N=32 M=6 Z=4\nAverage kernel execution time of conv3d_s1 kernel: 12.474001 (us)\nPASS\nAverage kernel execution time of conv3d_s2 kernel: 11.352000 (us)\nPASS\nAverage kernel execution time of conv3d_s3 kernel: 11.261001 (us)\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU 3D convolution results",
+      "metrics": [
+        {
+          "name": "kernel_time_s1",
+          "value": 7.454094,
+          "unit": "us"
+        },
+        {
+          "name": "kernel_time_s2",
+          "value": 7.514458,
+          "unit": "us"
+        },
+        {
+          "name": "kernel_time_s3",
+          "value": 7.536409,
+          "unit": "us"
+        }
+      ],
+      "stdout_first5": "3D convolution (FP32)\n\n========== Warmup start ==========\ninput dimensions: C=1 Win=32 Hin=32\noutput dimensions: M=6 Wout=28 Hout=28",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "crc64",
+      "build_status": "PASS",
+      "build_time": 1.427,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.256,
+      "run_exit_code": 0,
+      "run_stdout": "Running 1 tests with seed 1\n1 34951314 pass pass\n-nan MB/s\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern '(?i)pass' matched. CRC-64 checksum matches CPU reference (case-insensitive)",
+      "metrics": [],
+      "stdout_first5": "Running 1 tests with seed 1\n1 34951314 pass pass\n-nan MB/s",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "floydwarshall",
+      "build_status": "PASS",
+      "build_time": 0.61,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.74,
+      "run_exit_code": 0,
+      "run_stdout": "Average kernel execution time 0.006570 (s)\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. memcmp of GPU distance matrix vs CPU Floyd-Warshall reference",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.00657,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "Average kernel execution time 0.006570 (s)\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "gaussian",
+      "build_status": "PASS",
+      "build_time": 1.421,
+      "build_stderr": "gaussianElim.cu(82): warning #1650-D: result of call is not used\n      fscanf(fp, \"%d\", &size);\n      ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\ngaussianElim.cu(342): warning #1650-D: result of call is not used\n        fscanf(fp, \"%f\", ary+size*i+j);\n        ^\n\ngaussianElim.cu(356): warning #1650-D: result of call is not used\n      fscanf(fp, \"%f\", &ary[i]);\n      ^\n\ngaussianElim.cu(82): warning #1650-D: result of call is not used\n      fscanf(fp, \"%d\", &size);\n      ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\ngaussianElim.cu(342): warning #1650-D: result of call is not used\n        fscanf(fp, \"%f\", ary+size*i+j);\n        ^\n\ngaussianElim.cu(356): warning #1650-D: result of call is not used\n      fscanf(fp, \"%f\", &ary[i]);\n      ^\n\ngaussianElim.cu: In function \u2018int main(int, char**)\u2019:\ngaussianElim.cu:82:7: warning: ignoring return value of \u2018int fscanf(FILE*, const char*, ...)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   82 |     fscanf(fp, \"%d\", &size);\n      |     ~~^~~~~~~~~~~~~~~~~\ngaussianElim.cu: In function \u2018void InitMat(FILE*, int, float*, int, int)\u2019:\ngaussianElim.cu:342:7: warning: ignoring return value of \u2018int fscanf(FILE*, const char*, ...)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  342 |       fscanf(fp, \"%f\",  ary+size*i+j);\n      |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  \ngaussianElim.cu: In function \u2018void InitAry(FILE*, float*, int)\u2019:\ngaussianElim.cu:356:7: warning: ignoring return value of \u2018int fscanf(FILE*, const char*, ...)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  356 |     fscanf(fp, \"%f\",  &ary[i]);\n      |     ~~^~~~~~~~~~~~~~~~~~~~~\n",
+      "run_status": "PASS",
+      "run_time": 0.076,
+      "run_exit_code": 0,
+      "run_stdout": "Workgroup size of kernel 1 = 256, Workgroup size of kernel 2= 16 X 16\nCreate a square matrix (256 x 256) internally\nTotal kernel execution time 874 (us)\nDevice offloading time 50674 (us)\n\nChecking the results..\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU Gaussian elimination results",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 874.0,
+          "unit": "us"
+        }
+      ],
+      "stdout_first5": "Workgroup size of kernel 1 = 256, Workgroup size of kernel 2= 16 X 16\nCreate a square matrix (256 x 256) internally\nTotal kernel execution time 874 (us)\nDevice offloading time 50674 (us)\n",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "geglu",
+      "build_status": "PASS",
+      "build_time": 1.069,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 18.674,
+      "run_exit_code": 0,
+      "run_stdout": "PASS\nPASS\nPASS\nPASS\nPASS\nPASS\nBatch size: 1, sequence length: 4096, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 134.652008 (us)\nBatch size: 1, sequence length: 4096, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 277.598999 (us)\nBatch size: 1, sequence length: 4096, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 545.351013 (us)\nBatch size: 1, sequence length: 8192, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 251.741013 (us)\nBatch size: 1, sequence length: 8192, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 525.023010 (us)\nBatch size: 1, sequence length: 8192, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 1069.492065 (us)\nBatch size: 4, sequence length: 4096, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 519.693054 (us)\nBatch size: 4, sequence length: 4096, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 1075.223022 (us)\nBatch size: 4, sequence length: 4096, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 2164.341064 (us)\nBatch size: 4, sequence length: 8192, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 1060.765991 (us)\nBatch size: 4, sequence length: 8192, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 2178.699219 (us)\nBatch size: 4, sequence length: 8192, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 4328.494141 (us)\nBatch size: 16, sequence length: 4096, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 2152.930176 (us)\nBatch size: 16, sequence length: 4096, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 4405.437988 (us)\nBatch size: 16, sequence length: 4096, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 8733.409180 (us)\nBatch size: 16, sequence length: 8192, hidden dimension: 1280\nAverage execution time of GeGLU kernel: 4329.986328 (us)\nBatch size: 16, sequence length: 8192, hidden dimension: 2560\nAverage execution time of GeGLU kernel: 8754.629883 (us)\nBatch size: 16, sequence length: 8192, hidden dimension: 5120\nAverage execution time of GeGLU kernel: 17379.988281 (us)\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Element-wise comparison of GPU GeGLU vs CPU reference",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 134.652008,
+          "unit": "us"
+        }
+      ],
+      "stdout_first5": "PASS\nPASS\nPASS\nPASS\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "heat2d",
+      "build_status": "PASS",
+      "build_time": 0.562,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.231,
+      "run_exit_code": 0,
+      "run_stdout": " Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    298.5 usec/iter, BW = 449.641 GB/s, P = 337.230 Gflop/s\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU temperature grid",
+      "metrics": [
+        {
+          "name": "throughput",
+          "value": 449.641,
+          "unit": "GB/s"
+        }
+      ],
+      "stdout_first5": "Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    298.5 usec/iter, BW = 449.641 GB/s, P = 337.230 Gflop/s\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "iso2dfd",
+      "build_status": "PASS",
+      "build_time": 1.024,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.138,
+      "run_exit_code": 0,
+      "run_stdout": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nRunning on:: NVIDIA GeForce RTX 4070\nThe Device Max Work Group Size is : 1024\nTotal kernel execution time 1.47852 (ms)\nAverage kernel execution time 147.852 (us)\nComputing wavefield in CPU ..\nInitializing ... \nHost time: 20 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Euclidean norm of GPU vs CPU wavefield below threshold",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 147.852,
+          "unit": "us"
+        }
+      ],
+      "stdout_first5": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "jenkins-hash",
+      "build_status": "PASS",
+      "build_time": 0.622,
+      "build_stderr": "main.cu(246): warning #1650-D: result of call is not used\n    posix_memalign((void**)&keys, 1024, sizeof(unsigned int)*N*16);\n    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nmain.cu(247): warning #1650-D: result of call is not used\n    posix_memalign((void**)&lens, 1024, sizeof(unsigned int)*N);\n    ^\n\nmain.cu(248): warning #1650-D: result of call is not used\n    posix_memalign((void**)&initvals, 1024, sizeof(unsigned int)*N);\n    ^\n\nmain.cu(249): warning #1650-D: result of call is not used\n    posix_memalign((void**)&out, 1024, sizeof(unsigned int)*N);\n    ^\n\nmain.cu(246): warning #1650-D: result of call is not used\n    posix_memalign((void**)&keys, 1024, sizeof(unsigned int)*N*16);\n    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nmain.cu(247): warning #1650-D: result of call is not used\n    posix_memalign((void**)&lens, 1024, sizeof(unsigned int)*N);\n    ^\n\nmain.cu(248): warning #1650-D: result of call is not used\n    posix_memalign((void**)&initvals, 1024, sizeof(unsigned int)*N);\n    ^\n\nmain.cu(249): warning #1650-D: result of call is not used\n    posix_memalign((void**)&out, 1024, sizeof(unsigned int)*N);\n    ^\n\nmain.cu: In function \u2018int main(int, char**)\u2019:\nmain.cu:246:15: warning: ignoring return value of \u2018int posix_memalign(void**, size_t, size_t)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  246 |   posix_memalign((void**)&keys, 1024, sizeof(unsigned int)*N*16);\n      |   ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    \nmain.cu:247:15: warning: ignoring return value of \u2018int posix_memalign(void**, size_t, size_t)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  247 |   posix_memalign((void**)&lens, 1024, sizeof(unsigned int)*N);\n      |   ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nmain.cu:248:15: warning: ignoring return value of \u2018int posix_memalign(void**, size_t, size_t)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  248 |   posix_memalign((void**)&initvals, 1024, sizeof(unsigned int)*N);\n      |   ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nmain.cu:249:15: warning: ignoring return value of \u2018int posix_memalign(void**, size_t, size_t)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  249 |   posix_memalign((void**)&out, 1024, sizeof(unsigned int)*N);\n      |   ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nIn function \u2018void* memcpy(void*, const void*, size_t)\u2019,\n    inlined from \u2018int main(int, char**)\u2019 at main.cu:254:7:\n/usr/include/x86_64-linux-gnu/bits/string_fortified.h:29:30: warning: \u2018void* __builtin_memcpy(void*, const void*, long unsigned int)\u2019 forming offset [31, 63] is out of the bounds [0, 31] [-Warray-bounds]\n   29 |   return __builtin___memcpy_chk (__dest, __src, __len,\n      |        ~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~                                       \n",
+      "run_status": "PASS",
+      "run_time": 0.759,
+      "run_exit_code": 0,
+      "run_stdout": "input string: Four score and seven years ago hash is cd628161\nAverage kernel execution time : 0.002410 (s)\nVerify the results computed on the device..\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU Jenkins hash values",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.00241,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "input string: Four score and seven years ago hash is cd628161\nAverage kernel execution time : 0.002410 (s)\nVerify the results computed on the device..\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "knn",
+      "build_status": "PASS",
+      "build_time": 0.616,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 7.279,
+      "run_exit_code": 0,
+      "run_stdout": "Number of reference points      :   4096\nNumber of query points          :   4096\nDimension of points             :   68\nNumber of neighbors to consider :   20\nProcessing kNN search           :\nGround truth computation in progress...\n\nOn CPU: \n done in 3.597176 s for 1 iterations (3.597176 s by iteration)\non GPU: \n done in 0.059841 s for 1 iterations (0.059841 s by iteration)\nPrecision accuracy 1.000000\nIndex accuracy 0.999976\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Precision accuracy == 1.0 comparing GPU vs CPU kNN classification",
+      "metrics": [
+        {
+          "name": "total_time",
+          "value": 3.597176,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "Number of reference points      :   4096\nNumber of query points          :   4096\nDimension of points             :   68\nNumber of neighbors to consider :   20\nProcessing kNN search           :",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "mandelbrot",
+      "build_status": "PASS",
+      "build_time": 0.993,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.231,
+      "run_exit_code": 0,
+      "run_stdout": "No Print() output due to size too large\n       Serial time: 0.156426 s\nAverage parallel time: 1.4539 ms\nAverage kernel execution time: 0.125955 ms\nSuccess\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'Success' matched. GPU Mandelbrot computation completes successfully",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.125955,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "No Print() output due to size too large\n       Serial time: 0.156426 s\nAverage parallel time: 1.4539 ms\nAverage kernel execution time: 0.125955 ms\nSuccess",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "mis",
+      "build_status": "PASS",
+      "build_time": 0.647,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.066,
+      "run_exit_code": 0,
+      "run_stdout": "ECL-MIS v1.3 (main.cu)\nCopyright 2017-2020 Texas State University\nconfiguration: 124651 nodes and 387240 edges (internet.egr)\naverage degree: 3.11 edges per node\ncompute time: 0.000154 s\nthroughput: 807.487247 Mnodes/s\nthroughput: 2508.534722 Medges/s\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "exit_code",
+      "verify_details": "exit_code=0 == expected 0. Exit code 0 indicates valid MIS computed without errors",
+      "metrics": [
+        {
+          "name": "compute_time",
+          "value": 0.000154,
+          "unit": "s"
+        },
+        {
+          "name": "node_throughput",
+          "value": 807.487247,
+          "unit": "Mnodes/s"
+        }
+      ],
+      "stdout_first5": "ECL-MIS v1.3 (main.cu)\nCopyright 2017-2020 Texas State University\nconfiguration: 124651 nodes and 387240 edges (internet.egr)\naverage degree: 3.11 edges per node\ncompute time: 0.000154 s",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "murmurhash3",
+      "build_status": "PASS",
+      "build_time": 0.633,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.573,
+      "run_exit_code": 0,
+      "run_stdout": "Average kernel execution time 0.004432 (s)\nSUCCESS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'SUCCESS' matched. Program prints SUCCESS when memcmp of GPU vs CPU hashes passes",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.004432,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "Average kernel execution time 0.004432 (s)\nSUCCESS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "myocyte",
+      "build_status": "PASS",
+      "build_time": 1.082,
+      "build_stderr": "file.c(103): warning #1650-D: result of call is not used\n          fscanf(fid, \"%f\", &temp);\n          ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nfile.c(111): warning #1650-D: result of call is not used\n          fscanf(fid, \"%f\", &temp);\n          ^\n\nfile.c(103): warning #1650-D: result of call is not used\n          fscanf(fid, \"%f\", &temp);\n          ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nfile.c(111): warning #1650-D: result of call is not used\n          fscanf(fid, \"%f\", &temp);\n          ^\n\nfile.c: In function \u2018void read(const char*, float*, int, int, int)\u2019:\nfile.c:103:7: warning: ignoring return value of \u2018int fscanf(FILE*, const char*, ...)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  103 |         fscanf(fid, \"%f\", &temp);\n      |       ^ ~~~~~~~~~~~~~~~~\nfile.c:111:7: warning: ignoring return value of \u2018int fscanf(FILE*, const char*, ...)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  111 |         fscanf(fid, \"%f\", &temp);\n      |       ^ ~~~~~~~~~~~~~~~~\n",
+      "run_status": "PASS",
+      "run_time": 0.09,
+      "run_exit_code": 0,
+      "run_stdout": "Total kernel execution time 0.018142 (s)\n\nTime spent in different stages of the application:\n0.000000051000 s, 0.000076403667 % : SETUP VARIABLES\n0.042338340000 s, 63.427536010742 % : ALLOCATE CPU MEMORY AND GPU MEMORY\n0.000035026000 s, 0.052472837269 % : READ DATA FROM FILES\n0.024377035000 s, 36.519508361816 % : RUN COMPUTATION\n0.000000271000 s, 0.000405988103 % : FREE MEMORY\nTotal time:\n0.066750723000 s\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "exit_code",
+      "verify_details": "exit_code=0 == expected 0. Exit code 0 indicates successful solver convergence",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.018142,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "Total kernel execution time 0.018142 (s)\n\nTime spent in different stages of the application:\n0.000000051000 s, 0.000076403667 % : SETUP VARIABLES\n0.042338340000 s, 63.427536010742 % : ALLOCATE CPU MEMORY AND GPU MEMORY",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "nw",
+      "build_status": "PASS",
+      "build_time": 0.804,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 1.955,
+      "run_exit_code": 0,
+      "run_stdout": "WG size of kernel = 16 \nblock width = 1024\nTotal kernel execution time: 0.021946 (s)\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. memcmp of GPU alignment result vs CPU Needleman-Wunsch reference",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.021946,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "WG size of kernel = 16 \nblock width = 1024\nTotal kernel execution time: 0.021946 (s)\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "perplexity",
+      "build_status": "PASS",
+      "build_time": 0.724,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.237,
+      "run_exit_code": 0,
+      "run_stdout": "Average kernel execution time: 0.007938 (s)\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Comparison of GPU perplexity scores vs CPU reference",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.007938,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "Average kernel execution time: 0.007938 (s)\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "popcount",
+      "build_status": "PASS",
+      "build_time": 0.654,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 1.926,
+      "run_exit_code": 0,
+      "run_stdout": "Average kernel execution time (pc1): 586.778000 (us)\nSuccess\nAverage kernel execution time (pc2): 470.090000 (us)\nSuccess\nAverage kernel execution time (pc3): 458.167000 (us)\nSuccess\nAverage kernel execution time (pc4): 524.312000 (us)\nSuccess\nAverage kernel execution time (pc5): 2239.713000 (us)\nSuccess\nAverage kernel execution time (pc6): 441.477000 (us)\nSuccess\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "exit_code",
+      "verify_details": "exit_code=0 == expected 0. Exit code 0 indicates all 5 popcount variants produced matching results",
+      "metrics": [
+        {
+          "name": "kernel_time_pc1",
+          "value": 586.778,
+          "unit": "us"
+        },
+        {
+          "name": "kernel_time_pc2",
+          "value": 470.09,
+          "unit": "us"
+        }
+      ],
+      "stdout_first5": "Average kernel execution time (pc1): 586.778000 (us)\nSuccess\nAverage kernel execution time (pc2): 470.090000 (us)\nSuccess\nAverage kernel execution time (pc3): 458.167000 (us)",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "sobol",
+      "build_status": "PASS",
+      "build_time": 2.785,
+      "build_stderr": "sobol.cu: In function \u2018int main(int, char**)\u2019:\nsobol.cu:176:8: warning: \u2018void operator delete(void*, std::size_t)\u2019 called on pointer returned from a mismatched allocation function [-Wmismatched-new-delete]\n  176 |     delete h_directions;\n      |        ^~~~~~~~~~~~\nsobol.cu:80:48: note: returned from \u2018void* operator new [](std::size_t)\u2019\n   80 |         h_directions = new unsigned int [n_dimensions * n_directions];\n      |                                                ^\nsobol.cu:177:8: warning: \u2018void operator delete(void*, std::size_t)\u2019 called on pointer returned from a mismatched allocation function [-Wmismatched-new-delete]\n  177 |     delete h_outputCPU;\n      |        ^~~~~~~~~~~\nsobol.cu:81:51: note: returned from \u2018void* operator new [](std::size_t)\u2019\n   81 |         h_outputCPU  = new float [n_vectors * n_dimensions];\n      |                                                   ^\nsobol.cu:178:8: warning: \u2018void operator delete(void*, std::size_t)\u2019 called on pointer returned from a mismatched allocation function [-Wmismatched-new-delete]\n  178 |     delete h_outputGPU;\n      |        ^~~~~~~~~~~\nsobol.cu:82:51: note: returned from \u2018void* operator new [](std::size_t)\u2019\n   82 |         h_outputGPU  = new float [n_vectors * n_dimensions];\n      |                                                   ^\n",
+      "run_status": "PASS",
+      "run_time": 5.405,
+      "run_exit_code": 0,
+      "run_stdout": "Allocating CPU memory...\nAllocating GPU memory...\nInitializing direction numbers...\nExecuting QRNG on GPU...\nAverage kernel execution time: 0.0104468 (s)\n\nExecuting QRNG on CPU...\nChecking results...\nL1-Error: 0\nShutting down...\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Comparison of GPU Sobol sequences vs CPU gold reference implementation",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.0104468,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "Allocating CPU memory...\nAllocating GPU memory...\nInitializing direction numbers...\nExecuting QRNG on GPU...\nAverage kernel execution time: 0.0104468 (s)",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "stencil1d",
+      "build_status": "PASS",
+      "build_time": 0.604,
+      "build_stderr": "",
+      "run_status": "PASS",
+      "run_time": 0.619,
+      "run_exit_code": 0,
+      "run_stdout": "Average kernel execution time: 0.002435 (s)\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU 1D stencil results",
+      "metrics": [
+        {
+          "name": "kernel_time",
+          "value": 0.002435,
+          "unit": "s"
+        }
+      ],
+      "stdout_first5": "Average kernel execution time: 0.002435 (s)\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    },
+    {
+      "kernel": "triad",
+      "build_status": "PASS",
+      "build_time": 2.549,
+      "build_stderr": "OptionParser.cpp: In member function \u2018bool OptionParser::parse(const std::vector<std::__cxx11::basic_string<char> >&)\u2019:\nOptionParser.cpp:65:19: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018std::vector<std::__cxx11::basic_string<char> >::size_type\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n   65 |    for (int i=0; i<args.size(); i++) {\n      |                  ~^~~~~~~~~~~~\nOptionParser.cpp:78:46: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018std::vector<std::__cxx11::basic_string<char> >::size_type\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n   78 |          if (longName==\"configFile\" && ! (i+1>=args.size())) {\n      |                                           ~~~^~~~~~~~~~~~~\nOptionParser.cpp:95:21: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018std::vector<std::__cxx11::basic_string<char> >::size_type\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n   95 |             if (i+1 >= args.size()) {\n      |                 ~~~~^~~~~~~~~~~~~~\nOptionParser.cpp:117:51: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018std::vector<std::__cxx11::basic_string<char> >::size_type\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n  117 |               if (longName==\"configFile\" && ! (i+1>=args.size())) {\n      |                                                ~~~^~~~~~~~~~~~~\nOptionParser.cpp:130:27: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018std::vector<std::__cxx11::basic_string<char> >::size_type\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n  130 |                   if (i+1 >= args.size() || p < nopts-1)\n      |                       ~~~~^~~~~~~~~~~~~~\nOptionParser.cpp: In member function \u2018void OptionParser::print() const\u2019:\nOptionParser.cpp:165:22: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018std::vector<std::__cxx11::basic_string<char> >::size_type\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n  165 |       for (int j=0; j<printed.size(); j++) {\n      |                     ~^~~~~~~~~~~~~~~\nOptionParser.cpp: In member function \u2018bool OptionParser::getOptionBool(const std::string&) const\u2019:\nOptionParser.cpp:213:8: warning: unused variable \u2018retVal\u2019 [-Wunused-variable]\n  213 |    int retVal;\n      |        ^~~~~~\nOptionParser.cpp: In member function \u2018std::vector<long long int> OptionParser::getOptionVecInt(const std::string&) const\u2019:\nOptionParser.cpp:243:19: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018std::vector<std::__cxx11::basic_string<char> >::size_type\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n  243 |    for (int i=0; i<tokens.size(); i++) {\n      |                  ~^~~~~~~~~~~~~~\nOptionParser.cpp: In member function \u2018std::vector<float> OptionParser::getOptionVecFloat(const std::string&) const\u2019:\nOptionParser.cpp:260:19: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018std::vector<std::__cxx11::basic_string<char> >::size_type\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n  260 |    for (int i=0; i<tokens.size(); i++) {\n      |                  ~^~~~~~~~~~~~~~\nOptionParser.cpp: In member function \u2018std::vector<std::__cxx11::basic_string<char> > OptionParser::getOptionVecString(const std::string&) const\u2019:\nOptionParser.cpp:279:19: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018std::vector<std::__cxx11::basic_string<char> >::size_type\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n  279 |    for (int i=0; i<tokens.size(); i++) {\n      |                  ~^~~~~~~~~~~~~~\nOptionParser.cpp: In member function \u2018bool OptionParser::parseFile(const std::string&)\u2019:\nOptionParser.cpp:316:25: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018std::vector<std::__cxx11::basic_string<char> >::size_type\u2019 {aka \u2018long unsigned int\u2019} [-Wsign-compare]\n  316 |          for (int i=0; i<tokens.size(); i++) {\n      |                        ~^~~~~~~~~~~~~~\n",
+      "run_status": "PASS",
+      "run_time": 0.184,
+      "run_exit_code": 0,
+      "run_stdout": ">> Executing Triad with vectors of length 4194304 and block size of 16384 elements.\nBlock: 64KB\nAverage TriadFlops 2.57618 GFLOPS/s\nAverage TriadBdwth 15.4571 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 32768 elements.\nBlock: 128KB\nAverage TriadFlops 3.6588 GFLOPS/s\nAverage TriadBdwth 21.9528 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 65536 elements.\nBlock: 256KB\nAverage TriadFlops 4.79855 GFLOPS/s\nAverage TriadBdwth 28.7913 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 131072 elements.\nBlock: 512KB\nAverage TriadFlops 5.80693 GFLOPS/s\nAverage TriadBdwth 34.8416 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 262144 elements.\nBlock: 1024KB\nAverage TriadFlops 5.88849 GFLOPS/s\nAverage TriadBdwth 35.3309 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 524288 elements.\nBlock: 2048KB\nAverage TriadFlops 5.81197 GFLOPS/s\nAverage TriadBdwth 34.8718 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 1048576 elements.\nBlock: 4096KB\nAverage TriadFlops 5.62578 GFLOPS/s\nAverage TriadBdwth 33.7547 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 2097152 elements.\nBlock: 8192KB\nAverage TriadFlops 5.04498 GFLOPS/s\nAverage TriadBdwth 30.2699 GB/s\nPASS\n>> Executing Triad with vectors of length 4194304 and block size of 4194304 elements.\nBlock: 16384KB\nAverage TriadFlops 4.21484 GFLOPS/s\nAverage TriadBdwth 25.289 GB/s\nPASS\n",
+      "run_stderr": "",
+      "verify_status": "PASS",
+      "verify_strategy": "stdout_pattern",
+      "verify_details": "Pattern 'PASS' matched. Element-wise comparison of GPU triad result vs CPU reference",
+      "metrics": [
+        {
+          "name": "triad_gflops",
+          "value": 2.57618,
+          "unit": "GFLOPS/s"
+        }
+      ],
+      "stdout_first5": ">> Executing Triad with vectors of length 4194304 and block size of 16384 elements.\nBlock: 64KB\nAverage TriadFlops 2.57618 GFLOPS/s\nAverage TriadBdwth 15.4571 GB/s\nPASS",
+      "failure_category": null,
+      "failure_details": null
+    }
+  ]
+}

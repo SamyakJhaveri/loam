@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-tissue-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.268,
+    "stdout": "rm -rf main main.o reference.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall  -O3 -fopenmp -c reference.cpp -o reference.o\ng++  -std=c++17 -Wall  -O3 -fopenmp main.o reference.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/tissue-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 37.154,
+      "exit_code": 0,
+      "stdout": "@1365: 8202.758789 16415.328125\nFAIL\nAverage kernel execution time: 0.307190 (s)\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "fail",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' NOT found in stdout. Compares GPU tissue simulation output against CPU reference; prints PASS or FAIL"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.30719,
+      "unit": "s"
+    }
+  ]
+}

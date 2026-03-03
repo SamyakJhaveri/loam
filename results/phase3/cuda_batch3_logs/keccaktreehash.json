@@ -1,0 +1,26 @@
+{
+  "spec_id": "hecbench-keccaktreehash-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 2.462,
+    "stdout": "rm -rf keccektree KeccakF.o KeccakTreeCPU.o KeccakTreeGPU.o Test.o main.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c KeccakF.cu -o KeccakF.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c KeccakTreeCPU.cu -o KeccakTreeCPU.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c KeccakTreeGPU.cu -o KeccakTreeGPU.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c Test.cu -o Test.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c main.cu -o main.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 KeccakF.o KeccakTreeCPU.o KeccakTreeGPU.o Test.o main.o -o keccektree \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/keccaktreehash-cuda/keccektree"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 7.42,
+      "exit_code": 0,
+      "stdout": "\nNumber of threads per block             NB_THREADS           64 \nNumber of thread blocks                 NB_THREADS_BLOCKS    64 \n\nInput block size of Keccak (in Byte)    INPUT_BLOCK_SIZE_B   32 \nOutput block size of Keccak (in Byte)   OUTPUT_BLOCK_SIZE_B  32 \n\nNumber of input blocks                  NB_INPUT_BLOCK       1024 \n\nCPU speed test started \n\n506f1eca ab60120a b402f830 ea46f6c2 75d8b317 0f7944a5 60b36a16 64d38a43 \nCPU speed : 149617.36 kB/s \n\nCPU time : 7.17659 s \n\nGPU speed test started\n\n506f1eca ab60120a b402f830 ea46f6c2 75d8b317 0f7944a5 60b36a16 64d38a43 \nGPU speed : 12637042.93 kB/s \n\nGPU time : 0.08497 s \n\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. isEqual_KS() compares GPU Keccak state vs CPU reference; prints PASS or FAIL"
+  },
+  "metrics": []
+}

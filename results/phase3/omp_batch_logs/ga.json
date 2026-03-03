@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-ga-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.176,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall -I../ga-cuda -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall -I../ga-cuda -O3 -fopenmp main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/ga-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.031,
+      "exit_code": 0,
+      "stdout": "Total kernel execution time 0.007535 (s)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Compares GPU alignment results against CPU reference; prints PASS or FAIL"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.007535,
+      "unit": "s"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-murmurhash3-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.134,
+    "stdout": "rm -rf main murmurhash3.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c murmurhash3.cpp -o murmurhash3.o\ng++  -std=c++17 -Wall  -O3 -fopenmp murmurhash3.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/murmurhash3-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.495,
+      "exit_code": 0,
+      "stdout": "Average kernel execution time 0.010766 (s)\nSUCCESS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'SUCCESS' matched. Program prints SUCCESS when memcmp of GPU vs CPU hashes passes"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.010766,
+      "unit": "s"
+    }
+  ]
+}

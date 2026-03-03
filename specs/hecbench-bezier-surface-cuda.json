@@ -161,7 +161,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Read data from file input/control.txt\nhost execution time: 10 ms\nkernel execution time: 1 ms\nPASS\n",
+        "wall_time_seconds": 0.081
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.081,
+        "metrics": {
+          "kernel_time_ms": 1.0
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Bezier surface evaluation on GPU. Computes surface points from control points using tensor-product Bernstein polynomials, verified against CPU reference via element-wise comparison.",
     "domain": "computational geometry",

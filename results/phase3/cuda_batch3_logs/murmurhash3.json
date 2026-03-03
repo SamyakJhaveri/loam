@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-murmurhash3-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.633,
+    "stdout": "rm -rf main murmurhash3.o\n\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 -c murmurhash3.cu -o murmurhash3.o\nnvcc  -std=c++17 -Xcompiler -Wall -arch=sm_89 -O3 murmurhash3.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/murmurhash3-cuda/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.573,
+      "exit_code": 0,
+      "stdout": "Average kernel execution time 0.004432 (s)\nSUCCESS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'SUCCESS' matched. Program prints SUCCESS when memcmp of GPU vs CPU hashes passes"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.004432,
+      "unit": "s"
+    }
+  ]
+}

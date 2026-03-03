@@ -48,8 +48,8 @@
     "working_directory": "src/jenkins-hash-omp",
     "commands": {
       "configure": null,
-      "build": "make",
-      "clean": "make clean"
+      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
+      "clean": "make -f Makefile.aomp clean"
     },
     "variables": null,
     "outputs": {
@@ -150,7 +150,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "input string: Four score and seven years ago hash is cd628161\nAverage kernel execution time : 0.034731 (s)\nVerify the results computed on the device..\nPASS\n",
+        "wall_time_seconds": 0.645
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.645,
+        "metrics": {
+          "kernel_time_s": 0.034731
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Jenkins one-at-a-time hash function on GPU. Hashes arrays of keys in parallel, verified against CPU Jenkins hash reference via element-wise comparison.",
     "domain": "hashing",

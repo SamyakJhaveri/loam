@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-floydwarshall-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.123,
+    "stdout": "rm -rf main main.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall  -O3 -fopenmp main.o -o main \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/floydwarshall-omp/main"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.297,
+      "exit_code": 0,
+      "stdout": "Average kernel execution time 0.823389 (s)\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. memcmp of GPU distance matrix vs CPU Floyd-Warshall reference"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 0.823389,
+      "unit": "s"
+    }
+  ]
+}

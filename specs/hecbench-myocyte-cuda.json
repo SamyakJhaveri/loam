@@ -159,7 +159,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Total kernel execution time 0.018142 (s)\n\nTime spent in different stages of the application:\n0.000000051000 s, 0.000076403667 % : SETUP VARIABLES\n0.042338340000 s, 63.427536010742 % : ALLOCATE CPU MEMORY AND GPU MEMORY\n0.000035026000 s, 0.052472837269 % : READ DATA FROM FILES\n0.024377035000 s, 36.519508361816 % : RUN COMPUTATION\n0.000000271000 s, 0.000405988103 % : FREE MEMORY\nTotal time:\n0.066750723000 s\n",
+        "wall_time_seconds": 0.09
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.09,
+        "metrics": {
+          "kernel_time_s": 0.018142
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Cardiac myocyte ODE simulation using embedded Fehlberg 7-8th order Runge-Kutta solver. Multiple GPU kernels model calcium, electrical conduction, and force generation; verified against output file.",
     "domain": "biomedical simulation",

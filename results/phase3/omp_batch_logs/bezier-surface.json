@@ -1,0 +1,32 @@
+{
+  "spec_id": "hecbench-bezier-surface-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.323,
+    "stdout": "rm -rf bs main.o\n\ng++  -std=c++17 -Wall  -O3 -fopenmp -c main.cpp -o main.o\ng++  -std=c++17 -Wall  -O3 -fopenmp main.o -o bs \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/downloads/HeCBench-master/src/bezier-surface-omp/bs"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.014,
+      "exit_code": 0,
+      "stdout": "Read data from file input/control.txt\nhost execution time: 10 ms\nkernel execution time: 1 ms\nPASS\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "stdout_pattern",
+    "details": "Pattern 'PASS' matched. Element-wise comparison of GPU vs CPU Bezier surface points"
+  },
+  "metrics": [
+    {
+      "name": "kernel_time",
+      "value": 1.0,
+      "unit": "ms"
+    }
+  ]
+}

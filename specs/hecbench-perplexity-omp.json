@@ -48,8 +48,8 @@
     "working_directory": "src/perplexity-omp",
     "commands": {
       "configure": null,
-      "build": "make",
-      "clean": "make clean"
+      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
+      "clean": "make -f Makefile.aomp clean"
     },
     "variables": null,
     "outputs": {
@@ -154,7 +154,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Average kernel execution time: 0.009556 (s)\nPASS\n",
+        "wall_time_seconds": 0.181
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.181,
+        "metrics": {
+          "kernel_time_s": 0.009556
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Perplexity computation for language model evaluation on GPU. Computes log-likelihood-based perplexity scores in parallel, verified against CPU reference implementation.",
     "domain": "machine learning / NLP",

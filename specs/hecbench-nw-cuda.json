@@ -154,7 +154,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "WG size of kernel = 16 \nblock width = 1024\nTotal kernel execution time: 0.021946 (s)\nPASS\n",
+        "wall_time_seconds": 1.955
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 1.955,
+        "metrics": {
+          "kernel_time_s": 0.021946
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Needleman-Wunsch global sequence alignment algorithm on GPU. Fills scoring matrix in anti-diagonal wavefront fashion, verified via memcmp against CPU reference implementation.",
     "domain": "bioinformatics",

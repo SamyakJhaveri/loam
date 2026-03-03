@@ -163,7 +163,26 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "ECL-MIS v1.3 (main.cu)\nCopyright 2017-2020 Texas State University\nconfiguration: 124651 nodes and 387240 edges (internet.egr)\naverage degree: 3.11 edges per node\ncompute time: 0.000154 s\nthroughput: 807.487247 Mnodes/s\nthroughput: 2508.534722 Medges/s\n",
+        "wall_time_seconds": 0.066
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.066,
+        "metrics": {
+          "compute_time_s": 0.000154,
+          "node_throughput_Mnodes/s": 807.487247
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Maximal Independent Set computation on GPU using Luby's parallel algorithm. Iteratively selects vertices into independent set, verified via graph structure validation on stderr.",
     "domain": "graph algorithms",

@@ -48,8 +48,8 @@
     "working_directory": "src/popcount-omp",
     "commands": {
       "configure": null,
-      "build": "make",
-      "clean": "make clean"
+      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
+      "clean": "make -f Makefile.aomp clean"
     },
     "variables": null,
     "outputs": {
@@ -147,7 +147,26 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Average kernel execution time (pc1): 6869.598000 (us)\nSuccess\nAverage kernel execution time (pc2): 5583.290000 (us)\nSuccess\nAverage kernel execution time (pc3): 13154.341000 (us)\nSuccess\nAverage kernel execution time (pc4): 12540.042000 (us)\nSuccess\nAverage kernel execution time (pc5): 6945.670000 (us)\nSuccess\nAverage kernel execution time (pc6): 5686.213000 (us)\nSuccess\n",
+        "wall_time_seconds": 1.81
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 1.81,
+        "metrics": {
+          "kernel_time_pc1_us": 6869.598,
+          "kernel_time_pc2_us": 5583.29
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Population count (Hamming weight) computation on GPU using multiple algorithm variants. Counts set bits in large integer arrays, verified by comparing 5 GPU implementations against each other.",
     "domain": "bit manipulation",

@@ -51,8 +51,8 @@
     "working_directory": "src/gaussian-omp",
     "commands": {
       "configure": null,
-      "build": "make",
-      "clean": "make clean"
+      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
+      "clean": "make -f Makefile.aomp clean"
     },
     "variables": null,
     "outputs": {
@@ -160,7 +160,25 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T18:52:35Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "Create a square matrix (256 x 256) internally\nTotal kernel execution time 390437 (us)\nDevice offloading time 390508 (us)\n\nChecking the results..\nPASS\n",
+        "wall_time_seconds": 0.396
+      },
+      "performance": {
+        "status": "pass",
+        "wall_time_seconds": 0.396,
+        "metrics": {
+          "kernel_time_us": 390437.0
+        }
+      }
+    }
+  },
   "metadata": {
     "description": "Gaussian elimination with partial pivoting on GPU. Forward elimination and back substitution kernels solve a dense linear system, verified against CPU reference via element-wise comparison.",
     "domain": "dense linear algebra",
