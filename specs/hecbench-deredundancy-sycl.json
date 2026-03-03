@@ -1,9 +1,9 @@
 {
   "spec_version": "1.0.0",
   "identity": {
-    "kernel_name": "convolution3D",
-    "parallel_api": "cuda",
-    "unique_id": "hecbench-convolution3D-cuda",
+    "kernel_name": "deredundancy",
+    "parallel_api": "sycl",
+    "unique_id": "hecbench-deredundancy-sycl",
     "source_suite": "hecbench"
   },
   "provenance": {
@@ -13,22 +13,26 @@
       "branch": "master"
     },
     "repo_root": "HeCBench-master/",
-    "source_path": "src/convolution3D-cuda",
+    "source_path": "src/deredundancy-sycl",
     "license": "MIT"
   },
   "files": {
     "prompt_payload": [
-      "main.cu"
+      "main.cpp",
+      "kernels.cpp"
     ],
     "support_files": [
       "Makefile",
       "CMakeLists.txt",
-      "conv3d_s4.cu"
+      "utils.h",
+      "LICENSE"
     ],
-    "verification_only": []
+    "verification_only": [
+      "utils.cpp"
+    ]
   },
   "implementation": {
-    "api": "cuda",
+    "api": "sycl",
     "api_version": null,
     "language": "C++",
     "language_standard": "C++17"
@@ -39,16 +43,16 @@
       "conda": null,
       "system": {
         "dependencies": [
-          "CUDA Toolkit >= 11.0",
+          "Intel oneAPI DPC++/C++ Compiler",
           "GCC >= 9.0"
         ]
       }
     },
     "build_system": "make",
-    "working_directory": "src/convolution3D-cuda",
+    "working_directory": "src/deredundancy-sycl",
     "commands": {
       "configure": null,
-      "build": "make ARCH=sm_89",
+      "build": "make",
       "clean": "make clean"
     },
     "variables": null,
@@ -59,47 +63,36 @@
   "run": {
     "executable": "./main",
     "default_arguments": [
-      "32",
-      "1",
-      "6",
-      "32",
-      "32",
-      "5",
-      "100"
+      "i",
+      "../deredundancy-sycl/testData.fasta"
     ],
-    "timeout_seconds": 300,
+    "timeout_seconds": 600,
     "environment_variables": null,
     "input_configurations": {
       "correctness": {
         "arguments": [
-          "32",
-          "1",
-          "6",
-          "32",
-          "32",
-          "5",
-          "1"
+          "i",
+          "../deredundancy-sycl/testData.fasta"
         ],
-        "description": "Single iteration for correctness; element-wise comparison of GPU vs CPU 3D convolution",
-        "input_files": [],
+        "description": "Cluster FASTA sequences at default 0.95 threshold; verify cluster count output",
+        "input_files": [
+          "../deredundancy-sycl/testData.fasta"
+        ],
         "expected_results": {
-          "stdout_pattern": "PASS"
+          "stdout_pattern": "cluster count:\\s+\\d+"
         }
       },
       "performance": {
         "arguments": [
-          "32",
-          "1",
-          "6",
-          "32",
-          "32",
-          "5",
-          "100"
+          "i",
+          "../deredundancy-sycl/testData.fasta"
         ],
-        "description": "100 iterations for performance measurement",
-        "input_files": [],
+        "description": "Full clustering run for timing measurement",
+        "input_files": [
+          "../deredundancy-sycl/testData.fasta"
+        ],
         "expected_results": {
-          "stdout_pattern": "PASS"
+          "stdout_pattern": "cluster count:\\s+\\d+"
         }
       }
     }
@@ -109,8 +102,8 @@
     "strategies": [
       {
         "type": "stdout_pattern",
-        "pattern": "PASS",
-        "description": "Element-wise comparison of GPU vs CPU 3D convolution results"
+        "pattern": "cluster count:\\s+\\d+",
+        "description": "Program outputs cluster count on successful completion"
       },
       {
         "type": "exit_code",
@@ -118,44 +111,22 @@
         "description": "Process exits cleanly"
       }
     ],
-    "floating_point": {
-      "tolerance": 0.001,
-      "tolerance_type": "absolute",
-      "note": "Element-wise absolute difference comparison between GPU and CPU convolution output"
-    }
+    "floating_point": null
   },
   "performance": {
     "metrics": [
       {
-        "name": "kernel_time_s1",
+        "name": "offload_time",
         "extraction": {
           "type": "regex",
-          "pattern": "Average kernel execution time of conv3d_s1 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
+          "pattern": "Device offload time\\s+([\\d.eE+-]+)\\s+secs",
           "capture_group": 1
         },
-        "unit": "us"
-      },
-      {
-        "name": "kernel_time_s2",
-        "extraction": {
-          "type": "regex",
-          "pattern": "Average kernel execution time of conv3d_s2 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-          "capture_group": 1
-        },
-        "unit": "us"
-      },
-      {
-        "name": "kernel_time_s3",
-        "extraction": {
-          "type": "regex",
-          "pattern": "Average kernel execution time of conv3d_s3 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-          "capture_group": 1
-        },
-        "unit": "us"
+        "unit": "s"
       }
     ],
-    "warmup_runs": 1,
-    "measurement_runs": 5
+    "warmup_runs": 0,
+    "measurement_runs": 3
   },
   "hardware": {
     "target": "gpu",
@@ -192,15 +163,15 @@
   },
   "baseline_results": null,
   "metadata": {
-    "description": "3D convolution using multiple algorithmic strategies (direct, shared memory, register tiling) on GPU. Processes 3D feature maps with learned filters, verified against CPU reference.",
-    "domain": "3D signal processing / deep learning",
-    "complexity": "O(N \u00d7 C \u00d7 H \u00d7 W \u00d7 K^3)",
+    "description": "GPU-accelerated sequence dereplication (clustering) for bioinformatics. Reads FASTA-format DNA/protein sequences, clusters them by similarity threshold using GPU-parallelized pairwise comparisons.",
+    "domain": "bioinformatics",
+    "complexity": "O(n^2 \u00d7 L)",
     "tags": [
-      "convolution3d",
-      "3d-convolution",
-      "deep-learning",
-      "feature-map",
-      "tiling"
+      "bioinformatics",
+      "clustering",
+      "sequence-alignment",
+      "fasta",
+      "dereplication"
     ],
     "multi_file": true
   }

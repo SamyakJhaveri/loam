@@ -1,9 +1,9 @@
 {
   "spec_version": "1.0.0",
   "identity": {
-    "kernel_name": "convolution3D",
-    "parallel_api": "hip",
-    "unique_id": "hecbench-convolution3D-hip",
+    "kernel_name": "maxpool3d",
+    "parallel_api": "cuda",
+    "unique_id": "hecbench-maxpool3d-cuda",
     "source_suite": "hecbench"
   },
   "provenance": {
@@ -13,7 +13,7 @@
       "branch": "master"
     },
     "repo_root": "HeCBench-master/",
-    "source_path": "src/convolution3D-hip",
+    "source_path": "src/maxpool3d-cuda",
     "license": "MIT"
   },
   "files": {
@@ -22,13 +22,12 @@
     ],
     "support_files": [
       "Makefile",
-      "CMakeLists.txt",
-      "conv3d_s4.cu"
+      "CMakeLists.txt"
     ],
     "verification_only": []
   },
   "implementation": {
-    "api": "hip",
+    "api": "cuda",
     "api_version": null,
     "language": "C++",
     "language_standard": "C++17"
@@ -39,13 +38,13 @@
       "conda": null,
       "system": {
         "dependencies": [
-          "ROCm HIP >= 5.0",
+          "CUDA Toolkit >= 11.0",
           "GCC >= 9.0"
         ]
       }
     },
     "build_system": "make",
-    "working_directory": "src/convolution3D-hip",
+    "working_directory": "src/maxpool3d-cuda",
     "commands": {
       "configure": null,
       "build": "make ARCH=sm_89",
@@ -59,12 +58,9 @@
   "run": {
     "executable": "./main",
     "default_arguments": [
-      "32",
-      "1",
-      "6",
-      "32",
-      "32",
-      "5",
+      "2048",
+      "2048",
+      "96",
       "100"
     ],
     "timeout_seconds": 300,
@@ -72,15 +68,12 @@
     "input_configurations": {
       "correctness": {
         "arguments": [
-          "32",
-          "1",
-          "6",
-          "32",
-          "32",
-          "5",
+          "2048",
+          "2048",
+          "96",
           "1"
         ],
-        "description": "Single iteration for correctness; element-wise comparison of GPU vs CPU 3D convolution",
+        "description": "Single iteration with width=2048, height=2048, depth=96; compared against CPU reference",
         "input_files": [],
         "expected_results": {
           "stdout_pattern": "PASS"
@@ -88,15 +81,12 @@
       },
       "performance": {
         "arguments": [
-          "32",
-          "1",
-          "6",
-          "32",
-          "32",
-          "5",
+          "2048",
+          "2048",
+          "96",
           "100"
         ],
-        "description": "100 iterations for performance measurement",
+        "description": "100-iteration run for performance measurement",
         "input_files": [],
         "expected_results": {
           "stdout_pattern": "PASS"
@@ -110,7 +100,7 @@
       {
         "type": "stdout_pattern",
         "pattern": "PASS",
-        "description": "Element-wise comparison of GPU vs CPU 3D convolution results"
+        "description": "Element-wise comparison of GPU maxpool3d output vs CPU reference; prints PASS or FAIL"
       },
       {
         "type": "exit_code",
@@ -118,37 +108,15 @@
         "description": "Process exits cleanly"
       }
     ],
-    "floating_point": {
-      "tolerance": 0.001,
-      "tolerance_type": "absolute",
-      "note": "Element-wise absolute difference comparison between GPU and CPU convolution output"
-    }
+    "floating_point": null
   },
   "performance": {
     "metrics": [
       {
-        "name": "kernel_time_s1",
+        "name": "kernel_time",
         "extraction": {
           "type": "regex",
-          "pattern": "Average kernel execution time of conv3d_s1 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-          "capture_group": 1
-        },
-        "unit": "us"
-      },
-      {
-        "name": "kernel_time_s2",
-        "extraction": {
-          "type": "regex",
-          "pattern": "Average kernel execution time of conv3d_s2 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-          "capture_group": 1
-        },
-        "unit": "us"
-      },
-      {
-        "name": "kernel_time_s3",
-        "extraction": {
-          "type": "regex",
-          "pattern": "Average kernel execution time of conv3d_s3 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
+          "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(us\\)",
           "capture_group": 1
         },
         "unit": "us"
@@ -190,18 +158,30 @@
       }
     }
   },
-  "baseline_results": null,
+  "baseline_results": {
+    "reference_platform": "rtx4070-r9-7900x",
+    "timestamp": "2026-03-03T00:24:53Z",
+    "configurations": {
+      "correctness": {
+        "status": "pass",
+        "exit_code": 0,
+        "stdout_snippet": "input image width 2048 Hstride 2\ninput image height 2048 Vstride 2\noutput image width 1024\noutput image height 1024\nAverage kernel execution time: 0.004424 (s)\nPASS\n",
+        "wall_time_seconds": 3.364
+      }
+    }
+  },
   "metadata": {
-    "description": "3D convolution using multiple algorithmic strategies (direct, shared memory, register tiling) on GPU. Processes 3D feature maps with learned filters, verified against CPU reference.",
-    "domain": "3D signal processing / deep learning",
-    "complexity": "O(N \u00d7 C \u00d7 H \u00d7 W \u00d7 K^3)",
+    "description": "3D max pooling layer for deep learning on GPU. Applies max pooling with configurable kernel/stride/padding over 3D input tensors. Verified against CPU reference implementation.",
+    "domain": "machine learning",
+    "complexity": "O(n \u00d7 kernel_volume)",
     "tags": [
-      "convolution3d",
-      "3d-convolution",
+      "maxpool3d",
+      "pooling",
+      "3d",
       "deep-learning",
-      "feature-map",
-      "tiling"
+      "cnn",
+      "volumetric"
     ],
-    "multi_file": true
+    "multi_file": false
   }
 }

@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
 Phase 3: Generate 80 JSON spec files (20 kernels × 4 APIs) and update manifest.jsonl.
-Batch 2 kernels (from hecbench_batch2_20_selection.csv).
+Batch 3 kernels:
+  pathfinder, deredundancy, softmax-online, backprop, rmsnorm, laplace3d,
+  tissue, lulesh, thomas, keccaktreehash, md5hash, ccsd-trpdrv,
+  babelstream, fpc, feynman-kac, maxpool3d, secp256k1, tsp, pso, ga
 """
 import json
 import os
@@ -103,23 +106,17 @@ BUILD_BY_API = {
 
 # ─── Kernel definitions ──────────────────────────────────────────────────────
 # Each kernel specifies per-API file classifications and shared run/verify info.
-# Batch 2: 20 kernels from hecbench_batch2_20_selection.csv
+# Batch 3: 20 kernels selected in phase 1
 
 KERNELS = [
-    # ── 1. floydwarshall ─────────────────────────────────────────────────────
+    # ── 1. pathfinder ─────────────────────────────────────────────────────────
     {
-        "kernel_name": "floydwarshall",
+        "kernel_name": "pathfinder",
         "category": "graph",
-        "description": "Floyd-Warshall all-pairs shortest-paths algorithm on GPU. Iteratively relaxes distance matrix entries in parallel, verified against CPU reference via memcmp.",
-        "domain": "graph algorithms",
-        "complexity": "O(V^3)",
-        "tags": [
-            "floyd-warshall",
-            "shortest-path",
-            "all-pairs",
-            "graph",
-            "dynamic-programming",
-        ],
+        "description": "Dynamic-programming pathfinder on a 2D grid. Finds minimum cost path from top row to bottom row using parallel wavefront propagation.",
+        "domain": "dynamic programming",
+        "complexity": "O(rows × cols)",
+        "tags": ["pathfinder", "dynamic-programming", "wavefront", "grid", "shortest-path"],
         "multi_file": False,
         "files": {
             "cuda": {
@@ -133,36 +130,251 @@ KERNELS = [
                 "verification_only": [],
             },
             "sycl": {
-                "prompt_payload": ["main.cpp"],
+                "prompt_payload": ["main.cpp", "kernel.sycl"],
                 "support_files": ["Makefile", "CMakeLists.txt"],
                 "verification_only": [],
             },
             "omp": {
                 "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
                 "verification_only": [],
             },
         },
         "run": {
             "executable": "./main",
-            "default_arguments": ["1024", "100", "16"],
+            "default_arguments": ["100000", "1000", "5"],
             "timeout_seconds": 300,
             "environment_variables": None,
             "input_configurations": {
                 "correctness": {
-                    "arguments": ["1024", "1", "16"],
-                    "description": "Single iteration for correctness; memcmp of GPU vs CPU shortest-path matrix",
+                    "arguments": ["100", "10", "5"],
+                    "description": "Small grid (100×10) for quick correctness run",
+                    "input_files": [],
+                    "expected_results": None,
+                },
+                "performance": {
+                    "arguments": ["100000", "1000", "5"],
+                    "description": "Large grid (100000×1000) for performance measurement",
+                    "input_files": [],
+                    "expected_results": None,
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly with code 0"},
+                {"type": "stdout_pattern", "pattern": "Total kernel execution time", "description": "Timing output confirms successful computation"},
+            ],
+            "floating_point": None,
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Total kernel execution time:\\s+([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
+                    "unit": "s",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 2. deredundancy ───────────────────────────────────────────────────────
+    {
+        "kernel_name": "deredundancy",
+        "category": "other",
+        "description": "GPU-accelerated sequence dereplication (clustering) for bioinformatics. Reads FASTA-format DNA/protein sequences, clusters them by similarity threshold using GPU-parallelized pairwise comparisons.",
+        "domain": "bioinformatics",
+        "complexity": "O(n^2 × L)",
+        "tags": ["bioinformatics", "clustering", "sequence-alignment", "fasta", "dereplication"],
+        "multi_file": True,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu", "kernels.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt", "utils.h", "LICENSE"],
+                "verification_only": ["utils.cu"],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu", "kernels.cu"],
+                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt", "utils.h", "LICENSE"],
+                "verification_only": ["utils.cu"],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp", "kernels.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt", "utils.h", "LICENSE"],
+                "verification_only": ["utils.cpp"],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp", "kernels.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt", "utils.h", "LICENSE"],
+                "verification_only": ["utils.cpp"],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["i", "../deredundancy-sycl/testData.fasta"],
+            "timeout_seconds": 600,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["i", "../deredundancy-sycl/testData.fasta"],
+                    "description": "Cluster FASTA sequences at default 0.95 threshold; verify cluster count output",
+                    "input_files": ["../deredundancy-sycl/testData.fasta"],
+                    "expected_results": {"stdout_pattern": "cluster count:\\s+\\d+"},
+                },
+                "performance": {
+                    "arguments": ["i", "../deredundancy-sycl/testData.fasta"],
+                    "description": "Full clustering run for timing measurement",
+                    "input_files": ["../deredundancy-sycl/testData.fasta"],
+                    "expected_results": {"stdout_pattern": "cluster count:\\s+\\d+"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "cluster count:\\s+\\d+", "description": "Program outputs cluster count on successful completion"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": None,
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "offload_time",
+                    "extraction": {"type": "regex", "pattern": "Device offload time\\s+([\\d.eE+-]+)\\s+secs", "capture_group": 1},
+                    "unit": "s",
+                }
+            ],
+            "warmup_runs": 0,
+            "measurement_runs": 3,
+        },
+    },
+
+    # ── 3. softmax-online ─────────────────────────────────────────────────────
+    {
+        "kernel_name": "softmax-online",
+        "category": "ml",
+        "description": "Online numerically-stable softmax forward pass optimized for GPU. Uses online normalization trick to compute softmax in a single pass, avoiding the two-pass max-subtract-exp-sum approach.",
+        "domain": "machine learning",
+        "complexity": "O(n)",
+        "tags": ["softmax", "online-softmax", "attention", "ml", "transformer", "warp-reduction"],
+        "multi_file": False,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu", "common.h"],
+                "support_files": ["Makefile", "CMakeLists.txt", "LICENSE"],
+                "verification_only": ["reference.h"],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu", "common.h"],
+                "support_files": ["Makefile", "CMakeLists.txt", "LICENSE"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp", "common.h"],
+                "support_files": ["Makefile", "CMakeLists.txt", "LICENSE"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp", "common.h"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt", "LICENSE"],
+                "verification_only": ["reference.h"],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["1"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["1"],
+                    "description": "Run online softmax kernel variant 1; validates GPU results against CPU reference",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "All results match"},
+                },
+                "performance": {
+                    "arguments": ["1"],
+                    "description": "Online softmax with performance benchmarks at multiple block sizes",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "All results match"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "All results match", "description": "validate_result() compares GPU output against CPU softmax; prints 'All results match' on success"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly; non-zero on mismatch"},
+            ],
+            "floating_point": {
+                "tolerance": 1e-4,
+                "tolerance_type": "absolute",
+                "note": "validate_result uses element-wise tolerance check with epsilon scaling",
+            },
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "block_size\\s+\\d+\\s+\\|\\s+time\\s+([\\d.eE+-]+)\\s+ms", "capture_group": 1},
+                    "unit": "ms",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 4. backprop ───────────────────────────────────────────────────────────
+    {
+        "kernel_name": "backprop",
+        "category": "ml",
+        "description": "Backpropagation training for a simple feed-forward neural network. GPU kernels accelerate the layer-forward pass and weight-adjustment step. Verification compares GPU-trained weights against CPU reference.",
+        "domain": "machine learning",
+        "complexity": "O(n × hidden)",
+        "tags": ["backpropagation", "neural-network", "ml", "training", "shared-memory"],
+        "multi_file": True,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu", "backprop.cu", "facetrain.cu", "imagenet.cu", "bpnn_layerforward.h", "bpnn_adjust_weights.h"],
+                "support_files": ["Makefile", "CMakeLists.txt", "backprop.h"],
+                "verification_only": ["reference.h"],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu", "backprop.cu", "facetrain.cu", "imagenet.cu"],
+                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp", "backprop.cpp", "facetrain.cpp", "imagenet.cpp", "bpnn_layerforward.sycl", "bpnn_adjust_weights.sycl"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp", "backprop.cpp", "facetrain.cpp", "imagenet.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["65536"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["65536"],
+                    "description": "Train neural network with 65536 input nodes; verify GPU weights against CPU reference",
                     "input_files": [],
                     "expected_results": {"stdout_pattern": "PASS"},
                 },
                 "performance": {
-                    "arguments": ["1024", "100", "16"],
-                    "description": "100 iterations for performance measurement",
+                    "arguments": ["65536"],
+                    "description": "Training run for performance measurement",
                     "input_files": [],
                     "expected_results": {"stdout_pattern": "PASS"},
                 },
@@ -171,28 +383,20 @@ KERNELS = [
         "verification": {
             "method": "self_checking",
             "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "memcmp of GPU distance matrix vs CPU Floyd-Warshall reference",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "Compares GPU-trained weights against CPU reference; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
             ],
-            "floating_point": None,
+            "floating_point": {
+                "tolerance": 1e-3,
+                "tolerance_type": "absolute",
+                "note": "Weight comparison between GPU and CPU backpropagation results",
+            },
         },
         "performance": {
             "metrics": [
                 {
                     "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(s\\)",
-                        "capture_group": 1,
-                    },
+                    "extraction": {"type": "regex", "pattern": "Device offloading time\\s*=\\s*([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
                     "unit": "s",
                 }
             ],
@@ -200,67 +404,205 @@ KERNELS = [
             "measurement_runs": 5,
         },
     },
-    # ── 2. nw ────────────────────────────────────────────────────────────────
+
+    # ── 5. rmsnorm ────────────────────────────────────────────────────────────
     {
-        "kernel_name": "nw",
-        "category": "other",
-        "description": "Needleman-Wunsch global sequence alignment algorithm on GPU. Fills scoring matrix in anti-diagonal wavefront fashion, verified via memcmp against CPU reference implementation.",
-        "domain": "bioinformatics",
-        "complexity": "O(n^2)",
-        "tags": [
-            "needleman-wunsch",
-            "sequence-alignment",
-            "bioinformatics",
-            "dynamic-programming",
-        ],
+        "kernel_name": "rmsnorm",
+        "category": "ml",
+        "description": "Root Mean Square Layer Normalization (RMSNorm) for transformer models. GPU-accelerated forward pass with multiple block-size variants using warp-level reductions. Used in LLaMA and other modern transformers.",
+        "domain": "machine learning",
+        "complexity": "O(n)",
+        "tags": ["rmsnorm", "layer-normalization", "transformer", "llama", "ml", "warp-reduction"],
         "multi_file": False,
         "files": {
             "cuda": {
-                "prompt_payload": ["nw.cu"],
+                "prompt_payload": ["main.cu", "common.h"],
+                "support_files": ["Makefile", "CMakeLists.txt", "reduce.cuh", "utils.cuh"],
+                "verification_only": ["reference.h"],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu", "common.h"],
+                "support_files": ["Makefile", "CMakeLists.txt", "reduce.cuh", "utils.cuh"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp", "common.h"],
+                "support_files": ["Makefile", "CMakeLists.txt", "reduce.h", "utils.h"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp", "common.h"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["1", "12288", "1000"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["1", "12288", "1"],
+                    "description": "Single iteration RMSNorm with hidden_dim=12288; validates against CPU reference",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "All results match"},
+                },
+                "performance": {
+                    "arguments": ["1", "12288", "1000"],
+                    "description": "1000-iteration RMSNorm for performance measurement",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "All results match"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "All results match", "description": "validate_result() compares GPU output vs CPU RMSNorm; prints 'All results match' or exits on mismatch"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly; non-zero on mismatch"},
+            ],
+            "floating_point": {
+                "tolerance": 1e-5,
+                "tolerance_type": "absolute",
+                "note": "Element-wise comparison with epsilon-scaled tolerance",
+            },
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "block_size\\s+\\d+\\s+\\|\\s+time\\s+([\\d.eE+-]+)\\s+ms", "capture_group": 1},
+                    "unit": "ms",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 6. laplace3d ──────────────────────────────────────────────────────────
+    {
+        "kernel_name": "laplace3d",
+        "category": "stencil",
+        "description": "6-point stencil 3D Laplace equation solver on a regular grid. Iteratively applies the Laplace operator (average of 6 neighbors) with Dirichlet boundary conditions.",
+        "domain": "PDE solving",
+        "complexity": "O(NX × NY × NZ × iterations)",
+        "tags": ["laplace", "stencil", "3d", "pde", "iterative-solver", "dirichlet"],
+        "multi_file": False,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu", "kernel.h"],
                 "support_files": ["Makefile", "CMakeLists.txt"],
                 "verification_only": ["reference.h"],
             },
             "hip": {
-                "prompt_payload": ["nw.cu"],
-                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt"],
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
                 "verification_only": [],
             },
             "sycl": {
-                "prompt_payload": ["nw.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "kernel1.sycl",
-                    "kernel2.sycl",
-                ],
+                "prompt_payload": ["main.cpp", "kernel.h"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
                 "verification_only": [],
             },
             "omp": {
-                "prompt_payload": ["nw.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
+                "prompt_payload": ["main.cpp", "kernel.h"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
                 "verification_only": [],
             },
         },
         "run": {
             "executable": "./main",
-            "default_arguments": ["16384", "10"],
+            "default_arguments": ["128", "128", "128", "100", "1"],
             "timeout_seconds": 300,
             "environment_variables": None,
             "input_configurations": {
                 "correctness": {
-                    "arguments": ["16384", "1"],
-                    "description": "Single-iteration run; memcmp of GPU alignment matrix vs CPU reference",
+                    "arguments": ["128", "128", "128", "100", "1"],
+                    "description": "128^3 grid, 100 iterations with verification enabled (last arg=1)",
                     "input_files": [],
                     "expected_results": {"stdout_pattern": "PASS"},
                 },
                 "performance": {
-                    "arguments": ["16384", "10"],
-                    "description": "10 iterations for performance measurement",
+                    "arguments": ["512", "512", "512", "100", "0"],
+                    "description": "512^3 grid, 100 iterations, verification disabled for timing",
+                    "input_files": [],
+                    "expected_results": None,
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "RMS error comparison of GPU stencil output vs CPU reference; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": {
+                "tolerance": 1e-3,
+                "tolerance_type": "absolute",
+                "note": "RMS error between GPU and CPU Laplace solutions must be near zero",
+            },
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Average kernel execution time:\\s+([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
+                    "unit": "s",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 7. tissue ─────────────────────────────────────────────────────────────
+    {
+        "kernel_name": "tissue",
+        "category": "physics",
+        "description": "GPU-accelerated cardiac tissue electrophysiology simulation using the ten Tusscher-Panfilov model. Computes ionic current through multiple channels and updates membrane potential via ODE integration.",
+        "domain": "medical simulation",
+        "complexity": "O(n × timesteps)",
+        "tags": ["tissue", "cardiac", "electrophysiology", "medical-imaging", "ode-solver"],
+        "multi_file": False,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
+                "verification_only": ["reference.cpp"],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["32", "100"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["32", "100"],
+                    "description": "32 tissue points, 100 iterations; verified against CPU reference",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+                "performance": {
+                    "arguments": ["32", "100"],
+                    "description": "Default run for performance measurement",
                     "input_files": [],
                     "expected_results": {"stdout_pattern": "PASS"},
                 },
@@ -269,28 +611,20 @@ KERNELS = [
         "verification": {
             "method": "self_checking",
             "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "memcmp of GPU alignment result vs CPU Needleman-Wunsch reference",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "Compares GPU tissue simulation output against CPU reference; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
             ],
-            "floating_point": None,
+            "floating_point": {
+                "tolerance": 1e-3,
+                "tolerance_type": "absolute",
+                "note": "Floating-point comparison of membrane potential values",
+            },
         },
         "performance": {
             "metrics": [
                 {
                     "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Total kernel execution time:\\s+([\\d.eE+-]+)\\s+\\(s\\)",
-                        "capture_group": 1,
-                    },
+                    "extraction": {"type": "regex", "pattern": "Average kernel execution time:\\s+([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
                     "unit": "s",
                 }
             ],
@@ -298,106 +632,579 @@ KERNELS = [
             "measurement_runs": 5,
         },
     },
-    # ── 3. myocyte ───────────────────────────────────────────────────────────
+
+    # ── 8. lulesh ─────────────────────────────────────────────────────────────
     {
-        "kernel_name": "myocyte",
-        "category": "other",
-        "description": "Cardiac myocyte ODE simulation using embedded Fehlberg 7-8th order Runge-Kutta solver. Multiple GPU kernels model calcium, electrical conduction, and force generation; verified against output file.",
-        "domain": "biomedical simulation",
-        "complexity": "O(n × steps)",
-        "tags": ["myocyte", "ode-solver", "runge-kutta", "cardiac", "biomedical"],
+        "kernel_name": "lulesh",
+        "category": "physics",
+        "description": "Livermore Unstructured Lagrangian Explicit Shock Hydrodynamics (LULESH) mini-app. Solves Sedov blast wave problem on an unstructured hex mesh with GPU-accelerated force and kinematic calculations.",
+        "domain": "hydrodynamics",
+        "complexity": "O(elements × iterations)",
+        "tags": ["lulesh", "hydrodynamics", "sedov-blast", "unstructured-mesh", "shock", "mini-app"],
         "multi_file": True,
         "files": {
             "cuda": {
-                "prompt_payload": [
-                    "kernel.cu",
-                    "kernel_cam.cu",
-                    "kernel_ecc.cu",
-                    "main.cu",
-                ],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "define.h",
-                    "embedded_fehlberg_7_8.cu",
-                    "file.c",
-                    "kernel_fin.cu",
-                    "master.cu",
-                    "solver.cu",
-                    "work.cu",
-                ],
+                "prompt_payload": ["lulesh.cu", "lulesh-init.cu", "lulesh-util.cu", "lulesh-viz.cu", "lulesh.h"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
                 "verification_only": [],
             },
             "hip": {
-                "prompt_payload": [
-                    "kernel.cu",
-                    "kernel_cam.cu",
-                    "kernel_ecc.cu",
-                    "main.cu",
-                ],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.hipcl",
-                    "CMakeLists.txt",
-                    "define.h",
-                    "embedded_fehlberg_7_8.cu",
-                    "file.c",
-                    "kernel_fin.cu",
-                    "master.cu",
-                    "solver.cu",
-                    "work.cu",
-                ],
+                "prompt_payload": ["lulesh.cu", "lulesh-init.cu", "lulesh-util.cu", "lulesh-viz.cu", "lulesh.h"],
+                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt"],
                 "verification_only": [],
             },
             "sycl": {
-                "prompt_payload": [
-                    "kernel.cpp",
-                    "kernel_cam.cpp",
-                    "kernel_ecc.cpp",
-                    "main.cpp",
-                ],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "define.h",
-                    "embedded_fehlberg_7_8.cpp",
-                    "file.c",
-                    "kernel_fin.cpp",
-                    "master.cpp",
-                    "solver.cpp",
-                    "work.cpp",
-                ],
+                "prompt_payload": ["lulesh.cc", "lulesh-comm.cc", "lulesh-init.cc", "lulesh-util.cc", "lulesh-viz.cc", "lulesh.h", "lulesh_tuple.h"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
                 "verification_only": [],
             },
             "omp": {
-                "prompt_payload": ["main.c"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                    "common.h",
-                    "kernel/",
-                    "util/",
-                ],
+                "prompt_payload": ["lulesh.cc", "lulesh-init.cc", "lulesh-util.cc", "lulesh-viz.cc", "lulesh.h"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
                 "verification_only": [],
             },
         },
         "run": {
             "executable": "./main",
-            "default_arguments": ["100"],
+            "default_arguments": ["-i", "100", "-s", "128", "-r", "11", "-b", "1", "-c", "1"],
+            "timeout_seconds": 600,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["-i", "100", "-s", "45", "-r", "11", "-b", "1", "-c", "1"],
+                    "description": "Small mesh (45^3 elements), 100 iterations; verify via TotalAbsDiff metric",
+                    "input_files": [],
+                    "expected_results": None,
+                },
+                "performance": {
+                    "arguments": ["-i", "100", "-s", "128", "-r", "11", "-b", "1", "-c", "1"],
+                    "description": "Large mesh (128^3 elements), 100 iterations for timing",
+                    "input_files": [],
+                    "expected_results": None,
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "TotalAbsDiff\\s*=\\s*[\\d.eE+-]+", "description": "LULESH outputs TotalAbsDiff metric; small values indicate correct simulation"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": {
+                "tolerance": 1e-6,
+                "tolerance_type": "absolute",
+                "note": "TotalAbsDiff should be near zero for correct Sedov blast simulation",
+            },
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "elapsed_time",
+                    "extraction": {"type": "regex", "pattern": "Elapsed time\\s+=\\s+([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
+                    "unit": "s",
+                },
+                {
+                    "name": "grind_time",
+                    "extraction": {"type": "regex", "pattern": "Grind time \\(us/z/c\\)\\s+=\\s+([\\d.eE+-]+)", "capture_group": 1},
+                    "unit": "us/z/c",
+                },
+            ],
+            "warmup_runs": 0,
+            "measurement_runs": 3,
+        },
+    },
+
+    # ── 9. thomas ─────────────────────────────────────────────────────────────
+    {
+        "kernel_name": "thomas",
+        "category": "linear_algebra",
+        "description": "Batched tridiagonal solver using the Thomas algorithm on GPU. Solves many independent tridiagonal linear systems in parallel, suitable for ADI methods and implicit PDE schemes.",
+        "domain": "numerical linear algebra",
+        "complexity": "O(n × batch_size)",
+        "tags": ["thomas-algorithm", "tridiagonal", "batched-solver", "pcr", "linear-algebra"],
+        "multi_file": True,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu", "cuThomasBatch.cu", "cuThomasBatch.h", "ThomasMatrix.hpp"],
+                "support_files": ["Makefile", "CMakeLists.txt", "LICENSE", "utils.hpp"],
+                "verification_only": [],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu", "cuThomasBatch.cu", "cuThomasBatch.h", "ThomasMatrix.hpp"],
+                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt", "LICENSE", "utils.hpp"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp", "ThomasMatrix.hpp"],
+                "support_files": ["Makefile", "CMakeLists.txt", "utils.hpp"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp", "ThomasMatrix.hpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt", "utils.hpp"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["1024", "16384", "64", "100"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["1024", "16384", "64", "1"],
+                    "description": "Single iteration with system_size=1024, num_systems=16384; checks max error",
+                    "input_files": [],
+                    "expected_results": None,
+                },
+                "performance": {
+                    "arguments": ["1024", "16384", "64", "100"],
+                    "description": "100-iteration run for performance measurement",
+                    "input_files": [],
+                    "expected_results": None,
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "Maximum error:", "description": "Prints max L-infinity error of GPU solution vs analytical; small values indicate correctness"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": {
+                "tolerance": 1e-3,
+                "tolerance_type": "absolute",
+                "note": "Maximum error compares GPU Thomas solution against known analytical solution",
+            },
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Average kernel execution time:\\s+([\\d.eE+-]+)\\s+\\(ms\\)", "capture_group": 1},
+                    "unit": "ms",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 10. keccaktreehash ────────────────────────────────────────────────────
+    {
+        "kernel_name": "keccaktreehash",
+        "category": "crypto",
+        "description": "GPU-accelerated Keccak (SHA-3) tree hashing. Computes Keccak-f[1600] permutation in parallel across tree nodes on GPU, then compares final hash state against sequential CPU reference.",
+        "domain": "cryptographic hashing",
+        "complexity": "O(tree_nodes × rounds)",
+        "tags": ["keccak", "sha3", "tree-hash", "cryptography", "permutation"],
+        "multi_file": True,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu", "KeccakTreeGPU.cu", "KeccakF.cu", "Test.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt", "KeccakTree.h", "KeccakTypes.h", "KeccakF.h", "KeccakTreeGPU.h", "Test.h"],
+                "verification_only": ["KeccakTreeCPU.cu", "KeccakTreeCPU.h"],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu", "KeccakTreeGPU.cu", "KeccakF.cu", "Test.cu"],
+                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt", "KeccakTree.h", "KeccakTypes.h", "KeccakF.h", "KeccakTreeGPU.h", "Test.h"],
+                "verification_only": ["KeccakTreeCPU.cu", "KeccakTreeCPU.h"],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp", "KeccakTreeGPU.cpp", "KeccakF.cpp", "Test.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt", "KeccakTree.h", "KeccakTypes.h", "KeccakF.h", "KeccakTreeGPU.h", "Test.h"],
+                "verification_only": ["KeccakTreeCPU.cpp", "KeccakTreeCPU.h"],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp", "KeccakTreeGPU.cpp", "KeccakF.cpp", "Test.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt", "KeccakTree.h", "KeccakTypes.h", "KeccakF.h", "KeccakTreeGPU.h", "Test.h"],
+                "verification_only": ["KeccakTreeCPU.cpp", "KeccakTreeCPU.h"],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": [],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": [],
+                    "description": "Run Keccak tree hash; compares GPU hash state against CPU reference",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+                "performance": {
+                    "arguments": [],
+                    "description": "Default run for performance measurement",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "isEqual_KS() compares GPU Keccak state vs CPU reference; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": None,
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Total kernel execution time\\s+([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
+                    "unit": "s",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 11. md5hash ───────────────────────────────────────────────────────────
+    {
+        "kernel_name": "md5hash",
+        "category": "crypto",
+        "description": "GPU-accelerated MD5 hash cracking by brute-force search. Generates candidate strings on GPU, computes MD5 hashes in parallel, and compares against target digest.",
+        "domain": "cryptographic hashing",
+        "complexity": "O(search_space)",
+        "tags": ["md5", "hash-cracking", "brute-force", "cryptography", "parallel-search"],
+        "multi_file": False,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["MD5Hash.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt", "LICENSE"],
+                "verification_only": [],
+            },
+            "hip": {
+                "prompt_payload": ["MD5Hash.cu"],
+                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt", "LICENSE"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["MD5Hash.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt", "LICENSE"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["MD5Hash.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt", "LICENSE"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["1", "4"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["1", "4"],
+                    "description": "Search for MD5 match with string length 4; PASS if hash found",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+                "performance": {
+                    "arguments": ["1", "4"],
+                    "description": "Default run for hash throughput measurement",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "Reports PASS if MD5 search completes and rate is valid; FAIL otherwise"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": None,
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Total kernel execution time\\s+([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
+                    "unit": "s",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 12. ccsd-trpdrv ───────────────────────────────────────────────────────
+    {
+        "kernel_name": "ccsd-trpdrv",
+        "category": "other",
+        "description": "CCSD(T) triples driver from computational chemistry (NWChem). GPU-accelerated tensor contraction kernels for coupled-cluster perturbative triples energy computation.",
+        "domain": "computational chemistry",
+        "complexity": "O(n^3)",
+        "tags": ["ccsd", "coupled-cluster", "triples", "tensor-contraction", "nwchem", "quantum-chemistry"],
+        "multi_file": True,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu", "ccsd_trpdrv.cu", "ccsd_tengy.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt", "README"],
+                "verification_only": ["reference.h"],
+            },
+            "hip": {
+                "prompt_payload": ["ccsd_tengy.cu"],
+                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt", "README"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp", "ccsd_trpdrv.cpp", "ccsd_tengy.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt", "README"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp", "ccsd_trpdrv.cpp", "ccsd_tengy.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt", "README"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["160", "400", "100"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["160", "400", "1"],
+                    "description": "Single iteration; verifies GPU checksum against CPU reference",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+                "performance": {
+                    "arguments": ["160", "400", "100"],
+                    "description": "100-iteration run for performance measurement",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "Checksum comparison of GPU tensor contraction output vs CPU reference; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": {
+                "tolerance": 1e-6,
+                "tolerance_type": "absolute",
+                "note": "Checksum comparison between GPU and CPU tensor contraction results",
+            },
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(us\\)", "capture_group": 1},
+                    "unit": "us",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 13. babelstream ───────────────────────────────────────────────────────
+    {
+        "kernel_name": "babelstream",
+        "category": "other",
+        "description": "BabelStream memory bandwidth benchmark. Measures achievable memory bandwidth using Copy, Mul, Add, Triad, Dot, and Nstream kernels. Based on the STREAM benchmark methodology.",
+        "domain": "memory bandwidth",
+        "complexity": "O(n)",
+        "tags": ["babelstream", "stream", "memory-bandwidth", "benchmark", "copy", "triad", "dot-product"],
+        "multi_file": False,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": [],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": [],
+                    "description": "Default BabelStream run with internal validation of Copy/Mul/Add/Triad/Dot/Nstream",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "Function"},
+                },
+                "performance": {
+                    "arguments": [],
+                    "description": "Default run; reports bandwidth in MBytes/sec for each kernel",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "Function"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "Function", "description": "Output includes Function/MBytes/sec table header, indicating successful kernel execution"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly; internal validation aborts on error"},
+            ],
+            "floating_point": None,
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "triad_bandwidth",
+                    "extraction": {"type": "regex", "pattern": "Triad\\s+([\\d.eE+-]+)", "capture_group": 1},
+                    "unit": "MB/s",
+                },
+                {
+                    "name": "copy_bandwidth",
+                    "extraction": {"type": "regex", "pattern": "Copy\\s+([\\d.eE+-]+)", "capture_group": 1},
+                    "unit": "MB/s",
+                },
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 14. fpc ───────────────────────────────────────────────────────────────
+    {
+        "kernel_name": "fpc",
+        "category": "other",
+        "description": "Floating-Point Compressor (FPC) on GPU. Implements lossless compression of double-precision floating-point data using FCM and DFCM predictors with parallel encoding/decoding.",
+        "domain": "data compression",
+        "complexity": "O(n)",
+        "tags": ["fpc", "compression", "floating-point", "lossless", "fcm", "dfcm"],
+        "multi_file": False,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["256", "100"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["256", "1"],
+                    "description": "Single iteration FPC compress/decompress; verifies round-trip correctness",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+                "performance": {
+                    "arguments": ["256", "100"],
+                    "description": "100-iteration run for performance measurement",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "Round-trip compress/decompress verification; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": None,
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(us\\)", "capture_group": 1},
+                    "unit": "us",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 15. feynman-kac ───────────────────────────────────────────────────────
+    {
+        "kernel_name": "feynman-kac",
+        "category": "physics",
+        "description": "Feynman-Kac PDE solver using GPU-accelerated Monte Carlo stochastic path integration. Solves elliptic PDE boundary value problems by simulating random walks and averaging boundary values.",
+        "domain": "Monte Carlo / PDE solving",
+        "complexity": "O(n_paths × path_length)",
+        "tags": ["feynman-kac", "monte-carlo", "pde", "stochastic", "random-walk", "boundary-value"],
+        "multi_file": False,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu", "kernel.h"],
+                "support_files": ["Makefile", "CMakeLists.txt", "util.h"],
+                "verification_only": [],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp", "kernel.h"],
+                "support_files": ["Makefile", "CMakeLists.txt", "util.h"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt", "util.h"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["10"],
             "timeout_seconds": 300,
             "environment_variables": None,
             "input_configurations": {
                 "correctness": {
                     "arguments": ["10"],
-                    "description": "10 time-steps for correctness; writes output.txt and verifies solver convergence",
+                    "description": "10-repeat Feynman-Kac stochastic solve; reports RMS error against analytical solution",
                     "input_files": [],
                     "expected_results": None,
                 },
                 "performance": {
-                    "arguments": ["100"],
-                    "description": "100 time-steps for performance measurement",
+                    "arguments": ["10"],
+                    "description": "Default run for timing measurement",
                     "input_files": [],
                     "expected_results": None,
                 },
@@ -406,32 +1213,20 @@ KERNELS = [
         "verification": {
             "method": "self_checking",
             "strategies": [
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Exit code 0 indicates successful solver convergence",
-                },
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "Total kernel execution time",
-                    "description": "Presence of timing output indicates successful ODE solver completion",
-                },
+                {"type": "stdout_pattern", "pattern": "RMS absolute error in solution", "description": "Reports RMS absolute error; small values indicate convergence to analytical solution"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
             ],
             "floating_point": {
-                "tolerance": 1e-6,
-                "tolerance_type": "relative",
-                "note": "ODE solver uses adaptive step-size control with internal tolerance checks",
+                "tolerance": 0.1,
+                "tolerance_type": "absolute",
+                "note": "Monte Carlo method has statistical variance; RMS error should be small but not zero",
             },
         },
         "performance": {
             "metrics": [
                 {
                     "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Total kernel execution time\\s+([\\d.eE+-]+)\\s+\\(s\\)",
-                        "capture_group": 1,
-                    },
+                    "extraction": {"type": "regex", "pattern": "Average kernel time:\\s+([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
                     "unit": "s",
                 }
             ],
@@ -439,63 +1234,345 @@ KERNELS = [
             "measurement_runs": 5,
         },
     },
-    # ── 4. geglu ─────────────────────────────────────────────────────────────
+
+    # ── 16. maxpool3d ─────────────────────────────────────────────────────────
     {
-        "kernel_name": "geglu",
+        "kernel_name": "maxpool3d",
         "category": "ml",
-        "description": "GELU-Gated Linear Unit (GeGLU) activation function on GPU. Applies element-wise GeGLU activation, verified against CPU reference implementation via tolerance comparison.",
+        "description": "3D max pooling layer for deep learning on GPU. Applies max pooling with configurable kernel/stride/padding over 3D input tensors. Verified against CPU reference implementation.",
         "domain": "machine learning",
-        "complexity": "O(n)",
-        "tags": [
-            "geglu",
-            "activation-function",
-            "gelu",
-            "machine-learning",
-            "neural-network",
-        ],
+        "complexity": "O(n × kernel_volume)",
+        "tags": ["maxpool3d", "pooling", "3d", "deep-learning", "cnn", "volumetric"],
         "multi_file": False,
         "files": {
             "cuda": {
                 "prompt_payload": ["main.cu"],
                 "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["2048", "2048", "96", "100"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["2048", "2048", "96", "1"],
+                    "description": "Single iteration with width=2048, height=2048, depth=96; compared against CPU reference",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+                "performance": {
+                    "arguments": ["2048", "2048", "96", "100"],
+                    "description": "100-iteration run for performance measurement",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "Element-wise comparison of GPU maxpool3d output vs CPU reference; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": None,
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(us\\)", "capture_group": 1},
+                    "unit": "us",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 17. secp256k1 ─────────────────────────────────────────────────────────
+    {
+        "kernel_name": "secp256k1",
+        "category": "crypto",
+        "description": "GPU-accelerated elliptic curve cryptography operations on the secp256k1 curve (used in Bitcoin/Ethereum). Performs parallel point multiplication and signature verification.",
+        "domain": "cryptography",
+        "complexity": "O(n × scalar_bits)",
+        "tags": ["secp256k1", "elliptic-curve", "ecc", "bitcoin", "cryptography", "point-multiplication"],
+        "multi_file": False,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt", "LICENSE"],
+                "verification_only": [],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt", "LICENSE"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt", "LICENSE"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.clang", "Makefile.nvc", "CMakeLists.txt", "LICENSE"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["100"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["1"],
+                    "description": "Single-iteration ECC operations; verifies against known test vectors",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+                "performance": {
+                    "arguments": ["100"],
+                    "description": "100-iteration run for performance measurement",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "Verifies GPU ECC results against known test vectors; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": None,
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(us\\)", "capture_group": 1},
+                    "unit": "us",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 18. tsp ───────────────────────────────────────────────────────────────
+    {
+        "kernel_name": "tsp",
+        "category": "other",
+        "description": "GPU-accelerated Travelling Salesman Problem solver using 2-opt local search. Reads city coordinates from .tsp file, performs parallel 2-opt evaluation on GPU, iteratively improves tour distance.",
+        "domain": "combinatorial optimization",
+        "complexity": "O(n^2 × iterations)",
+        "tags": ["tsp", "travelling-salesman", "2-opt", "combinatorial-optimization", "local-search"],
+        "multi_file": False,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt", "d493.tsp"],
+                "verification_only": [],
+            },
+            "hip": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["main.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["../tsp-cuda/d493.tsp", "24", "100"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["../tsp-cuda/d493.tsp", "24", "1"],
+                    "description": "Single iteration TSP solve on d493 (493 cities); verifies tour validity",
+                    "input_files": ["../tsp-cuda/d493.tsp"],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+                "performance": {
+                    "arguments": ["../tsp-cuda/d493.tsp", "24", "100"],
+                    "description": "100-iteration 2-opt search for performance measurement",
+                    "input_files": ["../tsp-cuda/d493.tsp"],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "Verifies GPU 2-opt tour against reference; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": None,
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
+                    "unit": "s",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 19. pso ───────────────────────────────────────────────────────────────
+    {
+        "kernel_name": "pso",
+        "category": "other",
+        "description": "Particle Swarm Optimization (PSO) on GPU. Parallelizes swarm evaluation across GPU threads, updating particle positions and velocities to minimize a fitness function (Rastrigin).",
+        "domain": "metaheuristic optimization",
+        "complexity": "O(particles × dimensions × iterations)",
+        "tags": ["pso", "particle-swarm", "optimization", "metaheuristic", "rastrigin"],
+        "multi_file": True,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cpp", "kernel_gpu.cu", "kernel.h"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": ["kernel_cpu.cpp"],
+            },
+            "hip": {
+                "prompt_payload": ["kernel_gpu.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "sycl": {
+                "prompt_payload": ["kernel_gpu.cpp"],
+                "support_files": ["Makefile", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+            "omp": {
+                "prompt_payload": ["kernel_gpu.cpp"],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt"],
+                "verification_only": [],
+            },
+        },
+        "run": {
+            "executable": "./main",
+            "default_arguments": ["30", "10000"],
+            "timeout_seconds": 300,
+            "environment_variables": None,
+            "input_configurations": {
+                "correctness": {
+                    "arguments": ["30", "100"],
+                    "description": "30 dimensions, 100 iterations; verifies GPU swarm result against CPU PSO",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+                "performance": {
+                    "arguments": ["30", "10000"],
+                    "description": "30 dimensions, 10000 iterations for performance measurement",
+                    "input_files": [],
+                    "expected_results": {"stdout_pattern": "PASS"},
+                },
+            },
+        },
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "Compares GPU PSO best fitness against CPU PSO reference; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
+            ],
+            "floating_point": {
+                "tolerance": 1e-3,
+                "tolerance_type": "absolute",
+                "note": "PSO is stochastic; fitness comparison uses tolerance",
+            },
+        },
+        "performance": {
+            "metrics": [
+                {
+                    "name": "kernel_time",
+                    "extraction": {"type": "regex", "pattern": "Device offloading time\\s*=?\\s*([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
+                    "unit": "s",
+                }
+            ],
+            "warmup_runs": 1,
+            "measurement_runs": 5,
+        },
+    },
+
+    # ── 20. ga ────────────────────────────────────────────────────────────────
+    {
+        "kernel_name": "ga",
+        "category": "other",
+        "description": "GPU-Accelerated Genomic Alignment using coarse-grained plus fine-grained approach. Performs parallel sequence alignment with coarse matching followed by fine-grained scoring on GPU.",
+        "domain": "bioinformatics / sequence alignment",
+        "complexity": "O(target × query)",
+        "tags": ["genomic-alignment", "sequence-alignment", "coarse-matching", "bioinformatics", "ga"],
+        "multi_file": False,
+        "files": {
+            "cuda": {
+                "prompt_payload": ["main.cu"],
+                "support_files": ["Makefile", "CMakeLists.txt", "COPYRIGHT"],
                 "verification_only": ["reference.h"],
             },
             "hip": {
                 "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
+                "support_files": ["Makefile", "CMakeLists.txt", "COPYRIGHT"],
                 "verification_only": [],
             },
             "sycl": {
                 "prompt_payload": ["main.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
+                "support_files": ["Makefile", "CMakeLists.txt", "COPYRIGHT"],
                 "verification_only": [],
             },
             "omp": {
                 "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
+                "support_files": ["Makefile", "Makefile.aomp", "Makefile.nvc", "CMakeLists.txt", "COPYRIGHT"],
                 "verification_only": [],
             },
         },
         "run": {
             "executable": "./main",
-            "default_arguments": ["100"],
-            "timeout_seconds": 300,
+            "default_arguments": ["1000000", "1000", "11", "1"],
+            "timeout_seconds": 600,
             "environment_variables": None,
             "input_configurations": {
                 "correctness": {
-                    "arguments": ["1"],
-                    "description": "Single iteration for correctness; element-wise comparison of GPU vs CPU GeGLU",
+                    "arguments": ["10000", "100", "11", "1"],
+                    "description": "Small sequences (target=10000, query=100) for quick correctness verification",
                     "input_files": [],
                     "expected_results": {"stdout_pattern": "PASS"},
                 },
                 "performance": {
-                    "arguments": ["100"],
-                    "description": "100 iterations for performance measurement",
+                    "arguments": ["1000000", "1000", "11", "1"],
+                    "description": "Full-size alignment (target=1M, query=1000) for performance measurement",
                     "input_files": [],
                     "expected_results": {"stdout_pattern": "PASS"},
                 },
@@ -504,588 +1581,8 @@ KERNELS = [
         "verification": {
             "method": "self_checking",
             "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Element-wise comparison of GPU GeGLU vs CPU reference",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": {
-                "tolerance": 1e-3,
-                "tolerance_type": "absolute",
-                "note": "Element-wise absolute difference of GeGLU activation outputs",
-            },
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average execution time of GeGLU kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "us",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 5. perplexity ────────────────────────────────────────────────────────
-    {
-        "kernel_name": "perplexity",
-        "category": "ml",
-        "description": "Perplexity computation for language model evaluation on GPU. Computes log-likelihood-based perplexity scores in parallel, verified against CPU reference implementation.",
-        "domain": "machine learning / NLP",
-        "complexity": "O(n × d)",
-        "tags": [
-            "perplexity",
-            "language-model",
-            "nlp",
-            "machine-learning",
-            "evaluation",
-        ],
-        "multi_file": False,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": ["reference.cpp"],
-            },
-            "hip": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["10000", "50", "100"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["10000", "50", "1"],
-                    "description": "Single iteration for correctness; verifies perplexity scores against CPU reference",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["10000", "50", "100"],
-                    "description": "100 iterations for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Comparison of GPU perplexity scores vs CPU reference",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": {
-                "tolerance": 1e-3,
-                "tolerance_type": "relative",
-                "note": "Relative comparison of perplexity scores",
-            },
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time:\\s+([\\d.eE+-]+)\\s+\\(s\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "s",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 6. knn ───────────────────────────────────────────────────────────────
-    {
-        "kernel_name": "knn",
-        "category": "ml",
-        "description": "k-Nearest Neighbours classification on GPU. Computes pairwise distances, selects k nearest neighbours, and performs majority vote; verified via precision accuracy comparison.",
-        "domain": "machine learning",
-        "complexity": "O(n × m × k)",
-        "tags": [
-            "knn",
-            "k-nearest-neighbours",
-            "classification",
-            "machine-learning",
-            "pairwise-distance",
-        ],
-        "multi_file": False,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["100"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["1"],
-                    "description": "Single iteration for correctness; verifies precision accuracy == 1.0",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["100"],
-                    "description": "100 iterations for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Precision accuracy == 1.0 comparing GPU vs CPU kNN classification",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": None,
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "total_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "done in\\s+([\\d.eE+-]+)\\s+s for",
-                        "capture_group": 1,
-                    },
-                    "unit": "s",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 7. iso2dfd ───────────────────────────────────────────────────────────
-    {
-        "kernel_name": "iso2dfd",
-        "category": "stencil",
-        "description": "2D isotropic finite-difference wave propagation stencil on GPU. Applies 2nd-order time-stepping to a 2D grid, verified against CPU reference via Euclidean norm comparison.",
-        "domain": "seismic / stencil computation",
-        "complexity": "O(Lx × Ly × niter)",
-        "tags": [
-            "iso2dfd",
-            "finite-difference",
-            "wave-propagation",
-            "stencil",
-            "seismic",
-        ],
-        "multi_file": False,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["iso2dfd.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt", "iso2dfd.h"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["iso2dfd.cu"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.hipcl",
-                    "CMakeLists.txt",
-                    "iso2dfd.h",
-                ],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["iso2dfd.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt", "iso2dfd.h"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["iso2dfd.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                    "iso2dfd.h",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["2048", "2048", "1000"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["2048", "2048", "10"],
-                    "description": "10 time-steps for correctness; Euclidean norm comparison of GPU vs CPU wavefield",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["2048", "2048", "1000"],
-                    "description": "1000 time-steps for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Euclidean norm of GPU vs CPU wavefield below threshold",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": {
-                "tolerance": 1e-6,
-                "tolerance_type": "absolute",
-                "note": "Euclidean norm comparison between GPU and CPU wavefield snapshots",
-            },
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "us",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 8. heat2d ────────────────────────────────────────────────────────────
-    {
-        "kernel_name": "heat2d",
-        "category": "stencil",
-        "description": "2D heat equation solver using explicit finite-difference stencil on GPU. Iteratively updates temperature grid with Jacobi-style 5-point stencil; verified against CPU reference.",
-        "domain": "heat conduction / stencil computation",
-        "complexity": "O(Lx × Ly × niter)",
-        "tags": ["heat-equation", "stencil", "finite-difference", "jacobi", "2d-grid"],
-        "multi_file": False,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["4096", "4096", "1000"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["4096", "4096", "10"],
-                    "description": "10 iterations for correctness; element-wise comparison of GPU vs CPU heat grid",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["4096", "4096", "1000"],
-                    "description": "1000 iterations for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Element-wise comparison of GPU vs CPU temperature grid",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": {
-                "tolerance": 1e-3,
-                "tolerance_type": "absolute",
-                "note": "Element-wise absolute difference of temperature values",
-            },
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "throughput",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "BW =\\s+([\\d.eE+-]+)\\s+GB/s",
-                        "capture_group": 1,
-                    },
-                    "unit": "GB/s",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 9. stencil1d ─────────────────────────────────────────────────────────
-    {
-        "kernel_name": "stencil1d",
-        "category": "stencil",
-        "description": "1D stencil computation on GPU using shared memory with halo regions. Applies a 7-point stencil kernel, verified against CPU reference via element-wise comparison.",
-        "domain": "stencil computation",
-        "complexity": "O(n × iterations)",
-        "tags": ["stencil", "1d", "shared-memory", "halo", "finite-difference"],
-        "multi_file": False,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["stencil_1d.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["stencil_1d.cu"],
-                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["stencil_1d.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["stencil_1d.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["134217728", "1000"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["134217728", "1"],
-                    "description": "Single iteration for correctness; element-wise comparison of GPU vs CPU stencil output",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["134217728", "1000"],
-                    "description": "1000 iterations for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Element-wise comparison of GPU vs CPU 1D stencil results",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": {
-                "tolerance": 1e-6,
-                "tolerance_type": "absolute",
-                "note": "Element-wise absolute difference comparison",
-            },
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time:\\s+([\\d.eE+-]+)\\s+\\(s\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "s",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 10. murmurhash3 ──────────────────────────────────────────────────────
-    {
-        "kernel_name": "murmurhash3",
-        "category": "other",
-        "description": "MurmurHash3 non-cryptographic hash function on GPU. Hashes large arrays in parallel, verified via memcmp against CPU MurmurHash3 reference implementation.",
-        "domain": "hashing",
-        "complexity": "O(n)",
-        "tags": ["murmurhash3", "hashing", "non-cryptographic", "hash-function"],
-        "multi_file": False,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["murmurhash3.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["murmurhash3.cu"],
-                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["murmurhash3.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["murmurhash3.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["100000", "100"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["100000", "1"],
-                    "description": "Single iteration for correctness; memcmp of GPU vs CPU MurmurHash3 results",
-                    "input_files": [],
-                    "expected_results": None,
-                },
-                "performance": {
-                    "arguments": ["100000", "100"],
-                    "description": "100 iterations for performance measurement",
-                    "input_files": [],
-                    "expected_results": None,
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "FAIL",
-                    "description": "Absence of 'FAIL' indicates memcmp passed; program prints FAIL only on mismatch",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
+                {"type": "stdout_pattern", "pattern": "PASS", "description": "Compares GPU alignment results against CPU reference; prints PASS or FAIL"},
+                {"type": "exit_code", "expected": 0, "description": "Process exits cleanly"},
             ],
             "floating_point": None,
         },
@@ -1093,1090 +1590,8 @@ KERNELS = [
             "metrics": [
                 {
                     "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(s\\)",
-                        "capture_group": 1,
-                    },
+                    "extraction": {"type": "regex", "pattern": "Total kernel execution time\\s+([\\d.eE+-]+)\\s+\\(s\\)", "capture_group": 1},
                     "unit": "s",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 11. crc64 ────────────────────────────────────────────────────────────
-    {
-        "kernel_name": "crc64",
-        "category": "other",
-        "description": "CRC-64 cyclic redundancy check computation on GPU. Processes data blocks in parallel using lookup tables, verified against CPU CRC-64 reference via PASS/FAIL comparison.",
-        "domain": "error detection / hashing",
-        "complexity": "O(n)",
-        "tags": ["crc64", "cyclic-redundancy-check", "error-detection", "checksum"],
-        "multi_file": True,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["CRC64.cu", "CRC64Test.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt", "CRC64.h"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["CRC64.cu", "CRC64Test.cu"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.hipcl",
-                    "CMakeLists.txt",
-                    "CRC64.h",
-                ],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["CRC64.cpp", "CRC64Test.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "CRC64.h",
-                    "crc64_table.h",
-                ],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["CRC64.cpp", "CRC64Test.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                    "CRC64.h",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["10", "5", "33554432"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["1", "1", "33554432"],
-                    "description": "Single iteration for correctness; verifies CRC-64 checksums match CPU reference",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["10", "5", "33554432"],
-                    "description": "10 iterations, 5 passes for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "CRC-64 checksum matches CPU reference",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": None,
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "throughput",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "([\\d.eE+-]+)\\s+MB/s",
-                        "capture_group": 1,
-                    },
-                    "unit": "MB/s",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 12. jenkins-hash ─────────────────────────────────────────────────────
-    {
-        "kernel_name": "jenkins-hash",
-        "category": "other",
-        "description": "Jenkins one-at-a-time hash function on GPU. Hashes arrays of keys in parallel, verified against CPU Jenkins hash reference via element-wise comparison.",
-        "domain": "hashing",
-        "complexity": "O(n × key_length)",
-        "tags": ["jenkins-hash", "hash-function", "non-cryptographic", "hashing"],
-        "multi_file": False,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["256", "16777216", "100"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["256", "16777216", "1"],
-                    "description": "Single iteration for correctness; compares GPU hash results vs CPU reference",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["256", "16777216", "100"],
-                    "description": "100 iterations for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Element-wise comparison of GPU vs CPU Jenkins hash values",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": None,
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time\\s*:\\s*([\\d.eE+-]+)\\s+\\(s\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "s",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 13. gaussian ─────────────────────────────────────────────────────────
-    {
-        "kernel_name": "gaussian",
-        "category": "linear_algebra",
-        "description": "Gaussian elimination with partial pivoting on GPU. Forward elimination and back substitution kernels solve a dense linear system, verified against CPU reference via element-wise comparison.",
-        "domain": "dense linear algebra",
-        "complexity": "O(n^3)",
-        "tags": [
-            "gaussian-elimination",
-            "linear-algebra",
-            "pivoting",
-            "dense-matrix",
-            "solver",
-        ],
-        "multi_file": True,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["gaussianElim.cu"],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "gaussianElim.h",
-                    "utils.cu",
-                    "utils.h",
-                ],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["gaussianElim.cu"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.hipcl",
-                    "CMakeLists.txt",
-                    "gaussianElim.h",
-                    "utils.cu",
-                    "utils.h",
-                ],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["gaussianElim.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "gaussianElim.h",
-                    "utils.cpp",
-                    "utils.h",
-                ],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["gaussianElim.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                    "gaussianElim.h",
-                    "utils.cpp",
-                    "utils.h",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["-q", "-t", "-s", "4096"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["-q", "-t", "-s", "256"],
-                    "description": "Small matrix (256) with timing; prints PASS/FAIL based on element-wise comparison",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["-q", "-t", "-s", "4096"],
-                    "description": "Large matrix (4096) for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Element-wise comparison of GPU vs CPU Gaussian elimination results",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": {
-                "tolerance": 1e-3,
-                "tolerance_type": "absolute",
-                "note": "Element-wise absolute difference comparison between GPU and CPU solver results",
-            },
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Total kernel execution time\\s+([\\d]+)\\s+\\(us\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "us",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 14. triad ────────────────────────────────────────────────────────────
-    {
-        "kernel_name": "triad",
-        "category": "other",
-        "description": "STREAM Triad memory bandwidth benchmark on GPU. Performs a[i] = b[i] + scalar*c[i] to measure sustained memory throughput, verified via element-wise comparison with CPU reference.",
-        "domain": "memory bandwidth",
-        "complexity": "O(n)",
-        "tags": ["triad", "stream", "memory-bandwidth", "benchmark", "throughput"],
-        "multi_file": True,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["main.cpp", "triad.cu"],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "LICENSE",
-                    "Option.cpp",
-                    "Option.h",
-                    "OptionParser.cpp",
-                    "OptionParser.h",
-                    "Timer.cpp",
-                    "Timer.h",
-                    "Utility.h",
-                    "config.h",
-                ],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["main.cpp", "triad.cu"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.hipcl",
-                    "CMakeLists.txt",
-                    "LICENSE",
-                    "Option.cpp",
-                    "Option.h",
-                    "OptionParser.cpp",
-                    "OptionParser.h",
-                    "Timer.cpp",
-                    "Timer.h",
-                    "Utility.h",
-                    "config.h",
-                ],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["main.cpp", "triad.cpp", "triad2.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "LICENSE",
-                    "Option.cpp",
-                    "Option.h",
-                    "OptionParser.cpp",
-                    "OptionParser.h",
-                    "Timer.cpp",
-                    "Timer.h",
-                    "Utility.h",
-                    "config.h",
-                ],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["main.cpp", "triad.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                    "LICENSE",
-                    "Option.cpp",
-                    "Option.h",
-                    "OptionParser.cpp",
-                    "OptionParser.h",
-                    "Timer.cpp",
-                    "Timer.h",
-                    "Utility.h",
-                    "config.h",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["--passes", "100", "-v"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["--passes", "1", "-v"],
-                    "description": "Single pass for correctness; verifies element-wise triad results",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["--passes", "100", "-v"],
-                    "description": "100 passes for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Element-wise comparison of GPU triad result vs CPU reference",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": {
-                "tolerance": 1e-6,
-                "tolerance_type": "relative",
-                "note": "Element-wise comparison of floating-point triad results",
-            },
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "triad_gflops",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average TriadFlops\\s+([\\d.eE+-]+)\\s+GFLOPS/s",
-                        "capture_group": 1,
-                    },
-                    "unit": "GFLOPS/s",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 15. popcount ─────────────────────────────────────────────────────────
-    {
-        "kernel_name": "popcount",
-        "category": "other",
-        "description": "Population count (Hamming weight) computation on GPU using multiple algorithm variants. Counts set bits in large integer arrays, verified by comparing 5 GPU implementations against each other.",
-        "domain": "bit manipulation",
-        "complexity": "O(n)",
-        "tags": ["popcount", "hamming-weight", "bit-manipulation", "population-count"],
-        "multi_file": False,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "Makefile.hipcl", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["16777216", "1000"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["16777216", "1"],
-                    "description": "Single iteration for correctness; verifies 5 popcount variants agree",
-                    "input_files": [],
-                    "expected_results": None,
-                },
-                "performance": {
-                    "arguments": ["16777216", "1000"],
-                    "description": "1000 iterations for performance measurement",
-                    "input_files": [],
-                    "expected_results": None,
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Exit code 0 indicates all 5 popcount variants produced matching results",
-                }
-            ],
-            "floating_point": None,
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time_pc1",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time \\(pc1\\):\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "us",
-                },
-                {
-                    "name": "kernel_time_pc2",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time \\(pc2\\):\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "us",
-                },
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 16. sobol ────────────────────────────────────────────────────────────
-    {
-        "kernel_name": "sobol",
-        "category": "financial",
-        "description": "Sobol quasi-random number sequence generator on GPU. Generates low-discrepancy sequences using direction vectors for Monte Carlo integration, verified against CPU Sobol implementation.",
-        "domain": "quasi-random number generation",
-        "complexity": "O(n × dimensions)",
-        "tags": ["sobol", "quasi-random", "low-discrepancy", "monte-carlo", "qrng"],
-        "multi_file": True,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["sobol.cu", "sobol_gpu.cu"],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "sobol.h",
-                    "sobol_gpu.h",
-                    "sobol_primitives.cu",
-                    "sobol_primitives.h",
-                ],
-                "verification_only": ["sobol_gold.cu", "sobol_gold.h"],
-            },
-            "hip": {
-                "prompt_payload": ["sobol.cu", "sobol_gpu.cu"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.hipcl",
-                    "CMakeLists.txt",
-                    "sobol.h",
-                    "sobol_gpu.h",
-                    "sobol_primitives.cu",
-                    "sobol_primitives.h",
-                ],
-                "verification_only": ["sobol_gold.cu", "sobol_gold.h"],
-            },
-            "sycl": {
-                "prompt_payload": ["sobol.cpp", "sobol_gpu.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "sobol.h",
-                    "sobol_gpu.h",
-                    "sobol_primitives.cpp",
-                    "sobol_primitives.h",
-                ],
-                "verification_only": ["sobol_gold.cpp", "sobol_gold.h"],
-            },
-            "omp": {
-                "prompt_payload": ["sobol.cpp", "sobol_gpu.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                    "sobol.h",
-                    "sobol_gpu.h",
-                    "sobol_primitives.cpp",
-                    "sobol_primitives.h",
-                ],
-                "verification_only": ["sobol_gold.cpp", "sobol_gold.h"],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["1000000", "1000", "100"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["1000000", "1000", "1"],
-                    "description": "Single iteration for correctness; compares GPU Sobol output vs CPU reference",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["1000000", "1000", "100"],
-                    "description": "100 iterations for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Comparison of GPU Sobol sequences vs CPU gold reference implementation",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": None,
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time:\\s+([\\d.eE+-]+)\\s+\\(s\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "s",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 17. convolution3D ────────────────────────────────────────────────────
-    {
-        "kernel_name": "convolution3D",
-        "category": "other",
-        "description": "3D convolution using multiple algorithmic strategies (direct, shared memory, register tiling) on GPU. Processes 3D feature maps with learned filters, verified against CPU reference.",
-        "domain": "3D signal processing / deep learning",
-        "complexity": "O(N × C × H × W × K^3)",
-        "tags": [
-            "convolution3d",
-            "3d-convolution",
-            "deep-learning",
-            "feature-map",
-            "tiling",
-        ],
-        "multi_file": True,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt", "conv3d_s4.cu"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt", "conv3d_s4.cu"],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "conv3d_s4.cpp",
-                    "onednn_utils.hpp",
-                ],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["32", "1", "6", "32", "32", "5", "100"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["32", "1", "6", "32", "32", "5", "1"],
-                    "description": "Single iteration for correctness; element-wise comparison of GPU vs CPU 3D convolution",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["32", "1", "6", "32", "32", "5", "100"],
-                    "description": "100 iterations for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Element-wise comparison of GPU vs CPU 3D convolution results",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": {
-                "tolerance": 1e-3,
-                "tolerance_type": "absolute",
-                "note": "Element-wise absolute difference comparison between GPU and CPU convolution output",
-            },
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time_s1",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time of conv3d_s1 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "us",
-                },
-                {
-                    "name": "kernel_time_s2",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time of conv3d_s2 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "us",
-                },
-                {
-                    "name": "kernel_time_s3",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time of conv3d_s3 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-                        "capture_group": 1,
-                    },
-                    "unit": "us",
-                },
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 18. mandelbrot ───────────────────────────────────────────────────────
-    {
-        "kernel_name": "mandelbrot",
-        "category": "other",
-        "description": "Mandelbrot set fractal computation on GPU. Evaluates escape-time iteration counts for each pixel in the complex plane, verified against CPU serial implementation via matrix comparison.",
-        "domain": "fractal / computational mathematics",
-        "complexity": "O(width × height × max_iter)",
-        "tags": [
-            "mandelbrot",
-            "fractal",
-            "escape-time",
-            "complex-plane",
-            "parallel-pixels",
-        ],
-        "multi_file": True,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["main.cu", "mandel.hpp"],
-                "support_files": ["Makefile", "CMakeLists.txt", "common.hpp"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["main.cu", "mandel.hpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.hipcl",
-                    "CMakeLists.txt",
-                    "common.hpp",
-                ],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["main.cpp", "mandel.hpp"],
-                "support_files": ["Makefile", "CMakeLists.txt", "util.hpp"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["main.cpp", "mandel.hpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                    "util.hpp",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["1000"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["1"],
-                    "description": "Single iteration for correctness; matrix comparison of GPU vs CPU Mandelbrot output",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "Pass verification"},
-                },
-                "performance": {
-                    "arguments": ["1000"],
-                    "description": "1000 iterations for performance measurement",
-                    "input_files": [],
-                    "expected_results": {"stdout_pattern": "Pass verification"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "Pass verification",
-                    "description": "Matrix comparison of GPU vs CPU Mandelbrot iteration counts",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": None,
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "Average kernel execution time:\\s+([\\d.eE+-]+)",
-                        "capture_group": 1,
-                    },
-                    "unit": "s",
-                }
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 19. mis ──────────────────────────────────────────────────────────────
-    {
-        "kernel_name": "mis",
-        "category": "graph",
-        "description": "Maximal Independent Set computation on GPU using Luby's parallel algorithm. Iteratively selects vertices into independent set, verified via graph structure validation on stderr.",
-        "domain": "graph algorithms",
-        "complexity": "O(V + E)",
-        "tags": ["mis", "maximal-independent-set", "luby", "graph", "combinatorial"],
-        "multi_file": True,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["main.cu"],
-                "support_files": [
-                    "Makefile",
-                    "CMakeLists.txt",
-                    "graph.h",
-                    "internet.egr",
-                ],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["internet.egr", "100"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["internet.egr", "1"],
-                    "description": "Single iteration for correctness; validates MIS properties on graph",
-                    "input_files": ["internet.egr"],
-                    "expected_results": None,
-                },
-                "performance": {
-                    "arguments": ["internet.egr", "100"],
-                    "description": "100 iterations for performance measurement",
-                    "input_files": ["internet.egr"],
-                    "expected_results": None,
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Exit code 0 indicates valid MIS computed without errors",
-                },
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "compute time",
-                    "description": "Presence of timing output indicates successful MIS computation",
-                },
-            ],
-            "floating_point": None,
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "compute_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "compute time:\\s+([\\d.eE+-]+)\\s+s",
-                        "capture_group": 1,
-                    },
-                    "unit": "s",
-                },
-                {
-                    "name": "node_throughput",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "throughput:\\s+([\\d.eE+-]+)\\s+Mnodes/s",
-                        "capture_group": 1,
-                    },
-                    "unit": "Mnodes/s",
-                },
-            ],
-            "warmup_runs": 1,
-            "measurement_runs": 5,
-        },
-    },
-    # ── 20. bezier-surface ───────────────────────────────────────────────────
-    {
-        "kernel_name": "bezier-surface",
-        "category": "other",
-        "description": "Bezier surface evaluation on GPU. Computes surface points from control points using tensor-product Bernstein polynomials, verified against CPU reference via element-wise comparison.",
-        "domain": "computational geometry",
-        "complexity": "O(n^2 × p^2)",
-        "tags": [
-            "bezier-surface",
-            "bernstein",
-            "computational-geometry",
-            "tensor-product",
-            "surface-evaluation",
-        ],
-        "multi_file": False,
-        "files": {
-            "cuda": {
-                "prompt_payload": ["main.cu"],
-                "support_files": ["Makefile", "CMakeLists.txt", "input"],
-                "verification_only": [],
-            },
-            "hip": {
-                "prompt_payload": ["main.cu"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.hipcl",
-                    "CMakeLists.txt",
-                    "input",
-                ],
-                "verification_only": [],
-            },
-            "sycl": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": ["Makefile", "CMakeLists.txt", "input"],
-                "verification_only": [],
-            },
-            "omp": {
-                "prompt_payload": ["main.cpp"],
-                "support_files": [
-                    "Makefile",
-                    "Makefile.aomp",
-                    "Makefile.nvc",
-                    "CMakeLists.txt",
-                    "input",
-                ],
-                "verification_only": [],
-            },
-        },
-        "run": {
-            "executable": "./main",
-            "default_arguments": ["-n", "8192"],
-            "timeout_seconds": 300,
-            "environment_variables": None,
-            "input_configurations": {
-                "correctness": {
-                    "arguments": ["-n", "256"],
-                    "description": "Small surface (256) for correctness; element-wise comparison of GPU vs CPU Bezier output",
-                    "input_files": ["input/control.txt"],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-                "performance": {
-                    "arguments": ["-n", "8192"],
-                    "description": "Large surface (8192) for performance measurement",
-                    "input_files": ["input/control.txt"],
-                    "expected_results": {"stdout_pattern": "PASS"},
-                },
-            },
-        },
-        "verification": {
-            "method": "self_checking",
-            "strategies": [
-                {
-                    "type": "stdout_pattern",
-                    "pattern": "PASS",
-                    "description": "Element-wise comparison of GPU vs CPU Bezier surface points",
-                },
-                {
-                    "type": "exit_code",
-                    "expected": 0,
-                    "description": "Process exits cleanly",
-                },
-            ],
-            "floating_point": {
-                "tolerance": 1e-3,
-                "tolerance_type": "absolute",
-                "note": "Element-wise absolute difference of surface point coordinates",
-            },
-        },
-        "performance": {
-            "metrics": [
-                {
-                    "name": "kernel_time",
-                    "extraction": {
-                        "type": "regex",
-                        "pattern": "kernel execution time:\\s+([\\d.eE+-]+)\\s+ms",
-                        "capture_group": 1,
-                    },
-                    "unit": "ms",
                 }
             ],
             "warmup_runs": 1,
@@ -2185,6 +1600,8 @@ KERNELS = [
     },
 ]
 
+
+# ─── Spec and manifest generation ────────────────────────────────────────────
 
 def make_spec(kernel_data: dict, api: str) -> dict:
     """Generate a single spec JSON for a kernel+API combination."""
@@ -2270,16 +1687,25 @@ def make_manifest_entry(kernel_data: dict, api: str) -> dict:
 def main():
     apis = ["cuda", "hip", "sycl", "omp"]
     created = 0
+    skipped = 0
     manifest_entries = []
+    warnings = []
+
+    SPECS_DIR.mkdir(parents=True, exist_ok=True)
 
     for kernel_data in KERNELS:
         k = kernel_data["kernel_name"]
         for api in apis:
+            if api not in kernel_data["files"]:
+                warnings.append(f"WARNING: {k}-{api} has no file definition, skipping")
+                continue
+
             spec = make_spec(kernel_data, api)
             spec_file = SPECS_DIR / f"hecbench-{k}-{api}.json"
 
             if spec_file.exists():
                 print(f"SKIP (exists): {spec_file.name}")
+                skipped += 1
                 continue
 
             with open(spec_file, "w") as f:
@@ -2297,7 +1723,13 @@ def main():
                 f.write(json.dumps(entry, separators=(",", ":")) + "\n")
         print(f"\nAppended {len(manifest_entries)} entries to manifest.jsonl")
 
+    if warnings:
+        print("\nWarnings:")
+        for w in warnings:
+            print(f"  {w}")
+
     print(f"\nTotal specs created: {created}")
+    print(f"Total specs skipped (already exist): {skipped}")
     print(f"Total manifest entries added: {len(manifest_entries)}")
 
 

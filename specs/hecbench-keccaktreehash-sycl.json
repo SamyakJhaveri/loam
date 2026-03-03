@@ -1,9 +1,9 @@
 {
   "spec_version": "1.0.0",
   "identity": {
-    "kernel_name": "convolution3D",
+    "kernel_name": "keccaktreehash",
     "parallel_api": "sycl",
-    "unique_id": "hecbench-convolution3D-sycl",
+    "unique_id": "hecbench-keccaktreehash-sycl",
     "source_suite": "hecbench"
   },
   "provenance": {
@@ -13,20 +13,29 @@
       "branch": "master"
     },
     "repo_root": "HeCBench-master/",
-    "source_path": "src/convolution3D-sycl",
+    "source_path": "src/keccaktreehash-sycl",
     "license": "MIT"
   },
   "files": {
     "prompt_payload": [
-      "main.cpp"
+      "main.cpp",
+      "KeccakTreeGPU.cpp",
+      "KeccakF.cpp",
+      "Test.cpp"
     ],
     "support_files": [
       "Makefile",
       "CMakeLists.txt",
-      "conv3d_s4.cpp",
-      "onednn_utils.hpp"
+      "KeccakTree.h",
+      "KeccakTypes.h",
+      "KeccakF.h",
+      "KeccakTreeGPU.h",
+      "Test.h"
     ],
-    "verification_only": []
+    "verification_only": [
+      "KeccakTreeCPU.cpp",
+      "KeccakTreeCPU.h"
+    ]
   },
   "implementation": {
     "api": "sycl",
@@ -46,7 +55,7 @@
       }
     },
     "build_system": "make",
-    "working_directory": "src/convolution3D-sycl",
+    "working_directory": "src/keccaktreehash-sycl",
     "commands": {
       "configure": null,
       "build": "make",
@@ -59,45 +68,21 @@
   },
   "run": {
     "executable": "./main",
-    "default_arguments": [
-      "32",
-      "1",
-      "6",
-      "32",
-      "32",
-      "5",
-      "100"
-    ],
+    "default_arguments": [],
     "timeout_seconds": 300,
     "environment_variables": null,
     "input_configurations": {
       "correctness": {
-        "arguments": [
-          "32",
-          "1",
-          "6",
-          "32",
-          "32",
-          "5",
-          "1"
-        ],
-        "description": "Single iteration for correctness; element-wise comparison of GPU vs CPU 3D convolution",
+        "arguments": [],
+        "description": "Run Keccak tree hash; compares GPU hash state against CPU reference",
         "input_files": [],
         "expected_results": {
           "stdout_pattern": "PASS"
         }
       },
       "performance": {
-        "arguments": [
-          "32",
-          "1",
-          "6",
-          "32",
-          "32",
-          "5",
-          "100"
-        ],
-        "description": "100 iterations for performance measurement",
+        "arguments": [],
+        "description": "Default run for performance measurement",
         "input_files": [],
         "expected_results": {
           "stdout_pattern": "PASS"
@@ -111,7 +96,7 @@
       {
         "type": "stdout_pattern",
         "pattern": "PASS",
-        "description": "Element-wise comparison of GPU vs CPU 3D convolution results"
+        "description": "isEqual_KS() compares GPU Keccak state vs CPU reference; prints PASS or FAIL"
       },
       {
         "type": "exit_code",
@@ -119,40 +104,18 @@
         "description": "Process exits cleanly"
       }
     ],
-    "floating_point": {
-      "tolerance": 0.001,
-      "tolerance_type": "absolute",
-      "note": "Element-wise absolute difference comparison between GPU and CPU convolution output"
-    }
+    "floating_point": null
   },
   "performance": {
     "metrics": [
       {
-        "name": "kernel_time_s1",
+        "name": "kernel_time",
         "extraction": {
           "type": "regex",
-          "pattern": "Average kernel execution time of conv3d_s1 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
+          "pattern": "Total kernel execution time\\s+([\\d.eE+-]+)\\s+\\(s\\)",
           "capture_group": 1
         },
-        "unit": "us"
-      },
-      {
-        "name": "kernel_time_s2",
-        "extraction": {
-          "type": "regex",
-          "pattern": "Average kernel execution time of conv3d_s2 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-          "capture_group": 1
-        },
-        "unit": "us"
-      },
-      {
-        "name": "kernel_time_s3",
-        "extraction": {
-          "type": "regex",
-          "pattern": "Average kernel execution time of conv3d_s3 kernel:\\s+([\\d.eE+-]+)\\s+\\(us\\)",
-          "capture_group": 1
-        },
-        "unit": "us"
+        "unit": "s"
       }
     ],
     "warmup_runs": 1,
@@ -193,15 +156,15 @@
   },
   "baseline_results": null,
   "metadata": {
-    "description": "3D convolution using multiple algorithmic strategies (direct, shared memory, register tiling) on GPU. Processes 3D feature maps with learned filters, verified against CPU reference.",
-    "domain": "3D signal processing / deep learning",
-    "complexity": "O(N \u00d7 C \u00d7 H \u00d7 W \u00d7 K^3)",
+    "description": "GPU-accelerated Keccak (SHA-3) tree hashing. Computes Keccak-f[1600] permutation in parallel across tree nodes on GPU, then compares final hash state against sequential CPU reference.",
+    "domain": "cryptographic hashing",
+    "complexity": "O(tree_nodes \u00d7 rounds)",
     "tags": [
-      "convolution3d",
-      "3d-convolution",
-      "deep-learning",
-      "feature-map",
-      "tiling"
+      "keccak",
+      "sha3",
+      "tree-hash",
+      "cryptography",
+      "permutation"
     ],
     "multi_file": true
   }

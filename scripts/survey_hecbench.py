@@ -14,8 +14,8 @@ from collections import defaultdict
 from pathlib import Path
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-HECBENCH_SRC = Path("/Users/samyakjhaveri/Downloads/HeCBench-master/src")
-OUTPUT_DIR = Path("/Users/samyakjhaveri/Desktop/parbench_sam/analysis")
+HECBENCH_SRC = Path("/home/samyak/Downloads/HeCBench-master/src")
+OUTPUT_DIR = Path("/home/samyak/Desktop/parbench_sam/analysis")
 FULL_CSV = OUTPUT_DIR / "hecbench_full_kernel_survey.csv"
 FILTERED_CSV = OUTPUT_DIR / "hecbench_candidate_kernels.csv"
 
