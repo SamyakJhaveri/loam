@@ -1,0 +1,180 @@
+{
+  "spec_version": "1.0.0",
+  "identity": {
+    "kernel_name": "hotspot",
+    "parallel_api": "opencl",
+    "unique_id": "rodinia-hotspot-opencl",
+    "source_suite": "rodinia"
+  },
+  "provenance": {
+    "repository": {
+      "url": "https://github.com/yuhc/gpu-rodinia",
+      "commit": "9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+      "branch": "master"
+    },
+    "repo_root": "rodinia/rodinia-src",
+    "source_path": "opencl/hotspot",
+    "license": "NCSA/Illinois Open Source License"
+  },
+  "files": {
+    "prompt_payload": [
+      "hotspot_kernel.cl",
+      "OpenCL_helper_library.c",
+      "hotspot.c"
+    ],
+    "support_files": [
+      "OpenCL_helper_library.h",
+      "hotspot.h",
+      "Makefile"
+    ],
+    "verification_only": []
+  },
+  "implementation": {
+    "api": "opencl",
+    "api_version": null,
+    "language": "C",
+    "language_standard": null
+  },
+  "build": {
+    "environment": {
+      "preferred": "system",
+      "conda": null,
+      "system": {
+        "dependencies": [
+          "opencl>=2.0",
+          "gcc>=9.0"
+        ]
+      }
+    },
+    "build_system": "make",
+    "working_directory": "opencl/hotspot",
+    "commands": {
+      "configure": null,
+      "build": "make OPENCL_INC=/usr/local/cuda/include OPENCL_LIB=/usr/local/cuda/lib64",
+      "clean": "make clean"
+    },
+    "variables": {
+      "OPENCL_INC": {
+        "description": "Path to OpenCL headers",
+        "default": "/usr/local/cuda/include",
+        "detection": "find /usr -name 'cl.h' -path '*/CL/cl.h' | head -1 | xargs dirname | xargs dirname"
+      },
+      "OPENCL_LIB": {
+        "description": "Path to OpenCL libraries",
+        "default": "/usr/local/cuda/lib64",
+        "detection": "find /usr -name 'libOpenCL.so' | head -1 | xargs dirname"
+      }
+    },
+    "outputs": {
+      "executable": "./hotspot"
+    }
+  },
+  "run": {
+    "executable": "./hotspot",
+    "default_arguments": [
+      "512",
+      "512",
+      "2",
+      "4",
+      "../../data/hotspot/power_512",
+      "../../data/hotspot/temp_512",
+      "output.out"
+    ],
+    "timeout_seconds": 300,
+    "environment_variables": null,
+    "input_configurations": {
+      "correctness": {
+        "arguments": [
+          "512",
+          "512",
+          "2",
+          "4",
+          "../../data/hotspot/power_512",
+          "../../data/hotspot/temp_512",
+          "output.out"
+        ],
+        "description": "Small input for correctness verification of hotspot (OPENCL)",
+        "input_files": [
+          "../../data/hotspot/power_512",
+          "../../data/hotspot/temp_512"
+        ],
+        "expected_results": null
+      },
+      "performance": {
+        "arguments": [
+          "1024",
+          "1024",
+          "2",
+          "4",
+          "../../data/hotspot/power_1024",
+          "../../data/hotspot/temp_1024",
+          "output.out"
+        ],
+        "description": "Large input for performance measurement of hotspot (OPENCL)",
+        "input_files": [
+          "../../data/hotspot/power_1024",
+          "../../data/hotspot/temp_1024"
+        ],
+        "expected_results": null
+      }
+    }
+  },
+  "verification": {
+    "method": "self_checking",
+    "strategies": [
+      {
+        "type": "exit_code",
+        "expected": 0,
+        "description": "Process exits cleanly"
+      }
+    ],
+    "floating_point": null
+  },
+  "performance": null,
+  "hardware": {
+    "target": "gpu",
+    "requirements": {
+      "gpu": {
+        "min_memory_gb": 4
+      }
+    },
+    "reference_platform": {
+      "platform_id": "rtx4070-r9-7900x",
+      "gpu": {
+        "model": "NVIDIA GeForce RTX 4070",
+        "architecture": "Ada Lovelace",
+        "compute_capability": "sm_89",
+        "vram_gb": 12,
+        "memory_bandwidth_gbps": 504,
+        "cuda_cores": 5888
+      },
+      "cpu": {
+        "model": "AMD Ryzen 9 7900X",
+        "cores": 12,
+        "threads": 24,
+        "base_clock_ghz": 4.7
+      },
+      "software": {
+        "os": "Ubuntu 22.04 LTS",
+        "cuda_toolkit": "12.x",
+        "gcc": "11+",
+        "driver": "525.x+"
+      }
+    }
+  },
+  "baseline_results": null,
+  "metadata": {
+    "description": "2D thermal simulation stencil computation on GPU",
+    "domain": "simulation",
+    "complexity": "thermal simulation (2D stencil)",
+    "tags": [
+      "hotspot",
+      "opencl",
+      "rodinia",
+      "simulation",
+      "stencil",
+      "thermal"
+    ],
+    "multi_file": true
+  }
+}

@@ -1,0 +1,190 @@
+{
+  "spec_version": "1.0.0",
+  "identity": {
+    "kernel_name": "heartwall",
+    "parallel_api": "opencl",
+    "unique_id": "rodinia-heartwall-opencl",
+    "source_suite": "rodinia"
+  },
+  "provenance": {
+    "repository": {
+      "url": "https://github.com/yuhc/gpu-rodinia",
+      "commit": "9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+      "branch": "master"
+    },
+    "repo_root": "rodinia/rodinia-src",
+    "source_path": "opencl/heartwall",
+    "license": "NCSA/Illinois Open Source License"
+  },
+  "files": {
+    "prompt_payload": [
+      "kernel/kernel_gpu_opencl.cl",
+      "kernel/kernel_gpu_opencl_wrapper.c",
+      "main.c"
+    ],
+    "support_files": [
+      "util/avi/avilib.c",
+      "util/avi/avimod.c",
+      "util/file/file.c",
+      "util/opencl/opencl.c",
+      "util/timer/timer.c",
+      "kernel/kernel_gpu_opencl_wrapper.h",
+      "main.h",
+      "util/avi/avilib.h",
+      "util/avi/avimod.h",
+      "util/file/file.h",
+      "util/opencl/opencl.h",
+      "util/timer/timer.h",
+      "Makefile"
+    ],
+    "verification_only": []
+  },
+  "implementation": {
+    "api": "opencl",
+    "api_version": null,
+    "language": "C",
+    "language_standard": null
+  },
+  "build": {
+    "environment": {
+      "preferred": "system",
+      "conda": null,
+      "system": {
+        "dependencies": [
+          "opencl>=2.0",
+          "gcc>=9.0"
+        ]
+      }
+    },
+    "build_system": "make",
+    "working_directory": "opencl/heartwall",
+    "commands": {
+      "configure": null,
+      "build": "make OPENCL_INC=/usr/local/cuda/include OPENCL_LIB=/usr/local/cuda/lib64",
+      "clean": "make clean"
+    },
+    "variables": {
+      "OPENCL_INC": {
+        "description": "Path to OpenCL headers",
+        "default": "/usr/local/cuda/include",
+        "detection": "find /usr -name 'cl.h' -path '*/CL/cl.h' | head -1 | xargs dirname | xargs dirname"
+      },
+      "OPENCL_LIB": {
+        "description": "Path to OpenCL libraries",
+        "default": "/usr/local/cuda/lib64",
+        "detection": "find /usr -name 'libOpenCL.so' | head -1 | xargs dirname"
+      }
+    },
+    "outputs": {
+      "executable": "./heartwall"
+    }
+  },
+  "run": {
+    "executable": "./heartwall",
+    "default_arguments": [
+      "../../data/heartwall/test.avi",
+      "20"
+    ],
+    "timeout_seconds": 300,
+    "environment_variables": null,
+    "input_configurations": {
+      "correctness": {
+        "arguments": [
+          "../../data/heartwall/test.avi",
+          "20"
+        ],
+        "description": "Small input for correctness verification of heartwall (OPENCL)",
+        "input_files": [
+          "../../data/heartwall/test.avi"
+        ],
+        "expected_results": null
+      },
+      "performance": {
+        "arguments": [
+          "../../data/heartwall/test.avi",
+          "104"
+        ],
+        "description": "Large input for performance measurement of heartwall (OPENCL)",
+        "input_files": [
+          "../../data/heartwall/test.avi"
+        ],
+        "expected_results": null
+      }
+    }
+  },
+  "verification": {
+    "method": "self_checking",
+    "strategies": [
+      {
+        "type": "exit_code",
+        "expected": 0,
+        "description": "Process exits cleanly"
+      },
+      {
+        "type": "stdout_pattern",
+        "pattern": "(?i)(PASS|passed|SUCCESS|correct)",
+        "description": "Output indicates correctness"
+      },
+      {
+        "type": "numeric_comparison",
+        "tolerance": 0.001,
+        "tolerance_type": "relative",
+        "description": "Numerical results within tolerance"
+      },
+      {
+        "type": "stdout_pattern",
+        "pattern": "(?i)(pass|correct|match|verified)",
+        "description": "Results match reference"
+      }
+    ],
+    "floating_point": null
+  },
+  "performance": null,
+  "hardware": {
+    "target": "gpu",
+    "requirements": {
+      "gpu": {
+        "min_memory_gb": 4
+      }
+    },
+    "reference_platform": {
+      "platform_id": "rtx4070-r9-7900x",
+      "gpu": {
+        "model": "NVIDIA GeForce RTX 4070",
+        "architecture": "Ada Lovelace",
+        "compute_capability": "sm_89",
+        "vram_gb": 12,
+        "memory_bandwidth_gbps": 504,
+        "cuda_cores": 5888
+      },
+      "cpu": {
+        "model": "AMD Ryzen 9 7900X",
+        "cores": 12,
+        "threads": 24,
+        "base_clock_ghz": 4.7
+      },
+      "software": {
+        "os": "Ubuntu 22.04 LTS",
+        "cuda_toolkit": "12.x",
+        "gcc": "11+",
+        "driver": "525.x+"
+      }
+    }
+  },
+  "baseline_results": null,
+  "metadata": {
+    "description": "Heart wall tracking in ultrasound video frames on GPU",
+    "domain": "image processing",
+    "complexity": "heart wall tracking (image processing)",
+    "tags": [
+      "heart-wall",
+      "heartwall",
+      "image-processing",
+      "opencl",
+      "rodinia",
+      "tracking",
+      "ultrasound"
+    ],
+    "multi_file": true
+  }
+}
