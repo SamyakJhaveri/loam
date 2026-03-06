@@ -1,0 +1,61 @@
+#	Spec	Build	Build_Time	Run	Run_Time	Run_Exit	Verify	Verify_Strategy	Stdout_First5
+1	rodinia-backprop-cuda	FAIL	0.709s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+2	rodinia-backprop-omp	PASS	0.195s	PASS	0.016s	0	PASS	exit_code	Random number generator seed: 7 | Input layer size : 65536 | Starting training kernel | Performing CPU computation | Training done
+3	rodinia-backprop-opencl	FAIL	0.574s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+4	rodinia-bfs-cuda	PASS	0.51s	PASS	0.528s	0	PASS	exit_code	Reading File | Read File | Copied Everything to GPU memory | Start traversing the tree | Kernel Executed 12 times
+5	rodinia-bfs-omp	PASS	0.131s	PASS	0.001s	0	PASS	exit_code	
+6	rodinia-bfs-opencl	PASS	0.729s	PASS	0.517s	0	PASS	exit_code	Reading File | number of platforms:1 | vendor is NVIDIA Corporation | device number: 1 | Creating GPU Context
+7	rodinia-bptree-cuda	FAIL	0.312s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+8	rodinia-bptree-omp	PASS	0.402s	PASS	0.473s	0	PASS	exit_code	Input File: ../../data/b+tree/mil.txt  | Command File: ../../data/b+tree/command.txt  | Command Buffer:  | j 6000 3000 | k 10000
+9	rodinia-bptree-opencl	PASS	0.488s	PASS	0.535s	0	PASS	exit_code	WG size of kernel 1 = 256 WG size of kernel 2 = 256  | Input File: ../../data/b+tree/mil.txt  | Command File: ../../data/b+tree/command.txt  | Command Buffer:  | j 6000 3000
+10	rodinia-cfd-cuda	FAIL	0.013s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+11	rodinia-cfd-omp	PASS	0.372s	PASS	4.13s	0	PASS	exit_code	Starting... | Compute time: 3.55409 | Saving solution... | Saved solution... | Cleaning up...
+12	rodinia-cfd-opencl	FAIL	0.276s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+13	rodinia-dwt2d-cuda	FAIL	0.008s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+14	rodinia-dwt2d-opencl	FAIL	0.285s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+15	rodinia-gaussian-cuda	PASS	0.511s	PASS	0.086s	0	PASS	exit_code	WG size of kernel 1 = 512, WG size of kernel 2= 4 X 4 | Total Device found: 1 | Device Name 		 - NVIDIA GeForce RTX 4070  | ************************************** | Total Global Memory			 - 12267136 KB
+16	rodinia-gaussian-opencl	FAIL	0.66s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+17	rodinia-heartwall-cuda	PASS	0.992s	PASS	0.303s	0	PASS	exit_code	WG size of kernel = 256  | frame progress: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
+18	rodinia-heartwall-omp	PASS	0.343s	FAIL	0.001s	1	FAIL	exit_code	ERROR: usage: heartwall <inputfile> <num of frames> <num of threads>
+19	rodinia-heartwall-opencl	FAIL	0.021s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+20	rodinia-hotspot3d-cuda	FAIL	0.003s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+21	rodinia-hotspot3d-omp	PASS	0.119s	PASS	1.253s	0	PASS	exit_code	24 threads running | Time: 0.150 (s) | Accuracy: 4.096975e-05
+22	rodinia-hotspot3d-opencl	FAIL	0.177s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+23	rodinia-hotspot-cuda	PASS	0.486s	FAIL	0.001s	1	FAIL	exit_code	WG size of kernel = 16 X 16
+24	rodinia-hotspot-omp	PASS	0.106s	PASS	0.071s	0	PASS	exit_code	Start computing the transient temperature | Ending simulation | Total time: 0.001 seconds
+25	rodinia-hotspot-opencl	FAIL	0.164s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+26	rodinia-huffman-cuda	FAIL	0.01s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+27	rodinia-hybridsort-cuda	FAIL	0.008s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+28	rodinia-hybridsort-opencl	FAIL	0.135s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+29	rodinia-kmeans-cuda	FAIL	0.297s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+30	rodinia-kmeans-omp	PASS	0.28s	PASS	1.888s	0	PASS	exit_code	I/O completed | num of threads = 1 | number of Clusters 5 | number of Attributes 34 | 
+31	rodinia-kmeans-opencl	FAIL	0.782s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+32	rodinia-lavamd-cuda	FAIL	0.069s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+33	rodinia-lavamd-omp	PASS	0.138s	PASS	0.001s	0	PASS	exit_code	ERROR: Unknown parameter
+34	rodinia-lavamd-opencl	FAIL	0.172s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+35	rodinia-lud-cuda	FAIL	0.012s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+36	rodinia-lud-omp	FAIL	0.224s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+37	rodinia-lud-opencl	FAIL	0.418s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+38	rodinia-mummergpu-cuda	FAIL	0.486s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+39	rodinia-mummergpu-omp	FAIL	0.473s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+40	rodinia-myocyte-cuda	PASS	1.637s	PASS	0.946s	0	PASS	exit_code	Time spent in different stages of the application: | 0.000000000000 s, 0.000000000000 % : SETUP VARIABLES | 0.064480997622 s, 7.021183013916 % : ALLOCATE CPU MEMORY AND GPU MEMORY | 0.000037000002 s, 0.004028842319 % : READ DATA FROM FILES | 0.853859007359 s, 92.974678039551 % : RUN COMPUTATION
+41	rodinia-myocyte-omp	FAIL	0.265s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+42	rodinia-myocyte-opencl	FAIL	0.253s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+43	rodinia-nn-cuda	PASS	1.115s	FAIL	1.061s	-11	FAIL	exit_code	
+44	rodinia-nn-omp	PASS	0.042s	FAIL	0.001s	1	FAIL	exit_code	error opening flist
+45	rodinia-nn-opencl	FAIL	0.62s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+46	rodinia-nw-cuda	PASS	0.556s	PASS	0.132s	0	PASS	exit_code	WG size of kernel = 16  | Start Needleman-Wunsch | Processing top-left matrix | Processing bottom-right matrix
+47	rodinia-nw-omp	PASS	0.208s	FAIL	0.001s	1	FAIL	exit_code	
+48	rodinia-nw-opencl	FAIL	0.318s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+49	rodinia-particlefilter-cuda	FAIL	0.007s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+50	rodinia-particlefilter-omp	FAIL	0.212s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+51	rodinia-particlefilter-opencl	PASS	0.866s	PASS	0.168s	0	PASS	exit_code	VIDEO SEQUENCE TOOK 0.004477 | number of available platforms:1. | clGetPlatformInfo: NVIDIA Corporation | TIME TO SEND TO GPU: 0.000225 | threads_per_block=512 
+52	rodinia-pathfinder-cuda	PASS	0.495s	PASS	0.135s	0	PASS	exit_code	pyramidHeight: 20 | gridSize: [100000] | border:[20] | blockSize: 256 | blockGrid:[463]
+53	rodinia-pathfinder-omp	PASS	0.057s	PASS	0.001s	0	PASS	exit_code	Usage: pathfiner width num_of_steps
+54	rodinia-pathfinder-opencl	FAIL	0.438s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+55	rodinia-srad-cuda	PASS	0.527s	FAIL	0.001s	1	FAIL	exit_code	WG size of kernel = 16 X 16
+56	rodinia-srad-omp	PASS	0.163s	FAIL	0.001s	1	FAIL	exit_code	
+57	rodinia-srad-opencl	FAIL	0.227s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)
+58	rodinia-streamcluster-cuda	PASS	2.023s	PASS	2.211s	0	PASS	exit_code	PARSEC Benchmark Suite | time = 2.184833s | time pgain = 0.000000s | time pgain_dist = 0.000000s | time pgain_init = 0.000000s
+59	rodinia-streamcluster-omp	PASS	0.658s	PASS	24.872s	0	PASS	exit_code	PARSEC Benchmark Suite | time = 24.866786 | time pgain = 24.486697 | time pgain_dist = 24.239913 | time pgain_init = 0.080346
+60	rodinia-streamcluster-opencl	FAIL	0.283s	UNKNOWN	0s	?	UNKNOWN	unknown	(no stdout)

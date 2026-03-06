@@ -60,11 +60,11 @@
     },
     "variables": null,
     "outputs": {
-      "executable": "./ocl/lud"
+      "executable": "./lud.out"
     }
   },
   "run": {
-    "executable": "./ocl/lud",
+    "executable": "./lud.out",
     "default_arguments": [
       "-s",
       "256"

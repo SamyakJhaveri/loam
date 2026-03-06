@@ -47,30 +47,31 @@
     "working_directory": "opencl/nw",
     "commands": {
       "configure": null,
-      "build": "make OPENCL_INC=/usr/local/cuda/include OPENCL_LIB=/usr/local/cuda/lib64",
+      "build": "make OPENCL_INC=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include OPENCL_LIB=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64",
       "clean": "make clean"
     },
     "variables": {
       "OPENCL_INC": {
         "description": "Path to OpenCL headers",
-        "default": "/usr/local/cuda/include",
+        "default": "/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include",
         "detection": "find /usr -name 'cl.h' -path '*/CL/cl.h' | head -1 | xargs dirname | xargs dirname"
       },
       "OPENCL_LIB": {
         "description": "Path to OpenCL libraries",
-        "default": "/usr/local/cuda/lib64",
+        "default": "/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64",
         "detection": "find /usr -name 'libOpenCL.so' | head -1 | xargs dirname"
       }
     },
     "outputs": {
-      "executable": "./needle"
+      "executable": "./nw.out"
     }
   },
   "run": {
-    "executable": "./needle",
+    "executable": "./nw.out",
     "default_arguments": [
       "2048",
-      "10"
+      "10",
+      "./nw.cl"
     ],
     "timeout_seconds": 300,
     "environment_variables": null,
@@ -78,7 +79,8 @@
       "correctness": {
         "arguments": [
           "2048",
-          "10"
+          "10",
+          "./nw.cl"
         ],
         "description": "Small input for correctness verification of nw (OPENCL)",
         "input_files": [],
@@ -86,8 +88,9 @@
       },
       "performance": {
         "arguments": [
-          "8192",
-          "10"
+          "2048",
+          "10",
+          "./nw.cl"
         ],
         "description": "Large input for performance measurement of nw (OPENCL)",
         "input_files": [],

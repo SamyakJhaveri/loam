@@ -2,8 +2,9 @@
 
 ## Environment
 
-- **Always use `python3`** (not `python`). The `env_parbench/` venv was created on a different Linux machine and its shebang paths are broken on this Mac. Do not try to activate it.
-- **Install packages** with `python3 -m pip install <pkg> --break-system-packages` if missing.
+- **Always activate the venv first:** `source env_parbench/bin/activate`
+- **Then use `python3`** (not bare `python`) for all commands within the venv.
+- **Install packages** with `python3 -m pip install <pkg>` inside the activated venv if missing.
 
 ## config/paths.json
 

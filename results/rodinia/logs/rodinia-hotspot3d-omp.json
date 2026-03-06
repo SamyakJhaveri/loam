@@ -1,0 +1,26 @@
+{
+  "spec_id": "rodinia-hotspot3d-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.119,
+    "stdout": "rm -f 3D *.out\n\ngcc -o 3D -g -fopenmp -O3 3D.c -lm \n",
+    "stderr": "3D.c: In function \u2018computeTempOMP\u2019:\n3D.c:157:40: warning: implicit declaration of function \u2018omp_get_num_threads\u2019 [-Wimplicit-function-declaration]\n  157 |         printf(\"%d threads running\\n\", omp_get_num_threads());\n      |                                        ^~~~~~~~~~~~~~~~~~~\n",
+    "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/openmp/hotspot3D/3D"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.253,
+      "exit_code": 0,
+      "stdout": "24 threads running\nTime: 0.150 (s)\nAccuracy: 4.096975e-05\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Process exits cleanly"
+  },
+  "metrics": []
+}

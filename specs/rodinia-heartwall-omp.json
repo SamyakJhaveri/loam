@@ -64,7 +64,8 @@
     "executable": "./heartwall",
     "default_arguments": [
       "../../data/heartwall/test.avi",
-      "20"
+      "20",
+      "4"
     ],
     "timeout_seconds": 300,
     "environment_variables": null,
@@ -72,7 +73,8 @@
       "correctness": {
         "arguments": [
           "../../data/heartwall/test.avi",
-          "20"
+          "20",
+          "4"
         ],
         "description": "Small input for correctness verification of heartwall (OMP)",
         "input_files": [
@@ -83,7 +85,8 @@
       "performance": {
         "arguments": [
           "../../data/heartwall/test.avi",
-          "104"
+          "20",
+          "4"
         ],
         "description": "Large input for performance measurement of heartwall (OMP)",
         "input_files": [

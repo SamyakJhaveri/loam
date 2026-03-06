@@ -54,16 +54,16 @@
     "working_directory": "openmp/lud",
     "commands": {
       "configure": null,
-      "build": "make",
+      "build": "make lud_omp",
       "clean": "make clean"
     },
     "variables": null,
     "outputs": {
-      "executable": "./omp/lud"
+      "executable": "./omp/lud_omp"
     }
   },
   "run": {
-    "executable": "./omp/lud",
+    "executable": "./omp/lud_omp",
     "default_arguments": [
       "-s",
       "256"

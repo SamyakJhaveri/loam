@@ -1,0 +1,26 @@
+{
+  "spec_id": "rodinia-srad-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.163,
+    "stdout": "rm -f srad\n\ng++ -g -fopenmp -O2 srad.cpp -o srad \n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.006,
+      "exit_code": 0,
+      "stdout": "Randomizing the input matrix\nStart the SRAD main loop\nComputation Done\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Process exits cleanly"
+  },
+  "metrics": []
+}

@@ -59,11 +59,11 @@
     },
     "variables": null,
     "outputs": {
-      "executable": "./myocyte"
+      "executable": "./myocyte.out"
     }
   },
   "run": {
-    "executable": "./myocyte",
+    "executable": "./myocyte.out",
     "default_arguments": [
       "100",
       "1",

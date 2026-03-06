@@ -1,0 +1,26 @@
+{
+  "spec_id": "rodinia-cfd-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.372,
+    "stdout": "rm -f euler3d_cpu\nrm -f euler3d_cpu_offload\nrm -f euler3d_cpu_double\nrm -f pre_euler3d_cpu\nrm -f pre_euler3d_cpu_double\n\ng++ -O3 -Dblock_length=8 -fopenmp euler3d_cpu.cpp -o euler3d_cpu\n",
+    "stderr": "",
+    "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/openmp/cfd/euler3d_cpu"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 4.13,
+      "exit_code": 0,
+      "stdout": "Starting...\nCompute time: 3.55409\nSaving solution...\nSaved solution...\nCleaning up...\nDone...\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Process exits cleanly"
+  },
+  "metrics": []
+}

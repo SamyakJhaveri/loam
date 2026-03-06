@@ -50,11 +50,11 @@
     },
     "variables": null,
     "outputs": {
-      "executable": "./particlefilter"
+      "executable": "./particle_filter"
     }
   },
   "run": {
-    "executable": "./particlefilter",
+    "executable": "./particle_filter",
     "default_arguments": [
       "-x",
       "128",

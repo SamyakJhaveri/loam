@@ -1,0 +1,17 @@
+{
+  "spec_id": "rodinia-cfd-cuda",
+  "build": {
+    "status": "fail",
+    "duration_seconds": 0.0,
+    "stdout": "",
+    "stderr": "harness.builder DEBUG: Running clean: make clean\nharness.builder INFO: [stdout] rm -f euler3d euler3d_double pre_euler3d pre_euler3d_double *.linkinfo\nharness.builder DEBUG: Running build: make CUDA_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda\nharness.builder INFO: [stdout] nvcc  -O2 -Xptxas -v --gpu-architecture=compute_89 --gpu-code=sm_89 euler3d.cu -o euler3d -I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/samples//common/inc  -L/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/samples//lib\nharness.builder INFO: [stderr] euler3d.cu:5:10: fatal error: helper_cuda.h: No such file or directory\n    5 | #include <helper_cuda.h>\n      |          ^~~~~~~~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:17: euler3d] Error 1\nharness.builder WARNING: Command exited 2: make CUDA_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda\nBuilding rodinia-cfd-cuda ...\n[rodinia-cfd-cuda] | BUILD: FAIL (0.058s) | RUN: \u2014 | VERIFY: \u2014\n",
+    "reason": "Missing helper_cuda.h (CUDA samples header)"
+  },
+  "runs": {},
+  "verification": {
+    "status": "fail",
+    "strategy_used": "exit_code",
+    "details": "Build failed: Missing helper_cuda.h (CUDA samples header)"
+  },
+  "metrics": []
+}

@@ -46,13 +46,13 @@
     "working_directory": "cuda/hotspot",
     "commands": {
       "configure": null,
-      "build": "make CUDA_DIR=/usr/local/cuda",
+      "build": "make CUDA_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda",
       "clean": "make clean"
     },
     "variables": {
       "CUDA_DIR": {
         "description": "Path to CUDA toolkit installation",
-        "default": "/usr/local/cuda",
+        "default": "/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda",
         "detection": "dirname $(dirname $(which nvcc))"
       }
     },
@@ -64,11 +64,10 @@
     "executable": "./hotspot",
     "default_arguments": [
       "512",
-      "512",
       "2",
       "4",
-      "../../data/hotspot/power_512",
       "../../data/hotspot/temp_512",
+      "../../data/hotspot/power_512",
       "output.out"
     ],
     "timeout_seconds": 300,
@@ -77,34 +76,32 @@
       "correctness": {
         "arguments": [
           "512",
-          "512",
           "2",
           "4",
-          "../../data/hotspot/power_512",
           "../../data/hotspot/temp_512",
+          "../../data/hotspot/power_512",
           "output.out"
         ],
         "description": "Small input for correctness verification of hotspot (CUDA)",
         "input_files": [
-          "../../data/hotspot/power_512",
-          "../../data/hotspot/temp_512"
+          "../../data/hotspot/temp_512",
+          "../../data/hotspot/power_512"
         ],
         "expected_results": null
       },
       "performance": {
         "arguments": [
-          "1024",
-          "1024",
+          "512",
           "2",
           "4",
-          "../../data/hotspot/power_1024",
-          "../../data/hotspot/temp_1024",
+          "../../data/hotspot/temp_512",
+          "../../data/hotspot/power_512",
           "output.out"
         ],
         "description": "Large input for performance measurement of hotspot (CUDA)",
         "input_files": [
-          "../../data/hotspot/power_1024",
-          "../../data/hotspot/temp_1024"
+          "../../data/hotspot/temp_512",
+          "../../data/hotspot/power_512"
         ],
         "expected_results": null
       }

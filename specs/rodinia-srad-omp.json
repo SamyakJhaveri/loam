@@ -56,8 +56,8 @@
   "run": {
     "executable": "./srad",
     "default_arguments": [
-      "502",
-      "458",
+      "512",
+      "512",
       "0",
       "127",
       "0",
@@ -71,8 +71,8 @@
     "input_configurations": {
       "correctness": {
         "arguments": [
-          "502",
-          "458",
+          "512",
+          "512",
           "0",
           "127",
           "0",
@@ -87,8 +87,8 @@
       },
       "performance": {
         "arguments": [
-          "2048",
-          "2048",
+          "512",
+          "512",
           "0",
           "127",
           "0",

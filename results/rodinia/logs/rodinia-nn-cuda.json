@@ -1,0 +1,26 @@
+{
+  "spec_id": "rodinia-nn-cuda",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 1.11,
+    "stdout": "rm -rf *.o nn hurricane_gen\n\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc -cuda nn_cuda.cu\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc -o nn nn_cuda.cu\ngcc -g -O3 -Wall -o hurricane_gen hurricane_gen.c -lm\n",
+    "stderr": "nn_cuda.cu: In function \u2018int main(int, char**)\u2019:\nnn_cuda.cu:113:29: warning: \u2018cudaError_t cudaThreadSynchronize()\u2019 is deprecated [-Wdeprecated-declarations]\n  113 |         cudaThreadSynchronize();\n      |         ~~~~~~~~~~~~~~~~~~~~^~\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/../targets/x86_64-linux/include/cuda_runtime_api.h:1075:46: note: declared here\n 1075 | extern __CUDA_DEPRECATED __host__ cudaError_t CUDARTAPI cudaThreadSynchronize(void);\n      |                                              ^~~~~~~~~~~~~~~~~~~~~\nnn_cuda.cu:119:29: warning: \u2018cudaError_t cudaThreadSynchronize()\u2019 is deprecated [-Wdeprecated-declarations]\n  119 |         cudaThreadSynchronize();\n      |         ~~~~~~~~~~~~~~~~~~~~^~\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/../targets/x86_64-linux/include/cuda_runtime_api.h:1075:46: note: declared here\n 1075 | extern __CUDA_DEPRECATED __host__ cudaError_t CUDARTAPI cudaThreadSynchronize(void);\n      |                                              ^~~~~~~~~~~~~~~~~~~~~\nnn_cuda.cu:168:22: warning: \u2018cudaError_t cudaThreadSynchronize()\u2019 is deprecated [-Wdeprecated-declarations]\n  168 |     cudaThreadSynchronize();\n      |     ~~~~~~~~~~~~~~~~~^~\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/../targets/x86_64-linux/include/cuda_runtime_api.h:1075:46: note: declared here\n 1075 | extern __CUDA_DEPRECATED __host__ cudaError_t CUDARTAPI cudaThreadSynchronize(void);\n      |                                              ^~~~~~~~~~~~~~~~~~~~~\nhurricane_gen.c: In function \u2018main\u2019:\nhurricane_gen.c:32:30: warning: \u2018%d\u2019 directive writing between 1 and 10 bytes into a region of size 7 [-Wformat-overflow=]\n   32 |     sprintf(fname, \"data/cane%d_%d.db\", num_files,j);\n      |                              ^~\nhurricane_gen.c:32:20: note: directive argument in the range [1, 2147483647]\n   32 |     sprintf(fname, \"data/cane%d_%d.db\", num_files,j);\n      |                    ^~~~~~~~~~~~~~~~~~~\nhurricane_gen.c:32:20: note: directive argument in the range [0, 2147483646]\nIn file included from /usr/include/stdio.h:980,\n                 from hurricane_gen.c:1:\nIn function \u2018sprintf\u2019,\n    inlined from \u2018main\u2019 at hurricane_gen.c:32:5:\n/usr/include/x86_64-linux-gnu/bits/stdio2.h:30:10: note: \u2018__builtin___sprintf_chk\u2019 output between 16 and 34 bytes into a destination of size 16\n   30 |   return __builtin___sprintf_chk (__s, __USE_FORTIFY_LEVEL - 1,\n      |          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n   31 |                                   __glibc_objsize (__s), __fmt,\n      |                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n   32 |                                   __va_arg_pack ());\n      |                                   ~~~~~~~~~~~~~~~~~\n",
+    "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/cuda/nn/nn"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.081,
+      "exit_code": 0,
+      "stdout": "1988 12 27  0 18 TONY       30.0  89.8  113   39 --> Distance=0.199997\n1980 10 22 18  3 ISAAC      30.1  90.4  110  778 --> Distance=0.412312\n1997 11 14 12 24 HELENE     30.5  89.8  134  529 --> Distance=0.538515\n2003  8 27 12 10 TONY       29.9  89.4  160  286 --> Distance=0.608275\n1974 12 22 18 24 JOYCE      30.6  89.9   80  593 --> Distance=0.608276\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Process exits cleanly"
+  },
+  "metrics": []
+}

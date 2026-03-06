@@ -1,0 +1,26 @@
+{
+  "spec_id": "rodinia-hotspot3d-opencl",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.177,
+    "stdout": "rm -f hotspot3D.out *.txt \n\ncc 3D.c CL_helper.c ../util/timing.c -O3 -lm  -I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include -L/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64 -lOpenCL  \\\n\t-I../util -DTIMING \\\n\t-o hotspot3D.out\n",
+    "stderr": "In file included from 3D.c:4:\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/cl.h:26:9: note: \u2018#pragma message: cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\u2019\n   26 | #pragma message(\"cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\")\n      |         ^~~~~~~\n3D.c: In function \u2018main\u2019:\n3D.c:221:3: warning: \u2018clCreateCommandQueue\u2019 is deprecated [-Wdeprecated-declarations]\n  221 |   commands = clCreateCommandQueue(context, device_id, CL_QUEUE_PROFILING_ENABLE, &err);\n      |   ^~~~~~~~\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/cl.h:1987:1: note: declared here\n 1987 | clCreateCommandQueue(cl_context                     context,\n      | ^~~~~~~~~~~~~~~~~~~~\nIn file included from CL_helper.h:5,\n                 from CL_helper.c:1:\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/cl.h:26:9: note: \u2018#pragma message: cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\u2019\n   26 | #pragma message(\"cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\")\n      |         ^~~~~~~\nIn file included from ../util/timing.h:5,\n                 from ../util/timing.c:3:\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/cl.h:26:9: note: \u2018#pragma message: cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\u2019\n   26 | #pragma message(\"cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\")\n      |         ^~~~~~~\n",
+    "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/opencl/hotspot3D/hotspot3D.out"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 1.196,
+      "exit_code": 0,
+      "stdout": "num_devices = 1\n \n Device is  NVIDIA GeForce RTX 4070 \n NVIDIA Corporation \nInit: 95.260002\nMemAlloc: 0.003000\nHtoD: 2.095712\nExec: 1.827392\nDtoH: 2.455968\nClose: 20.834999\nTotal: 124.528999\nAccuracy: 5.547907e-05\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Process exits cleanly"
+  },
+  "metrics": []
+}

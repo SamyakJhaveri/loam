@@ -58,11 +58,8 @@
     "executable": "./nn",
     "default_arguments": [
       "filelist.txt",
-      "-r",
       "5",
-      "-lat",
       "30",
-      "-lng",
       "90"
     ],
     "timeout_seconds": 300,
@@ -71,16 +68,17 @@
       "correctness": {
         "arguments": [
           "filelist.txt",
-          "-r",
           "5",
-          "-lat",
           "30",
-          "-lng",
           "90"
         ],
         "description": "Small input for correctness verification of nn (OMP)",
         "input_files": [
-          "filelist.txt"
+          "filelist.txt",
+          "../../data/nn/cane4_0.db",
+          "../../data/nn/cane4_1.db",
+          "../../data/nn/cane4_2.db",
+          "../../data/nn/cane4_3.db"
         ],
         "expected_results": null
       }

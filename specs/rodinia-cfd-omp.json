@@ -48,7 +48,7 @@
     "working_directory": "openmp/cfd",
     "commands": {
       "configure": null,
-      "build": "make",
+      "build": "make euler3d_cpu",
       "clean": "make clean"
     },
     "variables": null,

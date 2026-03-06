@@ -56,13 +56,13 @@
     "working_directory": "cuda/lavaMD",
     "commands": {
       "configure": null,
-      "build": "make CUDA_DIR=/usr/local/cuda",
+      "build": "make CUDA_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda CUDA_FLAG='-arch sm_89'",
       "clean": "make clean"
     },
     "variables": {
       "CUDA_DIR": {
         "description": "Path to CUDA toolkit installation",
-        "default": "/usr/local/cuda",
+        "default": "/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda",
         "detection": "dirname $(dirname $(which nvcc))"
       }
     },
@@ -79,7 +79,9 @@
       "10"
     ],
     "timeout_seconds": 300,
-    "environment_variables": null,
+    "environment_variables": {
+      "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64:$LD_LIBRARY_PATH"
+    },
     "input_configurations": {
       "correctness": {
         "arguments": [

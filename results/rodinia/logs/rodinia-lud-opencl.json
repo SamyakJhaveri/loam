@@ -1,0 +1,26 @@
+{
+  "spec_id": "rodinia-lud-opencl",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.428,
+    "stdout": "cd ocl; make clean\nmake[1]: Entering directory '/home/samyak/Desktop/parbench_sam/rodinia/opencl/lud/ocl'\nrm -f ../lud.out\nmake[1]: Leaving directory '/home/samyak/Desktop/parbench_sam/rodinia/opencl/lud/ocl'\n\ncd ocl; make\nmake[1]: Entering directory '/home/samyak/Desktop/parbench_sam/rodinia/opencl/lud/ocl'\ng++  -g -O3 -Wall \\\n\t-o lud.out \\\n\tlud.cpp ../common/common.c ../../util/timing.c \\\n\t-I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/targets/x86_64-linux/include -I../common -L/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/targets/x86_64-linux/lib -lOpenCL \\\n\t-I../../util -DTIMING \\\n\t-Wno-unused-result\nmake[1]: Leaving directory '/home/samyak/Desktop/parbench_sam/rodinia/opencl/lud/ocl'\nmv ocl/lud.out .;\n",
+    "stderr": "In file included from lud.cpp:27:\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/targets/x86_64-linux/include/CL/cl.h:26:104: note: \u2018#pragma message: cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\u2019\n   26 | #pragma message(\"cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\")\n      |                                                                                                        ^\nlud.cpp: In function \u2018int initialize(int, int)\u2019:\nlud.cpp:79:41: warning: \u2018_cl_command_queue* clCreateCommandQueue(cl_context, cl_device_id, cl_command_queue_properties, cl_int*)\u2019 is deprecated [-Wdeprecated-declarations]\n   79 |         cmd_queue = clCreateCommandQueue( context, device_list[device_id_inuse], CL_QUEUE_PROFILING_ENABLE, NULL );\n      |                     ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/targets/x86_64-linux/include/CL/cl.h:1987:1: note: declared here\n 1987 | clCreateCommandQueue(cl_context                     context,\n      | ^~~~~~~~~~~~~~~~~~~~\nIn file included from ../../util/timing.h:5,\n                 from ../../util/timing.c:3:\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/targets/x86_64-linux/include/CL/cl.h:26:104: note: \u2018#pragma message: cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\u2019\n   26 | #pragma message(\"cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\")\n      |                                                                                                        ^\n",
+    "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/opencl/lud/lud.out"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.181,
+      "exit_code": 0,
+      "stdout": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nInit: 156.613998\nMemAlloc: 0.003000\nHtoD: 0.011296\nExec: 0.360000\nDtoH: 0.010592\nClose: 0.058000\nTotal: 157.595993\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Process exits cleanly"
+  },
+  "metrics": []
+}

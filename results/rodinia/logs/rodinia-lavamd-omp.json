@@ -1,0 +1,26 @@
+{
+  "spec_id": "rodinia-lavamd-omp",
+  "build": {
+    "status": "pass",
+    "duration_seconds": 0.138,
+    "stdout": "rm\t*.o \\\n\t./kernel/*.o \\\n\t./util/num/*.o \\\n\t./util/timer/*.o \\\n                ./util/device/*.o \\\n\tlavaMD\n\ngcc\t main.c \\\n\t\t-c \\\n\t\t-o main.o \\\n\t\t-O3\ngcc\t\t\t\t./kernel/kernel_cpu.c \\\n\t\t\t\t\t-c \\\n\t\t\t\t\t-o ./kernel/kernel_cpu.o \\\n\t\t\t\t\t-O3 \\\n\t\t\t\t\t-fopenmp\ngcc\t\t\t./util/num/num.c \\\n\t\t\t\t-c \\\n\t\t\t\t-o ./util/num/num.o \\\n\t\t\t\t-O3\ngcc\t\t\t\t./util/timer/timer.c \\\n\t\t\t\t\t-c \\\n\t\t\t\t\t-o ./util/timer/timer.o \\\n\t\t\t\t\t-O3\ngcc\tmain.o \\\n\t\t./kernel/kernel_cpu.o \\\n\t\t./util/num/num.o \\\n\t\t./util/timer/timer.o \\\n\t\t-lm \\\n\t\t-lgomp \\\n\t\t-o lavaMD\n",
+    "stderr": "rm: cannot remove '*.o': No such file or directory\nrm: cannot remove './kernel/*.o': No such file or directory\nrm: cannot remove './util/num/*.o': No such file or directory\nrm: cannot remove './util/timer/*.o': No such file or directory\nrm: cannot remove './util/device/*.o': No such file or directory\nrm: cannot remove 'lavaMD': No such file or directory\nmake: *** [makefile:67: clean] Error 1\n\nmain.c: In function \u2018main\u2019:\nmain.c:95:20: warning: implicit declaration of function \u2018strcmp\u2019 [-Wimplicit-function-declaration]\n   95 |                 if(strcmp(argv[dim_cpu.cur_arg], \"-cores\")==0){\n      |                    ^~~~~~\nmain.c:42:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018strcmp\u2019\n   41 | #include \"./kernel/kernel_cpu.h\"                                // (in library path specified here)\n  +++ |+#include <string.h>\n   42 | \nmain.c:253:15: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  253 |         srand(time(NULL));\n      |               ^~~~\nmain.c:42:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   41 | #include \"./kernel/kernel_cpu.h\"                                // (in library path specified here)\n  +++ |+#include <time.h>\n   42 | \n./kernel/kernel_cpu.c: In function \u2018kernel_cpu\u2019:\n./kernel/kernel_cpu.c:206:38: warning: unknown conversion type character \u2018:\u2019 in format [-Wformat=]\n  206 |         printf(\"%15.12f s, %15.12f % : CPU/MCPU: VARIABLES\\n\",                          (float) (time1-time0) / 1000000, (float) (time1-time0) / (float) (time4-time0) * 100);\n      |                                      ^\n./kernel/kernel_cpu.c:207:38: warning: unknown conversion type character \u2018:\u2019 in format [-Wformat=]\n  207 |         printf(\"%15.12f s, %15.12f % : MCPU: SET DEVICE\\n\",                                     (float) (time2-time1) / 1000000, (float) (time2-time1) / (float) (time4-time0) * 100);\n      |                                      ^\n./kernel/kernel_cpu.c:208:38: warning: unknown conversion type character \u2018:\u2019 in format [-Wformat=]\n  208 |         printf(\"%15.12f s, %15.12f % : CPU/MCPU: INPUTS\\n\",                             (float) (time3-time2) / 1000000, (float) (time3-time2) / (float) (time4-time0) * 100);\n      |                                      ^\n./kernel/kernel_cpu.c:209:38: warning: unknown conversion type character \u2018:\u2019 in format [-Wformat=]\n  209 |         printf(\"%15.12f s, %15.12f % : CPU/MCPU: KERNEL\\n\",                                     (float) (time4-time3) / 1000000, (float) (time4-time3) / (float) (time4-time0) * 100);\n      |                                      ^\n./util/timer/timer.c: In function \u2018get_time\u2019:\n./util/timer/timer.c:26:9: warning: implicit declaration of function \u2018gettimeofday\u2019 [-Wimplicit-function-declaration]\n   26 |         gettimeofday(&tv, NULL);\n      |         ^~~~~~~~~~~~\n",
+    "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/openmp/lavaMD/lavaMD"
+  },
+  "runs": {
+    "correctness": {
+      "status": "pass",
+      "configuration": "correctness",
+      "duration_seconds": 0.001,
+      "exit_code": 0,
+      "stdout": "ERROR: Unknown parameter\n",
+      "stderr": ""
+    }
+  },
+  "verification": {
+    "status": "pass",
+    "strategy_used": "exit_code",
+    "details": "exit_code=0 == expected 0. Process exits cleanly"
+  },
+  "metrics": []
+}

@@ -65,7 +65,7 @@
     "working_directory": "cuda/huffman",
     "commands": {
       "configure": null,
-      "build": "make",
+      "build": "make NVCC_OPTS='-O3 -arch=sm_89 -Xcompiler -m64'",
       "clean": "make clean"
     },
     "variables": null,
@@ -75,14 +75,22 @@
   },
   "run": {
     "executable": "./pavle",
-    "default_arguments": [],
+    "default_arguments": [
+      "../../data/huffman/test1024_H2.206587175259.in"
+    ],
     "timeout_seconds": 300,
-    "environment_variables": null,
+    "environment_variables": {
+      "LD_LIBRARY_PATH": "/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64:$LD_LIBRARY_PATH"
+    },
     "input_configurations": {
       "correctness": {
-        "arguments": [],
+        "arguments": [
+          "../../data/huffman/test1024_H2.206587175259.in"
+        ],
         "description": "Small input for correctness verification of huffman (CUDA)",
-        "input_files": [],
+        "input_files": [
+          "../../data/huffman/test1024_H2.206587175259.in"
+        ],
         "expected_results": null
       }
     }

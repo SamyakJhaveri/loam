@@ -45,7 +45,7 @@
     "working_directory": "openmp/nw",
     "commands": {
       "configure": null,
-      "build": "make",
+      "build": "make needle",
       "clean": "make clean"
     },
     "variables": null,
@@ -57,7 +57,8 @@
     "executable": "./needle",
     "default_arguments": [
       "2048",
-      "10"
+      "10",
+      "4"
     ],
     "timeout_seconds": 300,
     "environment_variables": null,
@@ -65,7 +66,8 @@
       "correctness": {
         "arguments": [
           "2048",
-          "10"
+          "10",
+          "4"
         ],
         "description": "Small input for correctness verification of nw (OMP)",
         "input_files": [],
@@ -74,7 +76,8 @@
       "performance": {
         "arguments": [
           "8192",
-          "10"
+          "10",
+          "4"
         ],
         "description": "Large input for performance measurement of nw (OMP)",
         "input_files": [],

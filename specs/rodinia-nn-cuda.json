@@ -47,13 +47,13 @@
     "working_directory": "cuda/nn",
     "commands": {
       "configure": null,
-      "build": "make CUDA_DIR=/usr/local/cuda",
+      "build": "make CUDA_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda",
       "clean": "make clean"
     },
     "variables": {
       "CUDA_DIR": {
         "description": "Path to CUDA toolkit installation",
-        "default": "/usr/local/cuda",
+        "default": "/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda",
         "detection": "dirname $(dirname $(which nvcc))"
       }
     },
@@ -87,7 +87,11 @@
         ],
         "description": "Small input for correctness verification of nn (CUDA)",
         "input_files": [
-          "filelist.txt"
+          "filelist.txt",
+          "../../data/nn/cane4_0.db",
+          "../../data/nn/cane4_1.db",
+          "../../data/nn/cane4_2.db",
+          "../../data/nn/cane4_3.db"
         ],
         "expected_results": null
       }
