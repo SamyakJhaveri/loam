@@ -149,13 +149,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.737429+00:00",
+        "timestamp": "2026-03-06T22:15:55.276572+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "Sorting list of 1000000 floats.\nNVIDIA GeForce RTX 4070 \nHistogram Kernel Time: 0.046 \nBucket Count Kernel Time: 0.097 \nBucket Prefix Kernel Time: 0.007 \nBucket Sort Kernel Time: 0.066 \nMerge First Kernel Time: 0.015 \nMerge Pass Kernel Iteration Time: 0.013 \nMerge Pass Kernel Iteration Time: 0.015 \nMerge Pass Kernel Iteration Time: 0.024 \nMerge Pass Kernel Iteration Time: 0.025 \nMerge Pass Kernel Iteration Time: 0.023 \nMerge Pass Kernel Iteration Time: 0.022 \nMerge Pass Kernel Iteration Time: 0.029 \nMerge Pass Kernel Iteration Time: 0.052 \nMerge Pass Kernel Iteration Time: 0.111 \nMerge Pass Kernel Time: 0.313 \nMerge Pack Kernel Time: 0.015 \nInit: 222.641998\nMemAlloc: 0.016000\nHtoD: 4.645216\nExec: 0.558912\nDtoH: 3.082592\nClose: 0.982000\nTotal: 237.177002\n",
-                "wall_time_seconds": 0.376,
+                "stdout_snippet": "Sorting list of 1000000 floats.\nNVIDIA GeForce RTX 4070 \nHistogram Kernel Time: 0.047 \nBucket Count Kernel Time: 0.095 \nBucket Prefix Kernel Time: 0.008 \nBucket Sort Kernel Time: 0.067 \nMerge First Kernel Time: 0.014 \nMerge Pass Kernel Iteration Time: 0.014 \nMerge Pass Kernel Iteration Time: 0.015 \nMerge Pass Kernel Iteration Time: 0.023 \nMerge Pass Kernel Iteration Time: 0.025 \nMerge Pass Kernel Iteration Time: 0.023 \nMerge Pass Kernel Iteration Time: 0.022 \nMerge Pass Kernel Iteration Time: 0.029 \nMerge Pass Kernel Iteration Time: 0.052 \nMerge Pass Kernel Iteration Time: 0.111 \nMerge Pass Kernel Time: 0.312 \nMerge Pack Kernel Time: 0.015 \nInit: 116.854996\nMemAlloc: 0.021000\nHtoD: 4.694687\nExec: 0.558240\nDtoH: 3.894496\nClose: 0.965000\nTotal: 132.983994\n",
+                "wall_time_seconds": 0.272,
                 "metrics": {}
             }
         }

@@ -150,13 +150,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.743236+00:00",
+        "timestamp": "2026-03-06T22:15:55.281740+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
                 "stdout_snippet": "WG size of kernel = 16 X 16\nRandomizing the input matrix\nStart the SRAD main loop\nComputation Done\n",
-                "wall_time_seconds": 0.075,
+                "wall_time_seconds": 0.068,
                 "metrics": {}
             }
         }

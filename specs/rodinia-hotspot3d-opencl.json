@@ -161,13 +161,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.736783+00:00",
+        "timestamp": "2026-03-06T22:15:55.275994+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "num_devices = 1\n \n Device is  NVIDIA GeForce RTX 4070 \n NVIDIA Corporation \nInit: 95.260002\nMemAlloc: 0.003000\nHtoD: 2.095712\nExec: 1.827392\nDtoH: 2.455968\nClose: 20.834999\nTotal: 124.528999\nAccuracy: 5.547907e-05\n",
-                "wall_time_seconds": 1.196,
+                "stdout_snippet": "num_devices = 1\n \n Device is  NVIDIA GeForce RTX 4070 \n NVIDIA Corporation \nInit: 55.629002\nMemAlloc: 0.003000\nHtoD: 2.162048\nExec: 1.827105\nDtoH: 2.498176\nClose: 19.118000\nTotal: 83.266998\nAccuracy: 5.547907e-05\n",
+                "wall_time_seconds": 1.156,
                 "metrics": {}
             }
         }

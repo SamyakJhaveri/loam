@@ -155,13 +155,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.734802+00:00",
+        "timestamp": "2026-03-06T22:15:55.274268+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "WG size of kernel 1 = 0, WG size of kernel 2= 0 X 0\nCreate matrix internally in parse, size = 16 \nNumber of platforms detected:1\nChecking For OpenCl Compatible Devices\nPlatform 0\nvendor: NVIDIA Corporation\nno of devices: 1\n\tdevice 0: NVIDIA Corporation NVIDIA GeForce RTX 4070\n\nUsing Platform 0 Device 0 \nCreating GPU Context\nProfiling enabled\ncreate input internally before create, size = 16 \n\tgaussianElim_kernels.cl\nMatrix Size\tWrite(s) [size]\t\tKernel(s)\tRead(s)  [size]\t\tTotal(s)\n16x16      \t0.002656 [0.00MB]\t0.089440\t0.002912 [0.00MB]\t0.095008\n\nInit: 52.977001\nMemAlloc: 0.002000\nHtoD: 0.002656\nExec: 0.089440\nDtoH: 0.002912\nClose: 0.067000\nTotal: 84.755997\n",
-                "wall_time_seconds": 0.109,
+                "stdout_snippet": "WG size of kernel 1 = 0, WG size of kernel 2= 0 X 0\nCreate matrix internally in parse, size = 16 \nNumber of platforms detected:1\nChecking For OpenCl Compatible Devices\nPlatform 0\nvendor: NVIDIA Corporation\nno of devices: 1\n\tdevice 0: NVIDIA Corporation NVIDIA GeForce RTX 4070\n\nUsing Platform 0 Device 0 \nCreating GPU Context\nProfiling enabled\ncreate input internally before create, size = 16 \n\tgaussianElim_kernels.cl\nMatrix Size\tWrite(s) [size]\t\tKernel(s)\tRead(s)  [size]\t\tTotal(s)\n16x16      \t0.002784 [0.00MB]\t0.088192\t0.002944 [0.00MB]\t0.093920\n\nInit: 47.863998\nMemAlloc: 0.002000\nHtoD: 0.002784\nExec: 0.088192\nDtoH: 0.002944\nClose: 0.048000\nTotal: 51.435001\n",
+                "wall_time_seconds": 0.073,
                 "metrics": {}
             }
         }

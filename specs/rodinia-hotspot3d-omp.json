@@ -130,13 +130,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.736579+00:00",
+        "timestamp": "2026-03-06T22:15:55.275821+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "24 threads running\nTime: 0.150 (s)\nAccuracy: 4.096975e-05\n",
-                "wall_time_seconds": 1.253,
+                "stdout_snippet": "24 threads running\nTime: 0.148 (s)\nAccuracy: 4.096975e-05\n",
+                "wall_time_seconds": 1.215,
                 "metrics": {}
             }
         }

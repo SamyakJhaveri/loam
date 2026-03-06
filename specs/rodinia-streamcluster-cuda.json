@@ -170,13 +170,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.743863+00:00",
+        "timestamp": "2026-03-06T22:15:55.282294+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "PARSEC Benchmark Suite\ntime = 2.184833s\ntime pgain = 0.000000s\ntime pgain_dist = 0.000000s\ntime pgain_init = 0.000000s\ntime pselect = 0.000294s\ntime pspeedy = 0.277457s\ntime pshuffle = 0.001623s\ntime localSearch = 2.087226s\n\n\n====CUDA Timing info (pgain)====\ntime serial = 0.924104s\ntime CPU to GPU memory copy = 0.272544s\ntime GPU to CPU memory copy back = 0.181602s\ntime GPU malloc = 0.022204s\ntime GPU free = 0.028471s\ntime kernel = 0.266474s\n",
-                "wall_time_seconds": 2.211,
+                "stdout_snippet": "PARSEC Benchmark Suite\ntime = 2.133800s\ntime pgain = 0.000000s\ntime pgain_dist = 0.000000s\ntime pgain_init = 0.000000s\ntime pselect = 0.000185s\ntime pspeedy = 0.272882s\ntime pshuffle = 0.001694s\ntime localSearch = 2.037939s\n\n\n====CUDA Timing info (pgain)====\ntime serial = 0.894227s\ntime CPU to GPU memory copy = 0.272529s\ntime GPU to CPU memory copy back = 0.181779s\ntime GPU malloc = 0.020744s\ntime GPU free = 0.028095s\ntime kernel = 0.256051s\n",
+                "wall_time_seconds": 2.16,
                 "metrics": {}
             }
         }

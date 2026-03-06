@@ -172,13 +172,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.742405+00:00",
+        "timestamp": "2026-03-06T22:15:55.280998+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "VIDEO SEQUENCE TOOK 0.004477\nnumber of available platforms:1.\nclGetPlatformInfo: NVIDIA Corporation\nTIME TO SEND TO GPU: 0.000225\nthreads_per_block=512 \ntotal weight: 1.000000\nXE: 64.576401\nYE: 64.448219\n0.730163\ntotal weight: 1.000000\nXE: 62.304356\nYE: 65.388130\n2.191373\ntotal weight: 1.000000\nXE: 60.343636\nYE: 66.324608\n4.332759\ntotal weight: 1.000000\nXE: 58.547482\nYE: 67.482300\n6.469650\ntotal weight: 1.000000\nXE: 56.631798\nYE: 68.509109\n8.638430\ntotal weight: 1.000000\nXE: 54.727516\nYE: 69.813171\n10.944036\ntotal weight: 1.000000\nXE: 52.258442\nYE: 70.306625\n13.328080\ntotal weight: 1.000000\nXE: 50.623497\nYE: 71.474678\n15.323238\ntotal weight: 1.000000\nXE: 48.587318\nYE: 72.740685\n17.718643\nGPU Execution: 0.001895\nFREE TIME: 0.000017\nSEND TO SEND BACK: 0.000046\nSEND ARRAY X BACK: 0.000009\nSEND ARRAY Y BACK: 0.000009\nSEND WEIGHTS BACK: 0.000011\nInit: 137.634003\nMemAlloc: 0.005000\nHtoD: 0.011616\nExec: 1.307808\nDtoH: 0.026912\nClose: 0.076000\nTotal: 139.901001\nERROR: clEnqueueNDRangeKernel(ke",
-                "wall_time_seconds": 0.168,
+                "stdout_snippet": "VIDEO SEQUENCE TOOK 0.004329\nnumber of available platforms:1.\nclGetPlatformInfo: NVIDIA Corporation\nTIME TO SEND TO GPU: 0.000143\nthreads_per_block=512 \ntotal weight: 1.000000\nXE: 64.576401\nYE: 64.448219\n0.730163\ntotal weight: 1.000000\nXE: 62.304356\nYE: 65.388130\n2.191373\ntotal weight: 1.000000\nXE: 60.343636\nYE: 66.324608\n4.332759\ntotal weight: 1.000000\nXE: 58.547482\nYE: 67.482300\n6.469650\ntotal weight: 1.000000\nXE: 56.631798\nYE: 68.509109\n8.638430\ntotal weight: 1.000000\nXE: 54.727516\nYE: 69.813171\n10.944036\ntotal weight: 1.000000\nXE: 52.258442\nYE: 70.306625\n13.328080\ntotal weight: 1.000000\nXE: 50.623497\nYE: 71.474678\n15.323238\ntotal weight: 1.000000\nXE: 48.587318\nYE: 72.740685\n17.718643\nGPU Execution: 0.001877\nFREE TIME: 0.000015\nSEND TO SEND BACK: 0.000044\nSEND ARRAY X BACK: 0.000009\nSEND ARRAY Y BACK: 0.000009\nSEND WEIGHTS BACK: 0.000011\nInit: 45.277000\nMemAlloc: 0.003000\nHtoD: 0.011616\nExec: 1.306112\nDtoH: 0.026560\nClose: 0.067000\nTotal: 47.445000\nERROR: clEnqueueNDRangeKernel(kern",
+                "wall_time_seconds": 0.073,
                 "metrics": {}
             }
         }

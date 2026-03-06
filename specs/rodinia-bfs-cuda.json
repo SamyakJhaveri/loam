@@ -129,13 +129,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.731963+00:00",
+        "timestamp": "2026-03-06T22:15:55.271815+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "Reading File\nRead File\nCopied Everything to GPU memory\nStart traversing the tree\nKernel Executed 12 times\nResult stored in result.txt\nInit: 0.000000\nMemAlloc: 0.000000\nHtoD: 55.587994\nExec: 0.649000\nDtoH: 0.330000\nClose: 0.805000\nTotal: 112.308998\n",
-                "wall_time_seconds": 0.528,
+                "stdout_snippet": "Reading File\nRead File\nCopied Everything to GPU memory\nStart traversing the tree\nKernel Executed 12 times\nResult stored in result.txt\nInit: 0.000000\nMemAlloc: 0.000000\nHtoD: 65.018990\nExec: 0.644000\nDtoH: 0.318000\nClose: 0.803000\nTotal: 127.099998\n",
+                "wall_time_seconds": 0.546,
                 "metrics": {}
             }
         }

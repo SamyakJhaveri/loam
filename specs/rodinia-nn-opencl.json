@@ -164,15 +164,15 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.741114+00:00",
+        "timestamp": "2026-03-06T22:15:55.279853+00:00",
         "configurations": {
             "correctness": {
                 "status": "fail",
-                "exit_code": -11,
+                "exit_code": -1,
                 "stdout_snippet": "",
-                "wall_time_seconds": 1.073,
+                "wall_time_seconds": 300.039,
                 "metrics": {},
-                "fail_reason": "exit_code=-11"
+                "fail_reason": "Execution timed out after 300s"
             }
         }
     },

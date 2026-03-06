@@ -138,13 +138,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.741319+00:00",
+        "timestamp": "2026-03-06T22:15:55.280031+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
                 "stdout_snippet": "WG size of kernel = 16 \nStart Needleman-Wunsch\nProcessing top-left matrix\nProcessing bottom-right matrix\n",
-                "wall_time_seconds": 0.132,
+                "wall_time_seconds": 0.116,
                 "metrics": {}
             }
         }

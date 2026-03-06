@@ -182,13 +182,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.743646+00:00",
+        "timestamp": "2026-03-06T22:15:55.282099+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "WG size of kernel = 256 \nPlatform: NVIDIA Corporation\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n--------------------------------\nmax # of workgroups = 899, # of threads/workgroup = 256 (ensure that device can handle)\nIterations Progress: hidden\nTime spent in different stages of the application:\nInit: 56.563000\nMemAlloc: 0.003000\nHtoD: 0.037600\nExec: 0.126368\nDtoH: 0.036672\nClose: 18.152000\nTotal: 75.407997\n",
-                "wall_time_seconds": 0.092,
+                "stdout_snippet": "WG size of kernel = 256 \nPlatform: NVIDIA Corporation\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n--------------------------------\nmax # of workgroups = 899, # of threads/workgroup = 256 (ensure that device can handle)\nIterations Progress: hidden\nTime spent in different stages of the application:\nInit: 46.780998\nMemAlloc: 0.003000\nHtoD: 0.039424\nExec: 0.126336\nDtoH: 0.036576\nClose: 19.917999\nTotal: 67.402000\n",
+                "wall_time_seconds": 0.085,
                 "metrics": {}
             }
         }

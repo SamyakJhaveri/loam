@@ -149,13 +149,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.739346+00:00",
+        "timestamp": "2026-03-06T22:15:55.278259+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nInit: 156.613998\nMemAlloc: 0.003000\nHtoD: 0.011296\nExec: 0.360000\nDtoH: 0.010592\nClose: 0.058000\nTotal: 157.595993\n",
-                "wall_time_seconds": 0.181,
+                "stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nInit: 46.919998\nMemAlloc: 0.002000\nHtoD: 0.011392\nExec: 0.358944\nDtoH: 0.010592\nClose: 0.044000\nTotal: 47.801998\n",
+                "wall_time_seconds": 0.07,
                 "metrics": {}
             }
         }

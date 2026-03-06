@@ -151,13 +151,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.732381+00:00",
+        "timestamp": "2026-03-06T22:15:55.272193+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\nInit: 58.230000\nMemAlloc: 0.002000\nHtoD: 2.230304\nExec: 0.527616\nDtoH: 0.235616\nClose: 0.896000\nTotal: 63.202000\n--cambine:passed:-)\n",
-                "wall_time_seconds": 0.517,
+                "stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\nInit: 52.539001\nMemAlloc: 0.004000\nHtoD: 2.251648\nExec: 0.524352\nDtoH: 0.209536\nClose: 0.897000\nTotal: 57.519001\n--cambine:passed:-)\n",
+                "wall_time_seconds": 0.519,
                 "metrics": {}
             }
         }

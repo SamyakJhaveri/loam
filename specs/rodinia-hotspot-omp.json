@@ -149,13 +149,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.735964+00:00",
+        "timestamp": "2026-03-06T22:15:55.275276+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "Start computing the transient temperature\nEnding simulation\nTotal time: 0.001 seconds\n",
-                "wall_time_seconds": 0.071,
+                "stdout_snippet": "Start computing the transient temperature\nEnding simulation\nTotal time: 0.000 seconds\n",
+                "wall_time_seconds": 0.069,
                 "metrics": {}
             }
         }

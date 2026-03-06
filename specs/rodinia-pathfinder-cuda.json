@@ -139,13 +139,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.742626+00:00",
+        "timestamp": "2026-03-06T22:15:55.281192+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
                 "stdout_snippet": "pyramidHeight: 20\ngridSize: [100000]\nborder:[20]\nblockSize: 256\nblockGrid:[463]\ntargetBlock:[216]\n",
-                "wall_time_seconds": 0.135,
+                "wall_time_seconds": 0.128,
                 "metrics": {}
             }
         }

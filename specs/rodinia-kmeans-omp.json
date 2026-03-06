@@ -141,13 +141,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.737860+00:00",
+        "timestamp": "2026-03-06T22:15:55.276944+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "I/O completed\nnum of threads = 1\nnumber of Clusters 5\nnumber of Attributes 34\n\nTime for process: 1.511035\n",
-                "wall_time_seconds": 1.888,
+                "stdout_snippet": "I/O completed\nnum of threads = 1\nnumber of Clusters 5\nnumber of Attributes 34\n\nTime for process: 1.495930\n",
+                "wall_time_seconds": 1.859,
                 "metrics": {}
             }
         }

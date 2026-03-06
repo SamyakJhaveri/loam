@@ -164,13 +164,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.734354+00:00",
+        "timestamp": "2026-03-06T22:15:55.273885+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
                 "stdout_snippet": "\nSource file:\t\t../../data/dwt2d/rgb.bmp\n Dimensions:\t\t1024x1024\n Components count:\t3\n Bit depth:\t\t8\n DWT levels:\t\t3\n Forward transform:\t1\n 9/7 transform:\t\t0\nLoading ipnput: ../../data/dwt2d/rgb.bmp\nprecteno 3145728, inputsize 3145728\n\n*** 3 stages of 2D forward DWT:\nsliding steps = 9 , gx = 6 , gy = 15 \nkl_fdwt53Kernel in launchFDW53Kernel has finished\nsliding steps = 5 , gx = 4 , gy = 13 \nkl_fdwt53Kernel in launchFDW53Kernel has finished\nsliding steps = 3 , gx = 4 , gy = 11 \nkl_fdwt53Kernel in launchFDW53Kernel has finished\n\n*** 3 stages of 2D forward DWT:\nsliding steps = 9 , gx = 6 , gy = 15 \nkl_fdwt53Kernel in launchFDW53Kernel has finished\nsliding steps = 5 , gx = 4 , gy = 13 \nkl_fdwt53Kernel in launchFDW53Kernel has finished\nsliding steps = 3 , gx = 4 , gy = 11 \nkl_fdwt53Kernel in launchFDW53Kernel has finished\n\n*** 3 stages of 2D forward DWT:\nsliding steps = 9 , gx = 6 , gy = 15 \nkl_fdwt53Kernel in launchFDW53Kernel has finished\nsliding steps = 5 , gx = 4 , gy = 13 \nkl_fdwt53Kern",
-                "wall_time_seconds": 0.096,
+                "wall_time_seconds": 0.1,
                 "metrics": {}
             }
         }

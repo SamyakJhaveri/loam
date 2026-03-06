@@ -132,13 +132,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.733604+00:00",
+        "timestamp": "2026-03-06T22:15:55.273268+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "Starting...\nCompute time: 3.55409\nSaving solution...\nSaved solution...\nCleaning up...\nDone...\n",
-                "wall_time_seconds": 4.13,
+                "stdout_snippet": "Starting...\nCompute time: 3.46214\nSaving solution...\nSaved solution...\nCleaning up...\nDone...\n",
+                "wall_time_seconds": 3.877,
                 "metrics": {}
             }
         }

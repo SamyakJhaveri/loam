@@ -160,13 +160,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.741961+00:00",
+        "timestamp": "2026-03-06T22:15:55.280598+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "VIDEO SEQUENCE TOOK 0.004586\nTIME TO SEND TO GPU: 0.000058\nGPU Execution: 0.015265\nFREE TIME: 0.000013\nTIME TO SEND BACK: 0.000045\nSEND ARRAY X BACK: 0.000014\nSEND ARRAY Y BACK: 0.000014\nSEND WEIGHTS BACK: 0.000004\nXE: 48.544580\nYE: 72.589122\n17.681714\nPARTICLE FILTER TOOK 0.064498\nENTIRE PROGRAM TOOK 0.069084\n",
-                "wall_time_seconds": 0.089,
+                "stdout_snippet": "VIDEO SEQUENCE TOOK 0.004530\nTIME TO SEND TO GPU: 0.000054\nGPU Execution: 0.015272\nFREE TIME: 0.000013\nTIME TO SEND BACK: 0.000045\nSEND ARRAY X BACK: 0.000015\nSEND ARRAY Y BACK: 0.000012\nSEND WEIGHTS BACK: 0.000005\nXE: 48.591856\nYE: 72.360459\n17.530207\nPARTICLE FILTER TOOK 0.067546\nENTIRE PROGRAM TOOK 0.072076\n",
+                "wall_time_seconds": 0.093,
                 "metrics": {}
             }
         }

@@ -146,13 +146,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.738930+00:00",
+        "timestamp": "2026-03-06T22:15:55.277889+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nTime consumed(ms): 0.434000\n",
-                "wall_time_seconds": 0.072,
+                "stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nTime consumed(ms): 0.455000\n",
+                "wall_time_seconds": 0.08,
                 "metrics": {}
             }
         }

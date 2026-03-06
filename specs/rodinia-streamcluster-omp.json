@@ -160,13 +160,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.744078+00:00",
+        "timestamp": "2026-03-06T22:15:55.282500+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "PARSEC Benchmark Suite\ntime = 24.866786\ntime pgain = 24.486697\ntime pgain_dist = 24.239913\ntime pgain_init = 0.080346\ntime pselect = 0.000188\ntime pspeedy = 0.276922\ntime pshuffle = 0.001832\ntime localSearch = 24.773937\nloops=7\n",
-                "wall_time_seconds": 24.872,
+                "stdout_snippet": "PARSEC Benchmark Suite\ntime = 24.634182\ntime pgain = 24.258643\ntime pgain_dist = 24.014535\ntime pgain_init = 0.080343\ntime pselect = 0.000186\ntime pspeedy = 0.272349\ntime pshuffle = 0.001925\ntime localSearch = 24.541209\nloops=7\n",
+                "wall_time_seconds": 24.639,
                 "metrics": {}
             }
         }

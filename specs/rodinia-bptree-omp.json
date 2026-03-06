@@ -146,13 +146,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.732917+00:00",
+        "timestamp": "2026-03-06T22:15:55.272691+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "Input File: ../../data/b+tree/mil.txt \nCommand File: ../../data/b+tree/command.txt \nCommand Buffer: \nj 6000 3000\nk 10000\n\n\nGetting input from file file...\nTransforming data to a GPU suitable structure...\nTree transformation took 0.020039\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nTime spent in different stages of CPU/MCPU KERNEL:\n 0.000008000000 s,  0.079792536795 % : MCPU: SET DEVICE\n 0.010018000379 s, 99.920204162598 % : CPU/MCPU: KERNEL\nTotal time:\n0.010026000440 s\n> > > > > > > > > > > > \n ******command: k count=10000 \nTime spent in different stages of CPU/MCPU KERNEL:\n 0.000000000000 s,  0.000000000000 % : MCPU: SET DEVICE\n 0.007829000242 s, 100.000000000000 % : CPU/MCPU: KERNEL\nTotal time:\n0.007829000242 s\n> > > > > > > > > > \n",
-                "wall_time_seconds": 0.473,
+                "stdout_snippet": "Input File: ../../data/b+tree/mil.txt \nCommand File: ../../data/b+tree/command.txt \nCommand Buffer: \nj 6000 3000\nk 10000\n\n\nGetting input from file file...\nTransforming data to a GPU suitable structure...\nTree transformation took 0.021609\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nTime spent in different stages of CPU/MCPU KERNEL:\n 0.000008000000 s,  0.079067014158 % : MCPU: SET DEVICE\n 0.010110000148 s, 99.920936584473 % : CPU/MCPU: KERNEL\nTotal time:\n0.010118000209 s\n> > > > > > > > > > > > \n ******command: k count=10000 \nTime spent in different stages of CPU/MCPU KERNEL:\n 0.000000000000 s,  0.000000000000 % : MCPU: SET DEVICE\n 0.008019999601 s, 100.000000000000 % : CPU/MCPU: KERNEL\nTotal time:\n0.008019999601 s\n> > > > > > > > > > \n",
+                "wall_time_seconds": 0.489,
                 "metrics": {}
             }
         }

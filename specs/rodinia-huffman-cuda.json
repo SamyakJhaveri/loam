@@ -158,13 +158,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.736999+00:00",
+        "timestamp": "2026-03-06T22:15:55.276184+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "CUDA initialized.\nCUDA! Starting VLC Tests!\nParameters: num_elements: 262144, num_blocks: 1024, num_block_threads: 256\n----------------------------\nTime to generate:  0.3 ms\n\n../../data/huffman/test1024_H2.206587175259.in, 1048576 bytes, entropy 2.206587\n\nCPU Encoding time (CPU): 5.850000 (ms)\nCPU Encoded to 291334 [B]\nGPU Encoding time (SM64HUFF): 0.013117 (ms)\nNum_blocks to be passed to scan is 1024.\nComparing vectors: \nPASS! vectors are matching!\n",
-                "wall_time_seconds": 0.093,
+                "stdout_snippet": "CUDA initialized.\nCUDA! Starting VLC Tests!\nParameters: num_elements: 262144, num_blocks: 1024, num_block_threads: 256\n----------------------------\nTime to generate:  0.3 ms\n\n../../data/huffman/test1024_H2.206587175259.in, 1048576 bytes, entropy 2.206587\n\nCPU Encoding time (CPU): 5.854000 (ms)\nCPU Encoded to 291334 [B]\nGPU Encoding time (SM64HUFF): 0.012886 (ms)\nNum_blocks to be passed to scan is 1024.\nComparing vectors: \nPASS! vectors are matching!\n",
+                "wall_time_seconds": 0.09,
                 "metrics": {}
             }
         }

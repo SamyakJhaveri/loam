@@ -153,13 +153,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.741737+00:00",
+        "timestamp": "2026-03-06T22:15:55.280381+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "WG size of kernel = 16 \nnum_devices = 1\nworksize = 2048\nProcessing upper-left matrix\nProcessing lower-right matrix\nComputation Done\nInit: 44.335999\nMemAlloc: 0.002000\nHtoD: 1.985952\nExec: 1.280480\nDtoH: 4.859104\nClose: 0.816000\nTotal: 54.394001\n",
-                "wall_time_seconds": 0.089,
+                "stdout_snippet": "WG size of kernel = 16 \nnum_devices = 1\nworksize = 2048\nProcessing upper-left matrix\nProcessing lower-right matrix\nComputation Done\nInit: 45.539001\nMemAlloc: 0.001000\nHtoD: 1.936096\nExec: 1.271232\nDtoH: 5.828480\nClose: 0.812000\nTotal: 56.582001\n",
+                "wall_time_seconds": 0.09,
                 "metrics": {}
             }
         }

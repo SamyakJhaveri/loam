@@ -143,13 +143,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.734581+00:00",
+        "timestamp": "2026-03-06T22:15:55.274076+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "WG size of kernel 1 = 512, WG size of kernel 2= 4 X 4\nTotal Device found: 1\nDevice Name \t\t - NVIDIA GeForce RTX 4070 \n**************************************\nTotal Global Memory\t\t\t - 12267136 KB\nShared memory available per block \t - 48 KB\nNumber of registers per thread block \t - 65536\nWarp size in threads \t\t\t - 32\nMemory Pitch \t\t\t\t - 2147483647 bytes\nMaximum threads per block \t\t - 1024\nMaximum Thread Dimension (block) \t - 1024 1024 64\nMaximum Thread Dimension (grid) \t - 2147483647 65535 65535\nTotal constant memory \t\t\t - 65536 bytes\nCUDA ver \t\t\t\t - 8.9\nClock rate \t\t\t\t - 2520000 KHz\nTexture Alignment \t\t\t - 512 bytes\nDevice Overlap \t\t\t\t - Allowed\nNumber of Multi processors \t\t - 46\n\nCreate matrix internally in parse, size = 16 \n\nTime total (including memory transfers)\t0.060220 sec\nTime for CUDA kernels:\t0.010786 sec\n",
-                "wall_time_seconds": 0.086,
+                "stdout_snippet": "WG size of kernel 1 = 512, WG size of kernel 2= 4 X 4\nTotal Device found: 1\nDevice Name \t\t - NVIDIA GeForce RTX 4070 \n**************************************\nTotal Global Memory\t\t\t - 12267136 KB\nShared memory available per block \t - 48 KB\nNumber of registers per thread block \t - 65536\nWarp size in threads \t\t\t - 32\nMemory Pitch \t\t\t\t - 2147483647 bytes\nMaximum threads per block \t\t - 1024\nMaximum Thread Dimension (block) \t - 1024 1024 64\nMaximum Thread Dimension (grid) \t - 2147483647 65535 65535\nTotal constant memory \t\t\t - 65536 bytes\nCUDA ver \t\t\t\t - 8.9\nClock rate \t\t\t\t - 2520000 KHz\nTexture Alignment \t\t\t - 512 bytes\nDevice Overlap \t\t\t\t - Allowed\nNumber of Multi processors \t\t - 46\n\nCreate matrix internally in parse, size = 16 \n\nTime total (including memory transfers)\t0.048574 sec\nTime for CUDA kernels:\t0.000238 sec\n",
+                "wall_time_seconds": 0.074,
                 "metrics": {}
             }
         }

@@ -145,13 +145,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.731167+00:00",
+        "timestamp": "2026-03-06T22:15:55.271121+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
                 "stdout_snippet": "Random number generator seed: 7\nInput layer size : 65536\nStarting training kernel\nPerforming GPU computation\nTraining done\n",
-                "wall_time_seconds": 0.097,
+                "wall_time_seconds": 0.095,
                 "metrics": {}
             }
         }

@@ -167,13 +167,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.739975+00:00",
+        "timestamp": "2026-03-06T22:15:55.278840+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "Time spent in different stages of the application:\n0.000000000000 s, 0.000000000000 % : SETUP VARIABLES\n0.064480997622 s, 7.021183013916 % : ALLOCATE CPU MEMORY AND GPU MEMORY\n0.000037000002 s, 0.004028842319 % : READ DATA FROM FILES\n0.853859007359 s, 92.974678039551 % : RUN COMPUTATION\n0.000001000000 s, 0.000108887631 % : FREE MEMORY\nTotal time:\n0.918377995491 s\n",
-                "wall_time_seconds": 0.946,
+                "stdout_snippet": "Time spent in different stages of the application:\n0.000000000000 s, 0.000000000000 % : SETUP VARIABLES\n0.052175000310 s, 18.153383255005 % : ALLOCATE CPU MEMORY AND GPU MEMORY\n0.000029000001 s, 0.010090044700 % : READ DATA FROM FILES\n0.235207006335 s, 81.836181640625 % : RUN COMPUTATION\n0.000001000000 s, 0.000347932597 % : FREE MEMORY\nTotal time:\n0.287411987782 s\n",
+                "wall_time_seconds": 0.326,
                 "metrics": {}
             }
         }

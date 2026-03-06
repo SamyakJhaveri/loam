@@ -160,13 +160,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.732662+00:00",
+        "timestamp": "2026-03-06T22:15:55.272447+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "WG size of kernel 1 & 2  = 256 \nSelecting device 0\nInput File: ../../data/b+tree/mil.txt \nCommand File: ../../data/b+tree/command.txt \nCommand Buffer: \nj 6000 3000\nk 10000\n\n\nGetting input from file ../../data/b+tree/mil.txt...\nTransforming data to a GPU suitable structure...\nTree transformation took 0.066878\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\n# of blocks = 6000, # of threads/block = 256 (ensure that device can handle)\nTime spent in different stages of GPU_CUDA KERNEL:\n 0.000013000000 s,  0.734463274479 % : GPU: SET DEVICE / DRIVER INIT\n 0.000193000000 s, 10.903954505920 % : GPU MEM: ALO\n 0.000986999949 s, 55.762714385986 % : GPU MEM: COPY IN\n 0.000127000007 s,  7.175141334534 % : GPU: KERNEL\n 0.000023000001 s,  1.299435019493 % : GPU MEM: COPY OUT\n 0.000426999992 s, 24.124294281006 % : GPU MEM: FRE\nTotal time:\n0.001769999973 s\n> > > > > > > > > > > > \n ******command: k count=10000 \nrecords_elem=100",
-                "wall_time_seconds": 0.431,
+                "stdout_snippet": "WG size of kernel 1 & 2  = 256 \nSelecting device 0\nInput File: ../../data/b+tree/mil.txt \nCommand File: ../../data/b+tree/command.txt \nCommand Buffer: \nj 6000 3000\nk 10000\n\n\nGetting input from file ../../data/b+tree/mil.txt...\nTransforming data to a GPU suitable structure...\nTree transformation took 0.066445\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\n# of blocks = 6000, # of threads/block = 256 (ensure that device can handle)\nTime spent in different stages of GPU_CUDA KERNEL:\n 0.000011000000 s,  0.632911384106 % : GPU: SET DEVICE / DRIVER INIT\n 0.000172000000 s,  9.896432876587 % : GPU MEM: ALO\n 0.000999000040 s, 57.479866027832 % : GPU MEM: COPY IN\n 0.000120999997 s,  6.962025165558 % : GPU: KERNEL\n 0.000023000001 s,  1.323360204697 % : GPU MEM: COPY OUT\n 0.000411999994 s, 23.705408096313 % : GPU MEM: FRE\nTotal time:\n0.001737999963 s\n> > > > > > > > > > > > \n ******command: k count=10000 \nrecords_elem=100",
+                "wall_time_seconds": 0.434,
                 "metrics": {}
             }
         }

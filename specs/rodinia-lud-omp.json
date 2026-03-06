@@ -144,12 +144,12 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.739139+00:00",
+        "timestamp": "2026-03-06T22:15:55.278074+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "Generate input matrix internally, size =256\nCreating matrix internally size=256\nrunning OMP on host\nTime consumed(ms): 2.636000\n",
+                "stdout_snippet": "Generate input matrix internally, size =256\nCreating matrix internally size=256\nrunning OMP on host\nTime consumed(ms): 2.931000\n",
                 "wall_time_seconds": 0.004,
                 "metrics": {}
             }

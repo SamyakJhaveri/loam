@@ -161,13 +161,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:00:19.733145+00:00",
+        "timestamp": "2026-03-06T22:15:55.272889+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "WG size of kernel 1 = 256 WG size of kernel 2 = 256 \nInput File: ../../data/b+tree/mil.txt \nCommand File: ../../data/b+tree/command.txt \nCommand Buffer: \nj 6000 3000\nk 10000\n\n\nGetting input from file file...\nTransforming data to a GPU suitable structure...\nTree transformation took 0.066745\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n--------------------------------\n# of blocks = 6000, # of threads/block = 256 (ensure that device can handle)\nTime spent in different stages of GPU_CUDA KERNEL:\nInit: 97.047997\nMemAlloc: 0.004000\nHtoD: 0.925600\nExec: 0.048928\nDtoH: 0.003648\nClose: 21.062000\nTotal: 119.522003\n> > > > > > > > > > > > \n ******command: k count=10000 \nrecords_elem=1000000, records_unit_mem=4, records_mem=4000000\nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPl",
-                "wall_time_seconds": 0.535,
+                "stdout_snippet": "WG size of kernel 1 = 256 WG size of kernel 2 = 256 \nInput File: ../../data/b+tree/mil.txt \nCommand File: ../../data/b+tree/command.txt \nCommand Buffer: \nj 6000 3000\nk 10000\n\n\nGetting input from file file...\nTransforming data to a GPU suitable structure...\nTree transformation took 0.067077\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n--------------------------------\n# of blocks = 6000, # of threads/block = 256 (ensure that device can handle)\nTime spent in different stages of GPU_CUDA KERNEL:\nInit: 57.527000\nMemAlloc: 0.005000\nHtoD: 1.004896\nExec: 0.045824\nDtoH: 0.003680\nClose: 18.997000\nTotal: 77.927002\n> > > > > > > > > > > > \n ******command: k count=10000 \nrecords_elem=1000000, records_unit_mem=4, records_mem=4000000\nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPla",
+                "wall_time_seconds": 0.453,
                 "metrics": {}
             }
         }
