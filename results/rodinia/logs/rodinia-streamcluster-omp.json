@@ -2,7 +2,7 @@
   "spec_id": "rodinia-streamcluster-omp",
   "build": {
     "status": "pass",
-    "duration_seconds": 0.658,
+    "duration_seconds": 0.655,
     "stdout": "rm -f *.o *~ *.txt sc_cpu sc_omp\n\ng++   streamcluster_original.cpp -o sc_cpu  -DENABLE_THREADS -pthread\ng++ -O3 -fopenmp -o sc_omp streamcluster_omp.cpp\n",
     "stderr": "streamcluster_original.cpp: In function \u2018void outcenterIDs(Points*, long int*, char*)\u2019:\nstreamcluster_original.cpp:1096:21: warning: format \u2018%u\u2019 expects argument of type \u2018unsigned int\u2019, but argument 3 has type \u2018long int\u2019 [-Wformat=]\n 1096 |       fprintf(fp, \"%u\\n\", centerIDs[i]);\n      |                    ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_original.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_original.cpp:1143:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n 1143 |     fprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |\n      |                           int         size_t {aka long unsigned int}\n      |                          %ld\nstreamcluster_omp.cpp: In function \u2018void outcenterIDs(Points*, long int*, char*)\u2019:\nstreamcluster_omp.cpp:1098:21: warning: format \u2018%u\u2019 expects argument of type \u2018unsigned int\u2019, but argument 3 has type \u2018long int\u2019 [-Wformat=]\n 1098 |       fprintf(fp, \"%u\\n\", centerIDs[i]);\n      |                    ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_omp.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_omp.cpp:1147:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n 1147 |     fprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |\n      |                           int         size_t {aka long unsigned int}\n      |                          %ld\n",
     "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/openmp/streamcluster/sc_omp"
@@ -11,9 +11,9 @@
     "correctness": {
       "status": "pass",
       "configuration": "correctness",
-      "duration_seconds": 24.872,
+      "duration_seconds": 24.639,
       "exit_code": 0,
-      "stdout": "PARSEC Benchmark Suite\ntime = 24.866786\ntime pgain = 24.486697\ntime pgain_dist = 24.239913\ntime pgain_init = 0.080346\ntime pselect = 0.000188\ntime pspeedy = 0.276922\ntime pshuffle = 0.001832\ntime localSearch = 24.773937\nloops=7\n",
+      "stdout": "PARSEC Benchmark Suite\ntime = 24.634182\ntime pgain = 24.258643\ntime pgain_dist = 24.014535\ntime pgain_init = 0.080343\ntime pselect = 0.000186\ntime pspeedy = 0.272349\ntime pshuffle = 0.001925\ntime localSearch = 24.541209\nloops=7\n",
       "stderr": "read 65536 points\nfinish local search\n"
     }
   },

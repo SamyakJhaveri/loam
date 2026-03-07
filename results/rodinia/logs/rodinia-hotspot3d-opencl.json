@@ -11,9 +11,9 @@
     "correctness": {
       "status": "pass",
       "configuration": "correctness",
-      "duration_seconds": 1.196,
+      "duration_seconds": 1.156,
       "exit_code": 0,
-      "stdout": "num_devices = 1\n \n Device is  NVIDIA GeForce RTX 4070 \n NVIDIA Corporation \nInit: 95.260002\nMemAlloc: 0.003000\nHtoD: 2.095712\nExec: 1.827392\nDtoH: 2.455968\nClose: 20.834999\nTotal: 124.528999\nAccuracy: 5.547907e-05\n",
+      "stdout": "num_devices = 1\n \n Device is  NVIDIA GeForce RTX 4070 \n NVIDIA Corporation \nInit: 55.629002\nMemAlloc: 0.003000\nHtoD: 2.162048\nExec: 1.827105\nDtoH: 2.498176\nClose: 19.118000\nTotal: 83.266998\nAccuracy: 5.547907e-05\n",
       "stderr": ""
     }
   },
