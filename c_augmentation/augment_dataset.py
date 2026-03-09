@@ -105,6 +105,9 @@ class Transform(ABC):
 
     name: str = "BaseTransform"
 
+    def __init__(self, level: int = 4):
+        self.level = level
+
     @abstractmethod
     def is_applicable(self, code: str, index: ci.Index) -> bool:
         """Check if this transform can be applied to the code."""
@@ -273,7 +276,28 @@ class AstTransform(Transform):
         if not valid_candidates:
             return TransformResult(False, code, f"{self.name}: 0 changes")
 
-        selected = random.choice(valid_candidates)
+        # Based on level, determine how many non-overlapping edits to apply
+        if self.level == 1:
+            num_to_select = 1
+        elif self.level == 2:
+            num_to_select = max(1, int(len(valid_candidates) * 0.33))
+        elif self.level == 3:
+            num_to_select = max(1, int(len(valid_candidates) * 0.66))
+        else:
+            num_to_select = len(valid_candidates)
+            
+        selected_candidates = random.sample(valid_candidates, num_to_select)
+        
+        all_edits = []
+        for c in selected_candidates:
+            all_edits.extend(c.edits)
+            
+        # We need a unified candidate to apply all selected non-overlapping edits at once
+        selected = RewriteCandidate(
+            description=f"{self.name}: {len(selected_candidates)} candidates applied",
+            edits=all_edits
+        )
+        
         rewritten = _apply_candidate(code, selected)
         return TransformResult(True, rewritten, selected.description)
 
@@ -810,8 +834,13 @@ class ChangeNames(Transform):
         renamed_vars = 0
 
         for decl in decls:
-            if random.random() >= 0.5:
+            if self.level == 1 and renamed_vars >= 1:
                 continue
+            if self.level == 2 and random.random() > 0.33:
+                continue
+            if self.level == 3 and random.random() > 0.66:
+                continue
+            
             new_name = self._fresh_name(used_names, counter)
             counter += 1
             edits = self._symbol_edits(code, tu, decl, new_name)
@@ -836,7 +865,7 @@ class ChangeNames(Transform):
 @dataclass
 class AugmentationConfig:
     """Configuration for the augmentation process."""
-    probability: float = 0.5  # Probability of applying each applicable transform
+    level: int = 4  # Aggressiveness level (1-4)
     seed: Optional[int] = None
     transforms: list[Transform] = field(default_factory=list)
 
@@ -874,13 +903,29 @@ def augment_code(code: str, config: AugmentationConfig, index: ci.Index) -> tupl
     result = code
     applied_transforms = []
     
+    transforms_to_try = list(config.transforms)
+    random.shuffle(transforms_to_try)
+    
+    if config.level == 1:
+        num_transforms = 1
+    elif config.level == 2:
+        num_transforms = max(1, int(len(transforms_to_try) * 0.33))
+    elif config.level == 3:
+        num_transforms = max(1, int(len(transforms_to_try) * 0.66))
+    else:
+        num_transforms = len(transforms_to_try)
+        
+    transforms_to_try = transforms_to_try[:num_transforms]
+    
     for transform in config.transforms:
+        # We enforce the limited pool by only running if not filtered out
+        if transform not in transforms_to_try:
+            continue
         if transform.is_applicable(result, index):
-            if random.random() < config.probability:
-                transform_result = transform.apply(result, index)
-                if transform_result.applied:
-                    result = transform_result.code
-                    applied_transforms.append(transform.name)
+            transform_result = transform.apply(result, index)
+            if transform_result.applied:
+                result = transform_result.code
+                applied_transforms.append(transform.name)
     
     return result, applied_transforms
 
@@ -929,10 +974,11 @@ def main():
         help='Output directory for augmented dataset'
     )
     parser.add_argument(
-        '--probability', '-p',
-        type=float,
-        default=0.5,
-        help='Probability of applying each applicable transform (default: 0.5)'
+        '--augment_level', '-l',
+        type=int,
+        choices=[1, 2, 3, 4],
+        default=4,
+        help='Aggressiveness level (1=light, 4=aggressive) (default: 4)'
     )
     parser.add_argument(
         '--seed', '-s',
@@ -956,14 +1002,14 @@ def main():
     
     # Configure transforms
     config = AugmentationConfig(
-        probability=args.probability,
+        level=args.augment_level,
         seed=args.seed,
         transforms=[
-            ArithmeticTransform(),
-            SwapCondition(),
-            PointerArithmeticToArrayIndex(),
-            TypedefExpansion(),
-            ChangeNames(),
+            ArithmeticTransform(level=args.augment_level),
+            SwapCondition(level=args.augment_level),
+            PointerArithmeticToArrayIndex(level=args.augment_level),
+            TypedefExpansion(level=args.augment_level),
+            ChangeNames(level=args.augment_level),
         ]
     )
     

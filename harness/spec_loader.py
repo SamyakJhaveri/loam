@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from itertools import combinations
 from pathlib import Path
 from typing import Any
@@ -137,7 +138,7 @@ def resolve_paths(spec: dict[str, Any], project_root: Path) -> dict[str, Any]:
     return out
 
 
-def get_prompt_payload(spec: dict[str, Any], project_root: Path) -> dict[str, str]:
+def get_prompt_payload(spec: dict[str, Any], project_root: Path, augment_level: int = 0) -> dict[str, str]:
     """Read every file in *files.prompt_payload* and return their contents.
 
     This is exactly what would be sent to the LLM for translation.
@@ -156,10 +157,44 @@ def get_prompt_payload(spec: dict[str, Any], project_root: Path) -> dict[str, st
     """
     resolved = resolve_paths(spec, project_root)
     payload: dict[str, str] = {}
+
+    ci_index = None
+    aug_config = None
+    if augment_level > 0:
+        augment_level = max(1, min(4, augment_level))
+        try:
+            import clang.cindex as ci
+            from c_augmentation.augment_dataset import (
+                AugmentationConfig,
+                ArithmeticTransform,
+                SwapCondition,
+                PointerArithmeticToArrayIndex,
+                TypedefExpansion,
+                ChangeNames,
+                augment_code
+            )
+            ci_index = ci.Index.create()
+            aug_config = AugmentationConfig(
+                level=augment_level,
+                transforms=[
+                    ArithmeticTransform(level=augment_level),
+                    SwapCondition(level=augment_level),
+                    PointerArithmeticToArrayIndex(level=augment_level),
+                    TypedefExpansion(level=augment_level),
+                    ChangeNames(level=augment_level),
+                ]
+            )
+        except ImportError as e:
+            print(f"Warning: Failed to import c_augmentation modules: {e}")
+            augment_level = 0
+
     for abs_path in resolved["_resolved"]["files"]["prompt_payload"]:
         path = Path(abs_path)
         if path.exists():
-            payload[path.name] = path.read_text(encoding="utf-8", errors="replace")
+            content = path.read_text(encoding="utf-8", errors="replace")
+            if augment_level > 0 and aug_config and ci_index and path.suffix in [".c", ".cpp", ".cu", ".h", ".hpp", ".cuh", ".dp.cpp"]:
+                content, _ = augment_code(content, aug_config, ci_index)
+            payload[path.name] = content
         else:
             payload[path.name] = f"<FILE NOT FOUND: {path}>"
     return payload
