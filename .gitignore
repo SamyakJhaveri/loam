@@ -27,6 +27,7 @@ build/
 .venv/
 venv/
 env/
+env_parbench/
 
 # IDE
 .idea/
