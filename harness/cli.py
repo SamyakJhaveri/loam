@@ -168,7 +168,7 @@ def cmd_prompt(args: argparse.Namespace) -> int:
     spec = load_spec(_spec_path(args))
     identity = spec.get("identity", {})
 
-    payload = get_prompt_payload(spec, project_root)
+    payload = get_prompt_payload(spec, project_root, augment_level=getattr(args, 'augment_level', 0))
     print_prompt_payload(
         spec_id=identity.get("unique_id", "?"),
         api=identity.get("parallel_api", "?"),
@@ -241,7 +241,6 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Also print machine-readable JSON output",
     )
-
     sub = parser.add_subparsers(dest="command", required=True)
 
     # -- build --
@@ -278,6 +277,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print the prompt payload (what the LLM sees)",
     )
     p_prompt.add_argument("spec_file", help="Path to spec JSON file")
+    p_prompt.add_argument(
+        "--augment_level",
+        type=int,
+        choices=[0, 1, 2, 3, 4],
+        default=0,
+        help="Apply semantics-preserving C/C++ augmentation (0=none, 1=light, 4=aggressive)",
+    )
     p_prompt.set_defaults(func=cmd_prompt)
 
     # -- info --
