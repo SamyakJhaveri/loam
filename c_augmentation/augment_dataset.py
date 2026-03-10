@@ -243,7 +243,7 @@ def _fatal_diagnostics(tu: ci.TranslationUnit) -> int:
     return sum(
         1
         for diag in tu.diagnostics
-        if diag.severity >= ci.Diagnostic.Fatal
+        if diag.severity >= ci.Diagnostic.Error  # severity >= 3 (Error or Fatal)
     )
 
 
@@ -519,7 +519,7 @@ class PointerArithmeticToArrayIndex(AstTransform):
                             TextEdit(
                                 start_offset=start,
                                 end_offset=end,
-                                replacement=f"*(({base_text}) + ({idx_text}))",
+                                replacement=f"(*({base_text} + {idx_text}))",
                             )
                         ],
                     )
@@ -812,6 +812,27 @@ class ChangeNames(Transform):
                     replacement=new_name,
                 )
             )
+
+        # Fallback: token-level scan for cases libclang doesn't resolve via DECL_REF_EXPR
+        # (e.g. CUDA <<<grid, threads>>> kernel launch syntax).
+        import re as _re
+        old_name = decl.spelling
+        if old_name:
+            owner_start, owner_end = _cursor_offsets(owner)
+            owner_text = code[owner_start:owner_end]
+            covered_offsets = {e.start_offset for e in edits}
+            for m in _re.finditer(rf"\b{_re.escape(old_name)}\b", owner_text):
+                abs_start = owner_start + m.start()
+                abs_end = owner_start + m.end()
+                if abs_start not in covered_offsets:
+                    covered_offsets.add(abs_start)
+                    edits.append(
+                        TextEdit(
+                            start_offset=abs_start,
+                            end_offset=abs_end,
+                            replacement=new_name,
+                        )
+                    )
 
         unique: dict[tuple[int, int], TextEdit] = {}
         for edit in edits:
