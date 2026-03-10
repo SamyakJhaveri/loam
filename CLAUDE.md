@@ -3,8 +3,12 @@
 ## Environment
 
 - **Always activate the venv first:** `source env_parbench/bin/activate`
-- **Then use `python3`** (not bare `python`) for all commands within the venv.
+- **Python version:** 3.12.3 (interpreter: `python3.12`)
+- **Inside the venv**, `python`, `python3`, and `python3.12` all resolve to the same `python3.12` binary.
+- **Use `python3`** for all commands within the venv (not bare `python`).
 - **Install packages** with `python3 -m pip install <pkg>` inside the activated venv if missing.
+- **Site-packages:** fully isolated (`include-system-site-packages = false`) — system packages are not visible inside the venv.
+- **Venv was created from** `python3` which resolved to `python3.12` at creation time.
 
 ## config/paths.json
 

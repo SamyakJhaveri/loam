@@ -224,19 +224,23 @@ def _identifier_range(cursor: ci.Cursor, spelling: Optional[str] = None) -> Opti
 
 
 def _apply_candidate(code: str, candidate: RewriteCandidate) -> str:
-    rewritten = code
+    # libclang reports byte offsets (UTF-8). Operate on the encoded bytes so that
+    # multi-byte Unicode characters (e.g. em-dashes in comments) do not cause a
+    # mismatch between Python str character indices and libclang byte offsets.
+    rewritten_bytes = code.encode("utf-8")
     seen_ranges: set[tuple[int, int]] = set()
     for edit in sorted(candidate.edits, key=lambda item: item.start_offset, reverse=True):
         key = (edit.start_offset, edit.end_offset)
         if key in seen_ranges:
             continue
         seen_ranges.add(key)
-        rewritten = (
-            rewritten[: edit.start_offset]
-            + edit.replacement
-            + rewritten[edit.end_offset :]
+        replacement_bytes = edit.replacement.encode("utf-8")
+        rewritten_bytes = (
+            rewritten_bytes[: edit.start_offset]
+            + replacement_bytes
+            + rewritten_bytes[edit.end_offset :]
         )
-    return rewritten
+    return rewritten_bytes.decode("utf-8")
 
 
 def _fatal_diagnostics(tu: ci.TranslationUnit) -> int:
@@ -813,6 +817,33 @@ class ChangeNames(Transform):
                 )
             )
 
+        # Fallback: scan all tokens in the owning function for identifier tokens
+        # matching the declaration's spelling.  libclang does not emit DECL_REF_EXPR
+        # for every reference site in CUDA code (e.g. cudaMemcpy arguments and
+        # kernel-launch <<< >>> syntax are often opaque to the AST).  A pure token
+        # scan catches those sites so the rename stays consistent.
+        #
+        # Safety: we only add sites that the AST walk missed; the result is still
+        # validated by _validate_rewrite before it is accepted.
+        spelling = decl.spelling
+        if spelling:
+            ast_offsets: set[int] = {e.start_offset for e in edits}
+            for token in owner.get_tokens():
+                if token.kind != TokenKind.IDENTIFIER:
+                    continue
+                if token.spelling != spelling:
+                    continue
+                start = token.extent.start.offset
+                end = token.extent.end.offset
+                if start not in ast_offsets:
+                    edits.append(
+                        TextEdit(
+                            start_offset=start,
+                            end_offset=end,
+                            replacement=new_name,
+                        )
+                    )
+
         unique: dict[tuple[int, int], TextEdit] = {}
         for edit in edits:
             unique[(edit.start_offset, edit.end_offset)] = edit
@@ -868,6 +899,7 @@ class AugmentationConfig:
     level: int = 4  # Aggressiveness level (1-4)
     seed: Optional[int] = None
     transforms: list[Transform] = field(default_factory=list)
+    probability: float = 0.5  # Per-transform application probability
 
 
 def load_jsonl(path: Path) -> list[dict]:
