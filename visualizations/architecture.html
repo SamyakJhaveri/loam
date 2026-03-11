@@ -74,6 +74,16 @@
 </head>
 <body>
 
+<nav style="background:var(--surface); border-bottom:1px solid var(--border); padding:0.6rem 2rem; margin:-2rem -2rem 1.5rem -2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center;">
+  <span style="color:var(--accent); font-weight:700; font-size:0.9rem; margin-right:0.5rem;">ParBench</span>
+  <a href="overview.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Overview</a>
+  <a href="build_results.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Build Results</a>
+  <a href="results.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Augmentation</a>
+  <a href="benchmark_landscape.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Landscape</a>
+  <a href="architecture.html" style="color:var(--text); text-decoration:none; font-size:0.85rem; font-weight:700; border-bottom:2px solid var(--accent); padding-bottom:2px;">Architecture</a>
+  <a href="pipeline.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Pipeline</a>
+</nav>
+
 <h1>ParBench Augmentation Architecture</h1>
 <p class="subtitle">AST-driven code augmentation for parallel benchmark evaluation</p>
 
@@ -83,9 +93,9 @@
 <div class="grid">
   <div class="card">
     <h4>specs/</h4>
-    <p>60 Rodinia + 120 HeCBench spec files</p>
+    <p>63 Rodinia + 120 HeCBench spec files</p>
     <ul>
-      <li><span class="tag tag-blue">22 CUDA</span> <span class="tag tag-green">18 OMP</span> <span class="tag tag-purple">20 OpenCL</span></li>
+      <li><span class="tag tag-blue">23 CUDA</span> <span class="tag tag-green">19 OMP</span> <span class="tag tag-purple">21 OpenCL</span></li>
       <li>Format: <code>{suite}-{slug}-{api}.json</code></li>
       <li>Each defines build, run, verify, and file info</li>
     </ul>

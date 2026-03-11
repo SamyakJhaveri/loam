@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ParBench — Benchmark Ecosystem Landscape</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --text-muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
+    --orange: #d18616; --teal: #39d2c0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
+  h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1.8rem; }
+  h2 { color: var(--purple); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  h3 { color: var(--green); margin: 1.5rem 0 0.5rem; font-size: 1.1rem; }
+  .subtitle { color: var(--text-muted); margin-bottom: 2rem; }
+
+  /* Nav */
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+  nav a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
+  nav a:hover { color: var(--text); }
+  nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
+  nav .active { color: var(--text); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+
+  /* Intro */
+  .stat-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 1rem 0 2rem; }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; text-align: center; }
+  .stat-box .n { font-size: 2rem; font-weight: 700; color: var(--accent); }
+  .stat-box .l { color: var(--text-muted); font-size: 0.82rem; }
+
+  /* Heatmap */
+  .heatmap-wrapper { overflow-x: auto; margin: 1rem 0; }
+  .heatmap { border-collapse: collapse; min-width: 600px; }
+  .heatmap th, .heatmap td { padding: 0.45rem 0.7rem; border: 1px solid var(--border); text-align: center; font-size: 0.82rem; }
+  .heatmap th { background: var(--surface); color: var(--accent); font-weight: 600; white-space: nowrap; }
+  .heatmap td.row-header { text-align: right; background: var(--surface); color: var(--text); font-weight: 600; white-space: nowrap; }
+  .heatmap td.diag { font-weight: 700; }
+
+  /* Availability matrix */
+  .avail-wrapper { overflow-x: auto; margin: 1rem 0; }
+  .avail-table { border-collapse: collapse; font-size: 0.78rem; }
+  .avail-table th, .avail-table td { padding: 0.35rem 0.6rem; border: 1px solid var(--border); text-align: center; }
+  .avail-table th { background: var(--surface); color: var(--accent); white-space: nowrap; }
+  .avail-table td.suite-name { text-align: left; white-space: nowrap; background: var(--surface); color: var(--text); }
+  .avail-table td.suite-name.highlighted { background: rgba(88,166,255,0.08); color: var(--accent); font-weight: 700; }
+  .avail-table td.total { background: var(--surface); color: var(--text-muted); font-weight: 600; }
+  .check-yes  { color: var(--green); }
+  .check-no   { color: var(--border); }
+  .api-total { background: var(--surface); color: var(--purple); font-weight: 700; }
+
+  /* Venn-style overlap */
+  .venn-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 1rem 0; }
+  .venn-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; flex: 1; min-width: 200px; }
+  .venn-box h4 { margin-bottom: 0.5rem; font-size: 1rem; }
+  .venn-box .kernels { color: var(--text-muted); font-size: 0.82rem; font-family: monospace; }
+  .venn-box .kernels span { display: inline-block; margin: 2px; padding: 1px 6px; background: rgba(88,166,255,0.1); border-radius: 4px; color: var(--accent); }
+
+  /* Translation pair matrix */
+  .pair-table { border-collapse: collapse; font-size: 0.82rem; }
+  .pair-table th, .pair-table td { padding: 0.4rem 0.7rem; border: 1px solid var(--border); text-align: center; }
+  .pair-table th { background: var(--surface); color: var(--accent); }
+  .pair-table td.row-h { background: var(--surface); color: var(--text); font-weight: 600; }
+
+  p { color: var(--text-muted); margin: 0.5rem 0; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">ParBench</span>
+  <a href="overview.html">Overview</a>
+  <a href="build_results.html">Build Results</a>
+  <a href="results.html">Augmentation</a>
+  <a href="benchmark_landscape.html" class="active">Landscape</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="pipeline.html">Pipeline</a>
+</nav>
+
+<h1>Benchmark Ecosystem Landscape</h1>
+<p class="subtitle">How ParBench fits in the parallel computing benchmark space</p>
+
+<div class="stat-row">
+  <div class="stat-box"><div class="n">21</div><div class="l">Benchmark Suites</div></div>
+  <div class="stat-box"><div class="n">10</div><div class="l">Parallel APIs</div></div>
+  <div class="stat-box"><div class="n">2</div><div class="l">ParBench Suites</div></div>
+  <div class="stat-box"><div class="n">183</div><div class="l">ParBench Specs</div></div>
+</div>
+
+<!-- ─── 1. API Pairwise Coverage Heatmap ─────────────────────────────────── -->
+<h2>1. API Pairwise Coverage Heatmap</h2>
+<p>How many benchmark suites support each pair of parallel APIs. Diagonal = suites that support that API at all. Higher values indicate more cross-API benchmark options available for translation studies.</p>
+
+<div class="heatmap-wrapper">
+  <table class="heatmap" id="heatmap-table"></table>
+</div>
+
+<!-- ─── 2. Benchmark-API Availability Matrix ────────────────────────────── -->
+<h2>2. Benchmark Suite × API Availability</h2>
+<p>Which parallel APIs are available in each of the 21 surveyed benchmark suites. HeCBench and Rodinia (highlighted) are the two suites included in ParBench.</p>
+
+<div class="avail-wrapper">
+  <table class="avail-table" id="avail-table"></table>
+</div>
+
+<!-- ─── 3. Where ParBench Fits ─────────────────────────────────────────── -->
+<h2>3. Where ParBench Fits</h2>
+<p>ParBench selects two complementary suites that together maximize API diversity and kernel variety for LLM translation evaluation.</p>
+
+<div class="venn-row">
+  <div class="venn-box">
+    <h4 style="color:var(--accent)">HeCBench (120 specs)</h4>
+    <p style="margin-bottom:0.5rem">60 kernels × CUDA + SYCL/OMP/HIP<br>Focus: diverse algorithm coverage<br>APIs: CUDA, OMP, SYCL, HIP</p>
+    <div class="kernels">
+      <span>aes</span><span>bilateral</span><span>babelstream</span><span>chi2</span><span>eigenvalue</span>
+      <span>fft</span><span>ising</span><span>lud</span><span>nbody</span><span>nn</span>
+      <span>scan</span><span>sobel</span><span>+48 more</span>
+    </div>
+  </div>
+
+  <div class="venn-box" style="border-color:var(--accent); background:rgba(88,166,255,0.04); flex:0.4; min-width:160px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+    <h4 style="color:var(--accent); margin-bottom:0.5rem">Shared Kernels</h4>
+    <div class="kernels" style="text-align:center">
+      <span>backprop</span><span>gaussian</span><span>lud</span>
+      <span>nn</span><span>nw</span><span>pathfinder</span>
+    </div>
+    <p style="font-size:0.75rem; text-align:center; margin-top:0.5rem">6 kernels in both suites</p>
+  </div>
+
+  <div class="venn-box">
+    <h4 style="color:var(--green)">Rodinia (63 specs)</h4>
+    <p style="margin-bottom:0.5rem">22 kernels × CUDA + OMP + OpenCL<br>Focus: scientific computing patterns<br>APIs: CUDA, OMP, OpenCL</p>
+    <div class="kernels">
+      <span>bfs</span><span>bptree</span><span>cfd</span><span>heartwall</span><span>hotspot</span>
+      <span>hotspot3d</span><span>huffman</span><span>kmeans</span><span>lavamd</span><span>srad</span>
+      <span>streamcluster</span><span>+11 more</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─── 4. Translation Pair Space ─────────────────────────────────────────── -->
+<h2>4. Translation Pair Space</h2>
+<p>ParBench defines directed source→target API translation pairs. The 240 augmented pairs (from Rodinia Phase 5) cover CUDA→OMP, CUDA→OpenCL, and OMP→OpenCL directions. The Phase 4 pilot added CUDA→HIP and CUDA→SYCL.</p>
+
+<table class="pair-table">
+  <thead>
+    <tr>
+      <th>Source ↓ / Target →</th>
+      <th>CUDA</th>
+      <th>OMP</th>
+      <th>OpenCL</th>
+      <th>HIP</th>
+      <th>SYCL</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="row-h">CUDA</td>
+      <td style="color:var(--text-muted)">—</td>
+      <td style="background:rgba(63,185,80,0.1); color:var(--green); font-weight:600">60<br><small style="font-weight:normal; color:var(--text-muted)">Phase 3 + Rodinia</small></td>
+      <td style="background:rgba(63,185,80,0.1); color:var(--green); font-weight:600">21<br><small style="font-weight:normal; color:var(--text-muted)">Rodinia</small></td>
+      <td style="background:rgba(88,166,255,0.08); color:var(--accent)">20<br><small style="color:var(--text-muted)">Phase 4</small></td>
+      <td style="background:rgba(88,166,255,0.08); color:var(--accent)">20<br><small style="color:var(--text-muted)">Phase 4</small></td>
+    </tr>
+    <tr>
+      <td class="row-h">OMP</td>
+      <td style="color:var(--text-muted)">—</td>
+      <td style="color:var(--text-muted)">—</td>
+      <td style="background:rgba(88,166,255,0.06); color:var(--text-muted)">planned</td>
+      <td style="color:var(--text-muted)">—</td>
+      <td style="color:var(--text-muted)">—</td>
+    </tr>
+    <tr>
+      <td class="row-h">OpenCL</td>
+      <td style="color:var(--text-muted)">—</td>
+      <td style="color:var(--text-muted)">—</td>
+      <td style="color:var(--text-muted)">—</td>
+      <td style="color:var(--text-muted)">—</td>
+      <td style="color:var(--text-muted)">—</td>
+    </tr>
+  </tbody>
+</table>
+
+<div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
+  Generated 2026-03-11 • ParBench Benchmark Ecosystem Landscape
+</div>
+
+<script>
+// ─── API Pairwise Coverage Matrix ──────────────────────────────────────────
+// Source: analysis/data/API_pairwise_coverage_matrix__counts_.csv
+const APIS = ['CUDA','OpenMP','OpenCL','MPI','OpenMP_Target','OpenACC','HIP','RAJA','SYCL','Kokkos'];
+const MATRIX = [
+  [13, 6, 6, 2, 4, 3, 3, 2, 2, 1],
+  [ 6,13, 3, 4, 2, 1, 2, 2, 1, 2],
+  [ 6, 3, 7, 1, 2, 3, 1, 1, 1, 1],
+  [ 2, 4, 1, 6, 0, 1, 0, 0, 0, 1],
+  [ 4, 2, 2, 0, 5, 2, 3, 2, 2, 1],
+  [ 3, 1, 3, 1, 2, 4, 1, 1, 1, 1],
+  [ 3, 2, 1, 0, 3, 1, 3, 2, 2, 1],
+  [ 2, 2, 1, 0, 2, 1, 2, 2, 1, 1],
+  [ 2, 1, 1, 0, 2, 1, 2, 1, 2, 1],
+  [ 1, 2, 1, 1, 1, 1, 1, 1, 1, 2]
+];
+const MAX_VAL = 13;
+
+// Build heatmap
+const htable = document.getElementById('heatmap-table');
+let hhtml = '<tr><th>API</th>' + APIS.map(a => `<th>${a.replace('_','<br>')}</th>`).join('') + '<th>Row Total</th></tr>';
+MATRIX.forEach((row, i) => {
+  const rowTotal = row.reduce((a, b) => a + b, 0);
+  hhtml += `<tr><td class="row-header">${APIS[i].replace('_', ' ')}</td>`;
+  row.forEach((val, j) => {
+    const alpha = val / MAX_VAL;
+    const bg = i === j ?
+      `rgba(88,166,255,${0.15 + alpha * 0.4})` :
+      `rgba(88,166,255,${alpha * 0.5})`;
+    const cls = i === j ? ' class="diag"' : '';
+    const textColor = val >= 8 ? 'var(--text)' : val >= 4 ? 'var(--text-muted)' : '#484f58';
+    hhtml += `<td style="background:${bg}; color:${textColor}"${cls}>${val}</td>`;
+  });
+  hhtml += `<td style="color:var(--text-muted); background:var(--surface)">${rowTotal}</td></tr>`;
+});
+// Column totals
+const colTotals = APIS.map((_, ci) => MATRIX.reduce((s, row) => s + row[ci], 0));
+hhtml += '<tr><td class="row-header" style="color:var(--text-muted)">Col Total</td>';
+colTotals.forEach(t => { hhtml += `<td style="color:var(--text-muted); background:var(--surface)">${t}</td>`; });
+hhtml += '<td></td></tr>';
+htable.innerHTML = hhtml;
+
+// ─── Benchmark-API Availability Matrix ─────────────────────────────────────
+// Source: analysis/data/Per-benchmark_API_availability__indicator_.csv
+const AVAIL_APIS = ['CUDA','HIP','OpenCL','SYCL','OpenMP','OpenMP_Target','OpenACC','MPI','Kokkos','RAJA'];
+const SUITES = [
+  { name:'NAS Parallel Benchmarks (NPB)',              highlighted:false, vals:[0,0,0,0,1,0,0,1,0,0] },
+  { name:'SPEC OMP',                                   highlighted:false, vals:[0,0,0,0,1,0,0,0,0,0] },
+  { name:'SPEC ACCEL',                                 highlighted:false, vals:[0,0,1,0,0,1,1,0,0,0] },
+  { name:'Rodinia',                                    highlighted:true,  vals:[1,0,1,0,1,0,0,0,0,0] },
+  { name:'SHOC',                                       highlighted:false, vals:[1,0,1,0,0,0,0,1,0,0] },
+  { name:'Parboil',                                    highlighted:false, vals:[1,0,1,0,0,0,0,0,0,0] },
+  { name:'PolyBench/GPU',                              highlighted:false, vals:[1,0,1,0,0,0,1,0,0,0] },
+  { name:'PARSEC',                                     highlighted:false, vals:[0,0,0,0,1,0,0,0,0,0] },
+  { name:'HeCBench',                                   highlighted:true,  vals:[1,1,0,1,0,1,0,0,0,0] },
+  { name:'BabelStream',                                highlighted:false, vals:[1,1,1,1,1,1,1,0,1,1] },
+  { name:'RAJAPerf',                                   highlighted:false, vals:[1,1,0,0,1,1,0,0,0,1] },
+  { name:'Mantevo',                                    highlighted:false, vals:[1,0,1,0,1,0,0,0,0,0] },
+  { name:'miniMD (Kokkos)',                            highlighted:false, vals:[0,0,0,0,1,0,0,1,1,0] },
+  { name:'CORAL-2 (Quicksilver)',                      highlighted:false, vals:[1,0,0,0,0,1,0,0,0,0] },
+  { name:'HPCG',                                       highlighted:false, vals:[0,0,0,0,1,0,0,1,0,0] },
+  { name:'HPCC',                                       highlighted:false, vals:[0,0,0,0,1,0,0,1,0,0] },
+  { name:'OSU Micro-Benchmarks (OMB)',                 highlighted:false, vals:[1,0,0,0,0,0,1,1,0,0] },
+  { name:'LonestarGPU',                                highlighted:false, vals:[1,0,0,0,0,0,0,0,0,0] },
+  { name:'LonestarOMP',                                highlighted:false, vals:[0,0,0,0,1,0,0,0,0,0] },
+  { name:'Indigo3',                                    highlighted:false, vals:[1,0,0,0,1,0,0,0,0,0] },
+  { name:'SpeedCodeBench',                             highlighted:false, vals:[1,0,0,0,1,0,0,0,0,0] }
+];
+
+const atable = document.getElementById('avail-table');
+let ahtml = '<thead><tr><th>Benchmark Suite</th>';
+AVAIL_APIS.forEach(a => { ahtml += `<th>${a.replace('_','<br>')}</th>`; });
+ahtml += '<th>APIs</th></tr></thead><tbody>';
+
+SUITES.forEach(s => {
+  const total = s.vals.reduce((a, b) => a + b, 0);
+  const cls = s.highlighted ? ' highlighted' : '';
+  ahtml += `<tr><td class="suite-name${cls}">${s.highlighted ? '★ ' : ''}${s.name}</td>`;
+  s.vals.forEach(v => {
+    if (v) ahtml += `<td style="background:rgba(63,185,80,0.1)"><span class="check-yes">✓</span></td>`;
+    else   ahtml += `<td><span class="check-no">·</span></td>`;
+  });
+  ahtml += `<td class="total">${total}</td></tr>`;
+});
+
+// Column totals
+const colTotalsA = AVAIL_APIS.map((_, ci) => SUITES.reduce((s, row) => s + row.vals[ci], 0));
+ahtml += '<tr><td class="suite-name" style="color:var(--purple); font-weight:700">Suites with API</td>';
+colTotalsA.forEach(t => { ahtml += `<td class="api-total">${t}</td>`; });
+ahtml += `<td></td></tr>`;
+ahtml += '</tbody>';
+atable.innerHTML = ahtml;
+</script>
+
+</body>
+</html>

@@ -77,6 +77,16 @@
 </head>
 <body>
 
+<nav style="background:var(--surface); border-bottom:1px solid var(--border); padding:0.6rem 2rem; margin:-2rem -2rem 1.5rem -2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center;">
+  <span style="color:var(--accent); font-weight:700; font-size:0.9rem; margin-right:0.5rem;">ParBench</span>
+  <a href="overview.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Overview</a>
+  <a href="build_results.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Build Results</a>
+  <a href="results.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Augmentation</a>
+  <a href="benchmark_landscape.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Landscape</a>
+  <a href="architecture.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Architecture</a>
+  <a href="pipeline.html" style="color:var(--text); text-decoration:none; font-size:0.85rem; font-weight:700; border-bottom:2px solid var(--accent); padding-bottom:2px;">Pipeline</a>
+</nav>
+
 <h1>Augment → Build → Run → Verify Pipeline</h1>
 <p class="subtitle">Step-by-step visualization of the augmentation verification pipeline</p>
 
@@ -368,7 +378,7 @@ shutil.<span class="fn">copytree</span>(str(original_working_dir), str(tempdir))
 </div>
 
 <!-- ===== Bug Fixes Summary ===== -->
-<h2>Applied Bug Fixes (Uncommitted)</h2>
+<h2>Applied Bug Fixes</h2>
 
 <div class="detail-grid">
   <div class="fix-callout" style="margin:0">

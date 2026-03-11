@@ -77,12 +77,44 @@
   #loading { text-align: center; padding: 3rem; color: var(--text-muted); font-size: 1.2rem; }
   #loading .spinner { display: inline-block; width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Search bar */
+  .search-row { display: flex; gap: 0.8rem; margin-bottom: 0.8rem; align-items: center; flex-wrap: wrap; }
+  .search-row input { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; color: var(--text); font-size: 0.85rem; width: 240px; }
+  .search-row input:focus { outline: none; border-color: var(--accent); }
+  .filter-chk { display: flex; align-items: center; gap: 0.3rem; cursor: pointer; font-size: 0.82rem; padding: 0.25rem 0.6rem; border-radius: 12px; border: 1px solid var(--border); background: transparent; color: var(--text-muted); }
+  .filter-chk.active-pass { background: rgba(63,185,80,0.12); color: var(--green); border-color: var(--green); }
+  .filter-chk.active-build { background: rgba(209,134,22,0.12); color: var(--orange); border-color: var(--orange); }
+  .filter-chk.active-fail { background: rgba(248,81,73,0.12); color: var(--red); border-color: var(--red); }
+
+  /* SVG line chart */
+  .chart-svg { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: 1rem 0; overflow: visible; }
+
+  /* Per-API section */
+  .api-section-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.2rem; margin: 1rem 0; }
+  .api-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .api-section h4 { margin-bottom: 0.6rem; font-size: 0.95rem; }
+  .mini-rate { display: flex; align-items: center; gap: 0.5rem; margin: 0.3rem 0; }
+  .mini-rate-label { min-width: 30px; font-size: 0.8rem; color: var(--text-muted); }
+  .mini-track { flex: 1; height: 14px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+  .mini-fill { height: 100%; border-radius: 3px; }
+  .mini-val { min-width: 50px; font-size: 0.78rem; color: var(--text-muted); text-align: right; }
 </style>
 </head>
 <body>
 
+<nav style="background:var(--surface); border-bottom:1px solid var(--border); padding:0.6rem 2rem; margin:-2rem -2rem 1.5rem -2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center;">
+  <span style="color:var(--accent); font-weight:700; font-size:0.9rem; margin-right:0.5rem;">ParBench</span>
+  <a href="overview.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Overview</a>
+  <a href="build_results.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Build Results</a>
+  <a href="results.html" style="color:var(--text); text-decoration:none; font-size:0.85rem; font-weight:700; border-bottom:2px solid var(--accent); padding-bottom:2px;">Augmentation</a>
+  <a href="benchmark_landscape.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Landscape</a>
+  <a href="architecture.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Architecture</a>
+  <a href="pipeline.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Pipeline</a>
+</nav>
+
 <h1>Augmentation Results Dashboard</h1>
-<p class="subtitle">Post-fix evaluation: 60 Rodinia specs x L1, L2, L3, L4 — Seed 42</p>
+<p class="subtitle">Post-fix evaluation: 60 Rodinia specs × L1, L2, L3, L4 — Seed 42 — CUDA + OMP + OpenCL</p>
 
 <div id="loading">
   <div class="spinner"></div>
@@ -102,10 +134,18 @@
   <div class="tab active" data-tab="matrix">Results Matrix</div>
   <div class="tab" data-tab="transforms">Transform Frequency</div>
   <div class="tab" data-tab="comparison">Before vs After</div>
+  <div class="tab" data-tab="api-breakdown">Per-API Breakdown</div>
+  <div class="tab" data-tab="degradation">Level Degradation</div>
   <div class="tab" data-tab="inventory">Problem Inventory</div>
 </div>
 
 <div id="tab-matrix" class="tab-content active">
+  <div class="search-row">
+    <input type="text" id="matrix-search" placeholder="Search spec ID..." oninput="filterMatrix(this.value)">
+    <button class="filter-chk" id="filter-pass" onclick="toggleMatrixFilter('PASS')">PASS</button>
+    <button class="filter-chk" id="filter-build" onclick="toggleMatrixFilter('BUILD_FAIL')">BUILD_FAIL</button>
+    <button class="filter-chk" id="filter-fail" onclick="toggleMatrixFilter('FAIL')">FAIL</button>
+  </div>
   <div style="overflow-x:auto">
     <table class="results-table" id="results-matrix"></table>
   </div>
@@ -117,6 +157,20 @@
 
 <div id="tab-comparison" class="tab-content">
   <div class="compare-grid" id="comparison"></div>
+</div>
+
+<div id="tab-api-breakdown" class="tab-content">
+  <div class="api-section-grid" id="api-breakdown-content"></div>
+</div>
+
+<div id="tab-degradation" class="tab-content">
+  <h3 style="color:var(--text-muted); font-size:0.9rem; margin-bottom:0.5rem">Pass rate (%) by augmentation level, per API</h3>
+  <svg id="degradation-svg" width="100%" height="280" viewBox="0 0 700 280" preserveAspectRatio="xMinYMin meet" class="chart-svg" style="max-width:700px"></svg>
+  <div style="display:flex; gap:1.5rem; margin-top:0.8rem; flex-wrap:wrap;">
+    <span style="color:var(--accent); font-size:0.82rem;">— CUDA</span>
+    <span style="color:var(--green); font-size:0.82rem;">— OMP</span>
+    <span style="color:var(--purple); font-size:0.82rem;">— OpenCL</span>
+  </div>
 </div>
 
 <div id="tab-inventory" class="tab-content">
@@ -173,7 +227,8 @@
 const BASELINE = {
   L1: { total: 60, pass: 44, build_fail: 12, fail: 4, error: 0 },
   L2: { total: 60, pass: 43, build_fail: 13, fail: 4, error: 0 },
-  L4: { total: 60, pass: 1, build_fail: 55, fail: 4, error: 0 }
+  L3: { total: 60, pass: 29, build_fail: 27, fail: 4, error: 0 },
+  L4: { total: 60, pass: 1,  build_fail: 55, fail: 4, error: 0 }
 };
 
 // Tab switching
@@ -186,39 +241,16 @@ document.querySelectorAll('.tab').forEach(tab => {
   });
 });
 
-// Try to load results from embedded data or files
+// Load results from embedded data (results_data.js)
 let allResults = [];
 
-async function loadResults() {
-  const files = ['eval_cuda.json', 'eval_omp.json', 'eval_opencl.json'];
-  const basePath = '/home/samyak/Desktop/parbench_sam/results/augmentation/';
-
-  for (const file of files) {
-    try {
-      const resp = await fetch(basePath + file);
-      if (resp.ok) {
-        const data = await resp.json();
-        allResults = allResults.concat(data);
-      }
-    } catch (e) {
-      // Try embedded data
-    }
-  }
-
-  if (allResults.length === 0 && window.RESULTS_DATA) {
+function loadResults() {
+  if (window.RESULTS_DATA && window.RESULTS_DATA.length > 0) {
     allResults = window.RESULTS_DATA;
-  }
-
-  if (allResults.length > 0) {
     renderDashboard(allResults);
   } else {
-    document.getElementById('loading').innerHTML = `
-      <div style="color:var(--yellow)">Waiting for batch results...</div>
-      <div style="font-size:0.8rem; margin-top:0.5rem; color:var(--text-muted)">
-        Run this after batches complete to embed data:<br>
-        <code style="color:var(--accent)">python3 -c "import json; ...</code>
-      </div>
-    `;
+    document.getElementById('loading').innerHTML =
+      '<div style="color:var(--yellow)">No data found. Ensure results_data.js is present.</div>';
   }
 }
 
@@ -353,13 +385,135 @@ function renderDashboard(results) {
     </div>`;
   });
   compEl.innerHTML = compHtml;
+
+  // ── Per-API Breakdown tab ──────────────────────────────────────────────────
+  const APIS_LIST = ['cuda', 'omp', 'opencl'];
+  const API_COLORS = { cuda: 'var(--accent)', omp: 'var(--green)', opencl: 'var(--purple)' };
+  const API_LABELS = { cuda: 'CUDA', omp: 'OpenMP', opencl: 'OpenCL' };
+
+  const apiContainer = document.getElementById('api-breakdown-content');
+  apiContainer.innerHTML = APIS_LIST.map(api => {
+    const apiResults = results.filter(r => r.spec_id && r.spec_id.endsWith('-' + api));
+    const byLevelApi = {};
+    levels.forEach(l => { byLevelApi[l] = apiResults.filter(r => r.augment_level === l); });
+
+    const rows = levels.map(l => {
+      const lr = byLevelApi[l];
+      const p = lr.filter(r => r.overall_status === 'PASS').length;
+      const n = lr.length || 1;
+      const pct = Math.round(100 * p / n);
+      return `<div class="mini-rate">
+        <div class="mini-rate-label">L${l}</div>
+        <div class="mini-track"><div class="mini-fill" style="width:${pct}%; background:${API_COLORS[api]}"></div></div>
+        <div class="mini-val">${p}/${n} (${pct}%)</div>
+      </div>`;
+    }).join('');
+
+    const total = apiResults.length;
+    const totalPass = apiResults.filter(r => r.overall_status === 'PASS').length;
+    return `<div class="api-section">
+      <h4 style="color:${API_COLORS[api]}">${API_LABELS[api]}</h4>
+      <p style="color:var(--text-muted); font-size:0.78rem; margin-bottom:0.5rem">${total} runs (${apiResults.filter(r=>r.augment_level===1).length} specs)</p>
+      ${rows}
+      <div style="margin-top:0.5rem; font-size:0.78rem; color:var(--text-muted)">Overall: ${totalPass}/${total} PASS</div>
+    </div>`;
+  }).join('');
+
+  // ── Level Degradation SVG line chart ──────────────────────────────────────
+  // Per-API pass rates by level
+  // Data from the 240-result dataset (60 specs × L1–L4)
+  const degradData = APIS_LIST.map(api => {
+    return levels.map(l => {
+      const lr = results.filter(r => r.augment_level === l && r.spec_id && r.spec_id.endsWith('-' + api));
+      const n = lr.length || 1;
+      return Math.round(100 * lr.filter(r => r.overall_status === 'PASS').length / n);
+    });
+  });
+
+  const svgEl = document.getElementById('degradation-svg');
+  const W = 700, H = 260, padL = 50, padR = 20, padT = 20, padB = 40;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const xStep = chartW / 3; // 4 levels → 3 gaps
+
+  let svgHtml = '';
+  // Grid lines
+  [0, 25, 50, 75, 100].forEach(y => {
+    const yPx = padT + chartH - (y / 100) * chartH;
+    svgHtml += `<line x1="${padL}" y1="${yPx}" x2="${W - padR}" y2="${yPx}" stroke="var(--border)" stroke-width="1"/>`;
+    svgHtml += `<text x="${padL - 5}" y="${yPx + 4}" text-anchor="end" fill="var(--text-muted)" font-size="11">${y}%</text>`;
+  });
+  // X axis labels
+  levels.forEach((l, i) => {
+    const xPx = padL + i * xStep;
+    svgHtml += `<text x="${xPx}" y="${padT + chartH + 20}" text-anchor="middle" fill="var(--text-muted)" font-size="12">L${l}</text>`;
+  });
+
+  const LINE_COLORS = ['var(--accent)', 'var(--green)', 'var(--purple)'];
+  APIS_LIST.forEach((api, ai) => {
+    const pts = degradData[ai].map((pct, i) => {
+      const x = padL + i * xStep;
+      const y = padT + chartH - (pct / 100) * chartH;
+      return `${x},${y}`;
+    });
+    svgHtml += `<polyline points="${pts.join(' ')}" fill="none" stroke="${LINE_COLORS[ai]}" stroke-width="2.5" stroke-linejoin="round"/>`;
+    degradData[ai].forEach((pct, i) => {
+      const x = padL + i * xStep;
+      const y = padT + chartH - (pct / 100) * chartH;
+      svgHtml += `<circle cx="${x}" cy="${y}" r="5" fill="${LINE_COLORS[ai]}" stroke="var(--bg)" stroke-width="2"/>`;
+      svgHtml += `<text x="${x}" y="${y - 10}" text-anchor="middle" fill="${LINE_COLORS[ai]}" font-size="11" font-weight="600">${pct}%</text>`;
+    });
+  });
+
+  // Axis lines
+  svgHtml += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT + chartH}" stroke="var(--border)" stroke-width="1"/>`;
+  svgHtml += `<line x1="${padL}" y1="${padT + chartH}" x2="${W - padR}" y2="${padT + chartH}" stroke="var(--border)" stroke-width="1"/>`;
+
+  svgEl.innerHTML = svgHtml;
+}
+
+// ── Matrix search & filter ──────────────────────────────────────────────────
+let activeStatusFilter = null;
+
+function filterMatrix(query) {
+  const q = query.toLowerCase();
+  applyMatrixFilters(q, activeStatusFilter);
+}
+
+function toggleMatrixFilter(status) {
+  activeStatusFilter = activeStatusFilter === status ? null : status;
+  ['PASS','BUILD_FAIL','FAIL'].forEach(s => {
+    const el = document.getElementById('filter-' + s.toLowerCase().replace('_','-'));
+    if (!el) return;
+    el.classList.remove('active-pass', 'active-build', 'active-fail');
+  });
+  const el = document.getElementById('filter-' + status.toLowerCase().replace('_','-'));
+  if (el && activeStatusFilter) {
+    if (status === 'PASS')       el.classList.add('active-pass');
+    if (status === 'BUILD_FAIL') el.classList.add('active-build');
+    if (status === 'FAIL')       el.classList.add('active-fail');
+  }
+  const query = document.getElementById('matrix-search') ? document.getElementById('matrix-search').value : '';
+  applyMatrixFilters(query.toLowerCase(), activeStatusFilter);
+}
+
+function applyMatrixFilters(query, statusFilter) {
+  const rows = document.querySelectorAll('#results-matrix tr:not(:first-child)');
+  rows.forEach(row => {
+    const specText = row.cells[0] ? row.cells[0].textContent.toLowerCase() : '';
+    const rowText = row.textContent;
+    const matchQuery = !query || specText.includes(query);
+    let matchStatus = true;
+    if (statusFilter) {
+      if (statusFilter === 'PASS')       matchStatus = rowText.includes('PASS');
+      if (statusFilter === 'BUILD_FAIL') matchStatus = rowText.includes('BUILD');
+      if (statusFilter === 'FAIL')       matchStatus = rowText.includes('FAIL') && !rowText.includes('BUILD');
+    }
+    row.style.display = (matchQuery && matchStatus) ? '' : 'none';
+  });
 }
 
 // Attempt to load on page open
 loadResults();
-
-// Inline fallback: embed data directly if fetch fails
-// This data is auto-generated from the batch run JSON files
 </script>
 
 </body>
