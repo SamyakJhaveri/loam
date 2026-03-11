@@ -202,11 +202,11 @@ The harness compares the LLM's translated code's output against the `baseline_re
 | `schema/manifest_schema.json` | JSON Schema for manifest entries |
 | `harness/` | Python harness (cli, builder, runner, verifier, reporter) |
 | `config/paths.json` | Machine-specific path resolution |
-| `scripts/generate_phase3_specs.py` | HeCBench spec generator |
-| `scripts/generate_rodinia_specs.py` | Rodinia spec generator |
-| `analysis/rodinia_survey.json` | Rodinia kernel survey data |
-| `analysis/rodinia_api_gaps.json` | Which APIs are missing per Rodinia kernel |
-| `analysis/rodinia_api_gaps.md` | Human-readable gap analysis |
+| `scripts/generators/generate_phase3_specs.py` | HeCBench spec generator |
+| `scripts/generators/generate_rodinia_specs.py` | Rodinia spec generator |
+| `analysis/data/rodinia_survey.json` | Rodinia kernel survey data |
+| `analysis/data/rodinia_api_gaps.json` | Which APIs are missing per Rodinia kernel |
+| `analysis/reports/rodinia_api_gaps.md` | Human-readable gap analysis |
 | `results/phase3/results_matrix_phase3.md` | HeCBench 60-kernel test results |
 | `results/rodinia/results_matrix_rodinia.md` | Rodinia 22-kernel test results |
 | `results/rodinia/rodinia_results.json` | Structured Rodinia test results |
@@ -272,9 +272,81 @@ When working in the ParBench repository, follow these rules:
 ### When testing
 - Build: `python -m harness build specs/{spec}.json`
 - Full pipeline: `python -m harness verify specs/{spec}.json -v`
-- Batch: see `scripts/run_cuda_batch.sh` and `scripts/run_rodinia_batch.sh` for patterns
+- Batch: see `scripts/batch/run_cuda_batch.sh` and `scripts/batch/run_rodinia_batch.sh` for patterns
 
 ### When in doubt
 - Ask the user before making decisions
 - Read existing files before assuming structure
 - Use `#websearch` for external references
+
+---
+
+## Part 5: Augmentation Integration Status
+
+### 5.1 Merge Status
+
+The `erel/aug` branch was fully merged into `main` (commit `8efe990`, 2026-03-10). The augmentation subsystem is production-merged but has known bugs at higher levels.
+
+### 5.2 What Was Integrated
+
+| Component | Description |
+|---|---|
+| `c_augmentation/` module | 5 AST transform types (PointerArithmeticToArrayIndex, SwapCondition, RenameVariable, HoistInvariant, SplitDeclaration) backed by libclang |
+| `harness/cli.py --augment_level` | `harness prompt` command now accepts `--augment_level N` (0–4) |
+| `harness/spec_loader.py` | `get_prompt_payload()` applies augmentation to `.cu` and `.c` files (NOT `.cl` — see Known Issues) |
+| `scripts/augmentation/augment_verify.py` | Standalone augment→build→run→verify pipeline for testing augmented code |
+| `scripts/augmentation/run_augment_batch.py` | Batch runner: spec list × augment levels → JSON + Markdown results |
+| `scripts/augmentation/combine_aug_results.py` | Merges 3-stream JSON results into aggregate reports |
+
+### 5.3 Test Results (2026-03-10)
+
+49 Rodinia CUDA/OMP specs tested at levels 1, 2, and 4:
+
+| Level | PASS | BUILD_FAIL | FAIL | Notes |
+|---|---|---|---|---|
+| L1 | 43/49 (88%) | 6 | 0 | 6 failures from Bug A/B/C |
+| L2 | 43/49 (88%) | 6 | 0 | Same failures (seed=42 replicable) |
+| L4 | 1/49 (2%) | 48 | 0 | Nearly all fail due to Bug A/B/C compounding |
+
+Full results: `results/augmentation/augmentation_status_report_2026-03-10.md`
+
+### 5.4 Known Bugs (c_augmentation — as of 2026-03-10)
+
+**Bug A — PointerArithmeticToArrayIndex: overlapping nested subscripts**
+When nested `ARRAY_SUBSCRIPT_EXPR` (e.g., `iS[i]` inside `J[iS[i]*cols+j]`) and its parent are both selected, combined byte-offset edits corrupt the output.
+- Fix: validate combined `RewriteCandidate` in `AstTransform.apply()`, or filter overlapping candidates before selection.
+
+**Bug B — PointerArithmeticToArrayIndex: struct member access precedence**
+`arr[i].member` → `*((arr)+(i)).member` is wrong; `.` binds tighter than `*`.
+- Fix: emit `(*((arr)+(i))).member` instead.
+
+**Bug C — SwapCondition: assignment-in-condition**
+`fp = fopen(...) == 0` → `0 == fp = fopen(...)` produces `(0 == fp) = fopen(...)` — non-lvalue error.
+- Fix: skip `BINARY_OPERATOR ==` nodes where either child contains an assignment.
+
+**Bug D — typedef struct expansion (noted in status report)**
+Some transforms incorrectly expand typedef struct names, causing type mismatch errors.
+
+### 5.5 Known Harness Issue
+
+`harness/spec_loader.py:get_prompt_payload` (line ~195) does NOT augment `.cl` files — `.cl` is missing from the suffix list. `scripts/augmentation/augment_verify.py` DOES augment `.cl` files via `AUGMENTABLE_SUFFIXES`. Fix: add `.cl` to the list in `spec_loader.py`.
+
+### 5.6 Next Steps for Augmentation
+
+1. Fix Bugs A, B, C, D in `c_augmentation/transforms.py` and `augment_dataset.py`
+2. Add `.cl` to `harness/spec_loader.py` suffix list
+3. Re-run `scripts/augmentation/run_augment_batch.py` after bug fixes to measure improvement
+4. Clone HeCBench locally for full 180-spec coverage (currently only 60 Rodinia specs tested)
+5. Integrate augmentation results into the main evaluation pipeline
+
+### 5.7 Key Files
+
+| Path | Purpose |
+|---|---|
+| `c_augmentation/augment_dataset.py` | Core augmentation engine (libclang AST traversal) |
+| `c_augmentation/transforms.py` | 5 transform implementations |
+| `c_augmentation/test_transforms.py` | Unit tests: `python -m pytest c_augmentation/test_transforms.py -v` |
+| `scripts/augmentation/augment_verify.py` | Standalone augment→build→verify pipeline |
+| `scripts/augmentation/run_augment_batch.py` | Batch runner for multiple specs × levels |
+| `scripts/augmentation/combine_aug_results.py` | Aggregate 3-stream results |
+| `results/augmentation/augmentation_status_report_2026-03-10.md` | Full test report with per-spec results |

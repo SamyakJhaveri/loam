@@ -48,7 +48,7 @@ python3 -m harness prompt specs/rodinia-bfs-cuda.json --augment_level 2
 python3 -m pytest c_augmentation/test_transforms.py -v
 
 # Augment → build → run → verify pipeline
-python3 scripts/augment_verify.py specs/<name>.json --augment_level 2 --seed 42 -v
+python3 scripts/augmentation/augment_verify.py specs/<name>.json --augment_level 2 --seed 42 -v
 ```
 
 ## Project Layout
@@ -57,11 +57,24 @@ python3 scripts/augment_verify.py specs/<name>.json --augment_level 2 --seed 42 
 specs/              {suite}-{slug}-{api}.json per kernel-API variant
 manifest.jsonl      append-only; never modify existing entries
 schema/             spec_schema.json (v1.0.0), manifest_schema.json
-scripts/            generate_rodinia_specs.py, augment_verify.py, batch runners
+scripts/
+  validate_schema.py          top-level validator (path unchanged)
+  generators/                 spec generation scripts
+  survey/                     codebase surveying scripts
+  analysis/                   results analysis & reporting
+  baselines/                  baseline population scripts
+  augmentation/               augment_verify.py, run_augment_batch.py, combine_aug_results.py
+  batch/                      shell batch runners (.sh files)
+  archive/                    one-time fix scripts
 c_augmentation/     AST-driven augmentation transforms (libclang-backed)
 harness/            build/run/verify pipeline; CLI via python3 -m harness
+docs/               design docs (json_schema_design.md, integrate_augmentation_into_harness.md)
+docs/plans/         hecbench pilot + phase5 planning docs
+presentations/      pptx, xlsx, speaking notes for team/research lead
 rodinia/rodinia-src/ Rodinia source (commit 9c10d3ea)
 results/            phase3/ (CUDA/OMP), phase5/ (HeCBench), augmentation reports
+analysis/data/      CSV matrices, JSON surveys
+analysis/reports/   markdown reports, augmentation bug report
 ```
 
 ## Spec & Manifest Rules
@@ -106,7 +119,7 @@ When nested `ARRAY_SUBSCRIPT_EXPR` (e.g., `iS[i]` inside `J[iS[i]*cols+j]`) and 
 `fp = fopen(...) == 0` → `0 == fp = fopen(...)` produces `(0 == fp) = fopen(...)` — non-lvalue error. Fix: skip `BINARY_OPERATOR ==` nodes where either child contains an assignment.
 
 ### .cl file inconsistency
-`harness/spec_loader.py:get_prompt_payload` (line 195) does NOT augment `.cl` files (missing from suffix list). `scripts/augment_verify.py` DOES augment `.cl` files via `AUGMENTABLE_SUFFIXES`. Fix: add `.cl` to the list in `spec_loader.py`.
+`harness/spec_loader.py:get_prompt_payload` (line 195) does NOT augment `.cl` files (missing from suffix list). `scripts/augmentation/augment_verify.py` DOES augment `.cl` files via `AUGMENTABLE_SUFFIXES`. Fix: add `.cl` to the list in `spec_loader.py`.
 
 ### hotspot3d double-include (NOT a bug)
 `3D.cu` includes `opt1.cu` via `#include "opt1.cu"`. No double-augmentation occurs because `_cursor_in_main_file` in `augment_dataset.py` skips cursors from included files.

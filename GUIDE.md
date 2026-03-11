@@ -39,7 +39,8 @@ ParBench doesn't contain benchmark source code itself. Instead, it provides stru
 parbench_sam/
 ├── GUIDE.md                    # This file
 ├── README.md                   # Project overview
-├── JSON_Schema_for_ParBench.md # Schema documentation
+├── HANDOVER.md                 # Handover documentation
+├── CLAUDE.md                   # Claude Code instructions
 ├── manifest.jsonl              # Level 1: Master index of all kernel variants
 │
 ├── schema/                     # JSON Schema definitions (draft-07)
@@ -56,7 +57,7 @@ parbench_sam/
 ├── harness/                    # Python harness for build/run/verify
 │   ├── __init__.py
 │   ├── __main__.py             #   Entry point: python -m harness
-│   ├── cli.py                  #   Command-line interface
+│   ├── cli.py                  #   Command-line interface (--augment_level flag)
 │   ├── builder.py              #   Compilation logic
 │   ├── runner.py               #   Execution logic
 │   ├── verifier.py             #   Output verification strategies
@@ -64,18 +65,45 @@ parbench_sam/
 │   ├── reporter.py             #   Output formatting (text and JSON)
 │   └── models.py               #   Data classes for results
 │
-├── scripts/                    # Utility scripts
+├── c_augmentation/             # AST-driven augmentation transforms (libclang)
+│   ├── augment_dataset.py      #   Core augmentation engine
+│   ├── transforms.py           #   5 transform types (PointerArith, SwapCond, etc.)
+│   └── test_transforms.py      #   Unit tests: python -m pytest c_augmentation/test_transforms.py
+│
+├── scripts/                    # Utility scripts (organized by purpose)
 │   ├── validate_schema.py      #   JSON schema + cross-cutting validator
-│   ├── generate_pilot_specs.py #   Generate spec files for pilot kernels
-│   └── generate_report.py      #   Generate markdown summary report
+│   ├── generators/             #   Spec generation scripts
+│   ├── survey/                 #   Codebase surveying scripts
+│   ├── analysis/               #   Results analysis & reporting
+│   ├── baselines/              #   Baseline population scripts
+│   ├── augmentation/           #   augment_verify.py, run_augment_batch.py, combine_aug_results.py
+│   ├── batch/                  #   Shell batch runners (.sh files)
+│   └── archive/                #   One-time fix scripts
+│
+├── docs/                       # Design documents and planning
+│   ├── design/                 #   json_schema_design.md, integrate_augmentation.md
+│   └── plans/                  #   hecbench pilot plan, phase5 plan, workflow docs
+│
+├── presentations/              # Team deliverables (pptx, xlsx, speaking notes)
+│
+├── prompts/                    # Phase prompts and batch prompt docs
 │
 ├── examples/
 │   └── example_178_kernels.json # Reference: 178 kernels in single-file format
 │
 ├── analysis/                   # All analysis outputs
 │   ├── visualizations/         #   PNG charts and network graphs
-│   ├── reports/                #   Markdown reports, presentations, notes
-│   └── data/                   #   CSV matrices, Excel workbooks, scripts
+│   ├── reports/                #   Markdown reports, augmentation bug report
+│   └── data/                   #   CSV matrices, JSON surveys
+│
+├── results/                    # Test results by phase
+│   ├── phase3/                 #   CUDA/OMP results
+│   ├── phase5/                 #   HeCBench results
+│   ├── rodinia/                #   Rodinia batch results
+│   └── augmentation/           #   Augmentation test results and reports
+│
+├── rodinia/                    # Rodinia benchmark suite (git submodule)
+│   └── rodinia-src/            #   Source at commit 9c10d3ea
 │
 └── config/                     # Machine-specific config (git-ignored)
     └── paths.json              #   Maps downloads_root to local path
@@ -374,7 +402,7 @@ python scripts/validate_schema.py --all
 Generate a markdown summary of all kernels and their status:
 
 ```bash
-python scripts/generate_report.py
+python scripts/analysis/generate_report.py
 ```
 
 This reads `manifest.jsonl` and all spec files, collects statistics (kernels per API, domains, verification methods), and writes `analysis/reports/pilot_report.md`.
@@ -384,7 +412,7 @@ This reads `manifest.jsonl` and all spec files, collects statistics (kernels per
 To regenerate the 20 pilot spec files (5 HeCBench kernels × 4 APIs):
 
 ```bash
-python scripts/generate_pilot_specs.py
+python scripts/generators/generate_pilot_specs.py
 ```
 
 This overwrites files in `specs/` and `manifest.jsonl` with the pilot configuration.
@@ -484,8 +512,8 @@ This reads the manifest, groups by kernel name, and lists all source→target AP
 
 | Command | Description |
 |---------|-------------|
-| `python scripts/generate_report.py` | Generate pilot summary report |
-| `python scripts/generate_pilot_specs.py` | Regenerate all 20 pilot specs |
+| `python scripts/analysis/generate_report.py` | Generate pilot summary report |
+| `python scripts/generators/generate_pilot_specs.py` | Regenerate all 20 pilot specs |
 
 ---
 
