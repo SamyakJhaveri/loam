@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ParBench Augmentation — Architecture Overview</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --text-muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
+    --orange: #d18616;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
+  h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1.8rem; }
+  h2 { color: var(--purple); margin: 2rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  h3 { color: var(--green); margin: 1.5rem 0 0.5rem; font-size: 1.1rem; }
+  .subtitle { color: var(--text-muted); margin-bottom: 2rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin: 1rem 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; }
+  .card h4 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1rem; }
+  .card p, .card ul { color: var(--text-muted); font-size: 0.9rem; }
+  .card ul { padding-left: 1.2rem; }
+  .card li { margin: 0.2rem 0; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin: 2px; }
+  .tag-green { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+  .tag-red { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+  .tag-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); border: 1px solid rgba(210,153,34,0.3); }
+  .tag-purple { background: rgba(188,140,255,0.15); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+  .tag-blue { background: rgba(88,166,255,0.15); color: var(--accent); border: 1px solid rgba(88,166,255,0.3); }
+
+  /* Architecture diagram */
+  .arch-diagram { display: flex; flex-direction: column; gap: 1.5rem; align-items: center; margin: 2rem 0; }
+  .arch-row { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+  .arch-box { background: var(--surface); border: 2px solid var(--border); border-radius: 10px; padding: 1rem 1.5rem; text-align: center; min-width: 160px; position: relative; }
+  .arch-box.highlight { border-color: var(--accent); }
+  .arch-box.core { border-color: var(--green); }
+  .arch-box.pipeline { border-color: var(--purple); }
+  .arch-box.data { border-color: var(--yellow); }
+  .arch-box .label { font-size: 0.8rem; color: var(--text-muted); }
+  .arch-box .name { font-weight: 600; font-size: 1rem; }
+  .arrow { color: var(--text-muted); font-size: 1.5rem; }
+  .arrow-down { text-align: center; font-size: 2rem; color: var(--accent); }
+
+  /* Transform detail boxes */
+  .transform-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .transform-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .transform-card .name { color: var(--green); font-weight: 600; margin-bottom: 0.3rem; }
+  .transform-card .example { background: #0d1117; border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; font-family: monospace; font-size: 0.85rem; margin-top: 0.5rem; }
+  .transform-card .before { color: var(--red); }
+  .transform-card .after { color: var(--green); }
+
+  /* Call chain */
+  .chain { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; padding: 1rem; background: var(--surface); border-radius: 8px; }
+  .chain-node { background: rgba(88,166,255,0.1); border: 1px solid var(--accent); border-radius: 6px; padding: 0.4rem 0.8rem; font-size: 0.85rem; font-family: monospace; }
+  .chain-arrow { color: var(--accent); font-size: 1.2rem; }
+
+  /* Data flow diagram */
+  .flow { display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap; margin: 1.5rem 0; padding: 1.2rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); }
+  .flow-node { border-radius: 6px; padding: 0.5rem 1rem; font-size: 0.85rem; text-align: center; }
+  .flow-input { background: rgba(210,153,34,0.15); border: 1px solid var(--yellow); color: var(--yellow); }
+  .flow-process { background: rgba(188,140,255,0.15); border: 1px solid var(--purple); color: var(--purple); }
+  .flow-output { background: rgba(63,185,80,0.15); border: 1px solid var(--green); color: var(--green); }
+  .flow-arrow { color: var(--text-muted); font-size: 1.3rem; }
+
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { padding: 0.5rem 0.8rem; border: 1px solid var(--border); font-size: 0.85rem; }
+  th { background: var(--surface); color: var(--accent); text-align: left; }
+  td { color: var(--text); }
+  .file-path { font-family: monospace; color: var(--accent); font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<h1>ParBench Augmentation Architecture</h1>
+<p class="subtitle">AST-driven code augmentation for parallel benchmark evaluation</p>
+
+<!-- ===== Project Structure ===== -->
+<h2>1. Project Directory Structure</h2>
+
+<div class="grid">
+  <div class="card">
+    <h4>specs/</h4>
+    <p>60 Rodinia + 120 HeCBench spec files</p>
+    <ul>
+      <li><span class="tag tag-blue">22 CUDA</span> <span class="tag tag-green">18 OMP</span> <span class="tag tag-purple">20 OpenCL</span></li>
+      <li>Format: <code>{suite}-{slug}-{api}.json</code></li>
+      <li>Each defines build, run, verify, and file info</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>c_augmentation/</h4>
+    <p>Core transform engine (libclang-backed)</p>
+    <ul>
+      <li><code>augment_dataset.py</code> — 5 transforms + validation</li>
+      <li><code>test_transforms.py</code> — 11 unit tests</li>
+      <li>Uses <code>clang.cindex</code> for AST analysis</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>harness/</h4>
+    <p>Build → Run → Verify pipeline</p>
+    <ul>
+      <li><code>builder.py</code> — clean/configure/build/verify-exe</li>
+      <li><code>runner.py</code> — execute with timeout</li>
+      <li><code>verifier.py</code> — exit_code / stdout_pattern</li>
+      <li><code>spec_loader.py</code> — path resolution + prompt payload</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>scripts/augmentation/</h4>
+    <p>Orchestration layer</p>
+    <ul>
+      <li><code>augment_verify.py</code> — single-spec pipeline</li>
+      <li><code>run_augment_batch.py</code> — batch runner (JSON+MD)</li>
+      <li><code>combine_aug_results.py</code> — merge reports</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>results/augmentation/</h4>
+    <p>Evaluation output</p>
+    <ul>
+      <li>JSON files with per-run details</li>
+      <li>Markdown reports with result matrices</li>
+      <li>Organized by eval run (eval_cuda, eval_omp, eval_opencl)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>config/ &amp; schema/</h4>
+    <p>Configuration &amp; validation</p>
+    <ul>
+      <li><code>paths.json</code> — project_root, downloads_root</li>
+      <li><code>spec_schema.json</code> — JSON Schema v1.0.0</li>
+      <li><code>manifest_schema.json</code> — manifest schema</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== Architecture Diagram ===== -->
+<h2>2. System Architecture</h2>
+
+<div class="arch-diagram">
+  <div class="arch-row">
+    <div class="arch-box data">
+      <div class="label">Input</div>
+      <div class="name">Spec JSON</div>
+      <div class="label">specs/rodinia-*.json</div>
+    </div>
+    <div class="arch-box data">
+      <div class="label">Input</div>
+      <div class="name">Source Files</div>
+      <div class="label">.cu / .cpp / .c / .cl</div>
+    </div>
+    <div class="arch-box data">
+      <div class="label">Config</div>
+      <div class="name">paths.json</div>
+      <div class="label">config/paths.json</div>
+    </div>
+  </div>
+
+  <div class="arrow-down">▼</div>
+
+  <div class="arch-row">
+    <div class="arch-box highlight">
+      <div class="label">Orchestrator</div>
+      <div class="name">augment_verify.py</div>
+      <div class="label">scripts/augmentation/</div>
+    </div>
+    <div class="arch-box highlight">
+      <div class="label">Batch Runner</div>
+      <div class="name">run_augment_batch.py</div>
+      <div class="label">scripts/augmentation/</div>
+    </div>
+  </div>
+
+  <div class="arrow-down">▼</div>
+
+  <div class="arch-row">
+    <div class="arch-box core">
+      <div class="label">Core Engine</div>
+      <div class="name">augment_dataset.py</div>
+      <div class="label">c_augmentation/</div>
+    </div>
+  </div>
+
+  <div class="arrow-down">▼</div>
+
+  <div class="arch-row">
+    <div class="arch-box pipeline">
+      <div class="label">Build</div>
+      <div class="name">builder.py</div>
+    </div>
+    <span class="arrow">→</span>
+    <div class="arch-box pipeline">
+      <div class="label">Run</div>
+      <div class="name">runner.py</div>
+    </div>
+    <span class="arrow">→</span>
+    <div class="arch-box pipeline">
+      <div class="label">Verify</div>
+      <div class="name">verifier.py</div>
+    </div>
+  </div>
+
+  <div class="arrow-down">▼</div>
+
+  <div class="arch-row">
+    <div class="arch-box data">
+      <div class="label">Output</div>
+      <div class="name">Results JSON + MD</div>
+      <div class="label">results/augmentation/</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 5 AST Transforms ===== -->
+<h2>3. The 5 AST Transforms</h2>
+
+<div class="transform-grid">
+  <div class="transform-card">
+    <div class="name">1. ArithmeticTransform</div>
+    <p style="color:var(--text-muted); font-size:0.85rem">Converts between compound and expanded assignments</p>
+    <div class="example">
+      <div class="before">x += 1;</div>
+      <div class="after">x = x + 1;</div>
+    </div>
+    <div style="margin-top:0.5rem"><span class="tag tag-green">Bidirectional</span> <span class="tag tag-blue">Low risk</span></div>
+  </div>
+  <div class="transform-card">
+    <div class="name">2. SwapCondition</div>
+    <p style="color:var(--text-muted); font-size:0.85rem">Swaps operands of comparison expressions</p>
+    <div class="example">
+      <div class="before">a &lt; b</div>
+      <div class="after">b &gt; a</div>
+    </div>
+    <div style="margin-top:0.5rem"><span class="tag tag-green">Semantics-preserving</span> <span class="tag tag-yellow">Fix C applied</span></div>
+  </div>
+  <div class="transform-card">
+    <div class="name">3. PointerArithmeticToArrayIndex</div>
+    <p style="color:var(--text-muted); font-size:0.85rem">Converts between pointer arithmetic and array indexing</p>
+    <div class="example">
+      <div class="before">*(arr + i)</div>
+      <div class="after">arr[i]</div>
+    </div>
+    <div style="margin-top:0.5rem"><span class="tag tag-green">Bidirectional</span> <span class="tag tag-yellow">Fix A+B applied</span></div>
+  </div>
+  <div class="transform-card">
+    <div class="name">4. TypedefExpansion</div>
+    <p style="color:var(--text-muted); font-size:0.85rem">Expands typedef aliases to underlying types</p>
+    <div class="example">
+      <div class="before">typedef float Real;<br>Real x;</div>
+      <div class="after">typedef float Real;<br>float x;</div>
+    </div>
+    <div style="margin-top:0.5rem"><span class="tag tag-red">Bug D: struct pointers</span></div>
+  </div>
+  <div class="transform-card">
+    <div class="name">5. ChangeNames</div>
+    <p style="color:var(--text-muted); font-size:0.85rem">Renames local variables and parameters consistently</p>
+    <div class="example">
+      <div class="before">int count = 0;<br>count++;</div>
+      <div class="after">int v_0 = 0;<br>v_0++;</div>
+    </div>
+    <div style="margin-top:0.5rem"><span class="tag tag-green">Symbol-aware</span> <span class="tag tag-blue">Token fallback for CUDA</span></div>
+  </div>
+</div>
+
+<!-- ===== Call Chain ===== -->
+<h2>4. Core Call Chain</h2>
+
+<div class="chain">
+  <div class="chain-node">AugmentationConfig</div>
+  <div class="chain-arrow">→</div>
+  <div class="chain-node">augment_code()</div>
+  <div class="chain-arrow">→</div>
+  <div class="chain-node">transform.is_applicable()</div>
+  <div class="chain-arrow">→</div>
+  <div class="chain-node">transform.apply()</div>
+</div>
+
+<div class="chain">
+  <div class="chain-node">AstTransform.apply()</div>
+  <div class="chain-arrow">→</div>
+  <div class="chain-node">_find_candidates()</div>
+  <div class="chain-arrow">→</div>
+  <div class="chain-node">_validate_rewrite()</div>
+  <div class="chain-arrow">→</div>
+  <div class="chain-node">overlap filter (Fix A)</div>
+  <div class="chain-arrow">→</div>
+  <div class="chain-node">_apply_candidate()</div>
+</div>
+
+<!-- ===== Data Flow ===== -->
+<h2>5. End-to-End Data Flow</h2>
+
+<div class="flow">
+  <div class="flow-node flow-input">Spec JSON</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-process">resolve_paths()</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-input">Source Files</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-process">augment_code()</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-output">Augmented Files</div>
+</div>
+
+<div class="flow">
+  <div class="flow-node flow-output">Augmented Files</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-process">build_spec()</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-output">Binary</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-process">run_spec()</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-process">verify_run()</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-output">PASS/FAIL</div>
+</div>
+
+<!-- ===== Level Control ===== -->
+<h2>6. Augmentation Levels (1–4)</h2>
+
+<table>
+  <tr>
+    <th>Level</th>
+    <th>Transform Selection</th>
+    <th>Candidate Selection</th>
+    <th>Effective Coverage</th>
+  </tr>
+  <tr>
+    <td><span class="tag tag-green">L1</span></td>
+    <td>1 random transform from pool</td>
+    <td>1 candidate per transform</td>
+    <td>Minimal change — often 1 edit site</td>
+  </tr>
+  <tr>
+    <td><span class="tag tag-blue">L2</span></td>
+    <td>33% of transform pool</td>
+    <td>33% of valid candidates</td>
+    <td>Light coverage — a few edits across ~1 transform</td>
+  </tr>
+  <tr>
+    <td><span class="tag tag-yellow">L3</span></td>
+    <td>66% of transform pool</td>
+    <td>66% of valid candidates</td>
+    <td>Moderate coverage — multiple transforms, most sites</td>
+  </tr>
+  <tr>
+    <td><span class="tag tag-red">L4</span></td>
+    <td>All transforms</td>
+    <td>All valid candidates</td>
+    <td>Maximum augmentation — every valid edit applied</td>
+  </tr>
+</table>
+
+<!-- ===== Key Files ===== -->
+<h2>7. Key File Reference</h2>
+
+<table>
+  <tr><th>File</th><th>Role</th><th>Lines</th></tr>
+  <tr><td class="file-path">c_augmentation/augment_dataset.py</td><td>5 transforms, validation, augment_code() entry point</td><td>~1150</td></tr>
+  <tr><td class="file-path">c_augmentation/test_transforms.py</td><td>11 unit tests (3 for Fixes A/B/C)</td><td>~300</td></tr>
+  <tr><td class="file-path">scripts/augmentation/augment_verify.py</td><td>Single-spec augment→build→run→verify pipeline</td><td>~318</td></tr>
+  <tr><td class="file-path">scripts/augmentation/run_augment_batch.py</td><td>Batch runner: specs × levels → JSON + Markdown</td><td>~179</td></tr>
+  <tr><td class="file-path">harness/builder.py</td><td>Build phase: clean → configure → build → verify-exe</td><td>~140</td></tr>
+  <tr><td class="file-path">harness/runner.py</td><td>Run phase: execute with timeout, capture output</td><td>~100</td></tr>
+  <tr><td class="file-path">harness/verifier.py</td><td>Verify phase: exit_code / stdout_pattern strategies</td><td>~130</td></tr>
+  <tr><td class="file-path">harness/spec_loader.py</td><td>Spec loading, path resolution, prompt payload extraction</td><td>~250</td></tr>
+</table>
+
+<div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
+  Generated 2026-03-11 • ParBench AST Augmentation Architecture Overview
+</div>
+
+</body>
+</html>

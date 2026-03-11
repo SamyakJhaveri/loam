@@ -218,13 +218,66 @@ void entropy(float* d_entropy, const char* d_val, int height, int width) {
     assert isinstance(applied, list)
 
 
+def test_pointer_arithmetic_overlapping_nested() -> None:
+    """Bug A: nested subscripts like J[iS[i]*cols+j] must not produce overlapping edits."""
+    code = """
+void foo(int* J, int* iS, int cols) {
+    int i = 0, j = 0;
+    int val = J[iS[i] * cols + j];
+}
+"""
+    index = ci.Index.create()
+    transform = PointerArithmeticToArrayIndex()
+    # Apply at level 4 (all candidates) — must still produce valid C++
+    transform.level = 4
+    with deterministic_random():
+        result = transform.apply(code, index)
+    # Whether applied or not, the output must be parseable (no corruption)
+    assert_parseable(result.code)
+
+
+def test_pointer_arithmetic_struct_member() -> None:
+    """Bug B: arr[i].member must become (*((arr)+(i))).member, not *((arr)+(i)).member."""
+    code = """
+struct Node { int starting; int no_of_edges; };
+void foo(struct Node* g_graph_nodes, int tid) {
+    int start = g_graph_nodes[tid].starting;
+}
+"""
+    rewritten = apply_deterministically(PointerArithmeticToArrayIndex(), code)
+    assert_parseable(rewritten)
+    # The rewritten form must use the parenthesized dereference
+    assert "(*((g_graph_nodes) + (tid)))" in rewritten
+
+
+def test_swap_condition_skip_assignment_in_operand() -> None:
+    """Bug C: comparisons where an operand contains an assignment must be skipped."""
+    # Pattern: (x = expr) == constant — swapping would produce (constant == x) = expr
+    # which is a non-lvalue assignment error.
+    code = """
+void foo() {
+    int fp;
+    if ((fp = 5) == 0) { }
+}
+"""
+    index = ci.Index.create()
+    transform = SwapCondition()
+    result = transform.apply(code, index)
+    # The dangerous swap must not happen; transform should be skipped
+    assert not result.applied or "0 == fp" not in result.code
+    assert_parseable(result.code)
+
+
 def main() -> int:
     tests = [
         test_arithmetic_transform,
         test_swap_condition_positive,
         test_swap_condition_negative_template_and_preprocessor,
+        test_swap_condition_skip_assignment_in_operand,
         test_pointer_arithmetic_positive,
         test_pointer_arithmetic_negative_typedef_decl,
+        test_pointer_arithmetic_overlapping_nested,
+        test_pointer_arithmetic_struct_member,
         test_typedef_expansion,
         test_change_names,
         test_real_kernel_pipeline,

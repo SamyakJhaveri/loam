@@ -247,7 +247,7 @@ def _fatal_diagnostics(tu: ci.TranslationUnit) -> int:
     return sum(
         1
         for diag in tu.diagnostics
-        if diag.severity >= ci.Diagnostic.Fatal
+        if diag.severity >= ci.Diagnostic.Error
     )
 
 
@@ -291,19 +291,38 @@ class AstTransform(Transform):
             num_to_select = len(valid_candidates)
             
         selected_candidates = random.sample(valid_candidates, num_to_select)
-        
+
+        # Fix A: remove candidates whose edit ranges overlap with already-selected ones.
+        def _edits_overlap(c1: RewriteCandidate, c2: RewriteCandidate) -> bool:
+            for e1 in c1.edits:
+                for e2 in c2.edits:
+                    if not (e1.end_offset <= e2.start_offset or e2.end_offset <= e1.start_offset):
+                        return True
+            return False
+
+        non_overlapping: list[RewriteCandidate] = []
+        for c in selected_candidates:
+            if not any(_edits_overlap(c, existing) for existing in non_overlapping):
+                non_overlapping.append(c)
+        selected_candidates = non_overlapping
+
+        if not selected_candidates:
+            return TransformResult(False, code, f"{self.name}: 0 changes")
+
         all_edits = []
         for c in selected_candidates:
             all_edits.extend(c.edits)
-            
-        # We need a unified candidate to apply all selected non-overlapping edits at once
-        selected = RewriteCandidate(
+
+        # Re-validate the merged candidate before applying.
+        merged = RewriteCandidate(
             description=f"{self.name}: {len(selected_candidates)} candidates applied",
             edits=all_edits
         )
-        
-        rewritten = _apply_candidate(code, selected)
-        return TransformResult(True, rewritten, selected.description)
+        if not _validate_rewrite(merged, code, index):
+            return TransformResult(False, code, f"{self.name}: merged candidate failed validation")
+
+        rewritten = _apply_candidate(code, merged)
+        return TransformResult(True, rewritten, merged.description)
 
     @abstractmethod
     def _find_candidates(self, code: str, index: ci.Index) -> list[RewriteCandidate]:
@@ -399,6 +418,21 @@ class ArithmeticTransform(AstTransform):
         return candidates
 
 
+ASSIGNMENT_OPERATORS = {"="} | set(COMPOUND_OPERATORS)
+
+
+def _contains_assignment(code: str, cursor: ci.Cursor) -> bool:
+    """Return True if any node in the subtree performs an assignment."""
+    if cursor.kind == CursorKind.BINARY_OPERATOR:
+        op = _binary_operator_text(code, cursor)
+        if op in ASSIGNMENT_OPERATORS:
+            return True
+    for child in cursor.get_children():
+        if _contains_assignment(code, child):
+            return True
+    return False
+
+
 class SwapCondition(AstTransform):
     """
     Swaps operands of comparison expressions.
@@ -434,6 +468,10 @@ class SwapCondition(AstTransform):
             if len(children) != 2:
                 continue
             lhs, rhs = children
+            # Fix C: skip comparisons where either operand contains an assignment.
+            # Swapping would produce a non-lvalue or change program semantics.
+            if _contains_assignment(code, lhs) or _contains_assignment(code, rhs):
+                continue
             start, end = _cursor_offsets(cursor)
             lhs_text = _source_text(code, lhs).strip()
             rhs_text = _source_text(code, rhs).strip()
@@ -516,6 +554,16 @@ class PointerArithmeticToArrayIndex(AstTransform):
                 start, end = _cursor_offsets(cursor)
                 base_text = _source_text(code, base).strip()
                 idx_text = _source_text(code, idx).strip()
+                # Fix B: if a '.' member access immediately follows the subscript
+                # expression, wrap the dereference in parentheses so that operator
+                # precedence is correct: (*((arr)+(i))).member instead of
+                # *((arr)+(i)).member (where '.' would bind tighter than '*').
+                code_bytes = code.encode("utf-8")
+                next_byte = code_bytes[end:end+1] if end < len(code_bytes) else b""
+                if next_byte == b".":
+                    replacement = f"(*(({base_text}) + ({idx_text})))"
+                else:
+                    replacement = f"*(({base_text}) + ({idx_text}))"
                 candidates.append(
                     RewriteCandidate(
                         description=f"{self.name}: 1 changes",
@@ -523,7 +571,7 @@ class PointerArithmeticToArrayIndex(AstTransform):
                             TextEdit(
                                 start_offset=start,
                                 end_offset=end,
-                                replacement=f"*(({base_text}) + ({idx_text}))",
+                                replacement=replacement,
                             )
                         ],
                     )

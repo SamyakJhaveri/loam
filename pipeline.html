@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ParBench — Augment → Build → Run → Verify Pipeline</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --text-muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
+    --orange: #d18616; --teal: #39d2c0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
+  h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1.8rem; }
+  h2 { color: var(--purple); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  .subtitle { color: var(--text-muted); margin-bottom: 2rem; }
+
+  /* Pipeline step styling */
+  .pipeline { margin: 1.5rem 0; }
+  .step { display: flex; gap: 1rem; margin-bottom: 0; }
+  .step-num { min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; margin-top: 0.3rem; }
+  .step-content { flex: 1; padding-bottom: 1.5rem; border-left: 2px solid var(--border); padding-left: 1.5rem; margin-left: -21px; }
+  .step:last-child .step-content { border-left-color: transparent; }
+  .step-title { font-weight: 600; font-size: 1.05rem; margin-bottom: 0.3rem; }
+  .step-file { font-family: monospace; font-size: 0.8rem; color: var(--accent); margin-bottom: 0.5rem; }
+  .step-desc { color: var(--text-muted); font-size: 0.9rem; }
+
+  .step.phase-entry .step-num { background: rgba(88,166,255,0.2); color: var(--accent); border: 2px solid var(--accent); }
+  .step.phase-resolve .step-num { background: rgba(210,153,34,0.2); color: var(--yellow); border: 2px solid var(--yellow); }
+  .step.phase-augment .step-num { background: rgba(188,140,255,0.2); color: var(--purple); border: 2px solid var(--purple); }
+  .step.phase-build .step-num { background: rgba(57,210,192,0.2); color: var(--teal); border: 2px solid var(--teal); }
+  .step.phase-run .step-num { background: rgba(209,134,22,0.2); color: var(--orange); border: 2px solid var(--orange); }
+  .step.phase-verify .step-num { background: rgba(63,185,80,0.2); color: var(--green); border: 2px solid var(--green); }
+  .step.phase-fail .step-num { background: rgba(248,81,73,0.2); color: var(--red); border: 2px solid var(--red); }
+
+  .code-block { background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 0.8rem 1rem; font-family: monospace; font-size: 0.82rem; margin: 0.5rem 0; overflow-x: auto; white-space: pre; color: var(--text-muted); }
+  .code-block .kw { color: var(--purple); }
+  .code-block .fn { color: var(--accent); }
+  .code-block .str { color: var(--green); }
+  .code-block .cmt { color: #484f58; }
+  .code-block .num { color: var(--orange); }
+
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 0.8rem 0; }
+  .detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.8rem; }
+  .detail-card h5 { color: var(--accent); margin-bottom: 0.3rem; font-size: 0.9rem; }
+  .detail-card p { color: var(--text-muted); font-size: 0.85rem; }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin: 2px; }
+  .tag-green { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+  .tag-red { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+  .tag-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); border: 1px solid rgba(210,153,34,0.3); }
+  .tag-purple { background: rgba(188,140,255,0.15); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+
+  /* Validation flow */
+  .validation-flow { display: flex; flex-direction: column; gap: 0.8rem; margin: 1rem 0; padding: 1rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); }
+  .vf-step { display: flex; align-items: center; gap: 0.8rem; }
+  .vf-num { background: rgba(188,140,255,0.2); color: var(--purple); border: 1px solid var(--purple); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
+  .vf-text { font-size: 0.85rem; color: var(--text-muted); }
+  .vf-text code { color: var(--accent); background: rgba(88,166,255,0.1); padding: 1px 4px; border-radius: 3px; }
+
+  /* Level table */
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  th, td { padding: 0.5rem 0.8rem; border: 1px solid var(--border); font-size: 0.85rem; }
+  th { background: var(--surface); color: var(--accent); text-align: left; }
+
+  /* Bug fix callouts */
+  .fix-callout { background: rgba(63,185,80,0.08); border: 1px solid rgba(63,185,80,0.3); border-radius: 6px; padding: 0.8rem; margin: 0.5rem 0; }
+  .fix-callout .fix-label { color: var(--green); font-weight: 600; font-size: 0.85rem; }
+  .fix-callout .fix-desc { color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem; }
+  .bug-callout { background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.3); border-radius: 6px; padding: 0.8rem; margin: 0.5rem 0; }
+  .bug-callout .fix-label { color: var(--red); font-weight: 600; font-size: 0.85rem; }
+  .bug-callout .fix-desc { color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem; }
+</style>
+</head>
+<body>
+
+<h1>Augment → Build → Run → Verify Pipeline</h1>
+<p class="subtitle">Step-by-step visualization of the augmentation verification pipeline</p>
+
+<!-- ===== Entry Point ===== -->
+<h2>Phase 1: Entry Point</h2>
+
+<div class="pipeline">
+  <div class="step phase-entry">
+    <div class="step-num">1</div>
+    <div class="step-content">
+      <div class="step-title">augment_verify() — Entry Point</div>
+      <div class="step-file">scripts/augmentation/augment_verify.py:114</div>
+      <div class="step-desc">
+        Accepts <code>spec_path</code>, <code>project_root</code>, <code>augment_level</code> (0–4), <code>seed</code>, <code>config</code> (correctness/performance).
+        Sets random seed, loads spec JSON, extracts <code>spec_id</code>.
+      </div>
+      <div class="code-block"><span class="kw">def</span> <span class="fn">augment_verify</span>(
+    spec_path: Path,
+    project_root: Path,
+    augment_level: <span class="kw">int</span> = <span class="num">1</span>,
+    seed: <span class="kw">int</span> | None = None,
+    config: <span class="kw">str</span> = <span class="str">"correctness"</span>,
+    keep_temp: <span class="kw">bool</span> = False,
+    verbose: <span class="kw">bool</span> = False,
+) -> <span class="kw">dict</span>[str, Any]:</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Path Resolution ===== -->
+<h2>Phase 2: Path Resolution</h2>
+
+<div class="pipeline">
+  <div class="step phase-resolve">
+    <div class="step-num">2</div>
+    <div class="step-content">
+      <div class="step-title">resolve_paths() — Locate Source Directory</div>
+      <div class="step-file">harness/spec_loader.py:64</div>
+      <div class="step-desc">
+        Reads <code>config/paths.json</code> to find <code>downloads_root</code>.
+        Computes absolute paths: <code>repo_root</code>, <code>source_dir</code>, <code>working_dir</code>.
+      </div>
+      <div class="detail-grid">
+        <div class="detail-card">
+          <h5>Input</h5>
+          <p><code>spec["identity"]["repo_root"]</code> → relative path like <code>rodinia/rodinia-src</code></p>
+        </div>
+        <div class="detail-card">
+          <h5>Output</h5>
+          <p><code>_resolved["source_dir"]</code> → absolute path: <code>/home/samyak/Desktop/parbench_sam/rodinia/rodinia-src/cuda/bfs</code></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step phase-resolve">
+    <div class="step-num">3</div>
+    <div class="step-content">
+      <div class="step-title">Create Sibling Temp Directory</div>
+      <div class="step-file">augment_verify.py:152–156</div>
+      <div class="step-desc">
+        Copies the original working directory to <code>{working_dir}_aug_{seed}</code> as a sibling.
+        This preserves relative data paths (e.g., <code>../../data/bfs/graph1MW_6.txt</code>).
+      </div>
+      <div class="code-block">tempdir = original_working_dir.parent / f<span class="str">"{original_working_dir.name}_aug_{seed_tag}"</span>
+shutil.<span class="fn">copytree</span>(str(original_working_dir), str(tempdir))</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Augmentation Phase ===== -->
+<h2>Phase 3: File Augmentation</h2>
+
+<div class="pipeline">
+  <div class="step phase-augment">
+    <div class="step-num">4</div>
+    <div class="step-content">
+      <div class="step-title">_augment_payload() — Read &amp; Transform Files</div>
+      <div class="step-file">augment_verify.py:72–111</div>
+      <div class="step-desc">
+        Iterates <code>files.prompt_payload</code> from spec, reads each file, applies augmentation if suffix matches.
+      </div>
+      <div class="code-block">AUGMENTABLE_SUFFIXES = {<span class="str">".c"</span>, <span class="str">".cpp"</span>, <span class="str">".cu"</span>, <span class="str">".h"</span>, <span class="str">".hpp"</span>, <span class="str">".cuh"</span>, <span class="str">".cl"</span>, <span class="str">".cc"</span>, <span class="str">".dp.cpp"</span>}</div>
+      <div class="bug-callout">
+        <div class="fix-label">Known Issue: .cl inconsistency</div>
+        <div class="fix-desc"><code>augment_verify.py</code> augments .cl files, but <code>harness/spec_loader.py:195</code> does NOT include .cl in its suffix list for <code>get_prompt_payload()</code>.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step phase-augment">
+    <div class="step-num">5</div>
+    <div class="step-content">
+      <div class="step-title">augment_code() — Core Transform Engine</div>
+      <div class="step-file">c_augmentation/augment_dataset.py:976–1010</div>
+      <div class="step-desc">
+        Shuffles transforms, selects subset based on level, applies each in sequence.
+        Each transform independently finds candidates and applies changes.
+      </div>
+
+      <h3 style="color:var(--purple); margin:1rem 0 0.5rem; font-size:0.95rem;">Level → Transform Selection (lines 989–998)</h3>
+      <table>
+        <tr><th>Level</th><th>num_transforms</th><th>Effect</th></tr>
+        <tr><td>L1</td><td>1</td><td>1 random transform from pool of 5</td></tr>
+        <tr><td>L2</td><td>max(1, ⌊5 × 0.33⌋) = 1</td><td>1 random transform (same as L1 for pool of 5)</td></tr>
+        <tr><td>L3</td><td>max(1, ⌊5 × 0.66⌋) = 3</td><td>3 of 5 transforms selected</td></tr>
+        <tr><td>L4</td><td>5 (all)</td><td>All 5 transforms applied</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="step phase-augment">
+    <div class="step-num">6</div>
+    <div class="step-content">
+      <div class="step-title">AstTransform.apply() — Per-Transform Pipeline</div>
+      <div class="step-file">c_augmentation/augment_dataset.py:270–325</div>
+      <div class="step-desc">The core apply method for AST-backed transforms.</div>
+
+      <div class="validation-flow">
+        <div class="vf-step">
+          <div class="vf-num">a</div>
+          <div class="vf-text"><code>_find_candidates()</code> — walk AST, collect rewrite candidates with byte-offset edits</div>
+        </div>
+        <div class="vf-step">
+          <div class="vf-num">b</div>
+          <div class="vf-text"><code>_validate_rewrite()</code> — for each candidate: apply edit, re-parse, check <code>_fatal_diagnostics()</code> doesn't increase</div>
+        </div>
+        <div class="vf-step">
+          <div class="vf-num">c</div>
+          <div class="vf-text"><strong>Level-based selection</strong> — pick N candidates based on level (L1=1, L2=33%, L3=66%, L4=all)</div>
+        </div>
+        <div class="vf-step">
+          <div class="vf-num">d</div>
+          <div class="vf-text"><strong>Overlap filter (Fix A)</strong> — remove candidates whose edits overlap with already-selected ones</div>
+        </div>
+        <div class="vf-step">
+          <div class="vf-num">e</div>
+          <div class="vf-text"><strong>Merge + re-validate</strong> — combine all selected edits into one <code>RewriteCandidate</code>, validate the merge</div>
+        </div>
+        <div class="vf-step">
+          <div class="vf-num">f</div>
+          <div class="vf-text"><code>_apply_candidate()</code> — apply byte-offset edits in reverse order to preserve positions</div>
+        </div>
+      </div>
+
+      <div class="fix-callout">
+        <div class="fix-label">Fix V: _fatal_diagnostics threshold</div>
+        <div class="fix-desc">Changed from <code>severity >= Fatal (4)</code> to <code>severity >= Error (3)</code>. This catches real errors that were previously missed, preventing broken transforms from passing validation.</div>
+      </div>
+      <div class="fix-callout">
+        <div class="fix-label">Fix A: Overlap filter</div>
+        <div class="fix-desc">Added <code>_edits_overlap()</code> check between selected candidates + merged re-validation. Prevents nested subscripts (e.g., <code>J[iS[i]*cols+j]</code>) from producing corrupted output.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Build Phase ===== -->
+<h2>Phase 4: Build</h2>
+
+<div class="pipeline">
+  <div class="step phase-build">
+    <div class="step-num">7</div>
+    <div class="step-content">
+      <div class="step-title">build_spec() — Compile Augmented Code</div>
+      <div class="step-file">harness/builder.py:50</div>
+      <div class="step-desc">Builds the augmented code in the temp directory.</div>
+
+      <div class="validation-flow">
+        <div class="vf-step">
+          <div class="vf-num">a</div>
+          <div class="vf-text"><strong>Clean</strong> — run <code>commands.clean</code> (ignore errors)</div>
+        </div>
+        <div class="vf-step">
+          <div class="vf-num">b</div>
+          <div class="vf-text"><strong>Configure</strong> — run <code>commands.configure</code> if present</div>
+        </div>
+        <div class="vf-step">
+          <div class="vf-num">c</div>
+          <div class="vf-text"><strong>Variable substitution</strong> — replace <code>${VAR}</code> in build command with defaults (e.g., <code>${CUDA_DIR}</code>)</div>
+        </div>
+        <div class="vf-step">
+          <div class="vf-num">d</div>
+          <div class="vf-text"><strong>Build</strong> — run <code>commands.build</code> via subprocess (timeout: 600s)</div>
+        </div>
+        <div class="vf-step">
+          <div class="vf-num">e</div>
+          <div class="vf-text"><strong>Verify executable</strong> — check <code>outputs.executable</code> exists on disk</div>
+        </div>
+      </div>
+
+      <div class="step-desc" style="margin-top:0.5rem;">
+        If build fails → return <code>BUILD_FAIL</code> with last 600 chars of stderr. Skip run/verify.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Run Phase ===== -->
+<h2>Phase 5: Run</h2>
+
+<div class="pipeline">
+  <div class="step phase-run">
+    <div class="step-num">8</div>
+    <div class="step-content">
+      <div class="step-title">run_spec() — Execute Binary</div>
+      <div class="step-file">harness/runner.py:18</div>
+      <div class="step-desc">
+        Looks up <code>input_configurations[config]</code> from spec (default: <code>"correctness"</code>).
+        Constructs command: <code>[exe_path] + arguments</code>.
+        Executes with timeout, captures stdout/stderr, measures wall time.
+      </div>
+      <div class="detail-grid">
+        <div class="detail-card">
+          <h5>Input</h5>
+          <p>Executable path, arguments from spec, environment variables, timeout (default 300s)</p>
+        </div>
+        <div class="detail-card">
+          <h5>Output</h5>
+          <p><code>RunResult</code>: status, exit_code, stdout, stderr, duration_seconds</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Verify Phase ===== -->
+<h2>Phase 6: Verify</h2>
+
+<div class="pipeline">
+  <div class="step phase-verify">
+    <div class="step-num">9</div>
+    <div class="step-content">
+      <div class="step-title">verify_run() — Check Output</div>
+      <div class="step-file">harness/verifier.py:14</div>
+      <div class="step-desc">
+        Applies verification strategies in order; first PASS/FAIL match wins.
+      </div>
+      <div class="detail-grid">
+        <div class="detail-card">
+          <h5>exit_code</h5>
+          <p>Check <code>run_result.exit_code == strategy["expected"]</code> (usually 0)</p>
+        </div>
+        <div class="detail-card">
+          <h5>stdout_pattern</h5>
+          <p><code>re.search(pattern, stdout)</code> — e.g., match "PASSED" or expected output</p>
+        </div>
+        <div class="detail-card">
+          <h5>numeric_comparison</h5>
+          <p>TODO — returns SKIP</p>
+        </div>
+        <div class="detail-card">
+          <h5>file_diff / custom_script</h5>
+          <p>TODO — returns SKIP</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="step phase-verify">
+    <div class="step-num">10</div>
+    <div class="step-content">
+      <div class="step-title">Result Assembly</div>
+      <div class="step-file">augment_verify.py:217–235</div>
+      <div class="step-desc">
+        Assembles final result dict with: <code>spec_id</code>, <code>augment_level</code>, <code>transforms_applied</code>,
+        <code>files_changed</code>, <code>build_status</code>, <code>run_status</code>, <code>verify_status</code>, <code>overall_status</code>,
+        <code>wall_time_seconds</code>, <code>exit_code</code>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Temp Dir Cleanup ===== -->
+<h2>Phase 7: Cleanup</h2>
+
+<div class="pipeline">
+  <div class="step phase-fail">
+    <div class="step-num">11</div>
+    <div class="step-content">
+      <div class="step-title">Temp Directory Removal</div>
+      <div class="step-file">augment_verify.py:237–239</div>
+      <div class="step-desc">
+        In a <code>finally</code> block, removes the temp directory unless <code>--keep-temp</code> was passed.
+        Uses <code>shutil.rmtree(tempdir)</code>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Bug Fixes Summary ===== -->
+<h2>Applied Bug Fixes (Uncommitted)</h2>
+
+<div class="detail-grid">
+  <div class="fix-callout" style="margin:0">
+    <div class="fix-label">Fix V — _fatal_diagnostics threshold</div>
+    <div class="fix-desc">
+      <strong>Before:</strong> <code>diag.severity >= ci.Diagnostic.Fatal</code> (value 4)<br>
+      <strong>After:</strong> <code>diag.severity >= ci.Diagnostic.Error</code> (value 3)<br>
+      <strong>Effect:</strong> Catches compile errors that were previously invisible to validation
+    </div>
+  </div>
+  <div class="fix-callout" style="margin:0">
+    <div class="fix-label">Fix A — Overlapping nested subscripts</div>
+    <div class="fix-desc">
+      <strong>Problem:</strong> <code>J[iS[i]*cols+j]</code> — both inner and outer selected, edits corrupt bytes<br>
+      <strong>Fix:</strong> <code>_edits_overlap()</code> filter + merged <code>RewriteCandidate</code> re-validation
+    </div>
+  </div>
+  <div class="fix-callout" style="margin:0">
+    <div class="fix-label">Fix B — Struct member precedence</div>
+    <div class="fix-desc">
+      <strong>Problem:</strong> <code>arr[i].member</code> → <code>*((arr)+(i)).member</code> — <code>.</code> binds tighter<br>
+      <strong>Fix:</strong> Detect next char is <code>.</code>, emit <code>(*((...)))</code> with extra parens
+    </div>
+  </div>
+  <div class="fix-callout" style="margin:0">
+    <div class="fix-label">Fix C — Assignment in condition</div>
+    <div class="fix-desc">
+      <strong>Problem:</strong> <code>fp = fopen(...) == 0</code> → swap produces non-lvalue<br>
+      <strong>Fix:</strong> <code>_contains_assignment()</code> check skips comparisons with assignments
+    </div>
+  </div>
+</div>
+
+<div class="bug-callout" style="margin-top:1.5rem">
+  <div class="fix-label">Bug D — TypedefExpansion struct pointers (UNFIXED)</div>
+  <div class="fix-desc">
+    TypedefExpansion replaces <code>Point*</code> with the underlying struct type but doesn't handle
+    the pointer declarator correctly. Breaks <code>streamcluster-{cuda,omp}</code> at L2+.
+  </div>
+</div>
+
+<div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
+  Generated 2026-03-11 • ParBench Augmentation Pipeline Visualization
+</div>
+
+</body>
+</html>

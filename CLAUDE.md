@@ -132,6 +132,30 @@ rodinia-bfs-opencl  BUILD: PASS | RUN: PASS | VERIFY: PASS
 ```
 Fixes applied: CUDA_DIR path, `make hotspot` target, OpenCL include/lib paths, `CC_FLAGS=-std=c++14`, data path symlinks (`rodinia/rodinia-src/data/` → `rodinia-data/`).
 
+## User Working Style & Claude Code Preferences
+
+### Collaboration Model
+- **Evaluate before implementing** — always explore, test, and document the current state before writing fixes
+- **Plan approval required** — never implement without showing the plan first and getting explicit go-ahead
+- **Visual artifacts** — create HTML/visual presentations to explain architecture and results
+- **Parallel exploration** — use multiple subagents (up to 5) for comprehensive codebase exploration
+- **Deep reasoning** — use ultrathink for complex analysis; break problems into tasks and sub-tasks
+
+### Session Workflow
+1. Explore the codebase thoroughly (parallel agents)
+2. Identify solved and unsolved problems
+3. Create visual artifacts explaining the system
+4. Present a comprehensive plan
+5. Get user approval before any implementation
+6. Test and verify after implementation
+
+### Mistakes to Avoid
+- Don't implement fixes before the user understands the problem space
+- Don't skip plan approval — always present the plan and wait
+- Don't run agents sequentially when they can be parallelized
+- Don't use `augment_verify.py` without `--project-root` flag (auto-detection is broken)
+- Always record learnings in CLAUDE.md for cross-session persistence
+
 ## Adding New Benchmark Suites
 
 1. Clone source into `parbench_sam/<suite>/<suite>-src/`
