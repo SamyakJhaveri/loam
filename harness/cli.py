@@ -241,14 +241,6 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Also print machine-readable JSON output",
     )
-    parser.add_argument(
-        "--augment_level",
-        type=int,
-        choices=[0, 1, 2, 3, 4],
-        default=0,
-        help="Apply dynamic semantics-preserving C/C++ augmentation (0=none, 1=light, 4=aggressive)",
-    )
-
     sub = parser.add_subparsers(dest="command", required=True)
 
     # -- build --
@@ -285,6 +277,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Print the prompt payload (what the LLM sees)",
     )
     p_prompt.add_argument("spec_file", help="Path to spec JSON file")
+    p_prompt.add_argument(
+        "--augment_level",
+        type=int,
+        choices=[0, 1, 2, 3, 4],
+        default=0,
+        help="Apply semantics-preserving C/C++ augmentation (0=none, 1=light, 4=aggressive)",
+    )
     p_prompt.set_defaults(func=cmd_prompt)
 
     # -- info --

@@ -2,7 +2,7 @@
   "spec_id": "rodinia-nw-cuda",
   "build": {
     "status": "pass",
-    "duration_seconds": 0.556,
+    "duration_seconds": 0.622,
     "stdout": "rm -f needle needle.linkinfo result.txt\n\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc  needle.cu -o needle -I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include -L/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/targets/x86_64-linux/lib \n",
     "stderr": "",
     "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/cuda/nw/needle"
@@ -11,7 +11,7 @@
     "correctness": {
       "status": "pass",
       "configuration": "correctness",
-      "duration_seconds": 0.132,
+      "duration_seconds": 0.116,
       "exit_code": 0,
       "stdout": "WG size of kernel = 16 \nStart Needleman-Wunsch\nProcessing top-left matrix\nProcessing bottom-right matrix\n",
       "stderr": ""

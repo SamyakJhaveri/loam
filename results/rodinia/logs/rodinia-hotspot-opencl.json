@@ -11,9 +11,9 @@
     "correctness": {
       "status": "pass",
       "configuration": "correctness",
-      "duration_seconds": 0.15,
+      "duration_seconds": 0.159,
       "exit_code": 0,
-      "stdout": "WG size of kernel = 16 X 16\nPlatform: NVIDIA Corporation\nnum_devices = 1\nDevice: NVIDIA GeForce RTX 4070\nUse GPU device\nInit: 47.798000\nMemAlloc: 0.002000\nHtoD: 0.392000\nExec: 0.029824\nDtoH: 0.039840\nClose: 0.307000\nTotal: 86.874001\n",
+      "stdout": "WG size of kernel = 16 X 16\nPlatform: NVIDIA Corporation\nnum_devices = 1\nDevice: NVIDIA GeForce RTX 4070\nUse GPU device\nInit: 56.993999\nMemAlloc: 0.001000\nHtoD: 0.359000\nExec: 0.023552\nDtoH: 0.039776\nClose: 0.301000\nTotal: 94.901001\n",
       "stderr": ""
     }
   },

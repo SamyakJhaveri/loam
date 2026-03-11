@@ -2,7 +2,7 @@
   "spec_id": "rodinia-lud-omp",
   "build": {
     "status": "pass",
-    "duration_seconds": 0.226,
+    "duration_seconds": 0.223,
     "stdout": "cd omp; make clean ; make -f Makefile.offload clean\nmake[1]: Entering directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/lud/omp'\nrm --force lud_omp lud.o lud_omp.o ../common/common.o *~\nmake[1]: Leaving directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/lud/omp'\nmake[1]: Entering directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/lud/omp'\nrm --force lud_omp_offload lud.o lud_omp.o ../common/common.o *~\nmake[1]: Leaving directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/lud/omp'\n\ncd omp; make\nmake[1]: Entering directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/lud/omp'\ngcc  -c -Wall -O3   -fopenmp -I../common lud.c -o lud.o\ngcc  -c -Wall -O3   -fopenmp -I../common lud_omp.c -o lud_omp.o\ngcc  -c -Wall -O3   -fopenmp -I../common ../common/common.c -o ../common/common.o\ngcc   -fopenmp   -o lud_omp lud.o lud_omp.o ../common/common.o   -lm\nmake[1]: Leaving directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/lud/omp'\n",
     "stderr": "../common/common.c: In function \u2018create_matrix_from_file\u2019:\n../common/common.c:51:3: warning: ignoring return value of \u2018fscanf\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   51 |   fscanf(fp, \"%d\\n\", &size);\n      |   ^~~~~~~~~~~~~~~~~~~~~~~~~\n../common/common.c:61:11: warning: ignoring return value of \u2018fscanf\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   61 |           fscanf(fp, \"%f \", m+i*size+j);\n      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n../common/common.c: In function \u2018lud_verify\u2019:\n../common/common.c:187:1: warning: control reaches end of non-void function [-Wreturn-type]\n  187 | }\n      | ^\n../common/common.c: In function \u2018create_matrix_from_random\u2019:\n../common/common.c:123:7: warning: \u2018m\u2019 may be used uninitialized [-Wmaybe-uninitialized]\n  123 |   *mp = m;\n      |   ~~~~^~~\n../common/common.c:76:18: note: \u2018m\u2019 was declared here\n   76 |   float *l, *u, *m;\n      |                  ^\n",
     "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/openmp/lud/omp/lud_omp"
@@ -13,7 +13,7 @@
       "configuration": "correctness",
       "duration_seconds": 0.004,
       "exit_code": 0,
-      "stdout": "Generate input matrix internally, size =256\nCreating matrix internally size=256\nrunning OMP on host\nTime consumed(ms): 2.636000\n",
+      "stdout": "Generate input matrix internally, size =256\nCreating matrix internally size=256\nrunning OMP on host\nTime consumed(ms): 2.931000\n",
       "stderr": ""
     }
   },

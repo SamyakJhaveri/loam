@@ -2,7 +2,7 @@
   "spec_id": "rodinia-nn-omp",
   "build": {
     "status": "pass",
-    "duration_seconds": 0.038,
+    "duration_seconds": 0.039,
     "stdout": "rm -rf *.o nn\n\ngcc -o nn nn_openmp.c  -lm -fopenmp -Wall \n",
     "stderr": "nn_openmp.c: In function \u2018main\u2019:\nnn_openmp.c:29:27: warning: implicit declaration of function \u2018clock\u2019 [-Wimplicit-function-declaration]\n   29 |         long long time0 = clock();\n      |                           ^~~~~\nnn_openmp.c:7:1: note: \u2018clock\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n    6 | #include <omp.h>\n  +++ |+#include <time.h>\n    7 | \nnn_openmp.c:34:51: warning: unused variable \u2018tmp_long\u2019 [-Wunused-variable]\n   34 |         float target_lat, target_long, tmp_lat=0, tmp_long=0;\n      |                                                   ^~~~~~~~\nnn_openmp.c:34:40: warning: unused variable \u2018tmp_lat\u2019 [-Wunused-variable]\n   34 |         float target_lat, target_long, tmp_lat=0, tmp_long=0;\n      |                                        ^~~~~~~\nnn_openmp.c:32:61: warning: unused variable \u2018rec_iter2\u2019 [-Wunused-variable]\n   32 |         char   sandbox[REC_LENGTH * REC_WINDOW], *rec_iter,*rec_iter2, dbname[64];\n      |                                                             ^~~~~~~~~\n",
     "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/openmp/nn/nn"
@@ -11,9 +11,9 @@
     "correctness": {
       "status": "pass",
       "configuration": "correctness",
-      "duration_seconds": 0.017,
+      "duration_seconds": 0.016,
       "exit_code": 0,
-      "stdout": "total time :  0.355715006590 s",
+      "stdout": "total time :  0.346406996250 s",
       "stderr": "The 5 nearest neighbors are:\n1974 12 22 18 24 JOYCE      30.6  89.9   80  593 --> 0.608276\n2003  8 27 12 10 TONY       29.9  89.4  160  286 --> 0.608275\n1997 11 14 12 24 HELENE     30.5  89.8  134  529 --> 0.538515\n1980 10 22 18  3 ISAAC      30.1  90.4  110  778 --> 0.412312\n1988 12 27  0 18 TONY       30.0  89.8  113   39 --> 0.199997\n"
     }
   },

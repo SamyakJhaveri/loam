@@ -2,7 +2,7 @@
   "spec_id": "rodinia-pathfinder-cuda",
   "build": {
     "status": "pass",
-    "duration_seconds": 0.495,
+    "duration_seconds": 0.49,
     "stdout": "rm -f pathfinder\n\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc pathfinder.cu -o pathfinder -I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include -L/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/targets/x86_64-linux/lib \n",
     "stderr": "",
     "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/cuda/pathfinder/pathfinder"
@@ -11,7 +11,7 @@
     "correctness": {
       "status": "pass",
       "configuration": "correctness",
-      "duration_seconds": 0.135,
+      "duration_seconds": 0.128,
       "exit_code": 0,
       "stdout": "pyramidHeight: 20\ngridSize: [100000]\nborder:[20]\nblockSize: 256\nblockGrid:[463]\ntargetBlock:[216]\n",
       "stderr": ""

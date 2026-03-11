@@ -11,9 +11,9 @@
     "correctness": {
       "status": "pass",
       "configuration": "correctness",
-      "duration_seconds": 0.071,
+      "duration_seconds": 0.069,
       "exit_code": 0,
-      "stdout": "Start computing the transient temperature\nEnding simulation\nTotal time: 0.001 seconds\n",
+      "stdout": "Start computing the transient temperature\nEnding simulation\nTotal time: 0.000 seconds\n",
       "stderr": ""
     }
   },

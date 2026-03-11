@@ -2,7 +2,7 @@
   "spec_id": "rodinia-streamcluster-cuda",
   "build": {
     "status": "pass",
-    "duration_seconds": 2.023,
+    "duration_seconds": 2.019,
     "stdout": "rm -f *.o *~ *.txt sc_gpu *.linkinfo\n\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc -I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include -O3 streamcluster_cuda_cpu.cpp streamcluster_cuda.cu streamcluster_header.cu -o sc_gpu -lcuda\n",
     "stderr": "streamcluster_cuda_cpu.cpp: In function \u2018void outcenterIDs(Points*, long int*, char*)\u2019:\nstreamcluster_cuda_cpu.cpp:745:21: warning: format \u2018%u\u2019 expects argument of type \u2018unsigned int\u2019, but argument 3 has type \u2018long int\u2019 [-Wformat=]\n  745 |       fprintf(fp, \"%u\\n\", centerIDs[i]);\n      |                    ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_cuda_cpu.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_cuda_cpu.cpp:793:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n  793 |     fprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |\n      |                           int         size_t {aka long unsigned int}\n      |                          %ld\nstreamcluster_cuda.cu: In function \u2018float pgain(long int, Points*, float, long int*, int, bool*, int*, bool*, bool, double*, double*, double*, double*, double*, double*)\u2019:\nstreamcluster_cuda.cu:257:29: warning: \u2018cudaError_t cudaThreadSynchronize()\u2019 is deprecated [-Wdeprecated-declarations]\n  257 |         cudaThreadSynchronize();\n      |         ~~~~~~~~~~~~~~~~~~~~^~\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/cuda_runtime_api.h:1075:46: note: declared here\n 1075 | extern __CUDA_DEPRECATED __host__ cudaError_t CUDARTAPI cudaThreadSynchronize(void);\n      |                                              ^~~~~~~~~~~~~~~~~~~~~\n",
     "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/cuda/streamcluster/sc_gpu"
@@ -11,9 +11,9 @@
     "correctness": {
       "status": "pass",
       "configuration": "correctness",
-      "duration_seconds": 2.211,
+      "duration_seconds": 2.16,
       "exit_code": 0,
-      "stdout": "PARSEC Benchmark Suite\ntime = 2.184833s\ntime pgain = 0.000000s\ntime pgain_dist = 0.000000s\ntime pgain_init = 0.000000s\ntime pselect = 0.000294s\ntime pspeedy = 0.277457s\ntime pshuffle = 0.001623s\ntime localSearch = 2.087226s\n\n\n====CUDA Timing info (pgain)====\ntime serial = 0.924104s\ntime CPU to GPU memory copy = 0.272544s\ntime GPU to CPU memory copy back = 0.181602s\ntime GPU malloc = 0.022204s\ntime GPU free = 0.028471s\ntime kernel = 0.266474s\n",
+      "stdout": "PARSEC Benchmark Suite\ntime = 2.133800s\ntime pgain = 0.000000s\ntime pgain_dist = 0.000000s\ntime pgain_init = 0.000000s\ntime pselect = 0.000185s\ntime pspeedy = 0.272882s\ntime pshuffle = 0.001694s\ntime localSearch = 2.037939s\n\n\n====CUDA Timing info (pgain)====\ntime serial = 0.894227s\ntime CPU to GPU memory copy = 0.272529s\ntime GPU to CPU memory copy back = 0.181779s\ntime GPU malloc = 0.020744s\ntime GPU free = 0.028095s\ntime kernel = 0.256051s\n",
       "stderr": "read 65536 points\nfinish local search\n"
     }
   },

@@ -2,7 +2,7 @@
   "spec_id": "rodinia-srad-omp",
   "build": {
     "status": "pass",
-    "duration_seconds": 0.163,
+    "duration_seconds": 0.165,
     "stdout": "rm -f srad\n\ng++ -g -fopenmp -O2 srad.cpp -o srad \n",
     "stderr": "",
     "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad"

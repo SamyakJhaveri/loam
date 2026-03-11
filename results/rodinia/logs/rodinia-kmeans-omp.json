@@ -2,7 +2,7 @@
   "spec_id": "rodinia-kmeans-omp",
   "build": {
     "status": "pass",
-    "duration_seconds": 0.28,
+    "duration_seconds": 0.275,
     "stdout": "cd kmeans_serial; make clean\nmake[1]: Entering directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/kmeans/kmeans_serial'\nrm -f *.o *~ kmeans \nmake[1]: Leaving directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/kmeans/kmeans_serial'\ncd kmeans_openmp; make clean\nmake[1]: Entering directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/kmeans/kmeans_openmp'\nrm -f *.o *~ kmeans \nmake[1]: Leaving directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/kmeans/kmeans_openmp'\n\ncd kmeans_openmp; make\nmake[1]: Entering directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/kmeans/kmeans_openmp'\ngcc -g -fopenmp -O2  cluster.c -c\ngcc -g -fopenmp -O2  getopt.c -c\ngcc -g -fopenmp -O2  kmeans.c -c\ngcc -g -fopenmp -O2  kmeans_clustering.c -c\ngcc -g -fopenmp -O2  cluster.o getopt.o kmeans.o kmeans_clustering.o  -o kmeans\nmake[1]: Leaving directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/kmeans/kmeans_openmp'\ncd kmeans_serial; make\nmake[1]: Entering directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/kmeans/kmeans_serial'\ngcc -g -fopenmp -O2  cluster.c -c\ngcc -g -fopenmp -O2  getopt.c -c\ngcc -g -fopenmp -O2  kmeans.c -c\ngcc -g -fopenmp -O2  kmeans_clustering.c -c\ngcc -g -fopenmp -O2  cluster.o getopt.o kmeans.o kmeans_clustering.o  -o kmeans\nmake[1]: Leaving directory '/home/samyak/Desktop/parbench_sam/rodinia/openmp/kmeans/kmeans_serial'\n",
     "stderr": "kmeans.c: In function \u2018main\u2019:\nkmeans.c:152:9: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  152 |         read(infile, &numObjects,    sizeof(int));\n      |         ^~~~\n      |         fread\nkmeans.c:165:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  165 |         close(infile);\n      |         ^~~~~\n      |         pclose\nkmeans.c: In function \u2018main\u2019:\nkmeans.c:147:9: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  147 |         read(infile, &numObjects,    sizeof(int));\n      |         ^~~~\n      |         fread\nkmeans.c:160:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  160 |         close(infile);\n      |         ^~~~~\n      |         pclose\n",
     "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/openmp/kmeans/kmeans_openmp/kmeans"
@@ -11,9 +11,9 @@
     "correctness": {
       "status": "pass",
       "configuration": "correctness",
-      "duration_seconds": 1.888,
+      "duration_seconds": 1.859,
       "exit_code": 0,
-      "stdout": "I/O completed\nnum of threads = 1\nnumber of Clusters 5\nnumber of Attributes 34\n\nTime for process: 1.511035\n",
+      "stdout": "I/O completed\nnum of threads = 1\nnumber of Clusters 5\nnumber of Attributes 34\n\nTime for process: 1.495930\n",
       "stderr": ""
     }
   },

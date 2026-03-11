@@ -2,7 +2,7 @@
   "spec_id": "rodinia-nw-omp",
   "build": {
     "status": "pass",
-    "duration_seconds": 0.214,
+    "duration_seconds": 0.207,
     "stdout": "rm -f needle needle_offload\n\ng++ -g -O3 -fopenmp needle.cpp -o needle \n",
     "stderr": "",
     "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle"

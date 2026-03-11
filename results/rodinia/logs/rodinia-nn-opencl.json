@@ -2,25 +2,25 @@
   "spec_id": "rodinia-nn-opencl",
   "build": {
     "status": "pass",
-    "duration_seconds": 0.612,
+    "duration_seconds": 0.605,
     "stdout": "rm -f nn.out\n\ng++ -g -O3  -fopenmp nearestNeighbor.cpp clutils.cpp utils.cpp -o nn.out \\\n\t-I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include -L/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64 -lOpenCL \\\n\t-I../util -DTIMING \\\n\t-Wno-unused-result\n",
     "stderr": "In file included from /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/opencl.h:24,\n                 from nearestNeighbor.h:15,\n                 from nearestNeighbor.cpp:4:\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/cl.h:26:104: note: \u2018#pragma message: cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\u2019\n   26 | #pragma message(\"cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\")\n      |                                                                                                        ^\nIn file included from clutils.cpp:57:\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/cl.h:26:104: note: \u2018#pragma message: cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\u2019\n   26 | #pragma message(\"cl_version.h: CL_TARGET_OPENCL_VERSION is not defined. Defaulting to 300 (OpenCL 3.0)\")\n      |                                                                                                        ^\nclutils.cpp: In function \u2018_cl_context* cl_init(char)\u2019:\nclutils.cpp:223:44: warning: \u2018_cl_command_queue* clCreateCommandQueue(cl_context, cl_device_id, cl_command_queue_properties, cl_int*)\u2019 is deprecated [-Wdeprecated-declarations]\n  223 |     commandQueueProf = clCreateCommandQueue(context, device,\n      |                        ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~\n  224 |                             CL_QUEUE_PROFILING_ENABLE, &status);\n      |                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/cl.h:1987:1: note: declared here\n 1987 | clCreateCommandQueue(cl_context                     context,\n      | ^~~~~~~~~~~~~~~~~~~~\nclutils.cpp:227:46: warning: \u2018_cl_command_queue* clCreateCommandQueue(cl_context, cl_device_id, cl_command_queue_properties, cl_int*)\u2019 is deprecated [-Wdeprecated-declarations]\n  227 |     commandQueueNoProf = clCreateCommandQueue(context, device, 0, &status);\n      |                          ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/cl.h:1987:1: note: declared here\n 1987 | clCreateCommandQueue(cl_context                     context,\n      | ^~~~~~~~~~~~~~~~~~~~\nclutils.cpp: In function \u2018_cl_context* cl_init_context(int, int, int)\u2019:\nclutils.cpp:379:44: warning: \u2018_cl_command_queue* clCreateCommandQueue(cl_context, cl_device_id, cl_command_queue_properties, cl_int*)\u2019 is deprecated [-Wdeprecated-declarations]\n  379 |         commandQueue = clCreateCommandQueue(context,\n      |                        ~~~~~~~~~~~~~~~~~~~~^~~~~~~~~\n  380 |                                                 devices[device_touse], CL_QUEUE_PROFILING_ENABLE, &status);\n      |                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/cl.h:1987:1: note: declared here\n 1987 | clCreateCommandQueue(cl_context                     context,\n      | ^~~~~~~~~~~~~~~~~~~~\nclutils.cpp: In function \u2018_cl_mem* cl_allocImage(size_t, size_t, char, cl_mem_flags)\u2019:\nclutils.cpp:589:26: warning: \u2018_cl_mem* clCreateImage2D(cl_context, cl_mem_flags, const cl_image_format*, size_t, size_t, size_t, void*, cl_int*)\u2019 is deprecated [-Wdeprecated-declarations]\n  589 |     mem = clCreateImage2D(context, flags, &format, width, height, 0, NULL, &status);\n      |           ~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include/CL/cl.h:1946:1: note: declared here\n 1946 | clCreateImage2D(cl_context              context,\n      | ^~~~~~~~~~~~~~~\nclutils.cpp: In function \u2018void cl_copyBufferToImage(cl_mem, cl_mem, int, int)\u2019:\nclutils.cpp:671:25: warning: narrowing conversion of \u2018width\u2019 from \u2018int\u2019 to \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wnarrowing]\n  671 |     size_t region[3] = {width, height, 1};\n      |                         ^~~~~\nclutils.cpp:671:32: warning: narrowing conversion of \u2018height\u2019 from \u2018int\u2019 to \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wnarrowing]\n  671 |     size_t region[3] = {width, height, 1};\n      |                                ^~~~~~\n",
     "executable_path": "/home/samyak/Desktop/parbench_sam/rodinia/opencl/nn/nn.out"
   },
   "runs": {
     "correctness": {
-      "status": "fail",
+      "status": "timeout",
       "configuration": "correctness",
-      "duration_seconds": 1.073,
-      "exit_code": -11,
+      "duration_seconds": 300.039,
+      "exit_code": -1,
       "stdout": "",
-      "stderr": ""
+      "stderr": "Execution timed out after 300s"
     }
   },
   "verification": {
     "status": "fail",
     "strategy_used": "exit_code",
-    "details": "exit_code=-11 != expected 0. Process exits cleanly"
+    "details": "exit_code=-1 != expected 0. Process exits cleanly"
   },
   "metrics": []
 }
