@@ -11,7 +11,7 @@ echo "========================================================"
 
 echo ""
 echo "===== Phase 3 OpenCL: rodinia-bfs-opencl × L1,L2,L4 ====="
-python3 scripts/run_augment_batch.py \
+python3 scripts/augmentation/run_augment_batch.py \
     specs/rodinia-bfs-opencl.json \
     --levels 1 2 4 --seed 42 \
     --out results/augmentation/phase3_opencl \
@@ -19,7 +19,7 @@ python3 scripts/run_augment_batch.py \
 
 echo ""
 echo "===== Phase 4 OpenCL: All Rodinia OpenCL specs × L2 ====="
-python3 scripts/run_augment_batch.py \
+python3 scripts/augmentation/run_augment_batch.py \
     specs/rodinia-*-opencl.json \
     --levels 2 --seed 42 \
     --out results/augmentation/phase4_opencl \
@@ -27,7 +27,7 @@ python3 scripts/run_augment_batch.py \
 
 echo ""
 echo "===== Phase 5 OpenCL: All OpenCL specs × L1,L2,L4 ====="
-python3 scripts/run_augment_batch.py \
+python3 scripts/augmentation/run_augment_batch.py \
     specs/*-opencl.json \
     --levels 1 2 4 --seed 42 \
     --out results/augmentation/phase5_opencl \

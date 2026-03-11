@@ -10,7 +10,7 @@ echo "========================================================"
 
 echo ""
 echo "===== Phase 3 OMP: rodinia-hotspot-omp × L1,L2,L4 ====="
-python3 scripts/run_augment_batch.py \
+python3 scripts/augmentation/run_augment_batch.py \
     specs/rodinia-hotspot-omp.json \
     --levels 1 2 4 --seed 42 \
     --out results/augmentation/phase3_omp \
@@ -18,7 +18,7 @@ python3 scripts/run_augment_batch.py \
 
 echo ""
 echo "===== Phase 4 OMP: All Rodinia OMP specs × L2 ====="
-python3 scripts/run_augment_batch.py \
+python3 scripts/augmentation/run_augment_batch.py \
     specs/rodinia-*-omp.json \
     --levels 2 --seed 42 \
     --out results/augmentation/phase4_omp \
@@ -26,7 +26,7 @@ python3 scripts/run_augment_batch.py \
 
 echo ""
 echo "===== Phase 5 OMP: All OMP specs × L1,L2,L4 ====="
-python3 scripts/run_augment_batch.py \
+python3 scripts/augmentation/run_augment_batch.py \
     specs/*-omp.json \
     --levels 1 2 4 --seed 42 \
     --out results/augmentation/phase5_omp \

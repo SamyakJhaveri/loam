@@ -10,7 +10,7 @@ echo "========================================================"
 
 echo ""
 echo "===== Phase 3 CUDA: rodinia-bfs-cuda × L1,L2,L4 ====="
-python3 scripts/run_augment_batch.py \
+python3 scripts/augmentation/run_augment_batch.py \
     specs/rodinia-bfs-cuda.json \
     --levels 1 2 4 --seed 42 \
     --out results/augmentation/phase3_cuda \
@@ -18,7 +18,7 @@ python3 scripts/run_augment_batch.py \
 
 echo ""
 echo "===== Phase 4 CUDA: All Rodinia CUDA specs × L2 ====="
-python3 scripts/run_augment_batch.py \
+python3 scripts/augmentation/run_augment_batch.py \
     specs/rodinia-*-cuda.json \
     --levels 2 --seed 42 \
     --out results/augmentation/phase4_cuda \
@@ -26,7 +26,7 @@ python3 scripts/run_augment_batch.py \
 
 echo ""
 echo "===== Phase 5 CUDA: All CUDA specs × L1,L2,L4 ====="
-python3 scripts/run_augment_batch.py \
+python3 scripts/augmentation/run_augment_batch.py \
     specs/*-cuda.json \
     --levels 1 2 4 --seed 42 \
     --out results/augmentation/phase5_cuda \

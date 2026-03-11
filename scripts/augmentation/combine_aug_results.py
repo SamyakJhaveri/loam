@@ -15,11 +15,11 @@ import json
 import sys
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
+PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 AUGDIR = PROJECT_ROOT / "results" / "augmentation"
 
 sys.path.insert(0, str(PROJECT_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
+sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "augmentation"))
 
 from run_augment_batch import generate_markdown  # noqa: E402
 
