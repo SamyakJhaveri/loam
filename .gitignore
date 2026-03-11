@@ -2,8 +2,10 @@
 ParBench.zip
 ParBench/downloads/
 
-# Meeting Notes
-meeting_notes/
+# Personal/temporary documents (not project deliverables)
+# Use: git add -f presentations/file.pptx to track presentation files
+*.pdf
+*.docx
 
 # HeCBench downloads (1.4 GB source tree — re-download via wget script)
 parbench_sam/downloads/
