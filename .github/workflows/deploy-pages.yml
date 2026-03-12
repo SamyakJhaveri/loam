@@ -29,9 +29,10 @@ jobs:
         run: npm install -g staticrypt
 
       - name: Encrypt HTML files with password
-        # --remember 86400  stores auth in localStorage for 24 h so users don't re-enter password on each page nav
-        # --short           allows short/simple passwords
-        # -o "$f"           overwrites the original file in-place
+        # staticrypt v3: encrypts HTML files with AES-256, adds a password prompt page
+        # -d encrypted/    writes encrypted files to encrypted/ subdirectory (staticrypt default)
+        # --remember 1     stores auth in localStorage for 1 day across page navigations
+        # Then we move encrypted files back over the originals for deployment
         env:
           PAGES_PASSWORD: ${{ secrets.PAGES_PASSWORD }}
         run: |
@@ -40,9 +41,9 @@ jobs:
             exit 1
           fi
           cd visualizations
-          for f in *.html; do
-            staticrypt "$f" --password "$PAGES_PASSWORD" --remember 86400 --short -o "$f"
-          done
+          staticrypt *.html --password "$PAGES_PASSWORD" --remember 1
+          mv encrypted/*.html .
+          rmdir encrypted
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
