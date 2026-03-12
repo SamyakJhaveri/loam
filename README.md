@@ -6,6 +6,20 @@ OpenMP, etc.). It aggregates kernels from multiple existing benchmark suites and
 wraps each one in a machine-readable specification that drives automated build,
 run, verification, and LLM evaluation workflows.
 
+## Visualizations
+
+Interactive dashboards for ParBench results are hosted on GitHub Pages:
+
+**[https://samyakjhaveri.github.io/parbench_sam/](https://samyakjhaveri.github.io/parbench_sam/)**
+
+Available dashboards:
+- [Project Overview](https://samyakjhaveri.github.io/parbench_sam/overview.html)
+- [Build Results](https://samyakjhaveri.github.io/parbench_sam/build_results.html)
+- [Augmentation Results](https://samyakjhaveri.github.io/parbench_sam/results.html)
+- [Benchmark Landscape](https://samyakjhaveri.github.io/parbench_sam/benchmark_landscape.html)
+- [Architecture](https://samyakjhaveri.github.io/parbench_sam/architecture.html)
+- [Pipeline](https://samyakjhaveri.github.io/parbench_sam/pipeline.html)
+
 ## Project Structure
 
 ```

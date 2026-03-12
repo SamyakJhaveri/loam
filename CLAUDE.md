@@ -132,6 +132,17 @@ rodinia-bfs-opencl  BUILD: PASS | RUN: PASS | VERIFY: PASS
 ```
 Fixes applied: CUDA_DIR path, `make hotspot` target, OpenCL include/lib paths, `CC_FLAGS=-std=c++14`, data path symlinks (`rodinia/rodinia-src/data/` → `rodinia-data/`).
 
+## GitHub Pages
+
+Visualizations are hosted at: **https://samyakjhaveri.github.io/parbench_sam/**
+
+- Source: `visualizations/` directory (8 static HTML/JS files)
+- Deployment: GitHub Actions workflow at `.github/workflows/deploy-pages.yml`
+- Triggers: any push to `main` that touches `visualizations/**`, or manual `workflow_dispatch`
+- Entry point: `visualizations/index.html` redirects to `overview.html`
+- MCP plugins added to `.mcp.json`: `puppeteer` (browser preview), `css-docs` (CSS reference)
+- To re-enable Pages after repo transfer: Settings → Pages → Source = "GitHub Actions"
+
 ## User Working Style & Claude Code Preferences
 
 ### Collaboration Model
