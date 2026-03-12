@@ -214,12 +214,21 @@ def _unary_prefix_text(code: str, cursor: ci.Cursor) -> str:
 
 def _identifier_range(cursor: ci.Cursor, spelling: Optional[str] = None) -> Optional[tuple[int, int]]:
     target = spelling or cursor.spelling
+    target_offset = cursor.location.offset
     for token in cursor.get_tokens():
         if token.kind != TokenKind.IDENTIFIER:
             continue
         if token.spelling != target:
             continue
-        return token.extent.start.offset, token.extent.end.offset
+        # For precision, especially when multiple identical tokens exist in the extent
+        # (e.g. 'class timer &timer'), prefer the one matching the cursor's location.
+        if token.extent.start.offset == target_offset:
+            return token.extent.start.offset, token.extent.end.offset
+            
+    # Fallback to the first matching token if location-based match failed
+    for token in cursor.get_tokens():
+        if token.kind == TokenKind.IDENTIFIER and token.spelling == target:
+            return token.extent.start.offset, token.extent.end.offset
     return None
 
 
@@ -247,7 +256,7 @@ def _fatal_diagnostics(tu: ci.TranslationUnit) -> int:
     return sum(
         1
         for diag in tu.diagnostics
-        if diag.severity >= ci.Diagnostic.Error  # severity >= 3 (Error or Fatal)
+        if diag.severity >= ci.Diagnostic.Error
     )
 
 
@@ -259,6 +268,24 @@ def _validate_rewrite(candidate: RewriteCandidate, code: str, index: ci.Index) -
     except Exception:
         return False
     return _fatal_diagnostics(updated) <= _fatal_diagnostics(baseline)
+
+
+def _edits_overlap(c1: RewriteCandidate, c2: RewriteCandidate) -> bool:
+    """Return True if any edit in c1 overlaps with any edit in c2."""
+    for e1 in c1.edits:
+        for e2 in c2.edits:
+            if not (e1.end_offset <= e2.start_offset or e2.end_offset <= e1.start_offset):
+                return True
+    return False
+
+
+def _filter_nonoverlapping(candidates: list[RewriteCandidate]) -> list[RewriteCandidate]:
+    """Return a subset of candidates that do not overlap with each other."""
+    non_overlapping: list[RewriteCandidate] = []
+    for c in candidates:
+        if not any(_edits_overlap(c, existing) for existing in non_overlapping):
+            non_overlapping.append(c)
+    return non_overlapping
 
 
 class AstTransform(Transform):
@@ -291,19 +318,27 @@ class AstTransform(Transform):
             num_to_select = len(valid_candidates)
             
         selected_candidates = random.sample(valid_candidates, num_to_select)
-        
+
+        # Fix A: remove candidates whose edit ranges overlap with already-selected ones.
+        selected_candidates = _filter_nonoverlapping(selected_candidates)
+
+        if not selected_candidates:
+            return TransformResult(False, code, f"{self.name}: 0 changes")
+
         all_edits = []
         for c in selected_candidates:
             all_edits.extend(c.edits)
-            
-        # We need a unified candidate to apply all selected non-overlapping edits at once
-        selected = RewriteCandidate(
+
+        # Re-validate the merged candidate before applying.
+        merged = RewriteCandidate(
             description=f"{self.name}: {len(selected_candidates)} candidates applied",
             edits=all_edits
         )
-        
-        rewritten = _apply_candidate(code, selected)
-        return TransformResult(True, rewritten, selected.description)
+        if not _validate_rewrite(merged, code, index):
+            return TransformResult(False, code, f"{self.name}: merged candidate failed validation")
+
+        rewritten = _apply_candidate(code, merged)
+        return TransformResult(True, rewritten, merged.description)
 
     @abstractmethod
     def _find_candidates(self, code: str, index: ci.Index) -> list[RewriteCandidate]:
@@ -399,6 +434,21 @@ class ArithmeticTransform(AstTransform):
         return candidates
 
 
+ASSIGNMENT_OPERATORS = {"="} | set(COMPOUND_OPERATORS)
+
+
+def _contains_assignment(code: str, cursor: ci.Cursor) -> bool:
+    """Return True if any node in the subtree performs an assignment."""
+    if cursor.kind == CursorKind.BINARY_OPERATOR:
+        op = _binary_operator_text(code, cursor)
+        if op in ASSIGNMENT_OPERATORS:
+            return True
+    for child in cursor.get_children():
+        if _contains_assignment(code, child):
+            return True
+    return False
+
+
 class SwapCondition(AstTransform):
     """
     Swaps operands of comparison expressions.
@@ -434,6 +484,10 @@ class SwapCondition(AstTransform):
             if len(children) != 2:
                 continue
             lhs, rhs = children
+            # Fix C: skip comparisons where either operand contains an assignment.
+            # Swapping would produce a non-lvalue or change program semantics.
+            if _contains_assignment(code, lhs) or _contains_assignment(code, rhs):
+                continue
             start, end = _cursor_offsets(cursor)
             lhs_text = _source_text(code, lhs).strip()
             rhs_text = _source_text(code, rhs).strip()
@@ -516,6 +570,16 @@ class PointerArithmeticToArrayIndex(AstTransform):
                 start, end = _cursor_offsets(cursor)
                 base_text = _source_text(code, base).strip()
                 idx_text = _source_text(code, idx).strip()
+                # Fix B: if a '.' member access immediately follows the subscript
+                # expression, wrap the dereference in parentheses so that operator
+                # precedence is correct: (*((arr)+(i))).member instead of
+                # *((arr)+(i)).member (where '.' would bind tighter than '*').
+                code_bytes = code.encode("utf-8")
+                next_byte = code_bytes[end:end+1] if end < len(code_bytes) else b""
+                if next_byte == b".":
+                    replacement = f"(*(({base_text}) + ({idx_text})))"
+                else:
+                    replacement = f"*(({base_text}) + ({idx_text}))"
                 candidates.append(
                     RewriteCandidate(
                         description=f"{self.name}: 1 changes",
@@ -523,7 +587,7 @@ class PointerArithmeticToArrayIndex(AstTransform):
                             TextEdit(
                                 start_offset=start,
                                 end_offset=end,
-                                replacement=f"(*({base_text} + {idx_text}))",
+                                replacement=replacement,
                             )
                         ],
                     )
@@ -569,9 +633,13 @@ class TypedefExpansion(AstTransform):
             usr = cursor.get_usr()
             if not usr:
                 continue
+            underlying = cursor.underlying_typedef_type
+            if underlying.kind in {TypeKind.POINTER, TypeKind.MEMBERPOINTER, TypeKind.BLOCKPOINTER}:
+                continue
+
             alias_by_usr[usr] = (
                 cursor.spelling,
-                cursor.underlying_typedef_type.spelling,
+                underlying.spelling,
             )
 
         candidates: list[RewriteCandidate] = []
@@ -836,6 +904,12 @@ class ChangeNames(Transform):
                 start = token.extent.start.offset
                 end = token.extent.end.offset
                 if start not in ast_offsets:
+                    # Fix: verify that the token at this location is actually a reference to a variable,
+                    # not a type reference or other unrelated identifier with the same spelling.
+                    token_cursor = ci.Cursor.from_location(tu, token.extent.start)
+                    if token_cursor.kind == CursorKind.TYPE_REF:
+                        continue
+                    
                     edits.append(
                         TextEdit(
                             start_offset=start,
@@ -847,7 +921,8 @@ class ChangeNames(Transform):
         unique: dict[tuple[int, int], TextEdit] = {}
         for edit in edits:
             unique[(edit.start_offset, edit.end_offset)] = edit
-        return sorted(unique.values(), key=lambda item: item.start_offset)
+        res = sorted(unique.values(), key=lambda item: item.start_offset)
+        return res
 
     def is_applicable(self, code: str, index: ci.Index) -> bool:
         tu = _parse_translation_unit(code, index)
@@ -1098,4 +1173,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
