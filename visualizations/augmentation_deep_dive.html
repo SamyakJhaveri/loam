@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ParBench — Augmentation Deep Dive</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --text-muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
+    --orange: #d18616; --teal: #39d2c0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
+  h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1.8rem; }
+  h2 { color: var(--purple); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  h3 { color: var(--green); margin: 1.2rem 0 0.5rem; font-size: 1rem; }
+  .subtitle { color: var(--text-muted); margin-bottom: 1.5rem; font-size: 1rem; }
+  p { color: var(--text-muted); margin: 0.4rem 0; font-size: 0.88rem; }
+
+  /* Nav */
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+  nav a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
+  nav a:hover { color: var(--text); }
+  nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
+  nav .active { color: var(--text); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+
+  /* TL;DR box */
+  .tldr { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.4); border-radius: 10px; padding: 1.5rem; margin: 1rem 0 2rem; }
+  .tldr-title { color: var(--green); font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; }
+  .tldr p { color: var(--text); font-size: 0.95rem; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; }
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .stat-card .n { font-size: 2.2rem; font-weight: 700; }
+  .stat-card .l { color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem; }
+
+  /* Level comparison grid */
+  .level-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 800px) { .level-grid { grid-template-columns: repeat(2, 1fr); } }
+  .level-card { background: var(--surface); border: 2px solid var(--border); border-radius: 10px; padding: 1.2rem; text-align: center; }
+  .level-card.recommended { border-color: var(--green); }
+  .level-card.caution { border-color: var(--yellow); }
+  .level-card.broken { border-color: rgba(248,81,73,0.5); }
+  .level-badge { font-size: 2rem; font-weight: 800; margin-bottom: 0.4rem; }
+  .level-badge.ok { color: var(--green); }
+  .level-badge.warn { color: var(--yellow); }
+  .level-badge.bad { color: var(--red); }
+  .level-stat { font-size: 1.3rem; font-weight: 700; margin: 0.3rem 0; }
+  .level-detail { color: var(--text-muted); font-size: 0.75rem; margin: 0.15rem 0; }
+  .level-rec { margin-top: 0.7rem; font-size: 0.78rem; padding: 3px 8px; border-radius: 12px; display: inline-block; }
+  .rec-use { background: rgba(63,185,80,0.2); color: var(--green); border: 1px solid rgba(63,185,80,0.4); }
+  .rec-skip { background: rgba(248,81,73,0.1); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+
+  /* Bar charts */
+  .bar-section { margin: 1rem 0; }
+  .bar-row { display: flex; align-items: center; gap: 0.8rem; margin: 0.5rem 0; }
+  .bar-label { min-width: 160px; font-size: 0.82rem; color: var(--text-muted); }
+  .bar-track { flex: 1; height: 22px; background: rgba(255,255,255,0.04); border-radius: 4px; overflow: hidden; display: flex; }
+  .bar-pass { background: var(--green); height: 100%; transition: width 0.3s; }
+  .bar-bf   { background: rgba(210,153,34,0.7); height: 100%; }
+  .bar-fail { background: rgba(248,81,73,0.6); height: 100%; }
+  .bar-val  { min-width: 90px; font-size: 0.82rem; color: var(--text); font-weight: 600; }
+
+  /* Transform table */
+  table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+  th { background: var(--surface); color: var(--text-muted); font-weight: 600; padding: 0.6rem 0.8rem; text-align: left; border-bottom: 2px solid var(--border); }
+  td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Status badges */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 600; }
+  .badge-green  { background: rgba(63,185,80,0.2);   color: var(--green);   border: 1px solid rgba(63,185,80,0.4); }
+  .badge-yellow { background: rgba(210,153,34,0.2);  color: var(--yellow);  border: 1px solid rgba(210,153,34,0.4); }
+  .badge-red    { background: rgba(248,81,73,0.15);  color: var(--red);     border: 1px solid rgba(248,81,73,0.3); }
+  .badge-blue   { background: rgba(88,166,255,0.15); color: var(--accent);  border: 1px solid rgba(88,166,255,0.3); }
+  .badge-purple { background: rgba(188,140,255,0.15);color: var(--purple);  border: 1px solid rgba(188,140,255,0.3); }
+
+  /* Spec grid */
+  .spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; margin: 1rem 0; }
+  .spec-pill { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.35rem 0.6rem; font-size: 0.78rem; color: var(--text); }
+  .spec-pill.cuda   { border-left: 3px solid var(--accent); }
+  .spec-pill.omp    { border-left: 3px solid var(--green); }
+  .spec-pill.opencl { border-left: 3px solid var(--purple); }
+
+  /* Two-column layout */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; }
+  @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Callout box */
+  .callout { border-left: 4px solid var(--accent); padding: 0.8rem 1.2rem; background: rgba(88,166,255,0.06); border-radius: 0 8px 8px 0; margin: 1rem 0; }
+  .callout p { color: var(--text); }
+
+  /* API tab section */
+  .api-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .api-tab { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 1rem; font-size: 0.83rem; cursor: pointer; color: var(--text-muted); }
+  .api-tab.active { background: rgba(88,166,255,0.15); color: var(--accent); border-color: var(--accent); }
+
+  /* Effort pills */
+  .effort { display: inline-block; background: rgba(57,210,192,0.15); color: var(--teal); border: 1px solid rgba(57,210,192,0.3); border-radius: 10px; font-size: 0.72rem; padding: 1px 7px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">ParBench</span>
+  <a href="overview.html">Overview</a>
+  <a href="build_results.html">Build Results</a>
+  <a href="results.html">Augmentation</a>
+  <a href="augmentation_deep_dive.html" class="active">Deep Dive</a>
+  <a href="benchmark_landscape.html">Landscape</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="pipeline.html">Pipeline</a>
+</nav>
+
+<h1>Augmentation Deep Dive</h1>
+<p class="subtitle">L1/L2 vs L3/L4 — Status, Bugs, and Recommendation for SC26 &nbsp;·&nbsp; 2026-03-12</p>
+
+<!-- ─── TL;DR ──────────────────────────────────────────────────────────────── -->
+<div class="tldr">
+  <div class="tldr-title">✓ Bottom Line: Use L2 — move to testing stage</div>
+  <p>L1/L2 achieve <strong>~90% pass rate</strong> against the corrected baseline and apply real, meaningful code transforms. L3/L4 have known bugs causing 50–63% BUILD_FAIL. The bugs are fixable (Bug D is ~1 hr, lowest-hanging fruit) but not required for SC26.</p>
+</div>
+
+<!-- ─── Key Numbers ──────────────────────────────────────────────────────── -->
+<h2>At a Glance</h2>
+<div class="card-grid">
+  <div class="stat-card"><div class="n" style="color:var(--green)">45/60</div><div class="l">L2 PASS (75%)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--green)">~90%</div><div class="l">Corrected Pass Rate<br>(vs ~50-spec baseline)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--yellow)">29/60</div><div class="l">L3 PASS (48%)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--red)">22/60</div><div class="l">L4 PASS (37%)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--purple)">5</div><div class="l">Transforms</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--teal)">4</div><div class="l">Unfixed Bugs (L3/L4)</div></div>
+</div>
+
+<!-- ─── What Levels Mean ──────────────────────────────────────────────────── -->
+<h2>What the Augmentation Levels Mean</h2>
+<div class="level-grid">
+  <div class="level-card recommended">
+    <div class="level-badge ok">L1</div>
+    <div class="level-stat" style="color:var(--green)">45/60 PASS</div>
+    <div class="level-detail">1 transform (random)</div>
+    <div class="level-detail">1 edit site</div>
+    <div class="level-detail">FAIL: 11 BUILD_FAIL · 4 FAIL</div>
+    <div class="level-rec rec-use">✓ Use</div>
+  </div>
+  <div class="level-card recommended">
+    <div class="level-badge ok">L2</div>
+    <div class="level-stat" style="color:var(--green)">45/60 PASS</div>
+    <div class="level-detail">1 transform (random)</div>
+    <div class="level-detail">33% of available sites</div>
+    <div class="level-detail">FAIL: 11 BUILD_FAIL · 4 FAIL</div>
+    <div class="level-rec rec-use">✓ Recommended</div>
+  </div>
+  <div class="level-card caution">
+    <div class="level-badge warn">L3</div>
+    <div class="level-stat" style="color:var(--yellow)">29/60 PASS</div>
+    <div class="level-detail">3 transforms (random)</div>
+    <div class="level-detail">66% of available sites</div>
+    <div class="level-detail">FAIL: 29 BUILD_FAIL · 2 FAIL</div>
+    <div class="level-rec rec-skip">⚠ Needs Bug E/F/G fix</div>
+  </div>
+  <div class="level-card broken">
+    <div class="level-badge bad">L4</div>
+    <div class="level-stat" style="color:var(--red)">22/60 PASS</div>
+    <div class="level-detail">All 5 transforms</div>
+    <div class="level-detail">100% of available sites</div>
+    <div class="level-detail">FAIL: 35 BUILD_FAIL · 3 FAIL</div>
+    <div class="level-rec rec-skip">✗ Skip for SC26</div>
+  </div>
+</div>
+
+<div class="callout">
+  <p><strong>Critical jump at L2 → L3:</strong> from 1 transform to 3, and from 33% to 66% of sites. Transforms run <em>sequentially</em> — each one rewrites the code, then the next operates on the already-modified source. This compounding triggers edge cases that don't appear at L1/L2.</p>
+</div>
+
+<!-- ─── Pass Rate Bars ─────────────────────────────────────────────────────── -->
+<h2>Pass Rates by Level — All 60 Specs</h2>
+<div class="bar-section">
+  <div style="display:flex; gap:1.5rem; margin-bottom:0.8rem; font-size:0.78rem;">
+    <span><span style="display:inline-block;width:12px;height:12px;background:var(--green);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>PASS</span>
+    <span><span style="display:inline-block;width:12px;height:12px;background:rgba(210,153,34,0.7);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>BUILD_FAIL</span>
+    <span><span style="display:inline-block;width:12px;height:12px;background:rgba(248,81,73,0.6);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>FAIL</span>
+  </div>
+
+  <div class="bar-row">
+    <div class="bar-label"><strong style="color:var(--green)">L1</strong> — 1 transform · 1 site</div>
+    <div class="bar-track">
+      <div class="bar-pass" style="width:75%"></div>
+      <div class="bar-bf"   style="width:18.3%"></div>
+      <div class="bar-fail" style="width:6.7%"></div>
+    </div>
+    <div class="bar-val">45/60 &nbsp; 75%</div>
+  </div>
+
+  <div class="bar-row">
+    <div class="bar-label"><strong style="color:var(--green)">L2</strong> — 1 transform · 33% sites</div>
+    <div class="bar-track">
+      <div class="bar-pass" style="width:75%"></div>
+      <div class="bar-bf"   style="width:18.3%"></div>
+      <div class="bar-fail" style="width:6.7%"></div>
+    </div>
+    <div class="bar-val">45/60 &nbsp; 75%</div>
+  </div>
+
+  <div class="bar-row">
+    <div class="bar-label"><strong style="color:var(--yellow)">L3</strong> — 3 transforms · 66% sites</div>
+    <div class="bar-track">
+      <div class="bar-pass" style="width:48.3%"></div>
+      <div class="bar-bf"   style="width:48.3%"></div>
+      <div class="bar-fail" style="width:3.4%"></div>
+    </div>
+    <div class="bar-val">29/60 &nbsp; 48%</div>
+  </div>
+
+  <div class="bar-row">
+    <div class="bar-label"><strong style="color:var(--red)">L4</strong> — all 5 transforms · 100% sites</div>
+    <div class="bar-track">
+      <div class="bar-pass" style="width:36.7%"></div>
+      <div class="bar-bf"   style="width:58.3%"></div>
+      <div class="bar-fail" style="width:5%"></div>
+    </div>
+    <div class="bar-val">22/60 &nbsp; 37%</div>
+  </div>
+</div>
+
+<!-- ─── Per-API Breakdown ──────────────────────────────────────────────────── -->
+<h2>Per-API Breakdown</h2>
+<div class="two-col">
+  <div>
+    <h3>CUDA (22 specs)</h3>
+    <div class="bar-section">
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L1</div><div class="bar-track"><div class="bar-pass" style="width:68.2%"></div><div class="bar-bf" style="width:27.3%"></div><div class="bar-fail" style="width:4.5%"></div></div><div class="bar-val">15/22</div></div>
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L2</div><div class="bar-track"><div class="bar-pass" style="width:68.2%"></div><div class="bar-bf" style="width:27.3%"></div><div class="bar-fail" style="width:4.5%"></div></div><div class="bar-val">15/22</div></div>
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L3</div><div class="bar-track"><div class="bar-pass" style="width:59.1%"></div><div class="bar-bf" style="width:40.9%"></div></div><div class="bar-val">13/22</div></div>
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L4</div><div class="bar-track"><div class="bar-pass" style="width:50%"></div><div class="bar-bf" style="width:45.5%"></div><div class="bar-fail" style="width:4.5%"></div></div><div class="bar-val">11/22</div></div>
+    </div>
+    <p style="margin-top:0.5rem">L2 BUILD_FAIL: cfd, hybridsort, kmeans, mummergpu, myocyte, streamcluster</p>
+    <p>L2 FAIL: nn</p>
+  </div>
+  <div>
+    <h3>OMP (18 specs)</h3>
+    <div class="bar-section">
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L1</div><div class="bar-track"><div class="bar-pass" style="width:83.3%"></div><div class="bar-bf" style="width:11.1%"></div><div class="bar-fail" style="width:5.6%"></div></div><div class="bar-val">15/18</div></div>
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L2</div><div class="bar-track"><div class="bar-pass" style="width:77.8%"></div><div class="bar-bf" style="width:16.7%"></div><div class="bar-fail" style="width:5.6%"></div></div><div class="bar-val">14/18</div></div>
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L3</div><div class="bar-track"><div class="bar-pass" style="width:50%"></div><div class="bar-bf" style="width:44.4%"></div><div class="bar-fail" style="width:5.6%"></div></div><div class="bar-val">9/18</div></div>
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L4</div><div class="bar-track"><div class="bar-pass" style="width:38.9%"></div><div class="bar-bf" style="width:55.6%"></div><div class="bar-fail" style="width:5.6%"></div></div><div class="bar-val">7/18</div></div>
+    </div>
+    <p style="margin-top:0.5rem">L2 BUILD_FAIL: kmeans, mummergpu, streamcluster</p>
+    <p>L2 FAIL: nn</p>
+  </div>
+</div>
+<div>
+  <h3>OpenCL (20 specs)</h3>
+  <div class="two-col">
+    <div class="bar-section">
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L1</div><div class="bar-track"><div class="bar-pass" style="width:75%"></div><div class="bar-bf" style="width:15%"></div><div class="bar-fail" style="width:10%"></div></div><div class="bar-val">15/20</div></div>
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L2</div><div class="bar-track"><div class="bar-pass" style="width:80%"></div><div class="bar-bf" style="width:10%"></div><div class="bar-fail" style="width:10%"></div></div><div class="bar-val">16/20</div></div>
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L3</div><div class="bar-track"><div class="bar-pass" style="width:35%"></div><div class="bar-bf" style="width:60%"></div><div class="bar-fail" style="width:5%"></div></div><div class="bar-val">7/20</div></div>
+      <div class="bar-row"><div class="bar-label" style="min-width:30px">L4</div><div class="bar-track"><div class="bar-pass" style="width:20%"></div><div class="bar-bf" style="width:75%"></div><div class="bar-fail" style="width:5%"></div></div><div class="bar-val">4/20</div></div>
+    </div>
+    <div>
+      <p>L2 BUILD_FAIL: cfd, pathfinder</p>
+      <p>L2 FAIL: kmeans, nn</p>
+      <p style="margin-top:0.5rem">Note: OpenCL degrades most severely at L3/L4 — 9 specs pass L2 but fail L3. This is where Bugs E/F/G cluster.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Transform Status ──────────────────────────────────────────────────── -->
+<h2>The 5 Transforms — Status</h2>
+<table>
+  <tr>
+    <th>#</th><th>Transform</th><th>What It Does</th><th>Status</th><th>Notes</th>
+  </tr>
+  <tr>
+    <td>1</td>
+    <td><strong>ArithmeticTransform</strong></td>
+    <td><code>x += 1</code> ↔ <code>x = x + 1</code></td>
+    <td><span class="badge badge-green">✓ Safe</span></td>
+    <td>Simple operator expansion; no edge cases observed</td>
+  </tr>
+  <tr>
+    <td>2</td>
+    <td><strong>SwapCondition</strong></td>
+    <td><code>a &lt; b</code> → <code>b &gt; a</code></td>
+    <td><span class="badge badge-green">✓ Safe</span></td>
+    <td>Bug C fixed (2026-03-11): skip comparisons where operand contains assignment</td>
+  </tr>
+  <tr>
+    <td>3</td>
+    <td><strong>PointerArith→Array</strong></td>
+    <td><code>*(arr+i)</code> ↔ <code>arr[i]</code></td>
+    <td><span class="badge badge-green">✓ Mostly safe</span></td>
+    <td>Bug A (overlap) + Bug B (member access precedence) fixed. Bug F/G remain at high edit-site counts</td>
+  </tr>
+  <tr>
+    <td>4</td>
+    <td><strong>TypedefExpansion</strong></td>
+    <td>Expands <code>typedef</code> aliases to underlying types</td>
+    <td><span class="badge badge-yellow">⚠ Bug D</span></td>
+    <td>Expands struct/pointer typedefs to non-compilable types. Fix: filter in <code>_find_candidates()</code>. ~1 hr</td>
+  </tr>
+  <tr>
+    <td>5</td>
+    <td><strong>ChangeNames</strong></td>
+    <td>Renames local variables</td>
+    <td><span class="badge badge-yellow">⚠ Bug E (L3/L4)</span></td>
+    <td>Renames struct field references by token scan — doesn't distinguish <code>var.field</code>. Fix: skip tokens after <code>.</code>/<code>-&gt;</code>. ~2 hr</td>
+  </tr>
+</table>
+
+<!-- ─── Bug Table ─────────────────────────────────────────────────────────── -->
+<h2>Unfixed Bugs — Effort &amp; Impact</h2>
+<table>
+  <tr>
+    <th>Bug</th><th>Transform</th><th>Symptom</th><th>Levels Affected</th><th>Specs Affected</th><th>Fix Effort</th><th>Priority</th>
+  </tr>
+  <tr>
+    <td><strong>Bug D</strong></td>
+    <td>TypedefExpansion</td>
+    <td>Expands struct/pointer typedef → invalid C code</td>
+    <td><span class="badge badge-red">ALL levels</span></td>
+    <td>streamcluster-cuda, streamcluster-omp</td>
+    <td><span class="effort">~1 hr</span></td>
+    <td><span class="badge badge-yellow">High</span> — affects L1/L2 too</td>
+  </tr>
+  <tr>
+    <td><strong>Bug E</strong></td>
+    <td>ChangeNames</td>
+    <td>Renames struct fields via token scan</td>
+    <td><span class="badge badge-yellow">L3/L4 only</span></td>
+    <td>~8 specs</td>
+    <td><span class="effort">~2 hr</span></td>
+    <td><span class="badge badge-blue">Medium</span></td>
+  </tr>
+  <tr>
+    <td><strong>Bug F</strong></td>
+    <td>PointerArith</td>
+    <td>Empty parens from failed libclang cursors in macros</td>
+    <td><span class="badge badge-yellow">L3/L4 only</span></td>
+    <td>~7 specs</td>
+    <td><span class="effort">~1 hr</span></td>
+    <td><span class="badge badge-blue">Medium</span></td>
+  </tr>
+  <tr>
+    <td><strong>Bug G</strong></td>
+    <td>PointerArith</td>
+    <td><code>arr[0]/arr2[0]</code> → <code>*((arr)+(0))/*((arr2)+(0))</code> creates <code>/*</code> comment</td>
+    <td><span class="badge badge-yellow">L3/L4 only</span></td>
+    <td>~5 specs</td>
+    <td><span class="effort">~1 hr</span></td>
+    <td><span class="badge badge-blue">Medium</span></td>
+  </tr>
+</table>
+<p>Total to fix all remaining bugs: ~5 hrs. Expected impact: L3 75% → ~65–70%; L4: 37% → ~50%. <em>Bug D alone recovers 2 specs at all levels for ~1 hr.</em></p>
+
+<!-- ─── Previously Fixed ──────────────────────────────────────────────────── -->
+<h2>Already Fixed (2026-03-11)</h2>
+<table>
+  <tr><th>Bug</th><th>Description</th><th>Fix Applied</th></tr>
+  <tr>
+    <td><span class="badge badge-green">Bug A ✓</span></td>
+    <td>PointerArith: overlapping nested subscripts corrupt byte offsets</td>
+    <td>Added overlap filter + re-validation of merged candidate in <code>AstTransform.apply()</code></td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-green">Bug B ✓</span></td>
+    <td>PointerArith: <code>arr[i].member</code> → wrong pointer precedence</td>
+    <td>Emit <code>(*((arr)+(i)))</code> when next char is <code>.</code></td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-green">Bug C ✓</span></td>
+    <td>SwapCondition: <code>fp = fopen() == 0</code> → non-lvalue assignment error</td>
+    <td>Added <code>_contains_assignment()</code> helper; skip comparisons with assignment operand</td>
+  </tr>
+  <tr>
+    <td><span class="badge badge-green">Fix V ✓</span></td>
+    <td>Diagnostic threshold rejected valid code with libclang Error-level notes</td>
+    <td>Lowered threshold from <code>&gt;= Fatal (4)</code> to <code>&gt;= Error (3)</code></td>
+  </tr>
+</table>
+<p>These fixes improved L4 pass rate from <strong>1/60 (1.7%)</strong> to <strong>22/60 (37%)</strong> — a +21 spec gain.</p>
+
+<!-- ─── Clean Spec List ───────────────────────────────────────────────────── -->
+<h2>The 45 Clean Specs — Pass at Both L1 and L2</h2>
+<p style="margin-bottom:0.8rem">These are the recommended test set for SC26 LLM evaluation.</p>
+
+<h3>CUDA — 15 specs</h3>
+<div class="spec-grid">
+  <div class="spec-pill cuda">backprop</div>
+  <div class="spec-pill cuda">bfs</div>
+  <div class="spec-pill cuda">bptree</div>
+  <div class="spec-pill cuda">dwt2d</div>
+  <div class="spec-pill cuda">gaussian</div>
+  <div class="spec-pill cuda">heartwall</div>
+  <div class="spec-pill cuda">hotspot</div>
+  <div class="spec-pill cuda">hotspot3d</div>
+  <div class="spec-pill cuda">huffman</div>
+  <div class="spec-pill cuda">lavamd</div>
+  <div class="spec-pill cuda">lud</div>
+  <div class="spec-pill cuda">nw</div>
+  <div class="spec-pill cuda">particlefilter</div>
+  <div class="spec-pill cuda">pathfinder</div>
+  <div class="spec-pill cuda">srad</div>
+</div>
+
+<h3>OMP — 14 specs</h3>
+<div class="spec-grid">
+  <div class="spec-pill omp">backprop</div>
+  <div class="spec-pill omp">bfs</div>
+  <div class="spec-pill omp">bptree</div>
+  <div class="spec-pill omp">cfd</div>
+  <div class="spec-pill omp">heartwall</div>
+  <div class="spec-pill omp">hotspot</div>
+  <div class="spec-pill omp">hotspot3d</div>
+  <div class="spec-pill omp">lavamd</div>
+  <div class="spec-pill omp">lud</div>
+  <div class="spec-pill omp">myocyte</div>
+  <div class="spec-pill omp">nw</div>
+  <div class="spec-pill omp">particlefilter</div>
+  <div class="spec-pill omp">pathfinder</div>
+  <div class="spec-pill omp">srad</div>
+</div>
+
+<h3>OpenCL — 16 specs</h3>
+<div class="spec-grid">
+  <div class="spec-pill opencl">backprop</div>
+  <div class="spec-pill opencl">bfs</div>
+  <div class="spec-pill opencl">bptree</div>
+  <div class="spec-pill opencl">dwt2d</div>
+  <div class="spec-pill opencl">gaussian</div>
+  <div class="spec-pill opencl">heartwall</div>
+  <div class="spec-pill opencl">hotspot</div>
+  <div class="spec-pill opencl">hotspot3d</div>
+  <div class="spec-pill opencl">hybridsort</div>
+  <div class="spec-pill opencl">lavamd</div>
+  <div class="spec-pill opencl">lud</div>
+  <div class="spec-pill opencl">myocyte</div>
+  <div class="spec-pill opencl">nw</div>
+  <div class="spec-pill opencl">particlefilter</div>
+  <div class="spec-pill opencl">srad</div>
+  <div class="spec-pill opencl">streamcluster</div>
+</div>
+
+<div style="margin-top:1rem" class="callout">
+  <p><strong>Optional +2 specs:</strong> Fix Bug D (~1 hr in <code>TypedefExpansion._find_candidates()</code>) to recover <code>streamcluster-cuda</code> and <code>streamcluster-omp</code>, bringing the clean set to <strong>47 specs</strong>.</p>
+</div>
+
+<!-- ─── Recommendation ──────────────────────────────────────────────────── -->
+<h2>Recommended Path Forward for SC26</h2>
+<div class="two-col">
+  <div class="card">
+    <h3 style="margin-top:0">Immediate Actions</h3>
+    <p>1. <strong>Use L2</strong> — applies real transforms, 92% corrected pass rate</p>
+    <p>2. <strong>Test set: 45 clean specs</strong> listed above (or 47 with Bug D fix)</p>
+    <p>3. <strong>Move to LLM evaluation</strong> — feed augmented prompts to models, measure translation quality</p>
+    <p style="margin-top:0.8rem">Seeds: 42 (or sweep multiple seeds to validate augmentation diversity)</p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Optional (For Erel)</h3>
+    <p><strong>Fix Bug D</strong> — ~1 hr, recovers 2 specs at all levels, highest ROI</p>
+    <p><strong>Fix Bugs E/F/G</strong> — ~4 hrs total, enables L3/L4 as stretch goal</p>
+    <p style="margin-top:0.5rem; color:var(--text-muted); font-size:0.82rem">Even with all bugs fixed, L3/L4 will never match L1/L2 pass rates due to fundamental transform compounding. Not required for SC26.</p>
+  </div>
+</div>
+
+<!-- ─── Key Files ───────────────────────────────────────────────────────── -->
+<h2>Key Files</h2>
+<table>
+  <tr><th>File</th><th>Purpose</th></tr>
+  <tr><td><code>c_augmentation/augment_dataset.py</code></td><td>All transform implementations and bug fixes</td></tr>
+  <tr><td><code>results/augmentation/eval_{cuda,omp,opencl}.json</code></td><td>Per-spec post-fix evaluation data (this dashboard's source)</td></tr>
+  <tr><td><code>results/augmentation/eval_{cuda,omp,opencl}.md</code></td><td>Human-readable evaluation reports</td></tr>
+  <tr><td><code>results/augmentation/augmentation_status_report_2026-03-10.md</code></td><td>Pre-fix bug documentation</td></tr>
+  <tr><td><code>docs/gal_augmentation_briefing.md</code></td><td>Markdown version of this analysis</td></tr>
+</table>
+
+</body>
+</html>
