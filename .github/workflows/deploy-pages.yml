@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
           cd visualizations
-          staticrypt *.html --password "$PAGES_PASSWORD" --remember 1
+          staticrypt *.html --password "$PAGES_PASSWORD" --remember 1 --short
           mv encrypted/*.html .
           rmdir encrypted
 
