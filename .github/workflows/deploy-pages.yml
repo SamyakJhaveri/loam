@@ -18,13 +18,34 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install staticrypt
+        run: npm install -g staticrypt
+
+      - name: Encrypt HTML files with password
+        # --remember 86400  stores auth in localStorage for 24 h so users don't re-enter password on each page nav
+        # --short           allows short/simple passwords
+        # -o "$f"           overwrites the original file in-place
+        env:
+          PAGES_PASSWORD: ${{ secrets.PAGES_PASSWORD }}
+        run: |
+          if [ -z "$PAGES_PASSWORD" ]; then
+            echo "::error::PAGES_PASSWORD secret is not set. Go to Settings → Secrets → Actions and add PAGES_PASSWORD before deploying."
+            exit 1
+          fi
+          cd visualizations
+          for f in *.html; do
+            staticrypt "$f" --password "$PAGES_PASSWORD" --remember 86400 --short -o "$f"
+          done
+
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: visualizations
       - id: deployment

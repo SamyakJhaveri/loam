@@ -73,18 +73,25 @@
   .bug-callout { background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.3); border-radius: 6px; padding: 0.8rem; margin: 0.5rem 0; }
   .bug-callout .fix-label { color: var(--red); font-weight: 600; font-size: 0.85rem; }
   .bug-callout .fix-desc { color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem; }
+
+  /* Nav */
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+  nav a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
+  nav a:hover { color: var(--text); }
+  nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
+  nav .active { color: var(--text); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
 </style>
 </head>
 <body>
 
-<nav style="background:var(--surface); border-bottom:1px solid var(--border); padding:0.6rem 2rem; margin:-2rem -2rem 1.5rem -2rem; display:flex; gap:1.5rem; flex-wrap:wrap; align-items:center;">
-  <span style="color:var(--accent); font-weight:700; font-size:0.9rem; margin-right:0.5rem;">ParBench</span>
-  <a href="overview.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Overview</a>
-  <a href="build_results.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Build Results</a>
-  <a href="results.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Augmentation</a>
-  <a href="benchmark_landscape.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Landscape</a>
-  <a href="architecture.html" style="color:var(--text-muted); text-decoration:none; font-size:0.85rem;">Architecture</a>
-  <a href="pipeline.html" style="color:var(--text); text-decoration:none; font-size:0.85rem; font-weight:700; border-bottom:2px solid var(--accent); padding-bottom:2px;">Pipeline</a>
+<nav>
+  <span class="brand">ParBench</span>
+  <a href="overview.html">Overview</a>
+  <a href="build_results.html">Build Results</a>
+  <a href="results.html">Augmentation</a>
+  <a href="benchmark_landscape.html">Landscape</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="pipeline.html" class="active">Pipeline</a>
 </nav>
 
 <h1>Augment → Build → Run → Verify Pipeline</h1>

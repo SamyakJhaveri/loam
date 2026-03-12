@@ -119,7 +119,7 @@ No file may appear in both `prompt_payload` and `verification_only`.
 
 ```bash
 # Install dependency
-pip install jsonschema
+python3 -m pip install jsonschema
 
 # Validate the manifest
 python scripts/validate_schema.py --manifest manifest.jsonl
@@ -141,11 +141,11 @@ The validator checks:
 
 ## Paths
 
-- All paths in specs and the manifest are **relative to `parbench_sam/`**.
-- Downloaded benchmark repos live at `../ParBench/downloads/` relative to this
-  directory.
+- All paths in specs and the manifest are **relative to `parbench_sam/`** (the project root).
+- `downloads_root` equals `project_root` — downloaded benchmark repos live inside the project directory itself.
+- Machine-specific path configuration lives in `config/paths.json` (git-ignored).
 
 ## Requirements
 
 - Python 3.10+
-- `jsonschema` (`pip install jsonschema`)
+- `jsonschema` (`python3 -m pip install jsonschema`)

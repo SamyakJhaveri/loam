@@ -136,12 +136,21 @@ Fixes applied: CUDA_DIR path, `make hotspot` target, OpenCL include/lib paths, `
 
 Visualizations are hosted at: **https://samyakjhaveri.github.io/parbench_sam/**
 
-- Source: `visualizations/` directory (8 static HTML/JS files)
+- Source: `visualizations/` directory (9 files: 7 HTML + 2 JS data files)
 - Deployment: GitHub Actions workflow at `.github/workflows/deploy-pages.yml`
 - Triggers: any push to `main` that touches `visualizations/**`, or manual `workflow_dispatch`
 - Entry point: `visualizations/index.html` redirects to `overview.html`
 - MCP plugins added to `.mcp.json`: `puppeteer` (browser preview), `css-docs` (CSS reference)
 - To re-enable Pages after repo transfer: Settings → Pages → Source = "GitHub Actions"
+- **Privacy:** Site is password-protected via `staticrypt` (AES-256 browser encryption). Password stored as GitHub secret `PAGES_PASSWORD`. See `.github/PAGES_SETUP.md` for setup instructions.
+- **Limitation:** True private Pages (GitHub SSO auth) requires GitHub Enterprise Cloud — not available on GitHub Pro.
+- **Data refresh:** Run `python3 scripts/generate_viz_data.py` to regenerate `results_data.js` and `build_results_data.js` from source JSON files in `results/augmentation/`. Then commit and push to redeploy.
+
+### Adding a New Dashboard
+1. Create `visualizations/<name>.html` (copy nav structure from any existing page)
+2. Add a nav link to the new page in ALL 6 existing HTML files' nav bars
+3. Add it to the dashboard list in `README.md`
+4. Push to `main` — workflow auto-deploys
 
 ## User Working Style & Claude Code Preferences
 
