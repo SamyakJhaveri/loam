@@ -27,11 +27,32 @@ except ImportError as exc:
     ) from exc
 
 
-PARSE_ARGS = ["-xc++", "-std=c++17"]
+PARSE_ARGS = [
+    "-xc++",
+    "-std=c++17",
+    "-D__global__=",
+    "-D__device__=",
+    "-D__host__=",
+    "-D__shared__=",
+    "-D__constant__=",
+    "-D__kernel__=",
+    "-D__syncthreads()=",
+    "-D__launch_bounds__(x)=",
+    "-D__restrict__=",
+    "-isystem", "/opt/sycl/lib/clang/23/include",
+    "-isystem", "/usr/include/c++/11",
+    "-isystem", "/usr/include/x86_64-linux-gnu/c++/11",
+    "-isystem", "/usr/include/c++/11/backward",
+    "-isystem", "/usr/lib/gcc/x86_64-linux-gnu/11/include",
+    "-isystem", "/usr/local/include",
+    "-isystem", "/usr/include/x86_64-linux-gnu",
+    "-isystem", "/usr/include",
+]
 PARSE_OPTIONS = (
     ci.TranslationUnit.PARSE_DETAILED_PROCESSING_RECORD
     | getattr(ci.TranslationUnit, "PARSE_INCOMPLETE", 0)
 )
+BASELINE_ERROR_THRESHOLD = 100
 UNWRAP_KINDS = {
     CursorKind.UNEXPOSED_EXPR,
     getattr(CursorKind, "PAREN_EXPR", CursorKind.UNEXPOSED_EXPR),
@@ -130,6 +151,17 @@ def _parse_translation_unit(
     )
 
 
+def _is_low_quality_tu(tu: ci.TranslationUnit) -> bool:
+    """Return True if the TU has fatal errors or too many diagnostics."""
+    error_count = 0
+    for d in tu.diagnostics:
+        if d.severity >= ci.Diagnostic.Fatal:
+            return True
+        if d.severity >= ci.Diagnostic.Error:
+            error_count += 1
+    return error_count > 50
+
+
 def _iter_cursors(cursor: ci.Cursor) -> Iterable[ci.Cursor]:
     yield cursor
     for child in cursor.get_children():
@@ -140,6 +172,33 @@ def _cursor_in_main_file(cursor: ci.Cursor, filename: str) -> bool:
     try:
         location = cursor.location
         return bool(location.file) and location.file.name == filename
+    except Exception:
+        return False
+
+
+def _is_macro_expansion(cursor: ci.Cursor) -> bool:
+    """Check if the cursor is part of a macro expansion."""
+    try:
+        loc = cursor.location
+        if not loc or not loc.file:
+            return False
+        # get_instantiation returns (file, line, column, offset) of the expansion site.
+        # If it differs from the physical location, it is likely inside a macro.
+        # Also check if any parent is a MACRO_EXPANSION/INSTANTIATION.
+        s_file, s_line, s_col, s_off = loc._get_instantiation()
+        if s_line != loc.line or s_col != loc.column or s_off != loc.offset:
+            return True
+
+        # Fallback: check parents for macro instantiation
+        curr = cursor
+        while curr:
+            if curr.kind == ci.CursorKind.MACRO_INSTANTIATION:
+                return True
+            # Stop if we hit a function or translation unit
+            if curr.kind in (ci.CursorKind.FUNCTION_DECL, ci.CursorKind.TRANSLATION_UNIT):
+                break
+            curr = curr.semantic_parent
+        return False
     except Exception:
         return False
 
@@ -268,6 +327,11 @@ class AstTransform(Transform):
         return bool(self._find_candidates(code, index))
 
     def apply(self, code: str, index: ci.Index) -> TransformResult:
+        tu = _parse_translation_unit(code, index)
+        # Baseline check: if the TU is too broken, skip transformation
+        if _fatal_diagnostics(tu) > BASELINE_ERROR_THRESHOLD:
+            return TransformResult(False, code, f"{self.name}: too many baseline errors")
+
         candidates = self._find_candidates(code, index)
         if not candidates:
             return TransformResult(False, code, f"{self.name}: 0 changes")
@@ -345,7 +409,7 @@ class ArithmeticTransform(AstTransform):
         compound_kind = getattr(CursorKind, "COMPOUND_ASSIGNMENT_OPERATOR", None)
 
         for cursor in _iter_cursors(tu.cursor):
-            if not _cursor_in_main_file(cursor, filename):
+            if not _cursor_in_main_file(cursor, filename) or _is_macro_expansion(cursor):
                 continue
 
             if compound_kind is not None and cursor.kind == compound_kind:
@@ -366,7 +430,7 @@ class ArithmeticTransform(AstTransform):
                             TextEdit(
                                 start_offset=start,
                                 end_offset=end,
-                                replacement=f"{lhs_text} = {lhs_text} {COMPOUND_OPERATORS[operator]} {rhs_text}",
+                                replacement=f"{lhs_text} = {lhs_text} {COMPOUND_OPERATORS[operator]} ({rhs_text})",
                             )
                         ],
                     )
@@ -457,7 +521,7 @@ class SwapCondition(AstTransform):
         for cursor in _iter_cursors(tu.cursor):
             if cursor.kind != CursorKind.BINARY_OPERATOR:
                 continue
-            if not _cursor_in_main_file(cursor, filename):
+            if not _cursor_in_main_file(cursor, filename) or _is_macro_expansion(cursor):
                 continue
 
             operator = _binary_operator_text(code, cursor)
@@ -543,45 +607,15 @@ class PointerArithmeticToArrayIndex(AstTransform):
         candidates: list[RewriteCandidate] = []
 
         for cursor in _iter_cursors(tu.cursor):
-            if not _cursor_in_main_file(cursor, filename):
-                continue
-
-            if cursor.kind == CursorKind.ARRAY_SUBSCRIPT_EXPR:
-                children = _children(cursor)
-                if len(children) != 2:
-                    continue
-                base, idx = children
-                start, end = _cursor_offsets(cursor)
-                base_text = _source_text(code, base).strip()
-                idx_text = _source_text(code, idx).strip()
-                # Fix B: if a '.' member access immediately follows the subscript
-                # expression, wrap the dereference in parentheses so that operator
-                # precedence is correct: (*((arr)+(i))).member instead of
-                # *((arr)+(i)).member (where '.' would bind tighter than '*').
-                code_bytes = code.encode("utf-8")
-                next_byte = code_bytes[end:end+1] if end < len(code_bytes) else b""
-                if next_byte == b".":
-                    replacement = f"(*(({base_text}) + ({idx_text})))"
-                else:
-                    replacement = f"*(({base_text}) + ({idx_text}))"
-                candidates.append(
-                    RewriteCandidate(
-                        description=f"{self.name}: 1 changes",
-                        edits=[
-                            TextEdit(
-                                start_offset=start,
-                                end_offset=end,
-                                replacement=replacement,
-                            )
-                        ],
-                    )
-                )
+            if not _cursor_in_main_file(cursor, filename) or _is_macro_expansion(cursor):
                 continue
 
             parts = self._pointer_addition_parts(code, cursor)
             if parts is None:
                 continue
             base_text, idx_text = parts
+            if not base_text or not idx_text:
+                continue
             start, end = _cursor_offsets(cursor)
             candidates.append(
                 RewriteCandidate(
@@ -590,7 +624,7 @@ class PointerArithmeticToArrayIndex(AstTransform):
                         TextEdit(
                             start_offset=start,
                             end_offset=end,
-                            replacement=f"{base_text}[{idx_text}]",
+                            replacement=f"({base_text})[{idx_text}]",
                         )
                     ],
                 )
@@ -612,7 +646,7 @@ class TypedefExpansion(AstTransform):
         for cursor in _iter_cursors(tu.cursor):
             if cursor.kind != CursorKind.TYPEDEF_DECL:
                 continue
-            if not _cursor_in_main_file(cursor, filename):
+            if not _cursor_in_main_file(cursor, filename) or _is_macro_expansion(cursor):
                 continue
             usr = cursor.get_usr()
             if not usr:
@@ -626,7 +660,7 @@ class TypedefExpansion(AstTransform):
         for cursor in _iter_cursors(tu.cursor):
             if cursor.kind != CursorKind.TYPE_REF:
                 continue
-            if not _cursor_in_main_file(cursor, filename):
+            if not _cursor_in_main_file(cursor, filename) or _is_macro_expansion(cursor):
                 continue
             referenced = cursor.referenced
             if referenced is None:
@@ -635,6 +669,11 @@ class TypedefExpansion(AstTransform):
             if entry is None:
                 continue
             alias, underlying = entry
+            # Safety: avoid expanding complex types (like template instances) to 'int'
+            # which often happens when libclang fails to resolve the full type.
+            if underlying == "int" and alias != "int" and not any(x in alias.lower() for x in ["int", "count", "size", "offset", "id", "index"]):
+                continue
+
             token_range = _identifier_range(cursor, alias)
             if token_range is None:
                 continue
@@ -788,18 +827,31 @@ class ChangeNames(Transform):
             current = current.semantic_parent
         return None
 
+    def _macro_identifiers(self, tu: ci.TranslationUnit) -> set[str]:
+        """Collect all identifiers that appear within macro definitions."""
+        idents = set()
+        for cursor in _iter_cursors(tu.cursor):
+            if cursor.kind == CursorKind.MACRO_DEFINITION:
+                for token in cursor.get_tokens():
+                    if token.kind == TokenKind.IDENTIFIER:
+                        idents.add(token.spelling)
+        return idents
+
     def _renamable_decls(
         self,
         tu: ci.TranslationUnit,
     ) -> list[ci.Cursor]:
+        if _is_low_quality_tu(tu):
+            return []
         filename = tu.spelling
         decls: list[ci.Cursor] = []
+        macro_idents = self._macro_identifiers(tu)
         for cursor in _iter_cursors(tu.cursor):
             if cursor.kind not in {CursorKind.VAR_DECL, CursorKind.PARM_DECL}:
                 continue
-            if not _cursor_in_main_file(cursor, filename):
+            if not _cursor_in_main_file(cursor, filename) or _is_macro_expansion(cursor):
                 continue
-            if len(cursor.spelling) <= 1 or cursor.spelling in self.RESERVED:
+            if len(cursor.spelling) <= 1 or cursor.spelling in self.RESERVED or cursor.spelling in macro_idents:
                 continue
             if self._owning_function(cursor) is None:
                 continue
@@ -875,6 +927,14 @@ class ChangeNames(Transform):
         # validated by _validate_rewrite before it is accepted.
         spelling = decl.spelling
         if spelling:
+            # Check if there are other renamable declarations with same spelling in same owner
+            # to avoid mis-attributing an unresolved token.
+            other_decls_with_same_spelling = [
+                d for d in self._renamable_decls(tu)
+                if d.spelling == spelling and d.get_usr() != usr
+                and self._owning_function(d) == owner
+            ]
+            
             ast_offsets: set[int] = {e.start_offset for e in edits}
             for token in owner.get_tokens():
                 if token.kind != TokenKind.IDENTIFIER:
@@ -884,6 +944,24 @@ class ChangeNames(Transform):
                 start = token.extent.start.offset
                 end = token.extent.end.offset
                 if start not in ast_offsets:
+                    # libclang has missed this site, but it is often still a known symbol
+                    # in its database (e.g. a struct member with same name). Check it.
+                    site_cursor = ci.Cursor.from_location(tu, token.extent.start)
+                    if (
+                        site_cursor.kind != CursorKind.INVALID_FILE
+                        and site_cursor.referenced
+                        and site_cursor.referenced.get_usr() != usr
+                    ):
+                        continue
+
+                    if _is_macro_expansion(site_cursor):
+                        continue
+
+                    # If the site is unresolved (referenced is None), but we have other candidates
+                    # with the same spelling in this function, we must skip to avoid a collision.
+                    if not site_cursor.referenced and other_decls_with_same_spelling:
+                        continue
+
                     edits.append(
                         TextEdit(
                             start_offset=start,
@@ -1146,4 +1224,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
