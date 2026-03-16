@@ -72,7 +72,7 @@ void foo() {
 }
 """
     rewritten = apply_deterministically(ArithmeticTransform(), code)
-    assert "x = x + 1" in rewritten
+    assert "x = x + (1)" in rewritten
 
     code = """
 void foo() {
@@ -119,15 +119,7 @@ void foo(int* arr) {
 }
 """
     rewritten = apply_deterministically(PointerArithmeticToArrayIndex(), code)
-    assert "arr[5]" in rewritten
-
-    code = """
-void foo(int* arr) {
-    int x = arr[10];
-}
-"""
-    rewritten = apply_deterministically(PointerArithmeticToArrayIndex(), code)
-    assert "*((arr) + (10))" in rewritten
+    assert "(arr)[5]" in rewritten
 
 
 def test_pointer_arithmetic_negative_typedef_decl() -> None:
@@ -237,17 +229,21 @@ void foo(int* J, int* iS, int cols) {
 
 
 def test_pointer_arithmetic_struct_member() -> None:
-    """Bug B: arr[i].member must become (*((arr)+(i))).member, not *((arr)+(i)).member."""
+    """Fix B: *(ptr+i).member form must produce parseable output with base wrapped in parens.
+
+    The arr[i]->*(ptr+i) reverse direction was removed; this tests the forward direction
+    where *(ptr+i) with adjacent struct member access must produce (ptr)[i].member.
+    """
     code = """
 struct Node { int starting; int no_of_edges; };
 void foo(struct Node* g_graph_nodes, int tid) {
-    int start = g_graph_nodes[tid].starting;
+    int start = (*(g_graph_nodes + tid)).starting;
 }
 """
     rewritten = apply_deterministically(PointerArithmeticToArrayIndex(), code)
     assert_parseable(rewritten)
-    # The rewritten form must use the parenthesized dereference
-    assert "(*((g_graph_nodes) + (tid)))" in rewritten
+    # Must use array index form with base wrapped in parens
+    assert "(g_graph_nodes)[tid]" in rewritten
 
 
 def test_swap_condition_skip_assignment_in_operand() -> None:
