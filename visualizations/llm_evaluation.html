@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ParBench — LLM Evaluation Results</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --text-muted: #8b949e; --accent: #58a6ff;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
+    --orange: #d18616; --teal: #39d2c0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
+  h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 2rem; }
+  h2 { color: var(--purple); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  h3 { color: var(--green); margin: 1.2rem 0 0.5rem; font-size: 1.05rem; }
+  .subtitle { color: var(--text-muted); margin-bottom: 2rem; font-size: 1.05rem; }
+  p { color: var(--text-muted); margin: 0.4rem 0; font-size: 0.9rem; }
+
+  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+  nav a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
+  nav a:hover { color: var(--text); }
+  nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
+  nav .active { color: var(--text); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin: 1rem 0; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
+  .stat-card .n { font-size: 2.2rem; font-weight: 700; }
+  .stat-card .l { color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem; }
+
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.03em; }
+  .badge-pass   { background: rgba(63,185,80,0.18);  color: var(--green);  border: 1px solid rgba(63,185,80,0.4); }
+  .badge-fail   { background: rgba(248,81,73,0.18);  color: var(--red);    border: 1px solid rgba(248,81,73,0.4); }
+  .badge-warn   { background: rgba(210,153,34,0.18); color: var(--yellow); border: 1px solid rgba(210,153,34,0.4); }
+  .badge-crit   { background: rgba(248,81,73,0.30);  color: #ff6b6b;       border: 1px solid rgba(248,81,73,0.6); }
+  .badge-high   { background: rgba(248,81,73,0.18);  color: var(--red);    border: 1px solid rgba(248,81,73,0.4); }
+  .badge-med    { background: rgba(210,153,34,0.18); color: var(--yellow); border: 1px solid rgba(210,153,34,0.4); }
+  .badge-low    { background: rgba(88,166,255,0.12); color: var(--accent); border: 1px solid rgba(88,166,255,0.3); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; margin: 1rem 0; }
+  th { background: var(--surface); color: var(--text-muted); padding: 0.5rem 0.7rem; text-align: left; border-bottom: 2px solid var(--border); font-size: 0.77rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  td { padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .row-pass td { border-left: 3px solid var(--green); }
+  .row-fail td { border-left: 3px solid var(--red); }
+  .row-warn td { border-left: 3px solid var(--yellow); }
+  .mono { font-family: monospace; font-size: 0.8rem; }
+  .err-snippet { background: rgba(248,81,73,0.06); border: 1px solid rgba(248,81,73,0.2); border-radius: 4px; padding: 0.4rem 0.6rem; font-family: monospace; font-size: 0.75rem; color: #ff8080; margin-top: 0.3rem; line-height: 1.4; max-width: 420px; white-space: pre-wrap; word-break: break-word; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; }
+  .card h3 { margin-top: 0; }
+
+  .bar-row { display: flex; align-items: center; gap: 0.7rem; margin: 0.55rem 0; font-size: 0.82rem; }
+  .bar-label { min-width: 140px; color: var(--text-muted); }
+  .bar-track { flex: 1; height: 20px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; display: flex; }
+  .bar-pass { background: var(--green); height: 100%; }
+  .bar-fail { background: rgba(248,81,73,0.55); height: 100%; }
+  .bar-bf   { background: rgba(209,134,22,0.55); height: 100%; }
+  .bar-val  { min-width: 60px; font-size: 0.82rem; color: var(--text); font-weight: 600; }
+
+  .pipeline-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.8rem; margin: 1rem 0; }
+  .pipeline-item { background: var(--surface); border-radius: 6px; padding: 0.7rem 1rem; display: flex; align-items: flex-start; gap: 0.7rem; border: 1px solid var(--border); }
+  .pipeline-item .icon { font-size: 1.1rem; margin-top: 1px; flex-shrink: 0; }
+  .pipeline-item .info .name { font-size: 0.85rem; font-weight: 600; }
+  .pipeline-item .info .note { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.1rem; }
+  .pi-pass { border-left: 3px solid var(--green); }
+  .pi-warn { border-left: 3px solid var(--yellow); }
+  .pi-fail { border-left: 3px solid var(--red); }
+
+  .bug-row { display: flex; align-items: flex-start; gap: 0.8rem; padding: 0.55rem 0; border-bottom: 1px solid var(--border); font-size: 0.83rem; }
+  .bug-row:last-child { border-bottom: none; }
+  .bug-id { min-width: 32px; font-family: monospace; color: var(--accent); font-weight: 700; }
+  .bug-desc { flex: 1; }
+  .bug-file { font-family: monospace; font-size: 0.75rem; color: var(--text-muted); }
+
+  .taxonomy-row { display: flex; align-items: flex-start; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
+  .taxonomy-row:last-child { border-bottom: none; }
+  .tax-count { min-width: 32px; font-size: 1.4rem; font-weight: 700; color: var(--red); text-align: center; }
+  .tax-body .cat { font-size: 0.88rem; font-weight: 600; }
+  .tax-body .kernels { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem; }
+  .tax-body .fix { font-size: 0.78rem; color: var(--teal); margin-top: 0.2rem; }
+
+  .aug-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 700px) { .aug-grid { grid-template-columns: repeat(2,1fr); } }
+  .aug-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.9rem; text-align: center; }
+  .aug-card .rate { font-size: 1.9rem; font-weight: 700; }
+  .aug-card .level { color: var(--accent); font-size: 0.8rem; margin-bottom: 0.3rem; font-weight: 600; }
+  .aug-card .detail { font-size: 0.73rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+  .notice { background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.3); border-radius: 6px; padding: 0.8rem 1rem; margin: 1rem 0; font-size: 0.85rem; }
+  .notice strong { color: var(--red); }
+  .notice-warn { background: rgba(210,153,34,0.08); border-color: rgba(210,153,34,0.3); }
+  .notice-warn strong { color: var(--yellow); }
+
+  .model-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; }
+  @media (max-width: 700px) { .model-cmp { grid-template-columns: 1fr; } }
+  .model-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; }
+  .model-card .model-name { font-size: 1rem; font-weight: 700; margin-bottom: 0.8rem; color: var(--accent); }
+  .model-stat { display: flex; justify-content: space-between; padding: 0.28rem 0; border-bottom: 1px solid var(--border); font-size: 0.83rem; }
+  .model-stat:last-child { border-bottom: none; }
+  .model-stat .v { font-weight: 700; }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="brand">ParBench</span>
+  <a href="overview.html">Overview</a>
+  <a href="build_results.html">Build Results</a>
+  <a href="results.html">Augmentation</a>
+  <a href="augmentation_deep_dive.html">Deep Dive</a>
+  <a href="benchmark_landscape.html">Landscape</a>
+  <a href="architecture.html">Architecture</a>
+  <a href="pipeline.html">Pipeline</a>
+  <a href="llm_evaluation.html" class="active">LLM Evaluation</a>
+</nav>
+
+<h1>LLM Evaluation</h1>
+<p class="subtitle">Pilot results: CUDA → OpenMP translation · 5 kernels × 2 models · Zero-shot · 2026-03-18</p>
+
+<div class="notice">
+  <strong>⚠ Pilot Data Only</strong> — These are zero-shot (no iterative repair, no augmentation) results on 5 Rodinia kernels.
+  Full-scale evaluation with <code>--augment-levels</code> and <code>max_retries&gt;1</code> is pending.
+  27% pass rate is expected baseline; failures are fixable (see failure analysis below).
+</div>
+
+<!-- ─── Key Stats ──────────────────────────────────────────────────────────── -->
+<h2>At a Glance</h2>
+<div class="stats-grid">
+  <div class="stat-card"><div class="n" style="color:var(--green)">3</div><div class="l">PASS (of 10)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--yellow)">27%</div><div class="l">Pass Rate</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--red)">7</div><div class="l">BUILD_FAIL</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--orange)">1</div><div class="l">RUN_FAIL</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--accent)">2</div><div class="l">Models Tested</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--teal)">5</div><div class="l">Kernels</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--purple)">0</div><div class="l">Augment Level</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--text-muted)">1</div><div class="l">Attempt per Run</div></div>
+</div>
+
+<!-- ─── Full Results Table ───────────────────────────────────────────────── -->
+<h2>Full Results Table</h2>
+<table id="results-table">
+  <thead>
+    <tr>
+      <th>Model</th><th>Kernel</th><th>Status</th><th>Build</th><th>Run</th>
+      <th>Tokens In/Out</th><th>LLM Latency</th><th>Speedup</th><th>Error</th>
+    </tr>
+  </thead>
+  <tbody id="results-tbody"></tbody>
+</table>
+
+<!-- ─── Model Comparison ────────────────────────────────────────────────── -->
+<h2>Model Comparison</h2>
+<div class="model-cmp">
+  <div class="model-card">
+    <div class="model-name">Claude Sonnet 4 (claude-sonnet-4-20250514)</div>
+    <div class="model-stat"><span>Pass rate</span><span class="v" style="color:var(--yellow)">2/5 (40%)*</span></div>
+    <div class="model-stat"><span>BUILD_FAIL</span><span class="v" style="color:var(--red)">3</span></div>
+    <div class="model-stat"><span>RUN_FAIL</span><span class="v" style="color:var(--orange)">1</span></div>
+    <div class="model-stat"><span>Avg LLM latency</span><span class="v">44.4s</span></div>
+    <div class="model-stat"><span>Avg output tokens</span><span class="v">4,576</span></div>
+    <div class="model-stat"><span>Timing method (bfs)</span><span class="v" style="color:var(--teal)">cpu_time</span></div>
+  </div>
+  <div class="model-card">
+    <div class="model-name">Azure GPT-4.1 (azure-gpt-4.1)</div>
+    <div class="model-stat"><span>Pass rate</span><span class="v" style="color:var(--yellow)">1/5 (20%)</span></div>
+    <div class="model-stat"><span>BUILD_FAIL</span><span class="v" style="color:var(--red)">4</span></div>
+    <div class="model-stat"><span>RUN_FAIL</span><span class="v" style="color:var(--orange)">0</span></div>
+    <div class="model-stat"><span>Avg LLM latency</span><span class="v" style="color:var(--green)">20.8s (2.1× faster)</span></div>
+    <div class="model-stat"><span>Avg output tokens</span><span class="v">2,404 (47% fewer)</span></div>
+    <div class="model-stat"><span>Timing method (bfs)</span><span class="v">wall_time</span></div>
+  </div>
+</div>
+<p style="font-size:0.78rem; color:var(--text-muted)">* Claude also passed bfs omp→cuda (reverse direction, not shown in cuda→omp pilot table above)</p>
+
+<!-- ─── Per-Model Pass Rate Bars ─────────────────────────────────────────── -->
+<div style="margin: 1.5rem 0;">
+  <div class="bar-row">
+    <span class="bar-label">Claude Sonnet 4</span>
+    <div class="bar-track">
+      <div class="bar-pass" style="width:40%"></div>
+      <div class="bar-fail" style="width:20%"></div>
+      <div class="bar-bf"   style="width:40%"></div>
+    </div>
+    <span class="bar-val">2/5 PASS</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label">Azure GPT-4.1</span>
+    <div class="bar-track">
+      <div class="bar-pass" style="width:20%"></div>
+      <div class="bar-bf"   style="width:80%"></div>
+    </div>
+    <span class="bar-val">1/5 PASS</span>
+  </div>
+</div>
+
+<!-- ─── Failure Analysis ─────────────────────────────────────────────────── -->
+<h2>Failure Root Cause Analysis</h2>
+<p>All 8 failures are <strong style="color:var(--green)">fixable without model retraining</strong> — they stem from prompt engineering gaps, build config, or missing iterative repair.</p>
+
+<div id="taxonomy-list" style="margin: 1rem 0;"></div>
+
+<!-- ─── Pipeline Status ───────────────────────────────────────────────────── -->
+<h2>Pipeline Component Status</h2>
+<div class="notice notice-warn">
+  <strong>⚠ Critical Gap:</strong> The full pipeline (spec → augmentation → LLM evaluation on augmented code)
+  has never been run end-to-end. The batch runner is missing <code>--augment-levels</code>.
+  All pilot results used <code>augment_level=0</code> (raw source, no obfuscation).
+</div>
+<div class="pipeline-grid" id="pipeline-grid"></div>
+
+<!-- ─── Augmentation Pipeline Rates ─────────────────────────────────────── -->
+<h2>Augmentation Pipeline (Prior Session Baseline)</h2>
+<p>Pass rates on 60 Rodinia specs after fixing bugs A/B/C/V in <code>c_augmentation/augment_dataset.py</code>.</p>
+<div class="aug-grid" id="aug-grid"></div>
+<p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.5rem">
+  L3/L4 degradation: Bug D (TypedefExpansion) still fires on ~22 specs (cfd, nn, streamcluster, mummergpu-omp).
+  L1/L2 with seed=42 often select no-op transforms — effectively testing raw source.
+</p>
+
+<!-- ─── Open Bugs ─────────────────────────────────────────────────────────── -->
+<h2>Open Bugs (New Code)</h2>
+<div class="card" id="bugs-list"></div>
+
+<!-- ─── Next Steps ────────────────────────────────────────────────────────── -->
+<h2>Next Steps (Next Session)</h2>
+<table>
+  <thead>
+    <tr><th>Priority</th><th>Item</th><th>Effort</th></tr>
+  </thead>
+  <tbody>
+    <tr class="row-fail"><td><span class="badge badge-crit">CRITICAL</span></td><td>Add <code>--augment-levels</code> to batch runner + run end-to-end smoke test (bfs+hotspot, L0+L2)</td><td>~45 min</td></tr>
+    <tr class="row-fail"><td><span class="badge badge-high">HIGH</span></td><td>Fix Markdown kernel name bug (shows <code>?</code>) + stat count bug</td><td>~20 min</td></tr>
+    <tr class="row-warn"><td><span class="badge badge-med">MEDIUM</span></td><td>Prompt fix: tell LLM that CUDA headers are inlined in OMP versions (fixes nw, srad)</td><td>~15 min</td></tr>
+    <tr class="row-warn"><td><span class="badge badge-med">MEDIUM</span></td><td>Enable <code>max_retries=2</code> + compiler error feedback loop (fixes backprop)</td><td>~30 min</td></tr>
+    <tr class="row-warn"><td><span class="badge badge-med">MEDIUM</span></td><td>Fix <code>-Wno-unused-result</code> in backprop build spec (Claude compiler error)</td><td>~5 min</td></tr>
+    <tr class="row-warn"><td><span class="badge badge-med">MEDIUM</span></td><td><code>datetime.utcnow()</code> deprecation fix (Python 3.12+)</td><td>~5 min</td></tr>
+    <tr><td><span class="badge badge-low">LOW</span></td><td>nsys kernel profiling integration (Phase C2)</td><td>~2 hrs</td></tr>
+    <tr><td><span class="badge badge-low">LOW</span></td><td>Repo cleanup: remove 18 MB binaries, stale scripts</td><td>~60 min</td></tr>
+  </tbody>
+</table>
+
+<!-- ─── Speedup Note ──────────────────────────────────────────────────────── -->
+<h2>Note on Speedup Ratio</h2>
+<div class="card">
+  <p>The <strong style="color:var(--teal)">speedup ratio</strong> for bfs CUDA→OMP is ~0.001–0.002×, meaning OpenMP is ~500–1000× <em>slower</em> than CUDA for BFS.
+  This is expected — BFS on GPU has massive parallelism advantages.</p>
+  <p style="margin-top:0.5rem">The speedup metric here measures <strong style="color:var(--green)">translation correctness</strong> (does the LLM produce code that builds, runs, and passes verification?), not API performance.
+  A ratio &lt; 1.0 is a valid result: the LLM preserved correctness, but the target API is inherently slower for this workload on this hardware.</p>
+  <p style="margin-top:0.5rem"><strong style="color:var(--yellow)">Timing method note:</strong> Claude bfs used <code>cpu_time</code> (via GNU time, user+sys=0.83s); Azure bfs used <code>wall_time</code> (0.482s).
+  The baseline is always <code>wall_time</code> from the spec, creating a slight apples-to-oranges comparison.
+  Re-running all baselines with CPU timing is a future task.</p>
+</div>
+
+<script src="eval_results_data.js"></script>
+<script>
+const D = window.EVAL_DATA;
+
+// ─── Results Table ────────────────────────────────────────────────────────
+const tbody = document.getElementById('results-tbody');
+D.results.forEach(r => {
+  const statusBadge = r.status === 'PASS'
+    ? '<span class="badge badge-pass">PASS</span>'
+    : r.status === 'RUN_FAIL'
+      ? '<span class="badge badge-warn">RUN_FAIL</span>'
+      : '<span class="badge badge-fail">BUILD_FAIL</span>';
+  const buildBadge = r.build === 'pass'
+    ? '<span class="badge badge-pass">✓</span>'
+    : '<span class="badge badge-fail">✗</span>';
+  const runBadge = r.run === 'pass'
+    ? '<span class="badge badge-pass">✓</span>'
+    : r.run === 'fail'
+      ? '<span class="badge badge-fail">✗</span>'
+      : '<span style="color:var(--text-muted)">—</span>';
+  const speedup = r.speedup != null ? r.speedup + '×' : '—';
+  const err = (r.build_error || r.run_error || '');
+  const errHtml = err ? `<div class="err-snippet">${err.substring(0,120)}${err.length>120?'…':''}</div>` : '—';
+  const rowClass = r.status === 'PASS' ? 'row-pass' : r.status === 'RUN_FAIL' ? 'row-warn' : 'row-fail';
+  tbody.innerHTML += `
+    <tr class="${rowClass}">
+      <td><span class="mono">${r.model_short}</span></td>
+      <td><strong>${r.kernel}</strong></td>
+      <td>${statusBadge}</td>
+      <td>${buildBadge}</td>
+      <td>${runBadge}</td>
+      <td class="mono">${r.tokens_in.toLocaleString()} / ${r.tokens_out.toLocaleString()}</td>
+      <td>${r.llm_latency_s.toFixed(1)}s</td>
+      <td>${speedup}</td>
+      <td>${errHtml}</td>
+    </tr>`;
+});
+
+// ─── Failure Taxonomy ──────────────────────────────────────────────────────
+const taxList = document.getElementById('taxonomy-list');
+D.failure_taxonomy.forEach(t => {
+  taxList.innerHTML += `
+    <div class="taxonomy-row">
+      <div class="tax-count">${t.count}</div>
+      <div class="tax-body">
+        <div class="cat">${t.category}</div>
+        <div class="kernels">Kernels: ${t.kernels}</div>
+        <div class="fix">Fix (${t.effort} effort): ${t.fix}</div>
+      </div>
+    </div>`;
+});
+
+// ─── Pipeline Grid ─────────────────────────────────────────────────────────
+const grid = document.getElementById('pipeline-grid');
+const icons = { pass: '✅', warn: '⚠️', fail: '❌' };
+D.pipeline_status.forEach(p => {
+  grid.innerHTML += `
+    <div class="pipeline-item pi-${p.status}">
+      <span class="icon">${icons[p.status]}</span>
+      <div class="info">
+        <div class="name">${p.component}</div>
+        <div class="note">${p.note}</div>
+      </div>
+    </div>`;
+});
+
+// ─── Augmentation Rates ───────────────────────────────────────────────────
+const augGrid = document.getElementById('aug-grid');
+const augColors = { 75: 'var(--green)', 48: 'var(--yellow)', 37: 'var(--orange)' };
+D.augmentation_rates.forEach(a => {
+  const color = a.rate >= 70 ? 'var(--green)' : a.rate >= 45 ? 'var(--yellow)' : 'var(--orange)';
+  augGrid.innerHTML += `
+    <div class="aug-card">
+      <div class="level">${a.level}</div>
+      <div class="rate" style="color:${color}">${a.rate}%</div>
+      <div class="detail">${a.pass}/${a.total} PASS</div>
+      <div class="detail">${a.build_fail} BUILD_FAIL · ${a.fail} FAIL</div>
+    </div>`;
+});
+
+// ─── Bugs List ────────────────────────────────────────────────────────────
+const bugsList = document.getElementById('bugs-list');
+const bugBadgeClass = { CRITICAL: 'badge-crit', HIGH: 'badge-high', MEDIUM: 'badge-med', WARN: 'badge-warn' };
+D.open_bugs.forEach(b => {
+  bugsList.innerHTML += `
+    <div class="bug-row">
+      <span class="bug-id">${b.id}</span>
+      <span class="badge ${bugBadgeClass[b.severity] || 'badge-low'}">${b.severity}</span>
+      <span class="bug-desc">${b.desc}</span>
+      <span class="bug-file">${b.file}</span>
+    </div>`;
+});
+</script>
+</body>
+</html>
