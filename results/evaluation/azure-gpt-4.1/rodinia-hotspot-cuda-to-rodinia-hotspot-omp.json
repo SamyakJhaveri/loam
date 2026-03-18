@@ -1,0 +1,51 @@
+{
+  "source_spec": "rodinia-hotspot-cuda",
+  "target_spec": "rodinia-hotspot-omp",
+  "model": "azure-gpt-4.1",
+  "augment_level": 0,
+  "timestamp": "2026-03-18T01:16:18Z",
+  "prompt_tokens": 3407,
+  "completion_tokens": 3400,
+  "llm_response_time_seconds": 39.639,
+  "build_status": "fail",
+  "build_time_seconds": 0.025,
+  "build_error_snippet": "t \u2018task\u2019 or \u2018taskloop\u2019 region\n  159 |                                 #pragma omp barrier\n      |                                                    ^\nhotspot_openmp.cpp:184:52: error: barrier region may not be closely nested inside of work-sharing, \u2018loop\u2019, \u2018critical\u2019, \u2018ordered\u2019, \u2018master\u2019, \u2018masked\u2019, explicit \u2018task\u2019 or \u2018taskloop\u2019 region\n  184 |                                 #pragma omp barrier\n      |                                                    ^\nmake: *** [Makefile:11: hotspot] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.069,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot_openmp.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_SIZE RD_WG_SIZE_0_0\n#elif defined(RD_WG_SIZE_0)\n        #defi"
+  },
+  "target_files_expected": [
+    "hotspot_openmp.cpp"
+  ],
+  "target_files_extracted": [
+    "hotspot_openmp.cpp"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 39.639,
+      "prompt_tokens": 3407,
+      "completion_tokens": 3400,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "t \u2018task\u2019 or \u2018taskloop\u2019 region\n  159 |                                 #pragma omp barrier\n      |                                                    ^\nhotspot_openmp.cpp:184:52: error: barrier region may not be closely nested inside of work-sharing, \u2018loop\u2019, \u2018critical\u2019, \u2018ordered\u2019, \u2018master\u2019, \u2018masked\u2019, explicit \u2018task\u2019 or \u2018taskloop\u2019 region\n  184 |                                 #pragma omp barrier\n      |                                                    ^\nmake: *** [Makefile:11: hotspot] Error 1\n"
+    }
+  ]
+}

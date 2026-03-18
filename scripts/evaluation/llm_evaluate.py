@@ -346,9 +346,15 @@ def call_llm(
             )
 
         azure_model = model[len("azure-"):]  # e.g. "azure-gpt-4.1" → "gpt-4.1"
+
+        # Strip any path/query from endpoint — SDK expects just scheme+host
+        from urllib.parse import urlparse
+        parsed = urlparse(endpoint)
+        base_endpoint = f"{parsed.scheme}://{parsed.netloc}"
+
         client_az = AzureOpenAI(
             api_key=api_key,
-            azure_endpoint=endpoint,
+            azure_endpoint=base_endpoint,
             api_version="2025-01-01-preview",
         )
         full_messages = [{"role": "system", "content": system_msg}] + messages

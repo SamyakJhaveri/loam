@@ -1,0 +1,50 @@
+{
+  "source_spec": "rodinia-bfs-cuda",
+  "target_spec": "rodinia-bfs-omp",
+  "model": "azure-gpt-4.1",
+  "augment_level": 0,
+  "timestamp": "2026-03-18T01:16:09Z",
+  "prompt_tokens": 3290,
+  "completion_tokens": 1982,
+  "llm_response_time_seconds": 8.339,
+  "build_status": "pass",
+  "build_time_seconds": 0.152,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.482,
+  "run_exit_code": 0,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.482,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0021,
+  "translated_files": {
+    "bfs.cpp": "/***********************************************************************************\n  Implementing Breadth first search on OpenMP using algorithm given in HiPC'07\n  paper \"Accelerating Large Graph Al"
+  },
+  "target_files_expected": [
+    "bfs.cpp"
+  ],
+  "target_files_extracted": [
+    "bfs.cpp"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 8.339,
+      "prompt_tokens": 3290,
+      "completion_tokens": 1982,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null
+    }
+  ]
+}

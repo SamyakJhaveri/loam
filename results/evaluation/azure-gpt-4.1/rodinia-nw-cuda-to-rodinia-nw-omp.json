@@ -1,0 +1,51 @@
+{
+  "source_spec": "rodinia-nw-cuda",
+  "target_spec": "rodinia-nw-omp",
+  "model": "azure-gpt-4.1",
+  "augment_level": 0,
+  "timestamp": "2026-03-18T01:16:58Z",
+  "prompt_tokens": 5282,
+  "completion_tokens": 3542,
+  "llm_response_time_seconds": 13.837,
+  "build_status": "fail",
+  "build_time_seconds": 0.029,
+  "build_error_snippet": "needle.cpp:6:10: fatal error: needle.h: No such file or directory\n    6 | #include \"needle.h\"\n      |          ^~~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:10: needle] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.015,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "needle.cpp": "#define LIMIT -999\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include \"needle.h\"\n#include <sys/time.h>\n#include <omp.h>\n\n// includes, kernels\n#include \"needle_kernel"
+  },
+  "target_files_expected": [
+    "needle.cpp"
+  ],
+  "target_files_extracted": [
+    "needle.cpp"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 13.837,
+      "prompt_tokens": 5282,
+      "completion_tokens": 3542,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "needle.cpp:6:10: fatal error: needle.h: No such file or directory\n    6 | #include \"needle.h\"\n      |          ^~~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:10: needle] Error 1\n"
+    }
+  ]
+}
