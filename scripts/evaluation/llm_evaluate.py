@@ -135,6 +135,95 @@ LANG_FOR_API: dict[str, str] = {
 
 logger = logging.getLogger(__name__)
 
+# Supported extensions for support file classification
+_SUPPORT_HEADER_EXTS = frozenset({".h", ".hpp", ".cuh"})
+_SUPPORT_CODE_EXTS = frozenset({".c", ".cpp", ".cu", ".cc", ".cxx"})
+
+
+def _head_tail(text: str, max_len: int = 1500, head: int = 750, tail: int = 750) -> str:
+    """Return head+tail of text if longer than max_len, else full text."""
+    if len(text) <= max_len:
+        return text
+    return text[:head] + "\n...[truncated]...\n" + text[-tail:]
+
+
+def _read_support_files(
+    source_spec: dict[str, Any],
+    project_root: Path,
+    max_chars: int = 50_000,
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Read support files from source spec, split into headers and code files.
+
+    Returns:
+        (headers_dict, code_dict) — both filename → content.
+        headers_dict: all header files (.h, .hpp, .cuh)
+        code_dict: code files (.c, .cpp, .cu, .cc, .cxx) up to max_chars cumulative
+    """
+    source_resolved = resolve_paths(source_spec, project_root)
+    source_dir: Path = source_resolved["_resolved"]["source_dir"]
+    support_names: list[str] = source_spec.get("files", {}).get("support_files", [])
+
+    headers: dict[str, str] = {}
+    code_files: dict[str, str] = {}
+    code_chars = 0
+
+    for fname in support_names:
+        fp = source_dir / fname
+        ext = Path(fname).suffix.lower()
+        if ext in _SUPPORT_HEADER_EXTS:
+            if fp.exists():
+                headers[fname] = fp.read_text(encoding="utf-8", errors="replace")
+            else:
+                logger.warning("Support header not found on disk: %s", fp)
+        elif ext in _SUPPORT_CODE_EXTS:
+            if fp.exists():
+                content = fp.read_text(encoding="utf-8", errors="replace")
+                if code_chars + len(content) <= max_chars:
+                    code_files[fname] = content
+                    code_chars += len(content)
+                else:
+                    logger.debug(
+                        "Skipping support code file %s (would exceed max_chars=%d)",
+                        fname, max_chars,
+                    )
+        # Makefile, .sh, etc. are intentionally skipped
+
+    return headers, code_files
+
+
+def _stage_support_headers(
+    source_spec: dict[str, Any],
+    target_spec_resolved: dict[str, Any],
+    project_root: Path,
+) -> list[Path]:
+    """Copy source header files into target build directory (only if missing).
+
+    Returns list of newly-created files for cleanup.
+    """
+    source_resolved = resolve_paths(source_spec, project_root)
+    source_dir: Path = source_resolved["_resolved"]["source_dir"]
+    target_dir: Path = target_spec_resolved["_resolved"]["source_dir"]
+    support_names: list[str] = source_spec.get("files", {}).get("support_files", [])
+
+    staged: list[Path] = []
+    for fname in support_names:
+        if Path(fname).suffix.lower() not in _SUPPORT_HEADER_EXTS:
+            continue
+        src_fp = source_dir / fname
+        tgt_fp = target_dir / fname
+        if src_fp.exists() and not tgt_fp.exists():
+            shutil.copy2(src_fp, tgt_fp)
+            staged.append(tgt_fp)
+            logger.debug("Staged header %s → %s", src_fp.name, target_dir)
+
+    return staged
+
+
+def _unstage_support_headers(staged_files: list[Path]) -> None:
+    """Remove headers that were staged into the target build directory."""
+    for fp in staged_files:
+        fp.unlink(missing_ok=True)
+
 
 # ---------------------------------------------------------------------------
 # Prompt construction
@@ -146,6 +235,7 @@ def build_translation_prompt(
     target_spec: dict[str, Any],
     source_payload: dict[str, str],
     project_root: Path,
+    source_support: tuple[dict[str, str], dict[str, str]] | None = None,
 ) -> tuple[str, str]:
     """Build system + user messages for the translation request.
 
@@ -222,6 +312,24 @@ def build_translation_prompt(
         lines.append(contents)
         lines.append("```")
         lines.append("")
+
+    if source_support:
+        headers, code = source_support
+        if headers or code:
+            lines.append("## Support / Header Files")
+            lines.append(
+                "_These files exist in the **source** build directory but may NOT exist "
+                "in the target directory. If your translated code needs definitions from "
+                "them, inline the definitions directly rather than using `#include`._"
+            )
+            lines.append("")
+            for fname, contents in {**headers, **code}.items():
+                src_lang = LANG_FOR_API.get(src_api, "c")
+                lines.append(f"### {fname}")
+                lines.append(f"```{src_lang}")
+                lines.append(contents)
+                lines.append("```")
+                lines.append("")
 
     user_msg = "\n".join(lines)
     return system_msg, user_msg
@@ -572,9 +680,13 @@ def evaluate_translation(
     # Get source code (optionally augmented)
     source_payload = get_prompt_payload(source_spec, project_root, augment_level)
 
+    # Read support files (headers + code) to include in prompt
+    source_support = _read_support_files(source_spec, project_root)
+
     # Build prompt
     system_msg, user_msg = build_translation_prompt(
-        source_spec, target_spec, source_payload, project_root
+        source_spec, target_spec, source_payload, project_root,
+        source_support=source_support,
     )
 
     if dry_run:
@@ -605,9 +717,13 @@ def evaluate_translation(
     # Backup originals (restored in finally regardless of outcome)
     backup_info = backup_files(target_file_paths)
 
-    # Baseline timing from target spec (may be null)
+    # Stage source headers into target build dir (safety net for missing includes)
+    staged_headers = _stage_support_headers(source_spec, target_spec_resolved, project_root)
+
+    # Baseline timing from target spec (may be null/absent)
+    # Use `or {}` guard — .get(key, {}) returns None if key exists with null value
     baseline_wall_time: float | None = (
-        target_spec.get("baseline_results", {})
+        (target_spec.get("baseline_results") or {})
         .get("configurations", {})
         .get("correctness", {})
         .get("wall_time_seconds")
@@ -689,10 +805,11 @@ def evaluate_translation(
             attempt_record["build_status"] = build_result.status.value
 
             if build_result.status != Status.PASS:
-                attempt_record["build_error_snippet"] = (
+                attempt_record["build_error_snippet"] = _head_tail(
                     build_result.stderr or ""
-                )[-500:]
+                )
                 final_status = "BUILD_FAIL"
+                error_message = f"Build failed: {(build_result.stderr or '')[-200:].strip()}"
             else:
                 # -- Run --
                 run_result = run_spec(
@@ -706,6 +823,9 @@ def evaluate_translation(
 
                 if run_result.status != Status.PASS:
                     final_status = "RUN_FAIL"
+                    error_message = f"Run failed (exit code {run_result.exit_code})"
+                    attempt_record["run_stderr_snippet"] = (run_result.stderr or "")[-500:]
+                    attempt_record["run_stdout_snippet"] = (run_result.stdout or "")[-500:]
                 else:
                     # -- Verify --
                     verify_result = verify_run(target_spec, run_result)
@@ -719,6 +839,7 @@ def evaluate_translation(
                         final_status = "PASS"
                     else:
                         final_status = "VERIFY_FAIL"
+                        error_message = f"Verify failed: {verify_result.details}"
 
             attempts.append(attempt_record)
 
@@ -738,6 +859,7 @@ def evaluate_translation(
 
     finally:
         restore_files(backup_info)
+        _unstage_support_headers(staged_headers)
 
     # -- Speedup ratio --
     # Numerator: baseline wall_time from the target spec (unchanged).
@@ -800,7 +922,7 @@ def evaluate_translation(
             round(final_build_result.duration_seconds, 3) if final_build_result else None
         ),
         "build_error_snippet": (
-            (final_build_result.stderr or "")[-500:] if final_build_result and final_build_result.status != Status.PASS else None
+            _head_tail(final_build_result.stderr or "") if final_build_result and final_build_result.status != Status.PASS else None
         ),
         # Run
         "run_status": (
@@ -811,6 +933,14 @@ def evaluate_translation(
         ),
         "run_exit_code": (
             final_run_result.exit_code if final_run_result else None
+        ),
+        "run_stderr_snippet": (
+            (final_run_result.stderr or "")[-500:]
+            if final_run_result and final_run_result.status != Status.PASS else None
+        ),
+        "run_stdout_snippet": (
+            (final_run_result.stdout or "")[-500:]
+            if final_run_result and final_run_result.status != Status.PASS else None
         ),
         # Verify
         "verify_status": (

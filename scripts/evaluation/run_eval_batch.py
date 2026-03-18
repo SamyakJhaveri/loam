@@ -36,6 +36,21 @@ from harness.spec_loader import load_manifest  # noqa: E402
 from scripts.evaluation.llm_evaluate import evaluate_translation  # noqa: E402
 
 
+def _extract_kernel(r: dict) -> str:
+    """Extract kernel name from result dict's source_spec field.
+
+    source_spec has format "{suite}-{kernel}-{api}" (e.g. "rodinia-nw-cuda").
+    Returns the middle portion (e.g. "nw").
+    """
+    spec_id = r.get("source_spec", "?")
+    if spec_id == "?":
+        return "?"
+    parts = spec_id.split("-")
+    if len(parts) < 3:
+        return spec_id
+    return "-".join(parts[1:-1])
+
+
 # --------------------------------------------------------------------------- #
 # Task building                                                                #
 # --------------------------------------------------------------------------- #
@@ -109,6 +124,7 @@ def run_batch(
     max_failures: int,
     use_cpu_timing: bool,
     verbose: bool,
+    max_retries: int = 1,
 ) -> list[dict]:
     """Execute all tasks sequentially; return list of result dicts."""
     results: list[dict] = []
@@ -139,6 +155,7 @@ def run_batch(
             model=model,
             project_root=project_root,
             use_cpu_timing=use_cpu_timing,
+            max_retries=max_retries,
             verbose=verbose,
         )
 
@@ -180,7 +197,7 @@ def _generate_markdown(results: list[dict], models: list[str], title: str) -> st
     by_model: dict[str, dict[str, dict]] = defaultdict(dict)
     for r in results:
         m = r.get("model", "?")
-        k = r.get("kernel", r.get("source_spec_id", "?"))
+        k = _extract_kernel(r)
         by_model[m][k] = r
 
     lines = [
@@ -209,14 +226,16 @@ def _generate_markdown(results: list[dict], models: list[str], title: str) -> st
             "|--------|--------|---------|---------------|--------|",
         ]
 
-        for r in sorted(model_results, key=lambda x: x.get("kernel", "")):
-            kernel = r.get("kernel", r.get("source_spec_id", "?"))
+        for r in sorted(model_results, key=_extract_kernel):
+            kernel = _extract_kernel(r)
             status = r.get("overall_status", "?")
             sym = "✓" if status == "PASS" else ("!" if status == "ERROR" else "✗")
             speedup = r.get("speedup_ratio")
             speedup_str = f"{speedup:.3f}×" if speedup else "—"
             timing = r.get("timing_method", "—")
-            tokens = r.get("total_tokens", "—")
+            pt = r.get("prompt_tokens") or 0
+            ct = r.get("completion_tokens") or 0
+            tokens = f"{pt + ct}" if (pt or ct) else "—"
             lines.append(
                 f"| {kernel} | {sym} {status} | {speedup_str} | {timing} | {tokens} |"
             )
@@ -227,7 +246,7 @@ def _generate_markdown(results: list[dict], models: list[str], title: str) -> st
     lines += ["## Cross-Model Summary", ""]
     all_kernels: set[str] = set()
     for r in results:
-        all_kernels.add(r.get("kernel", r.get("source_spec_id", "?")))
+        all_kernels.add(_extract_kernel(r))
 
     col_header = " | ".join(models)
     lines.append(f"| Kernel | {col_header} |")
@@ -329,6 +348,13 @@ def main() -> None:
         help="Title for the Markdown report (auto-generated if omitted).",
     )
     parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Max LLM attempts per task with error feedback (1=zero-shot, default: 1).",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         default=False,
@@ -374,6 +400,7 @@ def main() -> None:
         max_failures=args.max_failures,
         use_cpu_timing=args.use_cpu_timing,
         verbose=args.verbose,
+        max_retries=args.max_retries,
     )
     total_elapsed = time.time() - t_start
 
