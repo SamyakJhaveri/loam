@@ -1,3 +1,19 @@
+ Presentation prep as a research skill: Having structured talking points mapped to a live dashboard (rather than static slides) is a powerful technique for research meetings. It lets you:                                                           
+  1. Adapt in real-time — skip sections if the audience drills into one area, or show backup data without "going back to slide 14"                                                                                                                     
+  2. Show working artifacts — the kanban, charts, and filters are live proof of project management rigor, which builds PI confidence                                                                                                                   
+  3. Drive decisions — ending with explicit "Decision Points" (which suite? augmentation timeline? Overleaf?) forces the meeting to produce actionable outcomes rather than vague direction                                                            
+                                                                                                                                                                                                                                                       
+  This is a pattern from agile sprint reviews that translates well to academic research: demo the working system, then ask for decisions.                                                                                                              
+  ─────────────────────────────────────────────────                                                                                                                                                                                                    
+                                                                                                                                                                                                                                                       
+  Here's a quick prep checklist for tomorrow:                                                                                                                                                                                                          
+                                                                                                                                                                                                                                                       
+  1. Before the meeting — open the website and verify all pages load (especially sprint_dashboard.html with its new features)                                                                                                                          
+  2. Practice the flow — overview (2 min) → LLM eval (5 min) → sprint dashboard (8 min, most time) → augmentation (3 min) → decisions (5 min)                                                                                                        
+  3. Key interactive demos — filter the kanban by Week 1, toggle between team members, click a task card to show the modal, show the burndown chart                                                                                                    
+  4. Three decisions to get — (1) additional benchmark suite, (2) Erel's L3/L4 fix timeline, (3) Overleaf project/template                                                                                                                             
+  5. Have docs/sprint_to_SC26.md open as backup for detailed task breakdowns if asked                                          
+  
 # SC26 Sprint Presentation — Talking Points
 
 **For:** Research team meeting
