@@ -21,7 +21,6 @@
             "needle.cpp"
         ],
         "support_files": [
-            "needle.h",
             "Makefile"
         ],
         "verification_only": []
@@ -46,7 +45,7 @@
         "working_directory": "openmp/nw",
         "commands": {
             "configure": null,
-            "build": "make needle",
+            "build": "make needle CC_FLAGS='-g -O3 -fopenmp -I../../cuda/nw'",
             "clean": "make clean"
         },
         "variables": null,

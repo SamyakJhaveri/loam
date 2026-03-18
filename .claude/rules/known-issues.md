@@ -68,23 +68,20 @@ The hotspot OMP reference (`hotspot_openmp.cpp`) uses ONE arg for grid_rows/grid
 and expects `<temp_file>` at `argv[4]` and `<power_file>` at `argv[5]`.
 **Fixed**: removed extra grid_cols, swapped power/temp to `["512","2","4","temp_512","power_512","output.out"]`.
 
-## needle.h Missing from OMP Source Dir (fixed 2026-03-17)
+## needle.h Missing from OMP Source Dir (permanently fixed 2026-03-18)
 
 `rodinia/rodinia-src/openmp/nw/needle.cpp` includes `needle.h`, but the OMP directory
 in the Rodinia repo at commit `9c10d3ea` never contained `needle.h` (it lives only in
-`cuda/nw/`). The pre-compiled `needle` binary in the repo was built at an earlier time.
+`cuda/nw/`).
 
-**Symptom**: `python3 -m harness verify specs/rodinia-nw-omp.json` gives BUILD_FAIL with
-`needle.h: No such file or directory`.
-
-**Fix applied**: Copied `needle.h` from `rodinia/rodinia-src/cuda/nw/` to
-`rodinia/rodinia-src/openmp/nw/`. Also added `needle.h` to the nw-omp spec's `support_files`.
-
-**Note**: This file lives inside the `rodinia/` git submodule and is not tracked by the
-main repo. After a fresh `git submodule update`, you must re-copy it:
-```bash
-cp rodinia/rodinia-src/cuda/nw/needle.h rodinia/rodinia-src/openmp/nw/needle.h
+**Fix applied (permanent)**: `specs/rodinia-nw-omp.json` build command now passes
+`-I../../cuda/nw` to the compiler:
 ```
+make needle CC_FLAGS='-g -O3 -fopenmp -I../../cuda/nw'
+```
+The include path resolves to `rodinia-src/cuda/nw/` where `needle.h` permanently lives.
+No file copy needed. `needle.h` removed from `support_files` in the OMP spec.
+This fix is resilient to `git submodule update` — no re-copy required.
 
 ## SRAD Reference Binary May Be Stale (2026-03-17)
 
