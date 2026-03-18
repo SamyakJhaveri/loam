@@ -1,0 +1,821 @@
+# Sprint to SC26 — ParBench 21-Day Plan
+
+> **Deadline:** SC26 paper submission — **April 8, 2026**
+> **Sprint window:** March 18 → April 8 (21 days)
+> **Last updated:** 2026-03-18
+> **Authors:** Samyak, Erel, Gal (advised)
+>
+> **How to use this document:**
+> - **Team members:** Read the full plan, then jump to your week's tasks
+> - **Claude Code sessions:** Read this plan first, then execute tasks sequentially within each day
+> - **Entry point:** See "Session Entry Point" at the bottom for copy-paste setup commands
+
+---
+
+## 1. Where We Are (March 18 Baseline)
+
+### 1.1 Phase 1 Complete — Infrastructure Fixed
+
+All 13 infrastructure items shipped across commits `a1ab7de` → `e878ee5`:
+
+| Category | Items Shipped |
+|----------|--------------|
+| Prompt quality | Prompt enhancement, header staging, support file inclusion |
+| Error capture | Head+tail build errors, run stderr/stdout, error_message field |
+| Retry mechanism | `--max-retries` flag (implemented, untested live with retries > 1) |
+| Spec fixes | OMP args (nw, hotspot), needle.h permanent `-I` include path |
+| Batch runner | `run_eval_batch.py` with `--resume`, `--max-failures`, Markdown reports |
+| Documentation | evaluation.md, known-issues.md, CLAUDE.md overhaul |
+| Dashboard | Updated to 50% pass rate |
+
+### 1.2 Pilot Results (5 kernels × 2 models, cuda→omp, L0)
+
+| Kernel | Claude Sonnet 4 | Azure GPT-4.1 | Failure Root Cause |
+|--------|:-:|:-:|---|
+| bfs | **PASS** | **PASS** | — |
+| nw | **PASS** | **PASS** | — (was infrastructure; fixed) |
+| hotspot | BUILD_FAIL | **PASS** | Claude: missing `#include <cstring>` |
+| srad | RUN_FAIL | RUN_FAIL | Both: LLM drops `nthreads` arg (quality) |
+| backprop | BUILD_FAIL | BUILD_FAIL | Claude: dup `gettime`; Azure: `HEIGHT` undeclared |
+
+**Pass rate: 50% (5/10).** All remaining failures are LLM quality issues, not infrastructure.
+
+### 1.3 Inventory
+
+#### Specs (185 total)
+
+| Suite | CUDA | OMP | OpenCL | Total |
+|-------|:----:|:---:|:------:|:-----:|
+| Rodinia | 22 | 21 | 22 | **65** |
+| HeCBench | 60 | 60 | 0 | **120** |
+| **Total** | **82** | **81** | **22** | **185** |
+
+**22 unique Rodinia kernels:** backprop, bfs, bptree, cfd, dwt2d, gaussian, heartwall, hotspot, hotspot3d, huffman, hybridsort, kmeans, lavamd, lud, mummergpu, myocyte, nn, nw, particlefilter, pathfinder, srad, streamcluster
+
+#### Translation Pairs Available
+
+| Direction | Rodinia | HeCBench | Total |
+|-----------|:-------:|:--------:|:-----:|
+| cuda → omp | 21 | 60 | 81 |
+| omp → cuda | 21 | 60 | 81 |
+| cuda → opencl | 22 | 0 | 22 |
+| opencl → cuda | 22 | 0 | 22 |
+| omp → opencl | 21 | 0 | 21 |
+| opencl → omp | 22 | 0 | 22 |
+| **Total** | **129** | **120** | **249** |
+
+#### Hardware & Compilers (Linux, RTX 4070)
+
+| API | Compiler | Path / Flag | Available |
+|-----|----------|------------|:---------:|
+| CUDA | nvcc (HPC SDK 24.3) | `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc` | YES |
+| OpenMP CPU | GCC 12.4 `-fopenmp` | System GCC | YES |
+| OpenCL | NVIDIA runtime | `/opt/nvidia/hpc_sdk/.../cuda/{include,lib64}` | YES |
+| OpenACC | nvc (HPC SDK 24.3) | `/opt/nvidia/hpc_sdk/.../compilers/bin/nvc` | YES |
+| OpenMP target offload | GCC `-foffload=nvptx-none` | Needs verification | UNKNOWN |
+| HIP | hipcc | Not installed (NVIDIA-only machine) | NO |
+| SYCL | dpcpp | Not installed | NO |
+
+#### Models
+
+| Model | Provider | Status | Notes |
+|-------|----------|--------|-------|
+| `claude-sonnet-4-20250514` | Anthropic API | Funded, no budget constraint | Primary model |
+| `azure-gpt-4.1` | Azure OpenAI | Funded, use wisely | Stick to gpt-4.1 (not gpt-4o) |
+
+#### Augmentation Pass Rates (60 Rodinia specs, seed=42)
+
+| Level | Pass | Rate | Notes |
+|-------|:----:|:----:|-------|
+| L1 | 45/60 | 75% | Stable |
+| L2 | 45/60 | 75% | Same as L1 (seed=42 often selects no-op) |
+| L3 | 29/60 | 48% | Bug D (TypedefExpansion) fires on ~22 specs |
+| L4 | 22/59 | 37% | Improved from 1/60 pre-fix; residual issues |
+
+**Note:** Erel may have augmentation fixes. L3/L4 rates may improve — retest in Week 3.
+
+#### Current Evaluation Results on Disk
+
+```
+results/evaluation/
+├── claude-sonnet-4-20250514/     (6 result JSONs)
+│   ├── rodinia-{bfs,nw,hotspot,srad,backprop}-cuda-to-...-omp.json
+│   └── rodinia-bfs-omp-to-rodinia-bfs-cuda.json  (reverse direction test)
+├── azure-gpt-4.1/               (5 result JSONs)
+│   └── rodinia-{bfs,nw,hotspot,srad,backprop}-cuda-to-...-omp.json
+├── batch_cuda-to-omp_20260317_*.{json,md}  (5 batch summaries — STALE)
+├── task2_completion_report.md
+└── task2_research_report.md
+```
+
+### 1.4 Known Bugs in Evaluation Code
+
+| # | Bug | Severity | File | Fix |
+|---|-----|----------|------|-----|
+| **B8** | `--augment-levels` flag missing from batch runner | **CRITICAL** | `run_eval_batch.py` | Add flag, wire to `evaluate_translation()`, update result paths |
+| B1 | `kernel` field missing → `?` in Markdown reports | HIGH | `llm_evaluate.py` | Add `"kernel"` field to result dict |
+| B2 | Markdown stats show `0/1` instead of `0/5` | HIGH | `run_eval_batch.py` | Fix `_generate_markdown()` iteration |
+| B3 | Race condition on concurrent batch runners | HIGH | `run_eval_batch.py` | File locking on result writes |
+| B4 | No Azure endpoint URL validation | MEDIUM | `llm_evaluate.py` | Validate scheme+netloc on startup |
+| B6 | `datetime.utcnow()` deprecated (Python 3.12+) | LOW | `llm_evaluate.py:616` | `datetime.now(timezone.utc)` |
+| B7 | No `KeyboardInterrupt` handler in batch loop | MEDIUM | `run_eval_batch.py` | try/except in main loop |
+
+---
+
+## 2. The Plan — Three Weeks
+
+### Week 1 (March 18–24): Scale Up Rodinia + Iterative Repair
+
+**Goal:** 5-kernel pilot → full 21-kernel Rodinia evaluation with iterative repair and augmentation.
+
+### Week 2 (March 25–31): HeCBench + New APIs + Additional Benchmarks
+
+**Goal:** Clone HeCBench, run HeCBench evaluation, create OpenACC specs, investigate 1–2 new benchmark suites.
+
+### Week 3 (April 1–7): Paper + Final Results + Polish
+
+**Goal:** Final results, SC26 paper draft, publication-quality visualizations.
+
+---
+
+## 3. Week 1 — Detailed Task Breakdown
+
+### Day 1–2 (March 18–19): Bug Fixes + Iterative Repair Pilot
+
+#### Task 2A — Iterative Repair Pilot
+
+**No code changes needed.** The retry mechanism is fully implemented but untested with retries > 1.
+
+**Steps:**
+1. Delete stale results for failing kernels (to force re-evaluation):
+```bash
+source env_parbench/bin/activate
+rm results/evaluation/claude-sonnet-4-20250514/rodinia-{hotspot,srad,backprop}-cuda-to-*.json
+rm results/evaluation/azure-gpt-4.1/rodinia-{srad,backprop}-cuda-to-*.json
+```
+
+2. Re-run with `--max-retries 3`:
+```bash
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia --kernels hotspot srad backprop \
+  --direction cuda-to-omp \
+  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --max-retries 3 \
+  --project-root /home/samyak/Desktop/parbench_sam -v
+```
+
+3. Record self-repair outcomes:
+
+| Failure | Expected Self-Repair Likelihood | Why |
+|---------|:-------------------------------:|-----|
+| hotspot-claude (missing `#include <cstring>`) | **HIGH** | Trivial compile error, LLM should add include |
+| srad (both: wrong argc) | **MEDIUM** | LLM must add `nthreads` param — requires understanding OMP vs CUDA args |
+| backprop (both: multi-file conflicts) | **LOW** | Complex linker issues across multiple files |
+
+**Deliverable:** Updated result JSONs with `total_attempts > 1`. Self-repair success rate.
+
+---
+
+#### Task 2B — Add `--augment-levels` to Batch Runner
+
+**File:** `scripts/evaluation/run_eval_batch.py` (~15 lines of changes)
+
+**Implementation plan:**
+1. Add CLI flag:
+   ```python
+   parser.add_argument('--augment-levels', type=int, nargs='+', default=[0],
+                        help='Augmentation levels to test (default: [0])')
+   ```
+
+2. Expand task matrix in `_build_tasks()`:
+   - Current: `(source, target, model)` triples
+   - New: `(source, target, model, augment_level)` quadruples
+   - For each existing triple, iterate over `args.augment_levels`
+
+3. Pass augment_level to `evaluate_translation()`:
+   ```python
+   result = evaluate_translation(
+       ...,
+       augment_level=task["augment_level"],
+       ...
+   )
+   ```
+
+4. Update result file path to include augment level:
+   - Current: `results/evaluation/{model}/{src}-to-{tgt}.json`
+   - New: `results/evaluation/{model}/L{aug}/{src}-to-{tgt}.json`
+   - For L0, keep existing path (backward compatible): `results/evaluation/{model}/{src}-to-{tgt}.json`
+
+5. Add `augment_level` column to Markdown report in `_generate_markdown()`.
+
+**Deliverable:** Working `--augment-levels` flag. Smoke test with `--augment-levels 0 2 --kernels bfs --direction cuda-to-omp`.
+
+---
+
+#### Task 2E — Cleanup
+
+1. Delete stale batch summaries:
+```bash
+rm results/evaluation/batch_cuda-to-omp_20260317_*.json
+rm results/evaluation/batch_cuda-to-omp_20260317_*.md
+```
+
+2. Delete stray HeCBench result (from cross-suite name collision — demonstrates why `--suite` is mandatory):
+```bash
+rm -f results/evaluation/claude-sonnet-4-20250514/hecbench-nw-cuda-to-hecbench-nw-omp.json
+```
+
+3. Add to `.gitignore`:
+```
+# Batch summary files (regenerated per run; per-task JSONs are the source of truth)
+results/evaluation/batch_*.json
+results/evaluation/batch_*.md
+```
+
+4. Delete stale task reports (superseded by session_report):
+```bash
+rm results/evaluation/task2_completion_report.md
+rm results/evaluation/task2_research_report.md
+```
+
+---
+
+#### Task 2F — Minor Bug Fixes (Day 1–2)
+
+Fix these in a single commit:
+
+| Bug | Fix | File | Lines |
+|-----|-----|------|-------|
+| B6 | `datetime.utcnow()` → `datetime.now(timezone.utc)` | `llm_evaluate.py` | ~1 line |
+| B7 | Wrap batch loop in `try/except KeyboardInterrupt` | `run_eval_batch.py` | ~5 lines |
+| B4 | Validate Azure endpoint URL on startup (check scheme + netloc) | `llm_evaluate.py` | ~5 lines |
+| B1 | Add `"kernel"` field to result dict | `llm_evaluate.py` | ~1 line |
+| B2 | Fix `_generate_markdown()` result iteration | `run_eval_batch.py` | ~3 lines |
+
+---
+
+### Day 3–4 (March 20–21): Smoke Test All 21 OMP Specs
+
+#### Task 2C — Verify All Rodinia OMP Specs
+
+**Goal:** Ensure every Rodinia OMP spec builds, runs, and verifies before sending to LLM evaluation.
+
+```bash
+source env_parbench/bin/activate
+for k in backprop bfs bptree cfd gaussian heartwall hotspot hotspot3d \
+         huffman hybridsort kmeans lavamd lud mummergpu myocyte nn nw \
+         particlefilter pathfinder srad streamcluster; do
+  echo "=== rodinia-${k}-omp ==="
+  python3 -m harness -v verify "specs/rodinia-${k}-omp.json" 2>&1 | tail -5
+  echo ""
+done
+```
+
+**Budget time for debugging.** Expect 3–5 specs to need fixes. Common patterns from prior experience:
+- Missing data files → create symlinks in `rodinia/rodinia-src/data/`
+- Wrong run arguments → check OMP reference binary's `argc` expectation
+- Build target name → `make <target>` instead of bare `make`
+- Missing headers → `-I` include path like the needle.h fix
+- Compiler flag issues → add `-std=c++14` or `-Wno-unused-result`
+
+**Also smoke-test all CUDA specs** (these are the *source* for cuda→omp translation):
+```bash
+for k in backprop bfs bptree cfd dwt2d gaussian heartwall hotspot hotspot3d \
+         huffman hybridsort kmeans lavamd lud mummergpu myocyte nn nw \
+         particlefilter pathfinder srad streamcluster; do
+  echo "=== rodinia-${k}-cuda ==="
+  python3 -m harness -v verify "specs/rodinia-${k}-cuda.json" 2>&1 | tail -5
+  echo ""
+done
+```
+
+**Deliverable:** Updated spec files for any broken specs. A table of all 22 kernels × {cuda, omp} with PASS/FAIL status.
+
+**Known failures to expect:**
+- `rodinia-nn-cuda` and `rodinia-nn-omp` — reported baseline failures (runtime errors). Debug or exclude.
+- Erel's 5 new specs (gaussian-omp, huffman-omp, huffman-opencl, hybridsort-omp, mummergpu-opencl) — source dirs may be missing (submodule at wrong commit).
+
+---
+
+### Day 4–5 (March 21–22): Full Rodinia cuda→omp Evaluation
+
+#### Task 2D — Full Evaluation Matrix (Primary Direction)
+
+**cuda→omp (primary):** All passing kernels × 2 models × L0/L1/L2 × max-retries 2
+
+```bash
+# Phase 1: L0 (no augmentation) — all kernels, both models
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia \
+  --direction cuda-to-omp \
+  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --augment-levels 0 \
+  --max-retries 2 \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --resume -v
+
+# Phase 2: L1+L2 (augmented source) — same parameters
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia \
+  --direction cuda-to-omp \
+  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --augment-levels 1 2 \
+  --max-retries 2 \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --resume -v
+```
+
+**Estimated LLM calls:** ~21 kernels × 2 models × 3 levels × (1–2 attempts) ≈ 126–252 calls
+
+**Important:** These runs are sequential (one LLM call at a time). Expect ~2–4 hours per batch. Run in tmux:
+```bash
+tmux new-session -d -s eval_cuda_omp 'source env_parbench/bin/activate && python3 scripts/evaluation/run_eval_batch.py --suite rodinia --direction cuda-to-omp --models claude-sonnet-4-20250514 azure-gpt-4.1 --augment-levels 0 1 2 --max-retries 2 --project-root /home/samyak/Desktop/parbench_sam --resume -v 2>&1 | tee results/evaluation/run_cuda_omp.log'
+```
+
+---
+
+### Day 5–6 (March 22–23): Additional Directions
+
+#### Task 2D continued — omp→cuda and cuda→opencl
+
+```bash
+# omp→cuda
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia --direction omp-to-cuda \
+  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --augment-levels 0 --max-retries 2 \
+  --project-root /home/samyak/Desktop/parbench_sam --resume -v
+
+# cuda→opencl
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia --direction cuda-to-opencl \
+  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --augment-levels 0 --max-retries 2 \
+  --project-root /home/samyak/Desktop/parbench_sam --resume -v
+```
+
+**Estimated calls:** ~43 pairs × 2 models × 1 level ≈ 86 calls
+
+---
+
+### Day 7 (March 24): Week 1 Results Analysis
+
+1. Create `scripts/evaluation/analyze_eval.py` — aggregate all result JSONs into:
+   - `results/evaluation/eval_summary.md` — full results matrix
+   - `results/evaluation/eval_summary.json` — machine-readable aggregate
+   - `visualizations/eval_results_data.js` — dashboard data
+
+2. Update GitHub Pages dashboard
+
+3. Commit all results with clear commit message
+
+4. Generate the following tables for the paper:
+   - Pass rate by (model × direction × augment_level)
+   - Pass rate by kernel complexity
+   - Failure taxonomy (BUILD_FAIL vs RUN_FAIL vs VERIFY_FAIL counts)
+   - Self-repair rate (attempt 1 vs attempt 2 pass rate)
+
+---
+
+## 4. Week 2 — Detailed Task Breakdown
+
+### Day 8 (March 25): Clone HeCBench
+
+1. Clone the repo:
+```bash
+cd /home/samyak/Desktop/parbench_sam
+git clone https://github.com/zjin-lcf/HeCBench.git HeCBench-master
+```
+
+2. Verify `config/paths.json` — `hecbench_root` already set to project root. Check that 120 HeCBench specs now resolve:
+```bash
+python3 scripts/validate_schema.py --all 2>&1 | grep -c "source_dir.*not found"
+# Should drop from 120 to near 0
+```
+
+3. **Do NOT commit HeCBench-master/ to git** — it's huge. Add to `.gitignore`:
+```
+HeCBench-master/
+```
+
+---
+
+### Day 8–9 (March 25–26): HeCBench Smoke Tests
+
+1. Pick 5 representative HeCBench kernels with simple CUDA code:
+```bash
+# Candidates (verify these exist and have both cuda + omp variants):
+# atomicIntrinsics, backprop, bfs, bezier-surface, binomial
+for k in atomicIntrinsics backprop bfs bezier-surface binomial; do
+  echo "=== hecbench-${k}-cuda ==="
+  python3 -m harness -v verify "specs/hecbench-${k}-cuda.json" 2>&1 | tail -5
+  echo "=== hecbench-${k}-omp ==="
+  python3 -m harness -v verify "specs/hecbench-${k}-omp.json" 2>&1 | tail -5
+done
+```
+
+2. Fix build issues — HeCBench Makefiles often need:
+   - `CUDA_HOME` set to `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda`
+   - SM arch flag (RTX 4070 = sm_89): `-arch=sm_89`
+   - Possibly `-std=c++17` or `-std=c++14`
+
+3. **Goal:** At least 5 HeCBench kernels fully passing (cuda + omp) before batch eval.
+
+---
+
+### Day 9–10 (March 26–27): HeCBench cuda→omp Evaluation
+
+```bash
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite hecbench --direction cuda-to-omp \
+  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --augment-levels 0 --max-retries 2 \
+  --project-root /home/samyak/Desktop/parbench_sam --resume -v
+```
+
+**Estimated calls:** Up to 60 kernels × 2 models = 120 calls. Many may fail at baseline (not all HeCBench specs have been smoke-tested). Use `--max-failures 10` to skip persistently broken kernels.
+
+---
+
+### Day 10–11 (March 27–28): Create OpenACC Specs
+
+**Decision tree:**
+
+1. Check if Rodinia has OpenACC source:
+```bash
+# Check extended Rodinia repos
+ls rodinia/rodinia-src/openacc/ 2>/dev/null
+# Check if gpu-rodinia fork exists with OpenACC
+```
+
+2. **If OpenACC source exists:**
+   - Generate specs using `/gen-spec` skill
+   - Build commands use `nvc -acc -Minfo=accel -gpu=cc89`
+   - Aim for 10–15 kernels
+
+3. **If NO OpenACC source exists:**
+   - Create "translate-only" specs: CUDA source as input, OpenACC as target
+   - Verification strategy: BUILD success + RUN produces same stdout as CUDA reference
+   - No reference binary needed — compare against CUDA stdout captured at baseline time
+   - This is still valuable data: "Can LLM translate CUDA→OpenACC?"
+
+**Build command template for OpenACC:**
+```json
+{
+  "build": {
+    "commands": {
+      "build": "nvc -acc -Minfo=accel -gpu=cc89 -o {binary} {source_files}",
+      "clean": "rm -f {binary}"
+    }
+  }
+}
+```
+
+---
+
+### Day 11–12 (March 28–29): Verify OpenMP Target Offload
+
+**Quick verification:**
+```bash
+# Test if GCC offloading works
+cat > /tmp/test_omp_target.c << 'EOF'
+#include <stdio.h>
+#include <omp.h>
+int main() {
+    int x = 0;
+    #pragma omp target map(tofrom: x)
+    { x = 42; }
+    printf("x = %d (expect 42)\n", x);
+    return (x == 42) ? 0 : 1;
+}
+EOF
+gcc -fopenmp -foffload=nvptx-none /tmp/test_omp_target.c -o /tmp/test_omp_target
+/tmp/test_omp_target
+```
+
+- **If it works:** Create `omp_target` specs for Rodinia kernels. New translation direction: `cuda→omp_target`.
+- **If it doesn't:** Skip. Don't spend more than 2 hours on this.
+
+---
+
+### Day 12–13 (March 29–30): New Benchmark Suite (Stretch)
+
+**Priority candidates (pick 1–2):**
+
+| Suite | Kernels | APIs | Pros | Cons |
+|-------|:-------:|------|------|------|
+| **PolyBench/GPU** | ~30 | CUDA, OpenCL, OpenACC | Popular in literature; small kernels | May overlap with HeCBench |
+| **Parboil** | 12 | CUDA, OpenCL, OpenMP | Well-studied; diverse algorithms | Older; may need Makefile updates |
+| **NAS Parallel Benchmarks** | 8 | OpenMP, MPI | Impressive for papers; well-known | Larger codes; less granular |
+
+**For each new suite:**
+1. Clone source
+2. Create specs using `/gen-spec <suite>` skill
+3. Smoke test baselines
+4. Run LLM evaluation pilot (5 kernels × 1 model)
+
+---
+
+### Day 14 (March 31): Week 2 Results Analysis
+
+1. Re-run `scripts/evaluation/analyze_eval.py` with all new results
+2. Update dashboard with HeCBench + new suite data
+3. Commit everything
+4. Generate cross-suite comparison tables
+
+---
+
+## 5. Week 3 — Detailed Task Breakdown
+
+### Day 15 (April 1): Retest Augmentation
+
+1. Check if Erel has merged augmentation fixes:
+```bash
+git pull origin main
+python3 -m pytest c_augmentation/test_transforms.py -v
+```
+
+2. Re-run full augmentation batch:
+```bash
+python3 scripts/augmentation/run_augment_batch.py \
+  specs/rodinia-*-cuda.json specs/rodinia-*-omp.json specs/rodinia-*-opencl.json \
+  --levels 1 2 3 4 --seed 42 \
+  --out results/augmentation/retest_2026-04-01 \
+  --title "Post-Fix Augmentation Retest"
+```
+
+3. If L3/L4 pass rates improve significantly (>60%), add L3/L4 to the evaluation matrix.
+
+---
+
+### Day 15–16 (April 1–2): Final Evaluation Sweep
+
+Fill any gaps in the results matrix:
+
+```bash
+# Check what's missing
+python3 scripts/evaluation/analyze_eval.py \
+  --results-dir results/evaluation/ \
+  --show-gaps
+```
+
+Priority fills:
+1. Any kernel × model × direction with 0 results
+2. L1/L2 augmented runs for top-performing direction (probably cuda→omp)
+3. If L3/L4 augmentation is fixed, run L3/L4 augmented evals on 5 pilot kernels
+
+---
+
+### Day 16 (April 2): Results Analyzer Script
+
+Create or finalize `scripts/evaluation/analyze_eval.py`:
+
+**Input:** All `results/evaluation/{model}/**/*.json` files
+
+**Output:**
+1. `results/evaluation/eval_summary.json` — machine-readable:
+```json
+{
+  "by_model": { "claude-sonnet-4": { "pass": 45, "total": 90, "rate": 0.50 } },
+  "by_direction": { "cuda-to-omp": { "pass": 30, "total": 42, "rate": 0.71 } },
+  "by_kernel": { "bfs": { "pass": 6, "total": 6, "rate": 1.00 } },
+  "by_augment_level": { "L0": { "pass": 40, "total": 80, "rate": 0.50 } },
+  "failure_taxonomy": { "BUILD_FAIL": 25, "RUN_FAIL": 10, "VERIFY_FAIL": 5 },
+  "self_repair": { "attempt_1_pass": 40, "attempt_2_pass": 8, "total_repaired": 8 }
+}
+```
+
+2. `results/evaluation/eval_summary.md` — publication-ready tables
+
+3. `visualizations/eval_results_data.js` — dashboard data
+
+---
+
+### Day 17 (April 3): Publication-Quality Visualizations
+
+Create or update these visualizations (can be matplotlib/seaborn scripts or enhanced HTML):
+
+1. **Heatmap:** Kernel × Model pass/fail for cuda→omp (primary result)
+2. **Bar chart:** Pass rate by translation direction
+3. **Grouped bar chart:** L0 vs L1 vs L2 pass rates by model
+4. **Stacked bar:** Failure taxonomy (BUILD_FAIL / RUN_FAIL / VERIFY_FAIL) by model
+5. **Line chart:** Self-repair curve (pass rate vs attempt number)
+6. **Table:** Per-kernel speedup ratios for passing translations
+
+**Script:** `scripts/evaluation/generate_paper_figures.py` → outputs to `docs/paper/figures/`
+
+---
+
+### Day 18–19 (April 4–5): SC26 Paper Draft
+
+Write paper sections as Markdown in `docs/paper/` (to be transferred to Overleaf):
+
+| Section | File | Content |
+|---------|------|---------|
+| 1. Introduction | `01_introduction.md` | LLM code translation needs benchmarks; existing benchmarks don't cover parallel code |
+| 2. Background | `02_background.md` | Parallel programming models, LLM code generation, related work |
+| 3. Benchmark Corpus | `03_benchmark_corpus.md` | Survey of 35 repos, 656 kernels, selection rationale, ParBench design |
+| 4. ParBench Framework | `04_framework.md` | Schema design, harness pipeline, augmentation system |
+| 5. Experimental Setup | `05_experimental_setup.md` | Models, translation directions, augmentation levels, hardware |
+| 6. Evaluation Results | `06_evaluation.md` | Pass rates, speedup analysis, augmentation impact, failure taxonomy |
+| 7. Discussion | `07_discussion.md` | What makes translations fail, model comparison, augmentation effectiveness |
+| 8. Conclusion | `08_conclusion.md` | Summary, limitations, future work |
+
+**Data sources for Section 6:**
+- `results/evaluation/eval_summary.json` — all LLM translation results
+- `results/augmentation/full_aug_results.json` — augmentation pass rates
+- `analysis/data/` — survey data (35 repos, 656 kernels)
+- `presentations/ParBench_Speaking_Notes.md` — prior narrative
+
+---
+
+### Day 20 (April 6): Review and Polish
+
+1. Cross-check all numbers in paper against result JSONs
+2. Ensure all tables are internally consistent
+3. Proofread all sections
+4. Add figure references and captions
+5. Run final `validate_schema.py --all`
+6. Final commit and push
+
+---
+
+### Day 21 — April 7 (April 8 = Deadline Day)
+
+1. Transfer Markdown to Overleaf LaTeX
+2. Final formatting (SC26 template)
+3. Generate PDF, review
+4. Submit
+
+---
+
+## 6. Expected Paper Data Points
+
+By April 8, target these numbers:
+
+| Metric | Target | Stretch |
+|--------|:------:|:-------:|
+| Translation pairs evaluated | 300+ | 500+ |
+| Benchmark suites | 2 (Rodinia + HeCBench) | 3–4 (+PolyBench/Parboil) |
+| Models compared | 2 | 2 |
+| Augmentation levels tested | L0, L1, L2 | + L3, L4 |
+| Translation directions | 3 (cuda↔omp, cuda→opencl) | 5–6 (+openacc, omp_target) |
+| APIs covered | 3 (CUDA, OMP, OpenCL) | 4–5 (+OpenACC, OMP target) |
+
+**Key results to report:**
+- Pass rate by model, direction, kernel complexity
+- Augmentation impact: L0 vs L1/L2 (does augmentation help or hurt LLM translation?)
+- Iterative repair: 1-attempt vs 2–3-attempt pass rates (self-repair effectiveness)
+- Failure taxonomy: build vs run vs verify, with common patterns
+- Speedup analysis: translated code performance vs reference implementation
+
+---
+
+## 7. Open Questions for Team
+
+1. **Rodinia OpenACC source:** Does `gpu-rodinia` repo or Rodinia 3.1 have OpenACC implementations? If not, what's the verification strategy for CUDA→OpenACC translation?
+
+2. **Which additional benchmarks?** PolyBench/GPU and Parboil are strongest candidates. Preference?
+
+3. **HeCBench clone size/time:** HeCBench is large (~500+ benchmarks, several GB). Any subset preference, or clone all?
+
+4. **Erel's augmentation fixes:** When will they be merged? Should we retest L3/L4 before or after the main evaluation sweep?
+
+5. **Paper venue confirmation:** SC26 confirmed? Workshop paper or full paper track?
+
+6. **Overleaf:** Has Erel created the Overleaf project and shared the link?
+
+7. **Submodule sync:** Erel's 5 new specs need Rodinia submodule at commit `b0310d8`. When can we sync?
+
+---
+
+## 8. Risk Mitigation
+
+| Risk | Likelihood | Impact | Mitigation |
+|------|:----------:|:------:|------------|
+| HeCBench specs don't build on our hardware | HIGH | MEDIUM | Budget 2 days for Makefile fixes; accept < 100% coverage |
+| Augmentation L3/L4 still broken | MEDIUM | LOW | Focus paper on L0/L1/L2; mention L3/L4 as future work |
+| OpenMP target offload not available | MEDIUM | LOW | Skip; focus on CUDA/OMP/OpenCL/OpenACC |
+| LLM API rate limits or outages | LOW | HIGH | Use `--resume` flag; spread runs over days; both providers as backup |
+| Paper writing takes longer than planned | MEDIUM | HIGH | Start Section 3 (corpus) and Section 4 (framework) early — they don't depend on results |
+| New benchmark suite too complex to integrate | MEDIUM | LOW | Mark as stretch goal; 2 suites (Rodinia + HeCBench) is sufficient for SC26 |
+
+---
+
+## 9. Critical File Reference
+
+| File | Role | Lines |
+|------|------|:-----:|
+| `scripts/evaluation/run_eval_batch.py` | Batch runner — add augment flag, run all evaluations | 444 |
+| `scripts/evaluation/llm_evaluate.py` | Core LLM evaluation engine | 1162 |
+| `scripts/evaluation/analyze_eval.py` | Results aggregator (TO CREATE) | — |
+| `scripts/augmentation/augment_verify.py` | Augmentation pipeline | — |
+| `scripts/augmentation/run_augment_batch.py` | Augmentation batch runner | — |
+| `c_augmentation/augment_dataset.py` | AST transforms (5 transforms) | 1225 |
+| `harness/spec_loader.py` | Spec loading, prompt payload extraction | — |
+| `harness/builder.py` | Build step | — |
+| `harness/runner.py` | Run step | — |
+| `harness/verifier.py` | Verify step | — |
+| `specs/rodinia-*-{cuda,omp,opencl}.json` | All Rodinia specs | 65 files |
+| `specs/hecbench-*-{cuda,omp}.json` | All HeCBench specs | 120 files |
+| `config/paths.json` | Path configuration | — |
+| `manifest.jsonl` | Spec manifest (185 entries) | 185 |
+| `visualizations/eval_results_data.js` | Dashboard data | — |
+| `.claude/rules/evaluation.md` | Pipeline conventions and gotchas | — |
+| `.claude/rules/known-issues.md` | All known bugs and workarounds | — |
+
+---
+
+## 10. Session Entry Point
+
+**Copy-paste this block at the start of every Claude Code session:**
+
+```
+Read the sprint plan: docs/sprint_to_SC26.md
+
+Then:
+1. source env_parbench/bin/activate
+2. git log --oneline -5  (confirm we're on main, check latest commit)
+3. Check what day of the sprint we're on (March 18 = Day 1)
+4. Pick up from where the last session left off
+5. Follow the task sequence for that day
+
+Environment reminders:
+- Project root: /home/samyak/Desktop/parbench_sam
+- Python: python3 (never bare python)
+- Harness: python3 -m harness -v verify specs/<name>.json
+- Batch eval: python3 scripts/evaluation/run_eval_batch.py --suite rodinia ...
+- ALWAYS pass --project-root /home/samyak/Desktop/parbench_sam
+- ALWAYS pass --suite to batch runner (avoid cross-suite collisions)
+- NEVER run evaluations in git worktrees (submodule is empty there)
+```
+
+---
+
+## 11. Daily Checklist Template
+
+Use this at the end of each working day:
+
+```markdown
+## Day N (Date) — End-of-Day Status
+
+### Completed
+- [ ] Task X: description (commit: abc1234)
+
+### Blocked
+- [ ] Task Y: reason
+
+### Tomorrow
+- [ ] Task Z: first thing
+
+### Results Update
+- Total evaluations: N
+- Pass rate: X% (model breakdown: Claude Y%, GPT Z%)
+- New failures discovered: (list)
+- Augmentation impact: (summary)
+```
+
+---
+
+## Appendix A: 17 Good Candidate Kernels (2+ Passing APIs at Baseline)
+
+```
+backprop:       cuda ✓  omp ✓  opencl ✓
+bfs:            cuda ✓  omp ✓  opencl ✓
+bptree:         cuda ✓  omp ✓  opencl ✓
+dwt2d:          cuda ✓         opencl ✓
+gaussian:       cuda ✓         opencl ✓
+heartwall:      cuda ✓  omp ✓  opencl ✓
+hotspot:        cuda ✓  omp ✓  opencl ✓
+hotspot3d:      cuda ✓  omp ✓  opencl ✓
+lavamd:         cuda ✓  omp ✓  opencl ✓
+lud:            cuda ✓  omp ✓  opencl ✓
+myocyte:        cuda ✓  omp ✓  opencl ✓
+nn:             cuda ✓  omp ✓  opencl ✗  (runtime failures at baseline)
+nw:             cuda ✓  omp ✓  opencl ✓
+particlefilter: cuda ✓  omp ✓  opencl ✓
+pathfinder:     cuda ✓  omp ✓  opencl ✗
+srad:           cuda ✓  omp ✓  opencl ✓
+streamcluster:  cuda ✓  omp ✓  opencl ✓
+```
+
+## Appendix B: LLM Translation Failure Patterns (from Pilot)
+
+| Pattern | Kernels | Models | Category | Self-Repair? |
+|---------|---------|--------|----------|:------------:|
+| Missing `#include` for standard lib | hotspot | Claude | BUILD_FAIL | HIGH |
+| LLM drops CLI argument (CUDA 8-arg → OMP 9-arg) | srad | Both | RUN_FAIL | MEDIUM |
+| Duplicate function across multi-file translation | backprop | Claude | BUILD_FAIL | LOW |
+| Undeclared macro from un-included header | backprop | Azure | BUILD_FAIL | MEDIUM |
+| Invalid OMP pragma nesting | hotspot | Azure (prior run) | BUILD_FAIL | MEDIUM |
+| Incomplete implementation (token truncation) | backprop | Azure (prior run) | BUILD_FAIL | HIGH (with retry) |
+
+## Appendix C: Augmentation Transform Reference
+
+| Transform | What it does | L1–L2 safe? | L3–L4 bugs? |
+|-----------|-------------|:-----------:|:-----------:|
+| SwapCondition | `a == b` → `b == a` | YES | Bug C: assignment-in-condition |
+| ChangeNames | Rename variables/functions | YES | Minor: identifier collision edge cases |
+| ArithmeticTransform | `a + b` → `b + a`, `a * 1` → `a` | YES | Rare false positives |
+| PointerArithmeticToArrayIndex | `arr[i]` → `*((arr)+(i))` | Mostly | Bug A: overlapping candidates; Bug B: struct member precedence |
+| TypedefExpansion | Expand typedef to underlying type | Mostly | Bug D: struct pointer member access |
