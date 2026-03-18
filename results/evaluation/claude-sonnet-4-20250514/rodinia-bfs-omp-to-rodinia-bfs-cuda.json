@@ -20,6 +20,9 @@
   "metrics": {},
   "baseline_wall_time_seconds": 0.546,
   "translated_wall_time_seconds": 0.001,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
   "speedup_ratio": 546.0,
   "translated_files": {
     "bfs.cu": "#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <stdlib.h>\n#include <cuda.h>\n#include <cuda_runtime.h>\n\nFILE *fp;\n\n//Structure to hold a node information\nstruct Node\n{\n\tint starting;",
