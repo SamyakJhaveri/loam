@@ -41,3 +41,13 @@ env_parbench/
 # Byte-compiled / temp
 *.log
 *.tmp
+
+# Claude Code agent worktrees (temporary, auto-cleaned)
+.claude/worktrees/
+
+# Build artifacts
+*.o
+*.out
+*.a
+*.so
+*.d
