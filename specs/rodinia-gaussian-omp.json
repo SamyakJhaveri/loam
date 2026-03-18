@@ -1,0 +1,162 @@
+{
+    "spec_version": "1.0.0",
+    "identity": {
+        "kernel_name": "gaussian",
+        "parallel_api": "omp",
+        "unique_id": "rodinia-gaussian-omp",
+        "source_suite": "rodinia"
+    },
+    "provenance": {
+        "repository": {
+            "url": "https://github.com/yuhc/gpu-rodinia",
+            "commit": "9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+            "branch": "master"
+        },
+        "repo_root": "rodinia/rodinia-src",
+        "source_path": "openmp/gaussian",
+        "license": "NCSA/Illinois Open Source License"
+    },
+    "files": {
+        "prompt_payload": [
+            "gaussianElim.cpp"
+        ],
+        "support_files": [
+            "utils.cpp",
+            "gaussianElim.h",
+            "utils.h",
+            "Makefile"
+        ],
+        "verification_only": []
+    },
+    "implementation": {
+        "api": "omp",
+        "api_version": "4.5",
+        "language": "C++",
+        "language_standard": "C++14"
+    },
+    "build": {
+        "environment": {
+            "preferred": "system",
+            "conda": null,
+            "system": {
+                "dependencies": [
+                    "nvc++>=22.0",
+                    "gcc>=9.0"
+                ]
+            }
+        },
+        "build_system": "make",
+        "working_directory": "openmp/gaussian",
+        "commands": {
+            "configure": null,
+            "build": "make",
+            "clean": "make clean"
+        },
+        "variables": null,
+        "outputs": {
+            "executable": "./main"
+        }
+    },
+    "run": {
+        "executable": "./main",
+        "default_arguments": [
+            "-q",
+            "-t",
+            "-s",
+            "4096"
+        ],
+        "timeout_seconds": 300,
+        "environment_variables": {
+            "OMP_TARGET_OFFLOAD": "MANDATORY"
+        },
+        "input_configurations": {
+            "correctness": {
+                "arguments": [
+                    "-q",
+                    "-t",
+                    "-s",
+                    "4096"
+                ],
+                "description": "Square matrix (4096 x 4096) created internally for correctness verification of gaussian (OpenMP)",
+                "input_files": [],
+                "expected_results": null
+            }
+        }
+    },
+    "verification": {
+        "method": "self_checking",
+        "strategies": [
+            {
+                "type": "exit_code",
+                "expected": 0,
+                "description": "Process exits cleanly"
+            },
+            {
+                "type": "stdout_pattern",
+                "pattern": "(?i)PASS",
+                "description": "Output indicates correctness"
+            }
+        ],
+        "floating_point": null
+    },
+    "performance": null,
+    "hardware": {
+        "target": "gpu",
+        "requirements": {
+            "gpu": {
+                "vendor": "NVIDIA",
+                "min_compute_capability": "sm_60",
+                "min_memory_gb": 4
+            }
+        },
+        "reference_platform": {
+            "platform_id": "rtx4060lp-i9-13905h",
+            "gpu": {
+                "model": "NVIDIA GeForce RTX 4060 Laptop GPU",
+                "architecture": "Ada Lovelace",
+                "compute_capability": "sm_89",
+                "vram_gb": 8,
+                "memory_bandwidth_gbps": 272,
+                "cuda_cores": 3072
+            },
+            "cpu": {
+                "model": "13th Gen Intel(R) Core(TM) i9-13905H",
+                "cores": 14,
+                "threads": 20,
+                "base_clock_ghz": 2.6
+            },
+            "software": {
+                "os": "Ubuntu 22.04.3 LTS",
+                "cuda_toolkit": "12.9",
+                "gcc": "11.4.0",
+                "driver": "595.71"
+            }
+        }
+    },
+    "baseline_results": {
+        "reference_platform": "rtx4060lp-i9-13905h",
+        "timestamp": "2026-03-17T14:55:00+02:00",
+        "configurations": {
+            "correctness": {
+                "status": "pass",
+                "exit_code": 0,
+                "stdout_snippet": "Workgroup size of kernel 1 = 256, Workgroup size of kernel 2= 16 X 16\nCreate a square matrix (4096 x 4096) internally\nTotal kernel execution time 1102311 (us)\nDevice offloading time 1331417 (us)\n\nChecking the results..\nPASS\n",
+                "wall_time_seconds": 1.4,
+                "metrics": {}
+            }
+        }
+    },
+    "metadata": {
+        "description": "Gaussian elimination with partial pivoting (OpenMP GPU offload port)",
+        "domain": "linear algebra",
+        "complexity": "Gaussian elimination",
+        "tags": [
+            "openmp",
+            "gaussian",
+            "gaussian-elimination",
+            "linear-algebra",
+            "rodinia"
+        ],
+        "multi_file": true
+    }
+}

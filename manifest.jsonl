@@ -178,3 +178,8 @@
 {"kernel_name": "streamcluster", "parallel_api": "cuda", "source_suite": "rodinia", "category": "other", "spec_file": "specs/rodinia-streamcluster-cuda.json", "source_dir": "rodinia/rodinia-src/cuda/streamcluster"}
 {"kernel_name": "streamcluster", "parallel_api": "opencl", "source_suite": "rodinia", "category": "other", "spec_file": "specs/rodinia-streamcluster-opencl.json", "source_dir": "rodinia/rodinia-src/opencl/streamcluster"}
 {"kernel_name": "streamcluster", "parallel_api": "omp", "source_suite": "rodinia", "category": "other", "spec_file": "specs/rodinia-streamcluster-omp.json", "source_dir": "rodinia/rodinia-src/openmp/streamcluster"}
+{"kernel_name": "gaussian", "parallel_api": "omp", "source_suite": "rodinia", "category": "linear_algebra", "spec_file": "specs/rodinia-gaussian-omp.json", "source_dir": "rodinia/rodinia-src/openmp/gaussian"}
+{"kernel_name": "huffman", "parallel_api": "opencl", "source_suite": "rodinia", "category": "other", "spec_file": "specs/rodinia-huffman-opencl.json", "source_dir": "rodinia/rodinia-src/opencl/huffman"}
+{"kernel_name": "huffman", "parallel_api": "omp", "source_suite": "rodinia", "category": "other", "spec_file": "specs/rodinia-huffman-omp.json", "source_dir": "rodinia/rodinia-src/openmp/huffman"}
+{"kernel_name": "hybridsort", "parallel_api": "omp", "source_suite": "rodinia", "category": "sort", "spec_file": "specs/rodinia-hybridsort-omp.json", "source_dir": "rodinia/rodinia-src/openmp/hybridsort"}
+{"kernel_name": "mummergpu", "parallel_api": "opencl", "source_suite": "rodinia", "category": "other", "spec_file": "specs/rodinia-mummergpu-opencl.json", "source_dir": "rodinia/rodinia-src/opencl/mummergpu"}

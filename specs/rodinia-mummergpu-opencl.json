@@ -1,0 +1,163 @@
+{
+    "spec_version": "1.0.0",
+    "identity": {
+        "kernel_name": "mummergpu",
+        "parallel_api": "opencl",
+        "unique_id": "rodinia-mummergpu-opencl",
+        "source_suite": "rodinia"
+    },
+    "provenance": {
+        "repository": {
+            "url": "https://github.com/yuhc/gpu-rodinia",
+            "commit": "9c10d3ea16ddba2ba057cc3951a9efc4c2cc18a4",
+            "branch": "master"
+        },
+        "repo_root": "rodinia/rodinia-src",
+        "source_path": "opencl/mummergpu",
+        "license": "NCSA/Illinois Open Source License"
+    },
+    "files": {
+        "prompt_payload": [
+            "src/mummergpu.c",
+            "src/mummergpu_kernel.cl"
+        ],
+        "support_files": [
+            "src/common.h",
+            "Makefile",
+            "data/shortref.fa",
+            "data/shortqry.fa"
+        ],
+        "verification_only": []
+    },
+    "implementation": {
+        "api": "opencl",
+        "api_version": "1.2",
+        "language": "C",
+        "language_standard": "C11"
+    },
+    "build": {
+        "environment": {
+            "preferred": "system",
+            "conda": null,
+            "system": {
+                "dependencies": [
+                    "opencl>=1.2",
+                    "gcc>=9.0"
+                ]
+            }
+        },
+        "build_system": "make",
+        "working_directory": "opencl/mummergpu",
+        "commands": {
+            "configure": null,
+            "build": "make",
+            "clean": "make clean"
+        },
+        "variables": null,
+        "outputs": {
+            "executable": "./mummergpu"
+        }
+    },
+    "run": {
+        "executable": "./mummergpu",
+        "default_arguments": [
+            "-l",
+            "1",
+            "data/shortref.fa",
+            "data/shortqry.fa"
+        ],
+        "timeout_seconds": 300,
+        "environment_variables": null,
+        "input_configurations": {
+            "correctness": {
+                "arguments": [
+                    "-l",
+                    "1",
+                    "data/shortref.fa",
+                    "data/shortqry.fa"
+                ],
+                "description": "Small input for correctness verification of mummergpu (OpenCL)",
+                "input_files": [
+                    "data/shortref.fa",
+                    "data/shortqry.fa"
+                ],
+                "expected_results": null
+            }
+        }
+    },
+    "verification": {
+        "method": "self_checking",
+        "strategies": [
+            {
+                "type": "exit_code",
+                "expected": 0,
+                "description": "Process exits cleanly"
+            },
+            {
+                "type": "stdout_pattern",
+                "pattern": "(?i)(PASS|passed|SUCCESS|correct)",
+                "description": "Output indicates correctness"
+            }
+        ],
+        "floating_point": null
+    },
+    "performance": null,
+    "hardware": {
+        "target": "gpu",
+        "requirements": {
+            "gpu": {
+                "min_memory_gb": 4
+            }
+        },
+        "reference_platform": {
+            "platform_id": "rtx4060lp-i9-13905h",
+            "gpu": {
+                "model": "NVIDIA GeForce RTX 4060 Laptop GPU",
+                "architecture": "Ada Lovelace",
+                "compute_capability": "sm_89",
+                "vram_gb": 8,
+                "memory_bandwidth_gbps": 272,
+                "cuda_cores": 3072
+            },
+            "cpu": {
+                "model": "13th Gen Intel(R) Core(TM) i9-13905H",
+                "cores": 14,
+                "threads": 20,
+                "base_clock_ghz": 2.6
+            },
+            "software": {
+                "os": "Ubuntu 22.04.3 LTS",
+                "cuda_toolkit": "12.9",
+                "gcc": "11.4.0",
+                "driver": "595.71"
+            }
+        }
+    },
+    "baseline_results": {
+        "reference_platform": "rtx4060lp-i9-13905h",
+        "timestamp": "2026-03-17T14:28:00+02:00",
+        "configurations": {
+            "correctness": {
+                "status": "pass",
+                "exit_code": 0,
+                "stdout_snippet": "> 0\n1\t1\t1\n> 1\n1\t1\t2\n",
+                "wall_time_seconds": 0.05,
+                "metrics": {}
+            }
+        }
+    },
+    "metadata": {
+        "description": "Exact DNA sequence alignment using suffix trees on GPU (OpenCL port)",
+        "domain": "bioinformatics",
+        "complexity": "DNA sequence alignment",
+        "tags": [
+            "bioinformatics",
+            "dna",
+            "mummergpu",
+            "opencl",
+            "rodinia",
+            "sequence-alignment"
+        ],
+        "multi_file": true
+    }
+}
