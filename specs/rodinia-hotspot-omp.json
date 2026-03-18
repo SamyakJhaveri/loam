@@ -57,11 +57,10 @@
         "executable": "./hotspot",
         "default_arguments": [
             "512",
-            "512",
             "2",
             "4",
-            "../../data/hotspot/power_512",
             "../../data/hotspot/temp_512",
+            "../../data/hotspot/power_512",
             "output.out"
         ],
         "timeout_seconds": 300,
@@ -70,34 +69,32 @@
             "correctness": {
                 "arguments": [
                     "512",
-                    "512",
                     "2",
                     "4",
-                    "../../data/hotspot/power_512",
                     "../../data/hotspot/temp_512",
+                    "../../data/hotspot/power_512",
                     "output.out"
                 ],
                 "description": "Small input for correctness verification of hotspot (OMP)",
                 "input_files": [
-                    "../../data/hotspot/power_512",
-                    "../../data/hotspot/temp_512"
+                    "../../data/hotspot/temp_512",
+                    "../../data/hotspot/power_512"
                 ],
                 "expected_results": null
             },
             "performance": {
                 "arguments": [
                     "1024",
-                    "1024",
                     "2",
                     "4",
-                    "../../data/hotspot/power_1024",
                     "../../data/hotspot/temp_1024",
+                    "../../data/hotspot/power_1024",
                     "output.out"
                 ],
                 "description": "Large input for performance measurement of hotspot (OMP)",
                 "input_files": [
-                    "../../data/hotspot/power_1024",
-                    "../../data/hotspot/temp_1024"
+                    "../../data/hotspot/temp_1024",
+                    "../../data/hotspot/power_1024"
                 ],
                 "expected_results": null
             }

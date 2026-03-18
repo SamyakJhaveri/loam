@@ -1,0 +1,240 @@
+{
+  "direction": "cuda-to-omp",
+  "models": [
+    "claude-sonnet-4-20250514"
+  ],
+  "suite": "rodinia",
+  "kernels": [
+    "nw",
+    "srad",
+    "backprop",
+    "hotspot"
+  ],
+  "total_tasks": 4,
+  "total_elapsed_seconds": 283.5,
+  "results": [
+    {
+      "source_spec": "rodinia-backprop-cuda",
+      "target_spec": "rodinia-backprop-omp",
+      "model": "claude-sonnet-4-20250514",
+      "augment_level": 0,
+      "timestamp": "2026-03-18T05:48:24Z",
+      "prompt_tokens": 9450,
+      "completion_tokens": 9667,
+      "llm_response_time_seconds": 106.47,
+      "build_status": "fail",
+      "build_time_seconds": 0.27,
+      "build_error_snippet": "backprop.c:121:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  121 | bpnn_randomize_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~~~~~~\nbackprop.c:135:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  135 | bpnn_randomize_row(w, m)\n      | ^~~~~~~~~~~~~~~~~~\nbackprop.c:147:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  147 | bpnn_zero_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_initialize\u2019:\nbackprop.c:161:6: warning: type of \u2018seed\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  161 | void bpnn_initialize(seed)\n      |      ^~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_adjust_weights\u2019:\nbackprop.c:331:6: warning: type of \u2018ndelta\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  331 | void bpnn_adjust_w\n...[truncated]...\n  |   pclose\nbackprop.c: In function \u2018main\u2019:\nbackprop.c:540:16: warning: implicit declaration of function \u2018setup\u2019; did you mean \u2018setbuf\u2019? [-Wimplicit-function-declaration]\n  540 |         return setup(argc, argv);\n      |                ^~~~~\n      |                setbuf\nfacetrain.c:46:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   46 | backprop_face()\n      | ^~~~~~~~~~~~~\n/usr/bin/ld: backprop_kernel.o: in function `gettime':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop_kernel.c:43: multiple definition of `gettime'; backprop.o:/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:528: first defined here\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: `gettime'; backprop.o:/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:528: first defined here\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.016,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "backprop.c": "/*\n ******************************************************************\n * HISTORY\n * 15-Oct-94  Jeff Shufelt (js), Carnegie Mellon University\n *\tPrepared for 15-681, Fall 1994.\n * Modified by Shuai Ch",
+        "backprop_kernel.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include <omp.h>\n#include <sys/time.h>\n\n#define BIGRND 0x7fffffff\n#define THREADS 256\n#define WIDTH 16  // shared memory width  \n#define HEIGHT",
+        "facetrain.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include <omp.h>\n\n#define BIGRND 0x7fffffff\n#define THREADS 256\n#define WIDTH 16  // shared memory width  \n#define HEIGHT 16 // shared memory h",
+        "imagenet.c": "#include <stdio.h>\n#include <stdlib.h>\n\n#define BIGRND 0x7fffffff\n#define THREADS 256\n#define WIDTH 16  // shared memory width  \n#define HEIGHT 16 // shared memory height\n#define ETA 0.3       //eta v"
+      },
+      "target_files_expected": [
+        "backprop.c",
+        "backprop_kernel.c",
+        "facetrain.c",
+        "imagenet.c"
+      ],
+      "target_files_extracted": [
+        "backprop.c",
+        "backprop_kernel.c",
+        "facetrain.c",
+        "imagenet.c"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 106.47,
+          "prompt_tokens": 9450,
+          "completion_tokens": 9667,
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "backprop.c:121:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  121 | bpnn_randomize_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~~~~~~\nbackprop.c:135:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  135 | bpnn_randomize_row(w, m)\n      | ^~~~~~~~~~~~~~~~~~\nbackprop.c:147:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  147 | bpnn_zero_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_initialize\u2019:\nbackprop.c:161:6: warning: type of \u2018seed\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  161 | void bpnn_initialize(seed)\n      |      ^~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_adjust_weights\u2019:\nbackprop.c:331:6: warning: type of \u2018ndelta\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  331 | void bpnn_adjust_w\n...[truncated]...\n  |   pclose\nbackprop.c: In function \u2018main\u2019:\nbackprop.c:540:16: warning: implicit declaration of function \u2018setup\u2019; did you mean \u2018setbuf\u2019? [-Wimplicit-function-declaration]\n  540 |         return setup(argc, argv);\n      |                ^~~~~\n      |                setbuf\nfacetrain.c:46:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   46 | backprop_face()\n      | ^~~~~~~~~~~~~\n/usr/bin/ld: backprop_kernel.o: in function `gettime':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop_kernel.c:43: multiple definition of `gettime'; backprop.o:/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:528: first defined here\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-hotspot-cuda",
+      "target_spec": "rodinia-hotspot-omp",
+      "model": "claude-sonnet-4-20250514",
+      "augment_level": 0,
+      "timestamp": "2026-03-18T05:50:11Z",
+      "prompt_tokens": 4419,
+      "completion_tokens": 4843,
+      "llm_response_time_seconds": 44.368,
+      "build_status": "fail",
+      "build_time_seconds": 0.025,
+      "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:90:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   90 |                         fatal(\"not enough lines in file\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:93:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   93 |                         fatal(\"invalid file format\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018void run(int, char**)\u2019:\nhotspot_openmp.cpp:356:15: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  356 |         fatal(\"unable to all\n...[truncated]...\n              ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:367:5: error: \u2018memcpy\u2019 was not declared in this scope\n  367 |     memcpy(MatrixTemp[0], FilesavingTemp, sizeof(float)*size);\n      |     ^~~~~~\nhotspot_openmp.cpp:6:1: note: \u2018memcpy\u2019 is defined in header \u2018<cstring>\u2019; did you forget to \u2018#include <cstring>\u2019?\n    5 | #include <omp.h>\n  +++ |+#include <cstring>\n    6 | \nhotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:88:22: warning: ignoring return value of \u2018char* fgets(char*, int, FILE*)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   88 |                 fgets(str, STR_SIZE, fp);\n      |                 ~~~~~^~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: lared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   88 |                 fgets(str, STR_SIZE, fp);\n      |                 ~~~~~^~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.069,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "hotspot_openmp.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n\n#ifdef RD_WG_SIZE_0_0                                                            \n        #define BLOCK_S"
+      },
+      "target_files_expected": [
+        "hotspot_openmp.cpp"
+      ],
+      "target_files_extracted": [
+        "hotspot_openmp.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 44.368,
+          "prompt_tokens": 4419,
+          "completion_tokens": 4843,
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:90:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   90 |                         fatal(\"not enough lines in file\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:93:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   93 |                         fatal(\"invalid file format\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018void run(int, char**)\u2019:\nhotspot_openmp.cpp:356:15: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  356 |         fatal(\"unable to all\n...[truncated]...\n              ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:367:5: error: \u2018memcpy\u2019 was not declared in this scope\n  367 |     memcpy(MatrixTemp[0], FilesavingTemp, sizeof(float)*size);\n      |     ^~~~~~\nhotspot_openmp.cpp:6:1: note: \u2018memcpy\u2019 is defined in header \u2018<cstring>\u2019; did you forget to \u2018#include <cstring>\u2019?\n    5 | #include <omp.h>\n  +++ |+#include <cstring>\n    6 | \nhotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:88:22: warning: ignoring return value of \u2018char* fgets(char*, int, FILE*)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   88 |                 fgets(str, STR_SIZE, fp);\n      |                 ~~~~~^~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1\n"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-nw-cuda",
+      "target_spec": "rodinia-nw-omp",
+      "model": "claude-sonnet-4-20250514",
+      "augment_level": 0,
+      "timestamp": "2026-03-18T05:50:55Z",
+      "prompt_tokens": 6427,
+      "completion_tokens": 6059,
+      "llm_response_time_seconds": 79.926,
+      "build_status": "pass",
+      "build_time_seconds": 0.444,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.001,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+      "run_stdout_snippet": "WG size of kernel = 16 \n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.015,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "needle.cpp": "#define LIMIT -999\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n#include <sys/time.h>\n\n#ifdef RD_WG_SIZE_0_0\n\t#define BLOCK_SIZE RD_WG_SIZE_0_0\n#elif d"
+      },
+      "target_files_expected": [
+        "needle.cpp"
+      ],
+      "target_files_extracted": [
+        "needle.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 79.926,
+          "prompt_tokens": 6427,
+          "completion_tokens": 6059,
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+          "run_stdout_snippet": "WG size of kernel = 16 \n"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-srad-cuda",
+      "target_spec": "rodinia-srad-omp",
+      "model": "claude-sonnet-4-20250514",
+      "augment_level": 0,
+      "timestamp": "2026-03-18T05:52:16Z",
+      "prompt_tokens": 6433,
+      "completion_tokens": 4396,
+      "llm_response_time_seconds": 51.807,
+      "build_status": "pass",
+      "build_time_seconds": 0.19,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.001,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>       - x1 value of the speckle\n\t<x2>       - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.006,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "srad.cpp": "// includes, system\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n\n#define STR_SIZE 256\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_SIZE RD_WG_SIZE_0_0"
+      },
+      "target_files_expected": [
+        "srad.cpp"
+      ],
+      "target_files_extracted": [
+        "srad.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 51.807,
+          "prompt_tokens": 6433,
+          "completion_tokens": 4396,
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>       - x1 value of the speckle\n\t<x2>       - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
+          "run_stdout_snippet": "WG size of kernel = 16 X 16\n"
+        }
+      ]
+    }
+  ]
+}

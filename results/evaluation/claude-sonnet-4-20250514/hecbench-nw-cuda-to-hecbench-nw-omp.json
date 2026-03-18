@@ -1,0 +1,47 @@
+{
+  "source_spec": "hecbench-nw-cuda",
+  "target_spec": "hecbench-nw-omp",
+  "model": "claude-sonnet-4-20250514",
+  "augment_level": 0,
+  "timestamp": "2026-03-18T01:11:09Z",
+  "prompt_tokens": 250,
+  "completion_tokens": 89,
+  "llm_response_time_seconds": 4.039,
+  "build_status": "error",
+  "build_time_seconds": 0.0,
+  "build_error_snippet": "Working directory does not exist: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nw-omp",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 35.566,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {},
+  "target_files_expected": [
+    "nw.cpp"
+  ],
+  "target_files_extracted": [],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.039,
+      "prompt_tokens": 250,
+      "completion_tokens": 89,
+      "build_status": "error",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "Working directory does not exist: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nw-omp"
+    }
+  ]
+}

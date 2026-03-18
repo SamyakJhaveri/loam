@@ -41,13 +41,71 @@ files via `AUGMENTABLE_SUFFIXES`.
 `3D.cu` includes `opt1.cu` via `#include "opt1.cu"`. No double-augmentation occurs
 because `_cursor_in_main_file` in `augment_dataset.py` skips cursors from included files.
 
-## Smoke Tests (verified 2026-03-06 — all PASS)
+## Smoke Tests (updated 2026-03-17 — all PASS)
 
 ```
 rodinia-bfs-cuda    BUILD: PASS | RUN: PASS | VERIFY: PASS
+rodinia-hotspot-omp BUILD: PASS | RUN: PASS | VERIFY: PASS
+rodinia-nw-omp      BUILD: PASS | RUN: PASS | VERIFY: PASS
 rodinia-hotspot-omp BUILD: PASS | RUN: PASS | VERIFY: PASS
 rodinia-bfs-opencl  BUILD: PASS | RUN: PASS | VERIFY: PASS
 ```
 
 Fixes applied: CUDA_DIR path, `make hotspot` target, OpenCL include/lib paths,
 `CC_FLAGS=-std=c++14`, data path symlinks (`rodinia/rodinia-src/data/` → `rodinia-data/`).
+
+## OMP Spec Run Arg Bugs (fixed 2026-03-17)
+
+Two rodinia OMP specs had incorrect run arguments:
+
+**`rodinia-nw-omp`**: Had extra `"4"` arg in all argument lists — e.g. `["2048","10","4"]`.
+The nw OMP reference (`needle.cpp`) only accepts 2 args: `<dimension> <penalty>`.
+The `"4"` was a mistaken assumption about OMP thread-count CLI flag.
+**Fixed**: removed `"4"` → `["2048","10"]` and `["8192","10"]`.
+
+**`rodinia-hotspot-omp`**: Had extra `"512"` (grid_cols) and wrong power/temp file order.
+The hotspot OMP reference (`hotspot_openmp.cpp`) uses ONE arg for grid_rows/grid_cols (square grid),
+and expects `<temp_file>` at `argv[4]` and `<power_file>` at `argv[5]`.
+**Fixed**: removed extra grid_cols, swapped power/temp to `["512","2","4","temp_512","power_512","output.out"]`.
+
+## needle.h Missing from OMP Source Dir (fixed 2026-03-17)
+
+`rodinia/rodinia-src/openmp/nw/needle.cpp` includes `needle.h`, but the OMP directory
+in the Rodinia repo at commit `9c10d3ea` never contained `needle.h` (it lives only in
+`cuda/nw/`). The pre-compiled `needle` binary in the repo was built at an earlier time.
+
+**Symptom**: `python3 -m harness verify specs/rodinia-nw-omp.json` gives BUILD_FAIL with
+`needle.h: No such file or directory`.
+
+**Fix applied**: Copied `needle.h` from `rodinia/rodinia-src/cuda/nw/` to
+`rodinia/rodinia-src/openmp/nw/`. Also added `needle.h` to the nw-omp spec's `support_files`.
+
+**Note**: This file lives inside the `rodinia/` git submodule and is not tracked by the
+main repo. After a fresh `git submodule update`, you must re-copy it:
+```bash
+cp rodinia/rodinia-src/cuda/nw/needle.h rodinia/rodinia-src/openmp/nw/needle.h
+```
+
+## SRAD Reference Binary May Be Stale (2026-03-17)
+
+`rodinia/rodinia-src/openmp/srad/srad_v2/srad` may be a stale binary missing the `nthreads`
+parameter. The current source expects 9 user args (includes `nthreads` at position 7),
+but the stale binary only accepted 8. Always rebuild before using: `cd .../srad_v2 && make`.
+
+## LLM CUDA→OMP Translation Quality Issues (as of 2026-03-17)
+
+Known patterns where LLMs fail to translate correctly:
+
+- **SRAD (both models)**: LLM preserves CUDA's 8-arg interface, drops `nthreads` param.
+  OMP reference needs 9 args. LLM must add `nthreads` as `argv[7]` and call `omp_set_num_threads()`.
+- **Backprop claude**: Translates multi-file set but duplicates `gettime()` across files → linker error.
+- **Backprop azure**: Uses `HEIGHT`/`WIDTH` macros from `backprop.h` without including/inlining → undeclared.
+- **Hotspot claude**: Missing `#include <cstring>` for `memcpy` in translated file.
+
+## Git Worktrees and Submodules
+
+Git worktrees do NOT initialize submodules. The `rodinia/` submodule will be empty
+in any worktree. Any Rodinia build, evaluation, or harness verify will fail in a worktree
+unless you manually symlink or copy the Rodinia source directories.
+
+**Never run LLM evaluations in worktrees.** Only use worktrees for code review/inspection.

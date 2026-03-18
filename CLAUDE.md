@@ -59,6 +59,13 @@ python3 -m pytest c_augmentation/test_transforms.py -v
 python3 scripts/augmentation/augment_verify.py specs/<name>.json \
   --augment_level 2 --seed 42 -v \
   --project-root /Users/samyakjhaveri/Desktop/parbench_sam
+
+# LLM Evaluation — ALWAYS pass --suite to avoid cross-suite name collisions
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia --direction cuda-to-omp \
+  --models claude-sonnet-4-20250514 \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --resume -v
 ```
 
 ## Project Layout
@@ -74,14 +81,15 @@ scripts/
   analysis/                   results analysis & reporting
   baselines/                  baseline population scripts
   augmentation/               augment_verify.py, run_augment_batch.py, combine_aug_results.py
+  evaluation/                 llm_evaluate.py, run_eval_batch.py
   batch/                      shell batch runners (.sh files)
   archive/                    one-time fix scripts
 c_augmentation/     AST-driven augmentation transforms (libclang-backed)
 harness/            build/run/verify pipeline; CLI via python3 -m harness
 docs/               design docs, plans
 presentations/      pptx, xlsx, speaking notes
-rodinia/rodinia-src/ Rodinia source (commit 9c10d3ea)
-results/            phase3/ (CUDA/OMP), phase5/ (HeCBench), augmentation reports
+rodinia/rodinia-src/ Rodinia source (commit 9c10d3ea) — git submodule
+results/            phase3/ (CUDA/OMP), phase5/ (HeCBench), augmentation/, evaluation/
 analysis/           data/ (CSV, JSON surveys), reports/ (markdown)
 ```
 
@@ -116,6 +124,8 @@ Forbidden aliases: `simulation`, `image_processing`, `data_structures`, `compres
 - **Augmentation bugs A/B/C:** BUILD_FAIL at levels 3-4 — see `.claude/rules/known-issues.md`
 - **`.cl` file inconsistency:** `spec_loader.py` doesn't augment `.cl` files, `augment_verify.py` does
 - **hotspot3d double-include:** NOT a bug — `_cursor_in_main_file` handles it
+- **needle.h missing:** `rodinia-src/openmp/nw/` needs `needle.h` copied from `cuda/nw/` after submodule init
+- **Git worktrees + submodules:** Never run evaluations in worktrees — `rodinia/` submodule is empty there
 
 ## GitHub Pages
 
@@ -222,6 +232,7 @@ Re-enter plan mode, reassess assumptions, and get approval for the new approach.
 | `known-issues.md` | augmentation/harness work | All known bugs, workarounds, smoke test results |
 | `github-pages.md` | `visualizations/` work | Deployment, privacy, data refresh, adding dashboards |
 | `augmentation.md` | `c_augmentation/` or `scripts/augmentation/` | Transform rules, --project-root requirement, batch commands |
+| `evaluation.md` | `scripts/evaluation/` | LLM eval pipeline, --suite flag, header staging, OMP arg patterns |
 | `spec-conventions.md` | `specs/` or `manifest.jsonl` | Slugification, categories, validation |
 | `python.md` | `*.py` files | Interpreter, testing, style conventions |
 

@@ -1,0 +1,225 @@
+{
+  "direction": "cuda-to-omp",
+  "models": [
+    "claude-sonnet-4-20250514",
+    "azure-gpt-4.1"
+  ],
+  "suite": "rodinia",
+  "kernels": [
+    "nw",
+    "hotspot"
+  ],
+  "total_tasks": 4,
+  "total_elapsed_seconds": 193.4,
+  "results": [
+    {
+      "source_spec": "rodinia-hotspot-cuda",
+      "target_spec": "rodinia-hotspot-omp",
+      "model": "claude-sonnet-4-20250514",
+      "augment_level": 0,
+      "timestamp": "2026-03-18T06:05:02Z",
+      "prompt_tokens": 4419,
+      "completion_tokens": 4507,
+      "llm_response_time_seconds": 42.748,
+      "build_status": "fail",
+      "build_time_seconds": 0.025,
+      "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:90:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   90 |                         fatal(\"not enough lines in file\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:93:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   93 |                         fatal(\"invalid file format\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018void run(int, char**)\u2019:\nhotspot_openmp.cpp:327:15: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  327 |         fatal(\"unable to all\n...[truncated]...\n              ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:338:5: error: \u2018memcpy\u2019 was not declared in this scope\n  338 |     memcpy(MatrixTemp[0], FilesavingTemp, sizeof(float)*size);\n      |     ^~~~~~\nhotspot_openmp.cpp:6:1: note: \u2018memcpy\u2019 is defined in header \u2018<cstring>\u2019; did you forget to \u2018#include <cstring>\u2019?\n    5 | #include <omp.h>\n  +++ |+#include <cstring>\n    6 | \nhotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:88:22: warning: ignoring return value of \u2018char* fgets(char*, int, FILE*)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   88 |                 fgets(str, STR_SIZE, fp);\n      |                 ~~~~~^~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: lared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   88 |                 fgets(str, STR_SIZE, fp);\n      |                 ~~~~~^~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.069,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "hotspot_openmp.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n\n#ifdef RD_WG_SIZE_0_0                                                            \n        #define BLOCK_S"
+      },
+      "target_files_expected": [
+        "hotspot_openmp.cpp"
+      ],
+      "target_files_extracted": [
+        "hotspot_openmp.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 42.748,
+          "prompt_tokens": 4419,
+          "completion_tokens": 4507,
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:90:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   90 |                         fatal(\"not enough lines in file\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:93:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   93 |                         fatal(\"invalid file format\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018void run(int, char**)\u2019:\nhotspot_openmp.cpp:327:15: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  327 |         fatal(\"unable to all\n...[truncated]...\n              ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:338:5: error: \u2018memcpy\u2019 was not declared in this scope\n  338 |     memcpy(MatrixTemp[0], FilesavingTemp, sizeof(float)*size);\n      |     ^~~~~~\nhotspot_openmp.cpp:6:1: note: \u2018memcpy\u2019 is defined in header \u2018<cstring>\u2019; did you forget to \u2018#include <cstring>\u2019?\n    5 | #include <omp.h>\n  +++ |+#include <cstring>\n    6 | \nhotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:88:22: warning: ignoring return value of \u2018char* fgets(char*, int, FILE*)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   88 |                 fgets(str, STR_SIZE, fp);\n      |                 ~~~~~^~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1\n"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-hotspot-cuda",
+      "target_spec": "rodinia-hotspot-omp",
+      "model": "azure-gpt-4.1",
+      "augment_level": 0,
+      "timestamp": "2026-03-18T06:05:44Z",
+      "prompt_tokens": 3407,
+      "completion_tokens": 3253,
+      "llm_response_time_seconds": 46.234,
+      "build_status": "pass",
+      "build_time_seconds": 0.127,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.087,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.069,
+      "translated_wall_time_seconds": 0.087,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.7931,
+      "translated_files": {
+        "hotspot_openmp.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_SIZE RD_WG_SIZE_0_0\n#elif defined(RD_WG_SIZE_0)\n        #defi"
+      },
+      "target_files_expected": [
+        "hotspot_openmp.cpp"
+      ],
+      "target_files_extracted": [
+        "hotspot_openmp.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 46.234,
+          "prompt_tokens": 3407,
+          "completion_tokens": 3253,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-nw-cuda",
+      "target_spec": "rodinia-nw-omp",
+      "model": "claude-sonnet-4-20250514",
+      "augment_level": 0,
+      "timestamp": "2026-03-18T06:06:31Z",
+      "prompt_tokens": 6427,
+      "completion_tokens": 6055,
+      "llm_response_time_seconds": 79.003,
+      "build_status": "pass",
+      "build_time_seconds": 0.442,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.027,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.015,
+      "translated_wall_time_seconds": 0.027,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.5556,
+      "translated_files": {
+        "needle.cpp": "#define LIMIT -999\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n#include <sys/time.h>\n\n#ifdef RD_WG_SIZE_0_0\n\t#define BLOCK_SIZE RD_WG_SIZE_0_0\n#elif d"
+      },
+      "target_files_expected": [
+        "needle.cpp"
+      ],
+      "target_files_extracted": [
+        "needle.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 79.003,
+          "prompt_tokens": 6427,
+          "completion_tokens": 6055,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-nw-cuda",
+      "target_spec": "rodinia-nw-omp",
+      "model": "azure-gpt-4.1",
+      "augment_level": 0,
+      "timestamp": "2026-03-18T06:07:50Z",
+      "prompt_tokens": 5414,
+      "completion_tokens": 5342,
+      "llm_response_time_seconds": 24.251,
+      "build_status": "pass",
+      "build_time_seconds": 0.414,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.028,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.015,
+      "translated_wall_time_seconds": 0.028,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.5357,
+      "translated_files": {
+        "needle.cpp": "#define LIMIT -999\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n#include <omp.h>\n\n// Inlined needle.h\n#ifdef RD_WG_SIZE_0_0\n\t#define BLOCK_SIZE RD"
+      },
+      "target_files_expected": [
+        "needle.cpp"
+      ],
+      "target_files_extracted": [
+        "needle.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 24.251,
+          "prompt_tokens": 5414,
+          "completion_tokens": 5342,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null
+        }
+      ]
+    }
+  ]
+}
