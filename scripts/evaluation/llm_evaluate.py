@@ -89,6 +89,10 @@ MODEL_REGISTRY: dict[str, dict[str, str]] = {
         "provider": "openai",
         "notes": "Fast reasoning",
     },
+    "azure-gpt-4.1": {
+        "provider": "azure",
+        "notes": "GPT-4.1 via Azure OpenAI (research lead deployment)",
+    },
 }
 
 # Human-readable API display names (fallback: .upper())
@@ -249,6 +253,8 @@ def call_llm(
     Provider routing:
         claude-*          → Anthropic SDK (ANTHROPIC_API_KEY)
         gpt-* / o1-* / o3-* / o4-*  → OpenAI SDK (OPENAI_API_KEY)
+        azure-*           → Azure OpenAI SDK (AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT)
+                            Strips "azure-" prefix to get deployment name.
 
     ParaCodex (future):
         Add `elif model.startswith("paracodex")` branch here.
@@ -320,10 +326,50 @@ def call_llm(
         prompt_tokens = response.usage.prompt_tokens
         completion_tokens = response.usage.completion_tokens
 
+    elif model.startswith("azure-"):
+        # ---- Azure OpenAI path ----
+        api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+        endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+        if not api_key:
+            raise ValueError(
+                "Set AZURE_OPENAI_API_KEY environment variable to use Azure models."
+            )
+        if not endpoint:
+            raise ValueError(
+                "Set AZURE_OPENAI_ENDPOINT environment variable to use Azure models."
+            )
+        try:
+            from openai import AzureOpenAI
+        except ImportError:
+            raise ImportError(
+                "openai package not installed. Run: python3 -m pip install openai"
+            )
+
+        azure_model = model[len("azure-"):]  # e.g. "azure-gpt-4.1" → "gpt-4.1"
+        client_az = AzureOpenAI(
+            api_key=api_key,
+            azure_endpoint=endpoint,
+            api_version="2025-01-01-preview",
+        )
+        full_messages = [{"role": "system", "content": system_msg}] + messages
+        if verbose:
+            logger.info(
+                "Calling Azure OpenAI deployment=%s messages=%d", azure_model, len(full_messages)
+            )
+        response = client_az.chat.completions.create(
+            model=azure_model,
+            max_completion_tokens=16384,
+            temperature=0,
+            messages=full_messages,
+        )
+        response_text = response.choices[0].message.content or ""
+        prompt_tokens = response.usage.prompt_tokens
+        completion_tokens = response.usage.completion_tokens
+
     else:
         raise ValueError(
             f"Unknown model provider for '{model}'. "
-            "Expected prefix: claude-*, gpt-*, o1-*, o3-*, o4-*"
+            "Expected prefix: claude-*, gpt-*, o1-*, o3-*, o4-*, azure-*"
         )
 
     duration = time.monotonic() - t0
@@ -483,6 +529,7 @@ def evaluate_translation(
     max_retries: int = 1,
     verbose: bool = False,
     dry_run: bool = False,
+    use_cpu_timing: bool = False,
 ) -> dict[str, Any]:
     """Translate source → target using the LLM, then build/run/verify.
 
@@ -497,6 +544,10 @@ def evaluate_translation(
         max_retries: Max LLM call attempts. 1 = zero-shot. >1 = iterative repair.
         verbose: Log verbose output.
         dry_run: Build and print prompt without calling LLM.
+        use_cpu_timing: If True, measure CPU time (user+system) via
+            /usr/bin/time -v when running translated code.  The cpu_time_seconds
+            field is then preferred over wall_time_seconds for the speedup
+            denominator (Linux/GNU time required).
 
     Returns:
         Result dict matching the schema documented in the plan.
@@ -639,7 +690,10 @@ def evaluate_translation(
             else:
                 # -- Run --
                 run_result = run_spec(
-                    target_spec_resolved, project_root, verbose=verbose
+                    target_spec_resolved,
+                    project_root,
+                    verbose=verbose,
+                    measure_cpu_time=use_cpu_timing,
                 )
                 final_run_result = run_result
                 attempt_record["run_status"] = run_result.status.value
@@ -680,12 +734,36 @@ def evaluate_translation(
         restore_files(backup_info)
 
     # -- Speedup ratio --
+    # Numerator: baseline wall_time from the target spec (unchanged).
+    # Denominator priority: kernel_time > cpu_time > wall_time.
+    # Note: baseline is always wall_time (kernel/cpu baselines not stored in
+    # specs yet), so mixing timing methods is imperfect but acceptable for now.
     translated_wall_time: float | None = None
+    translated_cpu_time: float | None = None
+    translated_kernel_time: float | None = None
     speedup_ratio: float | None = None
+    timing_method: str | None = None
+
     if final_run_result is not None and final_run_result.status == Status.PASS:
         translated_wall_time = round(final_run_result.duration_seconds, 4)
-        if baseline_wall_time and translated_wall_time:
-            speedup_ratio = round(baseline_wall_time / translated_wall_time, 4)
+        if final_run_result.cpu_time_seconds is not None:
+            translated_cpu_time = round(final_run_result.cpu_time_seconds, 6)
+        if final_run_result.kernel_time_seconds is not None:
+            translated_kernel_time = round(final_run_result.kernel_time_seconds, 6)
+
+        # Choose denominator with priority: kernel > cpu > wall
+        if translated_kernel_time is not None:
+            denominator = translated_kernel_time
+            timing_method = "kernel_time"
+        elif translated_cpu_time is not None:
+            denominator = translated_cpu_time
+            timing_method = "cpu_time"
+        else:
+            denominator = translated_wall_time
+            timing_method = "wall_time"
+
+        if baseline_wall_time and denominator:
+            speedup_ratio = round(baseline_wall_time / denominator, 4)
 
     # -- Build result JSON --
     # last_llm_response was saved inside the loop before restore_files() ran
@@ -742,6 +820,9 @@ def evaluate_translation(
         "metrics": metrics_dict,
         "baseline_wall_time_seconds": baseline_wall_time,
         "translated_wall_time_seconds": translated_wall_time,
+        "translated_cpu_time_seconds": translated_cpu_time,
+        "translated_kernel_time_seconds": translated_kernel_time,
+        "timing_method": timing_method,
         "speedup_ratio": speedup_ratio,
         # Code
         "translated_files": translated_files_preview,
@@ -877,6 +958,25 @@ def main() -> None:
         action="store_true",
         help="Print known model registry and exit",
     )
+    parser.add_argument(
+        "--use-cpu-timing",
+        action="store_true",
+        default=False,
+        help=(
+            "Measure CPU time (user+system) via /usr/bin/time -v when running "
+            "translated code.  Uses cpu_time_seconds in speedup calculation "
+            "instead of wall_time_seconds.  Linux only (GNU time required)."
+        ),
+    )
+    parser.add_argument(
+        "--use-profiler",
+        action="store_true",
+        default=False,
+        help=(
+            "Reserved for future kernel-level profiling (e.g. nsys/nvprof). "
+            "Not yet implemented; accepted but has no effect."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -916,6 +1016,7 @@ def main() -> None:
         max_retries=args.max_retries,
         verbose=args.verbose,
         dry_run=args.dry_run,
+        use_cpu_timing=args.use_cpu_timing,
     )
 
     _print_result(result, as_json=args.as_json, verbose=args.verbose)
