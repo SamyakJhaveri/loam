@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -15,12 +16,48 @@ from harness.spec_loader import resolve_paths
 log = logging.getLogger(__name__)
 
 
+def _parse_gnu_time(output: str) -> float | None:
+    """Parse /usr/bin/time -v output and return user+system time in seconds.
+
+    Parameters
+    ----------
+    output:
+        Full text of the ``/usr/bin/time -v`` stderr/file output.
+
+    Returns
+    -------
+    float | None
+        Sum of ``User time (seconds)`` and ``System time (seconds)`` lines,
+        or ``None`` if parsing fails.
+    """
+    user_time: float | None = None
+    system_time: float | None = None
+
+    for line in output.splitlines():
+        line = line.strip()
+        if line.startswith("User time (seconds):"):
+            try:
+                user_time = float(line.split(":", 1)[1].strip())
+            except ValueError:
+                pass
+        elif line.startswith("System time (seconds):"):
+            try:
+                system_time = float(line.split(":", 1)[1].strip())
+            except ValueError:
+                pass
+
+    if user_time is None or system_time is None:
+        return None
+    return user_time + system_time
+
+
 def run_spec(
     spec: dict[str, Any],
     project_root: Path,
     configuration: str = "correctness",
     *,
     verbose: bool = False,
+    measure_cpu_time: bool = False,
 ) -> RunResult:
     """Run a compiled kernel for a single input configuration.
 
@@ -35,6 +72,11 @@ def run_spec(
         (e.g. ``"correctness"`` or ``"performance"``).
     verbose:
         If *True*, log stdout/stderr.
+    measure_cpu_time:
+        If *True*, prefix the command with ``/usr/bin/time -v`` to capture
+        user+system CPU time.  The result is stored in
+        ``RunResult.cpu_time_seconds``.  Requires GNU time (Linux).
+        Defaults to *False* to preserve existing behaviour.
 
     Returns
     -------
@@ -75,6 +117,19 @@ def run_spec(
     env_vars = run_section.get("environment_variables") or {}
     env.update(env_vars)
 
+    # Optionally wrap with /usr/bin/time -v for CPU timing
+    time_output_file: str | None = None
+    if measure_cpu_time:
+        # Create a temp file for /usr/bin/time -v to write its report into.
+        # We use -o <file> so that the timing output does not interleave with
+        # the program's own stderr.
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".gnu_time", delete=False
+        )
+        tmp.close()
+        time_output_file = tmp.name
+        cmd = ["/usr/bin/time", "-v", "-o", time_output_file] + cmd
+
     log.debug("Running: %s  (cwd=%s, timeout=%ds)", cmd, working_dir, timeout_seconds)
 
     start = time.monotonic()
@@ -99,6 +154,22 @@ def run_spec(
 
         status = Status.PASS if proc.returncode == 0 else Status.FAIL
 
+        # Parse CPU time from /usr/bin/time -v output file
+        cpu_time: float | None = None
+        if time_output_file is not None:
+            try:
+                time_text = Path(time_output_file).read_text(encoding="utf-8")
+                cpu_time = _parse_gnu_time(time_text)
+                if verbose and cpu_time is not None:
+                    log.info("[cpu_time] %.3fs", cpu_time)
+            except OSError:
+                pass
+            finally:
+                try:
+                    os.unlink(time_output_file)
+                except OSError:
+                    pass
+
         return RunResult(
             status=status,
             configuration=configuration,
@@ -106,10 +177,16 @@ def run_spec(
             exit_code=proc.returncode,
             stdout=proc.stdout,
             stderr=proc.stderr,
+            cpu_time_seconds=round(cpu_time, 6) if cpu_time is not None else None,
         )
 
     except subprocess.TimeoutExpired:
         elapsed = time.monotonic() - start
+        if time_output_file is not None:
+            try:
+                os.unlink(time_output_file)
+            except OSError:
+                pass
         return RunResult(
             status=Status.TIMEOUT,
             configuration=configuration,
@@ -120,6 +197,11 @@ def run_spec(
         )
     except FileNotFoundError:
         elapsed = time.monotonic() - start
+        if time_output_file is not None:
+            try:
+                os.unlink(time_output_file)
+            except OSError:
+                pass
         return RunResult(
             status=Status.ERROR,
             configuration=configuration,
@@ -130,6 +212,11 @@ def run_spec(
         )
     except Exception as exc:
         elapsed = time.monotonic() - start
+        if time_output_file is not None:
+            try:
+                os.unlink(time_output_file)
+            except OSError:
+                pass
         return RunResult(
             status=Status.ERROR,
             configuration=configuration,
@@ -145,6 +232,7 @@ def run_all_configurations(
     project_root: Path,
     *,
     verbose: bool = False,
+    measure_cpu_time: bool = False,
 ) -> dict[str, RunResult]:
     """Run every input configuration defined in the spec.
 
@@ -155,6 +243,8 @@ def run_all_configurations(
     project_root:
         Absolute path to the project root.
     verbose:
+        Forward to :func:`run_spec`.
+    measure_cpu_time:
         Forward to :func:`run_spec`.
 
     Returns
@@ -168,6 +258,10 @@ def run_all_configurations(
     results: dict[str, RunResult] = {}
     for config_name in input_configs:
         results[config_name] = run_spec(
-            spec, project_root, configuration=config_name, verbose=verbose
+            spec,
+            project_root,
+            configuration=config_name,
+            verbose=verbose,
+            measure_cpu_time=measure_cpu_time,
         )
     return results

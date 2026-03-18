@@ -38,6 +38,8 @@ class RunResult:
     exit_code: int
     stdout: str
     stderr: str
+    cpu_time_seconds: float | None = None
+    kernel_time_seconds: float | None = None
 
 
 @dataclass
