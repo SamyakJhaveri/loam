@@ -1,3 +1,9 @@
+---
+paths:
+  - "visualizations/**"
+  - ".github/workflows/**"
+---
+
 # GitHub Pages Rules
 
 > Auto-loaded when working on `visualizations/` files.

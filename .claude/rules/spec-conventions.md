@@ -1,3 +1,9 @@
+---
+paths:
+  - "specs/**"
+  - "manifest.jsonl"
+---
+
 # Spec & Manifest Conventions
 
 > Auto-loaded when working on `specs/` or `manifest.jsonl`.

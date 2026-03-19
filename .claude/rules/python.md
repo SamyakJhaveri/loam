@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*.py"
+---
+
 # Python Rules
 
 > Auto-loaded when working on `*.py` files.

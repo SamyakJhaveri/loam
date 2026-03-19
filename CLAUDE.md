@@ -58,7 +58,7 @@ python3 -m pytest c_augmentation/test_transforms.py -v
 # Augment pipeline — ALWAYS pass --project-root (auto-detection broken)
 python3 scripts/augmentation/augment_verify.py specs/<name>.json \
   --augment_level 2 --seed 42 -v \
-  --project-root /Users/samyakjhaveri/Desktop/parbench_sam
+  --project-root /home/samyak/Desktop/parbench_sam
 
 # LLM Evaluation — ALWAYS pass --suite to avoid cross-suite name collisions
 python3 scripts/evaluation/run_eval_batch.py \
@@ -97,35 +97,17 @@ analysis/           data/ (CSV, JSON surveys), reports/ (markdown)
 
 > Full details in `.claude/rules/spec-conventions.md`
 
-### Slugification (validator enforces this)
-
-`identity.unique_id` regex: `^[a-z0-9_]+-[a-z0-9_][a-z0-9_-]*-[a-z0-9_]+$`
-
-- `kernel_name` = slug: lowercase, `+` removed, no uppercase
-- `unique_id` = `{source_suite}-{slug}-{parallel_api}`
-- Filename = `{source_suite}-{slug}-{parallel_api}.json`
-- Examples: `b+tree`→`btree`, `hotspot3D`→`hotspot3d`, `lavaMD`→`lavamd`
-
-### Category enum (manifest.jsonl)
-
-Allowed: `ml graph physics linear_algebra stencil reduction sort molecular_dynamics image crypto financial other`
-
-Forbidden aliases: `simulation`, `image_processing`, `data_structures`, `compression`, `sorting`, `bioinformatics`, `scientific`, `data_mining`, `algorithms`
-
-### Cross-check
-
-`manifest.kernel_name == spec.identity.kernel_name` — both must be identical slugs.
+- `unique_id` / filename: `{source_suite}-{slug}-{parallel_api}` (all lowercase, `+` removed)
+- Category enum: `ml graph physics linear_algebra stencil reduction sort molecular_dynamics image crypto financial other`
+- `manifest.jsonl` is append-only — never modify existing entries
 
 ## Known Issues
 
 > Full details in `.claude/rules/known-issues.md`
 
-- **HeCBench missing:** 120 `source_dir` errors from `validate_schema.py --all` — pre-existing, ignore
-- **Augmentation bugs A/B/C:** BUILD_FAIL at levels 3-4 — see `.claude/rules/known-issues.md`
-- **`.cl` file inconsistency:** `spec_loader.py` doesn't augment `.cl` files, `augment_verify.py` does
-- **hotspot3d double-include:** NOT a bug — `_cursor_in_main_file` handles it
-- **needle.h missing:** `rodinia-src/openmp/nw/` needs `needle.h` copied from `cuda/nw/` after submodule init
-- **Git worktrees + submodules:** Never run evaluations in worktrees — `rodinia/` submodule is empty there
+- **HeCBench missing:** 120 `source_dir` errors — pre-existing, ignore
+- **Augmentation bugs A/B/C:** BUILD_FAIL at levels 3-4
+- **Git worktrees + submodules:** Never run evaluations in worktrees
 
 ## GitHub Pages
 
@@ -146,95 +128,20 @@ Or use: `/gen-spec <suite>` for the full guided workflow.
 
 ---
 
-## Session Workflow
-
-Follow these 6 stages for every non-trivial task:
-
-### 1. Orient
-- Check context and set model appropriately
-- Review relevant `.claude/rules/` files for the task area
-
-### 2. Explore
-- Use 3-5 parallel subagents to explore relevant code areas
-- Do NOT read files directly in main context — delegate to subagents
-- Summarize findings before proceeding
-
-### 3. Plan
-- Enter plan mode for non-trivial changes
-- Use ultrathink for complex analysis
-- Get adversarial review via `plan-reviewer` agent
-- **Wait for user approval before implementing**
-
-### 4. Implement
-- Work through the plan step by step
-- Use subagents for independent subtasks (worktree isolation for parallel changes)
-- Verify each step before moving on
-
-### 5. Record
-- Update CLAUDE.md or `.claude/rules/` after discovering new conventions/gotchas
-- Write session notes for complex multi-step work
-
-### 6. Verify
-- Launch 2-4 parallel verification subagents
-- Run `python3 scripts/validate_schema.py --all`
-- Run relevant unit tests
-
-## Context Management
-
-- `/compact` at ~50% context usage (don't wait until 100%)
-- `/clear` between unrelated tasks
-- Subagents keep main context clean — only summaries return
-- `/compact "focus on X"` for guided compression
-
-## Thinking Levels
-
-| Level | When to use |
-|-------|-------------|
-| `think` | Simple lookups, single-file edits |
-| `think hard` | Multi-file changes, debugging |
-| `think harder` | Architecture decisions, complex refactors |
-| `ultrathink` | Security review, complex planning, adversarial analysis |
-
-## Subagent Patterns
-
-| Phase | Pattern |
-|-------|---------|
-| Exploration | "Use 3-5 subagents to explore [area]. Each covers a different angle." |
-| Planning | "Use plan-reviewer agent to review this plan adversarially." |
-| Implementation | "Use subagents for independent subtasks. Worktree isolation for parallel." |
-| Verification | "Use 2-4 subagents: correctness, edge cases, quality, integration." |
-
-## Anti-Patterns (avoid these)
-
-1. Don't implement without a plan — always plan first, get approval
-2. Don't explore in main session — use subagents to keep context clean
-3. Don't push forward when something breaks — stop and re-plan
-4. Don't bundle multiple behavior changes in one session
-5. Don't skip verification — always run validators and tests
-6. Don't skip recording — update docs after discovering gotchas
-7. Keep CLAUDE.md under 350 lines — move details to `.claude/rules/`
-
-## Course Correction
-
-When implementation goes wrong, don't keep pushing. Instead:
-> "Stop. This isn't working. Re-plan from scratch knowing what we know now."
-
-Re-enter plan mode, reassess assumptions, and get approval for the new approach.
-
----
-
 ## Claude Code Extensions
 
-### Rules (`.claude/rules/`) — auto-loaded by file context
+### Rules (`.claude/rules/`) — routing table
 
 | File | Loads when | Purpose |
 |------|-----------|---------|
-| `known-issues.md` | augmentation/harness work | All known bugs, workarounds, smoke test results |
-| `github-pages.md` | `visualizations/` work | Deployment, privacy, data refresh, adding dashboards |
-| `augmentation.md` | `c_augmentation/` or `scripts/augmentation/` | Transform rules, --project-root requirement, batch commands |
-| `evaluation.md` | `scripts/evaluation/` | LLM eval pipeline, --suite flag, header staging, OMP arg patterns |
-| `spec-conventions.md` | `specs/` or `manifest.jsonl` | Slugification, categories, validation |
-| `python.md` | `*.py` files | Interpreter, testing, style conventions |
+| `workflow.md` | Always | Session workflow, thinking levels, anti-patterns |
+| `mentoring.md` | Always | PhD mentoring directive, Insight blocks |
+| `known-issues.md` | Always | All known bugs, workarounds, smoke test results |
+| `augmentation.md` | `c_augmentation/**`, `scripts/augmentation/**` | Transform rules, --project-root, batch commands |
+| `evaluation.md` | `scripts/evaluation/**` | LLM eval pipeline, --suite flag, OMP arg patterns |
+| `github-pages.md` | `visualizations/**`, `.github/workflows/**` | Deployment, privacy, data refresh |
+| `spec-conventions.md` | `specs/**`, `manifest.jsonl` | Slugification, categories, validation |
+| `python.md` | `**/*.py` | Interpreter, testing, style conventions |
 
 ### Agents (`.claude/agents/`) — invoke by name
 
@@ -255,34 +162,3 @@ Re-enter plan mode, reassess assumptions, and get approval for the new approach.
 | Review | `/review [files]` | Multi-agent code review (style, correctness, security, perf) |
 | Gen Spec | `/gen-spec <suite>` | Generate specs for a new benchmark suite |
 | Augment Test | `/augment-test <spec>` | Test augmentation transforms on a spec |
-
-## User Working Style
-
-- **Evaluate before implementing** — explore, test, document the current state first
-- **Plan approval required** — never implement without showing the plan and getting go-ahead
-- **Visual artifacts** — create HTML/visual presentations for architecture and results
-- **Parallel exploration** — use multiple subagents (up to 5) for comprehensive exploration
-- **Deep reasoning** — use ultrathink for complex analysis; break problems into tasks
-
-## Educational & Mentoring Directive
-
-Samyak is a PhD candidate working at the intersection of **Software Engineering, HPC, and AI**. Claude should act as a senior mentor and collaborator, not just a code generator. Every interaction is an opportunity to build deeper understanding.
-
-### What to teach along the way
-
-- **Software engineering fundamentals** — architecture patterns (layered, microkernel, plugin), SOLID principles, separation of concerns, DRY vs. premature abstraction tradeoffs, testing strategies (unit/integration/e2e), CI/CD pipeline design, and when each pattern is the right choice
-- **Research software development** — reproducibility best practices, experiment tracking, data provenance, configuration management, result versioning, and why research code has different quality tradeoffs than production code
-- **HPC-specific engineering** — memory hierarchy awareness, data locality, parallelism patterns (SPMD, fork-join, pipeline), GPU programming mental models (warps, occupancy, coalescing), and performance measurement methodology
-- **Research methodology** — how to formulate hypotheses, design controlled experiments, identify confounding variables, interpret results critically, recognize when data contradicts assumptions, and structure arguments for academic papers
-- **Critical thinking patterns** — questioning assumptions, identifying bias in benchmarks, understanding what metrics actually measure vs. what they claim to measure, and recognizing when "it works" is not the same as "it's correct"
-- **Systems thinking** — understanding how components interact, predicting second-order effects of changes, reasoning about scalability, and designing for observability
-
-### How to teach
-
-- Use `★ Insight` blocks to explain the *why* behind implementation choices — not just what was done, but what alternatives existed and why this approach was chosen
-- When a design decision is made, reference real-world parallels or established patterns (e.g., "This follows the Strategy pattern — see Gang of Four ch. 5" or "This is the same approach used by LLVM's pass manager")
-- When fixing bugs, explain the root cause analysis process — how to narrow down, what clues led to the diagnosis, what mental model was wrong
-- When reviewing or writing code, point out common pitfalls specific to the domain (HPC, Python, C/CUDA) and explain the performance or correctness implications
-- When planning research experiments, explain experimental design principles — controls, variables, statistical significance, and how to avoid p-hacking
-- Provide references to foundational resources where relevant (textbooks, papers, documentation, talks) so Samyak can dive deeper independently
-- Explain the *mindset* behind good engineering — how experienced engineers think about problems differently, how they manage complexity, and how they make decisions under uncertainty

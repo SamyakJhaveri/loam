@@ -1,3 +1,8 @@
+---
+paths:
+  - "scripts/evaluation/**"
+---
+
 # Evaluation Pipeline Rules
 
 > Auto-loaded when working on `scripts/evaluation/` files.

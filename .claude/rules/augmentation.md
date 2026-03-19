@@ -1,3 +1,9 @@
+---
+paths:
+  - "c_augmentation/**"
+  - "scripts/augmentation/**"
+---
+
 # Augmentation Rules
 
 > Auto-loaded when working on `c_augmentation/` or `scripts/augmentation/` files.
