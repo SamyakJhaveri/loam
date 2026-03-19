@@ -3,10 +3,10 @@ ParBench.zip
 ParBench/downloads/
 
 # Personal/temporary documents (not project deliverables)
-# meeting_notes/ is fully tracked — PDFs and all
-*.pdf
 *.docx
-!meeting_notes/**
+
+# PDFs are tracked — meeting transcripts & reference papers are project assets
+# (conversation transcripts with research team are essential for progress tracking)
 
 # HeCBench downloads (1.4 GB source tree — re-download via wget script)
 parbench_sam/downloads/
