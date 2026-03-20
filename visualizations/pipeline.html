@@ -4,17 +4,39 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="parbench-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <title>ParBench — Augment → Build → Run → Verify Pipeline</title>
 <style>
   :root {
-    --bg: #0d1117; --surface: #161b22; --border: #30363d;
-    --text: #c9d1d9; --text-muted: #8b949e; --accent: #58a6ff;
-    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
-    --orange: #d18616; --teal: #39d2c0;
+    --bg: #f9fafb;
+    --surface: #ffffff;
+    --surface-alt: #f3f4f6;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #9ca3af;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #16a34a;
+    --red: #dc2626;
+    --yellow: #d97706;
+    --purple: #7c3aed;
+    --orange: #ea580c;
+    --teal: #0d9488;
+    --pass-color: #56B4E9;  --pass-bg: #e8f4fb;  --pass-text: #0369a1;
+    --build-fail-color: #D55E00; --build-fail-bg: #fdf1ec; --build-fail-text: #9a3412;
+    --run-fail-color: #E69F00;  --run-fail-bg: #fef9ec;  --run-fail-text: #92400e;
+    --shadow-sm: 0 1px 2px hsl(220deg 40% 15% / 0.06);
+    --shadow-md: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07);
+    --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-full: 9999px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
-         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6;
+         -webkit-font-smoothing: antialiased; }
   h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1.8rem; }
   h2 { color: var(--purple); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
   .subtitle { color: var(--text-muted); margin-bottom: 2rem; }
@@ -23,64 +45,78 @@
   .pipeline { margin: 1.5rem 0; }
   .step { display: flex; gap: 1rem; margin-bottom: 0; }
   .step-num { min-width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; margin-top: 0.3rem; }
-  .step-content { flex: 1; padding-bottom: 1.5rem; border-left: 2px solid var(--border); padding-left: 1.5rem; margin-left: -21px; }
+  .step-content { flex: 1; padding-bottom: 1.5rem; border-left: 2px solid var(--border); padding-left: 1.5rem; margin-left: -21px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 1rem 1.5rem 1.5rem 1.5rem; margin-bottom: 1rem; }
   .step:last-child .step-content { border-left-color: transparent; }
-  .step-title { font-weight: 600; font-size: 1.05rem; margin-bottom: 0.3rem; }
-  .step-file { font-family: monospace; font-size: 0.8rem; color: var(--accent); margin-bottom: 0.5rem; }
-  .step-desc { color: var(--text-muted); font-size: 0.9rem; }
+  .step-title { font-weight: 600; font-size: 1.05rem; margin-bottom: 0.3rem; color: var(--text); }
+  .step-file { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--accent); margin-bottom: 0.5rem; }
+  .step-desc { color: var(--text-secondary); font-size: 0.9rem; }
 
-  .step.phase-entry .step-num { background: rgba(88,166,255,0.2); color: var(--accent); border: 2px solid var(--accent); }
-  .step.phase-resolve .step-num { background: rgba(210,153,34,0.2); color: var(--yellow); border: 2px solid var(--yellow); }
-  .step.phase-augment .step-num { background: rgba(188,140,255,0.2); color: var(--purple); border: 2px solid var(--purple); }
-  .step.phase-build .step-num { background: rgba(57,210,192,0.2); color: var(--teal); border: 2px solid var(--teal); }
-  .step.phase-run .step-num { background: rgba(209,134,22,0.2); color: var(--orange); border: 2px solid var(--orange); }
-  .step.phase-verify .step-num { background: rgba(63,185,80,0.2); color: var(--green); border: 2px solid var(--green); }
-  .step.phase-fail .step-num { background: rgba(248,81,73,0.2); color: var(--red); border: 2px solid var(--red); }
+  .step.phase-entry .step-num { background: var(--accent-light); color: var(--accent); border: 2px solid var(--accent); }
+  .step.phase-resolve .step-num { background: #fef9ec; color: var(--yellow); border: 2px solid var(--yellow); }
+  .step.phase-augment .step-num { background: #f5f3ff; color: var(--purple); border: 2px solid var(--purple); }
+  .step.phase-build .step-num { background: #f0fdfa; color: var(--teal); border: 2px solid var(--teal); }
+  .step.phase-run .step-num { background: #fff7ed; color: var(--orange); border: 2px solid var(--orange); }
+  .step.phase-verify .step-num { background: #f0fdf4; color: var(--green); border: 2px solid var(--green); }
+  .step.phase-fail .step-num { background: #fef2f2; color: var(--red); border: 2px solid var(--red); }
 
-  .code-block { background: #0d1117; border: 1px solid var(--border); border-radius: 6px; padding: 0.8rem 1rem; font-family: monospace; font-size: 0.82rem; margin: 0.5rem 0; overflow-x: auto; white-space: pre; color: var(--text-muted); }
+  .code-block { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--r-md); padding: 0.8rem 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; margin: 0.5rem 0; overflow-x: auto; white-space: pre; color: var(--text); }
   .code-block .kw { color: var(--purple); }
   .code-block .fn { color: var(--accent); }
   .code-block .str { color: var(--green); }
-  .code-block .cmt { color: #484f58; }
+  .code-block .cmt { color: var(--text-muted); }
   .code-block .num { color: var(--orange); }
 
   .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin: 0.8rem 0; }
-  .detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.8rem; }
+  .detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); padding: 0.8rem; box-shadow: var(--shadow-md); }
   .detail-card h5 { color: var(--accent); margin-bottom: 0.3rem; font-size: 0.9rem; }
-  .detail-card p { color: var(--text-muted); font-size: 0.85rem; }
+  .detail-card p { color: var(--text-secondary); font-size: 0.85rem; }
 
-  .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; margin: 2px; }
-  .tag-green { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
-  .tag-red { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
-  .tag-yellow { background: rgba(210,153,34,0.15); color: var(--yellow); border: 1px solid rgba(210,153,34,0.3); }
-  .tag-purple { background: rgba(188,140,255,0.15); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: var(--r-full); font-size: 0.75rem; margin: 2px; }
+  .tag-green { background: #f0fdf4; color: var(--green); border: 1px solid #bbf7d0; }
+  .tag-red { background: #fef2f2; color: var(--red); border: 1px solid #fecaca; }
+  .tag-yellow { background: #fef9ec; color: var(--yellow); border: 1px solid #fde68a; }
+  .tag-purple { background: #f5f3ff; color: var(--purple); border: 1px solid #ddd6fe; }
 
   /* Validation flow */
-  .validation-flow { display: flex; flex-direction: column; gap: 0.8rem; margin: 1rem 0; padding: 1rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border); }
+  .validation-flow { display: flex; flex-direction: column; gap: 0.8rem; margin: 1rem 0; padding: 1rem; background: var(--surface-alt); border-radius: var(--r-md); border: 1px solid var(--border); box-shadow: var(--shadow-md); }
   .vf-step { display: flex; align-items: center; gap: 0.8rem; }
-  .vf-num { background: rgba(188,140,255,0.2); color: var(--purple); border: 1px solid var(--purple); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
-  .vf-text { font-size: 0.85rem; color: var(--text-muted); }
-  .vf-text code { color: var(--accent); background: rgba(88,166,255,0.1); padding: 1px 4px; border-radius: 3px; }
+  .vf-num { background: #f5f3ff; color: var(--purple); border: 1px solid var(--purple); border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; flex-shrink: 0; }
+  .vf-text { font-size: 0.85rem; color: var(--text-secondary); }
+  .vf-text code { color: var(--accent); background: var(--accent-light); padding: 1px 4px; border-radius: var(--r-sm); font-family: 'JetBrains Mono', monospace; }
 
   /* Level table */
   table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
   th, td { padding: 0.5rem 0.8rem; border: 1px solid var(--border); font-size: 0.85rem; }
-  th { background: var(--surface); color: var(--accent); text-align: left; }
+  th { background: var(--surface-alt); color: var(--accent); text-align: left; font-weight: 600; }
+  td { background: var(--surface); color: var(--text); }
 
   /* Bug fix callouts */
-  .fix-callout { background: rgba(63,185,80,0.08); border: 1px solid rgba(63,185,80,0.3); border-radius: 6px; padding: 0.8rem; margin: 0.5rem 0; }
-  .fix-callout .fix-label { color: var(--green); font-weight: 600; font-size: 0.85rem; }
-  .fix-callout .fix-desc { color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem; }
-  .bug-callout { background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.3); border-radius: 6px; padding: 0.8rem; margin: 0.5rem 0; }
-  .bug-callout .fix-label { color: var(--red); font-weight: 600; font-size: 0.85rem; }
-  .bug-callout .fix-desc { color: var(--text-muted); font-size: 0.82rem; margin-top: 0.2rem; }
+  .fix-callout { background: var(--pass-bg); border: 1px solid #bae6fd; border-radius: var(--r-md); padding: 0.8rem; margin: 0.5rem 0; }
+  .fix-callout .fix-label { color: var(--pass-text); font-weight: 600; font-size: 0.85rem; }
+  .fix-callout .fix-desc { color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.2rem; }
+  .bug-callout { background: var(--build-fail-bg); border: 1px solid #fca5a5; border-radius: var(--r-md); padding: 0.8rem; margin: 0.5rem 0; }
+  .bug-callout .fix-label { color: var(--build-fail-text); font-weight: 600; font-size: 0.85rem; }
+  .bug-callout .fix-desc { color: var(--text-secondary); font-size: 0.82rem; margin-top: 0.2rem; }
 
   /* Nav */
-  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
-  nav a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
-  nav a:hover { color: var(--text); }
+  nav { background: #ffffff; border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+  nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; }
+  nav a:hover { color: var(--accent); }
   nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav .active { color: var(--text); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+  nav .active { color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+
+  /* inline code */
+  code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; }
+
+  @media print {
+    nav, .no-print { display: none !important; }
+    body { background: white; color: black; font-size: 11pt; padding: 0; }
+    [class*="card"], [class*="step"], [class*="phase"], [class*="box"] {
+      box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid;
+    }
+    pre, code { background: #f5f5f5 !important; border: 1px solid #ddd !important; }
+    h2, h3 { page-break-after: avoid; }
+  }
 </style>
 </head>
 <body>

@@ -4,69 +4,108 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="parbench-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <title>ParBench — Benchmark Ecosystem Landscape</title>
 <style>
   :root {
-    --bg: #0d1117; --surface: #161b22; --border: #30363d;
-    --text: #c9d1d9; --text-muted: #8b949e; --accent: #58a6ff;
-    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
-    --orange: #d18616; --teal: #39d2c0;
+    --bg: #f9fafb;
+    --surface: #ffffff;
+    --surface-alt: #f3f4f6;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #9ca3af;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #16a34a;
+    --red: #dc2626;
+    --yellow: #d97706;
+    --purple: #7c3aed;
+    --orange: #ea580c;
+    --teal: #0d9488;
+    --pass-color: #56B4E9;  --pass-bg: #e8f4fb;  --pass-text: #0369a1;
+    --build-fail-color: #D55E00; --build-fail-bg: #fdf1ec; --build-fail-text: #9a3412;
+    --run-fail-color: #E69F00;  --run-fail-bg: #fef9ec;  --run-fail-text: #92400e;
+    --shadow-sm: 0 1px 2px hsl(220deg 40% 15% / 0.06);
+    --shadow-md: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07);
+    --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-full: 9999px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
-         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6;
+         -webkit-font-smoothing: antialiased; }
   h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1.8rem; }
   h2 { color: var(--purple); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
   h3 { color: var(--green); margin: 1.5rem 0 0.5rem; font-size: 1.1rem; }
   .subtitle { color: var(--text-muted); margin-bottom: 2rem; }
 
   /* Nav */
-  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
-  nav a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
-  nav a:hover { color: var(--text); }
+  nav { background: #ffffff; border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm);
+        padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+  nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; }
+  nav a:hover { color: var(--accent); }
   nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav .active { color: var(--text); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+  nav .active { color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
 
   /* Intro */
   .stat-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 1rem 0 2rem; }
-  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.5rem; text-align: center; }
+  .stat-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+              box-shadow: var(--shadow-md); padding: 1rem 1.5rem; text-align: center; }
   .stat-box .n { font-size: 2rem; font-weight: 700; color: var(--accent); }
   .stat-box .l { color: var(--text-muted); font-size: 0.82rem; }
 
   /* Heatmap */
-  .heatmap-wrapper { overflow-x: auto; margin: 1rem 0; }
+  .heatmap-wrapper { overflow-x: auto; margin: 1rem 0; background: var(--surface);
+                     border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 1rem; }
   .heatmap { border-collapse: collapse; min-width: 600px; }
   .heatmap th, .heatmap td { padding: 0.45rem 0.7rem; border: 1px solid var(--border); text-align: center; font-size: 0.82rem; }
-  .heatmap th { background: var(--surface); color: var(--accent); font-weight: 600; white-space: nowrap; }
-  .heatmap td.row-header { text-align: right; background: var(--surface); color: var(--text); font-weight: 600; white-space: nowrap; }
+  .heatmap th { background: var(--surface-alt); border-bottom: 1px solid var(--border-strong);
+                color: var(--text); font-weight: 600; white-space: nowrap; }
+  .heatmap td.row-header { text-align: right; background: var(--surface-alt); color: var(--text); font-weight: 600; white-space: nowrap; }
   .heatmap td.diag { font-weight: 700; }
 
   /* Availability matrix */
-  .avail-wrapper { overflow-x: auto; margin: 1rem 0; }
+  .avail-wrapper { overflow-x: auto; margin: 1rem 0; background: var(--surface);
+                   border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-md); padding: 1rem; }
   .avail-table { border-collapse: collapse; font-size: 0.78rem; }
   .avail-table th, .avail-table td { padding: 0.35rem 0.6rem; border: 1px solid var(--border); text-align: center; }
-  .avail-table th { background: var(--surface); color: var(--accent); white-space: nowrap; }
-  .avail-table td.suite-name { text-align: left; white-space: nowrap; background: var(--surface); color: var(--text); }
-  .avail-table td.suite-name.highlighted { background: rgba(88,166,255,0.08); color: var(--accent); font-weight: 700; }
-  .avail-table td.total { background: var(--surface); color: var(--text-muted); font-weight: 600; }
+  .avail-table th { background: var(--surface-alt); border-bottom: 1px solid var(--border-strong);
+                    color: var(--text); white-space: nowrap; }
+  .avail-table td.suite-name { text-align: left; white-space: nowrap; background: var(--surface-alt); color: var(--text); }
+  .avail-table td.suite-name.highlighted { background: var(--accent-light); color: var(--accent); font-weight: 700; }
+  .avail-table td.total { background: var(--surface-alt); color: var(--text-secondary); font-weight: 600; }
   .check-yes  { color: var(--green); }
-  .check-no   { color: var(--border); }
-  .api-total { background: var(--surface); color: var(--purple); font-weight: 700; }
+  .check-no   { color: var(--border-strong); }
+  .api-total { background: var(--surface-alt); color: var(--purple); font-weight: 700; }
 
   /* Venn-style overlap */
   .venn-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 1rem 0; }
-  .venn-box { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem 1.2rem; flex: 1; min-width: 200px; }
+  .venn-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg);
+              box-shadow: var(--shadow-md); padding: 1rem 1.2rem; flex: 1; min-width: 200px; }
   .venn-box h4 { margin-bottom: 0.5rem; font-size: 1rem; }
-  .venn-box .kernels { color: var(--text-muted); font-size: 0.82rem; font-family: monospace; }
-  .venn-box .kernels span { display: inline-block; margin: 2px; padding: 1px 6px; background: rgba(88,166,255,0.1); border-radius: 4px; color: var(--accent); }
+  .venn-box .kernels { color: var(--text-secondary); font-size: 0.82rem; font-family: 'JetBrains Mono', monospace; }
+  .venn-box .kernels span { display: inline-block; margin: 2px; padding: 1px 6px; background: var(--accent-light); border-radius: var(--r-sm); color: var(--accent); }
 
   /* Translation pair matrix */
-  .pair-table { border-collapse: collapse; font-size: 0.82rem; }
+  .pair-table { border-collapse: collapse; font-size: 0.82rem; background: var(--surface);
+                border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-md); }
   .pair-table th, .pair-table td { padding: 0.4rem 0.7rem; border: 1px solid var(--border); text-align: center; }
-  .pair-table th { background: var(--surface); color: var(--accent); }
-  .pair-table td.row-h { background: var(--surface); color: var(--text); font-weight: 600; }
+  .pair-table th { background: var(--surface-alt); border-bottom: 1px solid var(--border-strong); color: var(--text); }
+  .pair-table td.row-h { background: var(--surface-alt); color: var(--text); font-weight: 600; }
 
-  p { color: var(--text-muted); margin: 0.5rem 0; font-size: 0.9rem; }
+  p { color: var(--text-secondary); margin: 0.5rem 0; font-size: 0.9rem; }
+
+  @media print {
+    nav, .no-print { display: none !important; }
+    body { background: white; color: black; font-size: 10pt; padding: 0; }
+    table { border-collapse: collapse; }
+    td, th { border: 1px solid #ccc !important; }
+    [class*="card"], [class*="section"] { box-shadow: none !important; border: 1px solid #ccc !important; }
+    h2, h3 { page-break-after: avoid; }
+  }
 </style>
 </head>
 <body>
@@ -125,7 +164,7 @@
     </div>
   </div>
 
-  <div class="venn-box" style="border-color:var(--accent); background:rgba(88,166,255,0.04); flex:0.4; min-width:160px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+  <div class="venn-box" style="border-color:var(--accent); background:var(--accent-light); flex:0.4; min-width:160px; display:flex; flex-direction:column; align-items:center; justify-content:center;">
     <h4 style="color:var(--accent); margin-bottom:0.5rem">Shared Kernels</h4>
     <div class="kernels" style="text-align:center">
       <span>backprop</span><span>gaussian</span><span>lud</span>
@@ -164,16 +203,16 @@
     <tr>
       <td class="row-h">CUDA</td>
       <td style="color:var(--text-muted)">—</td>
-      <td style="background:rgba(63,185,80,0.1); color:var(--green); font-weight:600">60<br><small style="font-weight:normal; color:var(--text-muted)">Phase 3 + Rodinia</small></td>
-      <td style="background:rgba(63,185,80,0.1); color:var(--green); font-weight:600">21<br><small style="font-weight:normal; color:var(--text-muted)">Rodinia</small></td>
-      <td style="background:rgba(88,166,255,0.08); color:var(--accent)">20<br><small style="color:var(--text-muted)">Phase 4</small></td>
-      <td style="background:rgba(88,166,255,0.08); color:var(--accent)">20<br><small style="color:var(--text-muted)">Phase 4</small></td>
+      <td style="background:#dcfce7; color:var(--green); font-weight:600">60<br><small style="font-weight:normal; color:var(--text-secondary)">Phase 3 + Rodinia</small></td>
+      <td style="background:#dcfce7; color:var(--green); font-weight:600">21<br><small style="font-weight:normal; color:var(--text-secondary)">Rodinia</small></td>
+      <td style="background:var(--accent-light); color:var(--accent)">20<br><small style="color:var(--text-muted)">Phase 4</small></td>
+      <td style="background:var(--accent-light); color:var(--accent)">20<br><small style="color:var(--text-muted)">Phase 4</small></td>
     </tr>
     <tr>
       <td class="row-h">OMP</td>
       <td style="color:var(--text-muted)">—</td>
       <td style="color:var(--text-muted)">—</td>
-      <td style="background:rgba(88,166,255,0.06); color:var(--text-muted)">planned</td>
+      <td style="background:var(--surface-alt); color:var(--text-muted)">planned</td>
       <td style="color:var(--text-muted)">—</td>
       <td style="color:var(--text-muted)">—</td>
     </tr>
@@ -218,19 +257,21 @@ MATRIX.forEach((row, i) => {
   hhtml += `<tr><td class="row-header">${APIS[i].replace('_', ' ')}</td>`;
   row.forEach((val, j) => {
     const alpha = val / MAX_VAL;
+    // Light theme: diagonal cells use pass-bg to accent blue scale; off-diagonal use white to pass-bg
     const bg = i === j ?
-      `rgba(88,166,255,${0.15 + alpha * 0.4})` :
-      `rgba(88,166,255,${alpha * 0.5})`;
+      `rgba(86,180,233,${0.15 + alpha * 0.45})` :
+      `rgba(86,180,233,${alpha * 0.4})`;
     const cls = i === j ? ' class="diag"' : '';
-    const textColor = val >= 8 ? 'var(--text)' : val >= 4 ? 'var(--text-muted)' : '#484f58';
+    // Dark text on light backgrounds for readability
+    const textColor = val >= 8 ? '#111827' : val >= 4 ? '#4b5563' : '#9ca3af';
     hhtml += `<td style="background:${bg}; color:${textColor}"${cls}>${val}</td>`;
   });
-  hhtml += `<td style="color:var(--text-muted); background:var(--surface)">${rowTotal}</td></tr>`;
+  hhtml += `<td style="color:var(--text-secondary); background:var(--surface-alt)">${rowTotal}</td></tr>`;
 });
 // Column totals
 const colTotals = APIS.map((_, ci) => MATRIX.reduce((s, row) => s + row[ci], 0));
 hhtml += '<tr><td class="row-header" style="color:var(--text-muted)">Col Total</td>';
-colTotals.forEach(t => { hhtml += `<td style="color:var(--text-muted); background:var(--surface)">${t}</td>`; });
+colTotals.forEach(t => { hhtml += `<td style="color:var(--text-secondary); background:var(--surface-alt)">${t}</td>`; });
 hhtml += '<td></td></tr>';
 htable.innerHTML = hhtml;
 
@@ -271,7 +312,7 @@ SUITES.forEach(s => {
   const cls = s.highlighted ? ' highlighted' : '';
   ahtml += `<tr><td class="suite-name${cls}">${s.highlighted ? '★ ' : ''}${s.name}</td>`;
   s.vals.forEach(v => {
-    if (v) ahtml += `<td style="background:rgba(63,185,80,0.1)"><span class="check-yes">✓</span></td>`;
+    if (v) ahtml += `<td style="background:#e8f4fb"><span class="check-yes">✓</span></td>`;
     else   ahtml += `<td><span class="check-no">·</span></td>`;
   });
   ahtml += `<td class="total">${total}</td></tr>`;

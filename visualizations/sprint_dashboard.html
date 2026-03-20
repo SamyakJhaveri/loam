@@ -14,14 +14,14 @@
    ======================================================================== */
 :root {
   /* Light theme - soft, professional palette */
-  --bg: #f0f2f5;
-  --bg-alt: #e8eaed;
+  --bg: #f9fafb;
+  --bg-alt: #f3f4f6;
   --surface: #ffffff;
   --surface-hover: #f8f9fb;
-  --border: #e0e3e8;
-  --border-light: #eef0f3;
-  --text: #1a1d23;
-  --text-secondary: #5a6070;
+  --border: #e5e7eb;
+  --border-light: #f3f4f6;
+  --text: #111827;
+  --text-secondary: #4b5563;
   --text-muted: #8a8f9d;
 
   /* Brand colors */
@@ -52,17 +52,17 @@
   --team-unassigned: #94a3b8;
 
   /* Kanban column colors */
-  --col-todo: #f1f5f9;
-  --col-inprogress: #eff6ff;
-  --col-review: #fefce8;
-  --col-done: #ecfdf5;
-  --col-blocked: #fef2f2;
+  --col-todo: #f8fafc;
+  --col-inprogress: #f0f7ff;
+  --col-review: #fffdf0;
+  --col-done: #f0fdf9;
+  --col-blocked: #fff5f5;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
-  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 10px 10px -5px rgba(0,0,0,0.03);
+  --shadow-sm: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07);
+  --shadow-md: 0 4px 6px -1px hsl(220deg 40% 15% / 0.08), 0 2px 4px -1px hsl(220deg 40% 15% / 0.05);
+  --shadow-lg: 0 10px 15px -3px hsl(220deg 40% 15% / 0.09), 0 4px 6px -2px hsl(220deg 40% 15% / 0.05);
+  --shadow-xl: 0 20px 25px -5px hsl(220deg 40% 15% / 0.09), 0 10px 10px -5px hsl(220deg 40% 15% / 0.04);
 
   /* Animation */
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -75,6 +75,11 @@
   --radius-xs: 6px;
   --nav-height: 60px;
 }
+
+/* ========================================================================
+   CARD BORDER RADIUS OVERRIDES
+   ======================================================================== */
+.task-card, .metric-card, .phase-card, .card { border-radius: 12px; }
 
 /* ========================================================================
    RESET & BASE
@@ -157,10 +162,11 @@ body {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: var(--nav-height);
-  background: rgba(255,255,255,0.85);
+  background: #ffffff;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 2px hsl(220deg 40% 15% / 0.06);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -410,34 +416,29 @@ body {
 }
 
 .progress-track {
-  height: 10px;
-  background: var(--bg);
-  border-radius: 5px;
+  background: var(--surface-alt, #f3f4f6);
+  border-radius: 9999px;
+  height: 8px;
   overflow: hidden;
   position: relative;
 }
 
 .progress-fill {
   height: 100%;
-  border-radius: 5px;
-  transition: width 1s var(--bounce);
+  border-radius: 9999px;
+  background: var(--primary, #6366f1);
+  transition: width 600ms ease;
   position: relative;
   overflow: hidden;
 }
 
-.progress-fill.primary { background: linear-gradient(90deg, var(--primary), var(--primary-light)); }
-.progress-fill.success { background: linear-gradient(90deg, var(--success), #34d399); }
-.progress-fill.warning { background: linear-gradient(90deg, var(--warning), #fbbf24); }
-.progress-fill.info { background: linear-gradient(90deg, var(--info), #60a5fa); }
+.progress-fill.primary { background: var(--primary, #6366f1); }
+.progress-fill.success { background: var(--success, #10b981); }
+.progress-fill.warning { background: var(--warning, #f59e0b); }
+.progress-fill.danger  { background: var(--danger,  #ef4444); }
+.progress-fill.info    { background: var(--info, #3b82f6); }
 
-.progress-fill::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
-}
+/* shimmer removed — clean pill-style bars */
 
 /* ========================================================================
    KANBAN BOARD
@@ -1317,9 +1318,11 @@ body {
 
 /* Print styles */
 @media print {
-  .top-nav, .tab-nav, .kanban-controls, .modal-overlay { display: none !important; }
+  .top-nav, .tab-nav, .kanban-controls, .modal-overlay,
+  .theme-toggle, .nav-countdown { display: none !important; }
   .main-content { margin-top: 0; }
   .tab-panel { display: block !important; page-break-inside: avoid; }
+  canvas { max-width: 100% !important; }
 }
 
 /* ========================================================================

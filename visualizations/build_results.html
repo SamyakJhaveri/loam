@@ -4,32 +4,56 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/svg+xml" href="parbench-icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <title>ParBench — Build & Run Results</title>
 <style>
   :root {
-    --bg: #0d1117; --surface: #161b22; --border: #30363d;
-    --text: #c9d1d9; --text-muted: #8b949e; --accent: #58a6ff;
-    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
-    --orange: #d18616; --teal: #39d2c0;
+    --bg: #f9fafb;
+    --surface: #ffffff;
+    --surface-alt: #f3f4f6;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --text: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #9ca3af;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #16a34a;
+    --red: #dc2626;
+    --yellow: #d97706;
+    --purple: #7c3aed;
+    --orange: #ea580c;
+    --teal: #0d9488;
+    --pass-color: #56B4E9;  --pass-bg: #e8f4fb;  --pass-text: #0369a1;
+    --build-fail-color: #D55E00; --build-fail-bg: #fdf1ec; --build-fail-text: #9a3412;
+    --run-fail-color: #E69F00;  --run-fail-bg: #fef9ec;  --run-fail-text: #92400e;
+    --verify-fail-color: #CC79A7; --verify-fail-bg: #fdf2f8; --verify-fail-text: #86198f;
+    --shadow-sm: 0 1px 2px hsl(220deg 40% 15% / 0.06);
+    --shadow-md: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07);
+    --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-full: 9999px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
-         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
-  h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1.8rem; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6;
+         -webkit-font-smoothing: antialiased; }
+  h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1.8rem; font-weight: 700; }
   h2 { color: var(--purple); margin: 2rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
   .subtitle { color: var(--text-muted); margin-bottom: 1.5rem; }
 
   /* Nav */
-  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
-  nav a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
+  nav { background: #ffffff; border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm);
+        padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+  nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; }
   nav a:hover { color: var(--text); }
   nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
   nav .active { color: var(--text); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
 
   /* Summary cards */
   .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin: 1rem 0; }
-  .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
-  .summary-card .big { font-size: 2rem; font-weight: 700; }
+  .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1rem; text-align: center; box-shadow: var(--shadow-sm); }
+  .summary-card .big { font-size: 2rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
   .summary-card .label { color: var(--text-muted); font-size: 0.8rem; margin-top: 0.3rem; }
   .pass .big { color: var(--green); }
   .fail .big { color: var(--red); }
@@ -38,52 +62,77 @@
   .purple .big { color: var(--purple); }
 
   /* Tabs */
-  .tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .tab { padding: 0.5rem 1.2rem; cursor: pointer; color: var(--text-muted); border-bottom: 2px solid transparent; margin-bottom: -2px; font-size: 0.9rem; white-space: nowrap; }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab:hover { color: var(--text); }
+  .tab-bar { display: flex; gap: 0; background: var(--surface); border-bottom: 1px solid var(--border);
+             margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab { padding: 0.5rem 1.2rem; cursor: pointer; color: var(--text-secondary);
+         border-bottom: 2px solid transparent; margin-bottom: -1px; font-size: 0.9rem;
+         white-space: nowrap; background: transparent; border-top: none; border-left: none; border-right: none;
+         font-family: inherit; }
+  .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); font-weight: 600; }
+  .tab:hover { background: var(--surface-alt); }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
   /* Results table */
-  .results-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin: 0.5rem 0; }
-  .results-table th { background: var(--surface); color: var(--accent); padding: 0.5rem 0.6rem; border: 1px solid var(--border); text-align: center; cursor: pointer; user-select: none; white-space: nowrap; }
+  .results-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; margin: 0.5rem 0;
+                   background: var(--surface); }
+  .results-table th { background: var(--surface-alt); color: var(--text); padding: 0.5rem 0.6rem;
+                      border: 1px solid var(--border); text-align: center; cursor: pointer;
+                      user-select: none; white-space: nowrap; font-weight: 600; }
   .results-table th:first-child { text-align: left; }
-  .results-table th:hover { color: var(--text); }
-  .results-table td { padding: 0.35rem 0.6rem; border: 1px solid var(--border); text-align: center; }
-  .results-table td:first-child { text-align: left; font-family: monospace; font-size: 0.78rem; }
-  .results-table tr:hover td { background: rgba(88,166,255,0.04); }
-  .cell-pass { background: rgba(63,185,80,0.12); color: var(--green); font-weight: 600; }
-  .cell-fail { background: rgba(248,81,73,0.12); color: var(--red); }
-  .cell-build { background: rgba(248,81,73,0.08); color: var(--orange); }
-  .cell-timeout { background: rgba(210,153,34,0.12); color: var(--yellow); }
+  .results-table th:hover { background: var(--border-strong); }
+  .results-table td { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-bottom: 1px solid var(--border); text-align: center; }
+  .results-table td:first-child { text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+  .results-table tr:nth-child(even) td { background: #fafafa; }
+  .results-table tr:hover td { background: var(--accent-light); }
+  .cell-pass { background: var(--pass-bg) !important; color: var(--pass-text); font-weight: 600; }
+  .cell-fail { background: var(--verify-fail-bg) !important; color: var(--verify-fail-text); }
+  .cell-build { background: var(--build-fail-bg) !important; color: var(--build-fail-text); }
+  .cell-timeout { background: var(--run-fail-bg) !important; color: var(--run-fail-text); }
   .cell-skip { color: var(--text-muted); }
 
   /* Search */
   .search-bar { display: flex; gap: 0.8rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
-  .search-bar input { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 0.4rem 0.8rem; color: var(--text); font-size: 0.85rem; width: 240px; }
-  .search-bar input:focus { outline: none; border-color: var(--accent); }
-  .filter-btn { padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.75rem; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text-muted); }
+  .search-bar label { font-size: 0.85rem; color: var(--text-secondary); font-weight: 500; }
+  .search-bar input { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md);
+                      padding: 0.4rem 0.8rem; color: var(--text); font-size: 0.85rem; width: 240px;
+                      font-family: inherit; }
+  .search-bar input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+  .filter-btn { padding: 0.3rem 0.8rem; border-radius: var(--r-full); font-size: 0.75rem; cursor: pointer;
+                border: 1px solid var(--border); background: transparent; color: var(--text-secondary);
+                font-family: inherit; }
+  .filter-btn:hover { background: var(--surface-alt); }
   .filter-btn.active-filter { font-weight: 700; }
-  .filter-btn.pass-filter.active-filter { background: rgba(63,185,80,0.15); color: var(--green); border-color: var(--green); }
-  .filter-btn.fail-filter.active-filter { background: rgba(248,81,73,0.15); color: var(--red); border-color: var(--red); }
-  .filter-btn.bf-filter.active-filter { background: rgba(248,81,73,0.1); color: var(--orange); border-color: var(--orange); }
+  .filter-btn.pass-filter.active-filter { background: var(--pass-bg); color: var(--pass-text); border-color: var(--pass-color); }
+  .filter-btn.fail-filter.active-filter { background: var(--verify-fail-bg); color: var(--verify-fail-text); border-color: var(--verify-fail-color); }
+  .filter-btn.bf-filter.active-filter { background: var(--build-fail-bg); color: var(--build-fail-text); border-color: var(--build-fail-color); }
 
   /* Heatmap table */
-  .heatmap { border-collapse: collapse; font-size: 0.8rem; }
+  .heatmap { border-collapse: collapse; font-size: 0.8rem; background: var(--surface); }
   .heatmap th, .heatmap td { padding: 0.4rem 0.7rem; border: 1px solid var(--border); text-align: center; }
-  .heatmap th { background: var(--surface); color: var(--accent); font-weight: 600; }
-  .heatmap td:first-child { text-align: left; font-family: monospace; background: var(--surface); color: var(--text); }
+  .heatmap th { background: var(--surface-alt); color: var(--text); font-weight: 600; }
+  .heatmap td:first-child { text-align: left; font-family: 'JetBrains Mono', monospace; background: var(--surface); color: var(--text); }
 
   /* Bar chart */
   .bar-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.4rem 0; }
-  .bar-label { min-width: 180px; font-size: 0.8rem; text-align: right; color: var(--text-muted); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bar-track { flex: 1; height: 18px; background: var(--surface); border-radius: 4px; overflow: hidden; min-width: 200px; }
-  .bar-fill { height: 100%; border-radius: 4px; }
-  .bar-count { min-width: 60px; font-size: 0.78rem; color: var(--text-muted); }
+  .bar-label { min-width: 180px; font-size: 0.8rem; text-align: right; color: var(--text-secondary);
+               font-family: 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { flex: 1; height: 18px; background: var(--surface-alt); border-radius: var(--r-sm); overflow: hidden; min-width: 200px; }
+  .bar-fill { height: 100%; border-radius: var(--r-sm); }
+  .bar-count { min-width: 60px; font-size: 0.78rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
 
   /* Tooltip */
   [title] { cursor: help; }
+
+  @media print {
+    nav, .tab-bar, .search-bar, .no-print { display: none !important; }
+    body { background: white; color: black; font-size: 10pt; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc !important; padding: 4pt 8pt; }
+    thead { background: #f5f5f5 !important; }
+    h2, h3 { page-break-after: avoid; }
+    tr { break-inside: avoid; }
+  }
 </style>
 </head>
 <body>
@@ -104,16 +153,16 @@
 <h1>Build &amp; Run Results Dashboard</h1>
 <p class="subtitle">HeCBench Phase 3 (60 kernels), Cross-API Pilot (20 kernels × 4 APIs), and Rodinia Baseline (22 kernels × 3 APIs)</p>
 
-<div class="tab-bar">
-  <div class="tab active" data-tab="phase3">HeCBench Phase 3</div>
-  <div class="tab" data-tab="phase4">Cross-API Pilot</div>
-  <div class="tab" data-tab="rodinia">Rodinia Baseline</div>
-  <div class="tab" data-tab="build-times">Build Times</div>
-  <div class="tab" data-tab="run-times">Run Times</div>
+<div class="tab-bar" role="tablist">
+  <div class="tab active" role="tab" aria-selected="true" aria-controls="tab-phase3" data-tab="phase3">HeCBench Phase 3</div>
+  <div class="tab" role="tab" aria-selected="false" aria-controls="tab-phase4" data-tab="phase4">Cross-API Pilot</div>
+  <div class="tab" role="tab" aria-selected="false" aria-controls="tab-rodinia" data-tab="rodinia">Rodinia Baseline</div>
+  <div class="tab" role="tab" aria-selected="false" aria-controls="tab-build-times" data-tab="build-times">Build Times</div>
+  <div class="tab" role="tab" aria-selected="false" aria-controls="tab-run-times" data-tab="run-times">Run Times</div>
 </div>
 
 <!-- ─── Tab: HeCBench Phase 3 ─────────────────────────────────────────────── -->
-<div id="tab-phase3" class="tab-content active">
+<div id="tab-phase3" class="tab-content active" role="tabpanel">
   <div class="summary-grid">
     <div class="summary-card pass"><div class="big">60/60</div><div class="label">CUDA PASS</div></div>
     <div class="summary-card warn"><div class="big">41/60</div><div class="label">OMP PASS</div></div>
@@ -122,6 +171,7 @@
   </div>
 
   <div class="search-bar">
+    <label for="search-phase3">Search:</label>
     <input type="text" id="search-phase3" placeholder="Search kernel..." oninput="filterTable('phase3-table', this.value)">
     <button class="filter-btn pass-filter" onclick="toggleFilter('phase3', 'pass')">PASS</button>
     <button class="filter-btn fail-filter" onclick="toggleFilter('phase3', 'fail')">FAIL</button>
@@ -148,7 +198,7 @@
 </div>
 
 <!-- ─── Tab: Cross-API Pilot ──────────────────────────────────────────────── -->
-<div id="tab-phase4" class="tab-content">
+<div id="tab-phase4" class="tab-content" role="tabpanel">
   <div class="summary-grid">
     <div class="summary-card pass"><div class="big">20/20</div><div class="label">CUDA PASS</div></div>
     <div class="summary-card fail"><div class="big">0/20</div><div class="label">HIP PASS</div></div>
@@ -157,7 +207,7 @@
     <div class="summary-card info"><div class="big">47/80</div><div class="label">Total PASS</div></div>
   </div>
 
-  <p style="color:var(--text-muted); font-size:0.82rem; margin: 0.5rem 0 1rem;">
+  <p style="color:var(--text-secondary); font-size:0.82rem; margin: 0.5rem 0 1rem;">
     HIP: 0/20 — HIP requires AMD hardware (ROCm). All 20 kernels fail on the NVIDIA RTX 4070 test platform.
   </p>
 
@@ -178,7 +228,7 @@
 </div>
 
 <!-- ─── Tab: Rodinia Baseline ────────────────────────────────────────────── -->
-<div id="tab-rodinia" class="tab-content">
+<div id="tab-rodinia" class="tab-content" role="tabpanel">
   <div class="summary-grid">
     <div class="summary-card pass"><div class="big">51/60</div><div class="label">Total PASS</div></div>
     <div class="summary-card info"><div class="big">22</div><div class="label">Kernels</div></div>
@@ -187,6 +237,7 @@
   </div>
 
   <div class="search-bar">
+    <label for="search-rodinia">Search:</label>
     <input type="text" id="search-rodinia" placeholder="Search spec..." oninput="filterTable('rodinia-table', this.value)">
   </div>
 
@@ -207,16 +258,16 @@
 </div>
 
 <!-- ─── Tab: Build Times ──────────────────────────────────────────────────── -->
-<div id="tab-build-times" class="tab-content">
+<div id="tab-build-times" class="tab-content" role="tabpanel">
   <h2>CUDA Build Times (Phase 3)</h2>
-  <p style="color:var(--text-muted); font-size:0.82rem; margin-bottom:1rem;">Sorted by CUDA build time. Note: secp256k1 takes 126s due to extensive template instantiation.</p>
+  <p style="color:var(--text-secondary); font-size:0.82rem; margin-bottom:1rem;">Sorted by CUDA build time. Note: secp256k1 takes 126s due to extensive template instantiation.</p>
   <div id="build-time-bars"></div>
 </div>
 
 <!-- ─── Tab: Run Times ────────────────────────────────────────────────────── -->
-<div id="tab-run-times" class="tab-content">
+<div id="tab-run-times" class="tab-content" role="tabpanel">
   <h2>CUDA Run Times (Phase 3)</h2>
-  <p style="color:var(--text-muted); font-size:0.82rem; margin-bottom:1rem;">Sorted by CUDA run time. Outliers: feynman-kac (195s), geglu (18.7s), softmax-online (19.1s).</p>
+  <p style="color:var(--text-secondary); font-size:0.82rem; margin-bottom:1rem;">Sorted by CUDA run time. Outliers: feynman-kac (195s), geglu (18.7s), softmax-online (19.1s).</p>
   <div id="run-time-bars"></div>
 </div>
 
@@ -331,9 +382,13 @@ function renderRunTimes() {
 // ─── Tab switching ───────────────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     tab.classList.add('active');
+    tab.setAttribute('aria-selected', 'true');
     document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
   });
 });
