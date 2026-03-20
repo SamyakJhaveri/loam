@@ -173,6 +173,72 @@
   border-bottom: 1px solid var(--border);
 }
 
+/* === Kanban Board === */
+.kanban-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-8);
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .kanban-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.kanban-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.kanban-col-header {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  margin-bottom: var(--sp-1);
+  text-align: center;
+}
+
+.kh-done     { background: var(--pass-bg);         color: var(--pass-text);         border: 1px solid var(--pass-border); }
+.kh-progress { background: var(--accent-light);    color: var(--accent-text);       border: 1px solid var(--accent-border); }
+.kh-blocked  { background: var(--build-fail-bg);   color: var(--build-fail-text);   border: 1px solid var(--build-fail-border); }
+.kh-todo     { background: var(--neutral-bg);      color: var(--neutral-text);      border: 1px solid #cbd5e1; }
+
+.kanban-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--ease);
+}
+
+.kanban-card:hover { box-shadow: var(--shadow-md); }
+
+.kanban-card-id {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.kanban-card-desc {
+  font-size: 0.75rem;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: var(--sp-2);
+}
+
+.kanban-card-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
 /* === END SECTION === */
 </style>
 </head>
@@ -194,7 +260,7 @@
     <a href="llm_evaluation.html">LLM Evaluation</a>
     <a href="sprint_dashboard.html" class="active">Sprint</a>
   </div>
-  <span class="countdown-badge">SC26: 19 days</span>
+  <span class="countdown-badge" id="countdownBadge">SC26: — days</span>
 </nav>
 <!-- === END SECTION === -->
 
@@ -203,7 +269,7 @@
   <!-- === SECTION: Page Header === -->
   <div class="page-header">
     <h1>SC26 Sprint Dashboard</h1>
-    <p class="subtitle">21-day sprint: March 18 → April 8, 2026 &mdash; Day 3 of 21</p>
+    <p class="subtitle" id="headerSubtitle">21-day sprint: March 18 → April 8, 2026</p>
   </div>
   <!-- === END SECTION === -->
 
@@ -211,8 +277,8 @@
   <div class="stats-grid">
     <div class="stat-card s-accent">
       <div class="stat-label">Sprint Day</div>
-      <div class="stat-value">3<span style="font-size:1rem;color:var(--text-muted)">/21</span></div>
-      <div class="stat-sub">14% elapsed</div>
+      <div class="stat-value"><span id="sprintDayNum">—</span><span style="font-size:1rem;color:var(--text-muted)">/21</span></div>
+      <div class="stat-sub" id="sprintDayPct">— elapsed</div>
     </div>
     <div class="stat-card s-pass">
       <div class="stat-label">Tasks Done</div>
@@ -243,7 +309,7 @@
     <div class="timeline-week active">
       <div class="week-label">Week 1 — Active</div>
       <div class="week-dates">March 18–24</div>
-      <div class="week-status">Day 3 of 7 &mdash; augmentation fixes, pilot eval, frontend revamp</div>
+      <div class="week-status" id="week1Status">Day — of 7 &mdash; augmentation fixes, pilot eval, frontend revamp</div>
     </div>
     <div class="timeline-week">
       <div class="week-label">Week 2</div>
@@ -259,6 +325,138 @@
   <div class="deadline-row no-print">
     <span class="deadline-label">Paper Submission Deadline</span>
     <span class="deadline-date">April 8, 2026</span>
+  </div>
+  <!-- === END SECTION === -->
+
+  <!-- === SECTION: Kanban Board === -->
+  <h2>Kanban Board</h2>
+  <div class="kanban-grid">
+
+    <!-- DONE column — 8 tasks -->
+    <div class="kanban-col">
+      <div class="kanban-col-header kh-done">&#10003; Done &mdash; 8</div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M9</div>
+        <div class="kanban-card-desc">Cherry-pick Erel's aug fixes (Bug A/B/C)</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M10</div>
+        <div class="kanban-card-desc">Verify augmentation L1–L4 stability</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">2B</div>
+        <div class="kanban-card-desc">Add <code>--augment-levels</code> to batch runner</div>
+        <div class="kanban-card-footer"><span class="badge badge-medium">MED</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">2G</div>
+        <div class="kanban-card-desc">Build <code>analyze_eval.py</code> aggregator</div>
+        <div class="kanban-card-footer"><span class="badge badge-medium">MED</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">Pilot</div>
+        <div class="kanban-card-desc">10-kernel CUDA→OMP pilot eval (6/10 PASS)</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">Spec</div>
+        <div class="kanban-card-desc">Fix nn-omp; mark gaussian-omp broken</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">FE</div>
+        <div class="kanban-card-desc">Unify 9 visualization pages — academic theme</div>
+        <div class="kanban-card-footer"><span class="badge badge-medium">MED</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">Repo</div>
+        <div class="kanban-card-desc">Worktree cleanup; submodule integrity</div>
+        <div class="kanban-card-footer"><span class="badge badge-low">LOW</span></div>
+      </div>
+    </div>
+
+    <!-- IN PROGRESS column — 1 task -->
+    <div class="kanban-col">
+      <div class="kanban-col-header kh-progress">&#8226; In Progress &mdash; 1</div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">2D</div>
+        <div class="kanban-card-desc">Full Rodinia CUDA→OMP eval — 10/21 kernels done</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+    </div>
+
+    <!-- BLOCKED column — 1 task -->
+    <div class="kanban-col">
+      <div class="kanban-col-header kh-blocked">&#9632; Blocked &mdash; 1</div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M11</div>
+        <div class="kanban-card-desc">Multi-file structural mismatch (backprop, kmeans, streamcluster)</div>
+        <div class="kanban-card-footer"><span class="badge badge-critical">CRITICAL</span></div>
+      </div>
+    </div>
+
+    <!-- TODO column — 11 tasks -->
+    <div class="kanban-col">
+      <div class="kanban-col-header kh-todo">Todo &mdash; 11</div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M4</div>
+        <div class="kanban-card-desc">Paper outline (SC26 structure, section owners)</div>
+        <div class="kanban-card-footer"><span class="badge badge-critical">CRITICAL</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M1</div>
+        <div class="kanban-card-desc">Anonymous ParBench GitHub for SC26 submission</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M2</div>
+        <div class="kanban-card-desc">Curation survey page (methodology docs)</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M3</div>
+        <div class="kanban-card-desc">Read Paraval paper; situate in related work</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M6</div>
+        <div class="kanban-card-desc">Kernel timing metrics (three-tier model)</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M7</div>
+        <div class="kanban-card-desc">Llama 70B via Groq or Modal</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M8</div>
+        <div class="kanban-card-desc">Third model (HumanEval-X leaderboard pick)</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">2A</div>
+        <div class="kanban-card-desc">Iterative repair pilot (retry-on-fail, 3 attempts)</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">2C</div>
+        <div class="kanban-card-desc">Smoke-test all 21 Rodinia OMP specs</div>
+        <div class="kanban-card-footer"><span class="badge badge-high">HIGH</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">M5</div>
+        <div class="kanban-card-desc">Clone ExaBench/XSBench (one kernel only)</div>
+        <div class="kanban-card-footer"><span class="badge badge-medium">MED</span></div>
+      </div>
+      <div class="kanban-card">
+        <div class="kanban-card-id">2E/2F</div>
+        <div class="kanban-card-desc">Cleanup stale files; minor bug fixes B1–B7</div>
+        <div class="kanban-card-footer"><span class="badge badge-low">LOW</span></div>
+      </div>
+    </div>
+
   </div>
   <!-- === END SECTION === -->
 
@@ -521,8 +719,8 @@
     </div>
     <div class="stat-card">
       <div class="stat-label">HeCBench Ph4 SYCL</div>
-      <div class="stat-value">14<span style="font-size:1rem;color:var(--text-muted)">/20</span></div>
-      <div class="stat-sub">70% pass</div>
+      <div class="stat-value">16<span style="font-size:1rem;color:var(--text-muted)">/20</span></div>
+      <div class="stat-sub">80% pass</div>
     </div>
     <div class="stat-card s-pass">
       <div class="stat-label">Rodinia Specs</div>
@@ -533,6 +731,50 @@
   <!-- === END SECTION === -->
 
 </div><!-- end .page-wrapper -->
+
+<!-- === SECTION: Dynamic Sprint Date Computation === -->
+<script>
+(function () {
+  const MS_PER_DAY      = 86400000;
+  const startMidnight   = new Date(2026, 2, 18); // March 18, 2026 (month = 0-indexed)
+  const deadlineMidnight = new Date(2026, 3,  8); // April 8, 2026
+
+  const now = new Date();
+  const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // Sprint day: 1 on March 18, 21 on April 7. Clamp to [1, 21].
+  const sprintDay = Math.min(21, Math.max(1,
+    Math.floor((todayMidnight - startMidnight) / MS_PER_DAY) + 1
+  ));
+
+  // Days remaining to deadline (April 8 - today, in whole days).
+  const daysLeft = Math.max(0, Math.round((deadlineMidnight - todayMidnight) / MS_PER_DAY));
+
+  // Percent elapsed (round to nearest integer).
+  const pct = Math.round((sprintDay / 21) * 100);
+
+  // Update countdown badge in nav.
+  document.getElementById('countdownBadge').textContent =
+    'SC26: ' + daysLeft + (daysLeft === 1 ? ' day' : ' days');
+
+  // Update header subtitle.
+  document.getElementById('headerSubtitle').textContent =
+    '21-day sprint: March 18 \u2192 April 8, 2026 \u2014 Day ' + sprintDay + ' of 21';
+
+  // Update sprint day stat card.
+  document.getElementById('sprintDayNum').textContent = sprintDay;
+  document.getElementById('sprintDayPct').textContent = pct + '% elapsed';
+
+  // Update Week 1 "Day N of 7" if we are still in Week 1.
+  const w1 = document.getElementById('week1Status');
+  if (sprintDay <= 7) {
+    w1.innerHTML = 'Day ' + sprintDay + ' of 7 &mdash; augmentation fixes, pilot eval, frontend revamp';
+  } else {
+    w1.textContent = 'Complete \u2014 full Rodinia eval underway';
+  }
+})();
+</script>
+<!-- === END SECTION === -->
 
 <!-- === SECTION: Chart Initialization === -->
 <script>
