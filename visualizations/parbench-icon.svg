@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="ParBench logo">
+  <defs>
+    <!-- Blue gradient for CUDA source block -->
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+    </linearGradient>
+    <!-- Teal gradient for OpenMP target block -->
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d9488;stop-opacity:1" />
+    </linearGradient>
+    <!-- Arrow gradient: blue → teal -->
+    <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#2563eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0d9488;stop-opacity:1" />
+    </linearGradient>
+    <!-- Subtle drop shadow for depth -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#00000030"/>
+    </filter>
+  </defs>
+
+  <!-- ── Left block: CUDA source ── -->
+  <!-- Outer card -->
+  <rect x="1" y="8" width="16" height="20" rx="2.5" ry="2.5"
+        fill="url(#blueGrad)" filter="url(#shadow)"/>
+  <!-- Code lines (white, representing source code) -->
+  <rect x="4"  y="12" width="10" height="1.8" rx="0.9" fill="white" opacity="0.9"/>
+  <rect x="4"  y="15.5" width="7"  height="1.8" rx="0.9" fill="white" opacity="0.7"/>
+  <rect x="4"  y="19" width="9"  height="1.8" rx="0.9" fill="white" opacity="0.9"/>
+  <rect x="4"  y="22.5" width="6"  height="1.8" rx="0.9" fill="white" opacity="0.6"/>
+
+  <!-- ── Right block: OpenMP target ── -->
+  <rect x="31" y="8" width="16" height="20" rx="2.5" ry="2.5"
+        fill="url(#tealGrad)" filter="url(#shadow)"/>
+  <!-- Code lines (white, representing translated code) -->
+  <rect x="34" y="12"   width="10" height="1.8" rx="0.9" fill="white" opacity="0.9"/>
+  <rect x="34" y="15.5" width="9"  height="1.8" rx="0.9" fill="white" opacity="0.7"/>
+  <rect x="34" y="19"   width="7"  height="1.8" rx="0.9" fill="white" opacity="0.9"/>
+  <rect x="34" y="22.5" width="10" height="1.8" rx="0.9" fill="white" opacity="0.6"/>
+
+  <!-- ── Central transformation arrow ── -->
+  <!-- Shaft of the arrow -->
+  <rect x="18.5" y="17.2" width="11" height="3.6" rx="1.8" fill="url(#arrowGrad)"/>
+  <!-- Arrowhead (triangle pointing right) -->
+  <polygon points="27,14.5 34,19 27,23.5" fill="url(#arrowGrad)"/>
+  <!-- Small spark / star at center of arrow to signal "LLM magic" -->
+  <circle cx="24" cy="19" r="2" fill="white" opacity="0.25"/>
+  <circle cx="24" cy="19" r="1" fill="white" opacity="0.55"/>
+
+  <!-- ── Bottom label strip ── -->
+  <!-- Blue dot for CUDA -->
+  <circle cx="9"  cy="33" r="2" fill="#2563eb"/>
+  <!-- Teal dot for OMP -->
+  <circle cx="39" cy="33" r="2" fill="#0d9488"/>
+  <!-- Thin connecting line -->
+  <line x1="11" y1="33" x2="37" y2="33"
+        stroke="url(#arrowGrad)" stroke-width="1.2"
+        stroke-dasharray="2.5,2" stroke-linecap="round"/>
+  <!-- Tiny chevron at end -->
+  <polyline points="35,31 37,33 35,35"
+            fill="none" stroke="#0d9488" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ── Tick marks at very bottom: benchmark cadence ── -->
+  <rect x="7"  y="37" width="1.5" height="4" rx="0.75" fill="#2563eb" opacity="0.8"/>
+  <rect x="12" y="38.5" width="1.5" height="2.5" rx="0.75" fill="#2563eb" opacity="0.5"/>
+  <rect x="17" y="37.5" width="1.5" height="3.5" rx="0.75" fill="#2563eb" opacity="0.65"/>
+  <rect x="22" y="37"   width="1.5" height="4"   rx="0.75" fill="#0d9488" opacity="0.8"/>
+  <rect x="27" y="38"   width="1.5" height="3"   rx="0.75" fill="#0d9488" opacity="0.6"/>
+  <rect x="32" y="37.5" width="1.5" height="3.5" rx="0.75" fill="#0d9488" opacity="0.7"/>
+  <rect x="37" y="37"   width="1.5" height="4"   rx="0.75" fill="#0d9488" opacity="0.9"/>
+</svg>
