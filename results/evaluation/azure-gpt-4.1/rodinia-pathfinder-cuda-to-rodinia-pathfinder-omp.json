@@ -1,17 +1,17 @@
 {
-  "source_spec": "rodinia-bfs-cuda",
-  "target_spec": "rodinia-bfs-omp",
+  "source_spec": "rodinia-pathfinder-cuda",
+  "target_spec": "rodinia-pathfinder-omp",
   "model": "azure-gpt-4.1",
   "augment_level": 0,
-  "timestamp": "2026-03-19T23:15:31Z",
-  "prompt_tokens": 3290,
-  "completion_tokens": 1910,
-  "llm_response_time_seconds": 20.543,
+  "timestamp": "2026-03-19T23:21:35Z",
+  "prompt_tokens": 2149,
+  "completion_tokens": 2057,
+  "llm_response_time_seconds": 24.295,
   "build_status": "pass",
-  "build_time_seconds": 0.156,
+  "build_time_seconds": 0.066,
   "build_error_snippet": null,
   "run_status": "pass",
-  "run_time_seconds": 1.181,
+  "run_time_seconds": 0.097,
   "run_exit_code": 0,
   "run_stderr_snippet": null,
   "run_stdout_snippet": null,
@@ -21,28 +21,28 @@
   "error_message": null,
   "metrics": {},
   "baseline_wall_time_seconds": 0.001,
-  "translated_wall_time_seconds": 1.181,
+  "translated_wall_time_seconds": 0.097,
   "translated_cpu_time_seconds": null,
   "translated_kernel_time_seconds": null,
   "timing_method": "wall_time",
-  "speedup_ratio": 0.0008,
+  "speedup_ratio": 0.0103,
   "translated_files": {
-    "bfs.cpp": "/***********************************************************************************\n  Implementing Breadth first search on OpenMP using algorithm given in HiPC'07\n  paper \"Accelerating Large Graph Al"
+    "pathfinder.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n\n#ifdef TIMING\n#include \"timing.h\"\n\nstruct timeval tv;\nstruct timeval tv_total_start, tv_total_end;\nstruct"
   },
   "target_files_expected": [
-    "bfs.cpp"
+    "pathfinder.cpp"
   ],
   "target_files_extracted": [
-    "bfs.cpp"
+    "pathfinder.cpp"
   ],
   "max_retries": 2,
   "total_attempts": 1,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 20.543,
-      "prompt_tokens": 3290,
-      "completion_tokens": 1910,
+      "llm_response_time_seconds": 24.295,
+      "prompt_tokens": 2149,
+      "completion_tokens": 2057,
       "build_status": "pass",
       "run_status": "pass",
       "verify_status": "pass",

@@ -50,6 +50,7 @@ def _build_aug_config(augment_level: int):
     from c_augmentation.augment_dataset import (
         AugmentationConfig,
         ArithmeticTransform,
+        ChangeFunctionNames,
         ChangeNames,
         PointerArithmeticToArrayIndex,
         SwapCondition,
@@ -64,6 +65,7 @@ def _build_aug_config(augment_level: int):
             PointerArithmeticToArrayIndex(level=augment_level),
             TypedefExpansion(level=augment_level),
             ChangeNames(level=augment_level),
+            ChangeFunctionNames(level=augment_level),
         ],
     )
     return index, config
@@ -101,7 +103,7 @@ def _augment_payload(
 
         if ci_index is not None and aug_config is not None and Path(fname).suffix in AUGMENTABLE_SUFFIXES:
             from c_augmentation.augment_dataset import augment_code
-            augmented, applied = augment_code(text, aug_config, ci_index)
+            augmented, applied = augment_code(text, aug_config, ci_index, filename=str(fpath))
             contents[fname] = augmented
             transforms[fname] = applied
         else:

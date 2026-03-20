@@ -2,7 +2,7 @@
 
 > **Deadline:** SC26 paper submission — **April 8, 2026**
 > **Sprint window:** March 18 → April 8 (21 days)
-> **Last updated:** 2026-03-18
+> **Last updated:** 2026-03-19 (updated after March 18 team meeting — see §1.5)
 > **Authors:** Samyak, Erel, Gal (advised)
 >
 > **How to use this document:**
@@ -30,7 +30,10 @@ All 13 infrastructure items shipped across commits `a1ab7de` → `e878ee5`:
 
 ### 1.2 Pilot Results (5 kernels × 2 models, cuda→omp, L0)
 
-| Kernel | Claude Sonnet 4 | Azure GPT-4.1 | Failure Root Cause |
+> **NOTE (2026-03-19):** Claude Sonnet is REMOVED as an eval target (March 18 meeting decision).
+> Claude pilot data below is kept for historical context only. All future evals use GPT-4.1 + open models.
+
+| Kernel | Claude Sonnet 4 (archived) | Azure GPT-4.1 | Failure Root Cause |
 |--------|:-:|:-:|---|
 | bfs | **PASS** | **PASS** | — |
 | nw | **PASS** | **PASS** | — (was infrastructure; fixed) |
@@ -38,7 +41,8 @@ All 13 infrastructure items shipped across commits `a1ab7de` → `e878ee5`:
 | srad | RUN_FAIL | RUN_FAIL | Both: LLM drops `nthreads` arg (quality) |
 | backprop | BUILD_FAIL | BUILD_FAIL | Claude: dup `gettime`; Azure: `HEIGHT` undeclared |
 
-**Pass rate: 50% (5/10).** All remaining failures are LLM quality issues, not infrastructure.
+**Pass rate: 50% (5/10) for Azure GPT-4.1.** All remaining failures are LLM quality issues, not infrastructure.
+Infrastructure baseline confirmed — starting full evaluation sweep with GPT-4.1 (Phase 1), then open models via Groq/Modal (Phase 2).
 
 ### 1.3 Inventory
 
@@ -78,10 +82,21 @@ All 13 infrastructure items shipped across commits `a1ab7de` → `e878ee5`:
 
 #### Models
 
-| Model | Provider | Status | Notes |
-|-------|----------|--------|-------|
-| `claude-sonnet-4-20250514` | Anthropic API | Funded, no budget constraint | Primary model |
-| `azure-gpt-4.1` | Azure OpenAI | Funded, use wisely | Stick to gpt-4.1 (not gpt-4o) |
+> **UPDATED 2026-03-19 (March 18 meeting).** Model plan changed significantly.
+
+| Model | Provider | Phase | Notes |
+|-------|----------|-------|-------|
+| `azure-gpt-4.1` | Azure OpenAI | **Phase 1 — START HERE** | Funded, ready. Reasoning OFF via Azure API. |
+| `llama-70b` | Groq API / Modal GPU pool | Phase 2 | Primary open-source. Set up AFTER GPT-4.1 evals. |
+| TBD (leaderboard pick) | Groq / Modal | Phase 2 | General-purpose model from coding leaderboard (Qwen, Mistral, Gemini candidates). |
+| ~~`claude-sonnet-4-20250514`~~ | ~~Anthropic API~~ | **REMOVED** | Clean slate with new model set. Historical pilot data in §1.2. |
+
+**Key constraints (Gal Oren, March 18):**
+- **NO reasoning models** — test inherent LLM knowledge, not search/reasoning (00:19:31)
+- **NO agentic models** — too complex for this paper scope
+- **Turn reasoning OFF for all models** — fair comparison (Le Chen, 00:25:43)
+- Match **Power of Evolve paper** models: Gemini, GPT-4, Llama 3.3, Qwen (Gal, 00:23:47)
+- Pick ~2-3 models and commit (Niranjan, 00:22:43)
 
 #### Augmentation Pass Rates (60 Rodinia specs, seed=42)
 
@@ -122,6 +137,68 @@ results/evaluation/
 
 ---
 
+### 1.5 March 18 Meeting — Strategic Decisions (Day 2 Update)
+
+**Attendees:** Gal Oren, Samyak, Erel Kaplan, Niranjan Hasabnis, Le Chen, Tomer Bitan
+
+#### New Tasks from Meeting (M1–M10)
+
+| Task | What | Source | Priority | Effort |
+|------|------|--------|----------|--------|
+| **M1** | Create anonymous "ParBench" GitHub + mirror site | Gal (00:04:23) — SC26 anon submission | HIGH | 2-3h |
+| **M2** | Add curation survey page to website | Gal (00:05:52) — "what pool, why this subset?" | HIGH | 3-4h |
+| **M3** | Read Paraval paper (baseline comparison) | Gal (00:12:55) — differentiate clearly | HIGH | 2h |
+| **M4** | Create paper outline BEFORE writing | Gal + Niranjan — structure first | CRITICAL | 3-4h |
+| **M5** | Clone ExaBench/XSBench for Paraval comparison | Gal (00:34:39) — specific kernel only | MEDIUM | 3-4h |
+| **M6** | Implement kernel + host-transfer timing metrics | Niranjan (00:16:18) — three-tier model | HIGH | 4-6h |
+| **M7** | Set up Llama 70B + leaderboard model via Groq/Modal | Team (00:18:20) | HIGH | 3-4h |
+| **M8** | Select third model from coding leaderboard | Le Chen (00:21:41) | HIGH | 1h |
+| **M9** | Cherry-pick `erel/aug` augmentation fixes → main | Erel's branch analysis | CRITICAL | 2-3h |
+| **M10** | Verify augmentation L1–L4 after M9 merge | Depends on M9 | HIGH | 1-2h |
+
+#### Paper Structure (Gal + Niranjan, 00:26:54–00:33:34)
+
+SC26 = double-column, 10 pages + appendices. Draft must exist before next meeting.
+
+1. **Introduction** — "What should be benchmarked for LLM parallel code translation?"
+2. **Related Work** — CRITICAL. Compare Paraval, ParEval, ExaBench. Show LLM perf across benchmarks.
+3. **Benchmark Curation** — Survey → mapping → subset selection. WHY Rodinia + HeCBench.
+4. **Framework** — ParBench schema, harness pipeline, augmentation
+5. **Experimental Setup** — Non-reasoning models, augmentation levels, translation directions
+6. **Results** — Pass rates, failure taxonomy, augmentation impact, self-repair
+7. **Discussion / Conclusion**
+
+#### Timing Metrics — Three-Tier Model (Niranjan, 00:16:18)
+
+- **Tier 1:** Kernel execution time — GPU kernel only (`nvprof`/`ncu` for CUDA, `omp_get_wtime()` for OMP)
+- **Tier 2:** Kernel + host memory transfer — includes `cudaMemcpy`, `cudaMalloc`
+- **Tier 3:** Wall-clock — includes I/O (NOT suitable for speedup claims)
+
+**Report Tiers 1 and 2.** Not Tier 3. Adopt ParaCodex GPU time matrix methodology.
+
+#### Benchmark Scope (simplified, Gal 00:26:54)
+
+- **Rodinia + HeCBench** — primary (confirmed)
+- **ExaBench/XSBench** — one specific kernel for Paraval comparison ONLY (Task M5)
+- **No third full suite** — "create the outline first and see where the gaps are" (Niranjan)
+- Task 3F (New Benchmark Suite) → **DEPRIORITIZED**
+
+#### Augmentation Plan (Gal, 00:11:42)
+
+- Conservative augmentation (L1–L2) is sufficient for paper
+- L3–L4: future work if bugs persist
+- Bug fixes on `erel/aug` branch → cherry-pick via Task M9
+
+#### Other Decisions
+
+- **Omit build times** from paper (team, 00:03:03)
+- **Name: "ParBench"** confirmed (not "Powerbench")
+- **Next meeting goal:** Gal wants a paper draft to revise together
+- Phase 1 eval estimate: ~21 kernels × 1 model × 3 levels = ~63 calls
+- Phase 2 eval estimate: ~21 kernels × 3 models × 3 levels = ~189 calls
+
+---
+
 ## 2. The Plan — Three Weeks
 
 ### Week 1 (March 18–24): Scale Up Rodinia + Iterative Repair
@@ -159,10 +236,11 @@ rm results/evaluation/azure-gpt-4.1/rodinia-{srad,backprop}-cuda-to-*.json
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia --kernels hotspot srad backprop \
   --direction cuda-to-omp \
-  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --models azure-gpt-4.1 \
   --max-retries 3 \
   --project-root /home/samyak/Desktop/parbench_sam -v
 ```
+> **Phase 2 (when Groq/Modal ready):** add `llama-70b <leaderboard-model>` to `--models`
 
 3. Record self-repair outcomes:
 
@@ -301,35 +379,43 @@ done
 
 #### Task 2D — Full Evaluation Matrix (Primary Direction)
 
-**cuda→omp (primary):** All passing kernels × 2 models × L0/L1/L2 × max-retries 2
+**cuda→omp (primary):** All passing kernels × phased models × L0/L1/L2 × max-retries 2
 
 ```bash
-# Phase 1: L0 (no augmentation) — all kernels, both models
+# Phase 1: L0 (no augmentation) — GPT-4.1 only (Phase 1 models)
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-omp \
-  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --models azure-gpt-4.1 \
   --augment-levels 0 \
   --max-retries 2 \
   --project-root /home/samyak/Desktop/parbench_sam \
   --resume -v
 
-# Phase 2: L1+L2 (augmented source) — same parameters
+# Phase 1: L1+L2 (augmented source) — GPT-4.1 only
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-omp \
-  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --models azure-gpt-4.1 \
   --augment-levels 1 2 \
   --max-retries 2 \
   --project-root /home/samyak/Desktop/parbench_sam \
   --resume -v
+
+# Phase 2: All levels — add open-source models once Groq/Modal set up (Task M7)
+# python3 scripts/evaluation/run_eval_batch.py \
+#   --suite rodinia --direction cuda-to-omp \
+#   --models azure-gpt-4.1 llama-70b <leaderboard-model> \
+#   --augment-levels 0 1 2 --max-retries 2 ...
 ```
 
-**Estimated LLM calls:** ~21 kernels × 2 models × 3 levels × (1–2 attempts) ≈ 126–252 calls
+**Estimated LLM calls:**
+- Phase 1: ~21 kernels × 1 model × 3 levels × (1–2 attempts) ≈ 63–126 calls
+- Phase 2: ~21 kernels × 3 models × 3 levels ≈ 189–378 calls
 
-**Important:** These runs are sequential (one LLM call at a time). Expect ~2–4 hours per batch. Run in tmux:
+**Important:** Run in tmux:
 ```bash
-tmux new-session -d -s eval_cuda_omp 'source env_parbench/bin/activate && python3 scripts/evaluation/run_eval_batch.py --suite rodinia --direction cuda-to-omp --models claude-sonnet-4-20250514 azure-gpt-4.1 --augment-levels 0 1 2 --max-retries 2 --project-root /home/samyak/Desktop/parbench_sam --resume -v 2>&1 | tee results/evaluation/run_cuda_omp.log'
+tmux new-session -d -s eval_cuda_omp 'source env_parbench/bin/activate && python3 scripts/evaluation/run_eval_batch.py --suite rodinia --direction cuda-to-omp --models azure-gpt-4.1 --augment-levels 0 1 2 --max-retries 2 --project-root /home/samyak/Desktop/parbench_sam --resume -v 2>&1 | tee results/evaluation/run_cuda_omp.log'
 ```
 
 ---
@@ -342,17 +428,18 @@ tmux new-session -d -s eval_cuda_omp 'source env_parbench/bin/activate && python
 # omp→cuda
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia --direction omp-to-cuda \
-  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --models azure-gpt-4.1 \
   --augment-levels 0 --max-retries 2 \
   --project-root /home/samyak/Desktop/parbench_sam --resume -v
 
 # cuda→opencl
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia --direction cuda-to-opencl \
-  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --models azure-gpt-4.1 \
   --augment-levels 0 --max-retries 2 \
   --project-root /home/samyak/Desktop/parbench_sam --resume -v
 ```
+> Add open-source models to `--models` once Task M7 (Groq/Modal setup) is complete.
 
 **Estimated calls:** ~43 pairs × 2 models × 1 level ≈ 86 calls
 
@@ -428,12 +515,12 @@ done
 ```bash
 python3 scripts/evaluation/run_eval_batch.py \
   --suite hecbench --direction cuda-to-omp \
-  --models claude-sonnet-4-20250514 azure-gpt-4.1 \
+  --models azure-gpt-4.1 \
   --augment-levels 0 --max-retries 2 \
   --project-root /home/samyak/Desktop/parbench_sam --resume -v
 ```
 
-**Estimated calls:** Up to 60 kernels × 2 models = 120 calls. Many may fail at baseline (not all HeCBench specs have been smoke-tested). Use `--max-failures 10` to skip persistently broken kernels.
+**Estimated calls:** Up to 60 kernels × 1 model (Phase 1) = 60 calls. Add open models in Phase 2. Many may fail at baseline (not all HeCBench specs have been smoke-tested). Use `--max-failures 10` to skip persistently broken kernels.
 
 ---
 
@@ -529,10 +616,12 @@ gcc -fopenmp -foffload=nvptx-none /tmp/test_omp_target.c -o /tmp/test_omp_target
 
 ### Day 15 (April 1): Retest Augmentation
 
-1. Check if Erel has merged augmentation fixes:
+1. Erel's augmentation fixes cherry-picked into main on Day 2 (Task M9). Verify tests pass:
 ```bash
-git pull origin main
+source env_parbench/bin/activate
 python3 -m pytest c_augmentation/test_transforms.py -v
+python3 scripts/augmentation/augment_verify.py specs/rodinia-bfs-cuda.json \
+  --augment_level 2 --seed 42 -v --project-root /home/samyak/Desktop/parbench_sam
 ```
 
 2. Re-run full augmentation batch:
@@ -656,8 +745,8 @@ By April 8, target these numbers:
 | Metric | Target | Stretch |
 |--------|:------:|:-------:|
 | Translation pairs evaluated | 300+ | 500+ |
-| Benchmark suites | 2 (Rodinia + HeCBench) | 3–4 (+PolyBench/Parboil) |
-| Models compared | 2 | 2 |
+| Benchmark suites | 2 (Rodinia + HeCBench) | + ExaBench/XSBench kernel (Paraval comparison) |
+| Models compared | 3 (GPT-4.1, Llama 70B, leaderboard) | phased — GPT-4.1 first |
 | Augmentation levels tested | L0, L1, L2 | + L3, L4 |
 | Translation directions | 3 (cuda↔omp, cuda→opencl) | 5–6 (+openacc, omp_target) |
 | APIs covered | 3 (CUDA, OMP, OpenCL) | 4–5 (+OpenACC, OMP target) |
@@ -673,19 +762,27 @@ By April 8, target these numbers:
 
 ## 7. Open Questions for Team
 
-1. **Rodinia OpenACC source:** Does `gpu-rodinia` repo or Rodinia 3.1 have OpenACC implementations? If not, what's the verification strategy for CUDA→OpenACC translation?
+> Updated 2026-03-19 after March 18 meeting — resolved questions struck through.
 
-2. **Which additional benchmarks?** PolyBench/GPU and Parboil are strongest candidates. Preference?
+1. **Rodinia OpenACC source:** Does `gpu-rodinia` repo or Rodinia 3.1 have OpenACC implementations? If not, what's the verification strategy for CUDA→OpenACC translation? *(deprioritized for now per Niranjan)*
+
+2. ~~**Which additional benchmarks?**~~ RESOLVED: Rodinia + HeCBench primary; ExaBench/XSBench ONE kernel for Paraval comparison (Task M5). No third full suite.
 
 3. **HeCBench clone size/time:** HeCBench is large (~500+ benchmarks, several GB). Any subset preference, or clone all?
 
-4. **Erel's augmentation fixes:** When will they be merged? Should we retest L3/L4 before or after the main evaluation sweep?
+4. ~~**Erel's augmentation fixes:**~~ RESOLVED: Cherry-picking from `erel/aug` branch into main (Task M9, Day 2).
 
-5. **Paper venue confirmation:** SC26 confirmed? Workshop paper or full paper track?
+5. **Paper venue confirmation:** SC26 confirmed? Workshop paper or full paper track? (Gal mentioned 10 pages double-column + appendices)
 
 6. **Overleaf:** Has Erel created the Overleaf project and shared the link?
 
 7. **Submodule sync:** Erel's 5 new specs need Rodinia submodule at commit `b0310d8`. When can we sync?
+
+8. **Third model selection (Task M8):** Which general-purpose model from coding leaderboard? Candidates: Qwen2.5-72B, Mistral-Large, Gemini 1.5 Pro. Le Chen recommends general-purpose over code-specific.
+
+9. **Groq/Modal access (Task M7):** Does Tomer have the team Modal GPU pool set up? (Niranjan checking — 00:22:43)
+
+10. **Anonymous ParBench GitHub (Task M1):** Create before next meeting — required for SC26 anonymous submission.
 
 ---
 

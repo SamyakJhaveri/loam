@@ -12,11 +12,11 @@ paths:
 ```bash
 source env_parbench/bin/activate
 
-# Single translation (dry-run to check prompt)
+# Single translation (dry-run to check prompt) — Phase 1: azure-gpt-4.1
 python3 scripts/evaluation/llm_evaluate.py \
   --source specs/rodinia-bfs-cuda.json \
   --target specs/rodinia-bfs-omp.json \
-  --model claude-sonnet-4-20250514 \
+  --model azure-gpt-4.1 \
   --project-root /home/samyak/Desktop/parbench_sam \
   --dry-run
 
@@ -25,16 +25,18 @@ python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --kernels bfs nw srad backprop hotspot \
   --direction cuda-to-omp \
-  --models claude-sonnet-4-20250514 \
+  --models azure-gpt-4.1 \
   --project-root /home/samyak/Desktop/parbench_sam \
   --resume -v
 
 # Batch with retries (iterative repair on failure)
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia --direction cuda-to-omp \
-  --models claude-sonnet-4-20250514 \
+  --models azure-gpt-4.1 \
   --max-retries 3 \
   --project-root /home/samyak/Desktop/parbench_sam -v
+
+# Phase 2 (after M7 Groq/Modal setup): add llama-70b and leaderboard model to --models
 ```
 
 ## Architecture Overview

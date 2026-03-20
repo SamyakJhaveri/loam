@@ -3,13 +3,13 @@
   "target_spec": "rodinia-srad-omp",
   "model": "azure-gpt-4.1",
   "augment_level": 0,
-  "timestamp": "2026-03-18T05:56:19Z",
-  "prompt_tokens": 5099,
-  "completion_tokens": 2111,
-  "llm_response_time_seconds": 30.127,
-  "build_status": "pass",
-  "build_time_seconds": 0.181,
-  "build_error_snippet": null,
+  "timestamp": "2026-03-19T23:22:00Z",
+  "prompt_tokens": 12435,
+  "completion_tokens": 4171,
+  "llm_response_time_seconds": 47.992,
+  "build_status": "fail",
+  "build_time_seconds": 0.097,
+  "build_error_snippet": "srad.cpp: In function \u2018void runTest(int, char**)\u2019:\nsrad.cpp:84:29: error: invalid conversion from \u2018char*\u2019 to \u2018int\u2019 [-fpermissive]\n   84 |                 usage(argv[0], argv);\n      |                       ~~~~~~^\n      |                             |\n      |                             char*\nsrad.cpp:26:16: note:   initializing argument 1 of \u2018void usage(int, char**)\u2019\n   26 | void usage(int argc, char **argv)\n      |            ~~~~^~~~\nmake: *** [Makefile:6: bfs] Error 1\n",
   "run_status": "fail",
   "run_time_seconds": 0.001,
   "run_exit_code": 1,
@@ -17,8 +17,8 @@
   "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
   "verify_status": null,
   "verify_strategy": null,
-  "overall_status": "RUN_FAIL",
-  "error_message": "Run failed (exit code 1)",
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: char*\nsrad.cpp:26:16: note:   initializing argument 1 of \u2018void usage(int, char**)\u2019\n   26 | void usage(int argc, char **argv)\n      |            ~~~~^~~~\nmake: *** [Makefile:6: bfs] Error 1",
   "metrics": {},
   "baseline_wall_time_seconds": 0.006,
   "translated_wall_time_seconds": null,
@@ -27,7 +27,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "srad.cpp": "// includes, system\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n\n// Inlined srad.h\n#define STR_SIZE 256\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_S"
+    "srad.cpp": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n\n// ==== Begin inlined srad.h ====\n#define STR_SIZE 256\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_SIZE "
   },
   "target_files_expected": [
     "srad.cpp"
@@ -35,20 +35,31 @@
   "target_files_extracted": [
     "srad.cpp"
   ],
-  "max_retries": 1,
-  "total_attempts": 1,
+  "max_retries": 2,
+  "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 30.127,
+      "llm_response_time_seconds": 23.588,
       "prompt_tokens": 5099,
-      "completion_tokens": 2111,
+      "completion_tokens": 2084,
       "build_status": "pass",
       "run_status": "fail",
       "verify_status": null,
-      "error_feedback_sent": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n<x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value",
       "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>       - x1 value of the speckle\n\t<x2>       - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
       "run_stdout_snippet": "WG size of kernel = 16 X 16\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 24.404,
+      "prompt_tokens": 7336,
+      "completion_tokens": 2087,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "srad.cpp: In function \u2018void runTest(int, char**)\u2019:\nsrad.cpp:84:29: error: invalid conversion from \u2018char*\u2019 to \u2018int\u2019 [-fpermissive]\n   84 |                 usage(argv[0], argv);\n      |                       ~~~~~~^\n      |                             |\n      |                             char*\nsrad.cpp:26:16: note:   initializing argument 1 of \u2018void usage(int, char**)\u2019\n   26 | void usage(int argc, char **argv)\n      |            ~~~~^~~~\nmake: *** [Makefile:6: bfs] Error 1\n"
     }
   ]
 }

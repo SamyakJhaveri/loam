@@ -192,7 +192,7 @@ def get_prompt_payload(spec: dict[str, Any], project_root: Path, augment_level: 
         path = Path(abs_path)
         if path.exists():
             content = path.read_text(encoding="utf-8", errors="replace")
-            if augment_level > 0 and aug_config and ci_index and path.suffix in [".c", ".cpp", ".cu", ".h", ".hpp", ".cuh", ".dp.cpp"]:
+            if augment_level > 0 and aug_config and ci_index and path.suffix in [".c", ".cpp", ".cu", ".h", ".hpp", ".cuh", ".cl", ".dp.cpp"]:
                 content, _ = augment_code(content, aug_config, ci_index)
             payload[path.name] = content
         else:

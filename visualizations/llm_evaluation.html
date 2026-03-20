@@ -122,26 +122,27 @@
 </nav>
 
 <h1>LLM Evaluation</h1>
-<p class="subtitle">Pilot results: CUDA → OpenMP translation · 5 kernels × 2 models · Zero-shot · 2026-03-18</p>
+<p class="subtitle">Phase 1 results: CUDA → OpenMP translation · 10 kernels × Azure GPT-4.1 · Zero-shot with retry (max_retries=2) · 2026-03-19</p>
 
 <div class="notice notice-warn">
-  <strong>Infrastructure fixes applied 2026-03-17:</strong> Header staging (source .h copied to target dir), prompt support-file injection, and spec arg corrections
-  moved pass rate from <strong style="color:var(--red)">20%</strong> to <strong style="color:var(--green)">50%</strong>.
-  Remaining failures are LLM quality issues (srad missing nthreads arg, backprop symbol conflicts).
-  Full-scale evaluation with <code>--augment-levels</code> and <code>max_retries&gt;1</code> is pending.
+  <strong>⚠ Design Concern Identified 2026-03-19:</strong> LLMs are being asked to replicate the exact file structure
+  of the Rodinia OMP reference implementations, which were written <em>independently</em> from the CUDA source.
+  For single-file kernels this is a pure translation task; for multi-file / multi-directory kernels it becomes
+  a code <em>restructuring</em> task. 3 of 4 BUILD_FAILs are structural failures, not semantic translation errors.
+  See <strong>Design Concern</strong> section below. Team discussion needed.
 </div>
 
 <!-- ─── Key Stats ──────────────────────────────────────────────────────────── -->
-<h2>At a Glance</h2>
+<h2>At a Glance — Phase 1 (Azure GPT-4.1, 10 Kernels)</h2>
 <div class="stats-grid">
-  <div class="stat-card"><div class="n" style="color:var(--green)">5</div><div class="l">PASS (of 10)</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--green)">50%</div><div class="l">Pass Rate</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--red)">3</div><div class="l">BUILD_FAIL</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--orange)">2</div><div class="l">RUN_FAIL</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--accent)">2</div><div class="l">Models Tested</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--teal)">5</div><div class="l">Kernels</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--green)">6</div><div class="l">PASS (of 10)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--green)">60%</div><div class="l">Pass Rate</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--orange)">4</div><div class="l">BUILD_FAIL</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--text-muted)">0</div><div class="l">RUN_FAIL</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--accent)">1</div><div class="l">Model (Phase 1)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--teal)">10</div><div class="l">Kernels</div></div>
   <div class="stat-card"><div class="n" style="color:var(--purple)">0</div><div class="l">Augment Level</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--text-muted)">1</div><div class="l">Attempt per Run</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--yellow)">2</div><div class="l">Max Retries</div></div>
 </div>
 
 <!-- ─── Full Results Table ───────────────────────────────────────────────── -->
@@ -157,62 +158,93 @@
 </table>
 
 <!-- ─── Model Comparison ────────────────────────────────────────────────── -->
-<h2>Model Comparison</h2>
-<div class="model-cmp">
+<h2>Phase 1 Results — Azure GPT-4.1 (10 kernels)</h2>
+<div class="model-cmp" style="grid-template-columns: 1fr;">
   <div class="model-card">
-    <div class="model-name">Claude Sonnet 4 (claude-sonnet-4-20250514)</div>
-    <div class="model-stat"><span>Pass rate</span><span class="v" style="color:var(--yellow)">2/5 (40%)</span></div>
-    <div class="model-stat"><span>BUILD_FAIL</span><span class="v" style="color:var(--red)">2</span></div>
-    <div class="model-stat"><span>RUN_FAIL</span><span class="v" style="color:var(--orange)">1</span></div>
-    <div class="model-stat"><span>Avg LLM latency</span><span class="v">61.0s</span></div>
-    <div class="model-stat"><span>Avg output tokens</span><span class="v">5,497</span></div>
-    <div class="model-stat"><span>Timing method (bfs)</span><span class="v" style="color:var(--teal)">cpu_time</span></div>
-  </div>
-  <div class="model-card">
-    <div class="model-name">Azure GPT-4.1 (azure-gpt-4.1)</div>
-    <div class="model-stat"><span>Pass rate</span><span class="v" style="color:var(--green)">3/5 (60%)</span></div>
-    <div class="model-stat"><span>BUILD_FAIL</span><span class="v" style="color:var(--red)">1</span></div>
-    <div class="model-stat"><span>RUN_FAIL</span><span class="v" style="color:var(--orange)">1</span></div>
-    <div class="model-stat"><span>Avg LLM latency</span><span class="v" style="color:var(--green)">37.7s (1.6× faster)</span></div>
-    <div class="model-stat"><span>Avg output tokens</span><span class="v">3,723 (32% fewer)</span></div>
-    <div class="model-stat"><span>Timing method (bfs)</span><span class="v">wall_time</span></div>
+    <div class="model-name">Azure GPT-4.1 (azure-gpt-4.1) — Phase 1 Evaluation</div>
+    <div class="model-stat"><span>Pass rate</span><span class="v" style="color:var(--green)">6/10 (60%)</span></div>
+    <div class="model-stat"><span>BUILD_FAIL</span><span class="v" style="color:var(--red)">4 (backprop, kmeans, srad, streamcluster)</span></div>
+    <div class="model-stat"><span>RUN_FAIL</span><span class="v" style="color:var(--text-muted)">0</span></div>
+    <div class="model-stat"><span>PASS kernels</span><span class="v" style="color:var(--green)">bfs, hotspot, lud, nn, nw, pathfinder</span></div>
+    <div class="model-stat"><span>Structural failures (file mismatch)</span><span class="v" style="color:var(--orange)">3 of 4 BUILD_FAILs</span></div>
+    <div class="model-stat"><span>Semantic failures (correct files, wrong code)</span><span class="v" style="color:var(--red)">1 of 4 BUILD_FAILs (srad)</span></div>
+    <div class="model-stat"><span>Self-repair effectiveness (nw)</span><span class="v" style="color:var(--teal)">Attempt 2 fixed nested barrier error</span></div>
+    <div class="model-stat"><span>Avg prompt tokens (PASS kernels)</span><span class="v">~7,000</span></div>
+    <div class="model-stat"><span>Highest token usage</span><span class="v" style="color:var(--yellow)">kmeans: 76,171 prompt tokens</span></div>
   </div>
 </div>
 
-<!-- ─── Per-Model Pass Rate Bars ─────────────────────────────────────────── -->
+<!-- ─── Per-Kernel Pass Rate Bars ────────────────────────────────────────── -->
 <div style="margin: 1.5rem 0;">
-  <div class="bar-row">
-    <span class="bar-label">Claude Sonnet 4</span>
-    <div class="bar-track">
-      <div class="bar-pass" style="width:40%"></div>
-      <div class="bar-fail" style="width:20%"></div>
-      <div class="bar-bf"   style="width:40%"></div>
-    </div>
-    <span class="bar-val">2/5 PASS</span>
-  </div>
-  <div class="bar-row">
-    <span class="bar-label">Azure GPT-4.1</span>
-    <div class="bar-track">
-      <div class="bar-pass" style="width:60%"></div>
-      <div class="bar-fail" style="width:20%"></div>
-      <div class="bar-bf"   style="width:20%"></div>
-    </div>
-    <span class="bar-val">3/5 PASS</span>
-  </div>
+  <div class="bar-row"><span class="bar-label">bfs</span><div class="bar-track"><div class="bar-pass" style="width:100%"></div></div><span class="bar-val" style="color:var(--green)">PASS</span></div>
+  <div class="bar-row"><span class="bar-label">hotspot</span><div class="bar-track"><div class="bar-pass" style="width:100%"></div></div><span class="bar-val" style="color:var(--green)">PASS</span></div>
+  <div class="bar-row"><span class="bar-label">lud</span><div class="bar-track"><div class="bar-pass" style="width:100%"></div></div><span class="bar-val" style="color:var(--green)">PASS</span></div>
+  <div class="bar-row"><span class="bar-label">nn</span><div class="bar-track"><div class="bar-pass" style="width:100%"></div></div><span class="bar-val" style="color:var(--green)">PASS</span></div>
+  <div class="bar-row"><span class="bar-label">nw</span><div class="bar-track"><div class="bar-pass" style="width:100%"></div></div><span class="bar-val" style="color:var(--green)">PASS</span></div>
+  <div class="bar-row"><span class="bar-label">pathfinder</span><div class="bar-track"><div class="bar-pass" style="width:100%"></div></div><span class="bar-val" style="color:var(--green)">PASS</span></div>
+  <div class="bar-row"><span class="bar-label">backprop</span><div class="bar-track"><div class="bar-bf" style="width:100%"></div></div><span class="bar-val" style="color:var(--orange)">BUILD_FAIL</span></div>
+  <div class="bar-row"><span class="bar-label">kmeans</span><div class="bar-track"><div class="bar-bf" style="width:100%"></div></div><span class="bar-val" style="color:var(--orange)">BUILD_FAIL</span></div>
+  <div class="bar-row"><span class="bar-label">srad</span><div class="bar-track"><div class="bar-bf" style="width:100%"></div></div><span class="bar-val" style="color:var(--orange)">BUILD_FAIL</span></div>
+  <div class="bar-row"><span class="bar-label">streamcluster</span><div class="bar-track"><div class="bar-bf" style="width:100%"></div></div><span class="bar-val" style="color:var(--orange)">BUILD_FAIL</span></div>
 </div>
 
 <!-- ─── Failure Analysis ─────────────────────────────────────────────────── -->
 <h2>Failure Root Cause Analysis</h2>
-<p>5 infrastructure/spec failures were <strong style="color:var(--green)">fixed (2026-03-17)</strong>. The remaining 5 failures are all <strong style="color:var(--yellow)">LLM quality issues</strong> — missing OMP-specific patterns, symbol conflicts in multi-file translation, or missing includes.</p>
+<p>Phase 1 (10-kernel batch, 2026-03-19): 4 BUILD_FAILs decompose into two fundamentally different categories.</p>
 
-<div id="taxonomy-list" style="margin: 1rem 0;"></div>
+<div style="margin: 1rem 0;">
+  <div class="taxonomy-row">
+    <div class="tax-count" style="color:var(--orange)">3</div>
+    <div class="tax-body">
+      <div class="cat">STRUCTURAL FAILURE — File structure mismatch between source and target spec</div>
+      <div class="kernels">Kernels: backprop (1→4 files), kmeans (2→8 files across 2 subdirs w/ duplicate basenames), streamcluster (2→2 files with shared helper redefinition)</div>
+      <div class="fix">Root cause: LLM is asked to replicate Rodinia OMP reference file organization, which was written independently from the CUDA source. Design decision needed — see Design Concern section.</div>
+    </div>
+  </div>
+  <div class="taxonomy-row">
+    <div class="tax-count" style="color:var(--red)">1</div>
+    <div class="tax-body">
+      <div class="cat">SEMANTIC FAILURE — Correct file extracted, wrong code generated</div>
+      <div class="kernels">Kernels: srad (1→1 file, but LLM passes <code>argv[0]</code> where <code>argc</code> expected — type error; Attempt 1 compiled, Attempt 2 re-broke it)</div>
+      <div class="fix">Root cause: LLM introduced a parameter type mismatch between function definition and call site. Error feedback loop failed — Attempt 2 "fixed" differently and broke the build.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Design Concern: Structural Mismatch ─────────────────────────────── -->
+<h2>⚠ Design Concern: Source vs. Target File Structure Mismatch</h2>
+<div class="notice">
+  <strong>The fundamental issue:</strong> For multi-file benchmarks, the CUDA and OMP implementations in Rodinia
+  were written <em>independently</em> by different people. Their file structures reflect API-specific design choices,
+  not translations of each other. When we ask an LLM to translate CUDA→OMP and produce the OMP reference's exact
+  file layout, we are testing two orthogonal skills simultaneously:
+  <ol style="margin: 0.6rem 0 0.4rem 1.4rem; line-height: 2;">
+    <li><strong>Translation quality</strong> — does the LLM correctly map CUDA parallel patterns to OMP?</li>
+    <li><strong>Code restructuring ability</strong> — can the LLM replicate a specific file organization that the original developer chose?</li>
+  </ol>
+  These are very different things. A failure at skill 2 does not mean the LLM can't translate the algorithm.
+</div>
+<table style="margin:1rem 0;">
+  <thead><tr><th>Kernel</th><th>CUDA files → OMP files</th><th>Failure Mode</th><th>Translation vs. Restructuring?</th></tr></thead>
+  <tbody>
+    <tr class="row-pass"><td>bfs</td><td>3 → 1 (kernel files collapsed)</td><td>—</td><td>Pure translation (LLM collapses correctly)</td></tr>
+    <tr class="row-pass"><td>hotspot, nw, pathfinder</td><td>1–2 → 1</td><td>—</td><td>Pure translation</td></tr>
+    <tr class="row-pass"><td>lud</td><td>2 → 6 (across base/, omp/, common/, tools/)</td><td>—</td><td>Restructuring needed — but unique basenames let extraction work</td></tr>
+    <tr class="row-fail"><td>backprop</td><td>2 → 4 (flat)</td><td>LLM produced 1/4 files</td><td>Restructuring: 2 CUDA files → 4 OMP files (different factoring)</td></tr>
+    <tr class="row-fail"><td>kmeans</td><td>2 → 8 (2 subdirs, duplicate basenames)</td><td>LLM produced 1/8 files</td><td>Restructuring: OMP has serial+parallel variants (unrelated to CUDA)</td></tr>
+    <tr class="row-fail"><td>streamcluster</td><td>2 → 2 (flat)</td><td>Function redefinition</td><td>Restructuring: shared helper ownership ambiguous across files</td></tr>
+    <tr class="row-fail"><td>srad</td><td>2 → 1</td><td>Parameter type mismatch</td><td>Pure translation failure (semantic, not structural)</td></tr>
+  </tbody>
+</table>
+<p>See <strong>team message</strong> / sprint discussion for proposed solutions. Key options: (1) normalize all targets to single-file, (2) classify specs by structural complexity and report separately, (3) fix extraction to handle path-aware matching.</p>
 
 <!-- ─── Pipeline Status ───────────────────────────────────────────────────── -->
 <h2>Pipeline Component Status</h2>
-<div class="notice notice-warn">
-  <strong>⚠ Critical Gap:</strong> The full pipeline (spec → augmentation → LLM evaluation on augmented code)
-  has never been run end-to-end. The batch runner is missing <code>--augment-levels</code>.
-  All pilot results used <code>augment_level=0</code> (raw source, no obfuscation).
+<div class="notice notice-warn" style="background:rgba(63,185,80,0.08); border-color:rgba(63,185,80,0.3);">
+  <strong style="color:var(--green)">✓ Pipeline Gaps Resolved (2026-03-19):</strong>
+  <code>--augment-levels</code> added to batch runner (B8). <code>.cl</code> suffix fixed in spec_loader.
+  <code>analyze_eval.py</code> created for result aggregation. Augmentation L1–L4 fully verified (M10).
+  Phase 1 eval now running with <code>max_retries=2</code> and <code>augment_level=0</code>.
 </div>
 <div class="pipeline-grid" id="pipeline-grid"></div>
 
@@ -230,21 +262,21 @@
 <div class="card" id="bugs-list"></div>
 
 <!-- ─── Next Steps ────────────────────────────────────────────────────────── -->
-<h2>Next Steps (Next Session)</h2>
+<h2>Next Steps</h2>
 <table>
   <thead>
     <tr><th>Priority</th><th>Item</th><th>Effort</th></tr>
   </thead>
   <tbody>
-    <tr class="row-pass"><td><span class="badge badge-pass">DONE</span></td><td>Header staging: source .h files copied to target build dir before LLM eval</td><td>Fixed</td></tr>
-    <tr class="row-pass"><td><span class="badge badge-pass">DONE</span></td><td>Prompt support-file injection: source headers included in LLM prompt with inline instruction</td><td>Fixed</td></tr>
-    <tr class="row-pass"><td><span class="badge badge-pass">DONE</span></td><td>Spec arg bugs: nw-omp extra arg, hotspot-omp extra grid_cols + wrong temp/power order</td><td>Fixed</td></tr>
-    <tr class="row-pass"><td><span class="badge badge-pass">DONE</span></td><td>Fix Markdown kernel name (was <code>?</code>) + token count bugs in batch runner</td><td>Fixed</td></tr>
-    <tr class="row-fail"><td><span class="badge badge-high">HIGH</span></td><td>Add <code>--augment-levels</code> to batch runner + run end-to-end smoke test (bfs+hotspot, L0+L2)</td><td>~45 min</td></tr>
-    <tr class="row-warn"><td><span class="badge badge-med">MEDIUM</span></td><td>Enable <code>--max-retries 2</code> + compiler error feedback loop — should fix hotspot-claude (missing include)</td><td>~30 min</td></tr>
-    <tr class="row-warn"><td><span class="badge badge-med">MEDIUM</span></td><td>Prompt engineering for srad: LLM must add <code>nthreads</code> arg and <code>omp_set_num_threads()</code></td><td>~20 min</td></tr>
-    <tr class="row-warn"><td><span class="badge badge-med">MEDIUM</span></td><td>Prompt engineering for backprop: explicit multi-file symbol deduplication guidance</td><td>~20 min</td></tr>
-    <tr><td><span class="badge badge-low">LOW</span></td><td>nsys kernel profiling integration (Phase C2)</td><td>~2 hrs</td></tr>
+    <tr class="row-pass"><td><span class="badge badge-pass">DONE</span></td><td>M9/M10: Augmentation merge (Bug A/B/C), L1–L4 verified on srad + backprop</td><td>D2</td></tr>
+    <tr class="row-pass"><td><span class="badge badge-pass">DONE</span></td><td>B8: <code>--augment-levels</code>, <code>.cl</code> suffix, <code>analyze_eval.py</code>, nn-omp filelist fix</td><td>D2</td></tr>
+    <tr class="row-pass"><td><span class="badge badge-pass">DONE</span></td><td>Phase 1 10-kernel eval: 6/10 PASS (60%) · azure-gpt-4.1 · L0 · max_retries=2</td><td>D2</td></tr>
+    <tr class="row-fail"><td><span class="badge badge-crit">CRITICAL</span></td><td>Design decision: how to handle multi-file structural mismatch (see Design Concern above). Team discussion (Gal + Erel) needed before scaling eval to all 21 kernels.</td><td>Team discussion</td></tr>
+    <tr class="row-fail"><td><span class="badge badge-high">HIGH</span></td><td>Smoke-test all 21 Rodinia OMP specs (task 2C) — fix broken specs (gaussian-omp broken, nn-omp fixed)</td><td>~4-6h</td></tr>
+    <tr class="row-fail"><td><span class="badge badge-high">HIGH</span></td><td>Scale Phase 1 to all Rodinia kernels × L0/L1/L2 (after structural mismatch decision)</td><td>~8-12h LLM time</td></tr>
+    <tr class="row-warn"><td><span class="badge badge-med">MEDIUM</span></td><td>M7: Set up Groq API for Llama 70B (Phase 2 model)</td><td>~3-4h</td></tr>
+    <tr class="row-warn"><td><span class="badge badge-med">MEDIUM</span></td><td>M6: Implement kernel-level timing (nvprof / omp_get_wtime) — Tier 1 metrics for paper</td><td>~4-6h</td></tr>
+    <tr><td><span class="badge badge-low">LOW</span></td><td>M1: Anonymous ParBench GitHub + mirror site for SC26 anonymous submission</td><td>~2-3h</td></tr>
   </tbody>
 </table>
 

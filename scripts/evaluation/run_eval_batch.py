@@ -62,9 +62,11 @@ def _build_tasks(
     suite: str | None,
     kernels: list[str] | None,
     models: list[str],
+    augment_levels: list[int] | None = None,
 ) -> list[dict]:
-    """Return a list of task dicts: {src_spec, tgt_spec, kernel, model}."""
+    """Return a list of task dicts: {src_spec, tgt_spec, kernel, model, augment_level}."""
     src_api, tgt_api = direction.split("-to-")
+    levels = augment_levels or [0]
 
     manifest = load_manifest(str(manifest_path))
 
@@ -94,23 +96,26 @@ def _build_tasks(
         tgt_spec_path = project_root / index[tgt_key]
 
         for model in models:
-            tasks.append({
-                "kernel": kernel,
-                "src_spec": src_spec_path,
-                "tgt_spec": tgt_spec_path,
-                "model": model,
-                "src_id": src_spec_path.stem,
-                "tgt_id": tgt_spec_path.stem,
-            })
+            for level in levels:
+                tasks.append({
+                    "kernel": kernel,
+                    "src_spec": src_spec_path,
+                    "tgt_spec": tgt_spec_path,
+                    "model": model,
+                    "augment_level": level,
+                    "src_id": src_spec_path.stem,
+                    "tgt_id": tgt_spec_path.stem,
+                })
 
         seen_kernels.add(kernel)
 
     return tasks
 
 
-def _result_path(project_root: Path, model: str, src_id: str, tgt_id: str) -> Path:
+def _result_path(project_root: Path, model: str, src_id: str, tgt_id: str, augment_level: int = 0) -> Path:
     safe_model = model.replace("/", "_")
-    return project_root / "results" / "evaluation" / safe_model / f"{src_id}-to-{tgt_id}.json"
+    level_tag = f"-L{augment_level}" if augment_level > 0 else ""
+    return project_root / "results" / "evaluation" / safe_model / f"{src_id}-to-{tgt_id}{level_tag}.json"
 
 
 # --------------------------------------------------------------------------- #
@@ -135,9 +140,11 @@ def run_batch(
         src_id = task["src_id"]
         tgt_id = task["tgt_id"]
         model = task["model"]
-        result_file = _result_path(project_root, model, src_id, tgt_id)
+        augment_level = task.get("augment_level", 0)
+        result_file = _result_path(project_root, model, src_id, tgt_id, augment_level)
 
-        prefix = f"[{i:3d}/{total}] {src_id} → {tgt_id} [{model}]"
+        level_tag = f" L{augment_level}" if augment_level > 0 else ""
+        prefix = f"[{i:3d}/{total}] {src_id} → {tgt_id} [{model}]{level_tag}"
 
         if resume and result_file.exists():
             print(f"{prefix}  ⟳ SKIP (result exists)", flush=True)
@@ -154,6 +161,7 @@ def run_batch(
             target_path=task["tgt_spec"],
             model=model,
             project_root=project_root,
+            augment_level=augment_level,
             use_cpu_timing=use_cpu_timing,
             max_retries=max_retries,
             verbose=verbose,
@@ -348,6 +356,17 @@ def main() -> None:
         help="Title for the Markdown report (auto-generated if omitted).",
     )
     parser.add_argument(
+        "--augment-levels",
+        nargs="+",
+        type=int,
+        default=[0],
+        metavar="LEVEL",
+        help=(
+            "Augmentation levels to test (0-4). Each level generates separate tasks "
+            "with result files tagged -L1, -L2, etc. (L0 has no tag). Default: 0."
+        ),
+    )
+    parser.add_argument(
         "--max-retries",
         type=int,
         default=1,
@@ -369,6 +388,11 @@ def main() -> None:
     if "-to-" not in args.direction:
         parser.error("--direction must be in the form SRC-to-TGT (e.g. cuda-to-omp)")
 
+    # Validate augment levels
+    for lvl in args.augment_levels:
+        if lvl not in range(5):
+            parser.error(f"--augment-levels values must be 0-4, got {lvl}")
+
     # Build task list
     tasks = _build_tasks(
         manifest_path=manifest_path,
@@ -377,6 +401,7 @@ def main() -> None:
         suite=args.suite,
         kernels=args.kernels,
         models=args.models,
+        augment_levels=args.augment_levels,
     )
 
     if not tasks:
@@ -387,6 +412,7 @@ def main() -> None:
         f"Batch: {len(tasks)} task(s)  "
         f"direction={args.direction}  "
         f"models={args.models}  "
+        f"augment_levels={args.augment_levels}  "
         f"resume={args.resume}",
         flush=True,
     )

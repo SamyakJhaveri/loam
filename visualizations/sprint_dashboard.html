@@ -2127,23 +2127,35 @@ const DEADLINE = new Date('2026-04-08');
 const TASKS = [
   // Week 1
   { id: '2A', name: 'Iterative Repair Pilot', desc: 'Test retry mechanism (max-retries 3) on failing kernels (hotspot, srad, backprop). Measure self-repair effectiveness.', week: 1, days: 'D1-2', priority: 'HIGH', assignee: 'Claude Code', status: 'todo', effort: '2-3h', deps: [] },
-  { id: '2B', name: 'Add --augment-levels Flag', desc: 'Add CLI flag to run_eval_batch.py for testing multiple augmentation levels. ~15 lines. Critical blocker for full pipeline.', week: 1, days: 'D1-2', priority: 'CRITICAL', assignee: 'Claude Code', status: 'todo', effort: '2-3h', deps: [] },
+  { id: '2B', name: 'Add --augment-levels Flag + .cl fix', desc: 'DONE D2: Added --augment-levels to run_eval_batch.py; result paths tagged -L1/-L2; augment_level passed to evaluate_translation. Also fixed .cl suffix in spec_loader.py.', week: 1, days: 'D1-2', priority: 'CRITICAL', assignee: 'Claude Code', status: 'done', effort: '2-3h', deps: [] },
   { id: '2E', name: 'Repo Cleanup', desc: 'Delete stale batch summaries, stray HeCBench result, update .gitignore, delete superseded task reports.', week: 1, days: 'D2', priority: 'MEDIUM', assignee: 'Claude Code', status: 'todo', effort: '30min', deps: [] },
   { id: '2F', name: 'Minor Bug Fixes (B1-B7)', desc: 'Fix datetime deprecation, KeyboardInterrupt handler, Azure URL validation, kernel field, Markdown iteration bugs.', week: 1, days: 'D1-2', priority: 'HIGH', assignee: 'Claude Code', status: 'todo', effort: '1h', deps: [] },
+  { id: '2G', name: 'Week 1 Results Analysis', desc: 'DONE D2: analyze_eval.py created. Reads all result JSONs → eval_summary.json/md + dashboard JS. Supports --show-gaps, --model filter, --write-dashboard.', week: 1, days: 'D7', priority: 'HIGH', assignee: 'Samyak', status: 'done', effort: '2-3h', deps: ['2D','2D+'] },
   { id: '2C', name: 'Smoke Test All OMP Specs', desc: 'Verify all 21 Rodinia OMP specs + 22 CUDA specs build/run/verify. Fix broken specs. Expect 3-5 needing fixes.', week: 1, days: 'D3-4', priority: 'CRITICAL', assignee: 'Samyak', status: 'todo', effort: '4-6h', deps: ['2A','2B','2F'] },
-  { id: '2D', name: 'Full Rodinia cuda->omp Eval', desc: 'All Rodinia kernels x 2 models x L0/L1/L2 x max-retries 2. ~252 LLM calls. Run in tmux.', week: 1, days: 'D4-5', priority: 'CRITICAL', assignee: 'Claude Code', status: 'todo', effort: '12-16h', deps: ['2C'] },
-  { id: '2D+', name: 'omp->cuda + cuda->opencl Eval', desc: 'Additional translation directions for Rodinia. ~86 LLM calls at L0 only.', week: 1, days: 'D5-6', priority: 'HIGH', assignee: 'Claude Code', status: 'todo', effort: '6-8h', deps: ['2C'] },
-  { id: '2G', name: 'Week 1 Results Analysis', desc: 'Create analyze_eval.py. Generate summary tables, update dashboard, commit results.', week: 1, days: 'D7', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '2-3h', deps: ['2D','2D+'] },
+  { id: '2D', name: 'Full Rodinia cuda->omp Eval (Phase 1: GPT-4.1)', desc: 'All Rodinia kernels x azure-gpt-4.1 x L0/L1/L2 x max-retries 2. ~63 LLM calls. Phase 2 adds Llama 70B + leaderboard model once Groq/Modal set up (Task M7).', week: 1, days: 'D4-5', priority: 'CRITICAL', assignee: 'Claude Code', status: 'todo', effort: '12-16h', deps: ['2C'] },
+  { id: '2D+', name: 'omp->cuda + cuda->opencl Eval', desc: 'Additional translation directions for Rodinia. ~43 pairs x 1 model (Phase 1) at L0 only.', week: 1, days: 'D5-6', priority: 'HIGH', assignee: 'Claude Code', status: 'todo', effort: '6-8h', deps: ['2C'] },
+  // Meeting tasks M1-M10 (March 18 team meeting — Gal, Niranjan, Le Chen, Tomer, Erel)
+  { id: 'M9', name: 'Cherry-pick Erel aug fixes (Bug A/B/C)', desc: 'DONE D2: Integrated Bug A/B/C fixes + ChangeFunctionNames + LEVEL_FRACTIONS + _greedy_valid_subset + _contains_side_effects + filename param + OMP pragma awareness from erel/aug. All 11 tests pass. augment_verify.py also updated.', week: 1, days: 'D2', priority: 'CRITICAL', assignee: 'Samyak', status: 'done', effort: '2-3h', deps: [] },
+  { id: 'M10', name: 'Verify augmentation L1-L4 post-merge', desc: 'DONE D2: L1/L3/L4 all PASS on srad-cuda and backprop-cuda (seed=42). At L3: SwapCondition fires on both. At L4: ArithmeticTransform + ChangeNames + SwapCondition fire. PointerArithmeticToArrayIndex does not fire on any Rodinia CUDA spec (all use arr[idx] syntax — no *(ptr+idx) patterns). Augmentation fully stable L1-L4.', week: 1, days: 'D2', priority: 'HIGH', assignee: 'Samyak', status: 'done', effort: '1-2h', deps: ['M9'] },
+  { id: 'M11', name: 'Resolve multi-file structural mismatch design concern', desc: 'Phase 1 10-kernel eval (2026-03-19) revealed that 3/4 BUILD_FAILs are structural (LLM can\'t match Rodinia OMP file layout which was written independently from CUDA). backprop: 2→4 files (LLM produced 1/4). kmeans: 2→8 files across 2 subdirs with duplicate basenames (cluster.c in both kmeans_openmp/ and kmeans_serial/). streamcluster: 2→2 files but shared helper redefined. Decision options: (A) Normalize all OMP targets to single-file "collapsed" implementations — tests pure translation quality. (B) Classify specs by structural complexity (1:1, 1:N, N:M) — report separately in paper. (C) Fix extraction logic to handle path-aware disambiguation. Need team input (Gal + Erel) before scaling to all 21 kernels.', week: 1, days: 'D3', priority: 'CRITICAL', assignee: 'Samyak', status: 'todo', effort: '2-4h + discussion', deps: ['M10'] },
+  { id: 'M1', name: 'Anonymous ParBench GitHub + site', desc: 'Create anonymous GitHub account + mirror ParBench website. Required for SC26 anonymous submission (Gal, 00:04:23).', week: 1, days: 'D2-3', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '2-3h', deps: [] },
+  { id: 'M2', name: 'Curation survey page on website', desc: 'New tab: full pool of HPC benchmark repos surveyed, mapping to ParBench categories, subset selection rationale. Addresses Gal\'s "what is the pool, why this subset?" (00:05:52).', week: 1, days: 'D3-4', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '3-4h', deps: ['M1'] },
+  { id: 'M3', name: 'Read Paraval paper', desc: 'Understand Paraval baseline (NanoXaur/MicroXaur/XSBench, unaugmented, poor curation rationale). Differentiate ParBench clearly in §2 Related Work. Gal: Paraval is "naive" (00:12:55).', week: 1, days: 'D2-3', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '2h', deps: [] },
+  { id: 'M4', name: 'Paper outline (BEFORE writing)', desc: 'CRITICAL: Draft section outline before any writing. SC26 = 10 pages double-column + appendices. Sections: Intro, Related Work, Curation, Framework, Experimental Setup, Results, Discussion. (Gal+Niranjan, 00:26:54)', week: 2, days: 'D8-9', priority: 'CRITICAL', assignee: 'Samyak', status: 'todo', effort: '3-4h', deps: ['M3'] },
+  { id: 'M5', name: 'Clone ExaBench/XSBench kernel', desc: 'Set up ONE XSBench kernel for direct Paraval comparison. NOT a full third suite. Gal: "that\'s the main kernel they used in Paraval" (00:34:39).', week: 2, days: 'D9-10', priority: 'MEDIUM', assignee: 'Samyak', status: 'todo', effort: '3-4h', deps: ['M3'] },
+  { id: 'M6', name: 'Implement timing metrics (3-tier)', desc: 'Niranjan three-tier model (00:16:18): T1=kernel execution time (nvprof/omp_get_wtime), T2=kernel+host memory transfer, T3=wall-clock (excluded). Report T1+T2 in paper. Adopt ParaCodex GPU time matrix.', week: 2, days: 'D8-10', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '4-6h', deps: [] },
+  { id: 'M7', name: 'Set up Llama 70B + leaderboard via Groq/Modal', desc: 'Add Groq API support (elif model.startswith("groq-"): branch in llm_evaluate.py:call_llm). Set up API access. Do AFTER GPT-4.1 Phase 1 complete. Team Modal GPU pool via Tomer.', week: 2, days: 'D8-9', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '3-4h', deps: ['2D'] },
+  { id: 'M8', name: 'Select third model from leaderboard', desc: 'Le Chen: use general-purpose coding leaderboard, not code-specific models (00:21:41). Candidates: Qwen2.5-72B, Mistral-Large, Gemini 1.5 Pro. Pick 1, commit. Match Power of Evolve paper.', week: 1, days: 'D2-3', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '1h', deps: [] },
   // Week 2
   { id: '3A', name: 'Clone HeCBench', desc: 'git clone HeCBench-master. Verify 120 specs resolve (source_dir found). Add to .gitignore.', week: 2, days: 'D8', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '1-2h', deps: [] },
   { id: '3B', name: 'HeCBench Smoke Tests', desc: 'Verify 5 representative HeCBench kernels build & run (cuda + omp). Fix Makefile issues.', week: 2, days: 'D8-9', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '4-6h', deps: ['3A'] },
   { id: '3C', name: 'HeCBench cuda->omp Evaluation', desc: 'Full LLM eval on HeCBench CUDA->OMP. Up to 60 kernels x 2 models = 120 calls. Use --max-failures 10.', week: 2, days: 'D9-10', priority: 'HIGH', assignee: 'Claude Code', status: 'todo', effort: '8-10h', deps: ['3B'] },
   { id: '3D', name: 'Create OpenACC Specs', desc: 'Check for Rodinia OpenACC source. If exists, generate specs. If not, create translate-only CUDA->OpenACC specs.', week: 2, days: 'D10-11', priority: 'MEDIUM', assignee: 'Samyak', status: 'todo', effort: '4-6h', deps: [] },
   { id: '3E', name: 'Verify OpenMP Target Offload', desc: 'Test GCC -foffload=nvptx-none. If works, create omp_target specs. Max 2 hours.', week: 2, days: 'D11-12', priority: 'MEDIUM', assignee: 'Samyak', status: 'todo', effort: '2h', deps: [] },
-  { id: '3F', name: 'New Benchmark Suite (Stretch)', desc: 'Investigate PolyBench/GPU, Parboil, or NAS. Clone, create specs, smoke test, pilot eval.', week: 2, days: 'D12-13', priority: 'LOW', assignee: 'Samyak', status: 'todo', effort: '4-6h', deps: [] },
+  { id: '3F', name: 'New Benchmark Suite (DEPRIORITIZED)', desc: 'DEPRIORITIZED per March 18 meeting (Niranjan: create outline first, see gaps). Rodinia + HeCBench + XSBench kernel sufficient for SC26. Stretch goal only.', week: 2, days: 'D12-13', priority: 'LOW', assignee: 'Samyak', status: 'skip', effort: '4-6h', deps: [] },
   { id: '3G', name: 'Week 2 Results Analysis', desc: 'Re-run analyzer with HeCBench + new suite data. Update dashboard. Commit everything.', week: 2, days: 'D14', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '2h', deps: ['3C','3D'] },
   // Week 3
-  { id: '4A', name: 'Retest Augmentation (L3/L4)', desc: 'Check Erel fixes. If merged, retest full Rodinia L1-L4 batch. Consider adding L3/L4 to eval matrix.', week: 3, days: 'D15', priority: 'MEDIUM', assignee: 'Erel', status: 'todo', effort: '2-3h', deps: [] },
+  { id: '4A', name: 'Retest Augmentation L1-L4 (post M9 merge)', desc: 'Erel\'s fixes merged on D2 (Task M9). Full retest: run_augment_batch.py on all Rodinia specs at L1-L4. If L3/L4 pass rate > 60%, add to eval matrix. Otherwise paper focuses L0/L1/L2 (Gal, conservative aug OK).', week: 3, days: 'D15', priority: 'MEDIUM', assignee: 'Samyak', status: 'todo', effort: '2-3h', deps: ['M9'] },
   { id: '4B', name: 'Final Evaluation Sweep', desc: 'Fill gaps in results matrix. Priority: missing cells, L1/L2 augmented runs, L3/L4 if fixed.', week: 3, days: 'D15-16', priority: 'HIGH', assignee: 'Claude Code', status: 'todo', effort: '4-6h', deps: ['3G'] },
   { id: '4C', name: 'Finalize analyze_eval.py', desc: 'Comprehensive results analyzer. Output: eval_summary.json, eval_summary.md, eval_results_data.js.', week: 3, days: 'D16', priority: 'CRITICAL', assignee: 'Claude Code', status: 'todo', effort: '3-4h', deps: ['4B'] },
   { id: '4D', name: 'Publication Visualizations', desc: 'Generate 6 pub-ready figures: heatmap, bar charts, failure taxonomy, self-repair curve, speedup table.', week: 3, days: 'D17', priority: 'HIGH', assignee: 'Samyak', status: 'todo', effort: '3-4h', deps: ['4C'] },
@@ -2152,26 +2164,39 @@ const TASKS = [
   { id: '4G', name: 'Submit to SC26', desc: 'Transfer Markdown to Overleaf LaTeX. Final formatting, generate PDF, submit.', week: 3, days: 'D21', priority: 'CRITICAL', assignee: 'Samyak', status: 'todo', effort: '2-3h', deps: ['4F'] },
 ];
 
+// Phase 1 (2026-03-19): azure-gpt-4.1 only — 10 kernels, cuda→omp, L0, max_retries=2
+// 6/10 PASS (60%). 3 structural BUILD_FAILs, 1 semantic BUILD_FAIL.
 const PILOT_RESULTS = [
-  { kernel: 'bfs', claude: 'PASS', azure: 'PASS' },
-  { kernel: 'nw', claude: 'PASS', azure: 'PASS' },
-  { kernel: 'hotspot', claude: 'BUILD_FAIL', azure: 'PASS' },
-  { kernel: 'srad', claude: 'RUN_FAIL', azure: 'RUN_FAIL' },
-  { kernel: 'backprop', claude: 'BUILD_FAIL', azure: 'BUILD_FAIL' },
+  { kernel: 'bfs',           azure: 'PASS',       failure_type: null },
+  { kernel: 'hotspot',       azure: 'PASS',       failure_type: null },
+  { kernel: 'lud',           azure: 'PASS',       failure_type: null },
+  { kernel: 'nn',            azure: 'PASS',       failure_type: null },
+  { kernel: 'nw',            azure: 'PASS',       failure_type: null },
+  { kernel: 'pathfinder',    azure: 'PASS',       failure_type: null },
+  { kernel: 'backprop',      azure: 'BUILD_FAIL', failure_type: 'structural' },  // 2→4 files
+  { kernel: 'kmeans',        azure: 'BUILD_FAIL', failure_type: 'structural' },  // 2→8 files, 2 subdirs, dup basenames
+  { kernel: 'streamcluster', azure: 'BUILD_FAIL', failure_type: 'structural' },  // 2→2 files, redefinition
+  { kernel: 'srad',          azure: 'BUILD_FAIL', failure_type: 'semantic' },    // 1→1 file, type error
 ];
 
+// NOTE: Claude Sonnet data removed (March 18 meeting decision — clean slate with GPT-4.1 + open models).
+// Historical Claude pilot data archived in results/evaluation/claude-sonnet-4-20250514/ on disk.
 const EVAL_RESULTS = [
-  { source: 'rodinia-bfs-cuda', target: 'rodinia-bfs-omp', model: 'claude-sonnet-4', status: 'PASS', prompt_tokens: 4463, completion_tokens: 2859, latency: 25.0, speedup: 0.0012 },
-  { source: 'rodinia-nw-cuda', target: 'rodinia-nw-omp', model: 'claude-sonnet-4', status: 'PASS', prompt_tokens: 6427, completion_tokens: 6055, latency: 79.0, speedup: 0.5556 },
-  { source: 'rodinia-hotspot-cuda', target: 'rodinia-hotspot-omp', model: 'claude-sonnet-4', status: 'BUILD_FAIL', prompt_tokens: 4419, completion_tokens: 4507, latency: 42.7, speedup: null },
-  { source: 'rodinia-srad-cuda', target: 'rodinia-srad-omp', model: 'claude-sonnet-4', status: 'RUN_FAIL', prompt_tokens: 6433, completion_tokens: 4396, latency: 51.8, speedup: null },
-  { source: 'rodinia-backprop-cuda', target: 'rodinia-backprop-omp', model: 'claude-sonnet-4', status: 'BUILD_FAIL', prompt_tokens: 9450, completion_tokens: 9667, latency: 106.5, speedup: null },
-  { source: 'rodinia-bfs-omp', target: 'rodinia-bfs-cuda', model: 'claude-sonnet-4', status: 'PASS', prompt_tokens: 1955, completion_tokens: 2705, latency: 26.6, speedup: 546.0 },
-  { source: 'rodinia-bfs-cuda', target: 'rodinia-bfs-omp', model: 'azure-gpt-4.1', status: 'PASS', prompt_tokens: 3290, completion_tokens: 1982, latency: 8.3, speedup: 0.0021 },
-  { source: 'rodinia-nw-cuda', target: 'rodinia-nw-omp', model: 'azure-gpt-4.1', status: 'PASS', prompt_tokens: 5414, completion_tokens: 5342, latency: 24.3, speedup: 0.5357 },
-  { source: 'rodinia-hotspot-cuda', target: 'rodinia-hotspot-omp', model: 'azure-gpt-4.1', status: 'PASS', prompt_tokens: 3407, completion_tokens: 3253, latency: 46.2, speedup: 0.7931 },
-  { source: 'rodinia-srad-cuda', target: 'rodinia-srad-omp', model: 'azure-gpt-4.1', status: 'RUN_FAIL', prompt_tokens: 5099, completion_tokens: 2111, latency: 30.1, speedup: null },
-  { source: 'rodinia-backprop-cuda', target: 'rodinia-backprop-omp', model: 'azure-gpt-4.1', status: 'BUILD_FAIL', prompt_tokens: 7252, completion_tokens: 5929, latency: 79.7, speedup: null },
+  // Phase 1: azure-gpt-4.1, 10-kernel batch (cuda->omp, L0, max_retries=2), 2026-03-19
+  // PASS (6)
+  { source: 'rodinia-bfs-cuda', target: 'rodinia-bfs-omp', model: 'azure-gpt-4.1', status: 'PASS', prompt_tokens: 3290, completion_tokens: 2034, latency: 19.6, speedup: 0.001 },
+  { source: 'rodinia-hotspot-cuda', target: 'rodinia-hotspot-omp', model: 'azure-gpt-4.1', status: 'PASS', prompt_tokens: 3407, completion_tokens: 3372, latency: 53.6, speedup: 0.784 },
+  { source: 'rodinia-lud-cuda', target: 'rodinia-lud-omp', model: 'azure-gpt-4.1', status: 'PASS', prompt_tokens: 6849, completion_tokens: 2372, latency: 25.7, speedup: 1.0 },
+  { source: 'rodinia-nn-cuda', target: 'rodinia-nn-omp', model: 'azure-gpt-4.1', status: 'PASS', prompt_tokens: 5570, completion_tokens: 10000, latency: 23.3, speedup: 2.286 },
+  { source: 'rodinia-nw-cuda', target: 'rodinia-nw-omp', model: 'azure-gpt-4.1', status: 'PASS', prompt_tokens: 15087, completion_tokens: 11000, latency: 107.3, speedup: 1.0 },
+  { source: 'rodinia-pathfinder-cuda', target: 'rodinia-pathfinder-omp', model: 'azure-gpt-4.1', status: 'PASS', prompt_tokens: 4206, completion_tokens: null, latency: 24.5, speedup: 0.010 },
+  // BUILD_FAIL (4) — 3 structural, 1 semantic
+  // Structural failures (file structure mismatch between CUDA source and OMP target):
+  { source: 'rodinia-backprop-cuda', target: 'rodinia-backprop-omp', model: 'azure-gpt-4.1', status: 'BUILD_FAIL', prompt_tokens: 20803, completion_tokens: 6670, latency: 28.5, speedup: null },  // 2→4 files: LLM produced 1/4
+  { source: 'rodinia-kmeans-cuda', target: 'rodinia-kmeans-omp', model: 'azure-gpt-4.1', status: 'BUILD_FAIL', prompt_tokens: 64251, completion_tokens: 11920, latency: 131.9, speedup: null },    // 2→8 files (2 subdirs, dup basenames): LLM produced 1/8
+  { source: 'rodinia-streamcluster-cuda', target: 'rodinia-streamcluster-omp', model: 'azure-gpt-4.1', status: 'BUILD_FAIL', prompt_tokens: 32502, completion_tokens: 19212, latency: 59.9, speedup: null }, // 2→2 files: function redefinition
+  // Semantic failure (correct file structure, wrong code):
+  { source: 'rodinia-srad-cuda', target: 'rodinia-srad-omp', model: 'azure-gpt-4.1', status: 'BUILD_FAIL', prompt_tokens: 12435, completion_tokens: 4171, latency: 48.3, speedup: null },           // 2→1 file: argv[0] passed as int
 ];
 
 const AUG_RATES = [
@@ -2193,7 +2218,8 @@ const QUESTIONS = [
 
 const RISKS = [
   { risk: "HeCBench specs don't build on our hardware", likelihood: 'HIGH', impact: 'MEDIUM', mitigation: 'Budget 2 days for Makefile fixes; accept < 100% coverage' },
-  { risk: "Augmentation L3/L4 still broken", likelihood: 'MEDIUM', impact: 'LOW', mitigation: 'Focus paper on L0/L1/L2; mention L3/L4 as future work' },
+  { risk: "Multi-file structural mismatch inflates BUILD_FAIL rate", likelihood: 'HIGH', impact: 'HIGH', mitigation: 'Team decision needed: (A) normalize to single-file targets, (B) classify by complexity and report separately, (C) fix extraction logic. 3/4 Phase 1 BUILD_FAILs are structural, not semantic.' },
+  { risk: "Augmentation L3/L4 still broken", likelihood: 'LOW', impact: 'LOW', mitigation: 'M10 DONE (2026-03-19): L1/L3/L4 all PASS on srad + backprop. PointerArithmetic does not fire (Rodinia uses arr[idx]). Stable.' },
   { risk: "OpenMP target offload not available", likelihood: 'MEDIUM', impact: 'LOW', mitigation: 'Skip; focus on CUDA/OMP/OpenCL/OpenACC' },
   { risk: "LLM API rate limits or outages", likelihood: 'LOW', impact: 'HIGH', mitigation: 'Use --resume; spread runs over days; both providers as backup' },
   { risk: "Paper writing takes longer than planned", likelihood: 'MEDIUM', impact: 'HIGH', mitigation: 'Start Section 3 + 4 early (no dependency on results)' },
@@ -2951,16 +2977,13 @@ function renderPilotHeatmap() {
 
 function renderPassRateDonut() {
   const container = document.getElementById('pass-rate-donut');
-  // Fix #1: Filter BOTH models symmetrically to cuda->omp only
+  // Phase 1: azure-gpt-4.1 pilot only (Claude Sonnet removed — March 18 meeting)
   const cudaToOmp = r => r.target.includes('-omp') && r.source.includes('-cuda');
-  const claudeResults = EVAL_RESULTS.filter(r => r.model === 'claude-sonnet-4' && cudaToOmp(r));
   const azureResults = EVAL_RESULTS.filter(r => r.model === 'azure-gpt-4.1' && cudaToOmp(r));
-  const claudePass = claudeResults.filter(r => r.status === 'PASS').length;
   const azurePass = azureResults.filter(r => r.status === 'PASS').length;
-  const claudeTotal = claudeResults.length;
   const azureTotal = azureResults.length;
-  const totalPass = claudePass + azurePass;
-  const totalAll = claudeTotal + azureTotal;
+  const totalPass = azurePass;
+  const totalAll = azureTotal;
   const pct = totalAll > 0 ? Math.round((totalPass / totalAll) * 100) : 0;
   const circumference = 2 * Math.PI * 60;
   const passOffset = totalAll > 0 ? circumference - (circumference * totalPass / totalAll) : circumference;
@@ -2985,8 +3008,8 @@ function renderPassRateDonut() {
       <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div> BUILD_FAIL (${cudaToOmpAll.filter(r => r.status === 'BUILD_FAIL').length})</div>
       <div class="legend-item"><div class="legend-dot" style="background:var(--warning)"></div> RUN_FAIL (${cudaToOmpAll.filter(r => r.status === 'RUN_FAIL').length})</div>
       <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light);">
-        <div class="legend-item" style="font-weight:600"><div class="legend-dot" style="background:var(--team-samyak)"></div> Claude: ${claudePass}/${claudeTotal} (${claudeTotal > 0 ? Math.round(claudePass/claudeTotal*100) : 0}%)</div>
-        <div class="legend-item" style="font-weight:600"><div class="legend-dot" style="background:var(--team-erel)"></div> Azure: ${azurePass}/${azureTotal} (${azureTotal > 0 ? Math.round(azurePass/azureTotal*100) : 0}%)</div>
+        <div class="legend-item" style="font-weight:600"><div class="legend-dot" style="background:var(--team-erel)"></div> GPT-4.1: ${azurePass}/${azureTotal} (${azureTotal > 0 ? Math.round(azurePass/azureTotal*100) : 0}%)</div>
+        <div class="legend-item" style="color: var(--text-muted); font-size: 0.85em;">Phase 2: Llama 70B + leaderboard model (pending Groq/Modal setup)</div>
       </div>
     </div>
   `;
@@ -2994,7 +3017,7 @@ function renderPassRateDonut() {
 
 function renderFailureChart() {
   const container = document.getElementById('failure-chart');
-  const models = ['claude-sonnet-4', 'azure-gpt-4.1'];
+  const models = ['azure-gpt-4.1']; // Phase 1: GPT-4.1 only. Phase 2 adds llama-70b + leaderboard model.
   const statuses = ['PASS', 'BUILD_FAIL', 'RUN_FAIL'];
   const colors = { PASS: 'pass', BUILD_FAIL: 'build-fail', RUN_FAIL: 'run-fail' };
   const cudaToOmpResults = EVAL_RESULTS.filter(r => r.target.includes('-omp') && r.source.includes('-cuda'));

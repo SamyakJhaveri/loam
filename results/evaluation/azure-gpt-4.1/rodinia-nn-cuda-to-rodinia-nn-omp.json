@@ -1,0 +1,64 @@
+{
+  "source_spec": "rodinia-nn-cuda",
+  "target_spec": "rodinia-nn-omp",
+  "model": "azure-gpt-4.1",
+  "augment_level": 0,
+  "timestamp": "2026-03-19T23:19:24Z",
+  "prompt_tokens": 10146,
+  "completion_tokens": 5424,
+  "llm_response_time_seconds": 23.221,
+  "build_status": "pass",
+  "build_time_seconds": 0.048,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.007,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": "Build failed: nn_openmp.c:13:10: fatal error: vector: No such file or directory\n   13 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:12: nn] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": 0.007,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.2857,
+  "translated_files": {
+    "nn_openmp.c": "/*\n * nn_openmp.c\n * Nearest Neighbor (OpenMP version)\n *\n */\n\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n#include <float.h>\n#include <omp.h>\n\n#"
+  },
+  "target_files_expected": [
+    "hurricane_gen.c",
+    "nn_openmp.c"
+  ],
+  "target_files_extracted": [
+    "nn_openmp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 12.04,
+      "prompt_tokens": 3630,
+      "completion_tokens": 2798,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nnn_openmp.c:13:10: fatal error: vector: No such file or directory\n   13 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmak",
+      "build_error_snippet": "nn_openmp.c:13:10: fatal error: vector: No such file or directory\n   13 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:12: nn] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 11.181,
+      "prompt_tokens": 6516,
+      "completion_tokens": 2626,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null
+    }
+  ]
+}
