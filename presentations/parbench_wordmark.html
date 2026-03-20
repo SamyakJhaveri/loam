@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ParBench Wordmark Preview</title>
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 40px;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* ─────────────────────────────────────────
+       WORDMARK: icon + text side by side
+       ───────────────────────────────────────── */
+    .parbench-wordmark {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;          /* space between icon and text */
+      text-decoration: none;
+      user-select: none;
+    }
+
+    .parbench-wordmark__icon {
+      /* keeps the SVG at a fixed size regardless of surrounding text */
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+    }
+
+    .parbench-wordmark__text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+    }
+
+    .parbench-wordmark__name {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      /* gradient text: blue → teal, matching the arrow */
+      background: linear-gradient(90deg, #2563eb 0%, #0d9488 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .parbench-wordmark__tagline {
+      font-size: 9.5px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #64748b;   /* slate-500 — neutral, doesn't compete */
+    }
+
+    /* ── Demo: three size variants ── */
+    .demo-row {
+      display: flex;
+      align-items: center;
+      gap: 48px;
+    }
+
+    /* Large (header / slide cover) */
+    .parbench-wordmark--lg .parbench-wordmark__icon { width: 56px; height: 56px; }
+    .parbench-wordmark--lg .parbench-wordmark__name  { font-size: 30px; }
+    .parbench-wordmark--lg .parbench-wordmark__tagline { font-size: 11px; }
+
+    /* Default (sidebar / README) */
+    /* sizes already set above */
+
+    /* Small (nav bar / favicon companion) */
+    .parbench-wordmark--sm .parbench-wordmark__icon { width: 24px; height: 24px; }
+    .parbench-wordmark--sm .parbench-wordmark__name  { font-size: 15px; }
+    .parbench-wordmark--sm .parbench-wordmark__tagline { display: none; }
+
+    /* ── Dark-background variant ── */
+    .dark-bg {
+      background: #0f172a;   /* slate-900 */
+      padding: 28px 48px;
+      border-radius: 12px;
+    }
+    .dark-bg .parbench-wordmark__tagline { color: #94a3b8; }
+
+    /* ── Label ── */
+    .label {
+      font-size: 11px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ Large variant (slide cover, poster) ═══ -->
+  <div>
+    <p class="label" style="margin-bottom:12px">Large — slide / poster</p>
+    <a href="#" class="parbench-wordmark parbench-wordmark--lg">
+      <img class="parbench-wordmark__icon" src="parbench_logo.svg" alt="ParBench icon">
+      <span class="parbench-wordmark__text">
+        <span class="parbench-wordmark__name">ParBench</span>
+        <span class="parbench-wordmark__tagline">Parallel Code Translation Benchmark</span>
+      </span>
+    </a>
+  </div>
+
+  <!-- ═══ Default variant (README, docs) ═══ -->
+  <div>
+    <p class="label" style="margin-bottom:12px">Default — README / docs</p>
+    <a href="#" class="parbench-wordmark">
+      <img class="parbench-wordmark__icon" src="parbench_logo.svg" alt="ParBench icon">
+      <span class="parbench-wordmark__text">
+        <span class="parbench-wordmark__name">ParBench</span>
+        <span class="parbench-wordmark__tagline">Parallel Code Translation Benchmark</span>
+      </span>
+    </a>
+  </div>
+
+  <!-- ═══ Small variant (nav bar) ═══ -->
+  <div>
+    <p class="label" style="margin-bottom:12px">Small — nav bar</p>
+    <a href="#" class="parbench-wordmark parbench-wordmark--sm">
+      <img class="parbench-wordmark__icon" src="parbench_logo.svg" alt="ParBench icon">
+      <span class="parbench-wordmark__text">
+        <span class="parbench-wordmark__name">ParBench</span>
+      </span>
+    </a>
+  </div>
+
+  <!-- ═══ Dark background ═══ -->
+  <div class="dark-bg">
+    <p class="label" style="margin-bottom:16px; color:#475569">Dark background</p>
+    <a href="#" class="parbench-wordmark parbench-wordmark--lg">
+      <img class="parbench-wordmark__icon" src="parbench_logo.svg" alt="ParBench icon">
+      <span class="parbench-wordmark__text">
+        <span class="parbench-wordmark__name">ParBench</span>
+        <span class="parbench-wordmark__tagline">Parallel Code Translation Benchmark</span>
+      </span>
+    </a>
+  </div>
+
+</body>
+</html>

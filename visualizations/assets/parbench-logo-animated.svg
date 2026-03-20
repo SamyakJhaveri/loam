@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" role="img" aria-label="ParBench animated gauge">
+  <title>ParBench — measuring translation quality</title>
+
+  <!--
+    ANIMATION: Needle sweeps from 210° (0%) to 300° (75%) over 1.4s,
+    with a brief overshoot to 312° then settles back to 300°.
+    The "loading reveal" metaphor: score is hidden, then the gauge sweeps
+    to its result value like a real analog instrument settling.
+
+    Implementation: rotate the needle group around center (24,28).
+    Starting angle offset: 0° (needle drawn pointing at 300°, i.e. 75%).
+    We animate the group's rotation FROM -90° (which moves needle to 210° = 0%)
+    TO 0° (needle at 300° = 75%), with a small +12° overshoot then settle.
+  -->
+
+  <!-- Outer arc ring: 210° to 330° -->
+  <path
+    d="M 9.28 36.5 A 17 17 0 1 1 38.72 36.5"
+    fill="none"
+    stroke="#2563eb"
+    stroke-width="3"
+    stroke-linecap="round"
+  />
+
+  <!-- Scale ticks (static) -->
+  <line x1="9.28"  y1="36.5"  x2="11.41" y2="34.26" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="15.5"  y1="13.28" x2="17.25" y2="16.31" stroke="#2563eb" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="24"    y1="11"    x2="24"    y2="14.5"   stroke="#2563eb" stroke-width="2"   stroke-linecap="round"/>
+  <line x1="32.5"  y1="13.28" x2="30.75" y2="16.31"  stroke="#2563eb" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="38.72" y1="36.5"  x2="36.59" y2="34.26"  stroke="#2563eb" stroke-width="1.5" stroke-linecap="round"/>
+
+  <!-- Animated needle + hub — rotates around center (24,28) -->
+  <g transform-origin="24 28">
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      values="-90 24 28; -90 24 28; 0 24 28; 12 24 28; 0 24 28"
+      keyTimes="0; 0.08; 0.75; 0.88; 1"
+      dur="1.6s"
+      begin="0.3s"
+      fill="freeze"
+      calcMode="spline"
+      keySplines="
+        0.42 0 1 1;
+        0.25 0.1 0.25 1;
+        0.42 0 0.58 1;
+        0.42 0 0.58 1
+      "
+    />
+    <line
+      x1="22" y1="31.46"
+      x2="31" y2="15.88"
+      stroke="#f59e0b"
+      stroke-width="1.8"
+      stroke-linecap="round"
+    />
+    <circle cx="24" cy="28" r="2.2" fill="#2563eb" />
+    <circle cx="24" cy="28" r="1"   fill="#f59e0b" />
+  </g>
+</svg>

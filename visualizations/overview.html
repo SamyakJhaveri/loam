@@ -4,66 +4,96 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ParBench — Project Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0d1117; --surface: #161b22; --border: #30363d;
-    --text: #c9d1d9; --text-muted: #8b949e; --accent: #58a6ff;
-    --green: #3fb950; --red: #f85149; --yellow: #d29922; --purple: #bc8cff;
-    --orange: #d18616; --teal: #39d2c0;
+    --bg: #f9fafb;
+    --surface: #ffffff;
+    --surface-alt: #f3f4f6;
+    --border: #e5e7eb;
+    --text: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #9ca3af;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+
+    /* Status colors — Okabe-Ito colorblind-safe */
+    --pass-color: #56B4E9;
+    --pass-bg: #e8f4fb;
+    --pass-text: #0369a1;
+    --build-fail-color: #D55E00;
+    --build-fail-bg: #fdf1ec;
+    --build-fail-text: #9a3412;
+    --run-fail-color: #E69F00;
+    --run-fail-bg: #fef9ec;
+    --run-fail-text: #92400e;
+
+    /* Legacy aliases for backward compatibility */
+    --green: var(--pass-color);
+    --red: var(--build-fail-color);
+    --yellow: var(--run-fail-color);
+    --blue: var(--accent);
+    --purple: #8b5cf6;
+    --orange: #f97316;
+    --teal: #0d9488;
+
+    --shadow-sm: 0 1px 2px hsl(220deg 40% 15% / 0.06);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+  body { font-family: 'Inter', system-ui, -apple-system, sans-serif;
          background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
   h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 2rem; }
   h2 { color: var(--purple); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
-  h3 { color: var(--green); margin: 1.2rem 0 0.5rem; font-size: 1.05rem; }
+  h3 { color: var(--teal); margin: 1.2rem 0 0.5rem; font-size: 1.05rem; }
   .subtitle { color: var(--text-muted); margin-bottom: 2rem; font-size: 1.05rem; }
   p { color: var(--text-muted); margin: 0.4rem 0; font-size: 0.9rem; }
 
   /* Nav */
-  nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
-  nav a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; }
+  nav { background: #ffffff; border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
+  nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; }
   nav a:hover { color: var(--text); }
   nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
   nav .active { color: var(--text); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
 
   /* Key stats */
   .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin: 1rem 0; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; text-align: center; }
-  .stat-card .n { font-size: 2.2rem; font-weight: 700; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; text-align: center; box-shadow: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07); }
+  .stat-card .n { font-family: 'JetBrains Mono', monospace; font-size: 2.2rem; font-weight: 700; }
   .stat-card .l { color: var(--text-muted); font-size: 0.78rem; margin-top: 0.2rem; }
 
   /* Suite breakdown */
   .suite-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; }
   @media (max-width: 700px) { .suite-grid { grid-template-columns: 1fr; } }
-  .suite-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; }
+  .suite-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; box-shadow: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07); }
   .suite-card h3 { margin-top: 0; }
   .mini-stat { display: flex; justify-content: space-between; align-items: center; padding: 0.3rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
   .mini-stat:last-child { border-bottom: none; }
   .mini-stat .val { font-weight: 700; }
   .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; margin: 2px; }
-  .tag-blue   { background: rgba(88,166,255,0.15);  color: var(--accent);  border: 1px solid rgba(88,166,255,0.3); }
-  .tag-green  { background: rgba(63,185,80,0.15);   color: var(--green);   border: 1px solid rgba(63,185,80,0.3); }
-  .tag-purple { background: rgba(188,140,255,0.15); color: var(--purple);  border: 1px solid rgba(188,140,255,0.3); }
-  .tag-orange { background: rgba(209,134,22,0.15);  color: var(--orange);  border: 1px solid rgba(209,134,22,0.3); }
+  .tag-blue   { background: var(--accent-light);              color: var(--accent);  border: 1px solid rgba(37,99,235,0.25); }
+  .tag-green  { background: var(--pass-bg);                   color: var(--pass-text);   border: 1px solid rgba(86,180,233,0.3); }
+  .tag-purple { background: rgba(139,92,246,0.1);             color: var(--purple);  border: 1px solid rgba(139,92,246,0.3); }
+  .tag-orange { background: rgba(249,115,22,0.1);             color: var(--orange);  border: 1px solid rgba(249,115,22,0.3); }
 
   /* Pass rate bars */
   .rate-section { margin: 1rem 0; }
   .rate-row { display: flex; align-items: center; gap: 0.8rem; margin: 0.5rem 0; }
-  .rate-label { min-width: 220px; font-size: 0.82rem; color: var(--text-muted); }
-  .rate-track { flex: 1; height: 22px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; display: flex; }
-  .rate-pass  { background: var(--green); height: 100%; }
-  .rate-fail  { background: rgba(248,81,73,0.5); height: 100%; }
-  .rate-bf    { background: rgba(209,134,22,0.5); height: 100%; }
-  .rate-val   { min-width: 70px; font-size: 0.82rem; color: var(--text); font-weight: 600; }
+  .rate-label { min-width: 220px; font-size: 0.82rem; color: var(--text-secondary); }
+  .rate-track { flex: 1; height: 22px; background: var(--surface-alt); border-radius: 4px; overflow: hidden; display: flex; }
+  .rate-pass  { background: var(--pass-color); height: 100%; }
+  .rate-fail  { background: rgba(213,94,0,0.35); height: 100%; }
+  .rate-bf    { background: rgba(230,159,0,0.35); height: 100%; }
+  .rate-val   { min-width: 70px; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; color: var(--text); font-weight: 600; }
 
   /* API distribution */
   .api-bars { margin: 1rem 0; }
   .api-row { display: flex; align-items: center; gap: 0.8rem; margin: 0.4rem 0; }
-  .api-label { min-width: 140px; font-size: 0.82rem; color: var(--text-muted); }
-  .api-track { flex: 1; height: 18px; background: var(--surface); border-radius: 4px; overflow: hidden; }
+  .api-label { min-width: 140px; font-size: 0.82rem; color: var(--text-secondary); }
+  .api-track { flex: 1; height: 18px; background: var(--surface-alt); border-radius: 4px; overflow: hidden; }
   .api-fill   { height: 100%; border-radius: 4px; }
-  .api-count  { min-width: 40px; font-size: 0.8rem; color: var(--text-muted); }
+  .api-count  { min-width: 40px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-muted); }
 
   /* Research pipeline */
   .pipeline-steps { display: flex; gap: 0; overflow-x: auto; margin: 1.5rem 0; }
@@ -72,20 +102,26 @@
   .pipe-step:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
   .pipe-step:not(:first-child):not(:last-child) { border-radius: 0; }
   .pipe-step:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; }
-  .pipe-num { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.3rem; }
-  .pipe-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
+  .pipe-num { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 700; margin-bottom: 0.3rem; }
+  .pipe-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; color: var(--text); }
   .pipe-desc { color: var(--text-muted); font-size: 0.78rem; }
-  .pipe-done { border-color: var(--green); }
-  .pipe-done .pipe-num { color: var(--green); }
+  .pipe-done { border-color: var(--pass-color); }
+  .pipe-done .pipe-num { color: var(--pass-color); }
   .pipe-active { border-color: var(--accent); }
   .pipe-active .pipe-num { color: var(--accent); }
 
   /* Nav cards */
   .nav-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin: 1rem 0; }
-  .nav-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.2rem; text-decoration: none; display: block; transition: border-color 0.2s; }
+  .nav-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; text-decoration: none; display: block; transition: border-color 0.2s; box-shadow: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07); }
   .nav-card:hover { border-color: var(--accent); }
   .nav-card .title { color: var(--accent); font-weight: 700; font-size: 1rem; margin-bottom: 0.3rem; }
   .nav-card .desc  { color: var(--text-muted); font-size: 0.82rem; }
+
+  @media print {
+    nav, .no-print { display: none !important; }
+    body { background: white; color: black; font-size: 11pt; }
+    .card, .stat-card { box-shadow: none; border: 1px solid #ccc; }
+  }
 </style>
 </head>
 <body>
@@ -111,9 +147,9 @@
 <div class="stats-grid">
   <div class="stat-card"><div class="n" style="color:var(--accent)">183</div><div class="l">Total Specs</div></div>
   <div class="stat-card"><div class="n" style="color:var(--purple)">82</div><div class="l">Unique Kernels</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--green)">2</div><div class="l">Benchmark Suites</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--pass-color)">2</div><div class="l">Benchmark Suites</div></div>
   <div class="stat-card"><div class="n" style="color:var(--teal)">4</div><div class="l">APIs Tested</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--yellow)">5</div><div class="l">AST Transforms</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--run-fail-color)">5</div><div class="l">AST Transforms</div></div>
   <div class="stat-card"><div class="n" style="color:var(--orange)">240</div><div class="l">Aug. Results</div></div>
 </div>
 
@@ -126,8 +162,8 @@
     <div class="mini-stat"><span>APIs</span>
       <span><span class="tag tag-blue">CUDA</span><span class="tag tag-green">OMP</span><span class="tag tag-purple">SYCL</span><span class="tag tag-orange">HIP</span></span>
     </div>
-    <div class="mini-stat"><span>Phase 3 CUDA</span><span class="val" style="color:var(--green)">60/60 PASS</span></div>
-    <div class="mini-stat"><span>Phase 3 OMP</span><span class="val" style="color:var(--yellow)">41/60 PASS</span></div>
+    <div class="mini-stat"><span>Phase 3 CUDA</span><span class="val" style="color:var(--pass-text)">60/60 PASS</span></div>
+    <div class="mini-stat"><span>Phase 3 OMP</span><span class="val" style="color:var(--run-fail-text)">41/60 PASS</span></div>
     <div class="mini-stat"><span>Phase 4 Cross-API</span><span class="val" style="color:var(--accent)">47/80 PASS</span></div>
     <div class="mini-stat"><span>Source</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">github.com/zjin-lcf/HeCBench</span></div>
   </div>
@@ -137,9 +173,9 @@
     <div class="mini-stat"><span>APIs</span>
       <span><span class="tag tag-blue">CUDA</span><span class="tag tag-green">OMP</span><span class="tag tag-purple">OpenCL</span></span>
     </div>
-    <div class="mini-stat"><span>Baseline CUDA</span><span class="val" style="color:var(--green)">~20/22 PASS</span></div>
-    <div class="mini-stat"><span>Baseline OMP</span><span class="val" style="color:var(--green)">~19/22 PASS</span></div>
-    <div class="mini-stat"><span>Baseline OpenCL</span><span class="val" style="color:var(--yellow)">~18/22 PASS</span></div>
+    <div class="mini-stat"><span>Baseline CUDA</span><span class="val" style="color:var(--pass-text)">~20/22 PASS</span></div>
+    <div class="mini-stat"><span>Baseline OMP</span><span class="val" style="color:var(--pass-text)">~19/22 PASS</span></div>
+    <div class="mini-stat"><span>Baseline OpenCL</span><span class="val" style="color:var(--run-fail-text)">~18/22 PASS</span></div>
     <div class="mini-stat"><span>Source</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">github.com/yuhc/gpu-rodinia (9c10d3ea)</span></div>
   </div>
 </div>
@@ -218,16 +254,16 @@
 // ─── Pass Rate Chart ────────────────────────────────────────────────────────
 const RATES = [
   { label: 'HeCBench CUDA (Phase 3)',  pass: 60,  total: 60,  color: 'var(--accent)' },
-  { label: 'HeCBench OMP (Phase 3)',   pass: 41,  total: 60,  color: 'var(--green)' },
+  { label: 'HeCBench OMP (Phase 3)',   pass: 41,  total: 60,  color: 'var(--pass-color)' },
   { label: 'Cross-API CUDA (Phase 4)', pass: 20,  total: 20,  color: 'var(--accent)' },
-  { label: 'Cross-API OMP (Phase 4)',  pass: 11,  total: 20,  color: 'var(--green)' },
+  { label: 'Cross-API OMP (Phase 4)',  pass: 11,  total: 20,  color: 'var(--pass-color)' },
   { label: 'Cross-API SYCL (Phase 4)', pass: 16,  total: 20,  color: 'var(--purple)' },
-  { label: 'Cross-API HIP (Phase 4)',  pass: 0,   total: 20,  color: 'var(--red)' },
+  { label: 'Cross-API HIP (Phase 4)',  pass: 0,   total: 20,  color: 'var(--build-fail-color)' },
   { label: 'Rodinia Baseline',         pass: 51,  total: 60,  color: 'var(--teal)' },
-  { label: 'Aug. L1 (seed=42)',        pass: 44,  total: 60,  color: 'var(--yellow)' },
-  { label: 'Aug. L2 (seed=42)',        pass: 43,  total: 60,  color: 'var(--yellow)' },
+  { label: 'Aug. L1 (seed=42)',        pass: 44,  total: 60,  color: 'var(--run-fail-color)' },
+  { label: 'Aug. L2 (seed=42)',        pass: 43,  total: 60,  color: 'var(--run-fail-color)' },
   { label: 'Aug. L3 (seed=42)',        pass: 29,  total: 60,  color: 'var(--orange)' },
-  { label: 'Aug. L4 (seed=42)',        pass: 1,   total: 60,  color: 'var(--red)' }
+  { label: 'Aug. L4 (seed=42)',        pass: 1,   total: 60,  color: 'var(--build-fail-color)' }
 ];
 
 const rateContainer = document.getElementById('pass-rate-chart');
@@ -248,7 +284,7 @@ rateContainer.innerHTML = RATES.map(r => {
 // From manifest: 183 specs total
 const APIS_DIST = [
   { label: 'CUDA',    count: 82, color: 'var(--accent)' },
-  { label: 'OpenMP',  count: 78, color: 'var(--green)' },
+  { label: 'OpenMP',  count: 78, color: 'var(--pass-color)' },
   { label: 'OpenCL',  count: 21, color: 'var(--purple)' },
   { label: 'SYCL',    count: 1,  color: 'var(--teal)' },
   { label: 'HIP',     count: 1,  color: 'var(--orange)' }
@@ -270,12 +306,12 @@ const CATS = [
   { label: 'other',             count: 62, color: 'var(--text-muted)' },
   { label: 'physics',           count: 29, color: 'var(--teal)' },
   { label: 'ml',                count: 20, color: 'var(--accent)' },
-  { label: 'stencil',           count: 18, color: 'var(--green)' },
+  { label: 'stencil',           count: 18, color: 'var(--pass-color)' },
   { label: 'linear_algebra',    count: 16, color: 'var(--purple)' },
-  { label: 'image',             count: 12, color: 'var(--yellow)' },
+  { label: 'image',             count: 12, color: 'var(--run-fail-color)' },
   { label: 'reduction',         count: 10, color: 'var(--orange)' },
   { label: 'graph',             count: 9,  color: 'var(--accent)' },
-  { label: 'crypto',            count: 5,  color: 'var(--red)' },
+  { label: 'crypto',            count: 5,  color: 'var(--build-fail-color)' },
   { label: 'sort',              count: 2,  color: 'var(--text-muted)' }
 ];
 const maxCat = CATS[0].count;

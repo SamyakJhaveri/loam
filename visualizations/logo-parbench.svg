@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ParBench Logo — Option A: Geometric Monogram
+  ViewBox: 48×48  (scalable; reads clearly at 16×16 favicon size)
+
+  Design language:
+    - Geometric "P" built from three SVG primitives (rect + arc path)
+    - Stem width 6px, bowl stroke ~5px — optically matched
+    - Three descending parallel rules bottom-right: visual shorthand
+      for "parallel" (warp lanes, pipeline stages, code scan lines)
+    - No gradients. Two blues only: #2563eb (primary) + #1e3a8a (bg square)
+    - White letterform on blue: reads as a stamp/badge — academic mark
+
+  Color tokens (all from visualizations/DESIGN.md):
+    Background square:  #1e3a8a  (blue-900 — dark anchor)
+    Letterform:         #ffffff
+    Accent rules:       #93c5fd  (blue-300) / #bfdbfe (blue-200)
+    Focus/hover ring:   #2563eb  (blue-600) — use in CSS, not in SVG
+-->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 48 48"
+  width="48" height="48"
+  role="img"
+  aria-label="ParBench"
+>
+  <title>ParBench</title>
+
+  <!-- Background: solid square with rounded corners (6px = r-md from design system) -->
+  <rect x="0" y="0" width="48" height="48" rx="6" ry="6" fill="#1e3a8a"/>
+
+  <!-- ─── LETTERFORM: Geometric "P" ───────────────────────────────────
+       Built from two shapes only. No font embedding.
+
+       Vertical stem:   rect  x=9  y=7  w=6  h=34
+       Bowl (D-shape):  path, open right
+         • Center of curvature: (15, 18) — top third of stem
+         • Outer radius: 11  →  top=(15,7)  right=(26,18)  bot=(15,29)
+         • Inner radius:  6  →  top=(15,12) right=(21,18)  bot=(15,24)
+         • Stroke weight at widest: 5px ≈ stem width 6px (optical match)
+  ──────────────────────────────────────────────────────────────────── -->
+
+  <!-- Stem -->
+  <rect x="9" y="7" width="6" height="34" rx="1" fill="#ffffff"/>
+
+  <!-- Bowl: annular D-shape
+       Path: move to outer-top → arc right → arc back (inner) → close
+       Sweep flags: outer arc CW (1), inner arc CCW (0) -->
+  <path
+    d="M15,7 A11,11 0 0,1 15,29 L15,24 A6,6 0 0,0 15,12 Z"
+    fill="#ffffff"
+  />
+
+  <!-- ─── ACCENT: Three descending parallel rules ──────────────────────
+       Placed in the bottom-right quadrant of the canvas.
+       Widths: 11 → 8 → 5  (each rule 3px shorter = visual convergence)
+       Y positions: 34, 38, 42  (4px gap = 2× rule height of 2px)
+       All rules end at x=40, so right edges align (flush-right stack).
+  ──────────────────────────────────────────────────────────────────── -->
+  <rect x="29" y="33" width="11" height="2" rx="1" fill="#93c5fd"/>
+  <rect x="32" y="38" width="8"  height="2" rx="1" fill="#93c5fd"/>
+  <rect x="35" y="43" width="5"  height="2" rx="1" fill="#bfdbfe"/>
+
+</svg>
