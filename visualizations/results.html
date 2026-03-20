@@ -148,6 +148,7 @@
   <a href="benchmark_landscape.html" style="color:var(--text-secondary); text-decoration:none; font-size:0.85rem;">Landscape</a>
   <a href="architecture.html" style="color:var(--text-secondary); text-decoration:none; font-size:0.85rem;">Architecture</a>
   <a href="pipeline.html" style="color:var(--text-secondary); text-decoration:none; font-size:0.85rem;">Pipeline</a>
+  <a href="llm_evaluation.html" style="color:var(--text-secondary); text-decoration:none; font-size:0.85rem;">LLM Evaluation</a>
   <a href="sprint_dashboard.html" style="color:var(--text-secondary); text-decoration:none; font-size:0.85rem;">Sprint</a>
 </nav>
 
@@ -236,8 +237,8 @@
     <p>Expands <code>Point*</code> to underlying struct type without handling pointer declarators. Breaks <code>streamcluster-{cuda,omp}</code> at L2+. Severity: HIGH.</p>
   </div>
   <div class="problem">
-    <span class="status low">MEDIUM</span><h5>.cl file inconsistency</h5>
-    <p><code>spec_loader.py:195</code> doesn't augment <code>.cl</code> files (missing from suffix list). <code>augment_verify.py</code> does. Fix: add <code>.cl</code> to spec_loader.</p>
+    <span class="status solved">FIXED</span><h5>.cl file inconsistency</h5>
+    <p><code>spec_loader.py</code> now augments <code>.cl</code> files -- added to suffix list on Day 2 (2026-03-19). Both <code>spec_loader.py</code> and <code>augment_verify.py</code> are now consistent.</p>
   </div>
   <div class="problem">
     <span class="status low">LOW</span><h5>augment_verify.py PROJECT_ROOT bug</h5>
@@ -255,8 +256,67 @@
 
 </div>
 
+<!-- ─── LLM Evaluation Results (March 2026) ──────────────────────────────── -->
+<h2>LLM Evaluation Results</h2>
+<p style="color:var(--text-secondary); font-size:0.82rem; margin-bottom:1rem;">
+  CUDA-to-OMP translation evaluation at L0 (no augmentation). Updated 2026-03-19.
+</p>
+
+<div class="summary-grid">
+  <div class="summary-card pass"><div class="big">60%</div><div class="label">azure-gpt-4.1 Pass Rate</div></div>
+  <div class="summary-card info"><div class="big">6/10</div><div class="label">Kernels PASS</div></div>
+  <div class="summary-card fail"><div class="big">4/10</div><div class="label">BUILD_FAIL</div></div>
+  <div class="summary-card warn"><div class="big">L0</div><div class="label">Augmentation Level</div></div>
+</div>
+
+<div style="overflow-x:auto; margin-top:1rem;">
+  <table class="results-table">
+    <thead>
+      <tr>
+        <th>Kernel</th>
+        <th>Model</th>
+        <th>Direction</th>
+        <th>Level</th>
+        <th>Result</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>rodinia-backprop</td><td style="color:var(--text-muted)">azure-gpt-4.1</td><td style="color:var(--text-muted)">cuda-to-omp</td><td style="color:var(--text-muted)">L0</td><td class="cell-build">BUILD_FAIL</td></tr>
+      <tr><td>rodinia-bfs</td><td style="color:var(--text-muted)">azure-gpt-4.1</td><td style="color:var(--text-muted)">cuda-to-omp</td><td style="color:var(--text-muted)">L0</td><td class="cell-pass">PASS</td></tr>
+      <tr><td>rodinia-hotspot</td><td style="color:var(--text-muted)">azure-gpt-4.1</td><td style="color:var(--text-muted)">cuda-to-omp</td><td style="color:var(--text-muted)">L0</td><td class="cell-pass">PASS</td></tr>
+      <tr><td>rodinia-hotspot3d</td><td style="color:var(--text-muted)">azure-gpt-4.1</td><td style="color:var(--text-muted)">cuda-to-omp</td><td style="color:var(--text-muted)">L0</td><td class="cell-pass">PASS</td></tr>
+      <tr><td>rodinia-kmeans</td><td style="color:var(--text-muted)">azure-gpt-4.1</td><td style="color:var(--text-muted)">cuda-to-omp</td><td style="color:var(--text-muted)">L0</td><td class="cell-build">BUILD_FAIL</td></tr>
+      <tr><td>rodinia-lavaMD</td><td style="color:var(--text-muted)">azure-gpt-4.1</td><td style="color:var(--text-muted)">cuda-to-omp</td><td style="color:var(--text-muted)">L0</td><td class="cell-pass">PASS</td></tr>
+      <tr><td>rodinia-nw</td><td style="color:var(--text-muted)">azure-gpt-4.1</td><td style="color:var(--text-muted)">cuda-to-omp</td><td style="color:var(--text-muted)">L0</td><td class="cell-pass">PASS</td></tr>
+      <tr><td>rodinia-pathfinder</td><td style="color:var(--text-muted)">azure-gpt-4.1</td><td style="color:var(--text-muted)">cuda-to-omp</td><td style="color:var(--text-muted)">L0</td><td class="cell-pass">PASS</td></tr>
+      <tr><td>rodinia-srad</td><td style="color:var(--text-muted)">azure-gpt-4.1</td><td style="color:var(--text-muted)">cuda-to-omp</td><td style="color:var(--text-muted)">L0</td><td class="cell-build">BUILD_FAIL</td></tr>
+      <tr><td>rodinia-streamcluster</td><td style="color:var(--text-muted)">azure-gpt-4.1</td><td style="color:var(--text-muted)">cuda-to-omp</td><td style="color:var(--text-muted)">L0</td><td class="cell-build">BUILD_FAIL</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="margin-top:1.5rem; padding:1rem; background:var(--surface-alt); border:1px solid var(--border); border-radius:8px;">
+  <h4 style="font-size:0.9rem; color:var(--accent); margin-bottom:0.5rem;">Model Strategy (March 18 Decision)</h4>
+  <ul style="font-size:0.82rem; color:var(--text-secondary); margin-left:1.2rem; list-style:disc;">
+    <li><strong>Phase 1 (current):</strong> azure-gpt-4.1 only -- 10 Rodinia kernels, cuda-to-omp, L0</li>
+    <li><strong>Phase 2 (planned):</strong> Llama 70B + leaderboard model -- broader coverage with augmented inputs</li>
+  </ul>
+  <p style="font-size:0.78rem; color:var(--text-muted); margin-top:0.5rem;">
+    Previous Claude Sonnet evaluation data (if any) is considered <span style="color:var(--yellow); font-weight:600;">ARCHIVED</span>.
+    Phase 1 focuses exclusively on azure-gpt-4.1 to establish a baseline before expanding to additional models.
+  </p>
+</div>
+
+<div style="margin-top:1rem; padding:0.8rem; background:var(--surface); border:1px solid var(--border); border-radius:8px;">
+  <p style="font-size:0.78rem; color:var(--text-muted);">
+    <strong>Data source note:</strong> The LLM evaluation data above is hardcoded in this page.
+    Dynamic data is available in <code>eval_results_data.js</code> (generated by <code>scripts/evaluation/analyze_eval.py --write-dashboard</code>)
+    and is used by <a href="llm_evaluation.html" style="color:var(--accent);">the LLM Evaluation dashboard</a>.
+  </p>
+</div>
+
 <div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
-  Generated 2026-03-11 • ParBench Augmentation Results Dashboard
+  Updated 2026-03-19 • ParBench Augmentation &amp; Evaluation Results Dashboard
 </div>
 
 <script src="results_data.js"></script>

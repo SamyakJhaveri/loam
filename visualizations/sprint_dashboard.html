@@ -1771,12 +1771,12 @@ body {
     <div class="stat-card success">
       <div class="stat-label">Tasks Complete</div>
       <div class="stat-value" id="tasks-done-count">0</div>
-      <div class="stat-sub" id="tasks-done-sub">of 18 tasks</div>
+      <div class="stat-sub" id="tasks-done-sub">of 33 tasks</div>
     </div>
     <div class="stat-card info">
       <div class="stat-label">LLM Pass Rate</div>
-      <div class="stat-value">50%</div>
-      <div class="stat-sub">5/10 pilot (cuda&rarr;omp)</div>
+      <div class="stat-value">60%</div>
+      <div class="stat-sub">6/10 pilot (cuda&rarr;omp)</div>
     </div>
     <div class="stat-card warning">
       <div class="stat-label">Specs Ready</div>
@@ -1785,8 +1785,8 @@ body {
     </div>
     <div class="stat-card danger">
       <div class="stat-label">Open Bugs</div>
-      <div class="stat-value" id="bugs-count">7</div>
-      <div class="stat-sub">B1-B8 in eval pipeline</div>
+      <div class="stat-value" id="bugs-count">3</div>
+      <div class="stat-sub">M11 structural + gaussian-omp + HeCBench</div>
     </div>
   </div>
 
@@ -1796,7 +1796,7 @@ body {
     <div class="progress-row">
       <div class="progress-header">
         <span class="progress-label">
-          <span style="color: var(--info);">Week 1</span> Scale Up Rodinia + Iterative Repair
+          <span style="color: var(--info);">Phase 1 (Days 1-7)</span> Full Rodinia GPT-4.1 Evaluation &mdash; IN PROGRESS
         </span>
         <span class="progress-pct" id="w1-pct">0%</span>
       </div>
@@ -1807,7 +1807,7 @@ body {
     <div class="progress-row">
       <div class="progress-header">
         <span class="progress-label">
-          <span style="color: #9333ea;">Week 2</span> HeCBench + New APIs
+          <span style="color: #9333ea;">Phase 2 (Days 8-14)</span> HeCBench + Open-Source Models &mdash; PLANNED
         </span>
         <span class="progress-pct" id="w2-pct">0%</span>
       </div>
@@ -1818,7 +1818,7 @@ body {
     <div class="progress-row">
       <div class="progress-header">
         <span class="progress-label">
-          <span style="color: var(--success);">Week 3</span> Paper + Final Results
+          <span style="color: var(--success);">Phase 3 (Days 15-21)</span> Paper Writing &mdash; PLANNED
         </span>
         <span class="progress-pct" id="w3-pct">0%</span>
       </div>
@@ -2035,7 +2035,7 @@ body {
 
   <!-- DASHBOARD FOOTER -->
   <div class="dashboard-footer">
-    <span id="last-saved">Not saved yet</span>
+    <span id="last-saved">Last updated: 2026-03-19</span>
     <div class="footer-actions">
       <button class="btn-sm" onclick="exportState()" title="Export state as JSON">&#128229; Export</button>
       <button class="btn-sm" onclick="importState()" title="Import state from JSON">&#128228; Import</button>
@@ -2214,16 +2214,18 @@ const QUESTIONS = [
   "Rodinia OpenACC source: Does gpu-rodinia repo or Rodinia 3.1 have OpenACC implementations?",
   "Which additional benchmarks? PolyBench/GPU and Parboil are strongest candidates. Preference?",
   "HeCBench clone size/time: Large repo (~500+ benchmarks). Any subset preference?",
-  "Erel's augmentation fixes: When will they be merged? Retest L3/L4 before or after main eval?",
+  "RESOLVED: Erel's augmentation fixes cherry-picked D2 (M9). L1-L4 all PASS (M10). Stable.",
   "Paper venue confirmation: SC26 confirmed? Workshop or full paper track?",
   "Overleaf: Has Erel created the Overleaf project and shared the link?",
   "Submodule sync: Erel's 5 new specs need Rodinia submodule at commit b0310d8. When?"
 ];
 
 const RISKS = [
+  { risk: "M11: Multi-file structural mismatch — awaiting team decision (Gal + Erel). Blocks full 21-kernel eval.", likelihood: 'HIGH', impact: 'HIGH', mitigation: 'Team decision needed: (A) normalize to single-file targets, (B) classify by complexity and report separately, (C) fix extraction logic. 3/4 Phase 1 BUILD_FAILs are structural, not semantic.' },
+  { risk: "gaussian-omp spec broken — no openmp/gaussian in Rodinia repo", likelihood: 'HIGH', impact: 'LOW', mitigation: 'Remove or mark spec as skip. Does not block other kernels.' },
+  { risk: "HeCBench not cloned locally — blocks 120 specs", likelihood: 'HIGH', impact: 'MEDIUM', mitigation: 'Budget 2 days for clone + Makefile fixes; accept < 100% coverage. Task 3A (Week 2).' },
   { risk: "HeCBench specs don't build on our hardware", likelihood: 'HIGH', impact: 'MEDIUM', mitigation: 'Budget 2 days for Makefile fixes; accept < 100% coverage' },
-  { risk: "Multi-file structural mismatch inflates BUILD_FAIL rate", likelihood: 'HIGH', impact: 'HIGH', mitigation: 'Team decision needed: (A) normalize to single-file targets, (B) classify by complexity and report separately, (C) fix extraction logic. 3/4 Phase 1 BUILD_FAILs are structural, not semantic.' },
-  { risk: "Augmentation L3/L4 still broken", likelihood: 'LOW', impact: 'LOW', mitigation: 'M10 DONE (2026-03-19): L1/L3/L4 all PASS on srad + backprop. PointerArithmetic does not fire (Rodinia uses arr[idx]). Stable.' },
+  { risk: "Augmentation L3/L4 still broken", likelihood: 'LOW', impact: 'LOW', mitigation: 'RESOLVED: M10 DONE (2026-03-19): L1/L3/L4 all PASS on srad + backprop. PointerArithmetic does not fire (Rodinia uses arr[idx]). Stable.' },
   { risk: "OpenMP target offload not available", likelihood: 'MEDIUM', impact: 'LOW', mitigation: 'Skip; focus on CUDA/OMP/OpenCL/OpenACC' },
   { risk: "LLM API rate limits or outages", likelihood: 'LOW', impact: 'HIGH', mitigation: 'Use --resume; spread runs over days; both providers as backup' },
   { risk: "Paper writing takes longer than planned", likelihood: 'MEDIUM', impact: 'HIGH', mitigation: 'Start Section 3 + 4 early (no dependency on results)' },

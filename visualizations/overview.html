@@ -146,12 +146,12 @@
 <!-- ─── Key Stats ──────────────────────────────────────────────────────────── -->
 <h2>Project at a Glance</h2>
 <div class="stats-grid">
-  <div class="stat-card"><div class="n" style="color:var(--accent)">183</div><div class="l">Total Specs</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--accent)">185</div><div class="l">Total Specs</div></div>
   <div class="stat-card"><div class="n" style="color:var(--purple)">82</div><div class="l">Unique Kernels</div></div>
   <div class="stat-card"><div class="n" style="color:var(--pass-color)">2</div><div class="l">Benchmark Suites</div></div>
   <div class="stat-card"><div class="n" style="color:var(--teal)">4</div><div class="l">APIs Tested</div></div>
   <div class="stat-card"><div class="n" style="color:var(--run-fail-color)">5</div><div class="l">AST Transforms</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--orange)">240</div><div class="l">Aug. Results</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--orange)">60%</div><div class="l">Pilot Pass Rate</div></div>
 </div>
 
 <!-- ─── Suite Breakdown ────────────────────────────────────────────────────── -->
@@ -169,7 +169,7 @@
     <div class="mini-stat"><span>Source</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">github.com/zjin-lcf/HeCBench</span></div>
   </div>
   <div class="suite-card">
-    <h3>Rodinia (63 specs)</h3>
+    <h3>Rodinia (65 specs)</h3>
     <div class="mini-stat"><span>Unique kernels</span><span class="val" style="color:var(--accent)">22</span></div>
     <div class="mini-stat"><span>APIs</span>
       <span><span class="tag tag-blue">CUDA</span><span class="tag tag-green">OMP</span><span class="tag tag-purple">OpenCL</span></span>
@@ -178,6 +178,28 @@
     <div class="mini-stat"><span>Baseline OMP</span><span class="val" style="color:var(--pass-text)">~19/22 PASS</span></div>
     <div class="mini-stat"><span>Baseline OpenCL</span><span class="val" style="color:var(--run-fail-text)">~18/22 PASS</span></div>
     <div class="mini-stat"><span>Source</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">github.com/yuhc/gpu-rodinia (9c10d3ea)</span></div>
+  </div>
+</div>
+
+<!-- ─── LLM Evaluation Status ──────────────────────────────────────────────── -->
+<h2>LLM Translation Evaluation</h2>
+<div class="suite-grid">
+  <div class="suite-card">
+    <h3>10-Kernel Pilot — CUDA-to-OMP</h3>
+    <div class="mini-stat"><span>Model</span><span class="val" style="color:var(--accent)">azure-gpt-4.1</span></div>
+    <div class="mini-stat"><span>Reasoning</span><span class="val" style="color:var(--text-muted)">OFF</span></div>
+    <div class="mini-stat"><span>Pass rate</span><span class="val" style="color:var(--pass-text)">6/10 PASS (60%)</span></div>
+    <div class="mini-stat"><span>BUILD_FAIL</span><span class="val" style="color:var(--build-fail-text)">4/10</span></div>
+    <div class="mini-stat"><span>Failure pattern</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">3/4 BUILD_FAILs are structural (multi-file mismatch)</span></div>
+    <div class="mini-stat"><span>Scope</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">10 of 21 Rodinia cuda-to-omp kernels</span></div>
+  </div>
+  <div class="suite-card">
+    <h3>Model Plan (March 18 Meeting)</h3>
+    <div class="mini-stat"><span>Phase 1 (current)</span><span class="val" style="color:var(--accent)">azure-gpt-4.1</span></div>
+    <div class="mini-stat"><span>Phase 2 (planned)</span><span class="val" style="color:var(--purple)">Llama 70B + leaderboard via Groq/Modal</span></div>
+    <div class="mini-stat"><span>Excluded</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">No reasoning models, no agentic models</span></div>
+    <div class="mini-stat"><span>Claude Sonnet</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">Archived (March 18 decision)</span></div>
+    <div class="mini-stat"><span>HeCBench eval</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">Not yet evaluated (source not cloned locally)</span></div>
   </div>
 </div>
 
@@ -199,7 +221,7 @@
   <div class="pipe-step pipe-done">
     <div class="pipe-num">1</div>
     <div class="pipe-title">Curation</div>
-    <div class="pipe-desc">183 specs from HeCBench + Rodinia. Schema v1.0.0. Manifest validated.</div>
+    <div class="pipe-desc">185 specs from HeCBench + Rodinia. Schema v1.0.0. Manifest validated.</div>
   </div>
   <div class="pipe-step pipe-done">
     <div class="pipe-num">2</div>
@@ -214,8 +236,19 @@
   <div class="pipe-step pipe-active">
     <div class="pipe-num">4</div>
     <div class="pipe-title">Translation Eval</div>
-    <div class="pipe-desc">LLM translation of augmented code. 240 CUDA→OMP/OpenCL pairs defined.</div>
+    <div class="pipe-desc">azure-gpt-4.1: 10-kernel pilot 6/10 PASS (60%). 11 remaining Rodinia kernels + augmented levels in progress.</div>
   </div>
+</div>
+
+<!-- ─── Recent Updates (Day 2 — March 19) ─────────────────────────────────── -->
+<h2>Recent Updates (March 19, Day 2)</h2>
+<div class="suite-card" style="margin:1rem 0;">
+  <div class="mini-stat"><span>M9: Augmentation fixes merged</span><span class="val" style="color:var(--pass-text)">All 11 tests pass</span></div>
+  <div class="mini-stat"><span>M10: L1-L4 augmentation verified stable</span><span class="val" style="color:var(--pass-text)">PASS</span></div>
+  <div class="mini-stat"><span>Pipeline: --augment-levels flag</span><span class="val" style="color:var(--accent)">Added to run_eval_batch.py</span></div>
+  <div class="mini-stat"><span>Pipeline: .cl suffix fix</span><span class="val" style="color:var(--accent)">Both harness + augment_verify</span></div>
+  <div class="mini-stat"><span>Pipeline: analyze_eval.py</span><span class="val" style="color:var(--accent)">New results aggregator</span></div>
+  <div class="mini-stat"><span>Frontend: unified light theme</span><span class="val" style="color:var(--accent)">All 9 dashboard pages</span></div>
 </div>
 
 <!-- ─── Navigation Cards ───────────────────────────────────────────────────── -->
@@ -245,10 +278,18 @@
     <div class="title">Augmentation Deep Dive</div>
     <div class="desc">L1/L2 vs L3/L4 analysis: pass rates, bug status, clean spec list, and SC26 recommendation. Answer for Gal.</div>
   </a>
+  <a href="llm_evaluation.html" class="nav-card">
+    <div class="title">LLM Evaluation</div>
+    <div class="desc">CUDA-to-OMP translation results. azure-gpt-4.1 pilot: 6/10 PASS (60%). Per-kernel breakdown, failure taxonomy, model comparison.</div>
+  </a>
+  <a href="sprint_dashboard.html" class="nav-card">
+    <div class="title">Sprint Dashboard</div>
+    <div class="desc">SC26 21-day sprint tracker (March 18 - April 8). Milestone progress, daily status, and timeline.</div>
+  </a>
 </div>
 
 <div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
-  Generated 2026-03-11 • ParBench Project Overview
+  Updated 2026-03-19 • ParBench Project Overview
 </div>
 
 <script>
@@ -264,7 +305,8 @@ const RATES = [
   { label: 'Aug. L1 (seed=42)',        pass: 44,  total: 60,  color: 'var(--run-fail-color)' },
   { label: 'Aug. L2 (seed=42)',        pass: 43,  total: 60,  color: 'var(--run-fail-color)' },
   { label: 'Aug. L3 (seed=42)',        pass: 29,  total: 60,  color: 'var(--orange)' },
-  { label: 'Aug. L4 (seed=42)',        pass: 1,   total: 60,  color: 'var(--build-fail-color)' }
+  { label: 'Aug. L4 (seed=42)',        pass: 1,   total: 60,  color: 'var(--build-fail-color)' },
+  { label: 'LLM Pilot: azure-gpt-4.1 CUDA→OMP', pass: 6, total: 10, color: 'var(--accent)' }
 ];
 
 const rateContainer = document.getElementById('pass-rate-chart');
@@ -282,7 +324,7 @@ rateContainer.innerHTML = RATES.map(r => {
 }).join('');
 
 // ─── API Distribution Chart ─────────────────────────────────────────────────
-// From manifest: 183 specs total
+// From manifest: 185 specs total
 const APIS_DIST = [
   { label: 'CUDA',    count: 82, color: 'var(--accent)' },
   { label: 'OpenMP',  count: 78, color: 'var(--pass-color)' },
@@ -290,7 +332,7 @@ const APIS_DIST = [
   { label: 'SYCL',    count: 1,  color: 'var(--teal)' },
   { label: 'HIP',     count: 1,  color: 'var(--orange)' }
 ];
-const maxAPI = 183;
+const maxAPI = 185;
 const apiContainer = document.getElementById('api-dist-chart');
 apiContainer.innerHTML = APIS_DIST.map(a => {
   const pct = Math.round(100 * a.count / maxAPI);

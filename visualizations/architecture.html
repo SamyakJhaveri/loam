@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="icon" type="image/svg+xml" href="parbench-icon.svg">
-  <title>ParBench Augmentation — Architecture Overview</title>
+  <title>ParBench — System Architecture Overview</title>
 <style>
   :root {
     --bg: #f9fafb;
@@ -153,8 +153,8 @@
   <a href="sprint_dashboard.html">Sprint</a>
 </nav>
 
-<h1>ParBench Augmentation Architecture</h1>
-<p class="subtitle">AST-driven code augmentation for parallel benchmark evaluation</p>
+<h1>ParBench System Architecture</h1>
+<p class="subtitle">AST-driven augmentation + LLM evaluation pipeline for parallel benchmark translation</p>
 
 <!-- ===== Project Structure ===== -->
 <h2>1. Project Directory Structure</h2>
@@ -162,9 +162,9 @@
 <div class="grid">
   <div class="card">
     <h4>specs/</h4>
-    <p>63 Rodinia + 120 HeCBench spec files</p>
+    <p>185 specs: 65 Rodinia + 120 HeCBench</p>
     <ul>
-      <li><span class="tag tag-blue">23 CUDA</span> <span class="tag tag-green">19 OMP</span> <span class="tag tag-purple">21 OpenCL</span></li>
+      <li><span class="tag tag-blue">23 CUDA</span> <span class="tag tag-green">21 OMP</span> <span class="tag tag-purple">21 OpenCL</span> + HeCBench</li>
       <li>Format: <code>{suite}-{slug}-{api}.json</code></li>
       <li>Each defines build, run, verify, and file info</li>
     </ul>
@@ -173,9 +173,11 @@
     <h4>c_augmentation/</h4>
     <p>Core transform engine (libclang-backed)</p>
     <ul>
-      <li><code>augment_dataset.py</code> — 5 transforms + validation</li>
-      <li><code>test_transforms.py</code> — 11 unit tests</li>
+      <li><code>augment_dataset.py</code> — 6 transforms + validation</li>
+      <li><code>test_transforms.py</code> — unit tests (incl. Bug A/B/C regression)</li>
       <li>Uses <code>clang.cindex</code> for AST analysis</li>
+      <li><code>LEVEL_FRACTIONS</code> + <code>_greedy_valid_subset()</code> for robust composition</li>
+      <li>Supports <code>.cu / .cpp / .c / .cl</code> files</li>
     </ul>
   </div>
   <div class="card">
@@ -335,8 +337,8 @@
     <div style="margin-top:0.5rem"><span class="tag tag-red">Bug D: struct pointers</span></div>
   </div>
   <div class="transform-card">
-    <div class="name">5. ChangeNames</div>
-    <p style="color:var(--text-secondary); font-size:0.85rem">Renames local variables and parameters consistently</p>
+    <div class="name">5. ChangeNames (vars + functions)</div>
+    <p style="color:var(--text-secondary); font-size:0.85rem">Renames local variables, parameters, and functions consistently</p>
     <div class="example">
       <div class="before">int count = 0;<br>count++;</div>
       <div class="after">int v_0 = 0;<br>v_0++;</div>
@@ -400,7 +402,12 @@
 </div>
 
 <!-- ===== Level Control ===== -->
-<h2>6. Augmentation Levels (1–4)</h2>
+<h2>6. Augmentation Levels (L0–L4)</h2>
+<p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:0.5rem;">
+  Controlled via <code>LEVEL_FRACTIONS</code> in <code>augment_dataset.py</code>.
+  <code>_greedy_valid_subset()</code> ensures non-overlapping edits at every level.
+  <span class="tag tag-green">All levels stable</span> after Bug A/B/C fixes merged from <code>erel/aug</code>.
+</p>
 
 <table>
   <tr>
@@ -408,6 +415,12 @@
     <th>Transform Selection</th>
     <th>Candidate Selection</th>
     <th>Effective Coverage</th>
+  </tr>
+  <tr>
+    <td><span class="tag tag-blue">L0</span></td>
+    <td>None (original source)</td>
+    <td>—</td>
+    <td>Baseline — no augmentation</td>
   </tr>
   <tr>
     <td><span class="tag tag-green">L1</span></td>
@@ -435,12 +448,88 @@
   </tr>
 </table>
 
+<!-- ===== Evaluation Pipeline ===== -->
+<h2>7. LLM Evaluation Pipeline</h2>
+
+<div class="flow">
+  <div class="flow-node flow-input">Spec JSON + Augmented Source</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-process">run_eval_batch.py</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-process">llm_evaluate.py</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-process">Build → Run → Verify</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-output">Result JSON</div>
+</div>
+
+<div class="flow">
+  <div class="flow-node flow-output">Result JSONs (all runs)</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-process">analyze_eval.py</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-output">eval_summary.json + .md</div>
+  <div class="flow-arrow">→</div>
+  <div class="flow-node flow-output">Dashboard JS data</div>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <h4>Batch Runner Flags</h4>
+    <ul>
+      <li><code>--suite</code> — required; avoids cross-suite name collisions</li>
+      <li><code>--direction</code> — e.g. <code>cuda-to-omp</code></li>
+      <li><code>--augment-levels 0 1 2 3 4</code> — separate tasks per level</li>
+      <li><code>--models</code> — one or more model identifiers</li>
+      <li><code>--resume</code> — skip existing result files</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Results Aggregation</h4>
+    <ul>
+      <li><code>analyze_eval.py</code> aggregates by model / direction / kernel / level</li>
+      <li><code>--write-dashboard</code> emits <code>eval_results_data.js</code></li>
+      <li><code>--show-gaps</code> prints missing (kernel, model, direction, level) combos</li>
+      <li>Machine-readable JSON + publication-ready Markdown tables</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Three-Tier Timing Model</h4>
+    <ul>
+      <li><strong>Tier 1:</strong> Kernel time only (profiler / <code>omp_get_wtime()</code>)</li>
+      <li><strong>Tier 2:</strong> Kernel + data transfer time</li>
+      <li><strong>Tier 3:</strong> Wall-clock time (includes I/O, malloc)</li>
+      <li>Paper speedup claims use Tier 1; Tier 3 for total cost</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ===== Models ===== -->
+<h2>8. Target LLM Models</h2>
+
+<table>
+  <tr><th>Phase</th><th>Model</th><th>Notes</th></tr>
+  <tr>
+    <td><span class="tag tag-green">Phase 1</span></td>
+    <td>azure-gpt-4.1</td>
+    <td>Reasoning OFF; baseline translation quality</td>
+  </tr>
+  <tr>
+    <td><span class="tag tag-blue">Phase 2</span></td>
+    <td>Llama 70B + leaderboard model</td>
+    <td>Open-weight comparison; model TBD from leaderboard</td>
+  </tr>
+</table>
+<p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.5rem;">
+  No reasoning models and no agentic models in scope. All evaluations use single-shot prompting with spec-defined prompt payloads.
+</p>
+
 <!-- ===== Key Files ===== -->
-<h2>7. Key File Reference</h2>
+<h2>9. Key File Reference</h2>
 
 <table>
   <tr><th>File</th><th>Role</th><th>Lines</th></tr>
-  <tr><td class="file-path">c_augmentation/augment_dataset.py</td><td>5 transforms, validation, augment_code() entry point</td><td>~1150</td></tr>
+  <tr><td class="file-path">c_augmentation/augment_dataset.py</td><td>6 transforms, LEVEL_FRACTIONS, _greedy_valid_subset(), augment_code()</td><td>~1150</td></tr>
   <tr><td class="file-path">c_augmentation/test_transforms.py</td><td>11 unit tests (3 for Fixes A/B/C)</td><td>~300</td></tr>
   <tr><td class="file-path">scripts/augmentation/augment_verify.py</td><td>Single-spec augment→build→run→verify pipeline</td><td>~318</td></tr>
   <tr><td class="file-path">scripts/augmentation/run_augment_batch.py</td><td>Batch runner: specs × levels → JSON + Markdown</td><td>~179</td></tr>
@@ -448,10 +537,13 @@
   <tr><td class="file-path">harness/runner.py</td><td>Run phase: execute with timeout, capture output</td><td>~100</td></tr>
   <tr><td class="file-path">harness/verifier.py</td><td>Verify phase: exit_code / stdout_pattern strategies</td><td>~130</td></tr>
   <tr><td class="file-path">harness/spec_loader.py</td><td>Spec loading, path resolution, prompt payload extraction</td><td>~250</td></tr>
+  <tr><td class="file-path">scripts/evaluation/run_eval_batch.py</td><td>Batch LLM eval: --suite, --augment-levels, --resume</td><td>~350</td></tr>
+  <tr><td class="file-path">scripts/evaluation/llm_evaluate.py</td><td>Single-spec LLM prompt → translate → build/run/verify</td><td>~400</td></tr>
+  <tr><td class="file-path">scripts/evaluation/analyze_eval.py</td><td>Result aggregation: JSON + Markdown + dashboard JS</td><td>~250</td></tr>
 </table>
 
 <div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
-  Generated 2026-03-11 • ParBench AST Augmentation Architecture Overview
+  Updated 2026-03-19 • ParBench System Architecture Overview
 </div>
 
 </body>

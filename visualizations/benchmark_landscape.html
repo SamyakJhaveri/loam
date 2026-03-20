@@ -130,7 +130,7 @@
   <div class="stat-box"><div class="n">21</div><div class="l">Benchmark Suites</div></div>
   <div class="stat-box"><div class="n">10</div><div class="l">Parallel APIs</div></div>
   <div class="stat-box"><div class="n">2</div><div class="l">ParBench Suites</div></div>
-  <div class="stat-box"><div class="n">183</div><div class="l">ParBench Specs</div></div>
+  <div class="stat-box"><div class="n">185</div><div class="l">ParBench Specs</div></div>
 </div>
 
 <!-- ─── 1. API Pairwise Coverage Heatmap ─────────────────────────────────── -->
@@ -151,12 +151,12 @@
 
 <!-- ─── 3. Where ParBench Fits ─────────────────────────────────────────── -->
 <h2>3. Where ParBench Fits</h2>
-<p>ParBench selects two complementary suites that together maximize API diversity and kernel variety for LLM translation evaluation.</p>
+<p>ParBench selects two complementary primary suites that together maximize API diversity and kernel variety for LLM translation evaluation. A third full suite was deprioritized (March 18 decision: outline first, assess gaps before committing).</p>
 
 <div class="venn-row">
   <div class="venn-box">
-    <h4 style="color:var(--accent)">HeCBench (120 specs)</h4>
-    <p style="margin-bottom:0.5rem">60 kernels × CUDA + SYCL/OMP/HIP<br>Focus: diverse algorithm coverage<br>APIs: CUDA, OMP, SYCL, HIP</p>
+    <h4 style="color:var(--accent)">HeCBench (120 specs) — PRIMARY</h4>
+    <p style="margin-bottom:0.5rem">60 kernels × CUDA + SYCL/OMP/HIP<br>Focus: diverse algorithm coverage<br>APIs: CUDA, OMP, SYCL, HIP<br><em style="color:var(--yellow)">Planned — source not yet cloned locally; 0 kernels evaluated</em></p>
     <div class="kernels">
       <span>aes</span><span>bilateral</span><span>babelstream</span><span>chi2</span><span>eigenvalue</span>
       <span>fft</span><span>ising</span><span>lud</span><span>nbody</span><span>nn</span>
@@ -174,8 +174,9 @@
   </div>
 
   <div class="venn-box">
-    <h4 style="color:var(--green)">Rodinia (63 specs)</h4>
-    <p style="margin-bottom:0.5rem">22 kernels × CUDA + OMP + OpenCL<br>Focus: scientific computing patterns<br>APIs: CUDA, OMP, OpenCL</p>
+    <h4 style="color:var(--green)">Rodinia (65 specs) — PRIMARY</h4>
+    <p style="margin-bottom:0.5rem">21 CUDA + 22 OMP + 22 OpenCL specs<br>Focus: scientific computing patterns<br>APIs: CUDA, OMP, OpenCL</p>
+    <p style="font-size:0.78rem; margin-bottom:0.5rem"><strong style="color:var(--green)">10 kernels evaluated:</strong> bfs, hotspot, lud, nn, nw, pathfinder, backprop, kmeans, srad, streamcluster<br><span style="color:var(--text-muted)">11 kernels untested (remaining Rodinia)</span></p>
     <div class="kernels">
       <span>bfs</span><span>bptree</span><span>cfd</span><span>heartwall</span><span>hotspot</span>
       <span>hotspot3d</span><span>huffman</span><span>kmeans</span><span>lavamd</span><span>srad</span>
@@ -184,9 +185,11 @@
   </div>
 </div>
 
+<p style="margin-top:1rem; font-size:0.82rem; color:var(--text-muted)"><strong>ExaBench/XSBench:</strong> One kernel only, included for Paraval paper comparison — not a full suite.</p>
+
 <!-- ─── 4. Translation Pair Space ─────────────────────────────────────────── -->
 <h2>4. Translation Pair Space</h2>
-<p>ParBench defines directed source→target API translation pairs. The 240 augmented pairs (from Rodinia Phase 5) cover CUDA→OMP, CUDA→OpenCL, and OMP→OpenCL directions. The Phase 4 pilot added CUDA→HIP and CUDA→SYCL.</p>
+<p>ParBench defines directed source→target API translation pairs. <strong>Primary direction:</strong> CUDA → OpenMP. <strong>Secondary (planned):</strong> OMP → CUDA, CUDA → OpenCL.</p>
 
 <table class="pair-table">
   <thead>
@@ -203,16 +206,16 @@
     <tr>
       <td class="row-h">CUDA</td>
       <td style="color:var(--text-muted)">—</td>
-      <td style="background:#dcfce7; color:var(--green); font-weight:600">60<br><small style="font-weight:normal; color:var(--text-secondary)">Phase 3 + Rodinia</small></td>
-      <td style="background:#dcfce7; color:var(--green); font-weight:600">21<br><small style="font-weight:normal; color:var(--text-secondary)">Rodinia</small></td>
-      <td style="background:var(--accent-light); color:var(--accent)">20<br><small style="color:var(--text-muted)">Phase 4</small></td>
-      <td style="background:var(--accent-light); color:var(--accent)">20<br><small style="color:var(--text-muted)">Phase 4</small></td>
+      <td style="background:#dcfce7; color:var(--green); font-weight:600">21<br><small style="font-weight:normal; color:var(--green)">Primary — 10 evaluated</small></td>
+      <td style="background:var(--surface-alt); color:var(--text-muted)">planned</td>
+      <td style="color:var(--text-muted)">—</td>
+      <td style="color:var(--text-muted)">—</td>
     </tr>
     <tr>
       <td class="row-h">OMP</td>
-      <td style="color:var(--text-muted)">—</td>
-      <td style="color:var(--text-muted)">—</td>
       <td style="background:var(--surface-alt); color:var(--text-muted)">planned</td>
+      <td style="color:var(--text-muted)">—</td>
+      <td style="color:var(--text-muted)">—</td>
       <td style="color:var(--text-muted)">—</td>
       <td style="color:var(--text-muted)">—</td>
     </tr>
@@ -228,7 +231,7 @@
 </table>
 
 <div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
-  Generated 2026-03-11 • ParBench Benchmark Ecosystem Landscape
+  Updated 2026-03-19 • ParBench Benchmark Ecosystem Landscape • Reflects March 18 meeting scope decisions
 </div>
 
 <script>

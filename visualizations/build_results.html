@@ -151,12 +151,14 @@
 </nav>
 
 <h1>Build &amp; Run Results Dashboard</h1>
-<p class="subtitle">HeCBench Phase 3 (60 kernels), Cross-API Pilot (20 kernels × 4 APIs), and Rodinia Baseline (22 kernels × 3 APIs)</p>
+<p class="subtitle">HeCBench Phase 3 (60 kernels), Cross-API Pilot (20 kernels × 4 APIs), Rodinia Baseline (22 kernels × 3 APIs), Smoke Tests, and LLM Eval Builds</p>
 
 <div class="tab-bar" role="tablist">
   <div class="tab active" role="tab" aria-selected="true" aria-controls="tab-phase3" data-tab="phase3">HeCBench Phase 3</div>
   <div class="tab" role="tab" aria-selected="false" aria-controls="tab-phase4" data-tab="phase4">Cross-API Pilot</div>
   <div class="tab" role="tab" aria-selected="false" aria-controls="tab-rodinia" data-tab="rodinia">Rodinia Baseline</div>
+  <div class="tab" role="tab" aria-selected="false" aria-controls="tab-smoke" data-tab="smoke">Smoke Tests</div>
+  <div class="tab" role="tab" aria-selected="false" aria-controls="tab-llm-builds" data-tab="llm-builds">LLM Eval Builds</div>
   <div class="tab" role="tab" aria-selected="false" aria-controls="tab-build-times" data-tab="build-times">Build Times</div>
   <div class="tab" role="tab" aria-selected="false" aria-controls="tab-run-times" data-tab="run-times">Run Times</div>
 </div>
@@ -257,6 +259,175 @@
   </div>
 </div>
 
+<!-- ─── Tab: Smoke Tests ──────────────────────────────────────────────────── -->
+<div id="tab-smoke" class="tab-content" role="tabpanel">
+  <div class="summary-grid">
+    <div class="summary-card pass"><div class="big">4/4</div><div class="label">All Smoke Tests PASS</div></div>
+    <div class="summary-card info"><div class="big">3</div><div class="label">APIs Tested</div></div>
+  </div>
+
+  <p style="color:var(--text-secondary); font-size:0.82rem; margin: 0.5rem 0 1rem;">
+    Harness smoke tests (updated 2026-03-17). Validates build, run, and verify stages for representative specs across CUDA, OMP, and OpenCL.
+  </p>
+
+  <div style="overflow-x:auto">
+    <table class="results-table" id="smoke-table">
+      <thead>
+        <tr>
+          <th>Spec ID</th>
+          <th>API</th>
+          <th>Build</th>
+          <th>Run</th>
+          <th>Verify</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>rodinia-bfs-cuda</td>
+          <td style="color:var(--text-muted)">CUDA</td>
+          <td class="cell-pass">PASS</td>
+          <td class="cell-pass">PASS</td>
+          <td class="cell-pass">PASS</td>
+        </tr>
+        <tr>
+          <td>rodinia-hotspot-omp</td>
+          <td style="color:var(--text-muted)">OMP</td>
+          <td class="cell-pass">PASS</td>
+          <td class="cell-pass">PASS</td>
+          <td class="cell-pass">PASS</td>
+        </tr>
+        <tr>
+          <td>rodinia-nw-omp</td>
+          <td style="color:var(--text-muted)">OMP</td>
+          <td class="cell-pass">PASS</td>
+          <td class="cell-pass">PASS</td>
+          <td class="cell-pass">PASS</td>
+        </tr>
+        <tr>
+          <td>rodinia-bfs-opencl</td>
+          <td style="color:var(--text-muted)">OpenCL</td>
+          <td class="cell-pass">PASS</td>
+          <td class="cell-pass">PASS</td>
+          <td class="cell-pass">PASS</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="color:var(--text-muted); font-size:0.78rem; margin-top: 1rem;">
+    Fixes applied: CUDA_DIR path, <code>make hotspot</code> target, OpenCL include/lib paths,
+    <code>CC_FLAGS=-std=c++14</code>, data path symlinks (<code>rodinia/rodinia-src/data/</code>).
+  </p>
+</div>
+
+<!-- ─── Tab: LLM Eval Builds ─────────────────────────────────────────────── -->
+<div id="tab-llm-builds" class="tab-content" role="tabpanel">
+  <div class="summary-grid">
+    <div class="summary-card pass"><div class="big">6/10</div><div class="label">azure-gpt-4.1 BUILD PASS</div></div>
+    <div class="summary-card fail"><div class="big">4/10</div><div class="label">BUILD_FAIL</div></div>
+    <div class="summary-card info"><div class="big">10</div><div class="label">Kernels Evaluated</div></div>
+  </div>
+
+  <p style="color:var(--text-secondary); font-size:0.82rem; margin: 0.5rem 0 0.5rem;">
+    LLM evaluation build results for CUDA-to-OMP translation at L0 (no augmentation).
+    Model: <strong>azure-gpt-4.1</strong>. Direction: <strong>cuda-to-omp</strong>.
+  </p>
+  <p style="color:var(--text-muted); font-size:0.78rem; margin-bottom: 1rem;">
+    BUILD_FAIL root cause: structural mismatch in multi-file targets. The LLM fails to correctly translate
+    benchmarks that span multiple source files with shared headers and cross-file dependencies.
+  </p>
+
+  <div style="overflow-x:auto">
+    <table class="results-table" id="llm-build-table">
+      <thead>
+        <tr>
+          <th>Kernel</th>
+          <th>Model</th>
+          <th>Direction</th>
+          <th>Build</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>rodinia-backprop</td>
+          <td style="color:var(--text-muted)">azure-gpt-4.1</td>
+          <td style="color:var(--text-muted)">cuda-to-omp</td>
+          <td class="cell-build">BUILD_FAIL</td>
+          <td style="font-size:0.75rem; color:var(--text-muted); text-align:left">Multi-file target; structural mismatch</td>
+        </tr>
+        <tr>
+          <td>rodinia-bfs</td>
+          <td style="color:var(--text-muted)">azure-gpt-4.1</td>
+          <td style="color:var(--text-muted)">cuda-to-omp</td>
+          <td class="cell-pass">PASS</td>
+          <td style="font-size:0.75rem; color:var(--text-muted); text-align:left"></td>
+        </tr>
+        <tr>
+          <td>rodinia-hotspot</td>
+          <td style="color:var(--text-muted)">azure-gpt-4.1</td>
+          <td style="color:var(--text-muted)">cuda-to-omp</td>
+          <td class="cell-pass">PASS</td>
+          <td style="font-size:0.75rem; color:var(--text-muted); text-align:left"></td>
+        </tr>
+        <tr>
+          <td>rodinia-hotspot3d</td>
+          <td style="color:var(--text-muted)">azure-gpt-4.1</td>
+          <td style="color:var(--text-muted)">cuda-to-omp</td>
+          <td class="cell-pass">PASS</td>
+          <td style="font-size:0.75rem; color:var(--text-muted); text-align:left"></td>
+        </tr>
+        <tr>
+          <td>rodinia-kmeans</td>
+          <td style="color:var(--text-muted)">azure-gpt-4.1</td>
+          <td style="color:var(--text-muted)">cuda-to-omp</td>
+          <td class="cell-build">BUILD_FAIL</td>
+          <td style="font-size:0.75rem; color:var(--text-muted); text-align:left">Multi-file target; structural mismatch</td>
+        </tr>
+        <tr>
+          <td>rodinia-lavaMD</td>
+          <td style="color:var(--text-muted)">azure-gpt-4.1</td>
+          <td style="color:var(--text-muted)">cuda-to-omp</td>
+          <td class="cell-pass">PASS</td>
+          <td style="font-size:0.75rem; color:var(--text-muted); text-align:left"></td>
+        </tr>
+        <tr>
+          <td>rodinia-nw</td>
+          <td style="color:var(--text-muted)">azure-gpt-4.1</td>
+          <td style="color:var(--text-muted)">cuda-to-omp</td>
+          <td class="cell-pass">PASS</td>
+          <td style="font-size:0.75rem; color:var(--text-muted); text-align:left"></td>
+        </tr>
+        <tr>
+          <td>rodinia-pathfinder</td>
+          <td style="color:var(--text-muted)">azure-gpt-4.1</td>
+          <td style="color:var(--text-muted)">cuda-to-omp</td>
+          <td class="cell-pass">PASS</td>
+          <td style="font-size:0.75rem; color:var(--text-muted); text-align:left"></td>
+        </tr>
+        <tr>
+          <td>rodinia-srad</td>
+          <td style="color:var(--text-muted)">azure-gpt-4.1</td>
+          <td style="color:var(--text-muted)">cuda-to-omp</td>
+          <td class="cell-build">BUILD_FAIL</td>
+          <td style="font-size:0.75rem; color:var(--text-muted); text-align:left">Multi-file target; structural mismatch</td>
+        </tr>
+        <tr>
+          <td>rodinia-streamcluster</td>
+          <td style="color:var(--text-muted)">azure-gpt-4.1</td>
+          <td style="color:var(--text-muted)">cuda-to-omp</td>
+          <td class="cell-build">BUILD_FAIL</td>
+          <td style="font-size:0.75rem; color:var(--text-muted); text-align:left">Multi-file target; structural mismatch</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:1.5rem; padding:1rem; background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--r-md);">
+    <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:0.3rem;"><strong>Note:</strong> No Claude Sonnet build data is available for this evaluation round. Previous Claude Sonnet results (if any) are considered <span style="color:var(--yellow); font-weight:600;">ARCHIVED</span> and not shown here. The March 18 team meeting decided to proceed with azure-gpt-4.1 for Phase 1 evaluation.</p>
+  </div>
+</div>
+
 <!-- ─── Tab: Build Times ──────────────────────────────────────────────────── -->
 <div id="tab-build-times" class="tab-content" role="tabpanel">
   <h2>CUDA Build Times (Phase 3)</h2>
@@ -272,7 +443,7 @@
 </div>
 
 <div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
-  Generated 2026-03-11 • ParBench Build &amp; Run Results Dashboard
+  Updated 2026-03-19 • ParBench Build &amp; Run Results Dashboard
 </div>
 
 <script src="build_results_data.js"></script>

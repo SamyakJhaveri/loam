@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <title>ParBench — Augment → Build → Run → Verify Pipeline</title>
+  <title>ParBench — Evaluation Pipeline: Spec → Prompt → LLM → Build → Run → Verify</title>
 <style>
   :root {
     --bg: #f9fafb;
@@ -134,8 +134,8 @@
   <a href="sprint_dashboard.html">Sprint</a>
 </nav>
 
-<h1>Augment → Build → Run → Verify Pipeline</h1>
-<p class="subtitle">Step-by-step visualization of the augmentation verification pipeline</p>
+<h1>Evaluation Pipeline: Spec → Prompt → LLM → Build → Run → Verify</h1>
+<p class="subtitle">End-to-end flow from spec JSON through augmented prompt construction, LLM translation, code extraction, and correctness verification</p>
 
 <!-- ===== Entry Point ===== -->
 <h2>Phase 1: Entry Point</h2>
@@ -217,9 +217,9 @@ shutil.<span class="fn">copytree</span>(str(original_working_dir), str(tempdir))
         Iterates <code>files.prompt_payload</code> from spec, reads each file, applies augmentation if suffix matches.
       </div>
       <div class="code-block">AUGMENTABLE_SUFFIXES = {<span class="str">".c"</span>, <span class="str">".cpp"</span>, <span class="str">".cu"</span>, <span class="str">".h"</span>, <span class="str">".hpp"</span>, <span class="str">".cuh"</span>, <span class="str">".cl"</span>, <span class="str">".cc"</span>, <span class="str">".dp.cpp"</span>}</div>
-      <div class="bug-callout">
-        <div class="fix-label">Known Issue: .cl inconsistency</div>
-        <div class="fix-desc"><code>augment_verify.py</code> augments .cl files, but <code>harness/spec_loader.py:195</code> does NOT include .cl in its suffix list for <code>get_prompt_payload()</code>.</div>
+      <div class="fix-callout">
+        <div class="fix-label">Fixed (Day 2): .cl file augmentation</div>
+        <div class="fix-desc">Both <code>augment_verify.py</code> and <code>harness/spec_loader.py:195</code> now include <code>.cl</code> in their augmentable suffix lists. Previously only <code>augment_verify.py</code> had it.</div>
       </div>
     </div>
   </div>
@@ -467,8 +467,141 @@ shutil.<span class="fn">copytree</span>(str(original_working_dir), str(tempdir))
   </div>
 </div>
 
+<!-- ===== Evaluation Pipeline Scripts ===== -->
+<h2>Evaluation Pipeline Scripts (Day 2 Additions)</h2>
+
+<p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:1rem;">
+  The full evaluation pipeline extends the augment-verify loop with LLM API calls, batch orchestration, and result aggregation.
+  The end-to-end flow is: <strong>Spec JSON → Prompt Construction (with augmentation) → LLM API Call → Code Extraction → Build → Run → Verify → Result JSON</strong>.
+</p>
+
+<div class="pipeline">
+  <div class="step phase-entry">
+    <div class="step-num">A</div>
+    <div class="step-content">
+      <div class="step-title">augment_verify.py — Single-Spec Augmentation Testing</div>
+      <div class="step-file">scripts/augmentation/augment_verify.py</div>
+      <div class="step-desc">
+        Tests augmentation levels L0–L4 on any individual spec. Runs the full Build → Run → Verify loop on augmented code
+        to confirm semantic equivalence is preserved.
+      </div>
+      <div class="code-block"><span class="cmt"># --project-root is ALWAYS required (auto-detection is broken)</span>
+python3 scripts/augmentation/augment_verify.py specs/rodinia-bfs-cuda.json \
+  --augment_level <span class="num">2</span> --seed <span class="num">42</span> -v \
+  --project-root /home/samyak/Desktop/parbench_sam</div>
+    </div>
+  </div>
+
+  <div class="step phase-augment">
+    <div class="step-num">B</div>
+    <div class="step-content">
+      <div class="step-title">run_eval_batch.py — Batch LLM Evaluation</div>
+      <div class="step-file">scripts/evaluation/run_eval_batch.py</div>
+      <div class="step-desc">
+        Orchestrates LLM translation evaluation across multiple specs, models, and augmentation levels.
+        Key flags added on Day 2:
+      </div>
+      <div class="detail-grid">
+        <div class="detail-card">
+          <h5>--augment-levels</h5>
+          <p><code>--augment-levels 0 1 2 3 4</code> — run each level separately; result files tagged <code>-L1</code>, <code>-L2</code>, etc. (L0 has no tag). Default: <code>[0]</code>.</p>
+        </div>
+        <div class="detail-card">
+          <h5>--suite</h5>
+          <p><code>--suite rodinia</code> — ALWAYS pass to avoid cross-suite name collisions when selecting specs.</p>
+        </div>
+        <div class="detail-card">
+          <h5>--resume</h5>
+          <p>Skip specs that already have result files. Append-only results — never overwrite.</p>
+        </div>
+        <div class="detail-card">
+          <h5>--project-root</h5>
+          <p>ALWAYS required (auto-detection broken). Points to the parbench_sam root directory.</p>
+        </div>
+      </div>
+      <div class="code-block">python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia --direction cuda-to-omp \
+  --models azure-gpt-4.1 \
+  --augment-levels <span class="num">0</span> <span class="num">1</span> <span class="num">2</span> \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --resume -v</div>
+    </div>
+  </div>
+
+  <div class="step phase-verify">
+    <div class="step-num">C</div>
+    <div class="step-content">
+      <div class="step-title">analyze_eval.py — Result Aggregation</div>
+      <div class="step-file">scripts/evaluation/analyze_eval.py</div>
+      <div class="step-desc">
+        Aggregates all result JSONs into structured summaries. Outputs:
+      </div>
+      <div class="detail-grid">
+        <div class="detail-card">
+          <h5>eval_summary.json</h5>
+          <p>Machine-readable results by model / direction / kernel / level</p>
+        </div>
+        <div class="detail-card">
+          <h5>eval_summary.md</h5>
+          <p>Publication-ready markdown tables for the SC26 paper</p>
+        </div>
+        <div class="detail-card">
+          <h5>Dashboard data</h5>
+          <p><code>--write-dashboard</code> writes <code>visualizations/eval_results_data.js</code></p>
+        </div>
+        <div class="detail-card">
+          <h5>--show-gaps</h5>
+          <p>Prints missing (kernel, model, direction, level) combinations for experiment planning</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Model Phases ===== -->
+<h2>Evaluation Model Phases</h2>
+
+<div class="detail-grid">
+  <div class="detail-card">
+    <h5>Phase 1 (Current)</h5>
+    <p><span class="tag tag-green">azure-gpt-4.1</span> — Primary model for CUDA-to-OMP translation evaluation. Accessed via Azure OpenAI API.</p>
+  </div>
+  <div class="detail-card">
+    <h5>Phase 2 (Planned)</h5>
+    <p><span class="tag tag-purple">Llama 70B</span> <span class="tag tag-purple">Leaderboard model TBD</span> — Open-weight and top-performing model to compare against GPT-4.1.</p>
+  </div>
+</div>
+
+<!-- ===== Known Pipeline Issues ===== -->
+<h2>Known Pipeline Issues</h2>
+
+<div class="bug-callout">
+  <div class="fix-label">backup_files() / restore_files() crash corruption</div>
+  <div class="fix-desc">
+    If the harness crashes between <code>backup_files()</code> and <code>restore_files()</code>, reference source files
+    in the original source directory can be left in a corrupted (augmented) state. The sibling temp-directory approach
+    in <code>augment_verify.py</code> avoids this, but the eval pipeline's <code>llm_evaluate.py</code> still uses backup/restore.
+  </div>
+</div>
+
+<div class="bug-callout">
+  <div class="fix-label">Multi-file extraction: LLM cannot produce subdir-pathed files (M11)</div>
+  <div class="fix-desc">
+    When a benchmark has source files in subdirectories, the LLM's code-fence output is extracted as flat files.
+    There is no mechanism for the LLM to specify subdirectory paths in its response. This affects multi-file
+    benchmarks like backprop. Tracked as M11 concern.
+  </div>
+</div>
+
+<div class="bug-callout">
+  <div class="fix-label">gaussian-omp spec broken</div>
+  <div class="fix-desc">
+    The <code>rodinia-gaussian-omp</code> spec is currently non-functional and should be excluded from batch evaluation runs.
+  </div>
+</div>
+
 <div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
-  Generated 2026-03-11 • ParBench Augmentation Pipeline Visualization
+  Updated 2026-03-19 (Day 2 fixes) • ParBench Evaluation Pipeline Visualization
 </div>
 
 </body>

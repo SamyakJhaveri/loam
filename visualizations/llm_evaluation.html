@@ -821,13 +821,30 @@ a:hover {
   <header class="page-header">
     <p class="page-header-eyebrow">Rodinia Benchmark Suite &middot; CUDA &rarr; OpenMP</p>
     <h1>LLM Parallel Code Translation Evaluation</h1>
-    <p class="page-header-subtitle">Phase 1: CUDA &rarr; OpenMP &nbsp;&middot;&nbsp; 10 kernels &nbsp;&middot;&nbsp; Azure GPT-4.1 &nbsp;&middot;&nbsp; Zero-shot with retry &nbsp;&middot;&nbsp; 2026-03-19</p>
+    <p class="page-header-subtitle">Phase 1: CUDA &rarr; OpenMP &nbsp;&middot;&nbsp; 10 kernels &nbsp;&middot;&nbsp; 1 active model (+ 1 archived pilot) &nbsp;&middot;&nbsp; Zero-shot with retry &nbsp;&middot;&nbsp; 2026-03-19</p>
     <p class="page-header-desc">
       Evaluating large language models on automated translation of GPU-parallel (CUDA) code to
       CPU-parallel (OpenMP) implementations from the Rodinia benchmark suite. Correctness is
       determined by a full build &rarr; run &rarr; output-diff pipeline against reference implementations.
     </p>
+    <p class="page-header-desc" style="margin-top:12px;font-size:0.875rem;color:var(--text-muted);font-style:italic;">
+      Per March 18 team meeting: Phase 1 evaluates azure-gpt-4.1 only. Claude Sonnet pilot data retained for reference.
+    </p>
   </header>
+
+  <!-- === SECTION: Phase 1 Methodology Note === -->
+  <section class="section" aria-labelledby="phase1-heading">
+    <div class="methodology-card" style="border-left:4px solid var(--accent);">
+      <h3 id="phase1-heading" style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:12px;">Phase 1 Methodology</h3>
+      <ul class="methodology-list" style="margin-top:0;">
+        <li><span class="method-key">Model</span><span class="method-val"><code class="method-mono">azure-gpt-4.1</code>, reasoning OFF</span></li>
+        <li><span class="method-key">Direction</span><span class="method-val">CUDA &rarr; OpenMP</span></li>
+        <li><span class="method-key">Augmentation</span><span class="method-val">L0 (no augmentation) baseline</span></li>
+        <li><span class="method-key">Retries</span><span class="method-val">max 2 per kernel</span></li>
+        <li><span class="method-key">Next steps</span><span class="method-val">L1/L2 augmented inputs, then Phase 2 with open-source models</span></li>
+      </ul>
+    </div>
+  </section>
 
   <!-- === SECTION: KPI Cards === -->
   <section class="section" aria-labelledby="kpi-heading">
@@ -837,25 +854,25 @@ a:hover {
       <div class="kpi-card">
         <span class="kpi-label">Overall Pass Rate</span>
         <span class="kpi-value pass" id="kpi-pass-rate">60%</span>
-        <span class="kpi-sublabel">Azure GPT-4.1 &middot; L0 baseline</span>
+        <span class="kpi-sublabel">azure-gpt-4.1 &middot; 6 of 10 &middot; L0 baseline</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-label">Tasks Evaluated</span>
-        <span class="kpi-value" id="kpi-total">17</span>
-        <span class="kpi-sublabel">10 azure + 7 claude pilot</span>
+        <span class="kpi-value" id="kpi-total">10</span>
+        <span class="kpi-sublabel">azure-gpt-4.1 only</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-label">BUILD_FAIL Rate</span>
-        <span class="kpi-value fail" id="kpi-build-fail">41%</span>
-        <span class="kpi-sublabel">7 of 17 tasks failed at build</span>
+        <span class="kpi-value fail" id="kpi-build-fail">40%</span>
+        <span class="kpi-sublabel">4 of 10 tasks failed at build</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-label">Self-Repair Rate</span>
-        <span class="kpi-value repair" id="kpi-repair">52.9%</span>
-        <span class="kpi-sublabel">9 of 17 repaired by retry</span>
+        <span class="kpi-value repair" id="kpi-repair">—</span>
+        <span class="kpi-sublabel">azure-gpt-4.1 &middot; pending analysis</span>
       </div>
 
     </div>
@@ -865,7 +882,7 @@ a:hover {
   <section class="section" aria-labelledby="heatmap-heading">
     <h2 id="heatmap-heading" class="section-title">Result Matrix: Model &times; Kernel</h2>
     <p class="section-subtitle">
-      Zero-shot CUDA&rarr;OpenMP translation. Colors indicate outcome per (model, kernel) pair.
+      Zero-shot CUDA&rarr;OpenMP translation &middot; 1 active model (+ 1 archived pilot). Colors indicate outcome per (model, kernel) pair.
     </p>
 
     <div class="heatmap-wrapper">
@@ -996,14 +1013,14 @@ a:hover {
 
     <div class="repair-stats">
       <div class="repair-stat">
-        <span class="repair-stat-value" id="repair-rate">52.9%</span>
-        <span class="repair-stat-label">Tasks where retry improved result</span>
-        <span class="repair-stat-note">9 of 17 total tasks showed improvement on the second attempt</span>
+        <span class="repair-stat-value" id="repair-rate">—</span>
+        <span class="repair-stat-label">Tasks where retry improved result (azure-gpt-4.1)</span>
+        <span class="repair-stat-note">Pending per-model retry analysis for azure-gpt-4.1 (10 tasks)</span>
       </div>
       <div class="repair-stat">
-        <span class="repair-stat-value" style="color: var(--text-muted);">0</span>
+        <span class="repair-stat-value" style="color: var(--text-muted);">—</span>
         <span class="repair-stat-label">Tasks passing on first attempt only</span>
-        <span class="repair-stat-note">All retry improvements were at attempt 2; no task regressed on retry</span>
+        <span class="repair-stat-note">Retry analysis will be updated once per-attempt data is extracted</span>
       </div>
       <p class="repair-note-box">
         <strong>Methodology:</strong> <code style="font-family:var(--font-mono);font-size:0.8125rem;">max_retries=2</code> &mdash; failed builds and runs are retried once.
@@ -1038,7 +1055,7 @@ a:hover {
         </li>
         <li>
           <span class="method-key">Model</span>
-          <span class="method-val"><code class="method-mono">azure-gpt-4.1</code> (reasoning OFF) and <code class="method-mono">claude-sonnet-4-20250514</code> (pilot)</span>
+          <span class="method-val"><code class="method-mono">azure-gpt-4.1</code> (reasoning OFF) &mdash; primary. Claude Sonnet pilot data archived.</span>
         </li>
         <li>
           <span class="method-key">Retries</span>
@@ -1177,23 +1194,31 @@ function checkDataAvailable() {
 function populateKPIs() {
   if (typeof EVAL_SUMMARY === "undefined") return;
 
+  /* KPIs now based on azure-gpt-4.1 only (Phase 1 active model) */
   const azureData  = EVAL_SUMMARY.byModel["azure-gpt-4.1"];
-  const totalTasks = EVAL_SUMMARY.totalTasks;
-  const buildFails = EVAL_SUMMARY.failureTaxonomy["BUILD_FAIL"] || 0;
-  const repaired   = EVAL_SUMMARY.selfRepair.total_repaired_by_retry;
-  const total      = EVAL_SUMMARY.selfRepair.total_with_attempts;
 
   if (azureData) {
-    document.getElementById("kpi-pass-rate").textContent =
-      Math.round(azureData.rate * 100) + "%";
+    const azureTotal = azureData.pass + (azureData.fail || 0) +
+      (azureData.build_fail || 0) + (azureData.run_fail || 0) + (azureData.verify_fail || 0);
+    const azureTotalTasks = azureTotal || 10; /* fallback */
+    const azurePassRate = azureData.rate !== undefined
+      ? Math.round(azureData.rate * 100)
+      : Math.round((azureData.pass / azureTotalTasks) * 100);
+
+    document.getElementById("kpi-pass-rate").textContent = azurePassRate + "%";
+    document.getElementById("kpi-total").textContent = azureTotalTasks;
+
+    /* Count BUILD_FAIL for azure only */
+    const azureBuildFails = azureData.build_fail || 0;
+    document.getElementById("kpi-build-fail").textContent =
+      Math.round((azureBuildFails / azureTotalTasks) * 100) + "%";
   }
-  document.getElementById("kpi-total").textContent = totalTasks;
-  document.getElementById("kpi-build-fail").textContent =
-    Math.round((buildFails / totalTasks) * 100) + "%";
-  document.getElementById("kpi-repair").textContent =
-    (total > 0 ? ((repaired / total) * 100).toFixed(1) : "0") + "%";
-  document.getElementById("repair-rate").textContent =
-    (total > 0 ? ((repaired / total) * 100).toFixed(1) : "0") + "%";
+
+  /* Self-repair stats: use azure-specific data if available */
+  const repaired = EVAL_SUMMARY.selfRepair ? EVAL_SUMMARY.selfRepair.total_repaired_by_retry : 0;
+  const total    = EVAL_SUMMARY.selfRepair ? EVAL_SUMMARY.selfRepair.total_with_attempts : 0;
+  /* Only update repair KPIs if we have azure-specific repair data */
+  /* Otherwise keep the placeholder dash */
 }
 
 /* ============================================================
@@ -1215,14 +1240,23 @@ function buildHeatmap() {
   });
 
   /* Data rows — one per model */
+  const ARCHIVED_MODELS = new Set(["claude-sonnet-4-20250514"]);
+
   MODELS_ORDERED.forEach(model => {
     const tr = document.createElement("tr");
+    const isArchived = ARCHIVED_MODELS.has(model);
+
+    if (isArchived) {
+      tr.style.opacity = "0.55";
+      tr.style.fontStyle = "italic";
+    }
 
     /* Row header (model name) */
     const th = document.createElement("th");
     th.className = "heatmap-row-header";
     th.setAttribute("scope", "row");
-    th.innerHTML = `<span>${model}</span>`;
+    const label = isArchived ? `${model} <span style="font-size:0.6875rem;color:var(--text-muted);font-weight:400;">(archived pilot)</span>` : model;
+    th.innerHTML = `<span>${label}</span>`;
     tr.appendChild(th);
 
     /* One cell per kernel */
