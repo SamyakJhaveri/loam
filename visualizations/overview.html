@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <style>
   :root {
     --bg: #f9fafb;
@@ -31,32 +32,18 @@
     --run-fail-bg: #fef9ec;
     --run-fail-text: #92400e;
 
-    /* Legacy aliases for backward compatibility */
-    --green: var(--pass-color);
-    --red: var(--build-fail-color);
-    --yellow: var(--run-fail-color);
-    --blue: var(--accent);
-    --purple: #8b5cf6;
-    --orange: #f97316;
-    --teal: #0d9488;
-
     --shadow-sm: 0 1px 2px hsl(220deg 40% 15% / 0.06);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Inter', system-ui, -apple-system, sans-serif;
-         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6; }
+         background: var(--bg); color: var(--text); padding: 0; line-height: 1.6; }
   h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 2rem; }
-  h2 { color: var(--purple); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
-  h3 { color: var(--teal); margin: 1.2rem 0 0.5rem; font-size: 1.05rem; }
+  h2 { color: var(--text); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  h3 { color: var(--text-secondary); margin: 1.2rem 0 0.5rem; font-size: 1.05rem; }
   .subtitle { color: var(--text-muted); margin-bottom: 2rem; font-size: 1.05rem; }
   p { color: var(--text-muted); margin: 0.4rem 0; font-size: 0.9rem; }
 
-  /* Nav */
-  nav { background: #ffffff; border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm); padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
-  nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; }
-  nav a:hover { color: var(--text); }
-  nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav .active { color: var(--text); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+  /* Nav: styles provided by theme.css .site-nav */
 
   /* Key stats */
   .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin: 1rem 0; }
@@ -75,8 +62,8 @@
   .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; margin: 2px; }
   .tag-blue   { background: var(--accent-light);              color: var(--accent);  border: 1px solid rgba(37,99,235,0.25); }
   .tag-green  { background: var(--pass-bg);                   color: var(--pass-text);   border: 1px solid rgba(86,180,233,0.3); }
-  .tag-purple { background: rgba(139,92,246,0.1);             color: var(--purple);  border: 1px solid rgba(139,92,246,0.3); }
-  .tag-orange { background: rgba(249,115,22,0.1);             color: var(--orange);  border: 1px solid rgba(249,115,22,0.3); }
+  .tag-purple { background: rgba(139,92,246,0.1);             color: #7c3aed;        border: 1px solid rgba(139,92,246,0.3); }
+  .tag-orange { background: rgba(249,115,22,0.1);             color: #ea580c;        border: 1px solid rgba(249,115,22,0.3); }
 
   /* Pass rate bars */
   .rate-section { margin: 1rem 0; }
@@ -127,18 +114,23 @@
 </head>
 <body>
 
-<nav>
-  <span class="brand" style="display:inline-flex;align-items:center;gap:5px;"><img src="parbench-icon.svg" width="20" height="20" alt="" style="display:block;">ParBench</span>
-  <a href="overview.html" class="active">Overview</a>
-  <a href="build_results.html">Build Results</a>
-  <a href="results.html">Augmentation</a>
-  <a href="augmentation_deep_dive.html">Deep Dive</a>
-  <a href="benchmark_landscape.html">Landscape</a>
-  <a href="architecture.html">Architecture</a>
-  <a href="pipeline.html">Pipeline</a>
-  <a href="llm_evaluation.html">LLM Evaluation</a>
-  <a href="sprint_dashboard.html">Sprint</a>
+<nav class="site-nav">
+  <a href="overview.html" class="nav-brand">
+    <img src="parbench-icon.svg" width="20" height="20" alt="">ParBench
+  </a>
+  <div class="nav-links">
+    <a href="overview.html" class="active">Overview</a>
+    <a href="build_results.html">Build Results</a>
+    <a href="results.html">Augmentation</a>
+    <a href="augmentation_deep_dive.html">Deep Dive</a>
+    <a href="benchmark_landscape.html">Landscape</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="pipeline.html">Pipeline</a>
+    <a href="llm_evaluation.html">LLM Evaluation</a>
+    <a href="sprint_dashboard.html">Sprint</a>
+  </div>
 </nav>
+<div class="page-wrapper">
 
 <h1>ParBench</h1>
 <p class="subtitle">Parallel Benchmark Meta-Suite — Evaluating LLM Translation of Parallel Code</p>
@@ -147,11 +139,11 @@
 <h2>Project at a Glance</h2>
 <div class="stats-grid">
   <div class="stat-card"><div class="n" style="color:var(--accent)">185</div><div class="l">Total Specs</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--purple)">82</div><div class="l">Unique Kernels</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--accent)">82</div><div class="l">Unique Kernels</div></div>
   <div class="stat-card"><div class="n" style="color:var(--pass-color)">2</div><div class="l">Benchmark Suites</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--teal)">4</div><div class="l">APIs Tested</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--pass-text)">4</div><div class="l">APIs Tested</div></div>
   <div class="stat-card"><div class="n" style="color:var(--run-fail-color)">5</div><div class="l">AST Transforms</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--orange)">60%</div><div class="l">Pilot Pass Rate</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--run-fail-text)">60%</div><div class="l">Pilot Pass Rate</div></div>
 </div>
 
 <!-- ─── Suite Breakdown ────────────────────────────────────────────────────── -->
@@ -196,7 +188,7 @@
   <div class="suite-card">
     <h3>Model Plan (March 18 Meeting)</h3>
     <div class="mini-stat"><span>Phase 1 (current)</span><span class="val" style="color:var(--accent)">azure-gpt-4.1</span></div>
-    <div class="mini-stat"><span>Phase 2 (planned)</span><span class="val" style="color:var(--purple)">Llama 70B + leaderboard via Groq/Modal</span></div>
+    <div class="mini-stat"><span>Phase 2 (planned)</span><span class="val" style="color:var(--accent)">Llama 70B + leaderboard via Groq/Modal</span></div>
     <div class="mini-stat"><span>Excluded</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">No reasoning models, no agentic models</span></div>
     <div class="mini-stat"><span>Claude Sonnet</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">Archived (March 18 decision)</span></div>
     <div class="mini-stat"><span>HeCBench eval</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">Not yet evaluated (source not cloned locally)</span></div>
@@ -299,12 +291,12 @@ const RATES = [
   { label: 'HeCBench OMP (Phase 3)',   pass: 41,  total: 60,  color: 'var(--pass-color)' },
   { label: 'Cross-API CUDA (Phase 4)', pass: 20,  total: 20,  color: 'var(--accent)' },
   { label: 'Cross-API OMP (Phase 4)',  pass: 11,  total: 20,  color: 'var(--pass-color)' },
-  { label: 'Cross-API SYCL (Phase 4)', pass: 16,  total: 20,  color: 'var(--purple)' },
+  { label: 'Cross-API SYCL (Phase 4)', pass: 16,  total: 20,  color: '#8b5cf6' },
   { label: 'Cross-API HIP (Phase 4)',  pass: 0,   total: 20,  color: 'var(--build-fail-color)' },
-  { label: 'Rodinia Baseline',         pass: 51,  total: 60,  color: 'var(--teal)' },
+  { label: 'Rodinia Baseline',         pass: 51,  total: 60,  color: '#0d9488' },
   { label: 'Aug. L1 (seed=42)',        pass: 44,  total: 60,  color: 'var(--run-fail-color)' },
   { label: 'Aug. L2 (seed=42)',        pass: 43,  total: 60,  color: 'var(--run-fail-color)' },
-  { label: 'Aug. L3 (seed=42)',        pass: 29,  total: 60,  color: 'var(--orange)' },
+  { label: 'Aug. L3 (seed=42)',        pass: 29,  total: 60,  color: '#f97316' },
   { label: 'Aug. L4 (seed=42)',        pass: 1,   total: 60,  color: 'var(--build-fail-color)' },
   { label: 'LLM Pilot: azure-gpt-4.1 CUDA→OMP', pass: 6, total: 10, color: 'var(--accent)' }
 ];
@@ -328,9 +320,9 @@ rateContainer.innerHTML = RATES.map(r => {
 const APIS_DIST = [
   { label: 'CUDA',    count: 82, color: 'var(--accent)' },
   { label: 'OpenMP',  count: 78, color: 'var(--pass-color)' },
-  { label: 'OpenCL',  count: 21, color: 'var(--purple)' },
-  { label: 'SYCL',    count: 1,  color: 'var(--teal)' },
-  { label: 'HIP',     count: 1,  color: 'var(--orange)' }
+  { label: 'OpenCL',  count: 21, color: '#8b5cf6' },
+  { label: 'SYCL',    count: 1,  color: '#0d9488' },
+  { label: 'HIP',     count: 1,  color: '#f97316' }
 ];
 const maxAPI = 185;
 const apiContainer = document.getElementById('api-dist-chart');
@@ -347,12 +339,12 @@ apiContainer.innerHTML = APIS_DIST.map(a => {
 // Approximate from manifest survey
 const CATS = [
   { label: 'other',             count: 62, color: 'var(--text-muted)' },
-  { label: 'physics',           count: 29, color: 'var(--teal)' },
+  { label: 'physics',           count: 29, color: '#0d9488' },
   { label: 'ml',                count: 20, color: 'var(--accent)' },
   { label: 'stencil',           count: 18, color: 'var(--pass-color)' },
-  { label: 'linear_algebra',    count: 16, color: 'var(--purple)' },
+  { label: 'linear_algebra',    count: 16, color: '#8b5cf6' },
   { label: 'image',             count: 12, color: 'var(--run-fail-color)' },
-  { label: 'reduction',         count: 10, color: 'var(--orange)' },
+  { label: 'reduction',         count: 10, color: '#f97316' },
   { label: 'graph',             count: 9,  color: 'var(--accent)' },
   { label: 'crypto',            count: 5,  color: 'var(--build-fail-color)' },
   { label: 'sort',              count: 2,  color: 'var(--text-muted)' }
@@ -369,5 +361,6 @@ catContainer.innerHTML = CATS.map(c => {
 }).join('');
 </script>
 
+</div><!-- end .page-wrapper -->
 </body>
 </html>

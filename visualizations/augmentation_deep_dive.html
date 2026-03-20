@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <title>ParBench — Augmentation Deep Dive</title>
 <style>
@@ -21,12 +22,6 @@
     --text-muted: #9ca3af;
     --accent: #2563eb;
     --accent-light: #eff6ff;
-    --green: #16a34a;
-    --red: #dc2626;
-    --yellow: #d97706;
-    --purple: #7c3aed;
-    --orange: #ea580c;
-    --teal: #0d9488;
     --pass-color: #56B4E9;  --pass-bg: #e8f4fb;  --pass-text: #0369a1;
     --build-fail-color: #D55E00; --build-fail-bg: #fdf1ec; --build-fail-text: #9a3412;
     --run-fail-color: #E69F00;  --run-fail-bg: #fef9ec;  --run-fail-text: #92400e;
@@ -36,21 +31,15 @@
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Inter', system-ui, sans-serif;
-         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6;
+         background: var(--bg); color: var(--text); padding: 0; line-height: 1.6;
          -webkit-font-smoothing: antialiased; }
   h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1.8rem; }
-  h2 { color: var(--purple); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
-  h3 { color: var(--green); margin: 1.2rem 0 0.5rem; font-size: 1rem; }
+  h2 { color: var(--text); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  h3 { color: var(--text-secondary); margin: 1.2rem 0 0.5rem; font-size: 1rem; }
   .subtitle { color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 1rem; }
   p { color: var(--text-secondary); margin: 0.4rem 0; font-size: 0.88rem; }
 
-  /* Nav */
-  nav { background: #ffffff; border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm);
-        padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
-  nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; }
-  nav a:hover { color: var(--accent); }
-  nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav .active { color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+  /* Nav: styles provided by theme.css .site-nav */
 
   /* TL;DR box */
   .tldr { background: var(--pass-bg); border: 1px solid #bae6fd; border-radius: 10px; padding: 1.5rem; margin: 1rem 0 2rem; }
@@ -72,14 +61,14 @@
   .level-card.caution { border-color: #fcd34d; }
   .level-card.broken { border-color: #fca5a5; }
   .level-badge { font-size: 2rem; font-weight: 800; margin-bottom: 0.4rem; font-family: 'JetBrains Mono', monospace; }
-  .level-badge.ok { color: var(--green); }
-  .level-badge.warn { color: var(--yellow); }
-  .level-badge.bad { color: var(--red); }
+  .level-badge.ok { color: var(--pass-text); }
+  .level-badge.warn { color: var(--run-fail-text); }
+  .level-badge.bad { color: var(--build-fail-text); }
   .level-stat { font-size: 1.3rem; font-weight: 700; margin: 0.3rem 0; font-family: 'JetBrains Mono', monospace; }
   .level-detail { color: var(--text-muted); font-size: 0.75rem; margin: 0.15rem 0; }
   .level-rec { margin-top: 0.7rem; font-size: 0.78rem; padding: 3px 8px; border-radius: var(--r-full); display: inline-block; }
-  .rec-use { background: #dcfce7; color: var(--green); border: 1px solid #86efac; }
-  .rec-skip { background: #fee2e2; color: var(--red); border: 1px solid #fca5a5; }
+  .rec-use { background: var(--pass-bg); color: var(--pass-text); border: 1px solid #86efac; }
+  .rec-skip { background: var(--build-fail-bg); color: var(--build-fail-text); border: 1px solid #fca5a5; }
 
   /* Chart containers */
   .chart-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.2rem; margin: 1rem 0; box-shadow: var(--shadow-md); }
@@ -99,18 +88,18 @@
 
   /* Status badges */
   .badge { display: inline-block; padding: 2px 8px; border-radius: var(--r-full); font-size: 0.72rem; font-weight: 600; }
-  .badge-green  { background: #dcfce7;  color: var(--green);  border: 1px solid #86efac; }
-  .badge-yellow { background: #fef9c3;  color: var(--yellow); border: 1px solid #fde68a; }
-  .badge-red    { background: #fee2e2;  color: var(--red);    border: 1px solid #fca5a5; }
-  .badge-blue   { background: var(--accent-light); color: var(--accent); border: 1px solid #bfdbfe; }
-  .badge-purple { background: #f5f3ff;  color: var(--purple); border: 1px solid #ddd6fe; }
+  .badge-green  { background: var(--pass-bg);        color: var(--pass-text);       border: 1px solid #86efac; }
+  .badge-yellow { background: var(--run-fail-bg);    color: var(--run-fail-text);   border: 1px solid #fde68a; }
+  .badge-red    { background: var(--build-fail-bg);  color: var(--build-fail-text); border: 1px solid #fca5a5; }
+  .badge-blue   { background: var(--accent-light);   color: var(--accent);          border: 1px solid #bfdbfe; }
+  .badge-purple { background: #f5f3ff;               color: var(--accent);          border: 1px solid #ddd6fe; }
 
   /* Spec grid */
   .spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; margin: 1rem 0; }
   .spec-pill { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 0.35rem 0.6rem; font-size: 0.78rem; color: var(--text); box-shadow: var(--shadow-sm); }
   .spec-pill.cuda   { border-left: 3px solid var(--accent); }
-  .spec-pill.omp    { border-left: 3px solid var(--green); }
-  .spec-pill.opencl { border-left: 3px solid var(--purple); }
+  .spec-pill.omp    { border-left: 3px solid var(--pass-color); }
+  .spec-pill.opencl { border-left: 3px solid var(--run-fail-color); }
 
   /* Two-column layout */
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; }
@@ -126,7 +115,7 @@
   .api-tab.active { background: var(--accent-light); color: var(--accent); border-color: #bfdbfe; }
 
   /* Effort pills */
-  .effort { display: inline-block; background: #f0fdfa; color: var(--teal); border: 1px solid #99f6e4; border-radius: var(--r-full); font-size: 0.72rem; padding: 1px 7px; }
+  .effort { display: inline-block; background: #f0fdfa; color: var(--pass-text); border: 1px solid #99f6e4; border-radius: var(--r-full); font-size: 0.72rem; padding: 1px 7px; }
 
   @media print {
     nav, .no-print { display: none !important; }
@@ -141,18 +130,23 @@
 </head>
 <body>
 
-<nav>
-  <span class="brand" style="display:inline-flex;align-items:center;gap:5px;"><img src="parbench-icon.svg" width="20" height="20" alt="" style="display:block;">ParBench</span>
-  <a href="overview.html">Overview</a>
-  <a href="build_results.html">Build Results</a>
-  <a href="results.html">Augmentation</a>
-  <a href="augmentation_deep_dive.html" class="active">Deep Dive</a>
-  <a href="benchmark_landscape.html">Landscape</a>
-  <a href="architecture.html">Architecture</a>
-  <a href="pipeline.html">Pipeline</a>
-  <a href="llm_evaluation.html">LLM Evaluation</a>
-  <a href="sprint_dashboard.html">Sprint</a>
+<nav class="site-nav">
+  <a href="overview.html" class="nav-brand">
+    <img src="parbench-icon.svg" width="20" height="20" alt="">ParBench
+  </a>
+  <div class="nav-links">
+    <a href="overview.html">Overview</a>
+    <a href="build_results.html">Build Results</a>
+    <a href="results.html">Augmentation</a>
+    <a href="augmentation_deep_dive.html" class="active">Deep Dive</a>
+    <a href="benchmark_landscape.html">Landscape</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="pipeline.html">Pipeline</a>
+    <a href="llm_evaluation.html">LLM Evaluation</a>
+    <a href="sprint_dashboard.html">Sprint</a>
+  </div>
 </nav>
+<div class="page-wrapper">
 
 <h1>Augmentation Deep Dive</h1>
 <p class="subtitle">L1/L2 vs L3/L4 — Status, Bugs, and Recommendation for SC26 &nbsp;·&nbsp; Updated 2026-03-19 (M9/M10 complete)</p>
@@ -166,12 +160,12 @@
 <!-- ─── Key Numbers ──────────────────────────────────────────────────────── -->
 <h2>At a Glance</h2>
 <div class="card-grid">
-  <div class="stat-card"><div class="n" style="color:var(--green)">45/60</div><div class="l">L2 PASS (75%)</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--green)">~90%</div><div class="l">Corrected Pass Rate<br>(vs ~50-spec baseline)</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--yellow)">29/60</div><div class="l">L3 PASS (48%)</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--red)">22/60</div><div class="l">L4 PASS (37%)</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--purple)">6</div><div class="l">Transforms</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--green)">3</div><div class="l">Bugs Fixed (A/B/C)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--pass-text)">45/60</div><div class="l">L2 PASS (75%)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--pass-text)">~90%</div><div class="l">Corrected Pass Rate<br>(vs ~50-spec baseline)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--run-fail-text)">29/60</div><div class="l">L3 PASS (48%)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--build-fail-text)">22/60</div><div class="l">L4 PASS (37%)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--accent)">6</div><div class="l">Transforms</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--pass-text)">3</div><div class="l">Bugs Fixed (A/B/C)</div></div>
 </div>
 
 <!-- ─── What Levels Mean ──────────────────────────────────────────────────── -->
@@ -179,7 +173,7 @@
 <div class="level-grid">
   <div class="level-card recommended">
     <div class="level-badge ok">L1</div>
-    <div class="level-stat" style="color:var(--green)">45/60 PASS</div>
+    <div class="level-stat" style="color:var(--pass-text)">45/60 PASS</div>
     <div class="level-detail">1 transform (random)</div>
     <div class="level-detail">1 edit site</div>
     <div class="level-detail">FAIL: 11 BUILD_FAIL · 4 FAIL</div>
@@ -187,7 +181,7 @@
   </div>
   <div class="level-card recommended">
     <div class="level-badge ok">L2</div>
-    <div class="level-stat" style="color:var(--green)">45/60 PASS</div>
+    <div class="level-stat" style="color:var(--pass-text)">45/60 PASS</div>
     <div class="level-detail">1 transform (random)</div>
     <div class="level-detail">33% of available sites</div>
     <div class="level-detail">FAIL: 11 BUILD_FAIL · 4 FAIL</div>
@@ -195,7 +189,7 @@
   </div>
   <div class="level-card caution">
     <div class="level-badge warn">L3</div>
-    <div class="level-stat" style="color:var(--yellow)">29/60 PASS</div>
+    <div class="level-stat" style="color:var(--run-fail-text)">29/60 PASS</div>
     <div class="level-detail">3 transforms (random)</div>
     <div class="level-detail">66% of available sites</div>
     <div class="level-detail">FAIL: 29 BUILD_FAIL · 2 FAIL</div>
@@ -203,7 +197,7 @@
   </div>
   <div class="level-card caution">
     <div class="level-badge warn">L4</div>
-    <div class="level-stat" style="color:var(--red)">22/60 PASS</div>
+    <div class="level-stat" style="color:var(--build-fail-text)">22/60 PASS</div>
     <div class="level-detail">All 6 transforms</div>
     <div class="level-detail">100% of available sites</div>
     <div class="level-detail">FAIL: 35 BUILD_FAIL · 3 FAIL</div>
@@ -698,5 +692,6 @@ new Chart(document.getElementById('chart-opencl'), {
 });
 </script>
 
+</div><!-- end .page-wrapper -->
 </body>
 </html>

@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800&family=JetBrains+Mono:wght@400;500;600;700&display=swap&font-display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 /* ============================================================
@@ -112,75 +113,7 @@ a:hover {
   color: var(--accent-text);
 }
 
-/* ============================================================
-   NAVIGATION
-   ============================================================ */
-.site-nav {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: #ffffff;
-  border-bottom: 1px solid var(--border);
-  height: var(--nav-height);
-  display: flex;
-  align-items: center;
-  padding: 0 32px;
-}
-
-.nav-inner {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  width: 100%;
-  max-width: var(--content-max);
-  margin: 0 auto;
-}
-
-.nav-brand {
-  font-family: var(--font-ui);
-  font-weight: 700;
-  font-size: 1rem;
-  color: var(--text);
-  letter-spacing: -0.01em;
-  margin-right: 32px;
-  flex-shrink: 0;
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-}
-
-.nav-links a {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-  padding: 6px 12px;
-  border-radius: var(--radius-xs);
-  transition: color var(--ease), background var(--ease);
-  text-decoration: none;
-}
-.nav-links a:hover {
-  color: var(--text);
-  background: var(--bg-section);
-  text-decoration: none;
-}
-.nav-links a.active {
-  color: var(--accent-text);
-  background: var(--accent-bg);
-  font-weight: 600;
-}
-
-.nav-badge {
-  margin-left: auto;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-family: var(--font-ui);
-  letter-spacing: 0.01em;
-  flex-shrink: 0;
-}
+/* Nav: styles provided by theme.css .site-nav */
 
 /* ============================================================
    LAYOUT CONTAINERS
@@ -801,17 +734,20 @@ a:hover {
 <body>
 
 <!-- === SECTION: Navigation === -->
-<nav class="site-nav" role="navigation" aria-label="Site navigation">
-  <div class="nav-inner">
-    <span class="nav-brand" style="display:inline-flex;align-items:center;gap:6px;"><img src="parbench-icon.svg" width="22" height="22" alt="" style="display:block;">ParBench</span>
-    <div class="nav-links">
-      <a href="overview.html">Overview</a>
-      <a href="benchmark_landscape.html">Benchmarks</a>
-      <a href="pipeline.html">Pipeline</a>
-      <a href="llm_evaluation.html" class="active" aria-current="page">LLM Evaluation</a>
-      <a href="sprint_dashboard.html">Sprint</a>
-    </div>
-    <span class="nav-badge">SC&rsquo;26 Evaluation &middot; Phase 1</span>
+<nav class="site-nav">
+  <a href="overview.html" class="nav-brand">
+    <img src="parbench-icon.svg" width="20" height="20" alt="">ParBench
+  </a>
+  <div class="nav-links">
+    <a href="overview.html">Overview</a>
+    <a href="build_results.html">Build Results</a>
+    <a href="results.html">Augmentation</a>
+    <a href="augmentation_deep_dive.html">Deep Dive</a>
+    <a href="benchmark_landscape.html">Landscape</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="pipeline.html">Pipeline</a>
+    <a href="llm_evaluation.html" class="active">LLM Evaluation</a>
+    <a href="sprint_dashboard.html">Sprint</a>
   </div>
 </nav>
 

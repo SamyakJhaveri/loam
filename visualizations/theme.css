@@ -1,0 +1,455 @@
+/* ============================================================
+   ParBench — Shared Design System
+   Source of truth: visualizations/DESIGN.md
+   "Clean, minimal, academic — like a Nature paper's online appendix."
+   Last updated: 2026-03-20
+   ============================================================ */
+
+/* === SECTION: CSS Custom Properties === */
+:root {
+  /* --- Surfaces --- */
+  --bg:              #f9fafb;
+  --surface:         #ffffff;
+  --surface-alt:     #f3f4f6;
+  --border:          #e5e7eb;
+  --border-strong:   #d1d5db;
+
+  /* --- Text --- */
+  --text:            #111827;
+  --text-secondary:  #4b5563;
+  --text-muted:      #9ca3af;
+
+  /* --- Accent --- */
+  --accent:          #2563eb;
+  --accent-light:    #eff6ff;
+  --accent-border:   #bfdbfe;
+  --accent-text:     #1d4ed8;
+
+  /* --- Status: Okabe-Ito colorblind-safe palette --- */
+  --pass-color:       #56B4E9;   /* Sky Blue */
+  --pass-bg:          #e8f4fb;
+  --pass-border:      #93d0ef;
+  --pass-text:        #0369a1;
+
+  --build-fail-color: #D55E00;   /* Vermillion */
+  --build-fail-bg:    #fdf1ec;
+  --build-fail-border:#e9a07a;
+  --build-fail-text:  #9a3412;
+
+  --run-fail-color:   #E69F00;   /* Orange */
+  --run-fail-bg:      #fef9ec;
+  --run-fail-border:  #f0ca6a;
+  --run-fail-text:    #92400e;
+
+  --verify-fail-color:#CC79A7;   /* Reddish Purple */
+  --verify-fail-bg:   #fdf2f8;
+  --verify-fail-border:#dda9ca;
+  --verify-fail-text: #86198f;
+
+  --neutral-color:    #94a3b8;
+  --neutral-bg:       #f1f5f9;
+  --neutral-text:     #475569;
+
+  /* --- Team member colors (sprint dashboard) --- */
+  --team-samyak:     #4f46e5;   /* Indigo */
+  --team-erel:       #7c3aed;   /* Violet */
+  --team-gal:        #db2777;   /* Pink */
+  --team-niranjan:   #0891b2;   /* Cyan */
+  --team-claude:     #0d9488;   /* Teal */
+
+  /* --- Spacing (8pt grid) --- */
+  --sp-1:  4px;  --sp-2:  8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 20px;  --sp-6: 24px;  --sp-8: 32px; --sp-10: 40px;
+  --sp-12: 48px; --sp-16: 64px;
+
+  /* --- Border radius --- */
+  --r-xs:   2px;
+  --r-sm:   4px;
+  --r-md:   8px;
+  --r-lg:  12px;
+  --r-full: 9999px;
+
+  /* --- Shadows: hue-matched, layered — never rgba(0,0,0,...) --- */
+  --sh-color:   220deg 40% 15%;
+  --shadow-sm:  0 1px 2px hsl(var(--sh-color) / 0.06);
+  --shadow-md:  0 1px 3px hsl(var(--sh-color) / 0.07),
+                0 4px 12px hsl(var(--sh-color) / 0.07);
+  --shadow-lg:  0 2px 4px  hsl(var(--sh-color) / 0.05),
+                0 4px 8px  hsl(var(--sh-color) / 0.05),
+                0 8px 24px hsl(var(--sh-color) / 0.08);
+
+  /* --- Chart colors (ordered by use frequency) --- */
+  --chart-pass:        #56B4E9;
+  --chart-build-fail:  #D55E00;
+  --chart-run-fail:    #E69F00;
+  --chart-verify-fail: #CC79A7;
+  --chart-neutral:     #94a3b8;
+  --chart-l0:          #2563eb;
+  --chart-l1:          #3b82f6;
+  --chart-l2:          #60a5fa;
+  --chart-l3:          #93c5fd;
+  --chart-l4:          #bfdbfe;
+
+  /* --- Typography --- */
+  --font-ui:   'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  /* --- Layout --- */
+  --content-max: 1200px;
+  --nav-height:  52px;
+
+  /* --- Transitions --- */
+  --ease: 0.15s ease;
+}
+/* === END SECTION === */
+
+/* === SECTION: Reset & Base === */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 1.5rem;   /* 24px */
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
+
+h2 {
+  font-size: 1.125rem; /* 18px */
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text);
+  margin: var(--sp-10) 0 var(--sp-4);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--sp-2);
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: var(--sp-6) 0 var(--sp-3);
+}
+
+h4 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: var(--sp-2);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover { text-decoration: underline; }
+
+p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: var(--sp-1) 0;
+}
+
+code, .mono {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+/* === END SECTION === */
+
+/* === SECTION: Page Wrapper === */
+.page-wrapper {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-6);
+  padding-top: calc(var(--nav-height) + var(--sp-6));
+}
+
+.page-header {
+  margin-bottom: var(--sp-8);
+}
+
+.page-header .subtitle {
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  margin-top: var(--sp-1);
+}
+/* === END SECTION === */
+
+/* === SECTION: Navigation === */
+.site-nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--nav-height);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--sp-6);
+  gap: var(--sp-6);
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.nav-brand:hover { text-decoration: none; }
+
+.nav-brand img {
+  width: 20px; height: 20px;
+  flex-shrink: 0;
+}
+
+.nav-links {
+  display: flex;
+  gap: var(--sp-1);
+  flex: 1;
+  overflow-x: auto;
+}
+
+.nav-links a {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background var(--ease), color var(--ease);
+}
+
+.nav-links a:hover {
+  background: var(--surface-alt);
+  color: var(--text);
+}
+
+.nav-links a.active {
+  color: var(--accent);
+  font-weight: 600;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: calc(var(--sp-2) - 2px);
+}
+/* === END SECTION === */
+
+/* === SECTION: Card Component === */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-6);
+  box-shadow: var(--shadow-md);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  transition: box-shadow var(--ease);
+}
+
+.card-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-2);
+}
+
+.card-value {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.card-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+}
+/* === END SECTION === */
+
+/* === SECTION: Status Badges === */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 20px;
+  border-radius: var(--r-full);
+  white-space: nowrap;
+}
+
+.badge-pass         { background: var(--pass-bg);         color: var(--pass-text);         border: 1px solid var(--pass-border); }
+.badge-build-fail   { background: var(--build-fail-bg);   color: var(--build-fail-text);   border: 1px solid var(--build-fail-border); }
+.badge-run-fail     { background: var(--run-fail-bg);     color: var(--run-fail-text);     border: 1px solid var(--run-fail-border); }
+.badge-verify-fail  { background: var(--verify-fail-bg);  color: var(--verify-fail-text);  border: 1px solid var(--verify-fail-border); }
+.badge-neutral      { background: var(--neutral-bg);      color: var(--neutral-text);      border: 1px solid #cbd5e1; }
+.badge-accent       { background: var(--accent-light);    color: var(--accent-text);       border: 1px solid var(--accent-border); }
+
+/* Priority badges */
+.badge-critical  { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
+.badge-high      { background: #fff7ed; color: #9a3412; border: 1px solid #fdba74; }
+.badge-medium    { background: #fefce8; color: #713f12; border: 1px solid #fde047; }
+.badge-low       { background: var(--neutral-bg); color: var(--neutral-text); border: 1px solid #cbd5e1; }
+
+/* Task status badges */
+.badge-done        { background: var(--pass-bg);         color: var(--pass-text);       border: 1px solid var(--pass-border); }
+.badge-in-progress { background: var(--accent-light);    color: var(--accent-text);     border: 1px solid var(--accent-border); }
+.badge-blocked     { background: var(--build-fail-bg);   color: var(--build-fail-text); border: 1px solid var(--build-fail-border); }
+.badge-todo        { background: var(--neutral-bg);      color: var(--neutral-text);    border: 1px solid #cbd5e1; }
+/* === END SECTION === */
+
+/* === SECTION: Stat Cards Grid === */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-8);
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5) var(--sp-6);
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+
+.stat-card.s-accent::before  { background: var(--accent); }
+.stat-card.s-pass::before    { background: var(--pass-color); }
+.stat-card.s-fail::before    { background: var(--build-fail-color); }
+.stat-card.s-warn::before    { background: var(--run-fail-color); }
+.stat-card.s-blocked::before { background: var(--build-fail-color); }
+
+.stat-label {
+  font-size: 0.6875rem;   /* 11px */
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: var(--sp-1);
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.stat-sub {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  margin-top: var(--sp-1);
+}
+/* === END SECTION === */
+
+/* === SECTION: Section Grid (2-up) === */
+.section-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--sp-6);
+  margin-bottom: var(--sp-8);
+}
+/* === END SECTION === */
+
+/* === SECTION: Tables === */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.data-table th {
+  background: var(--surface-alt);
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 2px solid var(--border-strong);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+
+.data-table tr:nth-child(even) td { background: var(--surface-alt); }
+.data-table tr:hover td { background: var(--accent-light); }
+
+.data-table .mono-cell {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+/* === END SECTION === */
+
+/* === SECTION: Print Stylesheet === */
+@media print {
+  .site-nav, .no-print { display: none !important; }
+  .page-wrapper { padding-top: var(--sp-4); }
+  body { background: white; color: black; font-size: 11pt; }
+  .card { box-shadow: none; border: 1px solid #ccc; }
+  canvas { max-width: 100% !important; }
+  h1, h2, h3 { page-break-after: avoid; }
+  table { page-break-inside: avoid; }
+}
+/* === END SECTION === */
+
+/* === SECTION: Reduced Motion === */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+/* === END SECTION === */

@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
   <title>ParBench — Benchmark Ecosystem Landscape</title>
 <style>
   :root {
@@ -20,12 +21,6 @@
     --text-muted: #9ca3af;
     --accent: #2563eb;
     --accent-light: #eff6ff;
-    --green: #16a34a;
-    --red: #dc2626;
-    --yellow: #d97706;
-    --purple: #7c3aed;
-    --orange: #ea580c;
-    --teal: #0d9488;
     --pass-color: #56B4E9;  --pass-bg: #e8f4fb;  --pass-text: #0369a1;
     --build-fail-color: #D55E00; --build-fail-bg: #fdf1ec; --build-fail-text: #9a3412;
     --run-fail-color: #E69F00;  --run-fail-bg: #fef9ec;  --run-fail-text: #92400e;
@@ -35,20 +30,14 @@
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-         background: var(--bg); color: var(--text); padding: 2rem; line-height: 1.6;
+         background: var(--bg); color: var(--text); padding: 0; line-height: 1.6;
          -webkit-font-smoothing: antialiased; }
   h1 { color: var(--accent); margin-bottom: 0.5rem; font-size: 1.8rem; }
-  h2 { color: var(--purple); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
-  h3 { color: var(--green); margin: 1.5rem 0 0.5rem; font-size: 1.1rem; }
+  h2 { color: var(--text); margin: 2.5rem 0 1rem; font-size: 1.3rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+  h3 { color: var(--text-secondary); margin: 1.5rem 0 0.5rem; font-size: 1.1rem; }
   .subtitle { color: var(--text-muted); margin-bottom: 2rem; }
 
-  /* Nav */
-  nav { background: #ffffff; border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm);
-        padding: 0.6rem 2rem; margin: -2rem -2rem 1.5rem -2rem; display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: center; }
-  nav a { color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; }
-  nav a:hover { color: var(--accent); }
-  nav .brand { color: var(--accent); font-weight: 700; font-size: 0.9rem; margin-right: 0.5rem; }
-  nav .active { color: var(--accent); font-weight: 700; border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+  /* Nav: styles provided by theme.css .site-nav */
 
   /* Intro */
   .stat-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 1rem 0 2rem; }
@@ -77,9 +66,9 @@
   .avail-table td.suite-name { text-align: left; white-space: nowrap; background: var(--surface-alt); color: var(--text); }
   .avail-table td.suite-name.highlighted { background: var(--accent-light); color: var(--accent); font-weight: 700; }
   .avail-table td.total { background: var(--surface-alt); color: var(--text-secondary); font-weight: 600; }
-  .check-yes  { color: var(--green); }
+  .check-yes  { color: var(--pass-text); }
   .check-no   { color: var(--border-strong); }
-  .api-total { background: var(--surface-alt); color: var(--purple); font-weight: 700; }
+  .api-total { background: var(--surface-alt); color: var(--accent); font-weight: 700; }
 
   /* Venn-style overlap */
   .venn-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin: 1rem 0; }
@@ -110,18 +99,23 @@
 </head>
 <body>
 
-<nav>
-  <span class="brand" style="display:inline-flex;align-items:center;gap:5px;"><img src="parbench-icon.svg" width="20" height="20" alt="" style="display:block;">ParBench</span>
-  <a href="overview.html">Overview</a>
-  <a href="build_results.html">Build Results</a>
-  <a href="results.html">Augmentation</a>
-  <a href="augmentation_deep_dive.html">Deep Dive</a>
-  <a href="benchmark_landscape.html" class="active">Landscape</a>
-  <a href="architecture.html">Architecture</a>
-  <a href="pipeline.html">Pipeline</a>
-  <a href="llm_evaluation.html">LLM Evaluation</a>
-  <a href="sprint_dashboard.html">Sprint</a>
+<nav class="site-nav">
+  <a href="overview.html" class="nav-brand">
+    <img src="parbench-icon.svg" width="20" height="20" alt="">ParBench
+  </a>
+  <div class="nav-links">
+    <a href="overview.html">Overview</a>
+    <a href="build_results.html">Build Results</a>
+    <a href="results.html">Augmentation</a>
+    <a href="augmentation_deep_dive.html">Deep Dive</a>
+    <a href="benchmark_landscape.html" class="active">Landscape</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="pipeline.html">Pipeline</a>
+    <a href="llm_evaluation.html">LLM Evaluation</a>
+    <a href="sprint_dashboard.html">Sprint</a>
+  </div>
 </nav>
+<div class="page-wrapper">
 
 <h1>Benchmark Ecosystem Landscape</h1>
 <p class="subtitle">How ParBench fits in the parallel computing benchmark space</p>
@@ -156,7 +150,7 @@
 <div class="venn-row">
   <div class="venn-box">
     <h4 style="color:var(--accent)">HeCBench (120 specs) — PRIMARY</h4>
-    <p style="margin-bottom:0.5rem">60 kernels × CUDA + SYCL/OMP/HIP<br>Focus: diverse algorithm coverage<br>APIs: CUDA, OMP, SYCL, HIP<br><em style="color:var(--yellow)">Planned — source not yet cloned locally; 0 kernels evaluated</em></p>
+    <p style="margin-bottom:0.5rem">60 kernels × CUDA + SYCL/OMP/HIP<br>Focus: diverse algorithm coverage<br>APIs: CUDA, OMP, SYCL, HIP<br><em style="color:var(--run-fail-text)">Planned — source not yet cloned locally; 0 kernels evaluated</em></p>
     <div class="kernels">
       <span>aes</span><span>bilateral</span><span>babelstream</span><span>chi2</span><span>eigenvalue</span>
       <span>fft</span><span>ising</span><span>lud</span><span>nbody</span><span>nn</span>
@@ -174,9 +168,9 @@
   </div>
 
   <div class="venn-box">
-    <h4 style="color:var(--green)">Rodinia (65 specs) — PRIMARY</h4>
+    <h4 style="color:var(--pass-text)">Rodinia (65 specs) — PRIMARY</h4>
     <p style="margin-bottom:0.5rem">21 CUDA + 22 OMP + 22 OpenCL specs<br>Focus: scientific computing patterns<br>APIs: CUDA, OMP, OpenCL</p>
-    <p style="font-size:0.78rem; margin-bottom:0.5rem"><strong style="color:var(--green)">10 kernels evaluated:</strong> bfs, hotspot, lud, nn, nw, pathfinder, backprop, kmeans, srad, streamcluster<br><span style="color:var(--text-muted)">11 kernels untested (remaining Rodinia)</span></p>
+    <p style="font-size:0.78rem; margin-bottom:0.5rem"><strong style="color:var(--pass-text)">10 kernels evaluated:</strong> bfs, hotspot, lud, nn, nw, pathfinder, backprop, kmeans, srad, streamcluster<br><span style="color:var(--text-muted)">11 kernels untested (remaining Rodinia)</span></p>
     <div class="kernels">
       <span>bfs</span><span>bptree</span><span>cfd</span><span>heartwall</span><span>hotspot</span>
       <span>hotspot3d</span><span>huffman</span><span>kmeans</span><span>lavamd</span><span>srad</span>
@@ -206,7 +200,7 @@
     <tr>
       <td class="row-h">CUDA</td>
       <td style="color:var(--text-muted)">—</td>
-      <td style="background:#dcfce7; color:var(--green); font-weight:600">21<br><small style="font-weight:normal; color:var(--green)">Primary — 10 evaluated</small></td>
+      <td style="background:#dcfce7; color:var(--pass-text); font-weight:600">21<br><small style="font-weight:normal; color:var(--pass-text)">Primary — 10 evaluated</small></td>
       <td style="background:var(--surface-alt); color:var(--text-muted)">planned</td>
       <td style="color:var(--text-muted)">—</td>
       <td style="color:var(--text-muted)">—</td>
@@ -323,12 +317,13 @@ SUITES.forEach(s => {
 
 // Column totals
 const colTotalsA = AVAIL_APIS.map((_, ci) => SUITES.reduce((s, row) => s + row.vals[ci], 0));
-ahtml += '<tr><td class="suite-name" style="color:var(--purple); font-weight:700">Suites with API</td>';
+ahtml += '<tr><td class="suite-name" style="color:var(--accent); font-weight:700">Suites with API</td>';
 colTotalsA.forEach(t => { ahtml += `<td class="api-total">${t}</td>`; });
 ahtml += `<td></td></tr>`;
 ahtml += '</tbody>';
 atable.innerHTML = ahtml;
 </script>
 
+</div><!-- end .page-wrapper -->
 </body>
 </html>
