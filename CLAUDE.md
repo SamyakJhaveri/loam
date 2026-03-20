@@ -126,6 +126,19 @@ Data refresh: `python3 scripts/generate_viz_data.py`, then commit and push.
 
 Or use: `/gen-spec <suite>` for the full guided workflow.
 
+## Quality Standards — Non-Negotiable
+
+**Every file touched in this project is reviewed line-by-line after every session.**
+Incomplete, superficial, or "good enough" work will be caught immediately.
+
+- **No shortcuts.** Read the file before editing. Understand the code before changing it. Verify the change is correct before reporting done.
+- **No partial implementations.** If a task requires touching 5 files, touch all 5. Do not stop at 3 and call it done.
+- **Use `ultrathink` for any task involving:** architecture decisions, eval pipeline changes, spec correctness, augmentation transform logic, or anything that affects published results.
+- **Verify before closing.** Run validators, unit tests, or harness smoke tests as appropriate. Do not mark work complete without evidence it works.
+- **If unsure, say so explicitly** and ask — do not silently guess, make assumptions, or produce plausible-looking output that hasn't been verified.
+
+Samyak reviews all output. Laziness is not acceptable. Thoroughness is the baseline.
+
 ---
 
 ## Claude Code Extensions
