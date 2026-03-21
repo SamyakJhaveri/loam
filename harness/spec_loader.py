@@ -171,6 +171,7 @@ def get_prompt_payload(spec: dict[str, Any], project_root: Path, augment_level: 
                 PointerArithmeticToArrayIndex,
                 TypedefExpansion,
                 ChangeNames,
+                ChangeFunctionNames,
                 augment_code
             )
             ci_index = ci.Index.create()
@@ -182,6 +183,7 @@ def get_prompt_payload(spec: dict[str, Any], project_root: Path, augment_level: 
                     PointerArithmeticToArrayIndex(level=augment_level),
                     TypedefExpansion(level=augment_level),
                     ChangeNames(level=augment_level),
+                    ChangeFunctionNames(level=augment_level),
                 ]
             )
         except ImportError as e:
@@ -193,7 +195,7 @@ def get_prompt_payload(spec: dict[str, Any], project_root: Path, augment_level: 
         if path.exists():
             content = path.read_text(encoding="utf-8", errors="replace")
             if augment_level > 0 and aug_config and ci_index and path.suffix in [".c", ".cpp", ".cu", ".h", ".hpp", ".cuh", ".cl", ".dp.cpp"]:
-                content, _ = augment_code(content, aug_config, ci_index)
+                content, _ = augment_code(content, aug_config, ci_index, filename=path.name)
             payload[path.name] = content
         else:
             payload[path.name] = f"<FILE NOT FOUND: {path}>"

@@ -113,9 +113,9 @@ to `max_chars=50000` cumulative limit to avoid prompt bloat.
 Pitfall: CUDA binaries often take fewer args than OMP equivalents (OMP adds `nthreads`).
 When writing or verifying OMP specs, check the reference OMP source `argc` check carefully.
 
-Known-correct args (verified 2026-03-17):
-- `rodinia-nw-omp`: `['2048', '10']` — NOT `['2048', '10', '4']` (extra was wrong)
-- `rodinia-hotspot-omp`: `['512', '2', '4', 'temp_512', 'power_512', 'output.out']` — note: single grid arg, temp BEFORE power
+Known-correct args (re-verified 2026-03-20 against source argc checks):
+- `rodinia-nw-omp`: `['2048', '10', '4']` — 3 args: <dimension> <penalty> <num_threads> (needle.cpp:249 checks argc==4)
+- `rodinia-hotspot-omp`: `['512', '512', '2', '4', 'temp_512', 'power_512', 'output.out']` — 7 args: <rows> <cols> <sim_time> <threads> <temp> <power> <output> (hotspot_openmp.cpp:282 checks argc!=8)
 - `rodinia-srad-omp`: `['512', '512', '0', '127', '0', '127', '2', '0.5', '2']` — 9 args, position 7 is nthreads=2
 
 Always run the reference binary to check: `./binary --help` or just run it with no args to see usage.
