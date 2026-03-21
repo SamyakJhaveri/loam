@@ -9,6 +9,16 @@
             "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'rm -rf|rm -fr'; then echo 'BLOCKED: rm -rf not allowed' >&2 && exit 2; fi"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/protect-benchmark-sources.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PostToolUse": [
