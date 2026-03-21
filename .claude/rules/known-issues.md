@@ -231,9 +231,9 @@ These require either CUDA 12 API rewrites or system-level dependencies not prese
 |------|-------|-------------|
 | `rodinia-kmeans-cuda` | `texture<>` removed in CUDA 12 | 50-100 lines of texture reference → texture object rewrite |
 | `rodinia-mummergpu-cuda` | `texture<>` removed in CUDA 12 | Same rewrite needed in `mummergpu_kernel.cu` |
-| `rodinia-mummergpu-omp` | `texture<>` removed in CUDA 12 | OMP version also uses CUDA kernel — same rewrite needed |
+| `rodinia-mummergpu-omp` | `texture<>` removed in CUDA 12 + `cuMemGetInfo_v2` signature change (`unsigned int*` → `size_t*`) | OMP version also uses CUDA kernel — same rewrite needed; additional `cuMemGetInfo` fix required |
 | `rodinia-hybridsort-cuda` | `GL/glew.h` not found | Needs `libglew-dev` + display server; headless GPU machine |
-| `rodinia-nn-opencl` | SIGSEGV in OpenCL runtime | Pre-existing; never passed; runtime crash |
+| `rodinia-nn-opencl` | TIMEOUT (300s) from harness; SIGSEGV when run directly | Pre-existing; never passed. Harness arg `filelist.txt` doesn't exist in `opencl/nn/` — hangs on file I/O. Direct binary run crashes with SIGSEGV (exit -11) in OpenCL runtime |
 | `rodinia-kmeans-opencl` | SIGSEGV in OpenCL runtime | Pre-existing; never passed; exit code -11 |
 
 **Do not include these 6 specs in eval batches.** Use the 54 remaining PASS specs.
@@ -289,7 +289,7 @@ Ran `harness verify` at L0 on all 8 M10b-fixed specs and 4 original KNOWN_FAIL s
 | `rodinia-mummergpu-omp` | **KNOWN_FAIL** | OMP version also uses CUDA kernel — same texture<> issue |
 | `rodinia-kmeans-cuda` | **KNOWN_FAIL** (confirmed) | CUDA 12 texture<> API removal |
 | `rodinia-hybridsort-cuda` | **KNOWN_FAIL** (confirmed) | GL/glew.h not found |
-| `rodinia-nn-opencl` | **KNOWN_FAIL** (confirmed) | SIGSEGV in OpenCL runtime |
+| `rodinia-nn-opencl` | **KNOWN_FAIL** (confirmed) | TIMEOUT (300s) from harness (filelist.txt missing); SIGSEGV (exit -11) from direct run |
 | `rodinia-kmeans-opencl` | **KNOWN_FAIL** (confirmed) | SIGSEGV in OpenCL runtime (exit -11) |
 
 **Overall: 54/60 PASS, 6/60 KNOWN_FAIL.**
@@ -311,6 +311,68 @@ Rule: always verify `outputs.executable` matches the actual Makefile output arti
 `pathfinder-opencl` spec had positional args `["100000","100","20"]` but source parses
 named flags `-c cols -r rows -h pyramid_height`. Rule: always check source's `init()`/`argc`
 parsing before writing spec run args.
+
+## Session 3 Independent Re-verification (2026-03-20)
+
+Full re-run of all 12 Session 2 specs using wave-based parallel execution (Waves 1-4).
+Commit `de95155` validated — all 12 classifications match. One failure mode detail corrected.
+
+| Spec | Session 2 | Session 3 | Match |
+|------|-----------|-----------|-------|
+| `rodinia-hotspot-omp` | PASS | PASS | ✓ |
+| `rodinia-nw-omp` | PASS | PASS | ✓ |
+| `rodinia-nn-cuda` | PASS | PASS | ✓ |
+| `rodinia-cfd-cuda` | PASS | PASS | ✓ |
+| `rodinia-cfd-opencl` | PASS | PASS | ✓ |
+| `rodinia-pathfinder-opencl` | PASS | PASS | ✓ |
+| `rodinia-mummergpu-cuda` | BUILD_FAIL | BUILD_FAIL | ✓ |
+| `rodinia-mummergpu-omp` | BUILD_FAIL | BUILD_FAIL | ✓ |
+| `rodinia-kmeans-cuda` | BUILD_FAIL | BUILD_FAIL | ✓ |
+| `rodinia-hybridsort-cuda` | BUILD_FAIL | BUILD_FAIL | ✓ |
+| `rodinia-nn-opencl` | KNOWN_FAIL | KNOWN_FAIL | ✓ (mode: TIMEOUT from harness, SIGSEGV from direct run) |
+| `rodinia-kmeans-opencl` | KNOWN_FAIL | KNOWN_FAIL | ✓ (SIGSEGV, exit -11) |
+
+**Correction:** `nn-opencl` failure mode updated — harness produces TIMEOUT (spec uses `filelist.txt`
+which doesn't exist in `opencl/nn/`), while direct binary run produces SIGSEGV (exit -11) in the
+OpenCL runtime. Both confirm KNOWN_FAIL. Classification unchanged: 54/60 PASS.
+
+**New finding (Session 3):** `mummergpu-omp` surfaces an additional CUDA 12 API change beyond
+`texture<>` removal: `cuMemGetInfo_v2` signature changed from `(unsigned int*, unsigned int*)`
+to `(size_t*, size_t*)`. This is a previously undocumented cascade error. KNOWN_FAIL table
+updated to reflect both failure modes. Any mummergpu fix must address both the texture object
+rewrite and the `cuMemGetInfo` signature update.
+
+## Full Augmentation Batch Retest — 60 Specs × L1–L4 (2026-03-20)
+
+Definitive augmentation baseline for SC26 paper. First run on the clean 60-spec set
+(5 phantoms deleted, all M10b spec fixes applied, G1/G2 harness gaps fixed).
+240 tasks (60 specs × 4 levels), seed=42, `--config correctness`.
+Results: `results/augmentation/retest_post_session2.{json,md}`.
+
+**54/60 PASS at all levels (level-invariant). No transform introduces new failures.**
+
+| Level | PASS | BUILD_FAIL | FAIL | ERROR | Total |
+|-------|------|-----------|------|-------|-------|
+| L1    | 54   | 4         | 2    | 0     | 60    |
+| L2    | 54   | 4         | 2    | 0     | 60    |
+| L3    | 54   | 4         | 2    | 0     | 60    |
+| L4    | 54   | 4         | 2    | 0     | 60    |
+
+**BUILD_FAIL (4):** hybridsort-cuda, kmeans-cuda, mummergpu-cuda, mummergpu-omp
+**FAIL (2):** kmeans-opencl, nn-opencl
+
+**Improvement from M10 baseline:** 48/65 (73%) → 54/60 (90%)
+(Numerator: +6 M10b fixes; Denominator: -5 phantom specs)
+
+**M10b-fixed specs confirmed PASS (all 6):**
+cfd-cuda, cfd-opencl, pathfinder-opencl, nn-cuda, hotspot-omp, nw-omp
+
+**Transform frequency (across 240 tasks):**
+SwapCondition=162, ArithmeticTransform=69, ChangeNames=55, TypedefExpansion=7,
+PointerArithmeticToArrayIndex=6, ChangeFunctionNames=2
+
+**Key result for SC26 paper:** Level-invariance holds across all 54 passing specs —
+augmentation at L1–L4 introduces zero correctness regressions. Transforms are semantics-preserving.
 
 ## Pipeline Fixes (2026-03-19)
 
