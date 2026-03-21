@@ -773,12 +773,12 @@ Chart.defaults.plugins.tooltip.padding = 10;
 Chart.defaults.plugins.tooltip.cornerRadius = 6;
 
 // --- Burndown Chart ---
-// Total tasks: 21. Sprint: 21 days.
-// Ideal: decreases linearly from 21 to 0.
-// Actual: Day 0 = 21, Day 2 end = 13 remaining (8 done).
+// Total tasks: 24 (21 original + G1, G2, M10b added Day 3).
+// Ideal: decreases linearly from 24 to 0.
+// Actual: Day 0 = 24, Day 2 end = 16 remaining (8 done), Day 3 = 13 remaining (G1 + G2 + M10b done).
 const days = Array.from({length: 22}, (_, i) => 'D' + i);
-const ideal = days.map((_, i) => Math.max(0, Math.round(21 - (21 / 21) * i)));
-const actual = [21, 21, 13, null, null, null, null, null, null, null,
+const ideal = days.map((_, i) => Math.max(0, Math.round(24 - (24 / 21) * i)));
+const actual = [24, 24, 16, 13, null, null, null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null];
 
 new Chart(document.getElementById('burndownChart'), {
@@ -868,10 +868,11 @@ new Chart(document.getElementById('passRateChart'), {
 const STORAGE_KEY     = 'parbench-sprint-tasks';
 const STORAGE_VERSION = 1;
 
-// --- Seed data (21 sprint tasks) ---
+// NOTE: If tasks look stale, click "Reset to Defaults" to reload
+// --- Seed data (24 sprint tasks) ---
 const DEFAULT_TASKS = [
   { id: 'M9',    description: "Cherry-pick Erel's aug fixes (Bug A/B/C)",                      priority: 'HIGH',     status: 'done',        owner: 'Samyak',  notes: 'Day 2 \u2014 fixes live in main' },
-  { id: 'M10',   description: 'Verify augmentation L1\u2013L4 stability',                      priority: 'HIGH',     status: 'done',        owner: 'Samyak',  notes: 'Day 2 \u2014 all levels stable' },
+  { id: 'M10',   description: 'Verify augmentation L1\u2013L4 stability',                      priority: 'HIGH',     status: 'done',        owner: 'Samyak',  notes: 'Spot-checked 2/60 specs only. Full retest deferred to Day 15.' },
   { id: '2B',    description: 'Add --augment-levels to batch runner',                          priority: 'MED',      status: 'done',        owner: 'Samyak',  notes: 'Day 2 \u2014 run_eval_batch.py updated' },
   { id: '2G',    description: 'Build analyze_eval.py aggregator',                              priority: 'MED',      status: 'done',        owner: 'Samyak',  notes: 'Day 2 \u2014 outputs eval_summary.json + .md' },
   { id: 'Pilot', description: '10-kernel CUDA\u2192OMP pilot eval (6/10 PASS)',                priority: 'HIGH',     status: 'done',        owner: 'Samyak',  notes: 'Day 2 \u2014 60% pass (6/10)' },
@@ -891,6 +892,9 @@ const DEFAULT_TASKS = [
   { id: '2C',    description: 'Smoke-test all 21 Rodinia OMP specs',                           priority: 'HIGH',     status: 'todo',        owner: 'Samyak',  notes: '' },
   { id: 'M5',    description: 'Clone ExaBench/XSBench (one kernel only)',                      priority: 'MED',      status: 'todo',        owner: 'Samyak',  notes: '' },
   { id: '2E/2F', description: 'Cleanup stale files; minor bug fixes B1\u2013B7',              priority: 'LOW',      status: 'todo',        owner: 'Samyak',  notes: '' },
+  { id: 'G1',    description: 'Add ChangeFunctionNames unit tests (4 cases)',                  priority: 'MED',      status: 'done',        owner: 'Samyak',  notes: 'Day 3 \u2014 gap found during M9 audit; also fixed _string_literals_in_file bug' },
+  { id: 'G2',    description: 'Fix filename threading in augment_sample + spec_loader',        priority: 'HIGH',     status: 'done',        owner: 'Samyak',  notes: 'Day 3 \u2014 2 one-line fixes; .cu files were parsed as .cpp' },
+  { id: 'M10b',  description: 'Full 65-spec augmentation retest (post-M9)',                    priority: 'HIGH',     status: 'done',        owner: 'Samyak',  notes: 'Day 3 \u2014 48/65 PASS (73%) at ALL levels. Level-invariant: transforms introduce zero new failures.' },
 ];
 
 // --- Persistence ---

@@ -49,15 +49,19 @@ Infrastructure baseline confirmed — continuing full evaluation sweep with GPT-
 
 ### 1.3 Inventory
 
-#### Specs (185 total)
+#### Specs (180 total, updated 2026-03-20)
 
 | Suite | CUDA | OMP | OpenCL | Total |
 |-------|:----:|:---:|:------:|:-----:|
-| Rodinia | 22 | 21 | 22 | **65** |
+| Rodinia | 22 | 18 | 20 | **60** |
 | HeCBench | 60 | 60 | 0 | **120** |
-| **Total** | **82** | **81** | **22** | **185** |
+| **Total** | **82** | **78** | **20** | **180** |
 
 **22 unique Rodinia kernels:** backprop, bfs, bptree, cfd, dwt2d, gaussian, heartwall, hotspot, hotspot3d, huffman, hybridsort, kmeans, lavamd, lud, mummergpu, myocyte, nn, nw, particlefilter, pathfinder, srad, streamcluster
+
+> **Note (2026-03-20 — M10b):** 5 phantom specs deleted — `gaussian-omp`, `huffman-omp`,
+> `huffman-opencl`, `hybridsort-omp`, `mummergpu-opencl`. These pointed to directories that
+> don't exist at Rodinia commit `9c10d3ea`. See `known-issues.md` M10b section.
 
 #### Translation Pairs Available
 
@@ -211,7 +215,7 @@ SC26 = double-column, 10 pages + appendices. Draft must exist before next meetin
 | Task | Description | Status |
 |------|-------------|--------|
 | **M9** | Cherry-picked Erel's `erel/aug` augmentation fixes into main: Bug A/B/C fixes, `ChangeFunctionNames` transform, `LEVEL_FRACTIONS`/`_select_fraction()`, `_greedy_valid_subset()`, `_contains_side_effects()`, `filename` param threading, OMP pragma awareness helpers, UTF-8 safety in `_source_text()`. All 11 unit tests pass. | DONE |
-| **M10** | Verified augmentation L1/L3/L4 all PASS on srad-cuda and backprop-cuda (seed=42). `PointerArithmeticToArrayIndex` doesn't fire on any Rodinia CUDA spec (all use `arr[idx]` syntax, not `*(ptr+idx)`). **L1-L4 fully stable.** | DONE |
+| **M10** | Verified augmentation L1/L3/L4 all PASS on srad-cuda and backprop-cuda (seed=42). `PointerArithmeticToArrayIndex` doesn't fire on any Rodinia CUDA spec. **DONE (spot-check only — 2/60 specs).** Full 60-spec retest planned (M10b). Pre-M9 results on disk (March 10–11) cannot be cited as post-fix evidence. | DONE (spot-check) |
 | **2B** | `--augment-levels` flag added to `run_eval_batch.py`. Each level generates separate tasks with result files tagged `-L1`, `-L2`, etc. (L0 has no tag). `.cl` suffix fix applied in both `spec_loader.py` and `augment_verify.py`. | DONE |
 | **2G** | `analyze_eval.py` created — aggregates all result JSONs into `eval_summary.json`, `eval_summary.md`, and `eval_results_data.js` (via `--write-dashboard`). `--show-gaps` prints missing combinations. | DONE |
 | **Pilot eval** | 10-kernel pilot with `azure-gpt-4.1` at L0 cuda-to-omp. **6/10 PASS (60%).** PASS: bfs, hotspot, lud, nn, nw, pathfinder. BUILD_FAIL: backprop, kmeans, srad, streamcluster. | DONE |
@@ -259,6 +263,42 @@ SC26 = double-column, 10 pages + appendices. Draft must exist before next meetin
 | **2C** | HIGH | Not started | Smoke test all 22 OMP specs |
 | **2D** | HIGH | Partially done | Full Rodinia cuda-to-omp eval — 10/21 kernels done |
 | **HeCBench** | MEDIUM | Blocked | Not cloned locally — blocks 120 specs |
+
+---
+
+### 1.7 Day 3 (March 20) — Completion Summary
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| **G1** | Added 4 `ChangeFunctionNames` unit tests to `test_transforms.py`. Test run exposed a bonus pre-existing bug: `_string_literals_in_file` initialized `values = []` (list) instead of `set()`, silently breaking the OpenCL kernel-name safety guard via swallowed `AttributeError`. Fixed. All 15 tests now pass. | DONE |
+| **G2** | Fixed `filename` kwarg threading in 2 production call sites: `augment_dataset.py:augment_sample()` and `harness/spec_loader.py:get_prompt_payload()`. Previously, `.cu` and `.cl` files were parsed by libclang as `.cpp` (no CUDA/OpenCL language extensions), potentially misidentifying kernel entry points. `augment_verify.py` was already correct. | DONE |
+| **FE** | Full website revamp: shared `theme.css`, unified nav, Okabe-Ito palette across all visualization pages. Sprint dashboard Kanban updated: G1/G2 added as done, M10b added as in-progress, burndown updated to 24 tasks. | DONE |
+
+#### Gaps Discovered During M9 Audit
+
+The Day 3 work was driven by a 5-agent deep audit of M9, which found two gaps:
+
+- **G1 (ChangeFunctionNames untested)**: 260 lines of new transform code had zero unit tests. The act of writing tests exposed the `_string_literals_in_file` bug — classic "tests are a forcing function for correctness".
+- **G2 (filename not threaded)**: Two of three `augment_code` call sites omitted `filename=`. The `augment_verify.py` path (the one used for M10 smoke tests) was the one that worked correctly. The harness prompt path and JSONL batch path were silently broken.
+
+#### M10 Reassessment
+
+M10 was previously marked DONE, but the audit found:
+- Only `srad-cuda` and `backprop-cuda` were re-run post-M9 (2 of 60 specs)
+- All augmentation results on disk are dated March 10–11 (8+ days before M9 merge)
+- The `augment_verify.py` path passes `filename=` correctly, so those 2 re-runs were valid
+- Full 60-spec retest (M10b) launched on Day 3 with seed=42 post-G2 fix
+
+#### Pending After Day 3
+
+| Task | Priority | Status | Notes |
+|------|----------|--------|-------|
+| **M10b** | HIGH | DONE | Full 65-spec retest complete (2026-03-20). 48/65 PASS (73%) at ALL levels — level-invariant. 17 failures are pre-existing spec/build issues, not transform-caused. |
+| **M10b-fixes** | HIGH | DONE | Post-mortem on 17 M10b failures. 5 phantom specs deleted (65→60). 8 specs fixed: hotspot-omp/nw-omp (wrong args restored), nn-cuda (filelist_4), cfd-cuda (helper_cuda.h), cfd-opencl (C++14 NULL + OpenCL version), mummergpu-cuda/omp (unistd.h), pathfinder-opencl (data rename + OpenCL version). 4 KNOWN_FAIL documented: kmeans-cuda, hybridsort-cuda, nn-opencl, kmeans-opencl. Target: **56/60 PASS (93%).** Retest pending. |
+| **G3** | LOW | Pending | Consider removing `try/except Exception: pass` in `_string_literals_in_file` (masks future bugs) |
+| *(all Day 2 pending items remain)* | | | |
 
 ---
 

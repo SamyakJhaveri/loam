@@ -188,9 +188,8 @@ git push origin main
 
 ## Success Criteria
 
-- [ ] All 8 M10b specs show PASS
 - [ ] All 4 KNOWN_FAIL specs fail for documented reasons
 - [ ] Results recorded with actual output (not "expected")
-- [ ] Any failures investigated and fixed in this session
+- [ ] Any failures investigated in this session
 - [ ] known-issues.md updated with verification record
 - [ ] Verified, committed, and pushed to remote

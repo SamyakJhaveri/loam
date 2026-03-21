@@ -77,6 +77,36 @@
 5. Don't skip verification — always run validators and tests
 6. Don't skip recording — update docs after discovering gotchas
 7. Keep CLAUDE.md under 200 lines — move details to `.claude/rules/`
+8. **Don't treat documentation as ground truth for code behavior.**
+   `known-issues.md` and sprint docs record human observations — they can be wrong.
+   The source code and test outputs are authoritative. If documentation contradicts
+   source, verify against the source and update the documentation, never the reverse.
+9. **Don't change spec run args without reading the actual source's argc check.**
+   See Run Argument Verification Protocol in `spec-conventions.md`. This rule exists
+   because of a real incident where "fixes" based on documentation caused 2 specs to
+   silently fail for weeks. The evidence is always in the source and the baseline stdout.
+
+## Atomic Task Decomposition (for multi-step plans)
+
+When facing a large plan (fix N issues, retest, update dashboard, push):
+
+1. **Audit first** — Evaluate what's actually done vs. claimed. Check with real data.
+2. **Decompose** — Each session gets ONE objective with concrete acceptance criteria.
+3. **Map dependencies** — Which sessions are sequential? Which can run in parallel?
+4. **Write session plan files** — Store in `docs/session_plans/session_N_<desc>.md`. Each must include:
+   - Copy-pasteable Claude Code prompt (self-contained, all context included)
+   - Files reference table (paths, line numbers, current content, what changes)
+   - Cross-reference sources (so the session verifies against source, not docs)
+   - Verification commands with expected output
+   - Commit message template
+   - Troubleshooting guide for likely failures
+   - Success criteria checklist
+5. **`/clear` between sessions** — Fresh context for each atomic task.
+6. **Gate on verification** — Don't commit until verification passes with ACTUAL data.
+
+**Why this works:** Context management IS quality management. A session doing 1 thing well
+uses all its context budget on that thing. Errors don't compound across sessions. Each
+commit is one verified, complete unit of work. Independent sessions can run in parallel.
 
 ## Course Correction
 

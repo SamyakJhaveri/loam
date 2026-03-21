@@ -3,7 +3,8 @@
 > **Depends on:** Session 2 (8 M10b specs verified PASS)
 > **Blocks:** Session 5 (dashboard refresh)
 > **Estimated time:** 60–90 minutes (240 tasks: 60 specs × 4 levels)
-> **Thinking level:** `think hard` initially, `ultrathink` if unexpected failures
+> **Thinking level:** use ultrathink.
+> **USE 8 subagents**
 
 ---
 
@@ -17,8 +18,6 @@ and before the Session 1 `ChangeFunctionNames` harness fix.
 ---
 
 ## Claude Code Prompt
-
-Copy-paste this into a fresh `/clear` session:
 
 ```
 I need to complete Session 3 of the Sprint Audit Fix Plan: full 60-spec augmentation retest.
