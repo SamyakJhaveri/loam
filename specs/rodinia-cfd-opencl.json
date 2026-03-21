@@ -49,7 +49,7 @@
         "working_directory": "opencl/cfd",
         "commands": {
             "configure": null,
-            "build": "make OPENCL_INC=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include OPENCL_LIB=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64 FLAGS='-O3 -std=c++14'",
+            "build": "make OPENCL_INC=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include OPENCL_LIB=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64 FLAGS='-O3 -std=c++14 -DCL_TARGET_OPENCL_VERSION=120'",
             "clean": "make clean"
         },
         "variables": {
@@ -65,11 +65,11 @@
             }
         },
         "outputs": {
-            "executable": "./euler3d"
+            "executable": "./euler3d.out"
         }
     },
     "run": {
-        "executable": "./euler3d",
+        "executable": "./euler3d.out",
         "default_arguments": [
             "../../data/cfd/fvcorr.domn.097K"
         ],

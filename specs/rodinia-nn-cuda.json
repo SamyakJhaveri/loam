@@ -64,7 +64,7 @@
     "run": {
         "executable": "./nn",
         "default_arguments": [
-            "filelist.txt",
+            "filelist_4",
             "-r",
             "5",
             "-lat",
@@ -77,7 +77,7 @@
         "input_configurations": {
             "correctness": {
                 "arguments": [
-                    "filelist.txt",
+                    "filelist_4",
                     "-r",
                     "5",
                     "-lat",
@@ -87,7 +87,7 @@
                 ],
                 "description": "Small input for correctness verification of nn (CUDA)",
                 "input_files": [
-                    "filelist.txt",
+                    "filelist_4",
                     "../../data/nn/cane4_0.db",
                     "../../data/nn/cane4_1.db",
                     "../../data/nn/cane4_2.db",

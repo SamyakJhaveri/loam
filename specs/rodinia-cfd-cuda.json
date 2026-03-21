@@ -49,7 +49,7 @@
         "working_directory": "cuda/cfd",
         "commands": {
             "configure": null,
-            "build": "make CUDA_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda",
+            "build": "make euler3d CUDA_DIR=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda KERNEL_DIM='-I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/examples/OpenACC/SDK/include'",
             "clean": "make clean"
         },
         "variables": {

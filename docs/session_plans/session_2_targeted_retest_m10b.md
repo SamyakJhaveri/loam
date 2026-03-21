@@ -3,8 +3,8 @@
 > **Depends on:** Session 1 (committed)
 > **Blocks:** Session 3 (full retest)
 > **Estimated time:** 30–45 minutes (builds take time)
-> **Thinking level:** `think hard` (debugging if failures occur)
-
+> **Thinking level:** use ultrathink (debugging if failures occur)
+> **USE 10 SUBAGENTS**
 ---
 
 ## Objective
@@ -16,8 +16,6 @@ they still fail for the documented reasons.
 ---
 
 ## Claude Code Prompt
-
-Copy-paste this into a fresh `/clear` session:
 
 ```
 I need to complete Session 2 of the Sprint Audit Fix Plan: targeted retest of 8 M10b-fixed specs.

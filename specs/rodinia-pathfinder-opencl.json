@@ -49,7 +49,7 @@
         "working_directory": "opencl/pathfinder",
         "commands": {
             "configure": null,
-            "build": "make OPENCL_INC=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include OPENCL_LIB=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64",
+            "build": "make OPENCL_INC=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include OPENCL_LIB=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64 CXXFLAGS='-I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include -c -g -DCL_TARGET_OPENCL_VERSION=120'",
             "clean": "make clean"
         },
         "variables": {
@@ -65,24 +65,24 @@
             }
         },
         "outputs": {
-            "executable": "./pathfinder"
+            "executable": "./pathfinder.out"
         }
     },
     "run": {
-        "executable": "./pathfinder",
+        "executable": "./pathfinder.out",
         "default_arguments": [
-            "100000",
-            "100",
-            "20"
+            "-c", "100000",
+            "-r", "100",
+            "-h", "20"
         ],
         "timeout_seconds": 300,
         "environment_variables": null,
         "input_configurations": {
             "correctness": {
                 "arguments": [
-                    "100000",
-                    "100",
-                    "20"
+                    "-c", "100000",
+                    "-r", "100",
+                    "-h", "20"
                 ],
                 "description": "Small input for correctness verification of pathfinder (OPENCL)",
                 "input_files": [],
@@ -90,9 +90,9 @@
             },
             "performance": {
                 "arguments": [
-                    "100000",
-                    "1000",
-                    "20"
+                    "-c", "100000",
+                    "-r", "1000",
+                    "-h", "20"
                 ],
                 "description": "Large input for performance measurement of pathfinder (OPENCL)",
                 "input_files": [],
