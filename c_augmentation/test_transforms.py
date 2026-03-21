@@ -15,6 +15,7 @@ import clang.cindex as ci
 from augment_dataset import (
     ArithmeticTransform,
     AugmentationConfig,
+    ChangeFunctionNames,
     ChangeNames,
     PointerArithmeticToArrayIndex,
     SwapCondition,
@@ -165,6 +166,87 @@ void compute(int size, float* data) {
     assert "float result = 0.0f;" not in rewritten
 
 
+def test_change_function_names_positive() -> None:
+    """Static helper functions are renamed; non-static (external) functions are not."""
+    code = """
+static int helper(int x) {
+    return x * 2;
+}
+
+int caller(int n) {
+    return helper(n) + helper(n + 1);
+}
+"""
+    index = ci.Index.create()
+    transform = ChangeFunctionNames()
+    assert transform.is_applicable(code, index)
+    with deterministic_random():
+        result = transform.apply(code, index)
+    assert result.applied
+    assert_parseable(result.code)
+    # helper() must be renamed (static = internal linkage)
+    assert "helper" not in result.code
+    # fn_0 is the deterministic name: NAME_PREFIXES[0]="fn" + counter=0
+    assert "fn_0" in result.code
+    # caller() must NOT be renamed (external linkage)
+    assert "caller" in result.code
+
+
+def test_change_function_names_skip_main() -> None:
+    """main() is in RESERVED and must never be renamed."""
+    code = """
+int main(int argc, char** argv) {
+    return 0;
+}
+"""
+    index = ci.Index.create()
+    transform = ChangeFunctionNames()
+    assert not transform.is_applicable(code, index)
+    result = transform.apply(code, index)
+    assert not result.applied
+    assert result.code == code
+
+
+def test_change_function_names_skip_kernel() -> None:
+    """Static functions that use CUDA builtins (threadIdx/blockIdx) must not be renamed."""
+    code = """
+static void myKernel(float* data, int n) {
+    int tid = threadIdx.x + blockIdx.x * 32;
+    if (tid < n) {
+        data[tid] = data[tid] * 2.0f;
+    }
+}
+"""
+    index = ci.Index.create()
+    transform = ChangeFunctionNames()
+    # _uses_parallel_entry_builtins fires on threadIdx/blockIdx tokens
+    assert not transform.is_applicable(code, index)
+    result = transform.apply(code, index)
+    assert not result.applied
+
+
+def test_change_function_names_skip_string_literal() -> None:
+    """Functions whose name appears in a string literal must not be renamed (OpenCL clCreateKernel pattern)."""
+    code = """
+static void myFunc(float* data, int n) {
+    for (int i = 0; i < n; i++) {
+        data[i] = data[i] * 2.0f;
+    }
+}
+
+void setup() {
+    const char* name = "myFunc";
+    (void)name;
+}
+"""
+    index = ci.Index.create()
+    transform = ChangeFunctionNames()
+    # myFunc is in string_literals so _renamable_functions excludes it
+    assert not transform.is_applicable(code, index)
+    result = transform.apply(code, index)
+    assert not result.applied
+
+
 def test_real_kernel_pipeline() -> None:
     code = """
 void entropy(float* d_entropy, const char* d_val, int height, int width) {
@@ -276,6 +358,10 @@ def main() -> int:
         test_pointer_arithmetic_struct_member,
         test_typedef_expansion,
         test_change_names,
+        test_change_function_names_positive,
+        test_change_function_names_skip_main,
+        test_change_function_names_skip_kernel,
+        test_change_function_names_skip_string_literal,
         test_real_kernel_pipeline,
     ]
 

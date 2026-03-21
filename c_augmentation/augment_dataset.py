@@ -1459,7 +1459,7 @@ def _string_literals_in_file(tu: ci.TranslationUnit, filename: str) -> set[str]:
     Return the set of string values that appear as string-literal tokens in the
     main file.  Used to detect OpenCL kernel names passed to clCreateKernel.
     """
-    values: set[str] = []
+    values: set[str] = set()
     for token in tu.get_tokens(extent=tu.cursor.extent):
         if token.kind != TokenKind.LITERAL:
             continue
@@ -1827,7 +1827,7 @@ def augment_sample(sample: dict, config: AugmentationConfig, index: ci.Index) ->
             augmented_code[filename] = code_content
             continue
 
-        aug_code, transforms = augment_code(code_content, config, index)
+        aug_code, transforms = augment_code(code_content, config, index, filename=filename)
         augmented_code[filename] = aug_code
         all_transforms.extend(transforms)
 
