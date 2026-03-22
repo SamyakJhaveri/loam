@@ -1,8 +1,8 @@
 # Design Concern: Multi-File Source/Target Structural Mismatch in LLM Translation Evaluation
 
-**Status:** Awaiting team input (Gal + Erel) from Discord — do not implement until resolved
-**Session:** 2026-03-19 Day 2 of SC26 sprint
-**Next action:** Work in plan mode with Opus 4.6 extended after team responds
+**Status:** RESOLVED — Kernel-Centric Translation + Complexity Classification (2026-03-22)
+**Session:** 2026-03-19 Day 2 of SC26 sprint (concern raised); 2026-03-22 (resolved)
+**Resolution:** See Section 10 below and `docs/design/kernel_centric_translation.md`
 **Dashboard:** `visualizations/llm_evaluation.html` — "Design Concern" section
 
 ---
@@ -492,13 +492,17 @@ python3 scripts/evaluation/run_eval_batch.py \
 
 When starting a new session to continue this work:
 
-1. **Read this file first** to get full context
-2. **Read the result JSONs** for backprop and kmeans to ground the analysis
-3. **Read `llm_evaluate.py` lines 503-560** (extraction) and **254-310** (prompt building)
-4. **Check Discord for Gal/Erel responses** — their input determines Option A vs B
-5. **Enter plan mode** and plan the hybrid solution (Option B + C + kmeans spec fix)
-6. **Implement Step 2 (extraction fix) first** — it's a clear bug fix independent of design decision
-7. **Do NOT modify spec files** until Erel confirms the kmeans serial baseline question
+**RESOLVED 2026-03-22 — These instructions are superseded by the team decision in Section 10.**
+**For implementation:** Use SESSION 1.5 in `docs/session_prompts_sc26.md` instead.
+**For context:** Read Section 10 first, then `docs/design/kernel_centric_translation.md`.
+
+*Original pre-resolution instructions (historical reference only):*
+1. Read this file first to get full context
+2. Read the result JSONs for backprop and kmeans to ground the analysis
+3. Read `llm_evaluate.py` lines 503-560 (extraction) and 254-310 (prompt building)
+4. ~~Check Discord for Gal/Erel responses~~ — DONE (responses in Section 10)
+5. ~~Enter plan mode and plan the hybrid solution~~ — DONE (kernel-centric approach decided)
+6. ~~Do NOT modify spec files~~ — spec population is now SESSION 1.5 Step 7
 
 **Commands to start fresh eval after fixes:**
 ```bash
@@ -523,3 +527,61 @@ python3 scripts/evaluation/analyze_eval.py \
     --project-root /home/samyak/Desktop/parbench_sam \
     --write-dashboard --show-gaps
 ```
+
+---
+
+## 10. Team Decision (2026-03-22) — RESOLVED
+
+**Status: RESOLVED — Kernel-Centric Translation + Complexity Classification**
+
+### Team Feedback (Discord, 2026-03-21)
+
+**Erkap (Erel Kaplan):**
+> Until now we mainly focused on 1-file kernels to isolate the 'pure translation' skill
+> LLM. It is true that multi files can get trickier for various reasons. In my opinion
+> Option B is what we should do, for 2 reasons:
+> 1. Some codes cant be normalized to 1 file (I think here on OpenCL codes)
+> 2. The multi file handling is another skill of the LLM we want to test.
+
+**Niranjan Hasabnis:**
+> Yeah I think we should test 1 file kernel only. I mean if a kernel has a directory
+> containing Makefile, and other header files, then we only feed kernel.cu to the llm
+> and drop in kernel.cl in the corresponding place in opencl directory. Project level
+> translation looks next level of challenge.
+
+### Synthesis
+
+These opinions are **complementary, not contradictory**:
+- Niranjan defines **scope**: feed kernel files, not project infrastructure
+- Erkap defines **reporting**: classify by complexity, report stratified results per Option B
+
+### Resolved Design: Kernel-Centric Translation
+
+1. Feed source kernel file(s) to the LLM (all computational source files, not infrastructure)
+2. LLM produces only target kernel file(s), dropped into the target directory
+3. Target infrastructure stays untouched (Makefile, headers, utilities, serial baselines)
+4. OpenCL targets inherently need 2+ files (host `.cpp` + `.cl` kernel) — this is allowed
+5. Each translation pair classified by complexity for stratified paper reporting (Option B)
+6. No project-level restructuring — "next level of challenge" (Niranjan)
+
+### Implementation
+
+New spec field: `files.translation_targets` — optional subset of `prompt_payload` identifying
+the file(s) the LLM must produce. Pipeline uses this for target file list in prompt and for
+file backup/restore scope.
+
+See `docs/design/kernel_centric_translation.md` for full architecture including source-verified
+`translation_targets` values for all 60 Rodinia specs, prompt design, and pipeline code changes.
+
+Implementation session: **SESSION 1.5** in `docs/session_prompts_sc26.md`.
+
+### Expected Impact on Phase 1 BUILD_FAILs
+
+| Kernel | Root cause (from §3) | With kernel-centric translation |
+|--------|---------------------|--------------------------------|
+| backprop | 4-file generation from 2-file input | 1 target file (`backprop.c`) — Likely PASS |
+| kmeans | 8 files across 2 subdirs + serial baseline | 1 target file (`kmeans_openmp/kmeans_clustering.c`) — Likely PASS |
+| streamcluster | `dist()` duplication across 2 files | 1 target file (`streamcluster_omp.cpp`) — Likely PASS |
+| srad | True semantic error (arg type mismatch) | Unchanged (1→1 already) — Still likely FAIL |
+
+**Predicted pass rate improvement: 60% → 75-80%** (structural failures eliminated)

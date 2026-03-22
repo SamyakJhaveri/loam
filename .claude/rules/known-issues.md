@@ -256,18 +256,36 @@ in either `openmp/nn/` or `cuda/nn/`. The correct file is `filelist_4`.
 `filelist_4` contains correct relative paths to `../../data/nn/cane4_*.db`.
 Without this file, `fopen(NULL)` is called → SIGSEGV at runtime.
 
-## LLM CUDA→OMP Translation Quality Issues (updated 2026-03-19)
+## LLM Multi-File Structural Mismatch (M11 — RESOLVED 2026-03-22)
+
+**Previous issue (M11):** 3/4 BUILD_FAILs in Phase 1 pilot were structural failures —
+the LLM was asked to replicate the OMP target's full project file structure, not just
+translate parallel computation. This conflated two orthogonal skills.
+
+**Resolution (team decision, 2026-03-22):** Kernel-centric translation:
+- Feed kernel files only, not project infrastructure
+- LLM produces 1 (or 2 for OpenCL) kernel files, not 4-8 project files
+- Target infrastructure (Makefile, headers, serial baselines) stays untouched
+- Complexity classification for stratified reporting in SC26 paper
+
+**Architecture:** `docs/design/kernel_centric_translation.md`
+**Implementation session:** SESSION 1.5 in `docs/session_prompts_sc26.md`
+**Spec field:** `files.translation_targets` — subset of `prompt_payload`
+
+## LLM CUDA→OMP Translation Quality Issues (pre-M11 data — 2026-03-19)
+
+**NOTE: These results are from full-project translation mode. After SESSION 1.5,
+all results will be deleted and re-run with kernel-centric pipeline.**
 
 10-kernel batch results (azure-gpt-4.1, L0): **6/10 PASS (60%)**
 PASS: bfs, hotspot, lud, nn, nw, pathfinder
 BUILD_FAIL: backprop, kmeans, srad, streamcluster
 
 Pattern analysis:
-- **Multi-file with subdirectories** (kmeans, streamcluster): LLM can't produce files with
-  paths like `kmeans_openmp/kmeans.c` in the code fence format — BUILD_FAIL every time.
-- **SRAD azure**: BUILD_FAIL (differs from pilot RUN_FAIL — LLM output changed)
-- **Backprop (both models)**: BUILD_FAIL consistently — file extraction fails for `.c` targets
-- Known from 2026-03-17 pilot: SRAD (both models) drops `nthreads`; backprop/azure missing macros.
+- **Multi-file structural** (backprop, kmeans, streamcluster): ROOT CAUSE = full-project mode.
+  **FIXED by M11 resolution.** Kernel-centric translation eliminates these failures.
+- **SRAD**: BUILD_FAIL / RUN_FAIL — true semantic error (arg type / drops nthreads).
+  Unchanged by M11 resolution (already 1→1 file, not structural).
 
 ## Session 2 Targeted Retest (2026-03-20)
 

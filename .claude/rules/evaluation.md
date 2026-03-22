@@ -39,6 +39,48 @@ python3 scripts/evaluation/run_eval_batch.py \
 # Phase 2 (after M7 Groq/Modal setup): add llama-70b and leaderboard model to --models
 ```
 
+## Kernel-Centric Translation (M11 Resolution — 2026-03-22)
+
+**Design decision (Erkap + Niranjan):** The LLM produces only "kernel files" (the parallel
+computation), not the full project file structure. Target infrastructure stays untouched.
+
+**Spec field:** `files.translation_targets` — optional subset of `prompt_payload`.
+If present, the pipeline uses it instead of full `prompt_payload` for:
+- Target file list in the LLM prompt ("Target Files to Produce" section)
+- File extraction matching (what to extract from LLM response)
+- File backup/restore scope (only kernel files are touched)
+
+**Fallback:** If `translation_targets` is absent, full `prompt_payload` is used
+(backward compatible with HeCBench specs and any specs not yet updated).
+
+**Result JSON field:** `translation_mode` = `"kernel_centric"` or `"full_project"`.
+
+**OpenCL exception:** OpenCL targets always have 2+ translation targets (.cl kernel + host driver).
+This is inherent to the OpenCL programming model, not a project-structure issue.
+
+**Complexity classes:** `single_file`, `multi_to_single`, `single_to_multi`, `multi_to_multi`
+Reported in `results/evaluation/translation_complexity.csv` and in `eval_summary.md`.
+
+**Architecture doc:** `docs/design/kernel_centric_translation.md` — includes source-verified
+`translation_targets` for all 60 Rodinia specs.
+
+**Code change pattern:**
+```python
+# In build_translation_prompt() and evaluate_translation():
+# Use or {} guard (see Python Gotcha below) — files key may be null in JSON
+target_filenames = (
+    (target_spec.get("files") or {}).get("translation_targets")
+    or (target_spec.get("files") or {}).get("prompt_payload", [])
+)
+```
+
+**Prompt additions:**
+- "Target Files to Produce" section uses `translation_targets` (reduced file list)
+- New "## Target Infrastructure Context (DO NOT MODIFY)" section with non-kernel target files
+  as read-only reference (headers, Makefile, utility files) so LLM matches expected interfaces
+
+---
+
 ## Architecture Overview
 
 `llm_evaluate.py` pipeline per task:

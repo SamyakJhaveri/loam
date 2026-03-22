@@ -109,12 +109,17 @@ Infrastructure baseline confirmed — continuing full evaluation sweep with GPT-
 
 | Level | Pass | Rate | Notes |
 |-------|:----:|:----:|-------|
-| L1 | 45/60 | 75% | Stable |
-| L2 | 45/60 | 75% | Same as L1 (seed=42 often selects no-op) |
-| L3 | 29/60 | 48% | Bug D (TypedefExpansion) fires on ~22 specs |
-| L4 | 22/59 | 37% | Improved from 1/60 pre-fix; residual issues |
+| L1 | 54/60 | 90% | Level-invariant |
+| L2 | 54/60 | 90% | Identical to L1 — transforms are semantics-preserving |
+| L3 | 54/60 | 90% | Identical to L1 — level-invariant confirmed |
+| L4 | 54/60 | 90% | Identical to L1 — level-invariant confirmed |
 
-**Note (updated Day 2):** Erel's fixes merged (Task M9). L1-L4 verified stable on srad-cuda and backprop-cuda. Full retest of all 60 specs deferred to Week 3 (Day 15).
+**Note (updated 2026-03-20 post-M10b):** Full 240-task retest completed (60 specs × 4 levels, seed=42).
+Erel's M9 fixes + M10b spec fixes (5 phantoms deleted, 6 spec arg/build fixes) raised pass rate from
+45/60 (75%) to 54/60 (90%). Level-invariance holds across all 54 passing specs — augmentation introduces
+zero correctness regressions. Results: `results/augmentation/retest_post_session2.{json,md}`.
+BUILD_FAIL (4): hybridsort-cuda, kmeans-cuda, mummergpu-cuda, mummergpu-omp.
+FAIL (2): kmeans-opencl, nn-opencl.
 
 #### Current Evaluation Results on Disk (updated Day 2)
 
@@ -223,13 +228,17 @@ SC26 = double-column, 10 pages + appendices. Draft must exist before next meetin
 | **Frontend** | All 9 visualization pages converted to unified light academic theme (Inter + JetBrains Mono fonts, Okabe-Ito colorblind-safe palette, Chart.js v4, print stylesheets, Option C logo). `DESIGN.md` created as canonical design spec. | DONE |
 | **Repo cleanup** | Stale git worktrees removed (agent-a6f3eb01, agent-af148208). Rodinia submodule corruption fixed (backprop.c, hotspot_openmp.cpp, needle.cpp restored). Quality standards added to CLAUDE.md. | DONE |
 
-#### Key Finding: Multi-File Structural Mismatch (M11 — CRITICAL, PENDING)
+#### Key Finding: Multi-File Structural Mismatch (M11 — RESOLVED 2026-03-22)
 
-3 of 4 BUILD_FAILs in the 10-kernel pilot are **structural**: multi-file targets with subdirectories where the LLM cannot produce subdir-pathed files. This is a systematic limitation, not a per-kernel bug.
+3 of 4 BUILD_FAILs in the 10-kernel pilot were **structural**: the LLM was asked to
+replicate the OMP target's file structure, conflating translation quality with code
+restructuring skill.
 
-- **Documented in:** `docs/design_concern_multifile_translation.md` (3 options proposed)
-- **Status:** Awaiting Gal/Erel Discord response
-- **Affected kernels:** backprop, kmeans, streamcluster (srad is a separate arg-count issue)
+- **Documented in:** `docs/design_concern_multifile_translation.md` (Section 10: team decision)
+- **Status:** RESOLVED — Kernel-Centric Translation + Complexity Classification
+- **Architecture:** `docs/design/kernel_centric_translation.md`
+- **Implementation:** Task M11-IMPL / SESSION 1.5
+- **Affected kernels:** backprop (4→1 file), kmeans (8→1 file), streamcluster (2→1 file)
 
 #### Updated Pilot Results (10 kernels, azure-gpt-4.1, L0, cuda-to-omp)
 
@@ -250,7 +259,7 @@ SC26 = double-column, 10 pages + appendices. Draft must exist before next meetin
 
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| **M11** | CRITICAL | Awaiting team response | Multi-file structural mismatch — 3 options in design doc |
+| **M11** | CRITICAL | **RESOLVED (2026-03-22)** | Team decision: kernel-centric translation + complexity classification (Erkap: Option B, Niranjan: kernel-file-only). Architecture: `docs/design/kernel_centric_translation.md`. Implementation: SESSION 1.5. |
 | **M4** | CRITICAL | Not started | Paper outline — must exist before next meeting |
 | **M1** | HIGH | Not started | Anonymous ParBench GitHub — required for SC26 submission |
 | **M2** | HIGH | Not started | Curation survey page for website |
@@ -319,6 +328,42 @@ M10 was previously marked DONE, but the audit found:
 ---
 
 ## 3. Week 1 — Detailed Task Breakdown
+
+### Day 0 (Before Day 1): M11-IMPL — Implement Kernel-Centric Translation Pipeline
+
+#### Task M11-IMPL — Implement Kernel-Centric Translation Pipeline (NEW — 2026-03-22)
+
+**Prerequisite:** Session 1 complete (Rodinia submodule reset, 54 PASS specs verified)
+**Session prompt:** SESSION 1.5 in `docs/session_prompts_sc26.md`
+**Design doc:** `docs/design/kernel_centric_translation.md`
+**Background:** M11 resolved (team decision 2026-03-22). Architecture doc contains
+source-verified `translation_targets` for all 60 Rodinia specs.
+
+**Changes required (documentation-only until SESSION 1.5):**
+
+| File | Change | Purpose |
+|------|--------|---------|
+| `schema/spec_schema.json` | Add `files.translation_targets` (optional array), `metadata.translation_complexity` (enum) | Schema for new fields |
+| `scripts/validate_schema.py` | Add subset validation: `translation_targets` ⊆ `prompt_payload` | Prevent stale references |
+| `harness/spec_loader.py` | Add `translation_targets` to `resolve_paths()` resolved dict | Path resolution |
+| `scripts/evaluation/llm_evaluate.py` | Use `translation_targets` in `build_translation_prompt()` + `evaluate_translation()`. Add "Target Infrastructure Context" section to prompt. Add `translation_mode` to result JSON | Core pipeline change |
+| `scripts/evaluation/populate_translation_targets.py` | New script: populate all 60 Rodinia specs with `translation_targets` from architecture doc. Fix spec bloat (move non-build files to `support_files`) | Spec population |
+| `scripts/evaluation/classify_translation_pairs.py` | New script: compute complexity class for each translation pair → CSV | Complexity reporting |
+| `scripts/evaluation/analyze_eval.py` | Add "Pass Rate by Translation Complexity" section | Stratified reporting |
+| `specs/*.json` (60 Rodinia specs) | Add `translation_targets` and `translation_complexity` fields | All specs updated |
+| `results/evaluation/translation_complexity.csv` | New file: kernel × src_api × tgt_api × complexity_class | Paper data |
+
+**Deliverable:** All 60 specs have `translation_targets`. Dry-run shows reduced target files:
+- `backprop`: 4 files → 1 file (`backprop.c`)
+- `kmeans`: 8 files → 1 file (`kmeans_openmp/kmeans_clustering.c`)
+- `hotspot-opencl`: 1 source → 2 files (`.cl` + `.c`)
+
+**Impact on subsequent sessions:**
+- SESSION 2 must delete all azure-gpt-4.1 cuda-to-omp results before re-running (clean slate)
+- All eval sessions (S2, S3, S7, S9, S10) use kernel-centric pipeline
+- Previous 10-kernel pilot results are obsolete (v1 data, mixed paradigm)
+
+---
 
 ### Day 1–2 (March 18–19): Bug Fixes + Iterative Repair Pilot
 

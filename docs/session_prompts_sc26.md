@@ -15,8 +15,11 @@ or via @-mention: `@agent-{name}`.
 | Session | Agent to use | For what |
 |---------|-------------|----------|
 | S1 | `rodinia-verifier` | Step 7 — run all 54 harness checks, collect PASS/FAIL table |
-| S2 | `eval-batcher` (background) | Step 3 — run 7 remaining azure-gpt-4.1 cuda-to-omp kernels |
-| S3 | `eval-batcher` (background) | Step 3 — run 12 remaining claude-sonnet cuda-to-omp kernels |
+| S1.5 | `plan-reviewer` | Pre-implementation — adversarial review of kernel-centric architecture |
+| S1.5 | `verify-app` | Post-implementation — schema validation + all spec integrity |
+| S1.5 | `spec-auditor` | Post-population — validate all 60 specs with new `translation_targets` fields |
+| S2 | `eval-batcher` (background) | Step 3 — run all 17 azure-gpt-4.1 cuda-to-omp kernels (clean slate) |
+| S3 | `eval-batcher` (background) | Step 3 — run 17 kernels for second model (awaiting model decision) |
 | S4 | `xsbench-explorer` | Steps 2-4 — read XSBench Makefiles/source, extract spec data |
 | S4 | `spec-auditor` | Step 8 — validate all 5 new XSBench spec files |
 | S5 | `verify-app` | Post-build — schema validation + spec integrity check |
@@ -157,34 +160,275 @@ git diff --name-only
 
 ---
 
+## SESSION 1.5 — Implement Kernel-Centric Translation Pipeline (M11-IMPL)
+
+```
+ultrathink
+
+# Session Goal
+Implement the kernel-centric translation paradigm in the ParBench LLM evaluation
+pipeline. This changes HOW translation evaluation works: instead of asking the LLM to
+produce ALL target files, we ask it to produce only the kernel computation file(s).
+Target infrastructure (Makefile, headers, utilities) stays untouched.
+
+# Why This Matters
+Team decision (Erkap + Niranjan, 2026-03-22): test pure translation skill, not project
+restructuring. This resolves design blocker M11 that caused 3/4 BUILD_FAILs in the
+Phase 1 pilot. Expected improvement: 60% → 75-80% pass rate.
+Architecture doc: docs/design/kernel_centric_translation.md
+
+# Context
+- Project root: /home/samyak/Desktop/parbench_sam
+- Design doc: docs/design/kernel_centric_translation.md (READ THIS FIRST — full spec)
+- Design concern (resolved): docs/design_concern_multifile_translation.md
+- Eval pipeline: scripts/evaluation/llm_evaluate.py
+- Spec loader: harness/spec_loader.py
+- Schema: schema/spec_schema.json
+- Validator: scripts/validate_schema.py
+
+# Prerequisites
+- Session 1 complete (Rodinia submodule reset, all 54 specs verified PASS)
+
+# Step 1: Activate venv
+source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
+cd /home/samyak/Desktop/parbench_sam
+
+# Step 2: Read the architecture doc FULLY
+# Read docs/design/kernel_centric_translation.md completely before writing any code.
+# It contains source-verified translation_targets values for all 60 Rodinia specs,
+# the pipeline code changes with exact line numbers, the complexity taxonomy, and
+# the spec bloat table.
+# CRITICAL: backprop-omp kernel file is backprop.c (NOT backprop_kernel.c).
+#           backprop_kernel.c is the orchestrator with NO OMP pragmas.
+
+# Step 3: Schema changes (schema/spec_schema.json)
+# Add to the "files" object definition:
+#   "translation_targets": optional array of strings
+# Add to the "metadata" object definition:
+#   "translation_complexity": optional enum:
+#     ["single_file", "multi_to_single", "single_to_multi", "multi_to_multi"]
+# Run: python3 scripts/validate_schema.py --all
+# Expected: same ~135 known errors. No new errors (field is optional, backward compatible).
+
+# Step 4: Validator changes (scripts/validate_schema.py)
+# Add check: if translation_targets exists, every entry must be in prompt_payload.
+# This prevents specifying a target file that was moved to support_files.
+# Run: python3 scripts/validate_schema.py --all
+
+# Step 5: Spec loader (harness/spec_loader.py)
+# In resolve_paths(): add translation_targets to the resolved files dict.
+# Resolve paths relative to source_path the same way prompt_payload is resolved.
+# No changes to get_prompt_payload() — source reading is unchanged.
+
+# Step 6: Eval pipeline (scripts/evaluation/llm_evaluate.py)
+# In build_translation_prompt() (~line 255):
+#   BEFORE: target_filenames = target_spec["files"].get("prompt_payload", [])
+#   AFTER:  target_filenames = (
+#               target_spec["files"].get("translation_targets")
+#               or target_spec["files"].get("prompt_payload", [])
+#           )
+#
+# In evaluate_translation() (~line 715): same change.
+# Apply the `or {}` guard pattern (see evaluation.md gotcha) for safety:
+#   target_filenames = (
+#       (target_spec.get("files") or {}).get("translation_targets")
+#       or (target_spec.get("files") or {}).get("prompt_payload", [])
+#   )
+#
+# Add "translation_mode" to result JSON:
+#   "translation_mode": "kernel_centric" if translation_targets else "full_project"
+#
+# Add "## Target Infrastructure Context (DO NOT MODIFY — for reference only)" section
+# to the prompt (insert after the "Target Files to Produce" section):
+#   - Identify non-translation-target files from target spec's prompt_payload
+#     (i.e., prompt_payload files NOT in translation_targets)
+#   - Also include target spec's support_files headers
+#   - Read their content from the target working directory
+#   - Include as read-only reference (headers first, then source files, then Makefile)
+#   - Section intro text:
+#     "These files exist in the target build directory and will NOT be modified.
+#      Your translated code must be compatible with these files."
+
+# Step 7: Populate translation_targets for all 60 Rodinia specs
+# Create scripts/evaluation/populate_translation_targets.py
+# Use the SOURCE-VERIFIED table in docs/design/kernel_centric_translation.md sections 5-6.
+# For each spec, add:
+#   - files.translation_targets (the verified kernel files)
+#   - metadata.translation_complexity (the verified class)
+#
+# ALSO fix spec bloat (from section 7 of architecture doc):
+# Move these files from prompt_payload to support_files:
+#   - kmeans-omp: 4 kmeans_serial/ files → support_files
+#   - streamcluster-omp: streamcluster_original.cpp → support_files
+#   - lud-omp: base/lud.c, base/lud_base.c, tools/gen_input.c → support_files
+#   - cfd-omp: 3 variant .cpp files (double, pre_euler3d, pre_euler3d_double) → support_files
+#   - nn-omp: hurricane_gen.c → support_files
+#   - bfs-opencl: timer.cc → support_files
+#   - hotspot-opencl: OpenCL_helper_library.c → support_files
+#   - hotspot3d-opencl: CL_helper.c → support_files
+#   - pathfinder-opencl: OpenCL.cpp → support_files
+#   - lud-opencl: base/lud.c, base/lud_base.c, tools/gen_input.c → support_files
+#
+# The architecture doc (section 6) lists 8 explicitly source-verified OpenCL specs:
+#   bfs, cfd, hotspot, hotspot3d, lud, nw, pathfinder, srad
+# The remaining 12 OpenCL specs (not yet source-verified in the doc) should follow
+# the default pattern: .cl device kernel + host .cpp → translation_targets.
+# Helper .c/.cc utilities → support_files.
+#
+# REMAINING 12 OpenCL specs — apply default pattern, verify Makefile before committing:
+#   backprop-opencl:       backprop_kernel.cl + backprop.cpp → translation_targets
+#   bptree-opencl:         kernel.cl + main.cpp → translation_targets
+#   dwt2d-opencl:          dwt.cl + dwt2d.cpp → translation_targets
+#   gaussian-opencl:       gaussianElim.cl + gaussianElim.cpp → translation_targets
+#   heartwall-opencl:      kernel.cl + main.cpp → translation_targets
+#   hybridsort-opencl:     bucketsort.cl + mergesort.cl + main.cpp → translation_targets
+#   kmeans-opencl:         kmeans.cl + kmeans.cpp → translation_targets  [KNOWN_FAIL — still populate]
+#   lavamd-opencl:         kernel.cl + main.cpp → translation_targets
+#   myocyte-opencl:        kernel.cl + main.cpp → translation_targets
+#   nn-opencl:             nearestNeighbor_kernel.cl + nearestNeighbor.cpp → translation_targets  [KNOWN_FAIL — still populate]
+#   particlefilter-opencl: particle_double.cl + ex_particle_OPENMP_seq.c → translation_targets
+#   streamcluster-opencl:  streamcluster.cl + streamcluster.cpp → translation_targets
+#
+# IMPORTANT: Read each spec's actual prompt_payload list and verify against the
+# Rodinia Makefile before finalizing. The filenames above are best-guess from naming
+# conventions — the architecture doc's verified 8 show that naming conventions are
+# sometimes wrong (e.g. backprop-omp: backprop_kernel.c has NO pragmas).
+# For KNOWN_FAIL specs (kmeans-opencl, nn-opencl): populate translation_targets anyway.
+# The field should be complete even for KNOWN_FAIL specs; they're excluded from eval
+# batches but may be referenced in analysis (complexity classification, paper tables).
+#
+# Run: python3 scripts/evaluation/populate_translation_targets.py \
+#        --project-root /home/samyak/Desktop/parbench_sam
+# Then: python3 scripts/validate_schema.py --all
+
+# Step 8: Classification script
+# Create scripts/evaluation/classify_translation_pairs.py
+# Reads all paired specs (source + target), computes complexity class for each pair.
+# Output: results/evaluation/translation_complexity.csv
+# Columns: kernel, src_spec, tgt_spec, src_api, tgt_api,
+#          src_target_count, tgt_target_count, complexity_class
+# (src_target_count = number of files in source spec's translation_targets
+#  tgt_target_count = number of files in target spec's translation_targets)
+#
+# Run: python3 scripts/evaluation/classify_translation_pairs.py \
+#        --project-root /home/samyak/Desktop/parbench_sam
+
+# Step 9: Update analyze_eval.py
+# Add "Pass Rate by Translation Complexity" section to markdown output.
+# Load translation_complexity.csv, enrich result records, group-by complexity class.
+# Output format: table of complexity_class × model × pass_rate.
+
+# Step 10: Dry-run verification
+# Test prompt generation for key cases. Read the --dry-run output carefully:
+python3 scripts/evaluation/llm_evaluate.py \
+  --source specs/rodinia-backprop-cuda.json \
+  --target specs/rodinia-backprop-omp.json \
+  --model azure-gpt-4.1 \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --dry-run
+# Expected: "Target Files to Produce: backprop.c" (was 4 files)
+# Expected: "Target Infrastructure Context" section present with backprop.h + Makefile
+
+python3 scripts/evaluation/llm_evaluate.py \
+  --source specs/rodinia-kmeans-cuda.json \
+  --target specs/rodinia-kmeans-omp.json \
+  --model azure-gpt-4.1 \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --dry-run
+# Expected: "Target Files to Produce: kmeans_openmp/kmeans_clustering.c" (was 8 files)
+
+python3 scripts/evaluation/llm_evaluate.py \
+  --source specs/rodinia-hotspot-cuda.json \
+  --target specs/rodinia-hotspot-opencl.json \
+  --model azure-gpt-4.1 \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --dry-run
+# Expected: 2 target files: hotspot_kernel.cl + hotspot.c (OpenCL = inherent multi-file)
+
+python3 scripts/evaluation/llm_evaluate.py \
+  --source specs/rodinia-bfs-cuda.json \
+  --target specs/rodinia-bfs-omp.json \
+  --model azure-gpt-4.1 \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --dry-run
+# Expected: "Target Files to Produce: bfs.cpp" (single_file — unchanged)
+
+# Step 11: Full schema validation
+python3 scripts/validate_schema.py --all
+# Expected: ~135 known errors (HeCBench + phantoms). Zero new errors.
+
+# Step 12: Unit tests
+python3 -m pytest c_augmentation/test_transforms.py -v
+# Expected: all 15 tests pass (transforms unchanged by this session)
+
+# Step 13: Show me:
+# - Dry-run prompt for backprop (should show 1 target file + infrastructure context section)
+# - Dry-run prompt for kmeans (should show 1 target file)
+# - Dry-run prompt for hotspot-opencl (should show 2 target files)
+# - classification CSV summary (counts per complexity class per direction)
+# - Full validation output
+
+# Step 14: Git commit and push
+# Stage all changed files:
+#   schema/spec_schema.json
+#   scripts/validate_schema.py
+#   harness/spec_loader.py
+#   scripts/evaluation/llm_evaluate.py
+#   scripts/evaluation/populate_translation_targets.py (new)
+#   scripts/evaluation/classify_translation_pairs.py (new)
+#   scripts/evaluation/analyze_eval.py
+#   specs/*.json (all 60 Rodinia specs with translation_targets)
+#   results/evaluation/translation_complexity.csv (new)
+#   docs/design/kernel_centric_translation.md (already created)
+#   docs/design_concern_multifile_translation.md (already updated)
+# Commit message:
+#   "Implement kernel-centric translation (M11 resolution): translation_targets field,
+#    complexity classification, reduced target files for all 60 Rodinia specs"
+# Push to origin main.
+```
+
+---
+
 ## SESSION 2 — Complete azure-gpt-4.1 Rodinia cuda-to-omp Evaluation
 
 ```
 ultrathink
 
 # Session Goal
-Run the remaining 7 Rodinia cuda-to-omp translation tasks for azure-gpt-4.1 at L0.
-After this session, all 17 eligible kernels will have azure-gpt-4.1 cuda-to-omp results.
+Run ALL 17 Rodinia cuda-to-omp translation tasks for azure-gpt-4.1 at L0 using the
+kernel-centric pipeline. This is a CLEAN SLATE run — previous v1 results are deleted.
 
 # Why This Matters
-The SC26 paper needs complete model evaluation data. Currently azure-gpt-4.1 has results
-for 10 of 17 eligible kernels. 7 remain untested.
+Session 1.5 implemented kernel-centric translation (M11 resolution). Previous 10-kernel
+pilot results used the full-project paradigm and cannot be mixed with the new pipeline's
+results in the paper. Clean slate ensures a single, coherent evaluation paradigm.
+Expected improvement: 60% → 75-80% pass rate as structural failures are eliminated.
+
+# IMPORTANT: Kernel-centric translation is now active (M11 resolution).
+# The LLM produces only the kernel file(s), not full project structure.
+# - backprop: 4 files → 1 file (backprop.c)
+# - kmeans: 8 files → 1 file (kmeans_openmp/kmeans_clustering.c)
+# - streamcluster: 2 files → 1 file (streamcluster_omp.cpp)
+# - All other kernels: same or reduced file count
+#
+# CLEAN SLATE: Delete ALL previous full-project-mode results before running:
+# rm results/evaluation/azure-gpt-4.1/rodinia-*-cuda-to-rodinia-*-omp.json
+# (Team decision: single paradigm for paper, no mixed v1/v2 data)
 
 # Context
 - Project root: /home/samyak/Desktop/parbench_sam
 - Eval pipeline: scripts/evaluation/run_eval_batch.py
 - Results dir: results/evaluation/azure-gpt-4.1/
-- Already evaluated (10 kernels): backprop, bfs, hotspot, kmeans, lud, nn, nw,
-  pathfinder, srad, streamcluster
-- Remaining (7 kernels): bptree, cfd, heartwall, hotspot3d, lavamd, myocyte, particlefilter
-- Eligible cuda-to-omp kernels (17 total): backprop, bfs, bptree, cfd, heartwall, hotspot,
-  hotspot3d, kmeans, lavamd, lud, myocyte, nn, nw, particlefilter, pathfinder, srad, streamcluster
-- EXCLUDED from eval: mummergpu (OMP target broken), hybridsort (OMP spec deleted),
+- ALL 17 kernels need fresh evaluation (clean slate, v2 kernel-centric pipeline):
+  backprop, bfs, bptree, cfd, heartwall, hotspot, hotspot3d, kmeans, lavamd, lud,
+  myocyte, nn, nw, particlefilter, pathfinder, srad, streamcluster
+- EXCLUDED from eval: mummergpu (KNOWN_FAIL), hybridsort (OMP spec deleted),
   gaussian (OMP spec deleted), huffman (OMP spec deleted), dwt2d (no OMP spec)
 - API key env var: AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT must be set
 
 # Prerequisites
 - Session 1 complete (Rodinia submodule reset, all 54 specs verified PASS)
+- Session 1.5 complete (kernel-centric pipeline implemented, all 60 specs populated)
 - Azure OpenAI API key configured
 
 # Step 1: Activate venv and verify environment
@@ -195,31 +439,35 @@ cd /home/samyak/Desktop/parbench_sam
 python3 -c "import os; assert os.environ.get('AZURE_OPENAI_API_KEY'), 'AZURE_OPENAI_API_KEY not set'"
 python3 -c "import os; assert os.environ.get('AZURE_OPENAI_ENDPOINT'), 'AZURE_OPENAI_ENDPOINT not set'"
 
-# Step 2: Check current gaps
-python3 scripts/evaluation/analyze_eval.py \
-  --project-root /home/samyak/Desktop/parbench_sam \
-  --show-gaps \
-  --expected-models azure-gpt-4.1 \
-  --expected-directions cuda-to-omp \
-  --expected-levels 0
+# Verify translation_targets are populated (kernel-centric pipeline active):
+python3 -c "
+import json, glob
+specs = glob.glob('specs/rodinia-*-omp.json')
+missing = [s for s in specs if 'mummergpu' not in s
+           and not json.load(open(s)).get('files', {}).get('translation_targets')]
+if missing: print('MISSING translation_targets:', missing)
+else: print('All OMP specs have translation_targets — pipeline ready')
+"
 
-# Step 3: Run the batch evaluation for the 7 remaining kernels
-# Use --kernels to target only the remaining ones (avoids phantom spec errors)
-# Use --resume (default True) so it skips the 10 already-done kernels
+# Step 2: DELETE all previous cuda-to-omp v1 results (clean slate)
+rm -f results/evaluation/azure-gpt-4.1/rodinia-*-cuda-to-rodinia-*-omp.json
+# Verify deletion:
+ls results/evaluation/azure-gpt-4.1/rodinia-*-cuda-to-rodinia-*-omp.json 2>&1
+# Expected: "No such file or directory"
+
+# Step 3: Run the batch evaluation for ALL 17 kernels (kernel-centric, v2 pipeline)
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-omp \
   --models azure-gpt-4.1 \
-  --kernels bptree cfd heartwall hotspot3d lavamd myocyte particlefilter \
+  --kernels backprop bfs bptree cfd heartwall hotspot hotspot3d kmeans lavamd lud myocyte nn nw particlefilter pathfinder srad streamcluster \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 \
-  --resume \
   -v
 
 # Step 4: Verify results exist
-# Check that 7 new result JSON files were created:
-ls -la results/evaluation/azure-gpt-4.1/rodinia-*-cuda-to-rodinia-*-omp.json | wc -l
-# Expected: 17 total files (10 existing + 7 new)
+ls results/evaluation/azure-gpt-4.1/rodinia-*-cuda-to-rodinia-*-omp.json | wc -l
+# Expected: 17 result files
 
 # Step 5: Regenerate analysis
 python3 scripts/evaluation/analyze_eval.py \
@@ -233,110 +481,115 @@ python3 scripts/evaluation/analyze_eval.py \
 # Step 6: Verification — write a small test script that:
 # 1. Reads each result JSON in results/evaluation/azure-gpt-4.1/
 # 2. Counts PASS/BUILD_FAIL/RUN_FAIL/VERIFY_FAIL
-# 3. Verifies all 17 eligible kernels have results
-# 4. Prints a summary table
+# 3. Verifies all 17 kernels have results
+# 4. Confirms translation_mode="kernel_centric" in all results
+# 5. Prints a summary table
 # DELETE the test script after it confirms everything is correct.
 
 # Step 7: Show me the results:
 # - Print the full kernel x status table from eval_summary.md
-# - Print pass rate for azure-gpt-4.1 cuda-to-omp
+# - Print pass rate for azure-gpt-4.1 cuda-to-omp (v2 kernel-centric)
+# - Compare with v1 pilot (60%) — did backprop/kmeans/streamcluster now PASS?
 # - Print any new failure patterns discovered
+# - Print "Pass Rate by Translation Complexity" table from eval_summary.md
 
 # Step 8: Git commit and push
 # Commit the new result files and updated analysis:
-#   results/evaluation/azure-gpt-4.1/*.json (7 new files)
+#   results/evaluation/azure-gpt-4.1/*.json (17 new v2 files)
 #   results/evaluation/eval_summary.json
 #   results/evaluation/eval_summary.md
 #   results/evaluation/batch_cuda-to-omp_*.json and .md (new batch summary)
 #   visualizations/eval_results_data.js (if regenerated)
-# Commit message: "Complete azure-gpt-4.1 Rodinia cuda-to-omp eval (17/17 kernels)"
+# Commit message: "azure-gpt-4.1 Rodinia cuda-to-omp eval v2 (17/17 kernels, kernel-centric)"
 # Push to origin main.
 ```
 
 ---
 
-## SESSION 3 — Complete claude-sonnet Rodinia cuda-to-omp Evaluation
+## SESSION 3 — Second Model Rodinia cuda-to-omp Evaluation
 
 ```
 ultrathink
 
 # Session Goal
-Run the remaining 12 Rodinia cuda-to-omp translation tasks for claude-sonnet-4-20250514
-at L0. After this session, all 17 eligible kernels will have claude-sonnet results.
+Run ALL 17 Rodinia cuda-to-omp translation tasks for the second model at L0 using the
+kernel-centric pipeline. Model TBD — awaiting M7/M8 decision (llama-70b or leaderboard pick).
 
-# Why This Matters
-Same as Session 2 — need complete model data for SC26 paper. Claude-sonnet currently
-has results for only 5 of 17 eligible kernels.
+# IMPORTANT MODEL NOTE:
+# claude-sonnet-4-20250514 was REMOVED as an eval target (March 18 meeting decision).
+# Historical claude-sonnet pilot data exists in results/evaluation/claude-sonnet-4-20250514/
+# but will NOT be extended. This session is for the replacement model (llama-70b or TBD).
+#
+# When the model is decided (M7/M8 tasks), update the --models flag below.
+# Session 3 cannot begin until M7 (Groq/Modal setup) or M8 (leaderboard model) is complete.
+
+# IMPORTANT: Kernel-centric translation is active (Session 1.5 complete).
+# The LLM produces only the kernel file(s), not full project structure.
+# All 17 kernels run as CLEAN SLATE (no previous v2 results for the new model).
 
 # Context
 - Project root: /home/samyak/Desktop/parbench_sam
-- Results dir: results/evaluation/claude-sonnet-4-20250514/
-- Model ID: claude-sonnet-4-20250514
-- Already evaluated (5 kernels): backprop, bfs, hotspot, nw, srad
-- Remaining (12 kernels): bptree, cfd, heartwall, hotspot3d, kmeans, lavamd, lud,
-  myocyte, nn, particlefilter, pathfinder, streamcluster
-- API key env var: ANTHROPIC_API_KEY must be set
-- NOTE: There are also 2 non-cuda-to-omp results in the dir:
-  - hecbench-nw-cuda-to-hecbench-nw-omp.json (HeCBench, ignore)
-  - rodinia-bfs-omp-to-rodinia-bfs-cuda.json (reverse direction, ignore for now)
+- Results dir: results/evaluation/{new-model}/
+- Model ID: TBD — replace MODEL_ID below with actual model ID from M7/M8
+- Eligible kernels (17): backprop, bfs, bptree, cfd, heartwall, hotspot, hotspot3d,
+  kmeans, lavamd, lud, myocyte, nn, nw, particlefilter, pathfinder, srad, streamcluster
+- EXCLUDED: mummergpu, hybridsort, gaussian, huffman, dwt2d
+- API key env var: TBD (Groq API key or Modal credentials per M7 setup)
 
 # Prerequisites
 - Session 1 complete (Rodinia submodule reset)
-- Anthropic API key configured
+- Session 1.5 complete (kernel-centric pipeline, all 60 specs populated)
+- Session 2 complete (azure-gpt-4.1 v2 baseline established)
+- M7 or M8 complete (second model available via API)
 
 # Step 1: Activate venv and verify
 source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
 cd /home/samyak/Desktop/parbench_sam
-python3 -c "import os; assert os.environ.get('ANTHROPIC_API_KEY'), 'ANTHROPIC_API_KEY not set'"
 
-# Step 2: Check current gaps
-python3 scripts/evaluation/analyze_eval.py \
-  --project-root /home/samyak/Desktop/parbench_sam \
-  --show-gaps \
-  --expected-models claude-sonnet-4-20250514 \
-  --expected-directions cuda-to-omp \
-  --expected-levels 0
+# Verify model API key (replace with actual env var name from M7/M8 setup):
+# python3 -c "import os; assert os.environ.get('GROQ_API_KEY'), 'GROQ_API_KEY not set'"
 
-# Step 3: Run batch evaluation
+# Step 2: Run batch evaluation (replace MODEL_ID with actual model ID)
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-omp \
-  --models claude-sonnet-4-20250514 \
-  --kernels bptree cfd heartwall hotspot3d kmeans lavamd lud myocyte nn particlefilter pathfinder streamcluster \
+  --models MODEL_ID \
+  --kernels backprop bfs bptree cfd heartwall hotspot hotspot3d kmeans lavamd lud myocyte nn nw particlefilter pathfinder srad streamcluster \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 \
-  --resume \
   -v
 
-# Step 4: Verify 17 cuda-to-omp result files exist for claude-sonnet
-ls results/evaluation/claude-sonnet-4-20250514/rodinia-*-cuda-to-rodinia-*-omp.json | wc -l
+# Step 3: Verify 17 result files exist
+ls results/evaluation/MODEL_ID/rodinia-*-cuda-to-rodinia-*-omp.json | wc -l
 # Expected: 17
 
-# Step 5: Regenerate analysis with BOTH models
+# Step 4: Regenerate analysis with BOTH models (azure-gpt-4.1 + new model)
 python3 scripts/evaluation/analyze_eval.py \
   --project-root /home/samyak/Desktop/parbench_sam \
   --write-dashboard \
   --show-gaps \
-  --expected-models azure-gpt-4.1 claude-sonnet-4-20250514 \
+  --expected-models azure-gpt-4.1 MODEL_ID \
   --expected-directions cuda-to-omp \
   --expected-levels 0
 
-# Step 6: Write a small verification script that:
+# Step 5: Verification — write a small test script that:
 # 1. Loads all cuda-to-omp L0 results for both models
 # 2. Prints a kernel x model matrix (PASS/BUILD_FAIL/RUN_FAIL/VERIFY_FAIL)
 # 3. Compares the two models' pass rates
 # 4. Identifies kernels where models disagree (one passes, other fails)
+# 5. Confirms translation_mode="kernel_centric" in all results
 # DELETE the test script after verification.
 
-# Step 7: Show me:
+# Step 6: Show me:
 # - Complete kernel x model comparison table
-# - Pass rates per model
+# - Pass rates per model (kernel-centric v2 pipeline)
 # - Failure taxonomy (what types of failures dominate)
-# - Any interesting patterns (e.g., do both models fail on the same kernels?)
+# - "Pass Rate by Translation Complexity" table
+# - Any interesting cross-model patterns
 
-# Step 8: Git commit and push
-# Commit: results/evaluation/claude-sonnet-4-20250514/*.json, eval_summary.*, batch_*
-# Message: "Complete claude-sonnet Rodinia cuda-to-omp eval (17/17 kernels)"
+# Step 7: Git commit and push
+# Commit: results/evaluation/MODEL_ID/*.json, eval_summary.*, batch_*
+# Message: "Add MODEL_ID Rodinia cuda-to-omp eval v2 (17/17 kernels, kernel-centric)"
 # Push to origin main.
 ```
 
@@ -701,50 +954,58 @@ ultrathink
 
 # Session Goal
 Re-run cuda-to-omp evaluation at augmentation levels L1 and L2 for both azure-gpt-4.1
-and claude-sonnet-4-20250514. This tests whether LLM translation quality degrades when
-source code is augmented with semantics-preserving transforms.
+and the second model (MODEL_ID from Session 3). Tests whether LLM translation quality
+degrades when source code is augmented with semantics-preserving transforms.
 
 # Why This Matters
 The augmentation contribution in the SC26 paper requires showing how LLMs perform under
 code variation. If pass rates drop at L1/L2, augmentation reveals LLM fragility. If they
 hold steady, it validates that LLMs understand semantics, not just syntax.
 
+# IMPORTANT: Kernel-centric translation is active (Session 1.5 complete).
+# Augmentation applies to the SOURCE kernel files only.
+# The LLM sees augmented source → produces target kernel file(s).
+# Target infrastructure stays untouched (not augmented, not modified).
+# This is the correct layering: augmentation tests translation robustness at the
+# source-code level; kernel-centric translation tests structural translation scope.
+
 # Context
 - Project root: /home/samyak/Desktop/parbench_sam
 - Eligible cuda-to-omp kernels (17): backprop, bfs, bptree, cfd, heartwall, hotspot,
   hotspot3d, kmeans, lavamd, lud, myocyte, nn, nw, particlefilter, pathfinder, srad,
   streamcluster
-- L0 results already exist for both models (from Sessions 2 and 3)
-- Result files for L1/L2 are tagged with -L1, -L2 suffix
-- Augmentation uses seed=42 by default (set in augment_verify.py)
+- L0 results already exist from Sessions 2 + 3 (kernel-centric v2 pipeline)
+- Result files for L1/L2 are tagged with -L1, -L2 suffix in path
+- Augmentation uses seed=42 by default
+- NOTE: Replace MODEL_ID with the actual second model ID from Session 3
 
 # Prerequisites
-- Sessions 2+3 complete (L0 baselines for both models)
-- API keys configured for both Azure and Anthropic
+- Sessions 2+3 complete (L0 baselines for both models, kernel-centric v2)
+- API keys configured for both models
 
 # Step 1: Activate venv
 source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
 cd /home/samyak/Desktop/parbench_sam
 
-# Step 2: Run azure-gpt-4.1 at L0, L1, L2
+# Step 2: Run azure-gpt-4.1 at L1 and L2 (L0 already exists from Session 2)
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-omp \
   --models azure-gpt-4.1 \
   --kernels backprop bfs bptree cfd heartwall hotspot hotspot3d kmeans lavamd lud myocyte nn nw particlefilter pathfinder srad streamcluster \
-  --augment-levels 0 1 2 \
+  --augment-levels 1 2 \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 \
   --resume \
   -v
 
-# Step 3: Run claude-sonnet at L0, L1, L2
+# Step 3: Run second model at L1 and L2 (L0 already exists from Session 3)
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-omp \
-  --models claude-sonnet-4-20250514 \
+  --models MODEL_ID \
   --kernels backprop bfs bptree cfd heartwall hotspot hotspot3d kmeans lavamd lud myocyte nn nw particlefilter pathfinder srad streamcluster \
-  --augment-levels 0 1 2 \
+  --augment-levels 1 2 \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 \
   --resume \
@@ -755,7 +1016,7 @@ python3 scripts/evaluation/analyze_eval.py \
   --project-root /home/samyak/Desktop/parbench_sam \
   --write-dashboard \
   --show-gaps \
-  --expected-models azure-gpt-4.1 claude-sonnet-4-20250514 \
+  --expected-models azure-gpt-4.1 MODEL_ID \
   --expected-directions cuda-to-omp \
   --expected-levels 0 1 2
 
@@ -765,16 +1026,18 @@ python3 scripts/evaluation/analyze_eval.py \
 # 3. Identifies any kernel that passes at L0 but fails at L1 or L2 (augmentation fragility)
 # 4. Identifies any kernel that fails at L0 but passes at L1 or L2 (unlikely but interesting)
 # 5. Prints a level comparison table
+# 6. Confirms all results have translation_mode="kernel_centric"
 # DELETE the test script after verification.
 
 # Step 6: Show me:
 # - Pass rates: L0 vs L1 vs L2 for each model
 # - Any augmentation-induced failures (kernels that degrade under augmentation)
-# - Summary table for the paper
+# - Summary table for the paper (expected: level-invariant similar to augmentation baseline)
+# - "Pass Rate by Translation Complexity" table at L0/L1/L2
 
 # Step 7: Git commit and push
 # Commit: All new L1/L2 result files, updated eval_summary.*
-# Message: "Add augmented eval results (L1/L2) for azure-gpt-4.1 and claude-sonnet"
+# Message: "Add augmented eval results (L1/L2) for azure-gpt-4.1 and MODEL_ID (kernel-centric)"
 # Push to origin main.
 ```
 
@@ -825,7 +1088,7 @@ cd /home/samyak/Desktop/parbench_sam
 python3 scripts/evaluation/run_eval_batch.py \
   --suite xsbench \
   --direction cuda-to-omp \
-  --models azure-gpt-4.1 claude-sonnet-4-20250514 \
+  --models azure-gpt-4.1 MODEL_ID \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 \
   -v
@@ -873,17 +1136,29 @@ Run omp-to-cuda evaluation for all eligible Rodinia kernels with both models at 
 The paper targets 3 translation directions. omp-to-cuda is the reverse of the primary
 direction — testing whether LLMs can add GPU parallelism (harder than removing it).
 
+# IMPORTANT: Kernel-centric translation is active (Session 1.5 complete).
+# For omp-to-cuda, the source is OMP (typically 1 kernel file in translation_targets),
+# and the target is CUDA. The LLM must produce CUDA kernel file(s) from the OMP source.
+# The CUDA target spec's translation_targets identifies which .cu/.cuh files to produce.
+# This is typically 1-2 .cu files depending on the kernel.
+#
+# Key consideration: CUDA targets use translation_targets = prompt_payload in most cases
+# (CUDA files are all kernel code). Exception: nn-cuda should exclude hurricane_gen.c.
+# Verify the CUDA translation_targets are populated correctly in Session 1.5.
+
 # Context
-- Eligible omp-to-cuda kernels (16, excluding mummergpu-omp which is KNOWN_FAIL,
+- Eligible omp-to-cuda kernels (16, excluding mummergpu-omp KNOWN_FAIL,
   and excluding kmeans because kmeans-cuda target has KNOWN_FAIL build):
   backprop, bfs, bptree, cfd, heartwall, hotspot, hotspot3d, lavamd, lud, myocyte,
   nn, nw, particlefilter, pathfinder, srad, streamcluster
 - The batch runner uses manifest to find pairs: source=omp, target=cuda
 - Phantom OMP specs (gaussian, huffman, hybridsort) will error — use --kernels to filter
+- Replace MODEL_ID with the actual second model from Session 3
 
 # Prerequisites
 - Session 1 complete (submodule reset)
-- API keys configured
+- Session 1.5 complete (kernel-centric pipeline, CUDA specs have translation_targets)
+- API keys configured for both models
 
 # Step 1: Activate venv
 source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
@@ -893,7 +1168,7 @@ cd /home/samyak/Desktop/parbench_sam
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction omp-to-cuda \
-  --models azure-gpt-4.1 claude-sonnet-4-20250514 \
+  --models azure-gpt-4.1 MODEL_ID \
   --kernels backprop bfs bptree cfd heartwall hotspot hotspot3d lavamd lud myocyte nn nw particlefilter pathfinder srad streamcluster \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 \
@@ -905,7 +1180,7 @@ python3 scripts/evaluation/analyze_eval.py \
   --project-root /home/samyak/Desktop/parbench_sam \
   --write-dashboard \
   --show-gaps \
-  --expected-models azure-gpt-4.1 claude-sonnet-4-20250514 \
+  --expected-models azure-gpt-4.1 MODEL_ID \
   --expected-directions cuda-to-omp omp-to-cuda \
   --expected-levels 0
 
@@ -913,10 +1188,11 @@ python3 scripts/evaluation/analyze_eval.py \
 # 1. Counts omp-to-cuda results per model
 # 2. Compares omp-to-cuda pass rates with cuda-to-omp (is reverse harder?)
 # 3. Identifies kernels that pass in one direction but fail in the other
+# 4. Shows "Pass Rate by Translation Complexity" for this direction
 # DELETE the test script.
 
 # Step 5: Show me direction comparison table and push.
-# Commit: "Add omp-to-cuda eval results for Rodinia (16 kernels × 2 models)"
+# Commit: "Add omp-to-cuda eval results for Rodinia (16 kernels × 2 models, kernel-centric)"
 ```
 
 ---
@@ -931,31 +1207,78 @@ Run cuda-to-opencl evaluation for eligible Rodinia kernels with both models at L
 
 # Why This Matters
 Third translation direction for the paper. cuda-to-opencl tests cross-vendor API
-translation (NVIDIA-specific CUDA → vendor-neutral OpenCL).
+translation (NVIDIA-specific CUDA → vendor-neutral OpenCL). This is the KEY multi-file
+direction: the LLM must produce BOTH a .cl kernel file AND a host .cpp driver file.
+
+# IMPORTANT: cuda-to-opencl targets are inherently multi-file (Erkap's point).
+# All OpenCL targets have translation_targets = [".cl kernel", "host .cpp driver"].
+# This is classified as single_to_multi or multi_to_multi in the complexity taxonomy.
+# OpenCL inherently requires separate device/host code — cannot be normalized to 1 file.
+#
+# The LLM is being tested on a REAL structural translation challenge:
+#   - Produce device code (.cl) in OpenCL C (a subset of C99 with vendor extensions)
+#   - Produce host code (.cpp) using the OpenCL C++ API
+#   - The two files must interface correctly via cl::Kernel, cl::Buffer, etc.
+#
+# Expected: lower pass rates than cuda-to-omp. This is scientifically interesting —
+# report it in the paper as evidence that API structural complexity predicts LLM difficulty.
+#
+# Replace MODEL_ID with the actual second model from Session 3.
 
 # Context
-- Eligible cuda-to-opencl kernels (17): backprop, bfs, bptree, cfd, dwt2d, gaussian,
+- Eligible cuda-to-opencl kernels (18): backprop, bfs, bptree, cfd, dwt2d, gaussian,
   heartwall, hotspot, hotspot3d, lavamd, lud, myocyte, nn, nw, particlefilter,
   pathfinder, srad, streamcluster
-  (Note: dwt2d and gaussian have OpenCL specs but no OMP; they're eligible for this direction)
-  (Note: nn-opencl is KNOWN_FAIL but as a target, the LLM writes NEW code — the
-   KNOWN_FAIL is about the original code's runtime bug, not the build environment.
-   Include it but expect possible failure.)
+  (Note: dwt2d and gaussian have OpenCL specs but no OMP — eligible for this direction)
+  (Note: nn-opencl is KNOWN_FAIL for original code, but LLM writes NEW code —
+   include it, expect it to fail, report as data point)
 - Use --kernels to avoid phantom specs
+- All OpenCL target specs have translation_targets = 2+ files (verified in Session 1.5)
 
-# Step 1-5: Same pattern as Session 9 but with --direction cuda-to-opencl
+# Prerequisites
+- Session 1 complete (submodule reset)
+- Session 1.5 complete (kernel-centric pipeline, OpenCL specs have translation_targets)
+- API keys configured for both models
+
+# Step 1: Activate venv
+source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
+cd /home/samyak/Desktop/parbench_sam
+
+# Step 2: Run both models
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-opencl \
-  --models azure-gpt-4.1 claude-sonnet-4-20250514 \
+  --models azure-gpt-4.1 MODEL_ID \
   --kernels backprop bfs bptree cfd dwt2d gaussian heartwall hotspot hotspot3d lavamd lud myocyte nn nw particlefilter pathfinder srad streamcluster \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 \
   --resume \
   -v
 
-# Regenerate analysis, verify, show results, commit and push.
-# Commit: "Add cuda-to-opencl eval results for Rodinia (17 kernels × 2 models)"
+# Step 3: Regenerate analysis
+python3 scripts/evaluation/analyze_eval.py \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --write-dashboard \
+  --show-gaps \
+  --expected-models azure-gpt-4.1 MODEL_ID \
+  --expected-directions cuda-to-omp cuda-to-opencl \
+  --expected-levels 0
+
+# Step 4: Verification — write a small test script that:
+# 1. Counts cuda-to-opencl results per model
+# 2. Compares pass rates: cuda-to-omp vs cuda-to-opencl (OpenCL harder?)
+# 3. Shows "Pass Rate by Translation Complexity" — OpenCL is inherently multi-file
+# 4. Checks if all OpenCL results have translation_mode="kernel_centric"
+# DELETE the test script.
+
+# Step 5: Show me:
+# - cuda-to-opencl pass rates vs cuda-to-omp comparison
+# - Pass Rate by Translation Complexity for opencl (all should be multi-file)
+# - Any kernels that PASS despite the 2-file requirement (interesting positive results)
+# - Key paper finding: "OpenCL translation requires producing host+device code separately;
+#   this structural complexity predicts [X% lower] pass rates vs. OMP translation"
+# Commit and push.
+# Commit: "Add cuda-to-opencl eval results for Rodinia (18 kernels × 2 models, kernel-centric)"
 ```
 
 ---
@@ -1268,7 +1591,7 @@ python3 -m pytest c_augmentation/test_transforms.py -v
 python3 scripts/evaluation/analyze_eval.py \
   --project-root /home/samyak/Desktop/parbench_sam \
   --show-gaps \
-  --expected-models azure-gpt-4.1 claude-sonnet-4-20250514 \
+  --expected-models azure-gpt-4.1 MODEL_ID \
   --expected-directions cuda-to-omp omp-to-cuda cuda-to-opencl \
   --expected-levels 0 1 2
 
