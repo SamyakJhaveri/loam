@@ -193,11 +193,16 @@ When writing or editing any HTML/CSS/JS in visualizations/:
 
 | Agent | When to use |
 |-------|-------------|
-| `plan-reviewer` | After drafting any plan, before implementation |
-| `verify-app` | After implementation, before committing — runs all validators |
-| `code-simplifier` | Post-implementation cleanup — reduce complexity |
-| `spec-auditor` | After generating new specs — validates slugs, categories, manifest |
-| `explorer` | Start of any new task — structured codebase exploration |
+| `plan-reviewer` | Before any non-trivial implementation — adversarial plan review (uses Opus) |
+| `verify-app` | Before committing — runs schema validation, unit tests, manifest check |
+| `code-simplifier` | Post-implementation cleanup — finds duplication, dead code, over-engineering |
+| `spec-auditor` | After generating new specs — validates slugs, categories, manifest entries |
+| `explorer` | Start of any new task — maps files, traces call chains, finds gotchas |
+| `rodinia-verifier` | After submodule resets or spec edits — runs all 54+6 harness checks |
+| `eval-batcher` | SC26 eval sessions (2, 3, 7, 9, 10) — runs LLM eval batches (background) |
+| `xsbench-explorer` | Session 4 only — extracts build/run/verify info from XSBench source |
+| `dashboard-refresher` | After eval runs or spec changes — regenerates JS data, fixes stale HTML |
+| `paper-drafter` | Sessions 12, 13, 15 — writes paper sections with actual data (uses Opus) |
 
 ### Skills (`.claude/skills/`) — invoke via `/skill-name`
 
