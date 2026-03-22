@@ -1,9 +1,11 @@
 # Session 5: Commit All Uncommitted Work + Refresh Dashboard + Push
 
 > **Depends on:** Sessions 3 AND 4 (both must be committed)
+> Codex wrote this code so you may hav to double check and make sure you get it right. 
 > **Blocks:** Nothing (final session)
 > **Estimated time:** 30–45 minutes
-> **Thinking level:** `think hard` (multi-commit workflow), `ultrathink` for submodule decisions
+> **Thinking level:** use ultrathink.
+> **USE 8 subagents**
 
 ---
 

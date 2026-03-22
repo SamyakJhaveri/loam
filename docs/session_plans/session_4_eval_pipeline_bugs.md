@@ -3,7 +3,9 @@
 > **Depends on:** Nothing (independent — can run in parallel with Sessions 2 or 3)
 > **Blocks:** Session 5 (dashboard refresh)
 > **Estimated time:** 20–30 minutes
-> **Thinking level:** `think hard` (multi-file edits with cross-referencing)
+> **Thinking level:** use ultrathink.
+> **USE 8 subagents**
+
 
 ---
 
