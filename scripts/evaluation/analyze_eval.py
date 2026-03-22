@@ -147,7 +147,7 @@ def build_summary(records: list[dict]) -> dict:
         model = r.get("model", "unknown")
         direction = r.get("direction", "unknown")
         src_id = r.get("source_spec", "")
-        kernel = _kernel_from_spec(src_id) if src_id else r.get("kernel", "?")
+        kernel = r.get("kernel") or (_kernel_from_spec(src_id) if src_id else "?")
         level = r.get("augment_level", 0)
         status = r.get("overall_status", "UNKNOWN")
 

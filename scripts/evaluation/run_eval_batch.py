@@ -201,12 +201,16 @@ def run_batch(
 def _generate_markdown(results: list[dict], models: list[str], title: str) -> str:
     now = datetime.now().strftime("%Y-%m-%d")
 
-    # Group by model → kernel
-    by_model: dict[str, dict[str, dict]] = defaultdict(dict)
+    # Group by model → (kernel, level)
+    by_model: dict[str, dict[tuple[str, int], dict]] = defaultdict(dict)
+    all_levels: set[int] = set()
     for r in results:
         m = r.get("model", "?")
-        k = _extract_kernel(r)
-        by_model[m][k] = r
+        k = r.get("kernel") or _extract_kernel(r)
+        level = r.get("augment_level", 0)
+        by_model[m][(k, level)] = r
+        all_levels.add(level)
+    multi_level = len(all_levels) > 1
 
     lines = [
         f"# {title}",
@@ -226,16 +230,24 @@ def _generate_markdown(results: list[dict], models: list[str], title: str) -> st
         skips = sum(1 for r in model_results if r.get("overall_status") == "SKIP")
         rate = f"{100 * passes // n}%" if n else "0%"
 
-        lines += [
-            f"## {model}",
-            f"**{passes}/{n} PASS ({rate})** | FAIL/BUILD_FAIL={fails} | ERROR={errors} | SKIP={skips}",
-            "",
-            "| Kernel | Status | Speedup | Timing Method | Tokens |",
-            "|--------|--------|---------|---------------|--------|",
-        ]
+        if multi_level:
+            lines += [
+                f"## {model}",
+                f"**{passes}/{n} PASS ({rate})** | FAIL/BUILD_FAIL={fails} | ERROR={errors} | SKIP={skips}",
+                "",
+                "| Kernel | Level | Status | Speedup | Timing Method | Tokens |",
+                "|--------|-------|--------|---------|---------------|--------|",
+            ]
+        else:
+            lines += [
+                f"## {model}",
+                f"**{passes}/{n} PASS ({rate})** | FAIL/BUILD_FAIL={fails} | ERROR={errors} | SKIP={skips}",
+                "",
+                "| Kernel | Status | Speedup | Timing Method | Tokens |",
+                "|--------|--------|---------|---------------|--------|",
+            ]
 
-        for r in sorted(model_results, key=_extract_kernel):
-            kernel = _extract_kernel(r)
+        for (kernel, level), r in sorted(by_model.get(model, {}).items()):
             status = r.get("overall_status", "?")
             sym = "✓" if status == "PASS" else ("!" if status == "ERROR" else "✗")
             speedup = r.get("speedup_ratio")
@@ -244,33 +256,47 @@ def _generate_markdown(results: list[dict], models: list[str], title: str) -> st
             pt = r.get("prompt_tokens") or 0
             ct = r.get("completion_tokens") or 0
             tokens = f"{pt + ct}" if (pt or ct) else "—"
-            lines.append(
-                f"| {kernel} | {sym} {status} | {speedup_str} | {timing} | {tokens} |"
-            )
+            if multi_level:
+                lines.append(
+                    f"| {kernel} | L{level} | {sym} {status} | {speedup_str} | {timing} | {tokens} |"
+                )
+            else:
+                lines.append(
+                    f"| {kernel} | {sym} {status} | {speedup_str} | {timing} | {tokens} |"
+                )
 
         lines.append("")
 
     # Summary across models
     lines += ["## Cross-Model Summary", ""]
-    all_kernels: set[str] = set()
+    all_keys: set[tuple[str, int]] = set()
     for r in results:
-        all_kernels.add(_extract_kernel(r))
+        k = r.get("kernel") or _extract_kernel(r)
+        level = r.get("augment_level", 0)
+        all_keys.add((k, level))
 
     col_header = " | ".join(models)
-    lines.append(f"| Kernel | {col_header} |")
-    lines.append("|--------|" + "|".join(["---"] * len(models)) + "|")
+    if multi_level:
+        lines.append(f"| Kernel | Level | {col_header} |")
+        lines.append("|--------|-------|" + "|".join(["---"] * len(models)) + "|")
+    else:
+        lines.append(f"| Kernel | {col_header} |")
+        lines.append("|--------|" + "|".join(["---"] * len(models)) + "|")
 
-    for kernel in sorted(all_kernels):
+    for (kernel, level) in sorted(all_keys):
         cells = []
         for model in models:
-            r = by_model.get(model, {}).get(kernel)
+            r = by_model.get(model, {}).get((kernel, level))
             if r is None:
                 cells.append("—")
             else:
                 s = r.get("overall_status", "?")
                 sym = "✓" if s == "PASS" else ("!" if s == "ERROR" else "✗")
                 cells.append(f"{sym} {s}")
-        lines.append(f"| {kernel} | {' | '.join(cells)} |")
+        if multi_level:
+            lines.append(f"| {kernel} | L{level} | {' | '.join(cells)} |")
+        else:
+            lines.append(f"| {kernel} | {' | '.join(cells)} |")
 
     return "\n".join(lines) + "\n"
 

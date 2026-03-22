@@ -702,6 +702,7 @@ def evaluate_translation(
         return {
             "source_spec": source_id,
             "target_spec": target_id,
+            "kernel": kernel_name,
             "model": model,
             "augment_level": augment_level,
             "dry_run": True,
@@ -729,7 +730,7 @@ def evaluate_translation(
         .get("wall_time_seconds")
     )
 
-    timestamp = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     attempts: list[dict[str, Any]] = []
 
     # Multi-turn conversation (supports iterative repair)
@@ -907,6 +908,7 @@ def evaluate_translation(
     result: dict[str, Any] = {
         "source_spec": source_id,
         "target_spec": target_id,
+        "kernel": kernel_name,
         "model": model,
         "augment_level": augment_level,
         "timestamp": timestamp,
