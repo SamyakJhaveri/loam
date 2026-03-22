@@ -37,10 +37,68 @@ or via @-mention: `@agent-{name}`.
 
 ---
 
+## SPRINT-WIDE PREREQUISITES
+
+Before starting any session, resolve these cross-cutting blockers. Each entry shows which sessions are affected.
+
+### CRITICAL — Blocks 5+ sessions
+
+1. **Second model selection (M7/M8)** — Blocks S3, S7, S8, S9, S10
+   - Status: NOT STARTED (M7 Groq/Modal setup, M8 leaderboard pick — both "Not started")
+   - Action: Pick the model, get API key, add provider code to llm_evaluate.py if needed
+   - Fallback: gpt-4o via OpenAI directly — ZERO code changes needed (already supported)
+   - Provide the exact model ID string: `MODEL_ID = _____`
+
+2. **Session 1 + Session 1.5 completion** — Blocks S2, S3, S7, S8, S9, S10
+   - These are the true starting gate for ALL evaluation work
+   - S1 = Rodinia submodule reset (source edits → build flags)
+   - S1.5 = Kernel-centric pipeline + translation_targets populated for all 60 specs
+
+### HIGH PRIORITY — Blocks paper quality
+
+3. **Read Paraval paper (M3)** — Blocks S6 (outline) and S12 (related work quality)
+   - ~2 hours of reading. Cannot write related work section without understanding it.
+   - Status: Task M3 in sprint plan, priority HIGH, status unknown
+
+4. **SC26 CFP confirmation** — Blocks S16, S17, S18
+   - Need: paper track (full paper vs workshop), LaTeX template, deadline timezone
+   - Sprint plan Open Question #5 is still unresolved
+
+5. **Overleaf project** — Blocks S17
+   - Ask Erel: has the Overleaf project been created? Get the share link.
+   - Sprint plan Open Question #6 is still unresolved
+
+### MEDIUM PRIORITY — Affects paper scope
+
+6. **HeCBench scope decision** — Sprint plan includes it; no session prompt exists
+   - Decision: Is HeCBench in scope for SC26 paper evaluation, or "curated but pending"?
+
+7. **M6 timing metrics** — Designed but not implemented; no session prompt exists
+   - Decision: Correctness-only paper, or add wall-clock timing as proxy for speedup?
+
+8. **Week 2 tasks (OpenACC, OMP target, new suite)** — In sprint plan; no session prompts
+   - Decision: Are these in scope or descoped for SC26?
+
+---
+
 ## SESSION 1 — Rodinia Submodule Reset & Re-verification
 
 ```
 ultrathink
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Confirm you want to push directly to origin main after this session
+- [ ] The -std=c++14 approach for cfd-opencl and pathfinder-opencl is UNTESTED.
+      The cfd-opencl spec already has -std=c++14 in its build command AND a source
+      edit was still applied — suggesting -std=c++14 alone may not suffice.
+      Decision: If -std=c++14 doesn't fix the build after reverting source edits,
+      should cfd-opencl move to KNOWN_FAIL (56→55 target) or keep the source edit
+      as a documented exception?
+
+EXTERNAL DEPS:
+- [ ] No external deps — this session is self-contained on the GPU machine
 
 # Session Goal
 Reset the Rodinia git submodule to pristine state (commit 9c10d3ea), re-apply ONLY
@@ -164,6 +222,25 @@ git diff --name-only
 
 ```
 ultrathink
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Approve spec bloat fixes: moving non-kernel files from prompt_payload to
+      support_files for 10 specs (kmeans-omp, streamcluster-omp, lud-omp, cfd-omp,
+      nn-omp, bfs-opencl, hotspot-opencl, hotspot3d-opencl, pathfinder-opencl,
+      lud-opencl). This changes what the LLM sees as "source to translate."
+- [ ] The architecture doc has NO source-verified translation_targets for CUDA
+      specs (22 specs). The prompt says "CUDA targets use translation_targets =
+      prompt_payload in most cases." Confirm: is fallback to prompt_payload
+      acceptable for CUDA specs, or should each be source-verified first?
+- [ ] 12 OpenCL specs have best-guess (not source-verified) translation_targets.
+      Claude Code CAN verify these by reading Makefiles during the session.
+      Confirm: is this acceptable, or do you want to verify them manually first?
+- [ ] Confirm you want to push directly to origin main after this session
+
+EXTERNAL DEPS:
+- [ ] Session 1 must be complete (submodule reset, 54 PASS specs verified)
 
 # Session Goal
 Implement the kernel-centric translation paradigm in the ParBench LLM evaluation
@@ -394,6 +471,33 @@ python3 -m pytest c_augmentation/test_transforms.py -v
 ```
 ultrathink
 
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Clean slate: ALL 10 previous azure-gpt-4.1 cuda-to-omp results will be
+      DELETED before re-running. Git history preserves them. OK to proceed?
+      (Alternative: archive to results/evaluation/archive/ first)
+- [ ] The untracked file "design issue, please advise.txt" in repo root —
+      should it be committed, deleted, or gitignored before this session?
+- [ ] Confirm you want to push directly to origin main after this session
+
+DATA/INFO:
+- [ ] Confirm Azure deployment name: the code strips "azure-" prefix, so
+      "azure-gpt-4.1" becomes deployment name "gpt-4.1". Is your Azure
+      deployment named exactly "gpt-4.1"? (If different, provide the name)
+
+CLARIFICATIONS:
+- [ ] --max-retries 2 is used here. Sprint plan Task 2A planned --max-retries 3
+      for iterative repair testing. Is 2 intentional for the clean-slate run?
+
+EXTERNAL DEPS:
+- [ ] Session 1 must be complete (submodule reset)
+- [ ] Session 1.5 must be complete (kernel-centric pipeline + translation_targets)
+      WITHOUT Session 1.5, this runs in full-project mode — identical to the v1
+      results being deleted. Session 1.5 is the CRITICAL blocker.
+- [ ] AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT must be set in your shell
+      (run: echo $AZURE_OPENAI_API_KEY | head -c5  to verify without exposing)
+
 # Session Goal
 Run ALL 17 Rodinia cuda-to-omp translation tasks for azure-gpt-4.1 at L0 using the
 kernel-centric pipeline. This is a CLEAN SLATE run — previous v1 results are deleted.
@@ -511,6 +615,43 @@ python3 scripts/evaluation/analyze_eval.py \
 ```
 ultrathink
 
+# >>> FILL IN BEFORE PASTING: Replace MODEL_ID with: _____ (from M7/M8 decision) <<<
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS (CRITICAL — multiple open items):
+- [ ] Which model is the second model? Candidates:
+      a) llama-3.3-70b-versatile via Groq API (primary open-source, team decision)
+      b) Qwen 2.5 72B via Groq or Modal
+      c) Gemini 1.5 Pro via Google AI API
+      d) Mistral Large via Mistral API
+      e) gpt-4o via OpenAI directly (ZERO code changes needed — fallback option)
+      Provide the exact model ID string for the --models flag.
+- [ ] How many models total for the paper? 2 or 3? If 3, which is the third?
+- [ ] Le Chen was assigned M8 (leaderboard model pick). Has he provided a
+      recommendation? If not, should we proceed with your choice?
+
+DATA/INFO:
+- [ ] API key for the chosen provider. Provide the env var name and confirm
+      it is set (e.g., GROQ_API_KEY, GOOGLE_API_KEY, MISTRAL_API_KEY)
+- [ ] Provider rate limits: Groq free tier = 30 req/min for Llama 70B.
+      Do you have a paid Groq account, or should we handle rate limiting?
+
+CLARIFICATIONS:
+- [ ] The eval pipeline (llm_evaluate.py) currently only supports 3 providers:
+      claude-*, gpt-*/o1-*/o3-*/o4-*, azure-*. Any other model requires NEW
+      provider code (~20-30 lines for OpenAI-compatible APIs like Groq/Mistral,
+      ~50-80 lines for Google Gemini). Should this be implemented as part of
+      Session 3 or as a separate prerequisite session?
+- [ ] "No reasoning models" (Gal's constraint). If Gemini is chosen, does
+      Gemini 2.0 have reasoning that needs to be explicitly disabled?
+
+EXTERNAL DEPS:
+- [ ] Session 1 + 1.5 + 2 must all be complete
+- [ ] M7 (Groq/Modal setup) or equivalent provider setup must be done
+- [ ] New provider code must be added to llm_evaluate.py call_llm() function
+      if the model is not azure-*, claude-*, or gpt-*
+
 # Session Goal
 Run ALL 17 Rodinia cuda-to-omp translation tasks for the second model at L0 using the
 kernel-centric pipeline. Model TBD — awaiting M7/M8 decision (llama-70b or leaderboard pick).
@@ -599,6 +740,28 @@ python3 scripts/evaluation/analyze_eval.py \
 
 ```
 ultrathink
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] SCOPE MISMATCH: The sprint plan (M5) says "XSBench — specific kernel only
+      for Paraval comparison" (MEDIUM priority). But this session prompt treats
+      XSBench as a full 5-spec second benchmark suite. Which is it?
+      a) Single kernel for Paraval comparison (1 spec, minimal effort)
+      b) Full 5-API-variant suite (5 specs, Sessions 4+5+8 needed)
+- [ ] Git submodule or regular clone?
+      a) Submodule (like Rodinia) — commit pinned in .gitmodules, cleaner
+      b) Regular clone + .gitignore entry — simpler, avoids worktree issues
+- [ ] Confirm you want to push to origin main (including xsbench-src if submodule,
+      or just specs/manifest if clone is gitignored)
+
+DATA/INFO:
+- [ ] Confirm XSBench repo URL: https://github.com/ANL-CESAR/XSBench
+      (verify this loads in a browser before starting)
+
+EXTERNAL DEPS:
+- [ ] Network access on the GPU machine for git clone
+- [ ] Independent of Sessions 1-3 (can run in parallel)
 
 # Session Goal
 Clone the standalone XSBench repository from ANL-CESAR, explore its directory structure,
@@ -735,6 +898,26 @@ python3 scripts/validate_schema.py --spec specs/xsbench-xsbench-openacc.json
 ```
 ultrathink
 
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] OpenMP target offload: GCC -foffload=nvptx-none is likely BROKEN
+      (gcc-12-offload-nvptx package not installed). The fallback is nvc -mp=gpu
+      (NVIDIA HPC SDK, confirmed available). Accept nvc as the OMP target
+      compiler from the start? Or install gcc-12-offload-nvptx first (requires sudo)?
+- [ ] If OpenACC or OMP target specs FAIL to build, should they be:
+      a) Kept with KNOWN_FAIL status (consistent with Rodinia pattern)
+      b) Deleted (reduce noise)
+      c) Kept but excluded from eval batches (recommended)
+- [ ] Is the augmentation smoke test on XSBench (Step 5) required for the paper
+      or a nice-to-have that can be skipped if the session runs long?
+
+EXTERNAL DEPS:
+- [ ] Session 4 must be complete (XSBench cloned, specs created)
+- [ ] GPU must be available (RTX 4070 needed for CUDA/OpenCL/OpenACC/OMP-target)
+- [ ] If GCC OMP target offload is desired: sudo apt install gcc-12-offload-nvptx
+      BEFORE the session (requires sudo access)
+
 # Session Goal
 Build and run all 5 XSBench API variants on the Linux GPU machine. Verify each variant
 produces correct output. Populate baseline_results in each spec. Test the new OpenACC
@@ -833,6 +1016,41 @@ python3 scripts/augmentation/augment_verify.py specs/xsbench-xsbench-omp.json \
 
 ```
 ultrathink
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Paper title: "ParBench: A Benchmark Framework for Evaluating LLM-Based
+      Parallel Code Translation" — confirmed? Or does Gal need to approve?
+      Note: Gal framed this as "more of an evaluation metric paper than a
+      comprehensive benchmark paper" (meeting 00:32:26). Does the title
+      emphasize "benchmark framework" or "evaluation study"?
+- [ ] Paper track: SC26 full technical paper (10 pages, ACM sigconf) or
+      workshop paper? Sprint plan Open Question #5 is still unresolved.
+- [ ] Should the outline be written NOW (with TBD placeholders for eval data)
+      or wait until Session 2 v2 data is available? Gal said "start writing
+      even without final results" (00:45:21) — but claims like "BUILD_FAIL
+      dominates" may change after kernel-centric pipeline.
+- [ ] Will Gal review the outline before Sessions 12-13 (paper writing)?
+- [ ] How many pages for appendices? (SC26 typically allows unlimited appendices
+      but reviewers aren't required to read them)
+
+DATA/INFO:
+- [ ] READ THE PARAVAL PAPER (Task M3, HIGH priority, ~2 hours). The Related
+      Work section cannot be positioned without understanding what Paraval does.
+      Provide: the Paraval PDF or your notes on its approach, benchmark count,
+      APIs covered, and what it does NOT do that ParBench does.
+- [ ] Identify the "Power of Evolve" paper Gal referenced (00:23:47) — is this
+      a related work comparison point?
+- [ ] Complete list of Gal's constraints (verify these are ALL of them):
+      1. No reasoning models  2. No agentic models  3. Reasoning OFF for all
+      4. Match Power of Evolve models  5. Conservative augmentation L1-L2
+      6. Omit build times  7. Explain curation methodology  8. Compare with Paraval
+      9. Anonymous submission
+
+EXTERNAL DEPS:
+- [ ] Independent of Sessions 1-5 (can run in parallel — it's a writing task)
+- [ ] Paraval paper must be obtained and read before starting
 
 # Session Goal
 Create the SC26 paper outline in docs/paper_outline.md. This defines the structure,
@@ -952,6 +1170,32 @@ SC26 format: double-column, 10 pages + appendices.
 ```
 ultrathink
 
+# >>> FILL IN BEFORE PASTING: Replace MODEL_ID with: _____ (from M7/M8 decision) <<<
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Provide the MODEL_ID for the second model (same as Session 3 decision)
+- [ ] L1 and L2 only (no L3/L4). Confirmed per Gal's "conservative augmentation"
+      directive? (If yes, no action needed — just confirming)
+- [ ] If augmentation CAUSES degradation (a kernel passes at L0 but fails at
+      L1/L2), should the session stop to investigate, or record and continue?
+      Recommendation: record and continue — the augmentation baseline already
+      proves transforms are semantics-preserving.
+- [ ] Seed=42 is used for all augmentation. Same seed = same augmented code
+      every time. This is good for reproducibility but tests only ONE augmented
+      variant per kernel. Acceptable limitation for the paper?
+
+DATA/INFO:
+- [ ] API keys for BOTH models must be set in the shell
+- [ ] Budget: 68-136 API calls (17 kernels × 2 models × 2 levels × 1-2 retries).
+      Estimated cost: $3-$15 across both providers. Confirm budget is available.
+
+EXTERNAL DEPS:
+- [ ] Sessions 2 + 3 must be complete (L0 baselines for both models)
+- [ ] If Session 3 is not done (model not selected), Session 7 can run for
+      azure-gpt-4.1 ONLY. Second model can be added later via --resume.
+
 # Session Goal
 Re-run cuda-to-omp evaluation at augmentation levels L1 and L2 for both azure-gpt-4.1
 and the second model (MODEL_ID from Session 3). Tests whether LLM translation quality
@@ -1048,6 +1292,29 @@ python3 scripts/evaluation/analyze_eval.py \
 ```
 ultrathink
 
+# >>> FILL IN BEFORE PASTING: Replace MODEL_ID with: _____ (from M7/M8 decision) <<<
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Provide the MODEL_ID for the second model
+- [ ] XSBench is 1 kernel per direction. Is PASS/FAIL on 1 kernel a
+      "case study" (qualitative) or "quantitative evidence" for the paper?
+- [ ] Should XSBench eval include augmentation (L1/L2)? The prompt doesn't
+      mention it. Adding it triples API calls from ~20 to ~60.
+- [ ] If OpenACC/OMP-target specs failed in Session 5, skip those directions?
+
+CLARIFICATIONS:
+- [ ] Session 1.5 populates translation_targets for Rodinia specs only.
+      XSBench specs (created in Session 4) also need translation_targets
+      populated. This step is NOT in any session prompt. Should it be added
+      to Session 4, Session 5, or the start of Session 8?
+
+EXTERNAL DEPS:
+- [ ] Sessions 4 + 5 must be complete (XSBench cloned + smoke tested)
+- [ ] Session 1.5 must be complete (kernel-centric pipeline)
+- [ ] API keys for both models
+
 # Session Goal
 Run LLM translation evaluation on XSBench across all API pairs for the 3 primary
 translation directions: cuda-to-omp, omp-to-cuda, cuda-to-opencl. If OpenACC and
@@ -1129,6 +1396,31 @@ python3 scripts/evaluation/analyze_eval.py \
 ```
 ultrathink
 
+# >>> FILL IN BEFORE PASTING: Replace MODEL_ID with: _____ (from M7/M8 decision) <<<
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Provide the MODEL_ID for the second model
+- [ ] omp-to-cuda is expected to be HARDER (adding GPU parallelism). If pass
+      rate is very low (<20%), is this still worth a full paper section or
+      just a paragraph in Discussion? (Recommendation: report regardless —
+      even 0% is a valid finding about LLM capabilities)
+- [ ] Should L1/L2 augmentation also be done for omp-to-cuda? The prompt only
+      runs L0. Adding L1/L2 triples API calls from 32 to 96.
+- [ ] The 16-kernel list excludes kmeans (CUDA target KNOWN_FAIL) and
+      mummergpu (OMP source KNOWN_FAIL). Confirm this exclusion list is correct.
+
+CLARIFICATIONS:
+- [ ] CUDA specs have NO source-verified translation_targets in the architecture
+      doc (only OMP and OpenCL are documented). For omp-to-cuda, the TARGET is
+      CUDA. Should Session 1.5 also verify CUDA translation_targets, or is
+      fallback to prompt_payload acceptable?
+
+EXTERNAL DEPS:
+- [ ] Sessions 1, 1.5, 2, 3 must be complete
+- [ ] API keys for both models
+
 # Session Goal
 Run omp-to-cuda evaluation for all eligible Rodinia kernels with both models at L0.
 
@@ -1201,6 +1493,27 @@ python3 scripts/evaluation/analyze_eval.py \
 
 ```
 ultrathink
+
+# >>> FILL IN BEFORE PASTING: Replace MODEL_ID with: _____ (from M7/M8 decision) <<<
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Provide the MODEL_ID for the second model
+- [ ] nn-opencl is KNOWN_FAIL for ORIGINAL code, but the LLM writes NEW code.
+      However, the spec's run args use "filelist.txt" which doesn't exist —
+      the LLM-generated code will TIMEOUT regardless of quality. Fix nn-opencl
+      run args to "filelist_4" before running? Or accept it will fail due to
+      spec issues?
+- [ ] cuda-to-opencl is inherently multi-file (.cl + .cpp). What's the minimum
+      acceptable pass rate for including this direction in the paper?
+- [ ] L0 only, no augmentation for this direction. Confirmed?
+
+EXTERNAL DEPS:
+- [ ] Session 1 + 1.5 must be complete
+- [ ] WARNING: Without Session 1.5, this runs in full-project mode (the exact
+      mode that caused M11 BUILD_FAILs). Do NOT run Session 10 without 1.5.
+- [ ] API keys for both models
 
 # Session Goal
 Run cuda-to-opencl evaluation for eligible Rodinia kernels with both models at L0.
@@ -1288,6 +1601,27 @@ python3 scripts/evaluation/analyze_eval.py \
 ```
 ultrathink
 
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Run now with partial eval data, or wait for ALL eval sessions (2-10)?
+      Recommendation: split into 2 passes — Pass 1 NOW (fix augmentation
+      numbers 54/60, fix spec count 60, fix baseline data), Pass 2 after
+      all evals (refresh eval data). The augmentation fixes won't need re-doing.
+- [ ] Should XSBench be reflected in the dashboard? (Only if Sessions 4-5 done)
+- [ ] Any design changes to the dashboard, or purely data refresh?
+
+CLARIFICATIONS:
+- [ ] scripts/generate_viz_data.py reads from results/augmentation/eval_cuda.json,
+      eval_omp.json, eval_opencl.json — NOT from retest_post_session2.json.
+      Are those per-API files current (54/60 data) or stale (old 65-spec data)?
+      If stale, the script needs to be updated to read the retest file, or the
+      per-API files need regeneration.
+
+EXTERNAL DEPS:
+- [ ] PAGES_PASSWORD GitHub Actions secret must be set (check: gh secret list)
+- [ ] GitHub Pages must be enabled with source = "GitHub Actions" in repo settings
+
 # Session Goal
 Fix all stale data in the visualization dashboard. Regenerate JS data files from
 current results. Fix hardcoded numbers in HTML pages. Deploy updated dashboard.
@@ -1371,6 +1705,50 @@ python3 scripts/evaluation/analyze_eval.py \
 ```
 ultrathink
 
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Author list and order: Sprint plan says "Samyak, Erel, Gal (advised)."
+      Are Niranjan, Le Chen, Tomer co-authors? (For anonymous submission,
+      names are hidden, but structure depends on contribution count)
+- [ ] Paper-drafter agent (Opus) or main Claude Code session for writing?
+- [ ] Lock the 3-4 numbered contributions. Candidates:
+      a) ParBench framework (first build+run+verify for LLM parallel translation)
+      b) Augmentation engine (6 AST transforms, level-invariant)
+      c) Empirical evaluation (N models, M directions, K kernels)
+      d) Kernel-centric translation + complexity classification
+      e) Failure taxonomy (structural analysis of failure modes)
+      Select 3-4 and rank them.
+- [ ] "No reasoning models" — should the paper explain WHY they're excluded
+      (strengthens rationale) or just omit them silently?
+- [ ] M11 (kernel-centric translation) — present as:
+      a) A contribution (evaluation methodology innovation)
+      b) A design decision (in Framework section)
+      c) A limitation/discussion point
+
+DATA/INFO:
+- [ ] Paraval paper differentiators (from reading M3 — MUST be done before S12)
+- [ ] Full citation list: BibTeX entries or at minimum publication details for
+      Paraval, ParEval (HPDC 2024), BabelTower (ICML 2022), TransCoder,
+      HPCorpus, OMPify, SWE-bench, HumanEval, Power of Evolve paper,
+      Rodinia (Che et al. 2009), and any others
+- [ ] Second/third model identities (for methodology section). If M7/M8 not
+      done, provide "TBD" — but this weakens the methodology section.
+- [ ] Hardware specs: exact output of `nvcc --version` and `gcc --version`
+      for the paper's experimental setup table
+
+CLARIFICATIONS:
+- [ ] HeCBench: 120 specs exist but source not cloned. Is HeCBench still in
+      scope for the paper, or described as "curated but evaluation pending"?
+- [ ] Should augmentation mention L3/L4 (tested, found level-invariant) or
+      strictly report only L0/L1/L2 per Gal's instruction?
+
+EXTERNAL DEPS:
+- [ ] Session 6 (paper outline) must be complete — docs/paper_outline.md is
+      the roadmap for this session. It does not exist yet.
+- [ ] Evaluation data from Session 2+ is helpful but not strictly required
+      (paper-drafter can use "TBD" placeholders per its rules)
+
 # Session Goal
 Write the first 5 sections of the SC26 paper in Markdown: Introduction, Related Work,
 Framework, Benchmark Curation, and Evaluation Methodology.
@@ -1407,6 +1785,38 @@ Framework, Benchmark Curation, and Evaluation Methodology.
 ```
 ultrathink
 
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Proceed with partial data or wait for ALL eval sessions (2,3,7,8,9,10)?
+      Minimum viable: Session 2 alone (1 model, 1 direction, L0).
+      Recommended: Sessions 2+3+7 at minimum (2 models, L0/L1/L2 for 1 direction)
+- [ ] Threats to validity — rank these by importance for the Discussion section:
+      a) Temperature=0 (deterministic but may not represent average behavior)
+      b) Single seed for augmentation
+      c) Limited models (2-3)
+      d) Limited benchmark suites
+      e) Single GPU hardware (RTX 4070 only)
+      f) Kernel-centric scope (excludes project-level restructuring)
+      g) No performance timing (only correctness)
+- [ ] Future work — select 3-4 items to highlight:
+      a) More suites (HeCBench, Polybench, NAS)
+      b) More APIs (SYCL, HIP, OpenACC, OMP target)
+      c) Agentic repair (ParaCodex)
+      d) Performance analysis (Niranjan's three-tier timing)
+      e) Multi-file/project-level translation
+      f) Cross-hardware (AMD, Intel GPUs)
+- [ ] Self-repair data: --max-retries produces attempt-level data. Should
+      self-repair be a subsection of Results or a minor finding?
+- [ ] Speedup/performance: M6 (timing metrics) is not implemented. Is the
+      paper purely correctness-focused, or should wall-clock timing be reported
+      as a proxy? Gal said "omit build times" but Niranjan wanted Tier 1/2.
+
+EXTERNAL DEPS:
+- [ ] Session 12 must be complete (paper §1-§5 exist in docs/paper_draft.md)
+- [ ] At minimum, Session 2 must be complete for actual data in Results section
+- [ ] Ideally, ALL eval sessions (2,3,7,8,9,10) complete for comprehensive data
+
 # Session Goal
 Write the data-driven sections of the SC26 paper: Results, Discussion, and Conclusion.
 
@@ -1439,6 +1849,30 @@ Write the data-driven sections of the SC26 paper: Results, Discussion, and Concl
 
 ```
 ultrathink
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Figure format: matplotlib/seaborn (produces PDF/SVG natively, standard
+      for academic publishing) or Chart.js (canvas-rendered, web only)?
+      Recommendation: matplotlib for paper figures, Chart.js only for dashboard.
+- [ ] System architecture diagram (Figure 1): hand-drawn in draw.io/TikZ, or
+      should Claude attempt TikZ code? This is typically manual design work.
+- [ ] Is the 6-figure list final? Sprint plan Day 17 adds "self-repair curve"
+      and "per-kernel speedup" but omits architecture diagram. Finalize the
+      list before starting.
+- [ ] Grayscale printability: add pattern fills (hatching, dots) for B&W
+      printing, or rely on color only?
+- [ ] Figure save location: visualizations/figures/ or docs/paper/figures/?
+
+DATA/INFO:
+- [ ] Complete eval data must exist (eval_summary.json with all models/directions)
+- [ ] Paper draft must exist (to match [FIGURE:] and [TABLE:] placeholders)
+
+EXTERNAL DEPS:
+- [ ] Sessions 2-10 must be complete (all eval data)
+- [ ] Sessions 12-13 must be complete (paper draft with figure placeholders)
+- [ ] If using matplotlib: pip install matplotlib seaborn (check if installed)
 
 # Session Goal
 Generate publication-quality figures and tables for the SC26 paper. These will be
@@ -1479,6 +1913,26 @@ used in both the paper and the dashboard.
 ```
 ultrathink
 
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Has Gal reviewed the Sessions 12-13 draft? Advisor review BEFORE
+      automated polishing is standard practice. Gal's feedback could require
+      structural changes, not just polishing.
+- [ ] What constitutes "ready" — content complete? Data accurate? Citations
+      resolved? All of the above?
+- [ ] Should Claude flag issues for your review, or make edits directly?
+- [ ] Does SC26 have a policy on AI-assisted paper writing? Should this
+      be disclosed?
+
+DATA/INFO:
+- [ ] Word count target: ~8,000-10,000 words (proxy for 10 double-column pages)
+- [ ] Co-author feedback notes (if any) from Gal/Erel review
+
+EXTERNAL DEPS:
+- [ ] Sessions 12, 13, 14 must be complete
+- [ ] Ideally, Gal has reviewed the draft between S13 and S15
+
 # Session Goal
 Review the complete paper draft for consistency, accuracy, and SC26 readiness.
 
@@ -1496,36 +1950,41 @@ Review the complete paper draft for consistency, accuracy, and SC26 readiness.
 
 ---
 
-## SESSION 16 — Anonymous GitHub Repo (M1)
-
-```
-ultrathink
-
-# Session Goal
-Create an anonymous version of the ParBench repository for SC26 double-blind submission.
-
-# Steps:
-# 1. Create a new branch or separate repo with author info removed
-# 2. Sanitize commit messages (remove names, emails)
-# 3. Remove or anonymize meeting_notes/, presentations/
-# 4. Keep specs/, harness/, c_augmentation/, scripts/, results/, visualizations/
-# 5. Update README with anonymous references
-# 6. Password-protect if needed via staticrypt
-# 7. Document the process for the team
-
-# Note: This may require creating a new GitHub organization or using GitHub's
-# anonymous submission tools. Check SC26's specific requirements.
-
-# Commit: "Prepare anonymous submission repo (M1)"
-# Push to the anonymous remote.
-```
-
----
-
 ## SESSION 17 — LaTeX Transfer + Final Formatting
 
 ```
 ultrathink
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Which SC26 LaTeX template? (ACM sigconf for main technical papers track,
+      or IEEE/custom for workshops). Check the CFP.
+- [ ] Compile locally or use Overleaf?
+      - LaTeX is NOT installed on the Linux GPU machine
+      - Options: (a) sudo apt install texlive-full (~5GB),
+                 (b) Use Overleaf (needs Erel's project link),
+                 (c) Minimal texlive install
+- [ ] Who does final LaTeX formatting — Claude Code or a team member on Overleaf?
+
+DATA/INFO:
+- [ ] Paper draft must exist at docs/paper_draft.md (Sessions 12-13)
+- [ ] Figures must exist in the chosen format (Session 14)
+- [ ] Start a references.bib file during Sessions 12-13 (do NOT defer all
+      20+ BibTeX entries to Session 17)
+- [ ] Has Erel created the Overleaf project? (Sprint plan Open Question #6)
+
+CLARIFICATIONS:
+- [ ] Is April 8 deadline for full paper or abstract registration?
+      SC conferences often have separate deadlines.
+- [ ] Does SC26 require LaTeX source upload or PDF only?
+
+EXTERNAL DEPS:
+- [ ] Sessions 12-15 must be complete
+- [ ] Download LaTeX template BEFORE Session 17 (one wget command, resilient
+      to deadline-day network issues)
+- [ ] If Overleaf: get project link from Erel
+- [ ] If local: install texlive
 
 # Session Goal
 Convert the Markdown paper draft to SC26 LaTeX template format.
@@ -1548,10 +2007,88 @@ Convert the Markdown paper draft to SC26 LaTeX template format.
 
 ---
 
+## SESSION 16 — Anonymous GitHub Repo (M1)
+
+```
+ultrathink
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Confirm SC26 requires double-blind review. Check the actual CFP.
+- [ ] Anonymous repo approach:
+      a) New GitHub organization (cleanest for double-blind)
+      b) Anonymous GitHub service (anonymous.4open.science)
+      c) Fresh repo on existing account with sanitized content
+- [ ] What to include in the anonymous repo:
+      a) Code only (specs, harness, c_augmentation, scripts)?
+      b) Code + results (sanitized)?
+      c) Code + results + dashboard?
+- [ ] Should the dashboard be mirrored anonymously?
+      (Requires new GitHub Pages deployment with separate password)
+- [ ] When to create: now (can be updated), or April 7 (final version only)?
+
+DATA/INFO:
+- [ ] SC26 CFP URL (for exact anonymization requirements)
+- [ ] If new GitHub org: need a secondary GitHub account/email
+- [ ] List of co-authors for the submission system (separate from the anon repo)
+
+EXTERNAL DEPS:
+- [ ] All paper content finalized (Sessions 12-15)
+- [ ] Session 17 (LaTeX) must be complete before creating the anonymous repo
+      (so the repo contains the final LaTeX source)
+
+# Session Goal
+Create an anonymous version of the ParBench repository for SC26 double-blind submission.
+
+# Steps:
+# 1. Create a new branch or separate repo with author info removed
+# 2. Sanitize commit messages (remove names, emails)
+# 3. Remove or anonymize meeting_notes/, presentations/
+# 4. Keep specs/, harness/, c_augmentation/, scripts/, results/, visualizations/
+# 5. Update README with anonymous references
+# 6. Password-protect if needed via staticrypt
+# 7. Document the process for the team
+
+# Note: This may require creating a new GitHub organization or using GitHub's
+# anonymous submission tools. Check SC26's specific requirements.
+
+# Commit: "Prepare anonymous submission repo (M1)"
+# Push to the anonymous remote.
+```
+
+---
+
 ## SESSION 18 — Final Review + Submit
 
 ```
 ultrathink
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Who submits — Samyak or Gal? Submitting author needs an account on the
+      submission system.
+- [ ] Should supplementary materials be submitted? (Artifact description,
+      anonymous repo link, dashboard URL)
+
+DATA/INFO:
+- [ ] SC26 submission system URL (EasyChair? HotCRP? Linklings?)
+- [ ] Submission account credentials (create BEFORE April 8)
+- [ ] Deadline timezone: typically 23:59 AoE (UTC-12). Confirm.
+- [ ] Required forms: copyright transfer? conflict of interest declarations?
+      author registration?
+- [ ] Co-author availability on April 7-8 for final approval
+
+CLARIFICATIONS:
+- [ ] Backup plan if submission system is down on April 8?
+      Recommendation: submit by April 7. Have program chair contact info ready.
+
+EXTERNAL DEPS:
+- [ ] ALL previous sessions must be complete
+- [ ] Anonymous GitHub repo must be live (Session 16)
+- [ ] LaTeX PDF must compile cleanly (Session 17)
+- [ ] All co-authors must approve final version
 
 # Session Goal
 Final review of LaTeX paper, last-minute data verification, and submission.
