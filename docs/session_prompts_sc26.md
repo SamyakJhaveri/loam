@@ -2,7 +2,7 @@
 
 > **How to use:** Copy-paste one prompt per Claude Code session. Run `/clear` between sessions.
 > Each prompt is self-contained with full context, exact commands, and verification steps.
-> Today's date: 2026-03-21. Deadline: April 8, 2026. Day 4 of 21-day sprint.
+> Today's date: 2026-03-22. Deadline: April 8, 2026. Day 5 of 21-day sprint.
 
 ---
 
@@ -18,6 +18,8 @@ or via @-mention: `@agent-{name}`.
 | S1.5 | `plan-reviewer` | Pre-implementation — adversarial review of kernel-centric architecture |
 | S1.5 | `verify-app` | Post-implementation — schema validation + all spec integrity |
 | S1.5 | `spec-auditor` | Post-population — validate all 60 specs with new `translation_targets` fields |
+| S1.6 | `verify-app` | Post-implementation — schema validation after universal standardization |
+| S1.6 | `spec-auditor` | Post-population — validate all 180 specs with translation_targets |
 | S2 | `eval-batcher` (background) | Step 3 — run all 17 azure-gpt-4.1 cuda-to-omp kernels (clean slate) |
 | S3 | `eval-batcher` (background) | Step 3 — run 17 kernels for second model (awaiting model decision) |
 | S4 | `xsbench-explorer` | Steps 2-4 — read XSBench Makefiles/source, extract spec data |
@@ -49,10 +51,12 @@ Before starting any session, resolve these cross-cutting blockers. Each entry sh
    - Fallback: gpt-4o via OpenAI directly — ZERO code changes needed (already supported)
    - Provide the exact model ID string: `MODEL_ID = _____`
 
-2. **Session 1 + Session 1.5 completion** — Blocks S2, S3, S7, S8, S9, S10
-   - These are the true starting gate for ALL evaluation work
-   - S1 = Rodinia submodule reset (source edits → build flags)
-   - S1.5 = Kernel-centric pipeline + translation_targets populated for all 60 specs
+2. **Session 1 + Session 1.5 + Session 1.6 completion** — ~~Blocks S2, S3, S7, S8, S9, S10~~ ALL RESOLVED
+   - These were the true starting gate for ALL evaluation work — **ALL THREE ARE NOW COMPLETE**
+   - S1 = Rodinia submodule reset (source edits → build flags) — DONE (commit `cfa1991`)
+   - S1.5 = Kernel-centric pipeline + translation_targets for 60 Rodinia specs — DONE (commit `c2b63fd`)
+   - S1.6 = Universal standardization: all 180 specs have translation_targets, full_project fallback removed — DONE (commit `35b9c8e`)
+   - **Pipeline is now kernel_centric only. All evaluation sessions are unblocked.**
 
 ### HIGH PRIORITY — Blocks paper quality
 
@@ -219,6 +223,13 @@ git diff --name-only
 ---
 
 ## SESSION 1.5 — Implement Kernel-Centric Translation Pipeline (M11-IMPL)
+
+> **STATUS: COMPLETE** -- Commit `c2b63fd` (2026-03-22). Implemented kernel-centric
+> translation for Rodinia: schema changes (`translation_targets`, `translation_complexity`),
+> eval pipeline with fallback mode, all 60 Rodinia specs populated, 10 spec bloat fixes,
+> complexity classification CSV (230 pairs).
+> NOTE: `populate_translation_targets.py` was DELETED in Session 1.6 and replaced by
+> `scripts/generators/standardize_specs.py`. The `full_project` fallback was also removed in Session 1.6.
 
 ```
 ultrathink
@@ -466,6 +477,36 @@ python3 -m pytest c_augmentation/test_transforms.py -v
 
 ---
 
+## SESSION 1.6 — Standardize Translation Pipeline for All Suites
+
+> **STATUS: COMPLETE** -- Commit `35b9c8e` (2026-03-22). Universal standardization
+> of all 180 specs across Rodinia (60) and HeCBench (120). Replaced Rodinia-only
+> `populate_translation_targets.py` with `scripts/generators/standardize_specs.py`.
+> Removed `full_project` fallback from eval pipeline -- single `kernel_centric` mode.
+> Fixed cross-suite bug in `find_translation_pairs()`.
+
+### What was done:
+- Created `scripts/generators/standardize_specs.py` (universal, any suite)
+- Three API family rules:
+  - Family 1 (OpenCL): `translation_targets` = `.cl` files only (host `.cpp` is Target Infrastructure Context)
+  - Family 2 (OMP, OMP target, OpenACC): preserve existing curated targets; fallback = `prompt_payload`
+  - Family 3 (CUDA and all others): `translation_targets` = `prompt_payload`
+- All 180 specs now have `translation_targets` populated (141 updated, 39 already correct)
+- Deleted `scripts/generators/populate_translation_targets.py` (Rodinia-only, superseded)
+- Removed `by_translation_mode` reporting from `analyze_eval.py` (only one mode exists)
+- `translation_mode` is always `"kernel_centric"` in result JSONs -- no fallback
+- Fixed cross-suite bug: `find_translation_pairs()` now groups by `(suite, kernel)` to prevent
+  merging 7 overlapping kernel names between Rodinia and HeCBench (e.g., `gaussian`, `lud`, `nn`)
+- Updated gen-spec skill with Phase 3.5 and architecture doc with section 14
+
+### Impact on downstream sessions:
+- **Session 4 (XSBench):** After creating specs, run `standardize_specs.py --suite xsbench` (Step 12 added)
+- **Session 8 (XSBench eval):** XSBench translation_targets gap is RESOLVED
+- **Session 9 (omp-to-cuda):** CUDA translation_targets = prompt_payload (Family 3 rule) -- no fallback
+- **Session 10 (cuda-to-opencl):** OpenCL targets = `.cl` files ONLY, NOT `.cl` + host `.cpp`
+
+---
+
 ## SESSION 2 — Complete azure-gpt-4.1 Rodinia cuda-to-omp Evaluation
 
 ```
@@ -492,9 +533,9 @@ CLARIFICATIONS:
 
 EXTERNAL DEPS:
 - [ ] Session 1 must be complete (submodule reset)
-- [ ] Session 1.5 must be complete (kernel-centric pipeline + translation_targets)
-      WITHOUT Session 1.5, this runs in full-project mode — identical to the v1
-      results being deleted. Session 1.5 is the CRITICAL blocker.
+- [x] Session 1.5 must be complete (kernel-centric pipeline + translation_targets) — DONE (commit `c2b63fd`)
+- [x] Session 1.6 must be complete (universal standardization, full_project removed) — DONE (commit `35b9c8e`)
+      The `full_project` mode no longer exists. Pipeline is `kernel_centric` only.
 - [ ] AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT must be set in your shell
       (run: echo $AZURE_OPENAI_API_KEY | head -c5  to verify without exposing)
 
@@ -508,7 +549,8 @@ pilot results used the full-project paradigm and cannot be mixed with the new pi
 results in the paper. Clean slate ensures a single, coherent evaluation paradigm.
 Expected improvement: 60% → 75-80% pass rate as structural failures are eliminated.
 
-# IMPORTANT: Kernel-centric translation is now active (M11 resolution).
+# IMPORTANT: Kernel-centric translation is the ONLY mode (Sessions 1.5 + 1.6 complete).
+# The `full_project` fallback has been removed. Pipeline always uses translation_targets.
 # The LLM produces only the kernel file(s), not full project structure.
 # - backprop: 4 files → 1 file (backprop.c)
 # - kmeans: 8 files → 1 file (kmeans_openmp/kmeans_clustering.c)
@@ -532,7 +574,7 @@ Expected improvement: 60% → 75-80% pass rate as structural failures are elimin
 
 # Prerequisites
 - Session 1 complete (Rodinia submodule reset, all 54 specs verified PASS)
-- Session 1.5 complete (kernel-centric pipeline implemented, all 60 specs populated)
+- Sessions 1.5+1.6 complete (kernel-centric pipeline, all 180 specs populated, single mode)
 - Azure OpenAI API key configured
 
 # Step 1: Activate venv and verify environment
@@ -552,6 +594,8 @@ missing = [s for s in specs if 'mummergpu' not in s
 if missing: print('MISSING translation_targets:', missing)
 else: print('All OMP specs have translation_targets — pipeline ready')
 "
+# NOTE: After Session 1.6, all 180 specs have translation_targets.
+# This check will always pass. Kept as a sanity check.
 
 # Step 2: DELETE all previous cuda-to-omp v1 results (clean slate)
 rm -f results/evaluation/azure-gpt-4.1/rodinia-*-cuda-to-rodinia-*-omp.json
@@ -586,7 +630,7 @@ python3 scripts/evaluation/analyze_eval.py \
 # 1. Reads each result JSON in results/evaluation/azure-gpt-4.1/
 # 2. Counts PASS/BUILD_FAIL/RUN_FAIL/VERIFY_FAIL
 # 3. Verifies all 17 kernels have results
-# 4. Confirms translation_mode="kernel_centric" in all results
+# 4. Confirms translation_mode="kernel_centric" in all results (the only possible mode after S1.6)
 # 5. Prints a summary table
 # DELETE the test script after it confirms everything is correct.
 
@@ -647,7 +691,8 @@ CLARIFICATIONS:
       Gemini 2.0 have reasoning that needs to be explicitly disabled?
 
 EXTERNAL DEPS:
-- [ ] Session 1 + 1.5 + 2 must all be complete
+- [x] Sessions 1 + 1.5 + 1.6 must all be complete — DONE
+- [ ] Session 2 must be complete
 - [ ] M7 (Groq/Modal setup) or equivalent provider setup must be done
 - [ ] New provider code must be added to llm_evaluate.py call_llm() function
       if the model is not azure-*, claude-*, or gpt-*
@@ -664,7 +709,7 @@ kernel-centric pipeline. Model TBD — awaiting M7/M8 decision (llama-70b or lea
 # When the model is decided (M7/M8 tasks), update the --models flag below.
 # Session 3 cannot begin until M7 (Groq/Modal setup) or M8 (leaderboard model) is complete.
 
-# IMPORTANT: Kernel-centric translation is active (Session 1.5 complete).
+# IMPORTANT: Kernel-centric translation is the ONLY mode (Sessions 1.5 + 1.6 complete).
 # The LLM produces only the kernel file(s), not full project structure.
 # All 17 kernels run as CLEAN SLATE (no previous v2 results for the new model).
 
@@ -679,7 +724,7 @@ kernel-centric pipeline. Model TBD — awaiting M7/M8 decision (llama-70b or lea
 
 # Prerequisites
 - Session 1 complete (Rodinia submodule reset)
-- Session 1.5 complete (kernel-centric pipeline, all 60 specs populated)
+- Sessions 1.5+1.6 complete (kernel-centric pipeline, all 180 specs populated, single mode)
 - Session 2 complete (azure-gpt-4.1 v2 baseline established)
 - M7 or M8 complete (second model available via API)
 
@@ -887,6 +932,22 @@ python3 scripts/validate_schema.py --spec specs/xsbench-xsbench-openacc.json
 #   xsbench/ (new directory — but check if submodule or regular clone)
 #   specs/xsbench-xsbench-*.json (5 files)
 #   manifest.jsonl (5 new entries appended)
+# Step 12: Populate translation_targets for new XSBench specs
+# Session 1.6 created standardize_specs.py which handles ANY suite.
+# After creating specs, run:
+python3 scripts/generators/standardize_specs.py \
+  --suite xsbench \
+  --project-root /home/samyak/Desktop/parbench_sam
+# This sets translation_targets using the Family rules:
+#   - xsbench-cuda: Family 3 (targets = prompt_payload)
+#   - xsbench-omp: Family 2 (preserve curated or fallback to prompt_payload)
+#   - xsbench-opencl: Family 1 (targets = .cl files only)
+#   - xsbench-omp_target: Family 2
+#   - xsbench-openacc: Family 2
+# Then re-validate:
+python3 scripts/validate_schema.py --all
+
+# Step 13: Git commit and push
 # Commit: "Add XSBench as second benchmark suite (5 API variants: CUDA/OMP/OpenCL/OMP-target/OpenACC)"
 # Push to origin main.
 ```
@@ -1206,7 +1267,7 @@ The augmentation contribution in the SC26 paper requires showing how LLMs perfor
 code variation. If pass rates drop at L1/L2, augmentation reveals LLM fragility. If they
 hold steady, it validates that LLMs understand semantics, not just syntax.
 
-# IMPORTANT: Kernel-centric translation is active (Session 1.5 complete).
+# IMPORTANT: Kernel-centric translation is the ONLY mode (Sessions 1.5 + 1.6 complete).
 # Augmentation applies to the SOURCE kernel files only.
 # The LLM sees augmented source → produces target kernel file(s).
 # Target infrastructure stays untouched (not augmented, not modified).
@@ -1305,14 +1366,13 @@ DECISIONS:
 - [ ] If OpenACC/OMP-target specs failed in Session 5, skip those directions?
 
 CLARIFICATIONS:
-- [ ] Session 1.5 populates translation_targets for Rodinia specs only.
-      XSBench specs (created in Session 4) also need translation_targets
-      populated. This step is NOT in any session prompt. Should it be added
-      to Session 4, Session 5, or the start of Session 8?
+- [x] RESOLVED (Session 1.6): XSBench translation_targets gap is closed.
+      `scripts/generators/standardize_specs.py --suite xsbench` handles this.
+      Step added to Session 4 (Step 12). No action needed here.
 
 EXTERNAL DEPS:
 - [ ] Sessions 4 + 5 must be complete (XSBench cloned + smoke tested)
-- [ ] Session 1.5 must be complete (kernel-centric pipeline)
+- [x] Sessions 1.5+1.6 must be complete (kernel-centric pipeline, universal) — DONE
 - [ ] API keys for both models
 
 # Session Goal
@@ -1412,10 +1472,9 @@ DECISIONS:
       mummergpu (OMP source KNOWN_FAIL). Confirm this exclusion list is correct.
 
 CLARIFICATIONS:
-- [ ] CUDA specs have NO source-verified translation_targets in the architecture
-      doc (only OMP and OpenCL are documented). For omp-to-cuda, the TARGET is
-      CUDA. Should Session 1.5 also verify CUDA translation_targets, or is
-      fallback to prompt_payload acceptable?
+- [x] RESOLVED (Session 1.6): All CUDA specs now have translation_targets = prompt_payload
+      (Family 3 rule in standardize_specs.py). No fallback exists — single kernel_centric mode.
+      This is correct: CUDA files are all kernel code, so targets = full payload.
 
 EXTERNAL DEPS:
 - [ ] Sessions 1, 1.5, 2, 3 must be complete
@@ -1428,15 +1487,15 @@ Run omp-to-cuda evaluation for all eligible Rodinia kernels with both models at 
 The paper targets 3 translation directions. omp-to-cuda is the reverse of the primary
 direction — testing whether LLMs can add GPU parallelism (harder than removing it).
 
-# IMPORTANT: Kernel-centric translation is active (Session 1.5 complete).
+# IMPORTANT: Kernel-centric translation is the ONLY mode (Sessions 1.5 + 1.6 complete).
 # For omp-to-cuda, the source is OMP (typically 1 kernel file in translation_targets),
 # and the target is CUDA. The LLM must produce CUDA kernel file(s) from the OMP source.
 # The CUDA target spec's translation_targets identifies which .cu/.cuh files to produce.
 # This is typically 1-2 .cu files depending on the kernel.
 #
-# Key consideration: CUDA targets use translation_targets = prompt_payload in most cases
-# (CUDA files are all kernel code). Exception: nn-cuda should exclude hurricane_gen.c.
-# Verify the CUDA translation_targets are populated correctly in Session 1.5.
+# After Session 1.6: ALL CUDA specs have translation_targets = prompt_payload (Family 3 rule).
+# This is the universal rule — no exceptions, no fallback. CUDA files are all kernel code.
+# nn-cuda's hurricane_gen.c was already handled during Session 1.5 spec bloat fixes.
 
 # Context
 - Eligible omp-to-cuda kernels (16, excluding mummergpu-omp KNOWN_FAIL,
@@ -1449,7 +1508,7 @@ direction — testing whether LLMs can add GPU parallelism (harder than removing
 
 # Prerequisites
 - Session 1 complete (submodule reset)
-- Session 1.5 complete (kernel-centric pipeline, CUDA specs have translation_targets)
+- Sessions 1.5+1.6 complete (kernel-centric pipeline, all CUDA specs have translation_targets via Family 3 rule)
 - API keys configured for both models
 
 # Step 1: Activate venv
@@ -1510,9 +1569,8 @@ DECISIONS:
 - [ ] L0 only, no augmentation for this direction. Confirmed?
 
 EXTERNAL DEPS:
-- [ ] Session 1 + 1.5 must be complete
-- [ ] WARNING: Without Session 1.5, this runs in full-project mode (the exact
-      mode that caused M11 BUILD_FAILs). Do NOT run Session 10 without 1.5.
+- [x] Sessions 1 + 1.5 + 1.6 must be complete — DONE
+      The `full_project` mode no longer exists (removed in Session 1.6).
 - [ ] API keys for both models
 
 # Session Goal
@@ -1520,21 +1578,22 @@ Run cuda-to-opencl evaluation for eligible Rodinia kernels with both models at L
 
 # Why This Matters
 Third translation direction for the paper. cuda-to-opencl tests cross-vendor API
-translation (NVIDIA-specific CUDA → vendor-neutral OpenCL). This is the KEY multi-file
-direction: the LLM must produce BOTH a .cl kernel file AND a host .cpp driver file.
+translation (NVIDIA-specific CUDA → vendor-neutral OpenCL). After Session 1.6, the LLM
+produces ONLY the .cl kernel file(s); the host .cpp driver is read-only context.
 
-# IMPORTANT: cuda-to-opencl targets are inherently multi-file (Erkap's point).
-# All OpenCL targets have translation_targets = [".cl kernel", "host .cpp driver"].
-# This is classified as single_to_multi or multi_to_multi in the complexity taxonomy.
+# IMPORTANT (updated Session 1.6): OpenCL targets have translation_targets = .cl files ONLY.
+# The host .cpp driver is now Target Infrastructure Context (read-only, not produced by LLM).
+# This is the Family 1 rule from standardize_specs.py. Complexity may now be single_file
+# or multi_to_single for some kernels (e.g., hotspot-opencl → 1 .cl file only).
 # OpenCL inherently requires separate device/host code — cannot be normalized to 1 file.
 #
-# The LLM is being tested on a REAL structural translation challenge:
-#   - Produce device code (.cl) in OpenCL C (a subset of C99 with vendor extensions)
-#   - Produce host code (.cpp) using the OpenCL C++ API
-#   - The two files must interface correctly via cl::Kernel, cl::Buffer, etc.
+# After Session 1.6, the LLM produces ONLY the .cl device kernel file(s).
+# The host .cpp driver is provided as read-only Target Infrastructure Context.
+# This means the LLM is tested on kernel translation, not host API boilerplate.
 #
-# Expected: lower pass rates than cuda-to-omp. This is scientifically interesting —
-# report it in the paper as evidence that API structural complexity predicts LLM difficulty.
+# The scientific question is: "can the LLM produce correct OpenCL C kernel code
+# given the host driver as context?" Expected: pass rates closer to cuda-to-omp
+# than originally estimated, since host/device structural complexity is removed.
 #
 # Replace MODEL_ID with the actual second model from Session 3.
 
@@ -1546,11 +1605,11 @@ direction: the LLM must produce BOTH a .cl kernel file AND a host .cpp driver fi
   (Note: nn-opencl is KNOWN_FAIL for original code, but LLM writes NEW code —
    include it, expect it to fail, report as data point)
 - Use --kernels to avoid phantom specs
-- All OpenCL target specs have translation_targets = 2+ files (verified in Session 1.5)
+- All OpenCL target specs have translation_targets = .cl files only (1+ files, Family 1 rule from Session 1.6)
 
 # Prerequisites
 - Session 1 complete (submodule reset)
-- Session 1.5 complete (kernel-centric pipeline, OpenCL specs have translation_targets)
+- Sessions 1.5+1.6 complete (kernel-centric pipeline, OpenCL specs have .cl-only translation_targets)
 - API keys configured for both models
 
 # Step 1: Activate venv
@@ -1725,6 +1784,8 @@ DECISIONS:
       a) A contribution (evaluation methodology innovation)
       b) A design decision (in Framework section)
       c) A limitation/discussion point
+      NOTE (Session 1.6): Kernel-centric is now universal (all 180 specs, no fallback,
+      per-API family rules). This strengthens the contribution story vs. Rodinia-only.
 
 DATA/INFO:
 - [ ] Paraval paper differentiators (from reading M3 — MUST be done before S12)
