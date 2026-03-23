@@ -25,7 +25,10 @@
       "CMakeLists.txt",
       "LICENSE"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cu"
+    ]
   },
   "implementation": {
     "api": "cuda",
@@ -174,6 +177,7 @@
       "cryptography",
       "point-multiplication"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": null
   }
 }

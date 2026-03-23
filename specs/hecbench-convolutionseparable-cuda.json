@@ -28,6 +28,10 @@
     ],
     "verification_only": [
       "conv_gold.cu"
+    ],
+    "translation_targets": [
+      "conv.cu",
+      "main.cu"
     ]
   },
   "implementation": {
@@ -193,6 +197,7 @@
       "signal-processing",
       "shared-memory"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

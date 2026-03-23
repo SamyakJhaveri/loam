@@ -28,7 +28,11 @@
       "CMakeLists.txt",
       "utils.hpp"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp",
+      "ThomasMatrix.hpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -185,6 +189,7 @@
       "pcr",
       "linear-algebra"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

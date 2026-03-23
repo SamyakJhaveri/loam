@@ -325,8 +325,9 @@ vendor extensions), while the host `.cpp` uses C++11+ with the OpenCL host API.
 An LLM that produces both files correctly is demonstrating a real translation skill
 (mapping CUDA's unified programming model to OpenCL's host-device split).
 
-For cuda-to-opencl evaluations, `translation_targets` always contains 2+ files.
-All OpenCL targets are classified `single_to_multi` or `multi_to_multi`.
+**Update (SESSION 1.6):** `translation_targets` now contains ONLY `.cl` files.
+The host driver is shown as read-only "Target Infrastructure Context" in the prompt.
+See §14 for the rationale and per-API family rules.
 
 ---
 
@@ -347,3 +348,61 @@ These 10 files are inseparable (modifying one affects all). This is classified
 textual-include-based single-unit compilation?
 
 Expected result: BUILD_FAIL or complex PASS. Include in eval — informative either way.
+
+---
+
+## 14. Standardized Multi-Suite Design (SESSION 1.6, 2026-03-22)
+
+SESSION 1.5 added kernel-centric translation for Rodinia only, with a `full_project`
+fallback for specs lacking `translation_targets`. SESSION 1.6 standardizes the pipeline
+for all benchmark suites and removes the fallback entirely.
+
+### Per-API Translation Target Rules
+
+The schema supports 14 `parallel_api` values. Each falls into one of three families
+based on where the parallel computation physically lives in the source code:
+
+**Family 1 — Separate Device Code:**
+- `opencl`: `translation_targets` = only `.cl` device kernel files.
+  Host driver (`.c`/`.cpp` with `clCreateContext`, `clSetKernelArg`, etc.) is
+  read-only infrastructure shown in the "Target Infrastructure Context" prompt section.
+  Rationale: the host driver is API plumbing, not parallel computation.
+  All 20 Rodinia OpenCL benchmarks have separate `.cl` files loaded at runtime.
+
+  Note: This is an evolution from §12's observation that "OpenCL cannot be normalized
+  to a single file." The host driver file still exists and is shown as context — but
+  the LLM only *produces* the `.cl` kernel file(s), not the host driver.
+
+**Family 2 — Inline Pragmas:**
+- `omp`, `omp_target`, `openacc`: parallel constructs are embedded via pragmas
+  (`#pragma omp`, `#pragma omp target`, `#pragma acc`) directly in `.c`/`.cpp` source.
+  `translation_targets` = source-verified curated files if available, else `prompt_payload`.
+
+**Family 3 — Single-Source / Full-Payload:**
+- `cuda`, `hip`, `sycl`, `kokkos`, `raja`, `mpi`, `omp_mpi`, `tbb`, `stdpar`, `thrust`, `serial`:
+  `translation_targets = prompt_payload`. The parallel computation is fully integrated
+  into standard source files — no host/device split exists.
+
+**Extensibility:** To add a new API with separate device files, add it to `SEPARATE_DEVICE_APIS`
+in `scripts/generators/standardize_specs.py`. No other code changes needed.
+
+### No Fallback Mode
+
+After SESSION 1.6, every spec has `translation_targets`. The `full_project` fallback
+in `llm_evaluate.py` has been removed. If a spec lacks `translation_targets`, the
+pipeline will raise a `KeyError` — this is intentional (fail fast > silent wrong behavior).
+
+### Missing API Variants Policy
+
+Not all kernels exist in all APIs. The pipeline documents gaps but never fills them:
+- Rodinia: 5 of 22 kernels lack at least one API (e.g., huffman is CUDA-only)
+- HeCBench: all 60 kernels have CUDA + OMP only
+- When future APIs are added: HIP → Family 3, SYCL → Family 3
+
+### Adding a New Suite
+
+1. Clone source into `parbench_sam/<suite>/<suite>-src/`
+2. Generate specs using `/gen-spec <suite>` (includes Phase 3.5 for translation_targets)
+3. Run `python3 scripts/generators/standardize_specs.py --suite <suite>` to verify/fix
+4. Build, run, and verify each spec on the GPU machine
+5. Record baseline results before committing

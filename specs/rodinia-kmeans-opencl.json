@@ -34,9 +34,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "kmeans.cl",
-            "kmeans.cpp",
-            "kmeans_clustering.c"
+            "kmeans.cl"
         ]
     },
     "implementation": {
@@ -187,6 +185,6 @@
             "rodinia"
         ],
         "multi_file": true,
-        "translation_complexity": "multi_to_multi"
+        "translation_complexity": "single_file"
     }
 }

@@ -30,7 +30,11 @@
       "utils.h",
       "filelist.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "nearestNeighbor.cpp",
+      "nearestNeighbor.h"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -211,6 +215,7 @@
       "geographic",
       "search"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

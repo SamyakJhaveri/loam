@@ -28,7 +28,11 @@
       "CMakeLists.txt",
       "util.hpp"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp",
+      "mandel.hpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -176,6 +180,7 @@
       "complex-plane",
       "parallel-pixels"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

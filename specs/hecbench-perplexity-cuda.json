@@ -26,6 +26,9 @@
     ],
     "verification_only": [
       "reference.cpp"
+    ],
+    "translation_targets": [
+      "main.cu"
     ]
   },
   "implementation": {
@@ -191,6 +194,7 @@
       "machine-learning",
       "evaluation"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": null
   }
 }

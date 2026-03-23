@@ -26,7 +26,10 @@
       "Makefile.nvc",
       "CMakeLists.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -196,6 +199,7 @@
       "feature-map",
       "tiling"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "single_file"
   }
 }

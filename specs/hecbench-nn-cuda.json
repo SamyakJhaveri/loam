@@ -28,7 +28,11 @@
       "utils.h",
       "filelist.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "nearestNeighbor.cu",
+      "nearestNeighbor.h"
+    ]
   },
   "implementation": {
     "api": "cuda",
@@ -211,6 +215,7 @@
       "geographic",
       "search"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

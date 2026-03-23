@@ -32,7 +32,14 @@
       "RadixSort.h",
       "Scan.h"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp",
+      "RadixSort.cpp",
+      "RadixSort_kernels.cpp",
+      "Scan.cpp",
+      "Scan_kernels.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -180,6 +187,7 @@
       "parallel-primitives",
       "prefix-scan"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

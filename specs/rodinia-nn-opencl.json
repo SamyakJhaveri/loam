@@ -34,8 +34,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "nearestNeighbor_kernel.cl",
-            "nearestNeighbor.cpp"
+            "nearestNeighbor_kernel.cl"
         ]
     },
     "implementation": {
@@ -194,6 +193,6 @@
             "search"
         ],
         "multi_file": true,
-        "translation_complexity": "single_to_multi"
+        "translation_complexity": "single_file"
     }
 }

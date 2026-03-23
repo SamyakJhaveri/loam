@@ -28,7 +28,11 @@
       "CMakeLists.txt",
       "LICENSE"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp",
+      "chacha20.h"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -177,6 +181,7 @@
       "encryption",
       "cryptography"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": "multi_to_multi"
   }
 }

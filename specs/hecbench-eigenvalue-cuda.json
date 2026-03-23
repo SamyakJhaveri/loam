@@ -29,6 +29,10 @@
       "reference.cu",
       "reference.h",
       "utils.cu"
+    ],
+    "translation_targets": [
+      "kernels.cu",
+      "main.cu"
     ]
   },
   "implementation": {
@@ -191,6 +195,7 @@
       "linear-algebra",
       "gerschgorin"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

@@ -28,6 +28,10 @@
     ],
     "verification_only": [
       "DCT8x8_gold.cu"
+    ],
+    "translation_targets": [
+      "kernels.cu",
+      "main.cu"
     ]
   },
   "implementation": {
@@ -204,6 +208,7 @@
       "signal-processing",
       "shared-memory"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

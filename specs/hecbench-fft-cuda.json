@@ -29,6 +29,11 @@
     ],
     "verification_only": [
       "reference.h"
+    ],
+    "translation_targets": [
+      "main.cu",
+      "fft1D_512.h",
+      "ifft1D_512.h"
     ]
   },
   "implementation": {
@@ -192,6 +197,7 @@
       "radix-8",
       "shared-memory"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

@@ -26,7 +26,10 @@
       "Makefile.nvc",
       "CMakeLists.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "chi2.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -193,6 +196,7 @@
       "bioinformatics",
       "genetics"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": "single_file"
   }
 }

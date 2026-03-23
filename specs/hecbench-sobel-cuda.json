@@ -29,6 +29,10 @@
     ],
     "verification_only": [
       "reference.cu"
+    ],
+    "translation_targets": [
+      "kernels.cu",
+      "main.cu"
     ]
   },
   "implementation": {
@@ -195,6 +199,7 @@
       "convolution",
       "gradient"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

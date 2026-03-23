@@ -25,7 +25,10 @@
       "CMakeLists.txt",
       "conv3d_s4.cu"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cu"
+    ]
   },
   "implementation": {
     "api": "cuda",
@@ -222,6 +225,7 @@
       "feature-map",
       "tiling"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

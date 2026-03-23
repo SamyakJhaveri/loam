@@ -26,7 +26,10 @@
       "Makefile.nvc",
       "CMakeLists.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "lud.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -178,6 +181,7 @@
       "tiled",
       "shared-memory"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_single"
   }
 }

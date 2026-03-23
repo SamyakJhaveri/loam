@@ -40,10 +40,7 @@
         "verification_only": [],
         "translation_targets": [
             "kernel/kernel_gpu_opencl.cl",
-            "kernel/kernel_gpu_opencl_2.cl",
-            "kernel/kernel_gpu_opencl_wrapper.c",
-            "kernel/kernel_gpu_opencl_wrapper_2.c",
-            "main.c"
+            "kernel/kernel_gpu_opencl_2.cl"
         ]
     },
     "implementation": {

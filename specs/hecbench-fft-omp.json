@@ -27,7 +27,10 @@
       "CMakeLists.txt",
       "LICENSE"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -165,6 +168,7 @@
       "radix-8",
       "shared-memory"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_single"
   }
 }

@@ -32,6 +32,10 @@
     "verification_only": [
       "sobol_gold.cu",
       "sobol_gold.h"
+    ],
+    "translation_targets": [
+      "sobol.cu",
+      "sobol_gpu.cu"
     ]
   },
   "implementation": {
@@ -193,6 +197,7 @@
       "monte-carlo",
       "qrng"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

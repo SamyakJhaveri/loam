@@ -28,7 +28,14 @@
             "Makefile",
             "CMakeLists.txt"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "lulesh.cu",
+            "lulesh-init.cu",
+            "lulesh-util.cu",
+            "lulesh-viz.cu",
+            "lulesh.h"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -221,6 +228,7 @@
             "shock",
             "mini-app"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

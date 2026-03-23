@@ -28,6 +28,10 @@
     ],
     "verification_only": [
       "common/common.cpp"
+    ],
+    "translation_targets": [
+      "lud.cu",
+      "lud_kernels.cu"
     ]
   },
   "implementation": {
@@ -187,6 +191,7 @@
       "tiled",
       "shared-memory"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

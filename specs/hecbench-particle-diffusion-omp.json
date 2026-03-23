@@ -28,6 +28,9 @@
     ],
     "verification_only": [
       "../particle-diffusion-cuda/reference.h"
+    ],
+    "translation_targets": [
+      "motionsim.cpp"
     ]
   },
   "implementation": {
@@ -193,6 +196,7 @@
       "simulation",
       "particle"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": "single_file"
   }
 }

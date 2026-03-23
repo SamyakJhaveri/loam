@@ -25,6 +25,22 @@ python3 scripts/generators/generate_<suite>_specs.py
 - Review generated specs for correctness
 - Spot-check 3-5 specs manually
 
+### Phase 3.5: Set Translation Targets
+
+Run the standardizer to set kernel-centric translation fields:
+```bash
+python3 scripts/generators/standardize_specs.py --suite <suite> \
+    --project-root /home/samyak/Desktop/parbench_sam
+```
+
+Or manually set per-API family rules:
+- **Family 1 — `opencl`**: `translation_targets` = only `.cl` files from `prompt_payload`
+- **Family 2 — `omp`, `omp_target`, `openacc`**: `translation_targets` = curated pragma files, or `prompt_payload`
+- **Family 3 — all others** (`cuda`, `hip`, `sycl`, etc.): `translation_targets` = `prompt_payload`
+
+If a kernel does not have a variant in a particular API in the original repo,
+do NOT create a spec for it. Document the gap. Never synthesize a missing implementation.
+
 ### Phase 4: Validate
 ```bash
 python3 scripts/validate_schema.py --all

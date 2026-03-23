@@ -34,7 +34,13 @@
       "solver.cu",
       "work.cu"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "kernel.cu",
+      "kernel_cam.cu",
+      "kernel_ecc.cu",
+      "main.cu"
+    ]
   },
   "implementation": {
     "api": "cuda",
@@ -189,6 +195,7 @@
       "cardiac",
       "biomedical"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

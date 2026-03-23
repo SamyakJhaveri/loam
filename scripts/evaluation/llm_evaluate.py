@@ -320,12 +320,8 @@ def build_translation_prompt(
     kernel_name = source_spec["identity"]["kernel_name"]
     description = source_spec["identity"].get("description", "")
 
-    # Target filenames the LLM must produce (kernel-centric: use translation_targets
-    # if present; fall back to full prompt_payload for backward compatibility)
-    target_filenames: list[str] = (
-        (target_spec.get("files") or {}).get("translation_targets")
-        or (target_spec.get("files") or {}).get("prompt_payload", [])
-    )
+    # Target filenames the LLM must produce (kernel-centric: always use translation_targets)
+    target_filenames: list[str] = target_spec["files"]["translation_targets"]
 
     # Build command and environment from target spec
     build_cmd = (
@@ -777,21 +773,14 @@ def evaluate_translation(
     # Read support files (headers + code) to include in prompt
     source_support = _read_support_files(source_spec, project_root)
 
-    # Determine kernel-centric target filenames (translation_targets with prompt_payload fallback)
-    has_translation_targets = bool(
-        (target_spec.get("files") or {}).get("translation_targets")
-    )
-    translation_mode = "kernel_centric" if has_translation_targets else "full_project"
-    prompt_target_filenames: list[str] = (
-        (target_spec.get("files") or {}).get("translation_targets")
-        or (target_spec.get("files") or {}).get("prompt_payload", [])
-    )
+    # Kernel-centric target filenames (all specs have translation_targets after SESSION 1.6)
+    translation_mode = "kernel_centric"
+    prompt_target_filenames: list[str] = target_spec["files"]["translation_targets"]
 
     # Read target infrastructure context (non-kernel files as read-only reference)
-    target_infrastructure: dict[str, str] | None = (
-        _read_target_infrastructure(target_spec, prompt_target_filenames, project_root)
-        if has_translation_targets
-        else None
+    # Returns {} for Family 3 specs where targets == prompt_payload (no infra to show)
+    target_infrastructure = _read_target_infrastructure(
+        target_spec, prompt_target_filenames, project_root
     )
 
     # Build prompt

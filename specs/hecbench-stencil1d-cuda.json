@@ -24,7 +24,10 @@
       "Makefile",
       "CMakeLists.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "stencil_1d.cu"
+    ]
   },
   "implementation": {
     "api": "cuda",
@@ -186,6 +189,7 @@
       "halo",
       "finite-difference"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": null
   }
 }

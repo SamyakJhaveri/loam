@@ -36,7 +36,18 @@
             "experiments/test_rule.mk",
             "src/Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "src/PoolMalloc.cpp",
+            "src/common.cu",
+            "src/morton.c",
+            "src/mummergpu.cu",
+            "src/mummergpu_gold.cpp",
+            "src/mummergpu_kernel.cu",
+            "src/mummergpu_main.cpp",
+            "src/smith-waterman.cpp",
+            "src/suffix-tree.cpp"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -171,6 +182,7 @@
             "sequence-alignment",
             "suffix-tree"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

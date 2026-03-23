@@ -34,8 +34,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "gaussianElim_kernels.cl",
-            "gaussianElim.cpp"
+            "gaussianElim_kernels.cl"
         ]
     },
     "implementation": {
@@ -182,6 +181,6 @@
             "rodinia"
         ],
         "multi_file": true,
-        "translation_complexity": "single_to_multi"
+        "translation_complexity": "single_file"
     }
 }

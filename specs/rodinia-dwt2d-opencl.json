@@ -33,10 +33,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "com_dwt.cl",
-            "components.cpp",
-            "dwt.cpp",
-            "main.cpp"
+            "com_dwt.cl"
         ]
     },
     "implementation": {
@@ -194,6 +191,6 @@
             "wavelet"
         ],
         "multi_file": true,
-        "translation_complexity": "multi_to_multi"
+        "translation_complexity": "multi_to_single"
     }
 }

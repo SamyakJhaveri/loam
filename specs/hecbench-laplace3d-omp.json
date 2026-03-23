@@ -27,7 +27,11 @@
       "Makefile.nvc",
       "CMakeLists.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp",
+      "kernel.h"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -172,6 +176,7 @@
       "iterative-solver",
       "dirichlet"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": "multi_to_multi"
   }
 }

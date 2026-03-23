@@ -30,6 +30,10 @@
         ],
         "verification_only": [
             "conv_gold.cpp"
+        ],
+        "translation_targets": [
+            "conv.cpp",
+            "main.cpp"
         ]
     },
     "implementation": {
@@ -170,6 +174,7 @@
             "signal-processing",
             "shared-memory"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

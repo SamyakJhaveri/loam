@@ -28,7 +28,11 @@
       "CMakeLists.txt",
       "COPYRIGHT"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp",
+      "kernels.h"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -160,6 +164,7 @@
       "sorting",
       "parallel-primitives"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": "multi_to_multi"
   }
 }

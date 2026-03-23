@@ -29,8 +29,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "hotspot_kernel.cl",
-            "hotspot.c"
+            "hotspot_kernel.cl"
         ]
     },
     "implementation": {
@@ -189,6 +188,6 @@
             "thermal"
         ],
         "multi_file": true,
-        "translation_complexity": "single_to_multi"
+        "translation_complexity": "single_file"
     }
 }

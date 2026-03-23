@@ -30,7 +30,14 @@
       "RadixSort.h",
       "Scan.h"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cu",
+      "RadixSort.cu",
+      "RadixSort_kernels.cu",
+      "Scan.cu",
+      "Scan_kernels.cu"
+    ]
   },
   "implementation": {
     "api": "cuda",
@@ -184,6 +191,7 @@
       "parallel-primitives",
       "prefix-scan"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

@@ -29,7 +29,13 @@
       "Makefile.nvc",
       "CMakeLists.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp",
+      "backprop.cpp",
+      "facetrain.cpp",
+      "imagenet.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -163,6 +169,7 @@
       "training",
       "shared-memory"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

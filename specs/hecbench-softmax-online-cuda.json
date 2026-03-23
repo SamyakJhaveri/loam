@@ -28,6 +28,10 @@
     ],
     "verification_only": [
       "reference.h"
+    ],
+    "translation_targets": [
+      "main.cu",
+      "common.h"
     ]
   },
   "implementation": {
@@ -188,6 +192,7 @@
       "transformer",
       "warp-reduction"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": null
   }
 }

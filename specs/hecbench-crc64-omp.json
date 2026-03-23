@@ -28,7 +28,11 @@
       "CMakeLists.txt",
       "CRC64.h"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "CRC64.cpp",
+      "CRC64Test.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -174,6 +178,7 @@
       "error-detection",
       "checksum"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

@@ -27,7 +27,10 @@
       "utils.cu",
       "utils.h"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "gaussianElim.cu"
+    ]
   },
   "implementation": {
     "api": "cuda",
@@ -195,6 +198,7 @@
       "dense-matrix",
       "solver"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

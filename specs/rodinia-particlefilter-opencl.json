@@ -32,10 +32,7 @@
         "translation_targets": [
             "particle_double.cl",
             "particle_naive.cl",
-            "particle_single.cl",
-            "ex_particle_OCL_double_seq.cpp",
-            "ex_particle_OCL_naive_seq.cpp",
-            "ex_particle_OCL_single_seq.cpp"
+            "particle_single.cl"
         ]
     },
     "implementation": {
@@ -204,6 +201,6 @@
             "state-estimation"
         ],
         "multi_file": true,
-        "translation_complexity": "multi_to_multi"
+        "translation_complexity": "single_to_multi"
     }
 }

@@ -28,6 +28,11 @@
     ],
     "verification_only": [
       "kernel_cpu.cpp"
+    ],
+    "translation_targets": [
+      "main.cpp",
+      "kernel_gpu.cu",
+      "kernel.h"
     ]
   },
   "implementation": {
@@ -183,6 +188,7 @@
       "metaheuristic",
       "rastrigin"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

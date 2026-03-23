@@ -30,8 +30,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "Kernels.cl",
-            "streamcluster.cpp"
+            "Kernels.cl"
         ]
     },
     "implementation": {
@@ -215,6 +214,6 @@
             "streamcluster"
         ],
         "multi_file": false,
-        "translation_complexity": "multi_to_multi"
+        "translation_complexity": "single_file"
     }
 }

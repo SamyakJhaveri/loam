@@ -30,7 +30,14 @@
             "Makefile.nvc",
             "CMakeLists.txt"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "lulesh.cc",
+            "lulesh-init.cc",
+            "lulesh-util.cc",
+            "lulesh-viz.cc",
+            "lulesh.h"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -216,6 +223,7 @@
             "shock",
             "mini-app"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

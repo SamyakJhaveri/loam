@@ -205,11 +205,12 @@ def get_prompt_payload(spec: dict[str, Any], project_root: Path, augment_level: 
 
 def find_translation_pairs(
     manifest: list[dict[str, Any]],
-) -> list[tuple[str, str, str]]:
-    """Enumerate all valid (kernel, source_api, target_api) translation pairs.
+) -> list[tuple[str, str, str, str]]:
+    """Enumerate all valid (suite, kernel, source_api, target_api) translation pairs.
 
     Each kernel with *n* API variants produces ``n*(n-1)`` ordered pairs
-    (A→B **and** B→A).
+    (A→B **and** B→A).  Pairs are scoped to a single suite — kernels with
+    the same name in different suites are kept separate.
 
     Parameters
     ----------
@@ -218,18 +219,19 @@ def find_translation_pairs(
 
     Returns
     -------
-    list[tuple[str, str, str]]:
-        Each tuple is ``(kernel_name, source_api, target_api)``.
+    list[tuple[str, str, str, str]]:
+        Each tuple is ``(source_suite, kernel_name, source_api, target_api)``.
     """
     from collections import defaultdict
 
-    kernel_apis: dict[str, list[str]] = defaultdict(list)
+    kernel_apis: dict[tuple[str, str], list[str]] = defaultdict(list)
     for entry in manifest:
-        kernel_apis[entry["kernel_name"]].append(entry["parallel_api"])
+        key = (entry.get("source_suite", "unknown"), entry["kernel_name"])
+        kernel_apis[key].append(entry["parallel_api"])
 
-    pairs: list[tuple[str, str, str]] = []
-    for kname, apis in sorted(kernel_apis.items()):
+    pairs: list[tuple[str, str, str, str]] = []
+    for (suite, kname), apis in sorted(kernel_apis.items()):
         for src, tgt in combinations(sorted(apis), 2):
-            pairs.append((kname, src, tgt))
-            pairs.append((kname, tgt, src))
+            pairs.append((suite, kname, src, tgt))
+            pairs.append((suite, kname, tgt, src))
     return pairs

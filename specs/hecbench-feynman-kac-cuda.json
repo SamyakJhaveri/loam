@@ -26,7 +26,11 @@
       "CMakeLists.txt",
       "util.h"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cu",
+      "kernel.h"
+    ]
   },
   "implementation": {
     "api": "cuda",
@@ -182,6 +186,7 @@
       "random-walk",
       "boundary-value"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": null
   }
 }

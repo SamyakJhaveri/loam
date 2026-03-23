@@ -27,7 +27,10 @@
       "CMakeLists.txt",
       "iso2dfd.h"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "iso2dfd.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -185,6 +188,7 @@
       "stencil",
       "seismic"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": "single_file"
   }
 }

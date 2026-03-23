@@ -37,9 +37,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "kernel/kernel_gpu_opencl.cl",
-            "kernel/kernel_gpu_opencl_wrapper.c",
-            "main.c"
+            "kernel/kernel_gpu_opencl.cl"
         ]
     },
     "implementation": {
@@ -186,6 +184,6 @@
             "simulation"
         ],
         "multi_file": true,
-        "translation_complexity": "multi_to_multi"
+        "translation_complexity": "single_file"
     }
 }

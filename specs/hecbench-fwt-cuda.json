@@ -27,6 +27,10 @@
     ],
     "verification_only": [
       "reference.cu"
+    ],
+    "translation_targets": [
+      "main.cu",
+      "kernels.cu"
     ]
   },
   "implementation": {
@@ -185,6 +189,7 @@
       "dyadic-convolution",
       "signal-processing"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

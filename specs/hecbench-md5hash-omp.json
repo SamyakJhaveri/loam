@@ -27,7 +27,10 @@
             "CMakeLists.txt",
             "LICENSE"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "MD5Hash.cpp"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -171,6 +174,7 @@
             "cryptography",
             "parallel-search"
         ],
-        "multi_file": false
+        "multi_file": false,
+        "translation_complexity": "single_file"
     }
 }

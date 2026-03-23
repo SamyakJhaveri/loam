@@ -33,6 +33,10 @@
     ],
     "verification_only": [
       "reference.cpp"
+    ],
+    "translation_targets": [
+      "kernels.cpp",
+      "main.cpp"
     ]
   },
   "implementation": {
@@ -191,6 +195,7 @@
       "block-cipher",
       "cryptography"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

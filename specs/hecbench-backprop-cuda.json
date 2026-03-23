@@ -32,6 +32,14 @@
     ],
     "verification_only": [
       "reference.h"
+    ],
+    "translation_targets": [
+      "main.cu",
+      "backprop.cu",
+      "facetrain.cu",
+      "imagenet.cu",
+      "bpnn_layerforward.h",
+      "bpnn_adjust_weights.h"
     ]
   },
   "implementation": {
@@ -184,6 +192,7 @@
       "training",
       "shared-memory"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

@@ -29,6 +29,11 @@
     ],
     "verification_only": [
       "reference.h"
+    ],
+    "translation_targets": [
+      "main.cu",
+      "ccsd_trpdrv.cu",
+      "ccsd_tengy.cu"
     ]
   },
   "implementation": {
@@ -188,6 +193,7 @@
       "nwchem",
       "quantum-chemistry"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

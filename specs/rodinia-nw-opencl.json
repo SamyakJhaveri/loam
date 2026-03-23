@@ -26,8 +26,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "nw.cl",
-            "nw.c"
+            "nw.cl"
         ]
     },
     "implementation": {
@@ -181,6 +180,6 @@
             "sequence-alignment"
         ],
         "multi_file": false,
-        "translation_complexity": "multi_to_multi"
+        "translation_complexity": "single_file"
     }
 }

@@ -27,6 +27,10 @@
     ],
     "verification_only": [
       "reference.h"
+    ],
+    "translation_targets": [
+      "main.cu",
+      "kernel.h"
     ]
   },
   "implementation": {
@@ -197,6 +201,7 @@
       "iterative-solver",
       "dirichlet"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": null
   }
 }

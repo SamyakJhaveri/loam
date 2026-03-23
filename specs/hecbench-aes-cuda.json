@@ -31,6 +31,10 @@
     ],
     "verification_only": [
       "reference.cu"
+    ],
+    "translation_targets": [
+      "kernels.cu",
+      "main.cu"
     ]
   },
   "implementation": {
@@ -196,6 +200,7 @@
       "block-cipher",
       "cryptography"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

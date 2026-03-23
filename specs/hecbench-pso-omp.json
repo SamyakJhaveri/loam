@@ -26,7 +26,10 @@
       "Makefile.nvc",
       "CMakeLists.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "kernel_gpu.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -163,6 +166,7 @@
       "metaheuristic",
       "rastrigin"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_single"
   }
 }

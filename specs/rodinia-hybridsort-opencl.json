@@ -34,10 +34,7 @@
         "translation_targets": [
             "bucketsort_kernels.cl",
             "histogram1024.cl",
-            "mergesort.cl",
-            "bucketsort.c",
-            "hybridsort.c",
-            "mergesort.c"
+            "mergesort.cl"
         ]
     },
     "implementation": {

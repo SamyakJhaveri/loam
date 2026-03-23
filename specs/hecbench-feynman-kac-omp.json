@@ -27,7 +27,10 @@
       "CMakeLists.txt",
       "util.h"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -176,6 +179,7 @@
       "random-walk",
       "boundary-value"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": "multi_to_single"
   }
 }

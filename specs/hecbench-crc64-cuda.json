@@ -26,7 +26,11 @@
       "CMakeLists.txt",
       "CRC64.h"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "CRC64.cu",
+      "CRC64Test.cu"
+    ]
   },
   "implementation": {
     "api": "cuda",
@@ -179,6 +183,7 @@
       "error-detection",
       "checksum"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

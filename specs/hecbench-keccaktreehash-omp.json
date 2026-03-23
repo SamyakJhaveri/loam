@@ -37,6 +37,12 @@
     "verification_only": [
       "KeccakTreeCPU.cpp",
       "KeccakTreeCPU.h"
+    ],
+    "translation_targets": [
+      "main.cpp",
+      "KeccakTreeGPU.cpp",
+      "KeccakF.cpp",
+      "Test.cpp"
     ]
   },
   "implementation": {
@@ -172,6 +178,7 @@
       "cryptography",
       "permutation"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

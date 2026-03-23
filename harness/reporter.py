@@ -128,11 +128,11 @@ def print_prompt_payload(
 
 
 def print_translation_pairs(
-    pairs: list[tuple[str, str, str]],
+    pairs: list[tuple[str, str, str, str]],
 ) -> None:
     """Print all translation pairs in a readable table."""
-    print(f"{'Kernel':<30} {'Source':>8} → {'Target':<8}")
-    print("─" * 52)
-    for kernel, src, tgt in pairs:
-        print(f"{kernel:<30} {src:>8} → {tgt:<8}")
+    print(f"{'Suite':<12} {'Kernel':<30} {'Source':>8} → {'Target':<8}")
+    print("─" * 64)
+    for suite, kernel, src, tgt in pairs:
+        print(f"{suite:<12} {kernel:<30} {src:>8} → {tgt:<8}")
     print(f"\nTotal: {len(pairs)} translation pairs")

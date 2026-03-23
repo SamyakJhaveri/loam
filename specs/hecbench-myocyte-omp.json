@@ -29,7 +29,10 @@
       "kernel/",
       "util/"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.c"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -170,6 +173,7 @@
       "cardiac",
       "biomedical"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_single"
   }
 }

@@ -29,6 +29,10 @@
     ],
     "verification_only": [
       "utils.cu"
+    ],
+    "translation_targets": [
+      "main.cu",
+      "kernels.cu"
     ]
   },
   "implementation": {
@@ -191,6 +195,7 @@
       "fasta",
       "dereplication"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

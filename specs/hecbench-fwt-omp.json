@@ -30,6 +30,10 @@
     ],
     "verification_only": [
       "reference.cpp"
+    ],
+    "translation_targets": [
+      "main.cpp",
+      "kernels.cpp"
     ]
   },
   "implementation": {
@@ -163,6 +167,7 @@
       "dyadic-convolution",
       "signal-processing"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

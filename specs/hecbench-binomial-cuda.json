@@ -29,6 +29,10 @@
     ],
     "verification_only": [
       "reference.cu"
+    ],
+    "translation_targets": [
+      "kernel.cu",
+      "main.cu"
     ]
   },
   "implementation": {
@@ -184,6 +188,7 @@
       "finance",
       "shared-memory"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

@@ -28,6 +28,9 @@
     ],
     "verification_only": [
       "reference.cpp"
+    ],
+    "translation_targets": [
+      "main.cpp"
     ]
   },
   "implementation": {
@@ -165,6 +168,7 @@
       "medical-imaging",
       "ode-solver"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": "single_file"
   }
 }

@@ -28,8 +28,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "kernels.cl",
-            "main.cpp"
+            "kernels.cl"
         ]
     },
     "implementation": {
@@ -188,6 +187,6 @@
             "shortest-path"
         ],
         "multi_file": true,
-        "translation_complexity": "single_to_multi"
+        "translation_complexity": "single_file"
     }
 }

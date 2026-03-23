@@ -29,7 +29,12 @@
       "CMakeLists.txt",
       "README"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp",
+      "ccsd_trpdrv.cpp",
+      "ccsd_tengy.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -181,6 +186,7 @@
       "nwchem",
       "quantum-chemistry"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

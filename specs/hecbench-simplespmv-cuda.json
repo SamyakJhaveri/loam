@@ -29,6 +29,10 @@
     ],
     "verification_only": [
       "utils.cpp"
+    ],
+    "translation_targets": [
+      "kernels.cu",
+      "main.cpp"
     ]
   },
   "implementation": {
@@ -184,6 +188,7 @@
       "csr",
       "linear-algebra"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": null
   }
 }

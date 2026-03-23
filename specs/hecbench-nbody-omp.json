@@ -31,7 +31,11 @@
       "type.hpp",
       "License.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "GSimulation.cpp",
+      "main.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -186,6 +190,7 @@
       "physics",
       "all-pairs"
     ],
-    "multi_file": true
+    "multi_file": true,
+    "translation_complexity": "multi_to_multi"
   }
 }

@@ -28,8 +28,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "Kernels.cl",
-            "euler3d.cpp"
+            "Kernels.cl"
         ]
     },
     "implementation": {
@@ -188,6 +187,6 @@
             "rodinia"
         ],
         "multi_file": false,
-        "translation_complexity": "multi_to_multi"
+        "translation_complexity": "single_file"
     }
 }

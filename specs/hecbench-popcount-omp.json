@@ -26,7 +26,10 @@
       "Makefile.nvc",
       "CMakeLists.txt"
     ],
-    "verification_only": []
+    "verification_only": [],
+    "translation_targets": [
+      "main.cpp"
+    ]
   },
   "implementation": {
     "api": "omp",
@@ -177,6 +180,7 @@
       "bit-manipulation",
       "population-count"
     ],
-    "multi_file": false
+    "multi_file": false,
+    "translation_complexity": "single_file"
   }
 }
