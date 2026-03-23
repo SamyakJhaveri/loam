@@ -24,7 +24,11 @@
         "support_files": [
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "ex_particle_CUDA_float_seq.cu",
+            "ex_particle_CUDA_naive_seq.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -183,6 +187,7 @@
             "rodinia",
             "state-estimation"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

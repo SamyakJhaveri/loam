@@ -19,20 +19,24 @@
     "files": {
         "prompt_payload": [
             "lud_kernel.cl",
-            "base/lud.c",
-            "base/lud_base.c",
             "common/common.c",
-            "ocl/lud.cpp",
-            "tools/gen_input.c"
+            "ocl/lud.cpp"
         ],
         "support_files": [
             "common/common.h",
             "Makefile",
             "base/Makefile",
             "ocl/Makefile",
-            "tools/Makefile"
+            "tools/Makefile",
+            "base/lud.c",
+            "base/lud_base.c",
+            "tools/gen_input.c"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "lud_kernel.cl",
+            "ocl/lud.cpp"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -171,6 +175,7 @@
             "opencl",
             "rodinia"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

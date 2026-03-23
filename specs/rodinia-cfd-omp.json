@@ -18,15 +18,18 @@
     },
     "files": {
         "prompt_payload": [
-            "euler3d_cpu.cpp",
+            "euler3d_cpu.cpp"
+        ],
+        "support_files": [
+            "makefile",
             "euler3d_cpu_double.cpp",
             "pre_euler3d_cpu.cpp",
             "pre_euler3d_cpu_double.cpp"
         ],
-        "support_files": [
-            "makefile"
-        ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "euler3d_cpu.cpp"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -154,6 +157,7 @@
             "omp",
             "rodinia"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_single"
     }
 }

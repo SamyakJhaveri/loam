@@ -18,13 +18,16 @@
     },
     "files": {
         "prompt_payload": [
-            "streamcluster_omp.cpp",
-            "streamcluster_original.cpp"
+            "streamcluster_omp.cpp"
         ],
         "support_files": [
-            "Makefile"
+            "Makefile",
+            "streamcluster_original.cpp"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "streamcluster_omp.cpp"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -183,6 +186,7 @@
             "stream-clustering",
             "streamcluster"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_single"
     }
 }

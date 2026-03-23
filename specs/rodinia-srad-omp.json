@@ -23,7 +23,10 @@
         "support_files": [
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "srad.cpp"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -172,6 +175,7 @@
             "rodinia",
             "srad"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_single"
     }
 }

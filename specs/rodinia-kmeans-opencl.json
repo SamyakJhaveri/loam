@@ -32,7 +32,12 @@
             "unistd.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "kmeans.cl",
+            "kmeans.cpp",
+            "kmeans_clustering.c"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -181,6 +186,7 @@
             "opencl",
             "rodinia"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

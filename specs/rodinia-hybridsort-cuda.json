@@ -34,7 +34,15 @@
             "mergesort.cuh",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "bucketsort.cu",
+            "bucketsort_kernel.cu",
+            "histogram1024_kernel.cu",
+            "main.cu",
+            "mergesort.cu",
+            "mergesort_kernel.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -174,6 +182,7 @@
             "rodinia",
             "sort"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

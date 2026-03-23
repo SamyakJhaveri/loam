@@ -18,13 +18,16 @@
     },
     "files": {
         "prompt_payload": [
-            "hurricane_gen.c",
             "nn_openmp.c"
         ],
         "support_files": [
-            "Makefile"
+            "Makefile",
+            "hurricane_gen.c"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "nn_openmp.c"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -164,6 +167,7 @@
             "rodinia",
             "search"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "single_file"
     }
 }

@@ -26,7 +26,11 @@
             "streamcluster_original.cpp",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "streamcluster_cuda.cu",
+            "streamcluster_header.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -193,6 +197,7 @@
             "stream-clustering",
             "streamcluster"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

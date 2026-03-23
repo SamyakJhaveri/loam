@@ -31,7 +31,12 @@
             "AVI/makefile",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "kernel.cu",
+            "main.cu",
+            "setdevice.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -182,6 +187,7 @@
             "tracking",
             "ultrasound"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

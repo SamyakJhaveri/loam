@@ -37,7 +37,14 @@
             "util/timer/timer.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "kernel/kernel_gpu_cuda.cu",
+            "kernel/kernel_gpu_cuda_2.cu",
+            "kernel/kernel_gpu_cuda_wrapper.cu",
+            "kernel/kernel_gpu_cuda_wrapper_2.cu",
+            "util/cuda/cuda.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -183,6 +190,7 @@
             "rodinia",
             "search"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

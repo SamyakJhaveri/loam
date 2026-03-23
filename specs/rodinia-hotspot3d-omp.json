@@ -23,7 +23,10 @@
         "support_files": [
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "3D.c"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -155,6 +158,7 @@
             "stencil",
             "thermal"
         ],
-        "multi_file": false
+        "multi_file": false,
+        "translation_complexity": "multi_to_single"
     }
 }

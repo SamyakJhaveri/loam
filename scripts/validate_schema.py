@@ -239,6 +239,22 @@ def validate_spec(
                 f"{sorted(orphans)}"
             )
 
+    # ---- (d) TRANSLATION_TARGETS ⊂ PROMPT_PAYLOAD ----
+
+    translation_targets = files_section.get("translation_targets", [])
+    if translation_targets:
+        tt_set = set(translation_targets)
+        not_in_payload = tt_set - prompt_set
+        if not_in_payload:
+            errors.append(
+                f"[spec] files: translation_targets entries not in prompt_payload: "
+                f"{sorted(not_in_payload)}"
+            )
+        if len(translation_targets) != len(tt_set):
+            warnings.append(
+                "[spec] files: translation_targets contains duplicate entries"
+            )
+
     # ---- (e) BUILD COMMAND SANITY ----
 
     build = spec.get("build", {})

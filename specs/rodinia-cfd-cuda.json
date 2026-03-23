@@ -26,7 +26,13 @@
         "support_files": [
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "euler3d.cu",
+            "euler3d_double.cu",
+            "pre_euler3d.cu",
+            "pre_euler3d_double.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -169,6 +175,7 @@
             "fluid-dynamics",
             "rodinia"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

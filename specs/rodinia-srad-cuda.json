@@ -25,7 +25,11 @@
             "srad.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "srad.cu",
+            "srad_kernel.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -173,6 +177,7 @@
             "rodinia",
             "srad"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

@@ -19,14 +19,18 @@
     "files": {
         "prompt_payload": [
             "hotspotKernel.cl",
-            "3D.c",
-            "CL_helper.c"
+            "3D.c"
         ],
         "support_files": [
             "CL_helper.h",
-            "Makefile"
+            "Makefile",
+            "CL_helper.c"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "hotspotKernel.cl",
+            "3D.c"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -186,6 +190,7 @@
             "stencil",
             "thermal"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

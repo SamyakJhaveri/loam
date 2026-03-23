@@ -21,11 +21,7 @@
             "kmeans_openmp/cluster.c",
             "kmeans_openmp/getopt.c",
             "kmeans_openmp/kmeans.c",
-            "kmeans_openmp/kmeans_clustering.c",
-            "kmeans_serial/cluster.c",
-            "kmeans_serial/getopt.c",
-            "kmeans_serial/kmeans.c",
-            "kmeans_serial/kmeans_clustering.c"
+            "kmeans_openmp/kmeans_clustering.c"
         ],
         "support_files": [
             "kmeans_openmp/getopt.h",
@@ -36,9 +32,16 @@
             "kmeans_serial/unistd.h",
             "Makefile",
             "kmeans_openmp/Makefile",
-            "kmeans_serial/Makefile"
+            "kmeans_serial/Makefile",
+            "kmeans_serial/cluster.c",
+            "kmeans_serial/getopt.c",
+            "kmeans_serial/kmeans.c",
+            "kmeans_serial/kmeans_clustering.c"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "kmeans_openmp/kmeans_clustering.c"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -164,6 +167,7 @@
             "omp",
             "rodinia"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_single"
     }
 }

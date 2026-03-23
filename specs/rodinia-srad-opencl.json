@@ -41,7 +41,18 @@
             "util/timer/timer.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "kernel/kernel_gpu_opencl.cl",
+            "kernel/compress_kernel.c",
+            "kernel/extract_kernel.c",
+            "kernel/kernel_gpu_opencl_wrapper.c",
+            "kernel/prepare_kernel.c",
+            "kernel/reduce_kernel.c",
+            "kernel/srad2_kernel.c",
+            "kernel/srad_kernel.c",
+            "main.c"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -205,6 +216,7 @@
             "rodinia",
             "srad"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

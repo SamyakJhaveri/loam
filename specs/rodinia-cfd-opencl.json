@@ -26,7 +26,11 @@
             "util.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "Kernels.cl",
+            "euler3d.cpp"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -183,6 +187,7 @@
             "opencl",
             "rodinia"
         ],
-        "multi_file": false
+        "multi_file": false,
+        "translation_complexity": "multi_to_multi"
     }
 }

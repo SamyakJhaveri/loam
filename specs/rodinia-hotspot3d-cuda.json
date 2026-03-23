@@ -24,7 +24,11 @@
         "support_files": [
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "3D.cu",
+            "opt1.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -164,6 +168,7 @@
             "stencil",
             "thermal"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

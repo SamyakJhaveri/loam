@@ -32,7 +32,11 @@
             "unistd.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "kmeans_cuda.cu",
+            "kmeans_cuda_kernel.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -174,6 +178,7 @@
             "machine-learning",
             "rodinia"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

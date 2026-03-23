@@ -37,7 +37,17 @@
             "dwt_cuda/transform_buffer.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "components.cu",
+            "dwt.cu",
+            "dwt_cuda/common.cu",
+            "dwt_cuda/fdwt53.cu",
+            "dwt_cuda/fdwt97.cu",
+            "dwt_cuda/rdwt53.cu",
+            "dwt_cuda/rdwt97.cu",
+            "main.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -188,6 +198,7 @@
             "rodinia",
             "wavelet"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

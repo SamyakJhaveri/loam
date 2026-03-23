@@ -141,6 +141,7 @@ def build_summary(records: list[dict]) -> dict:
     by_direction: dict[str, list] = defaultdict(list)
     by_kernel: dict[str, list] = defaultdict(list)
     by_level: dict[str, list] = defaultdict(list)
+    by_translation_mode: dict[str, list] = defaultdict(list)
     failure_counts: dict[str, int] = defaultdict(int)
 
     for r in records:
@@ -150,11 +151,13 @@ def build_summary(records: list[dict]) -> dict:
         kernel = r.get("kernel") or (_kernel_from_spec(src_id) if src_id else "?")
         level = r.get("augment_level", 0)
         status = r.get("overall_status", "UNKNOWN")
+        translation_mode = r.get("translation_mode", "unclassified")
 
         by_model[model].append(r)
         by_direction[direction].append(r)
         by_kernel[kernel].append(r)
         by_level[f"L{level}"].append(r)
+        by_translation_mode[translation_mode].append(r)
 
         if status not in ("PASS", "SKIP", "ERROR"):
             failure_counts[status] += 1
@@ -166,6 +169,7 @@ def build_summary(records: list[dict]) -> dict:
         "by_direction": {k: _pass_fail_counts(v) for k, v in sorted(by_direction.items())},
         "by_kernel": {k: _pass_fail_counts(v) for k, v in sorted(by_kernel.items())},
         "by_augment_level": {k: _pass_fail_counts(v) for k, v in sorted(by_level.items())},
+        "by_translation_mode": {k: _pass_fail_counts(v) for k, v in sorted(by_translation_mode.items())},
         "failure_taxonomy": dict(failure_counts),
         "self_repair": _self_repair_stats(records),
     }
@@ -218,6 +222,25 @@ def build_markdown(summary: dict, records: list[dict]) -> str:
             f"| {level} | {stats['pass']} | {stats['total']} | {_pct(stats['rate'])} |"
         )
     lines.append("")
+
+    # --- By translation mode ---
+    if summary.get("by_translation_mode"):
+        lines += ["## Pass Rates by Translation Mode", ""]
+        lines += ["| Mode | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL |",
+                  "|------|-----:|------:|-----:|----------:|--------:|------------:|"]
+        mode_order = ["kernel_centric", "full_project", "unclassified"]
+        # Print known modes in order, then any unexpected ones
+        all_modes = list(summary["by_translation_mode"].keys())
+        ordered = [m for m in mode_order if m in all_modes] + \
+                  [m for m in all_modes if m not in mode_order]
+        for mode in ordered:
+            stats = summary["by_translation_mode"][mode]
+            bk = stats["by_status"]
+            lines.append(
+                f"| {mode} | {stats['pass']} | {stats['total']} | {_pct(stats['rate'])} "
+                f"| {bk.get('BUILD_FAIL', 0)} | {bk.get('RUN_FAIL', 0)} | {bk.get('VERIFY_FAIL', 0)} |"
+            )
+        lines.append("")
 
     # --- Per-kernel matrix (cuda→omp only for primary table) ---
     cuda_omp = [r for r in records if r.get("direction", "").startswith("cuda-to-omp")]
@@ -320,6 +343,7 @@ def write_dashboard_js(summary: dict, output_path: Path) -> None:
         "byDirection": summary["by_direction"],
         "byKernel": summary["by_kernel"],
         "byAugmentLevel": summary["by_augment_level"],
+        "byTranslationMode": summary.get("by_translation_mode", {}),
         "failureTaxonomy": summary["failure_taxonomy"],
         "selfRepair": summary["self_repair"],
     }

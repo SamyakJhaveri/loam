@@ -25,7 +25,12 @@
         "support_files": [
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "bfs.cu",
+            "kernel.cu",
+            "kernel2.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -151,6 +156,7 @@
             "rodinia",
             "sparse"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

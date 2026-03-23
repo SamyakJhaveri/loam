@@ -32,7 +32,11 @@
             "cuda/Makefile",
             "tools/Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "cuda/lud.cu",
+            "cuda/lud_kernel.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -168,6 +172,7 @@
             "lud",
             "rodinia"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

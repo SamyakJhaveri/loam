@@ -23,7 +23,10 @@
         "support_files": [
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "pathfinder.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -161,6 +164,7 @@
             "rodinia",
             "shortest-path"
         ],
-        "multi_file": false
+        "multi_file": false,
+        "translation_complexity": null
     }
 }

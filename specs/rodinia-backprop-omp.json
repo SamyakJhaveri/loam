@@ -27,7 +27,10 @@
             "backprop.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "backprop.c"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -152,6 +155,7 @@
             "omp",
             "rodinia"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_single"
     }
 }

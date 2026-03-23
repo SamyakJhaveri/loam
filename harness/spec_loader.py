@@ -129,6 +129,7 @@ def resolve_paths(spec: dict[str, Any], project_root: Path) -> dict[str, Any]:
             "prompt_payload": _resolve_file_list(files.get("prompt_payload", [])),
             "support_files": _resolve_file_list(files.get("support_files", [])),
             "verification_only": _resolve_file_list(files.get("verification_only", [])),
+            "translation_targets": _resolve_file_list(files.get("translation_targets", [])),
         },
     }
 

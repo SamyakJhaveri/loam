@@ -19,14 +19,18 @@
     "files": {
         "prompt_payload": [
             "kernels.cl",
-            "OpenCL.cpp",
             "main.cpp"
         ],
         "support_files": [
             "OpenCL.h",
-            "Makefile"
+            "Makefile",
+            "OpenCL.cpp"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "kernels.cl",
+            "main.cpp"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -71,18 +75,24 @@
     "run": {
         "executable": "./pathfinder.out",
         "default_arguments": [
-            "-c", "100000",
-            "-r", "100",
-            "-h", "20"
+            "-c",
+            "100000",
+            "-r",
+            "100",
+            "-h",
+            "20"
         ],
         "timeout_seconds": 300,
         "environment_variables": null,
         "input_configurations": {
             "correctness": {
                 "arguments": [
-                    "-c", "100000",
-                    "-r", "100",
-                    "-h", "20"
+                    "-c",
+                    "100000",
+                    "-r",
+                    "100",
+                    "-h",
+                    "20"
                 ],
                 "description": "Small input for correctness verification of pathfinder (OPENCL)",
                 "input_files": [],
@@ -90,9 +100,12 @@
             },
             "performance": {
                 "arguments": [
-                    "-c", "100000",
-                    "-r", "1000",
-                    "-h", "20"
+                    "-c",
+                    "100000",
+                    "-r",
+                    "1000",
+                    "-h",
+                    "20"
                 ],
                 "description": "Large input for performance measurement of pathfinder (OPENCL)",
                 "input_files": [],
@@ -174,6 +187,7 @@
             "rodinia",
             "shortest-path"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "single_to_multi"
     }
 }

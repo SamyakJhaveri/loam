@@ -19,16 +19,20 @@
     "files": {
         "prompt_payload": [
             "Kernels.cl",
-            "bfs.cpp",
-            "timer.cc"
+            "bfs.cpp"
         ],
         "support_files": [
             "CLHelper.h",
             "timer.h",
             "util.h",
-            "Makefile"
+            "Makefile",
+            "timer.cc"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "Kernels.cl",
+            "bfs.cpp"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -173,6 +177,7 @@
             "rodinia",
             "sparse"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

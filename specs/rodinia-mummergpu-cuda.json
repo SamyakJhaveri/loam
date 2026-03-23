@@ -36,7 +36,12 @@
             "experiments/test_rule.mk",
             "src/Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "src/common.cu",
+            "src/mummergpu.cu",
+            "src/mummergpu_kernel.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -173,6 +178,7 @@
             "sequence-alignment",
             "suffix-tree"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

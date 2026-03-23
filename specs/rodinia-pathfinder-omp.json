@@ -24,7 +24,10 @@
             "timer.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "pathfinder.cpp"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -154,6 +157,7 @@
             "rodinia",
             "shortest-path"
         ],
-        "multi_file": false
+        "multi_file": false,
+        "translation_complexity": "single_file"
     }
 }

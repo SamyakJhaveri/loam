@@ -191,6 +191,74 @@ def _read_support_files(
     return headers, code_files
 
 
+def _read_target_infrastructure(
+    target_spec: dict[str, Any],
+    translation_targets: list[str],
+    project_root: Path,
+    max_chars: int = 50_000,
+) -> dict[str, str]:
+    """Read non-kernel files from the target spec as infrastructure context.
+
+    Returns filename → content for:
+    - prompt_payload files NOT in translation_targets (infrastructure source files)
+    - support_files headers (.h, .hpp, .cuh) from the target spec
+
+    The LLM sees these as read-only context — they exist in the target build
+    directory and will not be modified.
+    """
+    target_resolved = resolve_paths(target_spec, project_root)
+    source_dir: Path = target_resolved["_resolved"]["source_dir"]
+
+    infrastructure: dict[str, str] = {}
+    total_chars = 0
+    tt_set = set(translation_targets)
+
+    # Non-kernel prompt_payload files (everything in payload that the LLM won't produce)
+    all_payload: list[str] = (target_spec.get("files") or {}).get("prompt_payload", [])
+    for fname in all_payload:
+        if fname in tt_set:
+            continue
+        fp = source_dir / fname
+        if fp.exists():
+            content = fp.read_text(encoding="utf-8", errors="replace")
+            if total_chars + len(content) <= max_chars:
+                infrastructure[fname] = content
+                total_chars += len(content)
+            else:
+                logger.debug(
+                    "Skipping target infra file %s (would exceed max_chars=%d)", fname, max_chars
+                )
+
+    # Support file headers from target spec (needed to understand interfaces)
+    support_names: list[str] = (target_spec.get("files") or {}).get("support_files", [])
+    for fname in support_names:
+        if Path(fname).suffix.lower() not in _SUPPORT_HEADER_EXTS:
+            continue
+        fp = source_dir / fname
+        if fp.exists():
+            content = fp.read_text(encoding="utf-8", errors="replace")
+            if total_chars + len(content) <= max_chars:
+                infrastructure[fname] = content
+                total_chars += len(content)
+            else:
+                logger.debug(
+                    "Skipping target infra header %s (would exceed max_chars=%d)", fname, max_chars
+                )
+
+    return infrastructure
+
+
+def _lang_hint_from_filename(fname: str) -> str:
+    """Return a code fence language hint based on file extension."""
+    ext = Path(fname).suffix.lower()
+    return {
+        ".cpp": "cpp", ".cc": "cpp", ".cxx": "cpp",
+        ".cu": "cuda", ".cuh": "cpp",
+        ".c": "c", ".h": "c", ".hpp": "cpp",
+        ".cl": "c",
+    }.get(ext, "c")
+
+
 def _stage_support_headers(
     source_spec: dict[str, Any],
     target_spec_resolved: dict[str, Any],
@@ -236,6 +304,7 @@ def build_translation_prompt(
     source_payload: dict[str, str],
     project_root: Path,
     source_support: tuple[dict[str, str], dict[str, str]] | None = None,
+    target_infrastructure: dict[str, str] | None = None,
 ) -> tuple[str, str]:
     """Build system + user messages for the translation request.
 
@@ -251,8 +320,12 @@ def build_translation_prompt(
     kernel_name = source_spec["identity"]["kernel_name"]
     description = source_spec["identity"].get("description", "")
 
-    # Target filenames the LLM must produce
-    target_filenames: list[str] = target_spec["files"].get("prompt_payload", [])
+    # Target filenames the LLM must produce (kernel-centric: use translation_targets
+    # if present; fall back to full prompt_payload for backward compatibility)
+    target_filenames: list[str] = (
+        (target_spec.get("files") or {}).get("translation_targets")
+        or (target_spec.get("files") or {}).get("prompt_payload", [])
+    )
 
     # Build command and environment from target spec
     build_cmd = (
@@ -290,6 +363,12 @@ def build_translation_prompt(
     lines.append("## Target Files to Produce")
     for fname in target_filenames:
         lines.append(f"- {fname}")
+    if target_infrastructure:
+        lines.append("")
+        lines.append(
+            "_These files will replace the corresponding files in the target project directory. "
+            "All other project files (Makefile, headers, utilities) remain unchanged._"
+        )
     lines.append("")
 
     lines.append("## Build Command (your code must work with this)")
@@ -330,6 +409,21 @@ def build_translation_prompt(
                 lines.append(contents)
                 lines.append("```")
                 lines.append("")
+
+    if target_infrastructure:
+        lines.append("## Target Infrastructure Context (DO NOT MODIFY — for reference only)")
+        lines.append(
+            "_These files exist in the target build directory and will NOT be modified. "
+            "Your translated code must be compatible with them._"
+        )
+        lines.append("")
+        for fname, contents in target_infrastructure.items():
+            lang = _lang_hint_from_filename(fname)
+            lines.append(f"### {fname}")
+            lines.append(f"```{lang}")
+            lines.append(contents)
+            lines.append("```")
+            lines.append("")
 
     user_msg = "\n".join(lines)
     return system_msg, user_msg
@@ -683,10 +777,28 @@ def evaluate_translation(
     # Read support files (headers + code) to include in prompt
     source_support = _read_support_files(source_spec, project_root)
 
+    # Determine kernel-centric target filenames (translation_targets with prompt_payload fallback)
+    has_translation_targets = bool(
+        (target_spec.get("files") or {}).get("translation_targets")
+    )
+    translation_mode = "kernel_centric" if has_translation_targets else "full_project"
+    prompt_target_filenames: list[str] = (
+        (target_spec.get("files") or {}).get("translation_targets")
+        or (target_spec.get("files") or {}).get("prompt_payload", [])
+    )
+
+    # Read target infrastructure context (non-kernel files as read-only reference)
+    target_infrastructure: dict[str, str] | None = (
+        _read_target_infrastructure(target_spec, prompt_target_filenames, project_root)
+        if has_translation_targets
+        else None
+    )
+
     # Build prompt
     system_msg, user_msg = build_translation_prompt(
         source_spec, target_spec, source_payload, project_root,
         source_support=source_support,
+        target_infrastructure=target_infrastructure,
     )
 
     if dry_run:
@@ -710,9 +822,10 @@ def evaluate_translation(
         }
 
     # Resolve target file paths for backup/restore
+    # Use same kernel-centric target_filenames as the prompt (translation_targets or fallback)
     resolved: dict[str, Any] = target_spec_resolved.get("_resolved", {})
     source_dir: Path = resolved.get("source_dir", project_root)
-    target_filenames: list[str] = target_spec["files"].get("prompt_payload", [])
+    target_filenames: list[str] = prompt_target_filenames
     target_file_paths: list[Path] = [source_dir / fname for fname in target_filenames]
 
     # Backup originals (restored in finally regardless of outcome)
@@ -911,6 +1024,7 @@ def evaluate_translation(
         "kernel": kernel_name,
         "model": model,
         "augment_level": augment_level,
+        "translation_mode": translation_mode,
         "timestamp": timestamp,
         # LLM usage (totals across all attempts)
         "prompt_tokens": total_prompt_tokens,

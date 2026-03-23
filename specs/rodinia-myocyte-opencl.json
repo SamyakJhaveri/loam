@@ -40,7 +40,16 @@
             "util/timer/timer.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "kernel/kernel_gpu_opencl.cl",
+            "kernel/embedded_fehlberg_7_8.c",
+            "kernel/kernel_fin.c",
+            "kernel/kernel_gpu_opencl_wrapper.c",
+            "kernel/master.c",
+            "kernel/solver.c",
+            "main.c"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -198,6 +207,7 @@
             "rodinia",
             "simulation"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

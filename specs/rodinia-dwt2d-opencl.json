@@ -31,7 +31,13 @@
             "dwt_cl/dwt_cl.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "com_dwt.cl",
+            "components.cpp",
+            "dwt.cpp",
+            "main.cpp"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -187,6 +193,7 @@
             "rodinia",
             "wavelet"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

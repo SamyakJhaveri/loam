@@ -28,7 +28,11 @@
             "backprop.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "backprop_cuda.cu",
+            "backprop_cuda_kernel.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -168,6 +172,7 @@
             "neural-network",
             "rodinia"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

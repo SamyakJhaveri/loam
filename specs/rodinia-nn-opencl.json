@@ -32,7 +32,11 @@
             "utils.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "nearestNeighbor_kernel.cl",
+            "nearestNeighbor.cpp"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -189,6 +193,7 @@
             "rodinia",
             "search"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "single_to_multi"
     }
 }

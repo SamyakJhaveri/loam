@@ -24,7 +24,10 @@
             "hurricane_gen.c",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "nn_cuda.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -173,6 +176,7 @@
             "rodinia",
             "search"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

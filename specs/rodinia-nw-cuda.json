@@ -25,7 +25,11 @@
             "needle.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "needle.cu",
+            "needle_kernel.cu"
+        ]
     },
     "implementation": {
         "api": "cuda",
@@ -161,6 +165,7 @@
             "rodinia",
             "sequence-alignment"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": null
     }
 }

@@ -24,7 +24,11 @@
         "support_files": [
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "nw.cl",
+            "nw.c"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -176,6 +180,7 @@
             "rodinia",
             "sequence-alignment"
         ],
-        "multi_file": false
+        "multi_file": false,
+        "translation_complexity": "multi_to_multi"
     }
 }

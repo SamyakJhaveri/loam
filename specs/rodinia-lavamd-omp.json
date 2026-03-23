@@ -32,7 +32,10 @@
             "util/timer/timer.h",
             "makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "kernel/kernel_cpu.c"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -166,6 +169,7 @@
             "rodinia",
             "simulation"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_single"
     }
 }

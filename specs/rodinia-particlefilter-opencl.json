@@ -28,7 +28,15 @@
         "support_files": [
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "particle_double.cl",
+            "particle_naive.cl",
+            "particle_single.cl",
+            "ex_particle_OCL_double_seq.cpp",
+            "ex_particle_OCL_naive_seq.cpp",
+            "ex_particle_OCL_single_seq.cpp"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -195,6 +203,7 @@
             "rodinia",
             "state-estimation"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_multi"
     }
 }

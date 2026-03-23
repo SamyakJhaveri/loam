@@ -28,7 +28,11 @@
             "util.h",
             "Makefile"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "Kernels.cl",
+            "streamcluster.cpp"
+        ]
     },
     "implementation": {
         "api": "opencl",
@@ -210,6 +214,7 @@
             "stream-clustering",
             "streamcluster"
         ],
-        "multi_file": false
+        "multi_file": false,
+        "translation_complexity": "multi_to_multi"
     }
 }

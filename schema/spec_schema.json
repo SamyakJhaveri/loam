@@ -152,6 +152,13 @@
                     },
                     "default": [],
                     "description": "Reference implementations and test harnesses. NEVER shown to the LLM."
+                },
+                "translation_targets": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Subset of prompt_payload: kernel files the LLM must produce. If absent, falls back to full prompt_payload."
                 }
             }
         },
@@ -808,6 +815,20 @@
                 "multi_file": {
                     "type": "boolean",
                     "description": "Whether the kernel spans multiple source files."
+                },
+                "translation_complexity": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "enum": [
+                        "single_file",
+                        "multi_to_single",
+                        "single_to_multi",
+                        "multi_to_multi",
+                        null
+                    ],
+                    "description": "Complexity class for stratified reporting of translation pairs (source_files x target_files)."
                 }
             }
         }

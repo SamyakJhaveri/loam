@@ -18,21 +18,24 @@
     },
     "files": {
         "prompt_payload": [
-            "base/lud.c",
-            "base/lud_base.c",
             "common/common.c",
             "omp/lud.c",
-            "omp/lud_omp.c",
-            "tools/gen_input.c"
+            "omp/lud_omp.c"
         ],
         "support_files": [
             "common/common.h",
             "Makefile",
             "base/Makefile",
             "omp/Makefile",
-            "tools/Makefile"
+            "tools/Makefile",
+            "base/lud.c",
+            "base/lud_base.c",
+            "tools/gen_input.c"
         ],
-        "verification_only": []
+        "verification_only": [],
+        "translation_targets": [
+            "omp/lud_omp.c"
+        ]
     },
     "implementation": {
         "api": "omp",
@@ -166,6 +169,7 @@
             "omp",
             "rodinia"
         ],
-        "multi_file": true
+        "multi_file": true,
+        "translation_complexity": "multi_to_single"
     }
 }
