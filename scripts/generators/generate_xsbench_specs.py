@@ -343,7 +343,7 @@ def make_spec(api_key: str) -> dict:
                 "xsbench",
             ],
             "multi_file": True,
-            "translation_complexity": None,
+            # translation_complexity is set by standardize_specs.py (not here)
         },
     }
     return spec

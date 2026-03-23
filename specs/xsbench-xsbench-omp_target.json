@@ -169,6 +169,6 @@
             "xsbench"
         ],
         "multi_file": true,
-        "translation_complexity": null
+        "translation_complexity": "single_to_multi"
     }
 }
