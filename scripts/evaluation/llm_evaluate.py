@@ -93,6 +93,10 @@ MODEL_REGISTRY: dict[str, dict[str, str]] = {
         "provider": "azure",
         "notes": "GPT-4.1 via Azure OpenAI (research lead deployment)",
     },
+    "groq-llama-3.3-70b-versatile": {
+        "provider": "groq",
+        "notes": "Llama 3.3 70B via Groq (second eval model, Session 3)",
+    },
 }
 
 # Human-readable API display names (fallback: .upper())
@@ -571,10 +575,44 @@ def call_llm(
         prompt_tokens = response.usage.prompt_tokens
         completion_tokens = response.usage.completion_tokens
 
+    elif model.startswith("groq-"):
+        # ---- Groq (OpenAI-compatible) path ----
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "Set GROQ_API_KEY environment variable to use Groq models."
+            )
+        try:
+            import openai
+        except ImportError:
+            raise ImportError(
+                "openai package not installed. Run: python3 -m pip install openai"
+            )
+
+        groq_model = model[len("groq-"):]  # "groq-llama-3.3-70b-versatile" → "llama-3.3-70b-versatile"
+        client_groq = openai.OpenAI(
+            api_key=api_key,
+            base_url="https://api.groq.com/openai/v1",
+        )
+        full_messages = [{"role": "system", "content": system_msg}] + messages
+        if verbose:
+            logger.info(
+                "Calling Groq model=%s messages=%d", groq_model, len(full_messages)
+            )
+        response = client_groq.chat.completions.create(
+            model=groq_model,
+            max_tokens=16384,
+            temperature=0,
+            messages=full_messages,
+        )
+        response_text = response.choices[0].message.content or ""
+        prompt_tokens = response.usage.prompt_tokens
+        completion_tokens = response.usage.completion_tokens
+
     else:
         raise ValueError(
             f"Unknown model provider for '{model}'. "
-            "Expected prefix: claude-*, gpt-*, o1-*, o3-*, o4-*, azure-*"
+            "Expected prefix: claude-*, gpt-*, o1-*, o3-*, o4-*, azure-*, groq-*"
         )
 
     duration = time.monotonic() - t0
