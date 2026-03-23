@@ -454,6 +454,38 @@ specs are correctly excluded from eval batches regardless.
 in chain, `suffix-tree.cpp`). Previously (Sessions 2–3 with `unistd.h` applied) the first
 error was `texture<>` in `mummergpu_kernel.cu`. Classification is unchanged: KNOWN_FAIL.
 
+## XSBench Verification (SESSION 5 — 2026-03-23)
+
+**4/4 PASS on first attempt.** All XSBench variants build, run, and verify correctly on RTX 4070.
+
+| Spec | Compiler | Build | Run | Verify | Augment L2 | Checksum |
+|------|----------|-------|-----|--------|-----------|---------|
+| `xsbench-xsbench-omp` | gcc-12 `-fopenmp` | PASS (0.5s) | PASS (0.8s) | PASS | PASS | 941535 (history) |
+| `xsbench-xsbench-cuda` | nvcc 12.3 `-arch=sm_89` | PASS (22.6s) | PASS (0.5s) | PASS | PASS | 945990 (event) |
+| `xsbench-xsbench-opencl` | gcc-12 + libOpenCL | PASS (0.5s) | PASS (0.4s) | PASS | PASS | 945990 (event) |
+| `xsbench-xsbench-omp_target` | nvc 24.3 `-mp=gpu -gpu=cc89` | PASS (1.3s) | PASS (0.6s) | PASS | N/A | 945990 (event) |
+
+**No KNOWN_FAIL specs in XSBench.** All 4 available variants work.
+
+**Key facts:**
+- XSBench has **no OpenACC variant** — the repo only has: cuda, openmp-threading, openmp-offload, opencl, hip, sycl.
+  The session prompt's reference to an OpenACC spec was incorrect. Only 4 specs were created in Session 4.
+- OMP target offload uses `nvc` (NVIDIA HPC SDK 24.3). `gcc-12-offload-nvptx` is NOT installed.
+  nvc `-mp=gpu` successfully generates GPU kernels (verified via `-Minfo=mp` output at build time).
+- OpenCL build produces a `clCreateCommandQueue` deprecation warning (OpenCL 3.0 header) — harmless.
+- Augmentation L2 (seed=42) PASS on OMP, CUDA, OpenCL. Transforms applied:
+  - OMP: `ChangeNames` + `SwapCondition` on `GridInit.c`, `XSutils.c`
+  - CUDA: `SwapCondition` on `GridInit.cu`
+  - OpenCL: `SwapCondition` on `GridInit.c`, `kernel.cl`
+- `baseline_results` populated in all 4 specs (2026-03-23, platform: rtx4070-linux-x86_64)
+- OMP uses history mode (`-s small`); CUDA/OpenCL/OMP-target use event mode (`-m event -s small`)
+- **History/event asymmetry (known):** OMP history mode produces checksum 941535; event mode produces 945990.
+  For CUDA→OMP translation eval, the LLM-translated code runs in event mode (matching CUDA source behavior).
+  The OMP spec's self-check verifies the pattern "Valid" not the exact number — so correctness verification
+  still works regardless of mode. The LLM-translated code will produce 945990 (event), not 941535 (history).
+- OMP target spec is included in specs/ but **excluded from eval batches** (not a standard translation direction)
+- Use the 3 standard API specs (cuda, omp, opencl) for CUDA→OMP eval batches
+
 ### Hook Protection (updated 2026-03-22)
 
 `.claude/hooks/protect-benchmark-sources.sh` regex was expanded from:

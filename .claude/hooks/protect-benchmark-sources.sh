@@ -49,7 +49,7 @@ fi
 # ── Benchmark source code directories ───────────────────────────────────────
 # Matches any file inside a known benchmark source tree.
 
-BENCHMARK_DIRS_RE='/(rodinia|rodinia-src|HeCBench-master|hecbench)/'
+BENCHMARK_DIRS_RE='/(rodinia|rodinia-src|HeCBench-master|hecbench|xsbench-src)/'
 
 SOURCE_EXTS_RE='\.(cu|cpp|cxx|cc|c|cl|h|hpp|hh|cuh|f|f90|f77|f03)$'
 

@@ -139,7 +139,7 @@
             }
         },
         "reference_platform": {
-            "platform_id": "rtx4070-r9-7900x",
+            "platform_id": "rtx4070-linux-x86_64",
             "gpu": {
                 "model": "NVIDIA GeForce RTX 4070",
                 "architecture": "Ada Lovelace",
@@ -162,7 +162,19 @@
             }
         }
     },
-    "baseline_results": null,
+    "baseline_results": {
+        "reference_platform": "rtx4070-linux-x86_64",
+        "timestamp": "2026-03-23T17:46:36+00:00",
+        "configurations": {
+            "correctness": {
+                "status": "pass",
+                "exit_code": 0,
+                "stdout_snippet": "Programming Model             OpenCL\nSimulation Method:            Event Based\nGrid Type:                    Nuclide Grid\nH-M Benchmark Size:           Small\nTotal XS Lookups:             17,000,000\nRuntime:     0.308 seconds\nLookups:     17,000,000\nLookups/s:   55,194,832\nSimulation Kernel Only Statistics\nRuntime:     0.139 seconds\nLookups/s:   122,302,211\nVerification checksum: 945990 (Valid)\n",
+                "wall_time_seconds": 0.44,
+                "metrics": {}
+            }
+        }
+    },
     "metadata": {
         "description": "Monte Carlo neutron cross-section lookup (XSBench)",
         "domain": "nuclear physics",
