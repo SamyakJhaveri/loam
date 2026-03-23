@@ -183,3 +183,7 @@
 {"kernel_name": "huffman", "parallel_api": "omp", "source_suite": "rodinia", "category": "other", "spec_file": "specs/rodinia-huffman-omp.json", "source_dir": "rodinia/rodinia-src/openmp/huffman"}
 {"kernel_name": "hybridsort", "parallel_api": "omp", "source_suite": "rodinia", "category": "sort", "spec_file": "specs/rodinia-hybridsort-omp.json", "source_dir": "rodinia/rodinia-src/openmp/hybridsort"}
 {"kernel_name": "mummergpu", "parallel_api": "opencl", "source_suite": "rodinia", "category": "other", "spec_file": "specs/rodinia-mummergpu-opencl.json", "source_dir": "rodinia/rodinia-src/opencl/mummergpu"}
+{"kernel_name":"xsbench","parallel_api":"omp","source_suite":"xsbench","spec_file":"specs/xsbench-xsbench-omp.json","source_dir":"xsbench/xsbench-src/openmp-threading","category":"physics"}
+{"kernel_name":"xsbench","parallel_api":"cuda","source_suite":"xsbench","spec_file":"specs/xsbench-xsbench-cuda.json","source_dir":"xsbench/xsbench-src/cuda","category":"physics"}
+{"kernel_name":"xsbench","parallel_api":"opencl","source_suite":"xsbench","spec_file":"specs/xsbench-xsbench-opencl.json","source_dir":"xsbench/xsbench-src/opencl","category":"physics"}
+{"kernel_name":"xsbench","parallel_api":"omp_target","source_suite":"xsbench","spec_file":"specs/xsbench-xsbench-omp_target.json","source_dir":"xsbench/xsbench-src/openmp-offload","category":"physics"}

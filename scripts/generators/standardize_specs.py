@@ -59,6 +59,7 @@ PRAGMA_APIS: set[str] = {"omp", "omp_target", "openacc"}
 EXPECTED_APIS_BY_SUITE: dict[str, set[str]] = {
     "rodinia": {"cuda", "omp", "opencl"},
     "hecbench": {"cuda", "omp"},
+    "xsbench": {"cuda", "omp", "opencl", "omp_target"},
 }
 
 
