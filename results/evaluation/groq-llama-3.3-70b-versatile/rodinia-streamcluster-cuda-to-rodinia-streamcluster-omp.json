@@ -1,0 +1,66 @@
+{
+  "source_spec": "rodinia-streamcluster-cuda",
+  "target_spec": "rodinia-streamcluster-omp",
+  "kernel": "streamcluster",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T05:02:02Z",
+  "prompt_tokens": 24857,
+  "completion_tokens": 2589,
+  "llm_response_time_seconds": 10.314,
+  "build_status": "fail",
+  "build_time_seconds": 0.279,
+  "build_error_snippet": "streamcluster_original.cpp: In function \u2018void outcenterIDs(Points*, long int*, char*)\u2019:\nstreamcluster_original.cpp:1096:21: warning: format \u2018%u\u2019 expects argument of type \u2018unsigned int\u2019, but argument 3 has type \u2018long int\u2019 [-Wformat=]\n 1096 |       fprintf(fp, \"%u\\n\", centerIDs[i]);\n      |                    ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_original.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_original.cpp:1143:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n 1143\n...[truncated]...\nis correctly configured to compile `streamcluster_omp.cpp` and include the necessary dependencies.\n      |                                                                                                                ^\nstreamcluster_omp.cpp:6:5: warning: missing terminating ' character\n    6 | Here's an example `Makefile`:\n      |     ^\nstreamcluster_omp.cpp:6:5: error: missing terminating ' character\n    6 | Here's an example `Makefile`:\n      |     ^~~~~~~~~~~~~~~~~~~~~~~~~\nstreamcluster_omp.cpp:2:1: error: \u2018Also\u2019 does not name a type\n    2 | Also, make sure that `streamcluster_header.cpp` is in the same directory as `streamcluster_omp.cpp` or provide the correct path to the header file.\n      | ^~~~\nmake: *** [Makefile:19: omp] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: | Also, make sure that `streamcluster_header.cpp` is in the same directory as `streamcluster_omp.cpp` or provide the correct path to the header file.\n      | ^~~~\nmake: *** [Makefile:19: omp] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 24.639,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "streamcluster_omp.cpp": "\nAlso, make sure that `streamcluster_header.cpp` is in the same directory as `streamcluster_omp.cpp` or provide the correct path to the header file.\n\nIf you still face issues, ensure that your `Makefi"
+  },
+  "target_files_expected": [
+    "streamcluster_omp.cpp"
+  ],
+  "target_files_extracted": [
+    "streamcluster_omp.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 8.338,
+      "prompt_tokens": 11223,
+      "completion_tokens": 2265,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nfprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |",
+      "build_error_snippet": "streamcluster_original.cpp: In function \u2018void outcenterIDs(Points*, long int*, char*)\u2019:\nstreamcluster_original.cpp:1096:21: warning: format \u2018%u\u2019 expects argument of type \u2018unsigned int\u2019, but argument 3 has type \u2018long int\u2019 [-Wformat=]\n 1096 |       fprintf(fp, \"%u\\n\", centerIDs[i]);\n      |                    ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_original.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_original.cpp:1143:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n 1143 |     fprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |\n      |                           int         size_t {aka long unsigned int}\n      |                          %ld\nstreamcluster_omp.cpp:2:10: fatal error: streamcluster_header.cu: No such file or directory\n    2 | #include \"streamcluster_header.cu\"\n      |          ^~~~~~~~~~~~~~~~~~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:19: omp] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 1.976,
+      "prompt_tokens": 13634,
+      "completion_tokens": 324,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "streamcluster_original.cpp: In function \u2018void outcenterIDs(Points*, long int*, char*)\u2019:\nstreamcluster_original.cpp:1096:21: warning: format \u2018%u\u2019 expects argument of type \u2018unsigned int\u2019, but argument 3 has type \u2018long int\u2019 [-Wformat=]\n 1096 |       fprintf(fp, \"%u\\n\", centerIDs[i]);\n      |                    ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_original.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_original.cpp:1143:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n 1143\n...[truncated]...\nis correctly configured to compile `streamcluster_omp.cpp` and include the necessary dependencies.\n      |                                                                                                                ^\nstreamcluster_omp.cpp:6:5: warning: missing terminating ' character\n    6 | Here's an example `Makefile`:\n      |     ^\nstreamcluster_omp.cpp:6:5: error: missing terminating ' character\n    6 | Here's an example `Makefile`:\n      |     ^~~~~~~~~~~~~~~~~~~~~~~~~\nstreamcluster_omp.cpp:2:1: error: \u2018Also\u2019 does not name a type\n    2 | Also, make sure that `streamcluster_header.cpp` is in the same directory as `streamcluster_omp.cpp` or provide the correct path to the header file.\n      | ^~~~\nmake: *** [Makefile:19: omp] Error 1\n"
+    }
+  ]
+}

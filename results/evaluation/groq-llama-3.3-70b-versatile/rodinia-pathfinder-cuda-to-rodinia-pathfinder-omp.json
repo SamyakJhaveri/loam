@@ -1,0 +1,65 @@
+{
+  "source_spec": "rodinia-pathfinder-cuda",
+  "target_spec": "rodinia-pathfinder-omp",
+  "kernel": "pathfinder",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T05:01:50Z",
+  "prompt_tokens": 6482,
+  "completion_tokens": 2866,
+  "llm_response_time_seconds": 5.658,
+  "build_status": "pass",
+  "build_time_seconds": 0.063,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.161,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": "Build failed: num\u2019?\n   57 |     int xidx = blkX + omp_get_thread_num_x();\n      |                       ^~~~~~~~~~~~~~~~~~~~\n      |                       omp_get_thread_num\nmake: *** [Makefile:7: release] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.161,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0062,
+  "translated_files": {
+    "pathfinder.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 256\n#define STR_SIZE 256\n#define DEVICE 0\n#define HALO 1 // halo width along one direc"
+  },
+  "target_files_expected": [
+    "pathfinder.cpp"
+  ],
+  "target_files_extracted": [
+    "pathfinder.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.851,
+      "prompt_tokens": 2459,
+      "completion_tokens": 1418,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\npathfinder.cpp: In function \u2018void dynproc_kernel(int, int*, int*, int*, int, int, int, int)\u2019:\npathfinder.cpp:57:23: error: \u2018omp_get_thread_num_x\u2019",
+      "build_error_snippet": "pathfinder.cpp: In function \u2018void dynproc_kernel(int, int*, int*, int*, int, int, int, int)\u2019:\npathfinder.cpp:57:23: error: \u2018omp_get_thread_num_x\u2019 was not declared in this scope; did you mean \u2018omp_get_thread_num\u2019?\n   57 |     int xidx = blkX + omp_get_thread_num_x();\n      |                       ^~~~~~~~~~~~~~~~~~~~\n      |                       omp_get_thread_num\nmake: *** [Makefile:7: release] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 2.807,
+      "prompt_tokens": 4023,
+      "completion_tokens": 1448,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null
+    }
+  ]
+}

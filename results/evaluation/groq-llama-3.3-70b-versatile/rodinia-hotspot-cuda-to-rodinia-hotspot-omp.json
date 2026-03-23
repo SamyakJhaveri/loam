@@ -1,0 +1,66 @@
+{
+  "source_spec": "rodinia-hotspot-cuda",
+  "target_spec": "rodinia-hotspot-omp",
+  "kernel": "hotspot",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T05:10:23Z",
+  "prompt_tokens": 9095,
+  "completion_tokens": 4278,
+  "llm_response_time_seconds": 9.029,
+  "build_status": "fail",
+  "build_time_seconds": 0.026,
+  "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:68:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   68 |                         fatal(\"not enough lines in file\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:70:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   70 |                         fatal(\"invalid file format\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018int compute_tran_temp(float*, float**, int, int, int, int, int, int, int, int)\u2019:\nhotspot_openmp.cpp:118:50: error: \u2018border_rows\u2019 was not declared in this scope; did you m\n...[truncated]...\nnot declared in this scope; did you mean \u2018borderCols\u2019?\n  118 |                                         if (j >= border_rows && j < row - border_rows && k >= border_cols && k < col - border_cols) {\n      |                                                                                               ^~~~~~~~~~~\n      |                                                                                               borderCols\nhotspot_openmp.cpp: In function \u2018void run(int, char**)\u2019:\nhotspot_openmp.cpp:183:23: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  183 |                 fatal(\"unable to allocate memory\");\n      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ng constant to \u2018char*\u2019 [-Wwrite-strings]\n  183 |                 fatal(\"unable to allocate memory\");\n      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.069,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot_openmp.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n\n#define STR_SIZE 256\n\n/* maximum power density possible (say 300W for a 10mm x 10mm chip)\t*/\n#define MAX_"
+  },
+  "target_files_expected": [
+    "hotspot_openmp.cpp"
+  ],
+  "target_files_extracted": [
+    "hotspot_openmp.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.618,
+      "prompt_tokens": 3399,
+      "completion_tokens": 2140,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\ne-strings]\n  183 |                 fatal(\"unable to allocate memory\");\n      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.c",
+      "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:68:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   68 |                         fatal(\"not enough lines in file\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:70:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   70 |                         fatal(\"invalid file format\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018int compute_tran_temp(float*, float**, int, int, int, int, int, int, int, int)\u2019:\nhotspot_openmp.cpp:118:50: error: \u2018border_rows\u2019 was not declared in this scope; did you m\n...[truncated]...\n                                                                                   borderCols\nhotspot_openmp.cpp: In function \u2018void run(int, char**)\u2019:\nhotspot_openmp.cpp:183:23: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  183 |                 fatal(\"unable to allocate memory\");\n      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:66:22: warning: ignoring return value of \u2018char* fgets(char*, int, FILE*)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   66 |                 fgets(str, STR_SIZE, fp);\n      |                 ~~~~~^~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.411,
+      "prompt_tokens": 5696,
+      "completion_tokens": 2138,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:68:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   68 |                         fatal(\"not enough lines in file\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:70:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   70 |                         fatal(\"invalid file format\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018int compute_tran_temp(float*, float**, int, int, int, int, int, int, int, int)\u2019:\nhotspot_openmp.cpp:118:50: error: \u2018border_rows\u2019 was not declared in this scope; did you m\n...[truncated]...\nnot declared in this scope; did you mean \u2018borderCols\u2019?\n  118 |                                         if (j >= border_rows && j < row - border_rows && k >= border_cols && k < col - border_cols) {\n      |                                                                                               ^~~~~~~~~~~\n      |                                                                                               borderCols\nhotspot_openmp.cpp: In function \u2018void run(int, char**)\u2019:\nhotspot_openmp.cpp:183:23: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  183 |                 fatal(\"unable to allocate memory\");\n      |                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1\n"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-22T20:46:44.769982",
-  "total_tasks": 17,
+  "generated_at": "2026-03-22T22:14:48.382901",
+  "total_tasks": 34,
   "by_model": {
     "azure-gpt-4.1": {
       "pass": 9,
@@ -11,177 +11,194 @@
         "PASS": 9,
         "RUN_FAIL": 4
       }
+    },
+    "groq-llama-3.3-70b-versatile": {
+      "pass": 5,
+      "total": 17,
+      "rate": 0.2941,
+      "by_status": {
+        "BUILD_FAIL": 11,
+        "PASS": 5,
+        "RUN_FAIL": 1
+      }
     }
   },
   "by_direction": {
     "cuda-to-omp": {
-      "pass": 9,
-      "total": 17,
-      "rate": 0.5294,
+      "pass": 14,
+      "total": 34,
+      "rate": 0.4118,
       "by_status": {
-        "BUILD_FAIL": 4,
-        "PASS": 9,
-        "RUN_FAIL": 4
+        "BUILD_FAIL": 15,
+        "PASS": 14,
+        "RUN_FAIL": 5
       }
     }
   },
   "by_kernel": {
     "backprop": {
       "pass": 0,
-      "total": 1,
+      "total": 2,
       "rate": 0.0,
       "by_status": {
-        "BUILD_FAIL": 1
+        "BUILD_FAIL": 2
       }
     },
     "bfs": {
-      "pass": 1,
-      "total": 1,
+      "pass": 2,
+      "total": 2,
       "rate": 1.0,
       "by_status": {
-        "PASS": 1
+        "PASS": 2
       }
     },
     "bptree": {
       "pass": 1,
-      "total": 1,
-      "rate": 1.0,
+      "total": 2,
+      "rate": 0.5,
       "by_status": {
-        "PASS": 1
+        "PASS": 1,
+        "BUILD_FAIL": 1
       }
     },
     "cfd": {
       "pass": 1,
-      "total": 1,
-      "rate": 1.0,
+      "total": 2,
+      "rate": 0.5,
       "by_status": {
-        "PASS": 1
+        "PASS": 1,
+        "BUILD_FAIL": 1
       }
     },
     "heartwall": {
       "pass": 0,
-      "total": 1,
+      "total": 2,
       "rate": 0.0,
       "by_status": {
-        "RUN_FAIL": 1
+        "RUN_FAIL": 1,
+        "BUILD_FAIL": 1
       }
     },
     "hotspot": {
       "pass": 0,
-      "total": 1,
+      "total": 2,
       "rate": 0.0,
       "by_status": {
-        "RUN_FAIL": 1
+        "RUN_FAIL": 1,
+        "BUILD_FAIL": 1
       }
     },
     "hotspot3d": {
-      "pass": 1,
-      "total": 1,
+      "pass": 2,
+      "total": 2,
       "rate": 1.0,
       "by_status": {
-        "PASS": 1
+        "PASS": 2
       }
     },
     "kmeans": {
       "pass": 1,
-      "total": 1,
-      "rate": 1.0,
+      "total": 2,
+      "rate": 0.5,
       "by_status": {
-        "PASS": 1
+        "PASS": 1,
+        "BUILD_FAIL": 1
       }
     },
     "lavamd": {
       "pass": 1,
-      "total": 1,
-      "rate": 1.0,
+      "total": 2,
+      "rate": 0.5,
       "by_status": {
-        "PASS": 1
+        "PASS": 1,
+        "BUILD_FAIL": 1
       }
     },
     "lud": {
-      "pass": 1,
-      "total": 1,
+      "pass": 2,
+      "total": 2,
       "rate": 1.0,
       "by_status": {
-        "PASS": 1
+        "PASS": 2
       }
     },
     "myocyte": {
       "pass": 0,
-      "total": 1,
+      "total": 2,
       "rate": 0.0,
       "by_status": {
-        "BUILD_FAIL": 1
+        "BUILD_FAIL": 2
       }
     },
     "nn": {
-      "pass": 1,
-      "total": 1,
+      "pass": 2,
+      "total": 2,
       "rate": 1.0,
       "by_status": {
-        "PASS": 1
+        "PASS": 2
       }
     },
     "nw": {
       "pass": 0,
-      "total": 1,
+      "total": 2,
       "rate": 0.0,
       "by_status": {
-        "RUN_FAIL": 1
+        "RUN_FAIL": 1,
+        "BUILD_FAIL": 1
       }
     },
     "particlefilter": {
       "pass": 0,
-      "total": 1,
+      "total": 2,
       "rate": 0.0,
       "by_status": {
-        "BUILD_FAIL": 1
+        "BUILD_FAIL": 2
       }
     },
     "pathfinder": {
-      "pass": 1,
-      "total": 1,
+      "pass": 2,
+      "total": 2,
       "rate": 1.0,
       "by_status": {
-        "PASS": 1
+        "PASS": 2
       }
     },
     "srad": {
       "pass": 0,
-      "total": 1,
+      "total": 2,
       "rate": 0.0,
       "by_status": {
-        "RUN_FAIL": 1
+        "RUN_FAIL": 2
       }
     },
     "streamcluster": {
       "pass": 0,
-      "total": 1,
+      "total": 2,
       "rate": 0.0,
       "by_status": {
-        "BUILD_FAIL": 1
+        "BUILD_FAIL": 2
       }
     }
   },
   "by_augment_level": {
     "L0": {
-      "pass": 9,
-      "total": 17,
-      "rate": 0.5294,
+      "pass": 14,
+      "total": 34,
+      "rate": 0.4118,
       "by_status": {
-        "BUILD_FAIL": 4,
-        "PASS": 9,
-        "RUN_FAIL": 4
+        "BUILD_FAIL": 15,
+        "PASS": 14,
+        "RUN_FAIL": 5
       }
     }
   },
   "failure_taxonomy": {
-    "BUILD_FAIL": 4,
-    "RUN_FAIL": 4
+    "BUILD_FAIL": 15,
+    "RUN_FAIL": 5
   },
   "self_repair": {
-    "attempt_1_pass": 7,
-    "total_repaired_by_retry": 2,
-    "total_with_attempts": 17
+    "attempt_1_pass": 9,
+    "total_repaired_by_retry": 5,
+    "total_with_attempts": 34
   }
 }

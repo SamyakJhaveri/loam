@@ -1,0 +1,54 @@
+{
+  "source_spec": "rodinia-bfs-cuda",
+  "target_spec": "rodinia-bfs-omp",
+  "kernel": "bfs",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T04:58:49Z",
+  "prompt_tokens": 3241,
+  "completion_tokens": 1009,
+  "llm_response_time_seconds": 2.227,
+  "build_status": "pass",
+  "build_time_seconds": 0.34,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 1.432,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 1.432,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0007,
+  "translated_files": {
+    "bfs.cpp": "#include <iostream>\n#include <fstream>\n#include <cmath>\n#include <omp.h>\n\n#define MAX_THREADS_PER_BLOCK 512\n\nstruct Node {\n    int starting;\n    int no_of_edges;\n};\n\nvoid BFSGraph(int argc, char** arg"
+  },
+  "target_files_expected": [
+    "bfs.cpp"
+  ],
+  "target_files_extracted": [
+    "bfs.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.227,
+      "prompt_tokens": 3241,
+      "completion_tokens": 1009,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "source_spec": "rodinia-nn-cuda",
+  "target_spec": "rodinia-nn-omp",
+  "kernel": "nn",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T05:10:45Z",
+  "prompt_tokens": 9127,
+  "completion_tokens": 3985,
+  "llm_response_time_seconds": 8.157,
+  "build_status": "pass",
+  "build_time_seconds": 0.046,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.008,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": "Run failed (exit code -11)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": 0.008,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.0,
+  "translated_files": {
+    "nn_openmp.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include <omp.h>\n\n#define min( a, b )         a > b ? b : a\n#define ceilDiv( a, b )     ( a + b - 1 ) / b\n#define print( x )          printf( #"
+  },
+  "target_files_expected": [
+    "nn_openmp.c"
+  ],
+  "target_files_extracted": [
+    "nn_openmp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.875,
+      "prompt_tokens": 3613,
+      "completion_tokens": 1871,
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": ""
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.282,
+      "prompt_tokens": 5514,
+      "completion_tokens": 2114,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null
+    }
+  ]
+}

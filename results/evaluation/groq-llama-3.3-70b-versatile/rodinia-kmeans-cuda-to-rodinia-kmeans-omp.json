@@ -1,0 +1,66 @@
+{
+  "source_spec": "rodinia-kmeans-cuda",
+  "target_spec": "rodinia-kmeans-omp",
+  "kernel": "kmeans",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T04:59:43Z",
+  "prompt_tokens": 76714,
+  "completion_tokens": 4656,
+  "llm_response_time_seconds": 16.498,
+  "build_status": "fail",
+  "build_time_seconds": 0.105,
+  "build_error_snippet": "kmeans.c: In function \u2018main\u2019:\nkmeans.c:152:9: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  152 |         read(infile, &numObjects,    sizeof(int));\n      |         ^~~~\n      |         fread\nkmeans.c:165:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  165 |         close(infile);\n      |         ^~~~~\n      |         pclose\nkmeans_clustering.c:19:28: error: initializer element is not constant\n   19 | unsigned int num_threads = num_threads_perdim*num_threads_perdim;       /* number of threads */\n      |                            ^~~~~~~~~~~~~~~~~~\nkmeans_clustering.c:20:27: error: initializer element is not constant\n   20 | unsigned int num_blocks = num_blocks_perdim*num_blocks_perdim;          /* number of blocks */\n      |                           ^~~~~~~~~~~~~~~~~\nmake[1]: *** [Makefile:21: kmeans_clustering.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: locks_perdim;          /* number of blocks */\n      |                           ^~~~~~~~~~~~~~~~~\nmake[1]: *** [Makefile:21: kmeans_clustering.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.859,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kmeans_openmp/kmeans_clustering.c": "// kmeans_openmp/kmeans_clustering.c\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <limits.h>\n#include <math.h>\n#include <float.h>\n#include <omp.h>\n\n#include \"kmeans.h\"\n\n#define "
+  },
+  "target_files_expected": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "target_files_extracted": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 10.145,
+      "prompt_tokens": 37112,
+      "completion_tokens": 2312,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\ng.c: In function \u2018deallocateMemory\u2019:\nkmeans_clustering.c:89:14: error: \u2018block_new_centers\u2019 undeclared (first use in this function)\n   89 |       ",
+      "build_error_snippet": "kmeans.c: In function \u2018main\u2019:\nkmeans.c:152:9: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  152 |         read(infile, &numObjects,    sizeof(int));\n      |         ^~~~\n      |         fread\nkmeans.c:165:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  165 |         close(infile);\n      |         ^~~~~\n      |         pclose\nkmeans_clustering.c:19:28: error: initializer element is not constant\n   19 | unsigned int num_threads = num_threads_perdim*num_threads_perdim;       /* number of threads */\n      |                            ^~~~~~~~~~~~~~~~~~\nkmeans_clustering.c:20:27: error: initializer element is not constan\n...[truncated]...\n 53 |         block_new_centers = (float *) malloc(nclusters*nfeatures*sizeof(float));\n      |         ^~~~~~~~~~~~~~~~~\nkmeans_clustering.c:53:9: note: each undeclared identifier is reported only once for each function it appears in\nkmeans_clustering.c: In function \u2018deallocateMemory\u2019:\nkmeans_clustering.c:89:14: error: \u2018block_new_centers\u2019 undeclared (first use in this function)\n   89 |         free(block_new_centers);\n      |              ^~~~~~~~~~~~~~~~~\nkmeans_clustering.c:95:28: error: \u2018num_points\u2019 undeclared (first use in this function)\n   95 |         for(int i = 0; i < num_points; i++) {\n      |                            ^~~~~~~~~~\nmake[1]: *** [Makefile:21: kmeans_clustering.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 6.353,
+      "prompt_tokens": 39602,
+      "completion_tokens": 2344,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "kmeans.c: In function \u2018main\u2019:\nkmeans.c:152:9: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  152 |         read(infile, &numObjects,    sizeof(int));\n      |         ^~~~\n      |         fread\nkmeans.c:165:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  165 |         close(infile);\n      |         ^~~~~\n      |         pclose\nkmeans_clustering.c:19:28: error: initializer element is not constant\n   19 | unsigned int num_threads = num_threads_perdim*num_threads_perdim;       /* number of threads */\n      |                            ^~~~~~~~~~~~~~~~~~\nkmeans_clustering.c:20:27: error: initializer element is not constant\n   20 | unsigned int num_blocks = num_blocks_perdim*num_blocks_perdim;          /* number of blocks */\n      |                           ^~~~~~~~~~~~~~~~~\nmake[1]: *** [Makefile:21: kmeans_clustering.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2\n"
+    }
+  ]
+}

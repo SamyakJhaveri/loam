@@ -642,7 +642,7 @@ def extract_code_blocks(
     """
     result: dict[str, str] = {}
 
-    # Tier 1: ```lang filename=X\n...\n```
+    # Tier 1: ```lang filename=X\n...\n```  (Claude / GPT-4 style)
     tier1_pattern = re.compile(
         r"```\w*\s+filename=([^\s`]+)\s*\n(.*?)```",
         re.DOTALL,
@@ -659,6 +659,23 @@ def extract_code_blocks(
                 break
 
     unmatched = [f for f in target_filenames if f not in result]
+    if not unmatched:
+        return result
+
+    # Tier 1.5: ```lang filename.ext\n...\n```  (Llama / space-separated style, no filename=)
+    tier1b_pattern = re.compile(
+        r"```\w*\s+([^\s`=]+\.[^\s`]+)\s*\n(.*?)```",
+        re.DOTALL,
+    )
+    for match in tier1b_pattern.finditer(response_text):
+        raw_fname = match.group(1).strip("\"'")
+        code = match.group(2)
+        for tgt in list(unmatched):
+            if raw_fname == tgt or Path(raw_fname).name == Path(tgt).name:
+                result[tgt] = code
+                unmatched.remove(tgt)
+                break
+
     if not unmatched:
         return result
 

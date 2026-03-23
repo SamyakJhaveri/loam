@@ -1,0 +1,54 @@
+{
+  "source_spec": "rodinia-lud-cuda",
+  "target_spec": "rodinia-lud-omp",
+  "kernel": "lud",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T05:00:07Z",
+  "prompt_tokens": 10157,
+  "completion_tokens": 1294,
+  "llm_response_time_seconds": 3.926,
+  "build_status": "pass",
+  "build_time_seconds": 0.289,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.002,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.004,
+  "translated_wall_time_seconds": 0.002,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.0,
+  "translated_files": {
+    "omp/lud_omp.c": "// omp/lud_omp.c\n#include <stdio.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 16\n\nvoid lud_diagonal(float *m, int matrix_dim, int offset);\nvoid lud_perimeter(float *m, int matrix_dim, int offset);\nvoid lud"
+  },
+  "target_files_expected": [
+    "omp/lud_omp.c"
+  ],
+  "target_files_extracted": [
+    "omp/lud_omp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.926,
+      "prompt_tokens": 10157,
+      "completion_tokens": 1294,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null
+    }
+  ]
+}

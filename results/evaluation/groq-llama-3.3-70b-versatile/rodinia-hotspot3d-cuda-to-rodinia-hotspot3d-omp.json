@@ -1,0 +1,66 @@
+{
+  "source_spec": "rodinia-hotspot3d-cuda",
+  "target_spec": "rodinia-hotspot3d-omp",
+  "kernel": "hotspot3d",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T05:10:32Z",
+  "prompt_tokens": 8641,
+  "completion_tokens": 5379,
+  "llm_response_time_seconds": 10.396,
+  "build_status": "pass",
+  "build_time_seconds": 0.134,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 1.343,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": "Run failed (exit code -11)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.215,
+  "translated_wall_time_seconds": 1.343,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.9047,
+  "translated_files": {
+    "3D.c": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h> \n#include <math.h> \n#include <omp.h>\n\n#define STR_SIZE 256\n\n#define block_x_ 128 \n#define block_y_ 2\n#define block_z_ 1\n#de"
+  },
+  "target_files_expected": [
+    "3D.c"
+  ],
+  "target_files_extracted": [
+    "3D.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.535,
+      "prompt_tokens": 3051,
+      "completion_tokens": 2509,
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": ""
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 5.861,
+      "prompt_tokens": 5590,
+      "completion_tokens": 2870,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null
+    }
+  ]
+}

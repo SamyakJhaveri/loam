@@ -1,0 +1,66 @@
+{
+  "source_spec": "rodinia-cfd-cuda",
+  "target_spec": "rodinia-cfd-omp",
+  "kernel": "cfd",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T04:58:53Z",
+  "prompt_tokens": 56669,
+  "completion_tokens": 4929,
+  "llm_response_time_seconds": 15.613,
+  "build_status": "fail",
+  "build_time_seconds": 0.191,
+  "build_error_snippet": "euler3d_cpu.cpp:19:48: error: \u2018float3\u2019 has not been declared\n   19 | void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy) {\n      |                                                ^~~~~~\neuler3d_cpu.cpp:19:106: error: \u2018float3\u2019 has not been declared\n   19 | void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy) {\n      |                                                                                                    \n...[truncated]...\nou mean \u2018flux_i_density_energy\u2019?\n  250 |                 compute_flux_contribution(ff_variable[VAR_DENSITY], ff_momentum, ff_variable[VAR_DENSITY_ENERGY], ff_pressure, ff_velocity, ff_fc_momentum_x, ff_fc_momentum_y, ff_fc_momentum_z, ff_fc_density_energy);\n      |                                                                                                                                                                                                   ^~~~~~~~~~~~~~~~~~~~\n      |                                                                                                                                                                                                   flux_i_density_energy\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: flux_i_density_energy\nmake: *** [makefile:15: euler3d_cpu] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 3.877,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "euler3d_cpu.cpp": "// euler3d_cpu.cpp\n#include <iostream>\n#include <fstream>\n#include <omp.h>\n\n#define GAMMA 1.4f\n#define iterations 2000\n#define NDIM 3\n#define NNB 4\n#define RK 3\n#define ff_mach 1.2f\n#define deg_angle_"
+  },
+  "target_files_expected": [
+    "euler3d_cpu.cpp"
+  ],
+  "target_files_extracted": [
+    "euler3d_cpu.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 1.846,
+      "prompt_tokens": 28281,
+      "completion_tokens": 12,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\neuler3d_cpu.cpp:1:1: error: \u2018euler3d_cpu\u2019 does not name a type\n    1 | euler3d_cpu.cpp\n      | ^~~~~~~~~~~\nmake: *** [makefile:15: euler3d_cpu] E",
+      "build_error_snippet": "euler3d_cpu.cpp:1:1: error: \u2018euler3d_cpu\u2019 does not name a type\n    1 | euler3d_cpu.cpp\n      | ^~~~~~~~~~~\nmake: *** [makefile:15: euler3d_cpu] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 13.767,
+      "prompt_tokens": 28388,
+      "completion_tokens": 4917,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "euler3d_cpu.cpp:19:48: error: \u2018float3\u2019 has not been declared\n   19 | void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy) {\n      |                                                ^~~~~~\neuler3d_cpu.cpp:19:106: error: \u2018float3\u2019 has not been declared\n   19 | void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy) {\n      |                                                                                                    \n...[truncated]...\nou mean \u2018flux_i_density_energy\u2019?\n  250 |                 compute_flux_contribution(ff_variable[VAR_DENSITY], ff_momentum, ff_variable[VAR_DENSITY_ENERGY], ff_pressure, ff_velocity, ff_fc_momentum_x, ff_fc_momentum_y, ff_fc_momentum_z, ff_fc_density_energy);\n      |                                                                                                                                                                                                   ^~~~~~~~~~~~~~~~~~~~\n      |                                                                                                                                                                                                   flux_i_density_energy\nmake: *** [makefile:15: euler3d_cpu] Error 1\n"
+    }
+  ]
+}

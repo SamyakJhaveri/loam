@@ -1,0 +1,66 @@
+{
+  "source_spec": "rodinia-nw-cuda",
+  "target_spec": "rodinia-nw-omp",
+  "kernel": "nw",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T05:01:09Z",
+  "prompt_tokens": 14776,
+  "completion_tokens": 7585,
+  "llm_response_time_seconds": 22.169,
+  "build_status": "fail",
+  "build_time_seconds": 0.453,
+  "build_error_snippet": "needle.cpp:1:1: error: \u2018needle\u2019 does not name a type\n    1 | needle.cpp\n      | ^~~~~~\nIn file included from /usr/include/c++/12/iosfwd:40,\n                 from /usr/include/c++/12/ios:38,\n                 from /usr/include/c++/12/ostream:38,\n                 from /usr/include/c++/12/iostream:39,\n                 from needle.cpp:2:\n/usr/include/c++/12/bits/postypes.h:68:11: error: \u2018ptrdiff_t\u2019 does not name a type\n   68 |   typedef ptrdiff_t     streamsize; // Signed integral type\n      |           ^~~~~~~~~\n/usr/include/c++/12/bits/postypes.h:41:1: note: \u2018ptrdiff_t\u2019 is defined in header \u2018<cstddef>\u2019; did you forget to \u2018#include <cstddef>\u2019?\n   40 | #include <cwchar> // For mbstate_t\n  +++ |+#include <cstddef>\n   41 | \nIn file included from /\n...[truncated]...\naits, _Alloc>::iterator std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::insert(__const_iterator, _CharT) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>; iterator = std::__cxx11::basic_string<char>::iterator; __const_iterator = std::__cxx11::basic_string<char>::const_iterator]\u2019\n 1981 |       insert(__const_iterator __p, _CharT __c)\n      |       ^~~~~~\n/usr/include/c++/12/bits/basic_string.h:1981:31: note:   no known conversion for argument 1 from \u2018int\u2019 to \u2018std::__cxx11::basic_string<char>::__const_iterator\u2019 {aka \u2018std::__cxx11::basic_string<char>::const_iterator\u2019}\n 1981 |       insert(__const_iterator __p, _CharT __c)\n      |              ~~~~~~~~~~~~~~~~~^~~\nmake: *** [Makefile:10: needle] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ator\u2019 {aka \u2018std::__cxx11::basic_string<char>::const_iterator\u2019}\n 1981 |       insert(__const_iterator __p, _CharT __c)\n      |              ~~~~~~~~~~~~~~~~~^~~\nmake: *** [Makefile:10: needle] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.015,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "needle.cpp": "needle.cpp\n#include <iostream>\n#include <fstream>\n#include <iomanip>\n#include <string>\n#include <cmath>\n#include <cstdlib>\n#include <ctime>\n#include <omp.h>\n\n#define LIMIT -999\n#define BLOCK_SIZE 16\n\n"
+  },
+  "target_files_expected": [
+    "needle.cpp"
+  ],
+  "target_files_extracted": [
+    "needle.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 10.915,
+      "prompt_tokens": 5408,
+      "completion_tokens": 3781,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n__const_iterator = std::__cxx11::basic_string<char>::const_iterator]\u2019\n 1981 |       insert(__const_iterator __p, _CharT __c)\n      |       ^~~~~~",
+      "build_error_snippet": "needle.cpp:1:1: error: \u2018needle\u2019 does not name a type\n    1 | needle.cpp\n      | ^~~~~~\nIn file included from /usr/include/c++/12/iosfwd:40,\n                 from /usr/include/c++/12/ios:38,\n                 from /usr/include/c++/12/ostream:38,\n                 from /usr/include/c++/12/iostream:39,\n                 from needle.cpp:2:\n/usr/include/c++/12/bits/postypes.h:68:11: error: \u2018ptrdiff_t\u2019 does not name a type\n   68 |   typedef ptrdiff_t     streamsize; // Signed integral type\n      |           ^~~~~~~~~\n/usr/include/c++/12/bits/postypes.h:41:1: note: \u2018ptrdiff_t\u2019 is defined in header \u2018<cstddef>\u2019; did you forget to \u2018#include <cstddef>\u2019?\n   40 | #include <cwchar> // For mbstate_t\n  +++ |+#include <cstddef>\n   41 | \nIn file included from /\n...[truncated]...\naits, _Alloc>::iterator std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::insert(__const_iterator, _CharT) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>; iterator = std::__cxx11::basic_string<char>::iterator; __const_iterator = std::__cxx11::basic_string<char>::const_iterator]\u2019\n 1981 |       insert(__const_iterator __p, _CharT __c)\n      |       ^~~~~~\n/usr/include/c++/12/bits/basic_string.h:1981:31: note:   no known conversion for argument 1 from \u2018int\u2019 to \u2018std::__cxx11::basic_string<char>::__const_iterator\u2019 {aka \u2018std::__cxx11::basic_string<char>::const_iterator\u2019}\n 1981 |       insert(__const_iterator __p, _CharT __c)\n      |              ~~~~~~~~~~~~~~~~~^~~\nmake: *** [Makefile:10: needle] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 11.254,
+      "prompt_tokens": 9368,
+      "completion_tokens": 3804,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "needle.cpp:1:1: error: \u2018needle\u2019 does not name a type\n    1 | needle.cpp\n      | ^~~~~~\nIn file included from /usr/include/c++/12/iosfwd:40,\n                 from /usr/include/c++/12/ios:38,\n                 from /usr/include/c++/12/ostream:38,\n                 from /usr/include/c++/12/iostream:39,\n                 from needle.cpp:2:\n/usr/include/c++/12/bits/postypes.h:68:11: error: \u2018ptrdiff_t\u2019 does not name a type\n   68 |   typedef ptrdiff_t     streamsize; // Signed integral type\n      |           ^~~~~~~~~\n/usr/include/c++/12/bits/postypes.h:41:1: note: \u2018ptrdiff_t\u2019 is defined in header \u2018<cstddef>\u2019; did you forget to \u2018#include <cstddef>\u2019?\n   40 | #include <cwchar> // For mbstate_t\n  +++ |+#include <cstddef>\n   41 | \nIn file included from /\n...[truncated]...\naits, _Alloc>::iterator std::__cxx11::basic_string<_CharT, _Traits, _Alloc>::insert(__const_iterator, _CharT) [with _CharT = char; _Traits = std::char_traits<char>; _Alloc = std::allocator<char>; iterator = std::__cxx11::basic_string<char>::iterator; __const_iterator = std::__cxx11::basic_string<char>::const_iterator]\u2019\n 1981 |       insert(__const_iterator __p, _CharT __c)\n      |       ^~~~~~\n/usr/include/c++/12/bits/basic_string.h:1981:31: note:   no known conversion for argument 1 from \u2018int\u2019 to \u2018std::__cxx11::basic_string<char>::__const_iterator\u2019 {aka \u2018std::__cxx11::basic_string<char>::const_iterator\u2019}\n 1981 |       insert(__const_iterator __p, _CharT __c)\n      |              ~~~~~~~~~~~~~~~~~^~~\nmake: *** [Makefile:10: needle] Error 1\n"
+    }
+  ]
+}

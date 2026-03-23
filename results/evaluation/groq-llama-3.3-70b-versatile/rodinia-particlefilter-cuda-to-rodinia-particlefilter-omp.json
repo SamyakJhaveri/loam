@@ -1,0 +1,66 @@
+{
+  "source_spec": "rodinia-particlefilter-cuda",
+  "target_spec": "rodinia-particlefilter-omp",
+  "kernel": "particlefilter",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T05:01:33Z",
+  "prompt_tokens": 35469,
+  "completion_tokens": 5501,
+  "llm_response_time_seconds": 17.889,
+  "build_status": "fail",
+  "build_time_seconds": 0.015,
+  "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c:2:1: warning: data definition has no type or storage class\n    2 | Additionally, the syntax error is likely due to a missing statement or incorrect syntax before the `)` token. However, without the exact code at line 287, it's hard to pinpoint the exact issue. Make sure to check the code at line 287 and ensure that the syntax is correct.\n      | ^~~~~~~~~~~~\nex_particle_OPENMP_seq.c:2:1: warning: type defaults to \u2018int\u2019 in declaration of \u2018Additionally\u2019 [-Wimplicit-int]\nex_particle_OPENMP_seq.c:2:19: error: expected \u2018=\u2019, \u2018,\u2019, \u2018;\u2019, \u2018asm\u2019 or \u2018__attribute__\u2019 before \u2018syntax\u2019\n    2 | Additionally, the syntax error is like\n...[truncated]...\nctly set up to compile the code with OpenMP support. The compilation command should include the `-fopenmp` flag to enable OpenMP support. For example:\n      |                                                                                                                                         ^\nex_particle_OPENMP_seq.c:6:146: error: stray \u2018`\u2019 in program\n    6 | Also, ensure that your Makefile is correctly set up to compile the code with OpenMP support. The compilation command should include the `-fopenmp` flag to enable OpenMP support. For example:\n      |                                                                                                                                                  ^\nmake: *** [Makefile:4: openmp] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: mple:\n      |                                                                                                                                                  ^\nmake: *** [Makefile:4: openmp] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.007,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "ex_particle_OPENMP_seq.c": "\nAdditionally, the syntax error is likely due to a missing statement or incorrect syntax before the `)` token. However, without the exact code at line 287, it's hard to pinpoint the exact issue. Make "
+  },
+  "target_files_expected": [
+    "ex_particle_OPENMP_seq.c"
+  ],
+  "target_files_extracted": [
+    "ex_particle_OPENMP_seq.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 15.68,
+      "prompt_tokens": 15039,
+      "completion_tokens": 5199,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n:287:106: error: expected statement before \u2018)\u2019 token\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:524:19: warning: impl",
+      "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018calcLikelihoodSum\u2019:\nex_particle_OPENMP_seq.c:287:106: error: expected \u2018;\u2019 before \u2018)\u2019 token\n  287 |         likelihoodSum += (pow((double) (I[ind[y]] - 100), 2) - pow((double) (I[ind[y]] - 228), 2)) / 50.0);\n      |                                                                                                          ^\n      |                                                                                                          ;\nex_particle_OPENMP_seq.c:287:106: error: expected statement before \u2018)\u2019 token\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:524:19: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  524 |         seed[i] = time(0) * i;\n      |                   ^~~~\nex_particle_OPENMP_seq.c:12:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   11 | #include <omp.h>\n  +++ |+#include <time.h>\n   12 | \nmake: *** [Makefile:4: openmp] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 2.209,
+      "prompt_tokens": 20430,
+      "completion_tokens": 302,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c:2:1: warning: data definition has no type or storage class\n    2 | Additionally, the syntax error is likely due to a missing statement or incorrect syntax before the `)` token. However, without the exact code at line 287, it's hard to pinpoint the exact issue. Make sure to check the code at line 287 and ensure that the syntax is correct.\n      | ^~~~~~~~~~~~\nex_particle_OPENMP_seq.c:2:1: warning: type defaults to \u2018int\u2019 in declaration of \u2018Additionally\u2019 [-Wimplicit-int]\nex_particle_OPENMP_seq.c:2:19: error: expected \u2018=\u2019, \u2018,\u2019, \u2018;\u2019, \u2018asm\u2019 or \u2018__attribute__\u2019 before \u2018syntax\u2019\n    2 | Additionally, the syntax error is like\n...[truncated]...\nctly set up to compile the code with OpenMP support. The compilation command should include the `-fopenmp` flag to enable OpenMP support. For example:\n      |                                                                                                                                         ^\nex_particle_OPENMP_seq.c:6:146: error: stray \u2018`\u2019 in program\n    6 | Also, ensure that your Makefile is correctly set up to compile the code with OpenMP support. The compilation command should include the `-fopenmp` flag to enable OpenMP support. For example:\n      |                                                                                                                                                  ^\nmake: *** [Makefile:4: openmp] Error 1\n"
+    }
+  ]
+}
