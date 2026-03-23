@@ -1,12 +1,12 @@
 # ParBench Evaluation Summary
-**Generated:** 2026-03-22 22:14  |  **Total tasks:** 34
+**Generated:** 2026-03-22 22:51  |  **Total tasks:** 34
 
 ## Pass Rates by Model
 
-| Model | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL |
-|-------|-----:|------:|-----:|----------:|--------:|------------:|
-| azure-gpt-4.1 | 9 | 17 | 52.9% | 4 | 4 | 0 |
-| groq-llama-3.3-70b-versatile | 5 | 17 | 29.4% | 11 | 1 | 0 |
+| Model | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL | EXTRACTION_FAIL |
+|-------|-----:|------:|-----:|----------:|--------:|------------:|---------------:|
+| azure-gpt-4.1 | 9 | 17 | 52.9% | 4 | 4 | 0 | 0 |
+| groq-llama-3.3-70b-versatile | 5 | 17 | 29.4% | 10 | 1 | 0 | 1 |
 
 ## Pass Rates by Translation Direction
 
@@ -28,7 +28,7 @@
 | bfs | ✓ PASS | ✓ PASS |
 | bptree | ✓ PASS | ✗ BUILD_FAIL |
 | cfd | ✓ PASS | ✗ BUILD_FAIL |
-| heartwall | ✗ RUN_FAIL | ✗ BUILD_FAIL |
+| heartwall | ✗ RUN_FAIL | ✗ EXTRACTION_FAIL |
 | hotspot | ✗ RUN_FAIL | ✗ BUILD_FAIL |
 | hotspot3d | ✓ PASS | ✓ PASS |
 | kmeans | ✓ PASS | ✗ BUILD_FAIL |
@@ -46,8 +46,9 @@
 
 | Status | Count |
 |--------|------:|
-| BUILD_FAIL | 15 |
+| BUILD_FAIL | 14 |
 | RUN_FAIL | 5 |
+| EXTRACTION_FAIL | 1 |
 
 ## Self-Repair (Iterative Retry) Effectiveness
 

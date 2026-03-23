@@ -189,13 +189,14 @@ def build_markdown(summary: dict, records: list[dict]) -> str:
 
     # --- By model ---
     lines += ["## Pass Rates by Model", ""]
-    lines += ["| Model | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL |",
-              "|-------|-----:|------:|-----:|----------:|--------:|------------:|"]
+    lines += ["| Model | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL | EXTRACTION_FAIL |",
+              "|-------|-----:|------:|-----:|----------:|--------:|------------:|---------------:|"]
     for model, stats in summary["by_model"].items():
         bk = stats["by_status"]
         lines.append(
             f"| {model} | {stats['pass']} | {stats['total']} | {_pct(stats['rate'])} "
-            f"| {bk.get('BUILD_FAIL', 0)} | {bk.get('RUN_FAIL', 0)} | {bk.get('VERIFY_FAIL', 0)} |"
+            f"| {bk.get('BUILD_FAIL', 0)} | {bk.get('RUN_FAIL', 0)} | {bk.get('VERIFY_FAIL', 0)} "
+            f"| {bk.get('EXTRACTION_FAIL', 0)} |"
         )
     lines.append("")
 

@@ -494,6 +494,7 @@ def call_llm(
         response_text: str = response.content[0].text
         prompt_tokens: int = response.usage.input_tokens
         completion_tokens: int = response.usage.output_tokens
+        finish_reason: str = response.stop_reason or "unknown"
 
     elif model.startswith(("gpt-", "o1-", "o3-", "o4-")):
         # ---- OpenAI path ----
@@ -528,6 +529,7 @@ def call_llm(
         response_text = response.choices[0].message.content or ""
         prompt_tokens = response.usage.prompt_tokens
         completion_tokens = response.usage.completion_tokens
+        finish_reason = response.choices[0].finish_reason or "unknown"
 
     elif model.startswith("azure-"):
         # ---- Azure OpenAI path ----
@@ -574,6 +576,7 @@ def call_llm(
         response_text = response.choices[0].message.content or ""
         prompt_tokens = response.usage.prompt_tokens
         completion_tokens = response.usage.completion_tokens
+        finish_reason = response.choices[0].finish_reason or "unknown"
 
     elif model.startswith("groq-"):
         # ---- Groq (OpenAI-compatible) path ----
@@ -608,6 +611,7 @@ def call_llm(
         response_text = response.choices[0].message.content or ""
         prompt_tokens = response.usage.prompt_tokens
         completion_tokens = response.usage.completion_tokens
+        finish_reason = response.choices[0].finish_reason or "unknown"
 
     else:
         raise ValueError(
@@ -620,6 +624,7 @@ def call_llm(
         "response_text": response_text,
         "prompt_tokens": prompt_tokens,
         "completion_tokens": completion_tokens,
+        "finish_reason": finish_reason,
         "duration_seconds": round(duration, 3),
     }
 
@@ -938,6 +943,7 @@ def evaluate_translation(
             attempt_record["llm_response_time_seconds"] = llm_result["duration_seconds"]
             attempt_record["prompt_tokens"] = llm_result["prompt_tokens"]
             attempt_record["completion_tokens"] = llm_result["completion_tokens"]
+            attempt_record["finish_reason"] = llm_result["finish_reason"]
 
             total_prompt_tokens += llm_result["prompt_tokens"]
             total_completion_tokens += llm_result["completion_tokens"]
@@ -955,6 +961,34 @@ def evaluate_translation(
                 fp = source_dir / fname
                 fp.parent.mkdir(parents=True, exist_ok=True)
                 fp.write_text(code, encoding="utf-8")
+
+            # -- Guard: EXTRACTION_FAIL if no target files parsed from LLM response --
+            # Building without extracted LLM code would compile the reference
+            # implementation and produce a false-positive PASS. Fail fast instead.
+            if not extracted:
+                final_status = "EXTRACTION_FAIL"
+                error_message = (
+                    f"LLM response did not contain parseable code for any of the "
+                    f"expected target files: {target_filenames}"
+                )
+                attempt_record["extraction_fail"] = True
+                attempts.append(attempt_record)
+                if attempt_num == max_retries:
+                    break
+                extraction_feedback = (
+                    "Your response did not include any of the expected output files. "
+                    "Please translate each target file using this format:\n\n"
+                    + "".join(
+                        f"```c {f}\n// your translated code here\n```\n\n"
+                        for f in target_filenames
+                    )
+                )
+                attempt_record["error_feedback_sent"] = extraction_feedback[:200]
+                messages.append({"role": "assistant", "content": response_text})
+                messages.append({"role": "user", "content": extraction_feedback})
+                restore_files(backup_info)
+                backup_info = backup_files(target_file_paths)
+                continue
 
             # -- Build --
             build_result = build_spec(
@@ -1015,6 +1049,12 @@ def evaluate_translation(
             # Extend conversation: assistant response + user error feedback
             messages.append({"role": "assistant", "content": response_text})
             messages.append({"role": "user", "content": feedback})
+
+            # Restore files to a clean state before the next attempt, so each
+            # attempt starts from the original reference files (not stale LLM
+            # output from the previous attempt).
+            restore_files(backup_info)
+            backup_info = backup_files(target_file_paths)
 
     finally:
         restore_files(backup_info)

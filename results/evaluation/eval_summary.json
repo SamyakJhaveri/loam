@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-03-22T22:14:48.382901",
+  "generated_at": "2026-03-22T22:51:14.357398",
   "total_tasks": 34,
   "by_model": {
     "azure-gpt-4.1": {
@@ -17,8 +17,9 @@
       "total": 17,
       "rate": 0.2941,
       "by_status": {
-        "BUILD_FAIL": 11,
+        "BUILD_FAIL": 10,
         "PASS": 5,
+        "EXTRACTION_FAIL": 1,
         "RUN_FAIL": 1
       }
     }
@@ -29,9 +30,10 @@
       "total": 34,
       "rate": 0.4118,
       "by_status": {
-        "BUILD_FAIL": 15,
+        "BUILD_FAIL": 14,
         "PASS": 14,
-        "RUN_FAIL": 5
+        "RUN_FAIL": 5,
+        "EXTRACTION_FAIL": 1
       }
     }
   },
@@ -76,7 +78,7 @@
       "rate": 0.0,
       "by_status": {
         "RUN_FAIL": 1,
-        "BUILD_FAIL": 1
+        "EXTRACTION_FAIL": 1
       }
     },
     "hotspot": {
@@ -186,15 +188,17 @@
       "total": 34,
       "rate": 0.4118,
       "by_status": {
-        "BUILD_FAIL": 15,
+        "BUILD_FAIL": 14,
         "PASS": 14,
-        "RUN_FAIL": 5
+        "RUN_FAIL": 5,
+        "EXTRACTION_FAIL": 1
       }
     }
   },
   "failure_taxonomy": {
-    "BUILD_FAIL": 15,
-    "RUN_FAIL": 5
+    "BUILD_FAIL": 14,
+    "RUN_FAIL": 5,
+    "EXTRACTION_FAIL": 1
   },
   "self_repair": {
     "attempt_1_pass": 9,
