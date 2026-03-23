@@ -1,19 +1,19 @@
 {
-  "source_spec": "rodinia-lud-cuda",
-  "target_spec": "rodinia-lud-omp",
-  "kernel": "lud",
+  "source_spec": "rodinia-lavamd-cuda",
+  "target_spec": "rodinia-lavamd-omp",
+  "kernel": "lavamd",
   "model": "azure-gpt-4.1",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-23T03:39:01Z",
-  "prompt_tokens": 10231,
-  "completion_tokens": 1128,
-  "llm_response_time_seconds": 12.739,
+  "timestamp": "2026-03-23T03:38:55Z",
+  "prompt_tokens": 12273,
+  "completion_tokens": 964,
+  "llm_response_time_seconds": 5.811,
   "build_status": "pass",
-  "build_time_seconds": 0.232,
+  "build_time_seconds": 0.149,
   "build_error_snippet": null,
   "run_status": "pass",
-  "run_time_seconds": 0.002,
+  "run_time_seconds": 0.001,
   "run_exit_code": 0,
   "run_stderr_snippet": null,
   "run_stdout_snippet": null,
@@ -22,29 +22,29 @@
   "overall_status": "PASS",
   "error_message": null,
   "metrics": {},
-  "baseline_wall_time_seconds": 0.004,
-  "translated_wall_time_seconds": 0.002,
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.001,
   "translated_cpu_time_seconds": null,
   "translated_kernel_time_seconds": null,
   "timing_method": "wall_time",
-  "speedup_ratio": 2.0,
+  "speedup_ratio": 1.0,
   "translated_files": {
-    "omp/lud_omp.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <omp.h>\n#include \"common.h\"\n\n#ifndef BLOCK_SIZE\n#define BLOCK_SIZE 16\n#endif\n\nvoid lud_omp(float *m, int matrix_dim)\n{\n    int i, j, k;\n    float sum;\n\n"
+    "kernel/kernel_cpu.c": "//======================================================================================================================================================================================================"
   },
   "target_files_expected": [
-    "omp/lud_omp.c"
+    "kernel/kernel_cpu.c"
   ],
   "target_files_extracted": [
-    "omp/lud_omp.c"
+    "kernel/kernel_cpu.c"
   ],
   "max_retries": 2,
   "total_attempts": 1,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 12.739,
-      "prompt_tokens": 10231,
-      "completion_tokens": 1128,
+      "llm_response_time_seconds": 5.811,
+      "prompt_tokens": 12273,
+      "completion_tokens": 964,
       "build_status": "pass",
       "run_status": "pass",
       "verify_status": "pass",

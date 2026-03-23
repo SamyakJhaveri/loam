@@ -1,71 +1,54 @@
 {
   "source_spec": "rodinia-kmeans-cuda",
   "target_spec": "rodinia-kmeans-omp",
+  "kernel": "kmeans",
   "model": "azure-gpt-4.1",
   "augment_level": 0,
-  "timestamp": "2026-03-19T23:16:47Z",
-  "prompt_tokens": 64251,
-  "completion_tokens": 11920,
-  "llm_response_time_seconds": 131.85,
-  "build_status": "fail",
-  "build_time_seconds": 0.026,
-  "build_error_snippet": "cluster.c:84:5: error: conflicting types for \u2018cluster\u2019; have \u2018int(int,  int,  float **, int,  int,  float,  int *, float ***, float *, int,  int)\u2019\n   84 | int cluster(int      npoints,                           /* number of data points */\n      |     ^~~~~~~\nIn file included from cluster.c:76:\nkmeans.h:47:9: note: previous declaration of \u2018cluster\u2019 with type \u2018int(int,  int,  float **, int,  float,  float ***)\u2019\n   47 | int     cluster(int, int, float**, int, float, float***);\n      |         ^~~~~~~\nmake[1]: *** [Makefile:12: cluster.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2\n",
-  "run_status": null,
-  "run_time_seconds": null,
-  "run_exit_code": null,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T03:38:29Z",
+  "prompt_tokens": 37591,
+  "completion_tokens": 1469,
+  "llm_response_time_seconds": 22.448,
+  "build_status": "pass",
+  "build_time_seconds": 0.296,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 3.26,
+  "run_exit_code": 0,
   "run_stderr_snippet": null,
   "run_stdout_snippet": null,
-  "verify_status": null,
-  "verify_strategy": null,
-  "overall_status": "BUILD_FAIL",
-  "error_message": "Build failed: oat,  float ***)\u2019\n   47 | int     cluster(int, int, float**, int, float, float***);\n      |         ^~~~~~~\nmake[1]: *** [Makefile:12: cluster.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2",
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
   "metrics": {},
   "baseline_wall_time_seconds": 1.859,
-  "translated_wall_time_seconds": null,
+  "translated_wall_time_seconds": 3.26,
   "translated_cpu_time_seconds": null,
   "translated_kernel_time_seconds": null,
-  "timing_method": null,
-  "speedup_ratio": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.5702,
   "translated_files": {
-    "kmeans_openmp/cluster.c": "/*****************************************************************************/\n/*IMPORTANT:  READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.         */\n/*By downloading, copying, installing or"
+    "kmeans_openmp/kmeans_clustering.c": "/*****************************************************************************/\n/*IMPORTANT:  READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.         */\n/*By downloading, copying, installing or"
   },
   "target_files_expected": [
-    "kmeans_openmp/cluster.c",
-    "kmeans_openmp/getopt.c",
-    "kmeans_openmp/kmeans.c",
-    "kmeans_openmp/kmeans_clustering.c",
-    "kmeans_serial/cluster.c",
-    "kmeans_serial/getopt.c",
-    "kmeans_serial/kmeans.c",
-    "kmeans_serial/kmeans_clustering.c"
+    "kmeans_openmp/kmeans_clustering.c"
   ],
   "target_files_extracted": [
-    "kmeans_openmp/cluster.c"
+    "kmeans_openmp/kmeans_clustering.c"
   ],
   "max_retries": 2,
-  "total_attempts": 2,
+  "total_attempts": 1,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 112.952,
-      "prompt_tokens": 26828,
-      "completion_tokens": 10423,
-      "build_status": "fail",
-      "run_status": null,
-      "verify_status": null,
-      "error_feedback_sent": "The translation failed to compile with this error:\n```\nh type \u2018int(int,  int,  float **, int,  float,  float ***)\u2019\n   47 | int     cluster(int, int, float**, int, float, float***);\n      |         ^~~",
-      "build_error_snippet": "cluster.c:82:5: error: conflicting types for \u2018cluster\u2019; have \u2018int(int,  int,  float **, int,  int,  float,  int *, float ***, float *, int,  int)\u2019\n   82 | int cluster(int      npoints,                           /* number of data points */\n      |     ^~~~~~~\nIn file included from cluster.c:76:\nkmeans.h:47:9: note: previous declaration of \u2018cluster\u2019 with type \u2018int(int,  int,  float **, int,  float,  float ***)\u2019\n   47 | int     cluster(int, int, float**, int, float, float***);\n      |         ^~~~~~~\ncluster.c: In function \u2018cluster\u2019:\ncluster.c:133:40: warning: implicit declaration of function \u2018rms_err\u2019 [-Wimplicit-function-declaration]\n  133 |                                 rmse = rms_err(features,\n      |                                        ^~~~~~~\nmake[1]: *** [Makefile:12: cluster.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2\n"
-    },
-    {
-      "attempt": 2,
-      "llm_response_time_seconds": 18.898,
-      "prompt_tokens": 37423,
-      "completion_tokens": 1497,
-      "build_status": "fail",
-      "run_status": null,
-      "verify_status": null,
-      "error_feedback_sent": null,
-      "build_error_snippet": "cluster.c:84:5: error: conflicting types for \u2018cluster\u2019; have \u2018int(int,  int,  float **, int,  int,  float,  int *, float ***, float *, int,  int)\u2019\n   84 | int cluster(int      npoints,                           /* number of data points */\n      |     ^~~~~~~\nIn file included from cluster.c:76:\nkmeans.h:47:9: note: previous declaration of \u2018cluster\u2019 with type \u2018int(int,  int,  float **, int,  float,  float ***)\u2019\n   47 | int     cluster(int, int, float**, int, float, float***);\n      |         ^~~~~~~\nmake[1]: *** [Makefile:12: cluster.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2\n"
+      "llm_response_time_seconds": 22.448,
+      "prompt_tokens": 37591,
+      "completion_tokens": 1469,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null
     }
   ]
 }

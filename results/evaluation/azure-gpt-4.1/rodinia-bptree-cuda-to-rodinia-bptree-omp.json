@@ -1,0 +1,69 @@
+{
+  "source_spec": "rodinia-bptree-cuda",
+  "target_spec": "rodinia-bptree-omp",
+  "kernel": "bptree",
+  "model": "azure-gpt-4.1",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T03:23:35Z",
+  "prompt_tokens": 26499,
+  "completion_tokens": 2652,
+  "llm_response_time_seconds": 33.894,
+  "build_status": "pass",
+  "build_time_seconds": 0.439,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.495,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": "Run failed (exit code -1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.489,
+  "translated_wall_time_seconds": 0.495,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.9879,
+  "translated_files": {
+    "kernel/kernel_cpu.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <omp.h>\n#include \"../common.h\"\n#include \"kernel_cpu.h\"\n\nvoid kernel_cpu(\n    int cores_arg,\n    record *records,\n    knode *knodes,\n    long knodes_elem",
+    "kernel/kernel_cpu_2.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <omp.h>\n#include \"../common.h\"\n#include \"kernel_cpu_2.h\"\n\nvoid kernel_cpu_2(\n    int cores_arg,\n    knode *knodes,\n    long knodes_elem,\n    int order,\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 17.509,
+      "prompt_tokens": 12579,
+      "completion_tokens": 1305,
+      "build_status": "pass",
+      "run_status": "timeout",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -1):\n```\nExecution timed out after 300s\n```\nFix the runtime error.",
+      "run_stderr_snippet": "Execution timed out after 300s",
+      "run_stdout_snippet": ""
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 16.385,
+      "prompt_tokens": 13920,
+      "completion_tokens": 1347,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null
+    }
+  ]
+}

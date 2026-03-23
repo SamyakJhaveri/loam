@@ -1,79 +1,101 @@
 {
-  "generated_at": "2026-03-21T22:01:05.246804",
+  "generated_at": "2026-03-22T20:46:44.769982",
   "total_tasks": 17,
   "by_model": {
     "azure-gpt-4.1": {
-      "pass": 6,
-      "total": 10,
-      "rate": 0.6,
+      "pass": 9,
+      "total": 17,
+      "rate": 0.5294,
       "by_status": {
         "BUILD_FAIL": 4,
-        "PASS": 6
-      }
-    },
-    "claude-sonnet-4-20250514": {
-      "pass": 3,
-      "total": 7,
-      "rate": 0.4286,
-      "by_status": {
-        "BUILD_FAIL": 3,
-        "PASS": 3,
-        "RUN_FAIL": 1
+        "PASS": 9,
+        "RUN_FAIL": 4
       }
     }
   },
   "by_direction": {
     "cuda-to-omp": {
-      "pass": 8,
-      "total": 16,
-      "rate": 0.5,
+      "pass": 9,
+      "total": 17,
+      "rate": 0.5294,
       "by_status": {
-        "BUILD_FAIL": 7,
-        "PASS": 8,
-        "RUN_FAIL": 1
-      }
-    },
-    "omp-to-cuda": {
-      "pass": 1,
-      "total": 1,
-      "rate": 1.0,
-      "by_status": {
-        "PASS": 1
+        "BUILD_FAIL": 4,
+        "PASS": 9,
+        "RUN_FAIL": 4
       }
     }
   },
   "by_kernel": {
     "backprop": {
       "pass": 0,
-      "total": 2,
-      "rate": 0.0,
-      "by_status": {
-        "BUILD_FAIL": 2
-      }
-    },
-    "bfs": {
-      "pass": 3,
-      "total": 3,
-      "rate": 1.0,
-      "by_status": {
-        "PASS": 3
-      }
-    },
-    "hotspot": {
-      "pass": 1,
-      "total": 2,
-      "rate": 0.5,
-      "by_status": {
-        "PASS": 1,
-        "BUILD_FAIL": 1
-      }
-    },
-    "kmeans": {
-      "pass": 0,
       "total": 1,
       "rate": 0.0,
       "by_status": {
         "BUILD_FAIL": 1
+      }
+    },
+    "bfs": {
+      "pass": 1,
+      "total": 1,
+      "rate": 1.0,
+      "by_status": {
+        "PASS": 1
+      }
+    },
+    "bptree": {
+      "pass": 1,
+      "total": 1,
+      "rate": 1.0,
+      "by_status": {
+        "PASS": 1
+      }
+    },
+    "cfd": {
+      "pass": 1,
+      "total": 1,
+      "rate": 1.0,
+      "by_status": {
+        "PASS": 1
+      }
+    },
+    "heartwall": {
+      "pass": 0,
+      "total": 1,
+      "rate": 0.0,
+      "by_status": {
+        "RUN_FAIL": 1
+      }
+    },
+    "hotspot": {
+      "pass": 0,
+      "total": 1,
+      "rate": 0.0,
+      "by_status": {
+        "RUN_FAIL": 1
+      }
+    },
+    "hotspot3d": {
+      "pass": 1,
+      "total": 1,
+      "rate": 1.0,
+      "by_status": {
+        "PASS": 1
+      }
+    },
+    "kmeans": {
+      "pass": 1,
+      "total": 1,
+      "rate": 1.0,
+      "by_status": {
+        "PASS": 1
+      }
+    },
+    "lavamd": {
+      "pass": 1,
+      "total": 1,
+      "rate": 1.0,
+      "by_status": {
+        "PASS": 1
       }
     },
     "lud": {
@@ -82,6 +104,14 @@
       "rate": 1.0,
       "by_status": {
         "PASS": 1
+      }
+    },
+    "myocyte": {
+      "pass": 0,
+      "total": 1,
+      "rate": 0.0,
+      "by_status": {
+        "BUILD_FAIL": 1
       }
     },
     "nn": {
@@ -93,11 +123,18 @@
       }
     },
     "nw": {
-      "pass": 2,
-      "total": 3,
-      "rate": 0.6667,
+      "pass": 0,
+      "total": 1,
+      "rate": 0.0,
       "by_status": {
-        "PASS": 2,
+        "RUN_FAIL": 1
+      }
+    },
+    "particlefilter": {
+      "pass": 0,
+      "total": 1,
+      "rate": 0.0,
+      "by_status": {
         "BUILD_FAIL": 1
       }
     },
@@ -111,10 +148,9 @@
     },
     "srad": {
       "pass": 0,
-      "total": 2,
+      "total": 1,
       "rate": 0.0,
       "by_status": {
-        "BUILD_FAIL": 1,
         "RUN_FAIL": 1
       }
     },
@@ -133,19 +169,19 @@
       "total": 17,
       "rate": 0.5294,
       "by_status": {
-        "BUILD_FAIL": 7,
+        "BUILD_FAIL": 4,
         "PASS": 9,
-        "RUN_FAIL": 1
+        "RUN_FAIL": 4
       }
     }
   },
   "failure_taxonomy": {
-    "BUILD_FAIL": 7,
-    "RUN_FAIL": 1
+    "BUILD_FAIL": 4,
+    "RUN_FAIL": 4
   },
   "self_repair": {
-    "attempt_1_pass": 0,
-    "total_repaired_by_retry": 9,
+    "attempt_1_pass": 7,
+    "total_repaired_by_retry": 2,
     "total_with_attempts": 17
   }
 }

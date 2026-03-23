@@ -1,15 +1,17 @@
 {
   "source_spec": "rodinia-backprop-cuda",
   "target_spec": "rodinia-backprop-omp",
+  "kernel": "backprop",
   "model": "azure-gpt-4.1",
   "augment_level": 0,
-  "timestamp": "2026-03-19T23:15:03Z",
-  "prompt_tokens": 20803,
-  "completion_tokens": 6670,
-  "llm_response_time_seconds": 28.043,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T03:29:11Z",
+  "prompt_tokens": 20894,
+  "completion_tokens": 7245,
+  "llm_response_time_seconds": 86.038,
   "build_status": "fail",
-  "build_time_seconds": 0.228,
-  "build_error_snippet": "backprop.c:92:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   92 | bpnn_randomize_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~~~~~~\nbackprop.c:106:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  106 | bpnn_randomize_row(w, m)\n      | ^~~~~~~~~~~~~~~~~~\nbackprop.c:118:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  118 | bpnn_zero_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_initialize\u2019:\nbackprop.c:132:6: warning: type of \u2018seed\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  132 | void bpnn_initialize(seed)\n      |      ^~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_adjust_weights\u2019:\nbackprop.c:305:6: warning: type of \u2018ndelta\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  305 | void bpnn_adjust_we\n...[truncated]...\nn of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  463 |   read(fd, (char *) &n1, sizeof(int));\n      |   ^~~~\n      |   fread\nbackprop.c:494:3: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  494 |   close(fd);\n      |   ^~~~~\n      |   pclose\n/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\n/usr/bin/ld: facetrain.o: in function `backprop_face':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/facetrain.c:27:(.text+0x6a): undefined reference to `bpnn_train_cuda'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n",
+  "build_time_seconds": 0.214,
+  "build_error_snippet": "backprop.c: In function \u2018bpnn_read\u2019:\nbackprop.c:389:13: warning: implicit declaration of function \u2018open\u2019; did you mean \u2018popen\u2019? [-Wimplicit-function-declaration]\n  389 |   if ((fd = open(filename, 0, 0644)) == -1) {\n      |             ^~~~\n      |             popen\nbackprop.c:395:3: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  395 |   read(fd, (char *) &n1, sizeof(int));\n      |   ^~~~\n      |   fread\nbackprop.c:426:3: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  426 |   close(fd);\n      |   ^~~~~\n      |   pclose\nfacetrain.c:12:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   12 | backprop_face()\n   \n...[truncated]...\ntion \u2018bpnn_train_kernel\u2019 [-Wimplicit-function-declaration]\n   22 |   bpnn_train_kernel(net, &out_err, &hid_err);\n      |   ^~~~~~~~~~~~~~~~~\nimagenet.c:6:8: warning: type defaults to \u2018int\u2019 in declaration of \u2018layer_size\u2019 [-Wimplicit-int]\n    6 | extern layer_size;\n      |        ^~~~~~~~~~\nimagenet.c:8:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n    8 | load(net)\n      | ^~~~\n/usr/bin/ld: backprop_kernel.o: in function `gettime':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop_kernel.c:26: multiple definition of `gettime'; backprop.o:/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:436: first defined here\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n",
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -18,7 +20,7 @@
   "verify_status": null,
   "verify_strategy": null,
   "overall_status": "BUILD_FAIL",
-  "error_message": "Build failed: /Desktop/parbench_sam/rodinia/openmp/backprop/facetrain.c:27:(.text+0x6a): undefined reference to `bpnn_train_cuda'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1",
+  "error_message": "Build failed: `gettime'; backprop.o:/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:436: first defined here\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1",
   "metrics": {},
   "baseline_wall_time_seconds": 0.016,
   "translated_wall_time_seconds": null,
@@ -27,41 +29,38 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "backprop_kernel.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include \"backprop.h\"\n#include <omp.h>\n\n#define HEIGHT 16\n#define WIDTH 16\n#define ETA 0.3\n#define MOMENTUM 0.3\n\nvoid bpnn_layerforward_openmp("
+    "backprop.c": "/*\n ******************************************************************\n * HISTORY\n * 15-Oct-94  Jeff Shufelt (js), Carnegie Mellon University\n *\tPrepared for 15-681, Fall 1994.\n * Modified by Shuai Ch"
   },
   "target_files_expected": [
-    "backprop.c",
-    "backprop_kernel.c",
-    "facetrain.c",
-    "imagenet.c"
+    "backprop.c"
   ],
   "target_files_extracted": [
-    "backprop_kernel.c"
+    "backprop.c"
   ],
   "max_retries": 2,
   "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 23.406,
-      "prompt_tokens": 7252,
-      "completion_tokens": 6131,
+      "llm_response_time_seconds": 46.192,
+      "prompt_tokens": 8483,
+      "completion_tokens": 3751,
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
-      "error_feedback_sent": "The translation failed to compile with this error:\n```\neported only once for each function it appears in\nbackprop_kernel.c: In function \u2018bpnn_adjust_weights_openmp\u2019:\nbackprop_kernel.c:26:34: error: \u2018H",
-      "build_error_snippet": "backprop.c:92:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   92 | bpnn_randomize_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~~~~~~\nbackprop.c:106:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  106 | bpnn_randomize_row(w, m)\n      | ^~~~~~~~~~~~~~~~~~\nbackprop.c:118:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  118 | bpnn_zero_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_initialize\u2019:\nbackprop.c:132:6: warning: type of \u2018seed\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  132 | void bpnn_initialize(seed)\n      |      ^~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_adjust_weights\u2019:\nbackprop.c:305:6: warning: type of \u2018ndelta\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  305 | void bpnn_adjust_we\n...[truncated]...\nard_openmp\u2019:\nbackprop_kernel.c:13:29: error: \u2018HEIGHT\u2019 undeclared (first use in this function)\n   13 |             for (k = 0; k < HEIGHT; k++) {\n      |                             ^~~~~~\nbackprop_kernel.c:13:29: note: each undeclared identifier is reported only once for each function it appears in\nbackprop_kernel.c: In function \u2018bpnn_adjust_weights_openmp\u2019:\nbackprop_kernel.c:26:34: error: \u2018HEIGHT\u2019 undeclared (first use in this function)\n   26 |     for (block = 0; block < in / HEIGHT; block++) {\n      |                                  ^~~~~~\nbackprop_kernel.c:26:18: error: invalid controlling predicate\n   26 |     for (block = 0; block < in / HEIGHT; block++) {\n      |                  ^\nmake: *** [Makefile:19: backprop_kernel.o] Error 1\n"
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\ninition of `main'; backprop.o:/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:443: first defined here\n/usr/bin/ld: backprop_",
+      "build_error_snippet": "backprop.c: In function \u2018bpnn_read\u2019:\nbackprop.c:389:13: warning: implicit declaration of function \u2018open\u2019; did you mean \u2018popen\u2019? [-Wimplicit-function-declaration]\n  389 |   if ((fd = open(filename, 0, 0644)) == -1) {\n      |             ^~~~\n      |             popen\nbackprop.c:395:3: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  395 |   read(fd, (char *) &n1, sizeof(int));\n      |   ^~~~\n      |   fread\nbackprop.c:426:3: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  426 |   close(fd);\n      |   ^~~~~\n      |   pclose\nbackprop.c: In function \u2018main\u2019:\nbackprop.c:444:9: warning: implicit declaration of function \u2018setup\u2019; \n...[truncated]...\n; backprop.o:/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:436: first defined here\n/usr/bin/ld: backprop_kernel.o: in function `main':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop_kernel.c:37: multiple definition of `main'; backprop.o:/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:443: first defined here\n/usr/bin/ld: backprop_kernel.o: in function `bpnn_train_kernel':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop_kernel.c:43: multiple definition of `bpnn_train_kernel'; backprop.o:/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:448: first defined here\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n"
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 4.637,
-      "prompt_tokens": 13551,
-      "completion_tokens": 539,
+      "llm_response_time_seconds": 39.846,
+      "prompt_tokens": 12411,
+      "completion_tokens": 3494,
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "backprop.c:92:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   92 | bpnn_randomize_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~~~~~~\nbackprop.c:106:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  106 | bpnn_randomize_row(w, m)\n      | ^~~~~~~~~~~~~~~~~~\nbackprop.c:118:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  118 | bpnn_zero_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_initialize\u2019:\nbackprop.c:132:6: warning: type of \u2018seed\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  132 | void bpnn_initialize(seed)\n      |      ^~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_adjust_weights\u2019:\nbackprop.c:305:6: warning: type of \u2018ndelta\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  305 | void bpnn_adjust_we\n...[truncated]...\nn of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  463 |   read(fd, (char *) &n1, sizeof(int));\n      |   ^~~~\n      |   fread\nbackprop.c:494:3: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  494 |   close(fd);\n      |   ^~~~~\n      |   pclose\n/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\n/usr/bin/ld: facetrain.o: in function `backprop_face':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/facetrain.c:27:(.text+0x6a): undefined reference to `bpnn_train_cuda'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n"
+      "build_error_snippet": "backprop.c: In function \u2018bpnn_read\u2019:\nbackprop.c:389:13: warning: implicit declaration of function \u2018open\u2019; did you mean \u2018popen\u2019? [-Wimplicit-function-declaration]\n  389 |   if ((fd = open(filename, 0, 0644)) == -1) {\n      |             ^~~~\n      |             popen\nbackprop.c:395:3: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  395 |   read(fd, (char *) &n1, sizeof(int));\n      |   ^~~~\n      |   fread\nbackprop.c:426:3: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  426 |   close(fd);\n      |   ^~~~~\n      |   pclose\nfacetrain.c:12:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   12 | backprop_face()\n   \n...[truncated]...\ntion \u2018bpnn_train_kernel\u2019 [-Wimplicit-function-declaration]\n   22 |   bpnn_train_kernel(net, &out_err, &hid_err);\n      |   ^~~~~~~~~~~~~~~~~\nimagenet.c:6:8: warning: type defaults to \u2018int\u2019 in declaration of \u2018layer_size\u2019 [-Wimplicit-int]\n    6 | extern layer_size;\n      |        ^~~~~~~~~~\nimagenet.c:8:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n    8 | load(net)\n      | ^~~~\n/usr/bin/ld: backprop_kernel.o: in function `gettime':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop_kernel.c:26: multiple definition of `gettime'; backprop.o:/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:436: first defined here\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n"
     }
   ]
 }

@@ -122,11 +122,11 @@ def _self_repair_stats(records: list[dict]) -> dict:
         if not attempts:
             continue
         total_with_attempts += 1
-        first_status = attempts[0].get("status", "") if attempts else ""
         final_status = r.get("overall_status", "")
-        if first_status == "PASS":
+        total_attempts = r.get("total_attempts", len(attempts))
+        if final_status == "PASS" and total_attempts == 1:
             attempt1_pass += 1
-        elif final_status == "PASS":
+        elif final_status == "PASS" and total_attempts > 1:
             repaired += 1
     return {
         "attempt_1_pass": attempt1_pass,

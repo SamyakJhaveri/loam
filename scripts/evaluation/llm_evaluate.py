@@ -280,6 +280,7 @@ def _stage_support_headers(
         src_fp = source_dir / fname
         tgt_fp = target_dir / fname
         if src_fp.exists() and not tgt_fp.exists():
+            tgt_fp.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src_fp, tgt_fp)
             staged.append(tgt_fp)
             logger.debug("Staged header %s → %s", src_fp.name, target_dir)

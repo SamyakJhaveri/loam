@@ -1,19 +1,19 @@
 {
-  "source_spec": "rodinia-lud-cuda",
-  "target_spec": "rodinia-lud-omp",
-  "kernel": "lud",
+  "source_spec": "rodinia-cfd-cuda",
+  "target_spec": "rodinia-cfd-omp",
+  "kernel": "cfd",
   "model": "azure-gpt-4.1",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-23T03:39:01Z",
-  "prompt_tokens": 10231,
-  "completion_tokens": 1128,
-  "llm_response_time_seconds": 12.739,
+  "timestamp": "2026-03-23T03:31:00Z",
+  "prompt_tokens": 28569,
+  "completion_tokens": 5345,
+  "llm_response_time_seconds": 59.31,
   "build_status": "pass",
-  "build_time_seconds": 0.232,
+  "build_time_seconds": 0.43,
   "build_error_snippet": null,
   "run_status": "pass",
-  "run_time_seconds": 0.002,
+  "run_time_seconds": 4.335,
   "run_exit_code": 0,
   "run_stderr_snippet": null,
   "run_stdout_snippet": null,
@@ -22,29 +22,29 @@
   "overall_status": "PASS",
   "error_message": null,
   "metrics": {},
-  "baseline_wall_time_seconds": 0.004,
-  "translated_wall_time_seconds": 0.002,
+  "baseline_wall_time_seconds": 3.877,
+  "translated_wall_time_seconds": 4.335,
   "translated_cpu_time_seconds": null,
   "translated_kernel_time_seconds": null,
   "timing_method": "wall_time",
-  "speedup_ratio": 2.0,
+  "speedup_ratio": 0.8943,
   "translated_files": {
-    "omp/lud_omp.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <omp.h>\n#include \"common.h\"\n\n#ifndef BLOCK_SIZE\n#define BLOCK_SIZE 16\n#endif\n\nvoid lud_omp(float *m, int matrix_dim)\n{\n    int i, j, k;\n    float sum;\n\n"
+    "euler3d_cpu.cpp": "// Copyright 2009, Andrew Corrigan, acorriga@gmu.edu\n// This code is from the AIAA-2009-4001 paper\n\n#include <cmath>\n#include <iostream>\n#include <fstream>\n#include <algorithm>\n#include <cstring>\n#inc"
   },
   "target_files_expected": [
-    "omp/lud_omp.c"
+    "euler3d_cpu.cpp"
   ],
   "target_files_extracted": [
-    "omp/lud_omp.c"
+    "euler3d_cpu.cpp"
   ],
   "max_retries": 2,
   "total_attempts": 1,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 12.739,
-      "prompt_tokens": 10231,
-      "completion_tokens": 1128,
+      "llm_response_time_seconds": 59.31,
+      "prompt_tokens": 28569,
+      "completion_tokens": 5345,
       "build_status": "pass",
       "run_status": "pass",
       "verify_status": "pass",

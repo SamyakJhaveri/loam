@@ -1,0 +1,66 @@
+{
+  "source_spec": "rodinia-particlefilter-cuda",
+  "target_spec": "rodinia-particlefilter-omp",
+  "kernel": "particlefilter",
+  "model": "azure-gpt-4.1",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-23T03:42:31Z",
+  "prompt_tokens": 36386,
+  "completion_tokens": 11873,
+  "llm_response_time_seconds": 41.523,
+  "build_status": "fail",
+  "build_time_seconds": 0.027,
+  "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:420:31: error: array subscript is not an integer\n  420 |             arrayX[x] = arrayX[xj[x]] + 1.0 + 5.0 * randn(seed, x);\n      |                               ^\nex_particle_OPENMP_seq.c:421:31: error: array subscript is not an integer\n  421 |             arrayY[x] = arrayY[yj[x]] - 2.0 + 2.0 * randn(seed, x);\n      |                               ^\nmake: *** [Makefile:4: openmp] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: 31: error: array subscript is not an integer\n  421 |             arrayY[x] = arrayY[yj[x]] - 2.0 + 2.0 * randn(seed, x);\n      |                               ^\nmake: *** [Makefile:4: openmp] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.007,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "ex_particle_OPENMP_seq.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <limits.h>\n#include <math.h>\n#include <unistd.h>\n#include <fcntl.h>\n#include <float.h>\n#include <sys/time.h>\n#include <omp.h>\n#inclu"
+  },
+  "target_files_expected": [
+    "ex_particle_OPENMP_seq.c"
+  ],
+  "target_files_extracted": [
+    "ex_particle_OPENMP_seq.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 21.637,
+      "prompt_tokens": 15134,
+      "completion_tokens": 5934,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n|                               ^\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:607:19: warning: implicit declaration of",
+      "build_error_snippet": "ex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:419:31: error: array subscript is not an integer\n  419 |             arrayX[x] = arrayX[xj[x]] + 1.0 + 5.0 * randn(seed, x);\n      |                               ^\nex_particle_OPENMP_seq.c:420:31: error: array subscript is not an integer\n  420 |             arrayY[x] = arrayY[yj[x]] - 2.0 + 2.0 * randn(seed, x);\n      |                               ^\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:607:19: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  607 |         seed[i] = time(0) * i;\n      |                   ^~~~\nex_particle_OPENMP_seq.c:11:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   10 | #include <omp.h>\n  +++ |+#include <time.h>\n   11 | #define BLOCK_X 16\nmake: *** [Makefile:4: openmp] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 19.886,
+      "prompt_tokens": 21252,
+      "completion_tokens": 5939,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:420:31: error: array subscript is not an integer\n  420 |             arrayX[x] = arrayX[xj[x]] + 1.0 + 5.0 * randn(seed, x);\n      |                               ^\nex_particle_OPENMP_seq.c:421:31: error: array subscript is not an integer\n  421 |             arrayY[x] = arrayY[yj[x]] - 2.0 + 2.0 * randn(seed, x);\n      |                               ^\nmake: *** [Makefile:4: openmp] Error 1\n"
+    }
+  ]
+}
