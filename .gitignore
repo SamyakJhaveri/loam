@@ -48,6 +48,9 @@ env_parbench/
 # Claude Code agent worktrees (temporary, auto-cleaned)
 .claude/worktrees/
 
+# Post-session validation sentinel (written by /validate, never committed)
+.validation_passed
+
 # Build artifacts
 *.o
 *.out

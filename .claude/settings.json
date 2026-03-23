@@ -7,6 +7,11 @@
           {
             "type": "command",
             "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'rm -rf|rm -fr'; then echo 'BLOCKED: rm -rf not allowed' >&2 && exit 2; fi"
+          },
+          {
+            "type": "command",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/pre-commit-gate.sh",
+            "timeout": 10
           }
         ]
       },
@@ -28,6 +33,11 @@
           {
             "type": "command",
             "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('file_path',''))\" 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.py$'; then python3 -m ruff check --fix \"$FILE\" 2>/dev/null || true; fi"
+          },
+          {
+            "type": "command",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/sentinel-cleanup.sh",
+            "timeout": 5
           }
         ]
       }
@@ -35,6 +45,10 @@
     "Stop": [
       {
         "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "BEFORE STOPPING: (1) Was /validate run? Check .validation_passed exists. (2) All task items finished — not just the easy ones? (3) Evidence for every 'works' or 'fixed' claim? (4) Docs updated for any new gotchas found? If ANY is NO — address it, don't stop yet."
+          },
           {
             "type": "command",
             "command": "notify-send 'Claude Code' 'Task completed' 2>/dev/null || true"

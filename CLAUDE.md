@@ -139,6 +139,20 @@ Incomplete, superficial, or "good enough" work will be caught immediately.
 
 Samyak reviews all output. Laziness is not acceptable. Thoroughness is the baseline.
 
+## Post-Session Validation Loop
+
+> Full protocol in `.claude/rules/validation-loop.md`
+
+**Every session must pass `/validate` before committing.** Enforced by pre-commit gate hook.
+
+| Command | What it does |
+|---------|-------------|
+| `/validate` | Full 4-wave validation (10+ agents, ~3 min) |
+| `/validate quick` | Wave 1 only: schema + diff + security (~30s) |
+| `/validate fix` | Re-run failed waves after implementing fixes |
+
+Waves: (1) verify-app + diff-reviewer + security-scanner → (2) test-synthesizer + regression-checker + spec-auditor → (3) consistency-checker + code-simplifier → (4) self-critic (Opus). On failure: plan mode → user approval → fix → re-validate.
+
 ---
 
 ## Frontend Theme & Design Standards
@@ -188,6 +202,7 @@ When writing or editing any HTML/CSS/JS in visualizations/:
 | `github-pages.md` | `visualizations/**`, `.github/workflows/**` | Deployment, privacy, data refresh |
 | `spec-conventions.md` | `specs/**`, `manifest.jsonl` | Slugification, categories, validation |
 | `python.md` | `**/*.py` | Interpreter, testing, style conventions |
+| `validation-loop.md` | Always | Post-session validation protocol, wave structure, fix loop |
 
 ### Agents (`.claude/agents/`) — invoke by name
 
@@ -203,6 +218,12 @@ When writing or editing any HTML/CSS/JS in visualizations/:
 | `xsbench-explorer` | Session 4 only — extracts build/run/verify info from XSBench source |
 | `dashboard-refresher` | After eval runs or spec changes — regenerates JS data, fixes stale HTML |
 | `paper-drafter` | Sessions 12, 13, 15 — writes paper sections with actual data (uses Opus) |
+| `diff-reviewer` | Validation Wave 1 — git diff for regressions, partial implementations |
+| `security-scanner` | Validation Wave 1 — secrets, injection, OWASP in changed files |
+| `test-synthesizer` | Validation Wave 2 — writes+runs temp test programs for changed code |
+| `regression-checker` | Validation Wave 2 — before/after metrics comparison |
+| `consistency-checker` | Validation Wave 3 — docs vs code vs known-issues cross-check |
+| `self-critic` | Validation Wave 4 — Opus adversarial self-review for rationalization |
 
 ### Skills (`.claude/skills/`) — invoke via `/skill-name`
 
@@ -213,3 +234,4 @@ When writing or editing any HTML/CSS/JS in visualizations/:
 | Review | `/review [files]` | Multi-agent code review (style, correctness, security, perf) |
 | Gen Spec | `/gen-spec <suite>` | Generate specs for a new benchmark suite |
 | Augment Test | `/augment-test <spec>` | Test augmentation transforms on a spec |
+| Validate | `/validate [quick\|full\|fix]` | Post-session validation: 10+ agents, 4 waves, pre-commit gate |

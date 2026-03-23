@@ -31,10 +31,16 @@
 - Write session notes for complex multi-step work
 - "Update your CLAUDE.md so you don't make that mistake again" (Boris's rule)
 
-### 6. Verify
-- Launch 2-4 parallel verification subagents
-- Run `python3 scripts/validate_schema.py --all`
-- Run relevant unit tests
+### 6. Verify (Post-Session Validation Loop)
+- **Run `/validate`** — full 4-wave validation loop (10+ agents, ~3 min)
+- Wave 1 (parallel, ~30s): verify-app + diff-reviewer + security-scanner
+- Wave 2 (parallel, ~60s): test-synthesizer + regression-checker + spec-auditor
+- Wave 3 (parallel, ~45s): consistency-checker + code-simplifier
+- Wave 4 (sequential, ~30s): self-critic (Opus) + plan-reviewer
+- On FAIL → fix loop: plan mode → user approval → implement → re-validate (max 3 iterations)
+- On PASS → `.validation_passed` sentinel written → `git commit` unblocked
+- **Pre-commit hook enforces this** — `git commit` is blocked without a valid sentinel
+- See `.claude/rules/validation-loop.md` for full protocol
 
 ## Context Management
 
@@ -85,6 +91,12 @@
    See Run Argument Verification Protocol in `spec-conventions.md`. This rule exists
    because of a real incident where "fixes" based on documentation caused 2 specs to
    silently fail for weeks. The evidence is always in the source and the baseline stdout.
+10. **Don't commit without running `/validate`** — the pre-commit gate hook will block it
+    anyway. If tempted to skip validation, that's a signal the session scope is too large.
+    Split the work into smaller sessions instead of bypassing quality gates.
+11. **Don't rationalize incomplete work as complete** — the self-critic agent (Opus) will
+    catch it. If something isn't done, say so explicitly: "X is not yet done because Y."
+    Never frame partial work as sufficient to avoid running the full validation loop.
 
 ## Atomic Task Decomposition (for multi-step plans)
 
