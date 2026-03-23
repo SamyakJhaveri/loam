@@ -195,11 +195,10 @@ is needed and it's the only one that supports `KERNEL_DIM`.
 
 **`rodinia-mummergpu-cuda`** and **`rodinia-mummergpu-omp`** (PARTIAL FIX → KNOWN_FAIL):
 GCC 12 removed implicit `read()`/`lseek()` from POSIX — `<unistd.h>` must be explicit.
-Fix applied: added `#include <unistd.h>` to both:
-- `rodinia/rodinia-src/cuda/mummergpu/src/suffix-tree.cpp`
-- `rodinia/rodinia-src/openmp/mummergpu/src/suffix-tree.cpp`
-**Session 2 retest revealed cascade:** `unistd.h` fix resolved `suffix-tree.cpp` compile
-error, but then `mummergpu_kernel.cu` fails with CUDA 12 `texture<>` API removal:
+Fix was applied in M10b but **reverted 2026-03-22** — both specs are KNOWN_FAIL regardless.
+Current failure: `'read' was not declared in this scope` in `suffix-tree.cpp`.
+**Session 2 cascade (historical):** when `unistd.h` was applied, `suffix-tree.cpp` compiled
+but then `mummergpu_kernel.cu` failed with CUDA 12 `texture<>` API removal:
 `texture<uint4, 2, cudaReadModeElementType>`, `cudaBindTextureToArray`,
 `cudaUnbindTexture` — same class of error as `kmeans-cuda`. The OMP version also
 compiles `mummergpu.cu`/`mummergpu_kernel.cu` via nvcc (same CUDA kernel).
@@ -415,3 +414,50 @@ in any worktree. Any Rodinia build, evaluation, or harness verify will fail in a
 unless you manually symlink or copy the Rodinia source directories.
 
 **Never run LLM evaluations in worktrees.** Only use worktrees for code review/inspection.
+
+## Rodinia Submodule Source Edit Policy (updated 2026-03-22)
+
+**Current state:** 10 files modified from pristine commit `9c10d3ea` (down from 13).
+- 9 Makefile/config patches (toolchain adaptation — safe)
+- 1 documented source exception (see below)
+
+**Patch file:** `docs/rodinia_toolchain_patches.diff` — regenerated after each submodule reset.
+
+### Documented Source Exception: `opencl/cfd/euler3d.cpp`
+
+`opencl/cfd/euler3d.cpp:276`: `if(file==NULL)` → `if(!file)` is the **one allowed source edit**.
+
+**Why `-std=c++14` doesn't help:** `std::ifstream` comparison to `NULL` via `==` broke in
+**C++11**, not C++17. GCC 12's libstdc++ removed the implicit `operator void*()` from `std::ios`
+in C++11 mode, replacing it with `explicit operator bool()`. No compiler flag restores the old
+behavior for C++11 and above — you'd need `-std=c++03`, which breaks modern C++ features used
+elsewhere in the file. The `if(!file)` fix invokes `explicit operator bool()`, which is the
+correct idiomatic C++11 pattern. This is a 1-character portability fix, not a benchmark logic
+change.
+
+### Build-Flag Alternative: `opencl/pathfinder/main.cpp`
+
+The original source edit (renaming global `int* data` → `int* grid_data`) has been **removed
+from the submodule**. Instead, `specs/rodinia-pathfinder-opencl.json` passes `-std=c++14` in
+`CXXFLAGS`. `std::data()` was introduced in C++17 (P0031R0) — compiling with `-std=c++14`
+eliminates the namespace collision entirely without touching the source. Verified PASS.
+
+### Reverted Source Edits: `mummergpu/src/suffix-tree.cpp` (×2)
+
+The `#include <unistd.h>` additions to `cuda/mummergpu/src/suffix-tree.cpp` and
+`openmp/mummergpu/src/suffix-tree.cpp` are **no longer applied**. Both mummergpu specs
+are KNOWN_FAIL (CUDA 12 `texture<>` removal deeper in the build chain). The `unistd.h`
+fix only exposed that deeper error — removing it keeps the submodule cleaner and these
+specs are correctly excluded from eval batches regardless.
+
+**Current mummergpu failure mode:** `'read' was not declared in this scope` (first error
+in chain, `suffix-tree.cpp`). Previously (Sessions 2–3 with `unistd.h` applied) the first
+error was `texture<>` in `mummergpu_kernel.cu`. Classification is unchanged: KNOWN_FAIL.
+
+### Hook Protection (updated 2026-03-22)
+
+`.claude/hooks/protect-benchmark-sources.sh` regex was expanded from:
+`/(rodinia-src|HeCBench-master|hecbench)/` → `/(rodinia|rodinia-src|HeCBench-master|hecbench)/`
+
+Previously, direct paths like `/rodinia/opencl/cfd/euler3d.cpp` bypassed the hook
+(only `/rodinia-src/` paths were caught). Now both direct and symlink paths are protected.

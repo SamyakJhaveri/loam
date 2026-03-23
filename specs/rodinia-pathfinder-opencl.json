@@ -49,7 +49,7 @@
         "working_directory": "opencl/pathfinder",
         "commands": {
             "configure": null,
-            "build": "make OPENCL_INC=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include OPENCL_LIB=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64 CXXFLAGS='-I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include -c -g -DCL_TARGET_OPENCL_VERSION=120'",
+            "build": "make OPENCL_INC=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include OPENCL_LIB=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64 CXXFLAGS='-I/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/include -c -g -std=c++14 -DCL_TARGET_OPENCL_VERSION=120'",
             "clean": "make clean"
         },
         "variables": {
