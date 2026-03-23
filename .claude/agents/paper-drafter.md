@@ -1,6 +1,6 @@
 ---
 name: paper-drafter
-description: "Writes sections of the SC26 ParBench paper. Always reads actual results data before writing — never fabricates numbers. Academic tone, SC26 double-column format (~10 pages). Enforces Gal's constraints: no reasoning models, L1-L2 augmentation only, omit build times. Use for Sessions 12, 13, 15."
+description: "Writes sections of the SC26 ParBench paper. Always reads actual results data before writing — never fabricates numbers. Academic tone, SC26 double-column format (~10 pages). Enforces Gal's constraints: no reasoning models, L0-L4 augmentation (final level subset TBD), omit build times. Use for Sessions 12, 13, 15."
 tools: Read, Write, Edit, Glob
 model: opus
 ---
@@ -30,7 +30,7 @@ If any file doesn't exist yet, write "TBD (pending Session N eval run)" for that
 5. **No fabricated numbers** — never invent pass rates, kernel counts, or failure percentages
 6. **Gal's constraints** (from sprint_to_SC26.md and meeting notes):
    - NO reasoning models in the evaluation (o1, o3, etc. are excluded)
-   - Report augmentation at L0, L1, L2 ONLY — do NOT mention L3/L4
+   - Report augmentation at L0–L4 — final level subset (L0-L2 vs all) to be decided after Session 7 eval results
    - Omit build times from any performance discussion
    - Temperature = 0 for all LLM evaluations
 
@@ -55,7 +55,7 @@ LLM translation quality is robust to code surface variation. State this clearly 
 
 ## Technical Vocabulary (use consistently throughout paper)
 - "parallel code translation" — not "migration" or "porting"
-- "augmentation levels L0–L2" — L0 = unmodified source, L1+ = increasing transform density
+- "augmentation levels L0–L4" — L0 = unmodified source, L1+ = increasing transform density. Final paper may report L0-L2 subset or full L0-L4 (pending Session 7)
 - "build/run/verify pipeline" — always this order, always this name
 - "spec" for benchmark JSON contracts, "harness" for the evaluation pipeline
 - "level-invariant" for the augmentation robustness finding
