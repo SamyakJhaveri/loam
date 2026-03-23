@@ -28,6 +28,7 @@ or via @-mention: `@agent-{name}`.
 | S7 | `eval-batcher` (background) | Steps 2-3 — L1/L2 augmented eval for both models |
 | S9 | `eval-batcher` (background) | Step 2 — omp-to-cuda for 16 eligible kernels × 2 models |
 | S10 | `eval-batcher` (background) | Step 1-5 — cuda-to-opencl for 17 kernels × 2 models |
+| S10b | `eval-batcher` (background) | Steps 1-3 — opencl-to-cuda, opencl-to-omp, omp-to-opencl × 2 models |
 | S11 | `dashboard-refresher` | Steps 2-4 — regenerate JS data + fix stale HTML numbers |
 | S12-S15 | `paper-drafter` | Paper section writing with actual data from results files |
 | Any | `plan-reviewer` | Before any architecture change — adversarial pre-implementation review |
@@ -80,8 +81,81 @@ Before starting any session, resolve these cross-cutting blockers. Each entry sh
 7. **M6 timing metrics** — Designed but not implemented; no session prompt exists
    - Decision: Correctness-only paper, or add wall-clock timing as proxy for speedup?
 
-8. **Week 2 tasks (OpenACC, OMP target, new suite)** — In sprint plan; no session prompts
-   - Decision: Are these in scope or descoped for SC26?
+8. **Translation direction scope** — Now documented in the Translation Direction Matrix below
+   - Directions 1-6 (non-omp_target): 16-78 eligible kernels each — in scope for paper
+   - Directions 7-10 (omp_target): 1 kernel each (XSBench only) — case study scope in S8
+   - OpenACC: DESCOPED — no openacc spec exists in any suite (XSBench has 4 APIs: cuda/omp/opencl/omp_target only)
+   - Decision NEEDED: Should Session 10b (3 new Rodinia directions) run BEFORE paper writing (S12-S13)?
+     Recommendation: yes — complete data produces stronger paper results.
+
+---
+
+## TRANSLATION DIRECTION MATRIX
+
+The eval pipeline (`run_eval_batch.py --direction SRC-to-TGT`) is **direction-agnostic** —
+any `SRC-to-TGT` string works if matching specs exist. No code changes needed for any direction.
+Eligible kernel counts exclude KNOWN_FAIL specs (as source or target).
+
+### Tier 1 — Primary Directions (Rodinia + HeCBench + XSBench)
+
+| # | Direction | Rodinia | HeCBench | XSBench | Total | Session | Status |
+|---|-----------|---------|----------|---------|-------|---------|--------|
+| 1 | `cuda-to-omp` | 17 | 60 | 1 | **78** | S2/S3/S7 | EVALUATED (L0, L1, L2) |
+| 2 | `omp-to-cuda` | 16 | 60 | 1 | **77** | S9 | TBD |
+
+> HeCBench has CUDA + OMP specs only (60 each) — it contributes to Tier 1 directions only.
+
+### Tier 2 — Cross-API Directions (Rodinia + XSBench only)
+
+| # | Direction | Rodinia | HeCBench | XSBench | Total | Session | Status |
+|---|-----------|---------|----------|---------|-------|---------|--------|
+| 3 | `cuda-to-opencl` | 18 | 0 | 1 | **19** | S10 | TBD |
+| 4 | `opencl-to-cuda` | 17 | 0 | 1 | **18** | S10b | NOT STARTED |
+| 5 | `opencl-to-omp` | 15 | 0 | 1 | **16** | S10b | NOT STARTED |
+| 6 | `omp-to-opencl` | 15 | 0 | 1 | **16** | S10b | NOT STARTED |
+
+> HeCBench has no OpenCL specs — Tier 2 directions are Rodinia + XSBench only.
+
+### Tier 3 — OMP-Target Directions (XSBench only — case study)
+
+| # | Direction | Rodinia | HeCBench | XSBench | Total | Session | Status |
+|---|-----------|---------|----------|---------|-------|---------|--------|
+| 7 | `cuda-to-omp_target` | 0 | 0 | 1 | **1** | S8 | TBD |
+| 8 | `omp_target-to-cuda` | 0 | 0 | 1 | **1** | S8 | TBD |
+| 9 | `omp_target-to-opencl` | 0 | 0 | 1 | **1** | S8 | TBD |
+| 10 | `opencl-to-omp_target` | 0 | 0 | 1 | **1** | S8 | TBD |
+
+> No Rodinia or HeCBench omp_target specs exist. Tier 3 = XSBench case studies only (N=1 kernel per direction).
+
+### KNOWN_FAIL Exclusions (per direction)
+
+| Spec | API | Excluded from (as target) | Excluded from (as source) |
+|------|-----|---------------------------|---------------------------|
+| `rodinia-kmeans-cuda` | cuda | omp-to-cuda, opencl-to-cuda | — |
+| `rodinia-mummergpu-cuda` | cuda | omp-to-cuda, opencl-to-cuda | — |
+| `rodinia-hybridsort-cuda` | cuda | omp-to-cuda, opencl-to-cuda | — |
+| `rodinia-mummergpu-omp` | omp | cuda-to-omp, opencl-to-omp | omp-to-cuda, omp-to-opencl |
+| `rodinia-kmeans-opencl` | opencl | cuda-to-opencl, omp-to-opencl | opencl-to-cuda, opencl-to-omp |
+| `rodinia-nn-opencl` | opencl | cuda-to-opencl, omp-to-opencl | opencl-to-cuda, opencl-to-omp |
+
+### Pipeline Command
+
+```bash
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia \
+  --direction SRC-to-TGT \
+  --models azure-gpt-4.1 MODEL_ID \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --max-retries 2 --resume -v
+```
+
+Replace `SRC-to-TGT` with any of the 10 directions above. For Tier 3, use `--suite xsbench`.
+
+### Paper Scope Recommendation
+
+- **Tier 1-2 (directions 1-6):** Quantitative results — sufficient kernel counts for statistical claims
+- **Tier 3 (directions 7-10):** Case study — frame as "XSBench multi-API case study" in §6.6 and §4
+- **OpenACC:** DESCOPED — no openacc spec exists in any suite
 
 ---
 
@@ -1153,6 +1227,11 @@ python3 scripts/augmentation/augment_verify.py specs/xsbench-xsbench-omp.json \
 
 ## SESSION 6 — Paper Outline (M4 — CRITICAL)
 
+> **STATUS: COMPLETE** — Commit `257b992` (2026-03-23). Paper outline created at
+> `docs/paper_outline.md`. Contains: 8 sections, 10-page target, figure/table inventory
+> (F1–F6, T1–T9), Gal constraint checklist (13 items), numbered contributions (3),
+> paper-drafter agent compatibility notes. Use this as the roadmap for Sessions 12–15.
+
 ```
 ultrathink
 
@@ -1454,25 +1533,35 @@ EXTERNAL DEPS:
 - [ ] API keys for both models
 
 # Session Goal
-Run LLM translation evaluation on XSBench across all API pairs for the 3 primary
-translation directions: cuda-to-omp, omp-to-cuda, cuda-to-opencl. If OpenACC and
-OMP target variants are verified, also run cuda-to-openacc and cuda-to-omp_target.
+Run LLM translation evaluation on XSBench across ALL viable API direction pairs.
+XSBench has 4 verified PASS specs (cuda, omp, opencl, omp_target) — yielding 12 direction
+pairs total. This session covers Tier 1-2 XSBench pairs AND all Tier 3 (omp_target) pairs.
 
 # Why This Matters
-XSBench provides expert-written implementations in 5 APIs — perfect for evaluating
-LLM translation across diverse parallel programming models. This is the "multi-API
-story" for the SC26 paper.
+XSBench provides expert-written implementations in 4 parallel APIs — the only suite with
+omp_target coverage. The Tier 3 (omp_target) results are XSBench-only case studies (N=1
+per direction). Tier 1-2 XSBench results complement the larger Rodinia dataset.
+This is the "multi-API story" for §6.6 of the SC26 paper.
+
+NOTE: XSBench has NO openacc spec. Only 4 APIs: cuda, omp, opencl, omp_target.
+The sprint plan reference to "openacc" was incorrect. Do not attempt cuda-to-openacc.
 
 # Context
-- XSBench specs: specs/xsbench-xsbench-{cuda,omp,opencl,omp_target,openacc}.json
-- Only run directions where BOTH source and target specs verified PASS in Session 5
-- Translation pairs to attempt:
-  - cuda-to-omp (if both PASS)
-  - omp-to-cuda (if both PASS)
-  - cuda-to-opencl (if both PASS)
-  - cuda-to-omp_target (if both PASS)
-  - cuda-to-openacc (if both PASS)
-  - And potentially others based on what passed
+- XSBench specs (4, all verified PASS in Session 5):
+    specs/xsbench-xsbench-cuda.json       ← cuda source, PASS
+    specs/xsbench-xsbench-omp.json        ← omp target, PASS
+    specs/xsbench-xsbench-opencl.json     ← opencl target, PASS
+    specs/xsbench-xsbench-omp_target.json ← omp_target (nvc), PASS
+- All 12 direction pairs are viable (all 4 specs verified PASS)
+- Translation pairs to run (grouped by tier):
+  Tier 1 (same as Rodinia primary):
+    cuda-to-omp, omp-to-cuda
+  Tier 2 (cross-API, same as Rodinia cross-API):
+    cuda-to-opencl, opencl-to-cuda, opencl-to-omp, omp-to-opencl
+  Tier 3 (omp_target — XSBench only, case study):
+    cuda-to-omp_target, omp_target-to-cuda, omp_target-to-opencl, opencl-to-omp_target
+- For paper: Tier 3 results described as "N=1 case study" not quantitative evidence
+- omp_target uses nvc compiler (NVIDIA HPC SDK 24.3 -mp=gpu -gpu=cc89) — configured in spec
 
 # Prerequisites
 - Session 5 complete (XSBench variants smoke tested)
@@ -1486,24 +1575,38 @@ cd /home/samyak/Desktop/parbench_sam
 # Read each XSBench spec's baseline_results to check which passed in Session 5
 # Only run pairs where both source and target specs are verified PASS
 
-# Step 3: Run evaluation for each viable direction
-# For each direction, run both models:
-#
-# Example for cuda-to-omp:
+# Step 3: Run evaluation for Tier 1 + Tier 2 directions (standard cross-API)
+# Run both models for each direction:
+
+# Tier 1:
 python3 scripts/evaluation/run_eval_batch.py \
-  --suite xsbench \
-  --direction cuda-to-omp \
+  --suite xsbench --direction cuda-to-omp \
   --models azure-gpt-4.1 MODEL_ID \
-  --project-root /home/samyak/Desktop/parbench_sam \
-  --max-retries 2 \
-  -v
+  --project-root /home/samyak/Desktop/parbench_sam --max-retries 2 -v
 
-# Repeat for omp-to-cuda, cuda-to-opencl, and any stretch directions
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite xsbench --direction omp-to-cuda \
+  --models azure-gpt-4.1 MODEL_ID \
+  --project-root /home/samyak/Desktop/parbench_sam --max-retries 2 -v
 
-# Step 4: For stretch directions (cuda-to-openacc, cuda-to-omp_target):
-# These use the eval pipeline's standard flow — the LLM translates CUDA source to
-# the target API, then the harness builds/runs/verifies using the target spec.
-# If the target spec's build environment is correctly configured, it should work.
+# Tier 2:
+for DIR in cuda-to-opencl opencl-to-cuda opencl-to-omp omp-to-opencl; do
+  python3 scripts/evaluation/run_eval_batch.py \
+    --suite xsbench --direction $DIR \
+    --models azure-gpt-4.1 MODEL_ID \
+    --project-root /home/samyak/Desktop/parbench_sam --max-retries 2 -v
+done
+
+# Step 4: Run Tier 3 (omp_target) directions — case study
+# These use nvc for build/run/verify. The LLM writes GPU-offload pragma code.
+for DIR in cuda-to-omp_target omp_target-to-cuda omp_target-to-opencl opencl-to-omp_target; do
+  python3 scripts/evaluation/run_eval_batch.py \
+    --suite xsbench --direction $DIR \
+    --models azure-gpt-4.1 MODEL_ID \
+    --project-root /home/samyak/Desktop/parbench_sam --max-retries 2 -v
+done
+# NOTE: omp_target uses nvc for compilation. If nvc fails, flag result as INFRA_ERROR.
+# Do NOT use gcc-offload — it is not installed.
 
 # Step 5: Regenerate analysis
 python3 scripts/evaluation/analyze_eval.py \
@@ -1562,8 +1665,11 @@ EXTERNAL DEPS:
 Run omp-to-cuda evaluation for all eligible Rodinia kernels with both models at L0.
 
 # Why This Matters
-The paper targets 3 translation directions. omp-to-cuda is the reverse of the primary
-direction — testing whether LLMs can add GPU parallelism (harder than removing it).
+The paper targets 6 translation directions (see Translation Direction Matrix above).
+This session covers direction #2 (omp-to-cuda). Direction #1 (cuda-to-omp) is Sessions 2/3/7.
+Directions #3-6 (cross-API) are Sessions 10 and 10b. Tier 3 (omp_target) is Session 8.
+omp-to-cuda is the reverse of the primary direction — testing whether LLMs can ADD GPU
+parallelism (harder than removing it). Expected to have lower pass rates than cuda-to-omp.
 
 # IMPORTANT: Kernel-centric translation is the ONLY mode (Sessions 1.5 + 1.6 complete).
 # For omp-to-cuda, the source is OMP (typically 1 kernel file in translation_targets),
@@ -1655,9 +1761,11 @@ EXTERNAL DEPS:
 Run cuda-to-opencl evaluation for eligible Rodinia kernels with both models at L0.
 
 # Why This Matters
-Third translation direction for the paper. cuda-to-opencl tests cross-vendor API
-translation (NVIDIA-specific CUDA → vendor-neutral OpenCL). After Session 1.6, the LLM
-produces ONLY the .cl kernel file(s); the host .cpp driver is read-only context.
+Direction #3 of 6 in the Translation Direction Matrix (see above). cuda-to-opencl tests
+cross-vendor API translation (NVIDIA-specific CUDA → vendor-neutral OpenCL). After Session 1.6,
+the LLM produces ONLY the .cl kernel file(s); the host .cpp driver is read-only context.
+Session 10b (after this session) covers the remaining 3 Rodinia cross-API directions:
+opencl-to-cuda (#4), opencl-to-omp (#5), omp-to-opencl (#6).
 
 # IMPORTANT (updated Session 1.6): OpenCL targets have translation_targets = .cl files ONLY.
 # The host .cpp driver is now Target Infrastructure Context (read-only, not produced by LLM).
@@ -1729,6 +1837,140 @@ python3 scripts/evaluation/analyze_eval.py \
 #   this structural complexity predicts [X% lower] pass rates vs. OMP translation"
 # Commit and push.
 # Commit: "Add cuda-to-opencl eval results for Rodinia (18 kernels × 2 models, kernel-centric)"
+```
+
+---
+
+## SESSION 10b — Remaining Rodinia Cross-API Directions (#4–6)
+
+```
+ultrathink
+
+# >>> FILL IN BEFORE PASTING: Replace MODEL_ID with: _____ (from M7/M8 decision) <<<
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Provide the MODEL_ID for the second model
+- [ ] Session 10 (cuda-to-opencl) must be complete before this session
+- [ ] For opencl-to-omp and omp-to-opencl: OpenCL source spec translation_targets
+      are .cl files (Family 1 rule). OMP target translation_targets are curated files
+      (Family 2 rule). Confirm this is understood.
+- [ ] Minimum acceptable pass rate for including opencl-to-cuda in the paper?
+      Note: opencl-to-cuda tests the reverse of cuda-to-opencl — LLM must produce CUDA
+      from vendor-neutral OpenCL. Expected to be harder than cuda-to-opencl.
+- [ ] Should L1/L2 augmentation also be run for these 3 directions?
+      Adds 3 × 2 × ~16 × 2 = ~192 API calls. Recommendation: L0 only to match Sessions 9/10.
+
+EXTERNAL DEPS:
+- [x] Sessions 1 + 1.5 + 1.6 must be complete — DONE
+- [ ] Session 10 (cuda-to-opencl) must be complete (establishes opencl baseline)
+- [ ] API keys for both models
+
+# Session Goal
+Run the 3 remaining Rodinia-viable translation directions: opencl-to-cuda, opencl-to-omp,
+and omp-to-opencl. These complete the 6-direction set for the SC26 paper (directions #4–6
+in the Translation Direction Matrix).
+
+# Why This Matters
+The paper claims results for 6 translation directions (3 APIs × 2 directions each for
+non-symmetric pairs). Sessions 9 and 10 cover #2 (omp-to-cuda) and #3 (cuda-to-opencl).
+This session covers #4–6, completing the full bidirectional API translation matrix.
+Scientific questions per direction:
+  - opencl-to-cuda (#4): Can LLMs translate FROM vendor-neutral TO NVIDIA-specific?
+    Reverse of Session 10. Tests whether training data asymmetry (more CUDA than OpenCL)
+    helps or hurts the LLM.
+  - opencl-to-omp (#5): Cross-paradigm — GPU device kernel → CPU threaded code.
+    The LLM must de-parallelize across thread dimensions and map to CPU fork-join model.
+  - omp-to-opencl (#6): CPU threaded → GPU device kernel. Hardest direction — must
+    decompose a monolithic parallel region into separate host + device structure.
+
+# IMPORTANT: Translation target rules (Session 1.6 family rules)
+# - opencl-to-cuda: SOURCE = .cl file (Family 1 source), TARGET = CUDA files = prompt_payload (Family 3)
+# - opencl-to-omp: SOURCE = .cl file (Family 1 source), TARGET = OMP curated files (Family 2)
+# - omp-to-opencl: SOURCE = OMP curated files (Family 2), TARGET = .cl file only (Family 1)
+# The pipeline handles all of this automatically via translation_targets in each spec.
+
+# Eligible kernels per direction (after KNOWN_FAIL exclusions):
+
+# opencl-to-cuda (16 Rodinia):
+# All 20 cuda-opencl overlapping kernels, minus:
+#   - kmeans: cuda target KNOWN_FAIL + opencl source KNOWN_FAIL
+#   - mummergpu: cuda target KNOWN_FAIL (no opencl spec for mummergpu anyway)
+#   - hybridsort: cuda target KNOWN_FAIL
+#   - nn: opencl source KNOWN_FAIL
+# = 17 eligible: backprop, bfs, bptree, cfd, dwt2d, gaussian, heartwall, hotspot,
+#   hotspot3d, lavamd, lud, myocyte, nw, particlefilter, pathfinder, srad, streamcluster
+OPENCL_TO_CUDA_KERNELS="backprop bfs bptree cfd dwt2d gaussian heartwall hotspot hotspot3d lavamd lud myocyte nw particlefilter pathfinder srad streamcluster"
+
+# opencl-to-omp (15 Rodinia):
+# All omp-opencl overlapping kernels, minus:
+#   - kmeans: opencl source KNOWN_FAIL
+#   - nn: opencl source KNOWN_FAIL
+# = 15 eligible: backprop, bfs, bptree, cfd, heartwall, hotspot, hotspot3d, lavamd, lud,
+#   myocyte, nw, particlefilter, pathfinder, srad, streamcluster
+OPENCL_TO_OMP_KERNELS="backprop bfs bptree cfd heartwall hotspot hotspot3d lavamd lud myocyte nw particlefilter pathfinder srad streamcluster"
+
+# omp-to-opencl (15 Rodinia):
+# All omp-opencl overlapping kernels, minus:
+#   - kmeans: opencl target KNOWN_FAIL
+#   - nn: opencl target KNOWN_FAIL
+# = 15 eligible (same set as opencl-to-omp above, symmetric exclusion)
+OMP_TO_OPENCL_KERNELS="backprop bfs bptree cfd heartwall hotspot hotspot3d lavamd lud myocyte nw particlefilter pathfinder srad streamcluster"
+
+# Prerequisites
+source /home/samyak/Desktop/parbench_sam/env_parbench/activate
+cd /home/samyak/Desktop/parbench_sam
+
+# Step 1: Run opencl-to-cuda (direction #4)
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia \
+  --direction opencl-to-cuda \
+  --models azure-gpt-4.1 MODEL_ID \
+  --kernels $OPENCL_TO_CUDA_KERNELS \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --max-retries 2 --resume -v
+
+# Step 2: Run opencl-to-omp (direction #5)
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia \
+  --direction opencl-to-omp \
+  --models azure-gpt-4.1 MODEL_ID \
+  --kernels $OPENCL_TO_OMP_KERNELS \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --max-retries 2 --resume -v
+
+# Step 3: Run omp-to-opencl (direction #6)
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia \
+  --direction omp-to-opencl \
+  --models azure-gpt-4.1 MODEL_ID \
+  --kernels $OMP_TO_OPENCL_KERNELS \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --max-retries 2 --resume -v
+
+# Step 4: Regenerate analysis with all 6 directions
+python3 scripts/evaluation/analyze_eval.py \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --write-dashboard \
+  --show-gaps \
+  --expected-models azure-gpt-4.1 MODEL_ID \
+  --expected-directions cuda-to-omp omp-to-cuda cuda-to-opencl opencl-to-cuda opencl-to-omp omp-to-opencl \
+  --expected-levels 0
+
+# Step 5: Verification — write a small test script that:
+# 1. Counts results per direction per model (expect 16/15/15 tasks each)
+# 2. Builds a 6-direction × 2-model pass rate matrix
+# 3. Identifies the "hardest direction" (lowest pass rate)
+# 4. Checks symmetry: does cuda-to-opencl ≈ opencl-to-cuda? (interesting finding)
+# 5. Checks if omp-to-opencl (hardest: CPU→GPU) has the lowest pass rate
+# DELETE the test script after verification.
+
+# Step 6: Show me the full 6-direction × 2-model pass rate matrix
+# Key paper finding: "Cross-API translation difficulty ordering"
+
+# Step 7: Git commit and push
+# Commit: "Add remaining 3 Rodinia cross-API eval directions (#4-6): opencl-to-cuda, opencl-to-omp, omp-to-opencl (15-16 kernels × 2 models, kernel-centric)"
 ```
 
 ---
@@ -1883,8 +2125,8 @@ CLARIFICATIONS:
       strictly report only L0/L1/L2 per Gal's instruction?
 
 EXTERNAL DEPS:
-- [ ] Session 6 (paper outline) must be complete — docs/paper_outline.md is
-      the roadmap for this session. It does not exist yet.
+- [x] Session 6 (paper outline) COMPLETE — docs/paper_outline.md exists (commit 257b992).
+      Read it fully at the start of this session — it is the roadmap.
 - [ ] Evaluation data from Session 2+ is helpful but not strictly required
       (paper-drafter can use "TBD" placeholders per its rules)
 
@@ -1909,11 +2151,39 @@ Framework, Benchmark Curation, and Evaluation Methodology.
 # - Include figure/table placeholders: [FIGURE: description] or [TABLE: description]
 # - Keep to target page counts from outline
 # - Gal's decisions: NO reasoning models, conservative augmentation (L1-L2), omit build times
+# - Technical vocabulary: "parallel code translation" (not "migration"), "spec", "harness",
+#   "level-invariant", BUILD_FAIL/RUN_FAIL/VERIFY_FAIL (always this capitalization)
 
-# Step 1: Read the paper outline and all referenced docs
-# Step 2: Write to docs/paper_draft.md
-# Step 3: Show me the draft for review
-# Step 4: Git commit and push
+# PAPER-DRAFTER AGENT USAGE (Opus model):
+# Invoke for the actual writing: "Use the paper-drafter agent to write §1 Introduction"
+# The agent MUST pre-read these files before writing any section:
+#   1. docs/paper_outline.md          ← section structure, claims, page targets (ROADMAP)
+#   2. results/evaluation/eval_summary.md      ← actual pass rates and failure counts
+#   3. results/augmentation/retest_post_session2.md  ← 54/60 PASS level-invariance
+#   4. docs/sprint_to_SC26.md         ← meeting decisions and Gal's constraints
+#   5. meeting_notes/*.md             ← all advisor decisions
+# Agent writing rules (non-negotiable — see .claude/agents/paper-drafter.md):
+#   1. Data-backed claims only — cite specific numbers from results files, or write TBD
+#   2. \cite{placeholder} for all references
+#   3. [FIGURE: description] and [TABLE: description] for visual placeholders
+#   4. No fabricated numbers — if data doesn't exist, write "TBD (pending Session N)"
+#   5. Gal constraints: no reasoning models, L0-L4 augmentation, omit build times, temp=0
+# Page targets (SC26 double-column):
+#   §1 Introduction: 1.5p | §2 Related Work: 1.0p | §3 Framework: 2.0p
+#   §4 Benchmark Curation: 1.0p | §5 Evaluation Methodology: 1.0p
+# Core claims the agent MUST support with actual data:
+#   - GPT-4.1: 52.9% PASS (cuda-to-omp L0) — from eval_summary.md
+#   - Llama-3.3-70B: 29.4% PASS — from eval_summary.md
+#   - 54/60 PASS at L1–L4 (level-invariant) — from augmentation results
+#   - BUILD_FAIL dominates (~70% of failures) — from eval_summary.md
+#   - 6 translation directions across 3 APIs — from Translation Direction Matrix
+# Output file: docs/paper_draft.md (agent appends if exists, creates if not)
+
+# Step 1: Read docs/paper_outline.md fully (the roadmap for this entire writing session)
+# Step 2: Read results/evaluation/eval_summary.md for all current pass rates
+# Step 3: Invoke paper-drafter agent for each section (§1–§5) sequentially
+# Step 4: Review draft end-to-end, verify data citations are accurate
+# Step 5: Git commit and push
 # Message: "SC26 paper draft: §1-§5 (intro, related work, framework, curation, methodology)"
 ```
 
@@ -1974,11 +2244,30 @@ Write the data-driven sections of the SC26 paper: Results, Discussion, and Concl
 #   - Threats to validity: temperature=0, single seed, limited models
 # - §8 Conclusion: 3-4 sentences summarizing contributions + 2-3 future work items
 
-# Step 1: Read eval_summary.md and augmentation results for exact numbers
-# Step 2: Append §6-§8 to docs/paper_draft.md
-# Step 3: Write abstract (now that all sections exist)
-# Step 4: Show me complete draft
-# Step 5: Git commit and push
+# PAPER-DRAFTER AGENT USAGE (Opus model — same as Session 12):
+# Invoke: "Use the paper-drafter agent to write §6 Results"
+# For §6–§8, the agent needs ALL Session 12 pre-reads PLUS:
+#   6. docs/paper_draft.md            ← §1-§5 from Session 12 (maintain consistency)
+#   7. results/evaluation/            ← ALL direction results (all 6+ directions)
+#   8. docs/paper_outline.md §6 Figure & Table Inventory (F1–F6, T1–T9 with data sources)
+# §6 Results structure (from paper_outline.md):
+#   6.1 Overall Pass Rates | 6.2 Failure Taxonomy | 6.3 Per-Kernel Analysis
+#   6.4 Self-Repair Effectiveness | 6.5 Augmentation Robustness | 6.6 Cross-Direction Results
+# Figures referenced in §6 (use paper_outline.md Figure inventory for exact specs):
+#   F2: Kernel × Model heatmap (cuda-to-omp L0)
+#   F3: Failure taxonomy stacked bar (BUILD_FAIL / RUN_FAIL / VERIFY_FAIL / EXTRACTION_FAIL)
+#   F4: Augmentation robustness L0 vs L1 vs L2 (TBD until Session 7 complete)
+#   F5: Cross-direction comparison (TBD until Sessions 9/10/10b complete)
+#   F6: XSBench multi-API results (TBD until Session 8 complete)
+# If direction data is missing: write "TBD (pending Session N eval run)" — NEVER fabricate.
+# Output: APPEND to docs/paper_draft.md (do not overwrite §1-§5)
+
+# Step 1: Read docs/paper_outline.md §6–§8 structure and Figure inventory
+# Step 2: Read ALL available eval results (eval_summary.md + per-direction files)
+# Step 3: Invoke paper-drafter agent for §6 Results, §7 Discussion, §8 Conclusion
+# Step 4: Invoke paper-drafter agent to write Abstract (now all sections exist)
+# Step 5: Review complete draft end-to-end, verify all data citations
+# Step 6: Git commit and push
 # Message: "SC26 paper draft: §6-§8 (results, discussion, conclusion) + abstract"
 ```
 
@@ -2020,6 +2309,8 @@ used in both the paper and the dashboard.
 # Context
 - Design spec: visualizations/DESIGN.md (Okabe-Ito palette, Chart.js, academic aesthetic)
 - Paper draft: docs/paper_draft.md (check [FIGURE:] and [TABLE:] placeholders)
+- Paper outline: docs/paper_outline.md → "Figure & Table Inventory" section (F1–F6 specs,
+  data sources, and AVAILABLE/TBD status for each figure and table)
 - Eval data: results/evaluation/eval_summary.json
 - Augmentation data: results/augmentation/retest_post_session2.json
 
@@ -2075,15 +2366,30 @@ EXTERNAL DEPS:
 # Session Goal
 Review the complete paper draft for consistency, accuracy, and SC26 readiness.
 
+# AGENT USAGE:
+# Use the paper-drafter agent (Opus) for data accuracy review:
+#   "Use the paper-drafter agent to review docs/paper_draft.md for data accuracy"
+# Use the self-critic agent for adversarial review:
+#   "Use the self-critic agent to review docs/paper_draft.md for rationalization patterns"
+# Cross-check docs/paper_outline.md against the draft to verify:
+#   - All 8 sections present and at correct page counts
+#   - All 6 figures (F1-F6) referenced with correct [FIGURE:] placeholders
+#   - All 9 tables (T1-T9) present with correct [TABLE:] placeholders
+#   - All 10 translation directions from the Direction Matrix are covered where relevant
+#   - Gal constraint checklist (13 items in paper_outline.md) fully satisfied
+
 # Steps:
 # 1. Read docs/paper_draft.md end-to-end
-# 2. Cross-check ALL numbers against results/evaluation/eval_summary.json
-# 3. Verify all figure/table references are consistent
-# 4. Check for claims not backed by data
-# 5. Ensure related work positioning is accurate
-# 6. Fix any inconsistencies, typos, or unclear passages
-# 7. Verify page count is within SC26 limits (~10 pages double-column)
-# 8. Commit and push final reviewed draft
+# 2. Read docs/paper_outline.md (cross-check sections, figures, tables, Gal checklist)
+# 3. Cross-check ALL numbers against results/evaluation/eval_summary.json
+# 4. Invoke paper-drafter agent for data accuracy review
+# 5. Invoke self-critic agent for adversarial review of claims and rationalization
+# 6. Verify all figure/table references are consistent with paper_outline.md inventory
+# 7. Check for claims not backed by data
+# 8. Ensure related work positioning is accurate (3-paper matrix: ParEval, ParEval-Repo, ParBench)
+# 9. Fix any inconsistencies, typos, or unclear passages
+# 10. Verify page count is within SC26 limits (~10 pages double-column)
+# 11. Commit and push final reviewed draft
 # Message: "SC26 paper: final review and polish"
 ```
 
@@ -2268,7 +2574,7 @@ python3 scripts/evaluation/analyze_eval.py \
   --project-root /home/samyak/Desktop/parbench_sam \
   --show-gaps \
   --expected-models azure-gpt-4.1 MODEL_ID \
-  --expected-directions cuda-to-omp omp-to-cuda cuda-to-opencl \
+  --expected-directions cuda-to-omp omp-to-cuda cuda-to-opencl opencl-to-cuda opencl-to-omp omp-to-opencl \
   --expected-levels 0 1 2
 
 # 4. Git status — should be clean after session commit
