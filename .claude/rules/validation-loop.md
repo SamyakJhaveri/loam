@@ -1,6 +1,14 @@
+---
+paths:
+  - ".claude/hooks/**"
+  - ".claude/skills/validate/**"
+  - ".claude/agents/verify-app.md"
+  - ".claude/agents/self-critic.md"
+---
+
 # Post-Session Validation Loop
 
-> Auto-loaded on every task. Defines the validation protocol required before every commit.
+> Loads when working on validation hooks, skills, or agents.
 > Run `/validate` after implementation. Never commit without passing the validation loop.
 
 ## Quick Reference

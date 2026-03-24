@@ -105,8 +105,8 @@ analysis/           data/ (CSV, JSON surveys), reports/ (markdown)
 
 > Full details in `.claude/rules/known-issues.md`
 
-- **HeCBench missing:** 120 `source_dir` errors — pre-existing, ignore
-- **Augmentation bugs A/B/C:** BUILD_FAIL at levels 3-4
+- **HeCBench missing:** ~135 validation errors — pre-existing, ignore
+- **6 KNOWN_FAIL specs:** Exclude from eval batches (see known-issues.md)
 - **Git worktrees + submodules:** Never run evaluations in worktrees
 
 ## GitHub Pages
@@ -155,83 +155,15 @@ Waves: (1) verify-app + diff-reviewer + security-scanner → (2) test-synthesize
 
 ---
 
-## Frontend Theme & Design Standards
-
-> Full spec in `visualizations/DESIGN.md`. Reference it on every frontend task.
-
-### Aesthetic Direction
-"Clean, minimal, academic — like a Nature paper's online appendix."
-Light theme throughout. Data-dense but not cluttered. Professional enough for SC26 reviewers.
-
-### Design Decisions (locked)
-- **Theme:** Light — `#f9fafb` background, `#ffffff` card surfaces
-- **Fonts:** Inter (UI/labels) + JetBrains Mono (data values, code, hashes)
-- **Charts:** Chart.js v4 (CDN, no build step) — never fake HTML div-width bars
-- **Colors (charts):** Okabe-Ito colorblind-safe palette — see DESIGN.md for hex values
-- **Spacing:** 8pt grid — all padding/margin/gap are multiples of 4 or 8
-- **Mobile:** Desktop-only (research dashboard)
-- **Print:** @media print stylesheet on all public pages (for paper figures)
-
-### Frontend Generation Rules (anti-"AI slop")
-When writing or editing any HTML/CSS/JS in visualizations/:
-
-1. **Commit to the aesthetic** — dark backgrounds and purple gradients are banned. Use the DESIGN.md token values exactly.
-2. **Use design tokens** — never hardcode hex values in components; always use `var(--color-*)` tokens defined in the `:root` block.
-3. **Real charts only** — no `<div style="width:68%">` fake bars. Use Chart.js with proper axes, tooltips, and legends.
-4. **Typography matters** — use Inter with appropriate weights (400/500/600/700). Data values and kernel names use JetBrains Mono. Max 4 font sizes per page.
-5. **One shadow rule** — `box-shadow: 0 1px 3px hsl(220deg 40% 15% / 0.08), 0 4px 12px hsl(220deg 40% 15% / 0.08)` — layered, hue-matched, never `rgba(0,0,0,0.1)`.
-6. **Section comments** — wrap every major section in `<!-- === SECTION: Name === -->` / `<!-- === END SECTION === -->` for targeted editing.
-7. **Print stylesheet** — every public page must include `@media print { ... }` that hides nav, sets white bg, adjusts fonts for publication quality.
-8. **No Tailwind CDN** — plain CSS with custom properties is the correct choice for single-file HTML pages.
-9. **Accessibility** — ARIA roles on tabs (`role="tablist"`, `role="tab"`, `aria-selected`). No color-only status indication; add text labels.
-10. **Error handling** — if a page depends on an external .js data file, show a visible fallback message if it fails to load; never silently show empty tables.
-
----
-
 ## Claude Code Extensions
 
-### Rules (`.claude/rules/`) — routing table
+**Rules** (`.claude/rules/`, 10 files): Each file declares its own `paths:` loading conditions.
+Always-loaded: `workflow.md`, `mentoring.md`, `known-issues.md`.
+Conditional: `augmentation.md`, `evaluation.md`, `github-pages.md`, `spec-conventions.md`,
+`python.md`, `validation-loop.md`, `frontend-design.md`, `known-issues-archive.md`.
 
-| File | Loads when | Purpose |
-|------|-----------|---------|
-| `workflow.md` | Always | Session workflow, thinking levels, anti-patterns |
-| `mentoring.md` | Always | PhD mentoring directive, Insight blocks |
-| `known-issues.md` | Always | All known bugs, workarounds, smoke test results |
-| `augmentation.md` | `c_augmentation/**`, `scripts/augmentation/**` | Transform rules, --project-root, batch commands |
-| `evaluation.md` | `scripts/evaluation/**` | LLM eval pipeline, --suite flag, OMP arg patterns |
-| `github-pages.md` | `visualizations/**`, `.github/workflows/**` | Deployment, privacy, data refresh |
-| `spec-conventions.md` | `specs/**`, `manifest.jsonl` | Slugification, categories, validation |
-| `python.md` | `**/*.py` | Interpreter, testing, style conventions |
-| `validation-loop.md` | Always | Post-session validation protocol, wave structure, fix loop |
+**Agents** (`.claude/agents/`, 16 agents): Invoke by name. Each agent file documents its purpose.
+Key agents: `plan-reviewer`, `verify-app`, `explorer`, `eval-batcher`, `paper-drafter`, `self-critic`.
 
-### Agents (`.claude/agents/`) — invoke by name
-
-| Agent | When to use |
-|-------|-------------|
-| `plan-reviewer` | Before any non-trivial implementation — adversarial plan review (uses Opus) |
-| `verify-app` | Before committing — runs schema validation, unit tests, manifest check |
-| `code-simplifier` | Post-implementation cleanup — finds duplication, dead code, over-engineering |
-| `spec-auditor` | After generating new specs — validates slugs, categories, manifest entries |
-| `explorer` | Start of any new task — maps files, traces call chains, finds gotchas |
-| `rodinia-verifier` | After submodule resets or spec edits — runs all 54+6 harness checks |
-| `eval-batcher` | SC26 eval sessions (2, 3, 7, 9, 10) — runs LLM eval batches (background) |
-| `xsbench-explorer` | Session 4 only — extracts build/run/verify info from XSBench source |
-| `dashboard-refresher` | After eval runs or spec changes — regenerates JS data, fixes stale HTML |
-| `paper-drafter` | Sessions 12, 13, 15 — writes paper sections with actual data (uses Opus) |
-| `diff-reviewer` | Validation Wave 1 — git diff for regressions, partial implementations |
-| `security-scanner` | Validation Wave 1 — secrets, injection, OWASP in changed files |
-| `test-synthesizer` | Validation Wave 2 — writes+runs temp test programs for changed code |
-| `regression-checker` | Validation Wave 2 — before/after metrics comparison |
-| `consistency-checker` | Validation Wave 3 — docs vs code vs known-issues cross-check |
-| `self-critic` | Validation Wave 4 — Opus adversarial self-review for rationalization |
-
-### Skills (`.claude/skills/`) — invoke via `/skill-name`
-
-| Skill | Command | Purpose |
-|-------|---------|---------|
-| Feature Dev | `/feature-dev <name>` | Full feature lifecycle: explore → plan → implement → verify |
-| Fix Bug | `/fix-bug <desc>` | Bug fix lifecycle: reproduce → diagnose → fix → verify |
-| Review | `/review [files]` | Multi-agent code review (style, correctness, security, perf) |
-| Gen Spec | `/gen-spec <suite>` | Generate specs for a new benchmark suite |
-| Augment Test | `/augment-test <spec>` | Test augmentation transforms on a spec |
-| Validate | `/validate [quick\|full\|fix]` | Post-session validation: 10+ agents, 4 waves, pre-commit gate |
+**Skills** (`.claude/skills/`, 6 skills): `/feature-dev`, `/fix-bug`, `/review`, `/gen-spec`,
+`/augment-test`, `/validate`. Invoke via `/skill-name`.
