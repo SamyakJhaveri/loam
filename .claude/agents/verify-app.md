@@ -4,6 +4,7 @@ description: "Verifies ParBench project health after implementation changes: sch
 tools: Bash, Read, Glob
 model: sonnet
 permissionMode: dontAsk
+maxTurns: 15
 ---
 
 # Verification Agent

@@ -12,6 +12,11 @@
 # Exit codes:
 #   0 = always (this hook is advisory, never blocks)
 
+set -euo pipefail
+
+# Consume stdin (PostToolUse hooks receive JSON on stdin; prevent SIGPIPE)
+cat > /dev/null
+
 PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
 SENTINEL="$PROJECT_ROOT/.validation_passed"
 

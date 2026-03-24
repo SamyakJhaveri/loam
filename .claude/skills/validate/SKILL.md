@@ -30,7 +30,7 @@ echo "=== PRE-VALIDATION SNAPSHOT ==="
 echo "Changed files: $(git diff --name-only HEAD | wc -l)"
 git diff --name-only HEAD
 echo "Spec count: $(ls specs/*.json | wc -l)"
-echo "Unit tests: $(python3 -m pytest c_augmentation/test_transforms.py --collect-only -q 2>/dev/null | grep 'test session' -c || echo 'N/A')"
+echo "Unit tests: $(python3 -m pytest c_augmentation/test_transforms.py --collect-only -q 2>/dev/null | tail -1 || echo 'N/A')"
 ```
 
 Pass this snapshot as context to regression-checker.
@@ -146,17 +146,28 @@ Options:
 
 ### Completion: Write Sentinel
 
-After ALL waves pass:
+After ALL waves pass (or after Wave 1 for `/validate quick`):
+
+**IMPORTANT — set WAVES_RUN before running this block:**
+- `/validate` or `/validate full` → `WAVES_RUN=4` (commits unblocked)
+- `/validate quick` → `WAVES_RUN=1` (commits still blocked by pre-commit gate)
+- `/validate fix` → `WAVES_RUN=4` (all remaining waves re-ran)
 
 ```bash
 cd /home/samyak/Desktop/parbench_sam
 
-# Write sentinel with metadata
+# Set this based on which command variant was run (see note above):
+if [ "${VALIDATE_MODE:-full}" = "quick" ]; then
+  WAVES_RUN=1
+else
+  WAVES_RUN=4
+fi
+
 cat > .validation_passed << EOF
 timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 git_hash=$(git rev-parse HEAD 2>/dev/null || echo "none")
 changed_files=$(git diff --name-only HEAD | wc -l | tr -d ' ')
-waves_passed=4
+waves_passed=${WAVES_RUN}
 validated_by=validate-skill
 EOF
 

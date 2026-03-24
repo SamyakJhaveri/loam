@@ -3,6 +3,8 @@ name: self-critic
 description: "Opus-powered adversarial self-review. Examines git diff and changed files for rationalization patterns, incomplete work, unverified claims, and quality bar violations. Applies obra/superpowers verification-before-completion principle and Trail of Bits anti-rationalization patterns. Blocks commit if work quality is insufficient. Use in post-session validation Wave 4."
 tools: Bash, Read, Glob, Grep
 model: opus
+effort: max
+maxTurns: 20
 ---
 
 # Self-Critic Agent
@@ -65,9 +67,15 @@ Common rationalization patterns to detect:
 - "Works for the common case" in a comment — red flag for unhandled edge cases
 
 ```bash
-# Check if tests were actually run (look for test output evidence in temp files)
-# Check if schema validation was run
-ls /tmp/parbench_validate_* 2>/dev/null && echo "test-synthesizer ran" || echo "test-synthesizer may not have run"
+# Verify git diff still contains changes (sanity check — if empty, validation is running against nothing)
+CHANGED_COUNT=$(git diff --name-only HEAD | wc -l | tr -d ' ')
+STAGED_COUNT=$(git diff --cached --name-only | wc -l | tr -d ' ')
+echo "Files in diff: $CHANGED_COUNT unstaged, $STAGED_COUNT staged"
+if [ "$CHANGED_COUNT" -eq 0 ] && [ "$STAGED_COUNT" -eq 0 ]; then
+    echo "WARNING: No files in git diff — this session has no changes to validate"
+fi
+# Note: test-synthesizer (Wave 2) cleans up /tmp/parbench_validate_* on exit.
+# By Wave 4, those files are always gone. Do not check /tmp for evidence.
 ```
 
 ## Audit 3: Quality Bar Compliance (from CLAUDE.md)

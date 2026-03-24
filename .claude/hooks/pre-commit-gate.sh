@@ -22,6 +22,13 @@ set -euo pipefail
 PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
 SENTINEL="$PROJECT_ROOT/.validation_passed"
 
+# Detect OS once — reused in steps 4 and 5
+if [ "$(uname)" = "Linux" ]; then
+    IS_LINUX=1
+else
+    IS_LINUX=0
+fi
+
 # ── 1. Read and parse the hook event JSON ────────────────────────────────────
 INPUT=$(cat)
 
@@ -58,7 +65,7 @@ if [ ! -f "$SENTINEL" ]; then
 fi
 
 # ── 4. Check sentinel is not stale (< 30 minutes old) ────────────────────────
-if [ "$(uname)" = "Linux" ]; then
+if [ "$IS_LINUX" = "1" ]; then
     SENTINEL_MTIME=$(stat -c %Y "$SENTINEL" 2>/dev/null || echo "0")
 else
     # macOS
@@ -72,9 +79,25 @@ MAX_AGE=1800  # 30 minutes
 if [ "$AGE" -gt "$MAX_AGE" ]; then
     echo "" >&2
     echo "╔══════════════════════════════════════════════════════════════╗" >&2
-    echo "║  BLOCKED: Validation sentinel is stale (${AGE}s > ${MAX_AGE}s).     ║" >&2
+    echo "║  BLOCKED: Validation sentinel is stale.                     ║" >&2
+    echo "║  Age: ${AGE}s  Limit: ${MAX_AGE}s                                   ║" >&2
     echo "║                                                              ║" >&2
     echo "║  Re-run /validate — files may have changed since last run.  ║" >&2
+    echo "╚══════════════════════════════════════════════════════════════╝" >&2
+    echo "" >&2
+    exit 2
+fi
+
+# ── 4b. Check that full validation (all 4 waves) was run, not just quick ────────
+# Fail-open: if waves_passed field is missing, skip this check (backward compat).
+WAVES=$(grep '^waves_passed=' "$SENTINEL" 2>/dev/null | cut -d= -f2 | tr -d ' ')
+if [ -n "$WAVES" ] && [ "$WAVES" -lt 4 ] 2>/dev/null; then
+    echo "" >&2
+    echo "╔══════════════════════════════════════════════════════════════╗" >&2
+    echo "║  BLOCKED: Only ${WAVES}/4 validation waves passed.                ║" >&2
+    echo "║                                                              ║" >&2
+    echo "║  /validate quick is not sufficient for committing.          ║" >&2
+    echo "║  Run /validate (full) for all 4 waves.                      ║" >&2
     echo "╚══════════════════════════════════════════════════════════════╝" >&2
     echo "" >&2
     exit 2
@@ -85,7 +108,7 @@ fi
 NEWEST_CHANGE=$(git -C "$PROJECT_ROOT" diff --name-only HEAD 2>/dev/null | while read f; do
     FULL="$PROJECT_ROOT/$f"
     if [ -f "$FULL" ]; then
-        if [ "$(uname)" = "Linux" ]; then
+        if [ "$IS_LINUX" = "1" ]; then
             stat -c %Y "$FULL" 2>/dev/null
         else
             stat -f %m "$FULL" 2>/dev/null

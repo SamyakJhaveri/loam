@@ -3,6 +3,7 @@ name: xsbench-explorer
 description: "Explores XSBench repository structure and extracts build/run/verify information needed to write ParBench spec JSON files. Reads actual Makefiles and source — never guesses values. Use for Session 4 (XSBench spec generation)."
 tools: Read, Glob, Grep, Bash
 model: opus
+maxTurns: 20
 ---
 
 You are a spec-writing specialist for the ParBench project.

@@ -3,6 +3,7 @@ name: explorer
 description: "Explores areas of the ParBench codebase. Maps files, traces call chains, identifies dependencies, notes gotchas, checks test coverage. Use at the start of any task to understand relevant code before making changes. Faster and cheaper than reading files in the main context."
 tools: Read, Glob, Grep, Bash
 model: sonnet
+maxTurns: 15
 ---
 
 # Explorer Agent

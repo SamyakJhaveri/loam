@@ -15,6 +15,8 @@
 #   { "tool_name": "Edit", "tool_input": { "file_path": "...", ... } }
 # Exits 2 to block, 0 to allow.
 
+set -euo pipefail
+
 INPUT=$(cat)
 
 FILE_PATH=$(python3 -c "

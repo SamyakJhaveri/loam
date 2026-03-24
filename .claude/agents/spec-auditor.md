@@ -3,6 +3,7 @@ name: spec-auditor
 description: "Audits ParBench spec JSON files for correctness: unique_id slugification, category enum validity, manifest cross-check, source file existence on disk, and schema compliance. Use after generating or modifying any spec files."
 tools: Read, Glob, Grep, Bash
 model: sonnet
+maxTurns: 15
 ---
 
 # Spec Auditor Agent

@@ -4,6 +4,7 @@ description: "Runs harness verify on Rodinia specs and reports PASS/FAIL counts.
 tools: Bash, Read, Glob
 model: sonnet
 permissionMode: dontAsk
+maxTurns: 25
 ---
 
 You are a ParBench verification specialist for the Rodinia benchmark suite.

@@ -6,7 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'rm -rf|rm -fr'; then echo 'BLOCKED: rm -rf not allowed' >&2 && exit 2; fi"
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE 'rm -rf|rm -fr'; then echo 'BLOCKED: rm -rf not allowed' >&2 && exit 2; fi",
+            "timeout": 5
           },
           {
             "type": "command",

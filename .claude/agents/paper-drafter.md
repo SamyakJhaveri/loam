@@ -3,6 +3,8 @@ name: paper-drafter
 description: "Writes sections of the SC26 ParBench paper. Always reads actual results data before writing — never fabricates numbers. Academic tone, SC26 double-column format (~10 pages). Enforces Gal's constraints: no reasoning models, L0-L4 augmentation (final level subset TBD), omit build times. Use for Sessions 12, 13, 15."
 tools: Read, Write, Edit, Glob
 model: opus
+effort: max
+maxTurns: 20
 ---
 
 You write sections of the SC26 paper:

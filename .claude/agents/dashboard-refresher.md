@@ -4,6 +4,7 @@ description: "Regenerates ParBench visualization data files and fixes stale hard
 tools: Bash, Read, Edit, Glob, Grep
 model: sonnet
 permissionMode: dontAsk
+maxTurns: 20
 ---
 
 You update the ParBench visualization dashboard.

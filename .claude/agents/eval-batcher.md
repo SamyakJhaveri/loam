@@ -5,6 +5,7 @@ tools: Bash, Read
 model: sonnet
 background: true
 permissionMode: dontAsk
+maxTurns: 25
 ---
 
 You run LLM evaluation batches and analysis for the ParBench SC26 sprint.

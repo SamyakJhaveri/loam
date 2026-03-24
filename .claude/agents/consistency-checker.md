@@ -4,6 +4,7 @@ description: "Cross-checks documentation against code and known-issues.md agains
 tools: Bash, Read, Glob, Grep
 model: sonnet
 permissionMode: dontAsk
+maxTurns: 15
 ---
 
 # Consistency Checker Agent
@@ -19,11 +20,15 @@ CHANGED=$(git diff --name-only HEAD; git diff --cached --name-only)
 
 ## Check 1: CLAUDE.md Agent Table vs Actual Agent Files
 
-Count actual agent files vs CLAUDE.md table entries:
+Count actual agent files vs CLAUDE.md claimed count:
 ```bash
 ACTUAL_AGENTS=$(ls .claude/agents/*.md 2>/dev/null | wc -l | tr -d ' ')
-TABLE_AGENTS=$(grep -c '^\| `' CLAUDE.md | tr -d ' ')  # Rough count of table rows
-echo "Actual agents: $ACTUAL_AGENTS"
+# Extract claimed count from CLAUDE.md prose (e.g. "16 agents")
+CLAIMED_AGENTS=$(grep -oE '[0-9]+ agents' CLAUDE.md | head -1 | grep -oE '[0-9]+' || echo "unknown")
+echo "Actual agents: $ACTUAL_AGENTS | CLAUDE.md claims: $CLAIMED_AGENTS agents"
+if [ "$CLAIMED_AGENTS" != "unknown" ] && [ "$ACTUAL_AGENTS" != "$CLAIMED_AGENTS" ]; then
+    echo "MISMATCH: update the agent count in CLAUDE.md from $CLAIMED_AGENTS to $ACTUAL_AGENTS"
+fi
 ```
 
 For each file in `.claude/agents/*.md`, verify its agent name appears in CLAUDE.md agents table:

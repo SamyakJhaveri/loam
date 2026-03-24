@@ -1,9 +1,10 @@
 ---
 name: regression-checker
-description: "Compares current project metrics against known baselines to detect regressions: Rodinia spec count (60), unit test count (15), schema error count (~135), manifest line count. Use in post-session validation Wave 2. Returns structured PASS/FAIL in 50 lines or less."
+description: "Compares current project metrics against known baselines to detect regressions: Rodinia spec count (60), unit test count (15), key infrastructure files present, manifest append-only. Use in post-session validation Wave 2. Returns structured PASS/FAIL in 50 lines or less."
 tools: Bash, Read, Glob
 model: sonnet
 permissionMode: dontAsk
+maxTurns: 15
 ---
 
 # Regression Checker Agent
@@ -37,25 +38,31 @@ echo "Total specs:   $TOTAL_COUNT"
 Rodinia spec count must be exactly 60. Any decrease = FAIL.
 XSBench spec count must be ≥ 4. Decrease = FAIL.
 
-## Metric 2: Unit Test Count and Pass Rate
+## Metric 2: Unit Test Count (collection only — execution done by verify-app in Wave 1)
 ```bash
-python3 -m pytest c_augmentation/test_transforms.py --collect-only -q 2>/dev/null | grep 'test session starts' -A 100 | grep '\.py::' | wc -l
-python3 -m pytest c_augmentation/test_transforms.py -v --tb=short 2>&1 | tail -10
+# Count tests without re-running them (verify-app already ran pytest)
+TEST_COUNT=$(python3 -m pytest c_augmentation/test_transforms.py --collect-only -q 2>/dev/null | grep -cE 'test_[a-z]' || echo "0")
+echo "Unit tests collected: $TEST_COUNT (baseline: >=15)"
 ```
 
 Test count must be ≥ 15. Any decrease = FAIL.
-All tests must pass (0 failures). Any failure = FAIL.
+Note: Actual pass/fail is verified by verify-app (Wave 1) — no need to re-run here.
 
-## Metric 3: Schema Validation Error Count
+## Metric 3: Key Infrastructure Files Present
 ```bash
-SCHEMA_OUTPUT=$(python3 scripts/validate_schema.py --all 2>&1)
-ERROR_COUNT=$(echo "$SCHEMA_OUTPUT" | grep -c "ERROR:" || echo "0")
-echo "Schema errors: $ERROR_COUNT (baseline: ~135 expected)"
+# Verify harness and validator are still present (not accidentally deleted)
+for f in harness/__main__.py harness/cli.py scripts/validate_schema.py \
+          c_augmentation/test_transforms.py; do
+    if [ ! -f "$f" ]; then
+        echo "MISSING KEY FILE: $f"
+    else
+        echo "OK: $f"
+    fi
+done
 ```
 
-Expected error count: 120 (HeCBench) + 15 (phantom spec manifest entries) = 135.
-If error count > 140: FAIL (new unexpected errors introduced).
-If error count < 130: WARN (specs may have been deleted unexpectedly).
+Any missing file = FAIL. These are the core pipeline files — their absence is a critical regression.
+Note: schema validation error count is checked by verify-app (Wave 1) — not repeated here.
 
 ## Metric 4: Manifest Entry Count
 ```bash
@@ -86,10 +93,10 @@ REGRESSION CHECK: PASS/FAIL
 |---------------------------|----------|---------|---------|
 | Rodinia specs             | 60       | N       | OK/FAIL |
 | XSBench specs             | 4        | N       | OK/FAIL |
-| Unit tests                | ≥15      | N       | OK/FAIL |
-| Tests passing             | 15/15    | N/N     | OK/FAIL |
-| Schema errors             | ~135     | N       | OK/WARN |
+| Unit tests collected      | ≥15      | N       | OK/FAIL |
+| Key infra files present   | 4/4      | N/4     | OK/FAIL |
 | Manifest lines deleted    | 0        | N       | OK/FAIL |
+| Unexpected infra changes  | 0        | N       | OK/WARN |
 
 [For each FAIL:]
   REGRESSION: <metric> — <current> vs baseline <expected>
@@ -97,6 +104,7 @@ REGRESSION CHECK: PASS/FAIL
   LIKELY CAUSE: <which changed file probably caused it>
 
 VERDICT: PASS/FAIL
-(FAIL on: spec count decrease, test decrease, test failures, manifest deletions, schema errors >140)
-(WARN on: schema errors slightly off — investigate but not blocking)
+(FAIL on: spec count decrease, test count decrease, missing infra files, manifest deletions)
+(WARN on: unexpected changes to harness/validator files outside task scope)
+Note: schema validation errors and test pass/fail are checked by verify-app (Wave 1).
 ```

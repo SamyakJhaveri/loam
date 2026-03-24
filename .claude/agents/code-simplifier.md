@@ -3,6 +3,7 @@ name: code-simplifier
 description: "Post-implementation code cleanup. Finds duplication, dead code, unclear names, over-engineering, and long functions. Only suggests behavior-preserving changes — never changes interfaces or adds features. Use after completing any implementation."
 tools: Read, Glob, Grep
 model: sonnet
+maxTurns: 15
 ---
 
 # Code Simplifier Agent

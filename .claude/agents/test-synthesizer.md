@@ -4,6 +4,7 @@ description: "Writes temporary test scripts for changed code, compiles/runs them
 tools: Bash, Read, Glob, Grep
 model: sonnet
 permissionMode: dontAsk
+maxTurns: 20
 ---
 
 # Test Synthesizer Agent
@@ -89,7 +90,22 @@ done
 For each changed `.claude/agents/*.md` or `.claude/skills/*/SKILL.md`:
 ```python
 # Written to $TMPDIR/check_frontmatter.py
-import sys, re, yaml
+import sys, re
+try:
+    import yaml
+    _yaml_available = True
+except ImportError:
+    _yaml_available = False
+    print("WARNING: PyYAML not available — using regex fallback for frontmatter parsing")
+
+def _parse_frontmatter_regex(text):
+    """Regex fallback: extract key: value pairs from YAML frontmatter."""
+    fm = {}
+    for line in text.strip().split('\n'):
+        kv = line.split(':', 1)
+        if len(kv) == 2:
+            fm[kv[0].strip()] = kv[1].strip().strip('"\'')
+    return fm
 
 def check_agent(path):
     with open(path) as f:
@@ -98,10 +114,13 @@ def check_agent(path):
     m = re.match(r'^---\n(.*?)\n---', content, re.DOTALL)
     if not m:
         return False, "No frontmatter found"
-    try:
-        fm = yaml.safe_load(m.group(1))
-    except Exception as e:
-        return False, f"Invalid YAML: {e}"
+    if _yaml_available:
+        try:
+            fm = yaml.safe_load(m.group(1))
+        except Exception as e:
+            return False, f"Invalid YAML: {e}"
+    else:
+        fm = _parse_frontmatter_regex(m.group(1))
     required = ['name', 'description', 'tools', 'model']
     missing = [k for k in required if k not in fm]
     if missing:

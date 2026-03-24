@@ -1,8 +1,10 @@
 ---
 name: security-scanner
 description: "Scans changed files for secrets, command injection, path traversal, and unsafe patterns. Focused on Python scripts, shell hooks, and config files in the diff. Use in post-session validation Wave 1. Returns structured PASS/FAIL in 50 lines or less."
-tools: Bash, Read, Grep
+tools: Bash, Read, Glob, Grep
 model: sonnet
+permissionMode: dontAsk
+maxTurns: 15
 ---
 
 # Security Scanner Agent

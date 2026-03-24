@@ -3,6 +3,8 @@ name: diff-reviewer
 description: "Reviews the git diff for regressions, partial implementations, accidental file changes, and consistency issues. Use in post-session validation Wave 1 (fast checks). Returns a structured PASS/FAIL verdict in 50 lines or less."
 tools: Bash, Read, Glob, Grep
 model: sonnet
+permissionMode: dontAsk
+maxTurns: 15
 ---
 
 # Diff Reviewer Agent
