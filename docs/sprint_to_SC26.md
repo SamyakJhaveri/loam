@@ -86,7 +86,7 @@ Infrastructure baseline confirmed — continuing full evaluation sweep with GPT-
 | CUDA | nvcc (HPC SDK 24.3) | `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc` | YES |
 | OpenMP CPU | GCC 12.4 `-fopenmp` | System GCC | YES |
 | OpenCL | NVIDIA runtime | `/opt/nvidia/hpc_sdk/.../cuda/{include,lib64}` | YES |
-| OpenACC | nvc (HPC SDK 24.3) | `/opt/nvidia/hpc_sdk/.../compilers/bin/nvc` | YES |
+| OpenACC | nvc (HPC SDK 24.3) | `/opt/nvidia/hpc_sdk/.../compilers/bin/nvc` | YES *(compiler available; no benchmark source — see DESCOPED note at Day 10–11)* |
 | OpenMP target offload | GCC `-foffload=nvptx-none` | Needs verification | UNKNOWN |
 | HIP | hipcc | Not installed (NVIDIA-only machine) | NO |
 | SYCL | dpcpp | Not installed | NO |
@@ -323,7 +323,7 @@ M10 was previously marked DONE, but the audit found:
 
 ### Week 2 (March 25–31): HeCBench + New APIs + Additional Benchmarks
 
-**Goal:** Clone HeCBench, run HeCBench evaluation, create OpenACC specs, investigate 1–2 new benchmark suites.
+**Goal:** Clone HeCBench, run HeCBench evaluation, investigate 1–2 new benchmark suites. *(OpenACC descoped — no OpenACC source exists in Rodinia or XSBench.)*
 
 ### Week 3 (April 1–7): Paper + Final Results + Polish
 
@@ -678,6 +678,9 @@ python3 scripts/evaluation/run_eval_batch.py \
 
 ### Day 10–11 (March 27–28): Create OpenACC Specs
 
+> **DESCOPED (2026-03-23):** No OpenACC source exists in Rodinia or XSBench. OpenACC specs
+> are not being created. The section below is retained for historical context only.
+
 **Decision tree:**
 
 1. Check if Rodinia has OpenACC source:
@@ -900,8 +903,8 @@ By April 8, target these numbers:
 | Benchmark suites | 3 (Rodinia + XSBench + HeCBench) | XSBench DONE (2026-03-23, 4/4 PASS) |
 | Models compared | 3 (GPT-4.1, Llama 70B, leaderboard) | phased — GPT-4.1 first |
 | Augmentation levels tested | L0, L1, L2 | + L3, L4 |
-| Translation directions | 3 (cuda↔omp, cuda→opencl) | 5–6 (+openacc, omp_target) |
-| APIs covered | 3 (CUDA, OMP, OpenCL) | 4–5 (+OpenACC, OMP target) |
+| Translation directions | 3 (cuda↔omp, cuda→opencl) | 5–6 (+omp_target, cross-API) |
+| APIs covered | 3 (CUDA, OMP, OpenCL) | 4 (+OMP target, case study) |
 
 **Key results to report:**
 - Pass rate by model, direction, kernel complexity
@@ -916,7 +919,7 @@ By April 8, target these numbers:
 
 > Updated 2026-03-19 after March 18 meeting — resolved questions struck through.
 
-1. **Rodinia OpenACC source:** Does `gpu-rodinia` repo or Rodinia 3.1 have OpenACC implementations? If not, what's the verification strategy for CUDA→OpenACC translation? *(deprioritized for now per Niranjan)*
+1. ~~**Rodinia OpenACC source:** Does `gpu-rodinia` repo or Rodinia 3.1 have OpenACC implementations?~~ **RESOLVED (2026-03-23):** No OpenACC source exists in Rodinia or XSBench. OpenACC fully descoped from paper.
 
 2. ~~**Which additional benchmarks?**~~ RESOLVED: Rodinia + HeCBench primary; ExaBench/XSBench ONE kernel for Paraval comparison (Task M5). No third full suite.
 
@@ -946,7 +949,7 @@ By April 8, target these numbers:
 |------|:----------:|:------:|------------|
 | HeCBench specs don't build on our hardware | HIGH | MEDIUM | Budget 2 days for Makefile fixes; accept < 100% coverage |
 | Augmentation L3/L4 still broken | MEDIUM | LOW | Focus paper on L0/L1/L2; mention L3/L4 as future work |
-| OpenMP target offload not available | MEDIUM | LOW | Skip; focus on CUDA/OMP/OpenCL/OpenACC |
+| OpenMP target offload not available | MEDIUM | LOW | Skip; focus on CUDA/OMP/OpenCL *(OpenACC descoped 2026-03-23)* |
 | LLM API rate limits or outages | LOW | HIGH | Use `--resume` flag; spread runs over days; both providers as backup |
 | Paper writing takes longer than planned | MEDIUM | HIGH | Start Section 3 (corpus) and Section 4 (framework) early — they don't depend on results |
 | New benchmark suite too complex to integrate | MEDIUM | LOW | Mark as stretch goal; 2 suites (Rodinia + HeCBench) is sufficient for SC26 |

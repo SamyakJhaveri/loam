@@ -1027,6 +1027,11 @@ missed this format → 5 false-positive PASSes. Tier 1.5 regex added; all 5 kern
 
 ## SESSION 4 — Clone XSBench & Generate Specs
 
+> **STATUS: COMPLETE** — Commit `78e379d` (2026-03-23). XSBench cloned (commit ba08e52,
+> regular clone + .gitignored). **4 specs generated** (cuda, omp, opencl, omp_target) —
+> no OpenACC variant exists in the XSBench repo. 4 manifest entries appended.
+> Spec generator: `scripts/generators/generate_xsbench_specs.py`.
+
 ```
 ultrathink
 
@@ -1199,6 +1204,11 @@ python3 scripts/validate_schema.py --all
 ---
 
 ## SESSION 5 — Verify XSBench Toolchains & Smoke Test
+
+> **STATUS: COMPLETE** — Commit `888910f` (2026-03-23). **4/4 XSBench specs PASS.**
+> No OpenACC variant exists in XSBench source. omp_target uses nvc (NVIDIA HPC SDK 24.3,
+> `-mp=gpu -gpu=cc89`). Baselines populated (checksums: OMP=941535 history, others=945990 event).
+> Eval-ready: cuda, omp, opencl (3 standard specs). omp_target excluded (nvc dependency).
 
 ```
 ultrathink
@@ -1608,7 +1618,7 @@ DECISIONS:
       "case study" (qualitative) or "quantitative evidence" for the paper?
 - [ ] Should XSBench eval include augmentation (L1/L2)? The prompt doesn't
       mention it. Adding it triples API calls from ~20 to ~60.
-- [ ] If OpenACC/OMP-target specs failed in Session 5, skip those directions?
+- [x] RESOLVED: No OpenACC spec exists in XSBench. OMP-target PASSED in Session 5; included as Tier 3 case study only (nvc compiler required, excluded from standard eval batches).
 
 CLARIFICATIONS:
 - [x] RESOLVED (Session 1.6): XSBench translation_targets gap is closed.
@@ -2134,7 +2144,7 @@ python3 scripts/evaluation/analyze_eval.py \
 #   - "65" Rodinia specs → "60"
 #   - Augmentation pass rates: update to 54/60 at all levels (level-invariant)
 #   - LLM eval stats: update with latest pass rates from eval_summary
-#   - Total specs: should reflect 60 Rodinia + 5 XSBench = 65 total
+#   - Total specs: should reflect 60 Rodinia + 4 XSBench = 64 total
 #
 # augmentation_deep_dive.html:
 #   - L1 PASS stat card → 54/60

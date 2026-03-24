@@ -116,7 +116,30 @@
         ],
         "floating_point": null
     },
-    "performance": null,
+    "performance": {
+        "metrics": [
+            {
+                "name": "runtime",
+                "extraction": {
+                    "type": "regex",
+                    "pattern": "Runtime:\\s+([\\d.]+)\\s+seconds",
+                    "capture_group": 1
+                },
+                "unit": "seconds"
+            },
+            {
+                "name": "lookups_per_second",
+                "extraction": {
+                    "type": "regex",
+                    "pattern": "Lookups/s:\\s+([\\d,]+)",
+                    "capture_group": 1
+                },
+                "unit": "lookups/s"
+            }
+        ],
+        "warmup_runs": 0,
+        "measurement_runs": 1
+    },
     "hardware": {
         "target": "cpu",
         "requirements": {},
