@@ -455,7 +455,7 @@ def call_llm(
         verbose: Log request info to stderr.
 
     Returns:
-        {response_text, prompt_tokens, completion_tokens, duration_seconds}
+        {response_text, prompt_tokens, completion_tokens, duration_seconds, finish_reason}
 
     Provider routing:
         claude-*          → Anthropic SDK (ANTHROPIC_API_KEY)
@@ -683,10 +683,11 @@ def extract_code_blocks(
 ) -> dict[str, str]:
     """Extract translated code from LLM response into a filename → code dict.
 
-    Three-tier fallback:
-        Tier 1 — Fenced blocks with ``filename=X`` annotation (preferred).
-        Tier 2 — Filename mentioned near a code fence (fuzzy match).
-        Tier 3 — Single target file + single code block in response.
+    Four-tier fallback:
+        Tier 1   — Fenced blocks with ``filename=X`` annotation (Claude/GPT style).
+        Tier 1.5 — Fenced blocks with space-separated filename (``lang filename.ext``; Llama style).
+        Tier 2   — Filename mentioned near a code fence (fuzzy match).
+        Tier 3   — Single target file + single code block in response.
     """
     result: dict[str, str] = {}
 

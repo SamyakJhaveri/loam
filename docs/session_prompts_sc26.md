@@ -990,8 +990,9 @@ response format escapes all 4 extraction tiers). Corrected from false PASS → E
 **Bug 3 — `finish_reason` not recorded** (`llm_evaluate.py`):
 API field (`"stop"` vs `"length"`) was not captured. Detection of token truncation required
 comparing `completion_tokens == max_tokens`. Now recorded per attempt in result JSON.
-Analysis confirmed: only groq myocyte hits the 16,384 token cap (both attempts). All other
-failures are well under the limit — genuine code quality issues, not truncation.
+Analysis confirmed: only groq myocyte hits the 16,384 token cap on **both** attempts. groq
+heartwall attempt 2 also hit the cap (attempt 1 completed normally at 10,521 tokens). All
+other failures are well under the limit — genuine code quality issues, not truncation.
 
 **Also fixed in SESSION 3** (commit `b644bc6`, Tier 1.5 extraction):
 Llama 3.3 70B uses `` ```cpp filename.ext `` (space-separated, no `filename=`). Old extractor
@@ -1001,14 +1002,18 @@ missed this format → 5 false-positive PASSes. Tier 1.5 regex added; all 5 kern
 
 - **Complexity scaling gap**: Both models equal on `single_file` (66% PASS); gap widens on
   `multi_to_single` (groq 3/11 vs azure 6/11) and `multi_to_multi` (groq 0/3 vs azure 1/3).
-- **Token limit irrelevant**: 0 azure truncations; only groq myocyte is token-limited.
+- **Token limit irrelevant**: azure-gpt-4.1 has no confirmed truncations (heartwall attempt 1
+  hit exactly 16,384 tokens with 1/3 files extracted — likely truncated, but no `finish_reason`
+  was recorded pre-fix). groq myocyte is the only kernel token-limited on both attempts.
   Increasing `max_tokens` would not change pass rates for either model.
 - **Self-repair**: azure repaired 2 kernels (bptree, nn; 2/9 = 22% of PASSes); groq repaired
   3 kernels (hotspot3d, nn, pathfinder; 3/5 = 60% of PASSes). Only bfs and lud were groq
   first-attempt PASSes. Both models benefit from the error-feedback retry loop — groq relies
   on it more heavily because its first-attempt code quality is lower, but self-correction
-  works for both. Groq's 7/12 failing kernels showed zero change between attempts — those
-  failures are too fundamental for retry to fix.
+  works for both. Groq's ~4/12 failing kernels showed zero change between attempts (hotspot,
+  myocyte, nw, srad had identical errors both attempts) — those failures are too fundamental
+  for retry to fix. The other 8 failing kernels changed error type on attempt 2 (including
+  particlefilter/streamcluster, which regressed from code errors to emitting prose).
 - **EXTRACTION_FAIL as a category**: heartwall (groq) shows a real failure mode —
   the model cannot reliably structure multi-file output in a parseable format.
 
