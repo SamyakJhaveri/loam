@@ -89,6 +89,7 @@ harness/            build/run/verify pipeline; CLI via python3 -m harness
 docs/               design docs, plans
 presentations/      pptx, xlsx, speaking notes
 rodinia/rodinia-src/ Rodinia source (commit 9c10d3ea) — git submodule
+xsbench/xsbench-src/ XSBench source (commit ba08e52) — regular clone, gitignored
 results/            phase3/ (CUDA/OMP), phase5/ (HeCBench), augmentation/, evaluation/
 analysis/           data/ (CSV, JSON surveys), reports/ (markdown)
 ```

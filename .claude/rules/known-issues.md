@@ -16,7 +16,7 @@ Do NOT try to fix any of these errors.
 
 **Rodinia:** 60 specs total, 54 PASS, 6 KNOWN_FAIL.
 **XSBench:** 4 specs total, 4 PASS, 0 KNOWN_FAIL.
-**Use the 54 Rodinia PASS + 4 XSBench specs for eval batches.**
+**Use the 54 Rodinia PASS + 3 standard XSBench specs (cuda, omp, opencl) for eval batches. omp_target excluded (requires nvc, case-study only).**
 
 ## KNOWN_FAIL Specs (6 — exclude from eval batches)
 
@@ -81,12 +81,12 @@ editing source. mummergpu `unistd.h` edits reverted — both specs are KNOWN_FAI
 4/4 PASS. No KNOWN_FAIL. Key facts:
 - No OpenACC variant exists (only cuda, omp, opencl, omp_target)
 - OMP target uses `nvc` (NVIDIA HPC SDK 24.3), excluded from eval batches
-- History/event checksum asymmetry: OMP=941535 (history), CUDA/OpenCL=945990 (event)
+- History/event checksum asymmetry: OMP=941535 (history), CUDA/OpenCL/OMP-target=945990 (event)
 - Use 3 standard API specs (cuda, omp, opencl) for eval batches
 
-## Hook Protection (updated 2026-03-22)
+## Hook Protection (updated 2026-03-23)
 
-Hook regex: `/(rodinia|rodinia-src|HeCBench-master|hecbench)/` — protects both direct
+Hook regex: `/(rodinia|rodinia-src|HeCBench-master|hecbench|xsbench-src)/` — protects both direct
 and symlink paths to benchmark sources.
 
 ## Augmentation Baseline (verified 2026-03-20)

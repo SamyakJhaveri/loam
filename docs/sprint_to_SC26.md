@@ -49,13 +49,14 @@ Infrastructure baseline confirmed — continuing full evaluation sweep with GPT-
 
 ### 1.3 Inventory
 
-#### Specs (180 total, updated 2026-03-20)
+#### Specs (184 total, updated 2026-03-23)
 
-| Suite | CUDA | OMP | OpenCL | Total |
-|-------|:----:|:---:|:------:|:-----:|
-| Rodinia | 22 | 18 | 20 | **60** |
-| HeCBench | 60 | 60 | 0 | **120** |
-| **Total** | **82** | **78** | **20** | **180** |
+| Suite | CUDA | OMP | OpenCL | OMP-target | Total |
+|-------|:----:|:---:|:------:|:----------:|:-----:|
+| Rodinia | 22 | 18 | 20 | 0 | **60** |
+| XSBench | 1 | 1 | 1 | 1 | **4** |
+| HeCBench | 60 | 60 | 0 | 0 | **120** |
+| **Total** | **83** | **79** | **21** | **1** | **184** |
 
 **22 unique Rodinia kernels:** backprop, bfs, bptree, cfd, dwt2d, gaussian, heartwall, hotspot, hotspot3d, huffman, hybridsort, kmeans, lavamd, lud, mummergpu, myocyte, nn, nw, particlefilter, pathfinder, srad, streamcluster
 
@@ -65,15 +66,18 @@ Infrastructure baseline confirmed — continuing full evaluation sweep with GPT-
 
 #### Translation Pairs Available
 
-| Direction | Rodinia | HeCBench | Total |
-|-----------|:-------:|:--------:|:-----:|
-| cuda → omp | 21 | 60 | 81 |
-| omp → cuda | 21 | 60 | 81 |
-| cuda → opencl | 22 | 0 | 22 |
-| opencl → cuda | 22 | 0 | 22 |
-| omp → opencl | 21 | 0 | 21 |
-| opencl → omp | 22 | 0 | 22 |
-| **Total** | **129** | **120** | **249** |
+| Direction | Rodinia | XSBench | HeCBench | Total |
+|-----------|:-------:|:-------:|:--------:|:-----:|
+| cuda → omp | 21 | 1 | 60 | 82 |
+| omp → cuda | 21 | 1 | 60 | 82 |
+| cuda → opencl | 22 | 1 | 0 | 23 |
+| opencl → cuda | 22 | 1 | 0 | 23 |
+| omp → opencl | 21 | 1 | 0 | 22 |
+| opencl → omp | 22 | 1 | 0 | 23 |
+| **Total** | **129** | **6** | **120** | **255** |
+
+> **Note:** XSBench omp_target spec excluded from standard eval batches (nvc dependency).
+> 3 standard XSBench specs (cuda, omp, opencl) used for evaluation.
 
 #### Hardware & Compilers (Linux, RTX 4070)
 
@@ -266,7 +270,7 @@ restructuring skill.
 | **M3** | HIGH | Not started | Read Paraval paper for differentiation |
 | **M7** | HIGH | Not started | Llama 70B via Groq/Modal |
 | **M8** | HIGH | Not started | Third model selection from coding leaderboard |
-| **M5** | MEDIUM | Not started | ExaBench/XSBench clone for Paraval comparison |
+| **M5** | MEDIUM | **DONE (2026-03-23)** | XSBench cloned (commit ba08e52), 4 specs generated, 4/4 PASS. Eval-ready: cuda, omp, opencl. |
 | **M6** | HIGH | Not started | Kernel + host-transfer timing metrics (three-tier model) |
 | **2A** | HIGH | Not started | Iterative repair pilot (`--max-retries 3`) |
 | **2C** | HIGH | Not started | Smoke test all 22 OMP specs |
@@ -893,7 +897,7 @@ By April 8, target these numbers:
 | Metric | Target | Stretch |
 |--------|:------:|:-------:|
 | Translation pairs evaluated | 300+ | 500+ |
-| Benchmark suites | 2 (Rodinia + HeCBench) | + ExaBench/XSBench kernel (Paraval comparison) |
+| Benchmark suites | 3 (Rodinia + XSBench + HeCBench) | XSBench DONE (2026-03-23, 4/4 PASS) |
 | Models compared | 3 (GPT-4.1, Llama 70B, leaderboard) | phased — GPT-4.1 first |
 | Augmentation levels tested | L0, L1, L2 | + L3, L4 |
 | Translation directions | 3 (cuda↔omp, cuda→opencl) | 5–6 (+openacc, omp_target) |
