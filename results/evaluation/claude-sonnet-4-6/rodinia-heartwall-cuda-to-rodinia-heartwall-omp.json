@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-heartwall-cuda",
+  "target_spec": "rodinia-heartwall-omp",
+  "kernel": "heartwall",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-24T04:59:59Z",
+  "prompt_tokens": 118382,
+  "completion_tokens": 32768,
+  "llm_response_time_seconds": 315.593,
+  "build_status": "fail",
+  "build_time_seconds": 0.038,
+  "build_error_snippet": "main.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo--\\n\",j);\n      |                          ^~~~~~~~~~~~~~\nmain.c:72:26: warning: too many arguments for format [-Wformat-extra-args]\n   72 |             fprintf(fid, \"\\n--epi--\\n\",j);\n      |                          ^~~~~~~~~~~~~\nmain.c: In function \u2018main\u2019:\nmain.c:108:9: error: unknown type name \u2018public_struct\u2019\n  108 |         public_struct public;\n      |         ^~~~~~~~~~~~~\nmain.c:109:9: error: unknown type name \u2018private_struct\u2019\n  109 |         private_struct private[ALL_POINTS];\n      |         ^~~~~~~~~~~~~~\nmain.c:131:15: error: request for member \u2018d_frames\u2019 in something not a structu\n...[truncated]...\nmber \u2018d_in2_sub\u2019 in something not a structure or union\n  636 |                 free(private[i].d_in2_sub);\n      |                                ^\nmain.c:638:32: error: request for member \u2018d_in2_sub2_sqr\u2019 in something not a structure or union\n  638 |                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in something not a structure or union\n  640 |                 free(private[i].d_tMask);\n      |                                ^\nmain.c:641:32: error: request for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: t for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.5,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel.c": "//======================================================================================================================================================================================================",
+    "define.c": "//======================================================================================================================================================================================================"
+  },
+  "target_files_expected": [
+    "main.c",
+    "kernel.c",
+    "define.c"
+  ],
+  "target_files_extracted": [
+    "kernel.c",
+    "define.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 158.804,
+      "prompt_tokens": 50907,
+      "completion_tokens": 16384,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n|                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in",
+      "finish_reason": "max_tokens",
+      "build_error_snippet": "main.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo--\\n\",j);\n      |                          ^~~~~~~~~~~~~~\nmain.c:72:26: warning: too many arguments for format [-Wformat-extra-args]\n   72 |             fprintf(fid, \"\\n--epi--\\n\",j);\n      |                          ^~~~~~~~~~~~~\nmain.c: In function \u2018main\u2019:\nmain.c:108:9: error: unknown type name \u2018public_struct\u2019\n  108 |         public_struct public;\n      |         ^~~~~~~~~~~~~\nmain.c:109:9: error: unknown type name \u2018private_struct\u2019\n  109 |         private_struct private[ALL_POINTS];\n      |         ^~~~~~~~~~~~~~\nmain.c:131:15: error: request for member \u2018d_frames\u2019 in something not a structu\n...[truncated]...\nmber \u2018d_in2_sub\u2019 in something not a structure or union\n  636 |                 free(private[i].d_in2_sub);\n      |                                ^\nmain.c:638:32: error: request for member \u2018d_in2_sub2_sqr\u2019 in something not a structure or union\n  638 |                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in something not a structure or union\n  640 |                 free(private[i].d_tMask);\n      |                                ^\nmain.c:641:32: error: request for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 156.789,
+      "prompt_tokens": 67475,
+      "completion_tokens": 16384,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "finish_reason": "max_tokens",
+      "build_error_snippet": "main.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo--\\n\",j);\n      |                          ^~~~~~~~~~~~~~\nmain.c:72:26: warning: too many arguments for format [-Wformat-extra-args]\n   72 |             fprintf(fid, \"\\n--epi--\\n\",j);\n      |                          ^~~~~~~~~~~~~\nmain.c: In function \u2018main\u2019:\nmain.c:108:9: error: unknown type name \u2018public_struct\u2019\n  108 |         public_struct public;\n      |         ^~~~~~~~~~~~~\nmain.c:109:9: error: unknown type name \u2018private_struct\u2019\n  109 |         private_struct private[ALL_POINTS];\n      |         ^~~~~~~~~~~~~~\nmain.c:131:15: error: request for member \u2018d_frames\u2019 in something not a structu\n...[truncated]...\nmber \u2018d_in2_sub\u2019 in something not a structure or union\n  636 |                 free(private[i].d_in2_sub);\n      |                                ^\nmain.c:638:32: error: request for member \u2018d_in2_sub2_sqr\u2019 in something not a structure or union\n  638 |                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in something not a structure or union\n  640 |                 free(private[i].d_tMask);\n      |                                ^\nmain.c:641:32: error: request for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1\n"
+    }
+  ]
+}

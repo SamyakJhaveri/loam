@@ -97,6 +97,10 @@ MODEL_REGISTRY: dict[str, dict[str, str]] = {
         "provider": "groq",
         "notes": "Llama 3.3 70B via Groq (second eval model, Session 3)",
     },
+    "gemini-2.5-flash-lite": {
+        "provider": "google",
+        "notes": "Gemini 2.5 Flash-Lite via Google AI (OpenAI-compatible endpoint)",
+    },
 }
 
 # Human-readable API display names (fallback: .upper())
@@ -460,6 +464,9 @@ def call_llm(
                             Strips "azure-" prefix to get deployment name.
         groq-*            → OpenAI SDK (GROQ_API_KEY, base_url=https://api.groq.com/openai/v1)
                             Strips "groq-" prefix to get model name.
+        gemini-*          → OpenAI SDK (GEMINI_API_KEY or GOOGLE_API_KEY,
+                            base_url=https://generativelanguage.googleapis.com/v1beta/openai/)
+                            Model name passed as-is (no prefix stripping).
 
     ParaCodex (future):
         Add `elif model.startswith("paracodex")` branch here.
@@ -615,10 +622,44 @@ def call_llm(
         completion_tokens = response.usage.completion_tokens
         finish_reason = response.choices[0].finish_reason or "unknown"
 
+    elif model.startswith("gemini-"):
+        # ---- Google AI (OpenAI-compatible) path ----
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "Set GEMINI_API_KEY or GOOGLE_API_KEY environment variable to use Gemini models."
+            )
+        try:
+            import openai
+        except ImportError:
+            raise ImportError(
+                "openai package not installed. Run: python3 -m pip install openai"
+            )
+
+        client_gemini = openai.OpenAI(
+            api_key=api_key,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        )
+        full_messages = [{"role": "system", "content": system_msg}] + messages
+        if verbose:
+            logger.info(
+                "Calling Gemini model=%s messages=%d", model, len(full_messages)
+            )
+        response = client_gemini.chat.completions.create(
+            model=model,
+            max_tokens=16384,
+            temperature=0,
+            messages=full_messages,
+        )
+        response_text = response.choices[0].message.content or ""
+        prompt_tokens = response.usage.prompt_tokens
+        completion_tokens = response.usage.completion_tokens
+        finish_reason = response.choices[0].finish_reason or "unknown"
+
     else:
         raise ValueError(
             f"Unknown model provider for '{model}'. "
-            "Expected prefix: claude-*, gpt-*, o1-*, o3-*, o4-*, azure-*, groq-*"
+            "Expected prefix: claude-*, gpt-*, o1-*, o3-*, o4-*, azure-*, groq-*, gemini-*"
         )
 
     duration = time.monotonic() - t0
@@ -1216,7 +1257,8 @@ def _print_models() -> None:
         print(f"{model_id:<40} {info['provider']:<12} {info['notes']}")
     print()
     print("Any model ID is accepted — the registry above is for reference only.")
-    print("Routing: claude-* → Anthropic, gpt-*/o1-*/o3-*/o4-* → OpenAI")
+    print("Routing: claude-* → Anthropic, gpt-*/o1-*/o3-*/o4-* → OpenAI, "
+          "azure-* → Azure, groq-* → Groq, gemini-* → Google AI")
 
 
 def _print_result(result: dict[str, Any], as_json: bool, verbose: bool) -> None:

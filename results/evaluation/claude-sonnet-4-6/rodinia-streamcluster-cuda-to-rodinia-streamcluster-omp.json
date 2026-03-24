@@ -1,0 +1,55 @@
+{
+  "source_spec": "rodinia-streamcluster-cuda",
+  "target_spec": "rodinia-streamcluster-omp",
+  "kernel": "streamcluster",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-24T05:21:03Z",
+  "prompt_tokens": 14418,
+  "completion_tokens": 10403,
+  "llm_response_time_seconds": 137.319,
+  "build_status": "pass",
+  "build_time_seconds": 0.764,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 116.488,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 24.639,
+  "translated_wall_time_seconds": 116.488,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.2115,
+  "translated_files": {
+    "streamcluster_omp.cpp": "/***********************************************\n\tstreamcluster_omp.cpp\n\t: parallelized code of streamcluster using OpenMP\n\t\n\t- original code from PARSEC Benchmark Suite\n\t- CUDA parallelization by Sha"
+  },
+  "target_files_expected": [
+    "streamcluster_omp.cpp"
+  ],
+  "target_files_extracted": [
+    "streamcluster_omp.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 137.319,
+      "prompt_tokens": 14418,
+      "completion_tokens": 10403,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "finish_reason": "end_turn"
+    }
+  ]
+}

@@ -180,14 +180,14 @@ def run_batch(
                 print(
                     f"  ⚠ WARNING: overwriting existing PASS result for "
                     f"{src_id} → {tgt_id} [{model}]. "
-                    f"Use --resume to skip completed tasks.",
+                    f"Remove --no-resume flag to skip completed tasks.",
                     flush=True,
                 )
         result_file.write_text(json.dumps(result, indent=2))
 
         results.append(result)
 
-        if status in ("ERROR", "FAIL", "BUILD_FAIL"):
+        if status not in ("PASS", "SKIP"):
             consecutive_failures += 1
         else:
             consecutive_failures = 0
@@ -234,7 +234,8 @@ def _generate_markdown(results: list[dict], models: list[str], title: str) -> st
 
         n = len(model_results)
         passes = sum(1 for r in model_results if r.get("overall_status") == "PASS")
-        fails = sum(1 for r in model_results if r.get("overall_status") in ("FAIL", "BUILD_FAIL"))
+        fails = sum(1 for r in model_results
+                    if r.get("overall_status") not in {"PASS", "ERROR", "SKIP", None})
         errors = sum(1 for r in model_results if r.get("overall_status") == "ERROR")
         skips = sum(1 for r in model_results if r.get("overall_status") == "SKIP")
         rate = f"{100 * passes // n}%" if n else "0%"
@@ -242,7 +243,7 @@ def _generate_markdown(results: list[dict], models: list[str], title: str) -> st
         if multi_level:
             lines += [
                 f"## {model}",
-                f"**{passes}/{n} PASS ({rate})** | FAIL/BUILD_FAIL={fails} | ERROR={errors} | SKIP={skips}",
+                f"**{passes}/{n} PASS ({rate})** | FAILURES={fails} | ERROR={errors} | SKIP={skips}",
                 "",
                 "| Kernel | Level | Status | Speedup | Timing Method | Tokens |",
                 "|--------|-------|--------|---------|---------------|--------|",
@@ -250,7 +251,7 @@ def _generate_markdown(results: list[dict], models: list[str], title: str) -> st
         else:
             lines += [
                 f"## {model}",
-                f"**{passes}/{n} PASS ({rate})** | FAIL/BUILD_FAIL={fails} | ERROR={errors} | SKIP={skips}",
+                f"**{passes}/{n} PASS ({rate})** | FAILURES={fails} | ERROR={errors} | SKIP={skips}",
                 "",
                 "| Kernel | Status | Speedup | Timing Method | Tokens |",
                 "|--------|--------|---------|---------------|--------|",

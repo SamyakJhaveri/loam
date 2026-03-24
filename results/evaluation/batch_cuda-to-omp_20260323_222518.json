@@ -1,0 +1,1058 @@
+{
+  "direction": "cuda-to-omp",
+  "models": [
+    "claude-sonnet-4-6"
+  ],
+  "suite": "rodinia",
+  "kernels": [
+    "backprop",
+    "bfs",
+    "bptree",
+    "cfd",
+    "heartwall",
+    "hotspot",
+    "hotspot3d",
+    "kmeans",
+    "lavamd",
+    "lud",
+    "myocyte",
+    "nn",
+    "nw",
+    "particlefilter",
+    "pathfinder",
+    "srad",
+    "streamcluster"
+  ],
+  "total_tasks": 17,
+  "total_elapsed_seconds": 1692.7,
+  "results": [
+    {
+      "source_spec": "rodinia-bptree-cuda",
+      "target_spec": "rodinia-bptree-omp",
+      "kernel": "bptree",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T04:57:05Z",
+      "prompt_tokens": 16014,
+      "completion_tokens": 2717,
+      "llm_response_time_seconds": 27.361,
+      "build_status": "pass",
+      "build_time_seconds": 0.444,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.505,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.489,
+      "translated_wall_time_seconds": 0.505,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.9683,
+      "translated_files": {
+        "kernel/kernel_cpu.c": "//======================================================================================================================================================================================================",
+        "kernel/kernel_cpu_2.c": "//======================================================================================================================================================================================================"
+      },
+      "target_files_expected": [
+        "kernel/kernel_cpu.c",
+        "kernel/kernel_cpu_2.c"
+      ],
+      "target_files_extracted": [
+        "kernel/kernel_cpu.c",
+        "kernel/kernel_cpu_2.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 27.361,
+          "prompt_tokens": 16014,
+          "completion_tokens": 2717,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-backprop-cuda",
+      "target_spec": "rodinia-backprop-omp",
+      "kernel": "backprop",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T04:57:34Z",
+      "prompt_tokens": 11057,
+      "completion_tokens": 4421,
+      "llm_response_time_seconds": 45.578,
+      "build_status": "pass",
+      "build_time_seconds": 0.215,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.017,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.016,
+      "translated_wall_time_seconds": 0.017,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.9412,
+      "translated_files": {
+        "backprop.c": "/*\n ******************************************************************\n * HISTORY\n * 15-Oct-94  Jeff Shufelt (js), Carnegie Mellon University\n *\tPrepared for 15-681, Fall 1994.\n * Modified by Shuai Ch"
+      },
+      "target_files_expected": [
+        "backprop.c"
+      ],
+      "target_files_extracted": [
+        "backprop.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 45.578,
+          "prompt_tokens": 11057,
+          "completion_tokens": 4421,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-bfs-cuda",
+      "target_spec": "rodinia-bfs-omp",
+      "kernel": "bfs",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T04:58:19Z",
+      "prompt_tokens": 4464,
+      "completion_tokens": 1733,
+      "llm_response_time_seconds": 21.58,
+      "build_status": "pass",
+      "build_time_seconds": 0.155,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.492,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.001,
+      "translated_wall_time_seconds": 0.492,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.002,
+      "translated_files": {
+        "bfs.cpp": "/***********************************************************************************\n  Implementing Breadth first search on OpenMP using algorithm given in HiPC'07\n  paper \"Accelerating Large Graph Al"
+      },
+      "target_files_expected": [
+        "bfs.cpp"
+      ],
+      "target_files_extracted": [
+        "bfs.cpp"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 21.58,
+          "prompt_tokens": 4464,
+          "completion_tokens": 1733,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-cfd-cuda",
+      "target_spec": "rodinia-cfd-omp",
+      "kernel": "cfd",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T04:58:42Z",
+      "prompt_tokens": 37116,
+      "completion_tokens": 7266,
+      "llm_response_time_seconds": 72.502,
+      "build_status": "pass",
+      "build_time_seconds": 0.392,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 4.354,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 3.877,
+      "translated_wall_time_seconds": 4.354,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.8904,
+      "translated_files": {
+        "euler3d_cpu.cpp": "// Copyright 2009, Andrew Corrigan, acorriga@gmu.edu\n// This code is from the AIAA-2009-4001 paper\n\n#include <iostream>\n#include <fstream>\n#include <cmath>\n#include <cstring>\n#include <omp.h>\n\n/*\n * O"
+      },
+      "target_files_expected": [
+        "euler3d_cpu.cpp"
+      ],
+      "target_files_extracted": [
+        "euler3d_cpu.cpp"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 72.502,
+          "prompt_tokens": 37116,
+          "completion_tokens": 7266,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-heartwall-cuda",
+      "target_spec": "rodinia-heartwall-omp",
+      "kernel": "heartwall",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T04:59:59Z",
+      "prompt_tokens": 118382,
+      "completion_tokens": 32768,
+      "llm_response_time_seconds": 315.593,
+      "build_status": "fail",
+      "build_time_seconds": 0.038,
+      "build_error_snippet": "main.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo--\\n\",j);\n      |                          ^~~~~~~~~~~~~~\nmain.c:72:26: warning: too many arguments for format [-Wformat-extra-args]\n   72 |             fprintf(fid, \"\\n--epi--\\n\",j);\n      |                          ^~~~~~~~~~~~~\nmain.c: In function \u2018main\u2019:\nmain.c:108:9: error: unknown type name \u2018public_struct\u2019\n  108 |         public_struct public;\n      |         ^~~~~~~~~~~~~\nmain.c:109:9: error: unknown type name \u2018private_struct\u2019\n  109 |         private_struct private[ALL_POINTS];\n      |         ^~~~~~~~~~~~~~\nmain.c:131:15: error: request for member \u2018d_frames\u2019 in something not a structu\n...[truncated]...\nmber \u2018d_in2_sub\u2019 in something not a structure or union\n  636 |                 free(private[i].d_in2_sub);\n      |                                ^\nmain.c:638:32: error: request for member \u2018d_in2_sub2_sqr\u2019 in something not a structure or union\n  638 |                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in something not a structure or union\n  640 |                 free(private[i].d_tMask);\n      |                                ^\nmain.c:641:32: error: request for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: t for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1",
+      "metrics": {},
+      "baseline_wall_time_seconds": 2.5,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.c": "//======================================================================================================================================================================================================",
+        "define.c": "//======================================================================================================================================================================================================"
+      },
+      "target_files_expected": [
+        "main.c",
+        "kernel.c",
+        "define.c"
+      ],
+      "target_files_extracted": [
+        "kernel.c",
+        "define.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 158.804,
+          "prompt_tokens": 50907,
+          "completion_tokens": 16384,
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "The translation failed to compile with this error:\n```\n|                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in",
+          "finish_reason": "max_tokens",
+          "build_error_snippet": "main.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo--\\n\",j);\n      |                          ^~~~~~~~~~~~~~\nmain.c:72:26: warning: too many arguments for format [-Wformat-extra-args]\n   72 |             fprintf(fid, \"\\n--epi--\\n\",j);\n      |                          ^~~~~~~~~~~~~\nmain.c: In function \u2018main\u2019:\nmain.c:108:9: error: unknown type name \u2018public_struct\u2019\n  108 |         public_struct public;\n      |         ^~~~~~~~~~~~~\nmain.c:109:9: error: unknown type name \u2018private_struct\u2019\n  109 |         private_struct private[ALL_POINTS];\n      |         ^~~~~~~~~~~~~~\nmain.c:131:15: error: request for member \u2018d_frames\u2019 in something not a structu\n...[truncated]...\nmber \u2018d_in2_sub\u2019 in something not a structure or union\n  636 |                 free(private[i].d_in2_sub);\n      |                                ^\nmain.c:638:32: error: request for member \u2018d_in2_sub2_sqr\u2019 in something not a structure or union\n  638 |                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in something not a structure or union\n  640 |                 free(private[i].d_tMask);\n      |                                ^\nmain.c:641:32: error: request for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1\n"
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 156.789,
+          "prompt_tokens": 67475,
+          "completion_tokens": 16384,
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "finish_reason": "max_tokens",
+          "build_error_snippet": "main.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo--\\n\",j);\n      |                          ^~~~~~~~~~~~~~\nmain.c:72:26: warning: too many arguments for format [-Wformat-extra-args]\n   72 |             fprintf(fid, \"\\n--epi--\\n\",j);\n      |                          ^~~~~~~~~~~~~\nmain.c: In function \u2018main\u2019:\nmain.c:108:9: error: unknown type name \u2018public_struct\u2019\n  108 |         public_struct public;\n      |         ^~~~~~~~~~~~~\nmain.c:109:9: error: unknown type name \u2018private_struct\u2019\n  109 |         private_struct private[ALL_POINTS];\n      |         ^~~~~~~~~~~~~~\nmain.c:131:15: error: request for member \u2018d_frames\u2019 in something not a structu\n...[truncated]...\nmber \u2018d_in2_sub\u2019 in something not a structure or union\n  636 |                 free(private[i].d_in2_sub);\n      |                                ^\nmain.c:638:32: error: request for member \u2018d_in2_sub2_sqr\u2019 in something not a structure or union\n  638 |                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in something not a structure or union\n  640 |                 free(private[i].d_tMask);\n      |                                ^\nmain.c:641:32: error: request for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1\n"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-hotspot-cuda",
+      "target_spec": "rodinia-hotspot-omp",
+      "kernel": "hotspot",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:05:15Z",
+      "prompt_tokens": 13262,
+      "completion_tokens": 8936,
+      "llm_response_time_seconds": 101.98,
+      "build_status": "pass",
+      "build_time_seconds": 0.201,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.001,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "rodinia/openmp/hotspot/hotspot <grid_rows/grid_cols> <pyramid_height> <sim_time> <temp_file> <power_file> <output_file>\n\t<grid_rows/grid_cols>  - number of rows/cols in the grid (positive integer)\n\t<pyramid_height> - pyramid heigh(positive integer)\n\t<sim_time>   - number of iterations\n\t<temp_file>  - name of the file containing the initial temperature values of each cell\n\t<power_file> - name of the file containing the dissipated power values of each cell\n\t<output_file> - name of the output file\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.069,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "hotspot_openmp.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n#include <string.h>\n#include <math.h>\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_SIZE RD_WG_SIZE_0_0\n#el"
+      },
+      "target_files_expected": [
+        "hotspot_openmp.cpp"
+      ],
+      "target_files_extracted": [
+        "hotspot_openmp.cpp"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 47.615,
+          "prompt_tokens": 4420,
+          "completion_tokens": 4314,
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nyramid_height> - pyramid heigh(positive integer)\n\t<sim_time>   - number of iterations\n\t<temp_file>  - name of the file containing the initial ",
+          "finish_reason": "end_turn",
+          "run_stderr_snippet": "rodinia/openmp/hotspot/hotspot <grid_rows/grid_cols> <pyramid_height> <sim_time> <temp_file> <power_file> <output_file>\n\t<grid_rows/grid_cols>  - number of rows/cols in the grid (positive integer)\n\t<pyramid_height> - pyramid heigh(positive integer)\n\t<sim_time>   - number of iterations\n\t<temp_file>  - name of the file containing the initial temperature values of each cell\n\t<power_file> - name of the file containing the dissipated power values of each cell\n\t<output_file> - name of the output file\n",
+          "run_stdout_snippet": "WG size of kernel = 16 X 16\n"
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 54.365,
+          "prompt_tokens": 8842,
+          "completion_tokens": 4622,
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn",
+          "run_stderr_snippet": "rodinia/openmp/hotspot/hotspot <grid_rows/grid_cols> <pyramid_height> <sim_time> <temp_file> <power_file> <output_file>\n\t<grid_rows/grid_cols>  - number of rows/cols in the grid (positive integer)\n\t<pyramid_height> - pyramid heigh(positive integer)\n\t<sim_time>   - number of iterations\n\t<temp_file>  - name of the file containing the initial temperature values of each cell\n\t<power_file> - name of the file containing the dissipated power values of each cell\n\t<output_file> - name of the output file\n",
+          "run_stdout_snippet": "WG size of kernel = 16 X 16\n"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-hotspot3d-cuda",
+      "target_spec": "rodinia-hotspot3d-omp",
+      "kernel": "hotspot3d",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:06:57Z",
+      "prompt_tokens": 3793,
+      "completion_tokens": 3628,
+      "llm_response_time_seconds": 43.314,
+      "build_status": "pass",
+      "build_time_seconds": 0.13,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 1.216,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 1.215,
+      "translated_wall_time_seconds": 1.216,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.9992,
+      "translated_files": {
+        "3D.c": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h>\n#include <math.h>\n#include <sys/time.h>\n#include <string.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 16\n#define STR_SIZE 256\n\n#"
+      },
+      "target_files_expected": [
+        "3D.c"
+      ],
+      "target_files_extracted": [
+        "3D.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 43.314,
+          "prompt_tokens": 3793,
+          "completion_tokens": 3628,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-kmeans-cuda",
+      "target_spec": "rodinia-kmeans-omp",
+      "kernel": "kmeans",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:07:42Z",
+      "prompt_tokens": 47300,
+      "completion_tokens": 2007,
+      "llm_response_time_seconds": 23.422,
+      "build_status": "pass",
+      "build_time_seconds": 0.291,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 2.217,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 1.859,
+      "translated_wall_time_seconds": 2.217,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.8385,
+      "translated_files": {
+        "kmeans_openmp/kmeans_clustering.c": "/*****************************************************************************/\n/*IMPORTANT:  READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.         */\n/*By downloading, copying, installing or"
+      },
+      "target_files_expected": [
+        "kmeans_openmp/kmeans_clustering.c"
+      ],
+      "target_files_extracted": [
+        "kmeans_openmp/kmeans_clustering.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 23.422,
+          "prompt_tokens": 47300,
+          "completion_tokens": 2007,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-lavamd-cuda",
+      "target_spec": "rodinia-lavamd-omp",
+      "kernel": "lavamd",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:08:07Z",
+      "prompt_tokens": 14991,
+      "completion_tokens": 1085,
+      "llm_response_time_seconds": 12.533,
+      "build_status": "pass",
+      "build_time_seconds": 0.148,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.001,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.001,
+      "translated_wall_time_seconds": 0.001,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.0,
+      "translated_files": {
+        "kernel/kernel_cpu.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include <omp.h>\n\n#include \"./../main.h\"\n#include \"./kernel_cpu.h\"\n\nvoid kernel_cpu(par_str par,\n                dim_str dim,\n                b"
+      },
+      "target_files_expected": [
+        "kernel/kernel_cpu.c"
+      ],
+      "target_files_extracted": [
+        "kernel/kernel_cpu.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 12.533,
+          "prompt_tokens": 14991,
+          "completion_tokens": 1085,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-lud-cuda",
+      "target_spec": "rodinia-lud-omp",
+      "kernel": "lud",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:08:20Z",
+      "prompt_tokens": 13446,
+      "completion_tokens": 1989,
+      "llm_response_time_seconds": 21.012,
+      "build_status": "pass",
+      "build_time_seconds": 0.242,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.004,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.004,
+      "translated_wall_time_seconds": 0.004,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.0,
+      "translated_files": {
+        "omp/lud_omp.c": "#include <omp.h>\n#include <stdio.h>\n#include <stdlib.h>\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_SIZE RD_WG_SIZE_0_0\n#elif defined(RD_WG_SIZE_0)\n        #define BLOCK_SIZE RD_WG_SIZE_0\n#elif defin"
+      },
+      "target_files_expected": [
+        "omp/lud_omp.c"
+      ],
+      "target_files_extracted": [
+        "omp/lud_omp.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 21.012,
+          "prompt_tokens": 13446,
+          "completion_tokens": 1989,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-myocyte-cuda",
+      "target_spec": "rodinia-myocyte-omp",
+      "kernel": "myocyte",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:08:41Z",
+      "prompt_tokens": 177760,
+      "completion_tokens": 32768,
+      "llm_response_time_seconds": 391.687,
+      "build_status": "fail",
+      "build_time_seconds": 0.029,
+      "build_error_snippet": "rm: cannot remove 'myocyte.out': No such file or directory\nrm: cannot remove 'output.txt': No such file or directory\nmake: *** [Makefile:32: clean] Error 1\n\nIn file included from main.c:87:\nmaster.c: In function \u2018master\u2019:\nmaster.c:73:89: warning: passing argument 3 of \u2018ecc\u2019 makes pointer from integer without a cast [-Wint-conversion]\n   73 |                                                                                         initvalu_offset_ecc,\n      |                                                                                         ^~~~~~~~~~~~~~~~~~~\n      |                                                                                         |\n      |                                                                            \n...[truncated]...\nt [-Wformat=]\n  366 |         printf(\"%.12f s, %.12f % : RUN COMPUTATION\\n\",                                                                                                          (float) (time4-time3) / 1000000, (float) (time4-time3) / (float) (time5-time0) * 100);\n      |                                  ^\nmain.c:367:34: warning: unknown conversion type character \u2018:\u2019 in format [-Wformat=]\n  367 |         printf(\"%.12f s, %.12f % : FREE MEMORY\\n\",                                                                                                                              (float) (time5-time4) / 1000000, (float) (time5-time4) / (float) (time5-time0) * 100);\n      |                                  ^\nmake: *** [Makefile:27: main.o] Error 1\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: (float) (time5-time4) / 1000000, (float) (time5-time4) / (float) (time5-time0) * 100);\n      |                                  ^\nmake: *** [Makefile:27: main.o] Error 1",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.001,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "define.c": "#define fp float\n\n#define NUMBER_THREADS 32\n\n#define EQUATIONS 91\n#define PARAMETERS 18\n",
+        "ecc.c": "#include <math.h>\n#include \"define.c\"\n\nvoid ecc(fp timeinst,\n         fp* d_initvalu,\n         fp* d_finavalu,\n         int valu_offset,\n         fp* d_params){\n\n    fp cycleLength;\n\n    int offset_1,",
+        "file.c": "#include <stdio.h>\n#include \"define.c\"\n\nvoid write_data(char* filename, fp* input, int data_rows, int data_cols, int major, int data_range){\n    FILE* fid;\n    int i, j;\n\n    fid = fopen(filename, \"w\"",
+        "timer.c": "#include <stdlib.h>\n#include <sys/time.h>\n\nlong long get_time() {\n    struct timeval tv;\n    gettimeofday(&tv, NULL);\n    return (tv.tv_sec * 1000000) + tv.tv_usec;\n}\n"
+      },
+      "target_files_expected": [
+        "cam.c",
+        "define.c",
+        "ecc.c",
+        "embedded_fehlberg_7_8.c",
+        "file.c",
+        "fin.c",
+        "main.c",
+        "master.c",
+        "solver.c",
+        "timer.c"
+      ],
+      "target_files_extracted": [
+        "define.c",
+        "ecc.c",
+        "file.c",
+        "timer.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 194.105,
+          "prompt_tokens": 80579,
+          "completion_tokens": 16384,
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "The translation failed to compile with this error:\n```\n56:17: warning: ignoring return value of \u2018fscanf\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   56 |                 fscanf(f",
+          "finish_reason": "max_tokens",
+          "build_error_snippet": "rm: cannot remove 'myocyte.out': No such file or directory\nrm: cannot remove 'output.txt': No such file or directory\nmake: *** [Makefile:32: clean] Error 1\n\nIn file included from main.c:87:\nmaster.c: In function \u2018master\u2019:\nmaster.c:71:33: warning: implicit declaration of function \u2018ecc\u2019 [-Wimplicit-function-declaration]\n   71 |                                 ecc(                                            timeinst,\n      |                                 ^~~\nmain.c: In function \u2018main\u2019:\nmain.c:175:41: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 2 has type \u2018long int\u2019 [-Wformat=]\n  175 |                         printf(\"ERROR: %d is the incorrect end of simulation interval, use numbers > 0\\n\", xmax);\n      |                \n...[truncated]...\n.c: In function \u2018read\u2019:\nfile.c:48:17: warning: ignoring return value of \u2018fscanf\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   48 |                 fscanf(fid, \"%f\", &temp);\n      |                 ^~~~~~~~~~~~~~~~~~~~~~~~\nfile.c:56:17: warning: ignoring return value of \u2018fscanf\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   56 |                 fscanf(fid, \"%f\", &temp);\n      |                 ^~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/ld: main.o: in function `master._omp_fn.0':\nmain.c:(.text+0x3319): undefined reference to `ecc'\n/usr/bin/ld: main.o: in function `master':\nmain.c:(.text+0x38b7): undefined reference to `ecc'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:12: myocyte.out] Error 1\n"
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 197.582,
+          "prompt_tokens": 97181,
+          "completion_tokens": 16384,
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "finish_reason": "max_tokens",
+          "build_error_snippet": "rm: cannot remove 'myocyte.out': No such file or directory\nrm: cannot remove 'output.txt': No such file or directory\nmake: *** [Makefile:32: clean] Error 1\n\nIn file included from main.c:87:\nmaster.c: In function \u2018master\u2019:\nmaster.c:73:89: warning: passing argument 3 of \u2018ecc\u2019 makes pointer from integer without a cast [-Wint-conversion]\n   73 |                                                                                         initvalu_offset_ecc,\n      |                                                                                         ^~~~~~~~~~~~~~~~~~~\n      |                                                                                         |\n      |                                                                            \n...[truncated]...\nt [-Wformat=]\n  366 |         printf(\"%.12f s, %.12f % : RUN COMPUTATION\\n\",                                                                                                          (float) (time4-time3) / 1000000, (float) (time4-time3) / (float) (time5-time0) * 100);\n      |                                  ^\nmain.c:367:34: warning: unknown conversion type character \u2018:\u2019 in format [-Wformat=]\n  367 |         printf(\"%.12f s, %.12f % : FREE MEMORY\\n\",                                                                                                                              (float) (time5-time4) / 1000000, (float) (time5-time4) / (float) (time5-time0) * 100);\n      |                                  ^\nmake: *** [Makefile:27: main.o] Error 1\n"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-nn-cuda",
+      "target_spec": "rodinia-nn-omp",
+      "kernel": "nn",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:15:13Z",
+      "prompt_tokens": 4556,
+      "completion_tokens": 2642,
+      "llm_response_time_seconds": 25.686,
+      "build_status": "pass",
+      "build_time_seconds": 0.048,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.007,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.016,
+      "translated_wall_time_seconds": 0.007,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 2.2857,
+      "translated_files": {
+        "nn_openmp.c": "/*\n * nn_openmp.c\n * Nearest Neighbor - OpenMP version\n *\n */\n\n#include <stdio.h>\n#include <sys/time.h>\n#include <float.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n\n#"
+      },
+      "target_files_expected": [
+        "nn_openmp.c"
+      ],
+      "target_files_extracted": [
+        "nn_openmp.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 25.686,
+          "prompt_tokens": 4556,
+          "completion_tokens": 2642,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-nw-cuda",
+      "target_spec": "rodinia-nw-omp",
+      "kernel": "nw",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:15:39Z",
+      "prompt_tokens": 18404,
+      "completion_tokens": 10993,
+      "llm_response_time_seconds": 121.111,
+      "build_status": "pass",
+      "build_time_seconds": 0.438,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.001,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+      "run_stdout_snippet": "WG size of kernel = 16 \n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.015,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "needle.cpp": "#define LIMIT -999\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n#include <omp.h>\n\n#ifdef RD_WG_SIZE_0_0\n    #define BLOCK_SIZE RD_WG_SIZE_0_0\n#eli"
+      },
+      "target_files_expected": [
+        "needle.cpp"
+      ],
+      "target_files_extracted": [
+        "needle.cpp"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 59.786,
+          "prompt_tokens": 6450,
+          "completion_tokens": 5416,
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nUsage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty>",
+          "finish_reason": "end_turn",
+          "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+          "run_stdout_snippet": "WG size of kernel = 16 \n"
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 61.325,
+          "prompt_tokens": 11954,
+          "completion_tokens": 5577,
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn",
+          "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+          "run_stdout_snippet": "WG size of kernel = 16 \n"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-particlefilter-cuda",
+      "target_spec": "rodinia-particlefilter-omp",
+      "kernel": "particlefilter",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:17:41Z",
+      "prompt_tokens": 18877,
+      "completion_tokens": 6867,
+      "llm_response_time_seconds": 85.475,
+      "build_status": "pass",
+      "build_time_seconds": 0.204,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.009,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.007,
+      "translated_wall_time_seconds": 0.009,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.7778,
+      "translated_files": {
+        "ex_particle_OPENMP_seq.c": "/**\n * @file ex_particle_OPENMP_seq.c\n * @author Michael Trotter & Matt Goodrum\n * @brief Particle filter implementation in C/OpenMP\n */\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#inc"
+      },
+      "target_files_expected": [
+        "ex_particle_OPENMP_seq.c"
+      ],
+      "target_files_extracted": [
+        "ex_particle_OPENMP_seq.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 85.475,
+          "prompt_tokens": 18877,
+          "completion_tokens": 6867,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-pathfinder-cuda",
+      "target_spec": "rodinia-pathfinder-omp",
+      "kernel": "pathfinder",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:19:07Z",
+      "prompt_tokens": 3149,
+      "completion_tokens": 2158,
+      "llm_response_time_seconds": 22.382,
+      "build_status": "pass",
+      "build_time_seconds": 0.064,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.087,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.001,
+      "translated_wall_time_seconds": 0.087,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.0115,
+      "translated_files": {
+        "pathfinder.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <string.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 256\n#define STR_SIZE 256\n#define DEVICE 0\n#define HALO 1\n\nvoid run"
+      },
+      "target_files_expected": [
+        "pathfinder.cpp"
+      ],
+      "target_files_extracted": [
+        "pathfinder.cpp"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 22.382,
+          "prompt_tokens": 3149,
+          "completion_tokens": 2158,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-srad-cuda",
+      "target_spec": "rodinia-srad-omp",
+      "kernel": "srad",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:19:29Z",
+      "prompt_tokens": 18016,
+      "completion_tokens": 10057,
+      "llm_response_time_seconds": 93.515,
+      "build_status": "pass",
+      "build_time_seconds": 0.229,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.001,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1>      - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>      - x1 value of the speckle\n\t<x2>      - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.006,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "srad.cpp": "// includes, system\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n\n#define STR_SIZE 256\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_SIZE RD_WG_SIZE_0_0"
+      },
+      "target_files_expected": [
+        "srad.cpp"
+      ],
+      "target_files_extracted": [
+        "srad.cpp"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 46.236,
+          "prompt_tokens": 6434,
+          "completion_tokens": 4990,
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nx1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1>      - y1 value of the speckle\n\t<y2>      - y2 val",
+          "finish_reason": "end_turn",
+          "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1>      - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>      - x1 value of the speckle\n\t<x2>      - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
+          "run_stdout_snippet": "WG size of kernel = 16 X 16\n"
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 47.279,
+          "prompt_tokens": 11582,
+          "completion_tokens": 5067,
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn",
+          "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1>      - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>      - x1 value of the speckle\n\t<x2>      - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
+          "run_stdout_snippet": "WG size of kernel = 16 X 16\n"
+        }
+      ]
+    },
+    {
+      "source_spec": "rodinia-streamcluster-cuda",
+      "target_spec": "rodinia-streamcluster-omp",
+      "kernel": "streamcluster",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-24T05:21:03Z",
+      "prompt_tokens": 14418,
+      "completion_tokens": 10403,
+      "llm_response_time_seconds": 137.319,
+      "build_status": "pass",
+      "build_time_seconds": 0.764,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 116.488,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {},
+      "baseline_wall_time_seconds": 24.639,
+      "translated_wall_time_seconds": 116.488,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.2115,
+      "translated_files": {
+        "streamcluster_omp.cpp": "/***********************************************\n\tstreamcluster_omp.cpp\n\t: parallelized code of streamcluster using OpenMP\n\t\n\t- original code from PARSEC Benchmark Suite\n\t- CUDA parallelization by Sha"
+      },
+      "target_files_expected": [
+        "streamcluster_omp.cpp"
+      ],
+      "target_files_extracted": [
+        "streamcluster_omp.cpp"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 137.319,
+          "prompt_tokens": 14418,
+          "completion_tokens": 10403,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "end_turn"
+        }
+      ]
+    }
+  ]
+}

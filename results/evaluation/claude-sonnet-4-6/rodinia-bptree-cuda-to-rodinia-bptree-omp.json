@@ -1,0 +1,58 @@
+{
+  "source_spec": "rodinia-bptree-cuda",
+  "target_spec": "rodinia-bptree-omp",
+  "kernel": "bptree",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-24T04:57:05Z",
+  "prompt_tokens": 16014,
+  "completion_tokens": 2717,
+  "llm_response_time_seconds": 27.361,
+  "build_status": "pass",
+  "build_time_seconds": 0.444,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.505,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.489,
+  "translated_wall_time_seconds": 0.505,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.9683,
+  "translated_files": {
+    "kernel/kernel_cpu.c": "//======================================================================================================================================================================================================",
+    "kernel/kernel_cpu_2.c": "//======================================================================================================================================================================================================"
+  },
+  "target_files_expected": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 27.361,
+      "prompt_tokens": 16014,
+      "completion_tokens": 2717,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "finish_reason": "end_turn"
+    }
+  ]
+}
