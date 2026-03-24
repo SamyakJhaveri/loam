@@ -1,0 +1,69 @@
+{
+  "source_spec": "rodinia-pathfinder-cuda",
+  "target_spec": "rodinia-pathfinder-omp",
+  "kernel": "pathfinder",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-24T18:14:56Z",
+  "prompt_tokens": 8166,
+  "completion_tokens": 4460,
+  "llm_response_time_seconds": 10.404,
+  "build_status": "fail",
+  "build_time_seconds": 0.019,
+  "build_error_snippet": "pathfinder.cpp: In function \u2018int calc_path(int*, int**, int, int, int, int, int)\u2019:\npathfinder.cpp:167:34: error: \u2018num_teams\u2019 is not valid for \u2018#pragma omp parallel\u2019\n  167 |             #pragma omp parallel num_teams(num_blocks) thread_limit(threads_per_block)\n      |                                  ^~~~~~~~~\npathfinder.cpp:167:56: error: \u2018thread_limit\u2019 is not valid for \u2018#pragma omp parallel\u2019\n  167 |             #pragma omp parallel num_teams(num_blocks) thread_limit(threads_per_block)\n      |                                                        ^~~~~~~~~~~~\npathfinder.cpp:169:25: error: \u2018teams\u2019 construct must be closely nested inside of \u2018target\u2019 construct or not nested in any OpenMP construct\n  169 |                 #pragma omp teams distribute parallel for\n      |                         ^~~\nmake: *** [Makefile:7: release] Error 1\n",
+  "run_status": "fail",
+  "run_time_seconds": 1.151,
+  "run_exit_code": -11,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: \u2018target\u2019 construct or not nested in any OpenMP construct\n  169 |                 #pragma omp teams distribute parallel for\n      |                         ^~~\nmake: *** [Makefile:7: release] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "pathfinder.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n\n#ifdef TIMING\n#include \"timing.h\"\n\nstruct timeval tv;\nstruct timeval tv_total_start, tv_total_end;\nstruct"
+  },
+  "target_files_expected": [
+    "pathfinder.cpp"
+  ],
+  "target_files_extracted": [
+    "pathfinder.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.846,
+      "prompt_tokens": 2954,
+      "completion_tokens": 2233,
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "finish_reason": "stop",
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": ""
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.558,
+      "prompt_tokens": 5212,
+      "completion_tokens": 2227,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "finish_reason": "stop",
+      "build_error_snippet": "pathfinder.cpp: In function \u2018int calc_path(int*, int**, int, int, int, int, int)\u2019:\npathfinder.cpp:167:34: error: \u2018num_teams\u2019 is not valid for \u2018#pragma omp parallel\u2019\n  167 |             #pragma omp parallel num_teams(num_blocks) thread_limit(threads_per_block)\n      |                                  ^~~~~~~~~\npathfinder.cpp:167:56: error: \u2018thread_limit\u2019 is not valid for \u2018#pragma omp parallel\u2019\n  167 |             #pragma omp parallel num_teams(num_blocks) thread_limit(threads_per_block)\n      |                                                        ^~~~~~~~~~~~\npathfinder.cpp:169:25: error: \u2018teams\u2019 construct must be closely nested inside of \u2018target\u2019 construct or not nested in any OpenMP construct\n  169 |                 #pragma omp teams distribute parallel for\n      |                         ^~~\nmake: *** [Makefile:7: release] Error 1\n"
+    }
+  ]
+}

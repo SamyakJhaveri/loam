@@ -1,0 +1,55 @@
+{
+  "source_spec": "rodinia-backprop-cuda",
+  "target_spec": "rodinia-backprop-omp",
+  "kernel": "backprop",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-24T18:08:22Z",
+  "prompt_tokens": 10445,
+  "completion_tokens": 8260,
+  "llm_response_time_seconds": 19.857,
+  "build_status": "pass",
+  "build_time_seconds": 0.204,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.013,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": 0.013,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.2308,
+  "translated_files": {
+    "backprop.c": "/*\n ******************************************************************\n * HISTORY\n * 15-Oct-94  Jeff Shufelt (js), Carnegie Mellon University\n *\tPrepared for 15-681, Fall 1994.\n * Modified by Shuai Ch"
+  },
+  "target_files_expected": [
+    "backprop.c"
+  ],
+  "target_files_extracted": [
+    "backprop.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 19.857,
+      "prompt_tokens": 10445,
+      "completion_tokens": 8260,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "finish_reason": "stop"
+    }
+  ]
+}

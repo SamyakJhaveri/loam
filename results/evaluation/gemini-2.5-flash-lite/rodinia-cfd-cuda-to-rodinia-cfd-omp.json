@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-cfd-cuda",
+  "target_spec": "rodinia-cfd-omp",
+  "kernel": "cfd",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-24T18:09:01Z",
+  "prompt_tokens": 78975,
+  "completion_tokens": 14792,
+  "llm_response_time_seconds": 31.667,
+  "build_status": "fail",
+  "build_time_seconds": 0.281,
+  "build_error_snippet": "euler3d_cpu.cpp:168:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  168 | float3 ff_flux_contribution_momentum_x;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:169:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  169 | float3 ff_flux_contribution_momentum_y;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:170:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  170 | float3 ff_flux_contribution_momentum_z;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:171:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  171 | float3 ff_flux_contribution_density_energy;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:183:55: error: \u2018float3\u2019 has not been declared\n  183 | inline void compute_flux_contributio\n...[truncated]...\n    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\neuler3d_cpu.cpp:440:240: error: \u2018ff_flux_contribution_density_energy\u2019 was not declared in this scope\n  440 |                 compute_flux_contribution(ff_variable[VAR_DENSITY], ff_momentum, ff_variable[VAR_DENSITY_ENERGY], ff_pressure, ff_velocity, ff_flux_contribution_momentum_x, ff_flux_contribution_momentum_y, ff_flux_contribution_momentum_z, ff_flux_contribution_density_energy);\n      |                                                                                                                                                                                                                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [makefile:15: euler3d_cpu] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 3.877,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "euler3d_cpu.cpp": "// Copyright 2009, Andrew Corrigan, acorriga@gmu.edu\n// This code is from the AIAA-2009-4001 paper\n\n#include <omp.h>\n#include <iostream>\n#include <fstream>\n#include <vector>\n#include <cmath>\n#include "
+  },
+  "target_files_expected": [
+    "euler3d_cpu.cpp"
+  ],
+  "target_files_extracted": [
+    "euler3d_cpu.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 16.335,
+      "prompt_tokens": 35702,
+      "completion_tokens": 7457,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nENERGY], ff_pressure, ff_velocity, ff_flux_contribution_momentum_x, ff_flux_contribution_momentum_y, ff_flux_contribution_momentum_z, ff_flux_con",
+      "finish_reason": "stop",
+      "build_error_snippet": "euler3d_cpu.cpp:174:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  174 | float3 ff_flux_contribution_momentum_x;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:175:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  175 | float3 ff_flux_contribution_momentum_y;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:176:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  176 | float3 ff_flux_contribution_momentum_z;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:177:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  177 | float3 ff_flux_contribution_density_energy;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:189:55: error: \u2018float3\u2019 has not been declared\n  189 | inline void compute_flux_contributio\n...[truncated]...\n    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\neuler3d_cpu.cpp:446:240: error: \u2018ff_flux_contribution_density_energy\u2019 was not declared in this scope\n  446 |                 compute_flux_contribution(ff_variable[VAR_DENSITY], ff_momentum, ff_variable[VAR_DENSITY_ENERGY], ff_pressure, ff_velocity, ff_flux_contribution_momentum_x, ff_flux_contribution_momentum_y, ff_flux_contribution_momentum_z, ff_flux_contribution_density_energy);\n      |                                                                                                                                                                                                                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [makefile:15: euler3d_cpu] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 15.332,
+      "prompt_tokens": 43273,
+      "completion_tokens": 7335,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "finish_reason": "stop",
+      "build_error_snippet": "euler3d_cpu.cpp:168:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  168 | float3 ff_flux_contribution_momentum_x;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:169:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  169 | float3 ff_flux_contribution_momentum_y;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:170:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  170 | float3 ff_flux_contribution_momentum_z;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:171:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  171 | float3 ff_flux_contribution_density_energy;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:183:55: error: \u2018float3\u2019 has not been declared\n  183 | inline void compute_flux_contributio\n...[truncated]...\n    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\neuler3d_cpu.cpp:440:240: error: \u2018ff_flux_contribution_density_energy\u2019 was not declared in this scope\n  440 |                 compute_flux_contribution(ff_variable[VAR_DENSITY], ff_momentum, ff_variable[VAR_DENSITY_ENERGY], ff_pressure, ff_velocity, ff_flux_contribution_momentum_x, ff_flux_contribution_momentum_y, ff_flux_contribution_momentum_z, ff_flux_contribution_density_energy);\n      |                                                                                                                                                                                                                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [makefile:15: euler3d_cpu] Error 1\n"
+    }
+  ]
+}

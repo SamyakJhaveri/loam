@@ -1,0 +1,67 @@
+{
+  "source_spec": "rodinia-nn-cuda",
+  "target_spec": "rodinia-nn-omp",
+  "kernel": "nn",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-24T18:13:03Z",
+  "prompt_tokens": 12289,
+  "completion_tokens": 7841,
+  "llm_response_time_seconds": 20.305,
+  "build_status": "pass",
+  "build_time_seconds": 0.049,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": 0.001,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 16.0,
+  "translated_files": {
+    "nn_openmp.c": "/*\n * nn.c\n * Nearest Neighbor\n *\n */\n\n#include <stdio.h>\n#include <sys/time.h>\n#include <float.h>\n#include <stdlib.h>\n#include <string.h>\n#include <omp.h>\n#include <math.h>\n\n// Inlining std::vector d"
+  },
+  "target_files_expected": [
+    "nn_openmp.c"
+  ],
+  "target_files_extracted": [
+    "nn_openmp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.554,
+      "prompt_tokens": 4304,
+      "completion_tokens": 3592,
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nnn_openmp.c:10:10: fatal error: vector: No such file or directory\n   10 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmak",
+      "finish_reason": "stop",
+      "build_error_snippet": "nn_openmp.c:10:10: fatal error: vector: No such file or directory\n   10 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:12: nn] Error 1\n"
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 12.751,
+      "prompt_tokens": 7985,
+      "completion_tokens": 4249,
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "finish_reason": "stop"
+    }
+  ]
+}

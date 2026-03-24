@@ -867,9 +867,9 @@ python3 scripts/evaluation/analyze_eval.py \
 
 ## SESSION 3b — New Models cuda-to-omp L0 (claude-sonnet-4-6 + gemini-2.5-flash-lite)
 
-> **Status: PARTIAL** — 2026-03-23. claude-sonnet-4-6 complete (12/17 PASS, commit 887d681).
-> Gemini provider implemented (Prerequisite #1b complete). gemini-2.5-flash-lite batch
-> pending — set GEMINI_API_KEY then run Step 4 to complete this session.
+> **Status: COMPLETE** — 2026-03-24. claude-sonnet-4-6: 12/17 PASS (commit 887d681).
+> gemini-2.5-flash-lite: 4/17 PASS (commit TBD). 4-model matrix complete.
+> Failure taxonomy: BUILD_FAIL 26, RUN_FAIL 10, EXTRACTION_FAIL 2 (68 total tasks).
 
 ```
 ultrathink
