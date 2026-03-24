@@ -157,7 +157,7 @@ Waves: (1) verify-app + diff-reviewer + security-scanner → (2) test-synthesize
 
 ## Claude Code Extensions
 
-**Rules** (`.claude/rules/`, 10 files): Each file declares its own `paths:` loading conditions.
+**Rules** (`.claude/rules/`, 11 files): Each file declares its own `paths:` loading conditions.
 Always-loaded: `workflow.md`, `mentoring.md`, `known-issues.md`.
 Conditional: `augmentation.md`, `evaluation.md`, `github-pages.md`, `spec-conventions.md`,
 `python.md`, `validation-loop.md`, `frontend-design.md`, `known-issues-archive.md`.

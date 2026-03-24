@@ -37,7 +37,7 @@ except Exception:
 " <<< "$INPUT" 2>/dev/null || echo "")
 
 # ── 2. Only gate on git commit commands ──────────────────────────────────────
-if ! echo "$COMMAND" | grep -qE 'git\s+commit'; then
+if ! echo "$COMMAND" | grep -qE '^\s*git\s+commit'; then
     exit 0
 fi
 
