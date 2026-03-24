@@ -1,5 +1,5 @@
 # ParBench Evaluation Summary
-**Generated:** 2026-03-22 22:51  |  **Total tasks:** 34
+**Generated:** 2026-03-23 19:43  |  **Total tasks:** 34
 
 ## Pass Rates by Model
 

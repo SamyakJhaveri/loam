@@ -20,7 +20,7 @@
   "verify_status": "pass",
   "verify_strategy": "exit_code",
   "overall_status": "PASS",
-  "error_message": "Run failed (exit code -11)",
+  "error_message": null,
   "metrics": {},
   "baseline_wall_time_seconds": 1.215,
   "translated_wall_time_seconds": 1.343,

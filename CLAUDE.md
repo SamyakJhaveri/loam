@@ -163,7 +163,8 @@ Conditional: `augmentation.md`, `evaluation.md`, `github-pages.md`, `spec-conven
 `python.md`, `validation-loop.md`, `frontend-design.md`, `known-issues-archive.md`.
 
 **Agents** (`.claude/agents/`, 16 agents): Invoke by name. Each agent file documents its purpose.
-Key agents: `plan-reviewer`, `verify-app`, `explorer`, `eval-batcher`, `paper-drafter`, `self-critic`.
+Key agents: `plan-reviewer`, `verify-app`, `explorer`, `eval-batcher`, `paper-drafter`, `self-critic`,
+`dashboard-refresher`, `rodinia-verifier`, `xsbench-explorer`.
 
 **Skills** (`.claude/skills/`, 6 skills): `/feature-dev`, `/fix-bug`, `/review`, `/gen-spec`,
 `/augment-test`, `/validate`. Invoke via `/skill-name`.

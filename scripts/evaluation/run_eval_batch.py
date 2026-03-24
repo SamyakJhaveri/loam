@@ -172,8 +172,17 @@ def run_batch(
         sym = "✓" if status == "PASS" else ("!" if status == "ERROR" else "✗")
         print(f"  {sym} {status:<12}  {elapsed:.1f}s", flush=True)
 
-        # Write result incrementally
+        # Write result incrementally — warn if overwriting an existing PASS
         result_file.parent.mkdir(parents=True, exist_ok=True)
+        if result_file.exists():
+            existing_result = json.loads(result_file.read_text())
+            if existing_result.get("overall_status") == "PASS":
+                print(
+                    f"  ⚠ WARNING: overwriting existing PASS result for "
+                    f"{src_id} → {tgt_id} [{model}]. "
+                    f"Use --resume to skip completed tasks.",
+                    flush=True,
+                )
         result_file.write_text(json.dumps(result, indent=2))
 
         results.append(result)

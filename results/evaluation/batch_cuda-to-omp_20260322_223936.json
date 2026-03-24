@@ -1,0 +1,79 @@
+{
+  "direction": "cuda-to-omp",
+  "models": [
+    "groq-llama-3.3-70b-versatile"
+  ],
+  "suite": "rodinia",
+  "kernels": [
+    "heartwall"
+  ],
+  "total_tasks": 1,
+  "total_elapsed_seconds": 38.4,
+  "results": [
+    {
+      "source_spec": "rodinia-heartwall-cuda",
+      "target_spec": "rodinia-heartwall-omp",
+      "kernel": "heartwall",
+      "model": "groq-llama-3.3-70b-versatile",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-23T05:38:57Z",
+      "prompt_tokens": 91509,
+      "completion_tokens": 12717,
+      "llm_response_time_seconds": 35.406,
+      "build_status": "pass",
+      "build_time_seconds": 0.377,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 2.551,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": "Build failed: from pointer without a cast [-Wint-conversion]\n  195 |     common_tEpiColLoc = (int*)malloc(common_epi_mem * common_no_frames);\n      |                       ^\nmake: *** [makefile:12: main.o] Error 1",
+      "metrics": {},
+      "baseline_wall_time_seconds": 2.5,
+      "translated_wall_time_seconds": 2.551,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.98,
+      "translated_files": {},
+      "target_files_expected": [
+        "main.c",
+        "kernel.c",
+        "define.c"
+      ],
+      "target_files_extracted": [],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 31.861,
+          "prompt_tokens": 39419,
+          "completion_tokens": 12519,
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "The translation failed to compile with this error:\n```\nin.c:194:23: warning: assignment to \u2018int\u2019 from \u2018int *\u2019 makes integer from pointer without a cast [-Wint-conversion]\n  194 |     common_tEpiRowLoc",
+          "finish_reason": "stop",
+          "build_error_snippet": "main.c:70:19: error: \u2018AVI_MAX_TRACKS\u2019 undeclared here (not in a function)\n   70 |     track_t track[AVI_MAX_TRACKS];\n      |                   ^~~~~~~~~~~~~~\nmain.c: In function \u2018main\u2019:\nmain.c:188:24: warning: assignment to \u2018int\u2019 from \u2018int *\u2019 makes integer from pointer without a cast [-Wint-conversion]\n  188 |     common_tEndoRowLoc = (int*)malloc(common_endo_mem * common_no_frames);\n      |                        ^\nmain.c:189:24: warning: assignment to \u2018int\u2019 from \u2018int *\u2019 makes integer from pointer without a cast [-Wint-conversion]\n  189 |     common_tEndoColLoc = (int*)malloc(common_endo_mem * common_no_frames);\n      |                        ^\nmain.c:194:23: warning: assignment to \u2018int\u2019 from \u2018int *\u2019 makes integer from pointer without a cast [-Wint-conversion]\n  194 |     common_tEpiRowLoc = (int*)malloc(common_epi_mem * common_no_frames);\n      |                       ^\nmain.c:195:23: warning: assignment to \u2018int\u2019 from \u2018int *\u2019 makes integer from pointer without a cast [-Wint-conversion]\n  195 |     common_tEpiColLoc = (int*)malloc(common_epi_mem * common_no_frames);\n      |                       ^\nmake: *** [makefile:12: main.o] Error 1\n"
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 3.545,
+          "prompt_tokens": 52090,
+          "completion_tokens": 198,
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "finish_reason": "stop"
+        }
+      ]
+    }
+  ]
+}

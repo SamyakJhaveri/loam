@@ -112,6 +112,58 @@ Key fields in result JSON:
 - `error_message` — human-readable failure summary
 - `speedup_ratio` / `timing_method` — set on PASS
 
+## Result File Integrity Gotchas (discovered SESSION 3 — 2026-03-23)
+
+**Stale `error_message` on retried PASS results (now fixed in `llm_evaluate.py`):**
+When a kernel fails attempt 1 but passes attempt 2, `error_message` was NOT reset to
+`null`. The `overall_status` was correct but `error_message` retained the attempt-1
+failure text. Fixed by adding `error_message = None` in the PASS branch of
+`evaluate_translation()`. When auditing results: always check `overall_status`, not
+`error_message`, as the authoritative correctness indicator.
+
+**Self-repair data lives in `total_attempts` field:**
+`analyze_eval.py` reports a *global* repair count, not a per-model breakdown.
+To compute per-model self-repair rates manually:
+```bash
+python3 -c "
+import json, glob
+for model_dir in glob.glob('results/evaluation/*/'):
+    files = glob.glob(model_dir + '*.json')
+    passes = [json.loads(open(f).read()) for f in files
+              if json.loads(open(f).read()).get('overall_status') == 'PASS']
+    repaired = [r for r in passes if r.get('total_attempts', 1) > 1]
+    print(model_dir, f'{len(repaired)}/{len(passes)} repaired')
+"
+```
+SESSION 3 baseline: azure-gpt-4.1 = 2/9 (22%), groq-llama = 3/5 (60%).
+
+**BUILD_FAIL count shifts when EXTRACTION_FAIL is reclassified:**
+After commit `dad1662` reclassified groq heartwall from BUILD_FAIL → EXTRACTION_FAIL,
+the BUILD_FAIL count changed from 11 to 10. Post-mortem narrative text had the stale "11".
+**Always use `eval_summary.json` as the authoritative source for counts** — never
+trust narrative documentation. Grep `eval_summary.json` directly.
+
+**groq-llama-3.3-70b token limit (16384 completion tokens):**
+Llama 3.3 70B via Groq cannot handle multi-file kernels with large prompt+response budgets:
+- `myocyte` (10 target files, 143K prompt tokens): hits cap both attempts → stub output → BUILD_FAIL
+- `heartwall` (3 target files, 89K prompt tokens): hits cap on attempt 2 → EXTRACTION_FAIL
+For future groq-llama eval batches, skip these two kernels or use batched translation.
+
+## Verification Strategy Limitation (SESSION 3 — 2026-03-23)
+
+**17/17 Rodinia OMP specs use `exit_code == 0` as their primary (and effective) verification.**
+Exit-code-only verification proves "didn't crash" but NOT functional correctness. A translated
+kernel that computes wrong results but exits cleanly is incorrectly marked PASS.
+
+All 5 groq-llama PASS results (bfs, hotspot3d, lud, nn, pathfinder) were verified only by
+exit code. The fallback `stdout_pattern` strategies in 9 specs are never reached because
+the `exit_code` strategy short-circuits first (see `harness/verifier.py` lines 49-69).
+The baseline stdout snippets contain no "PASS"/"FAIL" assertions from the Rodinia source.
+
+**Impact on SC26 paper:** PASS = "successfully translated, compiled, and ran without crashing."
+It does NOT claim numerical output equivalence. The paper's methodology section must state
+this clearly. Future work: implement `numeric_comparison` strategy for floating-point outputs.
+
 ## Python Gotcha: null JSON values
 
 `dict.get("key", {})` returns `None` (not `{}`) when the key EXISTS with a null JSON value.

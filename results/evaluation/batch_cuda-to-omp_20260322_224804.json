@@ -1,0 +1,80 @@
+{
+  "direction": "cuda-to-omp",
+  "models": [
+    "groq-llama-3.3-70b-versatile"
+  ],
+  "suite": "rodinia",
+  "kernels": [
+    "heartwall"
+  ],
+  "total_tasks": 1,
+  "total_elapsed_seconds": 71.9,
+  "results": [
+    {
+      "source_spec": "rodinia-heartwall-cuda",
+      "target_spec": "rodinia-heartwall-omp",
+      "kernel": "heartwall",
+      "model": "groq-llama-3.3-70b-versatile",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-23T05:46:52Z",
+      "prompt_tokens": 89428,
+      "completion_tokens": 26905,
+      "llm_response_time_seconds": 71.93,
+      "build_status": null,
+      "build_time_seconds": null,
+      "build_error_snippet": null,
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "EXTRACTION_FAIL",
+      "error_message": "LLM response did not contain parseable code for any of the expected target files: ['main.c', 'kernel.c', 'define.c']",
+      "metrics": {},
+      "baseline_wall_time_seconds": 2.5,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {},
+      "target_files_expected": [
+        "main.c",
+        "kernel.c",
+        "define.c"
+      ],
+      "target_files_extracted": [],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 28.406,
+          "prompt_tokens": 39419,
+          "completion_tokens": 10521,
+          "build_status": null,
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "Your response did not include any of the expected output files. Please translate each target file using this format:\n\n```c main.c\n// your translated code here\n```\n\n```c kernel.c\n// your translated cod",
+          "finish_reason": "stop",
+          "extraction_fail": true
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 43.524,
+          "prompt_tokens": 50009,
+          "completion_tokens": 16384,
+          "build_status": null,
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "finish_reason": "length",
+          "extraction_fail": true
+        }
+      ]
+    }
+  ]
+}

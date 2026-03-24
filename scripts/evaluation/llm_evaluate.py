@@ -458,6 +458,8 @@ def call_llm(
         gpt-* / o1-* / o3-* / o4-*  → OpenAI SDK (OPENAI_API_KEY)
         azure-*           → Azure OpenAI SDK (AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT)
                             Strips "azure-" prefix to get deployment name.
+        groq-*            → OpenAI SDK (GROQ_API_KEY, base_url=https://api.groq.com/openai/v1)
+                            Strips "groq-" prefix to get model name.
 
     ParaCodex (future):
         Add `elif model.startswith("paracodex")` branch here.
@@ -956,6 +958,22 @@ def evaluate_translation(
                     "Extracted %d/%d target files", len(extracted), len(target_filenames)
                 )
 
+            # -- Warn on partial extraction: some files extracted but not all --
+            # If only a subset is extracted, the build proceeds with the remaining
+            # reference files intact — this can produce a misleading BUILD_FAIL
+            # (wrong interface) or a false PASS (reference code runs correctly).
+            if extracted and len(extracted) < len(target_filenames):
+                missing = [f for f in target_filenames if f not in extracted]
+                logger.warning(
+                    "Partial extraction on attempt %d: extracted %d/%d target files; "
+                    "missing: %s. Build will use original reference files for missing "
+                    "targets — result may be misleading.",
+                    attempt_num,
+                    len(extracted),
+                    len(target_filenames),
+                    missing,
+                )
+
             # -- Write extracted files to disk --
             for fname, code in extracted.items():
                 fp = source_dir / fname
@@ -1030,6 +1048,7 @@ def evaluate_translation(
 
                     if verify_result.status == Status.PASS:
                         final_status = "PASS"
+                        error_message = None  # clear any error from a previous attempt
                     else:
                         final_status = "VERIFY_FAIL"
                         error_message = f"Verify failed: {verify_result.details}"

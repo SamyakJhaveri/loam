@@ -383,8 +383,10 @@ def main() -> None:
     parser.add_argument(
         "--expected-models",
         nargs="+",
-        default=["azure-gpt-4.1"],
+        default=["azure-gpt-4.1", "groq-llama-3.3-70b-versatile"],
         metavar="MODEL",
+        # Update when the 4-model matrix is complete (add claude-sonnet-4-6,
+        # gemini-2.5-flash-lite per Gal's 2026-03-23 directive — Sessions 3b+).
         help="Models expected in the full matrix (used by --show-gaps).",
     )
     parser.add_argument(

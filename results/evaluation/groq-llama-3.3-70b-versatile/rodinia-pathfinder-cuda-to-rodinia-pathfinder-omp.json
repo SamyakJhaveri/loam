@@ -20,7 +20,7 @@
   "verify_status": "pass",
   "verify_strategy": "exit_code",
   "overall_status": "PASS",
-  "error_message": "Build failed: num\u2019?\n   57 |     int xidx = blkX + omp_get_thread_num_x();\n      |                       ^~~~~~~~~~~~~~~~~~~~\n      |                       omp_get_thread_num\nmake: *** [Makefile:7: release] Error 1",
+  "error_message": null,
   "metrics": {},
   "baseline_wall_time_seconds": 0.001,
   "translated_wall_time_seconds": 0.161,

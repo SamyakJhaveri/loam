@@ -959,12 +959,16 @@ ls results/evaluation/gemini-2.5-flash-lite/rodinia-*-cuda-to-rodinia-*-omp.json
 
 ### Audit Verdict: Results Are Valid
 
-The 8-agent audit confirmed 9/11 groq BUILD_FAILs are genuine LLM code quality failures:
+The 8-agent audit confirmed 8/10 groq BUILD_FAILs are genuine LLM code quality failures:
 - `cfd`: CUDA type `float3` leaked into OMP output
-- `nw`: Filename `needle.cpp` echoed literally as code
-- `hotspot/backprop/kmeans`: Missing includes, undeclared functions
-- `streamcluster`: Namespace conflict with C++17 stdlib (same failure as azure)
-- `lavamd/bptree`: Near-empty responses (793/1038 tokens) — model gave up
+- `nw`: Filename `needle.cpp` echoed literally as code on line 1
+- `hotspot`: Variable naming mismatch (`border_rows` vs `borderRows`)
+- `backprop`: `#define` macro `MOMENTUM` used in `firstprivate()` OMP clause
+- `kmeans`: Non-constant global initializer (`num_threads_perdim * num_threads_perdim`)
+- `streamcluster/particlefilter`: Prose/English text emitted as code (hallucination)
+- `lavamd/bptree`: Wrong include paths + missing types
+- `myocyte`: 10 target files; hit 16384-token completion cap both attempts (stub output)
+(heartwall: EXTRACTION_FAIL — separate category; not a BUILD_FAIL)
 
 Prompts are model-agnostic (byte-for-byte identical between models).
 Specs unchanged between sessions. Build environment clean.
@@ -999,8 +1003,12 @@ missed this format → 5 false-positive PASSes. Tier 1.5 regex added; all 5 kern
   `multi_to_single` (groq 3/11 vs azure 6/11) and `multi_to_multi` (groq 0/3 vs azure 1/3).
 - **Token limit irrelevant**: 0 azure truncations; only groq myocyte is token-limited.
   Increasing `max_tokens` would not change pass rates for either model.
-- **Self-repair**: azure repaired 2 kernels (bptree, nn); groq repaired 0 (all 5 PASSes
-  were first-attempt). Self-repair helps azure but groq's failures are too fundamental.
+- **Self-repair**: azure repaired 2 kernels (bptree, nn; 2/9 = 22% of PASSes); groq repaired
+  3 kernels (hotspot3d, nn, pathfinder; 3/5 = 60% of PASSes). Only bfs and lud were groq
+  first-attempt PASSes. Both models benefit from the error-feedback retry loop — groq relies
+  on it more heavily because its first-attempt code quality is lower, but self-correction
+  works for both. Groq's 7/12 failing kernels showed zero change between attempts — those
+  failures are too fundamental for retry to fix.
 - **EXTRACTION_FAIL as a category**: heartwall (groq) shows a real failure mode —
   the model cannot reliably structure multi-file output in a parseable format.
 
