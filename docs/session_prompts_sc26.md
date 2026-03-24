@@ -867,9 +867,9 @@ python3 scripts/evaluation/analyze_eval.py \
 
 ## SESSION 3b — New Models cuda-to-omp L0 (claude-sonnet-4-6 + gemini-2.5-flash-lite)
 
-> **Status: NOT STARTED** — Added 2026-03-23 per Gal's 4-model directive.
-> Run AFTER: (1) `claude-sonnet-4-6` added to MODEL_REGISTRY in `llm_evaluate.py`,
-> (2) Gemini provider implemented in `llm_evaluate.py` (Prerequisite #1b).
+> **Status: PARTIAL** — 2026-03-23. claude-sonnet-4-6 complete (12/17 PASS, commit 887d681).
+> Gemini provider implemented (Prerequisite #1b complete). gemini-2.5-flash-lite batch
+> pending — set GEMINI_API_KEY then run Step 4 to complete this session.
 
 ```
 ultrathink
