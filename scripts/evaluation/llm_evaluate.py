@@ -35,6 +35,7 @@ import datetime
 import json
 import logging
 import os
+import random
 import re
 import shutil
 import sys
@@ -875,7 +876,11 @@ def evaluate_translation(
     if verbose:
         logger.info("Evaluating: %s → %s  model=%s", source_id, target_id, model)
 
-    # Get source code (optionally augmented)
+    # Get source code (optionally augmented).
+    # Seed random before augmentation so L1-L4 transforms are deterministic
+    # per (spec, level) pair. Convention: seed = 42 + augment_level (eval-pipeline-specific).
+    if augment_level > 0:
+        random.seed(42 + augment_level)
     source_payload = get_prompt_payload(source_spec, project_root, augment_level)
 
     # Read support files (headers + code) to include in prompt

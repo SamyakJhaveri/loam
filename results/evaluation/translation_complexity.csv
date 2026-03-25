@@ -229,3 +229,15 @@ rodinia,streamcluster,rodinia-streamcluster-omp,rodinia-streamcluster-cuda,omp,c
 rodinia,streamcluster,rodinia-streamcluster-omp,rodinia-streamcluster-opencl,omp,opencl,1,1,single_file
 rodinia,streamcluster,rodinia-streamcluster-opencl,rodinia-streamcluster-cuda,opencl,cuda,1,2,single_to_multi
 rodinia,streamcluster,rodinia-streamcluster-opencl,rodinia-streamcluster-omp,opencl,omp,1,1,single_file
+xsbench,xsbench,xsbench-xsbench-cuda,xsbench-xsbench-omp,cuda,omp,6,6,multi_to_multi
+xsbench,xsbench,xsbench-xsbench-cuda,xsbench-xsbench-omp_target,cuda,omp_target,6,6,multi_to_multi
+xsbench,xsbench,xsbench-xsbench-cuda,xsbench-xsbench-opencl,cuda,opencl,6,1,multi_to_single
+xsbench,xsbench,xsbench-xsbench-omp,xsbench-xsbench-cuda,omp,cuda,6,6,multi_to_multi
+xsbench,xsbench,xsbench-xsbench-omp,xsbench-xsbench-omp_target,omp,omp_target,6,6,multi_to_multi
+xsbench,xsbench,xsbench-xsbench-omp,xsbench-xsbench-opencl,omp,opencl,6,1,multi_to_single
+xsbench,xsbench,xsbench-xsbench-omp_target,xsbench-xsbench-cuda,omp_target,cuda,6,6,multi_to_multi
+xsbench,xsbench,xsbench-xsbench-omp_target,xsbench-xsbench-omp,omp_target,omp,6,6,multi_to_multi
+xsbench,xsbench,xsbench-xsbench-omp_target,xsbench-xsbench-opencl,omp_target,opencl,6,1,multi_to_single
+xsbench,xsbench,xsbench-xsbench-opencl,xsbench-xsbench-cuda,opencl,cuda,1,6,single_to_multi
+xsbench,xsbench,xsbench-xsbench-opencl,xsbench-xsbench-omp,opencl,omp,1,6,single_to_multi
+xsbench,xsbench,xsbench-xsbench-opencl,xsbench-xsbench-omp_target,opencl,omp_target,1,6,single_to_multi

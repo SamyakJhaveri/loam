@@ -1,0 +1,64 @@
+{
+  "source_spec": "xsbench-xsbench-omp_target",
+  "target_spec": "xsbench-xsbench-opencl",
+  "kernel": "xsbench",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T06:23:26Z",
+  "prompt_tokens": 35877,
+  "completion_tokens": 3053,
+  "llm_response_time_seconds": 37.654,
+  "build_status": "pass",
+  "build_time_seconds": 0.512,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.533,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "runtime": {
+      "value": 0.136,
+      "unit": "seconds"
+    }
+  },
+  "baseline_wall_time_seconds": 0.44,
+  "translated_wall_time_seconds": 0.533,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.8255,
+  "translated_files": {
+    "kernel.cl": "// Grid types\n#define UNIONIZED 0\n#define NUCLIDE 1\n#define HASH 2\n\n// Simulation types\n#define HISTORY_BASED 1\n#define EVENT_BASED 2\n\n// Binary Mode Type\n#define NONE 0\n#define READ 1\n#define WRITE 2"
+  },
+  "target_files_expected": [
+    "kernel.cl"
+  ],
+  "target_files_extracted": [
+    "kernel.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 37.654,
+      "prompt_tokens": 35877,
+      "completion_tokens": 3053,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}
