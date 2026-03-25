@@ -358,6 +358,51 @@ M10 was previously marked DONE, but the audit found:
 
 ---
 
+### 1.9 Day 8 (2026-03-25) — Status Update
+
+#### Completed This Day (verified 2026-03-25)
+
+| Session | Description | Commit | Date | Key Result |
+|---------|------------|--------|------|-----------|
+| **S8** | XSBench multi-API eval (L0-L4, 12 directions) | `096a309` | 03-25 | 180/180 files; marker confirmed; 3 models × 12 dirs × 5 levels |
+| **W-S12** | Paper §3–§5 (Framework, Curation, Setup) | `5b22981`→merge `155a9fe` | 03-25 | 3289 words; 4 review commits; docs/paper/paper_sections_3_4_5.md |
+| **W-S14** | Publication figures F2-F6 | `e0e88b7` (merged PR #4) | 03-24 | 5 PDF+PNG figures from L0 data in docs/paper/figures/ |
+| **Day 8 setup** | Updated S7+W-S11 session prompts | `155a9fe` | 03-25 | S7 prompt: L1-L4, 3 models, all decisions resolved |
+
+#### Currently Running (as of 2026-03-25)
+
+| Session | Status | Lane | Notes |
+|---------|--------|------|-------|
+| **S7** | **IN PROGRESS** | GPU main checkout | Rodinia cuda-to-omp L1-L4, 3 models, 204 tasks (~6-10h) |
+| **W-S11** | **IN PROGRESS** | Worktree (`worktree/s11-dashboard`) | Dashboard refresh; 248 result files on disk |
+
+#### Actual Evaluation Data on Disk (as of 2026-03-25)
+
+- **68 Rodinia result JSONs**: 4 models × 17 kernels × cuda-to-omp × L0 (azure=17, others=17 each)
+- **180 XSBench result JSONs**: 3 models × 12 directions × 5 levels (L0-L4) — azure excluded
+- **Total: 248 result files** — all `translation_mode: "kernel_centric"`
+- **Zero** Rodinia L1-L4 augmented eval results — **S7 currently running to fill this gap**
+- **Zero** Rodinia omp-to-cuda, cuda-to-opencl, or other directions — S9/S10/S10b pending
+- **Zero** `kernel_time_seconds` — wall_time only; S6.5 deferred (paper is correctness-focused)
+
+#### M-Tasks Update (Day 8)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **M4** | **DONE** | Paper outline + §3-§5 draft complete |
+| **M5** | **DONE** | XSBench 4/4 PASS + 180 eval results |
+| **M6** | **DEFERRED** | Paper framed as correctness-only; no speedup claims; skip S6.5 |
+| **M3** | NOT STARTED | Samyak reads Paraval paper — #1 blocker for §1-§2 |
+| **M1** | NOT STARTED | Anonymous GitHub repo — blocked on account decision |
+
+#### azure-gpt-4.1 NOTE (2026-03-25 permanent)
+
+Azure GPT-4.1 deployment disabled by Gal. Has 17 Rodinia L0 cuda-to-omp results (9/17 PASS).
+**Excluded from all future eval batches (S7, S9, S10, S10b, XSBench additional runs).**
+Data retained for paper comparison table.
+
+---
+
 ## 2. The Plan — Three Weeks
 
 ### Week 1 (March 18–24): Scale Up Rodinia + Iterative Repair
@@ -365,9 +410,10 @@ M10 was previously marked DONE, but the audit found:
 **Goal:** 5-kernel pilot → full 21-kernel Rodinia evaluation with iterative repair and augmentation.
 **Actual achievement (Day 7):** 4-model L0 cuda-to-omp baseline complete (68 results). M11 resolved. XSBench added.
 
-### Week 2 (March 25–31): HeCBench + New APIs + Additional Benchmarks
+### Week 2 (March 25–31): Augmented Eval + Cross-Direction + Paper Draft
 
-**Goal:** Clone HeCBench, run HeCBench evaluation, investigate 1–2 new benchmark suites. *(OpenACC descoped — no OpenACC source exists in Rodinia or XSBench.)*
+**Goal (revised Day 8):** Complete Rodinia L1-L4 augmented eval (S7), run cross-direction evals (S9/S10/S10b), refresh dashboard (W-S11), write paper §1-§5 (S12 + W-S12 done), begin §6-§8.
+**Original goal (superseded):** Clone HeCBench, run HeCBench evaluation. *(HeCBench deferred — paper deadline takes priority. OpenACC descoped — no source exists.)*
 
 ### Week 3 (April 1–7): Paper + Final Results + Polish
 

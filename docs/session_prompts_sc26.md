@@ -70,52 +70,54 @@ gitignored directories (`xsbench/xsbench-src/`, `HeCBench-master/`) are absent f
 
 ### Session Classification
 
-| Session | Lane | Worktree? | Why | Autonomous? |
-|---------|------|:---------:|-----|:-----------:|
-| **S7** Augmented Eval L1/L2 | GPU-eval | NO | Needs Rodinia submodule + GPU | YES (tmux) |
-| **S8** XSBench Multi-API Eval | GPU-eval | NO | Needs XSBench source + GPU | YES (tmux) |
-| **S9** omp-to-cuda | GPU-eval | NO | Needs Rodinia submodule + GPU | YES (tmux) |
-| **S10** cuda-to-opencl | GPU-eval | NO | Needs Rodinia submodule + GPU | YES (tmux) |
-| **S10b** Remaining 3 directions | GPU-eval | NO | Needs Rodinia submodule + GPU | YES (tmux) |
-| **S-HeCBench** Clone + Eval | GPU-eval | NO | Needs GPU; HeCBench clone in main | PARTIAL |
-| **S6.5** Timing Infrastructure | Supervised | NO | Needs Rodinia + GPU; architecture decision | NO |
-| **W-S16** Anonymous GitHub Repo | Worktree | **YES** | Creates separate repo; no main repo changes | **YES** |
-| **W-S14** Publication Figures | Worktree | **YES** | Reads `results/`, creates `docs/paper/figures/` | **YES** |
-| **W-S11** Dashboard Refresh | Worktree | **YES** | Reads `results/`, edits `visualizations/` | **MOSTLY** |
-| **W-S12-PARTIAL** Paper §3–§5 | Worktree | **YES** | Reads `specs/` + `results/`, creates `docs/paper/` | **MOSTLY** |
-| **W-S17** LaTeX Transfer | Worktree | **YES** | Reads `docs/paper/`, creates `docs/paper/*.tex` | **YES** |
-| **W-S15** Paper Review & Polish | Worktree | **YES** | Reads/edits `docs/paper/`, reads `results/` | **YES** |
-| **S12** Paper §1–§2 | Supervised | NO | Requires Paraval paper reading (M3) + research judgment | NO |
-| **S13** Paper §6–§8 | Supervised | NO | Requires interpreting results + threats to validity | NO |
-| **S18** Final Review + Submit | Supervised | NO | Co-author sign-off; non-delegable | NO |
+| Session | Lane | Worktree? | Status | Autonomous? |
+|---------|------|:---------:|--------|:-----------:|
+| **S7** Augmented Eval L1-L4 | GPU-eval | NO | **🔄 IN PROGRESS (2026-03-25)** | YES (tmux) |
+| **S8** XSBench Multi-API Eval | GPU-eval | NO | **✅ COMPLETE (2026-03-25)** | YES (tmux) |
+| **S9** omp-to-cuda | GPU-eval | NO | NOT STARTED | YES (tmux) |
+| **S10** cuda-to-opencl | GPU-eval | NO | NOT STARTED | YES (tmux) |
+| **S10b** Remaining 3 directions | GPU-eval | NO | NOT STARTED | YES (tmux) |
+| **S-HeCBench** Clone + Eval | GPU-eval | NO | DEFERRED (paper deadline priority) | PARTIAL |
+| **S6.5** Timing Infrastructure | Supervised | NO | DEFERRED (correctness-only paper) | NO |
+| **W-S16** Anonymous GitHub Repo | Worktree | **YES** | NOT STARTED (blocked: account decision) | **YES** |
+| **W-S14** Publication Figures | Worktree | **YES** | **✅ COMPLETE (2026-03-24)** — L0 data only; regen after S7 | **YES** |
+| **W-S11** Dashboard Refresh | Worktree | **YES** | **🔄 IN PROGRESS (2026-03-25)** | **MOSTLY** |
+| **W-S12-PARTIAL** Paper §3–§5 | Worktree | **YES** | **✅ COMPLETE (2026-03-25)** — merged to main | **MOSTLY** |
+| **W-S17** LaTeX Transfer | Worktree | **YES** | NOT STARTED (needs paper complete) | **YES** |
+| **W-S15** Paper Review & Polish | Worktree | **YES** | NOT STARTED (needs S13) | **YES** |
+| **S12** Paper §1–§2 | Supervised | NO | NOT STARTED (blocked: M3 Paraval reading) | NO |
+| **S13** Paper §6–§8 | Supervised | NO | NOT STARTED (needs more eval data) | NO |
+| **S18** Final Review + Submit | Supervised | NO | NOT STARTED | NO |
 
 ### 3-Lane Execution Strategy
 
 ```
 LANE 1: GPU Eval (main checkout, run in tmux — autonomous)
-  S8 → S7 → S9 → S10 → S10b → S-HeCBench
+  [✅ DONE] S8 (XSBench L0-L4, 180 files)
+  [🔄 RUNNING] S7 (Rodinia L1-L4, 204 tasks, ~6-10h) ← currently executing
+  [NEXT] S9 (omp-to-cuda, 48 tasks) → S10 (cuda-to-opencl, 51 tasks) → S10b (3 dirs)
   Rule: ONE Rodinia eval at a time (llm_evaluate.py has no file locking in rodinia-src/)
-  Exception: S8 (XSBench source tree) can run alongside a Rodinia eval
 
 LANE 2: Writing + Viz (worktree agents — fully autonomous)
-  W-S16 + W-S14  (parallel, no overlap)
-  → W-S11 (after S7 results arrive)
-  → W-S12-PARTIAL (after W-S11 or concurrently)
-  → W-S17 (after S13 complete)
-  → W-S15 (after S13 complete, ideally after Gal review)
+  [✅ DONE] W-S14 (figures from L0 data — regen after S7 completes)
+  [✅ DONE] W-S12-PARTIAL (paper §3-§5, 3289 words, merged 2026-03-25)
+  [🔄 RUNNING] W-S11 (dashboard refresh with 248-file data) ← currently executing
+  [NEXT] W-S16 (anonymous GitHub — needs account decision)
+  → W-S17 (LaTeX transfer — after S13 complete)
+  → W-S15 (paper review — after S13 complete)
 
 LANE 3: Research Judgment (Samyak — cannot be delegated)
-  Read Paraval paper (M3) → Write §1-§2 (S12) → Interpret results (S13) → Final review (S18)
-  Dependency: M3 is the #1 blocker — it gates §2 Related Work and the positioning argument
+  Read Paraval paper (M3) ← #1 BLOCKER for §2 Related Work (not yet done)
+  → Write §1-§2 (S12) → Interpret results (S13) → Final review (S18)
 ```
 
 ### Day-by-Day Schedule (Days 8–19)
 
 | Day | Date | Lane 1 (GPU tmux) | Lane 2 (Worktree) | Lane 3 (Samyak) |
 |-----|------|-------------------|-------------------|-----------------|
-| 8 | Mar 25 | Launch S8 (XSBench, 1-2h), then S7 (L1/L2, 4-6h) | Launch W-S16 + W-S14 in separate worktrees | Read Paraval paper (M3) — 2h |
-| 9 | Mar 26 | S7 continues / completes | Launch W-S12-PARTIAL | Write §1 Introduction with S12 |
-| 10 | Mar 27 | Launch S9 (omp-to-cuda, 2-4h) | W-S11 (dashboard with L0+L1/L2 data) | Write §2 Related Work |
+| 8 | Mar 25 | ✅ S8 done; **🔄 S7 L1-L4 RUNNING** (204 tasks, ~6-10h) | ✅ W-S12 merged; **🔄 W-S11 RUNNING** | Read Paraval paper (M3) — pending |
+| 9 | Mar 26 | S7 completes overnight; launch S9 (omp-to-cuda, 48 tasks) | W-S14 figure regen with L1-L4 data; W-S11 merge | Write §1 Introduction (S12) |
+| 10 | Mar 27 | Launch S10 (cuda-to-opencl, 51 tasks) | W-S16 (anonymous GitHub — needs account) | Write §2 Related Work |
 | 11 | Mar 28 | Launch S10 (cuda-to-opencl, 3-5h) | Merge W-S16, W-S14 branches | Review S9 results; plan §6 |
 | 12 | Mar 29 | Launch S10b (3 directions, 6-10h) | Merge W-S12-PARTIAL; W-S11 | Start S13 (§6-§8 results) |
 | 13 | Mar 30 | S-HeCBench clone + smoke-test (supervised) | Regenerate W-S14 figures with full data | S13 continues |
@@ -1949,11 +1951,12 @@ python3 scripts/validate_schema.py --all
 
 ---
 
-## SESSION 7 — Augmented Evaluation (L1-L4, COMPLETE)
+## SESSION 7 — Augmented Evaluation (L1-L4)
 
-> **Updated 2026-03-25:** L0-L4 all levels. azure-gpt-4.1 EXCLUDED (deployment disabled by Gal).
-> L0 baselines already exist for all 3 active models — `--resume` skips them.
-> All decisions resolved — paste this prompt directly into a new Claude Code session.
+> **Status: 🔄 IN PROGRESS (2026-03-25). Running in Claude Code session (main checkout).**
+> 3 models: claude-sonnet-4-6, gemini-2.5-flash-lite, groq-llama-3.3-70b-versatile.
+> azure-gpt-4.1 EXCLUDED (disabled by Gal). L0 baselines exist — running L1-L4 (204 tasks).
+> Expected: ~6-10h runtime (L1+L2 first ~3-5h, then L3+L4). Use `--resume` to restart if needed.
 
 ```
 ultrathink
@@ -2089,6 +2092,10 @@ done
 ---
 
 ## SESSION 8 — XSBench LLM Evaluation (Multi-API)
+
+> **Status: ✅ COMPLETE (2026-03-25). Commit: `096a309`. 180/180 files. Marker confirmed.**
+> azure-gpt-4.1 EXCLUDED (disabled by Gal). 3 models × 12 directions × 5 levels (L0-L4).
+> Results: `results/evaluation/xsbench_eval_done.marker` + 180 JSON files across 3 model dirs.
 
 ```
 ultrathink
@@ -3473,11 +3480,11 @@ git commit -m "M1: Add anonymous repo URL reference for SC26 submission"
 
 ## SESSION W-S14 — Publication Figures (WORKTREE-SAFE)
 
-> **Status: NOT STARTED. Can launch immediately — uses only existing L0 data.**
-> **Worktree safe because:** This session reads `results/evaluation/eval_summary.json` (present
-> in worktree as a tracked file) and writes to `docs/paper/figures/` (new directory). It does not
-> touch any eval pipeline, specs, or Rodinia source. It creates ONE new script and figure files.
-> **Regenerate this session after S7/S9/S10 complete** to add L1/L2 and multi-direction data.
+> **Status: ✅ COMPLETE (2026-03-24). Merged via PR #4 (commit `0271cf9`).**
+> Generated: F2 kernel-model heatmap, F3 failure taxonomy, F4 augmentation robustness,
+> F5 cross-direction comparison, F6 XSBench multi-API — all from L0 data only.
+> **⚠️ REGEN NEEDED after S7 completes** — F4/F5 will have Rodinia L1-L4 data to include.
+> Script: `scripts/evaluation/generate_paper_figures.py`. Figures: `docs/paper/figures/`.
 > **Paper impact:** F2-F6 in the paper are generated here. The paper cannot go to LaTeX without them.
 >
 > **Current data available (L0 cuda-to-omp, 4 models, 17 kernels):**
@@ -3672,7 +3679,7 @@ git commit -m "W-S14: Add publication figure generation script (F2-F6) + initial
 
 ## SESSION W-S11 — Dashboard Data Refresh (WORKTREE-SAFE)
 
-> **Status: READY TO RUN (Day 8, 2026-03-25). Running in parallel with S7.**
+> **Status: 🔄 IN PROGRESS (2026-03-25). Running in worktree `worktree/s11-dashboard`.**
 > **Worktree safe because:** Reads `results/evaluation/` data, edits `visualizations/*.js` and
 > `visualizations/*.html`. No eval pipeline, no harness, no Rodinia source needed.
 > **Current data:** 248 result files on disk (68 Rodinia L0 cuda-to-omp + 180 XSBench L0-L4).
@@ -3832,16 +3839,12 @@ git commit -m "W-S11: Refresh dashboard data — fix stale spec counts and augme
 
 ## SESSION W-S12-PARTIAL — Paper Sections §3–§5 (WORKTREE-SAFE)
 
-> **Status: NOT STARTED. Launch on Day 9 after S7 starts running.**
-> **Worktree safe because:** Reads `specs/`, `harness/`, `c_augmentation/`, `scripts/`,
-> `results/evaluation/`, and `docs/paper_outline.md`. Writes only to `docs/paper/`.
-> No harness, no GPU, no Rodinia source needed.
-> **WHY PARTIAL:** Sections 1-2 (Introduction + Related Work) require Samyak to have
-> read the Paraval paper (M3) and formed the positioning argument. An agent can write
-> Sections 3-5 autonomously — they are data-driven architectural descriptions.
-> **Samyak will later add §1-§2 and §6-§8** (Sessions S12 and S13) in the main chat.
-> **Paper impact:** §3 Framework, §4 Benchmark Curation, §5 Experimental Setup = ~4 pages.
-> These sections fully describe existing code and data — zero subjective judgment needed.
+> **Status: ✅ COMPLETE (2026-03-25). Merged to main (commit `155a9fe`).**
+> Output: `docs/paper/paper_sections_3_4_5.md` — 3289 words, 192 lines, 4 review commits.
+> §3 Framework, §4 Benchmark Curation, §5 Experimental Setup — all code-is-truth verified.
+> §1-§2 (Introduction + Related Work) still PENDING — require Samyak to read Paraval paper (M3).
+> §6-§8 (Results + Discussion + Conclusion) PENDING — need more eval data + research judgment.
+> **Paper impact:** §3-§5 (~4 double-column pages) complete. §1-§2 and §6-§8 are the remaining gap.
 
 ```
 ultrathink
