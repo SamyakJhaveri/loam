@@ -395,7 +395,7 @@ source-verified `translation_targets` for all 60 Rodinia specs.
 | `scripts/validate_schema.py` | Add subset validation: `translation_targets` ⊆ `prompt_payload` | Prevent stale references |
 | `harness/spec_loader.py` | Add `translation_targets` to `resolve_paths()` resolved dict | Path resolution |
 | `scripts/evaluation/llm_evaluate.py` | Use `translation_targets` in `build_translation_prompt()` + `evaluate_translation()`. Add "Target Infrastructure Context" section to prompt. Add `translation_mode` to result JSON | Core pipeline change |
-| `scripts/evaluation/populate_translation_targets.py` | New script: populate all 60 Rodinia specs with `translation_targets` from architecture doc. Fix spec bloat (move non-build files to `support_files`) | Spec population |
+| ~~`scripts/evaluation/populate_translation_targets.py`~~ | ~~New script: populate all 60 Rodinia specs with `translation_targets`.~~ **Superseded in Session 1.6** → replaced by `scripts/generators/standardize_specs.py` (universal, all suites). File deleted. | Spec population |
 | `scripts/evaluation/classify_translation_pairs.py` | New script: compute complexity class for each translation pair → CSV | Complexity reporting |
 | `scripts/evaluation/analyze_eval.py` | Add "Pass Rate by Translation Complexity" section | Stratified reporting |
 | `specs/*.json` (60 Rodinia specs) | Add `translation_targets` and `translation_complexity` fields | All specs updated |

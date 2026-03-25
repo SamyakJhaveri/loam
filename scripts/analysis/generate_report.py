@@ -78,30 +78,32 @@ def collect_data(
     """
     entries = _load_manifest(manifest_path)
 
-    # kernel_name → list[api]
-    kernel_apis: dict[str, list[str]] = defaultdict(list)
-    # api → list[kernel_name]
-    api_kernels: dict[str, list[str]] = defaultdict(list)
-    # kernel_name → {api → spec_dict}
-    specs: dict[str, dict[str, dict[str, Any]]] = defaultdict(dict)
-    # kernel_name → {api → file_classifications}
-    file_classifications: dict[str, dict[str, dict[str, list[str]]]] = defaultdict(dict)
+    # (source_suite, kernel_name) → list[api]  — tuple key prevents cross-suite collisions
+    kernel_apis: dict[tuple[str, str], list[str]] = defaultdict(list)
+    # api → list[(source_suite, kernel_name)]
+    api_kernels: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    # (source_suite, kernel_name) → {api → spec_dict}
+    specs: dict[tuple[str, str], dict[str, dict[str, Any]]] = defaultdict(dict)
+    # (source_suite, kernel_name) → {api → file_classifications}
+    file_classifications: dict[tuple[str, str], dict[str, dict[str, list[str]]]] = defaultdict(dict)
 
     all_apis: set[str] = set()
 
     for entry in entries:
+        suite = entry.get("source_suite", "unknown")
         kname = entry["kernel_name"]
+        key = (suite, kname)
         api = entry["parallel_api"]
-        kernel_apis[kname].append(api)
-        api_kernels[api].append(kname)
+        kernel_apis[key].append(api)
+        api_kernels[api].append(key)
         all_apis.add(api)
 
         spec_path = PROJECT_ROOT / entry["spec_file"]
         if spec_path.exists():
             spec = _load_json(spec_path)
-            specs[kname][api] = spec
+            specs[key][api] = spec
             files_section = spec.get("files", {})
-            file_classifications[kname][api] = {
+            file_classifications[key][api] = {
                 "prompt_payload": files_section.get("prompt_payload", []),
                 "support_files": files_section.get("support_files", []),
                 "verification_only": files_section.get("verification_only", []),
@@ -109,11 +111,11 @@ def collect_data(
 
     total_kernels = len(kernel_apis)
     total_specs = len(entries)
-    per_kernel_pairs: dict[str, int] = {}
+    per_kernel_pairs: dict[tuple[str, str], int] = {}
     total_pairs = 0
-    for kname, apis in kernel_apis.items():
+    for key, apis in kernel_apis.items():
         p = _translation_pairs(len(apis))
-        per_kernel_pairs[kname] = p
+        per_kernel_pairs[key] = p
         total_pairs += p
 
     return {
@@ -201,13 +203,14 @@ def generate_report(manifest_path: Path) -> str:
     w("| " + " | ".join(header_cols) + " |")
     w("| " + " | ".join(["---"] * len(header_cols)) + " |")
 
-    for kname in sorted(data["kernel_apis"].keys()):
-        apis_present = set(data["kernel_apis"][kname])
-        cells = [kname]
+    for (suite, kname) in sorted(data["kernel_apis"].keys()):
+        key = (suite, kname)
+        apis_present = set(data["kernel_apis"][key])
+        cells = [f"{suite}/{kname}"]
         for api in api_order:
             cells.append("✓" if api in apis_present else "—")
         cells.append(str(len(apis_present)))
-        cells.append(str(data["per_kernel_pairs"][kname]))
+        cells.append(str(data["per_kernel_pairs"][key]))
         w("| " + " | ".join(cells) + " |")
 
     w("")
@@ -223,11 +226,12 @@ def generate_report(manifest_path: Path) -> str:
     # ---- File Classifications ----
     w("## File Classifications")
     w("")
-    for kname in sorted(data["file_classifications"].keys()):
-        w(f"### {kname}")
+    for (suite, kname) in sorted(data["file_classifications"].keys()):
+        key = (suite, kname)
+        w(f"### {suite}/{kname}")
         w("")
         for api in api_order:
-            fc = data["file_classifications"].get(kname, {}).get(api)
+            fc = data["file_classifications"].get(key, {}).get(api)
             if fc is None:
                 continue
             w(f"**{api}:**")

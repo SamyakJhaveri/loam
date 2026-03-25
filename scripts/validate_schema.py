@@ -398,29 +398,32 @@ def _check_manifest_spec_consistency(
 
 def _check_cross_kernel_pairing(
     manifest_entries: list[dict[str, Any]],
-) -> tuple[list[str], dict[str, list[str]], int]:
+) -> tuple[list[str], dict[tuple[str, str], list[str]], int]:
     """
-    For each unique kernel_name, collect all available APIs.
+    For each unique (source_suite, kernel_name), collect all available APIs.
     Warn if a kernel has fewer than 2 APIs.
     Return the total number of valid translation pairs.
 
     Returns (warnings, kernel_api_map, total_pairs).
+    Keys of kernel_api_map are (source_suite, kernel_name) tuples to prevent
+    cross-suite collisions (e.g. rodinia/gaussian vs hecbench/gaussian).
     """
     warnings: list[str] = []
-    kernel_apis: dict[str, list[str]] = defaultdict(list)
+    kernel_apis: dict[tuple[str, str], list[str]] = defaultdict(list)
 
     for entry in manifest_entries:
+        suite = entry.get("source_suite", "unknown")
         kname = entry.get("kernel_name", "")
         api = entry.get("parallel_api", "")
         if kname and api:
-            kernel_apis[kname].append(api)
+            kernel_apis[(suite, kname)].append(api)
 
     total_pairs = 0
-    for kname, apis in sorted(kernel_apis.items()):
+    for (suite, kname), apis in sorted(kernel_apis.items()):
         n = len(apis)
         if n < 2:
             warnings.append(
-                f"[pairing] kernel '{kname}' has only {n} API(s) "
+                f"[pairing] {suite}/{kname} has only {n} API(s) "
                 f"({apis}) — not useful for translation"
             )
         pairs = comb(n, 2) * 2  # ordered pairs (A→B and B→A)
@@ -532,8 +535,8 @@ def _validate_all() -> list[str]:
         for w in pairing_warnings:
             all_errors.append(f"⚠ WARNING: {w}")
     print(f"  Kernels: {len(kernel_apis)}")
-    for kname, apis in sorted(kernel_apis.items()):
-        print(f"    {kname}: {', '.join(sorted(apis))}")
+    for (suite, kname), apis in sorted(kernel_apis.items()):
+        print(f"    {suite}/{kname}: {', '.join(sorted(apis))}")
     print(f"  Total translation pairs: {total_pairs}")
 
     return all_errors

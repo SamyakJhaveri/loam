@@ -32,9 +32,9 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "main.c",
+            "define.c",
             "kernel.c",
-            "define.c"
+            "main.c"
         ]
     },
     "implementation": {
