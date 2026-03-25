@@ -136,3 +136,26 @@ Analysis:      results/evaluation/eval_summary.{json,md}
 
 Surface any notable failures — especially unexpected VERIFY_FAIL or new error patterns
 not seen in previous batches.
+
+### Phase 5: Refresh Dashboard
+
+After any eval batch that adds new result files, the dashboard hardcoded numbers go stale.
+**Always invoke `dashboard-refresher` agent after Phase 4 completes:**
+
+```
+Invoke the dashboard-refresher agent with prompt:
+"Refresh the ParBench dashboard at /home/samyak/Desktop/parbench_sam.
+New eval data: <suite> <direction> L<levels> just completed.
+Run generate_viz_data.py, then fix all hardcoded counts in visualizations/*.html.
+Canonical correct values: 60 Rodinia specs, 54/60 PASS, 6 KNOWN_FAIL.
+Check eval_results_data.js total task count matches new eval_summary.json."
+```
+
+Then run `/review` on any dashboard HTML edits before committing:
+```
+/review visualizations/
+```
+
+Commit dashboard updates as a separate commit from eval results:
+- Eval results commit: `"Session N: <suite> <direction> L<levels> — N/M PASS"`
+- Dashboard commit: `"Refresh dashboard: update eval counts + <suite> results"`

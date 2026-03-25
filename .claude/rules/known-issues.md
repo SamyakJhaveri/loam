@@ -107,6 +107,29 @@ includes OS scheduling noise, I/O, and memory allocation — it is not kernel ti
 For valid performance numbers: use `nvprof`/`ncu` for CUDA kernel time, and `perf` or
 `omp_get_wtime()` around the parallel region for OMP. See `feedback_timing_measurement.md`.
 
+## sprint_dashboard.html localStorage Divergence (2026-03-25)
+
+**Problem:** `sprint_dashboard.html` uses browser localStorage as an overlay on top of a
+hardcoded `DEFAULT_TASKS` JS array. A user who edits task statuses via the kanban board
+writes to their *browser's* localStorage — but the **git-tracked HTML file is never updated**.
+
+**Consequence:** A session author sees correct statuses in their browser (via localStorage),
+pushes the branch, and assumes the merge will reflect those updates. It won't — the merged
+HTML still has the old hardcoded values.
+
+**Caught:** During post-merge validation of the W-S11 branch (2026-03-25). M11 showed as
+`blocked` and Rodinia as `51/60` in the merged file despite the author having updated these
+in their browser.
+
+**Rule:** After any worktree dashboard session, **always grep the HTML file directly** for
+the values you changed. Do not trust your browser view:
+```bash
+# Check M11 and Rodinia stat card directly — don't trust browser localStorage view
+grep -n "M11\|Rodinia Specs\|stat-value" visualizations/sprint_dashboard.html | head -20
+grep -n "status: 'blocked'\|status: 'todo'" visualizations/sprint_dashboard.html | grep -v "//\|kh-\|dropdown\|column\|label"
+```
+If the grep shows stale values, edit `DEFAULT_TASKS` in the HTML file before committing.
+
 ## Eval Result JSON Schema Quirk (SESSION 3b audit — 2026-03-24)
 
 Top-level `run_status`, `run_time_seconds`, `run_exit_code` fields can contain stale data

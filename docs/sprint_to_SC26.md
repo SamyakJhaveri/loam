@@ -374,7 +374,7 @@ M10 was previously marked DONE, but the audit found:
 | Session | Status | Lane | Notes |
 |---------|--------|------|-------|
 | **S7** | **IN PROGRESS** | GPU main checkout | Rodinia cuda-to-omp L1-L4, 3 models, 204 tasks (~6-10h) |
-| **W-S11** | **IN PROGRESS** | Worktree (`worktree/s11-dashboard`) | Dashboard refresh; 248 result files on disk |
+| **W-S11** | **DONE (2026-03-25)** | Merged into main | Dashboard refresh; 12 viz files fixed, 2 post-merge corrections applied |
 
 #### Actual Evaluation Data on Disk (as of 2026-03-25)
 

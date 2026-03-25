@@ -49,6 +49,23 @@
 - **Pre-commit hook enforces this** — `git commit` is blocked without a valid sentinel
 - See `.claude/rules/validation-loop.md` for full protocol
 
+## Skill & Agent Quick Reference
+
+Use these at the right phase — don't skip them, don't over-invoke them.
+
+| When | Skill / Agent | Command | What it does |
+|------|--------------|---------|-------------|
+| After any code/spec change | `/validate` | `/validate` (full) or `/validate quick` | 4-wave validation; writes sentinel; required before commit |
+| Before merging or after multiple file changes | `/review` | `/review` | 4-agent parallel code review (style, correctness, security, perf) |
+| Launching an eval batch | `/eval-run` | `/eval-run rodinia cuda-to-omp` | Param collection → pre-flight → execute → analyze |
+| After eval completes OR spec count changes | `dashboard-refresher` agent | Invoke via Agent tool | Fixes hardcoded numbers in all 12 viz files |
+| Starting a sprint session | `/session-start` | `/session-start 9` | Extracts prompt, checks git, verifies prerequisites |
+| New benchmark suite | `/gen-spec` | `/gen-spec xsbench` | Full guided spec generation wizard |
+| Bug fix workflow | `/fix-bug` | `/fix-bug "description"` | Reproduce → diagnose → fix → verify loop |
+| New feature | `/feature-dev` | `/feature-dev "name"` | Explore → plan → implement → verify |
+
+**Critical ordering:** Implement → `/review` → `/validate` → commit → push → `dashboard-refresher` (if eval or spec data changed)
+
 ## Context Management
 
 - `/compact` at ~50% context usage (don't wait until 100%)
