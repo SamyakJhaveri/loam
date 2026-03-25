@@ -226,10 +226,10 @@
 <!-- ─── Tab: Rodinia Baseline ────────────────────────────────────────────── -->
 <div id="tab-rodinia" class="tab-content" role="tabpanel">
   <div class="summary-grid">
-    <div class="summary-card pass"><div class="big">51/60</div><div class="label">Total PASS</div></div>
+    <div class="summary-card pass"><div class="big">54/60</div><div class="label">Total PASS</div></div>
     <div class="summary-card info"><div class="big">22</div><div class="label">Kernels</div></div>
-    <div class="summary-card fail"><div class="big">9</div><div class="label">Failing Specs</div></div>
-    <div class="summary-card warn"><div class="big">63</div><div class="label">Total Specs</div></div>
+    <div class="summary-card fail"><div class="big">6</div><div class="label">Failing Specs</div></div>
+    <div class="summary-card warn"><div class="big">60</div><div class="label">Total Specs</div></div>
   </div>
 
   <div class="search-bar">
@@ -317,9 +317,9 @@
 <!-- ─── Tab: LLM Eval Builds ─────────────────────────────────────────────── -->
 <div id="tab-llm-builds" class="tab-content" role="tabpanel">
   <div class="summary-grid">
-    <div class="summary-card pass"><div class="big">6/10</div><div class="label">azure-gpt-4.1 BUILD PASS</div></div>
-    <div class="summary-card fail"><div class="big">4/10</div><div class="label">BUILD_FAIL</div></div>
-    <div class="summary-card info"><div class="big">10</div><div class="label">Kernels Evaluated</div></div>
+    <div class="summary-card pass"><div class="big">30/68</div><div class="label">4-model CUDA→OMP PASS</div></div>
+    <div class="summary-card fail"><div class="big">26/68</div><div class="label">BUILD_FAIL</div></div>
+    <div class="summary-card info"><div class="big">17</div><div class="label">Kernels Evaluated</div></div>
   </div>
 
   <p style="color:var(--text-secondary); font-size:0.82rem; margin: 0.5rem 0 0.5rem;">
@@ -418,7 +418,7 @@
   </div>
 
   <div style="margin-top:1.5rem; padding:1rem; background:var(--surface-alt); border:1px solid var(--border); border-radius:var(--r-md);">
-    <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:0.3rem;"><strong>Note:</strong> No Claude Sonnet build data is available for this evaluation round. Previous Claude Sonnet results (if any) are considered <span style="color:var(--run-fail-text); font-weight:600;">ARCHIVED</span> and not shown here. The March 18 team meeting decided to proceed with azure-gpt-4.1 for Phase 1 evaluation.</p>
+    <p style="font-size:0.82rem; color:var(--text-secondary); margin-bottom:0.3rem;"><strong>Note:</strong> 4 models evaluated: azure-gpt-4.1, claude-sonnet-4-6, gemini-2.5-flash-lite, groq-llama-3.3-70b-versatile. Full results available on the <a href="llm_evaluation.html" style="color:var(--accent);">LLM Evaluation dashboard</a>.</p>
   </div>
 </div>
 
@@ -437,7 +437,7 @@
 </div>
 
 <div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
-  Updated 2026-03-19 • ParBench Build &amp; Run Results Dashboard
+  Updated 2026-03-25 • ParBench Build &amp; Run Results Dashboard
 </div>
 
 <script src="build_results_data.js"></script>

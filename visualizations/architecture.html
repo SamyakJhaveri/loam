@@ -145,7 +145,7 @@
 <div class="grid">
   <div class="card">
     <h4>specs/</h4>
-    <p>185 specs: 65 Rodinia + 120 HeCBench</p>
+    <p>184 specs: 60 Rodinia + 120 HeCBench + 4 XSBench</p>
     <ul>
       <li><span class="tag tag-blue">23 CUDA</span> <span class="tag tag-green">21 OMP</span> <span class="tag tag-purple">21 OpenCL</span> + HeCBench</li>
       <li>Format: <code>{suite}-{slug}-{api}.json</code></li>
@@ -491,20 +491,30 @@
 <h2>8. Target LLM Models</h2>
 
 <table>
-  <tr><th>Phase</th><th>Model</th><th>Notes</th></tr>
+  <tr><th>Model</th><th>Provider</th><th>Notes</th></tr>
   <tr>
-    <td><span class="tag tag-green">Phase 1</span></td>
-    <td>azure-gpt-4.1</td>
-    <td>Reasoning OFF; baseline translation quality</td>
+    <td><span class="tag tag-green">azure-gpt-4.1</span></td>
+    <td>Azure OpenAI</td>
+    <td>Reasoning OFF; 17 Rodinia L0 tasks (52.9% PASS)</td>
   </tr>
   <tr>
-    <td><span class="tag tag-blue">Phase 2</span></td>
-    <td>Llama 70B + leaderboard model</td>
-    <td>Open-weight comparison; model TBD from leaderboard</td>
+    <td><span class="tag tag-green">claude-sonnet-4-6</span></td>
+    <td>Anthropic</td>
+    <td>77 tasks including XSBench L0-L4 (75.3% PASS)</td>
+  </tr>
+  <tr>
+    <td><span class="tag tag-green">gemini-2.5-flash-lite</span></td>
+    <td>Google</td>
+    <td>77 tasks including XSBench L0-L4 (5.2% PASS)</td>
+  </tr>
+  <tr>
+    <td><span class="tag tag-green">groq-llama-3.3-70b-versatile</span></td>
+    <td>Groq</td>
+    <td>77 tasks including XSBench L0-L4 (9.1% PASS)</td>
   </tr>
 </table>
 <p style="color:var(--text-secondary); font-size:0.85rem; margin-top:0.5rem;">
-  No reasoning models and no agentic models in scope. All evaluations use single-shot prompting with spec-defined prompt payloads.
+  No reasoning models and no agentic models in scope. All evaluations use single-shot prompting with spec-defined prompt payloads. Per Gal's directive (2026-03-23).
 </p>
 
 <!-- ===== Key Files ===== -->
@@ -526,7 +536,7 @@
 </table>
 
 <div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
-  Updated 2026-03-19 • ParBench System Architecture Overview
+  Updated 2026-03-25 • ParBench System Architecture Overview
 </div>
 
 </div><!-- end .page-wrapper -->

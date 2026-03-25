@@ -558,12 +558,20 @@ python3 scripts/augmentation/augment_verify.py specs/rodinia-bfs-cuda.json \
 
 <div class="detail-grid">
   <div class="detail-card">
-    <h5>Phase 1 (Current)</h5>
-    <p><span class="tag tag-green">azure-gpt-4.1</span> — Primary model for CUDA-to-OMP translation evaluation. Accessed via Azure OpenAI API.</p>
+    <h5>azure-gpt-4.1</h5>
+    <p><span class="tag tag-green">Active</span> — Azure OpenAI. 17 Rodinia L0 tasks. 52.9% PASS.</p>
   </div>
   <div class="detail-card">
-    <h5>Phase 2 (Planned)</h5>
-    <p><span class="tag tag-purple">Llama 70B</span> <span class="tag tag-purple">Leaderboard model TBD</span> — Open-weight and top-performing model to compare against GPT-4.1.</p>
+    <h5>claude-sonnet-4-6</h5>
+    <p><span class="tag tag-green">Active</span> — Anthropic. 77 tasks (Rodinia + XSBench L0-L4). 75.3% PASS.</p>
+  </div>
+  <div class="detail-card">
+    <h5>gemini-2.5-flash-lite</h5>
+    <p><span class="tag tag-green">Active</span> — Google. 77 tasks. 5.2% PASS.</p>
+  </div>
+  <div class="detail-card">
+    <h5>groq-llama-3.3-70b-versatile</h5>
+    <p><span class="tag tag-green">Active</span> — Groq. 77 tasks. 9.1% PASS.</p>
   </div>
 </div>
 
@@ -596,7 +604,7 @@ python3 scripts/augmentation/augment_verify.py specs/rodinia-bfs-cuda.json \
 </div>
 
 <div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
-  Updated 2026-03-19 (Day 2 fixes) • ParBench Evaluation Pipeline Visualization
+  Updated 2026-03-25 • ParBench Evaluation Pipeline Visualization
 </div>
 
 </div><!-- end .page-wrapper -->

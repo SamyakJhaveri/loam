@@ -242,4 +242,4 @@ visualizations/
 
 ---
 
-*Last updated: 2026-03-19. Update this file whenever design decisions change.*
+*Last updated: 2026-03-25. Update this file whenever design decisions change.*

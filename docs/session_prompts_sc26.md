@@ -40,7 +40,7 @@ or via @-mention: `@agent-{name}`.
 | Any | `verify-app` | Before any commit — validates project health |
 | **W-S16** | `explorer` | Step 1 — audit files containing author names before sanitization |
 | **W-S14** | `paper-drafter` | Figures F2-F6 spec review from paper_outline.md before generating |
-| **W-S11** | `dashboard-refresher` | Full dashboard refresh in worktree context |
+| **W-S11** | `dashboard-refresher` | **DONE (2026-03-25)** — 12 viz files refreshed, all numbers verified |
 | **W-S12-PARTIAL** | `paper-drafter` (Opus) | Write §3-§5 from outline + code + data files |
 | **W-S15** | `paper-drafter` + `self-critic` | Data accuracy review + adversarial anti-rationalization |
 | **W-S17** | `explorer` | Understand paper_draft.md structure before LaTeX conversion |
@@ -115,8 +115,8 @@ LANE 3: Research Judgment (Samyak — cannot be delegated)
 
 | Day | Date | Lane 1 (GPU tmux) | Lane 2 (Worktree) | Lane 3 (Samyak) |
 |-----|------|-------------------|-------------------|-----------------|
-| 8 | Mar 25 | ✅ S8 done; **🔄 S7 L1-L4 RUNNING** (204 tasks, ~6-10h) | ✅ W-S12 merged; **🔄 W-S11 RUNNING** | Read Paraval paper (M3) — pending |
-| 9 | Mar 26 | S7 completes overnight; launch S9 (omp-to-cuda, 48 tasks) | W-S14 figure regen with L1-L4 data; W-S11 merge | Write §1 Introduction (S12) |
+| 8 | Mar 25 | ✅ S8 done; **🔄 S7 L1-L4 RUNNING** (204 tasks, ~6-10h) | ✅ W-S12 merged; ✅ W-S11 DONE (merged Mar 25) | Read Paraval paper (M3) — pending |
+| 9 | Mar 26 | S7 completes overnight; launch S9 (omp-to-cuda, 48 tasks) | W-S14 figure regen with L1-L4 data | Write §1 Introduction (S12) |
 | 10 | Mar 27 | Launch S10 (cuda-to-opencl, 51 tasks) | W-S16 (anonymous GitHub — needs account) | Write §2 Related Work |
 | 11 | Mar 28 | Launch S10 (cuda-to-opencl, 3-5h) | Merge W-S16, W-S14 branches | Review S9 results; plan §6 |
 | 12 | Mar 29 | Launch S10b (3 directions, 6-10h) | Merge W-S12-PARTIAL; W-S11 | Start S13 (§6-§8 results) |
@@ -3679,13 +3679,13 @@ git commit -m "W-S14: Add publication figure generation script (F2-F6) + initial
 
 ## SESSION W-S11 — Dashboard Data Refresh (WORKTREE-SAFE)
 
-> **Status: 🔄 IN PROGRESS (2026-03-25). Running in worktree `worktree/s11-dashboard`.**
-> **Worktree safe because:** Reads `results/evaluation/` data, edits `visualizations/*.js` and
-> `visualizations/*.html`. No eval pipeline, no harness, no Rodinia source needed.
-> **Current data:** 248 result files on disk (68 Rodinia L0 cuda-to-omp + 180 XSBench L0-L4).
-> S7 (Rodinia L1-L4) is running simultaneously — W-S11 uses current L0+XSBench data.
-> W-S14 figure regen will follow after S7 completes.
-> **Paper impact:** The dashboard is the companion website. Stale numbers undermine credibility.
+> **Status: ✅ DONE (2026-03-25). Completed in parallel with S7. Branch merged into main.**
+> 12 files modified (282 insertions, 232 deletions). All stale numbers fixed against
+> verified ground truth (6 verification agents confirmed accuracy, 10/10 heatmap spot-checks PASS).
+> Post-review found and fixed 2 additional bugs: KPI denominator mismatch (byDirection included
+> XSBench), Phase 1/2 model tables in architecture.html and pipeline.html.
+> Validation: Wave 1 PASS (verify-app, diff-reviewer, security-scanner).
+> **W-S14 figure regen is now unblocked** (depends on W-S11 + S7 completing).
 
 ```
 ultrathink
