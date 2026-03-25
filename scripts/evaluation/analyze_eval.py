@@ -156,7 +156,11 @@ def build_summary(records: list[dict], complexity_lookup: dict | None = None) ->
     by_kernel: dict[str, list] = defaultdict(list)
     by_level: dict[str, list] = defaultdict(list)
     by_complexity: dict[str, list] = defaultdict(list)
+    # Pre-populate all failure verdict types so zero-count entries appear in the taxonomy
+    # (e.g., VERIFY_FAIL: 0 should be explicit, not absent, for downstream consumers).
     failure_counts: dict[str, int] = defaultdict(int)
+    for _vt in ("BUILD_FAIL", "RUN_FAIL", "VERIFY_FAIL", "EXTRACTION_FAIL"):
+        failure_counts[_vt] = 0
 
     for r in records:
         model = r.get("model", "unknown")

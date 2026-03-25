@@ -248,7 +248,7 @@ restructuring skill.
 
 #### Updated Pilot Results (10 kernels, azure-gpt-4.1, L0, cuda-to-omp)
 
-> ⚠️ **SUPERSEDED by kernel-centric v2 results (Sessions 2–3b, March 22–24).** The 4 BUILD_FAILs below were caused by the old full-project pipeline. All are now resolved under kernel-centric translation. Use `results/evaluation/eval_summary.json` for current data (68 results, 4 models, 54.4% aggregate PASS rate).
+> ⚠️ **SUPERSEDED by kernel-centric v2 results (Sessions 2–3b, March 22–24).** The 4 BUILD_FAILs below were caused by the old full-project pipeline. All are now resolved under kernel-centric translation. Use `results/evaluation/eval_summary.json` for current data (68 results, 4 models, 44.1% aggregate PASS rate).
 
 | Kernel | Result | Failure Root Cause |
 |--------|:------:|-------------------|

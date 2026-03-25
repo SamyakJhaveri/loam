@@ -504,6 +504,9 @@ def call_llm(
         prompt_tokens: int = response.usage.input_tokens
         completion_tokens: int = response.usage.output_tokens
         finish_reason: str = response.stop_reason or "unknown"
+        # Normalize to common vocabulary: "stop" (completed), "length" (truncated).
+        # Anthropic uses "end_turn"/"max_tokens"; OpenAI-compatible use "stop"/"length".
+        finish_reason = {"end_turn": "stop", "max_tokens": "length"}.get(finish_reason, finish_reason)
 
     elif model.startswith(("gpt-", "o1-", "o3-", "o4-")):
         # ---- OpenAI path ----
@@ -958,6 +961,14 @@ def evaluate_translation(
 
     try:
         for attempt_num in range(1, max_retries + 1):
+            # Reset per-attempt accumulators so the final result JSON always
+            # reflects only the last attempt's pipeline stage results, not
+            # stale data from an earlier attempt that reached a later stage.
+            final_build_result = None
+            final_run_result = None
+            final_verify_result = None
+            final_metrics = []
+
             if verbose:
                 logger.info("Attempt %d/%d", attempt_num, max_retries)
 
@@ -966,10 +977,15 @@ def evaluate_translation(
                 "llm_response_time_seconds": None,
                 "prompt_tokens": None,
                 "completion_tokens": None,
+                "finish_reason": None,
                 "build_status": None,
                 "run_status": None,
                 "verify_status": None,
                 "error_feedback_sent": None,
+                "build_error_snippet": None,
+                "run_stderr_snippet": None,
+                "run_stdout_snippet": None,
+                "extraction_fail": None,
             }
 
             # -- Call LLM --
@@ -1032,18 +1048,19 @@ def evaluate_translation(
                     f"expected target files: {target_filenames}"
                 )
                 attempt_record["extraction_fail"] = True
+                if attempt_num < max_retries:
+                    extraction_feedback = (
+                        "Your response did not include any of the expected output files. "
+                        "Please translate each target file using this format:\n\n"
+                        + "".join(
+                            f"```c {f}\n// your translated code here\n```\n\n"
+                            for f in target_filenames
+                        )
+                    )
+                    attempt_record["error_feedback_sent"] = extraction_feedback[:200]
                 attempts.append(attempt_record)
                 if attempt_num == max_retries:
                     break
-                extraction_feedback = (
-                    "Your response did not include any of the expected output files. "
-                    "Please translate each target file using this format:\n\n"
-                    + "".join(
-                        f"```c {f}\n// your translated code here\n```\n\n"
-                        for f in target_filenames
-                    )
-                )
-                attempt_record["error_feedback_sent"] = extraction_feedback[:200]
                 messages.append({"role": "assistant", "content": response_text})
                 messages.append({"role": "user", "content": extraction_feedback})
                 restore_files(backup_info)
@@ -1095,17 +1112,19 @@ def evaluate_translation(
                         final_status = "VERIFY_FAIL"
                         error_message = f"Verify failed: {verify_result.details}"
 
+            # Build retry feedback and record it BEFORE appending so the
+            # attempt_record is fully populated (no post-append mutation).
+            if final_status != "PASS" and attempt_num < max_retries:
+                feedback = _build_retry_message(
+                    final_build_result, final_run_result, final_verify_result
+                )
+                attempt_record["error_feedback_sent"] = feedback[:200]  # abbreviated in record
+
             attempts.append(attempt_record)
 
             # If passed or last attempt, stop
             if final_status == "PASS" or attempt_num == max_retries:
                 break
-
-            # Build retry feedback for next attempt
-            feedback = _build_retry_message(
-                final_build_result, final_run_result, final_verify_result
-            )
-            attempt_record["error_feedback_sent"] = feedback[:200]  # abbreviated in record
 
             # Extend conversation: assistant response + user error feedback
             messages.append({"role": "assistant", "content": response_text})

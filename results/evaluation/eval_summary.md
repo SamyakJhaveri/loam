@@ -1,5 +1,5 @@
 # ParBench Evaluation Summary
-**Generated:** 2026-03-24 11:17  |  **Total tasks:** 68
+**Generated:** 2026-03-24 19:22  |  **Total tasks:** 68
 
 ## Pass Rates by Model
 
@@ -21,6 +21,22 @@
 | Level | PASS | Total | Rate |
 |-------|-----:|------:|-----:|
 | L0 | 30 | 68 | 44.1% |
+
+## Pass Rates by Translation Complexity
+
+| Complexity Class | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL |
+|-----------------|-----:|------:|-----:|----------:|--------:|------------:|
+| multi_to_multi | 2 | 12 | 16.7% | 8 | 1 | 0 |
+| multi_to_single | 21 | 44 | 47.7% | 16 | 6 | 0 |
+| single_file | 7 | 12 | 58.3% | 2 | 3 | 0 |
+
+### Model × Complexity Cross-Tab
+
+| Complexity Class | azure-gpt-4.1 | claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile |
+|-----------------|---:|---:|---:|---:|
+| multi_to_multi | 1/3 (33.3%) | 1/3 (33.3%) | 0/3 (0.0%) | 0/3 (0.0%) |
+| multi_to_single | 6/11 (54.5%) | 9/11 (81.8%) | 3/11 (27.3%) | 3/11 (27.3%) |
+| single_file | 2/3 (66.7%) | 2/3 (66.7%) | 1/3 (33.3%) | 2/3 (66.7%) |
 
 ## Kernel × Model Matrix (cuda→omp, L0)
 
@@ -51,6 +67,7 @@
 | BUILD_FAIL | 26 |
 | RUN_FAIL | 10 |
 | EXTRACTION_FAIL | 2 |
+| VERIFY_FAIL | 0 |
 
 ## Self-Repair (Iterative Retry) Effectiveness
 

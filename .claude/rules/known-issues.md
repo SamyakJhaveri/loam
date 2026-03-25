@@ -93,3 +93,26 @@ and symlink paths to benchmark sources.
 
 54/60 PASS at all levels L1–L4 (level-invariant). Augmentation introduces zero new failures.
 Verify transforms: `python3 -m pytest c_augmentation/test_transforms.py -v` (15 tests, all must pass)
+
+## Eval Result Timing Limitations (SESSION 3b audit — 2026-03-24)
+
+All 30 PASS results use `timing_method: "wall_time"`. Failure results have `timing_method: null`.
+`translated_cpu_time_seconds` and `translated_kernel_time_seconds` are `null` in all 68 files.
+
+**Do NOT use `speedup_ratio` from these results in the SC26 paper.** Sub-millisecond baseline
+wall times (0.001s) produce unreliable ratios (e.g., nn=16.0x, bfs=0.002x). Wall-clock time
+includes OS scheduling noise, I/O, and memory allocation — it is not kernel time.
+
+For valid performance numbers: use `nvprof`/`ncu` for CUDA kernel time, and `perf` or
+`omp_get_wtime()` around the parallel region for OMP. See `feedback_timing_measurement.md`.
+
+## Eval Result JSON Schema Quirk (SESSION 3b audit — 2026-03-24)
+
+Top-level `run_status`, `run_time_seconds`, `run_exit_code` fields can contain stale data
+from a non-final attempt when a multi-attempt evaluation regresses to a build failure.
+**Always use `overall_status` (not top-level `run_status`) as the authoritative verdict.**
+The `attempts[]` array is the canonical per-attempt record.
+
+This was a pipeline bug in `llm_evaluate.py` (fixed prospectively — future results are correct).
+The 68 existing L0 result JSONs are not retroactively corrected; only gemini pathfinder is
+affected (attempt 1 SIGSEGV, attempt 2 BUILD_FAIL; `overall_status` is correctly BUILD_FAIL).
