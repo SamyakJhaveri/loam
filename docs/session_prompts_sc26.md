@@ -38,8 +38,144 @@ or via @-mention: `@agent-{name}`.
 | S12-S15 | `paper-drafter` | Paper section writing with actual data from results files |
 | Any | `plan-reviewer` | Before any architecture change — adversarial pre-implementation review |
 | Any | `verify-app` | Before any commit — validates project health |
+| **W-S16** | `explorer` | Step 1 — audit files containing author names before sanitization |
+| **W-S14** | `paper-drafter` | Figures F2-F6 spec review from paper_outline.md before generating |
+| **W-S11** | `dashboard-refresher` | Full dashboard refresh in worktree context |
+| **W-S12-PARTIAL** | `paper-drafter` (Opus) | Write §3-§5 from outline + code + data files |
+| **W-S15** | `paper-drafter` + `self-critic` | Data accuracy review + adversarial anti-rationalization |
+| **W-S17** | `explorer` | Understand paper_draft.md structure before LaTeX conversion |
 
 **eval-batcher runs in the background** (`background: true`). Start it, then continue other work in the main session. You'll be notified when it completes.
+
+**Worktree sessions (W-S*)** run in isolated git worktrees via `git worktree add`. See WORKTREE PARALLELIZATION GUIDE below for setup instructions.
+
+---
+
+## WORKTREE PARALLELIZATION GUIDE
+
+> **14 days remain. 15 sessions to complete. Parallelization is the only way to make April 8.**
+> This guide maps every remaining session into one of three concurrent execution lanes
+> and provides complete, self-contained prompts for work that can be delegated to autonomous
+> Claude Code agents running in isolated git worktrees.
+
+### The Fundamental Constraint
+
+Git worktrees do **not** initialize git submodules. The `rodinia/rodinia-src/` directory will be
+**completely empty** in any worktree — no Makefiles, no source files, no binaries. Additionally,
+gitignored directories (`xsbench/xsbench-src/`, `HeCBench-master/`) are absent from worktrees.
+
+**This single constraint determines which sessions can use worktrees:**
+- Sessions that call `python3 -m harness verify` or `run_eval_batch.py` → **main checkout only**
+- Sessions that only read `results/evaluation/` and write to `docs/paper/` or `visualizations/` → **worktree safe**
+
+### Session Classification
+
+| Session | Lane | Worktree? | Why | Autonomous? |
+|---------|------|:---------:|-----|:-----------:|
+| **S7** Augmented Eval L1/L2 | GPU-eval | NO | Needs Rodinia submodule + GPU | YES (tmux) |
+| **S8** XSBench Multi-API Eval | GPU-eval | NO | Needs XSBench source + GPU | YES (tmux) |
+| **S9** omp-to-cuda | GPU-eval | NO | Needs Rodinia submodule + GPU | YES (tmux) |
+| **S10** cuda-to-opencl | GPU-eval | NO | Needs Rodinia submodule + GPU | YES (tmux) |
+| **S10b** Remaining 3 directions | GPU-eval | NO | Needs Rodinia submodule + GPU | YES (tmux) |
+| **S-HeCBench** Clone + Eval | GPU-eval | NO | Needs GPU; HeCBench clone in main | PARTIAL |
+| **S6.5** Timing Infrastructure | Supervised | NO | Needs Rodinia + GPU; architecture decision | NO |
+| **W-S16** Anonymous GitHub Repo | Worktree | **YES** | Creates separate repo; no main repo changes | **YES** |
+| **W-S14** Publication Figures | Worktree | **YES** | Reads `results/`, creates `docs/paper/figures/` | **YES** |
+| **W-S11** Dashboard Refresh | Worktree | **YES** | Reads `results/`, edits `visualizations/` | **MOSTLY** |
+| **W-S12-PARTIAL** Paper §3–§5 | Worktree | **YES** | Reads `specs/` + `results/`, creates `docs/paper/` | **MOSTLY** |
+| **W-S17** LaTeX Transfer | Worktree | **YES** | Reads `docs/paper/`, creates `docs/paper/*.tex` | **YES** |
+| **W-S15** Paper Review & Polish | Worktree | **YES** | Reads/edits `docs/paper/`, reads `results/` | **YES** |
+| **S12** Paper §1–§2 | Supervised | NO | Requires Paraval paper reading (M3) + research judgment | NO |
+| **S13** Paper §6–§8 | Supervised | NO | Requires interpreting results + threats to validity | NO |
+| **S18** Final Review + Submit | Supervised | NO | Co-author sign-off; non-delegable | NO |
+
+### 3-Lane Execution Strategy
+
+```
+LANE 1: GPU Eval (main checkout, run in tmux — autonomous)
+  S8 → S7 → S9 → S10 → S10b → S-HeCBench
+  Rule: ONE Rodinia eval at a time (llm_evaluate.py has no file locking in rodinia-src/)
+  Exception: S8 (XSBench source tree) can run alongside a Rodinia eval
+
+LANE 2: Writing + Viz (worktree agents — fully autonomous)
+  W-S16 + W-S14  (parallel, no overlap)
+  → W-S11 (after S7 results arrive)
+  → W-S12-PARTIAL (after W-S11 or concurrently)
+  → W-S17 (after S13 complete)
+  → W-S15 (after S13 complete, ideally after Gal review)
+
+LANE 3: Research Judgment (Samyak — cannot be delegated)
+  Read Paraval paper (M3) → Write §1-§2 (S12) → Interpret results (S13) → Final review (S18)
+  Dependency: M3 is the #1 blocker — it gates §2 Related Work and the positioning argument
+```
+
+### Day-by-Day Schedule (Days 8–19)
+
+| Day | Date | Lane 1 (GPU tmux) | Lane 2 (Worktree) | Lane 3 (Samyak) |
+|-----|------|-------------------|-------------------|-----------------|
+| 8 | Mar 25 | Launch S8 (XSBench, 1-2h), then S7 (L1/L2, 4-6h) | Launch W-S16 + W-S14 in separate worktrees | Read Paraval paper (M3) — 2h |
+| 9 | Mar 26 | S7 continues / completes | Launch W-S12-PARTIAL | Write §1 Introduction with S12 |
+| 10 | Mar 27 | Launch S9 (omp-to-cuda, 2-4h) | W-S11 (dashboard with L0+L1/L2 data) | Write §2 Related Work |
+| 11 | Mar 28 | Launch S10 (cuda-to-opencl, 3-5h) | Merge W-S16, W-S14 branches | Review S9 results; plan §6 |
+| 12 | Mar 29 | Launch S10b (3 directions, 6-10h) | Merge W-S12-PARTIAL; W-S11 | Start S13 (§6-§8 results) |
+| 13 | Mar 30 | S-HeCBench clone + smoke-test (supervised) | Regenerate W-S14 figures with full data | S13 continues |
+| 14 | Mar 31 | S-HeCBench eval batch (autonomous) | Launch W-S15 (needs S13 complete) | Review paper draft |
+| 15 | Apr 1 | Buffer / any failed reruns | Launch W-S17 (after W-S15) | Final number verification |
+| 16-17 | Apr 2-3 | — | Merge all worktrees | Deep paper review |
+| 18-21 | Apr 4-8 | — | — | S18: co-author review + submit |
+
+### GPU Sequencing Rules
+
+`llm_evaluate.py` backs up and restores files inside `rodinia/rodinia-src/` with no file
+locking. Two concurrent Rodinia evals will corrupt each other's backup/restore cycle.
+
+**Safe to run simultaneously:**
+- Any worktree agent + any GPU eval (disjoint directories)
+- S8 (XSBench in `xsbench/xsbench-src/`) + any Rodinia eval (S7/S9/S10/S10b)
+
+**Must be sequential (one at a time):**
+- S7, S9, S10, S10b — all write into Rodinia `openmp/`, `cuda/`, `opencl/` subdirectories
+- Note: S9 writes translated CUDA output to `cuda/` dirs; S10 reads from those same dirs as source — always run S9 to completion before S10
+
+**Recommended order:** S8 first (fastest, different source) → S7 (L1/L2 augmentation) → S9 (omp-to-cuda) → S10 (cuda-to-opencl) → S10b (3 remaining)
+
+### How to Launch a Worktree Session
+
+```bash
+# Create a new worktree (from main checkout)
+cd /home/samyak/Desktop/parbench_sam
+git worktree add ../parbench_wt_s14 -b worktree/s14-figures
+
+# Start Claude Code pointing at the worktree
+claude --project-dir ../parbench_wt_s14
+
+# Paste the W-S14 prompt from this file into that Claude Code session
+
+# When the agent finishes and commits:
+git worktree remove ../parbench_wt_s14
+git merge --no-ff worktree/s14-figures -m "Merge W-S14: publication figures"
+git branch -d worktree/s14-figures
+```
+
+**Key worktree facts for agent orientation:**
+- The venv `env_parbench/` is present and usable (not gitignored)
+- `results/evaluation/` data is fully present (tracked files from branch point)
+- `specs/`, `docs/`, `scripts/`, `harness/`, `c_augmentation/` are all fully present
+- `rodinia/rodinia-src/` directory structure exists but all files are ABSENT (submodule empty)
+- `xsbench/xsbench-src/` and `HeCBench-master/` are ABSENT (gitignored)
+- `--project-root /path/to/worktree` must be passed to any script that uses it
+
+### File Conflict Map (no write-write conflicts between lanes)
+
+| Directory | GPU evals (S7-S10b) | S-HeCBench | W-S11 | W-S12/S13/S15 | W-S14 | W-S17 |
+|-----------|:------------------:|:----------:|:-----:|:-------------:|:-----:|:-----:|
+| `results/evaluation/` | **WRITE** | **WRITE** | READ | READ | READ | — |
+| `rodinia/rodinia-src/` | **WRITE** | — | — | — | — | — |
+| `visualizations/` | — | — | **WRITE** | — | **WRITE**(figs) | — |
+| `docs/paper/` | — | — | — | **WRITE** | **WRITE** | **WRITE** |
+| `specs/` | — | **WRITE** (fixes) | — | READ | READ | — |
+
+No lane writes to another lane's output directory. Worktree merges will be conflict-free.
 
 ---
 
@@ -1030,9 +1166,6 @@ missed this format → 5 false-positive PASSes. Tier 1.5 regex added; all 5 kern
 
 ## SESSION 4 — Clone XSBench & Generate Specs
 
-> **STATUS: COMPLETE** — Commit `78e379d` (2026-03-23). XSBench cloned (commit ba08e52,
-> regular clone + .gitignored). **4 specs generated** (cuda, omp, opencl, omp_target) —
-> no OpenACC variant exists in the XSBench repo. 4 manifest entries appended.
 > Spec generator: `scripts/generators/generate_xsbench_specs.py`.
 
 ```
@@ -3124,3 +3257,1090 @@ python3 scripts/evaluation/analyze_eval.py \
 git status
 git log --oneline -3
 ```
+
+
+---
+
+## WORKTREE SESSION PROMPTS
+
+> The following 6 sessions run in isolated git worktrees via autonomous Claude Code agents.
+> Each prompt is **hermetic** — it contains every file path, command, expected output, and
+> edge-case decision the agent will need. No follow-up questions should be needed.
+>
+> **How to start:** `git worktree add ../parbench_wt_sNN -b worktree/sNN-name`
+> then `claude --project-dir ../parbench_wt_sNN` and paste the prompt below.
+> When the agent commits, merge back: `git merge --no-ff worktree/sNN-name`
+
+---
+
+## SESSION W-S16 — Anonymous GitHub Repo (WORKTREE-SAFE)
+
+> **Status: NOT STARTED. Can launch immediately — zero dependencies.**
+> **Worktree safe because:** This session creates a SEPARATE GitHub repository. It does
+> not modify any file in the main ParBench repo. The worktree is used only as a workspace
+> for filtering commit history; the output goes to a new remote.
+> **Paper impact:** SC26 requires double-blind submission. The anonymous repo URL goes
+> in the artifact submission field. Without it, the paper cannot be submitted.
+
+```
+ultrathink
+
+## CONTEXT
+
+You are running in a git worktree of the ParBench SC26 project.
+Project root in this worktree: use $(git rev-parse --show-toplevel) to find it.
+You have full access to the codebase but the Rodinia submodule is empty — that is expected.
+DO NOT run harness verify or any script that reads rodinia/rodinia-src/ — it won't work.
+
+## BEFORE YOU START — Decisions Already Made
+
+RESOLVED:
+- [x] SC26 requires double-blind anonymous submission — confirmed from CFP
+- [x] Anonymous repo approach: fresh repo on new GitHub account (cleanest for double-blind)
+- [x] Include: specs/, harness/, c_augmentation/, scripts/, schema/, results/, visualizations/
+- [x] Exclude: meeting_notes/, presentations/, docs/sprint_to_SC26.md (contains author info),
+      any file containing "samyak", "jhaveri", "erel", "gal", "niranjan" as literal text
+- [x] Repository name for anonymous repo: "parbench-sc26-anon" (or similar neutral name)
+
+DECISIONS NEEDED FROM YOU (resolve before proceeding):
+- [ ] GitHub account for anonymous repo: You need a secondary GitHub account with no
+      connection to the authors. Ask Samyak for the account credentials or URL before proceeding.
+      If no secondary account is available, use https://anonymous.4open.science (no account needed).
+      This is a BLOCKING decision — do NOT proceed without it.
+
+# Session Goal
+Create an anonymous version of the ParBench repository stripped of all author-identifying
+information, for SC26 double-blind submission. The anonymous repo must compile and run
+the evaluation pipeline from scratch without revealing author identities.
+
+# What "anonymous" means for SC26:
+# - No author names in commit messages
+# - No author names in file contents (code comments, docstrings, README, docs/)
+# - No institution names (UCSB, Technion, etc.)
+# - No references to specific meetings, advisors, or lab-internal terminology
+# - Rodinia source is external — its commit messages are NOT your responsibility
+
+# Step 1: Orient — understand what contains author info
+source env_parbench/bin/activate
+cd $(git rev-parse --show-toplevel)
+
+# Find files containing author names (case-insensitive)
+grep -rli "samyak\|jhaveri\|erel\|gal\|niranjan\|ucsb\|technion" \
+  --include="*.py" --include="*.md" --include="*.json" --include="*.html" \
+  --include="*.js" --include="*.txt" \
+  --exclude-dir=".git" --exclude-dir="rodinia" --exclude-dir="HeCBench-master" \
+  --exclude-dir="xsbench" --exclude-dir="env_parbench" \
+  . 2>/dev/null | sort
+# Document everything this finds. These files need sanitization or exclusion.
+
+# Step 2: Create sanitized file list
+# Files to EXCLUDE entirely from anonymous repo (they cannot be sanitized):
+# - meeting_notes/ (contains advisor names and discussion)
+# - presentations/ (contains author names on slides)
+# - docs/sprint_to_SC26.md (contains team member names + meeting notes)
+# - .claude/ directory (contains prompts that may mention team)
+# - env_parbench/ (local venv, gitignored anyway)
+# - rodinia/ (submodule — external project, not your code)
+
+# Files to INCLUDE with sanitization (replace names → "ParBench Team"):
+# - README.md — replace author names with "The ParBench Team"
+# - Any .py files with "# Author: Samyak" style comments → remove the comment
+# - CLAUDE.md — remove specific user paths, replace with generic paths
+# - docs/paper_outline.md — replace names in author list → "Author N"
+
+# Step 3: Create the anonymous repo
+# Option A: Using anonymous.4open.science (if no secondary GitHub account)
+#   Go to https://anonymous.4open.science in a browser
+#   Upload the sanitized content via the web interface
+#   Get the anonymous URL for the submission
+
+# Option B: Using git-filter-repo to create a sanitized history
+# Install git-filter-repo: python3 -m pip install git-filter-repo
+git clone . ../parbench_anon_work --no-local
+cd ../parbench_anon_work
+
+# Create a mailmap to sanitize author identity in commit history
+cat > /tmp/mailmap_anon.txt << 'EOF'
+ParBench Author <anon@parbench-sc26.invalid> <samyak@whatever.edu>
+ParBench Author <anon@parbench-sc26.invalid> <sjhaveri@whatever.edu>
+ParBench Author <anon@parbench-sc26.invalid> Samyak Jhaveri <sjhaveri@whatever.edu>
+EOF
+# Add any other author email patterns found with: git log --format="%ae" | sort -u
+
+# Apply the mailmap via git-filter-repo
+git filter-repo --mailmap /tmp/mailmap_anon.txt --force
+
+# Remove excluded directories entirely from history
+git filter-repo --path meeting_notes/ --invert-paths --force
+git filter-repo --path presentations/ --invert-paths --force
+git filter-repo --path docs/sprint_to_SC26.md --invert-paths --force
+
+# Step 4: Sanitize file contents in the anonymous working copy
+# Replace author names in remaining files
+# Find and replace in all non-gitignored files:
+ANON_DIR=../parbench_anon_work
+grep -rli "samyak\|jhaveri" "$ANON_DIR" \
+  --exclude-dir=".git" --exclude-dir="env_parbench" | while read f; do
+  echo "Sanitizing: $f"
+  sed -i 's/Samyak Jhaveri/ParBench Author/gi; s/samyak/parbench_user/gi' "$f"
+done
+
+grep -rli "erel\|gal\|niranjan" "$ANON_DIR" --exclude-dir=".git" | while read f; do
+  echo "Sanitizing: $f"
+  sed -i 's/Erel Segal/ParBench Advisor/gi; s/Gal Oren/ParBench Advisor/gi' "$f"
+done
+
+# Replace institution names
+grep -rli "ucsb\|technion" "$ANON_DIR" --exclude-dir=".git" | while read f; do
+  sed -i 's/UCSB/[Institution Anonymized]/gi; s/Technion/[Institution Anonymized]/gi' "$f"
+done
+
+# Step 5: Update README.md for anonymous submission
+# The README must explain the project WITHOUT revealing identities.
+# Key elements for an anonymous README:
+# - What ParBench is (framework for LLM parallel code translation evaluation)
+# - How to install and run it (instructions)
+# - How to reproduce results (commands)
+# - Acknowledgment: "Submitted to SC26 (under review)"
+# Draft the README — do NOT include author names, institutions, or advisor names
+
+# Step 6: Verify sanitization is complete
+cd "$ANON_DIR"
+grep -rli "samyak\|jhaveri\|erel\|gal\|niranjan\|ucsb\|technion" \
+  --exclude-dir=".git" . 2>/dev/null
+# Expected: empty output (no hits). If any files remain, sanitize them.
+
+# Also check git log for author name leakage:
+git log --format="%an <%ae>" | sort -u
+# Expected: only "ParBench Author <anon@parbench-sc26.invalid>"
+
+# Step 7: Push to anonymous repo
+# IF using secondary GitHub account:
+# git remote add anon https://github.com/ANON_ACCOUNT/parbench-sc26-anon.git
+# git push anon main
+
+# IF using anonymous.4open.science:
+# Follow the web interface instructions at https://anonymous.4open.science
+# Upload the git bundle: git bundle create parbench-sc26-anon.bundle --all
+# Then upload the .bundle file to the service
+
+# Step 8: Test the anonymous repo
+# Clone the anonymous repo to a temp directory and verify it works:
+git clone ../parbench_anon_work /tmp/parbench_anon_test
+cd /tmp/parbench_anon_test
+python3 scripts/validate_schema.py --all 2>&1 | tail -5
+# Expected: ~135 known errors (HeCBench + phantoms), no new errors
+python3 -m pytest c_augmentation/test_transforms.py -v 2>&1 | tail -5
+# Expected: 15 PASS
+rm -rf /tmp/parbench_anon_test
+
+# Step 9: Document the anonymous repo URL
+# Write the URL to docs/anonymous_repo_url.txt (this file stays in the MAIN repo,
+# not the anonymous repo — it's for Samyak's reference during submission)
+echo "SC26 Anonymous Repo URL: [URL from Step 7]" > docs/anonymous_repo_url.txt
+echo "Generated: $(date)" >> docs/anonymous_repo_url.txt
+
+# Step 10: Commit the documentation to the MAIN worktree
+# NOTE: Do NOT commit the sanitized repo content into the main repo.
+# Only commit the reference URL file.
+git add docs/anonymous_repo_url.txt
+git commit -m "M1: Add anonymous repo URL reference for SC26 submission"
+```
+
+---
+
+## SESSION W-S14 — Publication Figures (WORKTREE-SAFE)
+
+> **Status: NOT STARTED. Can launch immediately — uses only existing L0 data.**
+> **Worktree safe because:** This session reads `results/evaluation/eval_summary.json` (present
+> in worktree as a tracked file) and writes to `docs/paper/figures/` (new directory). It does not
+> touch any eval pipeline, specs, or Rodinia source. It creates ONE new script and figure files.
+> **Regenerate this session after S7/S9/S10 complete** to add L1/L2 and multi-direction data.
+> **Paper impact:** F2-F6 in the paper are generated here. The paper cannot go to LaTeX without them.
+>
+> **Current data available (L0 cuda-to-omp, 4 models, 17 kernels):**
+> claude=12/17 PASS (70.6%), azure=9/17 (52.9%), llama=5/17 (29.4%), gemini=4/17 (23.5%)
+> BUILD_FAIL=26, RUN_FAIL=10, EXTRACTION_FAIL=2, VERIFY_FAIL=0
+> Complexity: single_file=7/12 PASS, multi_to_single=21/44, multi_to_multi=2/12
+
+```
+ultrathink
+
+## CONTEXT
+
+You are running in a git worktree of the ParBench SC26 project.
+Find the project root with: cd $(git rev-parse --show-toplevel)
+The Rodinia submodule is EMPTY in this worktree — that is expected and fine.
+This session does NOT need Rodinia source. It reads results/evaluation/eval_summary.json
+and generates matplotlib figures for the SC26 paper.
+
+Key data sources (all present in this worktree as tracked files):
+- results/evaluation/eval_summary.json       ← primary data source (68 L0 results)
+- results/evaluation/eval_summary.md         ← human-readable summary
+- results/augmentation/retest_post_session2.md ← 54/60 PASS at L0-L4 (level-invariant)
+- docs/paper_outline.md                      ← Figure inventory F1-F6 with specs
+- visualizations/DESIGN.md                   ← Okabe-Ito palette, aesthetic guidelines
+
+## BEFORE YOU START — Decisions Already Made
+
+RESOLVED:
+- [x] Figure format: matplotlib/seaborn producing PDF + PNG (PDF for LaTeX, PNG for dashboard)
+- [x] Color palette: Okabe-Ito colorblind-safe (from visualizations/DESIGN.md)
+- [x] Figure save location: docs/paper/figures/ (create this directory if absent)
+- [x] Figures for LaTeX: PDF format (vectorized)
+- [x] Grayscale printability: use hatching patterns in addition to color
+- [x] System architecture diagram (F1): Skip for now — this requires draw.io/TikZ design work
+      that needs Samyak's creative input. Focus on F2-F6 (data-driven figures).
+- [x] Initial run: use L0 cuda-to-omp data only. Mark multi-direction figures as TBD placeholders.
+
+# Session Goal
+Generate publication-quality figures F2-F6 for the SC26 paper using existing L0 results.
+Create a reusable figure generation script so figures can be regenerated when more data arrives.
+
+# Step 1: Setup
+source env_parbench/bin/activate
+cd $(git rev-parse --show-toplevel)
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+
+# Verify matplotlib is installed
+python3 -c "import matplotlib, seaborn; print('matplotlib:', matplotlib.__version__, '| seaborn:', seaborn.__version__)"
+# If not installed:
+python3 -m pip install matplotlib seaborn
+
+# Create output directory
+mkdir -p docs/paper/figures
+
+# Verify data source
+python3 -c "
+import json
+with open('results/evaluation/eval_summary.json') as f:
+    data = json.load(f)
+print('Total tasks:', data.get('total_tasks'))
+print('Models:', list(data.get('by_model', {}).keys()))
+print('Directions:', list(data.get('by_direction', {}).keys()))
+"
+# Expected: total_tasks=68, 4 models, 1 direction (cuda-to-omp)
+
+# Step 2: Read docs/paper_outline.md — Figure inventory section
+# This tells you the exact specs for each figure:
+# F1: System architecture diagram — SKIP (manual design)
+# F2: Kernel × Model heatmap (cuda-to-omp L0) — 17×4 matrix, PASS/BUILD_FAIL/RUN_FAIL/EXTRACTION_FAIL
+# F3: Failure taxonomy stacked bar — per model, stacked BUILD_FAIL/RUN_FAIL/VERIFY_FAIL/EXTRACTION_FAIL
+# F4: Augmentation robustness — L0 vs L1 vs L2 pass rates per model (TBD until S7 done)
+# F5: Cross-direction comparison — cuda-to-omp vs omp-to-cuda vs cuda-to-opencl (TBD until S9/S10)
+# F6: XSBench multi-API results (TBD until S8 done)
+
+# Step 3: Create the figure generation script
+# Create scripts/evaluation/generate_paper_figures.py
+# This script MUST:
+# a) Read all data from results/evaluation/eval_summary.json (never hardcode numbers)
+# b) Accept --project-root argument (like all other scripts in this codebase)
+# c) Accept --output-dir argument (default: docs/paper/figures/)
+# d) Accept --format argument (default: "pdf,png" — generates both)
+# e) Accept --figures argument (default: all — allow "f2,f3" to generate specific ones)
+# f) Be rerunnable — overwrite existing figure files without error
+# g) Print progress: "Generating F2: Kernel x Model heatmap... saved to docs/paper/figures/f2_heatmap.pdf"
+
+# Color palette (Okabe-Ito) — use these exact hex codes from DESIGN.md:
+# PASS: #009E73 (green)
+# BUILD_FAIL: #E69F00 (orange)
+# RUN_FAIL: #CC79A7 (pink)
+# VERIFY_FAIL: #0072B2 (blue)
+# EXTRACTION_FAIL: #D55E00 (vermilion)
+# Background: white, grid: light gray (#EEEEEE)
+
+# Figure specifications:
+
+# F2: Kernel × Model Heatmap
+# - 17 rows (kernels) × 4 columns (models)
+# - Cell color = status (PASS=green, BUILD_FAIL=orange, RUN_FAIL=pink, EXTRACTION_FAIL=vermilion)
+# - Cell text = status abbreviation ("P", "BF", "RF", "EF")
+# - X-axis: model short names ("GPT-4.1", "Claude 4.6", "Gemini Flash-Lite", "Llama 3.3")
+# - Y-axis: kernel names (sorted by number of PASS across models, descending)
+# - Title: "CUDA→OpenMP Translation Results (L0, Kernel-Centric)"
+# - Size: (8, 10) inches for PDF
+# - Save as: docs/paper/figures/f2_kernel_model_heatmap.pdf + .png
+
+# F3: Failure Taxonomy Stacked Bar
+# - X-axis: 4 models (same short names as F2)
+# - Y-axis: count (not percentage — raw numbers)
+# - Stacked bars: PASS (bottom), then BUILD_FAIL, RUN_FAIL, EXTRACTION_FAIL, VERIFY_FAIL (top)
+# - Use hatching for B&W printability: PASS=solid, BUILD_FAIL=///, RUN_FAIL=\\\\, etc.
+# - Annotate bar segments with counts if segment > 0
+# - Title: "Failure Taxonomy by Model (cuda→omp, L0, n=17 kernels each)"
+# - Size: (8, 6) inches
+# - Save as: docs/paper/figures/f3_failure_taxonomy.pdf + .png
+
+# F4: Augmentation Robustness (TBD placeholder)
+# - If S7 results exist: show L0/L1/L2 pass rates per model (grouped bar or line chart)
+# - If S7 results are ABSENT (which they are now): create a placeholder figure with
+#   "Figure 4: Augmentation Robustness (data pending Session S7)" text on white background
+# - Script should check: if results/evaluation/{model}/augmented_L1/ exists → use real data
+#   else → generate placeholder
+# - Save as: docs/paper/figures/f4_augmentation_robustness.pdf + .png
+
+# F5: Cross-Direction Comparison (TBD placeholder)
+# - If S9/S10 results exist: grouped bar of pass rates per direction per model
+# - If absent: placeholder figure with "Figure 5: Cross-Direction Results (pending S9/S10)"
+# - Save as: docs/paper/figures/f5_cross_direction.pdf + .png
+
+# F6: XSBench Multi-API Results (TBD placeholder)
+# - If S8 results exist: heat map of XSBench kernel × direction for 4 models
+# - If absent: placeholder
+# - Save as: docs/paper/figures/f6_xsbench.pdf + .png
+
+# Step 4: Also generate T2 (Model Comparison Table) as a LaTeX table string
+# T2 should be a 4-row × 6-column table:
+# | Model | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL |
+# This table string should be written to docs/paper/figures/t2_model_comparison.tex
+# for direct inclusion in the LaTeX paper via \input{}
+
+# Step 5: Run the script
+python3 scripts/evaluation/generate_paper_figures.py \
+  --project-root "$PROJECT_ROOT" \
+  --output-dir docs/paper/figures \
+  --format pdf,png
+# Expected output: 5 figure PDFs + 5 PNGs + t2_model_comparison.tex in docs/paper/figures/
+
+# Step 6: Verify output
+ls -la docs/paper/figures/
+# Expected: f2_kernel_model_heatmap.pdf, f2_kernel_model_heatmap.png,
+#           f3_failure_taxonomy.pdf, f3_failure_taxonomy.png,
+#           f4_augmentation_robustness.pdf (placeholder), ...
+#           t2_model_comparison.tex
+
+# Open the PDFs to visually verify (if display available):
+# xdg-open docs/paper/figures/f2_kernel_model_heatmap.pdf  (on Linux with display)
+# Or just verify file sizes are non-zero:
+for f in docs/paper/figures/*.pdf; do echo "$f: $(stat -c%s "$f") bytes"; done
+# All files should be > 1000 bytes (a blank PDF is ~600 bytes — any figure should be larger)
+
+# Step 7: Validate the script against the hardcoded ground truth
+# The eval_summary.md shows these exact numbers — verify the script produces them:
+python3 -c "
+import json
+with open('results/evaluation/eval_summary.json') as f:
+    d = json.load(f)
+# claude-sonnet-4-6: 12/17 PASS
+claude = d['by_model']['claude-sonnet-4-6']
+assert claude['pass'] == 12, f'Expected 12 PASS, got {claude[\"pass\"]}'
+assert claude['total'] == 17, f'Expected total=17, got {claude[\"total\"]}'
+# azure: 9/17
+azure = d['by_model']['azure-gpt-4.1']
+assert azure['pass'] == 9
+# BUILD_FAIL aggregate: 26
+assert d['by_status']['BUILD_FAIL'] == 26
+print('Ground truth verification: PASS')
+"
+
+# Step 8: Git commit
+git add scripts/evaluation/generate_paper_figures.py
+git add docs/paper/figures/
+git commit -m "W-S14: Add publication figure generation script (F2-F6) + initial figures from L0 data
+
+- scripts/evaluation/generate_paper_figures.py: generates F2-F6 + T2 LaTeX table
+- docs/paper/figures/: 5 PDF + 5 PNG figures + LaTeX table
+- F2: Kernel x Model heatmap (17x4, cuda-to-omp L0)
+- F3: Failure taxonomy stacked bar (per-model breakdown)
+- F4/F5/F6: placeholders pending S7/S9-S10/S8 eval data
+- Okabe-Ito colorblind-safe palette, hatching for B&W printability"
+```
+
+---
+
+## SESSION W-S11 — Dashboard Data Refresh (WORKTREE-SAFE)
+
+> **Status: NOT STARTED. Best to run after S7 completes (Day 9-10) so L1/L2 data is included.**
+> **Worktree safe because:** Reads `results/evaluation/` data, edits `visualizations/*.js` and
+> `visualizations/*.html`. No eval pipeline, no harness, no Rodinia source needed.
+> **Dependencies:** Technically runnable with only L0 data, but wait for S7 so augmentation
+> data is included. The HTML number fixes (54/60 spec count, 60 Rodinia specs) can be done now.
+> **Paper impact:** The dashboard is the companion website. Stale numbers undermine credibility.
+
+```
+ultrathink
+
+## CONTEXT
+
+You are running in a git worktree of the ParBench SC26 project.
+Find the project root: cd $(git rev-parse --show-toplevel)
+The Rodinia submodule is EMPTY — that is expected. You don't need it.
+
+Key files to modify (all present in worktree):
+- visualizations/eval_results_data.js    ← eval data for llm_evaluation.html
+- visualizations/results_data.js         ← augmentation data for results.html
+- visualizations/build_results_data.js   ← build baseline data
+- visualizations/overview.html           ← has hardcoded "65 specs", wrong augmentation rates
+- visualizations/augmentation_deep_dive.html ← has hardcoded L3=29/60, L4=1/60 (wrong)
+- visualizations/results.html            ← has stale BASELINE object
+- visualizations/llm_evaluation.html     ← has stale eval results
+- visualizations/benchmark_landscape.html ← may need XSBench added
+
+Key data sources (present in worktree as tracked files):
+- results/evaluation/eval_summary.json   ← 68 L0 results (and L1/L2 if S7 ran)
+- results/augmentation/retest_post_session2.md ← 54/60 PASS level-invariant (ground truth)
+
+## BEFORE YOU START — Decisions Already Made
+
+RESOLVED:
+- [x] XSBench should appear in the dashboard (4 specs: cuda, omp, opencl, omp_target)
+- [x] Rodinia spec count is 60 (NOT 65 — 5 phantom specs were deleted 2026-03-20)
+- [x] Augmentation result: 54/60 PASS at ALL levels L0-L4 (level-invariant)
+- [x] Split into 2 passes is unnecessary — do it all in one session
+
+DECISIONS FOR AGENT TO RESOLVE BY READING FILES:
+- Read visualizations/DESIGN.md before touching any HTML — understand the design constraints
+- Check scripts/generate_viz_data.py to understand what data it reads and writes
+- Verify that scripts/evaluation/analyze_eval.py has a --write-dashboard flag:
+  python3 scripts/evaluation/analyze_eval.py --help | grep dashboard
+  If not present, write the eval_results_data.js manually from eval_summary.json
+
+# Session Goal
+Fix ALL stale data in the ParBench visualization dashboard. After this session,
+every number in every HTML page must match the authoritative data sources.
+
+# Step 1: Setup
+source env_parbench/bin/activate
+cd $(git rev-parse --show-toplevel)
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+
+# Step 2: Understand what scripts exist
+python3 scripts/generate_viz_data.py --help 2>/dev/null || echo "No --help flag, reading source"
+head -30 scripts/generate_viz_data.py
+
+python3 scripts/evaluation/analyze_eval.py --help 2>&1 | head -40
+
+# Step 3: Regenerate JS data files via scripts
+python3 scripts/generate_viz_data.py \
+  --project-root "$PROJECT_ROOT" \
+  -v 2>&1 | tail -20
+# Verify output: results_data.js and build_results_data.js should be updated
+
+python3 scripts/evaluation/analyze_eval.py \
+  --project-root "$PROJECT_ROOT" \
+  --output-dir results/evaluation \
+  2>&1 | tail -20
+# Verify: eval_summary.json + eval_results_data.js should be updated (if --write-dashboard exists)
+
+# Step 4: Audit all stale hardcoded numbers in HTML files
+# For each HTML file, search for known-stale values:
+
+echo "=== overview.html audit ==="
+grep -n "65\|spec.*count\|augment.*pass\|L3\|L4\|29/60\|1/60\|44/60" \
+  visualizations/overview.html | head -30
+
+echo "=== augmentation_deep_dive.html audit ==="
+grep -n "29\|1/60\|L3\|L4\|65" visualizations/augmentation_deep_dive.html | head -30
+
+echo "=== results.html audit ==="
+grep -n "BASELINE\|65\|44/60\|L3\|L4" visualizations/results.html | head -30
+
+echo "=== llm_evaluation.html audit ==="
+grep -n "azure\|claude\|gemini\|llama\|PASS\|BUILD_FAIL\|percent" \
+  visualizations/llm_evaluation.html | head -50
+
+# Step 5: Fix overview.html
+# Ground truth values to use:
+# - Total Rodinia specs: 60 (was 65 before phantom deletion on 2026-03-20)
+# - Total specs (all suites): 64 (60 Rodinia + 4 XSBench)
+# - Augmentation PASS at each level: 54/60 = 90% (was showing wrong values for L3/L4)
+# - LLM eval: 30/68 overall PASS (44.1%), best=claude 70.6%, worst=gemini 23.5%
+# Read overview.html carefully — understand EVERY number before changing any
+
+# Step 6: Fix augmentation_deep_dive.html
+# L1 PASS: 54/60 (90%) — same for L2, L3, L4 (level-invariant)
+# The chart data must show flat lines at 54/60 across all levels
+# Read the Chart.js config carefully — understand which arrays need updating
+
+# Step 7: Fix results.html
+# BASELINE object should reflect: 54/60 PASS at L1-L4, 60 Rodinia specs
+# Read the object definition carefully before editing
+
+# Step 8: Fix llm_evaluation.html
+# Update the per-model results table:
+# | Model | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | EXTRACTION_FAIL |
+# | azure-gpt-4.1 | 9 | 17 | 52.9% | 4 | 4 | 0 |
+# | claude-sonnet-4-6 | 12 | 17 | 70.6% | 2 | 3 | 0 |
+# | gemini-2.5-flash-lite | 4 | 17 | 23.5% | 10 | 2 | 1 |
+# | groq-llama-3.3-70b-versatile | 5 | 17 | 29.4% | 10 | 1 | 1 |
+# Also update the per-kernel heatmap if it is hardcoded (see eval_summary.md for full matrix)
+# Source of truth: results/evaluation/eval_summary.json (always use this, never trust HTML)
+
+# Step 9: Add XSBench to benchmark_landscape.html
+# XSBench facts: 4 specs (cuda, omp, opencl, omp_target), 4/4 PASS
+# XSBench is Monte Carlo Cross Section lookup — category: nuclear physics simulation
+# Add it to whatever suite listing or table exists in benchmark_landscape.html
+
+# Step 10: Write a verification script to catch any remaining stale numbers
+# Create a TEMPORARY script at /tmp/verify_dashboard.py:
+# 1. Load results/evaluation/eval_summary.json
+# 2. Load visualizations/eval_results_data.js (parse the JS object)
+# 3. Assert that key numbers match between them
+# 4. Search visualizations/*.html for "65" referring to spec count — should find zero
+# 5. Print PASS or list of mismatches
+# Delete the script after verification
+
+python3 /tmp/verify_dashboard.py
+# Expected: PASS on all checks, zero "65" instances in HTML (except legitimate uses)
+rm /tmp/verify_dashboard.py
+
+# Step 11: Git commit
+git add visualizations/
+git commit -m "W-S11: Refresh dashboard data — fix stale spec counts and augmentation numbers
+
+- overview.html: 65→60 Rodinia specs, 90% augmentation PASS (was wrong for L3/L4)
+- augmentation_deep_dive.html: L1-L4 all show 54/60 PASS (level-invariant)
+- results.html: BASELINE object updated to reflect 60 specs, 90% PASS
+- llm_evaluation.html: 4-model matrix with claude=70.6%, azure=52.9%
+- benchmark_landscape.html: XSBench added (4 specs, 4/4 PASS)
+- eval_results_data.js + results_data.js: regenerated from current data"
+```
+
+---
+
+## SESSION W-S12-PARTIAL — Paper Sections §3–§5 (WORKTREE-SAFE)
+
+> **Status: NOT STARTED. Launch on Day 9 after S7 starts running.**
+> **Worktree safe because:** Reads `specs/`, `harness/`, `c_augmentation/`, `scripts/`,
+> `results/evaluation/`, and `docs/paper_outline.md`. Writes only to `docs/paper/`.
+> No harness, no GPU, no Rodinia source needed.
+> **WHY PARTIAL:** Sections 1-2 (Introduction + Related Work) require Samyak to have
+> read the Paraval paper (M3) and formed the positioning argument. An agent can write
+> Sections 3-5 autonomously — they are data-driven architectural descriptions.
+> **Samyak will later add §1-§2 and §6-§8** (Sessions S12 and S13) in the main chat.
+> **Paper impact:** §3 Framework, §4 Benchmark Curation, §5 Experimental Setup = ~4 pages.
+> These sections fully describe existing code and data — zero subjective judgment needed.
+
+```
+ultrathink
+
+## CONTEXT
+
+You are running in a git worktree of the ParBench SC26 project.
+Find the project root: cd $(git rev-parse --show-toplevel)
+The Rodinia submodule is EMPTY — that is expected. You don't need it for writing.
+DO NOT run harness or eval pipeline commands.
+
+Your task: Write §3 Framework, §4 Benchmark Curation, and §5 Experimental Setup
+for the SC26 paper. These are the data-driven architectural sections that describe
+what the system is and how the experiments were set up — NOT the results or arguments.
+
+READ FIRST (mandatory before writing a single word):
+1. docs/paper_outline.md                      ← the roadmap (sections, page targets, figures)
+2. results/evaluation/eval_summary.md         ← actual numbers to cite in methodology
+3. results/augmentation/retest_post_session2.md ← 54/60 PASS level-invariant (cite in §5)
+4. schema/spec_schema.json                    ← spec structure (cite field names in §3)
+5. harness/__main__.py + harness/spec_loader.py ← harness pipeline for §3
+6. c_augmentation/augmentation_engine.py      ← augmentation architecture for §3
+
+Paper format: SC26 ACM sigconf double-column, target ~10 pages total.
+§3: 2.0 pages | §4: 1.0 page | §5: 1.0 page
+Academic tone: precise, passive voice where appropriate, present tense for system description.
+
+## BEFORE YOU START — Decisions Already Made
+
+RESOLVED:
+- [x] Output file: docs/paper/paper_sections_3_4_5.md (Samyak merges into paper_draft.md later)
+- [x] Write §3, §4, §5 only. Leave §1, §2 blank — Samyak writes those.
+- [x] Leave §6, §7, §8 for S13. Do not write Results or Discussion.
+- [x] Use paper-drafter agent (Opus) for the actual writing — invoke it for each section
+- [x] Use \cite{placeholder} for all citations (LaTeX will resolve)
+- [x] Use [FIGURE: description] and [TABLE: description] for visual placeholders
+- [x] Gal's constraints: no reasoning models, L0-L4 augmentation, omit build times
+- [x] All 4 models: azure-gpt-4.1, claude-sonnet-4-6, gemini-2.5-flash-lite, groq-llama-3.3-70b-versatile
+
+## AGENT USAGE: paper-drafter (Opus)
+
+Invoke the paper-drafter agent for each section:
+  "Use the paper-drafter agent to write §3 Framework for the SC26 paper"
+
+The paper-drafter agent MUST pre-read these files before writing §3:
+  - docs/paper_outline.md (§3 structure: 3.1 Spec Model, 3.2 Harness Pipeline, 3.3 Augmentation, 3.4 Eval)
+  - harness/__main__.py (the CLI entry point — shows what harness does)
+  - harness/spec_loader.py (spec loading logic)
+  - harness/builder.py (build phase)
+  - harness/runner.py (run phase, including cpu_time measurement)
+  - harness/verifier.py (verify phase — EXIT_CODE and stdout_pattern strategies)
+  - c_augmentation/augmentation_engine.py (augmentation architecture)
+  - schema/spec_schema.json (spec structure — cite the key fields: translation_targets, etc.)
+
+For §4, the agent must pre-read:
+  - specs/ — count specs by suite and API: ls specs/ | grep "rodinia" | wc -l
+  - docs/paper_outline.md §4 structure (4.1 Suite Selection, 4.2 Curation Criteria, 4.3 Coverage)
+  - known-issues.md (6 KNOWN_FAIL specs — cite them in curation)
+  - analysis/reports/kernel_level_analysis.md (survey data — 35 repos, 472 kernel pairs)
+
+For §5, the agent must pre-read:
+  - results/evaluation/eval_summary.md (model identities, current pass rates)
+  - docs/paper_outline.md §5 structure (5.1 Models, 5.2 Translation Directions, 5.3 Augmentation)
+  - docs/design/kernel_centric_translation.md (kernel-centric methodology — §5.4)
+  - CLAUDE.md (GPU: RTX 4070, CUDA 24.3, Linux 6.8)
+
+## Paper Content Guidelines (non-negotiable)
+
+§3 Framework — what to cover:
+- 3.1 Spec Model: the JSON spec as a declarative contract (parallel_api, build commands,
+  run arguments, verify strategies, translation_targets, augmentation_level). Cite real field
+  names from schema/spec_schema.json. Show a condensed example spec (use rodinia-bfs-cuda).
+- 3.2 Harness Pipeline: Build → Run → Verify three-stage pipeline. Build uses spec's commands.
+  Run uses correctness_config arguments. Verify uses exit_code or stdout_pattern. Kernel-centric
+  mode (M11): LLM produces only translation_targets files; infrastructure stays untouched.
+- 3.3 Augmentation Engine: 6 AST transforms (list them from c_augmentation/). libclang-based
+  AST traversal. 5 levels L0-L4 (L0=none, L1=weak, L2=moderate, L3=strong, L4=aggressive).
+  LEVEL_FRACTIONS controls what fraction of candidates to apply at each level.
+  Key property: semantics-preserving — must not change observable output.
+- 3.4 Evaluation Pipeline: run_eval_batch.py → llm_evaluate.py → extract → build → verify.
+  Iterative repair (--max-retries): on BUILD_FAIL, include error snippet in next attempt.
+  Translation complexity classification (single_file, multi_to_single, etc.).
+
+§4 Benchmark Curation — what to cover:
+- 4.1 Suite Selection: Why Rodinia (gold standard in HPC benchmarks, 3 GPU APIs, well-studied).
+  Why XSBench (nuclear cross-section lookup, all 4 target APIs in one repo).
+  Why HeCBench (120 kernels, breadth coverage). [TBD until S-HeCBench complete]
+- 4.2 Curation Criteria: Must have CUDA + at least one target API (OMP or OpenCL).
+  Must build with harness out of the box. Exclude KNOWN_FAIL (texture<> removed in CUDA12, etc.)
+- 4.3 Coverage: 60 Rodinia specs + 4 XSBench specs = 64 total production specs.
+  6 translation directions (from Translation Direction Matrix). Include spec count table.
+  [TABLE: Benchmark suite coverage — suite, kernels, APIs, directions, PASS specs]
+
+§5 Experimental Setup — what to cover:
+- 5.1 Models: 4 models chosen by research team (Gal, 2026-03-23). Name and version each:
+  GPT-4.1 (azure-gpt-4.1, Azure OpenAI API), Claude Sonnet 4.6 (claude-sonnet-4-6, Anthropic API),
+  Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite, Google AI API),
+  Llama 3.3 70B (groq-llama-3.3-70b-versatile, Groq API).
+  Temperature=0 for all models (deterministic). No reasoning models (Gal constraint).
+- 5.2 Translation Directions: 6 directions (cuda-to-omp primary, omp-to-cuda, cuda-to-opencl,
+  opencl-to-cuda, opencl-to-omp, omp-to-opencl). All L0 baseline. L1/L2 augmentation for primary.
+- 5.3 Augmentation Protocol: L0 baseline (no augmentation), L1-L2 for primary direction.
+  Single seed (seed=42) for reproducibility. Results pending (TBD until S7 complete).
+- 5.4 Kernel-Centric Translation: The LLM produces only the parallel kernel files (translation_targets).
+  The build system, headers, and host code remain unchanged. This isolates translation quality
+  from build system generation — motivated by ParEval-Repo's finding that full project generation
+  fails completely for apps > 133 SLoC \cite{parevalrepo2025}.
+- 5.5 Hardware: NVIDIA GeForce RTX 4070, nvcc 24.3 (NVIDIA HPC SDK), gcc-11, Linux 6.8.
+  [TABLE: Hardware and software configuration]
+
+# Steps
+
+# Step 1: Setup
+source env_parbench/bin/activate
+cd $(git rev-parse --show-toplevel)
+PROJECT_ROOT=$(git rev-parse --show-toplevel)
+
+# Step 2: Read paper_outline.md §3, §4, §5 content specifications
+# MANDATORY: Do not write a single word until you have read the paper_outline.md sections
+# for §3, §4, §5 in full. They contain figure/table placeholders with exact data requirements.
+
+# Step 3: Collect key data to cite in the sections
+echo "=== Spec counts ==="
+ls specs/ | grep "^rodinia" | wc -l    # should be 60
+ls specs/ | grep "^xsbench" | wc -l   # should be 4
+
+echo "=== Augmentation transform names ==="
+ls c_augmentation/ | grep -v "__\|test\|\.pyc" | grep "\.py$"
+# This gives you the names of the 6 AST transform classes
+
+echo "=== 6 KNOWN_FAIL specs ==="
+grep -A 2 "KNOWN_FAIL" .claude/rules/known-issues.md | head -30
+
+echo "=== Hardware info (from CLAUDE.md) ==="
+grep -A 10 "GPU machine" CLAUDE.md | head -15
+
+# Step 4: Invoke paper-drafter agent for each section
+# For §3: "Use the paper-drafter agent to write §3 Framework"
+# For §4: "Use the paper-drafter agent to write §4 Benchmark Curation"
+# For §5: "Use the paper-drafter agent to write §5 Experimental Setup"
+# Each invocation should be SEPARATE — let each section complete before starting the next
+# Review each section after the agent finishes — fix any factual errors
+
+# Step 5: Validate all claims against source code and data files
+# Every number or claim in §3-§5 must be verifiable. Run these checks:
+
+# Check augmentation transform count:
+python3 -c "
+from c_augmentation.augmentation_engine import AugmentationEngine
+e = AugmentationEngine()
+print('Transforms:', [t.__class__.__name__ for t in e.transforms])
+print('Count:', len(e.transforms))
+"
+# Use this count in §3.3
+
+# Check level fractions:
+python3 -c "
+from c_augmentation.augmentation_engine import LEVEL_FRACTIONS
+print('Level fractions:', LEVEL_FRACTIONS)
+"
+# Cite these in §3.3
+
+# Check verify strategies available:
+grep -n "class.*Strategy\|EXIT_CODE\|STDOUT_PATTERN" harness/verifier.py | head -10
+# Cite these in §3.2
+
+# Step 6: Create output file
+mkdir -p docs/paper
+# Write the sections to docs/paper/paper_sections_3_4_5.md
+# Format: Standard Markdown that can be embedded in paper_draft.md later
+# Start with: ## §3 The ParBench Framework
+#              ## §4 Benchmark Curation
+#              ## §5 Experimental Setup
+
+# Step 7: Verify output quality
+wc -w docs/paper/paper_sections_3_4_5.md
+# Expected: 1500-2500 words (~4 pages of double-column text)
+# If under 1000 words: sections are too thin — expand with more technical detail
+# If over 3000 words: sections are too long — trim to page targets
+
+# Step 8: Check for any fabricated data (CRITICAL)
+# Read the output file. For every number cited, trace it back to a data file.
+# Any number without a traceable source must be removed or marked [TBD].
+# Specifically check:
+# - Spec counts: verify against ls specs/
+# - Augmentation PASS rates: verify against results/augmentation/retest_post_session2.md
+# - Model pass rates: verify against results/evaluation/eval_summary.md
+# - Hardware specs: verify against CLAUDE.md
+
+# Step 9: Git commit
+git add docs/paper/
+git commit -m "W-S12-PARTIAL: Write SC26 paper §3-§5 (framework, curation, methodology)
+
+- docs/paper/paper_sections_3_4_5.md: ~N words, ~4 double-column pages
+- §3 Framework: Spec model, harness pipeline, augmentation engine, eval pipeline
+- §4 Benchmark Curation: Rodinia (60 specs), XSBench (4 specs), curation criteria
+- §5 Experimental Setup: 4 models, 6 directions, L0-L2, kernel-centric methodology
+- §1-§2 and §6-§8 are written by Samyak (require research judgment)
+- Data citations verified against eval_summary.json and retest results"
+```
+
+---
+
+## SESSION W-S17 — LaTeX Transfer (WORKTREE-SAFE)
+
+> **Status: NOT STARTED. Run AFTER S15 (Paper Review & Polish) is complete.**
+> **Worktree safe because:** Reads `docs/paper/paper_draft.md` and generates new LaTeX files.
+> Does not touch eval results, specs, or harness. No GPU, no benchmark source needed.
+> **Dependencies:** S12 + S13 + S15 must be complete. `docs/paper/paper_draft.md` must exist.
+> **Paper impact:** LaTeX is the submission format. SC26 uses ACM sigconf double-column.
+
+```
+ultrathink
+
+## CONTEXT
+
+You are running in a git worktree of the ParBench SC26 project.
+Find the project root: cd $(git rev-parse --show-toplevel)
+The Rodinia submodule is EMPTY — that is expected. You don't need it.
+
+This session converts docs/paper/paper_draft.md (the Markdown paper draft) into
+LaTeX source files following the ACM sigconf template for SC26 submission.
+
+## BEFORE YOU START — Prerequisites
+
+CHECK FIRST: does docs/paper/paper_draft.md exist?
+ls docs/paper/paper_draft.md
+# If it does NOT exist: this session cannot proceed. S12 + S13 + S15 must complete first.
+
+CHECK: does docs/paper/figures/ contain the figure PDFs?
+ls docs/paper/figures/*.pdf
+# If figures are absent: W-S14 has not completed. Run W-S14 first.
+
+## BEFORE YOU START — Decisions Already Made
+
+RESOLVED:
+- [x] SC26 uses ACM sigconf template (same as SC25) — standard for the Technical Papers track
+- [x] LaTeX compilation: use pdflatex (not xelatex or lualatex) for maximum compatibility
+- [x] Compile locally if texlive is installed, else produce .tex files for Overleaf upload
+- [x] Bibliography: create docs/paper/references.bib from \cite{placeholder} tags in draft
+- [x] Output directory: docs/paper/latex/ (new directory — all .tex, .bib, .pdf output here)
+- [x] AI disclosure: add a footnote in acknowledgments if SC26 requires it (check CFP)
+
+# Step 1: Setup
+source env_parbench/bin/activate
+cd $(git rev-parse --show-toplevel)
+
+# Check if LaTeX is installed
+pdflatex --version 2>/dev/null && echo "LaTeX available" || echo "LaTeX NOT installed"
+latexmk --version 2>/dev/null && echo "latexmk available" || echo "latexmk NOT installed"
+
+# If LaTeX is not installed, install it:
+# sudo apt install texlive-full texlive-fonts-recommended texlive-fonts-extra -y
+# (This is ~5GB and takes 10-20 minutes. Only run if Samyak approves the install.)
+# Alternative: skip compilation — produce .tex files only and upload to Overleaf.
+
+# Step 2: Download the ACM sigconf template
+mkdir -p docs/paper/latex
+cd docs/paper/latex
+
+# Download official ACM 2023 template
+wget -q "https://www.acm.org/binaries/content/assets/publications/consolidated-tex-template/acmart-primary.zip" \
+  -O acmart-primary.zip 2>/dev/null
+# If wget fails (no internet): use a local copy or proceed without the template class
+# Verify download:
+ls -la acmart-primary.zip 2>/dev/null || echo "Template download failed — proceeding without it"
+unzip -q acmart-primary.zip 2>/dev/null || true
+
+# Step 3: Create the main LaTeX file
+# docs/paper/latex/parbench-sc26.tex
+# Structure:
+# \documentclass[sigconf,anonymous]{acmart}  ← 'anonymous' for blind review
+# \acmConference[SC'26]{...}
+# \begin{document}
+# \title{ParBench: A Benchmark Framework for Evaluating LLM-Based Parallel Code Translation}
+# \begin{abstract} ... \end{abstract}
+# \maketitle
+# \input{section1_intro}
+# \input{section2_related}
+# \input{section3_framework}
+# \input{section4_curation}
+# \input{section5_methodology}
+# \input{section6_results}
+# \input{section7_discussion}
+# \input{section8_conclusion}
+# \bibliographystyle{ACM-Reference-Format}
+# \bibliography{references}
+# \end{document}
+
+# Step 4: Convert each Markdown section to a LaTeX input file
+# For each section in docs/paper/paper_draft.md:
+# - Extract the section content
+# - Convert Markdown headers (##, ###) to LaTeX (\section, \subsection)
+# - Convert backtick code blocks to \begin{lstlisting}...\end{lstlisting}
+# - Convert **bold** to \textbf{}, *italic* to \textit{}
+# - Convert [TABLE: description] placeholders to \begin{table}...[content TBD]\end{table}
+# - Convert [FIGURE: description] placeholders to \begin{figure}...\includegraphics\end{figure}
+# - Convert \cite{placeholder} → keep as-is (will resolve in references.bib)
+# - Convert | table | markdown | to LaTeX tabular environment
+
+# Output files:
+# docs/paper/latex/section1_intro.tex
+# docs/paper/latex/section2_related.tex
+# docs/paper/latex/section3_framework.tex
+# docs/paper/latex/section4_curation.tex
+# docs/paper/latex/section5_methodology.tex
+# docs/paper/latex/section6_results.tex
+# docs/paper/latex/section7_discussion.tex
+# docs/paper/latex/section8_conclusion.tex
+
+# Step 5: Create references.bib
+# Extract all \cite{placeholder} tags from the Markdown draft:
+grep -o '\\cite{[^}]*}' docs/paper/paper_draft.md | sort -u
+# For each citation, create a BibTeX entry in docs/paper/latex/references.bib
+# Use real publication data where known:
+# - ParEval: HPDC 2024 (Nichols et al.) — arxiv:2401.08232
+# - Rodinia: Che et al., IISWC 2009
+# - HumanEval: Chen et al., Codex paper, arXiv:2107.03374
+# - SWE-bench: Jimenez et al., ICLR 2024
+# For unknowns: create minimal BibTeX stubs with TODO comments
+
+# Step 6: Insert figures
+# In section6_results.tex, replace [FIGURE: F2 Kernel x Model heatmap] with:
+# \begin{figure}[t]
+#   \centering
+#   \includegraphics[width=\columnwidth]{figures/f2_kernel_model_heatmap}
+#   \caption{CUDA→OpenMP translation results for 17 Rodinia kernels across 4 LLMs at L0...}
+#   \label{fig:heatmap}
+# \end{figure}
+# Do this for all F2-F6 figures that exist in docs/paper/figures/
+
+# Copy figures to the latex directory:
+cp docs/paper/figures/*.pdf docs/paper/latex/figures/ 2>/dev/null || mkdir -p docs/paper/latex/figures && cp docs/paper/figures/*.pdf docs/paper/latex/figures/
+
+# Step 7: Compile the LaTeX
+cd docs/paper/latex
+if command -v pdflatex &> /dev/null; then
+  pdflatex -interaction=nonstopmode parbench-sc26.tex
+  bibtex parbench-sc26 || true
+  pdflatex -interaction=nonstopmode parbench-sc26.tex
+  pdflatex -interaction=nonstopmode parbench-sc26.tex
+  # Check for errors:
+  grep -i "error\|undefined" parbench-sc26.log | head -20
+  # Check page count:
+  pdfinfo parbench-sc26.pdf 2>/dev/null | grep Pages
+  # Target: 10 pages (SC26 limit)
+else
+  echo "LaTeX not installed — .tex files are ready for Overleaf upload"
+fi
+
+# Step 8: Git commit
+cd $(git rev-parse --show-toplevel)
+git add docs/paper/latex/
+git commit -m "W-S17: Add LaTeX source for SC26 paper submission
+
+- docs/paper/latex/parbench-sc26.tex: main document (ACM sigconf, anonymous mode)
+- docs/paper/latex/section*.tex: 8 sections from paper_draft.md
+- docs/paper/latex/references.bib: BibTeX entries for all citations
+- docs/paper/latex/figures/: figure PDFs from W-S14
+$(if command -v pdflatex &> /dev/null; then echo "- parbench-sc26.pdf: compiled PDF (check page count)"; fi)"
+```
+
+---
+
+## SESSION W-S15 — Paper Review & Polish (WORKTREE-SAFE)
+
+> **Status: NOT STARTED. Run AFTER S13 (Paper §6-§8) is complete and Gal has reviewed.**
+> **Worktree safe because:** Reads and edits `docs/paper/paper_draft.md` only. No eval
+> pipeline, no harness, no Rodinia source. The self-critic and paper-drafter agents run
+> inside this session and do their own file reading.
+> **Timing:** Launch this when S13 is done AND Gal has given feedback. Gal's feedback
+> may require structural changes — it must be incorporated BEFORE polishing, not after.
+> **Paper impact:** This is the final quality gate before LaTeX. Every number, every claim,
+> every figure reference must be verified here. The self-critic agent will catch rationalization.
+
+```
+ultrathink
+
+## CONTEXT
+
+You are running in a git worktree of the ParBench SC26 project.
+Find the project root: cd $(git rev-parse --show-toplevel)
+The Rodinia submodule is EMPTY — that is expected. You don't need it.
+
+This session performs adversarial review of the complete SC26 paper draft.
+Your goal: leave docs/paper/paper_draft.md in submission-ready state.
+
+## BEFORE YOU START — Prerequisites
+
+CHECK FIRST:
+ls docs/paper/paper_draft.md   ← must exist (S12 + S13 complete)
+ls docs/paper/figures/*.pdf    ← should have F2-F6 (W-S14 complete)
+
+wc -w docs/paper/paper_draft.md
+# Expected: 8000-11000 words (~10 double-column pages)
+# If under 5000 words: paper is incomplete — S13 may not be done. STOP and alert Samyak.
+
+## BEFORE YOU START — Decisions Already Made
+
+RESOLVED:
+- [x] Self-critic agent (Opus): use for adversarial review of claims and rationalization
+- [x] paper-drafter agent (Opus): use for data accuracy cross-check
+- [x] Fix issues directly (not just flag them) — the paper must be clean after this session
+- [x] AI assistance disclosure: add "Portions of this paper were drafted with AI assistance"
+      in Acknowledgments IF SC26 requires disclosure (check the CFP)
+
+# Session Goal
+Produce a submission-ready, fully polished paper draft with:
+- All numbers verified against eval_summary.json
+- All figure/table references consistent with paper_outline.md inventory
+- All claims backed by data or marked [TBD] with a session reference
+- No rationalization patterns (per self-critic agent definition)
+- Word count within SC26 limits
+
+# Step 1: Setup
+source env_parbench/bin/activate
+cd $(git rev-parse --show-toplevel)
+
+# Step 2: Read the paper end-to-end before invoking any agent
+# You must have a clear picture of the paper before running automated review.
+# Key things to look for on your first read:
+# a) Every number — write down each claim with its data source expectation
+# b) Every [FIGURE:] and [TABLE:] placeholder — note which are filled, which are missing
+# c) Every \cite{placeholder} — note which seem to have real citations, which are vague
+# d) Structural issues — does the argument flow logically from §1 to §8?
+# e) Consistency — does the Abstract match the actual results in §6?
+
+# Step 3: Verify all numbers against ground truth
+# Load ground truth:
+python3 -c "
+import json
+with open('results/evaluation/eval_summary.json') as f:
+    d = json.load(f)
+
+print('=== GROUND TRUTH (use this to cross-check paper) ===')
+print('Total tasks:', d['total_tasks'])
+for model, stats in d['by_model'].items():
+    short = model.replace('groq-llama-3.3-70b-versatile', 'llama').replace('gemini-2.5-flash-lite', 'gemini').replace('azure-gpt-4.1', 'azure').replace('claude-sonnet-4-6', 'claude')
+    print(f'{short}: {stats[\"pass\"]}/{stats[\"total\"]} PASS ({stats[\"pass\"]/stats[\"total\"]*100:.1f}%)')
+print()
+print('Failure taxonomy:')
+for status, count in d.get('by_status', {}).items():
+    print(f'  {status}: {count}')
+print()
+print('Translation complexity:')
+for cls, stats in d.get('by_complexity', {}).items():
+    print(f'  {cls}: {stats[\"pass\"]}/{stats[\"total\"]} ({stats[\"rate\"]*100:.1f}%)')
+"
+# Ground truth output (paste into review document):
+# Total tasks: 68
+# claude: 12/17 PASS (70.6%)
+# azure: 9/17 PASS (52.9%)
+# llama: 5/17 PASS (29.4%)
+# gemini: 4/17 PASS (23.5%)
+# BUILD_FAIL: 26, RUN_FAIL: 10, EXTRACTION_FAIL: 2, VERIFY_FAIL: 0
+# single_file: 7/12 (58.3%), multi_to_single: 21/44 (47.7%), multi_to_multi: 2/12 (16.7%)
+
+# Also check augmentation ground truth:
+cat results/augmentation/retest_post_session2.md | head -30
+# Expected: 54/60 PASS at all levels L0-L4 (level-invariant)
+
+# Step 4: Invoke paper-drafter agent for data accuracy review
+# "Use the paper-drafter agent to review docs/paper/paper_draft.md for data accuracy.
+#  Cross-check every numeric claim against results/evaluation/eval_summary.json
+#  and results/augmentation/retest_post_session2.md.
+#  List all discrepancies as: CLAIM: [paper text] | ACTUAL: [ground truth] | FIX: [corrected text]"
+
+# Step 5: Invoke self-critic agent for adversarial review
+# "Use the self-critic agent to review docs/paper/paper_draft.md.
+#  Apply obra/superpowers verification-before-completion principle.
+#  Apply Trail of Bits anti-rationalization patterns.
+#  Look for: (1) claims without evidence, (2) cherry-picked results,
+#  (3) limitations understated, (4) incomplete sections masked as complete,
+#  (5) future work described as current contribution.
+#  Return a structured PASS/FAIL verdict with specific line citations."
+
+# Step 6: Verify Gal's constraint checklist (from docs/paper_outline.md)
+# The paper_outline.md contains a 13-item Gal constraint checklist.
+# Read it and verify each item is satisfied in the draft.
+# Common constraints from meeting notes:
+# - No reasoning models mentioned (o1, o3, Gemini Thinking — excluded from study)
+# - Build times must NOT be reported as a performance metric (Gal: "omit build times")
+# - Temperature=0 for all models (must be stated in §5)
+# - Augmentation levels reported: L0, L1, L2 (L3, L4 not in paper unless level-invariance argument)
+
+# Step 7: Fix all identified issues
+# For each issue from Steps 4-6:
+# a) Locate the exact text in paper_draft.md
+# b) Fix it directly (edit the file)
+# c) Document the fix: "FIXED: [description]"
+# Do not just mark issues as TODO — this session's goal is a clean draft
+
+# Step 8: Verify figure/table cross-references
+# From docs/paper_outline.md Figure & Table Inventory:
+grep -n "FIGURE\|TABLE\|\[F[1-9]\]\|\[T[1-9]\]" docs/paper/paper_draft.md | head -40
+# Every F1-F6 placeholder should appear in the draft
+# Every T1-T9 placeholder should appear in the draft
+# F1 (architecture diagram): may be [FIGURE: F1 — create manually in draw.io]
+# F4/F5/F6: may be [FIGURE: F4 — TBD until Session S7 complete] — that's OK
+
+# Step 9: Check word count and page estimate
+wc -w docs/paper/paper_draft.md
+# 8000 words ≈ 10 double-column pages (rough estimate)
+# If significantly over: identify which sections are too long and trim
+# Key length targets (from paper_outline.md):
+# §1 Introduction: 1.5p | §2 Related Work: 1.0p | §3 Framework: 2.0p
+# §4 Benchmark Curation: 1.0p | §5 Experimental Setup: 1.0p
+# §6 Results: 2.0p | §7 Discussion: 0.75p | §8 Conclusion: 0.5p | Abstract: 0.25p
+
+# Step 10: Final check — related work positioning
+# The paper must clearly differentiate from:
+# - HumanEval/SWE-bench: sequential code synthesis, no parallelism
+# - ParEval (HPDC 2024): function-level, not API-translation; no augmentation
+# - ParEval-Repo: finds 0% pass@1 for repo-level translation; ParBench uses kernel-centric
+# - TransCoder: statistical, not LLM; C++/Java not GPU APIs
+# - BabelTower: GPU APIs but different evaluation model
+# If any of these differentiators are missing or unclear: fix them.
+
+# Step 11: Git commit
+git add docs/paper/paper_draft.md
+git commit -m "W-S15: Paper review and polish — all claims verified, Gal constraints satisfied
+
+- All numeric claims cross-checked against eval_summary.json (68 tasks, 4 models)
+- Augmentation claims verified against retest_post_session2.md (54/60, level-invariant)
+- Self-critic agent review: [PASS/FAIL with N issues found and fixed]
+- Paper-drafter data accuracy review: N discrepancies found and corrected
+- Gal constraint checklist: all 13 items verified
+- Related work positioning: ParBench vs ParEval/ParEval-Repo/TransCoder differentiated
+- Word count: ~N words (~N pages estimate)
+- F1-F6 figure placeholders: N filled, N marked TBD (pending eval sessions)"
+
+
+
+    

@@ -9,10 +9,17 @@
 - Check context and set model appropriately
 - Review relevant `.claude/rules/` files for the task area
 
-### 2. Explore
-- Use 3-5 parallel subagents to explore relevant code areas
-- Do NOT read files directly in main context — delegate to subagents
+### 2. Explore (scale to task scope — don't front-load)
+- **Skip entirely** when all target files are already known (single-file edit, doc update,
+  running a known command, spec field change)
+- **1 agent** for targeted tasks touching 1–3 known files where you need surrounding
+  context (callers, tests, imports)
+- **2–3 agents** for cross-cutting tasks where scope is uncertain or multiple subsystems
+  are involved (pipeline changes, new feature, architecture decisions)
+- Do NOT read files directly in main context — delegate to subagents; only summaries return
 - Summarize findings before proceeding
+- **Just-in-time, not just-in-case:** if a problem surfaces during implementation that
+  needs broader understanding, launch an explorer agent then — not upfront "just in case"
 
 ### 3. Plan
 - Enter plan mode for non-trivial changes
@@ -69,7 +76,7 @@
 
 | Phase | Pattern |
 |-------|---------|
-| Exploration | 3-5 subagents, each covers a different angle |
+| Exploration | 0–3 subagents, scaled to task uncertainty (see §2 above) |
 | Planning | plan-reviewer agent for adversarial review |
 | Implementation | Subagents for independent subtasks, worktree isolation |
 | Verification | 2-4 subagents: correctness, edge cases, quality, integration |
