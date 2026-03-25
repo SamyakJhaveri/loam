@@ -18,7 +18,7 @@ A spec is organized into the following field groups:
 
 **File partitioning.** The `files` block partitions benchmark source files into three disjoint sets: `prompt_payload` (files visible to the LLM during translation), `support_files` (build infrastructure such as Makefiles and shared headers, not shown to the LLM), and `verification_only` (reference implementations never exposed to the LLM). A fourth field, `translation_targets`, identifies the subset of `prompt_payload` that the LLM must produce---the kernel computation files. This field is central to the kernel-centric translation methodology described in Section III-D.
 
-**Build, run, and verification.** The `build` block specifies the build system, compiler commands, environment variables, and expected executable path. The `run` block defines named input configurations (e.g., `correctness`, `performance`) with arguments, timeout, and optional environment variables. The `verification` block declares an ordered list of verification strategies---currently `exit_code` (check process return code) and `stdout_pattern` (regex match against captured standard output)---applied in sequence until a definitive PASS or FAIL is reached.
+**Build, run, and verification.** The `build` block specifies the build system, compiler commands, environment variables, and expected executable path. The `run` block defines named input configurations (e.g., `correctness`, `performance`) with arguments, timeout, and optional environment variables. The `verification` block declares an ordered list of verification strategies---currently `exit_code` (check process return code) and `stdout_pattern` (regex match against captured standard output)---applied in sequence until a definitive PASS or FAIL is reached. Three additional strategies (`numeric_comparison`, `file_diff`, `custom_script`) are defined in the schema for future use.
 
 **Baseline results.** The `baseline_results` block, populated by running the original implementation on the reference platform, records the expected output for each input configuration. This provides the ground truth against which translated code is compared.
 
@@ -83,8 +83,6 @@ The engine implements six transforms, each backed by libclang \cite{libclang} AS
 6. **ChangeFunctionNames** -- renames internal-linkage helper functions across their definitions and all call sites within the translation unit.
 
 All transforms operate on the parsed AST rather than on raw text, which avoids the fragility of regex-based rewriting. Each candidate rewrite is validated by re-parsing the transformed code and confirming that no new diagnostic errors are introduced. Overlapping candidates are resolved by a greedy subset-selection algorithm that maximizes the number of applied transforms without introducing conflicts.
-
-[TABLE II: Augmentation levels L0--L4 with transform fraction and description]
 
 | Level | Transform selection | Candidate fraction | Description |
 |:-----:|:-------------------:|:------------------:|:------------|
@@ -175,7 +173,7 @@ CUDA $\to$ OpenMP serves as the primary evaluation direction, as it represents t
 
 Source code augmentation is applied at five levels. Level L0 uses the unmodified benchmark source and serves as the baseline. Levels L1 through L4 apply the six AST-driven transforms (described in Section III-C) at increasing density: L1 applies one randomly selected transform at a single candidate site; L2 selects 33% of transforms and applies each to 33% of eligible candidate sites; L3 selects 66% of transforms at 66% of sites; and L4 applies all transforms at all sites. A fixed random seed of 42 governs all stochastic choices for reproducibility.
 
-The augmentation protocol tests a specific hypothesis: if an LLM genuinely reasons about parallel computation structure rather than pattern-matching against memorized training examples, its translation success rate should remain stable across augmentation levels. Prior to LLM evaluation, the augmentation baseline was verified independently: 54 of 60 Rodinia specs produce correct output at all levels L1 through L4 with zero new failures introduced by augmentation, confirming that the transforms are semantics-preserving and that any variation in LLM pass rates across levels can be attributed to the model rather than to the augmentation process.
+The augmentation protocol tests a specific hypothesis: if an LLM genuinely reasons about parallel computation structure rather than pattern-matching against memorized training examples, its translation success rate should remain stable across augmentation levels. The augmentation baseline was verified prior to LLM evaluation (Section III-C): zero new failures were introduced at any level, confirming that any variation in LLM pass rates across levels can be attributed to the model rather than to the augmentation process.
 
 ### D. Metrics
 
