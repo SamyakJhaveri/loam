@@ -1949,118 +1949,140 @@ python3 scripts/validate_schema.py --all
 
 ---
 
-## SESSION 7 — Augmented Evaluation (L1/L2)
+## SESSION 7 — Augmented Evaluation (L1-L4, COMPLETE)
+
+> **Updated 2026-03-25:** L0-L4 all levels. azure-gpt-4.1 EXCLUDED (deployment disabled by Gal).
+> L0 baselines already exist for all 3 active models — `--resume` skips them.
+> All decisions resolved — paste this prompt directly into a new Claude Code session.
 
 ```
 ultrathink
 
-# Models (decided by Gal 2026-03-23):
-# azure-gpt-4.1 | claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile
+# SESSION 7 — Augmented Evaluation L1-L4 (Rodinia cuda-to-omp)
+# Updated 2026-03-25 with current project state
 
-## BEFORE YOU START — What I Need From You
+## DECISIONS (ALL RESOLVED — no user input needed)
+- [x] Models: 3 models only (azure-gpt-4.1 EXCLUDED — deployment disabled by Gal)
+      claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile
+- [x] Augmentation levels: L1 through L4 (COMPLETE). L0 already exists for all 3 models.
+- [x] If augmentation causes degradation: record and continue (augmentation baseline
+      proves transforms are semantics-preserving — 54/60 PASS at all levels L1-L4)
+- [x] Seed = 42 + level (eval-pipeline-specific, deterministic, reproducible)
+- [x] Kernel-centric translation is the ONLY mode (Sessions 1.5+1.6 complete)
+- [x] Budget: 204 API calls × ~$0.05 avg = ~$10-$25 total. Approved.
 
-DECISIONS:
-- [x] Models RESOLVED — all 4 models (see Prerequisite #1 above)
-- [ ] L1 and L2 only (no L3/L4). Confirmed per Gal's "conservative augmentation"
-      directive? (If yes, no action needed — just confirming)
-- [ ] If augmentation CAUSES degradation (a kernel passes at L0 but fails at
-      L1/L2), should the session stop to investigate, or record and continue?
-      Recommendation: record and continue — the augmentation baseline already
-      proves transforms are semantics-preserving.
-- [ ] Seed=42 is used for all augmentation. Same seed = same augmented code
-      every time. This is good for reproducibility but tests only ONE augmented
-      variant per kernel. Acceptable limitation for the paper?
+## CURRENT STATE (verified 2026-03-25)
+- S8 (XSBench) COMPLETE: 180 result files, 12 directions × 3 models × L0-L4
+- S7 planning commit exists (commit 3373c0e) — but ZERO Rodinia L1-L4 eval results
+- L0 cuda-to-omp baselines COMPLETE for all 3 active models:
+    claude-sonnet-4-6:       12/17 PASS (70.6%) — commit 887d681
+    gemini-2.5-flash-lite:    4/17 PASS (23.5%) — commit f0b4f98
+    groq-llama-3.3-70b:       5/17 PASS (29.4%) — commit b644bc6
+- azure-gpt-4.1 had 9/17 PASS (commit 3d43afa) but is EXCLUDED — skip entirely
+- W-S12 (paper sections 3-5) COMPLETE and merged — 3289 words, docs/paper/paper_sections_3_4_5.md
+- W-S14 (figures) COMPLETE with L0-only data — will need regeneration after this session
+- W-S11 (dashboard refresh) running in parallel worktree — no conflict
 
-DATA/INFO:
-- [ ] API keys for ALL 4 models must be set in the shell:
-      AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT (azure-gpt-4.1)
+## EXTERNAL DEPS (all met)
+- [x] Sessions 2+3+3b complete — L0 baselines exist for 3 active models
+- [x] Augmentation pipeline verified — 54/60 Rodinia PASS at L1-L4 (level-invariant)
+- [x] API keys must be set in shell (check before running):
       ANTHROPIC_API_KEY (claude-sonnet-4-6)
       GEMINI_API_KEY or GOOGLE_API_KEY (gemini-2.5-flash-lite)
       GROQ_API_KEY (groq-llama-3.3-70b-versatile)
-- [ ] Budget: 136-272 API calls (17 kernels × 4 models × 2 levels × 1-2 retries).
-      Estimated cost: $5-$30 across all providers. Confirm budget is available.
-
-EXTERNAL DEPS:
-- [x] Sessions 2 + 3 complete ✅ — azure-gpt-4.1 (9/17 PASS) and groq-llama (5/17 PASS) L0 baselines done
-- [x] Session 3b complete ✅ — claude-sonnet-4-6 (12/17 PASS) and gemini-2.5-flash-lite (4/17 PASS) L0 baselines done
-- [x] Prerequisite #1b complete ✅ RESOLVED — Gemini provider implemented (commit 887d681), tested in S3b (4/17 PASS)
-- [ ] NOTE: use --resume so azure/groq L1/L2 can be added alongside new model L1/L2
 
 # Session Goal
-Re-run cuda-to-omp evaluation at augmentation levels L1 and L2 for all 4 models.
-Tests whether LLM translation quality degrades when source code is augmented with
-semantics-preserving transforms.
+Run cuda-to-omp evaluation at augmentation levels L1, L2, L3, L4 for all 3 active models.
+This fills the only remaining gap in the Rodinia augmentation robustness story.
+Produces data for Paper Contribution #2 and unlocks Figure F4 (augmentation robustness).
 
 # Why This Matters
-The augmentation contribution in the SC26 paper requires showing how LLMs perform under
-code variation. If pass rates drop at L1/L2, augmentation reveals LLM fragility. If they
-hold steady, it validates that LLMs understand semantics, not just syntax.
+XSBench already has L0-L4 data for 12 directions (180 files). Rodinia has L0 only.
+Without Rodinia L1-L4, Figure F4 can only show XSBench augmentation data (N=1 kernel).
+With Rodinia L1-L4 (N=17 kernels), F4 becomes a robust quantitative comparison.
 
-# IMPORTANT: Kernel-centric translation is the ONLY mode (Sessions 1.5 + 1.6 complete).
-# Augmentation applies to the SOURCE kernel files only.
-# The LLM sees augmented source → produces target kernel file(s).
-# Target infrastructure stays untouched (not augmented, not modified).
-# This is the correct layering: augmentation tests translation robustness at the
-# source-code level; kernel-centric translation tests structural translation scope.
+# IMPORTANT
+- Kernel-centric translation ONLY: LLM produces only translation_targets kernel files.
+- Augmentation applies to SOURCE kernel files only. Target infrastructure is untouched.
+- Seed formula: seed = 42 + level (different from standalone augmentation which uses seed=42)
+- Known Groq limitation: 16384 token completion cap causes EXTRACTION_FAIL on large kernels:
+  heartwall (89K prompt tokens), myocyte (143K prompt tokens). This is expected — record it.
 
-# Context
-- Project root: /home/samyak/Desktop/parbench_sam
-- Eligible cuda-to-omp kernels (17): backprop, bfs, bptree, cfd, heartwall, hotspot,
-  hotspot3d, kmeans, lavamd, lud, myocyte, nn, nw, particlefilter, pathfinder, srad,
-  streamcluster
-- L0 results already exist for azure-gpt-4.1 (Session 2) and groq-llama (Session 3)
-- L0 results for claude-sonnet-4-6 and gemini-2.5-flash-lite must come from Session 3b first
-- Result files for L1/L2 are tagged with -L1, -L2 suffix in path
-- Augmentation uses seed=42 by default
-
-# Prerequisites
-- Sessions 2+3+3b complete (L0 baselines for all 4 models, kernel-centric v2)
-- Prerequisite #1b complete (Gemini provider in llm_evaluate.py)
-- API keys configured for all 4 models
-
-# Step 1: Activate venv
+# Step 1: Activate venv and verify API keys
 source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
 cd /home/samyak/Desktop/parbench_sam
 
-# Step 2: Run all 4 models at L1 and L2 (L0 already exists for all from Sessions 2+3+3b)
+echo "=== API Key Check ==="
+echo "ANTHROPIC: ${ANTHROPIC_API_KEY:+SET}"
+echo "GEMINI: ${GEMINI_API_KEY:+SET} / GOOGLE: ${GOOGLE_API_KEY:+SET}"
+echo "GROQ: ${GROQ_API_KEY:+SET}"
+# ALL must show SET. If any show empty, STOP and resolve before proceeding.
+
+echo "=== Existing L0 baseline count ==="
+for m in claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile; do
+  count=$(ls results/evaluation/$m/rodinia-*-cuda-to-rodinia-*-omp.json 2>/dev/null | wc -l)
+  echo "$m L0: $count files (expected 17)"
+done
+# Confirm 17 L0 files per model before proceeding.
+
+# Step 2: Run L1+L2 (102 tasks, ~3-5h)
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-omp \
-  --models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --kernels backprop bfs bptree cfd heartwall hotspot hotspot3d kmeans lavamd lud myocyte nn nw particlefilter pathfinder srad streamcluster \
   --augment-levels 1 2 \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 \
   --resume \
-  -v
+  -v 2>&1 | tee results/evaluation/s7_l1l2.log
 
-# Step 3: Regenerate analysis with all levels
+# Step 3: Run L3+L4 (102 more tasks, ~3-5h)
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia \
+  --direction cuda-to-omp \
+  --models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --kernels backprop bfs bptree cfd heartwall hotspot hotspot3d kmeans lavamd lud myocyte nn nw particlefilter pathfinder srad streamcluster \
+  --augment-levels 3 4 \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --max-retries 2 \
+  --resume \
+  -v 2>&1 | tee results/evaluation/s7_l3l4.log
+
+# Step 4: Regenerate analysis with all levels
 python3 scripts/evaluation/analyze_eval.py \
   --project-root /home/samyak/Desktop/parbench_sam \
   --write-dashboard \
   --show-gaps \
-  --expected-models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --expected-models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --expected-directions cuda-to-omp \
-  --expected-levels 0 1 2
+  --expected-levels 0 1 2 3 4
 
-# Step 4: Verification — write a small test script that:
-# 1. Counts result files per model per level (L0, L1, L2)
-# 2. Compares pass rates across levels per model
-# 3. Identifies any kernel that passes at L0 but fails at L1 or L2 (augmentation fragility)
-# 4. Identifies any kernel that fails at L0 but passes at L1 or L2 (unlikely but interesting)
-# 5. Prints a level comparison table (4 models × 3 levels)
-# 6. Confirms all results have translation_mode="kernel_centric"
-# DELETE the test script after verification.
+# Step 5: Verification — count result files per model per level
+for m in claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile; do
+  for lvl in 0 1 2 3 4; do
+    if [ "$lvl" -eq 0 ]; then
+      count=$(ls results/evaluation/$m/rodinia-*-cuda-to-rodinia-*-omp.json 2>/dev/null | wc -l)
+    else
+      count=$(ls results/evaluation/$m/rodinia-*-cuda-to-rodinia-*-omp-L${lvl}.json 2>/dev/null | wc -l)
+    fi
+    echo "$m L$lvl: $count files"
+  done
+done
+# Expected: 17 files per model per level
+# Total new: 204 files (17 × 3 models × 4 levels)
+# Total Rodinia cuda-to-omp: 255 (51 existing L0 + 204 new L1-L4)
 
-# Step 5: Show me:
-# - Pass rates: L0 vs L1 vs L2 for each of the 4 models
-# - Any augmentation-induced failures (kernels that degrade under augmentation)
-# - Summary table for the paper (expected: level-invariant similar to augmentation baseline)
-# - "Pass Rate by Translation Complexity" table at L0/L1/L2
+# Step 6: Show me a level comparison summary:
+# - Pass rates: L0 vs L1 vs L2 vs L3 vs L4 for each of the 3 models
+# - Any augmentation-induced failures (L0 PASS → L{N} FAIL) — these are "fragility" signals
+# - Summary table for the paper: model × level pass rate matrix
+# - "Pass Rate by Translation Complexity" table at L0/L1/L2/L3/L4
+# - Confirm all results have translation_mode="kernel_centric"
 
-# Step 6: Git commit and push
-# Commit: All new L1/L2 result files, updated eval_summary.*
-# Message: "Add augmented eval results (L1/L2) for all 4 models (kernel-centric)"
+# Step 7: Git commit and push
+# Stage: all new L1-L4 result files + updated eval_summary.* + s7 log files
+# Message: "Session 7: Rodinia augmented eval L1-L4 for 3 models (204 tasks, cuda-to-omp)"
 # Push to origin main.
 ```
 
@@ -3650,11 +3672,12 @@ git commit -m "W-S14: Add publication figure generation script (F2-F6) + initial
 
 ## SESSION W-S11 — Dashboard Data Refresh (WORKTREE-SAFE)
 
-> **Status: NOT STARTED. Best to run after S7 completes (Day 9-10) so L1/L2 data is included.**
+> **Status: READY TO RUN (Day 8, 2026-03-25). Running in parallel with S7.**
 > **Worktree safe because:** Reads `results/evaluation/` data, edits `visualizations/*.js` and
 > `visualizations/*.html`. No eval pipeline, no harness, no Rodinia source needed.
-> **Dependencies:** Technically runnable with only L0 data, but wait for S7 so augmentation
-> data is included. The HTML number fixes (54/60 spec count, 60 Rodinia specs) can be done now.
+> **Current data:** 248 result files on disk (68 Rodinia L0 cuda-to-omp + 180 XSBench L0-L4).
+> S7 (Rodinia L1-L4) is running simultaneously — W-S11 uses current L0+XSBench data.
+> W-S14 figure regen will follow after S7 completes.
 > **Paper impact:** The dashboard is the companion website. Stale numbers undermine credibility.
 
 ```
@@ -3666,6 +3689,15 @@ You are running in a git worktree of the ParBench SC26 project.
 Find the project root: cd $(git rev-parse --show-toplevel)
 The Rodinia submodule is EMPTY — that is expected. You don't need it.
 
+## CURRENT STATE (verified 2026-03-25)
+- Total eval result files: 248 (68 Rodinia L0 cuda-to-omp + 180 XSBench L0-L4)
+- 4 active models: azure-gpt-4.1 (17 Rodinia L0), claude-sonnet-4-6 (77),
+  gemini-2.5-flash-lite (77), groq-llama-3.3-70b-versatile (77)
+- XSBench: 4 specs (cuda, omp, opencl, omp_target), all PASS, 12 directions run
+- Rodinia: 60 specs, 54 PASS, 6 KNOWN_FAIL
+- Augmentation: 54/60 PASS at ALL levels L1-L4 (level-invariant, verified)
+- S7 (Rodinia L1-L4) is running in parallel — this session uses existing L0+XSBench data
+
 Key files to modify (all present in worktree):
 - visualizations/eval_results_data.js    ← eval data for llm_evaluation.html
 - visualizations/results_data.js         ← augmentation data for results.html
@@ -3673,11 +3705,11 @@ Key files to modify (all present in worktree):
 - visualizations/overview.html           ← has hardcoded "65 specs", wrong augmentation rates
 - visualizations/augmentation_deep_dive.html ← has hardcoded L3=29/60, L4=1/60 (wrong)
 - visualizations/results.html            ← has stale BASELINE object
-- visualizations/llm_evaluation.html     ← has stale eval results
-- visualizations/benchmark_landscape.html ← may need XSBench added
+- visualizations/llm_evaluation.html     ← has stale eval results (pre-248-file state)
+- visualizations/benchmark_landscape.html ← needs XSBench added
 
 Key data sources (present in worktree as tracked files):
-- results/evaluation/eval_summary.json   ← 68 L0 results (and L1/L2 if S7 ran)
+- results/evaluation/eval_summary.json   ← 248 result files (L0 Rodinia + L0-L4 XSBench)
 - results/augmentation/retest_post_session2.md ← 54/60 PASS level-invariant (ground truth)
 
 ## BEFORE YOU START — Decisions Already Made
