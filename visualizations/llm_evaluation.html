@@ -1202,12 +1202,9 @@ function populateKPIs() {
   /* Total tasks */
   document.getElementById("kpi-total").textContent = EVAL_SUMMARY.totalTasks || 248;
 
-  /* Rodinia L0 CUDA→OMP pass rate */
-  const cudaToOmp = EVAL_SUMMARY.byDirection ? EVAL_SUMMARY.byDirection["cuda-to-omp"] : null;
-  if (cudaToOmp) {
-    document.getElementById("kpi-build-fail").textContent =
-      Math.round(cudaToOmp.rate * 100) + "%";
-  }
+  /* Rodinia L0 CUDA→OMP pass rate (30/68 = 44.1%) */
+  /* Note: byDirection["cuda-to-omp"] includes XSBench (83 total), so we hardcode 30/68 */
+  document.getElementById("kpi-build-fail").textContent = "44%";
 
   /* Self-repair stats */
   const repaired = EVAL_SUMMARY.selfRepair ? EVAL_SUMMARY.selfRepair.total_repaired_by_retry : 0;
