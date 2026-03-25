@@ -77,6 +77,7 @@ def resolve_paths(spec: dict[str, Any], project_root: Path) -> dict[str, Any]:
     * ``files.prompt_payload``  — list of absolute file paths
     * ``files.support_files``   — list of absolute file paths
     * ``files.verification_only`` — list of absolute file paths
+    * ``files.translation_targets`` — list of absolute file paths
 
     Parameters
     ----------

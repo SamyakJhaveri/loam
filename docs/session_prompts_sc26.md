@@ -2,7 +2,7 @@
 
 > **How to use:** Copy-paste one prompt per Claude Code session. Run `/clear` between sessions.
 > Each prompt is self-contained with full context, exact commands, and verification steps.
-> Today's date: 2026-03-23. Deadline: April 8, 2026. Day 6 of 21-day sprint.
+> Today's date: 2026-03-23 (Day 7 audit updated: 2026-03-24). Deadline: April 8, 2026. Day 7 of 21-day sprint.
 > **URGENT (Gal, 2026-03-23): "finish those ASAP, we need the draft of the paper by the end of this week."**
 > **Models decided (Gal, 2026-03-23): GPT-4.1 · Claude Sonnet 4.6 · Gemini 2.5 Flash-Lite · Llama 3.3 70B**
 
@@ -27,10 +27,13 @@ or via @-mention: `@agent-{name}`.
 | S4 | `xsbench-explorer` | Steps 2-4 — read XSBench Makefiles/source, extract spec data |
 | S4 | `spec-auditor` | Step 8 — validate all 5 new XSBench spec files |
 | S5 | `verify-app` | Post-build — schema validation + spec integrity check |
+| S6.5 | `plan-reviewer` | Before implementing — adversarial review of runner.py + schema changes |
+| S6.5 | `verify-app` | After schema edits — confirm no new validation errors |
 | S7 | `eval-batcher` (background) | Steps 2-3 — L1/L2 augmented eval for all 4 models |
 | S9 | `eval-batcher` (background) | Step 2 — omp-to-cuda for 16 eligible kernels × 4 models |
 | S10 | `eval-batcher` (background) | Step 1-5 — cuda-to-opencl for 17 kernels × 4 models |
 | S10b | `eval-batcher` (background) | Steps 1-3 — opencl-to-cuda, opencl-to-omp, omp-to-opencl × 4 models |
+| S-HeCBench | `verify-app` + `eval-batcher` | Step 2 — smoke test 5+ kernels; Step 4 — eval batch background run |
 | S11 | `dashboard-refresher` | Steps 2-4 — regenerate JS data + fix stale HTML numbers |
 | S12-S15 | `paper-drafter` | Paper section writing with actual data from results files |
 | Any | `plan-reviewer` | Before any architecture change — adversarial pre-implementation review |
@@ -48,21 +51,19 @@ Before starting any session, resolve these cross-cutting blockers. Each entry sh
 
 ### CRITICAL — Blocks 5+ sessions
 
-1. **Model selection** ✅ RESOLVED (Gal, 2026-03-23) — 4 models selected for all eval sessions:
-   - `azure-gpt-4.1` — Azure OpenAI (Sessions 2 complete; 9/17 PASS)
-   - `claude-sonnet-4-6` — Anthropic API (was removed March 18; **re-added by Gal 2026-03-23**; uses existing `claude-*` provider routing; add to MODEL_REGISTRY in `scripts/evaluation/llm_evaluate.py`)
-   - `gemini-2.5-flash-lite` — Google AI API (**see prerequisite #1b — provider code needed first**)
-   - `groq-llama-3.3-70b-versatile` — Groq API (Session 3 complete; 5/17 PASS)
-   - **S3b needed**: cuda-to-omp L0 for claude-sonnet-4-6 and gemini-2.5-flash-lite (groq + azure already done)
+1. **Model selection** ✅ RESOLVED (Gal, 2026-03-23) — 4 models, all L0 cuda-to-omp baselines COMPLETE (2026-03-24):
+   - `azure-gpt-4.1` — Azure OpenAI — **DONE (S2):** 9/17 PASS (52.9%)
+   - `claude-sonnet-4-6` — Anthropic API — **DONE (S3b, commit 887d681):** 12/17 PASS (70.6%)
+   - `gemini-2.5-flash-lite` — Google AI API — **DONE (S3b, commit f0b4f98):** 4/17 PASS (23.5%)
+   - `groq-llama-3.3-70b-versatile` — Groq API — **DONE (S3):** 5/17 PASS (29.4%)
+   - **S3b COMPLETE** — 4-model L0 cuda-to-omp matrix is done. 68 total results in eval_summary.json.
 
-1b. **Gemini 2.5 Flash-Lite provider implementation** — Blocks S3b, S7, S8, S9, S10, S10b for Gemini
-   - Status: NOT STARTED — `scripts/evaluation/llm_evaluate.py` has NO Google AI provider
-   - `call_llm()` currently supports: `claude-*` (Anthropic), `gpt-*/o*-*` (OpenAI), `azure-*` (Azure), `groq-*` (Groq)
-   - Needed: new `elif model.startswith("gemini-"):` branch (~50-80 lines using `google-generativeai` SDK or Google's OpenAI-compatible endpoint)
-   - Also needed: `gemini-2.5-flash-lite` entry in `MODEL_REGISTRY` dict (line ~60)
-   - API key env var: `GEMINI_API_KEY` or `GOOGLE_API_KEY`
-   - File to edit: `scripts/evaluation/llm_evaluate.py`
-   - **This is a prerequisite blocker** — implement before running any Gemini evals
+1b. **Gemini 2.5 Flash-Lite provider implementation** — ✅ **RESOLVED (Session 3b, 2026-03-24, commit 887d681)**
+   - Implemented in `scripts/evaluation/llm_evaluate.py` — uses Google's OpenAI-compatible endpoint
+   - `GEMINI_API_KEY` env var (falls back to `GOOGLE_API_KEY`)
+   - `gemini-2.5-flash-lite` in `MODEL_REGISTRY` with appropriate parameters
+   - Tested: 4/17 PASS (23.5%) in Session 3b. Provider is stable and operational.
+   - **All downstream sessions (S7, S8, S9, S10, S10b) are unblocked for Gemini.**
 
 2. **Session 1 + Session 1.5 + Session 1.6 completion** — ~~Blocks S2, S3, S7, S8, S9, S10~~ ALL RESOLVED
    - These were the true starting gate for ALL evaluation work — **ALL THREE ARE NOW COMPLETE**
@@ -90,8 +91,10 @@ Before starting any session, resolve these cross-cutting blockers. Each entry sh
 6. **HeCBench scope decision** — Sprint plan includes it; no session prompt exists
    - Decision: Is HeCBench in scope for SC26 paper evaluation, or "curated but pending"?
 
-7. **M6 timing metrics** — Designed but not implemented; no session prompt exists
-   - Decision: Correctness-only paper, or add wall-clock timing as proxy for speedup?
+7. **M6 timing metrics** — Session prompt written (SESSION 6.5); not yet implemented
+   - SESSION 6.5 implements nsys profiler integration for Tier 1 kernel time (CUDA + OMP-target)
+   - Decision: Use kernel_time_seconds for speedup claims per Niranjan's directive (2026-03-17)
+   - After S6.5: re-run eval batches in S7/S9/S10 with --use-profiler to get valid speedups
 
 8. **Translation direction scope** — Now documented in the Translation Direction Matrix below
    - Directions 1-6 (non-omp_target): 16-78 eligible kernels each — in scope for paper
@@ -112,7 +115,7 @@ Eligible kernel counts exclude KNOWN_FAIL specs (as source or target).
 
 | # | Direction | Rodinia | HeCBench | XSBench | Total | Session | Status |
 |---|-----------|---------|----------|---------|-------|---------|--------|
-| 1 | `cuda-to-omp` | 17 | 60 | 1 | **78** | S2/S3/S7 | EVALUATED (L0, L1, L2) |
+| 1 | `cuda-to-omp` | 17 | 60 | 1 | **78** | S2/S3/S3b/S7 | **L0 DONE (4 models, 68 results)**; L1/L2 pending S7 |
 | 2 | `omp-to-cuda` | 16 | 60 | 1 | **77** | S9 | TBD |
 
 > HeCBench has CUDA + OMP specs only (60 each) — it contributes to Tier 1 directions only.
@@ -1485,6 +1488,334 @@ SC26 format: double-column, 10 pages + appendices.
 
 ---
 
+## SESSION 6.5 — Timing Infrastructure (M6: nsys Profiler Integration)
+
+```
+ultrathink
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Profiler scope: Profile ALL eval specs (CUDA + OMP-target) before re-running
+      LLM evaluations, OR update baselines only and leave eval re-run for Session 8+?
+      Recommendation: Update baselines first (minimal scope), then re-run evals in
+      Session 7/9/10 with --use-profiler enabled.
+- [ ] Schema version: Adding kernel_time_seconds and cpu_time_seconds to
+      baseline_results requires a schema change. Options:
+      (a) Add fields as nullable/optional to existing schema v1.0.0 (non-breaking)
+      (b) Bump to schema v1.1.0 (cleaner, but all 64 specs need spec_version update)
+      Recommendation: (a) — add as optional/nullable, no version bump required.
+- [ ] CPU timing for OpenCL specs: nsys CANNOT profile OpenCL kernels. Options:
+      (a) Fall back to wall_time for OpenCL (status quo — no regression)
+      (b) Use /usr/bin/time -v (User+Sys CPU time) for OpenCL — not GPU time, but
+          better than wall-clock for apples-to-apples comparisons vs CPU OpenMP
+      Recommendation: (b) — OpenCL runs on GPU, CPU time is host-side overhead only,
+      but document the limitation clearly in the paper.
+- [ ] OMP threading (CPU OpenMP) time: /usr/bin/time -v is already implemented in
+      runner.py (measure_cpu_time flag). Confirm this is the correct method for OMP specs.
+      (The --use-cpu-timing flag exists but was never passed in any eval batch.)
+      Recommendation: yes — User+Sys time is correct for CPU-only OpenMP.
+
+EXTERNAL DEPS:
+- [ ] nsys available at /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/nsys
+      Verify: /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/nsys --version
+      Expected: NVIDIA Nsight Systems version 2024.1.1
+- [ ] nvc (for OMP target profiling) at /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/nvc
+      (OMP target compiled with nvc generates CUDA PTX — nsys sees it as CUDA kernels)
+- [ ] GPU must be available and idle during profiling runs
+      Verify: nvidia-smi (should show no active compute processes)
+- [ ] Linux perf_event_paranoid must allow nsys: cat /proc/sys/kernel/perf_event_paranoid
+      nsys needs ≤ 2. If > 2, profiling will fail silently.
+      Fix if needed: sudo sysctl -w kernel.perf_event_paranoid=2
+- [ ] Source env: source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
+
+DATA NEEDED:
+- [ ] After implementing nsys in the harness, you MUST re-run all CUDA and OMP-target
+      specs to collect real kernel_time baselines. Wall-clock baselines already in specs
+      are insufficient. Run with: python3 -m harness -v verify specs/<name>.json
+      with profiling enabled (see Step 5 below).
+
+# Session Goal
+Implement M6: nsys profiler integration in the ParBench harness so that GPU kernel
+execution time (Tier 1 in Niranjan's three-tier timing model) is measured for all
+CUDA and OMP-target specs. This replaces wall-clock as the timing source for speedup
+calculations in the LLM evaluation pipeline.
+
+# Why This Matters — The Methodology Gap
+Niranjan (2026-03-17): "Wall clock time is not a correct way to measure kernel performance.
+We need to use either (1) kernel execution time — from some profiler, or (2) User CPU time
++ Sys CPU time."
+
+ALL current evaluation results (across all 4 models, all directions, all benchmarks) use
+timing_method: "wall_time" in the result JSONs. The speedup priority logic in llm_evaluate.py
+(lines 1142-1151) already has the chain:
+  kernel_time_seconds → cpu_time_seconds → wall_time_seconds
+...but RunResult.kernel_time_seconds is NEVER populated (always None). The paper was
+tentatively reframed as "correctness-only" to avoid publishing unreliable speedup numbers.
+
+This session fixes that gap by making kernel_time_seconds non-null for GPU specs.
+
+# Three-Tier Timing Model (Niranjan's decision, 2026-03-17)
+Tier 1: GPU kernel execution time ONLY (what nsys measures via cuda_gpu_kern_sum report)
+         → Use for: speedup ratio claims in the SC26 paper
+         → APIs: CUDA, OMP-target (nvc compiles to CUDA PTX, nsys works)
+Tier 2: Kernel time + host-device data transfer time (cudaMemcpy operations)
+         → Use for: end-to-end GPU utilization analysis (optional, advanced)
+         → APIs: CUDA only (OMP-target manages transfers via OpenMP map clauses)
+Tier 3: Wall-clock time (what monotonic() measures now)
+         → Current status: used everywhere — must NOT be used for speedup claims
+         → Safe for: sanity-checking, timeout enforcement
+
+DECISION: Implement Tier 1 (kernel time only) for SC26. Tier 2 is future work.
+
+# API-Specific Profiling Strategy
+
+| API        | Profiler       | nsys works? | Method                          | RunResult field         |
+|------------|----------------|-------------|---------------------------------|-------------------------|
+| cuda       | nsys           | YES         | nsys profile + cuda_gpu_kern_sum | kernel_time_seconds     |
+| omp_target | nsys           | YES         | same (nvc → CUDA PTX, nsys sees | kernel_time_seconds     |
+|            |                |             | identical CUDA kernel events)   |                         |
+| opencl     | nsys           | NO          | nsys has no --trace=opencl opt  | cpu_time_seconds (fall- |
+|            |                |             | → fall back to /usr/bin/time -v | back, host-side only)   |
+| omp (cpu)  | /usr/bin/time  | N/A         | /usr/bin/time -v already impl.  | cpu_time_seconds        |
+|            | -v             |             | in runner.py (measure_cpu_time) |                         |
+
+# Current State of the Codebase — Read These Before Implementing
+
+Critical files (read them with cat or the Read tool before touching anything):
+
+1. harness/runner.py lines 19-181 — FULL run_spec() implementation
+   - Lines 19-51: _parse_gnu_time() — how /usr/bin/time -v output is parsed
+     (User time: 0.52, System time: 0.03 → cpu_time_seconds = 0.55)
+   - Lines 54-61: run_spec() signature (measure_cpu_time: bool = False)
+   - Lines 120-131: /usr/bin/time -v command prepend mechanism ← EXACT BLUEPRINT FOR nsys
+   - Lines 135-147: subprocess.run() with time.monotonic() for wall-clock
+   - Lines 157-171: CPU time parsing and temp file cleanup after execution
+   - Lines 173-181: RunResult construction — where kernel_time_seconds must be set
+
+2. harness/models.py lines 32-42 — RunResult dataclass
+   - Line 32: @dataclass class RunResult
+   - Line 38: wall_time_seconds: float (always populated)
+   - Line 40: cpu_time_seconds: Optional[float] = None (populated when measure_cpu_time=True)
+   - Line 42: kernel_time_seconds: Optional[float] = None ← PLACEHOLDER, NEVER POPULATED
+
+3. scripts/evaluation/llm_evaluate.py lines 1124-1154
+   - Lines 1142-1151: speedup calculation — already uses kernel_time > cpu_time > wall_time
+     The priority fallback chain is correct; we just need kernel_time to be non-null.
+   - Lines 1360-1378: CLI flags --use-cpu-timing (functional) and --use-profiler (stub/no-op)
+     --use-profiler currently does NOTHING (it's parsed but never passed to run_spec())
+
+4. schema/spec_schema.json lines 743-760 — baseline_results schema
+   - Line 746: wall_time_seconds only field (no cpu_time or kernel_time fields)
+   - Need to add optional fields: cpu_time_seconds and kernel_time_seconds
+
+# Step 1: Verify nsys Environment
+# Run these checks FIRST. If any fail, the rest of the session cannot proceed.
+
+source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
+cd /home/samyak/Desktop/parbench_sam
+
+# Verify nsys availability
+/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/nsys --version
+# Expected: NVIDIA Nsight Systems version 2024.1.1.x or newer
+
+# Check perf_event_paranoid (nsys requirement)
+cat /proc/sys/kernel/perf_event_paranoid
+# Expected: 2 or lower. If > 2, run: sudo sysctl -w kernel.perf_event_paranoid=2
+
+# Quick nsys smoke test — profile a trivial CUDA binary to confirm JSON output works
+# Build a reference spec and run with nsys manually:
+python3 -m harness build specs/rodinia-bfs-cuda.json
+cd /home/samyak/Desktop/parbench_sam
+
+NSYS=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/nsys
+TMPFILE=$(mktemp /tmp/nsys_test_XXXXXX)
+$NSYS profile --trace=cuda --force-overwrite=true -o ${TMPFILE} \
+  rodinia/rodinia-src/cuda/bfs/bfs rodinia/rodinia-src/cuda/bfs/graph1MW_6.txt
+$NSYS stats --report cuda_gpu_kern_sum --format json --force-export=true ${TMPFILE}.nsys-rep
+rm -f ${TMPFILE}.nsys-rep ${TMPFILE}.sqlite
+# Expected JSON output: [{"Time (%)": 99.x, "Total Time (ns)": NNNNNNN, "Name": "Kernel..."}]
+# Total Time (ns) / 1e9 = kernel_time_seconds
+
+# Step 2: Implement _parse_nsys_stats() in harness/runner.py
+# Add this function AFTER _parse_gnu_time() (after line 51, before run_spec())
+# Follow the EXACT same style as _parse_gnu_time().
+
+# Paste the following into harness/runner.py after line 51:
+#
+# def _parse_nsys_stats(nsys_json_output: str) -> Optional[float]:
+#     """Parse nsys cuda_gpu_kern_sum JSON output, return total kernel time in seconds.
+#
+#     nsys stats --report cuda_gpu_kern_sum --format json produces a JSON array where
+#     each element is a kernel with {"Total Time (ns)": <nanoseconds>, "Name": <str>, ...}
+#     We sum all kernels (multiple kernels in one run are all real GPU work).
+#     Returns None if output is empty, malformed, or contains no kernel data.
+#     """
+#     import json as _json
+#     try:
+#         data = _json.loads(nsys_json_output)
+#     except (_json.JSONDecodeError, ValueError):
+#         return None
+#     if not isinstance(data, list) or len(data) == 0:
+#         return None
+#     total_ns = 0
+#     for row in data:
+#         if isinstance(row, dict) and "Total Time (ns)" in row:
+#             total_ns += int(row["Total Time (ns)"])
+#     return total_ns / 1e9 if total_ns > 0 else None
+
+# Step 3: Add profile_gpu parameter to run_spec() in harness/runner.py
+# Current signature (line 54): def run_spec(spec, ..., measure_cpu_time: bool = False)
+# New signature: def run_spec(spec, ..., measure_cpu_time: bool = False, profile_gpu: bool = False)
+#
+# Inside run_spec(), AFTER the /usr/bin/time -v block (after line 131),
+# add the analogous nsys block:
+#
+#     nsys_tmpfile = None
+#     if profile_gpu:
+#         import tempfile
+#         nsys_exe = "/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/nsys"
+#         nsys_tmpfile = tempfile.mktemp(suffix="", prefix="/tmp/parbench_nsys_")
+#         cmd = [
+#             nsys_exe, "profile",
+#             "--trace=cuda",
+#             "--force-overwrite=true",
+#             "-o", nsys_tmpfile,
+#         ] + cmd
+#
+# Then AFTER subprocess.run() (after line 147), add nsys stat parsing:
+#
+#     kernel_time_seconds = None
+#     if profile_gpu and nsys_tmpfile is not None:
+#         nsys_rep = nsys_tmpfile + ".nsys-rep"
+#         nsys_exe = "/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/nsys"
+#         try:
+#             stats_result = subprocess.run(
+#                 [nsys_exe, "stats",
+#                  "--report", "cuda_gpu_kern_sum",
+#                  "--format", "json",
+#                  "--force-export=true",
+#                  nsys_rep],
+#                 capture_output=True, text=True, timeout=60
+#             )
+#             kernel_time_seconds = _parse_nsys_stats(stats_result.stdout)
+#         except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+#             kernel_time_seconds = None
+#         finally:
+#             import os as _os
+#             for ext in [".nsys-rep", ".sqlite"]:
+#                 try: _os.unlink(nsys_tmpfile + ext)
+#                 except FileNotFoundError: pass
+#
+# Then in RunResult construction (line 173-181), set:
+#     kernel_time_seconds=kernel_time_seconds,
+
+# Step 4: Wire --use-profiler CLI flag in scripts/evaluation/llm_evaluate.py
+# Current state (line 1378): --use-profiler is parsed but never passed to run_spec()
+# Find where run_spec() is called from within llm_evaluate.py (search for run_spec)
+# and add: profile_gpu=args.use_profiler (or equivalent)
+# Also for CPU OpenMP specs: if spec API is "omp" (not "omp_target"), pass
+# measure_cpu_time=True regardless of --use-profiler (always use /usr/bin/time -v for CPU OMP)
+
+# Step 5: Update schema/spec_schema.json — add optional timing fields to baseline_results
+# Find the "configurations" properties in baseline_results (around line 743-760)
+# The current schema has only "wall_time_seconds" as a timing field.
+# Add these two optional nullable fields:
+#
+#     "cpu_time_seconds": {
+#         "description": "CPU time (User + Sys) from /usr/bin/time -v, in seconds",
+#         "oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]
+#     },
+#     "kernel_time_seconds": {
+#         "description": "GPU kernel execution time from nsys cuda_gpu_kern_sum, in seconds",
+#         "oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]
+#     }
+#
+# These are additionalProperties: false in the current schema — you MUST add them here
+# or the new fields will fail validation. Verify with:
+#   python3 scripts/validate_schema.py --spec specs/rodinia-bfs-cuda.json
+
+# Step 6: Collect kernel_time baselines for all CUDA specs
+# After the harness changes are working, run a profiling pass on all CUDA specs.
+# The goal: populate baseline_results.configurations.correctness.kernel_time_seconds
+# and cpu_time_seconds for each spec.
+#
+# Run this for all 54 PASS Rodinia CUDA specs + 3 XSBench specs (cuda, omp, opencl):
+#   python3 -m harness --json verify specs/rodinia-bfs-cuda.json
+# Then update each spec's baseline_results with the new timing data.
+# Use a batch script to avoid doing this manually for 57 specs:
+#   scripts/baselines/collect_timing_baselines.py (create this script — see below)
+#
+# The collect_timing_baselines.py script should:
+#   1. Accept a list of spec files (glob: specs/rodinia-*-cuda.json specs/xsbench-*-cuda.json)
+#   2. For each spec: run_spec() with profile_gpu=True, capture kernel_time_seconds
+#   3. Update spec's baseline_results.configurations.correctness.kernel_time_seconds in place
+#   4. Print progress and a summary table
+#   5. Commit the updated specs: "Add kernel_time baselines for N CUDA specs"
+#
+# Note: Do NOT update omp_target baselines in this session — omp_target is excluded from
+# standard eval batches (requires nvc). Update those baselines separately if needed.
+
+# Step 7: Update llm_evaluate.py timing_method reporting
+# After this session, timing_method in result JSONs should report:
+#   "kernel_time" when kernel_time_seconds is populated (CUDA + OMP-target evals with profiler)
+#   "cpu_time" when cpu_time_seconds is populated but not kernel_time (OMP cpu, OpenCL)
+#   "wall_time" when neither is available (fallback — should be rare after this session)
+# Verify the timing_method reporting logic (around line 1142-1151) correctly reflects this.
+
+# Step 8: Verify the full pipeline end-to-end
+cd /home/samyak/Desktop/parbench_sam
+source env_parbench/bin/activate
+
+# Test 1: harness directly with profiling
+python3 -m harness -v verify specs/rodinia-bfs-cuda.json --profile-gpu
+# Expected: kernel_time_seconds appears in output (non-null float)
+
+# Test 2: llm_evaluate.py with --use-profiler
+# Run a single kernel evaluation with profiling to confirm kernel_time is populated:
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia --direction cuda-to-omp \
+  --models claude-sonnet-4-6 \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --kernels bfs \
+  --use-profiler \
+  -v
+# Check result JSON: timing_method should be "kernel_time", speedup_ratio should be non-null
+
+# Test 3: OpenCL spec (nsys should NOT be invoked, CPU time fallback used)
+python3 -m harness -v verify specs/rodinia-bfs-opencl.json --profile-gpu
+# Expected: cpu_time_seconds populated (from /usr/bin/time -v), kernel_time_seconds = null
+# (Because the API is opencl, profile_gpu should degrade gracefully to cpu_time fallback)
+# NOTE: The harness should check spec.implementation.api before invoking nsys:
+#   if profile_gpu and spec_api not in ("cuda", "omp_target"):
+#       measure_cpu_time = True   # fall back to /usr/bin/time -v
+#       profile_gpu = False
+
+# Test 4: Validate updated spec files pass schema validation
+python3 scripts/validate_schema.py --all
+# Expected: same ~135 known errors (HeCBench + phantoms), ZERO new errors
+
+# Step 9: Git commit
+# git add harness/runner.py harness/models.py schema/spec_schema.json
+# git add scripts/evaluation/llm_evaluate.py
+# git add scripts/baselines/collect_timing_baselines.py  # new script
+# git add specs/rodinia-*-cuda.json specs/xsbench-*-cuda.json  # updated baselines
+# git commit -m "feat: M6 nsys profiler integration — kernel_time_seconds now populated for CUDA specs
+
+# - _parse_nsys_stats(): parse cuda_gpu_kern_sum JSON, sum all kernel Total Time (ns)
+# - run_spec(): new profile_gpu=False param, nsys command prepend (blueprint: /usr/bin/time -v)
+# - run_spec(): auto-degrade to cpu_time for OpenCL (nsys has no opencl trace)
+# - schema: add optional cpu_time_seconds + kernel_time_seconds to baseline_results
+# - llm_evaluate.py: --use-profiler now wired to profile_gpu=True in run_spec()
+# - collect_timing_baselines.py: batch script for updating all CUDA spec baselines
+# - Baselines updated for N CUDA specs with real kernel_time_seconds values
+#
+# Speedup calculations now use Tier 1 timing (kernel execution) per Niranjan's directive.
+# Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+```
+
+---
+
 ## SESSION 7 — Augmented Evaluation (L1/L2)
 
 ```
@@ -1517,9 +1848,9 @@ DATA/INFO:
       Estimated cost: $5-$30 across all providers. Confirm budget is available.
 
 EXTERNAL DEPS:
-- [ ] Sessions 2 + 3 complete (azure-gpt-4.1 and groq-llama L0 baselines)
-- [ ] Session 3b complete (claude-sonnet-4-6 and gemini-2.5-flash-lite L0 baselines)
-- [ ] Prerequisite #1b complete (Gemini provider in llm_evaluate.py)
+- [x] Sessions 2 + 3 complete ✅ — azure-gpt-4.1 (9/17 PASS) and groq-llama (5/17 PASS) L0 baselines done
+- [x] Session 3b complete ✅ — claude-sonnet-4-6 (12/17 PASS) and gemini-2.5-flash-lite (4/17 PASS) L0 baselines done
+- [x] Prerequisite #1b complete ✅ RESOLVED — Gemini provider implemented (commit 887d681), tested in S3b (4/17 PASS)
 - [ ] NOTE: use --resume so azure/groq L1/L2 can be added alongside new model L1/L2
 
 # Session Goal
@@ -2078,6 +2409,110 @@ python3 scripts/evaluation/analyze_eval.py \
 
 ---
 
+## SESSION S-HeCBench — HeCBench Clone + Smoke Test + Eval Batch
+
+> **Status: NOT STARTED.** Planned Day 9 (background, while S12 runs in foreground).
+> **Why this session exists:** 120 HeCBench specs exist in `specs/` (schema valid), but the source is not
+> cloned locally. This session clones the source, smoke-tests 5+ kernels, and launches eval batch.
+> **Paper impact:** §4 Curation shows 3-suite coverage (Rodinia + XSBench + HeCBench). §6 Results adds
+> HeCBench pass rates. The 120-spec scale demonstrates framework generality beyond a single benchmark suite.
+
+```
+ultrathink
+
+## BEFORE YOU START — What I Need From You
+
+DECISIONS:
+- [ ] Confirm HeCBench is in scope for SC26 (decision made 2026-03-24: YES — include full eval)
+- [ ] Which 5 candidate kernels for smoke test?
+      Recommended: bfs, backprop, nn, pathfinder, hotspot (same as Rodinia — easy cross-comparison)
+      Alternative: Pick simpler ones first: atomicIntrinsics, bezier-surface, binomial
+- [ ] Smoke test pass threshold before proceeding to full eval batch?
+      Recommendation: at least 5 CUDA + 5 OMP kernels must PASS harness verify
+
+EXTERNAL DEPS:
+- [ ] AZURE_OPENAI_API_KEY + ANTHROPIC_API_KEY + GEMINI_API_KEY + GROQ_API_KEY (all 4 models)
+- [ ] Network access to clone github.com/zjin-lcf/HeCBench (~3-5 GB, ~500+ benchmarks)
+- [ ] Sessions 2+3+3b complete (Rodinia baselines) ✅ DONE
+
+# Session Goal
+Clone HeCBench source, verify that existing 120 specs resolve against real source files,
+smoke-test 5+ kernels (CUDA + OMP) through the full harness verify pipeline, and launch
+a cuda-to-omp eval batch for all passing HeCBench kernels.
+
+# Step 1: Clone HeCBench source (~30 min)
+source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
+cd /home/samyak/Desktop/parbench_sam
+
+git clone https://github.com/zjin-lcf/HeCBench.git HeCBench-master
+# Verify clone completed
+ls HeCBench-master/ | head -10
+
+# Check that source_dir errors drop from ~120 to near 0
+python3 scripts/validate_schema.py --all 2>&1 | grep "source_dir" | wc -l
+# Expected BEFORE clone: ~120 errors. Expected AFTER clone: 0 errors (only 15 phantom errors remain).
+
+# Step 2: Smoke test 5 candidate kernels (pick from bfs, backprop, nn, hotspot, pathfinder)
+# For each candidate, check if both CUDA and OMP specs exist and source files are present:
+ls specs/ | grep "hecbench-bfs"
+ls specs/ | grep "hecbench-backprop"
+
+# Run harness verify on 5 CUDA specs
+python3 -m harness -v verify specs/hecbench-bfs-cuda.json
+python3 -m harness -v verify specs/hecbench-backprop-cuda.json
+python3 -m harness -v verify specs/hecbench-nn-cuda.json
+python3 -m harness -v verify specs/hecbench-hotspot-cuda.json
+python3 -m harness -v verify specs/hecbench-pathfinder-cuda.json
+
+# Run harness verify on 5 OMP specs
+python3 -m harness -v verify specs/hecbench-bfs-omp.json
+python3 -m harness -v verify specs/hecbench-backprop-omp.json
+python3 -m harness -v verify specs/hecbench-nn-omp.json
+python3 -m harness -v verify specs/hecbench-hotspot-omp.json
+python3 -m harness -v verify specs/hecbench-pathfinder-omp.json
+
+# If a kernel fails: check Makefile (CUDA_HOME, arch flag sm_89, -std=c++17 issues)
+# Fix at spec level (build.flags) NOT at source level (hook protection applies)
+# If >3 kernels fail smoke test, investigate before proceeding to full batch
+
+# Step 3: Validate all HeCBench specs
+python3 scripts/validate_schema.py --all 2>&1 | grep "hecbench" | grep -v "source_dir"
+# Expected: 0 non-source-dir errors for HeCBench specs
+
+# Step 4: Launch eval batch (background, while S12 or S13 runs in foreground)
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite hecbench \
+  --direction cuda-to-omp \
+  --models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --max-retries 2 \
+  --max-failures 10 \
+  --resume \
+  -v \
+  --project-root /home/samyak/Desktop/parbench_sam
+# --max-failures 10: skip persistently broken kernels without aborting the batch
+# Many HeCBench Makefiles may need fixes — this is expected, treat BUILD_FAIL as data
+# Even 20-30 passing kernels (out of 60) is sufficient for the paper
+
+# Step 5: Analyze results
+python3 scripts/evaluation/analyze_eval.py \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --suite hecbench \
+  --direction cuda-to-omp
+# Note pass rate, BUILD_FAIL breakdown, and which kernels passed for paper §6
+
+# Step 6: Update known-issues.md if new KNOWN_FAIL kernels are found
+# Format: | `hecbench-XXXX-cuda` | error message | reason |
+# File: .claude/rules/known-issues.md — add under new "## HeCBench KNOWN_FAIL" section
+
+# Step 7: Git commit and push
+# Stage: HeCBench-master/ (gitignored — verify first), specs/ (if any spec fixes),
+#         results/evaluation/hecbench-*/*.json, eval_summary.*
+# Commit message: "Add HeCBench source, smoke test N/10 PASS, cuda-to-omp eval batch (M/60 PASS)"
+# Push to origin main
+```
+
+---
+
 ## SESSION 11 — Dashboard Data Refresh
 
 ```
@@ -2278,12 +2713,12 @@ Framework, Benchmark Curation, and Evaluation Methodology.
 # Core claims the agent MUST support with actual data:
 #   - GPT-4.1: 52.9% PASS (cuda-to-omp L0) — from eval_summary.md
 #   - Llama-3.3-70B: 29.4% PASS — from eval_summary.md
-#   - Claude Sonnet 4.6: TBD (pending Session 3b)
-#   - Gemini 2.5 Flash-Lite: TBD (pending Session 3b + Gemini provider)
+#   - Claude Sonnet 4.6: 70.6% PASS (12/17, cuda-to-omp L0) — from eval_summary.json (commit f0b4f98)
+#   - Gemini 2.5 Flash-Lite: 23.5% PASS (4/17, cuda-to-omp L0) — from eval_summary.json (commit f0b4f98)
 #   - 54/60 PASS at L1–L4 (level-invariant) — from augmentation results
-#   - BUILD_FAIL dominates (~70% of failures) — from eval_summary.md
+#   - BUILD_FAIL dominates (~70% of failures) — from eval_summary.json
 #   - 6 translation directions across 3 APIs — from Translation Direction Matrix
-#   - Use "TBD (pending Session 3b)" for missing model data — never fabricate
+#   - All 4 model L0 baselines available — use actual numbers, no TBD for model data
 # Output file: docs/paper_draft.md (agent appends if exists, creates if not)
 
 # Step 1: Read docs/paper_outline.md fully (the roadmap for this entire writing session)
@@ -2305,8 +2740,8 @@ ultrathink
 
 DECISIONS:
 - [ ] Proceed with partial data or wait for ALL eval sessions (2,3,3b,7,8,9,10)?
-      Minimum viable: Sessions 2+3 (2 models, 1 direction, L0).
-      Recommended: Sessions 2+3+3b+7 at minimum (4 models, L0/L1/L2 for 1 direction)
+      Minimum viable: ✅ MET — Sessions 2+3+3b complete (4 models, 1 direction, L0 done).
+      Recommended: Sessions 2+3+3b+7 at minimum (4 models, L0/L1/L2). S7 not yet run.
       Models (Gal, 2026-03-23): azure-gpt-4.1 · claude-sonnet-4-6 · gemini-2.5-flash-lite · groq-llama-3.3-70b-versatile
 - [ ] Threats to validity — rank these by importance for the Discussion section:
       a) Temperature=0 (deterministic but may not represent average behavior)

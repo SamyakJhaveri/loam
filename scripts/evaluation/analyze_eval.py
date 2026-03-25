@@ -20,6 +20,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import re
 import sys
@@ -135,12 +136,26 @@ def _self_repair_stats(records: list[dict]) -> dict:
     }
 
 
-def build_summary(records: list[dict]) -> dict:
+def _load_complexity_lookup(project_root: Path) -> dict[tuple[str, str], str]:
+    """Load translation_complexity.csv → {(source_id, target_id): complexity_class} lookup."""
+    csv_path = project_root / "results" / "evaluation" / "translation_complexity.csv"
+    if not csv_path.exists():
+        return {}
+    lookup: dict[tuple[str, str], str] = {}
+    with csv_path.open(newline="") as fh:
+        reader = csv.DictReader(fh)
+        for row in reader:
+            lookup[(row["source_spec"], row["target_spec"])] = row["complexity_class"]
+    return lookup
+
+
+def build_summary(records: list[dict], complexity_lookup: dict | None = None) -> dict:
     """Build the machine-readable summary dict."""
     by_model: dict[str, list] = defaultdict(list)
     by_direction: dict[str, list] = defaultdict(list)
     by_kernel: dict[str, list] = defaultdict(list)
     by_level: dict[str, list] = defaultdict(list)
+    by_complexity: dict[str, list] = defaultdict(list)
     failure_counts: dict[str, int] = defaultdict(int)
 
     for r in records:
@@ -156,6 +171,11 @@ def build_summary(records: list[dict]) -> dict:
         by_kernel[kernel].append(r)
         by_level[f"L{level}"].append(r)
 
+        if complexity_lookup is not None:
+            tgt_id = r.get("target_spec", "")
+            cls = complexity_lookup.get((src_id, tgt_id), "unknown")
+            by_complexity[cls].append(r)
+
         if status not in ("PASS", "SKIP", "ERROR"):
             failure_counts[status] += 1
 
@@ -168,6 +188,7 @@ def build_summary(records: list[dict]) -> dict:
         "by_augment_level": {k: _pass_fail_counts(v) for k, v in sorted(by_level.items())},
         "failure_taxonomy": dict(failure_counts),
         "self_repair": _self_repair_stats(records),
+        "by_complexity": {k: _pass_fail_counts(v) for k, v in sorted(by_complexity.items())} if complexity_lookup is not None else {},
     }
 
 
@@ -179,7 +200,7 @@ def _pct(rate: float) -> str:
     return f"{rate * 100:.1f}%"
 
 
-def build_markdown(summary: dict, records: list[dict]) -> str:
+def build_markdown(summary: dict, records: list[dict], complexity_lookup: dict | None = None) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
     lines = [
         "# ParBench Evaluation Summary",
@@ -219,6 +240,55 @@ def build_markdown(summary: dict, records: list[dict]) -> str:
             f"| {level} | {stats['pass']} | {stats['total']} | {_pct(stats['rate'])} |"
         )
     lines.append("")
+
+    # --- By translation complexity class ---
+    by_comp = summary.get("by_complexity", {})
+    if by_comp:
+        classes = sorted(by_comp.keys())
+        lines += ["## Pass Rates by Translation Complexity", ""]
+        lines += [
+            "| Complexity Class | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL |",
+            "|-----------------|-----:|------:|-----:|----------:|--------:|------------:|",
+        ]
+        for cls in classes:
+            stats = by_comp[cls]
+            bk = stats["by_status"]
+            lines.append(
+                f"| {cls} | {stats['pass']} | {stats['total']} | {_pct(stats['rate'])} "
+                f"| {bk.get('BUILD_FAIL', 0)} | {bk.get('RUN_FAIL', 0)} "
+                f"| {bk.get('VERIFY_FAIL', 0)} |"
+            )
+        lines.append("")
+
+        # Model × complexity cross-tab (when multiple models have results)
+        if complexity_lookup and len(summary.get("by_model", {})) > 1:
+            models = sorted(summary["by_model"].keys())
+            lines += ["### Model × Complexity Cross-Tab", ""]
+            model_header = " | ".join(models)
+            lines.append(f"| Complexity Class | {model_header} |")
+            lines.append("|-----------------|" + "|".join(["---:"] * len(models)) + "|")
+            comp_model: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
+            for r in records:
+                src = r.get("source_spec", "")
+                tgt = r.get("target_spec", "")
+                cls = complexity_lookup.get((src, tgt))
+                if cls is None:
+                    continue
+                model = r.get("model", "unknown")
+                comp_model[cls][model].append(r)
+            for cls in classes:
+                if cls == "unknown":
+                    continue
+                cells = []
+                for model in models:
+                    recs = comp_model[cls].get(model, [])
+                    if recs:
+                        c = _pass_fail_counts(recs)
+                        cells.append(f"{c['pass']}/{c['total']} ({_pct(c['rate'])})")
+                    else:
+                        cells.append("—")
+                lines.append(f"| {cls} | {' | '.join(cells)} |")
+            lines.append("")
 
     # --- Per-kernel matrix (cuda→omp only for primary table) ---
     cuda_omp = [r for r in records if r.get("direction", "").startswith("cuda-to-omp")]
@@ -323,6 +393,7 @@ def write_dashboard_js(summary: dict, output_path: Path) -> None:
         "byAugmentLevel": summary["by_augment_level"],
         "failureTaxonomy": summary["failure_taxonomy"],
         "selfRepair": summary["self_repair"],
+        "byComplexity": summary.get("by_complexity", {}),
     }
     content = f"// Auto-generated by analyze_eval.py — do not edit manually\n"
     content += f"const EVAL_SUMMARY = {json.dumps(js_data, indent=2)};\n"
@@ -422,7 +493,13 @@ def main() -> None:
         print("No results found. Run some evaluations first.")
         sys.exit(0)
 
-    summary = build_summary(records)
+    complexity_lookup = _load_complexity_lookup(project_root)
+    if complexity_lookup:
+        print(f"Loaded complexity lookup: {len(complexity_lookup)} translation pairs.")
+    else:
+        print("No complexity CSV found — complexity analysis will be skipped.")
+
+    summary = build_summary(records, complexity_lookup=complexity_lookup)
 
     # Write JSON summary
     out_json.parent.mkdir(parents=True, exist_ok=True)
@@ -430,7 +507,7 @@ def main() -> None:
     print(f"Summary JSON written: {out_json}")
 
     # Write Markdown report
-    md = build_markdown(summary, records)
+    md = build_markdown(summary, records, complexity_lookup=complexity_lookup)
     out_md.write_text(md)
     print(f"Summary Markdown written: {out_md}")
 

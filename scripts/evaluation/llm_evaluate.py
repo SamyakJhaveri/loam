@@ -916,7 +916,7 @@ def evaluate_translation(
         }
 
     # Resolve target file paths for backup/restore
-    # Use same kernel-centric target_filenames as the prompt (translation_targets or fallback)
+    # Use same kernel-centric target_filenames as the prompt (always translation_targets)
     resolved: dict[str, Any] = target_spec_resolved.get("_resolved", {})
     source_dir: Path = resolved.get("source_dir", project_root)
     target_filenames: list[str] = prompt_target_filenames

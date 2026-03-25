@@ -2,7 +2,7 @@
 
 > **Deadline:** SC26 paper submission — **April 8, 2026**
 > **Sprint window:** March 18 → April 8 (21 days)
-> **Last updated:** 2026-03-19 (Day 2 completion summary added — see §1.6)
+> **Last updated:** 2026-03-24 (Day 7 audit — S1–S6 complete, 4-model L0 baseline done; see §1.8)
 > **Authors:** Samyak, Erel, Gal (advised)
 >
 > **How to use this document:**
@@ -94,13 +94,15 @@ Infrastructure baseline confirmed — continuing full evaluation sweep with GPT-
 #### Models
 
 > **UPDATED 2026-03-19 (March 18 meeting).** Model plan changed significantly.
+> **FINAL MODEL SET (Gal, 2026-03-23):** All 4 models have L0 cuda-to-omp baselines. See §1.8 for full summary.
 
-| Model | Provider | Phase | Notes |
-|-------|----------|-------|-------|
-| `azure-gpt-4.1` | Azure OpenAI | **Phase 1 — START HERE** | Funded, ready. Reasoning OFF via Azure API. |
-| `llama-70b` | Groq API / Modal GPU pool | Phase 2 | Primary open-source. Set up AFTER GPT-4.1 evals. |
-| TBD (leaderboard pick) | Groq / Modal | Phase 2 | General-purpose model from coding leaderboard (Qwen, Mistral, Gemini candidates). |
-| ~~`claude-sonnet-4-20250514`~~ | ~~Anthropic API~~ | **REMOVED** | Clean slate with new model set. Historical pilot data in §1.2. |
+| Model | Provider | L0 cuda-to-omp | PASS/17 | % | Session |
+|-------|----------|---------------|---------|---|---------|
+| `azure-gpt-4.1` | Azure OpenAI | ✅ DONE | 9 | 52.9% | S2 |
+| `claude-sonnet-4-6` | Anthropic API | ✅ DONE | 12 | 70.6% | S3b |
+| `gemini-2.5-flash-lite` | Google AI API | ✅ DONE | 4 | 23.5% | S3b |
+| `groq-llama-3.3-70b-versatile` | Groq API | ✅ DONE | 5 | 29.4% | S3 |
+| ~~`claude-sonnet-4-20250514`~~ | ~~Anthropic API~~ | REMOVED | — | — | — |
 
 **Key constraints (Gal Oren, March 18):**
 - **NO reasoning models** — test inherent LLM knowledge, not search/reasoning (00:19:31)
@@ -246,6 +248,8 @@ restructuring skill.
 
 #### Updated Pilot Results (10 kernels, azure-gpt-4.1, L0, cuda-to-omp)
 
+> ⚠️ **SUPERSEDED by kernel-centric v2 results (Sessions 2–3b, March 22–24).** The 4 BUILD_FAILs below were caused by the old full-project pipeline. All are now resolved under kernel-centric translation. Use `results/evaluation/eval_summary.json` for current data (68 results, 4 models, 54.4% aggregate PASS rate).
+
 | Kernel | Result | Failure Root Cause |
 |--------|:------:|-------------------|
 | bfs | **PASS** | — |
@@ -268,10 +272,10 @@ restructuring skill.
 | **M1** | HIGH | Not started | Anonymous ParBench GitHub — required for SC26 submission |
 | **M2** | HIGH | Not started | Curation survey page for website |
 | **M3** | HIGH | Not started | Read Paraval paper for differentiation |
-| **M7** | HIGH | Not started | Llama 70B via Groq/Modal |
-| **M8** | HIGH | Not started | Third model selection from coding leaderboard |
+| **M7** | HIGH | **RESOLVED (2026-03-23)** | groq-llama-3.3-70b-versatile via Groq API (Session 3 complete, 5/17 PASS) |
+| **M8** | HIGH | **RESOLVED (2026-03-23)** | gemini-2.5-flash-lite selected (Session 3b complete, 4/17 PASS) |
 | **M5** | MEDIUM | **DONE (2026-03-23)** | XSBench cloned (commit ba08e52), 4 specs generated, 4/4 PASS. Eval-ready: cuda, omp, opencl. |
-| **M6** | HIGH | Not started | Kernel + host-transfer timing metrics (three-tier model) |
+| **M6** | HIGH | Session prompt ready (SESSION 6.5) | nsys Tier 1 kernel time for CUDA/OMP-target; session prompt in docs/session_prompts_sc26.md |
 | **2A** | HIGH | Not started | Iterative repair pilot (`--max-retries 3`) |
 | **2C** | HIGH | Not started | Smoke test all 22 OMP specs |
 | **2D** | HIGH | Partially done | Full Rodinia cuda-to-omp eval — 10/21 kernels done |
@@ -315,11 +319,51 @@ M10 was previously marked DONE, but the audit found:
 
 ---
 
+### 1.8 Days 4–7 (March 21–24) — Completion Summary
+
+#### Completed Sessions (all verified against git history + on-disk data)
+
+| Session | Description | Commit | Date | Key Result |
+|---------|------------|--------|------|-----------|
+| **S1** | Rodinia submodule reset + build-flag alternatives | `cfa1991` | 03-21 | 54/60 PASS; 6 KNOWN_FAIL documented |
+| **S1.5** | Kernel-centric pipeline (M11) + translation_targets | `c2b63fd` | 03-22 | Schema + eval pipeline; 60 Rodinia specs populated |
+| **S1.6** | Universal standardization (all 184 specs) | `35b9c8e` | 03-22 | All 184 specs have translation_targets; full_project removed |
+| **S2** | azure-gpt-4.1 cuda-to-omp L0 | `3d43afa` | 03-22 | 9/17 PASS (52.9%) — kernel-centric clean slate |
+| **S3** | groq-llama-3.3-70b-versatile cuda-to-omp L0 | `b644bc6` | 03-22 | 5/17 PASS (29.4%) |
+| **S3-PM** | Post-mortem pipeline bug fixes | `dad1662` | 03-22 | 3 bugs fixed: EXTRACTION_FAIL, cross-attempt contamination, finish_reason |
+| **S3b** | claude-sonnet-4-6 + gemini-2.5-flash-lite cuda-to-omp L0 | `887d681`/`f0b4f98` | 03-23/24 | Claude: 12/17 (70.6%), Gemini: 4/17 (23.5%) |
+| **S4** | XSBench clone + spec generation | `78e379d` | 03-23 | 4 specs (cuda/omp/opencl/omp_target); no OpenACC |
+| **S5** | XSBench harness verify | `888910f` | 03-23 | 4/4 PASS; baselines populated |
+| **S6** | Paper outline (M4) | `257b992` | 03-23 | `docs/paper_outline.md` — 8 sections, F1-F6, T1-T9 |
+
+#### Actual Evaluation Data on Disk (as of 2026-03-24)
+
+- **68 result JSONs**: 4 models × 17 kernels × cuda-to-omp × L0 (all `translation_mode: "kernel_centric"`)
+- **Zero** augmented eval results (L1/L2/L3/L4) — S7 not yet run
+- **Zero** omp-to-cuda, cuda-to-opencl, or any other direction results — S9/S10 not yet run
+- **Zero** XSBench eval results — S8 not yet run
+- **Zero** `kernel_time_seconds` data — `--use-profiler` is a no-op stub; all results use wall_time
+
+#### M-Tasks Status Update (as of 2026-03-24)
+
+| Task | Status | Notes |
+|------|--------|-------|
+| **M4** | **DONE (2026-03-23)** | Paper outline at `docs/paper_outline.md` (S6) |
+| **M5** | **DONE (2026-03-23)** | XSBench 4/4 PASS; eval-ready: cuda, omp, opencl |
+| **M6** | Session prompt ready | S6.5 session prompt exists; implementation pending (Day 8) |
+| **M7** | **RESOLVED (2026-03-23)** | groq-llama-3.3-70b-versatile, 5/17 PASS |
+| **M8** | **RESOLVED (2026-03-23)** | gemini-2.5-flash-lite selected + implemented, 4/17 PASS |
+| **M11** | **DONE (2026-03-22)** | Kernel-centric pipeline live (S1.5 + S1.6) |
+| **M3** | NOT STARTED | Samyak reads Paraval paper manually (blocks S12 related work) |
+
+---
+
 ## 2. The Plan — Three Weeks
 
 ### Week 1 (March 18–24): Scale Up Rodinia + Iterative Repair
 
 **Goal:** 5-kernel pilot → full 21-kernel Rodinia evaluation with iterative repair and augmentation.
+**Actual achievement (Day 7):** 4-model L0 cuda-to-omp baseline complete (68 results). M11 resolved. XSBench added.
 
 ### Week 2 (March 25–31): HeCBench + New APIs + Additional Benchmarks
 
@@ -901,7 +945,7 @@ By April 8, target these numbers:
 |--------|:------:|:-------:|
 | Translation pairs evaluated | 300+ | 500+ |
 | Benchmark suites | 3 (Rodinia + XSBench + HeCBench) | XSBench DONE (2026-03-23, 4/4 PASS) |
-| Models compared | 3 (GPT-4.1, Llama 70B, leaderboard) | phased — GPT-4.1 first |
+| Models compared | 4 (GPT-4.1, Claude Sonnet 4.6, Gemini 2.5 Flash-Lite, Llama 3.3 70B) | **All 4 have L0 data** (Sessions 2/3/3b, 2026-03-24) |
 | Augmentation levels tested | L0, L1, L2 | + L3, L4 |
 | Translation directions | 3 (cuda↔omp, cuda→opencl) | 5–6 (+omp_target, cross-API) |
 | APIs covered | 3 (CUDA, OMP, OpenCL) | 4 (+OMP target, case study) |
@@ -933,9 +977,9 @@ By April 8, target these numbers:
 
 7. **Submodule sync:** Erel's 5 new specs need Rodinia submodule at commit `b0310d8`. When can we sync?
 
-8. **Third model selection (Task M8):** Which general-purpose model from coding leaderboard? Candidates: Qwen2.5-72B, Mistral-Large, Gemini 1.5 Pro. Le Chen recommends general-purpose over code-specific.
+8. ~~**Third model selection (Task M8):**~~ **RESOLVED (2026-03-23):** Final model set = GPT-4.1, Claude Sonnet 4.6, Gemini 2.5 Flash-Lite, Llama 3.3 70B (Gal directive). Provider implemented. All 4 models have L0 cuda-to-omp baselines (68 total results).
 
-9. **Groq/Modal access (Task M7):** Does Tomer have the team Modal GPU pool set up? (Niranjan checking — 00:22:43)
+9. ~~**Groq/Modal access (Task M7):**~~ **RESOLVED (2026-03-23):** Groq API operational. groq-llama-3.3-70b-versatile evaluated in Session 3 (5/17 PASS). No Modal GPU pool needed.
 
 10. **Anonymous ParBench GitHub (Task M1):** Create before next meeting — required for SC26 anonymous submission.
 
