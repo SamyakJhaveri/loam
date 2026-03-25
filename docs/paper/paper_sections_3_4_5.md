@@ -14,9 +14,9 @@ Each benchmark in ParBench is described by a JSON specification (spec) that serv
 
 A spec is organized into the following field groups:
 
-**Identity and provenance.** The `identity` block assigns a globally unique identifier following the convention `{source_suite}-{kernel_name}-{parallel_api}` (e.g., `rodinia-bfs-cuda`), and records the parallel API from a controlled vocabulary of 14 supported APIs including CUDA, OpenMP, OpenCL, HIP, and SYCL. The `provenance` block pins the exact source repository and commit hash, ensuring reproducibility across environments.
+**Identity and provenance.** The `identity` block assigns a globally unique identifier following the convention `{source_suite}-{kernel_name}-{parallel_api}` (e.g., `rodinia-bfs-cuda`), and records the parallel API from a controlled vocabulary of 15 APIs including CUDA, OpenMP, OpenCL, HIP, SYCL, and serial. The `provenance` block pins the exact source repository and commit hash, ensuring reproducibility across environments.
 
-**File partitioning.** The `files` block partitions benchmark source files into three disjoint sets: `prompt_payload` (files visible to the LLM during translation), `support_files` (build infrastructure such as Makefiles and shared headers, not shown to the LLM), and `verification_only` (reference implementations never exposed to the LLM). A fourth field, `translation_targets`, identifies the subset of `prompt_payload` that the LLM must produce---the kernel computation files. This field is central to the kernel-centric translation methodology described in Section III-D.
+**File partitioning.** The `files` block partitions benchmark source files into three disjoint sets: `prompt_payload` (files visible to the LLM during translation), `support_files` (build infrastructure such as Makefiles and shared headers; header content is provided as read-only reference in the translation prompt), and `verification_only` (reference implementations never exposed to the LLM). A fourth field, `translation_targets`, identifies the subset of `prompt_payload` that the LLM must produce---the kernel computation files. This field is central to the kernel-centric translation methodology described in Section III-D.
 
 **Build, run, and verification.** The `build` block specifies the build system, compiler commands, environment variables, and expected executable path. The `run` block defines named input configurations (e.g., `correctness`, `performance`) with arguments, timeout, and optional environment variables. The `verification` block declares an ordered list of verification strategies---currently `exit_code` (check process return code) and `stdout_pattern` (regex match against captured standard output)---applied in sequence until a definitive PASS or FAIL is reached. Three additional strategies (`numeric_comparison`, `file_diff`, `custom_script`) are defined in the schema for future use.
 
@@ -59,7 +59,7 @@ This design separates the definition of correctness from the mechanism of verifi
 
 ### B. Harness Pipeline: Build, Run, Verify
 
-The harness pipeline is a three-stage evaluation engine invoked via a command-line interface (`python3 -m harness`). Each stage consumes the output of the previous stage, and failure at any stage short-circuits subsequent stages---there is no reason to run code that did not compile, or to verify output from a crashed process.
+The harness pipeline is a three-stage evaluation engine invoked via a command-line interface. Each stage consumes the output of the previous stage, and failure at any stage short-circuits subsequent stages---there is no reason to run code that did not compile, or to verify output from a crashed process.
 
 **Build stage.** The builder resolves the spec's working directory, executes an optional clean command, runs any configure step, substitutes template variables (e.g., `${CUDA_DIR}`) in the build command, and invokes the build via a shell subprocess. After compilation, the builder verifies that the expected executable exists on disk. The build stage captures both stdout and stderr for diagnostic reporting and enforces a configurable timeout (default: 600 seconds).
 
@@ -67,13 +67,13 @@ The harness pipeline is a three-stage evaluation engine invoked via a command-li
 
 **Verify stage.** The verifier applies the spec's verification strategies in declared order. For `exit_code` verification, the actual exit code is compared against the expected value. For `stdout_pattern` verification, a regular expression is applied to the captured stdout. The first strategy to produce a definitive PASS or FAIL terminates evaluation; if all strategies are exhausted without a conclusive result, the outcome is SKIP.
 
-Each pipeline invocation produces one of four failure classifications---BUILD\_FAIL, RUN\_FAIL, VERIFY\_FAIL, or TIMEOUT---providing diagnostic granularity that enables systematic failure-mode analysis. A `--resume` flag allows batch evaluations to skip previously completed tasks, supporting append-only result accumulation without re-executing passing benchmarks.
+Each harness invocation produces one of four failure classifications---BUILD\_FAIL, RUN\_FAIL, VERIFY\_FAIL, or TIMEOUT---providing diagnostic granularity that enables systematic failure-mode analysis. The evaluation pipeline (Section III-D) adds a fifth classification, EXTRACTION\_FAIL, when the LLM response does not contain parseable target files. A `--resume` flag allows batch evaluations to skip previously completed tasks, supporting append-only result accumulation without re-executing passing benchmarks.
 
 ### C. Augmentation Engine: Probing Robustness via Code Surface Variation
 
 A central concern in evaluating LLM-based code translation is whether models genuinely reason about program structure or rely on memorized patterns from training data. Popular benchmarks such as those in the Rodinia suite \cite{Rodinia2009} are widely available in open-source repositories and likely present in LLM training corpora. To address this threat to validity, the augmentation engine generates semantically equivalent code variants by applying AST-level transformations that alter the syntactic surface of the source code while preserving its computational semantics.
 
-The engine implements six transforms, each backed by libclang \cite{libclang} AST analysis to guarantee syntactic validity:
+The engine implements six transforms, each backed by the libclang API for AST analysis to guarantee syntactic validity:
 
 1. **SwapCondition** -- reverses operands of comparison expressions (e.g., `a < b` becomes `b > a`), with guards against side-effect-bearing subexpressions and assignments.
 2. **ArithmeticTransform** -- converts between compound and expanded assignment forms (e.g., `x += 1` becomes `x = x + 1` and vice versa).
@@ -92,7 +92,7 @@ All transforms operate on the parsed AST rather than on raw text, which avoids t
 | L3 | 66% of transforms | 66% of candidates | Heavy obfuscation |
 | L4 | All transforms | 100% of candidates | Maximum obfuscation |
 
-Five augmentation levels (L0--L4) control the density of applied transforms. L0 is the unmodified source. At L1, exactly one transform is selected and applied to a single candidate site. Levels L2--L4 apply both transform selection and candidate-site selection at increasing fractions: the fraction mapping is $\{2: 0.33,\; 3: 0.66,\; 4: 1.0\}$, applied first to choose how many of the six transforms to run, then within each selected transform to choose how many eligible AST nodes to rewrite (with a minimum of one via $\max(1, \lfloor n \cdot f \rfloor)$).
+Five augmentation levels (L0--L4) control the density of applied transforms. L0 is the unmodified source. At L1, exactly one transform is selected and applied to a single candidate site. Levels L2--L4 apply both transform selection and candidate-site selection at increasing fractions: the fraction mapping applies to choose how many of the six transforms to run: 33% at L2, 66% at L3, and 100% at L4. Within each selected transform, the same fraction determines how many eligible AST nodes to rewrite, with a minimum of one applied via $\max(1, \lfloor n \cdot f \rfloor)$.
 
 The augmentation baseline confirms that the transforms are semantics-preserving: 54 of 60 Rodinia specs pass the build/run/verify pipeline at all levels L1--L4, with zero correctness regressions relative to L0. The 6 specs that fail at L0 (due to CUDA 12 deprecations, missing system libraries, and pre-existing runtime errors) also fail identically at all augmented levels, confirming that augmentation introduces no new failures.
 
@@ -104,7 +104,7 @@ The evaluation pipeline orchestrates LLM-based parallel code translation through
 
 **Prompt structure.** Each translation prompt consists of a system message establishing the role of a parallel programming expert and a user message containing: (1) the source kernel code with API-specific syntax highlighting, (2) the target API and the filenames the LLM must produce, (3) the target build command for compilation compatibility, and (4) read-only target infrastructure context (non-kernel files from the target directory) so the LLM can match expected function signatures and data structures. Source support headers are included with instructions to inline definitions rather than emit unresolvable `#include` directives.
 
-**Self-repair loop.** On build failure, the pipeline feeds the compiler error message back to the LLM as a follow-up prompt, requesting a corrected translation. This iterative self-repair mechanism allows a configurable number of attempts before a final BUILD\_FAIL classification. The self-repair loop mirrors the realistic workflow of a developer iterating on compiler errors; it also provides data on which failure modes are recoverable by the model versus those that indicate fundamental translation deficiencies.
+**Self-repair loop.** On failure, the pipeline feeds failure-specific diagnostics back to the LLM: compiler errors on build failure, runtime errors and stderr on execution failure, and verification details on output mismatch. This feedback serves as a follow-up prompt, requesting a corrected translation. This iterative self-repair mechanism allows a configurable number of attempts before a final failure classification. The self-repair loop mirrors the realistic workflow of a developer iterating on errors; it also provides data on which failure modes are recoverable by the model versus those that indicate fundamental translation deficiencies.
 
 **Complexity taxonomy.** To enable stratified analysis of translation difficulty, each source--target pair is classified into one of four complexity classes based on the file cardinality of the translation: `single_file` (1 source file to 1 target file), `multi_to_single` (N source files to 1 target file), `single_to_multi` (1 source file to N targets, characteristic of CUDA-to-OpenCL translations where the host-device split is inherent to the programming model), and `multi_to_multi` (N source files to M target files).
 
@@ -119,7 +119,7 @@ The benchmark corpus was assembled through a systematic selection process: surve
 
 A survey of 35 open-source HPC benchmark repositories was conducted, spanning suites, mini-applications, proxy applications, full applications, libraries, and microbenchmarks. The survey covered GPU computing across multiple parallel APIs.
 
-A central finding of the survey is that repository-level counting dramatically overstates the available benchmark material. Naive analysis identifies 21 repositories containing both CUDA and OpenMP implementations, but kernel-level analysis reveals 472 independent CUDA--OpenMP translation pairs across those same repositories. The discrepancy ranges from 20$\times$ to 60$\times$, driven primarily by large suites such as HeCBench \cite{HeCBench2021} (325 four-API kernels) and RAJAPerf (106 six-API kernels). This motivates a kernel-centric evaluation strategy: benchmarks should be evaluated at the granularity of individual computational kernels, not entire repositories.
+A central finding of the survey is that repository-level counting dramatically overstates the available benchmark material. Naive analysis identifies 21 repositories containing both CUDA and OpenMP implementations, but kernel-level analysis reveals 472 independent CUDA--OpenMP translation pairs across those same repositories. The discrepancy ranges from 20$\times$ to 60$\times$, driven primarily by large suites such as HeCBench \cite{HeCBench2021} (325 kernels with CUDA and OpenMP implementations) and other multi-API benchmark collections. This motivates a kernel-centric evaluation strategy: benchmarks should be evaluated at the granularity of individual computational kernels, not entire repositories.
 
 Five criteria guided suite selection: (1) availability of multiple API implementations of the same algorithm, (2) established community adoption with substantial citation history, (3) buildability with modern toolchains (CUDA 12, GCC 11+), (4) coverage of diverse computational domains, and (5) realistic complexity representative of production HPC workloads. Rodinia \cite{Rodinia2009} was selected as the primary suite: 22 distinct kernels across 3 APIs with over 14,000 citations, making it a de facto standard in GPU benchmarking. XSBench \cite{XSBench2014} was selected as a secondary suite: a production-grade Monte Carlo neutron transport proxy application providing a single complex kernel with 4 API variants.
 
@@ -136,7 +136,7 @@ These failures are documented but excluded from the evaluation corpus; they refl
 
 From XSBench, 1 kernel across 4 API variants (CUDA, OpenMP, OpenCL, OpenMP target offload) yields 4 specs, all 4 verified PASS. An additional 60 HeCBench kernels (120 specs) are included in the framework schema for future expansion but were not deployed on the evaluation machine for this study.
 
-The selected kernels span 10 computational domains: graph traversal (bfs), physics simulation (hotspot, hotspot3d, cfd, srad), machine learning (backprop, kmeans), linear algebra (lud, nw, gaussian), molecular dynamics (lavamd), image processing (dwt2d), dynamic programming (pathfinder), biophysical simulation (myocyte, heartwall), particle methods (particlefilter, streamcluster), and sorting (b+tree).
+The selected kernels span 11 computational domains: graph traversal (bfs), physics simulation (hotspot, hotspot3d, cfd, srad), machine learning (backprop, kmeans, nn), linear algebra (lud, nw, gaussian), molecular dynamics (lavamd, mummergpu), image processing (dwt2d), dynamic programming (pathfinder), biophysical simulation (myocyte, heartwall), particle methods (particlefilter, streamcluster), sorting (bptree, hybridsort), and compression (huffman).
 
 [TABLE III: Kernel $\times$ API verification matrix for Rodinia (22 kernels) and XSBench (1 kernel), showing PASS/KNOWN\_FAIL/not-available status for each API (CUDA, OpenMP, OpenCL)]
 
@@ -155,7 +155,7 @@ This section describes the models, translation directions, augmentation protocol
 
 ### A. Models
 
-Four large language models are evaluated, selected to span major commercial API providers and one open-weight alternative: GPT-4.1 (OpenAI, accessed via Azure), Claude Sonnet 4 (Anthropic), Gemini 2.5 Flash-Lite (Google), and Llama 3.3 70B (Meta, accessed via Groq). All models are queried at temperature 0 to ensure deterministic outputs and reproducibility across runs. Reasoning and chain-of-thought modes are explicitly disabled for all models. This is a deliberate design choice: the evaluation targets raw translation competence---whether a model's internalized knowledge of parallel programming patterns suffices to produce correct translations---rather than the capacity of a multi-step reasoning scaffold to search for solutions.
+Four large language models are evaluated, selected to span major commercial API providers and one open-weight alternative: GPT-4.1 (OpenAI, accessed via Azure), Claude Sonnet 4.6 (Anthropic), Gemini 2.5 Flash-Lite (Google), and Llama 3.3 70B (Meta, accessed via Groq). All models are queried at temperature 0 to ensure deterministic outputs and reproducibility across runs. Reasoning and chain-of-thought modes are explicitly disabled for all models. This is a deliberate design choice: the evaluation targets raw translation competence---whether a model's internalized knowledge of parallel programming patterns suffices to produce correct translations---rather than the capacity of a multi-step reasoning scaffold to search for solutions.
 
 [TABLE IV: Model configurations. Columns: human-readable name, API model identifier, provider, access method, and parameter count (where publicly disclosed).]
 
@@ -177,11 +177,11 @@ The augmentation protocol tests a specific hypothesis: if an LLM genuinely reaso
 
 ### D. Metrics
 
-The primary evaluation metric is **Pass@1**: the fraction of translation tasks that pass the full build, run, and verify pipeline on a single evaluation (with up to two LLM attempts per task via the error-feedback self-repair mechanism). Each failure is classified into a diagnostic category---BUILD\_FAIL (compilation error), RUN\_FAIL (runtime crash or nonzero exit code), VERIFY\_FAIL (incorrect output), or EXTRACTION\_FAIL (malformed LLM response)---enabling fine-grained failure-mode analysis beyond a single pass/fail number.
+The primary evaluation metric is **pass@1**: the fraction of translation tasks that pass the full build, run, and verify pipeline on a single evaluation (with a configurable number of self-repair attempts via error feedback; two in this study). Each failure is classified into a diagnostic category---BUILD\_FAIL (compilation error), RUN\_FAIL (runtime crash or nonzero exit code), VERIFY\_FAIL (incorrect output), or EXTRACTION\_FAIL (malformed LLM response)---enabling fine-grained failure-mode analysis beyond a single pass/fail number.
 
-Secondary metrics include **augmentation robustness**, defined as the stability of Pass@1 across augmentation levels L0 through L4, and **self-repair rate**, the fraction of initially failing tasks recovered by the error-feedback retry loop.
+Secondary metrics include **augmentation robustness**, defined as the stability of pass@1 across augmentation levels L0 through L4, and **self-repair rate**, the fraction of initially failing tasks recovered by the error-feedback retry loop.
 
-Execution timing and speedup metrics are excluded from this study. The current verification pipeline measures wall-clock time, which conflates kernel execution with I/O, memory allocation, and OS scheduling noise. Reliable performance comparison requires profiler-based kernel timing (e.g., `nvprof`/`ncu` for CUDA, `omp_get_wtime()` for OpenMP), which is deferred to future work.
+Execution timing and speedup metrics are excluded from this study. The current verification pipeline measures wall-clock time, which conflates kernel execution with I/O, memory allocation, and OS scheduling noise. Reliable performance comparison requires profiler-based kernel timing (e.g., Nsight Compute for CUDA, `omp_get_wtime()` for OpenMP), which is deferred to future work.
 
 ### E. Hardware and Software
 
