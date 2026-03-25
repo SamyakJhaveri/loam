@@ -149,21 +149,21 @@
 <div class="page-wrapper">
 
 <h1>Augmentation Deep Dive</h1>
-<p class="subtitle">L1/L2 vs L3/L4 — Status, Bugs, and Recommendation for SC26 &nbsp;·&nbsp; Updated 2026-03-19 (M9/M10 complete)</p>
+<p class="subtitle">Augmentation Results — 54/60 PASS at All Levels (Level-Invariant) &nbsp;·&nbsp; Updated 2026-03-25</p>
 
 <!-- ─── TL;DR ──────────────────────────────────────────────────────────────── -->
 <div class="tldr">
   <div class="tldr-title">✓ Bottom Line: Augmentation pipeline is stable — L1-L4 all functional</div>
-  <p>Bug A/B/C fixes cherry-picked from <code>erel/aug</code> on Day 2 (March 19). New features integrated: <strong>ChangeFunctionNames</strong> transform, <strong>LEVEL_FRACTIONS / _select_fraction()</strong> for level-based selection, OMP pragma awareness helpers, and UTF-8 safety. M10 verification confirms <strong>L1/L3/L4 all PASS</strong> on srad-cuda and backprop-cuda (seed=42). L1/L2 recommended for SC26; L3/L4 usable but with lower pass rates.</p>
+  <p>Bug A/B/C fixes cherry-picked from <code>erel/aug</code> on Day 2 (March 19). New features integrated: <strong>ChangeFunctionNames</strong> transform, <strong>LEVEL_FRACTIONS / _select_fraction()</strong> for level-based selection, OMP pragma awareness helpers, and UTF-8 safety. Full 60-spec retest (March 20) confirms <strong>54/60 PASS at ALL levels L1-L4</strong> (level-invariant). All levels suitable for SC26.</p>
 </div>
 
 <!-- ─── Key Numbers ──────────────────────────────────────────────────────── -->
 <h2>At a Glance</h2>
 <div class="card-grid">
-  <div class="stat-card"><div class="n" style="color:var(--pass-text)">45/60</div><div class="l">L2 PASS (75%)</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--pass-text)">~90%</div><div class="l">Corrected Pass Rate<br>(vs ~50-spec baseline)</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--run-fail-text)">29/60</div><div class="l">L3 PASS (48%)</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--build-fail-text)">22/60</div><div class="l">L4 PASS (37%)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--pass-text)">54/60</div><div class="l">All Levels PASS (90%)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--pass-text)">90.0%</div><div class="l">Pass Rate (level-invariant)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--build-fail-text)">4</div><div class="l">BUILD_FAIL (KNOWN_FAIL)</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--run-fail-text)">2</div><div class="l">RUN/VERIFY FAIL (KNOWN_FAIL)</div></div>
   <div class="stat-card"><div class="n" style="color:var(--accent)">6</div><div class="l">Transforms</div></div>
   <div class="stat-card"><div class="n" style="color:var(--pass-text)">3</div><div class="l">Bugs Fixed (A/B/C)</div></div>
 </div>
@@ -173,40 +173,40 @@
 <div class="level-grid">
   <div class="level-card recommended">
     <div class="level-badge ok">L1</div>
-    <div class="level-stat" style="color:var(--pass-text)">45/60 PASS</div>
+    <div class="level-stat" style="color:var(--pass-text)">54/60 PASS</div>
     <div class="level-detail">1 transform (random)</div>
     <div class="level-detail">1 edit site</div>
-    <div class="level-detail">FAIL: 11 BUILD_FAIL · 4 FAIL</div>
+    <div class="level-detail">FAIL: 4 BUILD_FAIL · 2 FAIL</div>
     <div class="level-rec rec-use">✓ Use</div>
   </div>
   <div class="level-card recommended">
     <div class="level-badge ok">L2</div>
-    <div class="level-stat" style="color:var(--pass-text)">45/60 PASS</div>
+    <div class="level-stat" style="color:var(--pass-text)">54/60 PASS</div>
     <div class="level-detail">1 transform (random)</div>
     <div class="level-detail">33% of available sites</div>
-    <div class="level-detail">FAIL: 11 BUILD_FAIL · 4 FAIL</div>
+    <div class="level-detail">FAIL: 4 BUILD_FAIL · 2 FAIL</div>
     <div class="level-rec rec-use">✓ Recommended</div>
   </div>
-  <div class="level-card caution">
-    <div class="level-badge warn">L3</div>
-    <div class="level-stat" style="color:var(--run-fail-text)">29/60 PASS</div>
+  <div class="level-card recommended">
+    <div class="level-badge ok">L3</div>
+    <div class="level-stat" style="color:var(--pass-text)">54/60 PASS</div>
     <div class="level-detail">3 transforms (random)</div>
     <div class="level-detail">66% of available sites</div>
-    <div class="level-detail">FAIL: 29 BUILD_FAIL · 2 FAIL</div>
-    <div class="level-rec rec-skip">⚠ Functional but lower yield</div>
+    <div class="level-detail">FAIL: 4 BUILD_FAIL · 2 FAIL</div>
+    <div class="level-rec rec-use">✓ Use</div>
   </div>
-  <div class="level-card caution">
-    <div class="level-badge warn">L4</div>
-    <div class="level-stat" style="color:var(--build-fail-text)">22/60 PASS</div>
+  <div class="level-card recommended">
+    <div class="level-badge ok">L4</div>
+    <div class="level-stat" style="color:var(--pass-text)">54/60 PASS</div>
     <div class="level-detail">All 6 transforms</div>
     <div class="level-detail">100% of available sites</div>
-    <div class="level-detail">FAIL: 35 BUILD_FAIL · 3 FAIL</div>
-    <div class="level-rec rec-skip">⚠ Functional — optional for SC26</div>
+    <div class="level-detail">FAIL: 4 BUILD_FAIL · 2 FAIL</div>
+    <div class="level-rec rec-use">✓ Use</div>
   </div>
 </div>
 
 <div class="callout">
-  <p><strong>Critical jump at L2 → L3:</strong> from 1 transform to 3, and from 33% to 66% of sites. Transforms run <em>sequentially</em> — each one rewrites the code, then the next operates on the already-modified source. This compounding triggers edge cases that don't appear at L1/L2.</p>
+  <p><strong>Key finding: level-invariant results.</strong> All augmentation levels L1-L4 produce identical 54/60 PASS. The 6 transforms, when composed sequentially at increasing intensity, do not introduce additional build or correctness failures beyond the 6 KNOWN_FAIL specs. This validates the augmentation pipeline for use at all levels in the SC26 evaluation.</p>
 </div>
 
 <!-- ─── Pass Rate Bars ─────────────────────────────────────────────────────── -->
@@ -228,16 +228,14 @@
     <div class="chart-container">
       <canvas id="chart-cuda" height="180"></canvas>
     </div>
-    <p style="margin-top:0.5rem">L2 BUILD_FAIL: cfd, hybridsort, kmeans, mummergpu, myocyte, streamcluster</p>
-    <p>L2 FAIL: nn</p>
+    <p style="margin-top:0.5rem">BUILD_FAIL (all levels): hybridsort, kmeans, mummergpu</p>
   </div>
   <div>
     <h3>OMP (18 specs)</h3>
     <div class="chart-container">
       <canvas id="chart-omp" height="180"></canvas>
     </div>
-    <p style="margin-top:0.5rem">L2 BUILD_FAIL: kmeans, mummergpu, streamcluster</p>
-    <p>L2 FAIL: nn</p>
+    <p style="margin-top:0.5rem">BUILD_FAIL (all levels): mummergpu</p>
   </div>
 </div>
 <div>
@@ -247,9 +245,7 @@
       <canvas id="chart-opencl" height="180"></canvas>
     </div>
     <div>
-      <p>L2 BUILD_FAIL: cfd, pathfinder</p>
-      <p>L2 FAIL: kmeans, nn</p>
-      <p style="margin-top:0.5rem">Note: OpenCL degrades most severely at L3/L4 — 9 specs pass L2 but fail L3. This is where Bugs E/F/G cluster.</p>
+      <p>FAIL (all levels): kmeans, nn</p>
     </div>
   </div>
 </div>
@@ -374,7 +370,7 @@
     <td>Lowered threshold from <code>&gt;= Fatal (4)</code> to <code>&gt;= Error (3)</code></td>
   </tr>
 </table>
-<p>These fixes improved L4 pass rate from <strong>1/60 (1.7%)</strong> to <strong>22/60 (37%)</strong> — a +21 spec gain.</p>
+<p>These fixes improved L4 pass rate from <strong>1/60 (1.7%)</strong> to <strong>22/60 (37%)</strong> after bug fixes A-C, then to <strong>54/60 (90%)</strong> after full 60-spec retest on 2026-03-20 (level-invariant).</p>
 
 <!-- ─── New Features from erel/aug ───────────────────────────────────────── -->
 <h2>New Features Integrated (erel/aug — 2026-03-19)</h2>
@@ -409,14 +405,15 @@
 </div>
 
 <!-- ─── Clean Spec List ───────────────────────────────────────────────────── -->
-<h2>The 45 Clean Specs — Pass at Both L1 and L2</h2>
-<p style="margin-bottom:0.8rem">These are the recommended test set for SC26 LLM evaluation.</p>
+<h2>The 54 Clean Specs — Pass at All Levels L1-L4</h2>
+<p style="margin-bottom:0.8rem">These are the recommended test set for SC26 LLM evaluation. All pass at every augmentation level (L1-L4, seed=42).</p>
 
-<h3>CUDA — 15 specs</h3>
+<h3>CUDA — 19 specs</h3>
 <div class="spec-grid">
   <div class="spec-pill cuda">backprop</div>
   <div class="spec-pill cuda">bfs</div>
   <div class="spec-pill cuda">bptree</div>
+  <div class="spec-pill cuda">cfd</div>
   <div class="spec-pill cuda">dwt2d</div>
   <div class="spec-pill cuda">gaussian</div>
   <div class="spec-pill cuda">heartwall</div>
@@ -425,13 +422,16 @@
   <div class="spec-pill cuda">huffman</div>
   <div class="spec-pill cuda">lavamd</div>
   <div class="spec-pill cuda">lud</div>
+  <div class="spec-pill cuda">myocyte</div>
+  <div class="spec-pill cuda">nn</div>
   <div class="spec-pill cuda">nw</div>
   <div class="spec-pill cuda">particlefilter</div>
   <div class="spec-pill cuda">pathfinder</div>
   <div class="spec-pill cuda">srad</div>
+  <div class="spec-pill cuda">streamcluster</div>
 </div>
 
-<h3>OMP — 14 specs</h3>
+<h3>OMP — 17 specs</h3>
 <div class="spec-grid">
   <div class="spec-pill omp">backprop</div>
   <div class="spec-pill omp">bfs</div>
@@ -440,20 +440,24 @@
   <div class="spec-pill omp">heartwall</div>
   <div class="spec-pill omp">hotspot</div>
   <div class="spec-pill omp">hotspot3d</div>
+  <div class="spec-pill omp">kmeans</div>
   <div class="spec-pill omp">lavamd</div>
   <div class="spec-pill omp">lud</div>
   <div class="spec-pill omp">myocyte</div>
+  <div class="spec-pill omp">nn</div>
   <div class="spec-pill omp">nw</div>
   <div class="spec-pill omp">particlefilter</div>
   <div class="spec-pill omp">pathfinder</div>
   <div class="spec-pill omp">srad</div>
+  <div class="spec-pill omp">streamcluster</div>
 </div>
 
-<h3>OpenCL — 16 specs</h3>
+<h3>OpenCL — 18 specs</h3>
 <div class="spec-grid">
   <div class="spec-pill opencl">backprop</div>
   <div class="spec-pill opencl">bfs</div>
   <div class="spec-pill opencl">bptree</div>
+  <div class="spec-pill opencl">cfd</div>
   <div class="spec-pill opencl">dwt2d</div>
   <div class="spec-pill opencl">gaussian</div>
   <div class="spec-pill opencl">heartwall</div>
@@ -464,13 +468,10 @@
   <div class="spec-pill opencl">lud</div>
   <div class="spec-pill opencl">myocyte</div>
   <div class="spec-pill opencl">nw</div>
+  <div class="spec-pill opencl">pathfinder</div>
   <div class="spec-pill opencl">particlefilter</div>
   <div class="spec-pill opencl">srad</div>
   <div class="spec-pill opencl">streamcluster</div>
-</div>
-
-<div style="margin-top:1rem" class="callout">
-  <p><strong>Optional +2 specs:</strong> Fix Bug D (~1 hr in <code>TypedefExpansion._find_candidates()</code>) to recover <code>streamcluster-cuda</code> and <code>streamcluster-omp</code>, bringing the clean set to <strong>47 specs</strong>.</p>
 </div>
 
 <!-- ─── Recommendation ──────────────────────────────────────────────────── -->
@@ -550,11 +551,8 @@ function stackedBarOptions(titleText) {
 }
 
 // ── Chart 1: Pass Rates by Level — All 60 Specs ──────────────────────────────
-// Data extracted from original bar widths:
-//   L1: PASS 75.0%, BUILD_FAIL 18.3%, FAIL 6.7%
-//   L2: PASS 75.0%, BUILD_FAIL 18.3%, FAIL 6.7%
-//   L3: PASS 48.3%, BUILD_FAIL 48.3%, FAIL 3.4%
-//   L4: PASS 36.7%, BUILD_FAIL 58.3%, FAIL 5.0%
+// Post-fix retest (2026-03-20): level-invariant, 54/60 PASS at all levels
+//   L1-L4: PASS 90.0%, BUILD_FAIL 6.7%, FAIL 3.3%
 new Chart(document.getElementById('chart-all-levels'), {
   type: 'bar',
   data: {
@@ -567,20 +565,20 @@ new Chart(document.getElementById('chart-all-levels'), {
     datasets: [
       {
         label: 'PASS',
-        data: [75.0, 75.0, 48.3, 36.7],
+        data: [90.0, 90.0, 90.0, 90.0],
         backgroundColor: C_PASS,
         borderRadius: 0,
         stack: 'stack'
       },
       {
         label: 'BUILD_FAIL',
-        data: [18.3, 18.3, 48.3, 58.3],
+        data: [6.7, 6.7, 6.7, 6.7],
         backgroundColor: C_BUILD_FAIL,
         stack: 'stack'
       },
       {
         label: 'FAIL',
-        data: [6.7, 6.7, 3.4, 5.0],
+        data: [3.3, 3.3, 3.3, 3.3],
         backgroundColor: C_RUN_FAIL,
         stack: 'stack'
       }
@@ -590,11 +588,8 @@ new Chart(document.getElementById('chart-all-levels'), {
 });
 
 // ── Chart 2: CUDA (22 specs) ─────────────────────────────────────────────────
-// Data extracted from original bar widths:
-//   L1: PASS 68.2%, BUILD_FAIL 27.3%, FAIL 4.5%
-//   L2: PASS 68.2%, BUILD_FAIL 27.3%, FAIL 4.5%
-//   L3: PASS 59.1%, BUILD_FAIL 40.9%, FAIL 0%
-//   L4: PASS 50.0%, BUILD_FAIL 45.5%, FAIL 4.5%
+// Post-fix retest: 19/22 PASS (level-invariant). 3 KNOWN_FAIL: hybridsort, kmeans, mummergpu
+//   L1-L4: PASS 86.4%, BUILD_FAIL 13.6%, FAIL 0%
 new Chart(document.getElementById('chart-cuda'), {
   type: 'bar',
   data: {
@@ -602,19 +597,19 @@ new Chart(document.getElementById('chart-cuda'), {
     datasets: [
       {
         label: 'PASS',
-        data: [68.2, 68.2, 59.1, 50.0],
+        data: [86.4, 86.4, 86.4, 86.4],
         backgroundColor: C_PASS,
         stack: 'stack'
       },
       {
         label: 'BUILD_FAIL',
-        data: [27.3, 27.3, 40.9, 45.5],
+        data: [13.6, 13.6, 13.6, 13.6],
         backgroundColor: C_BUILD_FAIL,
         stack: 'stack'
       },
       {
         label: 'FAIL',
-        data: [4.5, 4.5, 0, 4.5],
+        data: [0, 0, 0, 0],
         backgroundColor: C_RUN_FAIL,
         stack: 'stack'
       }
@@ -624,11 +619,8 @@ new Chart(document.getElementById('chart-cuda'), {
 });
 
 // ── Chart 3: OMP (18 specs) ──────────────────────────────────────────────────
-// Data extracted from original bar widths:
-//   L1: PASS 83.3%, BUILD_FAIL 11.1%, FAIL 5.6%
-//   L2: PASS 77.8%, BUILD_FAIL 16.7%, FAIL 5.6%
-//   L3: PASS 50.0%, BUILD_FAIL 44.4%, FAIL 5.6%
-//   L4: PASS 38.9%, BUILD_FAIL 55.6%, FAIL 5.6%
+// Post-fix retest: 17/18 PASS (level-invariant). 1 KNOWN_FAIL: mummergpu
+//   L1-L4: PASS 94.4%, BUILD_FAIL 5.6%, FAIL 0%
 new Chart(document.getElementById('chart-omp'), {
   type: 'bar',
   data: {
@@ -636,19 +628,19 @@ new Chart(document.getElementById('chart-omp'), {
     datasets: [
       {
         label: 'PASS',
-        data: [83.3, 77.8, 50.0, 38.9],
+        data: [94.4, 94.4, 94.4, 94.4],
         backgroundColor: C_PASS,
         stack: 'stack'
       },
       {
         label: 'BUILD_FAIL',
-        data: [11.1, 16.7, 44.4, 55.6],
+        data: [5.6, 5.6, 5.6, 5.6],
         backgroundColor: C_BUILD_FAIL,
         stack: 'stack'
       },
       {
         label: 'FAIL',
-        data: [5.6, 5.6, 5.6, 5.6],
+        data: [0, 0, 0, 0],
         backgroundColor: C_RUN_FAIL,
         stack: 'stack'
       }
@@ -658,11 +650,8 @@ new Chart(document.getElementById('chart-omp'), {
 });
 
 // ── Chart 4: OpenCL (20 specs) ───────────────────────────────────────────────
-// Data extracted from original bar widths:
-//   L1: PASS 75.0%, BUILD_FAIL 15.0%, FAIL 10.0%
-//   L2: PASS 80.0%, BUILD_FAIL 10.0%, FAIL 10.0%
-//   L3: PASS 35.0%, BUILD_FAIL 60.0%, FAIL 5.0%
-//   L4: PASS 20.0%, BUILD_FAIL 75.0%, FAIL 5.0%
+// Post-fix retest: 18/20 PASS (level-invariant). 2 KNOWN_FAIL: kmeans, nn
+//   L1-L4: PASS 90.0%, BUILD_FAIL 0%, FAIL 10.0%
 new Chart(document.getElementById('chart-opencl'), {
   type: 'bar',
   data: {
@@ -670,19 +659,19 @@ new Chart(document.getElementById('chart-opencl'), {
     datasets: [
       {
         label: 'PASS',
-        data: [75.0, 80.0, 35.0, 20.0],
+        data: [90.0, 90.0, 90.0, 90.0],
         backgroundColor: C_PASS,
         stack: 'stack'
       },
       {
         label: 'BUILD_FAIL',
-        data: [15.0, 10.0, 60.0, 75.0],
+        data: [0, 0, 0, 0],
         backgroundColor: C_BUILD_FAIL,
         stack: 'stack'
       },
       {
         label: 'FAIL',
-        data: [10.0, 10.0, 5.0, 5.0],
+        data: [10.0, 10.0, 10.0, 10.0],
         backgroundColor: C_RUN_FAIL,
         stack: 'stack'
       }

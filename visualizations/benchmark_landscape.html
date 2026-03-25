@@ -168,18 +168,25 @@
   </div>
 
   <div class="venn-box">
-    <h4 style="color:var(--pass-text)">Rodinia (65 specs) — PRIMARY</h4>
-    <p style="margin-bottom:0.5rem">21 CUDA + 22 OMP + 22 OpenCL specs<br>Focus: scientific computing patterns<br>APIs: CUDA, OMP, OpenCL</p>
-    <p style="font-size:0.78rem; margin-bottom:0.5rem"><strong style="color:var(--pass-text)">10 kernels evaluated:</strong> bfs, hotspot, lud, nn, nw, pathfinder, backprop, kmeans, srad, streamcluster<br><span style="color:var(--text-muted)">11 kernels untested (remaining Rodinia)</span></p>
+    <h4 style="color:var(--pass-text)">Rodinia (60 specs) — PRIMARY</h4>
+    <p style="margin-bottom:0.5rem">22 CUDA + 18 OMP + 20 OpenCL specs<br>Focus: scientific computing patterns<br>APIs: CUDA, OMP, OpenCL</p>
+    <p style="font-size:0.78rem; margin-bottom:0.5rem"><strong style="color:var(--pass-text)">17 kernels evaluated:</strong> backprop, bfs, bptree, cfd, heartwall, hotspot, hotspot3d, kmeans, lavamd, lud, myocyte, nn, nw, particlefilter, pathfinder, srad, streamcluster<br><span style="color:var(--text-muted)">5 KNOWN_FAIL: hybridsort, kmeans (cuda/opencl), mummergpu (cuda/omp), nn (opencl)</span></p>
     <div class="kernels">
-      <span>bfs</span><span>bptree</span><span>cfd</span><span>heartwall</span><span>hotspot</span>
-      <span>hotspot3d</span><span>huffman</span><span>kmeans</span><span>lavamd</span><span>srad</span>
-      <span>streamcluster</span><span>+11 more</span>
+      <span>backprop</span><span>bfs</span><span>bptree</span><span>cfd</span><span>dwt2d</span><span>gaussian</span>
+      <span>heartwall</span><span>hotspot</span><span>hotspot3d</span><span>huffman</span><span>hybridsort</span><span>kmeans</span>
+      <span>lavamd</span><span>lud</span><span>mummergpu</span><span>myocyte</span><span>nn</span><span>nw</span>
+      <span>particlefilter</span><span>pathfinder</span><span>srad</span><span>streamcluster</span>
     </div>
   </div>
 </div>
 
-<p style="margin-top:1rem; font-size:0.82rem; color:var(--text-muted)"><strong>ExaBench/XSBench:</strong> One kernel only, included for Paraval paper comparison — not a full suite.</p>
+<div class="venn-box" style="margin-top:1.5rem;">
+  <h4 style="color:var(--accent)">XSBench (4 specs) — SECONDARY</h4>
+  <p style="margin-bottom:0.5rem">1 kernel × 4 APIs (CUDA, OMP, OpenCL, OMP_target)<br>Focus: Monte Carlo cross-section lookup (nuclear physics)<br>APIs: CUDA, OMP, OpenCL, OMP_target<br><em style="color:var(--pass-text)">4/4 PASS — fully evaluated</em></p>
+  <div class="kernels">
+    <span>xsbench</span>
+  </div>
+</div>
 
 <!-- ─── 4. Translation Pair Space ─────────────────────────────────────────── -->
 <h2>4. Translation Pair Space</h2>
@@ -225,7 +232,7 @@
 </table>
 
 <div style="margin-top:3rem; padding-top:1rem; border-top:1px solid var(--border); color:var(--text-muted); font-size:0.8rem;">
-  Updated 2026-03-19 • ParBench Benchmark Ecosystem Landscape • Reflects March 18 meeting scope decisions
+  Updated 2026-03-25 • ParBench Benchmark Ecosystem Landscape • Reflects March 18 meeting scope decisions
 </div>
 
 <script>

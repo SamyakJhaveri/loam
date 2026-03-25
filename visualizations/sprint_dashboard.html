@@ -510,8 +510,8 @@
     </div>
     <div class="stat-card s-pass">
       <div class="stat-label">Eval Pass Rate</div>
-      <div class="stat-value">60<span style="font-size:1rem;color:var(--text-muted)">%</span></div>
-      <div class="stat-sub">6/10 kernels, azure-gpt-4.1, L0</div>
+      <div class="stat-value">44<span style="font-size:1rem;color:var(--text-muted)">%</span></div>
+      <div class="stat-sub">30/68 Rodinia, 4 models, L0</div>
     </div>
   </div>
   <!-- === END SECTION === -->
@@ -575,23 +575,23 @@
       </div>
       <div class="aug-row">
         <span class="aug-label">L1</span>
-        <div class="aug-track"><div class="aug-fill" style="width:75%"></div></div>
-        <span class="aug-val">45/60</span>
+        <div class="aug-track"><div class="aug-fill" style="width:90%"></div></div>
+        <span class="aug-val">54/60</span>
       </div>
       <div class="aug-row">
         <span class="aug-label">L2</span>
-        <div class="aug-track"><div class="aug-fill" style="width:75%"></div></div>
-        <span class="aug-val">45/60</span>
+        <div class="aug-track"><div class="aug-fill" style="width:90%"></div></div>
+        <span class="aug-val">54/60</span>
       </div>
       <div class="aug-row">
         <span class="aug-label">L3</span>
-        <div class="aug-track"><div class="aug-fill" style="width:48%; background: var(--run-fail-color);"></div></div>
-        <span class="aug-val">29/60</span>
+        <div class="aug-track"><div class="aug-fill" style="width:90%"></div></div>
+        <span class="aug-val">54/60</span>
       </div>
       <div class="aug-row">
         <span class="aug-label">L4</span>
-        <div class="aug-track"><div class="aug-fill" style="width:37%; background: var(--build-fail-color);"></div></div>
-        <span class="aug-val">22/59</span>
+        <div class="aug-track"><div class="aug-fill" style="width:90%"></div></div>
+        <span class="aug-val">54/60</span>
       </div>
     </div>
     <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: var(--sp-3);">
@@ -894,7 +894,7 @@ const DEFAULT_TASKS = [
   { id: '2E/2F', description: 'Cleanup stale files; minor bug fixes B1\u2013B7',              priority: 'LOW',      status: 'todo',        owner: 'Samyak',  notes: '' },
   { id: 'G1',    description: 'Add ChangeFunctionNames unit tests (4 cases)',                  priority: 'MED',      status: 'done',        owner: 'Samyak',  notes: 'Day 3 \u2014 gap found during M9 audit; also fixed _string_literals_in_file bug' },
   { id: 'G2',    description: 'Fix filename threading in augment_sample + spec_loader',        priority: 'HIGH',     status: 'done',        owner: 'Samyak',  notes: 'Day 3 \u2014 2 one-line fixes; .cu files were parsed as .cpp' },
-  { id: 'M10b',  description: 'Full 65-spec augmentation retest (post-M9)',                    priority: 'HIGH',     status: 'done',        owner: 'Samyak',  notes: 'Day 3 \u2014 48/65 PASS (73%) at ALL levels. Level-invariant: transforms introduce zero new failures.' },
+  { id: 'M10b',  description: 'Full 60-spec augmentation retest (post-M9)',                    priority: 'HIGH',     status: 'done',        owner: 'Samyak',  notes: 'Day 3 \u2014 54/60 PASS (90%) at ALL levels. Level-invariant: transforms introduce zero new failures.' },
 ];
 
 // --- Persistence ---

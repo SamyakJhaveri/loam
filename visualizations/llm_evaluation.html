@@ -755,29 +755,29 @@ a:hover {
 
   <!-- === SECTION: Page Header === -->
   <header class="page-header">
-    <p class="page-header-eyebrow">Rodinia Benchmark Suite &middot; CUDA &rarr; OpenMP</p>
+    <p class="page-header-eyebrow">Rodinia + XSBench &middot; CUDA &rarr; OpenMP + Multi-API</p>
     <h1>LLM Parallel Code Translation Evaluation</h1>
-    <p class="page-header-subtitle">Phase 1: CUDA &rarr; OpenMP &nbsp;&middot;&nbsp; 10 kernels &nbsp;&middot;&nbsp; 1 active model (+ 1 archived pilot) &nbsp;&middot;&nbsp; Zero-shot with retry &nbsp;&middot;&nbsp; 2026-03-19</p>
+    <p class="page-header-subtitle">CUDA &rarr; OpenMP &nbsp;&middot;&nbsp; 17 Rodinia + 1 XSBench kernels &nbsp;&middot;&nbsp; 4 models &nbsp;&middot;&nbsp; Zero-shot with retry &nbsp;&middot;&nbsp; 2026-03-25</p>
     <p class="page-header-desc">
       Evaluating large language models on automated translation of GPU-parallel (CUDA) code to
-      CPU-parallel (OpenMP) implementations from the Rodinia benchmark suite. Correctness is
+      CPU-parallel (OpenMP) implementations from the Rodinia and XSBench benchmark suites. Correctness is
       determined by a full build &rarr; run &rarr; output-diff pipeline against reference implementations.
     </p>
     <p class="page-header-desc" style="margin-top:12px;font-size:0.875rem;color:var(--text-muted);font-style:italic;">
-      Per March 18 team meeting: Phase 1 evaluates azure-gpt-4.1 only. Claude Sonnet pilot data retained for reference.
+      4 models: azure-gpt-4.1, claude-sonnet-4-6, gemini-2.5-flash-lite, groq-llama-3.3-70b-versatile. 248 total tasks.
     </p>
   </header>
 
-  <!-- === SECTION: Phase 1 Methodology Note === -->
+  <!-- === SECTION: Methodology Note === -->
   <section class="section" aria-labelledby="phase1-heading">
     <div class="methodology-card" style="border-left:4px solid var(--accent);">
-      <h3 id="phase1-heading" style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:12px;">Phase 1 Methodology</h3>
+      <h3 id="phase1-heading" style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:12px;">Evaluation Methodology</h3>
       <ul class="methodology-list" style="margin-top:0;">
-        <li><span class="method-key">Model</span><span class="method-val"><code class="method-mono">azure-gpt-4.1</code>, reasoning OFF</span></li>
-        <li><span class="method-key">Direction</span><span class="method-val">CUDA &rarr; OpenMP</span></li>
-        <li><span class="method-key">Augmentation</span><span class="method-val">L0 (no augmentation) baseline</span></li>
-        <li><span class="method-key">Retries</span><span class="method-val">max 2 per kernel</span></li>
-        <li><span class="method-key">Next steps</span><span class="method-val">L1/L2 augmented inputs, then Phase 2 with open-source models</span></li>
+        <li><span class="method-key">Models</span><span class="method-val"><code class="method-mono">azure-gpt-4.1</code>, <code class="method-mono">claude-sonnet-4-6</code>, <code class="method-mono">gemini-2.5-flash-lite</code>, <code class="method-mono">groq-llama-3.3-70b-versatile</code></span></li>
+        <li><span class="method-key">Direction</span><span class="method-val">CUDA &rarr; OpenMP (primary), + 11 XSBench cross-API directions</span></li>
+        <li><span class="method-key">Augmentation</span><span class="method-val">Rodinia: L0 only. XSBench: L0-L4 (all levels)</span></li>
+        <li><span class="method-key">Retries</span><span class="method-val">max 2 per kernel (18 of 248 repaired by retry)</span></li>
+        <li><span class="method-key">Total tasks</span><span class="method-val">248 (68 Rodinia L0 + 180 XSBench L0-L4)</span></li>
       </ul>
     </div>
   </section>
@@ -788,27 +788,27 @@ a:hover {
     <div class="kpi-grid">
 
       <div class="kpi-card">
-        <span class="kpi-label">Overall Pass Rate</span>
-        <span class="kpi-value pass" id="kpi-pass-rate">60%</span>
-        <span class="kpi-sublabel">azure-gpt-4.1 &middot; 6 of 10 &middot; L0 baseline</span>
+        <span class="kpi-label">Best Model Pass Rate</span>
+        <span class="kpi-value pass" id="kpi-pass-rate">75%</span>
+        <span class="kpi-sublabel">claude-sonnet-4-6 &middot; 58 of 77 &middot; all tasks</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-label">Tasks Evaluated</span>
-        <span class="kpi-value" id="kpi-total">10</span>
-        <span class="kpi-sublabel">azure-gpt-4.1 only</span>
+        <span class="kpi-value" id="kpi-total">248</span>
+        <span class="kpi-sublabel">4 models &middot; Rodinia L0 + XSBench L0-L4</span>
       </div>
 
       <div class="kpi-card">
-        <span class="kpi-label">BUILD_FAIL Rate</span>
-        <span class="kpi-value fail" id="kpi-build-fail">40%</span>
-        <span class="kpi-sublabel">4 of 10 tasks failed at build</span>
+        <span class="kpi-label">Rodinia L0 PASS</span>
+        <span class="kpi-value pass" id="kpi-build-fail">44%</span>
+        <span class="kpi-sublabel">30 of 68 CUDA→OMP translations</span>
       </div>
 
       <div class="kpi-card">
-        <span class="kpi-label">Self-Repair Rate</span>
-        <span class="kpi-value repair" id="kpi-repair">—</span>
-        <span class="kpi-sublabel">azure-gpt-4.1 &middot; pending analysis</span>
+        <span class="kpi-label">Self-Repair</span>
+        <span class="kpi-value repair" id="kpi-repair">18</span>
+        <span class="kpi-sublabel">tasks repaired by retry (of 248 total)</span>
       </div>
 
     </div>
@@ -1007,7 +1007,7 @@ a:hover {
         </li>
         <li>
           <span class="method-key">Date</span>
-          <span class="method-val">2026-03-19 &mdash; Phase 1 of 3</span>
+          <span class="method-val">2026-03-25 &mdash; Rodinia L0 + XSBench L0-L4</span>
         </li>
       </ul>
     </div>
@@ -1017,7 +1017,7 @@ a:hover {
 
 <!-- === SECTION: Footer === -->
 <footer class="site-footer" role="contentinfo">
-  ParBench &nbsp;&middot;&nbsp; SC&rsquo;26 Evaluation &nbsp;&middot;&nbsp; Data generated 2026-03-19 &nbsp;&middot;&nbsp; Phase 1 of 3
+  ParBench &nbsp;&middot;&nbsp; SC&rsquo;26 Evaluation &nbsp;&middot;&nbsp; Data generated 2026-03-25 &nbsp;&middot;&nbsp; 4 models &middot; 248 tasks
 </footer>
 
 <!-- === SECTION: Data + JavaScript === -->
@@ -1028,39 +1028,96 @@ a:hover {
    ============================================================ */
 const PER_MODEL_RESULTS = {
   "azure-gpt-4.1": {
+    "backprop":      "BUILD_FAIL",
     "bfs":           "PASS",
-    "hotspot":       "PASS",
+    "bptree":        "PASS",
+    "cfd":           "PASS",
+    "heartwall":     "RUN_FAIL",
+    "hotspot":       "RUN_FAIL",
+    "hotspot3d":     "PASS",
+    "kmeans":        "PASS",
+    "lavamd":        "PASS",
     "lud":           "PASS",
+    "myocyte":       "BUILD_FAIL",
     "nn":            "PASS",
-    "nw":            "PASS",
+    "nw":            "RUN_FAIL",
+    "particlefilter":"BUILD_FAIL",
     "pathfinder":    "PASS",
-    "backprop":      "BUILD_FAIL",
-    "kmeans":        "BUILD_FAIL",
-    "srad":          "BUILD_FAIL",
-    "streamcluster": "BUILD_FAIL"
-  },
-  "claude-sonnet-4-20250514": {
-    "bfs":           "PASS",
-    "nw":            "PASS",
-    "hotspot":       "BUILD_FAIL",
     "srad":          "RUN_FAIL",
+    "streamcluster": "BUILD_FAIL",
+    "xsbench":       null
+  },
+  "claude-sonnet-4-6": {
+    "backprop":      "PASS",
+    "bfs":           "PASS",
+    "bptree":        "PASS",
+    "cfd":           "PASS",
+    "heartwall":     "BUILD_FAIL",
+    "hotspot":       "RUN_FAIL",
+    "hotspot3d":     "PASS",
+    "kmeans":        "PASS",
+    "lavamd":        "PASS",
+    "lud":           "PASS",
+    "myocyte":       "BUILD_FAIL",
+    "nn":            "PASS",
+    "nw":            "RUN_FAIL",
+    "particlefilter":"PASS",
+    "pathfinder":    "PASS",
+    "srad":          "RUN_FAIL",
+    "streamcluster": "PASS",
+    "xsbench":       "RUN_FAIL"
+  },
+  "gemini-2.5-flash-lite": {
+    "backprop":      "PASS",
+    "bfs":           "BUILD_FAIL",
+    "bptree":        "BUILD_FAIL",
+    "cfd":           "BUILD_FAIL",
+    "heartwall":     "BUILD_FAIL",
+    "hotspot":       "RUN_FAIL",
+    "hotspot3d":     "PASS",
+    "kmeans":        "BUILD_FAIL",
+    "lavamd":        "PASS",
+    "lud":           "BUILD_FAIL",
+    "myocyte":       "BUILD_FAIL",
+    "nn":            "PASS",
+    "nw":            "EXTRACTION_FAIL",
+    "particlefilter":"BUILD_FAIL",
+    "pathfinder":    "BUILD_FAIL",
+    "srad":          "RUN_FAIL",
+    "streamcluster": "BUILD_FAIL",
+    "xsbench":       "BUILD_FAIL"
+  },
+  "groq-llama-3.3-70b-versatile": {
     "backprop":      "BUILD_FAIL",
-    "lud":           null,
-    "nn":            null,
-    "pathfinder":    null,
-    "kmeans":        null,
-    "streamcluster": null
+    "bfs":           "PASS",
+    "bptree":        "BUILD_FAIL",
+    "cfd":           "BUILD_FAIL",
+    "heartwall":     "EXTRACTION_FAIL",
+    "hotspot":       "BUILD_FAIL",
+    "hotspot3d":     "PASS",
+    "kmeans":        "BUILD_FAIL",
+    "lavamd":        "BUILD_FAIL",
+    "lud":           "PASS",
+    "myocyte":       "BUILD_FAIL",
+    "nn":            "PASS",
+    "nw":            "BUILD_FAIL",
+    "particlefilter":"BUILD_FAIL",
+    "pathfinder":    "PASS",
+    "srad":          "RUN_FAIL",
+    "streamcluster": "BUILD_FAIL",
+    "xsbench":       "EXTRACTION_FAIL"
   }
 };
 
 const KERNELS_ORDERED = [
-  "bfs", "hotspot", "lud", "nn", "nw",
-  "pathfinder", "backprop", "kmeans", "srad", "streamcluster"
+  "backprop", "bfs", "bptree", "cfd", "heartwall", "hotspot", "hotspot3d",
+  "kmeans", "lavamd", "lud", "myocyte", "nn", "nw", "particlefilter",
+  "pathfinder", "srad", "streamcluster", "xsbench"
 ];
 
 const MODELS_ORDERED = [
-  "azure-gpt-4.1",
-  "claude-sonnet-4-20250514"
+  "azure-gpt-4.1", "claude-sonnet-4-6",
+  "gemini-2.5-flash-lite", "groq-llama-3.3-70b-versatile"
 ];
 
 /* ============================================================
@@ -1082,24 +1139,27 @@ Chart.defaults.plugins.tooltip.cornerRadius     = 8;
    STATUS HELPERS
    ============================================================ */
 const STATUS_CSS_CLASS = {
-  "PASS":         "cell-pass",
-  "BUILD_FAIL":   "cell-build",
-  "RUN_FAIL":     "cell-run",
-  "VERIFY_FAIL":  "cell-verify"
+  "PASS":             "cell-pass",
+  "BUILD_FAIL":       "cell-build",
+  "RUN_FAIL":         "cell-run",
+  "VERIFY_FAIL":      "cell-verify",
+  "EXTRACTION_FAIL":  "cell-verify"
 };
 
 const STATUS_LABEL = {
-  "PASS":         "PASS",
-  "BUILD_FAIL":   "BUILD",
-  "RUN_FAIL":     "RUN",
-  "VERIFY_FAIL":  "VERIFY"
+  "PASS":             "PASS",
+  "BUILD_FAIL":       "BUILD",
+  "RUN_FAIL":         "RUN",
+  "VERIFY_FAIL":      "VERIFY",
+  "EXTRACTION_FAIL":  "EXTRACT"
 };
 
 const STATUS_COLORS = {
-  "PASS":         "#56B4E9",
-  "BUILD_FAIL":   "#D55E00",
-  "RUN_FAIL":     "#E69F00",
-  "VERIFY_FAIL":  "#CC79A7"
+  "PASS":             "#56B4E9",
+  "BUILD_FAIL":       "#D55E00",
+  "RUN_FAIL":         "#E69F00",
+  "VERIFY_FAIL":      "#CC79A7",
+  "EXTRACTION_FAIL":  "#CC79A7"
 };
 
 /* ============================================================
@@ -1130,31 +1190,30 @@ function checkDataAvailable() {
 function populateKPIs() {
   if (typeof EVAL_SUMMARY === "undefined") return;
 
-  /* KPIs now based on azure-gpt-4.1 only (Phase 1 active model) */
-  const azureData  = EVAL_SUMMARY.byModel["azure-gpt-4.1"];
-
-  if (azureData) {
-    const azureTotal = azureData.pass + (azureData.fail || 0) +
-      (azureData.build_fail || 0) + (azureData.run_fail || 0) + (azureData.verify_fail || 0);
-    const azureTotalTasks = azureTotal || 10; /* fallback */
-    const azurePassRate = azureData.rate !== undefined
-      ? Math.round(azureData.rate * 100)
-      : Math.round((azureData.pass / azureTotalTasks) * 100);
-
-    document.getElementById("kpi-pass-rate").textContent = azurePassRate + "%";
-    document.getElementById("kpi-total").textContent = azureTotalTasks;
-
-    /* Count BUILD_FAIL for azure only */
-    const azureBuildFails = azureData.build_fail || 0;
-    document.getElementById("kpi-build-fail").textContent =
-      Math.round((azureBuildFails / azureTotalTasks) * 100) + "%";
+  /* Best model: claude-sonnet-4-6 */
+  const claudeData = EVAL_SUMMARY.byModel["claude-sonnet-4-6"];
+  if (claudeData) {
+    const claudePassRate = claudeData.rate !== undefined
+      ? Math.round(claudeData.rate * 100)
+      : Math.round((claudeData.pass / claudeData.total) * 100);
+    document.getElementById("kpi-pass-rate").textContent = claudePassRate + "%";
   }
 
-  /* Self-repair stats: use azure-specific data if available */
+  /* Total tasks */
+  document.getElementById("kpi-total").textContent = EVAL_SUMMARY.totalTasks || 248;
+
+  /* Rodinia L0 CUDA→OMP pass rate */
+  const cudaToOmp = EVAL_SUMMARY.byDirection ? EVAL_SUMMARY.byDirection["cuda-to-omp"] : null;
+  if (cudaToOmp) {
+    document.getElementById("kpi-build-fail").textContent =
+      Math.round(cudaToOmp.rate * 100) + "%";
+  }
+
+  /* Self-repair stats */
   const repaired = EVAL_SUMMARY.selfRepair ? EVAL_SUMMARY.selfRepair.total_repaired_by_retry : 0;
-  const total    = EVAL_SUMMARY.selfRepair ? EVAL_SUMMARY.selfRepair.total_with_attempts : 0;
-  /* Only update repair KPIs if we have azure-specific repair data */
-  /* Otherwise keep the placeholder dash */
+  if (repaired > 0) {
+    document.getElementById("kpi-repair").textContent = repaired;
+  }
 }
 
 /* ============================================================
@@ -1176,7 +1235,7 @@ function buildHeatmap() {
   });
 
   /* Data rows — one per model */
-  const ARCHIVED_MODELS = new Set(["claude-sonnet-4-20250514"]);
+  const ARCHIVED_MODELS = new Set();
 
   MODELS_ORDERED.forEach(model => {
     const tr = document.createElement("tr");
