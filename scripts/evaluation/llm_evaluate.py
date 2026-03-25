@@ -1261,7 +1261,8 @@ def evaluate_translation(
     # -- Save result to disk --
     out_dir = project_root / "results" / "evaluation" / model
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_file = out_dir / f"{source_id}-to-{target_id}.json"
+    level_tag = f"-L{augment_level}" if augment_level > 0 else ""
+    out_file = out_dir / f"{source_id}-to-{target_id}{level_tag}.json"
     out_file.write_text(json.dumps(result, indent=2), encoding="utf-8")
     if verbose:
         logger.info("Result saved: %s", out_file)

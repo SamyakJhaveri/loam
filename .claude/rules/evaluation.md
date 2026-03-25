@@ -174,7 +174,8 @@ Without `--suite rodinia`, the batch runner matches kernels by name across ALL s
 
 ## Result File Layout
 
-Per-task results: `results/evaluation/{model}/{src_id}-to-{tgt_id}.json`
+Per-task results (L0): `results/evaluation/{model}/{src_id}-to-{tgt_id}.json`
+Per-task results (L1-L4): `results/evaluation/{model}/{src_id}-to-{tgt_id}-L{n}.json`
 
 Key fields in result JSON:
 - `overall_status` — PASS / BUILD_FAIL / RUN_FAIL / VERIFY_FAIL / ERROR / SKIP

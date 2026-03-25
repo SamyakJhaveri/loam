@@ -1,0 +1,81 @@
+{
+  "source_spec": "xsbench-xsbench-omp_target",
+  "target_spec": "xsbench-xsbench-cuda",
+  "kernel": "xsbench",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T11:45:41Z",
+  "prompt_tokens": 43437,
+  "completion_tokens": 12347,
+  "llm_response_time_seconds": 49.867,
+  "build_status": "fail",
+  "build_time_seconds": 0.891,
+  "build_error_snippet": "Main.cu(18): error: identifier \"in\" is undefined\n   int is_invalid_result = print_results( in, mype, std::chrono::duration_cast<std::chrono::seconds>(omp_end - omp_start).count(), nprocs, verification );\n                                          ^\n\nMain.cu(18): error: identifier \"mype\" is undefined\n   int is_invalid_result = print_results( in, mype, std::chrono::duration_cast<std::chrono::seconds>(omp_end - omp_start).count(), nprocs, verification );\n                                              ^\n\nMain.cu(18): error: identifier \"nprocs\" is undefined\n   int is_invalid_result = print_results( in, mype, std::chrono::duration_cast<std::chrono::seconds>(omp_end - omp_start).count(), nprocs, verification );\n                                                                                                                                   ^\n\nMain.cu(18): error: identifier \"verification\" is undefined\n   int is_invalid_result = print_results( in, mype, std::chrono::duration_cast<std::chrono::seconds>(omp_end - omp_start).count(), nprocs, verification );\n                                                                                                                                           ^\n\n4 errors detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ^\n\n4 errors detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.465,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Main.cu": "#include \"XSbench_header.cuh\"\n\nint main( int argc, char* argv[] )\n{\n\t// ...\n\n\t// Start Simulation Timer\n\tauto omp_start = std::chrono::high_resolution_clock::now();\n\n\t// ...\n\n\t// End Simulation Timer\n",
+    "io.cu": "int print_results( Inputs in, int mype, int runtime, int nprocs,\n\tunsigned long long vhash )\n{\n\t// ...\n}\n"
+  },
+  "target_files_expected": [
+    "Main.cu",
+    "io.cu",
+    "Simulation.cu",
+    "GridInit.cu",
+    "XSutils.cu",
+    "Materials.cu"
+  ],
+  "target_files_extracted": [
+    "Main.cu",
+    "io.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 44.323,
+      "prompt_tokens": 15632,
+      "completion_tokens": 12080,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nMain.cu(57): error: identifier \"omp_get_wtime\" is undefined\n   omp_start = omp_get_wtime();\n               ^\n\n1 error detected in the compilation",
+      "build_error_snippet": "Main.cu(57): error: identifier \"omp_get_wtime\" is undefined\n   omp_start = omp_get_wtime();\n               ^\n\n1 error detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 5.544,
+      "prompt_tokens": 27805,
+      "completion_tokens": 267,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "Main.cu(18): error: identifier \"in\" is undefined\n   int is_invalid_result = print_results( in, mype, std::chrono::duration_cast<std::chrono::seconds>(omp_end - omp_start).count(), nprocs, verification );\n                                          ^\n\nMain.cu(18): error: identifier \"mype\" is undefined\n   int is_invalid_result = print_results( in, mype, std::chrono::duration_cast<std::chrono::seconds>(omp_end - omp_start).count(), nprocs, verification );\n                                              ^\n\nMain.cu(18): error: identifier \"nprocs\" is undefined\n   int is_invalid_result = print_results( in, mype, std::chrono::duration_cast<std::chrono::seconds>(omp_end - omp_start).count(), nprocs, verification );\n                                                                                                                                   ^\n\nMain.cu(18): error: identifier \"verification\" is undefined\n   int is_invalid_result = print_results( in, mype, std::chrono::duration_cast<std::chrono::seconds>(omp_end - omp_start).count(), nprocs, verification );\n                                                                                                                                           ^\n\n4 errors detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

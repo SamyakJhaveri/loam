@@ -1,0 +1,79 @@
+{
+  "source_spec": "xsbench-xsbench-omp",
+  "target_spec": "xsbench-xsbench-cuda",
+  "kernel": "xsbench",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T08:36:32Z",
+  "prompt_tokens": 42661,
+  "completion_tokens": 1632,
+  "llm_response_time_seconds": 9.996,
+  "build_status": "fail",
+  "build_time_seconds": 0.882,
+  "build_error_snippet": "Main.cu(17): error: calling a __device__ function(\"fast_forward_LCG(unsigned long, unsigned long)\") from a __host__ function(\"run_history_based_simulation\") is not allowed\n          seed = fast_forward_LCG(seed, p * in.lookups * 2 * 5);\n                 ^\n\nMain.cu(21): error: calling a __device__ function(\"_Z8pick_mat1?\") from a __host__ function(\"run_history_based_simulation\") is not allowed\n          int mat = pick_mat(&seed);\n                    ^\n\nMain.cu(31): error: calling a __device__ function(\"_Z18calculate_macro_xs1?1?1?1?1?1?1?1?1?1?1?1?1?1?\") from a __host__ function(\"run_history_based_simulation\") is not allowed\n              calculate_macro_xs(\n              ^\n\nMain.cu(76): error: calling a __device__ function(\"_Z16fast_forward_LCG1?1?\") from a __host__ function(\"run_history_based_simulation\") is not allowed\n                  seed = fast_forward_LCG(seed, n_forward);\n                         ^\n\nMain.cu(79): error: calling a __device__ function(\"_Z8pick_mat1?\") from a __host__ function(\"run_history_based_simulation\") is not allowed\n              mat = pick_mat(&seed);\n                    ^\n\n5 errors detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: n(\"run_history_based_simulation\") is not allowed\n              mat = pick_mat(&seed);\n                    ^\n\n5 errors detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.465,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Main.cu": "#include \"XSbench_header.cuh\"\n\n// ... (other functions remain the same)\n\nunsigned long long run_history_based_simulation(Inputs in, SimulationData SD, int mype)\n{\n    unsigned long long verification ="
+  },
+  "target_files_expected": [
+    "Main.cu",
+    "io.cu",
+    "Simulation.cu",
+    "GridInit.cu",
+    "XSutils.cu",
+    "Materials.cu"
+  ],
+  "target_files_extracted": [
+    "Main.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.131,
+      "prompt_tokens": 20969,
+      "completion_tokens": 625,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nMain.cu(73): error: identifier \"run_history_based_simulation\" is undefined\n    verification = run_history_based_simulation(in, SD, mype);\n       ",
+      "build_error_snippet": "Main.cu(73): error: identifier \"run_history_based_simulation\" is undefined\n    verification = run_history_based_simulation(in, SD, mype);\n                   ^\n\n1 error detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 5.865,
+      "prompt_tokens": 21692,
+      "completion_tokens": 1007,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "Main.cu(17): error: calling a __device__ function(\"fast_forward_LCG(unsigned long, unsigned long)\") from a __host__ function(\"run_history_based_simulation\") is not allowed\n          seed = fast_forward_LCG(seed, p * in.lookups * 2 * 5);\n                 ^\n\nMain.cu(21): error: calling a __device__ function(\"_Z8pick_mat1?\") from a __host__ function(\"run_history_based_simulation\") is not allowed\n          int mat = pick_mat(&seed);\n                    ^\n\nMain.cu(31): error: calling a __device__ function(\"_Z18calculate_macro_xs1?1?1?1?1?1?1?1?1?1?1?1?1?1?\") from a __host__ function(\"run_history_based_simulation\") is not allowed\n              calculate_macro_xs(\n              ^\n\nMain.cu(76): error: calling a __device__ function(\"_Z16fast_forward_LCG1?1?\") from a __host__ function(\"run_history_based_simulation\") is not allowed\n                  seed = fast_forward_LCG(seed, n_forward);\n                         ^\n\nMain.cu(79): error: calling a __device__ function(\"_Z8pick_mat1?\") from a __host__ function(\"run_history_based_simulation\") is not allowed\n              mat = pick_mat(&seed);\n                    ^\n\n5 errors detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

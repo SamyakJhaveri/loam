@@ -1,0 +1,79 @@
+{
+  "source_spec": "xsbench-xsbench-omp",
+  "target_spec": "xsbench-xsbench-omp_target",
+  "kernel": "xsbench",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T17:14:17Z",
+  "prompt_tokens": 56885,
+  "completion_tokens": 15985,
+  "llm_response_time_seconds": 60.841,
+  "build_status": "fail",
+  "build_time_seconds": 0.755,
+  "build_error_snippet": "quickSort_parallel_internal_d_i:\n     34, Begin task\n         End task\n     36, Begin task\n         End task\nquickSort_parallel_d_i:\n     52, #omp parallel\n         53, Begin single region\n             End single region\ngrid_init_do_not_profile:\n    138, #omp parallel\n/usr/bin/ld: warning: /tmp/pgcudafatwspycCTOLuO6.o: missing .note.GNU-stack section implies executable stack\n/usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker\n/usr/bin/ld: Main.o: in function `main':\n/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:78:(.text+0x161): undefined reference to `run_event_based_simulation'\n/usr/bin/ld: GridInit.o: in function `grid_init_do_not_profile':\n/home/samyak/Deskt\n...[truncated]...\no `LCG_random_double'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Materials.c:107:(.text+0x684): undefined reference to `LCG_random_double'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Materials.c:107:(.text+0x6c4): undefined reference to `LCG_random_double'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Materials.c:107:(.text+0x6f4): undefined reference to `LCG_random_double'\n/usr/bin/ld: Materials.o:/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Materials.c:107: more undefined references to `LCG_random_double' follow\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: sbench/xsbench-src/openmp-offload/Materials.c:107: more undefined references to `LCG_random_double' follow\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.564,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Simulation.c": "// ...\n\nvoid quickSort_parallel_internal_d_i(double* key,int * value, int left, int right, int cutoff) \n{\n\tint i = left, j = right;\n\tdouble tmp;\n\tdouble pivot = key[(left + right) / 2];\n\t\n\t{\n\t\twhile ("
+  },
+  "target_files_expected": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c",
+    "Materials.c"
+  ],
+  "target_files_extracted": [
+    "Simulation.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 55.715,
+      "prompt_tokens": 20593,
+      "completion_tokens": 15506,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nc:579:(.text+0x2da6): undefined reference to `quickSort_parallel_d_i'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-o",
+      "build_error_snippet": "\"Main.c\", line 73: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Simulation.c\", line 548: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tstart = get_time();\n  \t        ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Simulation.c\", line 550: warning: function \"quickSort_parallel_i_d\" declared implicitly [implicit_func_decl]\n  \tquickSort_parallel_i_d(SD.mat_samples, SD.p_energy_samples, in.lookups, in.nthreads);\n  \t^\n\n\"Simulation.c\", line 579: warning: function \"quickSort_parallel_d_i\" declared implicitly [implicit_func_decl\n...[truncated]...\nin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:579:(.text+0x2d78): undefined reference to `quickSort_parallel_d_i'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:579:(.text+0x2da6): undefined reference to `quickSort_parallel_d_i'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:579:(.text+0x2dd4): undefined reference to `quickSort_parallel_d_i'\n/usr/bin/ld: Simulation.o:/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:579: more undefined references to `quickSort_parallel_d_i' follow\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 5.126,
+      "prompt_tokens": 36292,
+      "completion_tokens": 479,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "quickSort_parallel_internal_d_i:\n     34, Begin task\n         End task\n     36, Begin task\n         End task\nquickSort_parallel_d_i:\n     52, #omp parallel\n         53, Begin single region\n             End single region\ngrid_init_do_not_profile:\n    138, #omp parallel\n/usr/bin/ld: warning: /tmp/pgcudafatwspycCTOLuO6.o: missing .note.GNU-stack section implies executable stack\n/usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker\n/usr/bin/ld: Main.o: in function `main':\n/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:78:(.text+0x161): undefined reference to `run_event_based_simulation'\n/usr/bin/ld: GridInit.o: in function `grid_init_do_not_profile':\n/home/samyak/Deskt\n...[truncated]...\no `LCG_random_double'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Materials.c:107:(.text+0x684): undefined reference to `LCG_random_double'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Materials.c:107:(.text+0x6c4): undefined reference to `LCG_random_double'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Materials.c:107:(.text+0x6f4): undefined reference to `LCG_random_double'\n/usr/bin/ld: Materials.o:/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Materials.c:107: more undefined references to `LCG_random_double' follow\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

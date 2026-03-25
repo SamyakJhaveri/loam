@@ -80,9 +80,10 @@ editing source. mummergpu `unistd.h` edits reverted — both specs are KNOWN_FAI
 
 4/4 PASS. No KNOWN_FAIL. Key facts:
 - No OpenACC variant exists (only cuda, omp, opencl, omp_target)
-- OMP target uses `nvc` (NVIDIA HPC SDK 24.3), excluded from eval batches
+- OMP target uses `nvc` (NVIDIA HPC SDK 24.3), excluded from standard eval batches
 - History/event checksum asymmetry: OMP=941535 (history), CUDA/OpenCL/OMP-target=945990 (event)
-- Use 3 standard API specs (cuda, omp, opencl) for eval batches
+- Use 3 standard API specs (cuda, omp, opencl) for eval batches (omp_target = case-study only)
+- SESSION 8 ran all 12 directions including omp_target (30 result files exist); those are case-study data, not part of the standard eval batch suite
 
 ## Hook Protection (updated 2026-03-23)
 

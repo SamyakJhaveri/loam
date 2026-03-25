@@ -1,0 +1,266 @@
+{
+  "direction": "cuda-to-omp_target",
+  "models": [
+    "claude-sonnet-4-6",
+    "gemini-2.5-flash-lite",
+    "groq-llama-3.3-70b-versatile"
+  ],
+  "suite": "xsbench",
+  "kernels": null,
+  "total_tasks": 3,
+  "total_elapsed_seconds": 413.6,
+  "results": [
+    {
+      "source_spec": "xsbench-xsbench-cuda",
+      "target_spec": "xsbench-xsbench-omp_target",
+      "kernel": "xsbench",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T17:03:13Z",
+      "prompt_tokens": 77248,
+      "completion_tokens": 29862,
+      "llm_response_time_seconds": 314.535,
+      "build_status": "pass",
+      "build_time_seconds": 1.231,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.455,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "runtime": {
+          "value": 0.186,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": 0.564,
+      "translated_wall_time_seconds": 0.455,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.2396,
+      "translated_files": {
+        "Main.c": "#include \"XSbench_header.h\"\n\nint main( int argc, char* argv[] )\n{\n\tint version = 20;\n\tint mype = 0;\n\tdouble omp_start, omp_end;\n\tint nprocs = 1;\n\tunsigned long long verification;\n\n\tInputs in = read_CL",
+        "io.c": "#include \"XSbench_header.h\"\n\nvoid logo(int version)\n{\n\tborder_print();\n\tprintf(\n\t\"                   __   __ ___________                 _                        \\n\"\n\t\"                   \\\\ \\\\ / //  _",
+        "Simulation.c": "#include \"XSbench_header.h\"\n\n#pragma omp declare target\n\ndouble LCG_random_double(uint64_t * seed)\n{\n\tconst uint64_t m = 9223372036854775808ULL;\n\tconst uint64_t a = 2806196910506780709ULL;\n\tconst uint",
+        "GridInit.c": "#include \"XSbench_header.h\"\n\nSimulationData grid_init_do_not_profile( Inputs in, int mype )\n{\n\tSimulationData SD;\n\n\tsize_t nbytes = 0;\n\n\tuint64_t seed = 42;\n\n\t/////////////////////////////////////////",
+        "XSutils.c": "#include \"XSbench_header.h\"\n\nint double_compare(const void * a, const void * b)\n{\n\tdouble A = *((double *) a);\n\tdouble B = *((double *) b);\n\n\tif( A > B )\n\t\treturn 1;\n\telse if( A < B )\n\t\treturn -1;\n\tel",
+        "Materials.c": "#include \"XSbench_header.h\"\n\nint * load_num_nucs(long n_isotopes)\n{\n\tint * num_nucs = (int*)malloc(12*sizeof(int));\n\n\tif( n_isotopes == 68 )\n\t\tnum_nucs[0]  = 34;\n\telse\n\t\tnum_nucs[0]  = 321;\n\n\tnum_nucs"
+      },
+      "target_files_expected": [
+        "Main.c",
+        "io.c",
+        "Simulation.c",
+        "GridInit.c",
+        "XSutils.c",
+        "Materials.c"
+      ],
+      "target_files_extracted": [
+        "Main.c",
+        "io.c",
+        "Simulation.c",
+        "GridInit.c",
+        "XSutils.c",
+        "Materials.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 158.395,
+          "prompt_tokens": 30891,
+          "completion_tokens": 15251,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "The translation failed to compile with this error:\n```\nc/openmp-offload/XSutils.c:63: multiple definition of `grid_search_nuclide'; Simulation.o:/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/o",
+          "build_error_snippet": "LCG_random_double:\n     25, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\nfast_forward_LCG:\n     34, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\npick_mat:\n     60, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ngrid_search:\n     90, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ngrid_search_nuclide:\n    112, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ncalculate_micro_xs:\n    138, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ncalculate_macro_xs:\n    202, Generating implicit omp declare target routine\n         Generating N\n...[truncated]...\nel\n             Loop parallelized across teams and threads(128), schedule(static)\n             Generating reduction(+:verification_scalar)\n/usr/bin/ld: XSutils.o: in function `grid_search_nuclide':\n/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/XSutils.c:63: multiple definition of `grid_search_nuclide'; Simulation.o:/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:112: first defined here\n/usr/bin/ld: warning: /tmp/pgcudafatWBiyq9hzt3xF.o: missing .note.GNU-stack section implies executable stack\n/usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 156.14,
+          "prompt_tokens": 46357,
+          "completion_tokens": 14611,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-cuda",
+      "target_spec": "xsbench-xsbench-omp_target",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T17:08:31Z",
+      "prompt_tokens": 75446,
+      "completion_tokens": 17707,
+      "llm_response_time_seconds": 44.627,
+      "build_status": "fail",
+      "build_time_seconds": 1.014,
+      "build_error_snippet": "\"Main.c\", line 78: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\nrun_event_based_simulation:\n     42, #omp target teams distribute parallel for\n         42, Generating \"nvkernel_run_event_based_simulation_F1L42_2\" GPU kernel\n         53, Loop parallelized across teams and threads(128), schedule(static)\ncalculate_micro_xs:\n    122, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ncalculate_macro_xs:\n    221, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ngrid_search:\n    277, Generating implicit omp declare target routine\n...[truncated]...\nmization_4'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:94:(.text+0x33b): undefined reference to `run_event_based_simulation_optimization_5'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:96:(.text+0x382): undefined reference to `run_event_based_simulation_optimization_6'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:116:(.text+0x3ad): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:119:(.text+0x3f3): undefined reference to `release_device_memory'\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: sbench/xsbench-src/openmp-offload/Main.c:119:(.text+0x3f3): undefined reference to `release_device_memory'\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.564,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "Main.c": "#include \"XSbench_header.h\"\n\n// Forward declarations for functions used in Main.c but defined elsewhere\n// These are needed because the original CUDA code likely had these declarations\n// in a header "
+      },
+      "target_files_expected": [
+        "Main.c",
+        "io.c",
+        "Simulation.c",
+        "GridInit.c",
+        "XSutils.c",
+        "Materials.c"
+      ],
+      "target_files_extracted": [
+        "Main.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 40.768,
+          "prompt_tokens": 29436,
+          "completion_tokens": 16382,
+          "finish_reason": "length",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "The translation failed to compile with this error:\n```\nation_5(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 77: warning: function \"run_event_based_simulation_optimization_6\" declared implicit",
+          "build_error_snippet": "\"Main.c\", line 42: warning: function \"move_simulation_data_to_device\" declared implicitly [implicit_func_decl]\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 42: error: a value of type \"int\" cannot be used to initialize an entity of type \"SimulationData\" (aka \"struct <unnamed>\")\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\n\"Main.c\", line 59: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\n\"Main.c\", line 65: warning: function \"run_event_based_simulation_baseline\" declared i\n...[truncated]...\nnt_based_simulation_optimization_4(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 75: warning: function \"run_event_based_simulation_optimization_5\" declared implicitly [implicit_func_decl]\n  \t\t\tverification = run_event_based_simulation_optimization_5(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 77: warning: function \"run_event_based_simulation_optimization_6\" declared implicitly [implicit_func_decl]\n  \t\t\tverification = run_event_based_simulation_optimization_6(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 100: warning: function \"release_device_memory\" declared implicitly [implicit_func_decl]\n  \trelease_device_memory(GSD);\n  \t^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 3.859,
+          "prompt_tokens": 46010,
+          "completion_tokens": 1325,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "\"Main.c\", line 78: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\nrun_event_based_simulation:\n     42, #omp target teams distribute parallel for\n         42, Generating \"nvkernel_run_event_based_simulation_F1L42_2\" GPU kernel\n         53, Loop parallelized across teams and threads(128), schedule(static)\ncalculate_micro_xs:\n    122, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ncalculate_macro_xs:\n    221, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ngrid_search:\n    277, Generating implicit omp declare target routine\n...[truncated]...\nmization_4'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:94:(.text+0x33b): undefined reference to `run_event_based_simulation_optimization_5'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:96:(.text+0x382): undefined reference to `run_event_based_simulation_optimization_6'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:116:(.text+0x3ad): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:119:(.text+0x3f3): undefined reference to `release_device_memory'\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-cuda",
+      "target_spec": "xsbench-xsbench-omp_target",
+      "kernel": "xsbench",
+      "model": "groq-llama-3.3-70b-versatile",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T17:09:16Z",
+      "prompt_tokens": 61078,
+      "completion_tokens": 13624,
+      "llm_response_time_seconds": 50.286,
+      "build_status": "fail",
+      "build_time_seconds": 0.072,
+      "build_error_snippet": "\"Main.c\", line 42: warning: function \"move_simulation_data_to_device\" declared implicitly [implicit_func_decl]\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 42: error: a value of type \"int\" cannot be used to initialize an entity of type \"SimulationData\" (aka \"struct <unnamed>\")\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\n\"Main.c\", line 59: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\n\"Main.c\", line 65: warning: function \"run_event_based_simulation_baseline\" declared i\n...[truncated]...\nMain.c\", line 100: warning: function \"release_device_memory\" declared implicitly [implicit_func_decl]\n  \trelease_device_memory(GSD);\n  \t^\n\n\"Main.c\", line 111: warning: declaration is incompatible with previous \"release_device_memory\" (declared implicitly) [decl_incompatible_with_previous_use]\n  void release_device_memory(SimulationData GSD) {\n       ^\n\n\"Main.c\", line 115: warning: declaration is incompatible with previous \"run_event_based_simulation_optimization_6\" (declared implicitly) [decl_incompatible_with_previous_use]\n  unsigned long long run_event_based_simulation_optimization_6(Inputs in, SimulationData GSD, int mype) {\n                     ^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: run_event_based_simulation_optimization_6(Inputs in, SimulationData GSD, int mype) {\n                     ^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.564,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "Main.c": "#include \"XSbench_header.h\"\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization & Command Line Read-In\n\t// =============="
+      },
+      "target_files_expected": [
+        "Main.c",
+        "io.c",
+        "Simulation.c",
+        "GridInit.c",
+        "XSutils.c",
+        "Materials.c"
+      ],
+      "target_files_extracted": [
+        "Main.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 44.426,
+          "prompt_tokens": 24087,
+          "completion_tokens": 12740,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "The translation failed to compile with this error:\n```\nation_5(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 77: warning: function \"run_event_based_simulation_optimization_6\" declared implicit",
+          "build_error_snippet": "\"Main.c\", line 42: warning: function \"move_simulation_data_to_device\" declared implicitly [implicit_func_decl]\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 42: error: a value of type \"int\" cannot be used to initialize an entity of type \"SimulationData\" (aka \"struct <unnamed>\")\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\n\"Main.c\", line 59: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\n\"Main.c\", line 65: warning: function \"run_event_based_simulation_baseline\" declared i\n...[truncated]...\nnt_based_simulation_optimization_4(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 75: warning: function \"run_event_based_simulation_optimization_5\" declared implicitly [implicit_func_decl]\n  \t\t\tverification = run_event_based_simulation_optimization_5(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 77: warning: function \"run_event_based_simulation_optimization_6\" declared implicitly [implicit_func_decl]\n  \t\t\tverification = run_event_based_simulation_optimization_6(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 100: warning: function \"release_device_memory\" declared implicitly [implicit_func_decl]\n  \trelease_device_memory(GSD);\n  \t^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 5.86,
+          "prompt_tokens": 36991,
+          "completion_tokens": 884,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "\"Main.c\", line 42: warning: function \"move_simulation_data_to_device\" declared implicitly [implicit_func_decl]\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 42: error: a value of type \"int\" cannot be used to initialize an entity of type \"SimulationData\" (aka \"struct <unnamed>\")\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\n\"Main.c\", line 59: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\n\"Main.c\", line 65: warning: function \"run_event_based_simulation_baseline\" declared i\n...[truncated]...\nMain.c\", line 100: warning: function \"release_device_memory\" declared implicitly [implicit_func_decl]\n  \trelease_device_memory(GSD);\n  \t^\n\n\"Main.c\", line 111: warning: declaration is incompatible with previous \"release_device_memory\" (declared implicitly) [decl_incompatible_with_previous_use]\n  void release_device_memory(SimulationData GSD) {\n       ^\n\n\"Main.c\", line 115: warning: declaration is incompatible with previous \"run_event_based_simulation_optimization_6\" (declared implicitly) [decl_incompatible_with_previous_use]\n  unsigned long long run_event_based_simulation_optimization_6(Inputs in, SimulationData GSD, int mype) {\n                     ^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    }
+  ]
+}

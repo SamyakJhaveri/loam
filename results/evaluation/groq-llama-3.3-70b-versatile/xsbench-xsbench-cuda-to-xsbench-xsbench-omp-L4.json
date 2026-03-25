@@ -1,0 +1,79 @@
+{
+  "source_spec": "xsbench-xsbench-cuda",
+  "target_spec": "xsbench-xsbench-omp",
+  "kernel": "xsbench",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T08:13:04Z",
+  "prompt_tokens": 61071,
+  "completion_tokens": 12584,
+  "llm_response_time_seconds": 50.886,
+  "build_status": "fail",
+  "build_time_seconds": 0.131,
+  "build_error_snippet": "io.c: In function \u2018binary_read\u2019:\nio.c:487:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  487 |         fread(&SD, sizeof(SimulationData), 1, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:498:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  498 |         fread(SD.num_nucs,       sizeof(int), SD.length_num_nucs, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:499:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  499 |         fread(SD.concs,          sizeof(double), SD.length_concs, fp);\n      |      \n...[truncated]...\nsize of \u2018ts\u2019 isn\u2019t known\n   11 |         struct timespec ts;\n      |                         ^~\nXSutils.c:12:9: warning: implicit declaration of function \u2018clock_gettime\u2019 [-Wimplicit-function-declaration]\n   12 |         clock_gettime(CLOCK_REALTIME, &ts);\n      |         ^~~~~~~~~~~~~\nXSutils.c:12:23: error: \u2018CLOCK_REALTIME\u2019 undeclared (first use in this function)\n   12 |         clock_gettime(CLOCK_REALTIME, &ts);\n      |                       ^~~~~~~~~~~~~~\nXSutils.c:12:23: note: each undeclared identifier is reported only once for each function it appears in\nXSutils.c:11:25: warning: unused variable \u2018ts\u2019 [-Wunused-variable]\n   11 |         struct timespec ts;\n      |                         ^~\nmake: *** [Makefile:108: XSutils.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ion it appears in\nXSutils.c:11:25: warning: unused variable \u2018ts\u2019 [-Wunused-variable]\n   11 |         struct timespec ts;\n      |                         ^~\nmake: *** [Makefile:108: XSutils.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.787,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "XSutils.c": "double get_time(void)\n{\n\t#ifdef MPI\n\treturn MPI_Wtime();\n\t#endif\n\n\t#ifdef OPENMP\n\treturn omp_get_wtime();\n\t#endif\n\n\tstruct timespec ts;\n\tclock_gettime(CLOCK_REALTIME, &ts);\n\treturn (double)ts.tv_sec +"
+  },
+  "target_files_expected": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c",
+    "Materials.c"
+  ],
+  "target_files_extracted": [
+    "XSutils.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 47.461,
+      "prompt_tokens": 24269,
+      "completion_tokens": 12374,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nsince_epoch() / std::chrono::microseconds(1);\n      |                                        ^~~\nXSutils.c:75:40: note: each undeclared identifie",
+      "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:62:40: warning: implicit declaration of function \u2018run_event_based_simulation_baseline\u2019; did you mean \u2018run_event_based_simulation\u2019? [-Wimplicit-function-declaration]\n   62 |                         verification = run_event_based_simulation_baseline(in, SD, mype);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |                                        run_event_based_simulation\nMain.c:66:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_2\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   66 |                         verification = run_event_based_simulation_optimization_2(in, SD, mype)\n...[truncated]...\nart = get_time();\n      |                ^~~~~~~~~\nXSutils.c: In function \u2018get_time\u2019:\nXSutils.c:75:40: error: \u2018std\u2019 undeclared (first use in this function)\n   75 |         unsigned long us_since_epoch = std::chrono::high_resolution_clock::now().time_since_epoch() / std::chrono::microseconds(1);\n      |                                        ^~~\nXSutils.c:75:40: note: each undeclared identifier is reported only once for each function it appears in\nXSutils.c:75:43: error: expected \u2018,\u2019 or \u2018;\u2019 before \u2018::\u2019 token\n   75 |         unsigned long us_since_epoch = std::chrono::high_resolution_clock::now().time_since_epoch() / std::chrono::microseconds(1);\n      |                                           ^~\nmake: *** [Makefile:108: XSutils.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 3.425,
+      "prompt_tokens": 36802,
+      "completion_tokens": 210,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "io.c: In function \u2018binary_read\u2019:\nio.c:487:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  487 |         fread(&SD, sizeof(SimulationData), 1, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:498:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  498 |         fread(SD.num_nucs,       sizeof(int), SD.length_num_nucs, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:499:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  499 |         fread(SD.concs,          sizeof(double), SD.length_concs, fp);\n      |      \n...[truncated]...\nsize of \u2018ts\u2019 isn\u2019t known\n   11 |         struct timespec ts;\n      |                         ^~\nXSutils.c:12:9: warning: implicit declaration of function \u2018clock_gettime\u2019 [-Wimplicit-function-declaration]\n   12 |         clock_gettime(CLOCK_REALTIME, &ts);\n      |         ^~~~~~~~~~~~~\nXSutils.c:12:23: error: \u2018CLOCK_REALTIME\u2019 undeclared (first use in this function)\n   12 |         clock_gettime(CLOCK_REALTIME, &ts);\n      |                       ^~~~~~~~~~~~~~\nXSutils.c:12:23: note: each undeclared identifier is reported only once for each function it appears in\nXSutils.c:11:25: warning: unused variable \u2018ts\u2019 [-Wunused-variable]\n   11 |         struct timespec ts;\n      |                         ^~\nmake: *** [Makefile:108: XSutils.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

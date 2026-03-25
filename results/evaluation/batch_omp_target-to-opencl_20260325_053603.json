@@ -1,0 +1,1066 @@
+{
+  "direction": "omp_target-to-opencl",
+  "models": [
+    "claude-sonnet-4-6",
+    "gemini-2.5-flash-lite",
+    "groq-llama-3.3-70b-versatile"
+  ],
+  "suite": "xsbench",
+  "kernels": null,
+  "total_tasks": 15,
+  "total_elapsed_seconds": 506.1,
+  "results": [
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T06:23:26Z",
+      "prompt_tokens": 35877,
+      "completion_tokens": 3053,
+      "llm_response_time_seconds": 37.654,
+      "build_status": "pass",
+      "build_time_seconds": 0.512,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.533,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "runtime": {
+          "value": 0.136,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": 0.533,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.8255,
+      "translated_files": {
+        "kernel.cl": "// Grid types\n#define UNIONIZED 0\n#define NUCLIDE 1\n#define HASH 2\n\n// Simulation types\n#define HISTORY_BASED 1\n#define EVENT_BASED 2\n\n// Binary Mode Type\n#define NONE 0\n#define READ 1\n#define WRITE 2"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 37.654,
+          "prompt_tokens": 35877,
+          "completion_tokens": 3053,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 1,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:27:37Z",
+      "prompt_tokens": 35877,
+      "completion_tokens": 3198,
+      "llm_response_time_seconds": 43.74,
+      "build_status": "pass",
+      "build_time_seconds": 0.457,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.424,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "runtime": {
+          "value": 0.138,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": 0.424,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.0377,
+      "translated_files": {
+        "kernel.cl": "// Grid types\n#define UNIONIZED 0\n#define NUCLIDE 1\n#define HASH 2\n\n// Starting Seed\n#define STARTING_SEED 1070\n\ntypedef struct{\n\tdouble energy;\n\tdouble total_xs;\n\tdouble elastic_xs;\n\tdouble absorbtio"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 43.74,
+          "prompt_tokens": 35877,
+          "completion_tokens": 3198,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 2,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:28:22Z",
+      "prompt_tokens": 35881,
+      "completion_tokens": 3064,
+      "llm_response_time_seconds": 39.816,
+      "build_status": "pass",
+      "build_time_seconds": 0.452,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.425,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "runtime": {
+          "value": 0.139,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": 0.425,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.0353,
+      "translated_files": {
+        "kernel.cl": "// Grid types\n#define UNIONIZED 0\n#define NUCLIDE 1\n#define HASH 2\n\n// Starting Seed\n#define STARTING_SEED 1070\n\ntypedef struct{\n\tdouble energy;\n\tdouble total_xs;\n\tdouble elastic_xs;\n\tdouble absorbtio"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 39.816,
+          "prompt_tokens": 35881,
+          "completion_tokens": 3064,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 3,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:29:03Z",
+      "prompt_tokens": 35886,
+      "completion_tokens": 2911,
+      "llm_response_time_seconds": 35.047,
+      "build_status": "pass",
+      "build_time_seconds": 0.452,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.426,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "runtime": {
+          "value": 0.139,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": 0.426,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.0329,
+      "translated_files": {
+        "kernel.cl": "// Grid types\n#define UNIONIZED 0\n#define NUCLIDE 1\n#define HASH 2\n\n// Starting Seed\n#define STARTING_SEED 1070\n\ntypedef struct{\n\tdouble energy;\n\tdouble total_xs;\n\tdouble elastic_xs;\n\tdouble absorbtio"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 35.047,
+          "prompt_tokens": 35886,
+          "completion_tokens": 2911,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 4,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:29:39Z",
+      "prompt_tokens": 35918,
+      "completion_tokens": 3001,
+      "llm_response_time_seconds": 37.36,
+      "build_status": "pass",
+      "build_time_seconds": 0.454,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.423,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "runtime": {
+          "value": 0.137,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": 0.423,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.0402,
+      "translated_files": {
+        "kernel.cl": "// Grid types\n#define UNIONIZED 0\n#define NUCLIDE 1\n#define HASH 2\n\n// Simulation types\n#define HISTORY_BASED 1\n#define EVENT_BASED 2\n\n// Binary Mode Type\n#define NONE 0\n#define READ 1\n#define WRITE 2"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 37.36,
+          "prompt_tokens": 35918,
+          "completion_tokens": 3001,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:30:17Z",
+      "prompt_tokens": 84636,
+      "completion_tokens": 20860,
+      "llm_response_time_seconds": 52.394,
+      "build_status": "pass",
+      "build_time_seconds": 0.452,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.281,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "10 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.142 seconds\nLookups:     17,000,000\nLookups/s:   119,718,343\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,851,574\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "// Define MAX_SOURCE_SIZE for kernel source code\n#define MAX_SOURCE_SIZE (0x100000)\n\n// Structure to hold simulation data (matching host structure)\ntypedef struct {\n    int * num_nucs;                "
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 37.82,
+          "prompt_tokens": 34366,
+          "completion_tokens": 15866,
+          "finish_reason": "stop",
+          "build_status": null,
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "Your response did not include any of the expected output files. Please translate each target file using this format:\n\n```c kernel.cl\n// your translated code here\n```\n\n",
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": true
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 14.574,
+          "prompt_tokens": 50270,
+          "completion_tokens": 4994,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "10 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.142 seconds\nLookups:     17,000,000\nLookups/s:   119,718,343\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,851,574\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 1,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:31:10Z",
+      "prompt_tokens": 84636,
+      "completion_tokens": 20860,
+      "llm_response_time_seconds": 53.448,
+      "build_status": "pass",
+      "build_time_seconds": 0.452,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.282,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "10 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.142 seconds\nLookups:     17,000,000\nLookups/s:   119,718,142\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,630,786\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "// Define MAX_SOURCE_SIZE for kernel source code\n#define MAX_SOURCE_SIZE (0x100000)\n\n// Structure to hold simulation data (matching host structure)\ntypedef struct {\n    int * num_nucs;                "
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 38.942,
+          "prompt_tokens": 34366,
+          "completion_tokens": 15866,
+          "finish_reason": "stop",
+          "build_status": null,
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "Your response did not include any of the expected output files. Please translate each target file using this format:\n\n```c kernel.cl\n// your translated code here\n```\n\n",
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": true
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 14.506,
+          "prompt_tokens": 50270,
+          "completion_tokens": 4994,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "10 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.142 seconds\nLookups:     17,000,000\nLookups/s:   119,718,142\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,630,786\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 2,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:32:04Z",
+      "prompt_tokens": 76087,
+      "completion_tokens": 10966,
+      "llm_response_time_seconds": 30.823,
+      "build_status": "pass",
+      "build_time_seconds": 0.453,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.281,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-acf6d2.d\n1 error generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.142 seconds\nLookups:     17,000,000\nLookups/s:   119,718,142\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "#include \"XSbench_header.h\"\n\n// OpenCL kernel for macroscopic cross section lookup\n__kernel void macro_xs_lookup_kernel(\n    Inputs in,\n    int max_num_nucs,\n    __global const int * num_nucs,\n    __g"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 19.818,
+          "prompt_tokens": 34370,
+          "completion_tokens": 7309,
+          "finish_reason": "stop",
+          "build_status": null,
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "Your response did not include any of the expected output files. Please translate each target file using this format:\n\n```c kernel.cl\n// your translated code here\n```\n\n",
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": true
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 11.005,
+          "prompt_tokens": 41717,
+          "completion_tokens": 3657,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-acf6d2.d\n1 error generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.142 seconds\nLookups:     17,000,000\nLookups/s:   119,718,142\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 3,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:32:36Z",
+      "prompt_tokens": 82572,
+      "completion_tokens": 17902,
+      "llm_response_time_seconds": 50.06,
+      "build_status": "pass",
+      "build_time_seconds": 0.452,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.28,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "31 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.141 seconds\nLookups:     17,000,000\nLookups/s:   120,567,552\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,625,226\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "// Define constants for grid types and simulation methods\n#define UNIONIZED 0\n#define NUCLIDE 1\n#define HASH 2\n#define HISTORY_BASED 1\n#define EVENT_BASED 2\n\n// Define constants for binary file modes\n"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 39.287,
+          "prompt_tokens": 34368,
+          "completion_tokens": 13797,
+          "finish_reason": "stop",
+          "build_status": null,
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "Your response did not include any of the expected output files. Please translate each target file using this format:\n\n```c kernel.cl\n// your translated code here\n```\n\n",
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": true
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 10.773,
+          "prompt_tokens": 48204,
+          "completion_tokens": 4105,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "31 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.141 seconds\nLookups:     17,000,000\nLookups/s:   120,567,552\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,625,226\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 4,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:33:27Z",
+      "prompt_tokens": 73426,
+      "completion_tokens": 9216,
+      "llm_response_time_seconds": 25.207,
+      "build_status": "pass",
+      "build_time_seconds": 0.453,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.296,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "54 warnings and 277 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.156 seconds\nLookups:     17,000,000\nLookups/s:   108,974,263\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "#define MAX_SOURCE_SIZE (0x100000)\n\n// OpenCL Info Structure\ntypedef struct {\n    cl_platform_id platform_id;\n    cl_device_id device_id;\n    cl_context context;\n    cl_command_queue command_queue;\n} "
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 12.522,
+          "prompt_tokens": 34391,
+          "completion_tokens": 4608,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n54 warnings and 277 errors generated.\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "54 warnings and 277 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.159 seconds\nLookups:     17,000,000\nLookups/s:   106,918,132\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 12.685,
+          "prompt_tokens": 39035,
+          "completion_tokens": 4608,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "54 warnings and 277 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.156 seconds\nLookups:     17,000,000\nLookups/s:   108,974,263\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "groq-llama-3.3-70b-versatile",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:33:54Z",
+      "prompt_tokens": 58241,
+      "completion_tokens": 3521,
+      "llm_response_time_seconds": 22.264,
+      "build_status": null,
+      "build_time_seconds": null,
+      "build_error_snippet": null,
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "EXTRACTION_FAIL",
+      "error_message": "LLM response did not contain parseable code for any of the expected target files: ['kernel.cl']",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {},
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 17.28,
+          "prompt_tokens": 27524,
+          "completion_tokens": 3163,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.132 seconds\nLookups:     17,000,000\nLookups/s:   128,787,908\nSimulation Kernel Only Statistics\nRuntime:     0.025 seconds\nLookups/s:   680,003,891\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 4.984,
+          "prompt_tokens": 30717,
+          "completion_tokens": 358,
+          "finish_reason": "stop",
+          "build_status": null,
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": true
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "groq-llama-3.3-70b-versatile",
+      "augment_level": 1,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:34:17Z",
+      "prompt_tokens": 58441,
+      "completion_tokens": 4287,
+      "llm_response_time_seconds": 25.127,
+      "build_status": "pass",
+      "build_time_seconds": 0.453,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.275,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "4 warnings and 7 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.136 seconds\nLookups:     17,000,000\nLookups/s:   124,999,856\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "__kernel void macro_xs_lookup_kernel(\n    __global Inputs * in,\n    int max_num_nucs,\n    __global int * num_nucs,\n    __global double * concs,\n    __global double * unionized_energy_array,\n    __glob"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 17.827,
+          "prompt_tokens": 27524,
+          "completion_tokens": 3363,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.132 seconds\nLookups:     17,000,000\nLookups/s:   128,787,908\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,630,786\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 7.3,
+          "prompt_tokens": 30917,
+          "completion_tokens": 924,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "4 warnings and 7 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.136 seconds\nLookups:     17,000,000\nLookups/s:   124,999,856\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "groq-llama-3.3-70b-versatile",
+      "augment_level": 2,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:34:44Z",
+      "prompt_tokens": 58537,
+      "completion_tokens": 6845,
+      "llm_response_time_seconds": 29.549,
+      "build_status": "pass",
+      "build_time_seconds": 0.456,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.282,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "7 warnings and 66 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.143 seconds\nLookups:     17,000,000\nLookups/s:   118,881,014\nSimulation Kernel Only Statistics\nRuntime:     0.025 seconds\nLookups/s:   679,997,406\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "// kernel.cl\n__kernel void macro_xs_lookup_kernel(\n    __global const Inputs * in,\n    __global const int * max_num_nucs,\n    __global const int * num_nucs,\n    __global const double * concs,\n    __gl"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 20.233,
+          "prompt_tokens": 27527,
+          "completion_tokens": 3445,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n7 warnings and 74 errors generated.\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "7 warnings and 74 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.146 seconds\nLookups:     17,000,000\nLookups/s:   116,438,239\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 9.316,
+          "prompt_tokens": 31010,
+          "completion_tokens": 3400,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "7 warnings and 66 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.143 seconds\nLookups:     17,000,000\nLookups/s:   118,881,014\nSimulation Kernel Only Statistics\nRuntime:     0.025 seconds\nLookups/s:   679,997,406\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "groq-llama-3.3-70b-versatile",
+      "augment_level": 3,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:35:15Z",
+      "prompt_tokens": 58449,
+      "completion_tokens": 3785,
+      "llm_response_time_seconds": 21.774,
+      "build_status": null,
+      "build_time_seconds": null,
+      "build_error_snippet": null,
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "EXTRACTION_FAIL",
+      "error_message": "LLM response did not contain parseable code for any of the expected target files: ['kernel.cl']",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {},
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 14.305,
+          "prompt_tokens": 27527,
+          "completion_tokens": 3365,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.137 seconds\nLookups:     17,000,000\nLookups/s:   124,087,731\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 7.469,
+          "prompt_tokens": 30922,
+          "completion_tokens": 420,
+          "finish_reason": "stop",
+          "build_status": null,
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": true
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp_target",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "groq-llama-3.3-70b-versatile",
+      "augment_level": 4,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T12:35:38Z",
+      "prompt_tokens": 57545,
+      "completion_tokens": 4898,
+      "llm_response_time_seconds": 23.669,
+      "build_status": "pass",
+      "build_time_seconds": 0.452,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.284,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "4 warnings and 32 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.145 seconds\nLookups:     17,000,000\nLookups/s:   117,241,394\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,630,786\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "__kernel void macro_xs_lookup_kernel(\n    __global const int * n_isotopes,\n    __global const int * n_gridpoints,\n    __global const int * lookups,\n    __global const int * grid_type,\n    __global con"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 13.731,
+          "prompt_tokens": 27552,
+          "completion_tokens": 2411,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.136 seconds\nLookups:     17,000,000\nLookups/s:   124,999,856\nSimulation Kernel Only Statistics\nRuntime:     0.025 seconds\nLookups/s:   679,997,406\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 9.938,
+          "prompt_tokens": 29993,
+          "completion_tokens": 2487,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "4 warnings and 32 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.145 seconds\nLookups:     17,000,000\nLookups/s:   117,241,394\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,630,786\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    }
+  ]
+}

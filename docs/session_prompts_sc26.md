@@ -4341,6 +4341,3 @@ git commit -m "W-S15: Paper review and polish — all claims verified, Gal const
 - Word count: ~N words (~N pages estimate)
 - F1-F6 figure placeholders: N filled, N marked TBD (pending eval sessions)"
 
-
-
-    

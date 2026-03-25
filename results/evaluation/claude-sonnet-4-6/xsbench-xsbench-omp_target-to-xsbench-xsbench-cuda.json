@@ -1,0 +1,84 @@
+{
+  "source_spec": "xsbench-xsbench-omp_target",
+  "target_spec": "xsbench-xsbench-cuda",
+  "kernel": "xsbench",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T17:19:38Z",
+  "prompt_tokens": 55101,
+  "completion_tokens": 18661,
+  "llm_response_time_seconds": 212.541,
+  "build_status": "pass",
+  "build_time_seconds": 14.735,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.456,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "runtime": {
+      "value": 0.086,
+      "unit": "seconds"
+    }
+  },
+  "baseline_wall_time_seconds": 0.465,
+  "translated_wall_time_seconds": 0.456,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.0197,
+  "translated_files": {
+    "Simulation.cu": "#include \"XSbench_header.cuh\"\n#include <thrust/device_ptr.h>\n#include <thrust/reduce.h>\n\n__device__ long grid_search( long n, double quarry, double * __restrict__ A)\n{\n\tlong lowerLimit = 0;\n\tlong uppe"
+  },
+  "target_files_expected": [
+    "Main.cu",
+    "io.cu",
+    "Simulation.cu",
+    "GridInit.cu",
+    "XSutils.cu",
+    "Materials.cu"
+  ],
+  "target_files_extracted": [
+    "Simulation.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 165.635,
+      "prompt_tokens": 19922,
+      "completion_tokens": 15078,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nt allowed\n    thrust::device_ptr<unsigned long>(d_verification + in.lookups),\n    ^\n\nSimulation.cu(277): error: expected a \";\"\n    thrust::device",
+      "build_error_snippet": "io.cu(388): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n   char * fname = \"XS_data.dat\";\n                  ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nio.cu(408): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n   char * fname = \"XS_data.dat\";\n                  ^\n\nio.cu(414): warning #1650-D: result of call is not used\n   fread(&SD, sizeof(SimulationData), 1, fp);\n   ^\n\nio.cu(423): warning #1650-D: result of call is not used\n   fread(SD.num_nucs, sizeof(int), SD.length_num_nucs, fp);\n   ^\n\nio.cu(424): warning #1650-D: result of call is not used\n   fread(SD.concs, sizeof(double), SD.length_concs, fp);\n   ^\n\nio.cu(425): warning #1650-D: result of\n...[truncated]...\n function \"thrust::reduce\" matches the argument list\n            argument types are: (<error-type>)\n   unsigned long long verification_hash = thrust::reduce(\n                                          ^\n\nSimulation.cu(277): error: qualified name is not allowed\n    thrust::device_ptr<unsigned long>(d_verification + in.lookups),\n    ^\n\nSimulation.cu(277): error: expected a \";\"\n    thrust::device_ptr<unsigned long>(d_verification + in.lookups),\n                      ^\n\nSimulation.cu(280): warning #12-D: parsing restarts here after previous syntax error\n   );\n    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n6 errors detected in the compilation of \"Simulation.cu\".\nmake: *** [Makefile:68: Simulation.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 46.906,
+      "prompt_tokens": 35179,
+      "completion_tokens": 3583,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

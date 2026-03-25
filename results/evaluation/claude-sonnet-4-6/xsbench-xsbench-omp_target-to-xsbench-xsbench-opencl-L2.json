@@ -1,0 +1,64 @@
+{
+  "source_spec": "xsbench-xsbench-omp_target",
+  "target_spec": "xsbench-xsbench-opencl",
+  "kernel": "xsbench",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 2,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T12:28:22Z",
+  "prompt_tokens": 35881,
+  "completion_tokens": 3064,
+  "llm_response_time_seconds": 39.816,
+  "build_status": "pass",
+  "build_time_seconds": 0.452,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.425,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "runtime": {
+      "value": 0.139,
+      "unit": "seconds"
+    }
+  },
+  "baseline_wall_time_seconds": 0.44,
+  "translated_wall_time_seconds": 0.425,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.0353,
+  "translated_files": {
+    "kernel.cl": "// Grid types\n#define UNIONIZED 0\n#define NUCLIDE 1\n#define HASH 2\n\n// Starting Seed\n#define STARTING_SEED 1070\n\ntypedef struct{\n\tdouble energy;\n\tdouble total_xs;\n\tdouble elastic_xs;\n\tdouble absorbtio"
+  },
+  "target_files_expected": [
+    "kernel.cl"
+  ],
+  "target_files_extracted": [
+    "kernel.cl"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 39.816,
+      "prompt_tokens": 35881,
+      "completion_tokens": 3064,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "source_spec": "xsbench-xsbench-omp",
+  "target_spec": "xsbench-xsbench-omp_target",
+  "kernel": "xsbench",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T10:52:50Z",
+  "prompt_tokens": 67122,
+  "completion_tokens": 26158,
+  "llm_response_time_seconds": 55.154,
+  "build_status": "fail",
+  "build_time_seconds": 0.968,
+  "build_error_snippet": "\"Simulation.c\", line 757: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tstart = get_time();\n  \t        ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\nrun_event_based_simulation:\n     46, #omp parallel\n         46, Generating reduction(+:verification)\nquickSort_parallel_internal_i_d:\n    596, Begin task\n         End task\n    598, Begin task\n         End task\nquickSort_parallel_i_d:\n    614, #omp parallel\n        615, Begin single region\n             End single region\nquickSort_parallel_internal_d_i:\n    654, Begin task\n         End task\n    656, Begin task\n         End task\nquickSort_parallel_d_i:\n    672, #omp parallel\n        673, Begin single region\n             End singl\n...[truncated]...\n(.text+0x2354): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:769:(.text+0x2378): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:781:(.text+0x2461): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:790:(.text+0x2567): undefined reference to `get_time'\n/usr/bin/ld: Simulation.o:/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:796: more undefined references to `get_time' follow\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ch_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:796: more undefined references to `get_time' follow\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.564,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Simulation.c": "#include \"XSbench_header.h\"\n\n////////////////////////////////////////////////////////////////////////////////////\n// BASELINE FUNCTIONS\n////////////////////////////////////////////////////////////////"
+  },
+  "target_files_expected": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c",
+    "Materials.c"
+  ],
+  "target_files_extracted": [
+    "Simulation.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 35.356,
+      "prompt_tokens": 25257,
+      "completion_tokens": 16382,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nnch/xsbench-src/openmp-offload/Simulation.c:781:(.text+0x2461): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/",
+      "build_error_snippet": "\"Simulation.c\", line 757: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tstart = get_time();\n  \t        ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\nrun_event_based_simulation:\n     46, #omp parallel\n         46, Generating reduction(+:verification)\nquickSort_parallel_internal_i_d:\n    596, Begin task\n         End task\n    598, Begin task\n         End task\nquickSort_parallel_i_d:\n    614, #omp parallel\n        615, Begin single region\n             End single region\nquickSort_parallel_internal_d_i:\n    654, Begin task\n         End task\n    656, Begin task\n         End task\nquickSort_parallel_d_i:\n    672, #omp parallel\n        673, Begin single region\n             End singl\n...[truncated]...\n(.text+0x2354): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:769:(.text+0x2378): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:781:(.text+0x2461): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:790:(.text+0x2567): undefined reference to `get_time'\n/usr/bin/ld: Simulation.o:/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:796: more undefined references to `get_time' follow\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 19.798,
+      "prompt_tokens": 41865,
+      "completion_tokens": 9776,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "\"Simulation.c\", line 757: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tstart = get_time();\n  \t        ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\nrun_event_based_simulation:\n     46, #omp parallel\n         46, Generating reduction(+:verification)\nquickSort_parallel_internal_i_d:\n    596, Begin task\n         End task\n    598, Begin task\n         End task\nquickSort_parallel_i_d:\n    614, #omp parallel\n        615, Begin single region\n             End single region\nquickSort_parallel_internal_d_i:\n    654, Begin task\n         End task\n    656, Begin task\n         End task\nquickSort_parallel_d_i:\n    672, #omp parallel\n        673, Begin single region\n             End singl\n...[truncated]...\n(.text+0x2354): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:769:(.text+0x2378): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:781:(.text+0x2461): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:790:(.text+0x2567): undefined reference to `get_time'\n/usr/bin/ld: Simulation.o:/home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c:796: more undefined references to `get_time' follow\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

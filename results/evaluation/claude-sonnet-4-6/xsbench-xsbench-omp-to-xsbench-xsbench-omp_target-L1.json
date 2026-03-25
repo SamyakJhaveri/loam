@@ -1,0 +1,77 @@
+{
+  "source_spec": "xsbench-xsbench-omp",
+  "target_spec": "xsbench-xsbench-omp_target",
+  "kernel": "xsbench",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T10:32:20Z",
+  "prompt_tokens": 26226,
+  "completion_tokens": 16384,
+  "llm_response_time_seconds": 177.6,
+  "build_status": "pass",
+  "build_time_seconds": 1.292,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.457,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "runtime": {
+      "value": 0.184,
+      "unit": "seconds"
+    }
+  },
+  "baseline_wall_time_seconds": 0.564,
+  "translated_wall_time_seconds": 0.457,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.2341,
+  "translated_files": {
+    "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\tint version = 20;\n\tint mype = 0;\n\tdouble omp_start, omp_end;\n\tint nprocs = 1;\n\tunsigned long long ",
+    "io.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nvoid logo(int version)\n{\n\tborder_print();\n\tprintf(\n\t\"                   __   __ ___________                 _                        \\n\"",
+    "Simulation.c": "#include \"XSbench_header.h\"\n\n#pragma omp declare target\n\ndouble LCG_random_double(uint64_t * seed)\n{\n\tconst uint64_t m = 9223372036854775808ULL;\n\tconst uint64_t a = 2806196910506780709ULL;\n\tconst uint",
+    "GridInit.c": "#include \"XSbench_header.h\"\n\nSimulationData grid_init_do_not_profile( Inputs in, int mype )\n{\n\tSimulationData SD;\n\n\tsize_t nbytes = 0;\n\n\tuint64_t seed = 42;\t\n\n\tlong e = 0;\n\t\n\t/////////////////////////",
+    "XSutils.c": "#include \"XSbench_header.h\"\n\nint double_compare(const void * a, const void * b)\n{\n\tdouble A = *((double *) a);\n\tdouble B = *((double *) b);\n\n\tif( A > B )\n\t\treturn 1;\n\telse if( A < B )\n\t\treturn -1;\n\tel"
+  },
+  "target_files_expected": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c",
+    "Materials.c"
+  ],
+  "target_files_extracted": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 177.6,
+      "prompt_tokens": 26226,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

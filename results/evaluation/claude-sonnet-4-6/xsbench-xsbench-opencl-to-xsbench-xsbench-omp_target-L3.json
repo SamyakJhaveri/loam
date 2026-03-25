@@ -1,0 +1,84 @@
+{
+  "source_spec": "xsbench-xsbench-opencl",
+  "target_spec": "xsbench-xsbench-omp_target",
+  "kernel": "xsbench",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T11:06:36Z",
+  "prompt_tokens": 71915,
+  "completion_tokens": 21785,
+  "llm_response_time_seconds": 243.654,
+  "build_status": "pass",
+  "build_time_seconds": 1.006,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.492,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "runtime": {
+      "value": 0.217,
+      "unit": "seconds"
+    }
+  },
+  "baseline_wall_time_seconds": 0.564,
+  "translated_wall_time_seconds": 0.492,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.1463,
+  "translated_files": {
+    "Simulation.c": "#include \"XSbench_header.h\"\n\nuint64_t fast_forward_LCG(uint64_t seed, uint64_t n)\n{\n\tconst uint64_t m = 9223372036854775808ULL; // 2^63\n\tuint64_t a = 2806196910506780709ULL;\n\tuint64_t c = 1ULL;\n\n\tn = "
+  },
+  "target_files_expected": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c",
+    "Materials.c"
+  ],
+  "target_files_extracted": [
+    "Simulation.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 176.435,
+      "prompt_tokens": 27999,
+      "completion_tokens": 15792,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nng in Thread:1\nAccelerator Fatal Error: call to cuStreamSynchronize returned error 700 (CUDA_ERROR_ILLEGAL_ADDRESS): Illegal address during ke",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Failing in Thread:1\nAccelerator Fatal Error: call to cuStreamSynchronize returned error 700 (CUDA_ERROR_ILLEGAL_ADDRESS): Illegal address during kernel execution\n File: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Simulation.c\n Function: run_event_based_simulation:213\n Line: 492\n\n",
+      "run_stdout_snippet": "       INITIALIZATION - DO NOT PROFILE\n================================================================================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntialization complete. Allocated 240 MB of data.\n================================================================================\n                                   SIMULATION\n================================================================================\nRunning event based simulation...\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 67.219,
+      "prompt_tokens": 43916,
+      "completion_tokens": 5993,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

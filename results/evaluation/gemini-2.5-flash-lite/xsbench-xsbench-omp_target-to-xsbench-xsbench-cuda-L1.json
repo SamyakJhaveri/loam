@@ -1,0 +1,79 @@
+{
+  "source_spec": "xsbench-xsbench-omp_target",
+  "target_spec": "xsbench-xsbench-cuda",
+  "kernel": "xsbench",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T11:37:53Z",
+  "prompt_tokens": 54896,
+  "completion_tokens": 17286,
+  "llm_response_time_seconds": 34.165,
+  "build_status": "fail",
+  "build_time_seconds": 0.129,
+  "build_error_snippet": "Main.cu(78): error: identifier \"run_event_based_simulation_baseline\" is undefined\n     verification = run_event_based_simulation_baseline(in, SD, mype);\n                    ^\n\n1 error detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: e\" is undefined\n     verification = run_event_based_simulation_baseline(in, SD, mype);\n                    ^\n\n1 error detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.465,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Main.cu": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization & Comm"
+  },
+  "target_files_expected": [
+    "Main.cu",
+    "io.cu",
+    "Simulation.cu",
+    "GridInit.cu",
+    "XSutils.cu",
+    "Materials.cu"
+  ],
+  "target_files_extracted": [
+    "Main.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 31.718,
+      "prompt_tokens": 19203,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nMain.cu(78): error: identifier \"run_event_based_simulation_baseline\" is undefined\n     verification = run_event_based_simulation_baseline(in, SD,",
+      "build_error_snippet": "Main.cu(78): error: identifier \"run_event_based_simulation_baseline\" is undefined\n     verification = run_event_based_simulation_baseline(in, SD, mype);\n                    ^\n\n1 error detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 2.447,
+      "prompt_tokens": 35693,
+      "completion_tokens": 902,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "Main.cu(78): error: identifier \"run_event_based_simulation_baseline\" is undefined\n     verification = run_event_based_simulation_baseline(in, SD, mype);\n                    ^\n\n1 error detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

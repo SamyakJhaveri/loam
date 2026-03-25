@@ -1,0 +1,83 @@
+{
+  "source_spec": "xsbench-xsbench-omp_target",
+  "target_spec": "xsbench-xsbench-omp",
+  "kernel": "xsbench",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T17:31:35Z",
+  "prompt_tokens": 43483,
+  "completion_tokens": 13537,
+  "llm_response_time_seconds": 47.514,
+  "build_status": "fail",
+  "build_time_seconds": 0.024,
+  "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:21:59: error: \u2018mype\u2019 undeclared (first use in this function)\n   21 |         SimulationData SD = grid_init_do_not_profile( in, mype );\n      |                                                           ^~~~\nMain.c:21:59: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:108: Main.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ^~~~\nMain.c:21:59: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:108: Main.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.787,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\t// ... (rest of the code remains the same)\n\n\t// Check if read_CLI returns an error\n\tInputs in = re",
+    "io.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\n// ... (rest of the code remains the same)\n\nInputs read_CLI( int argc, char * argv[] )\n{\n\t// ... (rest of the code remains the same)\n\n\t/",
+    "GridInit.c": "#include \"XSbench_header.h\"\n\nSimulationData grid_init_do_not_profile( Inputs in, int mype )\n{\n\t// ... (rest of the code remains the same)\n\n\t// Check if memory allocation fails\n\tSD.nuclide_grid = (Nucl"
+  },
+  "target_files_expected": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c",
+    "Materials.c"
+  ],
+  "target_files_extracted": [
+    "Main.c",
+    "io.c",
+    "GridInit.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 43.361,
+      "prompt_tokens": 15324,
+      "completion_tokens": 12805,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "=========================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntialization complete. Allocated 240 MB of data.\n\n================================================================================\n                                   SIMULATION\n================================================================================\nHistory-based simulation not implemented in OpenMP offload code. Instead,\nuse the event-based method with \"-m event\" argument.\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.153,
+      "prompt_tokens": 28159,
+      "completion_tokens": 732,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:21:59: error: \u2018mype\u2019 undeclared (first use in this function)\n   21 |         SimulationData SD = grid_init_do_not_profile( in, mype );\n      |                                                           ^~~~\nMain.c:21:59: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:108: Main.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

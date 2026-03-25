@@ -1,0 +1,251 @@
+{
+  "direction": "opencl-to-omp_target",
+  "models": [
+    "claude-sonnet-4-6",
+    "gemini-2.5-flash-lite",
+    "groq-llama-3.3-70b-versatile"
+  ],
+  "suite": "xsbench",
+  "kernels": null,
+  "total_tasks": 3,
+  "total_elapsed_seconds": 258.7,
+  "results": [
+    {
+      "source_spec": "xsbench-xsbench-opencl",
+      "target_spec": "xsbench-xsbench-omp_target",
+      "kernel": "xsbench",
+      "model": "claude-sonnet-4-6",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T17:15:20Z",
+      "prompt_tokens": 27989,
+      "completion_tokens": 15355,
+      "llm_response_time_seconds": 170.127,
+      "build_status": "pass",
+      "build_time_seconds": 1.001,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.478,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": "pass",
+      "verify_strategy": "exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "runtime": {
+          "value": 0.214,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": 0.564,
+      "translated_wall_time_seconds": 0.478,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.1799,
+      "translated_files": {
+        "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\tint version = 20;\n\tint mype = 0;\n\tdouble omp_start, omp_end;\n\tint nprocs = 1;\n\tunsigned long long ",
+        "io.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nvoid logo(int version)\n{\n\tborder_print();\n\tprintf(\n\t\"                   __   __ ___________                 _                        \\n\"",
+        "Simulation.c": "#include \"XSbench_header.h\"\n\n// Fast forward LCG\nuint64_t fast_forward_LCG(uint64_t seed, uint64_t n)\n{\n\tconst uint64_t m = 9223372036854775808ULL; // 2^63\n\tuint64_t a = 2806196910506780709ULL;\n\tuint6",
+        "GridInit.c": "#include \"XSbench_header.h\"\n\nSimulationData grid_init_do_not_profile( Inputs in, int mype )\n{\n\tSimulationData SD;\n\n\tsize_t nbytes = 0;\n\n\tuint64_t seed = 42;\t\n\n\t////////////////////////////////////////",
+        "XSutils.c": "#include \"XSbench_header.h\"\n\nint double_compare(const void * a, const void * b)\n{\n\tdouble A = *((double *) a);\n\tdouble B = *((double *) b);\n\n\tif( A > B )\n\t\treturn 1;\n\telse if( A < B )\n\t\treturn -1;\n\tel",
+        "Materials.c": "// Material data is hard coded into the functions in this file.\n// Note that there are 12 materials present in H-M (large or small)\n\n#include \"XSbench_header.h\"\n\nint * load_num_nucs(long n_isotopes)\n{"
+      },
+      "target_files_expected": [
+        "Main.c",
+        "io.c",
+        "Simulation.c",
+        "GridInit.c",
+        "XSutils.c",
+        "Materials.c"
+      ],
+      "target_files_extracted": [
+        "Main.c",
+        "io.c",
+        "Simulation.c",
+        "GridInit.c",
+        "XSutils.c",
+        "Materials.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 170.127,
+          "prompt_tokens": 27989,
+          "completion_tokens": 15355,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-opencl",
+      "target_spec": "xsbench-xsbench-omp_target",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T17:18:11Z",
+      "prompt_tokens": 70076,
+      "completion_tokens": 17221,
+      "llm_response_time_seconds": 38.875,
+      "build_status": "fail",
+      "build_time_seconds": 0.072,
+      "build_error_snippet": "\"Main.c\", line 62: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 70: error: too many arguments in function call\n  \t\t\tverification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n  \t\t\t                                                        ^\n\n\"Main.c\", line 100: error: too many arguments in function call\n  \tint is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verification, sim_runtime );\n  \t                                                                                          ^\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: m_runtime );\n  \t                                                                                          ^\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.564,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization & Comm"
+      },
+      "target_files_expected": [
+        "Main.c",
+        "io.c",
+        "Simulation.c",
+        "GridInit.c",
+        "XSutils.c",
+        "Materials.c"
+      ],
+      "target_files_extracted": [
+        "Main.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 36.696,
+          "prompt_tokens": 26768,
+          "completion_tokens": 16384,
+          "finish_reason": "length",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "The translation failed to compile with this error:\n```\nl\n  \t\t\tverification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n  \t\t\t                                                        ^\n\n\"Ma",
+          "build_error_snippet": "\"Main.c\", line 62: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 70: error: too many arguments in function call\n  \t\t\tverification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n  \t\t\t                                                        ^\n\n\"Main.c\", line 100: error: too many arguments in function call\n  \tint is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verification, sim_runtime );\n  \t                                                                                          ^\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 2.179,
+          "prompt_tokens": 43308,
+          "completion_tokens": 837,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "\"Main.c\", line 62: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 70: error: too many arguments in function call\n  \t\t\tverification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n  \t\t\t                                                        ^\n\n\"Main.c\", line 100: error: too many arguments in function call\n  \tint is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verification, sim_runtime );\n  \t                                                                                          ^\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-opencl",
+      "target_spec": "xsbench-xsbench-omp_target",
+      "kernel": "xsbench",
+      "model": "groq-llama-3.3-70b-versatile",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-25T17:18:50Z",
+      "prompt_tokens": 55668,
+      "completion_tokens": 13057,
+      "llm_response_time_seconds": 47.539,
+      "build_status": "fail",
+      "build_time_seconds": 0.051,
+      "build_error_snippet": "\"Main.c\", line 1: warning: this declaration has no storage class or type specifier [missing_decl_specifiers]\n  filename=Main.cpp\n  ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 1: error: identifier \"Main\" is undefined\n  filename=Main.cpp\n           ^\n\nAt end of source: error: expected a \";\"\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: r: identifier \"Main\" is undefined\n  filename=Main.cpp\n           ^\n\nAt end of source: error: expected a \";\"\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.564,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "Main.c": "filename=Main.cpp\n"
+      },
+      "target_files_expected": [
+        "Main.c",
+        "io.c",
+        "Simulation.c",
+        "GridInit.c",
+        "XSutils.c",
+        "Materials.c"
+      ],
+      "target_files_extracted": [
+        "Main.c"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 44.401,
+          "prompt_tokens": 21344,
+          "completion_tokens": 12814,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": "The translation failed to compile with this error:\n```\n/usr/bin/ld: warning: /tmp/pgcudafatwGrycOEgL47t.o: missing .note.GNU-stack section implies executable stack\n/usr/bin/ld: NOTE: This behaviour is",
+          "build_error_snippet": "/usr/bin/ld: warning: /tmp/pgcudafatwGrycOEgL47t.o: missing .note.GNU-stack section implies executable stack\n/usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker\n/usr/bin/ld: /usr/lib/x86_64-linux-gnu/crt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 3.138,
+          "prompt_tokens": 34324,
+          "completion_tokens": 243,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "\"Main.c\", line 1: warning: this declaration has no storage class or type specifier [missing_decl_specifiers]\n  filename=Main.cpp\n  ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 1: error: identifier \"Main\" is undefined\n  filename=Main.cpp\n           ^\n\nAt end of source: error: expected a \";\"\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    }
+  ]
+}

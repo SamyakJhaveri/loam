@@ -1,0 +1,74 @@
+{
+  "source_spec": "xsbench-xsbench-cuda",
+  "target_spec": "xsbench-xsbench-opencl",
+  "kernel": "xsbench",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T08:47:30Z",
+  "prompt_tokens": 76264,
+  "completion_tokens": 3759,
+  "llm_response_time_seconds": 23.212,
+  "build_status": "pass",
+  "build_time_seconds": 0.451,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.272,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "1 error generated.\n",
+  "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.132 seconds\nLookups:     17,000,000\nLookups/s:   128,787,908\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,630,786\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.44,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel.cl": "typedef struct {\n    int nthreads;\n    long n_isotopes;\n    long n_gridpoints;\n    int lookups;\n    char HM;\n    int grid_type; \n    int hash_bins;\n    int particles;\n    int simulation_method;\n    in"
+  },
+  "target_files_expected": [
+    "kernel.cl"
+  ],
+  "target_files_extracted": [
+    "kernel.cl"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 18.441,
+      "prompt_tokens": 36469,
+      "completion_tokens": 3288,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n14 warnings and 73 errors generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "14 warnings and 73 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.148 seconds\nLookups:     17,000,000\nLookups/s:   114,864,863\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.771,
+      "prompt_tokens": 39795,
+      "completion_tokens": 471,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.132 seconds\nLookups:     17,000,000\nLookups/s:   128,787,908\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,630,786\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "extraction_fail": null
+    }
+  ]
+}

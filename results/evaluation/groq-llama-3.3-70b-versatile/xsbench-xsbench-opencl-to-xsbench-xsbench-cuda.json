@@ -1,0 +1,79 @@
+{
+  "source_spec": "xsbench-xsbench-opencl",
+  "target_spec": "xsbench-xsbench-cuda",
+  "kernel": "xsbench",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T16:54:59Z",
+  "prompt_tokens": 44141,
+  "completion_tokens": 1267,
+  "llm_response_time_seconds": 7.199,
+  "build_status": "pass",
+  "build_time_seconds": 21.983,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.359,
+  "run_exit_code": 188,
+  "run_stderr_snippet": "GPUassert: an illegal memory access was encountered Simulation.cu 27\n",
+  "run_stdout_snippet": ":             17,000,000\nEst. Memory Usage (MB):       241\nBinary File Mode:             Off\n================================================================================\n                         INITIALIZATION - DO NOT PROFILE\n================================================================================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntialization complete. Allocated 240 MB of data on CPU.\nRunning baseline event-based simulation...\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 188)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.465,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Main.cu": "#include \"XSbench_header.cuh\"\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization & Command Line Read-In\n\t// ============"
+  },
+  "target_files_expected": [
+    "Main.cu",
+    "io.cu",
+    "Simulation.cu",
+    "GridInit.cu",
+    "XSutils.cu",
+    "Materials.cu"
+  ],
+  "target_files_extracted": [
+    "Main.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.382,
+      "prompt_tokens": 21720,
+      "completion_tokens": 591,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nMain.cu(88): error: too many arguments in function call\n   int is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verificati",
+      "build_error_snippet": "Main.cu(88): error: too many arguments in function call\n   int is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verification, sim_runtime );\n                                                                                             ^\n\n1 error detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 2.817,
+      "prompt_tokens": 22421,
+      "completion_tokens": 676,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "GPUassert: an illegal memory access was encountered Simulation.cu 27\n",
+      "run_stdout_snippet": ":             17,000,000\nEst. Memory Usage (MB):       241\nBinary File Mode:             Off\n================================================================================\n                         INITIALIZATION - DO NOT PROFILE\n================================================================================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntialization complete. Allocated 240 MB of data on CPU.\nRunning baseline event-based simulation...\n",
+      "extraction_fail": null
+    }
+  ]
+}

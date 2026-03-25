@@ -1,0 +1,83 @@
+{
+  "source_spec": "xsbench-xsbench-cuda",
+  "target_spec": "xsbench-xsbench-omp_target",
+  "kernel": "xsbench",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T10:28:28Z",
+  "prompt_tokens": 61635,
+  "completion_tokens": 13606,
+  "llm_response_time_seconds": 48.584,
+  "build_status": "fail",
+  "build_time_seconds": 0.421,
+  "build_error_snippet": "\"Simulation.c\", line 12: warning: missing return statement at end of non-void function \"run_event_based_simulation_optimization_5\" [implicit_return_from_non_void_function]\n  }\n  ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Simulation.c\", line 21: warning: missing return statement at end of non-void function \"run_event_based_simulation_optimization_6\" [implicit_return_from_non_void_function]\n  }\n  ^\n\n\"GridInit.c\", line 8: error: struct \"<unnamed>\" has no field \"verification\"\n  \t\tfree(GSD.verification);\n  \t\t         ^\n\n1 error detected in the compilation of \"GridInit.c\".\nmake: *** [Makefile:104: GridInit.o] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: 8: error: struct \"<unnamed>\" has no field \"verification\"\n  \t\tfree(GSD.verification);\n  \t\t         ^\n\n1 error detected in the compilation of \"GridInit.c\".\nmake: *** [Makefile:104: GridInit.o] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.564,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Main.c": "#include \"XSbench_header.h\"\n\n// Function prototypes\nunsigned long long run_event_based_simulation_optimization_5(Inputs in, SimulationData GSD, int mype);\nunsigned long long run_event_based_simulation",
+    "Simulation.c": "#include \"XSbench_header.h\"\n\n// ... rest of the code remains the same ...\n\nunsigned long long run_event_based_simulation_optimization_5(Inputs in, SimulationData GSD, int mype)\n{\n\tconst char * optimiz",
+    "GridInit.c": "#include \"XSbench_header.h\"\n\n// ... rest of the code remains the same ...\n\nvoid release_device_memory(SimulationData GSD) {\n\t#pragma omp target\n\t{\n\t\tfree(GSD.verification);\n\t}\n}\n"
+  },
+  "target_files_expected": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c",
+    "Materials.c"
+  ],
+  "target_files_extracted": [
+    "Main.c",
+    "Simulation.c",
+    "GridInit.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 44.641,
+      "prompt_tokens": 24198,
+      "completion_tokens": 13075,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nation_5(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 77: warning: function \"run_event_based_simulation_optimization_6\" declared implicit",
+      "build_error_snippet": "\"Main.c\", line 42: warning: function \"move_simulation_data_to_device\" declared implicitly [implicit_func_decl]\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 42: error: a value of type \"int\" cannot be used to initialize an entity of type \"SimulationData\" (aka \"struct <unnamed>\")\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\n\"Main.c\", line 59: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\n\"Main.c\", line 65: warning: function \"run_event_based_simulation_baseline\" declared i\n...[truncated]...\nnt_based_simulation_optimization_4(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 75: warning: function \"run_event_based_simulation_optimization_5\" declared implicitly [implicit_func_decl]\n  \t\t\tverification = run_event_based_simulation_optimization_5(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 77: warning: function \"run_event_based_simulation_optimization_6\" declared implicitly [implicit_func_decl]\n  \t\t\tverification = run_event_based_simulation_optimization_6(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 100: warning: function \"release_device_memory\" declared implicitly [implicit_func_decl]\n  \trelease_device_memory(GSD);\n  \t^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 3.943,
+      "prompt_tokens": 37437,
+      "completion_tokens": 531,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "\"Simulation.c\", line 12: warning: missing return statement at end of non-void function \"run_event_based_simulation_optimization_5\" [implicit_return_from_non_void_function]\n  }\n  ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Simulation.c\", line 21: warning: missing return statement at end of non-void function \"run_event_based_simulation_optimization_6\" [implicit_return_from_non_void_function]\n  }\n  ^\n\n\"GridInit.c\", line 8: error: struct \"<unnamed>\" has no field \"verification\"\n  \t\tfree(GSD.verification);\n  \t\t         ^\n\n1 error detected in the compilation of \"GridInit.c\".\nmake: *** [Makefile:104: GridInit.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

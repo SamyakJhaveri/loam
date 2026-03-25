@@ -1,0 +1,79 @@
+{
+  "source_spec": "xsbench-xsbench-cuda",
+  "target_spec": "xsbench-xsbench-omp_target",
+  "kernel": "xsbench",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 2,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T10:08:45Z",
+  "prompt_tokens": 30905,
+  "completion_tokens": 14126,
+  "llm_response_time_seconds": 153.887,
+  "build_status": "pass",
+  "build_time_seconds": 1.14,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.523,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "runtime": {
+      "value": 0.248,
+      "unit": "seconds"
+    }
+  },
+  "baseline_wall_time_seconds": 0.564,
+  "translated_wall_time_seconds": 0.523,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.0784,
+  "translated_files": {
+    "Main.c": "#include \"XSbench_header.h\"\n\nint main( int argc, char* argv[] )\n{\n\tint version = 20;\n\tint mype = 0;\n\tdouble omp_start, omp_end;\n\tint nprocs = 1;\n\tunsigned long long verification;\n\n\tInputs in = read_CL",
+    "io.c": "#include \"XSbench_header.h\"\n\nvoid logo(int version)\n{\n\tborder_print();\n\tprintf(\n\t\"                   __   __ ___________                 _                        \\n\"\n\t\"                   \\\\ \\\\ / //  _",
+    "Simulation.c": "#include \"XSbench_header.h\"\n\n// LCG random number generator\ndouble LCG_random_double(uint64_t * seed)\n{\n\tconst uint64_t m = 9223372036854775808ULL;\n\tconst uint64_t a = 2806196910506780709ULL;\n\tconst u",
+    "GridInit.c": "#include \"XSbench_header.h\"\n\nSimulationData grid_init_do_not_profile( Inputs in, int mype )\n{\n\tSimulationData SD;\n\n\tsize_t nbytes = 0;\n\n\tuint64_t seed = 42;\n\n\t/////////////////////////////////////////",
+    "XSutils.c": "#include \"XSbench_header.h\"\n\nint double_compare(const void * a, const void * b)\n{\n\tdouble A = *((double *) a);\n\tdouble B = *((double *) b);\n\n\tif( A > B )\n\t\treturn 1;\n\telse if( A < B )\n\t\treturn -1;\n\tel",
+    "Materials.c": "#include \"XSbench_header.h\"\n\nint * load_num_nucs(long n_isotopes)\n{\n\tint * num_nucs = (int*)malloc(12*sizeof(int));\n\n\tif( n_isotopes == 68 )\n\t\tnum_nucs[0]  = 34;\n\telse\n\t\tnum_nucs[0]  = 321;\n\n\tnum_nucs"
+  },
+  "target_files_expected": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c",
+    "Materials.c"
+  ],
+  "target_files_extracted": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c",
+    "Materials.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 153.887,
+      "prompt_tokens": 30905,
+      "completion_tokens": 14126,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

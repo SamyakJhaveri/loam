@@ -1,0 +1,79 @@
+{
+  "source_spec": "xsbench-xsbench-cuda",
+  "target_spec": "xsbench-xsbench-omp_target",
+  "kernel": "xsbench",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T10:20:08Z",
+  "prompt_tokens": 75446,
+  "completion_tokens": 17707,
+  "llm_response_time_seconds": 38.366,
+  "build_status": "fail",
+  "build_time_seconds": 1.02,
+  "build_error_snippet": "\"Main.c\", line 78: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\nrun_event_based_simulation:\n     42, #omp target teams distribute parallel for\n         42, Generating \"nvkernel_run_event_based_simulation_F1L42_2\" GPU kernel\n         53, Loop parallelized across teams and threads(128), schedule(static)\ncalculate_micro_xs:\n    122, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ncalculate_macro_xs:\n    221, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ngrid_search:\n    277, Generating implicit omp declare target routine\n...[truncated]...\nmization_4'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:94:(.text+0x33b): undefined reference to `run_event_based_simulation_optimization_5'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:96:(.text+0x382): undefined reference to `run_event_based_simulation_optimization_6'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:116:(.text+0x3ad): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:119:(.text+0x3f3): undefined reference to `release_device_memory'\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: sbench/xsbench-src/openmp-offload/Main.c:119:(.text+0x3f3): undefined reference to `release_device_memory'\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.564,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Main.c": "#include \"XSbench_header.h\"\n\n// Forward declarations for functions used in Main.c but defined elsewhere\n// These are needed because the original CUDA code likely had these declarations\n// in a header "
+  },
+  "target_files_expected": [
+    "Main.c",
+    "io.c",
+    "Simulation.c",
+    "GridInit.c",
+    "XSutils.c",
+    "Materials.c"
+  ],
+  "target_files_extracted": [
+    "Main.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 34.911,
+      "prompt_tokens": 29436,
+      "completion_tokens": 16382,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nation_5(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 77: warning: function \"run_event_based_simulation_optimization_6\" declared implicit",
+      "build_error_snippet": "\"Main.c\", line 42: warning: function \"move_simulation_data_to_device\" declared implicitly [implicit_func_decl]\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 42: error: a value of type \"int\" cannot be used to initialize an entity of type \"SimulationData\" (aka \"struct <unnamed>\")\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\n\"Main.c\", line 59: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\n\"Main.c\", line 65: warning: function \"run_event_based_simulation_baseline\" declared i\n...[truncated]...\nnt_based_simulation_optimization_4(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 75: warning: function \"run_event_based_simulation_optimization_5\" declared implicitly [implicit_func_decl]\n  \t\t\tverification = run_event_based_simulation_optimization_5(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 77: warning: function \"run_event_based_simulation_optimization_6\" declared implicitly [implicit_func_decl]\n  \t\t\tverification = run_event_based_simulation_optimization_6(in, GSD, mype);\n  \t\t\t               ^\n\n\"Main.c\", line 100: warning: function \"release_device_memory\" declared implicitly [implicit_func_decl]\n  \trelease_device_memory(GSD);\n  \t^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 3.455,
+      "prompt_tokens": 46010,
+      "completion_tokens": 1325,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "\"Main.c\", line 78: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\nrun_event_based_simulation:\n     42, #omp target teams distribute parallel for\n         42, Generating \"nvkernel_run_event_based_simulation_F1L42_2\" GPU kernel\n         53, Loop parallelized across teams and threads(128), schedule(static)\ncalculate_micro_xs:\n    122, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ncalculate_macro_xs:\n    221, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ngrid_search:\n    277, Generating implicit omp declare target routine\n...[truncated]...\nmization_4'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:94:(.text+0x33b): undefined reference to `run_event_based_simulation_optimization_5'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:96:(.text+0x382): undefined reference to `run_event_based_simulation_optimization_6'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:116:(.text+0x3ad): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:119:(.text+0x3f3): undefined reference to `release_device_memory'\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

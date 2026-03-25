@@ -1,0 +1,79 @@
+{
+  "source_spec": "xsbench-xsbench-opencl",
+  "target_spec": "xsbench-xsbench-cuda",
+  "kernel": "xsbench",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T08:59:04Z",
+  "prompt_tokens": 28462,
+  "completion_tokens": 15668,
+  "llm_response_time_seconds": 178.9,
+  "build_status": "pass",
+  "build_time_seconds": 15.044,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.461,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "runtime": {
+      "value": 0.194,
+      "unit": "seconds"
+    }
+  },
+  "baseline_wall_time_seconds": 0.465,
+  "translated_wall_time_seconds": 0.461,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.0087,
+  "translated_files": {
+    "Main.cu": "#include \"XSbench_header.cuh\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\tint version = 20;\n\tint mype = 0;\n\tdouble omp_start, omp_end;\n\tint nprocs = 1;\n\tunsigned long lon",
+    "io.cu": "#include \"XSbench_header.cuh\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nvoid logo(int version)\n{\n\tborder_print();\n\tprintf(\n\t\"                   __   __ ___________                 _                        \\",
+    "Simulation.cu": "#include \"XSbench_header.cuh\"\n\n////////////////////////////////////////////////////////////////////////////////////\n// CUDA Device Functions\n///////////////////////////////////////////////////////////",
+    "GridInit.cu": "#include \"XSbench_header.cuh\"\n#include <string.h>\n#include <stdint.h>\n#include <sys/time.h>\n\n// Forward declarations of host utility functions\nint NGP_compare( const void * a, const void * b );\nint do",
+    "XSutils.cu": "#include \"XSbench_header.cuh\"\n#include <sys/time.h>\n#include <string.h>\n\nint double_compare(const void * a, const void * b)\n{\n\tdouble A = *((double *) a);\n\tdouble B = *((double *) b);\n\n\tif( A > B )\n\t\t",
+    "Materials.cu": "#include \"XSbench_header.cuh\"\n#include <string.h>\n#include <stdint.h>\n\nstatic double LCG_random_double_mat(uint64_t * seed)\n{\n\tconst uint64_t m = 9223372036854775808ULL;\n\tconst uint64_t a = 2806196910"
+  },
+  "target_files_expected": [
+    "Main.cu",
+    "io.cu",
+    "Simulation.cu",
+    "GridInit.cu",
+    "XSutils.cu",
+    "Materials.cu"
+  ],
+  "target_files_extracted": [
+    "Main.cu",
+    "io.cu",
+    "Simulation.cu",
+    "GridInit.cu",
+    "XSutils.cu",
+    "Materials.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 178.9,
+      "prompt_tokens": 28462,
+      "completion_tokens": 15668,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}
