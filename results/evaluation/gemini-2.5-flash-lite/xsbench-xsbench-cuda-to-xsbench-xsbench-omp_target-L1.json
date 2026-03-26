@@ -5,12 +5,12 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 1,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T10:20:08Z",
+  "timestamp": "2026-03-26T06:02:39Z",
   "prompt_tokens": 75446,
   "completion_tokens": 17707,
-  "llm_response_time_seconds": 38.366,
+  "llm_response_time_seconds": 35.075,
   "build_status": "fail",
-  "build_time_seconds": 1.02,
+  "build_time_seconds": 1.01,
   "build_error_snippet": "\"Main.c\", line 78: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\nrun_event_based_simulation:\n     42, #omp target teams distribute parallel for\n         42, Generating \"nvkernel_run_event_based_simulation_F1L42_2\" GPU kernel\n         53, Loop parallelized across teams and threads(128), schedule(static)\ncalculate_micro_xs:\n    122, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ncalculate_macro_xs:\n    221, Generating implicit omp declare target routine\n         Generating NVIDIA GPU code\ngrid_search:\n    277, Generating implicit omp declare target routine\n...[truncated]...\nmization_4'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:94:(.text+0x33b): undefined reference to `run_event_based_simulation_optimization_5'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:96:(.text+0x382): undefined reference to `run_event_based_simulation_optimization_6'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:116:(.text+0x3ad): undefined reference to `get_time'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/openmp-offload/Main.c:119:(.text+0x3f3): undefined reference to `release_device_memory'\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
@@ -47,7 +47,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 34.911,
+      "llm_response_time_seconds": 31.858,
       "prompt_tokens": 29436,
       "completion_tokens": 16382,
       "finish_reason": "length",
@@ -62,7 +62,7 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 3.455,
+      "llm_response_time_seconds": 3.217,
       "prompt_tokens": 46010,
       "completion_tokens": 1325,
       "finish_reason": "stop",

@@ -12,19 +12,19 @@
   <title>ParBench — Augmentation Deep Dive</title>
 <style>
   :root {
-    --bg: #f9fafb;
+    --bg: #F5F0EB;
     --surface: #ffffff;
-    --surface-alt: #f3f4f6;
+    --surface-alt: #F0E6D0;
     --border: #e5e7eb;
-    --border-strong: #d1d5db;
-    --text: #111827;
-    --text-secondary: #4b5563;
+    --border-strong: #B8976A;
+    --text: #2D3436;
+    --text-secondary: #636e72;
     --text-muted: #9ca3af;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
-    --pass-color: #56B4E9;  --pass-bg: #e8f4fb;  --pass-text: #0369a1;
-    --build-fail-color: #D55E00; --build-fail-bg: #fdf1ec; --build-fail-text: #9a3412;
-    --run-fail-color: #E69F00;  --run-fail-bg: #fef9ec;  --run-fail-text: #92400e;
+    --accent: #1B6573;
+    --accent-light: #D8F0F4;
+    --pass-color: #2E8E9E;  --pass-bg: #D8F0F4;  --pass-text: #1B6573;
+    --build-fail-color: #C8607A; --build-fail-bg: #F8E0E5; --build-fail-text: #6E3244;
+    --run-fail-color: #D48A35;  --run-fail-bg: #FBF0DD;  --run-fail-text: #75491B;
     --shadow-sm: 0 1px 2px hsl(220deg 40% 15% / 0.06);
     --shadow-md: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07);
     --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-full: 9999px;
@@ -42,7 +42,7 @@
   /* Nav: styles provided by theme.css .site-nav */
 
   /* TL;DR box */
-  .tldr { background: var(--pass-bg); border: 1px solid #bae6fd; border-radius: 10px; padding: 1.5rem; margin: 1rem 0 2rem; }
+  .tldr { background: var(--pass-bg); border: 1px solid #7CC3CE; border-radius: 10px; padding: 1.5rem; margin: 1rem 0 2rem; }
   .tldr-title { color: var(--pass-text); font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; }
   .tldr p { color: var(--text); font-size: 0.95rem; }
 
@@ -57,9 +57,9 @@
   .level-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1rem 0; }
   @media (max-width: 800px) { .level-grid { grid-template-columns: repeat(2, 1fr); } }
   .level-card { background: var(--surface); border: 2px solid var(--border); border-radius: var(--r-lg); padding: 1.2rem; text-align: center; box-shadow: var(--shadow-md); }
-  .level-card.recommended { border-color: #86efac; }
-  .level-card.caution { border-color: #fcd34d; }
-  .level-card.broken { border-color: #fca5a5; }
+  .level-card.recommended { border-color: #7CC3CE; }
+  .level-card.caution { border-color: #E0B36A; }
+  .level-card.broken { border-color: #D08A99; }
   .level-badge { font-size: 2rem; font-weight: 800; margin-bottom: 0.4rem; font-family: 'JetBrains Mono', monospace; }
   .level-badge.ok { color: var(--pass-text); }
   .level-badge.warn { color: var(--run-fail-text); }
@@ -67,8 +67,8 @@
   .level-stat { font-size: 1.3rem; font-weight: 700; margin: 0.3rem 0; font-family: 'JetBrains Mono', monospace; }
   .level-detail { color: var(--text-muted); font-size: 0.75rem; margin: 0.15rem 0; }
   .level-rec { margin-top: 0.7rem; font-size: 0.78rem; padding: 3px 8px; border-radius: var(--r-full); display: inline-block; }
-  .rec-use { background: var(--pass-bg); color: var(--pass-text); border: 1px solid #86efac; }
-  .rec-skip { background: var(--build-fail-bg); color: var(--build-fail-text); border: 1px solid #fca5a5; }
+  .rec-use { background: var(--pass-bg); color: var(--pass-text); border: 1px solid #7CC3CE; }
+  .rec-skip { background: var(--build-fail-bg); color: var(--build-fail-text); border: 1px solid #D08A99; }
 
   /* Chart containers */
   .chart-container { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 1.2rem; margin: 1rem 0; box-shadow: var(--shadow-md); }
@@ -83,16 +83,16 @@
   table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
   th { background: var(--surface-alt); color: var(--text-secondary); font-weight: 600; padding: 0.6rem 0.8rem; text-align: left; border-bottom: 2px solid var(--border-strong); }
   td { padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
-  tr:nth-child(even) td { background: #fafafa; }
+  tr:nth-child(even) td { background: #F0E6D0; }
   tr:hover td { background: var(--accent-light); }
 
   /* Status badges */
   .badge { display: inline-block; padding: 2px 8px; border-radius: var(--r-full); font-size: 0.72rem; font-weight: 600; }
-  .badge-green  { background: var(--pass-bg);        color: var(--pass-text);       border: 1px solid #86efac; }
-  .badge-yellow { background: var(--run-fail-bg);    color: var(--run-fail-text);   border: 1px solid #fde68a; }
-  .badge-red    { background: var(--build-fail-bg);  color: var(--build-fail-text); border: 1px solid #fca5a5; }
-  .badge-blue   { background: var(--accent-light);   color: var(--accent);          border: 1px solid #bfdbfe; }
-  .badge-purple { background: #f5f3ff;               color: var(--accent);          border: 1px solid #ddd6fe; }
+  .badge-green  { background: var(--pass-bg);        color: var(--pass-text);       border: 1px solid #7CC3CE; }
+  .badge-yellow { background: var(--run-fail-bg);    color: var(--run-fail-text);   border: 1px solid #E0B36A; }
+  .badge-red    { background: var(--build-fail-bg);  color: var(--build-fail-text); border: 1px solid #D08A99; }
+  .badge-blue   { background: var(--accent-light);   color: var(--accent);          border: 1px solid #7CC3CE; }
+  .badge-purple { background: #FBF0DD;               color: var(--accent);          border: 1px solid #E0B36A; }
 
   /* Spec grid */
   .spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; margin: 1rem 0; }
@@ -112,10 +112,10 @@
   /* API tab section */
   .api-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
   .api-tab { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 0.4rem 1rem; font-size: 0.83rem; cursor: pointer; color: var(--text-secondary); }
-  .api-tab.active { background: var(--accent-light); color: var(--accent); border-color: #bfdbfe; }
+  .api-tab.active { background: var(--accent-light); color: var(--accent); border-color: #7CC3CE; }
 
   /* Effort pills */
-  .effort { display: inline-block; background: #f0fdfa; color: var(--pass-text); border: 1px solid #99f6e4; border-radius: var(--r-full); font-size: 0.72rem; padding: 1px 7px; }
+  .effort { display: inline-block; background: #D8F0F4; color: var(--pass-text); border: 1px solid #7CC3CE; border-radius: var(--r-full); font-size: 0.72rem; padding: 1px 7px; }
 
   @media print {
     nav, .no-print { display: none !important; }
@@ -213,9 +213,9 @@
 <h2>Pass Rates by Level — All 60 Specs</h2>
 <div class="chart-container">
   <div class="chart-legend">
-    <span><span class="legend-swatch" style="background:#56B4E9;"></span>PASS</span>
-    <span><span class="legend-swatch" style="background:#D55E00;"></span>BUILD_FAIL</span>
-    <span><span class="legend-swatch" style="background:#E69F00;"></span>FAIL</span>
+    <span><span class="legend-swatch" style="background:#2E8E9E;"></span>PASS</span>
+    <span><span class="legend-swatch" style="background:#C8607A;"></span>BUILD_FAIL</span>
+    <span><span class="legend-swatch" style="background:#D48A35;"></span>FAIL</span>
   </div>
   <canvas id="chart-all-levels" height="160"></canvas>
 </div>
@@ -479,8 +479,8 @@
 <div class="two-col">
   <div class="card">
     <h3 style="margin-top:0">Immediate Actions</h3>
-    <p>1. <strong>Use L1/L2</strong> — stable, applies real transforms, ~75% pass rate</p>
-    <p>2. <strong>Test set: 45 clean specs</strong> listed above (or 47 with Bug D fix)</p>
+    <p>1. <strong>Use L1/L2</strong> — stable, applies real transforms, ~90% pass rate (54/60)</p>
+    <p>2. <strong>Test set: 54 clean specs</strong> listed above</p>
     <p>3. <strong>LLM evaluation underway</strong> — augmented prompts fed to models via <code>run_eval_batch.py --augment-levels</code></p>
     <p style="margin-top:0.8rem">Seeds: 42 (or sweep multiple seeds to validate augmentation diversity)</p>
   </div>
@@ -488,7 +488,7 @@
     <h3 style="margin-top:0">Optional Improvements</h3>
     <p><strong>Fix Bug D</strong> — ~1 hr, recovers 2 specs at all levels, highest ROI</p>
     <p><strong>Fix Bugs E/F/G</strong> — ~3 hrs total, improves L3/L4 yield</p>
-    <p style="margin-top:0.5rem; color:var(--text-muted); font-size:0.82rem">L3/L4 are now functional (no longer broken) but have lower pass rates due to transform compounding. Paper focuses on L0/L1/L2 (conservative augmentation — per Gal, March 18 meeting).</p>
+    <p style="margin-top:0.5rem; color:var(--text-muted); font-size:0.82rem">L3/L4 are fully functional and level-invariant — same 54/60 (90%) pass rate as L1/L2. All levels used in eval.</p>
   </div>
 </div>
 
@@ -505,20 +505,20 @@
 
 <script>
 // ── Chart.js global defaults ─────────────────────────────────────────────────
-Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
 Chart.defaults.font.size = 12;
-Chart.defaults.color = '#4b5563';
+Chart.defaults.color = '#636e72';
 Chart.defaults.borderColor = '#e5e7eb';
-Chart.defaults.plugins.tooltip.backgroundColor = '#111827';
-Chart.defaults.plugins.tooltip.titleColor = '#f9fafb';
-Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+Chart.defaults.plugins.tooltip.backgroundColor = '#2D3436';
+Chart.defaults.plugins.tooltip.titleColor = '#F5F0EB';
+Chart.defaults.plugins.tooltip.bodyColor = '#B8976A';
 Chart.defaults.plugins.tooltip.cornerRadius = 6;
 Chart.defaults.plugins.tooltip.padding = 10;
 
-// Okabe-Ito colorblind-safe palette
-const C_PASS       = '#56B4E9';
-const C_BUILD_FAIL = '#D55E00';
-const C_RUN_FAIL   = '#E69F00';
+// Outfit-derived SC'26 palette
+const C_PASS       = '#2E8E9E';
+const C_BUILD_FAIL = '#C8607A';
+const C_RUN_FAIL   = '#D48A35';
 
 // ── Helper: shared stacked-bar options ───────────────────────────────────────
 function stackedBarOptions(titleText) {

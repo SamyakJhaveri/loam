@@ -11,19 +11,19 @@
   <title>ParBench — Evaluation Pipeline: Spec → Prompt → LLM → Build → Run → Verify</title>
 <style>
   :root {
-    --bg: #f9fafb;
+    --bg: #F5F0EB;
     --surface: #ffffff;
-    --surface-alt: #f3f4f6;
+    --surface-alt: #F0E6D0;
     --border: #e5e7eb;
-    --border-strong: #d1d5db;
-    --text: #111827;
-    --text-secondary: #4b5563;
+    --border-strong: #B8976A;
+    --text: #2D3436;
+    --text-secondary: #636e72;
     --text-muted: #9ca3af;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
-    --pass-color: #56B4E9;  --pass-bg: #e8f4fb;  --pass-text: #0369a1;
-    --build-fail-color: #D55E00; --build-fail-bg: #fdf1ec; --build-fail-text: #9a3412;
-    --run-fail-color: #E69F00;  --run-fail-bg: #fef9ec;  --run-fail-text: #92400e;
+    --accent: #1B6573;
+    --accent-light: #D8F0F4;
+    --pass-color: #2E8E9E;  --pass-bg: #D8F0F4;  --pass-text: #1B6573;
+    --build-fail-color: #C8607A; --build-fail-bg: #F8E0E5; --build-fail-text: #6E3244;
+    --run-fail-color: #D48A35;  --run-fail-bg: #FBF0DD;  --run-fail-text: #75491B;
     --shadow-sm: 0 1px 2px hsl(220deg 40% 15% / 0.06);
     --shadow-md: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07);
     --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-full: 9999px;
@@ -47,10 +47,10 @@
   .step-desc { color: var(--text-secondary); font-size: 0.9rem; }
 
   .step.phase-entry .step-num { background: var(--accent-light); color: var(--accent); border: 2px solid var(--accent); }
-  .step.phase-resolve .step-num { background: #fef9ec; color: var(--run-fail-color); border: 2px solid var(--run-fail-color); }
-  .step.phase-augment .step-num { background: #f5f3ff; color: var(--accent); border: 2px solid var(--accent); }
-  .step.phase-build .step-num { background: #f0fdfa; color: #0891b2; border: 2px solid #0891b2; }
-  .step.phase-run .step-num { background: #fff7ed; color: var(--run-fail-text); border: 2px solid var(--run-fail-text); }
+  .step.phase-resolve .step-num { background: #FBF0DD; color: var(--run-fail-color); border: 2px solid var(--run-fail-color); }
+  .step.phase-augment .step-num { background: #D8F0F4; color: var(--accent); border: 2px solid var(--accent); }
+  .step.phase-build .step-num { background: #D8F0F4; color: #1B6573; border: 2px solid #1B6573; }
+  .step.phase-run .step-num { background: #FBF0DD; color: var(--run-fail-text); border: 2px solid var(--run-fail-text); }
   .step.phase-verify .step-num { background: #f0fdf4; color: var(--pass-color); border: 2px solid var(--pass-color); }
   .step.phase-fail .step-num { background: #fef2f2; color: var(--build-fail-color); border: 2px solid var(--build-fail-color); }
 

@@ -654,9 +654,11 @@ def call_llm(
             max_tokens=16384,
             temperature=0,
             messages=full_messages,
-            # Explicitly disable thinking/reasoning (budget=0) so all models
-            # are evaluated at equivalent base capability — no inference-time compute scaling.
-            extra_body={"thinking_budget": 0},
+            # Explicitly disable thinking/reasoning so all models are evaluated
+            # at equivalent base capability — no inference-time compute scaling.
+            # Flash Lite has thinking OFF by default, but we force it explicitly.
+            # Ref: https://ai.google.dev/gemini-api/docs/openai#thinking
+            reasoning_effort="none",
         )
         response_text = response.choices[0].message.content or ""
         prompt_tokens = response.usage.prompt_tokens

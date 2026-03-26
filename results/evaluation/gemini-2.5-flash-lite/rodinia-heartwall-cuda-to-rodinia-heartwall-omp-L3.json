@@ -1,0 +1,78 @@
+{
+  "source_spec": "rodinia-heartwall-cuda",
+  "target_spec": "rodinia-heartwall-omp",
+  "kernel": "heartwall",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:05:18Z",
+  "prompt_tokens": 115300,
+  "completion_tokens": 32768,
+  "llm_response_time_seconds": 69.126,
+  "build_status": "fail",
+  "build_time_seconds": 0.026,
+  "build_error_snippet": "In file included from main.c:13:\n./AVI/avimod.h:8:12: error: two or more data types in declaration specifiers\n    8 | #define fp float\n      |            ^~~~~\ndefine.c:9:15: note: in expansion of macro \u2018fp\u2019\n    9 | typedef float fp;\n      |               ^~\nIn file included from main.c:16:\ndefine.c:9:1: warning: useless type name in empty declaration\n    9 | typedef float fp;\n      | ^~~~~~~\nIn file included from main.c:17:\nkernel.c:3:10: fatal error: define.h: No such file or directory\n    3 | #include \"define.h\"\n      |          ^~~~~~~~~~\ncompilation terminated.\nmake: *** [makefile:12: main.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: from main.c:17:\nkernel.c:3:10: fatal error: define.h: No such file or directory\n    3 | #include \"define.h\"\n      |          ^~~~~~~~~~\ncompilation terminated.\nmake: *** [makefile:12: main.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.5,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "define.c": "#ifndef DEFINE_H\n#define DEFINE_H\n\n#define NUMBER_THREADS 256\n#define ALL_POINTS 31\n#define ENDO_POINTS 20\n#define EPI_POINTS 31\n\ntypedef float fp;\n\ntypedef struct{\n\n\tint point_no;\n\n\tfp* d_Row;\n\tfp* d",
+    "kernel.c": "#include <omp.h>\n#include <math.h>\n#include \"define.h\"\n\n//=============================================================================================================================================="
+  },
+  "target_files_expected": [
+    "define.c",
+    "kernel.c",
+    "main.c"
+  ],
+  "target_files_extracted": [
+    "define.c",
+    "kernel.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 39.475,
+      "prompt_tokens": 49425,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "Your response did not include any of the expected output files. Please translate each target file using this format:\n\n```c define.c\n// your translated code here\n```\n\n```c kernel.c\n// your translated c",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": true
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 29.651,
+      "prompt_tokens": 65875,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "In file included from main.c:13:\n./AVI/avimod.h:8:12: error: two or more data types in declaration specifiers\n    8 | #define fp float\n      |            ^~~~~\ndefine.c:9:15: note: in expansion of macro \u2018fp\u2019\n    9 | typedef float fp;\n      |               ^~\nIn file included from main.c:16:\ndefine.c:9:1: warning: useless type name in empty declaration\n    9 | typedef float fp;\n      | ^~~~~~~\nIn file included from main.c:17:\nkernel.c:3:10: fatal error: define.h: No such file or directory\n    3 | #include \"define.h\"\n      |          ^~~~~~~~~~\ncompilation terminated.\nmake: *** [makefile:12: main.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

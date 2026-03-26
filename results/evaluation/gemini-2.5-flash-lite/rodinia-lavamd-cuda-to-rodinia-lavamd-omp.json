@@ -5,10 +5,10 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-24T18:11:41Z",
+  "timestamp": "2026-03-26T06:12:21Z",
   "prompt_tokens": 16758,
   "completion_tokens": 1312,
-  "llm_response_time_seconds": 3.7,
+  "llm_response_time_seconds": 4.353,
   "build_status": "pass",
   "build_time_seconds": 0.149,
   "build_error_snippet": null,
@@ -42,14 +42,18 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 3.7,
+      "llm_response_time_seconds": 4.353,
       "prompt_tokens": 16758,
       "completion_tokens": 1312,
+      "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "pass",
       "verify_status": "pass",
       "error_feedback_sent": null,
-      "finish_reason": "stop"
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
     }
   ]
 }

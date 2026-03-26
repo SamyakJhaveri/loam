@@ -11,26 +11,26 @@
 <link rel="stylesheet" href="theme.css">
 <style>
   :root {
-    --bg: #f9fafb;
+    --bg: #F5F0EB;
     --surface: #ffffff;
-    --surface-alt: #f3f4f6;
+    --surface-alt: #F0E6D0;
     --border: #e5e7eb;
-    --text: #111827;
-    --text-secondary: #4b5563;
+    --text: #2D3436;
+    --text-secondary: #636e72;
     --text-muted: #9ca3af;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
+    --accent: #1B6573;
+    --accent-light: #D8F0F4;
 
-    /* Status colors — Okabe-Ito colorblind-safe */
-    --pass-color: #56B4E9;
-    --pass-bg: #e8f4fb;
-    --pass-text: #0369a1;
-    --build-fail-color: #D55E00;
-    --build-fail-bg: #fdf1ec;
-    --build-fail-text: #9a3412;
-    --run-fail-color: #E69F00;
-    --run-fail-bg: #fef9ec;
-    --run-fail-text: #92400e;
+    /* Status colors — Outfit-derived SC'26 palette */
+    --pass-color: #2E8E9E;
+    --pass-bg: #D8F0F4;
+    --pass-text: #1B6573;
+    --build-fail-color: #C8607A;
+    --build-fail-bg: #F8E0E5;
+    --build-fail-text: #6E3244;
+    --run-fail-color: #D48A35;
+    --run-fail-bg: #FBF0DD;
+    --run-fail-text: #75491B;
 
     --shadow-sm: 0 1px 2px hsl(220deg 40% 15% / 0.06);
   }
@@ -61,9 +61,9 @@
   .mini-stat .val { font-weight: 700; }
   .tag { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.72rem; margin: 2px; }
   .tag-blue   { background: var(--accent-light);              color: var(--accent);  border: 1px solid rgba(37,99,235,0.25); }
-  .tag-green  { background: var(--pass-bg);                   color: var(--pass-text);   border: 1px solid rgba(86,180,233,0.3); }
-  .tag-purple { background: rgba(139,92,246,0.1);             color: #7c3aed;        border: 1px solid rgba(139,92,246,0.3); }
-  .tag-orange { background: rgba(249,115,22,0.1);             color: #ea580c;        border: 1px solid rgba(249,115,22,0.3); }
+  .tag-green  { background: var(--pass-bg);                   color: var(--pass-text);   border: 1px solid rgba(46,142,158,0.3); }
+  .tag-purple { background: rgba(212,138,53,0.1);             color: #D48A35;        border: 1px solid rgba(212,138,53,0.3); }
+  .tag-orange { background: rgba(200,96,122,0.1);              color: #C8607A;        border: 1px solid rgba(200,96,122,0.3); }
 
   /* Pass rate bars */
   .rate-section { margin: 1rem 0; }
@@ -143,7 +143,7 @@
   <div class="stat-card"><div class="n" style="color:var(--pass-color)">2</div><div class="l">Benchmark Suites</div></div>
   <div class="stat-card"><div class="n" style="color:var(--pass-text)">4</div><div class="l">APIs Tested</div></div>
   <div class="stat-card"><div class="n" style="color:var(--run-fail-color)">5</div><div class="l">AST Transforms</div></div>
-  <div class="stat-card"><div class="n" style="color:var(--run-fail-text)">60%</div><div class="l">Pilot Pass Rate</div></div>
+  <div class="stat-card"><div class="n" style="color:var(--run-fail-text)">35%</div><div class="l">Eval Pass Rate</div></div>
 </div>
 
 <!-- ─── Suite Breakdown ────────────────────────────────────────────────────── -->
@@ -179,7 +179,7 @@
   <div class="suite-card">
     <h3>4-Model Evaluation — CUDA-to-OMP</h3>
     <div class="mini-stat"><span>Total tasks</span><span class="val" style="color:var(--accent)">452</span></div>
-    <div class="mini-stat"><span>Rodinia L0 PASS</span><span class="val" style="color:var(--pass-text)">30/68 (44.1%)</span></div>
+    <div class="mini-stat"><span>Overall PASS (L0-L4)</span><span class="val" style="color:var(--pass-text)">158/452 (35.0%)</span></div>
     <div class="mini-stat"><span>Best model</span><span class="val" style="color:var(--pass-text)">claude-sonnet-4-6: 106/145 (73.1%)</span></div>
     <div class="mini-stat"><span>azure-gpt-4.1</span><span class="val" style="color:var(--pass-text)">9/17 (52.9%)</span></div>
     <div class="mini-stat"><span>groq-llama-3.3-70b</span><span class="val" style="color:var(--run-fail-text)">27/145 (18.6%)</span></div>
@@ -228,7 +228,7 @@
   <div class="pipe-step pipe-done">
     <div class="pipe-num">4</div>
     <div class="pipe-title">Translation Eval</div>
-    <div class="pipe-desc">4 models. 452 tasks. 30/68 Rodinia L0 PASS (44.1%). Rodinia L1-L4 + XSBench L0-L4 eval included.</div>
+    <div class="pipe-desc">158/452 overall PASS (35.0%). Rodinia L0-L4 + XSBench L0-L4, 4 models.</div>
   </div>
 </div>
 
@@ -291,14 +291,14 @@ const RATES = [
   { label: 'HeCBench OMP (Phase 3)',   pass: 41,  total: 60,  color: 'var(--pass-color)' },
   { label: 'Cross-API CUDA (Phase 4)', pass: 20,  total: 20,  color: 'var(--accent)' },
   { label: 'Cross-API OMP (Phase 4)',  pass: 11,  total: 20,  color: 'var(--pass-color)' },
-  { label: 'Cross-API SYCL (Phase 4)', pass: 16,  total: 20,  color: '#8b5cf6' },
+  { label: 'Cross-API SYCL (Phase 4)', pass: 16,  total: 20,  color: '#E6A84D' },
   { label: 'Cross-API HIP (Phase 4)',  pass: 0,   total: 20,  color: 'var(--build-fail-color)' },
-  { label: 'Rodinia Baseline',         pass: 54,  total: 60,  color: '#0d9488' },
+  { label: 'Rodinia Baseline',         pass: 54,  total: 60,  color: '#2E8E9E' },
   { label: 'Aug. L1 (seed=42)',        pass: 54,  total: 60,  color: 'var(--pass-color)' },
   { label: 'Aug. L2 (seed=42)',        pass: 54,  total: 60,  color: 'var(--pass-color)' },
   { label: 'Aug. L3 (seed=42)',        pass: 54,  total: 60,  color: 'var(--pass-color)' },
   { label: 'Aug. L4 (seed=42)',        pass: 54,  total: 60,  color: 'var(--pass-color)' },
-  { label: 'LLM Eval: CUDA→OMP (4 models, L0)', pass: 30, total: 68, color: 'var(--accent)' }
+  { label: 'LLM Eval: All Tasks (4 models, L0-L4)', pass: 158, total: 452, color: 'var(--accent)' }
 ];
 
 const rateContainer = document.getElementById('pass-rate-chart');
@@ -320,9 +320,9 @@ rateContainer.innerHTML = RATES.map(r => {
 const APIS_DIST = [
   { label: 'CUDA',    count: 82, color: 'var(--accent)' },
   { label: 'OpenMP',  count: 78, color: 'var(--pass-color)' },
-  { label: 'OpenCL',  count: 21, color: '#8b5cf6' },
-  { label: 'SYCL',    count: 1,  color: '#0d9488' },
-  { label: 'HIP',     count: 1,  color: '#f97316' }
+  { label: 'OpenCL',  count: 21, color: '#E6A84D' },
+  { label: 'SYCL',    count: 1,  color: '#2E8E9E' },
+  { label: 'HIP',     count: 1,  color: '#C8607A' }
 ];
 const maxAPI = 185;
 const apiContainer = document.getElementById('api-dist-chart');
@@ -339,12 +339,12 @@ apiContainer.innerHTML = APIS_DIST.map(a => {
 // Approximate from manifest survey
 const CATS = [
   { label: 'other',             count: 62, color: 'var(--text-muted)' },
-  { label: 'physics',           count: 29, color: '#0d9488' },
+  { label: 'physics',           count: 29, color: '#2E8E9E' },
   { label: 'ml',                count: 20, color: 'var(--accent)' },
   { label: 'stencil',           count: 18, color: 'var(--pass-color)' },
-  { label: 'linear_algebra',    count: 16, color: '#8b5cf6' },
+  { label: 'linear_algebra',    count: 16, color: '#E6A84D' },
   { label: 'image',             count: 12, color: 'var(--run-fail-color)' },
-  { label: 'reduction',         count: 10, color: '#f97316' },
+  { label: 'reduction',         count: 10, color: '#C8607A' },
   { label: 'graph',             count: 9,  color: 'var(--accent)' },
   { label: 'crypto',            count: 5,  color: 'var(--build-fail-color)' },
   { label: 'sort',              count: 2,  color: 'var(--text-muted)' }

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-03-25T10:51:29.353922",
-  "total_tasks": 248,
+  "generated_at": "2026-03-26T10:57:56.833616",
+  "total_tasks": 452,
   "by_model": {
     "azure-gpt-4.1": {
       "pass": 9,
@@ -13,49 +13,49 @@
       }
     },
     "claude-sonnet-4-6": {
-      "pass": 58,
-      "total": 77,
-      "rate": 0.7532,
+      "pass": 106,
+      "total": 145,
+      "rate": 0.731,
       "by_status": {
-        "PASS": 58,
-        "BUILD_FAIL": 2,
-        "RUN_FAIL": 17
+        "PASS": 106,
+        "BUILD_FAIL": 10,
+        "RUN_FAIL": 29
       }
     },
     "gemini-2.5-flash-lite": {
-      "pass": 4,
-      "total": 77,
-      "rate": 0.0519,
+      "pass": 16,
+      "total": 145,
+      "rate": 0.1103,
       "by_status": {
-        "PASS": 4,
-        "BUILD_FAIL": 47,
-        "RUN_FAIL": 22,
-        "EXTRACTION_FAIL": 4
+        "PASS": 16,
+        "BUILD_FAIL": 89,
+        "EXTRACTION_FAIL": 10,
+        "RUN_FAIL": 30
       }
     },
     "groq-llama-3.3-70b-versatile": {
-      "pass": 7,
-      "total": 77,
-      "rate": 0.0909,
+      "pass": 27,
+      "total": 145,
+      "rate": 0.1862,
       "by_status": {
-        "BUILD_FAIL": 40,
-        "PASS": 7,
-        "EXTRACTION_FAIL": 14,
-        "RUN_FAIL": 15,
+        "PASS": 27,
+        "BUILD_FAIL": 71,
+        "EXTRACTION_FAIL": 27,
+        "RUN_FAIL": 19,
         "ERROR": 1
       }
     }
   },
   "by_direction": {
     "cuda-to-omp": {
-      "pass": 30,
-      "total": 83,
-      "rate": 0.3614,
+      "pass": 110,
+      "total": 287,
+      "rate": 0.3833,
       "by_status": {
-        "BUILD_FAIL": 35,
-        "PASS": 30,
-        "RUN_FAIL": 15,
-        "EXTRACTION_FAIL": 3
+        "BUILD_FAIL": 116,
+        "PASS": 110,
+        "RUN_FAIL": 39,
+        "EXTRACTION_FAIL": 22
       }
     },
     "cuda-to-omp_target": {
@@ -173,154 +173,167 @@
   },
   "by_kernel": {
     "backprop": {
-      "pass": 2,
-      "total": 4,
-      "rate": 0.5,
+      "pass": 11,
+      "total": 16,
+      "rate": 0.6875,
       "by_status": {
-        "BUILD_FAIL": 2,
-        "PASS": 2
+        "BUILD_FAIL": 5,
+        "PASS": 11
       }
     },
     "bfs": {
-      "pass": 3,
-      "total": 4,
-      "rate": 0.75,
+      "pass": 11,
+      "total": 16,
+      "rate": 0.6875,
       "by_status": {
-        "PASS": 3,
-        "BUILD_FAIL": 1
+        "PASS": 11,
+        "BUILD_FAIL": 5
       }
     },
     "bptree": {
-      "pass": 2,
-      "total": 4,
-      "rate": 0.5,
+      "pass": 6,
+      "total": 16,
+      "rate": 0.375,
       "by_status": {
-        "PASS": 2,
-        "BUILD_FAIL": 2
+        "PASS": 6,
+        "BUILD_FAIL": 6,
+        "EXTRACTION_FAIL": 4
       }
     },
     "cfd": {
-      "pass": 2,
-      "total": 4,
-      "rate": 0.5,
+      "pass": 6,
+      "total": 16,
+      "rate": 0.375,
       "by_status": {
-        "PASS": 2,
-        "BUILD_FAIL": 2
+        "PASS": 6,
+        "BUILD_FAIL": 10
       }
     },
     "heartwall": {
       "pass": 0,
-      "total": 4,
+      "total": 16,
       "rate": 0.0,
       "by_status": {
         "RUN_FAIL": 1,
-        "BUILD_FAIL": 2,
-        "EXTRACTION_FAIL": 1
+        "BUILD_FAIL": 12,
+        "EXTRACTION_FAIL": 3
       }
     },
     "hotspot": {
       "pass": 0,
-      "total": 4,
+      "total": 16,
       "rate": 0.0,
       "by_status": {
-        "RUN_FAIL": 3,
-        "BUILD_FAIL": 1
+        "RUN_FAIL": 11,
+        "EXTRACTION_FAIL": 2,
+        "BUILD_FAIL": 3
       }
     },
     "hotspot3d": {
-      "pass": 4,
-      "total": 4,
-      "rate": 1.0,
-      "by_status": {
-        "PASS": 4
-      }
-    },
-    "kmeans": {
-      "pass": 2,
-      "total": 4,
-      "rate": 0.5,
-      "by_status": {
-        "PASS": 2,
-        "BUILD_FAIL": 2
-      }
-    },
-    "lavamd": {
-      "pass": 3,
-      "total": 4,
+      "pass": 12,
+      "total": 16,
       "rate": 0.75,
       "by_status": {
-        "PASS": 3,
-        "BUILD_FAIL": 1
-      }
-    },
-    "lud": {
-      "pass": 3,
-      "total": 4,
-      "rate": 0.75,
-      "by_status": {
-        "PASS": 3,
-        "BUILD_FAIL": 1
-      }
-    },
-    "myocyte": {
-      "pass": 0,
-      "total": 4,
-      "rate": 0.0,
-      "by_status": {
+        "PASS": 12,
         "BUILD_FAIL": 4
       }
     },
-    "nn": {
-      "pass": 4,
-      "total": 4,
-      "rate": 1.0,
+    "kmeans": {
+      "pass": 7,
+      "total": 16,
+      "rate": 0.4375,
       "by_status": {
-        "PASS": 4
+        "PASS": 7,
+        "BUILD_FAIL": 5,
+        "RUN_FAIL": 1,
+        "EXTRACTION_FAIL": 3
+      }
+    },
+    "lavamd": {
+      "pass": 11,
+      "total": 16,
+      "rate": 0.6875,
+      "by_status": {
+        "PASS": 11,
+        "BUILD_FAIL": 3,
+        "EXTRACTION_FAIL": 2
+      }
+    },
+    "lud": {
+      "pass": 8,
+      "total": 16,
+      "rate": 0.5,
+      "by_status": {
+        "PASS": 8,
+        "BUILD_FAIL": 7,
+        "RUN_FAIL": 1
+      }
+    },
+    "myocyte": {
+      "pass": 1,
+      "total": 16,
+      "rate": 0.0625,
+      "by_status": {
+        "BUILD_FAIL": 15,
+        "PASS": 1
+      }
+    },
+    "nn": {
+      "pass": 13,
+      "total": 16,
+      "rate": 0.8125,
+      "by_status": {
+        "PASS": 13,
+        "BUILD_FAIL": 2,
+        "RUN_FAIL": 1
       }
     },
     "nw": {
       "pass": 0,
-      "total": 4,
+      "total": 16,
       "rate": 0.0,
       "by_status": {
-        "RUN_FAIL": 2,
-        "EXTRACTION_FAIL": 1,
-        "BUILD_FAIL": 1
+        "RUN_FAIL": 7,
+        "EXTRACTION_FAIL": 4,
+        "BUILD_FAIL": 5
       }
     },
     "particlefilter": {
-      "pass": 1,
-      "total": 4,
-      "rate": 0.25,
+      "pass": 7,
+      "total": 16,
+      "rate": 0.4375,
       "by_status": {
-        "BUILD_FAIL": 3,
-        "PASS": 1
+        "BUILD_FAIL": 8,
+        "PASS": 7,
+        "RUN_FAIL": 1
       }
     },
     "pathfinder": {
-      "pass": 3,
-      "total": 4,
+      "pass": 12,
+      "total": 16,
       "rate": 0.75,
       "by_status": {
-        "PASS": 3,
-        "BUILD_FAIL": 1
+        "PASS": 12,
+        "BUILD_FAIL": 4
       }
     },
     "srad": {
       "pass": 0,
-      "total": 4,
+      "total": 16,
       "rate": 0.0,
       "by_status": {
-        "RUN_FAIL": 4
+        "RUN_FAIL": 11,
+        "BUILD_FAIL": 2,
+        "EXTRACTION_FAIL": 3
       }
     },
     "streamcluster": {
-      "pass": 1,
-      "total": 4,
-      "rate": 0.25,
+      "pass": 5,
+      "total": 16,
+      "rate": 0.3125,
       "by_status": {
-        "BUILD_FAIL": 3,
-        "PASS": 1
+        "BUILD_FAIL": 11,
+        "PASS": 5
       }
     },
     "xsbench": {
@@ -349,94 +362,95 @@
       }
     },
     "L1": {
-      "pass": 10,
-      "total": 36,
-      "rate": 0.2778,
+      "pass": 32,
+      "total": 87,
+      "rate": 0.3678,
       "by_status": {
-        "RUN_FAIL": 9,
-        "PASS": 10,
-        "BUILD_FAIL": 13,
-        "EXTRACTION_FAIL": 4
+        "PASS": 32,
+        "BUILD_FAIL": 32,
+        "RUN_FAIL": 15,
+        "EXTRACTION_FAIL": 8
       }
     },
     "L2": {
-      "pass": 9,
-      "total": 36,
-      "rate": 0.25,
+      "pass": 31,
+      "total": 87,
+      "rate": 0.3563,
       "by_status": {
-        "RUN_FAIL": 11,
-        "PASS": 9,
-        "BUILD_FAIL": 11,
-        "EXTRACTION_FAIL": 4,
+        "PASS": 31,
+        "BUILD_FAIL": 29,
+        "RUN_FAIL": 18,
+        "EXTRACTION_FAIL": 8,
         "ERROR": 1
       }
     },
     "L3": {
-      "pass": 10,
-      "total": 36,
-      "rate": 0.2778,
+      "pass": 29,
+      "total": 87,
+      "rate": 0.3333,
       "by_status": {
-        "RUN_FAIL": 8,
-        "PASS": 10,
-        "BUILD_FAIL": 15,
-        "EXTRACTION_FAIL": 3
+        "PASS": 29,
+        "BUILD_FAIL": 37,
+        "RUN_FAIL": 13,
+        "EXTRACTION_FAIL": 8
       }
     },
     "L4": {
-      "pass": 8,
-      "total": 36,
-      "rate": 0.2222,
+      "pass": 25,
+      "total": 87,
+      "rate": 0.2874,
       "by_status": {
-        "RUN_FAIL": 11,
-        "PASS": 8,
-        "BUILD_FAIL": 14,
-        "EXTRACTION_FAIL": 3
+        "PASS": 25,
+        "BUILD_FAIL": 36,
+        "RUN_FAIL": 17,
+        "EXTRACTION_FAIL": 9
       }
     }
   },
   "failure_taxonomy": {
-    "BUILD_FAIL": 93,
-    "RUN_FAIL": 58,
+    "BUILD_FAIL": 174,
+    "RUN_FAIL": 82,
     "VERIFY_FAIL": 0,
-    "EXTRACTION_FAIL": 18
+    "EXTRACTION_FAIL": 37
   },
   "self_repair": {
-    "attempt_1_pass": 60,
-    "total_repaired_by_retry": 18,
-    "total_with_attempts": 248
+    "attempt_1_pass": 127,
+    "total_repaired_by_retry": 31,
+    "total_with_attempts": 452
   },
   "by_complexity": {
     "multi_to_multi": {
-      "pass": 25,
-      "total": 102,
-      "rate": 0.2451,
+      "pass": 30,
+      "total": 138,
+      "rate": 0.2174,
       "by_status": {
-        "PASS": 25,
+        "PASS": 30,
         "RUN_FAIL": 18,
-        "BUILD_FAIL": 51,
-        "EXTRACTION_FAIL": 7,
+        "BUILD_FAIL": 76,
+        "EXTRACTION_FAIL": 13,
         "ERROR": 1
       }
     },
     "multi_to_single": {
-      "pass": 36,
-      "total": 89,
-      "rate": 0.4045,
+      "pass": 93,
+      "total": 221,
+      "rate": 0.4208,
       "by_status": {
-        "BUILD_FAIL": 16,
-        "PASS": 36,
-        "RUN_FAIL": 31,
-        "EXTRACTION_FAIL": 6
+        "BUILD_FAIL": 65,
+        "PASS": 93,
+        "RUN_FAIL": 46,
+        "EXTRACTION_FAIL": 17
       }
     },
     "single_file": {
-      "pass": 7,
-      "total": 12,
-      "rate": 0.5833,
+      "pass": 25,
+      "total": 48,
+      "rate": 0.5208,
       "by_status": {
-        "RUN_FAIL": 3,
-        "PASS": 7,
-        "BUILD_FAIL": 2
+        "RUN_FAIL": 12,
+        "PASS": 25,
+        "BUILD_FAIL": 9,
+        "EXTRACTION_FAIL": 2
       }
     },
     "single_to_multi": {

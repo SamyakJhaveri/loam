@@ -5,10 +5,10 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 3,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T11:39:46Z",
+  "timestamp": "2026-03-26T06:35:04Z",
   "prompt_tokens": 54967,
   "completion_tokens": 32768,
-  "llm_response_time_seconds": 83.995,
+  "llm_response_time_seconds": 78.429,
   "build_status": "fail",
   "build_time_seconds": 0.132,
   "build_error_snippet": "Main.cu(56): error: identifier \"move_simulation_data_to_device\" is undefined\n   SimulationData SD_device = move_simulation_data_to_device(in, mype, SD_host);\n                              ^\n\nMain.cu(80): error: identifier \"run_event_based_simulation_baseline\" is undefined\n     verification = run_event_based_simulation_baseline(in, SD_device, mype);\n                    ^\n\nMain.cu(113): error: identifier \"release_device_memory\" is undefined\n   release_device_memory(SD_device);\n   ^\n\n3 errors detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
@@ -55,7 +55,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 45.677,
+      "llm_response_time_seconds": 40.819,
       "prompt_tokens": 19205,
       "completion_tokens": 16384,
       "finish_reason": "length",
@@ -70,7 +70,7 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 38.318,
+      "llm_response_time_seconds": 37.61,
       "prompt_tokens": 35762,
       "completion_tokens": 16384,
       "finish_reason": "length",

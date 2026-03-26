@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-pathfinder-cuda",
+  "target_spec": "rodinia-pathfinder-omp",
+  "kernel": "pathfinder",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:30:25Z",
+  "prompt_tokens": 9934,
+  "completion_tokens": 6555,
+  "llm_response_time_seconds": 16.125,
+  "build_status": "fail",
+  "build_time_seconds": 0.022,
+  "build_error_snippet": "pathfinder.cpp: In function \u2018void dynproc_kernel(int, int*, int*, int*, int, int, int, int)\u2019:\npathfinder.cpp:154:49: error: \u2018x_22_local\u2019 was not declared in this scope\n  154 |                 item_25[omp_get_thread_num()] = x_22_local; // Placeholder for shared memory store\n      |                                                 ^~~~~~~~~~\npathfinder.cpp:162:34: error: \u2018x_22_local\u2019 was not declared in this scope\n  162 |           elem_31[data_3_global]=x_22_local;\n      |                                  ^~~~~~~~~~\nmake: *** [Makefile:7: release] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: 34: error: \u2018x_22_local\u2019 was not declared in this scope\n  162 |           elem_31[data_3_global]=x_22_local;\n      |                                  ^~~~~~~~~~\nmake: *** [Makefile:7: release] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "pathfinder.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n#include <cstring> // For memcpy\n\n#ifdef TIMING\n#include \"timing.h\"\n\nstruct timeval tv;\nstruct timeval tv_"
+  },
+  "target_files_expected": [
+    "pathfinder.cpp"
+  ],
+  "target_files_extracted": [
+    "pathfinder.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 9.355,
+      "prompt_tokens": 3231,
+      "completion_tokens": 3273,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nelem_31[data_3_global]=x_22_local;\n      |                                  ^~~~~~~~~~\npathfinder.cpp: In function \u2018void run(int, char**)\u2019:\npathf",
+      "build_error_snippet": "pathfinder.cpp: In function \u2018void dynproc_kernel(int, int*, int*, int*, int, int, int, int)\u2019:\npathfinder.cpp:153:49: error: \u2018x_22_local\u2019 was not declared in this scope\n  153 |                 item_25[omp_get_thread_num()] = x_22_local; // Placeholder for shared memory store\n      |                                                 ^~~~~~~~~~\npathfinder.cpp:161:34: error: \u2018x_22_local\u2019 was not declared in this scope\n  161 |           elem_31[data_3_global]=x_22_local;\n      |                                  ^~~~~~~~~~\npathfinder.cpp: In function \u2018void run(int, char**)\u2019:\npathfinder.cpp:265:5: error: \u2018memcpy\u2019 was not declared in this scope\n  265 |     memcpy(x_8[0], data, sizeof(int)*cols);\n      |     ^~~~~~\npathfinder.cpp:6:1: note: \u2018memcpy\u2019 is defined in header \u2018<cstring>\u2019; did you forget to \u2018#include <cstring>\u2019?\n    5 | #include <omp.h>\n  +++ |+#include <cstring>\n    6 | \nmake: *** [Makefile:7: release] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 6.77,
+      "prompt_tokens": 6703,
+      "completion_tokens": 3282,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "pathfinder.cpp: In function \u2018void dynproc_kernel(int, int*, int*, int*, int, int, int, int)\u2019:\npathfinder.cpp:154:49: error: \u2018x_22_local\u2019 was not declared in this scope\n  154 |                 item_25[omp_get_thread_num()] = x_22_local; // Placeholder for shared memory store\n      |                                                 ^~~~~~~~~~\npathfinder.cpp:162:34: error: \u2018x_22_local\u2019 was not declared in this scope\n  162 |           elem_31[data_3_global]=x_22_local;\n      |                                  ^~~~~~~~~~\nmake: *** [Makefile:7: release] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

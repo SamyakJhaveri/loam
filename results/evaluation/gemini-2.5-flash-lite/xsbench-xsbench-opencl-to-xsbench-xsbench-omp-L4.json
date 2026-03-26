@@ -5,10 +5,10 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 4,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T09:47:03Z",
+  "timestamp": "2026-03-26T06:27:39Z",
   "prompt_tokens": 70248,
   "completion_tokens": 29637,
-  "llm_response_time_seconds": 63.206,
+  "llm_response_time_seconds": 67.945,
   "build_status": "fail",
   "build_time_seconds": 0.024,
   "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:70:40: error: too many arguments to function \u2018run_event_based_simulation\u2019\n   70 |                         verification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~\nIn file included from Main.c:1:\nXSbench_header.h:117:20: note: declared here\n  117 | unsigned long long run_event_based_simulation(Inputs in, SimulationData SD, int mype);\n      |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~\nMain.c:100:33: error: too many arguments to function \u2018print_results\u2019\n  100 |         int is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verification, sim_runtime );\n      |                                 ^~~~~~~~~~~~~\nXSbench_header.h:112:5: note: declared here\n  112 | int print_results( Inputs in, int mype, double runtime, int nprocs, unsigned long long vhash );\n      |     ^~~~~~~~~~~~~\nmake: *** [Makefile:108: Main.o] Error 1\n",
@@ -57,7 +57,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 36.411,
+      "llm_response_time_seconds": 41.065,
       "prompt_tokens": 26877,
       "completion_tokens": 16384,
       "finish_reason": "length",
@@ -72,7 +72,7 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 26.795,
+      "llm_response_time_seconds": 26.88,
       "prompt_tokens": 43371,
       "completion_tokens": 13253,
       "finish_reason": "stop",

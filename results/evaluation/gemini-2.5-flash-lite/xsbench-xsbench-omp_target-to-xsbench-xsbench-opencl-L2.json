@@ -5,18 +5,18 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 2,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T12:32:04Z",
+  "timestamp": "2026-03-26T06:45:12Z",
   "prompt_tokens": 76087,
   "completion_tokens": 10966,
-  "llm_response_time_seconds": 30.823,
+  "llm_response_time_seconds": 23.531,
   "build_status": "pass",
-  "build_time_seconds": 0.453,
+  "build_time_seconds": 0.459,
   "build_error_snippet": null,
   "run_status": "fail",
   "run_time_seconds": 0.281,
   "run_exit_code": 1,
-  "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-acf6d2.d\n1 error generated.\n",
-  "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.142 seconds\nLookups:     17,000,000\nLookups/s:   119,718,142\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+  "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-e3ee1f.d\n1 error generated.\n",
+  "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.142 seconds\nLookups:     17,000,000\nLookups/s:   119,718,343\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
   "verify_status": null,
   "verify_strategy": null,
   "overall_status": "RUN_FAIL",
@@ -42,7 +42,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 19.818,
+      "llm_response_time_seconds": 16.067,
       "prompt_tokens": 34370,
       "completion_tokens": 7309,
       "finish_reason": "stop",
@@ -57,7 +57,7 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 11.005,
+      "llm_response_time_seconds": 7.464,
       "prompt_tokens": 41717,
       "completion_tokens": 3657,
       "finish_reason": "stop",
@@ -66,8 +66,8 @@
       "verify_status": null,
       "error_feedback_sent": null,
       "build_error_snippet": null,
-      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-acf6d2.d\n1 error generated.\n",
-      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.142 seconds\nLookups:     17,000,000\nLookups/s:   119,718,142\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-e3ee1f.d\n1 error generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.142 seconds\nLookups:     17,000,000\nLookups/s:   119,718,343\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
       "extraction_fail": null
     }
   ]

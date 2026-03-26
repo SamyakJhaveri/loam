@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-hotspot3d-cuda",
+  "target_spec": "rodinia-hotspot3d-omp",
+  "kernel": "hotspot3d",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:09:16Z",
+  "prompt_tokens": 3589,
+  "completion_tokens": 2501,
+  "llm_response_time_seconds": 6.726,
+  "build_status": "pass",
+  "build_time_seconds": 0.107,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.842,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.215,
+  "translated_wall_time_seconds": 0.842,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.443,
+  "translated_files": {
+    "3D.c": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h>\n#include <math.h>\n#include <sys/time.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 16\n#define STR_SIZE 256\n\n#define block_x_ 128\n"
+  },
+  "target_files_expected": [
+    "3D.c"
+  ],
+  "target_files_extracted": [
+    "3D.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.726,
+      "prompt_tokens": 3589,
+      "completion_tokens": 2501,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

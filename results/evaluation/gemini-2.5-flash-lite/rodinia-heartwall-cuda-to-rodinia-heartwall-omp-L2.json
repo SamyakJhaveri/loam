@@ -1,0 +1,76 @@
+{
+  "source_spec": "rodinia-heartwall-cuda",
+  "target_spec": "rodinia-heartwall-omp",
+  "kernel": "heartwall",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 2,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:04:16Z",
+  "prompt_tokens": 115364,
+  "completion_tokens": 32768,
+  "llm_response_time_seconds": 60.921,
+  "build_status": "fail",
+  "build_time_seconds": 0.036,
+  "build_error_snippet": "In file included from main.c:16:\ndefine.c:57:16: error: duplicate member \u2018d_endoT\u2019\n   57 |         float *d_endoT;\n      |                ^~~~~~~\ndefine.c:58:16: error: duplicate member \u2018d_epiT\u2019\n   58 |         float *d_epiT;\n      |                ^~~~~~\nIn file included from main.c:17:\nkernel.c:7:13: error: unknown type name \u2018public_struct\u2019\n    7 | void kernel(public_struct public,\n      |             ^~~~~~~~~~~~~\nkernel.c:8:33: error: unknown type name \u2018private_struct\u2019\n    8 |                                 private_struct private){\n      |                                 ^~~~~~~~~~~~~~\nmain.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo-\n...[truncated]...\nmber \u2018d_in2_sub\u2019 in something not a structure or union\n  636 |                 free(private[i].d_in2_sub);\n      |                                ^\nmain.c:638:32: error: request for member \u2018d_in2_sub2_sqr\u2019 in something not a structure or union\n  638 |                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in something not a structure or union\n  640 |                 free(private[i].d_tMask);\n      |                                ^\nmain.c:641:32: error: request for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: t for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.5,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "define.c": "#ifndef DEFINE_H\n#define DEFINE_H\n\n#define ALL_POINTS 30\n#define ENDO_POINTS 20\n#define EPI_POINTS 10\n#define NUMBER_THREADS 256\n\ntypedef struct params_common_change {\n\tint frame_no;\n\tfloat *d_frame;\n"
+  },
+  "target_files_expected": [
+    "define.c",
+    "kernel.c",
+    "main.c"
+  ],
+  "target_files_extracted": [
+    "define.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 36.328,
+      "prompt_tokens": 49457,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "Your response did not include any of the expected output files. Please translate each target file using this format:\n\n```c define.c\n// your translated code here\n```\n\n```c kernel.c\n// your translated c",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": true
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 24.593,
+      "prompt_tokens": 65907,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "In file included from main.c:16:\ndefine.c:57:16: error: duplicate member \u2018d_endoT\u2019\n   57 |         float *d_endoT;\n      |                ^~~~~~~\ndefine.c:58:16: error: duplicate member \u2018d_epiT\u2019\n   58 |         float *d_epiT;\n      |                ^~~~~~\nIn file included from main.c:17:\nkernel.c:7:13: error: unknown type name \u2018public_struct\u2019\n    7 | void kernel(public_struct public,\n      |             ^~~~~~~~~~~~~\nkernel.c:8:33: error: unknown type name \u2018private_struct\u2019\n    8 |                                 private_struct private){\n      |                                 ^~~~~~~~~~~~~~\nmain.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo-\n...[truncated]...\nmber \u2018d_in2_sub\u2019 in something not a structure or union\n  636 |                 free(private[i].d_in2_sub);\n      |                                ^\nmain.c:638:32: error: request for member \u2018d_in2_sub2_sqr\u2019 in something not a structure or union\n  638 |                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in something not a structure or union\n  640 |                 free(private[i].d_tMask);\n      |                                ^\nmain.c:641:32: error: request for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

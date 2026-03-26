@@ -1,0 +1,78 @@
+{
+  "source_spec": "rodinia-heartwall-cuda",
+  "target_spec": "rodinia-heartwall-omp",
+  "kernel": "heartwall",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:06:29Z",
+  "prompt_tokens": 115388,
+  "completion_tokens": 28703,
+  "llm_response_time_seconds": 51.776,
+  "build_status": "fail",
+  "build_time_seconds": 0.195,
+  "build_error_snippet": "main.c: In function \u2018main\u2019:\nmain.c:677:33: warning: implicit declaration of function \u2018kernel\u2019 [-Wimplicit-function-declaration]\n  677 |                                 kernel(); // Call the kernel function\n      |                                 ^~~~~~\navilib.c: In function \u2018avi_write_data\u2019:\navilib.c:907:28: warning: \u2018%1d\u2019 directive writing between 1 and 11 bytes into a region of size 4 [-Wformat-overflow=]\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |                            ^~~\navilib.c:907:26: note: directive argument in the range [-2147483647, 2147483647]\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |                          ^~~~~~~~\navilib.c:907:4: note: \u2018sprintf\u2019 output between 5 and 15 bytes into a destination of size 5\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/ld: main.o: in function `main._omp_fn.0':\nmain.c:(.text+0x27): undefined reference to `kernel'\ncollect2: error: ld returned 1 exit status\nmake: *** [makefile:8: heartwall] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ~~~~~~~~~~\n/usr/bin/ld: main.o: in function `main._omp_fn.0':\nmain.c:(.text+0x27): undefined reference to `kernel'\ncollect2: error: ld returned 1 exit status\nmake: *** [makefile:8: heartwall] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.5,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "define.c": "#ifndef DEFINE_C\n#define DEFINE_C\n\n//===================================================================================================================================================================",
+    "main.c": "//======================================================================================================================================================================================================"
+  },
+  "target_files_expected": [
+    "define.c",
+    "kernel.c",
+    "main.c"
+  ],
+  "target_files_extracted": [
+    "define.c",
+    "main.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 31.957,
+      "prompt_tokens": 49411,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\non.in_elem-1))*deviation;\n      |                                       ^~~~~\nmain.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many a",
+      "build_error_snippet": "In file included from kernel.c:2,\n                 from main.c:17:\ndefine.c:18:16: error: redefinition of \u2018struct public_struct\u2019\n   18 | typedef struct public_struct{\n      |                ^~~~~~~~~~~~~\nIn file included from main.c:16:\ndefine.c:18:16: note: originally defined here\n   18 | typedef struct public_struct{\n      |                ^~~~~~~~~~~~~\ndefine.c:201:2: error: conflicting types for \u2018public_struct\u2019; have \u2018struct public_struct\u2019\n  201 | }public_struct;\n      |  ^~~~~~~~~~~~~\ndefine.c:201:2: note: previous declaration of \u2018public_struct\u2019 with type \u2018public_struct\u2019\n  201 | }public_struct;\n      |  ^~~~~~~~~~~~~\ndefine.c:209:16: error: redefinition of \u2018struct private_struct\u2019\n  209 | typedef struct private_struct{\n      |          \n...[truncated]...\nn)\n  135 |                         ei_new = ei_new + NUMBER_THREADS;\n      |                                           ^~~~~~~~~~~~~~\nkernel.c:1035:39: error: expected expression before \u2018float\u2019\n 1035 |                         denomT = sqrt(float(common.in_elem-1))*deviation;\n      |                                       ^~~~~\nmain.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo--\\n\",j);\n      |                          ^~~~~~~~~~~~~~\nmain.c:72:26: warning: too many arguments for format [-Wformat-extra-args]\n   72 |             fprintf(fid, \"\\n--epi--\\n\",j);\n      |                          ^~~~~~~~~~~~~\nmake: *** [makefile:12: main.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 19.819,
+      "prompt_tokens": 65977,
+      "completion_tokens": 12319,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "main.c: In function \u2018main\u2019:\nmain.c:677:33: warning: implicit declaration of function \u2018kernel\u2019 [-Wimplicit-function-declaration]\n  677 |                                 kernel(); // Call the kernel function\n      |                                 ^~~~~~\navilib.c: In function \u2018avi_write_data\u2019:\navilib.c:907:28: warning: \u2018%1d\u2019 directive writing between 1 and 11 bytes into a region of size 4 [-Wformat-overflow=]\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |                            ^~~\navilib.c:907:26: note: directive argument in the range [-2147483647, 2147483647]\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |                          ^~~~~~~~\navilib.c:907:4: note: \u2018sprintf\u2019 output between 5 and 15 bytes into a destination of size 5\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/ld: main.o: in function `main._omp_fn.0':\nmain.c:(.text+0x27): undefined reference to `kernel'\ncollect2: error: ld returned 1 exit status\nmake: *** [makefile:8: heartwall] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

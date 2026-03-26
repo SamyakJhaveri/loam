@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-streamcluster-cuda",
+  "target_spec": "rodinia-streamcluster-omp",
+  "kernel": "streamcluster",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:34:39Z",
+  "prompt_tokens": 30467,
+  "completion_tokens": 5996,
+  "llm_response_time_seconds": 16.323,
+  "build_status": "fail",
+  "build_time_seconds": 0.28,
+  "build_error_snippet": "streamcluster_original.cpp: In function \u2018void outcenterIDs(Points*, long int*, char*)\u2019:\nstreamcluster_original.cpp:1096:21: warning: format \u2018%u\u2019 expects argument of type \u2018unsigned int\u2019, but argument 3 has type \u2018long int\u2019 [-Wformat=]\n 1096 |       fprintf(fp, \"%u\\n\", centerIDs[i]);\n      |                    ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_original.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_original.cpp:1143:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n 1143 |     fprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |\n      |                           int         size_t {aka long unsigned int}\n      |                          %ld\nstreamcluster_omp.cpp:14:10: fatal error: streamcluster_header.h: No such file or directory\n   14 | #include \"streamcluster_header.h\" // Changed from .cu to .h\n      |          ^~~~~~~~~~~~~~~~~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:19: omp] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: h: No such file or directory\n   14 | #include \"streamcluster_header.h\" // Changed from .cu to .h\n      |          ^~~~~~~~~~~~~~~~~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:19: omp] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 24.639,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "streamcluster_omp.cpp": "/***********************************************\n\tstreamcluster_omp.cpp\n\t: parallelized code of streamcluster\n\t\n\t- original code from PARSEC Benchmark Suite\n\t- parallelization with OpenMP API has been"
+  },
+  "target_files_expected": [
+    "streamcluster_omp.cpp"
+  ],
+  "target_files_extracted": [
+    "streamcluster_omp.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 8.651,
+      "prompt_tokens": 13661,
+      "completion_tokens": 2994,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nfprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |",
+      "build_error_snippet": "streamcluster_original.cpp: In function \u2018void outcenterIDs(Points*, long int*, char*)\u2019:\nstreamcluster_original.cpp:1096:21: warning: format \u2018%u\u2019 expects argument of type \u2018unsigned int\u2019, but argument 3 has type \u2018long int\u2019 [-Wformat=]\n 1096 |       fprintf(fp, \"%u\\n\", centerIDs[i]);\n      |                    ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_original.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_original.cpp:1143:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n 1143 |     fprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |\n      |                           int         size_t {aka long unsigned int}\n      |                          %ld\nstreamcluster_omp.cpp:14:10: fatal error: streamcluster_header.cu: No such file or directory\n   14 | #include \"streamcluster_header.cu\"\n      |          ^~~~~~~~~~~~~~~~~~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:19: omp] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 7.672,
+      "prompt_tokens": 16806,
+      "completion_tokens": 3002,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "streamcluster_original.cpp: In function \u2018void outcenterIDs(Points*, long int*, char*)\u2019:\nstreamcluster_original.cpp:1096:21: warning: format \u2018%u\u2019 expects argument of type \u2018unsigned int\u2019, but argument 3 has type \u2018long int\u2019 [-Wformat=]\n 1096 |       fprintf(fp, \"%u\\n\", centerIDs[i]);\n      |                    ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_original.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_original.cpp:1143:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n 1143 |     fprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |\n      |                           int         size_t {aka long unsigned int}\n      |                          %ld\nstreamcluster_omp.cpp:14:10: fatal error: streamcluster_header.h: No such file or directory\n   14 | #include \"streamcluster_header.h\" // Changed from .cu to .h\n      |          ^~~~~~~~~~~~~~~~~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:19: omp] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

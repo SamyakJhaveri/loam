@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nn-cuda",
+  "target_spec": "rodinia-nn-omp",
+  "kernel": "nn",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:20:59Z",
+  "prompt_tokens": 12065,
+  "completion_tokens": 7363,
+  "llm_response_time_seconds": 21.324,
+  "build_status": "fail",
+  "build_time_seconds": 0.021,
+  "build_error_snippet": "nn_openmp.c:107:9: warning: ISO C99 requires whitespace after the macro name\n  107 | #define std::vector dynamic_array\n      |         ^~~\nnn_openmp.c:108:9: warning: ISO C99 requires whitespace after the macro name\n  108 | #define locations.data() (LatLong*)locations.data\n      |         ^~~~~~~~~\nnn_openmp.c:109:9: warning: ISO C99 requires whitespace after the macro name\n  109 | #define records.data() (Record*)records.data\n      |         ^~~~~~~\nnn_openmp.c:111:44: error: expected \u2018;\u2019, \u2018,\u2019 or \u2018)\u2019 before \u2018&\u2019 token\n  111 | int loadData(char *filename, dynamic_array &records, dynamic_array &locations);\n      |                                            ^\nnn_openmp.c:112:31: error: expected \u2018;\u2019, \u2018,\u2019 or \u2018)\u2019 before \u2018&\u2019 token\n  112 | void find\n...[truncated]...\n  ^~~~~~~~~\nnn_openmp.c:222:25: note: in expansion of macro \u2018locations\u2019\n  222 |     dynamic_array_free(&locations);\n      |                         ^~~~~~~~~\nnn_openmp.c:222:23: note: to match this \u2018(\u2019\n  222 |     dynamic_array_free(&locations);\n      |                       ^\nnn_openmp.c: At top level:\nnn_openmp.c:229:44: error: expected \u2018;\u2019, \u2018,\u2019 or \u2018)\u2019 before \u2018&\u2019 token\n  229 | int loadData(char *filename, dynamic_array &records, dynamic_array &locations){\n      |                                            ^\nnn_openmp.c:296:31: error: expected \u2018;\u2019, \u2018,\u2019 or \u2018)\u2019 before \u2018&\u2019 token\n  296 | void findLowest(dynamic_array &records,float *distances,int numRecords,int topN){\n      |                               ^\nmake: *** [Makefile:12: nn] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: \u2018;\u2019, \u2018,\u2019 or \u2018)\u2019 before \u2018&\u2019 token\n  296 | void findLowest(dynamic_array &records,float *distances,int numRecords,int topN){\n      |                               ^\nmake: *** [Makefile:12: nn] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nn_openmp.c": "/*\n * nn.c\n * Nearest Neighbor\n *\n */\n\n#include <stdio.h>\n#include <sys/time.h>\n#include <float.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n\n// Inlining vector defini"
+  },
+  "target_files_expected": [
+    "nn_openmp.c"
+  ],
+  "target_files_extracted": [
+    "nn_openmp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 8.811,
+      "prompt_tokens": 4308,
+      "completion_tokens": 3360,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nnn_openmp.c:10:10: fatal error: vector: No such file or directory\n   10 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmak",
+      "build_error_snippet": "nn_openmp.c:10:10: fatal error: vector: No such file or directory\n   10 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:12: nn] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 12.513,
+      "prompt_tokens": 7757,
+      "completion_tokens": 4003,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "nn_openmp.c:107:9: warning: ISO C99 requires whitespace after the macro name\n  107 | #define std::vector dynamic_array\n      |         ^~~\nnn_openmp.c:108:9: warning: ISO C99 requires whitespace after the macro name\n  108 | #define locations.data() (LatLong*)locations.data\n      |         ^~~~~~~~~\nnn_openmp.c:109:9: warning: ISO C99 requires whitespace after the macro name\n  109 | #define records.data() (Record*)records.data\n      |         ^~~~~~~\nnn_openmp.c:111:44: error: expected \u2018;\u2019, \u2018,\u2019 or \u2018)\u2019 before \u2018&\u2019 token\n  111 | int loadData(char *filename, dynamic_array &records, dynamic_array &locations);\n      |                                            ^\nnn_openmp.c:112:31: error: expected \u2018;\u2019, \u2018,\u2019 or \u2018)\u2019 before \u2018&\u2019 token\n  112 | void find\n...[truncated]...\n  ^~~~~~~~~\nnn_openmp.c:222:25: note: in expansion of macro \u2018locations\u2019\n  222 |     dynamic_array_free(&locations);\n      |                         ^~~~~~~~~\nnn_openmp.c:222:23: note: to match this \u2018(\u2019\n  222 |     dynamic_array_free(&locations);\n      |                       ^\nnn_openmp.c: At top level:\nnn_openmp.c:229:44: error: expected \u2018;\u2019, \u2018,\u2019 or \u2018)\u2019 before \u2018&\u2019 token\n  229 | int loadData(char *filename, dynamic_array &records, dynamic_array &locations){\n      |                                            ^\nnn_openmp.c:296:31: error: expected \u2018;\u2019, \u2018,\u2019 or \u2018)\u2019 before \u2018&\u2019 token\n  296 | void findLowest(dynamic_array &records,float *distances,int numRecords,int topN){\n      |                               ^\nmake: *** [Makefile:12: nn] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

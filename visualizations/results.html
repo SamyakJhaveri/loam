@@ -11,19 +11,19 @@
   <title>ParBench — Augmentation Results Dashboard</title>
 <style>
   :root {
-    --bg: #f9fafb;
+    --bg: #F5F0EB;
     --surface: #ffffff;
-    --surface-alt: #f3f4f6;
+    --surface-alt: #F0E6D0;
     --border: #e5e7eb;
-    --border-strong: #d1d5db;
-    --text: #111827;
-    --text-secondary: #4b5563;
+    --border-strong: #B8976A;
+    --text: #2D3436;
+    --text-secondary: #636e72;
     --text-muted: #9ca3af;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
-    --pass-color: #56B4E9;  --pass-bg: #e8f4fb;  --pass-text: #0369a1;
-    --build-fail-color: #D55E00; --build-fail-bg: #fdf1ec; --build-fail-text: #9a3412;
-    --run-fail-color: #E69F00;  --run-fail-bg: #fef9ec;  --run-fail-text: #92400e;
+    --accent: #1B6573;
+    --accent-light: #D8F0F4;
+    --pass-color: #2E8E9E;  --pass-bg: #D8F0F4;  --pass-text: #1B6573;
+    --build-fail-color: #C8607A; --build-fail-bg: #F8E0E5; --build-fail-text: #6E3244;
+    --run-fail-color: #D48A35;  --run-fail-bg: #FBF0DD;  --run-fail-text: #75491B;
     --shadow-sm: 0 1px 2px hsl(220deg 40% 15% / 0.06);
     --shadow-md: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07);
     --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-full: 9999px;
@@ -206,7 +206,7 @@
   <h3 style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:0.5rem">Pass rate (%) by augmentation level, per API</h3>
   <svg id="degradation-svg" width="100%" height="280" viewBox="0 0 700 280" preserveAspectRatio="xMinYMin meet" class="chart-svg" style="max-width:700px"></svg>
   <div style="display:flex; gap:1.5rem; margin-top:0.8rem; flex-wrap:wrap;">
-    <span style="color:#2563eb; font-size:0.82rem;">— CUDA</span>
+    <span style="color:#1B6573; font-size:0.82rem;">— CUDA</span>
     <span style="color:var(--pass-text); font-size:0.82rem;">— OMP</span>
     <span style="color:var(--accent); font-size:0.82rem;">— OpenCL</span>
   </div>
@@ -263,7 +263,7 @@
 </p>
 
 <div class="summary-grid">
-  <div class="summary-card pass"><div class="big">44.1%</div><div class="label">Rodinia L0 PASS (30/68)</div></div>
+  <div class="summary-card pass"><div class="big">35.0%</div><div class="label">Overall PASS (158/452)</div></div>
   <div class="summary-card info"><div class="big">452</div><div class="label">Total Tasks</div></div>
   <div class="summary-card pass"><div class="big">73.1%</div><div class="label">Best: claude-sonnet-4-6</div></div>
   <div class="summary-card warn"><div class="big">4</div><div class="label">Models Evaluated</div></div>
@@ -485,7 +485,7 @@ function renderDashboard(results) {
 
   // ── Per-API Breakdown tab ──────────────────────────────────────────────────
   const APIS_LIST = ['cuda', 'omp', 'opencl'];
-  const API_COLORS = { cuda: '#2563eb', omp: '#56B4E9', opencl: '#7c3aed' };
+  const API_COLORS = { cuda: '#1B6573', omp: '#2E8E9E', opencl: '#D48A35' };
   const API_LABELS = { cuda: 'CUDA', omp: 'OpenMP', opencl: 'OpenCL' };
 
   const apiContainer = document.getElementById('api-breakdown-content');
@@ -537,15 +537,15 @@ function renderDashboard(results) {
   [0, 25, 50, 75, 100].forEach(y => {
     const yPx = padT + chartH - (y / 100) * chartH;
     svgHtml += `<line x1="${padL}" y1="${yPx}" x2="${W - padR}" y2="${yPx}" stroke="#e5e7eb" stroke-width="1"/>`;
-    svgHtml += `<text x="${padL - 5}" y="${yPx + 4}" text-anchor="end" fill="#4b5563" font-size="11">${y}%</text>`;
+    svgHtml += `<text x="${padL - 5}" y="${yPx + 4}" text-anchor="end" fill="#636e72" font-size="11">${y}%</text>`;
   });
   // X axis labels
   levels.forEach((l, i) => {
     const xPx = padL + i * xStep;
-    svgHtml += `<text x="${xPx}" y="${padT + chartH + 20}" text-anchor="middle" fill="#4b5563" font-size="12">L${l}</text>`;
+    svgHtml += `<text x="${xPx}" y="${padT + chartH + 20}" text-anchor="middle" fill="#636e72" font-size="12">L${l}</text>`;
   });
 
-  const LINE_COLORS = ['#2563eb', '#56B4E9', '#7c3aed'];
+  const LINE_COLORS = ['#1B6573', '#2E8E9E', '#D48A35'];
   APIS_LIST.forEach((api, ai) => {
     const pts = degradData[ai].map((pct, i) => {
       const x = padL + i * xStep;

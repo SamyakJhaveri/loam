@@ -2,60 +2,60 @@
    ParBench — Shared Design System
    Source of truth: visualizations/DESIGN.md
    "Clean, minimal, academic — like a Nature paper's online appendix."
-   Last updated: 2026-03-20
+   Last updated: 2026-03-26
    ============================================================ */
 
 /* === SECTION: CSS Custom Properties === */
 :root {
-  /* --- Surfaces --- */
-  --bg:              #f9fafb;
+  /* --- Surfaces (Outfit-derived SC'26 palette) --- */
+  --bg:              #F5F0EB;    /* Warm Linen */
   --surface:         #ffffff;
-  --surface-alt:     #f3f4f6;
+  --surface-alt:     #F0E6D0;    /* Cream Ivory */
   --border:          #e5e7eb;
-  --border-strong:   #d1d5db;
+  --border-strong:   #B8976A;    /* Zari Gold */
 
   /* --- Text --- */
-  --text:            #111827;
-  --text-secondary:  #4b5563;
+  --text:            #2D3436;    /* Charcoal */
+  --text-secondary:  #636e72;    /* Slate */
   --text-muted:      #9ca3af;
 
   /* --- Accent --- */
-  --accent:          #2563eb;
-  --accent-light:    #eff6ff;
-  --accent-border:   #bfdbfe;
-  --accent-text:     #1d4ed8;
+  --accent:          #1B6573;    /* Deep Teal */
+  --accent-light:    #D8F0F4;    /* Lightest Teal */
+  --accent-border:   #7CC3CE;    /* Light Teal */
+  --accent-text:     #1B6573;    /* Deep Teal */
 
-  /* --- Status: Okabe-Ito colorblind-safe palette --- */
-  --pass-color:       #56B4E9;   /* Sky Blue */
-  --pass-bg:          #e8f4fb;
-  --pass-border:      #93d0ef;
-  --pass-text:        #0369a1;
+  /* --- Status (Outfit-derived SC'26 palette) --- */
+  --pass-color:       #2E8E9E;   /* Teal */
+  --pass-bg:          #D8F0F4;
+  --pass-border:      #7CC3CE;
+  --pass-text:        #1B6573;
 
-  --build-fail-color: #D55E00;   /* Vermillion */
-  --build-fail-bg:    #fdf1ec;
-  --build-fail-border:#e9a07a;
-  --build-fail-text:  #9a3412;
+  --build-fail-color: #C8607A;   /* Rose Pink */
+  --build-fail-bg:    #F8E0E5;
+  --build-fail-border:#D08A99;
+  --build-fail-text:  #6E3244;
 
-  --run-fail-color:   #E69F00;   /* Orange */
-  --run-fail-bg:      #fef9ec;
-  --run-fail-border:  #f0ca6a;
-  --run-fail-text:    #92400e;
+  --run-fail-color:   #D48A35;   /* Saffron Amber */
+  --run-fail-bg:      #FBF0DD;
+  --run-fail-border:  #E0B36A;
+  --run-fail-text:    #75491B;
 
-  --verify-fail-color:#CC79A7;   /* Reddish Purple */
-  --verify-fail-bg:   #fdf2f8;
-  --verify-fail-border:#dda9ca;
-  --verify-fail-text: #86198f;
+  --verify-fail-color:#E6A84D;   /* Gold */
+  --verify-fail-bg:   #FDF5E3;
+  --verify-fail-border:#D4B876;
+  --verify-fail-text: #7A5928;
 
-  --neutral-color:    #94a3b8;
+  --neutral-color:    #636e72;   /* Slate */
   --neutral-bg:       #f1f5f9;
-  --neutral-text:     #475569;
+  --neutral-text:     #2D3436;   /* Charcoal */
 
   /* --- Team member colors (sprint dashboard) --- */
-  --team-samyak:     #4f46e5;   /* Indigo */
-  --team-erel:       #7c3aed;   /* Violet */
-  --team-gal:        #db2777;   /* Pink */
-  --team-niranjan:   #0891b2;   /* Cyan */
-  --team-claude:     #0d9488;   /* Teal */
+  --team-samyak:     #C8607A;   /* Rose Pink */
+  --team-erel:       #D48A35;   /* Saffron Amber */
+  --team-gal:        #2E8E9E;   /* Teal */
+  --team-niranjan:   #E6A84D;   /* Gold */
+  --team-claude:     #1B6573;   /* Deep Teal */
 
   /* --- Spacing (8pt grid) --- */
   --sp-1:  4px;  --sp-2:  8px;  --sp-3: 12px; --sp-4: 16px;
@@ -78,17 +78,17 @@
                 0 4px 8px  hsl(var(--sh-color) / 0.05),
                 0 8px 24px hsl(var(--sh-color) / 0.08);
 
-  /* --- Chart colors (ordered by use frequency) --- */
-  --chart-pass:        #56B4E9;
-  --chart-build-fail:  #D55E00;
-  --chart-run-fail:    #E69F00;
-  --chart-verify-fail: #CC79A7;
-  --chart-neutral:     #94a3b8;
-  --chart-l0:          #2563eb;
-  --chart-l1:          #3b82f6;
-  --chart-l2:          #60a5fa;
-  --chart-l3:          #93c5fd;
-  --chart-l4:          #bfdbfe;
+  /* --- Chart colors (Outfit-derived SC'26 palette) --- */
+  --chart-pass:        #2E8E9E;
+  --chart-build-fail:  #C8607A;
+  --chart-run-fail:    #D48A35;
+  --chart-verify-fail: #E6A84D;
+  --chart-neutral:     #636e72;
+  --chart-l0:          #1B6573;
+  --chart-l1:          #2E8E9E;
+  --chart-l2:          #7CC3CE;
+  --chart-l3:          #D8F0F4;
+  --chart-l4:          #F0E6D0;
 
   /* --- Typography --- */
   --font-ui:   'Inter', system-ui, -apple-system, sans-serif;
@@ -316,9 +316,9 @@ code, .mono {
 .badge-accent       { background: var(--accent-light);    color: var(--accent-text);       border: 1px solid var(--accent-border); }
 
 /* Priority badges */
-.badge-critical  { background: #fef2f2; color: #991b1b; border: 1px solid #fca5a5; }
-.badge-high      { background: #fff7ed; color: #9a3412; border: 1px solid #fdba74; }
-.badge-medium    { background: #fefce8; color: #713f12; border: 1px solid #fde047; }
+.badge-critical  { background: #F8E0E5; color: #6E3244; border: 1px solid #D08A99; }
+.badge-high      { background: #FBF0DD; color: #75491B; border: 1px solid #E0B36A; }
+.badge-medium    { background: #FDF5E3; color: #7A5928; border: 1px solid #D4B876; }
 .badge-low       { background: var(--neutral-bg); color: var(--neutral-text); border: 1px solid #cbd5e1; }
 
 /* Task status badges */

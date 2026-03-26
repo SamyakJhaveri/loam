@@ -5,12 +5,12 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-24T18:11:45Z",
+  "timestamp": "2026-03-26T06:12:46Z",
   "prompt_tokens": 28496,
   "completion_tokens": 4720,
-  "llm_response_time_seconds": 9.617,
+  "llm_response_time_seconds": 12.942,
   "build_status": "fail",
-  "build_time_seconds": 0.049,
+  "build_time_seconds": 0.05,
   "build_error_snippet": "lud_omp.c: In function \u2018lud_omp\u2019:\nlud_omp.c:17:9: warning: unused variable \u2018num_threads\u2019 [-Wunused-variable]\n   17 |     int num_threads = omp_get_max_threads();\n      |         ^~~~~~~~~~~\nlud_omp.c: In function \u2018lud_perimeter_omp\u2019:\nlud_omp.c:90:73: error: expected \u2018)\u2019 before numeric constant\n   90 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_perimeter_blocks, dia, peri_row, peri_col) private(i, j, array_offset, idx)\n      |                                                  ~                      ^\n      |                                                                         )\nlud_omp.c:82:29: warning: unused variable \u2018idx\u2019 [-Wunused-variable]\n   82 |     int i, j, array_offset, idx;\n      |  \n...[truncated]...\n     ~~~~~~~~~~~^~~\nlud_omp.c:158:13: note: enclosing \u2018parallel\u2019\n  158 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_blocks_per_dim, peri_row, peri_col) private(i, j, array_offset)\n      |             ^~~\nlud_omp.c:173:32: error: \u2018peri_col\u2019 not specified in enclosing \u2018parallel\u2019\n  173 |                     peri_col[i][j] = m[array_offset + j];\n      |                     ~~~~~~~~~~~^~~\nlud_omp.c:158:13: note: enclosing \u2018parallel\u2019\n  158 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_blocks_per_dim, peri_row, peri_col) private(i, j, array_offset)\n      |             ^~~\nmake[1]: *** [Makefile:101: lud_omp.o] Error 1\nmake: *** [Makefile:4: lud_omp] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
@@ -42,27 +42,33 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 4.906,
+      "llm_response_time_seconds": 7.426,
       "prompt_tokens": 12963,
       "completion_tokens": 2360,
+      "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": "The translation failed to compile with this error:\n```\nlud_omp.c:173:32: error: \u2018peri_col\u2019 not specified in enclosing \u2018parallel\u2019\n  173 |                     peri_col[i][j] = m[array_offset + j];\n     ",
-      "finish_reason": "stop",
-      "build_error_snippet": "lud_omp.c: In function \u2018lud_omp\u2019:\nlud_omp.c:17:9: warning: unused variable \u2018num_threads\u2019 [-Wunused-variable]\n   17 |     int num_threads = omp_get_max_threads();\n      |         ^~~~~~~~~~~\nlud_omp.c: In function \u2018lud_perimeter_omp\u2019:\nlud_omp.c:90:73: error: expected \u2018)\u2019 before numeric constant\n   90 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_perimeter_blocks, dia, peri_row, peri_col) private(i, j, array_offset, idx)\n      |                                                  ~                      ^\n      |                                                                         )\nlud_omp.c:82:29: warning: unused variable \u2018idx\u2019 [-Wunused-variable]\n   82 |     int i, j, array_offset, idx;\n      |  \n...[truncated]...\n     ~~~~~~~~~~~^~~\nlud_omp.c:158:13: note: enclosing \u2018parallel\u2019\n  158 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_blocks_per_dim, peri_row, peri_col) private(i, j, array_offset)\n      |             ^~~\nlud_omp.c:173:32: error: \u2018peri_col\u2019 not specified in enclosing \u2018parallel\u2019\n  173 |                     peri_col[i][j] = m[array_offset + j];\n      |                     ~~~~~~~~~~~^~~\nlud_omp.c:158:13: note: enclosing \u2018parallel\u2019\n  158 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_blocks_per_dim, peri_row, peri_col) private(i, j, array_offset)\n      |             ^~~\nmake[1]: *** [Makefile:101: lud_omp.o] Error 1\nmake: *** [Makefile:4: lud_omp] Error 2\n"
+      "build_error_snippet": "lud_omp.c: In function \u2018lud_omp\u2019:\nlud_omp.c:17:9: warning: unused variable \u2018num_threads\u2019 [-Wunused-variable]\n   17 |     int num_threads = omp_get_max_threads();\n      |         ^~~~~~~~~~~\nlud_omp.c: In function \u2018lud_perimeter_omp\u2019:\nlud_omp.c:90:73: error: expected \u2018)\u2019 before numeric constant\n   90 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_perimeter_blocks, dia, peri_row, peri_col) private(i, j, array_offset, idx)\n      |                                                  ~                      ^\n      |                                                                         )\nlud_omp.c:82:29: warning: unused variable \u2018idx\u2019 [-Wunused-variable]\n   82 |     int i, j, array_offset, idx;\n      |  \n...[truncated]...\n     ~~~~~~~~~~~^~~\nlud_omp.c:158:13: note: enclosing \u2018parallel\u2019\n  158 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_blocks_per_dim, peri_row, peri_col) private(i, j, array_offset)\n      |             ^~~\nlud_omp.c:173:32: error: \u2018peri_col\u2019 not specified in enclosing \u2018parallel\u2019\n  173 |                     peri_col[i][j] = m[array_offset + j];\n      |                     ~~~~~~~~~~~^~~\nlud_omp.c:158:13: note: enclosing \u2018parallel\u2019\n  158 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_blocks_per_dim, peri_row, peri_col) private(i, j, array_offset)\n      |             ^~~\nmake[1]: *** [Makefile:101: lud_omp.o] Error 1\nmake: *** [Makefile:4: lud_omp] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 4.711,
+      "llm_response_time_seconds": 5.516,
       "prompt_tokens": 15533,
       "completion_tokens": 2360,
+      "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "finish_reason": "stop",
-      "build_error_snippet": "lud_omp.c: In function \u2018lud_omp\u2019:\nlud_omp.c:17:9: warning: unused variable \u2018num_threads\u2019 [-Wunused-variable]\n   17 |     int num_threads = omp_get_max_threads();\n      |         ^~~~~~~~~~~\nlud_omp.c: In function \u2018lud_perimeter_omp\u2019:\nlud_omp.c:90:73: error: expected \u2018)\u2019 before numeric constant\n   90 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_perimeter_blocks, dia, peri_row, peri_col) private(i, j, array_offset, idx)\n      |                                                  ~                      ^\n      |                                                                         )\nlud_omp.c:82:29: warning: unused variable \u2018idx\u2019 [-Wunused-variable]\n   82 |     int i, j, array_offset, idx;\n      |  \n...[truncated]...\n     ~~~~~~~~~~~^~~\nlud_omp.c:158:13: note: enclosing \u2018parallel\u2019\n  158 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_blocks_per_dim, peri_row, peri_col) private(i, j, array_offset)\n      |             ^~~\nlud_omp.c:173:32: error: \u2018peri_col\u2019 not specified in enclosing \u2018parallel\u2019\n  173 |                     peri_col[i][j] = m[array_offset + j];\n      |                     ~~~~~~~~~~~^~~\nlud_omp.c:158:13: note: enclosing \u2018parallel\u2019\n  158 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_blocks_per_dim, peri_row, peri_col) private(i, j, array_offset)\n      |             ^~~\nmake[1]: *** [Makefile:101: lud_omp.o] Error 1\nmake: *** [Makefile:4: lud_omp] Error 2\n"
+      "build_error_snippet": "lud_omp.c: In function \u2018lud_omp\u2019:\nlud_omp.c:17:9: warning: unused variable \u2018num_threads\u2019 [-Wunused-variable]\n   17 |     int num_threads = omp_get_max_threads();\n      |         ^~~~~~~~~~~\nlud_omp.c: In function \u2018lud_perimeter_omp\u2019:\nlud_omp.c:90:73: error: expected \u2018)\u2019 before numeric constant\n   90 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_perimeter_blocks, dia, peri_row, peri_col) private(i, j, array_offset, idx)\n      |                                                  ~                      ^\n      |                                                                         )\nlud_omp.c:82:29: warning: unused variable \u2018idx\u2019 [-Wunused-variable]\n   82 |     int i, j, array_offset, idx;\n      |  \n...[truncated]...\n     ~~~~~~~~~~~^~~\nlud_omp.c:158:13: note: enclosing \u2018parallel\u2019\n  158 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_blocks_per_dim, peri_row, peri_col) private(i, j, array_offset)\n      |             ^~~\nlud_omp.c:173:32: error: \u2018peri_col\u2019 not specified in enclosing \u2018parallel\u2019\n  173 |                     peri_col[i][j] = m[array_offset + j];\n      |                     ~~~~~~~~~~~^~~\nlud_omp.c:158:13: note: enclosing \u2018parallel\u2019\n  158 |     #pragma omp parallel for default(none) shared(m, matrix_dim, offset, BLOCK_SIZE, num_blocks_per_dim, peri_row, peri_col) private(i, j, array_offset)\n      |             ^~~\nmake[1]: *** [Makefile:101: lud_omp.o] Error 1\nmake: *** [Makefile:4: lud_omp] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
     }
   ]
 }

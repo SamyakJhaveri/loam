@@ -1,20 +1,20 @@
 # ParBench Evaluation Summary
-**Generated:** 2026-03-25 10:51  |  **Total tasks:** 248
+**Generated:** 2026-03-26 10:57  |  **Total tasks:** 452
 
 ## Pass Rates by Model
 
 | Model | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL | EXTRACTION_FAIL |
 |-------|-----:|------:|-----:|----------:|--------:|------------:|---------------:|
 | azure-gpt-4.1 | 9 | 17 | 52.9% | 4 | 4 | 0 | 0 |
-| claude-sonnet-4-6 | 58 | 77 | 75.3% | 2 | 17 | 0 | 0 |
-| gemini-2.5-flash-lite | 4 | 77 | 5.2% | 47 | 22 | 0 | 4 |
-| groq-llama-3.3-70b-versatile | 7 | 77 | 9.1% | 40 | 15 | 0 | 14 |
+| claude-sonnet-4-6 | 106 | 145 | 73.1% | 10 | 29 | 0 | 0 |
+| gemini-2.5-flash-lite | 16 | 145 | 11.0% | 89 | 30 | 0 | 10 |
+| groq-llama-3.3-70b-versatile | 27 | 145 | 18.6% | 71 | 19 | 0 | 27 |
 
 ## Pass Rates by Translation Direction
 
 | Direction | PASS | Total | Rate |
 |-----------|-----:|------:|-----:|
-| cuda-to-omp | 30 | 83 | 36.1% |
+| cuda-to-omp | 110 | 287 | 38.3% |
 | cuda-to-omp_target | 5 | 15 | 33.3% |
 | cuda-to-opencl | 5 | 15 | 33.3% |
 | omp-to-cuda | 6 | 15 | 40.0% |
@@ -32,27 +32,27 @@
 | Level | PASS | Total | Rate |
 |-------|-----:|------:|-----:|
 | L0 | 41 | 104 | 39.4% |
-| L1 | 10 | 36 | 27.8% |
-| L2 | 9 | 36 | 25.0% |
-| L3 | 10 | 36 | 27.8% |
-| L4 | 8 | 36 | 22.2% |
+| L1 | 32 | 87 | 36.8% |
+| L2 | 31 | 87 | 35.6% |
+| L3 | 29 | 87 | 33.3% |
+| L4 | 25 | 87 | 28.7% |
 
 ## Pass Rates by Translation Complexity
 
 | Complexity Class | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL |
 |-----------------|-----:|------:|-----:|----------:|--------:|------------:|
-| multi_to_multi | 25 | 102 | 24.5% | 51 | 18 | 0 |
-| multi_to_single | 36 | 89 | 40.5% | 16 | 31 | 0 |
-| single_file | 7 | 12 | 58.3% | 2 | 3 | 0 |
+| multi_to_multi | 30 | 138 | 21.7% | 76 | 18 | 0 |
+| multi_to_single | 93 | 221 | 42.1% | 65 | 46 | 0 |
+| single_file | 25 | 48 | 52.1% | 9 | 12 | 0 |
 | single_to_multi | 10 | 45 | 22.2% | 24 | 6 | 0 |
 
 ### Model × Complexity Cross-Tab
 
 | Complexity Class | azure-gpt-4.1 | claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile |
 |-----------------|---:|---:|---:|---:|
-| multi_to_multi | 1/3 (33.3%) | 22/33 (66.7%) | 0/33 (0.0%) | 2/33 (6.1%) |
-| multi_to_single | 6/11 (54.5%) | 24/26 (92.3%) | 3/26 (11.5%) | 3/26 (11.5%) |
-| single_file | 2/3 (66.7%) | 2/3 (66.7%) | 1/3 (33.3%) | 2/3 (66.7%) |
+| multi_to_multi | 1/3 (33.3%) | 26/45 (57.8%) | 0/45 (0.0%) | 3/45 (6.7%) |
+| multi_to_single | 6/11 (54.5%) | 60/70 (85.7%) | 12/70 (17.1%) | 15/70 (21.4%) |
+| single_file | 2/3 (66.7%) | 10/15 (66.7%) | 4/15 (26.7%) | 9/15 (60.0%) |
 | single_to_multi | — | 10/15 (66.7%) | 0/15 (0.0%) | 0/15 (0.0%) |
 
 ## Kernel × Model Matrix (cuda→omp, L0)
@@ -82,14 +82,14 @@
 
 | Status | Count |
 |--------|------:|
-| BUILD_FAIL | 93 |
-| RUN_FAIL | 58 |
-| EXTRACTION_FAIL | 18 |
+| BUILD_FAIL | 174 |
+| RUN_FAIL | 82 |
+| EXTRACTION_FAIL | 37 |
 | VERIFY_FAIL | 0 |
 
 ## Self-Repair (Iterative Retry) Effectiveness
 
-- Tasks with recorded attempts: **248**
-- Passed on first attempt: **60**
-- Repaired by retry: **18**
+- Tasks with recorded attempts: **452**
+- Passed on first attempt: **127**
+- Repaired by retry: **31**
 

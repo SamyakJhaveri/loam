@@ -5,12 +5,12 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 2,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T08:32:23Z",
+  "timestamp": "2026-03-26T06:07:36Z",
   "prompt_tokens": 67842,
   "completion_tokens": 32764,
-  "llm_response_time_seconds": 76.42,
+  "llm_response_time_seconds": 92.507,
   "build_status": "fail",
-  "build_time_seconds": 0.132,
+  "build_time_seconds": 0.13,
   "build_error_snippet": "XSbench_header.h(121): error: expected a \")\"\n                             double * restrict egrid, int * restrict index_data,\n                                               ^\n\nXSbench_header.h(125): error: expected a \")\"\n                           long n_gridpoints, int * restrict num_nucs,\n                                                             ^\n\nXSbench_header.h(130): warning #12-D: parsing restarts here after previous syntax error\n                           double * restrict macro_xs_vector, int grid_type, int hash_bins, int max_num_nucs );\n                                                                                                             ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nXSbench_header.h(131): error: expected a \")\"\n  long grid_search( long n, double quarry, double * restrict A);\n                                                             ^\n\nMain.cu(56): error: identifier \"move_simulation_data_to_device\" is undefined\n   SimulationData GSD = move_simulation_data_to_device(in, mype, SD);\n                        ^\n\nMain.cu(86): error: identifier \"run_event_based_simulation_baseline\" is undefined\n     verification = run_event_based_simulation_baseline(in, GSD, mype);\n                    ^\n\nMain.cu(118): error: identifier \"release_device_memory\" is undefined\n   release_device_memory(GSD);\n   ^\n\n6 errors detected in the compilation of \"Main.cu\".\nmake: *** [Makefile:68: Main.o] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
@@ -51,7 +51,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 38.228,
+      "llm_response_time_seconds": 59.184,
       "prompt_tokens": 25640,
       "completion_tokens": 16382,
       "finish_reason": "length",
@@ -66,7 +66,7 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 38.192,
+      "llm_response_time_seconds": 33.323,
       "prompt_tokens": 42202,
       "completion_tokens": 16382,
       "finish_reason": "length",

@@ -11,20 +11,20 @@
   <title>ParBench — Build & Run Results</title>
 <style>
   :root {
-    --bg: #f9fafb;
+    --bg: #F5F0EB;
     --surface: #ffffff;
-    --surface-alt: #f3f4f6;
+    --surface-alt: #F0E6D0;
     --border: #e5e7eb;
-    --border-strong: #d1d5db;
-    --text: #111827;
-    --text-secondary: #4b5563;
+    --border-strong: #B8976A;
+    --text: #2D3436;
+    --text-secondary: #636e72;
     --text-muted: #9ca3af;
-    --accent: #2563eb;
-    --accent-light: #eff6ff;
-    --pass-color: #56B4E9;  --pass-bg: #e8f4fb;  --pass-text: #0369a1;
-    --build-fail-color: #D55E00; --build-fail-bg: #fdf1ec; --build-fail-text: #9a3412;
-    --run-fail-color: #E69F00;  --run-fail-bg: #fef9ec;  --run-fail-text: #92400e;
-    --verify-fail-color: #CC79A7; --verify-fail-bg: #fdf2f8; --verify-fail-text: #86198f;
+    --accent: #1B6573;
+    --accent-light: #D8F0F4;
+    --pass-color: #2E8E9E;  --pass-bg: #D8F0F4;  --pass-text: #1B6573;
+    --build-fail-color: #C8607A; --build-fail-bg: #F8E0E5; --build-fail-text: #6E3244;
+    --run-fail-color: #D48A35;  --run-fail-bg: #FBF0DD;  --run-fail-text: #75491B;
+    --verify-fail-color: #E6A84D; --verify-fail-bg: #FDF5E3; --verify-fail-text: #7A5928;
     --shadow-sm: 0 1px 2px hsl(220deg 40% 15% / 0.06);
     --shadow-md: 0 1px 3px hsl(220deg 40% 15% / 0.07), 0 4px 12px hsl(220deg 40% 15% / 0.07);
     --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-full: 9999px;
@@ -72,7 +72,7 @@
   .results-table th:hover { background: var(--border-strong); }
   .results-table td { padding: 0.35rem 0.6rem; border: 1px solid var(--border); border-bottom: 1px solid var(--border); text-align: center; }
   .results-table td:first-child { text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
-  .results-table tr:nth-child(even) td { background: #fafafa; }
+  .results-table tr:nth-child(even) td { background: #F0E6D0; }
   .results-table tr:hover td { background: var(--accent-light); }
   .cell-pass { background: var(--pass-bg) !important; color: var(--pass-text); font-weight: 600; }
   .cell-fail { background: var(--verify-fail-bg) !important; color: var(--verify-fail-text); }
@@ -317,14 +317,13 @@
 <!-- ─── Tab: LLM Eval Builds ─────────────────────────────────────────────── -->
 <div id="tab-llm-builds" class="tab-content" role="tabpanel">
   <div class="summary-grid">
-    <div class="summary-card pass"><div class="big">30/68</div><div class="label">4-model CUDA→OMP PASS</div></div>
-    <div class="summary-card fail"><div class="big">26/68</div><div class="label">BUILD_FAIL</div></div>
-    <div class="summary-card info"><div class="big">17</div><div class="label">Kernels Evaluated</div></div>
+    <div class="summary-card pass"><div class="big">158/452</div><div class="label">4-model Overall PASS (L0-L4)</div></div>
+    <div class="summary-card fail"><div class="big">174/452</div><div class="label">BUILD_FAIL</div></div>
+    <div class="summary-card info"><div class="big">452</div><div class="label">Tasks Evaluated</div></div>
   </div>
 
   <p style="color:var(--text-secondary); font-size:0.82rem; margin: 0.5rem 0 0.5rem;">
-    LLM evaluation build results for CUDA-to-OMP translation at L0 (no augmentation).
-    Model: <strong>azure-gpt-4.1</strong>. Direction: <strong>cuda-to-omp</strong>.
+    LLM evaluation build results across all models, directions, levels L0-L4.
   </p>
   <p style="color:var(--text-muted); font-size:0.78rem; margin-bottom: 1rem;">
     BUILD_FAIL root cause: structural mismatch in multi-file targets. The LLM fails to correctly translate

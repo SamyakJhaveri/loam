@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nw-cuda",
+  "target_spec": "rodinia-nw-omp",
+  "kernel": "nw",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:24:57Z",
+  "prompt_tokens": 28898,
+  "completion_tokens": 22999,
+  "llm_response_time_seconds": 56.6,
+  "build_status": "fail",
+  "build_time_seconds": 0.103,
+  "build_error_snippet": "needle.cpp:88:1: error: \u2018__host__\u2019 does not name a type\n   88 | __host__ __device__ int\n      | ^~~~~~~~\nneedle.cpp: In function \u2018void needle_kernel_1(int*, int*, int, int, int, int)\u2019:\nneedle.cpp:162:40: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  162 |           temp[t_index_y][t_index_x] = maximum( temp[t_index_y-1][t_index_x-1] + ref[t_index_y-1][t_index_x-1],\n      |                                        ^~~~~~~\n      |                                        fmaximum\nneedle.cpp:176:40: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  176 |           temp[t_index_y][t_index_x] = maximum( temp[t_index_y-1][t_index_x-1] + ref[t_index_y-1][t_index_x-1],\n      |                     \n...[truncated]...\nction \u2018void needle_kernel_2(int*, int*, int, int, int, int)\u2019:\nneedle.cpp:245:40: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  245 |           temp[t_index_y][t_index_x] = maximum( temp[t_index_y-1][t_index_x-1] + ref[t_index_y-1][t_index_x-1],\n      |                                        ^~~~~~~\n      |                                        fmaximum\nneedle.cpp:259:40: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  259 |           temp[t_index_y][t_index_x] = maximum( temp[t_index_y-1][t_index_x-1] + ref[t_index_y-1][t_index_x-1],\n      |                                        ^~~~~~~\n      |                                        fmaximum\nmake: *** [Makefile:10: needle] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: 1][t_index_x-1] + ref[t_index_y-1][t_index_x-1],\n      |                                        ^~~~~~~\n      |                                        fmaximum\nmake: *** [Makefile:10: needle] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.015,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "needle.cpp": "#define LIMIT -999\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include \"needle.h\"\n#include <omp.h>\n#include <sys/time.h>\n\n// includes, kernels\n// #include \"needle_ker"
+  },
+  "target_files_expected": [
+    "needle.cpp"
+  ],
+  "target_files_extracted": [
+    "needle.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 39.912,
+      "prompt_tokens": 6238,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "Your response did not include any of the expected output files. Please translate each target file using this format:\n\n```c needle.cpp\n// your translated code here\n```\n\n",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": true
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 16.688,
+      "prompt_tokens": 22660,
+      "completion_tokens": 6615,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "needle.cpp:88:1: error: \u2018__host__\u2019 does not name a type\n   88 | __host__ __device__ int\n      | ^~~~~~~~\nneedle.cpp: In function \u2018void needle_kernel_1(int*, int*, int, int, int, int)\u2019:\nneedle.cpp:162:40: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  162 |           temp[t_index_y][t_index_x] = maximum( temp[t_index_y-1][t_index_x-1] + ref[t_index_y-1][t_index_x-1],\n      |                                        ^~~~~~~\n      |                                        fmaximum\nneedle.cpp:176:40: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  176 |           temp[t_index_y][t_index_x] = maximum( temp[t_index_y-1][t_index_x-1] + ref[t_index_y-1][t_index_x-1],\n      |                     \n...[truncated]...\nction \u2018void needle_kernel_2(int*, int*, int, int, int, int)\u2019:\nneedle.cpp:245:40: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  245 |           temp[t_index_y][t_index_x] = maximum( temp[t_index_y-1][t_index_x-1] + ref[t_index_y-1][t_index_x-1],\n      |                                        ^~~~~~~\n      |                                        fmaximum\nneedle.cpp:259:40: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  259 |           temp[t_index_y][t_index_x] = maximum( temp[t_index_y-1][t_index_x-1] + ref[t_index_y-1][t_index_x-1],\n      |                                        ^~~~~~~\n      |                                        fmaximum\nmake: *** [Makefile:10: needle] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

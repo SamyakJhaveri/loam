@@ -5,12 +5,12 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-24T18:15:08Z",
+  "timestamp": "2026-03-26T06:30:41Z",
   "prompt_tokens": 17402,
   "completion_tokens": 9828,
-  "llm_response_time_seconds": 20.205,
+  "llm_response_time_seconds": 25.888,
   "build_status": "pass",
-  "build_time_seconds": 0.151,
+  "build_time_seconds": 0.152,
   "build_error_snippet": null,
   "run_status": "fail",
   "run_time_seconds": 0.001,
@@ -42,29 +42,33 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 11.88,
+      "llm_response_time_seconds": 11.29,
       "prompt_tokens": 6102,
       "completion_tokens": 5047,
+      "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "fail",
       "verify_status": null,
       "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n<x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value",
-      "finish_reason": "stop",
+      "build_error_snippet": null,
       "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>       - x1 value of the speckle\n\t<x2>       - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
-      "run_stdout_snippet": "WG size of kernel = 16 X 16\n"
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 8.325,
+      "llm_response_time_seconds": 14.598,
       "prompt_tokens": 11300,
       "completion_tokens": 4781,
+      "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "fail",
       "verify_status": null,
       "error_feedback_sent": null,
-      "finish_reason": "stop",
+      "build_error_snippet": null,
       "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>       - x1 value of the speckle\n\t<x2>       - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
-      "run_stdout_snippet": "WG size of kernel = 16 X 16\n"
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
     }
   ]
 }

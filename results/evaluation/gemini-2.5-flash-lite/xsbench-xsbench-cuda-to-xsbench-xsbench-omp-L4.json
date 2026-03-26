@@ -5,13 +5,13 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 4,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T08:08:18Z",
+  "timestamp": "2026-03-26T05:56:59Z",
   "prompt_tokens": 75792,
   "completion_tokens": 32768,
-  "llm_response_time_seconds": 74.553,
+  "llm_response_time_seconds": 61.18,
   "build_status": "fail",
   "build_time_seconds": 0.41,
-  "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:64:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_2\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   64 |                         verification = run_event_based_simulation_optimization_2(in, SD, mype);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |                                        run_event_based_simulation_optimization_1\nMain.c:66:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_3\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   66 |                         verification = run_eve\n...[truncated]...\n~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/ld: /tmp/ccJAO87x.ltrans0.ltrans.o: in function `main':\n<artificial>:(.text.startup+0x1907): undefined reference to `run_event_based_simulation_optimization_6'\n/usr/bin/ld: <artificial>:(.text.startup+0x1b0d): undefined reference to `run_event_based_simulation_optimization_5'\n/usr/bin/ld: <artificial>:(.text.startup+0x1bc9): undefined reference to `run_event_based_simulation_optimization_4'\n/usr/bin/ld: <artificial>:(.text.startup+0x1c85): undefined reference to `run_event_based_simulation_optimization_3'\n/usr/bin/ld: <artificial>:(.text.startup+0x1d41): undefined reference to `run_event_based_simulation_optimization_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:105: XSBench] Error 1\n",
+  "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:64:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_2\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   64 |                         verification = run_event_based_simulation_optimization_2(in, SD, mype);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |                                        run_event_based_simulation_optimization_1\nMain.c:66:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_3\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   66 |                         verification = run_eve\n...[truncated]...\n~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/ld: /tmp/ccQmUSzN.ltrans0.ltrans.o: in function `main':\n<artificial>:(.text.startup+0x1907): undefined reference to `run_event_based_simulation_optimization_6'\n/usr/bin/ld: <artificial>:(.text.startup+0x1b0d): undefined reference to `run_event_based_simulation_optimization_5'\n/usr/bin/ld: <artificial>:(.text.startup+0x1bc9): undefined reference to `run_event_based_simulation_optimization_4'\n/usr/bin/ld: <artificial>:(.text.startup+0x1c85): undefined reference to `run_event_based_simulation_optimization_3'\n/usr/bin/ld: <artificial>:(.text.startup+0x1d41): undefined reference to `run_event_based_simulation_optimization_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:105: XSBench] Error 1\n",
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -49,7 +49,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 37.295,
+      "llm_response_time_seconds": 37.426,
       "prompt_tokens": 29649,
       "completion_tokens": 16384,
       "finish_reason": "length",
@@ -64,7 +64,7 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 37.258,
+      "llm_response_time_seconds": 23.754,
       "prompt_tokens": 46143,
       "completion_tokens": 16384,
       "finish_reason": "length",
@@ -72,7 +72,7 @@
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:64:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_2\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   64 |                         verification = run_event_based_simulation_optimization_2(in, SD, mype);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |                                        run_event_based_simulation_optimization_1\nMain.c:66:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_3\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   66 |                         verification = run_eve\n...[truncated]...\n~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/ld: /tmp/ccJAO87x.ltrans0.ltrans.o: in function `main':\n<artificial>:(.text.startup+0x1907): undefined reference to `run_event_based_simulation_optimization_6'\n/usr/bin/ld: <artificial>:(.text.startup+0x1b0d): undefined reference to `run_event_based_simulation_optimization_5'\n/usr/bin/ld: <artificial>:(.text.startup+0x1bc9): undefined reference to `run_event_based_simulation_optimization_4'\n/usr/bin/ld: <artificial>:(.text.startup+0x1c85): undefined reference to `run_event_based_simulation_optimization_3'\n/usr/bin/ld: <artificial>:(.text.startup+0x1d41): undefined reference to `run_event_based_simulation_optimization_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:105: XSBench] Error 1\n",
+      "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:64:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_2\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   64 |                         verification = run_event_based_simulation_optimization_2(in, SD, mype);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |                                        run_event_based_simulation_optimization_1\nMain.c:66:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_3\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   66 |                         verification = run_eve\n...[truncated]...\n~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/ld: /tmp/ccQmUSzN.ltrans0.ltrans.o: in function `main':\n<artificial>:(.text.startup+0x1907): undefined reference to `run_event_based_simulation_optimization_6'\n/usr/bin/ld: <artificial>:(.text.startup+0x1b0d): undefined reference to `run_event_based_simulation_optimization_5'\n/usr/bin/ld: <artificial>:(.text.startup+0x1bc9): undefined reference to `run_event_based_simulation_optimization_4'\n/usr/bin/ld: <artificial>:(.text.startup+0x1c85): undefined reference to `run_event_based_simulation_optimization_3'\n/usr/bin/ld: <artificial>:(.text.startup+0x1d41): undefined reference to `run_event_based_simulation_optimization_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:105: XSBench] Error 1\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null

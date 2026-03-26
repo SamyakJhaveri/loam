@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-hotspot3d-cuda",
+  "target_spec": "rodinia-hotspot3d-omp",
+  "kernel": "hotspot3d",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:09:46Z",
+  "prompt_tokens": 10924,
+  "completion_tokens": 5897,
+  "llm_response_time_seconds": 13.547,
+  "build_status": "fail",
+  "build_time_seconds": 0.102,
+  "build_error_snippet": "3D.c: In function \u2018main\u2019:\n3D.c:200:5: warning: implicit declaration of function \u2018memcpy\u2019 [-Wimplicit-function-declaration]\n  200 |     memcpy(tempCopy,tempIn, size * sizeof(float));\n      |     ^~~~~~\n3D.c:8:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018memcpy\u2019\n    7 | #include <omp.h>\n  +++ |+#include <string.h>\n    8 | \n3D.c:200:5: warning: incompatible implicit declaration of built-in function \u2018memcpy\u2019 [-Wbuiltin-declaration-mismatch]\n  200 |     memcpy(tempCopy,tempIn, size * sizeof(float));\n      |     ^~~~~~\n3D.c:200:5: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018memcpy\u2019\n/usr/bin/ld: /tmp/ccTXGVao.o: in function `main':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/hotspot3D/3D.c:202:(.text.startup+0x29f): undefined reference to `hotspot_opt1'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:6: 3D] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: amyak/Desktop/parbench_sam/rodinia/openmp/hotspot3D/3D.c:202:(.text.startup+0x29f): undefined reference to `hotspot_opt1'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:6: 3D] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.215,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "3D.c": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h>\n#include <math.h>\n#include <sys/time.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 16\n#define STR_SIZE 256\n\n#define block_x_ 128\n"
+  },
+  "target_files_expected": [
+    "3D.c"
+  ],
+  "target_files_extracted": [
+    "3D.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.8,
+      "prompt_tokens": 3615,
+      "completion_tokens": 3473,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\ncpy\u2019\n3D.c:195:5: warning: implicit declaration of function \u2018hotspot_opt1\u2019 [-Wimplicit-function-declaration]\n  195 |     hotspot_opt1(powerIn, tem",
+      "build_error_snippet": "3D.c: In function \u2018main\u2019:\n3D.c:193:5: warning: implicit declaration of function \u2018memcpy\u2019 [-Wimplicit-function-declaration]\n  193 |     memcpy(tempCopy,tempIn, size * sizeof(float));\n      |     ^~~~~~\n3D.c:8:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018memcpy\u2019\n    7 | #include <omp.h>\n  +++ |+#include <string.h>\n    8 | \n3D.c:193:5: warning: incompatible implicit declaration of built-in function \u2018memcpy\u2019 [-Wbuiltin-declaration-mismatch]\n  193 |     memcpy(tempCopy,tempIn, size * sizeof(float));\n      |     ^~~~~~\n3D.c:193:5: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018memcpy\u2019\n3D.c:195:5: warning: implicit declaration of function \u2018hotspot_opt1\u2019 [-Wimplicit-function-declaration]\n  195 |     hotspot_opt1(powerIn, tempIn, tempOut, numCols, numRows, layers, Cap, Rx, Ry, Rz, dt,iterations);\n      |     ^~~~~~~~~~~~\n/usr/bin/ld: /tmp/ccqd85un.o: in function `main':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/hotspot3D/3D.c:195:(.text.startup+0x2ad): undefined reference to `hotspot_opt1'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:6: 3D] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 5.747,
+      "prompt_tokens": 7309,
+      "completion_tokens": 2424,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "3D.c: In function \u2018main\u2019:\n3D.c:200:5: warning: implicit declaration of function \u2018memcpy\u2019 [-Wimplicit-function-declaration]\n  200 |     memcpy(tempCopy,tempIn, size * sizeof(float));\n      |     ^~~~~~\n3D.c:8:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018memcpy\u2019\n    7 | #include <omp.h>\n  +++ |+#include <string.h>\n    8 | \n3D.c:200:5: warning: incompatible implicit declaration of built-in function \u2018memcpy\u2019 [-Wbuiltin-declaration-mismatch]\n  200 |     memcpy(tempCopy,tempIn, size * sizeof(float));\n      |     ^~~~~~\n3D.c:200:5: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018memcpy\u2019\n/usr/bin/ld: /tmp/ccTXGVao.o: in function `main':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/hotspot3D/3D.c:202:(.text.startup+0x29f): undefined reference to `hotspot_opt1'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:6: 3D] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

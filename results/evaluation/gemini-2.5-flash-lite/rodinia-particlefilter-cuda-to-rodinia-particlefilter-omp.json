@@ -5,10 +5,10 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-24T18:14:31Z",
+  "timestamp": "2026-03-26T06:27:08Z",
   "prompt_tokens": 41859,
   "completion_tokens": 13367,
-  "llm_response_time_seconds": 25.521,
+  "llm_response_time_seconds": 29.82,
   "build_status": "fail",
   "build_time_seconds": 0.028,
   "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:487:5: warning: implicit declaration of function \u2018check_error\u2019 [-Wimplicit-function-declaration]\n  487 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |     ^~~~~~~~~~~\nex_particle_OPENMP_seq.c:487:17: warning: implicit declaration of function \u2018cudaMemcpy\u2019 [-Wimplicit-function-declaration]\n  487 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |                 ^~~~~~~~~~\nex_particle_OPENMP_seq.c:487:70: error: \u2018cudaMemcpyDeviceToHost\u2019 undeclared (first use in this function)\n  487 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |                                                                      ^~~~~~~~~~~~~~~~~~~~~~\nex_particle_OPENMP_seq.c:487:70: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:4: openmp] Error 1\n",
@@ -42,27 +42,33 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 12.153,
+      "llm_response_time_seconds": 16.136,
       "prompt_tokens": 17486,
       "completion_tokens": 6680,
+      "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": "The translation failed to compile with this error:\n```\ns reported only once for each function it appears in\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:581:19: warning: impl",
-      "finish_reason": "stop",
-      "build_error_snippet": "ex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:446:49: warning: implicit declaration of function \u2018d_randn\u2019; did you mean \u2018randn\u2019? [-Wimplicit-function-declaration]\n  446 |             arrayY[x] = arrayY[x] - 2.0 + 2.0 * d_randn(seed, x);\n      |                                                 ^~~~~~~\n      |                                                 randn\nex_particle_OPENMP_seq.c:486:5: warning: implicit declaration of function \u2018check_error\u2019 [-Wimplicit-function-declaration]\n  486 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |     ^~~~~~~~~~~\nex_particle_OPENMP_seq.c:486:17: warning: implicit declaration of function \u2018cudaMemcpy\u2019 [-Wimplicit-fun\n...[truncated]...\nror(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |                                                                      ^~~~~~~~~~~~~~~~~~~~~~\nex_particle_OPENMP_seq.c:486:70: note: each undeclared identifier is reported only once for each function it appears in\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:581:19: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  581 |         seed[i] = time(0) * i;\n      |                   ^~~~\nex_particle_OPENMP_seq.c:11:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   10 | #include <omp.h>\n  +++ |+#include <time.h>\n   11 | \nmake: *** [Makefile:4: openmp] Error 1\n"
+      "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:446:49: warning: implicit declaration of function \u2018d_randn\u2019; did you mean \u2018randn\u2019? [-Wimplicit-function-declaration]\n  446 |             arrayY[x] = arrayY[x] - 2.0 + 2.0 * d_randn(seed, x);\n      |                                                 ^~~~~~~\n      |                                                 randn\nex_particle_OPENMP_seq.c:486:5: warning: implicit declaration of function \u2018check_error\u2019 [-Wimplicit-function-declaration]\n  486 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |     ^~~~~~~~~~~\n\n...[truncated]...\nror(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |                                                                      ^~~~~~~~~~~~~~~~~~~~~~\nex_particle_OPENMP_seq.c:486:70: note: each undeclared identifier is reported only once for each function it appears in\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:581:19: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  581 |         seed[i] = time(0) * i;\n      |                   ^~~~\nex_particle_OPENMP_seq.c:11:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   10 | #include <omp.h>\n  +++ |+#include <time.h>\n   11 | \nmake: *** [Makefile:4: openmp] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 13.368,
+      "llm_response_time_seconds": 13.684,
       "prompt_tokens": 24373,
       "completion_tokens": 6687,
+      "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "finish_reason": "stop",
-      "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:487:5: warning: implicit declaration of function \u2018check_error\u2019 [-Wimplicit-function-declaration]\n  487 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |     ^~~~~~~~~~~\nex_particle_OPENMP_seq.c:487:17: warning: implicit declaration of function \u2018cudaMemcpy\u2019 [-Wimplicit-function-declaration]\n  487 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |                 ^~~~~~~~~~\nex_particle_OPENMP_seq.c:487:70: error: \u2018cudaMemcpyDeviceToHost\u2019 undeclared (first use in this function)\n  487 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |                                                                      ^~~~~~~~~~~~~~~~~~~~~~\nex_particle_OPENMP_seq.c:487:70: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:4: openmp] Error 1\n"
+      "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:487:5: warning: implicit declaration of function \u2018check_error\u2019 [-Wimplicit-function-declaration]\n  487 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |     ^~~~~~~~~~~\nex_particle_OPENMP_seq.c:487:17: warning: implicit declaration of function \u2018cudaMemcpy\u2019 [-Wimplicit-function-declaration]\n  487 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |                 ^~~~~~~~~~\nex_particle_OPENMP_seq.c:487:70: error: \u2018cudaMemcpyDeviceToHost\u2019 undeclared (first use in this function)\n  487 |     check_error(cudaMemcpy(arrayX, xj, sizeof (double) * Nparticles, cudaMemcpyDeviceToHost));\n      |                                                                      ^~~~~~~~~~~~~~~~~~~~~~\nex_particle_OPENMP_seq.c:487:70: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:4: openmp] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
     }
   ]
 }

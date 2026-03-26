@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-backprop-cuda",
+  "target_spec": "rodinia-backprop-omp",
+  "kernel": "backprop",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T05:56:53Z",
+  "prompt_tokens": 28256,
+  "completion_tokens": 14485,
+  "llm_response_time_seconds": 29.372,
+  "build_status": "fail",
+  "build_time_seconds": 0.023,
+  "build_error_snippet": "backprop.c:79:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   79 | bpnn_randomize_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~~~~~~\nbackprop.c:92:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   92 | bpnn_randomize_row(w, m)\n      | ^~~~~~~~~~~~~~~~~~\nbackprop.c:103:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  103 | bpnn_zero_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_initialize\u2019:\nbackprop.c:117:6: warning: type of \u2018seed\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  117 | void bpnn_initialize(seed)\n      |      ^~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_read\u2019:\nbackprop.c:415:13: warning: implicit declaration of function \u2018open\u2019; did you mean \u2018popen\u2019? [-Wimplicit-function-decla\n...[truncated]...\n!= 1) return NULL;\n      |                                           ^\nbackprop.c:434:50: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]\n  434 |   if (fread(mem, sizeof(float), (n1+1) * (n2+1), (FILE*)fd) != (n1+1) * (n2+1)) {\n      |                                                  ^\nbackprop.c:452:50: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]\n  452 |   if (fread(mem, sizeof(float), (n2+1) * (n3+1), (FILE*)fd) != (n2+1) * (n3+1)) {\n      |                                                  ^\nbackprop.c: At top level:\nbackprop.c:475:8: error: expected identifier or \u2018(\u2019 before string constant\n  475 | extern \"C\"\n      |        ^~~\nmake: *** [Makefile:16: backprop.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ^\nbackprop.c: At top level:\nbackprop.c:475:8: error: expected identifier or \u2018(\u2019 before string constant\n  475 | extern \"C\"\n      |        ^~~\nmake: *** [Makefile:16: backprop.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "backprop.c": "#include <omp.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include \"backprop.h\"\n#include <math.h>\n#include <unistd.h> // For read and close\n\n#define ABS(x)          (((x) > 0.0) ? (x) : (-(x)))\n\n#define"
+  },
+  "target_files_expected": [
+    "backprop.c"
+  ],
+  "target_files_extracted": [
+    "backprop.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 15.606,
+      "prompt_tokens": 10445,
+      "completion_tokens": 7163,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  420 |   read(fd, (char *) &n1, sizeof(int));\n      |   ^~~~\n      |   fread\nbackprop",
+      "build_error_snippet": "backprop.c:78:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   78 | bpnn_randomize_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~~~~~~\nbackprop.c:91:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   91 | bpnn_randomize_row(w, m)\n      | ^~~~~~~~~~~~~~~~~~\nbackprop.c:102:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  102 | bpnn_zero_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_initialize\u2019:\nbackprop.c:116:6: warning: type of \u2018seed\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  116 | void bpnn_initialize(seed)\n      |      ^~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_read\u2019:\nbackprop.c:414:13: warning: implicit declaration of function \u2018open\u2019; did you mean \u2018popen\u2019? [-Wimplicit-function-declaration]\n  414 |   if ((fd = open(filename, 0, 0644)) == -1) {\n      |             ^~~~\n      |             popen\nbackprop.c:420:3: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  420 |   read(fd, (char *) &n1, sizeof(int));\n      |   ^~~~\n      |   fread\nbackprop.c:451:3: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  451 |   close(fd);\n      |   ^~~~~\n      |   pclose\nbackprop.c: At top level:\nbackprop.c:462:8: error: expected identifier or \u2018(\u2019 before string constant\n  462 | extern \"C\"\n      |        ^~~\nmake: *** [Makefile:16: backprop.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 13.766,
+      "prompt_tokens": 17811,
+      "completion_tokens": 7322,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "backprop.c:79:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   79 | bpnn_randomize_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~~~~~~\nbackprop.c:92:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   92 | bpnn_randomize_row(w, m)\n      | ^~~~~~~~~~~~~~~~~~\nbackprop.c:103:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  103 | bpnn_zero_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_initialize\u2019:\nbackprop.c:117:6: warning: type of \u2018seed\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  117 | void bpnn_initialize(seed)\n      |      ^~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_read\u2019:\nbackprop.c:415:13: warning: implicit declaration of function \u2018open\u2019; did you mean \u2018popen\u2019? [-Wimplicit-function-decla\n...[truncated]...\n!= 1) return NULL;\n      |                                           ^\nbackprop.c:434:50: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]\n  434 |   if (fread(mem, sizeof(float), (n1+1) * (n2+1), (FILE*)fd) != (n1+1) * (n2+1)) {\n      |                                                  ^\nbackprop.c:452:50: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]\n  452 |   if (fread(mem, sizeof(float), (n2+1) * (n3+1), (FILE*)fd) != (n2+1) * (n3+1)) {\n      |                                                  ^\nbackprop.c: At top level:\nbackprop.c:475:8: error: expected identifier or \u2018(\u2019 before string constant\n  475 | extern \"C\"\n      |        ^~~\nmake: *** [Makefile:16: backprop.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

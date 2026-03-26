@@ -10,16 +10,16 @@
 **Light** throughout. No dark backgrounds on public pages. SC26 reviewers and paper readers expect academic styling.
 
 ```
-Background:    #f9fafb   (gray-50 — page background)
+Background:    #F5F0EB   (Warm Linen — outfit-derived SC'26 palette)
 Surface:       #ffffff   (cards, panels, table rows)
-Surface-alt:   #f3f4f6   (alternating table rows, subtle sections)
+Surface-alt:   #F0E6D0   (Cream Ivory — alternating rows, subtle sections)
 Border:        #e5e7eb   (card borders, table dividers)
-Border-strong: #d1d5db   (section dividers, tab borders)
-Text:          #111827   (gray-900 — primary body text)
-Text-secondary:#4b5563   (gray-600 — labels, captions)
+Border-strong: #B8976A   (Zari Gold — section dividers, tab borders)
+Text:          #2D3436   (Charcoal — primary body text)
+Text-secondary:#636e72   (Slate — labels, captions)
 Text-muted:    #9ca3af   (gray-400 — decorative only; never for meaningful text)
-Accent:        #2563eb   (blue-600 — links, focus rings, active states)
-Accent-light:  #eff6ff   (blue-50 — accent backgrounds)
+Accent:        #1B6573   (Deep Teal — links, focus rings, active states)
+Accent-light:  #D8F0F4   (Lightest Teal — accent backgrounds)
 ```
 
 ## Typography
@@ -49,47 +49,47 @@ Caption:       12px / 400 / Inter / text-muted color
 
 ```css
 :root {
-  /* === SURFACES === */
-  --bg:              #f9fafb;
+  /* === SURFACES (Outfit-derived SC'26 palette) === */
+  --bg:              #F5F0EB;    /* Warm Linen */
   --surface:         #ffffff;
-  --surface-alt:     #f3f4f6;
+  --surface-alt:     #F0E6D0;    /* Cream Ivory */
   --border:          #e5e7eb;
-  --border-strong:   #d1d5db;
+  --border-strong:   #B8976A;    /* Zari Gold */
 
   /* === TEXT === */
-  --text:            #111827;
-  --text-secondary:  #4b5563;
+  --text:            #2D3436;    /* Charcoal */
+  --text-secondary:  #636e72;    /* Slate */
   --text-muted:      #9ca3af;
-  --accent:          #2563eb;
-  --accent-light:    #eff6ff;
+  --accent:          #1B6573;    /* Deep Teal */
+  --accent-light:    #D8F0F4;    /* Lightest Teal */
 
-  /* === STATUS (Okabe-Ito colorblind-safe palette) === */
-  --pass-color:      #56B4E9;   /* Sky Blue */
-  --pass-bg:         #e8f4fb;
-  --pass-text:       #0369a1;
+  /* === STATUS (Outfit-derived SC'26 palette) === */
+  --pass-color:      #2E8E9E;   /* Teal */
+  --pass-bg:         #D8F0F4;
+  --pass-text:       #1B6573;
 
-  --build-fail-color:#D55E00;   /* Vermillion */
-  --build-fail-bg:   #fdf1ec;
-  --build-fail-text: #9a3412;
+  --build-fail-color:#C8607A;   /* Rose Pink */
+  --build-fail-bg:   #F8E0E5;
+  --build-fail-text: #6E3244;
 
-  --run-fail-color:  #E69F00;   /* Orange */
-  --run-fail-bg:     #fef9ec;
-  --run-fail-text:   #92400e;
+  --run-fail-color:  #D48A35;   /* Saffron Amber */
+  --run-fail-bg:     #FBF0DD;
+  --run-fail-text:   #75491B;
 
-  --verify-fail-color: #CC79A7; /* Reddish Purple */
-  --verify-fail-bg:  #fdf2f8;
-  --verify-fail-text:#86198f;
+  --verify-fail-color: #E6A84D; /* Gold */
+  --verify-fail-bg:  #FDF5E3;
+  --verify-fail-text:#7A5928;
 
-  --neutral-color:   #94a3b8;
+  --neutral-color:   #636e72;   /* Slate */
   --neutral-bg:      #f1f5f9;
-  --neutral-text:    #475569;
+  --neutral-text:    #2D3436;   /* Charcoal */
 
   /* === TEAM MEMBERS (sprint dashboard) === */
-  --team-samyak:     #4f46e5;   /* Indigo */
-  --team-erel:       #7c3aed;   /* Violet */
-  --team-gal:        #db2777;   /* Pink */
-  --team-niranjan:   #0891b2;   /* Cyan */
-  --team-claude:     #0d9488;   /* Teal */
+  --team-samyak:     #C8607A;   /* Rose Pink */
+  --team-erel:       #D48A35;   /* Saffron Amber */
+  --team-gal:        #2E8E9E;   /* Teal */
+  --team-niranjan:   #E6A84D;   /* Gold */
+  --team-claude:     #1B6573;   /* Deep Teal */
 
   /* === SPACING (8pt grid) === */
   --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
@@ -108,17 +108,17 @@ Caption:       12px / 400 / Inter / text-muted color
                 0 4px 8px  hsl(var(--sh-color) / 0.05),
                 0 8px 24px hsl(var(--sh-color) / 0.08);
 
-  /* === CHART COLORS (ordered by use frequency) === */
-  --chart-pass:         #56B4E9;
-  --chart-build-fail:   #D55E00;
-  --chart-run-fail:     #E69F00;
-  --chart-verify-fail:  #CC79A7;
-  --chart-neutral:      #94a3b8;
-  --chart-l0:           #2563eb;
-  --chart-l1:           #3b82f6;
-  --chart-l2:           #60a5fa;
-  --chart-l3:           #93c5fd;
-  --chart-l4:           #bfdbfe;
+  /* === CHART COLORS (Outfit-derived SC'26 palette) === */
+  --chart-pass:         #2E8E9E;
+  --chart-build-fail:   #C8607A;
+  --chart-run-fail:     #D48A35;
+  --chart-verify-fail:  #E6A84D;
+  --chart-neutral:      #636e72;
+  --chart-l0:           #1B6573;
+  --chart-l1:           #2E8E9E;
+  --chart-l2:           #7CC3CE;
+  --chart-l3:           #D8F0F4;
+  --chart-l4:           #F0E6D0;
 }
 ```
 
@@ -143,12 +143,12 @@ Set these once per page before any chart initialization:
 ```javascript
 Chart.defaults.font.family = "'JetBrains Mono', monospace";
 Chart.defaults.font.size = 12;
-Chart.defaults.color = '#4b5563';
+Chart.defaults.color = '#636e72';
 Chart.defaults.borderColor = '#e5e7eb';
 Chart.defaults.plugins.legend.labels.usePointStyle = true;
-Chart.defaults.plugins.tooltip.backgroundColor = '#111827';
-Chart.defaults.plugins.tooltip.titleColor = '#f9fafb';
-Chart.defaults.plugins.tooltip.bodyColor = '#d1d5db';
+Chart.defaults.plugins.tooltip.backgroundColor = '#2D3436';
+Chart.defaults.plugins.tooltip.titleColor = '#F5F0EB';
+Chart.defaults.plugins.tooltip.bodyColor = '#B8976A';
 Chart.defaults.plugins.tooltip.padding = 10;
 Chart.defaults.plugins.tooltip.cornerRadius = 6;
 ```
@@ -242,4 +242,4 @@ visualizations/
 
 ---
 
-*Last updated: 2026-03-25. Update this file whenever design decisions change.*
+*Last updated: 2026-03-26. Update this file whenever design decisions change.*

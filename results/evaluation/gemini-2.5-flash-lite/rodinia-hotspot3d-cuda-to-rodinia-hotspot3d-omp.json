@@ -5,15 +5,15 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-24T18:11:09Z",
+  "timestamp": "2026-03-26T06:09:08Z",
   "prompt_tokens": 3589,
   "completion_tokens": 2501,
-  "llm_response_time_seconds": 6.117,
+  "llm_response_time_seconds": 6.478,
   "build_status": "pass",
-  "build_time_seconds": 0.106,
+  "build_time_seconds": 0.102,
   "build_error_snippet": null,
   "run_status": "pass",
-  "run_time_seconds": 0.833,
+  "run_time_seconds": 0.842,
   "run_exit_code": 0,
   "run_stderr_snippet": null,
   "run_stdout_snippet": null,
@@ -23,11 +23,11 @@
   "error_message": null,
   "metrics": {},
   "baseline_wall_time_seconds": 1.215,
-  "translated_wall_time_seconds": 0.833,
+  "translated_wall_time_seconds": 0.842,
   "translated_cpu_time_seconds": null,
   "translated_kernel_time_seconds": null,
   "timing_method": "wall_time",
-  "speedup_ratio": 1.4586,
+  "speedup_ratio": 1.443,
   "translated_files": {
     "3D.c": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h>\n#include <math.h>\n#include <sys/time.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 16\n#define STR_SIZE 256\n\n#define block_x_ 128\n"
   },
@@ -42,14 +42,18 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 6.117,
+      "llm_response_time_seconds": 6.478,
       "prompt_tokens": 3589,
       "completion_tokens": 2501,
+      "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "pass",
       "verify_status": "pass",
       "error_feedback_sent": null,
-      "finish_reason": "stop"
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
     }
   ]
 }

@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-particlefilter-cuda",
+  "target_spec": "rodinia-particlefilter-omp",
+  "kernel": "particlefilter",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:29:02Z",
+  "prompt_tokens": 41613,
+  "completion_tokens": 13300,
+  "llm_response_time_seconds": 31.043,
+  "build_status": "pass",
+  "build_time_seconds": 0.227,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.071,
+  "run_exit_code": -11,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -11)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.007,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "ex_particle_OPENMP_seq.c": "/**\n * @file ex_particle_OPENMP_seq.c\n * @author Michael Trotter & Matt Goodrum\n * @brief Particle filter implementation in C/OpenMP\n */\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#inc"
+  },
+  "target_files_expected": [
+    "ex_particle_OPENMP_seq.c"
+  ],
+  "target_files_extracted": [
+    "ex_particle_OPENMP_seq.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 13.379,
+      "prompt_tokens": 17469,
+      "completion_tokens": 6650,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 17.664,
+      "prompt_tokens": 24144,
+      "completion_tokens": 6650,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

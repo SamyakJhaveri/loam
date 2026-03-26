@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-cfd-cuda",
+  "target_spec": "rodinia-cfd-omp",
+  "kernel": "cfd",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:00:50Z",
+  "prompt_tokens": 78471,
+  "completion_tokens": 12918,
+  "llm_response_time_seconds": 30.247,
+  "build_status": "fail",
+  "build_time_seconds": 0.288,
+  "build_error_snippet": "euler3d_cpu.cpp:57:55: error: \u2018float3\u2019 has not been declared\n   57 | inline void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy)\n      |                                                       ^~~~~~\neuler3d_cpu.cpp:57:113: error: \u2018float3\u2019 has not been declared\n   57 | inline void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy)\n      |                                                                                   \n...[truncated]...\nntum_x = {h_ff_flux_contribution_momentum_x};\n      |                           ^\neuler3d_cpu.cpp:313:27: error: template argument 2 is invalid\n  313 |         std::vector<float3> ff_flux_contribution_momentum_y = {h_ff_flux_contribution_momentum_y};\n      |                           ^\neuler3d_cpu.cpp:314:27: error: template argument 2 is invalid\n  314 |         std::vector<float3> ff_flux_contribution_momentum_z = {h_ff_flux_contribution_momentum_z};\n      |                           ^\neuler3d_cpu.cpp:315:27: error: template argument 2 is invalid\n  315 |         std::vector<float3> ff_flux_contribution_density_energy = {h_ff_flux_contribution_density_energy};\n      |                           ^\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: lid\n  315 |         std::vector<float3> ff_flux_contribution_density_energy = {h_ff_flux_contribution_density_energy};\n      |                           ^\nmake: *** [makefile:15: euler3d_cpu] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 3.877,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "euler3d_cpu.cpp": "// euler3d_cpu.cpp\n#include <omp.h>\n#include <iostream>\n#include <fstream>\n#include <vector>\n#include <cmath>\n#include <algorithm>\n\n/*\n * Options\n */\n#define GAMMA 1.4f\n#define iterations 2000\n\n#defin"
+  },
+  "target_files_expected": [
+    "euler3d_cpu.cpp"
+  ],
+  "target_files_extracted": [
+    "euler3d_cpu.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 15.468,
+      "prompt_tokens": 35914,
+      "completion_tokens": 6459,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n|                           ^\neuler3d_cpu.cpp:314:27: error: template argument 2 is invalid\n  314 |         std::vector<float3> ff_flux_contribut",
+      "build_error_snippet": "euler3d_cpu.cpp:57:55: error: \u2018float3\u2019 has not been declared\n   57 | inline void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy)\n      |                                                       ^~~~~~\neuler3d_cpu.cpp:57:113: error: \u2018float3\u2019 has not been declared\n   57 | inline void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy)\n      |                                                                                   \n...[truncated]...\nntum_x = {h_ff_flux_contribution_momentum_x};\n      |                           ^\neuler3d_cpu.cpp:313:27: error: template argument 2 is invalid\n  313 |         std::vector<float3> ff_flux_contribution_momentum_y = {h_ff_flux_contribution_momentum_y};\n      |                           ^\neuler3d_cpu.cpp:314:27: error: template argument 2 is invalid\n  314 |         std::vector<float3> ff_flux_contribution_momentum_z = {h_ff_flux_contribution_momentum_z};\n      |                           ^\neuler3d_cpu.cpp:315:27: error: template argument 2 is invalid\n  315 |         std::vector<float3> ff_flux_contribution_density_energy = {h_ff_flux_contribution_density_energy};\n      |                           ^\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 14.779,
+      "prompt_tokens": 42557,
+      "completion_tokens": 6459,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "euler3d_cpu.cpp:57:55: error: \u2018float3\u2019 has not been declared\n   57 | inline void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy)\n      |                                                       ^~~~~~\neuler3d_cpu.cpp:57:113: error: \u2018float3\u2019 has not been declared\n   57 | inline void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy)\n      |                                                                                   \n...[truncated]...\nntum_x = {h_ff_flux_contribution_momentum_x};\n      |                           ^\neuler3d_cpu.cpp:313:27: error: template argument 2 is invalid\n  313 |         std::vector<float3> ff_flux_contribution_momentum_y = {h_ff_flux_contribution_momentum_y};\n      |                           ^\neuler3d_cpu.cpp:314:27: error: template argument 2 is invalid\n  314 |         std::vector<float3> ff_flux_contribution_momentum_z = {h_ff_flux_contribution_momentum_z};\n      |                           ^\neuler3d_cpu.cpp:315:27: error: template argument 2 is invalid\n  315 |         std::vector<float3> ff_flux_contribution_density_energy = {h_ff_flux_contribution_density_energy};\n      |                           ^\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

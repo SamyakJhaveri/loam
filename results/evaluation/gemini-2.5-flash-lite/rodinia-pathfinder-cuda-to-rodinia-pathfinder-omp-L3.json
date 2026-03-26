@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-pathfinder-cuda",
+  "target_spec": "rodinia-pathfinder-omp",
+  "kernel": "pathfinder",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-26T06:30:11Z",
+  "prompt_tokens": 8260,
+  "completion_tokens": 4372,
+  "llm_response_time_seconds": 11.945,
+  "build_status": "pass",
+  "build_time_seconds": 0.064,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.079,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.079,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0127,
+  "translated_files": {
+    "pathfinder.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n#include <cstring>\n\n#ifdef TIMING\n#include \"timing.h\"\n\nstruct timeval tv;\nstruct timeval tv_total_start, t"
+  },
+  "target_files_expected": [
+    "pathfinder.cpp"
+  ],
+  "target_files_extracted": [
+    "pathfinder.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.444,
+      "prompt_tokens": 2953,
+      "completion_tokens": 2183,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\npathfinder.cpp: In function \u2018void run(int, char**)\u2019:\npathfinder.cpp:195:5: error: \u2018memcpy\u2019 was not declared in this scope\n  195 |     memcpy(gpuR",
+      "build_error_snippet": "pathfinder.cpp: In function \u2018void run(int, char**)\u2019:\npathfinder.cpp:195:5: error: \u2018memcpy\u2019 was not declared in this scope\n  195 |     memcpy(gpuResult[0], data, sizeof(int)*cols);\n      |     ^~~~~~\npathfinder.cpp:6:1: note: \u2018memcpy\u2019 is defined in header \u2018<cstring>\u2019; did you forget to \u2018#include <cstring>\u2019?\n    5 | #include <omp.h>\n  +++ |+#include <cstring>\n    6 | \nmake: *** [Makefile:7: release] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 6.501,
+      "prompt_tokens": 5307,
+      "completion_tokens": 2189,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

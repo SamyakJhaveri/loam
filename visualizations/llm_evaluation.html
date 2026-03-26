@@ -15,47 +15,47 @@
    DESIGN TOKENS
    ============================================================ */
 :root {
-  /* Core palette */
-  --bg:            #f9fafb;
-  --bg-section:    #f3f4f6;
+  /* Core palette (Outfit-derived SC'26) */
+  --bg:            #F5F0EB;
+  --bg-section:    #F0E6D0;
   --card:          #ffffff;
   --border:        #e5e7eb;
   --border-subtle: #f0f1f3;
-  --text:          #111827;
-  --text-secondary:#4b5563;
+  --text:          #2D3436;
+  --text-secondary:#636e72;
   --text-muted:    #9ca3af;
 
   /* Brand */
-  --accent:        #2563eb;
-  --accent-bg:     #eff6ff;
-  --accent-border: #bfdbfe;
-  --accent-text:   #1d4ed8;
+  --accent:        #1B6573;
+  --accent-bg:     #D8F0F4;
+  --accent-border: #7CC3CE;
+  --accent-text:   #1B6573;
 
-  /* Okabe-Ito colorblind-safe status palette */
-  --pass-color:    #56B4E9;
-  --pass-bg:       #e8f4fb;
-  --pass-border:   #93d0ef;
-  --pass-text:     #0369a1;
+  /* Outfit-derived SC'26 status palette */
+  --pass-color:    #2E8E9E;
+  --pass-bg:       #D8F0F4;
+  --pass-border:   #7CC3CE;
+  --pass-text:     #1B6573;
 
-  --build-color:   #D55E00;
-  --build-bg:      #fdf1ec;
-  --build-border:  #e9a07a;
-  --build-text:    #9a3412;
+  --build-color:   #C8607A;
+  --build-bg:      #F8E0E5;
+  --build-border:  #D08A99;
+  --build-text:    #6E3244;
 
-  --run-color:     #E69F00;
-  --run-bg:        #fef9ec;
-  --run-border:    #f0ca6a;
-  --run-text:      #92400e;
+  --run-color:     #D48A35;
+  --run-bg:        #FBF0DD;
+  --run-border:    #E0B36A;
+  --run-text:      #75491B;
 
-  --verify-color:  #CC79A7;
-  --verify-bg:     #fdf2f8;
-  --verify-border: #dda9ca;
-  --verify-text:   #86198f;
+  --verify-color:  #E6A84D;
+  --verify-bg:     #FDF5E3;
+  --verify-border: #D4B876;
+  --verify-text:   #7A5928;
 
   /* Warning / callout */
-  --warn-bg:       #fffbeb;
-  --warn-border:   #f59e0b;
-  --warn-text:     #78350f;
+  --warn-bg:       #FBF0DD;
+  --warn-border:   #D48A35;
+  --warn-text:     #75491B;
 
   /* Shadows */
   --shadow-card:   0 1px 3px hsl(220deg 40% 15% / 0.07),
@@ -281,7 +281,7 @@ a:hover {
 }
 
 .badge-null {
-  background: #f3f4f6;
+  background: #F0E6D0;
   color: var(--text-muted);
   border-color: #e5e7eb;
 }
@@ -391,7 +391,7 @@ a:hover {
 }
 
 .heatmap-cell.cell-null {
-  background: #f3f4f6;
+  background: #F0E6D0;
   color: var(--text-muted);
   border: 1px solid #e5e7eb;
 }
@@ -425,7 +425,7 @@ a:hover {
 .swatch-build  { background: var(--build-bg);  border-color: var(--build-border);  }
 .swatch-run    { background: var(--run-bg);     border-color: var(--run-border);    }
 .swatch-verify { background: var(--verify-bg); border-color: var(--verify-border); }
-.swatch-null   { background: #f3f4f6;           border-color: #e5e7eb;              }
+.swatch-null   { background: #F0E6D0;           border-color: #e5e7eb;              }
 
 /* ============================================================
    CHART CONTAINERS
@@ -480,7 +480,7 @@ a:hover {
   border-bottom: none;
 }
 .data-table tbody tr:hover {
-  background: #fafafa;
+  background: #F0E6D0;
 }
 
 .data-table tbody td {
@@ -566,12 +566,12 @@ a:hover {
   margin-top: 10px;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #b45309;
+  color: #75491B;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .callout-link:hover {
-  color: #92400e;
+  color: #75491B;
 }
 
 /* ============================================================
@@ -800,9 +800,9 @@ a:hover {
       </div>
 
       <div class="kpi-card">
-        <span class="kpi-label">Rodinia L0 PASS</span>
-        <span class="kpi-value pass" id="kpi-build-fail">44%</span>
-        <span class="kpi-sublabel">30 of 68 CUDA→OMP translations</span>
+        <span class="kpi-label">Overall PASS Rate</span>
+        <span class="kpi-value pass" id="kpi-build-fail">35%</span>
+        <span class="kpi-sublabel">158 of 452 tasks (4 models, L0-L4)</span>
       </div>
 
       <div class="kpi-card">
@@ -818,7 +818,7 @@ a:hover {
   <section class="section" aria-labelledby="heatmap-heading">
     <h2 id="heatmap-heading" class="section-title">Result Matrix: Model &times; Kernel</h2>
     <p class="section-subtitle">
-      Zero-shot CUDA&rarr;OpenMP translation &middot; 1 active model (+ 1 archived pilot). Colors indicate outcome per (model, kernel) pair.
+      Zero-shot CUDA&rarr;OpenMP translation &middot; 4 active models across L0-L4. Colors indicate outcome per (model, kernel) pair.
     </p>
 
     <div class="heatmap-wrapper">
@@ -987,11 +987,11 @@ a:hover {
         </li>
         <li>
           <span class="method-key">Augmentation</span>
-          <span class="method-val">L0 &mdash; no augmentation; baseline evaluation only</span>
+          <span class="method-val">L0-L4 &mdash; baseline through full augmentation</span>
         </li>
         <li>
           <span class="method-key">Model</span>
-          <span class="method-val"><code class="method-mono">azure-gpt-4.1</code> (reasoning OFF) &mdash; primary. Claude Sonnet pilot data archived.</span>
+          <span class="method-val"><code class="method-mono">azure-gpt-4.1</code>, <code class="method-mono">claude-sonnet-4-6</code>, <code class="method-mono">gemini-2.5-flash-lite</code>, <code class="method-mono">groq-llama-3.3-70b-versatile</code></span>
         </li>
         <li>
           <span class="method-key">Retries</span>
@@ -1123,14 +1123,14 @@ const MODELS_ORDERED = [
 /* ============================================================
    CHART.JS GLOBAL DEFAULTS
    ============================================================ */
-Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
-Chart.defaults.color        = "#4b5563";
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.color        = "#636e72";
 Chart.defaults.borderColor  = "#e5e7eb";
 Chart.defaults.plugins.legend.display = false;
-Chart.defaults.plugins.tooltip.backgroundColor = "#111827";
-Chart.defaults.plugins.tooltip.titleColor       = "#f9fafb";
-Chart.defaults.plugins.tooltip.bodyColor        = "#d1d5db";
-Chart.defaults.plugins.tooltip.borderColor      = "#374151";
+Chart.defaults.plugins.tooltip.backgroundColor = "#2D3436";
+Chart.defaults.plugins.tooltip.titleColor       = "#F5F0EB";
+Chart.defaults.plugins.tooltip.bodyColor        = "#B8976A";
+Chart.defaults.plugins.tooltip.borderColor      = "#2D3436";
 Chart.defaults.plugins.tooltip.borderWidth      = 1;
 Chart.defaults.plugins.tooltip.padding          = 10;
 Chart.defaults.plugins.tooltip.cornerRadius     = 8;
@@ -1155,11 +1155,11 @@ const STATUS_LABEL = {
 };
 
 const STATUS_COLORS = {
-  "PASS":             "#56B4E9",
-  "BUILD_FAIL":       "#D55E00",
-  "RUN_FAIL":         "#E69F00",
-  "VERIFY_FAIL":      "#CC79A7",
-  "EXTRACTION_FAIL":  "#CC79A7"
+  "PASS":             "#2E8E9E",
+  "BUILD_FAIL":       "#C8607A",
+  "RUN_FAIL":         "#D48A35",
+  "VERIFY_FAIL":      "#E6A84D",
+  "EXTRACTION_FAIL":  "#B8976A"
 };
 
 /* ============================================================
@@ -1170,8 +1170,8 @@ function checkDataAvailable() {
     const main = document.getElementById("main-content");
     main.innerHTML = `
       <div class="data-unavailable">
-        <h2 style="margin-bottom:12px;color:#111827;">Data Not Available</h2>
-        <p style="font-size:0.9375rem;color:#6b7280;margin-bottom:16px;">
+        <h2 style="margin-bottom:12px;color:#2D3436;">Data Not Available</h2>
+        <p style="font-size:0.9375rem;color:#636e72;margin-bottom:16px;">
           The evaluation summary data file could not be loaded.
         </p>
         <p style="font-size:0.875rem;color:#9ca3af;">
@@ -1202,9 +1202,10 @@ function populateKPIs() {
   /* Total tasks */
   document.getElementById("kpi-total").textContent = EVAL_SUMMARY.totalTasks || 452;
 
-  /* Rodinia L0 CUDA→OMP pass rate (30/68 = 44.1%) */
-  /* Note: byDirection["cuda-to-omp"] includes XSBench (83 total), so we hardcode 30/68 */
-  document.getElementById("kpi-build-fail").textContent = "44%";
+  /* Overall pass rate — computed from EVAL_SUMMARY */
+  const totalPass = Object.values(EVAL_SUMMARY.byModel).reduce((s, m) => s + m.PASS, 0);
+  const totalAll  = EVAL_SUMMARY.totalTasks || 452;
+  document.getElementById("kpi-build-fail").textContent = Math.round(totalPass / totalAll * 100) + "%";
 
   /* Self-repair stats */
   const repaired = EVAL_SUMMARY.selfRepair ? EVAL_SUMMARY.selfRepair.total_repaired_by_retry : 0;
@@ -1312,28 +1313,28 @@ function buildTaxonomyChart() {
         {
           label: "PASS",
           data: passData,
-          backgroundColor: "#56B4E9",
+          backgroundColor: "#2E8E9E",
           borderWidth: 0,
           barThickness: 28
         },
         {
           label: "BUILD_FAIL",
           data: buildFailData,
-          backgroundColor: "#D55E00",
+          backgroundColor: "#C8607A",
           borderWidth: 0,
           barThickness: 28
         },
         {
           label: "RUN_FAIL",
           data: runFailData,
-          backgroundColor: "#E69F00",
+          backgroundColor: "#D48A35",
           borderWidth: 0,
           barThickness: 28
         },
         {
           label: "VERIFY_FAIL",
           data: verifyFailData,
-          backgroundColor: "#CC79A7",
+          backgroundColor: "#E6A84D",
           borderWidth: 0,
           barThickness: 28
         }
@@ -1353,7 +1354,7 @@ function buildTaxonomyChart() {
           min: 0,
           max: 100,
           grid: {
-            color: "#f0f1f3",
+            color: "#F0E6D0",
             drawTicks: false
           },
           ticks: {
@@ -1371,7 +1372,7 @@ function buildTaxonomyChart() {
               family: "'JetBrains Mono', monospace",
               weight: "500"
             },
-            color: "#374151"
+            color: "#2D3436"
           },
           border: { display: false }
         }
@@ -1387,7 +1388,7 @@ function buildTaxonomyChart() {
             borderRadius: 3,
             useBorderRadius: true,
             font: { size: 12, family: "'Inter', sans-serif" },
-            color: "#4b5563",
+            color: "#636e72",
             padding: 16
           }
         },

@@ -5,12 +5,12 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 4,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T09:10:21Z",
+  "timestamp": "2026-03-26T06:23:06Z",
   "prompt_tokens": 71003,
   "completion_tokens": 21653,
-  "llm_response_time_seconds": 42.676,
+  "llm_response_time_seconds": 47.738,
   "build_status": "fail",
-  "build_time_seconds": 2.495,
+  "build_time_seconds": 2.504,
   "build_error_snippet": "XSbench_header.h(111): error: expected a \")\"\n                             double * restrict egrid, int * restrict index_data,\n                                               ^\n\nXSbench_header.h(115): error: expected a \")\"\n                           long n_gridpoints, int * restrict num_nucs,\n                                                             ^\n\nXSbench_header.h(120): warning #12-D: parsing restarts here after previous syntax error\n                           double * restrict macro_xs_vector, int grid_type, int hash_bins, int max_num_nucs );\n                                                                                                             ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nXSb\n...[truncated]...\n;\n   ^\n\nio.cu(520): warning #1650-D: result of call is not used\n   fread(SD.concs, sizeof(double), SD.length_concs, fp);\n   ^\n\nio.cu(521): warning #1650-D: result of call is not used\n   fread(SD.mats, sizeof(int), SD.length_mats, fp);\n   ^\n\nio.cu(522): warning #1650-D: result of call is not used\n   fread(SD.nuclide_grid, sizeof(NuclideGridPoint), SD.length_nuclide_grid, fp);\n   ^\n\nio.cu(523): warning #1650-D: result of call is not used\n   fread(SD.index_grid, sizeof(int), SD.length_index_grid, fp);\n   ^\n\nio.cu(524): warning #1650-D: result of call is not used\n   fread(SD.unionized_energy_array, sizeof(double), SD.length_unionized_energy_array, fp);\n   ^\n\n3 errors detected in the compilation of \"io.cu\".\nmake: *** [Makefile:68: io.o] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
@@ -47,7 +47,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 31.762,
+      "llm_response_time_seconds": 36.394,
       "prompt_tokens": 27202,
       "completion_tokens": 16384,
       "finish_reason": "length",
@@ -62,7 +62,7 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 10.914,
+      "llm_response_time_seconds": 11.344,
       "prompt_tokens": 43801,
       "completion_tokens": 5269,
       "finish_reason": "stop",
