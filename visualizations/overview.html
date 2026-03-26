@@ -178,12 +178,12 @@
 <div class="suite-grid">
   <div class="suite-card">
     <h3>4-Model Evaluation — CUDA-to-OMP</h3>
-    <div class="mini-stat"><span>Total tasks</span><span class="val" style="color:var(--accent)">248</span></div>
+    <div class="mini-stat"><span>Total tasks</span><span class="val" style="color:var(--accent)">452</span></div>
     <div class="mini-stat"><span>Rodinia L0 PASS</span><span class="val" style="color:var(--pass-text)">30/68 (44.1%)</span></div>
-    <div class="mini-stat"><span>Best model</span><span class="val" style="color:var(--pass-text)">claude-sonnet-4-6: 12/17 (70.6%)</span></div>
+    <div class="mini-stat"><span>Best model</span><span class="val" style="color:var(--pass-text)">claude-sonnet-4-6: 106/145 (73.1%)</span></div>
     <div class="mini-stat"><span>azure-gpt-4.1</span><span class="val" style="color:var(--pass-text)">9/17 (52.9%)</span></div>
-    <div class="mini-stat"><span>groq-llama-3.3-70b</span><span class="val" style="color:var(--run-fail-text)">5/17 (29.4%)</span></div>
-    <div class="mini-stat"><span>gemini-2.5-flash-lite</span><span class="val" style="color:var(--build-fail-text)">4/17 (23.5%)</span></div>
+    <div class="mini-stat"><span>groq-llama-3.3-70b</span><span class="val" style="color:var(--run-fail-text)">27/145 (18.6%)</span></div>
+    <div class="mini-stat"><span>gemini-2.5-flash-lite</span><span class="val" style="color:var(--build-fail-text)">16/145 (11.0%)</span></div>
   </div>
   <div class="suite-card">
     <h3>Model Strategy (Gal's Directive, 2026-03-23)</h3>
@@ -191,7 +191,7 @@
     <div class="mini-stat"><span>Suites</span><span class="val" style="color:var(--accent)">Rodinia (17 kernels) + XSBench (1 kernel)</span></div>
     <div class="mini-stat"><span>Excluded</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">No reasoning models, no agentic models</span></div>
     <div class="mini-stat"><span>XSBench eval</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">180 tasks (L0-L4, 12 directions, 3 models)</span></div>
-    <div class="mini-stat"><span>Self-repair</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">18/248 tasks repaired by retry</span></div>
+    <div class="mini-stat"><span>Self-repair</span><span class="val" style="color:var(--text-muted); font-size:0.78rem">31/452 tasks repaired by retry</span></div>
   </div>
 </div>
 
@@ -228,7 +228,7 @@
   <div class="pipe-step pipe-done">
     <div class="pipe-num">4</div>
     <div class="pipe-title">Translation Eval</div>
-    <div class="pipe-desc">4 models. 248 tasks. 30/68 Rodinia L0 PASS (44.1%). XSBench L0-L4 eval included.</div>
+    <div class="pipe-desc">4 models. 452 tasks. 30/68 Rodinia L0 PASS (44.1%). Rodinia L1-L4 + XSBench L0-L4 eval included.</div>
   </div>
 </div>
 
@@ -272,7 +272,7 @@
   </a>
   <a href="llm_evaluation.html" class="nav-card">
     <div class="title">LLM Evaluation</div>
-    <div class="desc">CUDA-to-OMP translation results. 4 models, 248 tasks. claude-sonnet-4-6 leads at 75.3%. Per-kernel heatmap and failure taxonomy.</div>
+    <div class="desc">CUDA-to-OMP translation results. 4 models, 452 tasks. claude-sonnet-4-6 leads at 73.1%. Per-kernel heatmap and failure taxonomy.</div>
   </a>
   <a href="sprint_dashboard.html" class="nav-card">
     <div class="title">Sprint Dashboard</div>

@@ -140,3 +140,21 @@ The `attempts[]` array is the canonical per-attempt record.
 This was a pipeline bug in `llm_evaluate.py` (fixed prospectively — future results are correct).
 The 68 existing L0 result JSONs are not retroactively corrected; only gemini pathfinder is
 affected (attempt 1 SIGSEGV, attempt 2 BUILD_FAIL; `overall_status` is correctly BUILD_FAIL).
+
+## Per-Kernel Capability Anomaly: backprop (discovered 2026-03-25)
+
+**Observation:** In the L0 CUDA-to-OpenMP 4-model evaluation, `backprop` shows an anomalous
+tier pattern: Gemini 2.5 Flash-Lite (weakest overall, 23.5%) passes, but GPT-4.1
+(second-strongest, 52.9%) fails with BUILD_FAIL. This violates the naive assumption that
+stronger models dominate everywhere.
+
+**Interpretation:** Domain-specific model strength. Backprop's reduction-heavy ML kernel
+involves `__syncthreads()` and shared memory accumulation idioms that may appear heavily
+in Gemini's training data relative to its overall OpenMP coverage. GPT-4.1 fails despite
+succeeding on bptree, cfd, kmeans (all more complex kernels).
+
+**Paper treatment:** Backprop is in its own tier "Claude+Gemini only" in S6.3. The anomaly
+is discussed as evidence that per-kernel difficulty is not fully predicted by aggregate pass rate.
+
+**Rule:** When writing per-kernel tier descriptions from tabular data, verify EVERY cell in
+the table against the prose claim. Do not assume rank-ordering is monotonic per kernel.

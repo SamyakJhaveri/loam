@@ -764,7 +764,7 @@ a:hover {
       determined by a full build &rarr; run &rarr; output-diff pipeline against reference implementations.
     </p>
     <p class="page-header-desc" style="margin-top:12px;font-size:0.875rem;color:var(--text-muted);font-style:italic;">
-      4 models: azure-gpt-4.1, claude-sonnet-4-6, gemini-2.5-flash-lite, groq-llama-3.3-70b-versatile. 248 total tasks.
+      4 models: azure-gpt-4.1, claude-sonnet-4-6, gemini-2.5-flash-lite, groq-llama-3.3-70b-versatile. 452 total tasks.
     </p>
   </header>
 
@@ -776,8 +776,8 @@ a:hover {
         <li><span class="method-key">Models</span><span class="method-val"><code class="method-mono">azure-gpt-4.1</code>, <code class="method-mono">claude-sonnet-4-6</code>, <code class="method-mono">gemini-2.5-flash-lite</code>, <code class="method-mono">groq-llama-3.3-70b-versatile</code></span></li>
         <li><span class="method-key">Direction</span><span class="method-val">CUDA &rarr; OpenMP (primary), + 11 XSBench cross-API directions</span></li>
         <li><span class="method-key">Augmentation</span><span class="method-val">Rodinia: L0 only. XSBench: L0-L4 (all levels)</span></li>
-        <li><span class="method-key">Retries</span><span class="method-val">max 2 per kernel (18 of 248 repaired by retry)</span></li>
-        <li><span class="method-key">Total tasks</span><span class="method-val">248 (68 Rodinia L0 + 180 XSBench L0-L4)</span></li>
+        <li><span class="method-key">Retries</span><span class="method-val">max 2 per kernel (31 of 452 repaired by retry)</span></li>
+        <li><span class="method-key">Total tasks</span><span class="method-val">452 (68 Rodinia L0 + 204 Rodinia L1-L4 + 180 XSBench L0-L4)</span></li>
       </ul>
     </div>
   </section>
@@ -790,13 +790,13 @@ a:hover {
       <div class="kpi-card">
         <span class="kpi-label">Best Model Pass Rate</span>
         <span class="kpi-value pass" id="kpi-pass-rate">75%</span>
-        <span class="kpi-sublabel">claude-sonnet-4-6 &middot; 58 of 77 &middot; all tasks</span>
+        <span class="kpi-sublabel">claude-sonnet-4-6 &middot; 106 of 145 &middot; all tasks</span>
       </div>
 
       <div class="kpi-card">
         <span class="kpi-label">Tasks Evaluated</span>
-        <span class="kpi-value" id="kpi-total">248</span>
-        <span class="kpi-sublabel">4 models &middot; Rodinia L0 + XSBench L0-L4</span>
+        <span class="kpi-value" id="kpi-total">452</span>
+        <span class="kpi-sublabel">4 models &middot; Rodinia L0-L4 + XSBench L0-L4</span>
       </div>
 
       <div class="kpi-card">
@@ -807,8 +807,8 @@ a:hover {
 
       <div class="kpi-card">
         <span class="kpi-label">Self-Repair</span>
-        <span class="kpi-value repair" id="kpi-repair">18</span>
-        <span class="kpi-sublabel">tasks repaired by retry (of 248 total)</span>
+        <span class="kpi-value repair" id="kpi-repair">31</span>
+        <span class="kpi-sublabel">tasks repaired by retry (of 452 total)</span>
       </div>
 
     </div>
@@ -1017,7 +1017,7 @@ a:hover {
 
 <!-- === SECTION: Footer === -->
 <footer class="site-footer" role="contentinfo">
-  ParBench &nbsp;&middot;&nbsp; SC&rsquo;26 Evaluation &nbsp;&middot;&nbsp; Data generated 2026-03-25 &nbsp;&middot;&nbsp; 4 models &middot; 248 tasks
+  ParBench &nbsp;&middot;&nbsp; SC&rsquo;26 Evaluation &nbsp;&middot;&nbsp; Data generated 2026-03-25 &nbsp;&middot;&nbsp; 4 models &middot; 452 tasks
 </footer>
 
 <!-- === SECTION: Data + JavaScript === -->
@@ -1200,7 +1200,7 @@ function populateKPIs() {
   }
 
   /* Total tasks */
-  document.getElementById("kpi-total").textContent = EVAL_SUMMARY.totalTasks || 248;
+  document.getElementById("kpi-total").textContent = EVAL_SUMMARY.totalTasks || 452;
 
   /* Rodinia L0 CUDA→OMP pass rate (30/68 = 44.1%) */
   /* Note: byDirection["cuda-to-omp"] includes XSBench (83 total), so we hardcode 30/68 */
