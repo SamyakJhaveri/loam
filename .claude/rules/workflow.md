@@ -74,6 +74,28 @@ Use these at the right phase — don't skip them, don't over-invoke them.
 - `/compact "focus on X"` for guided compression
 - After 2+ corrections on same issue → `/clear` and restart with better prompt
 
+## Memory Hygiene
+
+Memory files are write-only by default — they grow but never get maintained.
+Use `/dream` to consolidate periodically.
+
+- **`/dream audit`** — Read-only health report (run weekly or when memory feels stale)
+- **`/dream`** — Full 4-phase consolidation with user approval gate
+- **`/dream prune <file>`** — Targeted cleanup of one file
+
+### When to consolidate
+- After major milestones (sprint phase completion, paper draft, eval batch)
+- After 5+ sessions without consolidation
+- When `/session-start` reports memory staleness
+- Before long breaks (>3 days between sessions)
+
+### Memory file conventions
+- MEMORY.md: index only, <200 lines, no content — just `- [Title](file.md) — hook`
+- Topic files: proper frontmatter (name, description, type)
+- Prefer cross-references over duplication (point to `.claude/rules/` for canonical content)
+- Convert all dates to absolute (YYYY-MM-DD) — relative dates rot immediately
+- Staleness tiers: permanent (1) > active (2) > completed (3) > historical (4) > stale (5)
+
 ## Thinking Levels
 
 | Level | When to use |

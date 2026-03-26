@@ -141,6 +141,21 @@ This was a pipeline bug in `llm_evaluate.py` (fixed prospectively — future res
 The 68 existing L0 result JSONs are not retroactively corrected; only gemini pathfinder is
 affected (attempt 1 SIGSEGV, attempt 2 BUILD_FAIL; `overall_status` is correctly BUILD_FAIL).
 
+## Gemini Flash Lite Thinking Confound — Resolved (2026-03-26)
+
+**Concern:** Gemini API calls initially lacked explicit thinking-disable parameters, raising
+the possibility that Flash Lite used inference-time reasoning while Claude/Llama did not.
+
+**Investigation (Session 9 audit):**
+1. ALL 145 Gemini files were re-run on 2026-03-25 22:52-23:46 (after fix commit `01e1f01`)
+2. Two test API calls (with and without `reasoning_effort="none"`) produced **identical**
+   token counts (500/500) and identical output text
+3. Flash Lite has thinking OFF by default — it is a distilled model without thinking capability
+
+**Conclusion:** The confounding variable never existed. Existing Gemini results are valid.
+The `reasoning_effort="none"` parameter in `llm_evaluate.py` is a belt-and-suspenders
+safety measure, not a fix for an active problem.
+
 ## Per-Kernel Capability Anomaly: backprop (discovered 2026-03-25)
 
 **Observation:** In the L0 CUDA-to-OpenMP 4-model evaluation, `backprop` shows an anomalous

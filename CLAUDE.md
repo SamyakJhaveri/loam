@@ -167,5 +167,5 @@ Conditional: `augmentation.md`, `evaluation.md`, `github-pages.md`, `spec-conven
 Key agents: `plan-reviewer`, `verify-app`, `explorer`, `eval-batcher`, `paper-drafter`, `self-critic`,
 `dashboard-refresher`, `rodinia-verifier`, `xsbench-explorer`.
 
-**Skills** (`.claude/skills/`, 8 skills): `/feature-dev`, `/fix-bug`, `/review`, `/gen-spec`,
-`/augment-test`, `/validate`, `/eval-run`, `/session-start`. Invoke via `/skill-name`.
+**Skills** (`.claude/skills/`, 9 skills): `/feature-dev`, `/fix-bug`, `/review`, `/gen-spec`,
+`/augment-test`, `/validate`, `/eval-run`, `/session-start`, `/dream`. Invoke via `/skill-name`.

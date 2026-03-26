@@ -47,6 +47,11 @@
       {
         "hooks": [
           {
+            "type": "command",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/dream-hook.sh",
+            "timeout": 5
+          },
+          {
             "type": "prompt",
             "prompt": "BEFORE STOPPING — run this checklist:\n(1) VALIDATE: Was /validate (full, 4 waves) run? Check .validation_passed has waves_passed=4. If only quick (waves_passed=1), re-run /validate now.\n(2) REVIEW: For any code/spec/pipeline changes — did /review run on the diff?\n(3) EVALUATE: If an eval batch was launched via /eval-run — did Phase 4 analyze_eval.py complete and produce eval_summary?\n(4) DASHBOARD: After any eval run OR spec count change — was the dashboard-refresher agent invoked? (visualizations/*.html hardcoded values go stale)\n(5) COMMIT: Was /validate sentinel written before git commit? Pre-commit gate enforces this.\n(6) COMPLETENESS: All task items finished — not just the easy ones? No partial implementations?\n(7) EVIDENCE: Proof for every 'works' or 'fixed' claim — actual output, not assumption?\n(8) RECORD: Docs updated in known-issues.md / CLAUDE.md for any new gotchas found?\nIf ANY is NO — address it. Skills to use: /validate, /review, /eval-run. Agent to use: dashboard-refresher. Don't stop until all 8 pass."
           },

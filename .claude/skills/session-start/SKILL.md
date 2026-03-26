@@ -58,10 +58,22 @@ grep -c "STATUS:.*COMPLETE" docs/session_prompts_sc26.md
 # Relevant results (infer directory from session content)
 # e.g., for eval sessions: ls results/evaluation/ | wc -l
 # e.g., for spec sessions: ls specs/ | wc -l
+
+# Memory freshness check
+MEMORY_DIR="$HOME/.claude/projects/-home-samyak-Desktop-parbench-sam/memory"
+LAST_DREAM="$MEMORY_DIR/.last-dream"
+if [ -f "$LAST_DREAM" ]; then
+    LAST_TS=$(head -1 "$LAST_DREAM")
+    DAYS_SINCE=$(( ($(date +%s) - $(date -d "$LAST_TS" +%s)) / 86400 ))
+    echo "Memory: last consolidated $DAYS_SINCE days ago"
+else
+    echo "Memory: never consolidated"
+fi
+wc -l "$MEMORY_DIR"/*.md 2>/dev/null | tail -1
 ```
 
 The subagent returns: git branch, last 10 commits, dirty files, venv status,
-complete session count, and any relevant results counts.
+complete session count, relevant results counts, and memory freshness.
 
 **Prerequisite check:** Parse the session block's `# Prerequisites` section. For each
 prerequisite session listed, check whether it appears as `STATUS: COMPLETE` in
@@ -91,6 +103,10 @@ PREREQUISITES:
 
 RESULTS STATE:
   <relevant check with count and ✓/✗>
+
+MEMORY:
+  Last dream:  <N> days ago  ✓  [or: ⚠ Never consolidated — run /dream audit]
+  Files:       <N> files, <N> total lines
 
 BEFORE YOU START:
   DECISIONS:
