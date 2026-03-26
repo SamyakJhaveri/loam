@@ -383,6 +383,39 @@ M10 was previously marked DONE, but the audit found:
 - **Total: 248 result files** — all `translation_mode: "kernel_centric"`
 - **Zero** Rodinia L1-L4 augmented eval results — **S7 currently running to fill this gap**
 - **Zero** Rodinia omp-to-cuda, cuda-to-opencl, or other directions — S9/S10/S10b pending
+
+#### ⚠️ Post-S7 Action Required: Gemini L1-L4 Re-Run (2026-03-25)
+
+`thinking_budget: 0` was missing from the Gemini path in `llm_evaluate.py` when S7 ran.
+Gemini 2.5 Flash-Lite may have used dynamic thinking (default `budget=-1`), creating a
+methodological asymmetry vs Claude/Llama (which have thinking/reasoning explicitly off).
+
+**Fix applied:** `extra_body={"thinking_budget": 0}` added to Gemini path (see `llm_evaluate.py` ~line 659).
+**Note on parameter validity:** `thinking_budget` is the documented parameter for Google's OpenAI-compat
+endpoint. Its correctness will be confirmed on the first eval run — an API error would surface immediately.
+
+**Scope of affected results:**
+- **L1-L4 (uncommitted):** All 60 files are untracked `??` — safe to delete and re-run.
+- **L0 (committed at `f0b4f98`):** 17 files also ran without `thinking_budget=0`. These are committed
+  and harder to undo. Decision: re-run L0 as well when re-running L1-L4 (one combined batch).
+
+**Action:** After S7 finishes, delete Gemini L0+L1-L4 results and re-run all levels:
+
+```bash
+# Delete L1-L4 (uncommitted — safe)
+rm results/evaluation/gemini-2.5-flash-lite/rodinia-*-cuda-to-rodinia-*-omp-L*.json
+# Delete L0 (committed — will need re-commit after re-run)
+rm results/evaluation/gemini-2.5-flash-lite/rodinia-*-cuda-to-rodinia-*-omp.json
+# Re-run all levels (0 through 4) for Gemini only
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia --direction cuda-to-omp \
+  --models gemini-2.5-flash-lite \
+  --augment-levels 0 1 2 3 4 \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --resume -v
+```
+
+Claude and Llama results (all levels) are unaffected — `--resume` will skip them.
 - **Zero** `kernel_time_seconds` — wall_time only; S6.5 deferred (paper is correctness-focused)
 
 #### M-Tasks Update (Day 8)

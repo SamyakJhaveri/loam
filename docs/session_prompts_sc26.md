@@ -2087,6 +2087,26 @@ done
 # Stage: all new L1-L4 result files + updated eval_summary.* + s7 log files
 # Message: "Session 7: Rodinia augmented eval L1-L4 for 3 models (204 tasks, cuda-to-omp)"
 # Push to origin main.
+
+# ⚠️ POST-RUN ACTION REQUIRED BEFORE COMMITTING: Gemini L1-L4 Re-Run (2026-03-25)
+# thinking_budget: 0 was missing from llm_evaluate.py Gemini path when S7 originally ran.
+# Gemini results may have included thinking tokens (default budget=-1 = dynamic).
+# Fix is committed. All Gemini L1-L4 results are uncommitted — safe to delete and re-run.
+#
+# 1. Delete L1-L4 (uncommitted — safe) AND L0 (committed — must re-commit after):
+#    rm results/evaluation/gemini-2.5-flash-lite/rodinia-*-cuda-to-rodinia-*-omp-L*.json
+#    rm results/evaluation/gemini-2.5-flash-lite/rodinia-*-cuda-to-rodinia-*-omp.json
+#    (L0 also affected — both levels ran without thinking_budget=0)
+#
+# 2. Re-run all levels L0-L4 for Gemini only (Claude/Llama untouched via --resume):
+#    python3 scripts/evaluation/run_eval_batch.py \
+#      --suite rodinia --direction cuda-to-omp \
+#      --models gemini-2.5-flash-lite \
+#      --augment-levels 0 1 2 3 4 \
+#      --project-root /home/samyak/Desktop/parbench_sam \
+#      --resume -v
+#
+# 3. Then proceed with Step 7 commit.
 ```
 
 ---
