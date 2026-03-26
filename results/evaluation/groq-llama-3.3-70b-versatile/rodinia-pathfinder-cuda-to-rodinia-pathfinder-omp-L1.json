@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-pathfinder-cuda",
+  "target_spec": "rodinia-pathfinder-omp",
+  "kernel": "pathfinder",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:51:08Z",
+  "prompt_tokens": 2459,
+  "completion_tokens": 1401,
+  "llm_response_time_seconds": 2.852,
+  "build_status": "pass",
+  "build_time_seconds": 0.063,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.092,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.092,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0109,
+  "translated_files": {
+    "pathfinder.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 256\n#define STR_SIZE 256\n#define DEVICE 0\n#define HALO 1 // halo width along one direc"
+  },
+  "target_files_expected": [
+    "pathfinder.cpp"
+  ],
+  "target_files_extracted": [
+    "pathfinder.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.852,
+      "prompt_tokens": 2459,
+      "completion_tokens": 1401,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

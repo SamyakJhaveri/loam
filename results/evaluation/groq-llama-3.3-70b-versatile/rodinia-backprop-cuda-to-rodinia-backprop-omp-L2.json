@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-backprop-cuda",
+  "target_spec": "rodinia-backprop-omp",
+  "kernel": "backprop",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 2,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T20:47:04Z",
+  "prompt_tokens": 8433,
+  "completion_tokens": 3932,
+  "llm_response_time_seconds": 11.757,
+  "build_status": "pass",
+  "build_time_seconds": 0.239,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.016,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": 0.016,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.0,
+  "translated_files": {
+    "backprop.c": "#include <omp.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include \"backprop.h\"\n#include <math.h>\n\n#define ABS(x)          (((x) > 0.0) ? (x) : (-(x)))\n\n#define fastcopy(to,from,len)\\\n{\\\n  register char"
+  },
+  "target_files_expected": [
+    "backprop.c"
+  ],
+  "target_files_extracted": [
+    "backprop.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 11.757,
+      "prompt_tokens": 8433,
+      "completion_tokens": 3932,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

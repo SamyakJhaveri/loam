@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-srad-cuda",
+  "target_spec": "rodinia-srad-omp",
+  "kernel": "srad",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:54:56Z",
+  "prompt_tokens": 12197,
+  "completion_tokens": 3720,
+  "llm_response_time_seconds": 9.898,
+  "build_status": "fail",
+  "build_time_seconds": 0.013,
+  "build_error_snippet": "srad.cpp: In function \u2018void usage(int, char**)\u2019:\nsrad.cpp:2:13: error: \u2018stderr\u2019 was not declared in this scope\n    2 |     fprintf(stderr, \"Usage: %s <rows> <cols> <y1> <y2> <x1> <x2> <lambda> <iterations>\\n\", argv[0]);\n      |             ^~~~~~\nsrad.cpp:1:1: note: \u2018stderr\u2019 is defined in header \u2018<cstdio>\u2019; did you forget to \u2018#include <cstdio>\u2019?\n  +++ |+#include <cstdio>\n    1 | void usage(int argc, char **argv) {\nsrad.cpp:2:5: error: \u2018fprintf\u2019 was not declared in this scope\n    2 |     fprintf(stderr, \"Usage: %s <rows> <cols> <y1> <y2> <x1> <x2> <lambda> <iterations>\\n\", argv[0]);\n      |     ^~~~~~~\nsrad.cpp:11:5: error: \u2018exit\u2019 was not declared in this scope\n   11 |     exit(1);\n      |     ^~~~\nsrad.cpp:1:1: note: \u2018exit\u2019 is defined in he\n...[truncated]...\n\u2019?\nsrad.cpp:71:5: error: \u2018printf\u2019 was not declared in this scope\n   71 |     printf(\"Randomizing the input matrix\\n\");\n      |     ^~~~~~\nsrad.cpp:71:5: note: \u2018printf\u2019 is defined in header \u2018<cstdio>\u2019; did you forget to \u2018#include <cstdio>\u2019?\nsrad.cpp:73:5: error: \u2018random_matrix\u2019 was not declared in this scope\n   73 |     random_matrix(I, rows, cols);\n      |     ^~~~~~~~~~~~~\nsrad.cpp:76:23: error: \u2018exp\u2019 was not declared in this scope\n   76 |         J[k] = (float)exp(I[k]);\n      |                       ^~~\nsrad.cpp:145:5: error: \u2018free\u2019 was not declared in this scope\n  145 |     free(I);\n      |     ^~~~\nsrad.cpp:145:5: note: \u2018free\u2019 is defined in header \u2018<cstdlib>\u2019; did you forget to \u2018#include <cstdlib>\u2019?\nmake: *** [Makefile:6: bfs] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: declared in this scope\n  145 |     free(I);\n      |     ^~~~\nsrad.cpp:145:5: note: \u2018free\u2019 is defined in header \u2018<cstdlib>\u2019; did you forget to \u2018#include <cstdlib>\u2019?\nmake: *** [Makefile:6: bfs] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.006,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "srad.cpp": "void usage(int argc, char **argv) {\n    fprintf(stderr, \"Usage: %s <rows> <cols> <y1> <y2> <x1> <x2> <lambda> <iterations>\\n\", argv[0]);\n    fprintf(stderr, \"\\t<rows>   - number of rows\\n\");\n    fprin"
+  },
+  "target_files_expected": [
+    "srad.cpp"
+  ],
+  "target_files_extracted": [
+    "srad.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.577,
+      "prompt_tokens": 5089,
+      "completion_tokens": 1866,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n<x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>       - x1 value of the speckle\n\t<x2>       - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.321,
+      "prompt_tokens": 7108,
+      "completion_tokens": 1854,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "srad.cpp: In function \u2018void usage(int, char**)\u2019:\nsrad.cpp:2:13: error: \u2018stderr\u2019 was not declared in this scope\n    2 |     fprintf(stderr, \"Usage: %s <rows> <cols> <y1> <y2> <x1> <x2> <lambda> <iterations>\\n\", argv[0]);\n      |             ^~~~~~\nsrad.cpp:1:1: note: \u2018stderr\u2019 is defined in header \u2018<cstdio>\u2019; did you forget to \u2018#include <cstdio>\u2019?\n  +++ |+#include <cstdio>\n    1 | void usage(int argc, char **argv) {\nsrad.cpp:2:5: error: \u2018fprintf\u2019 was not declared in this scope\n    2 |     fprintf(stderr, \"Usage: %s <rows> <cols> <y1> <y2> <x1> <x2> <lambda> <iterations>\\n\", argv[0]);\n      |     ^~~~~~~\nsrad.cpp:11:5: error: \u2018exit\u2019 was not declared in this scope\n   11 |     exit(1);\n      |     ^~~~\nsrad.cpp:1:1: note: \u2018exit\u2019 is defined in he\n...[truncated]...\n\u2019?\nsrad.cpp:71:5: error: \u2018printf\u2019 was not declared in this scope\n   71 |     printf(\"Randomizing the input matrix\\n\");\n      |     ^~~~~~\nsrad.cpp:71:5: note: \u2018printf\u2019 is defined in header \u2018<cstdio>\u2019; did you forget to \u2018#include <cstdio>\u2019?\nsrad.cpp:73:5: error: \u2018random_matrix\u2019 was not declared in this scope\n   73 |     random_matrix(I, rows, cols);\n      |     ^~~~~~~~~~~~~\nsrad.cpp:76:23: error: \u2018exp\u2019 was not declared in this scope\n   76 |         J[k] = (float)exp(I[k]);\n      |                       ^~~\nsrad.cpp:145:5: error: \u2018free\u2019 was not declared in this scope\n  145 |     free(I);\n      |     ^~~~\nsrad.cpp:145:5: note: \u2018free\u2019 is defined in header \u2018<cstdlib>\u2019; did you forget to \u2018#include <cstdlib>\u2019?\nmake: *** [Makefile:6: bfs] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

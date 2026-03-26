@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-nn-cuda",
+  "target_spec": "rodinia-nn-omp",
+  "kernel": "nn",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T23:07:58Z",
+  "prompt_tokens": 4564,
+  "completion_tokens": 2652,
+  "llm_response_time_seconds": 27.355,
+  "build_status": "pass",
+  "build_time_seconds": 0.048,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.007,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": 0.007,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.2857,
+  "translated_files": {
+    "nn_openmp.c": "/*\n * nn_openmp.c\n * Nearest Neighbor - OpenMP version\n *\n */\n\n#include <stdio.h>\n#include <sys/time.h>\n#include <float.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n\n#"
+  },
+  "target_files_expected": [
+    "nn_openmp.c"
+  ],
+  "target_files_extracted": [
+    "nn_openmp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 27.355,
+      "prompt_tokens": 4564,
+      "completion_tokens": 2652,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

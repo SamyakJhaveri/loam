@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-hotspot3d-cuda",
+  "target_spec": "rodinia-hotspot3d-omp",
+  "kernel": "hotspot3d",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 2,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:13:32Z",
+  "prompt_tokens": 3051,
+  "completion_tokens": 2249,
+  "llm_response_time_seconds": 3.991,
+  "build_status": "pass",
+  "build_time_seconds": 0.114,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 1.256,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.215,
+  "translated_wall_time_seconds": 1.256,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.9674,
+  "translated_files": {
+    "3D.c": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h> \n#include <math.h> \n#include <omp.h>\n\n#define STR_SIZE 256\n\n#define block_x_ 128 \n#define block_y_ 2\n#define block_z_ 1\n#de"
+  },
+  "target_files_expected": [
+    "3D.c"
+  ],
+  "target_files_extracted": [
+    "3D.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.991,
+      "prompt_tokens": 3051,
+      "completion_tokens": 2249,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

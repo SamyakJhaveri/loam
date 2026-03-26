@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nw-cuda",
+  "target_spec": "rodinia-nw-omp",
+  "kernel": "nw",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T23:16:01Z",
+  "prompt_tokens": 14986,
+  "completion_tokens": 8081,
+  "llm_response_time_seconds": 24.62,
+  "build_status": "pass",
+  "build_time_seconds": 0.297,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+  "run_stdout_snippet": "WG size of kernel = 16 \n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.015,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "needle.cpp": "#define LIMIT -999\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n#include <sys/time.h> // Include this for gettimeofday\n\n#define BLOCK_SIZE 16\n\nint blos"
+  },
+  "target_files_expected": [
+    "needle.cpp"
+  ],
+  "target_files_extracted": [
+    "needle.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 11.468,
+      "prompt_tokens": 5401,
+      "completion_tokens": 4033,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nneedle.cpp: In function \u2018double gettime()\u2019:\nneedle.cpp:39:3: error: \u2018gettimeofday\u2019 was not declared in this scope\n   39 |   gettimeofday(&t,NULL)",
+      "build_error_snippet": "needle.cpp: In function \u2018double gettime()\u2019:\nneedle.cpp:39:3: error: \u2018gettimeofday\u2019 was not declared in this scope\n   39 |   gettimeofday(&t,NULL);\n      |   ^~~~~~~~~~~~\nneedle.cpp: In function \u2018int main(int, char**)\u2019:\nneedle.cpp:159:3: error: \u2018runTest\u2019 was not declared in this scope\n  159 |   runTest(argc, argv);\n      |   ^~~~~~~\nmake: *** [Makefile:10: needle] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 13.152,
+      "prompt_tokens": 9585,
+      "completion_tokens": 4048,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+      "run_stdout_snippet": "WG size of kernel = 16 \n",
+      "extraction_fail": null
+    }
+  ]
+}

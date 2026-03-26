@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-backprop-cuda",
+  "target_spec": "rodinia-backprop-omp",
+  "kernel": "backprop",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T22:10:22Z",
+  "prompt_tokens": 21059,
+  "completion_tokens": 5023,
+  "llm_response_time_seconds": 14.755,
+  "build_status": "fail",
+  "build_time_seconds": 0.132,
+  "build_error_snippet": "backprop.c: In function \u2018bpnn_read\u2019:\nbackprop.c:27:9: warning: implicit declaration of function \u2018bpnn_internal_create\u2019 [-Wimplicit-function-declaration]\n   27 |   new = bpnn_internal_create(n1, n2, n3);\n      |         ^~~~~~~~~~~~~~~~~~~~\nbackprop.c:27:7: warning: assignment to \u2018BPNN *\u2019 from \u2018int\u2019 makes pointer from integer without a cast [-Wint-conversion]\n   27 |   new = bpnn_internal_create(n1, n2, n3);\n      |       ^\nbackprop.c:37:7: warning: implicit declaration of function \u2018fastcopy\u2019 [-Wimplicit-function-declaration]\n   37 |       fastcopy(&(new->input_weights[i][j]), &mem[memcnt], sizeof(float));\n      |       ^~~~~~~~\nbackprop.c:59:3: warning: implicit declaration of function \u2018bpnn_zero_weights\u2019 [-Wimplicit-function-declaration]\n \n...[truncated]...\nx3d7): undefined reference to `fastcopy'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:106:(.text+0x4a8): undefined reference to `fastcopy'\n/usr/bin/ld: facetrain.o: in function `backprop_face':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/facetrain.c:17:(.text+0x2a): undefined reference to `bpnn_create'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/facetrain.c:23:(.text+0x78): undefined reference to `bpnn_free'\n/usr/bin/ld: facetrain.o: in function `setup':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/facetrain.c:41:(.text+0x101): undefined reference to `bpnn_initialize'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: Desktop/parbench_sam/rodinia/openmp/backprop/facetrain.c:41:(.text+0x101): undefined reference to `bpnn_initialize'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "backprop.c": "#include <omp.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include <fcntl.h>\n#include <unistd.h>\n#include \"backprop.h\"\n\n// ... (rest of the code remains the same)\n\nBPNN *bpnn_read(file"
+  },
+  "target_files_expected": [
+    "backprop.c"
+  ],
+  "target_files_extracted": [
+    "backprop.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 11.803,
+      "prompt_tokens": 8433,
+      "completion_tokens": 4000,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nme, 0, 0644)) == -1) {\n      |             ^~~~\n      |             popen\nbackprop.c:459:3: warning: implicit declaration of function \u2018read\u2019; did",
+      "build_error_snippet": "backprop.c:82:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   82 | bpnn_randomize_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~~~~~~\nbackprop.c:96:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   96 | bpnn_randomize_row(w, m)\n      | ^~~~~~~~~~~~~~~~~~\nbackprop.c:108:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  108 | bpnn_zero_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_initialize\u2019:\nbackprop.c:122:6: warning: type of \u2018seed\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  122 | void bpnn_initialize(seed)\n      |      ^~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_adjust_weights\u2019:\nbackprop.c:291:6: warning: type of \u2018ndelta\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  291 | void bpnn_adjust_wei\n...[truncated]...\ner is reported only once for each function it appears in\nbackprop.c: In function \u2018bpnn_read\u2019:\nbackprop.c:453:13: warning: implicit declaration of function \u2018open\u2019; did you mean \u2018popen\u2019? [-Wimplicit-function-declaration]\n  453 |   if ((fd = open(filename, 0, 0644)) == -1) {\n      |             ^~~~\n      |             popen\nbackprop.c:459:3: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  459 |   read(fd, (char *) &n1, sizeof(int));\n      |   ^~~~\n      |   fread\nbackprop.c:490:3: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  490 |   close(fd);\n      |   ^~~~~\n      |   pclose\nmake: *** [Makefile:16: backprop.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 2.952,
+      "prompt_tokens": 12626,
+      "completion_tokens": 1023,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "backprop.c: In function \u2018bpnn_read\u2019:\nbackprop.c:27:9: warning: implicit declaration of function \u2018bpnn_internal_create\u2019 [-Wimplicit-function-declaration]\n   27 |   new = bpnn_internal_create(n1, n2, n3);\n      |         ^~~~~~~~~~~~~~~~~~~~\nbackprop.c:27:7: warning: assignment to \u2018BPNN *\u2019 from \u2018int\u2019 makes pointer from integer without a cast [-Wint-conversion]\n   27 |   new = bpnn_internal_create(n1, n2, n3);\n      |       ^\nbackprop.c:37:7: warning: implicit declaration of function \u2018fastcopy\u2019 [-Wimplicit-function-declaration]\n   37 |       fastcopy(&(new->input_weights[i][j]), &mem[memcnt], sizeof(float));\n      |       ^~~~~~~~\nbackprop.c:59:3: warning: implicit declaration of function \u2018bpnn_zero_weights\u2019 [-Wimplicit-function-declaration]\n \n...[truncated]...\nx3d7): undefined reference to `fastcopy'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/backprop.c:106:(.text+0x4a8): undefined reference to `fastcopy'\n/usr/bin/ld: facetrain.o: in function `backprop_face':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/facetrain.c:17:(.text+0x2a): undefined reference to `bpnn_create'\n/usr/bin/ld: /home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/facetrain.c:23:(.text+0x78): undefined reference to `bpnn_free'\n/usr/bin/ld: facetrain.o: in function `setup':\n/home/samyak/Desktop/parbench_sam/rodinia/openmp/backprop/facetrain.c:41:(.text+0x101): undefined reference to `bpnn_initialize'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-cfd-cuda",
+  "target_spec": "rodinia-cfd-omp",
+  "kernel": "cfd",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T22:14:41Z",
+  "prompt_tokens": 37560,
+  "completion_tokens": 6785,
+  "llm_response_time_seconds": 70.446,
+  "build_status": "pass",
+  "build_time_seconds": 0.393,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 4.245,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 3.877,
+  "translated_wall_time_seconds": 4.245,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.9133,
+  "translated_files": {
+    "euler3d_cpu.cpp": "// Copyright 2009, Andrew Corrigan, acorriga@gmu.edu\n// This code is from the AIAA-2009-4001 paper\n\n#include <iostream>\n#include <fstream>\n#include <cmath>\n#include <cstring>\n#include <omp.h>\n\n/*\n * O"
+  },
+  "target_files_expected": [
+    "euler3d_cpu.cpp"
+  ],
+  "target_files_extracted": [
+    "euler3d_cpu.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 70.446,
+      "prompt_tokens": 37560,
+      "completion_tokens": 6785,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

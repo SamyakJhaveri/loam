@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-lud-cuda",
+  "target_spec": "rodinia-lud-omp",
+  "kernel": "lud",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:17:56Z",
+  "prompt_tokens": 10157,
+  "completion_tokens": 1094,
+  "llm_response_time_seconds": 3.546,
+  "build_status": "pass",
+  "build_time_seconds": 0.248,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.013,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.004,
+  "translated_wall_time_seconds": 0.013,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.3077,
+  "translated_files": {
+    "omp/lud_omp.c": "// lud_omp.c\n#include <stdio.h>\n#include <omp.h>\n#include \"common.h\"\n\n#define BLOCK_SIZE 16\n\nvoid lud_diagonal(float *m, int matrix_dim, int offset) {\n    int i, j;\n    float shadow[BLOCK_SIZE][BLOCK_"
+  },
+  "target_files_expected": [
+    "omp/lud_omp.c"
+  ],
+  "target_files_extracted": [
+    "omp/lud_omp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.546,
+      "prompt_tokens": 10157,
+      "completion_tokens": 1094,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-kmeans-cuda",
+  "target_spec": "rodinia-kmeans-omp",
+  "kernel": "kmeans",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T22:46:13Z",
+  "prompt_tokens": 37117,
+  "completion_tokens": 1461,
+  "llm_response_time_seconds": 6.954,
+  "build_status": "pass",
+  "build_time_seconds": 0.307,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 2.058,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.859,
+  "translated_wall_time_seconds": 2.058,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.9033,
+  "translated_files": {
+    "kmeans_openmp/kmeans_clustering.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <limits.h>\n#include <math.h>\n#include <float.h>\n#include <omp.h>\n\n#include \"kmeans.h\"\n\n#define NUM_THREADS 4\n\n/*---< kmeans_clusteri"
+  },
+  "target_files_expected": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "target_files_extracted": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.954,
+      "prompt_tokens": 37117,
+      "completion_tokens": 1461,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

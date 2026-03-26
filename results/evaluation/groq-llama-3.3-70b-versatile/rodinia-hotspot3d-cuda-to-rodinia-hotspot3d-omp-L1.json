@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-hotspot3d-cuda",
+  "target_spec": "rodinia-hotspot3d-omp",
+  "kernel": "hotspot3d",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:13:24Z",
+  "prompt_tokens": 8359,
+  "completion_tokens": 2839,
+  "llm_response_time_seconds": 6.002,
+  "build_status": "fail",
+  "build_time_seconds": 0.015,
+  "build_error_snippet": "3D.c: In function \u2018hotspot_opt1\u2019:\n3D.c:30:94: error: \u2018amb_temp\u2019 undeclared (first use in this function)\n   30 |                         + cn * tIn[N] + cb * tIn[B] + ct * tIn[T] + stepDivCap * p[c] + ct * amb_temp;\n      |                                                                                              ^~~~~~~~\n3D.c:30:94: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:6: 3D] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ^~~~~~~~\n3D.c:30:94: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:6: 3D] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.215,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "3D.c": "void hotspot_opt1(float *p, float *tIn, float *tOut,\n        int nx, int ny, int nz,\n        float Cap, \n        float Rx, float Ry, float Rz, \n        float dt, int numiter) \n{\n    float ce, cw, cn, "
+  },
+  "target_files_expected": [
+    "3D.c"
+  ],
+  "target_files_extracted": [
+    "3D.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.035,
+      "prompt_tokens": 3051,
+      "completion_tokens": 2227,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 1.967,
+      "prompt_tokens": 5308,
+      "completion_tokens": 612,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "3D.c: In function \u2018hotspot_opt1\u2019:\n3D.c:30:94: error: \u2018amb_temp\u2019 undeclared (first use in this function)\n   30 |                         + cn * tIn[N] + cb * tIn[B] + ct * tIn[T] + stepDivCap * p[c] + ct * amb_temp;\n      |                                                                                              ^~~~~~~~\n3D.c:30:94: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:6: 3D] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

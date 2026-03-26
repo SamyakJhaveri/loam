@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nn-cuda",
+  "target_spec": "rodinia-nn-omp",
+  "kernel": "nn",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T23:08:58Z",
+  "prompt_tokens": 9118,
+  "completion_tokens": 3938,
+  "llm_response_time_seconds": 7.792,
+  "build_status": "pass",
+  "build_time_seconds": 0.046,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.009,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": 0.009,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.7778,
+  "translated_files": {
+    "nn_openmp.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include <omp.h>\n\n#define min( a, b )         a > b ? b : a\n#define ceilDiv( a, b )     ( a + b - 1 ) / b\n#define DEBUG               0\n\n#defin"
+  },
+  "target_files_expected": [
+    "nn_openmp.c"
+  ],
+  "target_files_extracted": [
+    "nn_openmp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.654,
+      "prompt_tokens": 3621,
+      "completion_tokens": 1846,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.138,
+      "prompt_tokens": 5497,
+      "completion_tokens": 2092,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

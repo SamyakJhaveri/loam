@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-bfs-cuda",
+  "target_spec": "rodinia-bfs-omp",
+  "kernel": "bfs",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 2,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T20:47:40Z",
+  "prompt_tokens": 4464,
+  "completion_tokens": 1779,
+  "llm_response_time_seconds": 21.324,
+  "build_status": "pass",
+  "build_time_seconds": 0.156,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.486,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.486,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0021,
+  "translated_files": {
+    "bfs.cpp": "/***********************************************************************************\n  Implementing Breadth first search on OpenMP using algorithm given in HiPC'07\n  paper \"Accelerating Large Graph Al"
+  },
+  "target_files_expected": [
+    "bfs.cpp"
+  ],
+  "target_files_extracted": [
+    "bfs.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 21.324,
+      "prompt_tokens": 4464,
+      "completion_tokens": 1779,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-streamcluster-cuda",
+  "target_spec": "rodinia-streamcluster-omp",
+  "kernel": "streamcluster",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T23:26:42Z",
+  "prompt_tokens": 38556,
+  "completion_tokens": 19069,
+  "llm_response_time_seconds": 242.92,
+  "build_status": "pass",
+  "build_time_seconds": 0.765,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 8.394,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 24.639,
+  "translated_wall_time_seconds": 8.394,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.9353,
+  "translated_files": {
+    "streamcluster_omp.cpp": "/***********************************************\n\tstreamcluster_omp.cpp\n\t: parallelized code of streamcluster using OpenMP\n\t\n\t- original code from PARSEC Benchmark Suite\n\t- CUDA parallelization by Sha"
+  },
+  "target_files_expected": [
+    "streamcluster_omp.cpp"
+  ],
+  "target_files_extracted": [
+    "streamcluster_omp.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 121.32,
+      "prompt_tokens": 14425,
+      "completion_tokens": 9526,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nt, int, long int, long int, char*)\u2019:\nstreamcluster_omp.cpp:913:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018",
+      "build_error_snippet": "streamcluster_original.cpp: In function \u2018void outcenterIDs(Points*, long int*, char*)\u2019:\nstreamcluster_original.cpp:1096:21: warning: format \u2018%u\u2019 expects argument of type \u2018unsigned int\u2019, but argument 3 has type \u2018long int\u2019 [-Wformat=]\n 1096 |       fprintf(fp, \"%u\\n\", centerIDs[i]);\n      |                    ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_original.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_original.cpp:1143:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n 1143\n...[truncated]...\n                ~^     ~~~~~~~~~~~~\n      |                     |                |\n      |                     unsigned int     long int\n      |                    %lu\nstreamcluster_omp.cpp: In function \u2018void streamCluster(PStream*, long int, long int, int, long int, long int, char*)\u2019:\nstreamcluster_omp.cpp:913:27: warning: format \u2018%d\u2019 expects argument of type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n  913 |     fprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |\n      |                           int         size_t {aka long unsigned int}\n      |                          %ld\nmake: *** [Makefile:19: omp] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 121.6,
+      "prompt_tokens": 24131,
+      "completion_tokens": 9543,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

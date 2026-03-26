@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nw-cuda",
+  "target_spec": "rodinia-nw-omp",
+  "kernel": "nw",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T23:15:35Z",
+  "prompt_tokens": 15112,
+  "completion_tokens": 8278,
+  "llm_response_time_seconds": 23.23,
+  "build_status": "fail",
+  "build_time_seconds": 0.1,
+  "build_error_snippet": "needle.cpp: In function \u2018double gettime()\u2019:\nneedle.cpp:39:3: error: \u2018gettimeofday\u2019 was not declared in this scope\n   39 |   gettimeofday(&t,NULL);\n      |   ^~~~~~~~~~~~\nmake: *** [Makefile:10: needle] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: : In function \u2018double gettime()\u2019:\nneedle.cpp:39:3: error: \u2018gettimeofday\u2019 was not declared in this scope\n   39 |   gettimeofday(&t,NULL);\n      |   ^~~~~~~~~~~~\nmake: *** [Makefile:10: needle] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.015,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "needle.cpp": "#define LIMIT -999\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 16\n\nint blosum62[24][24] = {\n{ 4, -1, -2, -2,  0, -1, -1,  0, -2, -"
+  },
+  "target_files_expected": [
+    "needle.cpp"
+  ],
+  "target_files_extracted": [
+    "needle.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 11.715,
+      "prompt_tokens": 5405,
+      "completion_tokens": 4147,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\ntemp[t_index_y][t_index_x] = maximum(temp[t_index_y - 1][t_index_x - 1] + ref[t_index_y - 1][t_index_x - 1],\n      |                             ",
+      "build_error_snippet": "needle.cpp: In function \u2018double gettime()\u2019:\nneedle.cpp:39:3: error: \u2018gettimeofday\u2019 was not declared in this scope\n   39 |   gettimeofday(&t,NULL);\n      |   ^~~~~~~~~~~~\nneedle.cpp: In function \u2018void needle_openmp_1(int*, int*, int, int, int, int)\u2019:\nneedle.cpp:57:22: error: \u2018BLOCK_SIZE\u2019 was not declared in this scope\n   57 |   int index = cols * BLOCK_SIZE * (i - 1) + BLOCK_SIZE * 0;\n      |                      ^~~~~~~~~~\nneedle.cpp:66:5: error: \u2018ref\u2019 was not declared in this scope; did you mean \u2018erf\u2019?\n   66 |     ref[ty][0] = referrence[index + cols * ty];\n      |     ^~~\n      |     erf\nneedle.cpp:68:3: error: \u2018temp\u2019 was not declared in this scope; did you mean \u2018mktemp\u2019?\n   68 |   temp[0][0] = matrix[index_nw];\n      |   ^~~~\n      |   m\n...[truncated]...\n                                                         ^~~\n      |                                                                                   erf\nneedle.cpp:166:81: error: \u2018ref\u2019 was not declared in this scope; did you mean \u2018erf\u2019?\n  166 |       temp[t_index_y][t_index_x] = maximum(temp[t_index_y - 1][t_index_x - 1] + ref[t_index_y - 1][t_index_x - 1],\n      |                                                                                 ^~~\n      |                                                                                 erf\nneedle.cpp: In function \u2018int main(int, char**)\u2019:\nneedle.cpp:179:3: error: \u2018runTest\u2019 was not declared in this scope\n  179 |   runTest(argc, argv);\n      |   ^~~~~~~\nmake: *** [Makefile:10: needle] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 11.515,
+      "prompt_tokens": 9707,
+      "completion_tokens": 4131,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "needle.cpp: In function \u2018double gettime()\u2019:\nneedle.cpp:39:3: error: \u2018gettimeofday\u2019 was not declared in this scope\n   39 |   gettimeofday(&t,NULL);\n      |   ^~~~~~~~~~~~\nmake: *** [Makefile:10: needle] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

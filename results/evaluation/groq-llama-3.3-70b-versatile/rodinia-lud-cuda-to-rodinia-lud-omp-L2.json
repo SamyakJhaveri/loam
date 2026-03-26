@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-lud-cuda",
+  "target_spec": "rodinia-lud-omp",
+  "kernel": "lud",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 2,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:18:00Z",
+  "prompt_tokens": 21728,
+  "completion_tokens": 2916,
+  "llm_response_time_seconds": 8.493,
+  "build_status": "pass",
+  "build_time_seconds": 0.286,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.068,
+  "run_exit_code": -6,
+  "run_stderr_snippet": "*** stack smashing detected ***: terminated\n",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -6)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.004,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "omp/lud_omp.c": "// omp/lud_omp.c\n#include <stdio.h>\n#include <omp.h>\n#include \"common.h\"\n\n#define BLOCK_SIZE 16\n\nvoid lud_diagonal(float *m, int matrix_dim, int offset);\nvoid lud_perimeter(float *m, int matrix_dim, i"
+  },
+  "target_files_expected": [
+    "omp/lud_omp.c"
+  ],
+  "target_files_extracted": [
+    "omp/lud_omp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.461,
+      "prompt_tokens": 10157,
+      "completion_tokens": 1384,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.032,
+      "prompt_tokens": 11571,
+      "completion_tokens": 1532,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "*** stack smashing detected ***: terminated\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-hotspot-cuda",
+  "target_spec": "rodinia-hotspot-omp",
+  "kernel": "hotspot",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T22:36:10Z",
+  "prompt_tokens": 11093,
+  "completion_tokens": 6879,
+  "llm_response_time_seconds": 14.067,
+  "build_status": "fail",
+  "build_time_seconds": 0.025,
+  "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:70:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   70 |                         fatal(\"not enough lines in file\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:73:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   73 |                         fatal(\"invalid file format\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018int main(int, char**)\u2019:\nhotspot_openmp.cpp:252:5: error: \u2018run\u2019 was not declared in this scope\n  252 |     run(argc,argv);\n      |     ^~~\nhotspot_openmp.cpp: In function \u2018void run(int, char**)\u2019:\nhotspot_openmp.cpp:295:15: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  295 |         fatal(\"unable to allocate memory\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: onverting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  295 |         fatal(\"unable to allocate memory\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.069,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot_openmp.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n\n#define STR_SIZE 256\n#define BLOCK_SIZE 16\n\n/* maximum power density possible (say 300W for a 10mm x 10mm"
+  },
+  "target_files_expected": [
+    "hotspot_openmp.cpp"
+  ],
+  "target_files_extracted": [
+    "hotspot_openmp.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.35,
+      "prompt_tokens": 3738,
+      "completion_tokens": 3455,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\ne-strings]\n  295 |         fatal(\"unable to allocate memory\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function ",
+      "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:70:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   70 |                         fatal(\"not enough lines in file\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:73:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   73 |                         fatal(\"invalid file format\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018void calculate_temp(int, float*, float*, float*, int, int, int, int, float, float, float, float, float, float)\u2019:\nhotspot_openmp.cpp:100:23: error: \u2018BLOCK_SIZE\u2019 was not de\n...[truncated]...\n:18: error: \u2018BLOCK_SIZE\u2019 was not declared in this scope\n  285 |     int tmp_39 = BLOCK_SIZE-(elem_73)*EXPAND_RATE;\n      |                  ^~~~~~~~~~\nhotspot_openmp.cpp:295:15: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  295 |         fatal(\"unable to allocate memory\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:68:22: warning: ignoring return value of \u2018char* fgets(char*, int, FILE*)\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n   68 |                 fgets(var_45, STR_SIZE, data_56);\n      |                 ~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 7.717,
+      "prompt_tokens": 7355,
+      "completion_tokens": 3424,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void readinput(float*, int, int, char*)\u2019:\nhotspot_openmp.cpp:70:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   70 |                         fatal(\"not enough lines in file\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp:73:31: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n   73 |                         fatal(\"invalid file format\");\n      |                               ^~~~~~~~~~~~~~~~~~~~~\nhotspot_openmp.cpp: In function \u2018int main(int, char**)\u2019:\nhotspot_openmp.cpp:252:5: error: \u2018run\u2019 was not declared in this scope\n  252 |     run(argc,argv);\n      |     ^~~\nhotspot_openmp.cpp: In function \u2018void run(int, char**)\u2019:\nhotspot_openmp.cpp:295:15: warning: ISO C++ forbids converting a string constant to \u2018char*\u2019 [-Wwrite-strings]\n  295 |         fatal(\"unable to allocate memory\");\n      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:11: hotspot] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-hotspot-cuda",
+  "target_spec": "rodinia-hotspot-omp",
+  "kernel": "hotspot",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:07:53Z",
+  "prompt_tokens": 13164,
+  "completion_tokens": 8776,
+  "llm_response_time_seconds": 94.97,
+  "build_status": "pass",
+  "build_time_seconds": 0.128,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "rodinia/openmp/hotspot/hotspot <grid_rows/grid_cols> <pyramid_height> <sim_time> <temp_file> <power_file> <output_file>\n\t<grid_rows/grid_cols>  - number of rows/cols in the grid (positive integer)\n\t<pyramid_height> - pyramid heigh(positive integer)\n\t<sim_time>   - number of iterations\n\t<temp_file>  - name of the file containing the initial temperature values of each cell\n\t<power_file> - name of the file containing the dissipated power values of each cell\n\t<output_file> - name of the output file\n",
+  "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.069,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot_openmp.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n#include <string.h>\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_SIZE RD_WG_SIZE_0_0\n#elif defined(RD_WG_S"
+  },
+  "target_files_expected": [
+    "hotspot_openmp.cpp"
+  ],
+  "target_files_extracted": [
+    "hotspot_openmp.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 41.78,
+      "prompt_tokens": 4420,
+      "completion_tokens": 4216,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nyramid_height> - pyramid heigh(positive integer)\n\t<sim_time>   - number of iterations\n\t<temp_file>  - name of the file containing the initial ",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "rodinia/openmp/hotspot/hotspot <grid_rows/grid_cols> <pyramid_height> <sim_time> <temp_file> <power_file> <output_file>\n\t<grid_rows/grid_cols>  - number of rows/cols in the grid (positive integer)\n\t<pyramid_height> - pyramid heigh(positive integer)\n\t<sim_time>   - number of iterations\n\t<temp_file>  - name of the file containing the initial temperature values of each cell\n\t<power_file> - name of the file containing the dissipated power values of each cell\n\t<output_file> - name of the output file\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 53.19,
+      "prompt_tokens": 8744,
+      "completion_tokens": 4560,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "rodinia/openmp/hotspot/hotspot <grid_rows/grid_cols> <pyramid_height> <sim_time> <temp_file> <power_file> <output_file>\n\t<grid_rows/grid_cols>  - number of rows/cols in the grid (positive integer)\n\t<pyramid_height> - pyramid heigh(positive integer)\n\t<sim_time>   - number of iterations\n\t<temp_file>  - name of the file containing the initial temperature values of each cell\n\t<power_file> - name of the file containing the dissipated power values of each cell\n\t<output_file> - name of the output file\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
+    }
+  ]
+}

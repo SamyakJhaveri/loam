@@ -1,0 +1,62 @@
+{
+  "source_spec": "rodinia-bptree-cuda",
+  "target_spec": "rodinia-bptree-omp",
+  "kernel": "bptree",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T22:04:18Z",
+  "prompt_tokens": 16067,
+  "completion_tokens": 2513,
+  "llm_response_time_seconds": 26.212,
+  "build_status": "pass",
+  "build_time_seconds": 0.44,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.516,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.489,
+  "translated_wall_time_seconds": 0.516,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.9477,
+  "translated_files": {
+    "kernel/kernel_cpu.c": "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n#include <stdio.h>\n#include <omp.h>\n\n#include \"../common.h\"\n#include \"../util/timer/timer.h\"\n#include \"./kernel_cpu.h\"\n\nvoid\nkernel_cpu(\tint cores_arg,\n\n\t\t\treco",
+    "kernel/kernel_cpu_2.c": "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n#include <stdio.h>\n#include <omp.h>\n\n#include \"../common.h\"\n#include \"../util/timer/timer.h\"\n#include \"./kernel_cpu_2.h\"\n\nvoid\nkernel_cpu_2(\tint cores_arg,\n\n\t\t\t"
+  },
+  "target_files_expected": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 26.212,
+      "prompt_tokens": 16067,
+      "completion_tokens": 2513,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

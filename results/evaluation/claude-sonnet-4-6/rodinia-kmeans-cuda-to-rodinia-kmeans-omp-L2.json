@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-kmeans-cuda",
+  "target_spec": "rodinia-kmeans-omp",
+  "kernel": "kmeans",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 2,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:14:00Z",
+  "prompt_tokens": 47300,
+  "completion_tokens": 1946,
+  "llm_response_time_seconds": 22.526,
+  "build_status": "pass",
+  "build_time_seconds": 0.29,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 3.212,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.859,
+  "translated_wall_time_seconds": 3.212,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.5788,
+  "translated_files": {
+    "kmeans_openmp/kmeans_clustering.c": "/*****************************************************************************/\n/*IMPORTANT:  READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.         */\n/*By downloading, copying, installing or"
+  },
+  "target_files_expected": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "target_files_extracted": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 22.526,
+      "prompt_tokens": 47300,
+      "completion_tokens": 1946,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

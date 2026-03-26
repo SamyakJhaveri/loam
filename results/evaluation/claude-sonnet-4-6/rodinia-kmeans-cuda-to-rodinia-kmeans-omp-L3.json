@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-kmeans-cuda",
+  "target_spec": "rodinia-kmeans-omp",
+  "kernel": "kmeans",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T22:38:35Z",
+  "prompt_tokens": 96516,
+  "completion_tokens": 3457,
+  "llm_response_time_seconds": 41.381,
+  "build_status": "pass",
+  "build_time_seconds": 0.299,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.485,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.859,
+  "translated_wall_time_seconds": 0.485,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 3.833,
+  "translated_files": {
+    "kmeans_openmp/kmeans_clustering.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <float.h>\n#include <math.h>\n#include <omp.h>\n\n#include \"kmeans.h\"\n\nfloat euclid_dist_2(float *pt1, float *pt2, int numdims)\n{\n    int i;\n    float ans ="
+  },
+  "target_files_expected": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "target_files_extracted": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 22.395,
+      "prompt_tokens": 47300,
+      "completion_tokens": 1881,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "timeout",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -1):\n```\nExecution timed out after 300s\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Execution timed out after 300s",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 18.986,
+      "prompt_tokens": 49216,
+      "completion_tokens": 1576,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-lavamd-cuda",
+  "target_spec": "rodinia-lavamd-omp",
+  "kernel": "lavamd",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:16:11Z",
+  "prompt_tokens": 25074,
+  "completion_tokens": 1710,
+  "llm_response_time_seconds": 6.735,
+  "build_status": "pass",
+  "build_time_seconds": 0.147,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.001,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.0,
+  "translated_files": {
+    "kernel/kernel_cpu.c": "// kernel/kernel_cpu.c\n#include <stdio.h>\n#include <stdlib.h>\n#include <omp.h>\n#include <math.h>\n\n// Define structures\ntypedef struct {\n    double x, y, z;\n} THREE_VECTOR;\n\ntypedef struct {\n    double"
+  },
+  "target_files_expected": [
+    "kernel/kernel_cpu.c"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_cpu.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.975,
+      "prompt_tokens": 12080,
+      "completion_tokens": 755,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n./kernel/kernel_cpu.c:5:82: error: unknown type name \u2018FOUR_VECTOR\u2019\n    5 | void kernel_cpu(par_str par, dim_str dim, box_str* box, FOUR_VECTOR* r",
+      "build_error_snippet": "rm: cannot remove './util/device/*.o': No such file or directory\nmake: *** [makefile:67: clean] Error 1\n\nmain.c: In function \u2018main\u2019:\nmain.c:95:20: warning: implicit declaration of function \u2018strcmp\u2019 [-Wimplicit-function-declaration]\n   95 |                 if(strcmp(argv[dim_cpu.cur_arg], \"-cores\")==0){\n      |                    ^~~~~~\nmain.c:42:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018strcmp\u2019\n   41 | #include \"./kernel/kernel_cpu.h\"                                // (in library path specified here)\n  +++ |+#include <string.h>\n   42 | \nmain.c:253:15: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  253 |         srand(time(NULL));\n      |               ^~~~\nmain.c:42:1: note: \u2018time\u2019 is d\n...[truncated]...\n./kernel/kernel_cpu.c:5:74: error: unknown type name \u2018fp\u2019\n    5 | void kernel_cpu(par_str par, dim_str dim, box_str* box, FOUR_VECTOR* rv, fp* qv, FOUR_VECTOR* fv) {\n      |                                                                          ^~\n./kernel/kernel_cpu.c:5:82: error: unknown type name \u2018FOUR_VECTOR\u2019\n    5 | void kernel_cpu(par_str par, dim_str dim, box_str* box, FOUR_VECTOR* rv, fp* qv, FOUR_VECTOR* fv) {\n      |                                                                                  ^~~~~~~~~~~\n./kernel/kernel_cpu.c:11:26: error: expected end of line before \u2018for\u2019\n   11 |     #pragma omp parallel for num_threads(dim.cores_arg)\n      |                          ^~~\nmake: *** [makefile:45: kernel/kernel_cpu.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 2.76,
+      "prompt_tokens": 12994,
+      "completion_tokens": 955,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

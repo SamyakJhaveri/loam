@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-cfd-cuda",
+  "target_spec": "rodinia-cfd-omp",
+  "kernel": "cfd",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T22:17:50Z",
+  "prompt_tokens": 57289,
+  "completion_tokens": 4671,
+  "llm_response_time_seconds": 16.511,
+  "build_status": "fail",
+  "build_time_seconds": 0.251,
+  "build_error_snippet": "euler3d_cpu.cpp:8: warning: \"block_length\" redefined\n    8 | #define block_length 192\n      | \n<command-line>: note: this is the location of the previous definition\neuler3d_cpu.cpp:40:39: error: \u2018float3\u2019 has not been declared\n   40 | void compute_velocity(float& density, float3& momentum, float3& velocity) {\n      |                                       ^~~~~~\neuler3d_cpu.cpp:40:57: error: \u2018float3\u2019 has not been declared\n   40 | void compute_velocity(float& density, float3& momentum, float3& velocity) {\n      |                                                         ^~~~~~\neuler3d_cpu.cpp: In function \u2018void compute_velocity(float&, int&, int&)\u2019:\neuler3d_cpu.cpp:41:14: error: request for member \u2018x\u2019 in \u2018velocity\u2019, which is of non-class type \u2018i\n...[truncated]...\n    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\neuler3d_cpu.cpp:271:236: error: \u2018h_ff_flux_contribution_density_energy\u2019 was not declared in this scope\n  271 |     compute_flux_contribution(ff_variable[VAR_DENSITY], h_ff_momentum, ff_variable[VAR_DENSITY_ENERGY], ff_pressure, ff_velocity, h_ff_flux_contribution_momentum_x, h_ff_flux_contribution_momentum_y, h_ff_flux_contribution_momentum_z, h_ff_flux_contribution_density_energy);\n      |                                                                                                                                                                                                                                            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [makefile:15: euler3d_cpu] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 3.877,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "euler3d_cpu.cpp": "#include <iostream>\n#include <fstream>\n#include <cmath>\n#include <omp.h>\n\n#define GAMMA 1.4f\n#define iterations 2000\n#define block_length 192\n\n#define NDIM 3\n#define NNB 4\n\n#define RK 3\t// 3rd order R"
+  },
+  "target_files_expected": [
+    "euler3d_cpu.cpp"
+  ],
+  "target_files_extracted": [
+    "euler3d_cpu.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 1.862,
+      "prompt_tokens": 28581,
+      "completion_tokens": 12,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main",
+      "build_error_snippet": "/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\ncollect2: error: ld returned 1 exit status\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 14.649,
+      "prompt_tokens": 28708,
+      "completion_tokens": 4659,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "euler3d_cpu.cpp:8: warning: \"block_length\" redefined\n    8 | #define block_length 192\n      | \n<command-line>: note: this is the location of the previous definition\neuler3d_cpu.cpp:40:39: error: \u2018float3\u2019 has not been declared\n   40 | void compute_velocity(float& density, float3& momentum, float3& velocity) {\n      |                                       ^~~~~~\neuler3d_cpu.cpp:40:57: error: \u2018float3\u2019 has not been declared\n   40 | void compute_velocity(float& density, float3& momentum, float3& velocity) {\n      |                                                         ^~~~~~\neuler3d_cpu.cpp: In function \u2018void compute_velocity(float&, int&, int&)\u2019:\neuler3d_cpu.cpp:41:14: error: request for member \u2018x\u2019 in \u2018velocity\u2019, which is of non-class type \u2018i\n...[truncated]...\n    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\neuler3d_cpu.cpp:271:236: error: \u2018h_ff_flux_contribution_density_energy\u2019 was not declared in this scope\n  271 |     compute_flux_contribution(ff_variable[VAR_DENSITY], h_ff_momentum, ff_variable[VAR_DENSITY_ENERGY], ff_pressure, ff_velocity, h_ff_flux_contribution_momentum_x, h_ff_flux_contribution_momentum_y, h_ff_flux_contribution_momentum_z, h_ff_flux_contribution_density_energy);\n      |                                                                                                                                                                                                                                            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

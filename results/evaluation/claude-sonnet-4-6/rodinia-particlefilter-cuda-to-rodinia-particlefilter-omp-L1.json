@@ -1,0 +1,59 @@
+{
+  "source_spec": "rodinia-particlefilter-cuda",
+  "target_spec": "rodinia-particlefilter-omp",
+  "kernel": "particlefilter",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:45:43Z",
+  "prompt_tokens": 18877,
+  "completion_tokens": 7001,
+  "llm_response_time_seconds": 87.517,
+  "build_status": "pass",
+  "build_time_seconds": 0.223,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.008,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.007,
+  "translated_wall_time_seconds": 0.008,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.875,
+  "translated_files": {
+    "ex_particle_OPENMP_seq.c": "/**\n * @file ex_particle_OPENMP_seq.c\n * @author Michael Trotter & Matt Goodrum\n * @brief Particle filter implementation in C/OpenMP \n */\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#in"
+  },
+  "target_files_expected": [
+    "ex_particle_OPENMP_seq.c"
+  ],
+  "target_files_extracted": [
+    "ex_particle_OPENMP_seq.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 87.517,
+      "prompt_tokens": 18877,
+      "completion_tokens": 7001,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

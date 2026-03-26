@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nw-cuda",
+  "target_spec": "rodinia-nw-omp",
+  "kernel": "nw",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T23:11:30Z",
+  "prompt_tokens": 18373,
+  "completion_tokens": 11032,
+  "llm_response_time_seconds": 125.828,
+  "build_status": "pass",
+  "build_time_seconds": 0.441,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+  "run_stdout_snippet": "WG size of kernel = 16 \n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.015,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "needle.cpp": "#define LIMIT -999\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n#include <omp.h>\n\n#ifdef RD_WG_SIZE_0_0\n    #define BLOCK_SIZE RD_WG_SIZE_0_0\n#eli"
+  },
+  "target_files_expected": [
+    "needle.cpp"
+  ],
+  "target_files_extracted": [
+    "needle.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 61.567,
+      "prompt_tokens": 6441,
+      "completion_tokens": 5403,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nUsage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty>",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+      "run_stdout_snippet": "WG size of kernel = 16 \n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 64.261,
+      "prompt_tokens": 11932,
+      "completion_tokens": 5629,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+      "run_stdout_snippet": "WG size of kernel = 16 \n",
+      "extraction_fail": null
+    }
+  ]
+}

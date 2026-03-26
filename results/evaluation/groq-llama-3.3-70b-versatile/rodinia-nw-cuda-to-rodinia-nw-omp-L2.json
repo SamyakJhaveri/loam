@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nw-cuda",
+  "target_spec": "rodinia-nw-omp",
+  "kernel": "nw",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 2,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:45:14Z",
+  "prompt_tokens": 15531,
+  "completion_tokens": 9159,
+  "llm_response_time_seconds": 28.661,
+  "build_status": "fail",
+  "build_time_seconds": 0.104,
+  "build_error_snippet": "needle.cpp: In function \u2018double gettime()\u2019:\nneedle.cpp:53:17: error: \u2018CLOCK_REALTIME\u2019 was not declared in this scope\n   53 |   clock_gettime(CLOCK_REALTIME, &t);\n      |                 ^~~~~~~~~~~~~~\nneedle.cpp:53:3: error: \u2018clock_gettime\u2019 was not declared in this scope\n   53 |   clock_gettime(CLOCK_REALTIME, &t);\n      |   ^~~~~~~~~~~~~\nneedle.cpp: In function \u2018int main(int, char**)\u2019:\nneedle.cpp:79:5: error: \u2018runTest\u2019 was not declared in this scope\n   79 |     runTest( argc, argv);\n      |     ^~~~~~~\nneedle.cpp: In function \u2018void runTest(int, char**)\u2019:\nneedle.cpp:169:17: error: \u2018needle_openmp_shared_1\u2019 was not declared in this scope\n  169 |                 needle_openmp_shared_1(referrence, input_itemsets, max_cols, penalty, i, block_width);\n      |                 ^~~~~~~~~~~~~~~~~~~~~~\nneedle.cpp:175:17: error: \u2018needle_openmp_shared_2\u2019 was not declared in this scope\n  175 |                 needle_openmp_shared_2(referrence, input_itemsets, max_cols, penalty, i, block_width);\n      |                 ^~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:10: needle] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: e\n  175 |                 needle_openmp_shared_2(referrence, input_itemsets, max_cols, penalty, i, block_width);\n      |                 ^~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:10: needle] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.015,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "needle.cpp": "#define LIMIT -999\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <omp.h>\n\n// includes, kernels\n\n#ifdef TIMING\n#include <time.h>\n\nstruct timespec tv;\nstruct time"
+  },
+  "target_files_expected": [
+    "needle.cpp"
+  ],
+  "target_files_extracted": [
+    "needle.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 14.233,
+      "prompt_tokens": 5408,
+      "completion_tokens": 4566,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n|                                          ^~~~~~~\n      |                                          fmaximum\nneedle.cpp:293:46: error: \u2018maximum\u2019 ",
+      "build_error_snippet": "needle.cpp: In function \u2018double gettime()\u2019:\nneedle.cpp:57:17: error: \u2018CLOCK_REALTIME\u2019 was not declared in this scope\n   57 |   clock_gettime(CLOCK_REALTIME, &t);\n      |                 ^~~~~~~~~~~~~~\nneedle.cpp:57:3: error: \u2018clock_gettime\u2019 was not declared in this scope\n   57 |   clock_gettime(CLOCK_REALTIME, &t);\n      |   ^~~~~~~~~~~~~\nneedle.cpp: In function \u2018void runTest(int, char**)\u2019:\nneedle.cpp:160:17: error: \u2018needle_openmp_shared_1\u2019 was not declared in this scope\n  160 |                 needle_openmp_shared_1(referrence, input_itemsets, max_cols, penalty, i, block_width);\n      |                 ^~~~~~~~~~~~~~~~~~~~~~\nneedle.cpp:166:17: error: \u2018needle_openmp_shared_2\u2019 was not declared in this scope\n  166 |                 needle_ope\n...[truncated]...\n               fmaximum\nneedle.cpp:285:42: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  285 |             temp[t_index_y][t_index_x] = maximum(temp[t_index_y - 1][t_index_x - 1] + ref[t_index_y - 1][t_index_x - 1],\n      |                                          ^~~~~~~\n      |                                          fmaximum\nneedle.cpp:293:46: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  293 |                 temp[t_index_y][t_index_x] = maximum(temp[t_index_y - 1][t_index_x - 1] + ref[t_index_y - 1][t_index_x - 1],\n      |                                              ^~~~~~~\n      |                                              fmaximum\nmake: *** [Makefile:10: needle] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 14.428,
+      "prompt_tokens": 10123,
+      "completion_tokens": 4593,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "needle.cpp: In function \u2018double gettime()\u2019:\nneedle.cpp:53:17: error: \u2018CLOCK_REALTIME\u2019 was not declared in this scope\n   53 |   clock_gettime(CLOCK_REALTIME, &t);\n      |                 ^~~~~~~~~~~~~~\nneedle.cpp:53:3: error: \u2018clock_gettime\u2019 was not declared in this scope\n   53 |   clock_gettime(CLOCK_REALTIME, &t);\n      |   ^~~~~~~~~~~~~\nneedle.cpp: In function \u2018int main(int, char**)\u2019:\nneedle.cpp:79:5: error: \u2018runTest\u2019 was not declared in this scope\n   79 |     runTest( argc, argv);\n      |     ^~~~~~~\nneedle.cpp: In function \u2018void runTest(int, char**)\u2019:\nneedle.cpp:169:17: error: \u2018needle_openmp_shared_1\u2019 was not declared in this scope\n  169 |                 needle_openmp_shared_1(referrence, input_itemsets, max_cols, penalty, i, block_width);\n      |                 ^~~~~~~~~~~~~~~~~~~~~~\nneedle.cpp:175:17: error: \u2018needle_openmp_shared_2\u2019 was not declared in this scope\n  175 |                 needle_openmp_shared_2(referrence, input_itemsets, max_cols, penalty, i, block_width);\n      |                 ^~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:10: needle] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

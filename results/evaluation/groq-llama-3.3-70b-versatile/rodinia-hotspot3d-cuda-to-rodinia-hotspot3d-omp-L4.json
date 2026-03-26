@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-hotspot3d-cuda",
+  "target_spec": "rodinia-hotspot3d-omp",
+  "kernel": "hotspot3d",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T22:38:24Z",
+  "prompt_tokens": 8827,
+  "completion_tokens": 4978,
+  "llm_response_time_seconds": 9.891,
+  "build_status": "fail",
+  "build_time_seconds": 0.023,
+  "build_error_snippet": "3D.c: In function \u2018hotspot_opt1\u2019:\n3D.c:187:21: error: \u2018W\u2019 undeclared (first use in this function)\n  187 |                     W = (0 == x)        ? c : c - 1;\n      |                     ^\n3D.c:187:21: note: each undeclared identifier is reported only once for each function it appears in\n3D.c:188:21: error: \u2018E\u2019 undeclared (first use in this function)\n  188 |                     E = (nx-1 == x)     ? c : c + 1;\n      |                     ^\n3D.c:189:21: error: \u2018N\u2019 undeclared (first use in this function)\n  189 |                     N = (0 == j)        ? c : c - nx;\n      |                     ^\n3D.c:190:21: error: \u2018S\u2019 undeclared (first use in this function)\n  190 |                     S = (ny-1 == j)     ? c : c + nx;\n      |                     ^\nmake: *** [Makefile:6: 3D] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ^\n3D.c:190:21: error: \u2018S\u2019 undeclared (first use in this function)\n  190 |                     S = (ny-1 == j)     ? c : c + nx;\n      |                     ^\nmake: *** [Makefile:6: 3D] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.215,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "3D.c": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h> \n#include <math.h> \n#include <omp.h>\n#include <string.h> // Added this line to include the string.h library\n\n#define STR_SI"
+  },
+  "target_files_expected": [
+    "3D.c"
+  ],
+  "target_files_extracted": [
+    "3D.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.651,
+      "prompt_tokens": 3077,
+      "completion_tokens": 2481,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nmpCopy,tempIn, size * sizeof(float));\n      |     ^~~~~~\n3D.c:7:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018memcpy\u2019\n    6 | #inclu",
+      "build_error_snippet": "3D.c: In function \u2018hotspot_opt1\u2019:\n3D.c:186:21: error: \u2018W\u2019 undeclared (first use in this function)\n  186 |                     W = (0 == x)        ? c : c - 1;\n      |                     ^\n3D.c:186:21: note: each undeclared identifier is reported only once for each function it appears in\n3D.c:187:21: error: \u2018E\u2019 undeclared (first use in this function)\n  187 |                     E = (nx-1 == x)     ? c : c + 1;\n      |                     ^\n3D.c:188:21: error: \u2018N\u2019 undeclared (first use in this function)\n  188 |                     N = (0 == j)        ? c : c - nx;\n      |                     ^\n3D.c:189:21: error: \u2018S\u2019 undeclared (first use in this function)\n  189 |                     S = (ny-1 == j)     ? c : c + nx;\n      |                     ^\n3D.c: In function \u2018main\u2019:\n3D.c:250:5: warning: implicit declaration of function \u2018memcpy\u2019 [-Wimplicit-function-declaration]\n  250 |     memcpy(tempCopy,tempIn, size * sizeof(float));\n      |     ^~~~~~\n3D.c:7:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018memcpy\u2019\n    6 | #include <omp.h>\n  +++ |+#include <string.h>\n    7 | \n3D.c:250:5: warning: incompatible implicit declaration of built-in function \u2018memcpy\u2019 [-Wbuiltin-declaration-mismatch]\n  250 |     memcpy(tempCopy,tempIn, size * sizeof(float));\n      |     ^~~~~~\n3D.c:250:5: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018memcpy\u2019\nmake: *** [Makefile:6: 3D] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 5.24,
+      "prompt_tokens": 5750,
+      "completion_tokens": 2497,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "3D.c: In function \u2018hotspot_opt1\u2019:\n3D.c:187:21: error: \u2018W\u2019 undeclared (first use in this function)\n  187 |                     W = (0 == x)        ? c : c - 1;\n      |                     ^\n3D.c:187:21: note: each undeclared identifier is reported only once for each function it appears in\n3D.c:188:21: error: \u2018E\u2019 undeclared (first use in this function)\n  188 |                     E = (nx-1 == x)     ? c : c + 1;\n      |                     ^\n3D.c:189:21: error: \u2018N\u2019 undeclared (first use in this function)\n  189 |                     N = (0 == j)        ? c : c - nx;\n      |                     ^\n3D.c:190:21: error: \u2018S\u2019 undeclared (first use in this function)\n  190 |                     S = (ny-1 == j)     ? c : c + nx;\n      |                     ^\nmake: *** [Makefile:6: 3D] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

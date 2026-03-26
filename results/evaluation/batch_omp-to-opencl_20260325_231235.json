@@ -1,0 +1,382 @@
+{
+  "direction": "omp-to-opencl",
+  "models": [
+    "gemini-2.5-flash-lite"
+  ],
+  "suite": "xsbench",
+  "kernels": null,
+  "total_tasks": 5,
+  "total_elapsed_seconds": 92.8,
+  "results": [
+    {
+      "source_spec": "xsbench-xsbench-omp",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 0,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-26T06:11:03Z",
+      "prompt_tokens": 85362,
+      "completion_tokens": 7460,
+      "llm_response_time_seconds": 18.618,
+      "build_status": "pass",
+      "build_time_seconds": 0.457,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.289,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.149 seconds\nLookups:     17,000,000\nLookups/s:   114,093,831\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "__kernel void macro_xs_lookup_kernel(\n    Inputs in,\n    int max_num_nucs,\n    __global const int * num_nucs,\n    __global const double * concs,\n    __global const double * unionized_energy_array,\n   "
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 10.437,
+          "prompt_tokens": 40799,
+          "completion_tokens": 3730,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n8 warnings and 54 errors generated.\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.147 seconds\nLookups:     17,000,000\nLookups/s:   115,646,199\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,630,786\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 8.181,
+          "prompt_tokens": 44563,
+          "completion_tokens": 3730,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.149 seconds\nLookups:     17,000,000\nLookups/s:   114,093,831\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 1,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-26T06:11:23Z",
+      "prompt_tokens": 85362,
+      "completion_tokens": 7460,
+      "llm_response_time_seconds": 16.575,
+      "build_status": "pass",
+      "build_time_seconds": 0.459,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.281,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.141 seconds\nLookups:     17,000,000\nLookups/s:   120,567,348\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "__kernel void macro_xs_lookup_kernel(\n    Inputs in,\n    int max_num_nucs,\n    __global const int * num_nucs,\n    __global const double * concs,\n    __global const double * unionized_energy_array,\n   "
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 8.781,
+          "prompt_tokens": 40799,
+          "completion_tokens": 3730,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n8 warnings and 54 errors generated.\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.143 seconds\nLookups:     17,000,000\nLookups/s:   118,881,014\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 7.794,
+          "prompt_tokens": 44563,
+          "completion_tokens": 3730,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.141 seconds\nLookups:     17,000,000\nLookups/s:   120,567,348\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 2,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-26T06:11:41Z",
+      "prompt_tokens": 85351,
+      "completion_tokens": 7422,
+      "llm_response_time_seconds": 16.266,
+      "build_status": "pass",
+      "build_time_seconds": 0.46,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.289,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.149 seconds\nLookups:     17,000,000\nLookups/s:   114,094,013\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,145,504\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "kernel void macro_xs_lookup_kernel(\n    const Inputs in,\n    const int max_num_nucs,\n    global const int * num_nucs,\n    global const double * concs,\n    global const double * unionized_energy_array,"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 8.903,
+          "prompt_tokens": 40803,
+          "completion_tokens": 3711,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n8 warnings and 54 errors generated.\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.148 seconds\nLookups:     17,000,000\nLookups/s:   114,864,863\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,145,504\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 7.363,
+          "prompt_tokens": 44548,
+          "completion_tokens": 3711,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.149 seconds\nLookups:     17,000,000\nLookups/s:   114,094,013\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,145,504\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 3,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-26T06:11:59Z",
+      "prompt_tokens": 85253,
+      "completion_tokens": 7262,
+      "llm_response_time_seconds": 16.721,
+      "build_status": "pass",
+      "build_time_seconds": 0.457,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.283,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.144 seconds\nLookups:     17,000,000\nLookups/s:   118,055,511\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "kernel void macro_xs_lookup_kernel(\n    const Inputs in,\n    const int max_num_nucs,\n    global const int * num_nucs,\n    global const double * concs,\n    global const double * unionized_energy_array,"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 7.354,
+          "prompt_tokens": 40794,
+          "completion_tokens": 3631,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n8 warnings and 54 errors generated.\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.149 seconds\nLookups:     17,000,000\nLookups/s:   114,093,831\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 9.367,
+          "prompt_tokens": 44459,
+          "completion_tokens": 3631,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "8 warnings and 54 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.144 seconds\nLookups:     17,000,000\nLookups/s:   118,055,511\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "xsbench-xsbench-omp",
+      "target_spec": "xsbench-xsbench-opencl",
+      "kernel": "xsbench",
+      "model": "gemini-2.5-flash-lite",
+      "augment_level": 4,
+      "translation_mode": "kernel_centric",
+      "timestamp": "2026-03-26T06:12:18Z",
+      "prompt_tokens": 85068,
+      "completion_tokens": 6733,
+      "llm_response_time_seconds": 16.425,
+      "build_status": "pass",
+      "build_time_seconds": 0.457,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.287,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "8 warnings and 57 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.148 seconds\nLookups:     17,000,000\nLookups/s:   114,864,863\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 0.44,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "kernel.cl": "kernel void macro_xs_lookup_kernel(\n    const Inputs in,\n    const int max_num_nucs,\n    global const int * num_nucs,\n    global const double * concs,\n    global const double * unionized_energy_array,"
+      },
+      "target_files_expected": [
+        "kernel.cl"
+      ],
+      "target_files_extracted": [
+        "kernel.cl"
+      ],
+      "max_retries": 2,
+      "total_attempts": 2,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 8.867,
+          "prompt_tokens": 40834,
+          "completion_tokens": 3366,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n8 warnings and 57 errors generated.\n```\nFix the runtime error.",
+          "build_error_snippet": null,
+          "run_stderr_snippet": "8 warnings and 57 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.148 seconds\nLookups:     17,000,000\nLookups/s:   114,864,863\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,145,504\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        },
+        {
+          "attempt": 2,
+          "llm_response_time_seconds": 7.558,
+          "prompt_tokens": 44234,
+          "completion_tokens": 3367,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "8 warnings and 57 errors generated.\n",
+          "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.148 seconds\nLookups:     17,000,000\nLookups/s:   114,864,863\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+          "extraction_fail": null
+        }
+      ]
+    }
+  ]
+}

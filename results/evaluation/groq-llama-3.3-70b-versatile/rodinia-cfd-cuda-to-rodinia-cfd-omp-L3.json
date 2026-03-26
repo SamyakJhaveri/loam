@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-cfd-cuda",
+  "target_spec": "rodinia-cfd-omp",
+  "kernel": "cfd",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T22:17:20Z",
+  "prompt_tokens": 56983,
+  "completion_tokens": 4711,
+  "llm_response_time_seconds": 15.809,
+  "build_status": "fail",
+  "build_time_seconds": 0.167,
+  "build_error_snippet": "<command-line>: error: expected unqualified-id before numeric constant\neuler3d_cpu.cpp:9:11: note: in expansion of macro \u2018block_length\u2019\n    9 | const int block_length = 192;\n      |           ^~~~~~~~~~~~\neuler3d_cpu.cpp: In function \u2018float compute_speed_of_sound(float&, float&)\u2019:\neuler3d_cpu.cpp:61:12: error: \u2018sqrtf\u2019 was not declared in this scope; did you mean \u2018strtof\u2019?\n   61 |     return sqrtf(GAMMA * pressure / density);\n      |            ^~~~~\n      |            strtof\neuler3d_cpu.cpp: In function \u2018void compute_step_factor(int, float*, float*, float*)\u2019:\neuler3d_cpu.cpp:90:35: error: \u2018sqrtf\u2019 was not declared in this scope; did you mean \u2018strtof\u2019?\n   90 |         step_factors[i] = 0.5f / (sqrtf(areas[i]) * (sqrtf(speed_sqd) + speed_of_sound));\n      |                                   ^~~~~\n      |                                   strtof\neuler3d_cpu.cpp: In function \u2018void compute_flux(int, int*, float*, float*, float*)\u2019:\neuler3d_cpu.cpp:105:25: error: \u2018sqrtf\u2019 was not declared in this scope; did you mean \u2018strtof\u2019?\n  105 |         float speed_i = sqrtf(speed_sqd_i);\n      |                         ^~~~~\n      |                         strtof\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: e; did you mean \u2018strtof\u2019?\n  105 |         float speed_i = sqrtf(speed_sqd_i);\n      |                         ^~~~~\n      |                         strtof\nmake: *** [makefile:15: euler3d_cpu] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 3.877,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "euler3d_cpu.cpp": "// euler3d_cpu.cpp\n#include <iostream>\n#include <fstream>\n#include <omp.h>\n\n// Constants\nconst float GAMMA = 1.4f;\nconst int iterations = 2000;\nconst int block_length = 192;\nconst int NDIM = 3;\nconst "
+  },
+  "target_files_expected": [
+    "euler3d_cpu.cpp"
+  ],
+  "target_files_extracted": [
+    "euler3d_cpu.cpp"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 1.868,
+      "prompt_tokens": 28428,
+      "completion_tokens": 12,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main",
+      "build_error_snippet": "/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\ncollect2: error: ld returned 1 exit status\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 13.941,
+      "prompt_tokens": 28555,
+      "completion_tokens": 4699,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "<command-line>: error: expected unqualified-id before numeric constant\neuler3d_cpu.cpp:9:11: note: in expansion of macro \u2018block_length\u2019\n    9 | const int block_length = 192;\n      |           ^~~~~~~~~~~~\neuler3d_cpu.cpp: In function \u2018float compute_speed_of_sound(float&, float&)\u2019:\neuler3d_cpu.cpp:61:12: error: \u2018sqrtf\u2019 was not declared in this scope; did you mean \u2018strtof\u2019?\n   61 |     return sqrtf(GAMMA * pressure / density);\n      |            ^~~~~\n      |            strtof\neuler3d_cpu.cpp: In function \u2018void compute_step_factor(int, float*, float*, float*)\u2019:\neuler3d_cpu.cpp:90:35: error: \u2018sqrtf\u2019 was not declared in this scope; did you mean \u2018strtof\u2019?\n   90 |         step_factors[i] = 0.5f / (sqrtf(areas[i]) * (sqrtf(speed_sqd) + speed_of_sound));\n      |                                   ^~~~~\n      |                                   strtof\neuler3d_cpu.cpp: In function \u2018void compute_flux(int, int*, float*, float*, float*)\u2019:\neuler3d_cpu.cpp:105:25: error: \u2018sqrtf\u2019 was not declared in this scope; did you mean \u2018strtof\u2019?\n  105 |         float speed_i = sqrtf(speed_sqd_i);\n      |                         ^~~~~\n      |                         strtof\nmake: *** [makefile:15: euler3d_cpu] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nn-cuda",
+  "target_spec": "rodinia-nn-omp",
+  "kernel": "nn",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 1,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T21:38:10Z",
+  "prompt_tokens": 9064,
+  "completion_tokens": 3618,
+  "llm_response_time_seconds": 8.034,
+  "build_status": "pass",
+  "build_time_seconds": 0.041,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.072,
+  "run_exit_code": -11,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -11)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nn_openmp.c": "#include <stdio.h>\n#include <sys/time.h>\n#include <float.h>\n#include <omp.h>\n\n#define min( a, b )         a > b ? b : a\n#define ceilDiv( a, b )     ( a + b - 1 ) / b\n#define print( x )          printf"
+  },
+  "target_files_expected": [
+    "nn_openmp.c"
+  ],
+  "target_files_extracted": [
+    "nn_openmp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.664,
+      "prompt_tokens": 3613,
+      "completion_tokens": 1748,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nnn_openmp.c:4:10: fatal error: vector: No such file or directory\n    4 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmake",
+      "build_error_snippet": "nn_openmp.c:4:10: fatal error: vector: No such file or directory\n    4 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:12: nn] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.37,
+      "prompt_tokens": 5451,
+      "completion_tokens": 1870,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

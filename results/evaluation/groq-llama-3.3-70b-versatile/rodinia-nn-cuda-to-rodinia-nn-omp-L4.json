@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nn-cuda",
+  "target_spec": "rodinia-nn-omp",
+  "kernel": "nn",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 4,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T23:09:08Z",
+  "prompt_tokens": 9082,
+  "completion_tokens": 3665,
+  "llm_response_time_seconds": 7.689,
+  "build_status": "pass",
+  "build_time_seconds": 0.043,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.007,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": 0.007,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.2857,
+  "translated_files": {
+    "nn_openmp.c": "#include <stdio.h>\n#include <sys/time.h>\n#include <float.h>\n#include <omp.h>\n#include <stdlib.h>\n#include <string.h>\n\n#define min( a, b )         a > b ? b : a\n#define ceilDiv( a, b )     ( a + b - 1 "
+  },
+  "target_files_expected": [
+    "nn_openmp.c"
+  ],
+  "target_files_extracted": [
+    "nn_openmp.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.541,
+      "prompt_tokens": 3624,
+      "completion_tokens": 1744,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nnn_openmp.c:4:10: fatal error: vector: No such file or directory\n    4 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmake",
+      "build_error_snippet": "nn_openmp.c:4:10: fatal error: vector: No such file or directory\n    4 | #include <vector>\n      |          ^~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:12: nn] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.148,
+      "prompt_tokens": 5458,
+      "completion_tokens": 1921,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "source_spec": "rodinia-heartwall-cuda",
+  "target_spec": "rodinia-heartwall-omp",
+  "kernel": "heartwall",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 3,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-25T22:31:09Z",
+  "prompt_tokens": 81320,
+  "completion_tokens": 4841,
+  "llm_response_time_seconds": 16.154,
+  "build_status": "fail",
+  "build_time_seconds": 0.117,
+  "build_error_snippet": "avilib.c: In function \u2018avi_write_data\u2019:\navilib.c:907:28: warning: \u2018%1d\u2019 directive writing between 1 and 11 bytes into a region of size 4 [-Wformat-overflow=]\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |                            ^~~\navilib.c:907:26: note: directive argument in the range [-2147483647, 2147483647]\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |                          ^~~~~~~~\navilib.c:907:4: note: \u2018sprintf\u2019 output between 5 and 15 bytes into a destination of size 5\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\ncollect2: error: ld returned 1 exit status\nmake: *** [makefile:8: heartwall] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: -linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\ncollect2: error: ld returned 1 exit status\nmake: *** [makefile:8: heartwall] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.5,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "define.c": "\n\n",
+    "kernel.c": "\n\n",
+    "main.c": ""
+  },
+  "target_files_expected": [
+    "define.c",
+    "kernel.c",
+    "main.c"
+  ],
+  "target_files_extracted": [
+    "define.c",
+    "kernel.c",
+    "main.c"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 8.173,
+      "prompt_tokens": 39404,
+      "completion_tokens": 2342,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nber \u2018d_tEpiColLoc\u2019 in something not a structure or union\n  613 |         free(public.d_tEpiColLoc);\n      |                    ^\nmain.c:614:20: e",
+      "build_error_snippet": "main.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo--\\n\",j);\n      |                          ^~~~~~~~~~~~~~\nmain.c:72:26: warning: too many arguments for format [-Wformat-extra-args]\n   72 |             fprintf(fid, \"\\n--epi--\\n\",j);\n      |                          ^~~~~~~~~~~~~\nmain.c: In function \u2018main\u2019:\nmain.c:108:9: error: unknown type name \u2018public_struct\u2019\n  108 |         public_struct public;\n      |         ^~~~~~~~~~~~~\nmain.c:109:9: error: unknown type name \u2018private_struct\u2019\n  109 |         private_struct private[ALL_POINTS];\n      |         ^~~~~~~~~~~~~~\nmain.c:109:32: error: \u2018ALL_POINTS\u2019 undeclared (first use in this function)\n  1\n...[truncated]...\npublic.d_epiCol);\n      |                    ^\nmain.c:612:20: error: request for member \u2018d_tEpiRowLoc\u2019 in something not a structure or union\n  612 |         free(public.d_tEpiRowLoc);\n      |                    ^\nmain.c:613:20: error: request for member \u2018d_tEpiColLoc\u2019 in something not a structure or union\n  613 |         free(public.d_tEpiColLoc);\n      |                    ^\nmain.c:614:20: error: request for member \u2018d_epiT\u2019 in something not a structure or union\n  614 |         free(public.d_epiT);\n      |                    ^\nmain.c:620:26: error: request for member \u2018allPoints\u2019 in something not a structure or union\n  620 |         for(i=0; i<public.allPoints; i++){\n      |                          ^\nmake: *** [makefile:12: main.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 7.981,
+      "prompt_tokens": 41916,
+      "completion_tokens": 2499,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "avilib.c: In function \u2018avi_write_data\u2019:\navilib.c:907:28: warning: \u2018%1d\u2019 directive writing between 1 and 11 bytes into a region of size 4 [-Wformat-overflow=]\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |                            ^~~\navilib.c:907:26: note: directive argument in the range [-2147483647, 2147483647]\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |                          ^~~~~~~~\navilib.c:907:4: note: \u2018sprintf\u2019 output between 5 and 15 bytes into a destination of size 5\n  907 |    sprintf((char *)astr, \"0%1dwb\", AVI->aptr+1);\n      |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\ncollect2: error: ld returned 1 exit status\nmake: *** [makefile:8: heartwall] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -297,7 +297,7 @@ Eligible kernel counts exclude KNOWN_FAIL specs (as source or target).
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction SRC-to-TGT \
-  --models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 --resume -v
 ```
@@ -2246,36 +2246,39 @@ python3 scripts/evaluation/analyze_eval.py \
 
 ## SESSION 9 — Second Direction: omp-to-cuda (Rodinia)
 
+> **Updated 2026-03-26:** Azure GPT-4.1 removed (disabled by Gal 2026-03-24).
+> Gemini thinking confound resolved — all results valid (see known-issues.md).
+> All open decisions resolved. Post-session instructions added.
+
 ```
 ultrathink
 
-# Models (decided by Gal 2026-03-23):
-# azure-gpt-4.1 | claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile
+# Models (3 active — azure-gpt-4.1 DISABLED by Gal 2026-03-24):
+# claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile
 
 ## BEFORE YOU START — What I Need From You
 
-DECISIONS:
-- [x] Models RESOLVED — all 4 models (see Prerequisite #1 above)
-- [ ] omp-to-cuda is expected to be HARDER (adding GPU parallelism). If pass
-      rate is very low (<20%), is this still worth a full paper section or
-      just a paragraph in Discussion? (Recommendation: report regardless —
-      even 0% is a valid finding about LLM capabilities)
-- [ ] Should L1/L2 augmentation also be done for omp-to-cuda? The prompt only
-      runs L0. Adding L1/L2 triples API calls from 32 to 96.
-- [ ] The 16-kernel list excludes kmeans (CUDA target KNOWN_FAIL) and
-      mummergpu (OMP source KNOWN_FAIL). Confirm this exclusion list is correct.
+DECISIONS (ALL RESOLVED 2026-03-26):
+- [x] Models RESOLVED — 3 models (azure disabled). See Prerequisite #1 above.
+- [x] Report regardless of pass rate — even 0% is a valid finding about LLM capabilities
+      for adding GPU parallelism. Full table in paper §6.6, not just a paragraph.
+- [x] L0 only for omp-to-cuda. Cross-direction eval does not need augmentation —
+      the primary direction (cuda-to-omp) already has L0-L4 data from S7.
+- [x] 16-kernel list confirmed correct. Excludes kmeans (CUDA target KNOWN_FAIL)
+      and mummergpu (OMP source KNOWN_FAIL). hybridsort-cuda also KNOWN_FAIL but
+      has no OMP source anyway (phantom spec deleted).
 
 CLARIFICATIONS:
 - [x] RESOLVED (Session 1.6): All CUDA specs now have translation_targets = prompt_payload
       (Family 3 rule in standardize_specs.py). No fallback exists — single kernel_centric mode.
-      This is correct: CUDA files are all kernel code, so targets = full payload.
 
-EXTERNAL DEPS:
-- [ ] Sessions 1, 1.5, 2, 3, 3b must be complete
-- [ ] API keys for all 4 models
+EXTERNAL DEPS (ALL MET):
+- [x] Sessions 1, 1.5, 1.6, 2, 3, 3b — ALL COMPLETE
+- [x] API keys for 3 models (ANTHROPIC_API_KEY, GEMINI_API_KEY, GROQ_API_KEY)
 
 # Session Goal
-Run omp-to-cuda evaluation for all eligible Rodinia kernels with all 4 models at L0.
+Run omp-to-cuda evaluation for 16 eligible Rodinia kernels with 3 models at L0.
+Then analyze direction asymmetry (is reverse harder?) and commit results.
 
 # Why This Matters
 The paper targets 6 translation directions (see Translation Direction Matrix above).
@@ -2302,61 +2305,119 @@ parallelism (harder than removing it). Expected to have lower pass rates than cu
 - The batch runner uses manifest to find pairs: source=omp, target=cuda
 - Phantom OMP specs (gaussian, huffman, hybridsort) will error — use --kernels to filter
 
-# Prerequisites
+# Prerequisites (ALL MET)
 - Session 1 complete (submodule reset)
 - Sessions 1.5+1.6 complete (kernel-centric pipeline, all CUDA specs have translation_targets via Family 3 rule)
-- Session 3b complete (all 4 models have L0 baselines)
-- API keys configured for all 4 models
+- Session 3b complete (all 3 active models have L0 baselines)
+- API keys configured for 3 models
+
+# ============================================================
+# PART 1: RUN EVALUATION
+# ============================================================
 
 # Step 1: Activate venv
 source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
 cd /home/samyak/Desktop/parbench_sam
 
-# Step 2: Run all 4 models
+# Step 2: Run all 3 models (use tmux for SSH disconnect safety)
+# Expected: 48 tasks (16 kernels x 3 models), ~2-4 hours
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction omp-to-cuda \
-  --models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --kernels backprop bfs bptree cfd heartwall hotspot hotspot3d lavamd lud myocyte nn nw particlefilter pathfinder srad streamcluster \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 \
   --resume \
   -v
 
-# Step 3: Regenerate analysis
+# ============================================================
+# PART 2: POST-EVAL ANALYSIS (run after Step 2 completes)
+# ============================================================
+
+# Step 3: Verify completion — expect 16 files per model
+for model in claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile; do
+  count=$(ls results/evaluation/$model/rodinia-*-omp-to-rodinia-*-cuda.json 2>/dev/null | grep -v "L[1-4]" | wc -l)
+  echo "$model: $count omp-to-cuda L0 files"
+done
+# If any model has <16, re-run Step 2 (--resume will skip completed tasks)
+
+# Step 4: Regenerate analysis with both directions
 python3 scripts/evaluation/analyze_eval.py \
   --project-root /home/samyak/Desktop/parbench_sam \
   --write-dashboard \
   --show-gaps \
-  --expected-models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --expected-models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --expected-directions cuda-to-omp omp-to-cuda \
   --expected-levels 0
 
-# Step 4: Verification — write a small test script that:
-# 1. Counts omp-to-cuda results per model
+# Step 5: Direction comparison — write a verification script that:
+# 1. Counts omp-to-cuda results per model (expect 16 each)
 # 2. Compares omp-to-cuda pass rates with cuda-to-omp (is reverse harder?)
-# 3. Identifies kernels that pass in one direction but fail in the other
-# 4. Shows "Pass Rate by Translation Complexity" for this direction
-# DELETE the test script.
+# 3. Identifies asymmetric kernels: pass in one direction but fail in the other
+# 4. Shows per-model breakdown: does the difficulty gap vary by model?
+# 5. Compares failure taxonomy between directions (more BUILD_FAIL in one direction?)
+# 6. Shows "Pass Rate by Translation Complexity" for omp-to-cuda
+# Save output to results/evaluation/s9_direction_comparison.txt
+# DELETE the script itself after running.
 
-# Step 5: Show me direction comparison table and push.
-# Commit: "Add omp-to-cuda eval results for Rodinia (16 kernels × 4 models, kernel-centric)"
+# ============================================================
+# PART 3: COMMIT AND HANDOFF
+# ============================================================
+
+# Step 6: Stage and commit results
+git add results/evaluation/claude-sonnet-4-6/rodinia-*-omp-to-rodinia-*-cuda*.json
+git add results/evaluation/gemini-2.5-flash-lite/rodinia-*-omp-to-rodinia-*-cuda*.json
+git add results/evaluation/groq-llama-3.3-70b-versatile/rodinia-*-omp-to-rodinia-*-cuda*.json
+git add results/evaluation/batch_omp-to-cuda_*.json results/evaluation/batch_omp-to-cuda_*.md
+git add results/evaluation/eval_summary.json results/evaluation/eval_summary.md
+git add results/evaluation/s9_direction_comparison.txt
+git add visualizations/eval_results_data.js
+
+# Commit message:
+# "S9: Rodinia omp-to-cuda L0 eval (16 kernels x 3 models) + cross-direction analysis"
+
+# Step 7: Launch Session 10 (cuda-to-opencl) in tmux
+# NOTE: S10 prompt is the next section below. Run in a NEW Claude Code session.
+tmux new-session -d -s s10_cuda_to_opencl \
+  "cd /home/samyak/Desktop/parbench_sam && \
+   source env_parbench/bin/activate && \
+   python3 scripts/evaluation/run_eval_batch.py \
+     --suite rodinia \
+     --direction cuda-to-opencl \
+     --models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+     --project-root /home/samyak/Desktop/parbench_sam \
+     --max-retries 2 --resume -v \
+   2>&1 | tee results/evaluation/s10_cuda_to_opencl.log"
+echo "S10 launched. Monitor: tmux attach -t s10_cuda_to_opencl"
+
+# ============================================================
+# KEY ANALYSIS QUESTIONS (for paper §6.6)
+# ============================================================
+# - Is omp-to-cuda harder than cuda-to-omp? (expected: yes, adding GPU parallelism is harder)
+# - Which kernels are direction-asymmetric? (pass one way, fail the other)
+# - Does the direction gap vary by model? (Claude may handle reverse better than Gemini)
+# - Is BUILD_FAIL still dominant in omp-to-cuda? (LLMs generating CUDA syntax is harder)
+# - Are there kernels that ONLY pass in the reverse direction? (surprising finding if so)
+# These feed directly into paper §6.6 cross-direction analysis.
 ```
 
 ---
 
 ## SESSION 10 — Third Direction: cuda-to-opencl (Rodinia)
 
+> **Updated 2026-03-26:** Azure GPT-4.1 removed (disabled by Gal 2026-03-24).
+
 ```
 ultrathink
 
-# Models (decided by Gal 2026-03-23):
-# azure-gpt-4.1 | claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile
+# Models (3 active — azure-gpt-4.1 DISABLED by Gal 2026-03-24):
+# claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile
 
 ## BEFORE YOU START — What I Need From You
 
 DECISIONS:
-- [x] Models RESOLVED — all 4 models (see Prerequisite #1 above)
+- [x] Models RESOLVED — 3 models (azure-gpt-4.1 DISABLED by Gal 2026-03-24)
 - [ ] nn-opencl is KNOWN_FAIL for ORIGINAL code, but the LLM writes NEW code.
       However, the spec's run args use "filelist.txt" which doesn't exist —
       the LLM-generated code will TIMEOUT regardless of quality. Fix nn-opencl
@@ -2369,11 +2430,11 @@ DECISIONS:
 EXTERNAL DEPS:
 - [x] Sessions 1 + 1.5 + 1.6 must be complete — DONE
       The `full_project` mode no longer exists (removed in Session 1.6).
-- [ ] Session 3b complete (all 4 models have L0 baselines)
-- [ ] API keys for all 4 models
+- [x] Session 3b complete (all 3 active models have L0 baselines)
+- [x] API keys for 3 models (ANTHROPIC_API_KEY, GEMINI_API_KEY, GROQ_API_KEY)
 
 # Session Goal
-Run cuda-to-opencl evaluation for eligible Rodinia kernels with all 4 models at L0.
+Run cuda-to-opencl evaluation for eligible Rodinia kernels with 3 models at L0.
 
 # Why This Matters
 Direction #3 of 6 in the Translation Direction Matrix (see above). cuda-to-opencl tests
@@ -2409,18 +2470,18 @@ opencl-to-cuda (#4), opencl-to-omp (#5), omp-to-opencl (#6).
 # Prerequisites
 - Session 1 complete (submodule reset)
 - Sessions 1.5+1.6 complete (kernel-centric pipeline, OpenCL specs have .cl-only translation_targets)
-- Session 3b complete (all 4 models have L0 baselines)
-- API keys configured for all 4 models
+- Session 3b complete (all 3 active models have L0 baselines)
+- API keys configured for 3 models (ANTHROPIC_API_KEY, GEMINI_API_KEY, GROQ_API_KEY)
 
 # Step 1: Activate venv
 source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
 cd /home/samyak/Desktop/parbench_sam
 
-# Step 2: Run all 4 models
+# Step 2: Run all 3 models
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-opencl \
-  --models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --kernels backprop bfs bptree cfd dwt2d gaussian heartwall hotspot hotspot3d lavamd lud myocyte nn nw particlefilter pathfinder srad streamcluster \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 \
@@ -2432,8 +2493,8 @@ python3 scripts/evaluation/analyze_eval.py \
   --project-root /home/samyak/Desktop/parbench_sam \
   --write-dashboard \
   --show-gaps \
-  --expected-models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
-  --expected-directions cuda-to-omp cuda-to-opencl \
+  --expected-models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --expected-directions cuda-to-omp omp-to-cuda cuda-to-opencl \
   --expected-levels 0
 
 # Step 4: Verification — write a small test script that:
@@ -2450,23 +2511,25 @@ python3 scripts/evaluation/analyze_eval.py \
 # - Key paper finding: "OpenCL translation requires producing host+device code separately;
 #   this structural complexity predicts [X% lower] pass rates vs. OMP translation"
 # Commit and push.
-# Commit: "Add cuda-to-opencl eval results for Rodinia (18 kernels × 4 models, kernel-centric)"
+# Commit: "S10: Rodinia cuda-to-opencl L0 eval (18 kernels x 3 models, kernel-centric)"
 ```
 
 ---
 
 ## SESSION 10b — Remaining Rodinia Cross-API Directions (#4–6)
 
+> **Updated 2026-03-26:** Azure GPT-4.1 removed (disabled by Gal 2026-03-24).
+
 ```
 ultrathink
 
-# Models (decided by Gal 2026-03-23):
-# azure-gpt-4.1 | claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile
+# Models (3 active — azure-gpt-4.1 DISABLED by Gal 2026-03-24):
+# claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile
 
 ## BEFORE YOU START — What I Need From You
 
 DECISIONS:
-- [x] Models RESOLVED — all 4 models (see Prerequisite #1 above)
+- [x] Models RESOLVED — 3 models (azure-gpt-4.1 DISABLED by Gal 2026-03-24)
 - [ ] Session 10 (cuda-to-opencl) must be complete before this session
 - [ ] For opencl-to-omp and omp-to-opencl: OpenCL source spec translation_targets
       are .cl files (Family 1 rule). OMP target translation_targets are curated files
@@ -2480,8 +2543,8 @@ DECISIONS:
 EXTERNAL DEPS:
 - [x] Sessions 1 + 1.5 + 1.6 must be complete — DONE
 - [ ] Session 10 (cuda-to-opencl) must be complete (establishes opencl baseline)
-- [ ] Session 3b complete (all 4 models have L0 baselines)
-- [ ] API keys for all 4 models
+- [x] Session 3b complete (all 3 active models have L0 baselines)
+- [x] API keys for 3 models (ANTHROPIC_API_KEY, GEMINI_API_KEY, GROQ_API_KEY)
 
 # Session Goal
 Run the 3 remaining Rodinia-viable translation directions: opencl-to-cuda, opencl-to-omp,
@@ -2535,14 +2598,14 @@ OPENCL_TO_OMP_KERNELS="backprop bfs bptree cfd heartwall hotspot hotspot3d lavam
 OMP_TO_OPENCL_KERNELS="backprop bfs bptree cfd heartwall hotspot hotspot3d lavamd lud myocyte nw particlefilter pathfinder srad streamcluster"
 
 # Prerequisites
-source /home/samyak/Desktop/parbench_sam/env_parbench/activate
+source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
 cd /home/samyak/Desktop/parbench_sam
 
 # Step 1: Run opencl-to-cuda (direction #4)
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction opencl-to-cuda \
-  --models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --kernels $OPENCL_TO_CUDA_KERNELS \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 --resume -v
@@ -2551,7 +2614,7 @@ python3 scripts/evaluation/run_eval_batch.py \
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction opencl-to-omp \
-  --models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --kernels $OPENCL_TO_OMP_KERNELS \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 --resume -v
@@ -2560,7 +2623,7 @@ python3 scripts/evaluation/run_eval_batch.py \
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction omp-to-opencl \
-  --models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --kernels $OMP_TO_OPENCL_KERNELS \
   --project-root /home/samyak/Desktop/parbench_sam \
   --max-retries 2 --resume -v
@@ -2570,13 +2633,13 @@ python3 scripts/evaluation/analyze_eval.py \
   --project-root /home/samyak/Desktop/parbench_sam \
   --write-dashboard \
   --show-gaps \
-  --expected-models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --expected-models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --expected-directions cuda-to-omp omp-to-cuda cuda-to-opencl opencl-to-cuda opencl-to-omp omp-to-opencl \
   --expected-levels 0
 
 # Step 5: Verification — write a small test script that:
-# 1. Counts results per direction per model (expect 16/15/15 tasks each)
-# 2. Builds a 6-direction × 4-model pass rate matrix
+# 1. Counts results per direction per model (expect 17/15/15 tasks each)
+# 2. Builds a 6-direction × 3-model pass rate matrix
 # 3. Identifies the "hardest direction" (lowest pass rate)
 # 4. Checks symmetry: does cuda-to-opencl ≈ opencl-to-cuda? (interesting finding)
 # 5. Checks if omp-to-opencl (hardest: CPU→GPU) has the lowest pass rate
@@ -2586,7 +2649,7 @@ python3 scripts/evaluation/analyze_eval.py \
 # Key paper finding: "Cross-API translation difficulty ordering"
 
 # Step 7: Git commit and push
-# Commit: "Add remaining 3 Rodinia cross-API eval directions (#4-6): opencl-to-cuda, opencl-to-omp, omp-to-opencl (15-16 kernels × 4 models, kernel-centric)"
+# Commit: "S10b: Rodinia cross-API eval directions #4-6 (opencl-to-cuda, opencl-to-omp, omp-to-opencl; 15-17 kernels × 3 models)"
 ```
 
 ---
@@ -2613,7 +2676,7 @@ DECISIONS:
       Recommendation: at least 5 CUDA + 5 OMP kernels must PASS harness verify
 
 EXTERNAL DEPS:
-- [ ] AZURE_OPENAI_API_KEY + ANTHROPIC_API_KEY + GEMINI_API_KEY + GROQ_API_KEY (all 4 models)
+- [ ] ANTHROPIC_API_KEY + GEMINI_API_KEY + GROQ_API_KEY (3 active models; azure-gpt-4.1 disabled)
 - [ ] Network access to clone github.com/zjin-lcf/HeCBench (~3-5 GB, ~500+ benchmarks)
 - [ ] Sessions 2+3+3b complete (Rodinia baselines) ✅ DONE
 
@@ -2665,7 +2728,7 @@ python3 scripts/validate_schema.py --all 2>&1 | grep "hecbench" | grep -v "sourc
 python3 scripts/evaluation/run_eval_batch.py \
   --suite hecbench \
   --direction cuda-to-omp \
-  --models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --max-retries 2 \
   --max-failures 10 \
   --resume \
@@ -2890,8 +2953,8 @@ Framework, Benchmark Curation, and Evaluation Methodology.
 # Page targets (SC26 double-column):
 #   §1 Introduction: 1.5p | §2 Related Work: 1.0p | §3 Framework: 2.0p
 #   §4 Benchmark Curation: 1.0p | §5 Evaluation Methodology: 1.0p
-# Models under evaluation (Gal, 2026-03-23) — 4 models total:
-#   azure-gpt-4.1 | claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile
+# Models under evaluation (Gal, 2026-03-23) — 3 active models (azure-gpt-4.1 disabled 2026-03-24):
+#   claude-sonnet-4-6 | gemini-2.5-flash-lite | groq-llama-3.3-70b-versatile
 # Core claims the agent MUST support with actual data:
 #   - GPT-4.1: 52.9% PASS (cuda-to-omp L0) — from eval_summary.md
 #   - Llama-3.3-70B: 29.4% PASS — from eval_summary.md
@@ -2922,13 +2985,13 @@ ultrathink
 
 DECISIONS:
 - [ ] Proceed with partial data or wait for ALL eval sessions (2,3,3b,7,8,9,10)?
-      Minimum viable: ✅ MET — Sessions 2+3+3b complete (4 models, 1 direction, L0 done).
-      Recommended: Sessions 2+3+3b+7 at minimum (4 models, L0/L1/L2). S7 not yet run.
-      Models (Gal, 2026-03-23): azure-gpt-4.1 · claude-sonnet-4-6 · gemini-2.5-flash-lite · groq-llama-3.3-70b-versatile
+      Minimum viable: ✅ MET — Sessions 2+3+3b+7 complete (3 active models, L0-L4 done).
+      Models (Gal, 2026-03-23; azure disabled 2026-03-24): claude-sonnet-4-6 · gemini-2.5-flash-lite · groq-llama-3.3-70b-versatile
+      Note: azure-gpt-4.1 has L0-only data (17 tasks) from before it was disabled — include as historical comparison.
 - [ ] Threats to validity — rank these by importance for the Discussion section:
       a) Temperature=0 (deterministic but may not represent average behavior)
       b) Single seed for augmentation
-      c) Limited models (4 models — reasonable diversity across vendors)
+      c) Limited models (3 active + 1 L0-only = 4 models — reasonable diversity across vendors)
       d) Limited benchmark suites
       e) Single GPU hardware (RTX 4070 only)
       f) Kernel-centric scope (excludes project-level restructuring)
@@ -3298,7 +3361,7 @@ python3 -m pytest c_augmentation/test_transforms.py -v
 python3 scripts/evaluation/analyze_eval.py \
   --project-root /home/samyak/Desktop/parbench_sam \
   --show-gaps \
-  --expected-models azure-gpt-4.1 claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
+  --expected-models claude-sonnet-4-6 gemini-2.5-flash-lite groq-llama-3.3-70b-versatile \
   --expected-directions cuda-to-omp omp-to-cuda cuda-to-opencl opencl-to-cuda opencl-to-omp omp-to-opencl \
   --expected-levels 0 1 2
 
@@ -3902,7 +3965,7 @@ RESOLVED:
 - [x] Use \cite{placeholder} for all citations (LaTeX will resolve)
 - [x] Use [FIGURE: description] and [TABLE: description] for visual placeholders
 - [x] Gal's constraints: no reasoning models, L0-L4 augmentation, omit build times
-- [x] All 4 models: azure-gpt-4.1, claude-sonnet-4-6, gemini-2.5-flash-lite, groq-llama-3.3-70b-versatile
+- [x] 3 active models: claude-sonnet-4-6, gemini-2.5-flash-lite, groq-llama-3.3-70b-versatile (azure-gpt-4.1 disabled; L0-only historical data)
 
 ## AGENT USAGE: paper-drafter (Opus)
 
@@ -3959,10 +4022,11 @@ For §5, the agent must pre-read:
   [TABLE: Benchmark suite coverage — suite, kernels, APIs, directions, PASS specs]
 
 §5 Experimental Setup — what to cover:
-- 5.1 Models: 4 models chosen by research team (Gal, 2026-03-23). Name and version each:
-  GPT-4.1 (azure-gpt-4.1, Azure OpenAI API), Claude Sonnet 4.6 (claude-sonnet-4-6, Anthropic API),
+- 5.1 Models: 3 active models (Gal, 2026-03-23; azure disabled 2026-03-24). Name and version each:
+  Claude Sonnet 4.6 (claude-sonnet-4-6, Anthropic API),
   Gemini 2.5 Flash-Lite (gemini-2.5-flash-lite, Google AI API),
   Llama 3.3 70B (groq-llama-3.3-70b-versatile, Groq API).
+  GPT-4.1 (azure-gpt-4.1) has L0-only baseline data (17 tasks) — include for comparison.
   Temperature=0 for all models (deterministic). No reasoning models (Gal constraint).
 - 5.2 Translation Directions: 6 directions (cuda-to-omp primary, omp-to-cuda, cuda-to-opencl,
   opencl-to-cuda, opencl-to-omp, omp-to-opencl). All L0 baseline. L1/L2 augmentation for primary.
@@ -4061,7 +4125,7 @@ git commit -m "W-S12-PARTIAL: Write SC26 paper §3-§5 (framework, curation, met
 - docs/paper/paper_sections_3_4_5.md: ~N words, ~4 double-column pages
 - §3 Framework: Spec model, harness pipeline, augmentation engine, eval pipeline
 - §4 Benchmark Curation: Rodinia (60 specs), XSBench (4 specs), curation criteria
-- §5 Experimental Setup: 4 models, 6 directions, L0-L2, kernel-centric methodology
+- §5 Experimental Setup: 3 active models (+1 L0-only), 6 directions, L0-L4, kernel-centric methodology
 - §1-§2 and §6-§8 are written by Samyak (require research judgment)
 - Data citations verified against eval_summary.json and retest results"
 ```
@@ -4387,7 +4451,7 @@ wc -w docs/paper/paper_draft.md
 git add docs/paper/paper_draft.md
 git commit -m "W-S15: Paper review and polish — all claims verified, Gal constraints satisfied
 
-- All numeric claims cross-checked against eval_summary.json (68 tasks, 4 models)
+- All numeric claims cross-checked against eval_summary.json (452+ tasks, 3 active models + 1 L0-only)
 - Augmentation claims verified against retest_post_session2.md (54/60, level-invariant)
 - Self-critic agent review: [PASS/FAIL with N issues found and fixed]
 - Paper-drafter data accuracy review: N discrepancies found and corrected
