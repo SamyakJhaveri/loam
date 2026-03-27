@@ -69,6 +69,12 @@ BUILD_FAIL_CATEGORIES = [
         lambda direction: not direction.endswith("-to-opencl"),
     ),
     (
+        "missing_target_api",
+        "LLM translation contains no target API constructs (no pragmas/kernels for target language)",
+        None,  # Special: checked via translated_files in classify_build_fail, not via snippet regex
+        None,
+    ),
+    (
         "missing_header",
         "Missing or wrong #include directive — file not found",
         re.compile(
@@ -106,7 +112,7 @@ BUILD_FAIL_CATEGORIES = [
         None,
     ),
     (
-        "type_error",
+        "type_mismatch",
         "Type mismatches, wrong function signatures, incompatible conversions",
         re.compile(
             r"cannot convert"
@@ -251,6 +257,11 @@ RUN_FAIL_CATEGORIES = [
         ),
     ),
     (
+        "wrong_exit_code",
+        "Non-zero exit code without crash signal or other specific error pattern",
+        lambda exit_code, stderr, stdout: exit_code is not None and exit_code != 0,
+    ),
+    (
         "other_runtime",
         "Runtime failures not matching any specific pattern",
         lambda exit_code, stderr, stdout: True,  # catch-all
@@ -263,9 +274,17 @@ RUN_FAIL_CATEGORIES = [
 
 EXTRACTION_FAIL_CATEGORIES = [
     (
-        "no_parseable_code",
+        "no_code_blocks",
         "LLM response did not contain parseable code for expected target files",
         re.compile(r"did not contain parseable code", re.IGNORECASE),
+    ),
+    (
+        "missing_files",
+        "Expected output files not found in LLM response",
+        re.compile(
+            r"expected file|not found in output|missing.*file|could not find|no .* file",
+            re.IGNORECASE,
+        ),
     ),
     (
         "malformed_output",
@@ -286,10 +305,28 @@ def extract_direction(data):
     return f"{src_api}-to-{tgt_api}"
 
 
+def _check_missing_target_api(translated_files, direction):
+    """Check if translated code is missing target API constructs entirely."""
+    if not translated_files:
+        return False
+    target_api = direction.split("-to-")[-1] if "-to-" in direction else ""
+    all_content = "\n".join(translated_files.values())
+    if target_api == "omp":
+        return not re.search(r"#pragma\s+omp\s+parallel|#pragma\s+omp\s+for", all_content)
+    elif target_api == "opencl":
+        return not re.search(r"__kernel\b|get_global_id", all_content)
+    elif target_api == "cuda":
+        return not re.search(r"__global__|<<<", all_content)
+    elif target_api == "omp_target":
+        return not re.search(r"#pragma\s+omp\s+target", all_content)
+    return False
+
+
 def classify_build_fail(data):
     """Classify a BUILD_FAIL result. Returns (primary, [secondaries])."""
     snippet = data.get("build_error_snippet") or ""
     direction = extract_direction(data)
+    translated_files = data.get("translated_files") or {}
 
     primary = None
     secondaries = []
@@ -300,6 +337,13 @@ def classify_build_fail(data):
         if cat_name == "other_build":
             if primary is None:
                 primary = cat_name
+            continue
+        if cat_name == "missing_target_api":
+            if _check_missing_target_api(translated_files, direction):
+                if primary is None:
+                    primary = cat_name
+                else:
+                    secondaries.append(cat_name)
             continue
         if pattern.search(snippet):
             if primary is None:
@@ -327,7 +371,7 @@ def classify_run_fail(data):
         if check_fn(exit_code, stderr, stdout):
             if primary is None:
                 primary = cat_name
-            else:
+            elif cat_name != "wrong_exit_code":
                 secondaries.append(cat_name)
 
     return primary, secondaries
@@ -582,7 +626,8 @@ def generate_markdown(taxonomy, output_path):
     lines.append("## Table 2: BUILD_FAIL Root Cause Categories")
     lines.append("")
     total_bf = sum(c["count"] for c in taxonomy["build_fail_categories"].values())
-    lines.append(f"*{total_bf} total BUILD_FAIL results classified into {len(taxonomy['build_fail_categories'])} categories.*")
+    n_bf_cats = len(taxonomy['build_fail_categories'])
+    lines.append(f"*{total_bf} total BUILD_FAIL results classified into {n_bf_cats} {'category' if n_bf_cats == 1 else 'categories'}.*")
     lines.append("")
     lines.append("| # | Category | Count | % of BUILD_FAIL | Description |")
     lines.append("|--:|----------|------:|----------------:|-------------|")
@@ -601,7 +646,8 @@ def generate_markdown(taxonomy, output_path):
     lines.append("## Table 3: RUN_FAIL Root Cause Categories")
     lines.append("")
     total_rf = sum(c["count"] for c in taxonomy["run_fail_categories"].values())
-    lines.append(f"*{total_rf} total RUN_FAIL results classified into {len(taxonomy['run_fail_categories'])} categories.*")
+    n_rf_cats = len(taxonomy['run_fail_categories'])
+    lines.append(f"*{total_rf} total RUN_FAIL results classified into {n_rf_cats} {'category' if n_rf_cats == 1 else 'categories'}.*")
     lines.append("")
     lines.append("| # | Category | Count | % of RUN_FAIL | Description |")
     lines.append("|--:|----------|------:|-------------:|-------------|")
@@ -619,7 +665,8 @@ def generate_markdown(taxonomy, output_path):
     lines.append("## Table 4: EXTRACTION_FAIL Root Cause Categories")
     lines.append("")
     total_ef = sum(c["count"] for c in taxonomy["extraction_fail_categories"].values())
-    lines.append(f"*{total_ef} total EXTRACTION_FAIL results classified into {len(taxonomy['extraction_fail_categories'])} categories.*")
+    n_ef_cats = len(taxonomy['extraction_fail_categories'])
+    lines.append(f"*{total_ef} total EXTRACTION_FAIL results classified into {n_ef_cats} {'category' if n_ef_cats == 1 else 'categories'}.*")
     lines.append("")
     lines.append("| # | Category | Count | % of EXTRACTION_FAIL | Description |")
     lines.append("|--:|----------|------:|--------------------:|-------------|")
