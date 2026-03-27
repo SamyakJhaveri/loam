@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-streamcluster-omp",
+  "target_spec": "rodinia-streamcluster-cuda",
+  "kernel": "streamcluster",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:16:23Z",
+  "prompt_tokens": 55453,
+  "completion_tokens": 15887,
+  "llm_response_time_seconds": 34.485,
+  "build_status": "fail",
+  "build_time_seconds": 0.348,
+  "build_error_snippet": "In file included from streamcluster_cuda_cpu.cpp:16:\nstreamcluster_header.cu:1:1: error: \u2018streamcluster_cuda\u2019 does not name a type\n    1 | streamcluster_cuda.cu\n      | ^~~~~~~~~~~~~~~~~~\nIn file included from /usr/include/c++/12/cstdlib:75,\n                 from /usr/include/c++/12/stdlib.h:36,\n                 from streamcluster_header.cu:3:\n/usr/include/stdlib.h:98:8: error: \u2018size_t\u2019 does not name a type\n   98 | extern size_t __ctype_get_mb_cur_max (void) __THROW __wur;\n      |        ^~~~~~\n/usr/include/stdlib.h:42:1: note: \u2018size_t\u2019 is defined in header \u2018<cstddef>\u2019; did you forget to \u2018#include <cstddef>\u2019?\n   41 | # include <bits/waitstatus.h>\n  +++ |+#include <cstddef>\n   42 | \n/usr/include/stdlib.h:141:8: error: \u2018_Float32\u2019 does not nam\n...[truncated]...\n <cstdio>\u2019?\nstreamcluster_cuda_cpu.cpp:865:9: error: \u2018fflush\u2019 was not declared in this scope\n  865 |         fflush(NULL);\n      |         ^~~~~~\nstreamcluster_cuda_cpu.cpp:872:13: error: \u2018stderr\u2019 was not declared in this scope\n  872 |     fprintf(stderr,\"usage: %s k1 k2 d n chunksize clustersize infile outfile nproc\\n\",\n      |             ^~~~~~\nstreamcluster_cuda_cpu.cpp:872:13: note: \u2018stderr\u2019 is defined in header \u2018<cstdio>\u2019; did you forget to \u2018#include <cstdio>\u2019?\nstreamcluster_cuda_cpu.cpp:872:5: error: \u2018fprintf\u2019 was not declared in this scope; did you mean \u2018rintf\u2019?\n  872 |     fprintf(stderr,\"usage: %s k1 k2 d n chunksize clustersize infile outfile nproc\\n\",\n      |     ^~~~~~~\n      |     rintf\nmake: *** [Makefile:29: sc_gpu] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ope; did you mean \u2018rintf\u2019?\n  872 |     fprintf(stderr,\"usage: %s k1 k2 d n chunksize clustersize infile outfile nproc\\n\",\n      |     ^~~~~~~\n      |     rintf\nmake: *** [Makefile:29: sc_gpu] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.16,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "streamcluster_cuda.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n#include <cuda_runtime.h>\n\n#define MAXNAMESIZE 1024\n#define SEED 1\n#define SP 1\n#define ITER 3\n#define CACHE_LINE 512\n\ntype",
+    "streamcluster_header.cu": "streamcluster_cuda.cu\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n#include <cuda_runtime.h>\n\n#define MAXNAMESIZE 1024\n#define SEED 1\n#define SP 1\n#define ITER 3\n#defin"
+  },
+  "target_files_expected": [
+    "streamcluster_cuda.cu",
+    "streamcluster_header.cu"
+  ],
+  "target_files_extracted": [
+    "streamcluster_cuda.cu",
+    "streamcluster_header.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 19.379,
+      "prompt_tokens": 23295,
+      "completion_tokens": 8683,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n|                           int         size_t {aka long unsigned int}\n      |                          %ld\nstreamcluster_cuda_cpu.cpp: In functi",
+      "build_error_snippet": "In file included from streamcluster_cuda_cpu.cpp:16:\nstreamcluster_header.cu:25:1: error: conflicting specifiers in declaration of \u2018d_switch_membership\u2019\n   25 | extern static bool *d_switch_membership;\n      | ^~~~~~\nstreamcluster_header.cu:26:1: error: conflicting specifiers in declaration of \u2018d_is_center\u2019\n   26 | extern static bool *d_is_center;\n      | ^~~~~~\nstreamcluster_header.cu:27:1: error: conflicting specifiers in declaration of \u2018d_center_table\u2019\n   27 | extern static int *d_center_table;\n      | ^~~~~~\nstreamcluster_header.cu:28:1: error: conflicting specifiers in declaration of \u2018d_block\u2019\n   28 | extern static float *d_block;\n      | ^~~~~~\nstreamcluster_header.cu:29:1: error: conflicting specifiers in declaration of \u2018d_centerBloc\n...[truncated]...\nof type \u2018int\u2019, but argument 3 has type \u2018size_t\u2019 {aka \u2018long unsigned int\u2019} [-Wformat=]\n  793 |     fprintf(stderr,\"read %d points\\n\",numRead);\n      |                          ~^           ~~~~~~~\n      |                           |           |\n      |                           int         size_t {aka long unsigned int}\n      |                          %ld\nstreamcluster_cuda_cpu.cpp: In function \u2018int main(int, char**)\u2019:\nstreamcluster_cuda_cpu.cpp:923:9: error: \u2018freeDevMem\u2019 was not declared in this scope\n  923 |         freeDevMem();\n      |         ^~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:924:9: error: \u2018freeHostMem\u2019 was not declared in this scope\n  924 |         freeHostMem();\n      |         ^~~~~~~~~~~\nmake: *** [Makefile:29: sc_gpu] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 15.106,
+      "prompt_tokens": 32158,
+      "completion_tokens": 7204,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "In file included from streamcluster_cuda_cpu.cpp:16:\nstreamcluster_header.cu:1:1: error: \u2018streamcluster_cuda\u2019 does not name a type\n    1 | streamcluster_cuda.cu\n      | ^~~~~~~~~~~~~~~~~~\nIn file included from /usr/include/c++/12/cstdlib:75,\n                 from /usr/include/c++/12/stdlib.h:36,\n                 from streamcluster_header.cu:3:\n/usr/include/stdlib.h:98:8: error: \u2018size_t\u2019 does not name a type\n   98 | extern size_t __ctype_get_mb_cur_max (void) __THROW __wur;\n      |        ^~~~~~\n/usr/include/stdlib.h:42:1: note: \u2018size_t\u2019 is defined in header \u2018<cstddef>\u2019; did you forget to \u2018#include <cstddef>\u2019?\n   41 | # include <bits/waitstatus.h>\n  +++ |+#include <cstddef>\n   42 | \n/usr/include/stdlib.h:141:8: error: \u2018_Float32\u2019 does not nam\n...[truncated]...\n <cstdio>\u2019?\nstreamcluster_cuda_cpu.cpp:865:9: error: \u2018fflush\u2019 was not declared in this scope\n  865 |         fflush(NULL);\n      |         ^~~~~~\nstreamcluster_cuda_cpu.cpp:872:13: error: \u2018stderr\u2019 was not declared in this scope\n  872 |     fprintf(stderr,\"usage: %s k1 k2 d n chunksize clustersize infile outfile nproc\\n\",\n      |             ^~~~~~\nstreamcluster_cuda_cpu.cpp:872:13: note: \u2018stderr\u2019 is defined in header \u2018<cstdio>\u2019; did you forget to \u2018#include <cstdio>\u2019?\nstreamcluster_cuda_cpu.cpp:872:5: error: \u2018fprintf\u2019 was not declared in this scope; did you mean \u2018rintf\u2019?\n  872 |     fprintf(stderr,\"usage: %s k1 k2 d n chunksize clustersize infile outfile nproc\\n\",\n      |     ^~~~~~~\n      |     rintf\nmake: *** [Makefile:29: sc_gpu] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

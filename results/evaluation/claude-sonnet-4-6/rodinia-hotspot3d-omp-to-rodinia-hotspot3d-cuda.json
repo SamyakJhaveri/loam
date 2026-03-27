@@ -1,0 +1,62 @@
+{
+  "source_spec": "rodinia-hotspot3d-omp",
+  "target_spec": "rodinia-hotspot3d-cuda",
+  "kernel": "hotspot3d",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:21:35Z",
+  "prompt_tokens": 3288,
+  "completion_tokens": 7293,
+  "llm_response_time_seconds": 64.918,
+  "build_status": "pass",
+  "build_time_seconds": 0.577,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 2.0,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.869,
+  "translated_wall_time_seconds": 2.0,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.9345,
+  "translated_files": {
+    "3D.cu": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h>\n#include <math.h>\n#include <sys/time.h>\n#include <string.h>\n#include <cuda.h>\n\n#define STR_SIZE (256)\n#define MAX_PD   (3.0",
+    "opt1.cu": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h>\n#include <math.h>\n#include <sys/time.h>\n#include <string.h>\n#include <cuda.h>\n\n#define STR_SIZE (256)\n#define MAX_PD   (3.0"
+  },
+  "target_files_expected": [
+    "3D.cu",
+    "opt1.cu"
+  ],
+  "target_files_extracted": [
+    "3D.cu",
+    "opt1.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 64.918,
+      "prompt_tokens": 3288,
+      "completion_tokens": 7293,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

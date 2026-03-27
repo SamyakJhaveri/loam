@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-particlefilter-omp",
+  "target_spec": "rodinia-particlefilter-cuda",
+  "kernel": "particlefilter",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:33:29Z",
+  "prompt_tokens": 31844,
+  "completion_tokens": 32675,
+  "llm_response_time_seconds": 312.695,
+  "build_status": "pass",
+  "build_time_seconds": 1.736,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.145,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.093,
+  "translated_wall_time_seconds": 0.145,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.6414,
+  "translated_files": {
+    "ex_particle_CUDA_float_seq.cu": "/**\n * @file ex_particle_CUDA_float_seq.cu\n * @brief Particle filter implementation in CUDA using float precision\n */\n#include <stdlib.h>\n#include <stdio.h>\n#include <math.h>\n#include <sys/time.h>\n#in",
+    "ex_particle_CUDA_naive_seq.cu": "/**\n * @file ex_particle_CUDA_naive_seq.cu\n * @brief Particle filter implementation in CUDA using double precision (naive translation)\n */\n#include <stdlib.h>\n#include <stdio.h>\n#include <math.h>\n#inc"
+  },
+  "target_files_expected": [
+    "ex_particle_CUDA_float_seq.cu",
+    "ex_particle_CUDA_naive_seq.cu"
+  ],
+  "target_files_extracted": [
+    "ex_particle_CUDA_float_seq.cu",
+    "ex_particle_CUDA_naive_seq.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 157.291,
+      "prompt_tokens": 7638,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nrm: cannot remove 'particlefilter_naive': No such file or directory\nrm: cannot remove 'particlefilter_float': No such file or directory\nmake: ***",
+      "build_error_snippet": "rm: cannot remove 'particlefilter_naive': No such file or directory\nrm: cannot remove 'particlefilter_float': No such file or directory\nmake: *** [Makefile:18: clean] Error 1\n\n/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:12: naive] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 155.404,
+      "prompt_tokens": 24206,
+      "completion_tokens": 16291,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

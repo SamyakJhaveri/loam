@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-pathfinder-omp",
+  "target_spec": "rodinia-pathfinder-cuda",
+  "kernel": "pathfinder",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:11:24Z",
+  "prompt_tokens": 3706,
+  "completion_tokens": 2187,
+  "llm_response_time_seconds": 5.51,
+  "build_status": "fail",
+  "build_time_seconds": 0.343,
+  "build_error_snippet": "pathfinder.cu(18): warning #20095-D: a host variable \"cols\" cannot be directly written in a device function\n              cols = atoi(argv[1]);\n              ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\npathfinder.cu(19): warning #20095-D: a host variable \"rows\" cannot be directly written in a device function\n              rows = atoi(argv[2]);\n              ^\n\npathfinder.cu(32): warning #20094-D: a host variable \"rows\" cannot be directly read in a device function\n      if (i < rows && j < cols) {\n              ^\n\npathfinder.cu(32): warning #20094-D: a host variable \"cols\" cannot be directly read in a device function\n      if (i < rows && j < cols) {\n                          ^\n\npathfinder.cu(33): warnin\n...[truncated]...\ner.cu(41): error: identifier \"result\" is undefined in device code\n\npathfinder.cu(48): error: identifier \"cols\" is undefined in device code\n\npathfinder.cu(52): error: identifier \"cols\" is undefined in device code\n\npathfinder.cu(54): error: identifier \"wall\" is undefined in device code\n\npathfinder.cu(62): error: identifier \"rows\" is undefined in device code\n\npathfinder.cu(62): error: identifier \"cols\" is undefined in device code\n\npathfinder.cu(63): error: identifier \"wall\" is undefined in device code\n\npathfinder.cu(64): error: identifier \"cols\" is undefined in device code\n\npathfinder.cu(73): error: identifier \"cols\" is undefined in device code\n\n24 errors detected in the compilation of \"pathfinder.cu\".\nmake: *** [Makefile:11: release] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: s undefined in device code\n\npathfinder.cu(73): error: identifier \"cols\" is undefined in device code\n\n24 errors detected in the compilation of \"pathfinder.cu\".\nmake: *** [Makefile:11: release] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.128,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "pathfinder.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n\n#define BENCH_PRINT\n\n#define M_SEED 9\n\nint rows, cols;\nint* data;\nint** wall;\nint* result;\n\n__global__ void init_kernel(in"
+  },
+  "target_files_expected": [
+    "pathfinder.cu"
+  ],
+  "target_files_extracted": [
+    "pathfinder.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.425,
+      "prompt_tokens": 1270,
+      "completion_tokens": 1005,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nall\" cannot be directly read in a host function\n          cudaFree(wall[i]);\n                   ^\n\npathfinder.cu(139): warning #20091-D: a __devi",
+      "build_error_snippet": "pathfinder.cu(85): warning #20091-D: a __device__ variable \"rows\" cannot be directly read in a host function\n      cudaMallocManaged(&data, rows * cols * sizeof(int));\n                               ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\npathfinder.cu(85): warning #20091-D: a __device__ variable \"cols\" cannot be directly read in a host function\n      cudaMallocManaged(&data, rows * cols * sizeof(int));\n                                      ^\n\npathfinder.cu(86): warning #20091-D: a __device__ variable \"rows\" cannot be directly read in a host function\n      cudaMallocManaged(&wall, rows * sizeof(int*));\n                               ^\n\npathfinder.cu(87): warning #20091-D: a __device__ variable \"rows\n...[truncated]...\n       ^\n\npathfinder.cu(136): warning #20091-D: a __device__ variable \"rows\" cannot be directly read in a host function\n      for (int i = 0; i < rows; i++) {\n                          ^\n\npathfinder.cu(137): warning #20091-D: a __device__ variable \"wall\" cannot be directly read in a host function\n          cudaFree(wall[i]);\n                   ^\n\npathfinder.cu(139): warning #20091-D: a __device__ variable \"wall\" cannot be directly read in a host function\n      cudaFree(wall);\n               ^\n\npathfinder.cu(140): warning #20091-D: a __device__ variable \"result\" cannot be directly read in a host function\n      cudaFree(result);\n               ^\n\n1 error detected in the compilation of \"pathfinder.cu\".\nmake: *** [Makefile:11: release] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 3.085,
+      "prompt_tokens": 2436,
+      "completion_tokens": 1182,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "pathfinder.cu(18): warning #20095-D: a host variable \"cols\" cannot be directly written in a device function\n              cols = atoi(argv[1]);\n              ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\npathfinder.cu(19): warning #20095-D: a host variable \"rows\" cannot be directly written in a device function\n              rows = atoi(argv[2]);\n              ^\n\npathfinder.cu(32): warning #20094-D: a host variable \"rows\" cannot be directly read in a device function\n      if (i < rows && j < cols) {\n              ^\n\npathfinder.cu(32): warning #20094-D: a host variable \"cols\" cannot be directly read in a device function\n      if (i < rows && j < cols) {\n                          ^\n\npathfinder.cu(33): warnin\n...[truncated]...\ner.cu(41): error: identifier \"result\" is undefined in device code\n\npathfinder.cu(48): error: identifier \"cols\" is undefined in device code\n\npathfinder.cu(52): error: identifier \"cols\" is undefined in device code\n\npathfinder.cu(54): error: identifier \"wall\" is undefined in device code\n\npathfinder.cu(62): error: identifier \"rows\" is undefined in device code\n\npathfinder.cu(62): error: identifier \"cols\" is undefined in device code\n\npathfinder.cu(63): error: identifier \"wall\" is undefined in device code\n\npathfinder.cu(64): error: identifier \"cols\" is undefined in device code\n\npathfinder.cu(73): error: identifier \"cols\" is undefined in device code\n\n24 errors detected in the compilation of \"pathfinder.cu\".\nmake: *** [Makefile:11: release] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

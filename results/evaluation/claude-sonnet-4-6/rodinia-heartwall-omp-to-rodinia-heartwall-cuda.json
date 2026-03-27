@@ -1,0 +1,76 @@
+{
+  "source_spec": "rodinia-heartwall-omp",
+  "target_spec": "rodinia-heartwall-cuda",
+  "kernel": "heartwall",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:15:20Z",
+  "prompt_tokens": 106865,
+  "completion_tokens": 32768,
+  "llm_response_time_seconds": 305.08,
+  "build_status": "fail",
+  "build_time_seconds": 0.228,
+  "build_error_snippet": "main.cu(662): error: identifier \"kernel\" is undefined\n    kernel<<<blocks, threads>>>();\n    ^\n\n1 error detected in the compilation of \"main.cu\".\nmake: *** [Makefile:12: main.o] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: main.cu(662): error: identifier \"kernel\" is undefined\n    kernel<<<blocks, threads>>>();\n    ^\n\n1 error detected in the compilation of \"main.cu\".\nmake: *** [Makefile:12: main.o] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.133,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel.cu": "#include <stdlib.h>\n#include <math.h>\n#include <string.h>\n#include <stdio.h>\n\n#include \"AVI/avilib.h\"\n#include \"AVI/avimod.h\"\n\n#define fp float\n#define ENDO_POINTS 20\n#define EPI_POINTS 31\n#define ALL"
+  },
+  "target_files_expected": [
+    "kernel.cu",
+    "main.cu",
+    "setdevice.cu"
+  ],
+  "target_files_extracted": [
+    "kernel.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 153.105,
+      "prompt_tokens": 45194,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nmain.cu(662): error: identifier \"kernel\" is undefined\n    kernel<<<blocks, threads>>>();\n    ^\n\n1 error detected in the compilation of \"main.cu\".",
+      "build_error_snippet": "main.cu(662): error: identifier \"kernel\" is undefined\n    kernel<<<blocks, threads>>>();\n    ^\n\n1 error detected in the compilation of \"main.cu\".\nmake: *** [Makefile:12: main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 151.975,
+      "prompt_tokens": 61671,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "main.cu(662): error: identifier \"kernel\" is undefined\n    kernel<<<blocks, threads>>>();\n    ^\n\n1 error detected in the compilation of \"main.cu\".\nmake: *** [Makefile:12: main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

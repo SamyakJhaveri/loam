@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-streamcluster-omp",
+  "target_spec": "rodinia-streamcluster-cuda",
+  "kernel": "streamcluster",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:40:26Z",
+  "prompt_tokens": 61852,
+  "completion_tokens": 23925,
+  "llm_response_time_seconds": 262.365,
+  "build_status": "fail",
+  "build_time_seconds": 0.266,
+  "build_error_snippet": "streamcluster_cuda_cpu.cpp:31:14: error: \u2018switch_membership\u2019 was declared \u2018extern\u2019 and later \u2018static\u2019 [-fpermissive]\n   31 | static bool *switch_membership;         //whether to switch membership in pgain\n      |              ^~~~~~~~~~~~~~~~~\nIn file included from streamcluster_cuda_cpu.cpp:16:\nstreamcluster_header.cu:39:15: note: previous declaration of \u2018switch_membership\u2019\n   39 | extern bool  *switch_membership;\n      |               ^~~~~~~~~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:32:14: error: \u2018is_center\u2019 was declared \u2018extern\u2019 and later \u2018static\u2019 [-fpermissive]\n   32 | static bool *is_center;                         //whether a point is a center\n      |              ^~~~~~~~~\nstreamcluster_header.cu:40:15: note: previous declaration of \u2018is_\n...[truncated]...\n = new FileStream(infilename);\n      |                  ^~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:921:3: error: \u2018streamCluster\u2019 was not declared in this scope\n  921 |   streamCluster(stream, kmin, kmax, dim, chunksize, clustersize, outfilename );\n      |   ^~~~~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:923:9: error: \u2018freeDevMem\u2019 was not declared in this scope\n  923 |         freeDevMem();\n      |         ^~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:924:9: error: \u2018freeHostMem\u2019 was not declared in this scope\n  924 |         freeHostMem();\n      |         ^~~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:934:10: error: type \u2018<type error>\u2019 argument given to \u2018delete\u2019, expected pointer\n  934 |   delete stream;\n      |          ^~~~~~\nmake: *** [Makefile:29: sc_gpu] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ~~~\nstreamcluster_cuda_cpu.cpp:934:10: error: type \u2018<type error>\u2019 argument given to \u2018delete\u2019, expected pointer\n  934 |   delete stream;\n      |          ^~~~~~\nmake: *** [Makefile:29: sc_gpu] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.16,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "streamcluster_cuda.cu": "/***********************************************\n    streamcluster_cuda.cu\n    : CUDA parallelized code of streamcluster\n***********************************************/\n\n#include <stdio.h>\n#include <",
+    "streamcluster_header.cu": "#ifndef STREAMCLUSTER_HEADER_CU\n#define STREAMCLUSTER_HEADER_CU\n\n#include <stdio.h>\n#include <iostream>\n#include <fstream>\n#include <stdlib.h>\n#include <sys/time.h>\n#include <string.h>\n#include <asser"
+  },
+  "target_files_expected": [
+    "streamcluster_cuda.cu",
+    "streamcluster_header.cu"
+  ],
+  "target_files_extracted": [
+    "streamcluster_cuda.cu",
+    "streamcluster_header.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 141.383,
+      "prompt_tokens": 24482,
+      "completion_tokens": 12689,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n^~~~~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:923:9: error: \u2018freeDevMem\u2019 was not declared in this scope\n  923 |         freeDevMem();\n      |         ",
+      "build_error_snippet": "streamcluster_cuda_cpu.cpp:31:14: error: \u2018switch_membership\u2019 was declared \u2018extern\u2019 and later \u2018static\u2019 [-fpermissive]\n   31 | static bool *switch_membership;         //whether to switch membership in pgain\n      |              ^~~~~~~~~~~~~~~~~\nIn file included from streamcluster_cuda_cpu.cpp:16:\nstreamcluster_header.cu:40:14: note: previous declaration of \u2018switch_membership\u2019\n   40 | extern bool *switch_membership;\n      |              ^~~~~~~~~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:32:14: error: \u2018is_center\u2019 was declared \u2018extern\u2019 and later \u2018static\u2019 [-fpermissive]\n   32 | static bool *is_center;                         //whether a point is a center\n      |              ^~~~~~~~~\nstreamcluster_header.cu:41:14: note: previous declaration of \u2018is_ce\n...[truncated]...\n = new FileStream(infilename);\n      |                  ^~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:921:3: error: \u2018streamCluster\u2019 was not declared in this scope\n  921 |   streamCluster(stream, kmin, kmax, dim, chunksize, clustersize, outfilename );\n      |   ^~~~~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:923:9: error: \u2018freeDevMem\u2019 was not declared in this scope\n  923 |         freeDevMem();\n      |         ^~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:924:9: error: \u2018freeHostMem\u2019 was not declared in this scope\n  924 |         freeHostMem();\n      |         ^~~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:934:10: error: type \u2018<type error>\u2019 argument given to \u2018delete\u2019, expected pointer\n  934 |   delete stream;\n      |          ^~~~~~\nmake: *** [Makefile:29: sc_gpu] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 120.982,
+      "prompt_tokens": 37370,
+      "completion_tokens": 11236,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "streamcluster_cuda_cpu.cpp:31:14: error: \u2018switch_membership\u2019 was declared \u2018extern\u2019 and later \u2018static\u2019 [-fpermissive]\n   31 | static bool *switch_membership;         //whether to switch membership in pgain\n      |              ^~~~~~~~~~~~~~~~~\nIn file included from streamcluster_cuda_cpu.cpp:16:\nstreamcluster_header.cu:39:15: note: previous declaration of \u2018switch_membership\u2019\n   39 | extern bool  *switch_membership;\n      |               ^~~~~~~~~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:32:14: error: \u2018is_center\u2019 was declared \u2018extern\u2019 and later \u2018static\u2019 [-fpermissive]\n   32 | static bool *is_center;                         //whether a point is a center\n      |              ^~~~~~~~~\nstreamcluster_header.cu:40:15: note: previous declaration of \u2018is_\n...[truncated]...\n = new FileStream(infilename);\n      |                  ^~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:921:3: error: \u2018streamCluster\u2019 was not declared in this scope\n  921 |   streamCluster(stream, kmin, kmax, dim, chunksize, clustersize, outfilename );\n      |   ^~~~~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:923:9: error: \u2018freeDevMem\u2019 was not declared in this scope\n  923 |         freeDevMem();\n      |         ^~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:924:9: error: \u2018freeHostMem\u2019 was not declared in this scope\n  924 |         freeHostMem();\n      |         ^~~~~~~~~~~\nstreamcluster_cuda_cpu.cpp:934:10: error: type \u2018<type error>\u2019 argument given to \u2018delete\u2019, expected pointer\n  934 |   delete stream;\n      |          ^~~~~~\nmake: *** [Makefile:29: sc_gpu] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

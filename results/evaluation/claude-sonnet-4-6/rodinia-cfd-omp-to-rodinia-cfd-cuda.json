@@ -1,0 +1,64 @@
+{
+  "source_spec": "rodinia-cfd-omp",
+  "target_spec": "rodinia-cfd-cuda",
+  "kernel": "cfd",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:12:45Z",
+  "prompt_tokens": 21755,
+  "completion_tokens": 16384,
+  "llm_response_time_seconds": 152.578,
+  "build_status": "pass",
+  "build_time_seconds": 1.066,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.855,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": 0.855,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": null,
+  "translated_files": {
+    "euler3d.cu": "// Copyright 2009, Andrew Corrigan, acorriga@gmu.edu\n// This code is from the AIAA-2009-4001 paper\n\n#include <iostream>\n#include <fstream>\n#include <cmath>\n#include <cuda.h>\n#include <cuda_runtime.h>\n",
+    "euler3d_double.cu": "// Copyright 2009, Andrew Corrigan, acorriga@gmu.edu\n// This code is from the AIAA-2009-4001 paper\n\n#include <iostream>\n#include <fstream>\n#include <cmath>\n#include <cuda.h>\n#include <cuda_runtime.h>\n"
+  },
+  "target_files_expected": [
+    "euler3d.cu",
+    "euler3d_double.cu",
+    "pre_euler3d.cu",
+    "pre_euler3d_double.cu"
+  ],
+  "target_files_extracted": [
+    "euler3d.cu",
+    "euler3d_double.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 152.578,
+      "prompt_tokens": 21755,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-hotspot3d-omp",
+  "target_spec": "rodinia-hotspot3d-cuda",
+  "kernel": "hotspot3d",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:12:06Z",
+  "prompt_tokens": 13517,
+  "completion_tokens": 14231,
+  "llm_response_time_seconds": 31.292,
+  "build_status": "fail",
+  "build_time_seconds": 0.179,
+  "build_error_snippet": "3D.cu(37): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n        fatal( \"The file was not opened\" );\n               ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n3D.cu(44): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                                                 ) fatal(\"Error reading file\\n\");\n                                                         ^\n\n3D.cu(46): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                fatal(\"not enough lines in file\");\n                      ^\n\n3D.cu(48): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                fatal(\"invalid file format\");\n                      ^\n\n3D.cu(190): error: identifier \"omp_get_num_threads\" is undefined\n          printf(\"%d threads running\\n\", omp_get_num_threads());\n                                         ^\n\n1 error detected in the compilation of \"3D.cu\".\nmake: *** [Makefile:15: release] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: d\n          printf(\"%d threads running\\n\", omp_get_num_threads());\n                                         ^\n\n1 error detected in the compilation of \"3D.cu\".\nmake: *** [Makefile:15: release] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.869,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "3D.cu": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h>\n#include <math.h>\n#include <sys/time.h>\n#include <string.h>\n\n#define STR_SIZE (256)\n#define MAX_PD\t(3.0e6)\n/* required prec",
+    "opt1.cu": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h>\n#include <math.h>\n#include <sys/time.h>\n#include <string.h>\n\n#define STR_SIZE (256)\n#define MAX_PD\t(3.0e6)\n/* required prec"
+  },
+  "target_files_expected": [
+    "3D.cu",
+    "opt1.cu"
+  ],
+  "target_files_extracted": [
+    "3D.cu",
+    "opt1.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 16.412,
+      "prompt_tokens": 3126,
+      "completion_tokens": 7085,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nDim.x, (ny + blockDim.y - 1) / blockDim.y, (nz + blockDim.z - 1) / blockDim.z);\n                                                        ^\n\n3D.cu(",
+      "build_error_snippet": "3D.cu(37): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n        fatal( \"The file was not opened\" );\n               ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n3D.cu(44): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                                                 ) fatal(\"Error reading file\\n\");\n                                                         ^\n\n3D.cu(46): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                fatal(\"not enough lines in file\");\n                      ^\n\n3D.cu(48): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                fatal(\"invalid file format\"\n...[truncated]...\ned\n      dim3 gridDim((nx + blockDim.x - 1) / blockDim.x, (ny + blockDim.y - 1) / blockDim.y, (nz + blockDim.z - 1) / blockDim.z);\n                    ^\n\n3D.cu(299): error: identifier \"ny\" is undefined\n      dim3 gridDim((nx + blockDim.x - 1) / blockDim.x, (ny + blockDim.y - 1) / blockDim.y, (nz + blockDim.z - 1) / blockDim.z);\n                                                        ^\n\n3D.cu(299): error: identifier \"nz\" is undefined\n      dim3 gridDim((nx + blockDim.x - 1) / blockDim.x, (ny + blockDim.y - 1) / blockDim.y, (nz + blockDim.z - 1) / blockDim.z);\n                                                                                            ^\n\n5 errors detected in the compilation of \"3D.cu\".\nmake: *** [Makefile:15: release] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 14.88,
+      "prompt_tokens": 10391,
+      "completion_tokens": 7146,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "3D.cu(37): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n        fatal( \"The file was not opened\" );\n               ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n3D.cu(44): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                                                 ) fatal(\"Error reading file\\n\");\n                                                         ^\n\n3D.cu(46): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                fatal(\"not enough lines in file\");\n                      ^\n\n3D.cu(48): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                fatal(\"invalid file format\");\n                      ^\n\n3D.cu(190): error: identifier \"omp_get_num_threads\" is undefined\n          printf(\"%d threads running\\n\", omp_get_num_threads());\n                                         ^\n\n1 error detected in the compilation of \"3D.cu\".\nmake: *** [Makefile:15: release] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

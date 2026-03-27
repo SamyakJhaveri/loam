@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-hotspot-omp",
+  "target_spec": "rodinia-hotspot-cuda",
+  "kernel": "hotspot",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:09:47Z",
+  "prompt_tokens": 9895,
+  "completion_tokens": 5802,
+  "llm_response_time_seconds": 12.042,
+  "build_status": "fail",
+  "build_time_seconds": 0.18,
+  "build_error_snippet": "hotspot.cu(106): error: identifier \"delta\" is undefined\n                  result[r*col+c] =temp[r*col+c]+ delta;\n                                                  ^\n\n1 error detected in the compilation of \"hotspot.cu\".\nmake: *** [Makefile:12: release] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: result[r*col+c] =temp[r*col+c]+ delta;\n                                                  ^\n\n1 error detected in the compilation of \"hotspot.cu\".\nmake: *** [Makefile:12: release] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.149,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <cuda_runtime.h>\n#include <sys/time.h>\n\n// Returns the current system time in microseconds \nlong long get_time()\n{\n    struct timeval tv;\n    gettimeofd"
+  },
+  "target_files_expected": [
+    "hotspot.cu"
+  ],
+  "target_files_extracted": [
+    "hotspot.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.185,
+      "prompt_tokens": 3417,
+      "completion_tokens": 2900,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n4-D: conversion from a string literal to \"char *\" is deprecated\n     fatal(\"not enough lines in file\");\n           ^\n\nhotspot.cu(213): warning #2",
+      "build_error_snippet": "hotspot.cu(106): error: identifier \"delta\" is undefined\n                  result[r*col+c] =temp[r*col+c]+ delta;\n                                                  ^\n\nhotspot.cu(206): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n    fatal (\"file could not be opened for reading\");\n           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nhotspot.cu(211): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n     fatal(\"not enough lines in file\");\n           ^\n\nhotspot.cu(213): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n     fatal(\"invalid file format\");\n           ^\n\nhotspot.cu(253): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n    fatal(\"unable to allocate memory\");\n          ^\n\n1 error detected in the compilation of \"hotspot.cu\".\nmake: *** [Makefile:12: release] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 5.857,
+      "prompt_tokens": 6478,
+      "completion_tokens": 2902,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "hotspot.cu(106): error: identifier \"delta\" is undefined\n                  result[r*col+c] =temp[r*col+c]+ delta;\n                                                  ^\n\n1 error detected in the compilation of \"hotspot.cu\".\nmake: *** [Makefile:12: release] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

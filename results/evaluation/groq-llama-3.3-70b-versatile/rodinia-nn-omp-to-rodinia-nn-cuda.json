@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nn-omp",
+  "target_spec": "rodinia-nn-cuda",
+  "kernel": "nn",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:10:37Z",
+  "prompt_tokens": 5690,
+  "completion_tokens": 2380,
+  "llm_response_time_seconds": 5.009,
+  "build_status": "fail",
+  "build_time_seconds": 0.341,
+  "build_error_snippet": "nn_cuda.cu(33): warning #177-D: variable \"rec_iter\" was declared but never referenced\n   char sandbox[49 * 10], *rec_iter,*rec_iter2, dbname[64];\n                           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nnn_cuda.cu(33): warning #177-D: variable \"rec_iter2\" was declared but never referenced\n   char sandbox[49 * 10], *rec_iter,*rec_iter2, dbname[64];\n                                     ^\n\nnn_cuda.cu(35): warning #177-D: variable \"tmp_lat\" was declared but never referenced\n   float target_lat, target_long, tmp_lat=0, tmp_long=0;\n                                  ^\n\nnn_cuda.cu(35): warning #177-D: variable \"tmp_long\" was declared but never referenced\n   float target_lat, target_long, tmp_lat=0, tmp_long=0;\n                                             ^\n\nnn_cuda.cu(23): error: calling a __host__ function(\"atof\") from a __global__ function(\"calculate_distances\") is not allowed\n\nnn_cuda.cu(23): error: identifier \"atof\" is undefined in device code\n\nnn_cuda.cu(24): error: calling a __host__ function(\"atof\") from a __global__ function(\"calculate_distances\") is not allowed\n\nnn_cuda.cu(24): error: identifier \"atof\" is undefined in device code\n\n4 errors detected in the compilation of \"nn_cuda.cu\".\nmake: *** [Makefile:12: nn] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: (\"calculate_distances\") is not allowed\n\nnn_cuda.cu(24): error: identifier \"atof\" is undefined in device code\n\n4 errors detected in the compilation of \"nn_cuda.cu\".\nmake: *** [Makefile:12: nn] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.078,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nn_cuda.cu": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n#include <cuda_runtime.h>\n\n#define MAX_ARGS 10\n#define REC_LENGTH 49\t// size of a record in db\n#defin"
+  },
+  "target_files_expected": [
+    "nn_cuda.cu"
+  ],
+  "target_files_extracted": [
+    "nn_cuda.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.462,
+      "prompt_tokens": 2199,
+      "completion_tokens": 1189,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nnn_cuda.cu(52): error: a value of type \"void *\" cannot be assigned to an entity of type \"neighbor *\"\n   neighbors = malloc(k*sizeof(struct neighb",
+      "build_error_snippet": "nn_cuda.cu(52): error: a value of type \"void *\" cannot be assigned to an entity of type \"neighbor *\"\n   neighbors = malloc(k*sizeof(struct neighbor));\n             ^\n\n1 error detected in the compilation of \"nn_cuda.cu\".\nmake: *** [Makefile:12: nn] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 2.547,
+      "prompt_tokens": 3491,
+      "completion_tokens": 1191,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "nn_cuda.cu(33): warning #177-D: variable \"rec_iter\" was declared but never referenced\n   char sandbox[49 * 10], *rec_iter,*rec_iter2, dbname[64];\n                           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nnn_cuda.cu(33): warning #177-D: variable \"rec_iter2\" was declared but never referenced\n   char sandbox[49 * 10], *rec_iter,*rec_iter2, dbname[64];\n                                     ^\n\nnn_cuda.cu(35): warning #177-D: variable \"tmp_lat\" was declared but never referenced\n   float target_lat, target_long, tmp_lat=0, tmp_long=0;\n                                  ^\n\nnn_cuda.cu(35): warning #177-D: variable \"tmp_long\" was declared but never referenced\n   float target_lat, target_long, tmp_lat=0, tmp_long=0;\n                                             ^\n\nnn_cuda.cu(23): error: calling a __host__ function(\"atof\") from a __global__ function(\"calculate_distances\") is not allowed\n\nnn_cuda.cu(23): error: identifier \"atof\" is undefined in device code\n\nnn_cuda.cu(24): error: calling a __host__ function(\"atof\") from a __global__ function(\"calculate_distances\") is not allowed\n\nnn_cuda.cu(24): error: identifier \"atof\" is undefined in device code\n\n4 errors detected in the compilation of \"nn_cuda.cu\".\nmake: *** [Makefile:12: nn] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

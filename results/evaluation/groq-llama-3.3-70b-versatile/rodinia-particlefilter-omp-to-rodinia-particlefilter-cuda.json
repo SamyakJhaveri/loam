@@ -1,0 +1,75 @@
+{
+  "source_spec": "rodinia-particlefilter-omp",
+  "target_spec": "rodinia-particlefilter-cuda",
+  "kernel": "particlefilter",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:11:07Z",
+  "prompt_tokens": 16650,
+  "completion_tokens": 5995,
+  "llm_response_time_seconds": 16.69,
+  "build_status": "fail",
+  "build_time_seconds": 0.181,
+  "build_error_snippet": "rm: cannot remove 'particlefilter_naive': No such file or directory\nrm: cannot remove 'particlefilter_float': No such file or directory\nmake: *** [Makefile:18: clean] Error 1\n\nex_particle_CUDA_naive_seq.cu(7): error: identifier \"printf\" is undefined\n          printf(\"Usage: %s -x <dimX> -y <dimY> -z <Nfr> -np <Nparticles>\\n\", argv[0]);\n          ^\n\nex_particle_CUDA_naive_seq.cu(11): error: identifier \"sscanf\" is undefined\n      if (sscanf(argv[2], \"%d\", &IszX) == EOF) {\n          ^\n\nex_particle_CUDA_naive_seq.cu(11): error: identifier \"EOF\" is undefined\n      if (sscanf(argv[2], \"%d\", &IszX) == EOF) {\n                                          ^\n\nex_particle_CUDA_naive_seq.cu(12): error: identifier \"printf\" is undefined\n          printf(\"ERR\n...[truncated]...\n\n\nex_particle_CUDA_naive_seq.cu(42): error: identifier \"printf\" is undefined\n          printf(\"ERROR: Number of particles input is incorrect\\n\");\n          ^\n\nex_particle_CUDA_naive_seq.cu(47): error: identifier \"printf\" is undefined\n          printf(\"Number of particles must be > 0\\n\");\n          ^\n\nex_particle_CUDA_naive_seq.cu(61): error: identifier \"videoSequence\" is undefined\n      videoSequence(I, IszX, IszY, Nfr, seed);\n      ^\n\nex_particle_CUDA_naive_seq.cu(71): error: identifier \"particleFilterKernelNaive\" is undefined\n      particleFilterKernelNaive<<<1, Nparticles>>>(d_I, IszX, IszY, Nfr, d_seed, Nparticles);\n      ^\n\n13 errors detected in the compilation of \"ex_particle_CUDA_naive_seq.cu\".\nmake: *** [Makefile:12: naive] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: lterKernelNaive<<<1, Nparticles>>>(d_I, IszX, IszY, Nfr, d_seed, Nparticles);\n      ^\n\n13 errors detected in the compilation of \"ex_particle_CUDA_naive_seq.cu\".\nmake: *** [Makefile:12: naive] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.093,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "ex_particle_CUDA_naive_seq.cu": "int main(int argc, char * argv[]) {\n    // Define variables\n    int IszX, IszY, Nfr, Nparticles;\n\n    // Parse command line arguments\n    if (argc != 9) {\n        printf(\"Usage: %s -x <dimX> -y <dimY>"
+  },
+  "target_files_expected": [
+    "ex_particle_CUDA_float_seq.cu",
+    "ex_particle_CUDA_naive_seq.cu"
+  ],
+  "target_files_extracted": [
+    "ex_particle_CUDA_naive_seq.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 10.472,
+      "prompt_tokens": 6259,
+      "completion_tokens": 3973,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n^\n\nex_particle_CUDA_naive_seq.cu(187): error: identifier \"I\" is undefined\n      cudaMemcpy(d_I, I, sizeof(int) * IszX * IszY * Nfr, cudaMemcpyHos",
+      "build_error_snippet": "ex_particle_CUDA_naive_seq.cu(58): error: a value of type \"void\" cannot be used to initialize an entity of type \"double\"\n      double u = randuKernel<<<1, 1>>>(seed, randnValues, index);\n                                                                ^\n\nex_particle_CUDA_naive_seq.cu(59): error: a value of type \"void\" cannot be used to initialize an entity of type \"double\"\n      double v = randuKernel<<<1, 1>>>(seed, randnValues, index);\n                                                                ^\n\nex_particle_CUDA_naive_seq.cu(72): error: expression must have arithmetic or unscoped enum type\n                                                                                                                                       , 0));\n    \n...[truncated]...\nX * IszY * Nfr);\n                                                            ^\n\nex_particle_CUDA_naive_seq.cu(186): error: identifier \"Nparticles\" is undefined\n      cudaMalloc((void **)&d_seed, sizeof(int) * Nparticles);\n                                                 ^\n\nex_particle_CUDA_naive_seq.cu(187): error: identifier \"I\" is undefined\n      cudaMemcpy(d_I, I, sizeof(int) * IszX * IszY * Nfr, cudaMemcpyHostToDevice);\n                      ^\n\nex_particle_CUDA_naive_seq.cu(188): error: identifier \"seed\" is undefined\n      cudaMemcpy(d_seed, seed, sizeof(int) * Nparticles, cudaMemcpyHostToDevice);\n                         ^\n\n11 errors detected in the compilation of \"ex_particle_CUDA_naive_seq.cu\".\nmake: *** [Makefile:12: naive] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 6.218,
+      "prompt_tokens": 10391,
+      "completion_tokens": 2022,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "rm: cannot remove 'particlefilter_naive': No such file or directory\nrm: cannot remove 'particlefilter_float': No such file or directory\nmake: *** [Makefile:18: clean] Error 1\n\nex_particle_CUDA_naive_seq.cu(7): error: identifier \"printf\" is undefined\n          printf(\"Usage: %s -x <dimX> -y <dimY> -z <Nfr> -np <Nparticles>\\n\", argv[0]);\n          ^\n\nex_particle_CUDA_naive_seq.cu(11): error: identifier \"sscanf\" is undefined\n      if (sscanf(argv[2], \"%d\", &IszX) == EOF) {\n          ^\n\nex_particle_CUDA_naive_seq.cu(11): error: identifier \"EOF\" is undefined\n      if (sscanf(argv[2], \"%d\", &IszX) == EOF) {\n                                          ^\n\nex_particle_CUDA_naive_seq.cu(12): error: identifier \"printf\" is undefined\n          printf(\"ERR\n...[truncated]...\n\n\nex_particle_CUDA_naive_seq.cu(42): error: identifier \"printf\" is undefined\n          printf(\"ERROR: Number of particles input is incorrect\\n\");\n          ^\n\nex_particle_CUDA_naive_seq.cu(47): error: identifier \"printf\" is undefined\n          printf(\"Number of particles must be > 0\\n\");\n          ^\n\nex_particle_CUDA_naive_seq.cu(61): error: identifier \"videoSequence\" is undefined\n      videoSequence(I, IszX, IszY, Nfr, seed);\n      ^\n\nex_particle_CUDA_naive_seq.cu(71): error: identifier \"particleFilterKernelNaive\" is undefined\n      particleFilterKernelNaive<<<1, Nparticles>>>(d_I, IszX, IszY, Nfr, d_seed, Nparticles);\n      ^\n\n13 errors detected in the compilation of \"ex_particle_CUDA_naive_seq.cu\".\nmake: *** [Makefile:12: naive] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

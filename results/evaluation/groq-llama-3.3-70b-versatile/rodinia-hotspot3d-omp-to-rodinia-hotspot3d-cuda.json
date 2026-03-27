@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-hotspot3d-omp",
+  "target_spec": "rodinia-hotspot3d-cuda",
+  "kernel": "hotspot3d",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:09:59Z",
+  "prompt_tokens": 10183,
+  "completion_tokens": 7474,
+  "llm_response_time_seconds": 16.449,
+  "build_status": "fail",
+  "build_time_seconds": 0.349,
+  "build_error_snippet": "3D.cu(123): warning #20094-D: a host variable \"amb_temp\" cannot be directly read in a device function\n                         (dt/Cap) * pIn[c] + ct*amb_temp;\n                                                ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n3D.cu(123): error: identifier \"amb_temp\" is undefined in device code\n\n1 error detected in the compilation of \"3D.cu\".\nmake: *** [Makefile:15: release] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: with \"-diag-suppress <warning-number>\"\n\n3D.cu(123): error: identifier \"amb_temp\" is undefined in device code\n\n1 error detected in the compilation of \"3D.cu\".\nmake: *** [Makefile:15: release] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.869,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "3D.cu": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h> \n#include <math.h> \n#include <sys/time.h>\n#include <string.h>\n\n#define STR_SIZE (256)\n#define MAX_PD\t(3.0e6)\n/* required pr",
+    "opt1.cu": "// opt1.cu is the same as 3D.cu\n"
+  },
+  "target_files_expected": [
+    "3D.cu",
+    "opt1.cu"
+  ],
+  "target_files_extracted": [
+    "3D.cu",
+    "opt1.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 9.849,
+      "prompt_tokens": 2677,
+      "completion_tokens": 4667,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nfatal(\"not enough lines in file\");\n                      ^\n\n3D.cu(48): warning #2464-D: conversion from a string literal to \"char *\" is deprecate",
+      "build_error_snippet": "3D.cu(37): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n        fatal( \"The file was not opened\" );\n               ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n3D.cu(44): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                                                 ) fatal(\"Error reading file\\n\");\n                                                         ^\n\n3D.cu(46): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                fatal(\"not enough lines in file\");\n                      ^\n\n3D.cu(48): warning #2464-D: conversion from a string literal to \"char *\" is deprecated\n                fatal(\"invalid file format\");\n                      ^\n\n3D.cu(227): error: identifier \"computeTempCPU\" is undefined\n      computeTempCPU(powerIn, tempCopy, answer, numCols, numRows, layers, Cap, Rx, Ry, Rz, dt, iterations);\n      ^\n\n1 error detected in the compilation of \"3D.cu\".\nmake: *** [Makefile:15: release] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 6.6,
+      "prompt_tokens": 7506,
+      "completion_tokens": 2807,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "3D.cu(123): warning #20094-D: a host variable \"amb_temp\" cannot be directly read in a device function\n                         (dt/Cap) * pIn[c] + ct*amb_temp;\n                                                ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n3D.cu(123): error: identifier \"amb_temp\" is undefined in device code\n\n1 error detected in the compilation of \"3D.cu\".\nmake: *** [Makefile:15: release] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

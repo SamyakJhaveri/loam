@@ -1,0 +1,62 @@
+{
+  "source_spec": "rodinia-lud-omp",
+  "target_spec": "rodinia-lud-cuda",
+  "kernel": "lud",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:23:53Z",
+  "prompt_tokens": 8868,
+  "completion_tokens": 2938,
+  "llm_response_time_seconds": 35.05,
+  "build_status": "pass",
+  "build_time_seconds": 1.245,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.141,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.08,
+  "translated_wall_time_seconds": 0.141,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.5674,
+  "translated_files": {
+    "cuda/lud.cu": "#include <stdio.h>\n#include <unistd.h>\n#include <getopt.h>\n#include <stdlib.h>\n#include <assert.h>\n#include <cuda_runtime.h>\n\n#include \"common.h\"\n\nstatic int do_verify = 0;\n\nstatic struct option long_",
+    "cuda/lud_kernel.cu": "#include <cuda_runtime.h>\n#include <stdio.h>\n\n#define BS 16\n\n// Diagonal block kernel: LU factorization of a single BS x BS block\n__global__ void lud_diagonal(float *a, int size, int offset)\n{\n    __s"
+  },
+  "target_files_expected": [
+    "cuda/lud.cu",
+    "cuda/lud_kernel.cu"
+  ],
+  "target_files_extracted": [
+    "cuda/lud.cu",
+    "cuda/lud_kernel.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 35.05,
+      "prompt_tokens": 8868,
+      "completion_tokens": 2938,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-nn-omp",
+  "target_spec": "rodinia-nn-cuda",
+  "kernel": "nn",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:14:18Z",
+  "prompt_tokens": 6957,
+  "completion_tokens": 3473,
+  "llm_response_time_seconds": 9.505,
+  "build_status": "pass",
+  "build_time_seconds": 0.949,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.166,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "error opening a db\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.078,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nn_cuda.cu": "#include <cuda_runtime.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n\n#define MAX_ARGS 10\n#define REC_LENGTH 49\t// size of a record in db\n#defin"
+  },
+  "target_files_expected": [
+    "nn_cuda.cu"
+  ],
+  "target_files_extracted": [
+    "nn_cuda.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.735,
+      "prompt_tokens": 2601,
+      "completion_tokens": 1581,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nnn_cuda.cu(24): error: calling a __host__ function(\"atof\") from a __global__ function(\"calculate_distances\") is not allowed\n\nnn_cuda.cu(24): erro",
+      "build_error_snippet": "nn_cuda.cu(24): error: calling a __host__ function(\"atof\") from a __global__ function(\"calculate_distances\") is not allowed\n\nnn_cuda.cu(24): error: identifier \"atof\" is undefined in device code\n\nnn_cuda.cu(25): error: calling a __host__ function(\"atof\") from a __global__ function(\"calculate_distances\") is not allowed\n\nnn_cuda.cu(25): error: identifier \"atof\" is undefined in device code\n\n4 errors detected in the compilation of \"nn_cuda.cu\".\nmake: *** [Makefile:12: nn] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.77,
+      "prompt_tokens": 4356,
+      "completion_tokens": 1892,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "error opening a db\n",
+      "extraction_fail": null
+    }
+  ]
+}

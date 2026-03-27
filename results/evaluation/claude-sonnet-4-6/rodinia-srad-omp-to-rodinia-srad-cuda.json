@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-srad-omp",
+  "target_spec": "rodinia-srad-cuda",
+  "kernel": "srad",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:39:03Z",
+  "prompt_tokens": 10487,
+  "completion_tokens": 8453,
+  "llm_response_time_seconds": 81.814,
+  "build_status": "fail",
+  "build_time_seconds": 0.522,
+  "build_error_snippet": "srad.cu(73): warning #550-D: variable \"nthreads\" was set but never used\n      int nthreads;\n          ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/usr/bin/ld: /tmp/tmpxft_000574dd_00000000-11_srad.o: in function `main':\ntmpxft_000574dd_00000000-6_srad.cudafe1.cpp:(.text+0xae7): undefined reference to `srad_cuda_1'\n/usr/bin/ld: tmpxft_000574dd_00000000-6_srad.cudafe1.cpp:(.text+0xb78): undefined reference to `srad_cuda_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:12: release] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: uda_1'\n/usr/bin/ld: tmpxft_000574dd_00000000-6_srad.cudafe1.cpp:(.text+0xb78): undefined reference to `srad_cuda_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:12: release] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.068,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "srad.cu": "// srad.cu : CUDA implementation of SRAD\n\n#define OPEN\n#define ITERATION\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include \"srad.h\"\n\nvoid random_matrix(float *I, in",
+    "srad_kernel.cu": "#include <stdio.h>\n#include <cuda.h>\n#include \"srad.h\"\n\n__global__ void srad_kernel_1(\n    float *J,\n    float *C,\n    float *dN,\n    float *dS,\n    float *dW,\n    float *dE,\n    int *iN,\n    int *iS,"
+  },
+  "target_files_expected": [
+    "srad.cu",
+    "srad_kernel.cu"
+  ],
+  "target_files_extracted": [
+    "srad.cu",
+    "srad_kernel.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 38.964,
+      "prompt_tokens": 3057,
+      "completion_tokens": 4150,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nin function `main':\ntmpxft_000574b1_00000000-6_srad.cudafe1.cpp:(.text+0xae7): undefined reference to `srad_cuda_1(float*, float*, float*, float*",
+      "build_error_snippet": "srad.cu(73): warning #550-D: variable \"nthreads\" was set but never used\n      int nthreads;\n          ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/usr/bin/ld: /tmp/tmpxft_000574b1_00000000-11_srad.o: in function `main':\ntmpxft_000574b1_00000000-6_srad.cudafe1.cpp:(.text+0xae7): undefined reference to `srad_cuda_1(float*, float*, float*, float*, float*, float*, int*, int*, int*, int*, float, int, int, dim3, dim3)'\n/usr/bin/ld: tmpxft_000574b1_00000000-6_srad.cudafe1.cpp:(.text+0xb78): undefined reference to `srad_cuda_2(float*, float*, float*, float*, float*, float*, int*, int*, float, int, int, dim3, dim3)'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:12: release] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 42.85,
+      "prompt_tokens": 7430,
+      "completion_tokens": 4303,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "srad.cu(73): warning #550-D: variable \"nthreads\" was set but never used\n      int nthreads;\n          ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/usr/bin/ld: /tmp/tmpxft_000574dd_00000000-11_srad.o: in function `main':\ntmpxft_000574dd_00000000-6_srad.cudafe1.cpp:(.text+0xae7): undefined reference to `srad_cuda_1'\n/usr/bin/ld: tmpxft_000574dd_00000000-6_srad.cudafe1.cpp:(.text+0xb78): undefined reference to `srad_cuda_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:12: release] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

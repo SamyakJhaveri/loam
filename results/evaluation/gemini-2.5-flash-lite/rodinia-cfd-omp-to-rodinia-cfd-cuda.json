@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-cfd-omp",
+  "target_spec": "rodinia-cfd-cuda",
+  "kernel": "cfd",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:09:26Z",
+  "prompt_tokens": 58775,
+  "completion_tokens": 32768,
+  "llm_response_time_seconds": 69.981,
+  "build_status": "fail",
+  "build_time_seconds": 0.22,
+  "build_error_snippet": "euler3d.cu(38): error: invalid redeclaration of type name \"float3\" (declared at line 401 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/vector_types.h)\n  struct float3 { float x, y, z; };\n         ^\n\neuler3d.cu(200): error: identifier \"factor\" is undefined\n                  factor = 0.5f*normal.x;\n                  ^\n\neuler3d.cu(373): error: calling a __device__ function(\"_Z32compute_flux_contribution_device1?1?1?1?1?1?1?1?1?\") from a __host__ function(\"main\") is not allowed\n    compute_flux_contribution_device(ff_variable[0], ff_momentum, ff_variable[(1 +3)], ff_pressure, ff_velocity, ff_flux_contribution_momentum_x, ff_flux_contribution_momentum_y, ff_flux_contribution_momentum_z, ff_flux_contribution_density_energy);\n    ^\n\n3 errors detected in the compilation of \"euler3d.cu\".\nmake: *** [Makefile:17: euler3d] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: x_contribution_momentum_y, ff_flux_contribution_momentum_z, ff_flux_contribution_density_energy);\n    ^\n\n3 errors detected in the compilation of \"euler3d.cu\".\nmake: *** [Makefile:17: euler3d] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "euler3d.cu": "// Copyright 2009, Andrew Corrigan, acorriga@gmu.edu\n// This code is from the AIAA-2009-4001 paper\n\n#include <cuda_runtime.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math."
+  },
+  "target_files_expected": [
+    "euler3d.cu",
+    "euler3d_double.cu",
+    "pre_euler3d.cu",
+    "pre_euler3d_double.cu"
+  ],
+  "target_files_extracted": [
+    "euler3d.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 37.531,
+      "prompt_tokens": 21085,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\niag-suppress <warning-number>\"\n\neuler3d.cu(396): warning #1650-D: result of call is not used\n     fscanf(file, \"%f\", &areas[i]);\n     ^\n\neuler3d.",
+      "build_error_snippet": "euler3d.cu(37): error: invalid redeclaration of type name \"float3\" (declared at line 401 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/vector_types.h)\n  struct float3 { float x, y, z; };\n         ^\n\neuler3d.cu(199): error: identifier \"factor\" is undefined\n                  factor = 0.5f*normal.x;\n                  ^\n\neuler3d.cu(372): error: calling a __device__ function(\"_Z32compute_flux_contribution_device1?1?1?1?1?1?1?1?1?\") from a __host__ function(\"main\") is not allowed\n    compute_flux_contribution_device(ff_variable[0], ff_momentum, ff_variable[(1 +3)], ff_pressure, ff_velocity, ff_flux_contribution_momentum_x, ff_flux_contribution_momentum_y, ff_flux_contribution_momentum_z, ff_flux_contribution_density_energy);\n    ^\n\neuler3d.cu(387): warning #1650-D: result of call is not used\n    fscanf(file, \"%d\", &nel);\n    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\neuler3d.cu(396): warning #1650-D: result of call is not used\n     fscanf(file, \"%f\", &areas[i]);\n     ^\n\neuler3d.cu(399): warning #1650-D: result of call is not used\n      fscanf(file, \"%d\", &elements_surrounding_elements[i + j*nelr]);\n      ^\n\neuler3d.cu(405): warning #1650-D: result of call is not used\n       fscanf(file, \"%f\", &normals[i + (j + k*4)*nelr]);\n       ^\n\n3 errors detected in the compilation of \"euler3d.cu\".\nmake: *** [Makefile:17: euler3d] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 32.45,
+      "prompt_tokens": 37690,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "euler3d.cu(38): error: invalid redeclaration of type name \"float3\" (declared at line 401 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/vector_types.h)\n  struct float3 { float x, y, z; };\n         ^\n\neuler3d.cu(200): error: identifier \"factor\" is undefined\n                  factor = 0.5f*normal.x;\n                  ^\n\neuler3d.cu(373): error: calling a __device__ function(\"_Z32compute_flux_contribution_device1?1?1?1?1?1?1?1?1?\") from a __host__ function(\"main\") is not allowed\n    compute_flux_contribution_device(ff_variable[0], ff_momentum, ff_variable[(1 +3)], ff_pressure, ff_velocity, ff_flux_contribution_momentum_x, ff_flux_contribution_momentum_y, ff_flux_contribution_momentum_z, ff_flux_contribution_density_energy);\n    ^\n\n3 errors detected in the compilation of \"euler3d.cu\".\nmake: *** [Makefile:17: euler3d] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

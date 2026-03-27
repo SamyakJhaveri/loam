@@ -1,0 +1,74 @@
+{
+  "source_spec": "rodinia-hotspot-omp",
+  "target_spec": "rodinia-hotspot-cuda",
+  "kernel": "hotspot",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:11:48Z",
+  "prompt_tokens": 11970,
+  "completion_tokens": 7745,
+  "llm_response_time_seconds": 17.748,
+  "build_status": "pass",
+  "build_time_seconds": 0.54,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "m_time> <no. of threads> <temp_file> <power_file> <output_file>\n\t<grid_rows>  - number of rows in the grid (positive integer)\n\t<grid_cols>  - number of columns in the grid (positive integer)\n\t<sim_time>   - number of iterations\n\t<no. of threads>   - number of threads (ignored in CUDA)\n\t<temp_file>  - name of the file containing the initial temperature values of each cell\n\t<power_file> - name of the file containing the dissipated power values of each cell\n\t<output_file> - name of the output file\n",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.149,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <cuda_runtime.h>\n#include <sys/time.h>\n\n// Returns the current system time in microseconds\nlong long get_time()\n{\n    struct timeval tv;\n    gettimeofda"
+  },
+  "target_files_expected": [
+    "hotspot.cu"
+  ],
+  "target_files_extracted": [
+    "hotspot.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 8.562,
+      "prompt_tokens": 4130,
+      "completion_tokens": 3604,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\ninteger)\n\t<sim_time>   - number of iterations\n\t<no. of threads>   - number of threads\n\t<temp_file>  - name of the file containing the initial ",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "tspot <grid_rows> <grid_cols> <sim_time> <no. of threads><temp_file> <power_file>\n\t<grid_rows>  - number of rows in the grid (positive integer)\n\t<grid_cols>  - number of columns in the grid (positive integer)\n\t<sim_time>   - number of iterations\n\t<no. of threads>   - number of threads\n\t<temp_file>  - name of the file containing the initial temperature values of each cell\n\t<power_file> - name of the file containing the dissipated power values of each cell\n\t<output_file> - name of the output file\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 9.186,
+      "prompt_tokens": 7840,
+      "completion_tokens": 4141,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "m_time> <no. of threads> <temp_file> <power_file> <output_file>\n\t<grid_rows>  - number of rows in the grid (positive integer)\n\t<grid_cols>  - number of columns in the grid (positive integer)\n\t<sim_time>   - number of iterations\n\t<no. of threads>   - number of threads (ignored in CUDA)\n\t<temp_file>  - name of the file containing the initial temperature values of each cell\n\t<power_file> - name of the file containing the dissipated power values of each cell\n\t<output_file> - name of the output file\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-cfd-omp",
+  "target_spec": "rodinia-cfd-cuda",
+  "kernel": "cfd",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:07:49Z",
+  "prompt_tokens": 50574,
+  "completion_tokens": 21200,
+  "llm_response_time_seconds": 57.967,
+  "build_status": "fail",
+  "build_time_seconds": 0.313,
+  "build_error_snippet": "euler3d.cu(20): error: invalid redeclaration of type name \"float3\" (declared at line 401 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/vector_types.h)\n  struct float3 { float x, y, z; };\n         ^\n\neuler3d.cu(306): error: \"ff_velocity\" has already been declared in the current scope\n      float3 ff_velocity = ff_velocity;\n             ^\n\neuler3d.cu(306): warning #549-D: variable \"ff_velocity\" is used before its value is set\n      float3 ff_velocity = ff_velocity;\n                           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\neuler3d.cu(307): error: \"ff_pressure\" has already been declared in the current scope\n      float ff_pressure = ff_pressure;\n            ^\n\neuler3d.cu(307): warn\n...[truncated]...\ntion(\"_Z17compute_speed_sqd1?\") from a __host__ function(\"main\") is not allowed\n      float speed_sqd = compute_speed_sqd(ff_velocity);\n                        ^\n\neuler3d.cu(310): error: calling a __device__ function(\"_Z16compute_pressure1?1?1?\") from a __host__ function(\"main\") is not allowed\n      ff_pressure = compute_pressure(ff_density, ff_density_energy, speed_sqd);\n                    ^\n\neuler3d.cu(311): error: calling a __device__ function(\"_Z25compute_flux_contribution1?1?1?1?1?\") from a __host__ function(\"main\") is not allowed\n      compute_flux_contribution(ff_density, ff_momentum, ff_density_energy, ff_pressure, ff_velocity);\n      ^\n\n7 errors detected in the compilation of \"euler3d.cu\".\nmake: *** [Makefile:17: euler3d] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ompute_flux_contribution(ff_density, ff_momentum, ff_density_energy, ff_pressure, ff_velocity);\n      ^\n\n7 errors detected in the compilation of \"euler3d.cu\".\nmake: *** [Makefile:17: euler3d] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "euler3d.cu": "#include <iostream>\n#include <fstream>\n#include <cmath>\n\n#define GAMMA 1.4\n#define iterations 2000\n\n#define NDIM 3\n#define NNB 4\n\n#define RK 3\t// 3rd order RK\n#define ff_mach 1.2\n#define deg_angle_of_"
+  },
+  "target_files_expected": [
+    "euler3d.cu",
+    "euler3d_double.cu",
+    "pre_euler3d.cu",
+    "pre_euler3d_double.cu"
+  ],
+  "target_files_extracted": [
+    "euler3d.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 44.079,
+      "prompt_tokens": 17008,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\ncalling a __device__ function(\"_Z25compute_flux_contribution1?1?1?1?1?\") from a __host__ function(\"main\") is not allowed\n      float3 fc_i = comp",
+      "build_error_snippet": "euler3d.cu(20): error: invalid redeclaration of type name \"float3\" (declared at line 401 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/vector_types.h)\n  struct float3 { float x, y, z; };\n         ^\n\neuler3d.cu(303): error: calling a __device__ function(\"_Z25compute_flux_contribution1?1?1?1?1?\") from a __host__ function(\"main\") is not allowed\n      float3 fc_i = compute_flux_contribution(ff_variable[0], ff_momentum, ff_variable[(1 +3)], ff_pressure, ff_velocity);\n                    ^\n\neuler3d.cu(356): error: \"file\" has already been declared in the current scope\n      std::ofstream file(\"density\");\n                    ^\n\n3 errors detected in the compilation of \"euler3d.cu\".\nmake: *** [Makefile:17: euler3d] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 13.888,
+      "prompt_tokens": 33566,
+      "completion_tokens": 4816,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "euler3d.cu(20): error: invalid redeclaration of type name \"float3\" (declared at line 401 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/vector_types.h)\n  struct float3 { float x, y, z; };\n         ^\n\neuler3d.cu(306): error: \"ff_velocity\" has already been declared in the current scope\n      float3 ff_velocity = ff_velocity;\n             ^\n\neuler3d.cu(306): warning #549-D: variable \"ff_velocity\" is used before its value is set\n      float3 ff_velocity = ff_velocity;\n                           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\neuler3d.cu(307): error: \"ff_pressure\" has already been declared in the current scope\n      float ff_pressure = ff_pressure;\n            ^\n\neuler3d.cu(307): warn\n...[truncated]...\ntion(\"_Z17compute_speed_sqd1?\") from a __host__ function(\"main\") is not allowed\n      float speed_sqd = compute_speed_sqd(ff_velocity);\n                        ^\n\neuler3d.cu(310): error: calling a __device__ function(\"_Z16compute_pressure1?1?1?\") from a __host__ function(\"main\") is not allowed\n      ff_pressure = compute_pressure(ff_density, ff_density_energy, speed_sqd);\n                    ^\n\neuler3d.cu(311): error: calling a __device__ function(\"_Z25compute_flux_contribution1?1?1?1?1?\") from a __host__ function(\"main\") is not allowed\n      compute_flux_contribution(ff_density, ff_momentum, ff_density_energy, ff_pressure, ff_velocity);\n      ^\n\n7 errors detected in the compilation of \"euler3d.cu\".\nmake: *** [Makefile:17: euler3d] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

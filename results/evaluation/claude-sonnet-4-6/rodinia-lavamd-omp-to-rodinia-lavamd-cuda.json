@@ -1,0 +1,80 @@
+{
+  "source_spec": "rodinia-lavamd-omp",
+  "target_spec": "rodinia-lavamd-cuda",
+  "kernel": "lavamd",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:22:42Z",
+  "prompt_tokens": 21821,
+  "completion_tokens": 6868,
+  "llm_response_time_seconds": 67.948,
+  "build_status": "pass",
+  "build_time_seconds": 1.13,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": "pass",
+  "verify_strategy": "exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.001,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.0,
+  "translated_files": {
+    "kernel/kernel_gpu_cuda.cu": "//======================================================================================================================================================================================================",
+    "kernel/kernel_gpu_cuda_wrapper.cu": "//======================================================================================================================================================================================================",
+    "util/device/device.cu": "//======================================================================================================================================================================================================"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_cuda.cu",
+    "kernel/kernel_gpu_cuda_wrapper.cu",
+    "util/device/device.cu"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_cuda.cu",
+    "kernel/kernel_gpu_cuda_wrapper.cu",
+    "util/device/device.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 31.701,
+      "prompt_tokens": 9299,
+      "completion_tokens": 3009,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nit declaration of function \u2018gettimeofday\u2019 [-Wimplicit-function-declaration]\n   26 |         gettimeofday(&tv, NULL);\n      |         ^~~~~~~~~~~~",
+      "build_error_snippet": "rm: cannot remove 'lavaMD': No such file or directory\nmake: *** [makefile:87: clean] Error 1\n\nmain.c: In function \u2018main\u2019:\nmain.c:95:20: warning: implicit declaration of function \u2018strcmp\u2019 [-Wimplicit-function-declaration]\n   95 |                 if(strcmp(argv[dim_cpu.cur_arg], \"-boxes1d\")==0){\n      |                    ^~~~~~\nmain.c:42:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018strcmp\u2019\n   41 | #include \"./kernel/kernel_gpu_cuda_wrapper.h\"   // (in library path specified here)\n  +++ |+#include <string.h>\n   42 | \nmain.c:228:15: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  228 |         srand(time(NULL));\n      |               ^~~~\nmain.c:42:1: note: \u2018time\u2019 is defined in header \u2018<time.h\n...[truncated]...\nyou forget to \u2018#include <time.h>\u2019?\n   41 | #include \"./kernel/kernel_gpu_cuda_wrapper.h\"   // (in library path specified here)\n  +++ |+#include <time.h>\n   42 | \n./util/timer/timer.c: In function \u2018get_time\u2019:\n./util/timer/timer.c:26:9: warning: implicit declaration of function \u2018gettimeofday\u2019 [-Wimplicit-function-declaration]\n   26 |         gettimeofday(&tv, NULL);\n      |         ^~~~~~~~~~~~\n/usr/bin/ld: ./kernel/kernel_gpu_cuda_wrapper.o: in function `kernel_gpu_cuda_wrapper':\ntmpxft_00057210_00000000-6_kernel_gpu_cuda_wrapper.cudafe1.cpp:(.text+0x473): undefined reference to `kernel_gpu_cuda(par_str, dim_str, box_str*, FOUR_VECTOR*, double*, FOUR_VECTOR*)'\ncollect2: error: ld returned 1 exit status\nmake: *** [makefile:29: a.out] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 36.247,
+      "prompt_tokens": 12522,
+      "completion_tokens": 3859,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

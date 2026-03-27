@@ -1,0 +1,75 @@
+{
+  "source_spec": "rodinia-nw-omp",
+  "target_spec": "rodinia-nw-cuda",
+  "kernel": "nw",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:10:42Z",
+  "prompt_tokens": 14119,
+  "completion_tokens": 7370,
+  "llm_response_time_seconds": 23.682,
+  "build_status": "pass",
+  "build_time_seconds": 0.529,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/cuda/nw/needle <max_rows/max_cols> <penalty>\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.116,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "needle.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n#include \"needle.h\"\n\n#define LIMIT -999\n\n// Returns the current system time in microseconds \nlong lon"
+  },
+  "target_files_expected": [
+    "needle.cu",
+    "needle_kernel.cu"
+  ],
+  "target_files_extracted": [
+    "needle.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 12.097,
+      "prompt_tokens": 5129,
+      "completion_tokens": 3831,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/cuda/nw/needle <max_rows/max_cols> <penalty>\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 11.585,
+      "prompt_tokens": 8990,
+      "completion_tokens": 3539,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/cuda/nw/needle <max_rows/max_cols> <penalty>\n",
+      "extraction_fail": null
+    }
+  ]
+}

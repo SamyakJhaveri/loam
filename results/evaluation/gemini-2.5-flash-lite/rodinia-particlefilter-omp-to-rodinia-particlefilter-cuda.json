@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-particlefilter-omp",
+  "target_spec": "rodinia-particlefilter-cuda",
+  "kernel": "particlefilter",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:15:01Z",
+  "prompt_tokens": 30993,
+  "completion_tokens": 32279,
+  "llm_response_time_seconds": 62.413,
+  "build_status": "fail",
+  "build_time_seconds": 0.19,
+  "build_error_snippet": "rm: cannot remove 'particlefilter_naive': No such file or directory\nrm: cannot remove 'particlefilter_float': No such file or directory\nmake: *** [Makefile:18: clean] Error 1\n\nex_particle_CUDA_naive_seq.cu(320): error: calling a __device__ function(\"roundDouble_device(double)\") from a __host__ function(\"particleFilter\") is not allowed\n      double xe_host = roundDouble_device(IszY / 2.0);\n                       ^\n\nex_particle_CUDA_naive_seq.cu(321): error: calling a __device__ function(\"_Z18roundDouble_device1?\") from a __host__ function(\"particleFilter\") is not allowed\n      double ye_host = roundDouble_device(IszX / 2.0);\n                       ^\n\nex_particle_CUDA_naive_seq.cu(399): error: no instance of overloaded function \"cudaMalloc\" m\n...[truncated]...\n464-D: conversion from a string literal to \"char *\" is deprecated\n      char *usage = \"openmp.out -x <dimX> -y <dimY> -z <Nfr> -np <Nparticles>\";\n                    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nex_particle_CUDA_naive_seq.cu(606): error: calling a __device__ function(\"_Z12randn_device1?1?\") from a __host__ function(\"main\") is not allowed\n                  I_host[x * IszY * Nfr + y * Nfr + z] = I_host[x * IszY * Nfr + y * Nfr + z] + (int)(5 * randn_device(seed_host, 0));\n                                                                                                          ^\n\n16 errors detected in the compilation of \"ex_particle_CUDA_naive_seq.cu\".\nmake: *** [Makefile:12: naive] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ^\n\n16 errors detected in the compilation of \"ex_particle_CUDA_naive_seq.cu\".\nmake: *** [Makefile:12: naive] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.093,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "ex_particle_CUDA_float_seq.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include <cuda_runtime.h>\n#include <device_launch_parameters.h>\n#include <string.h> // For strcmp and sscanf\n#include <time.h>   // For time()\n",
+    "ex_particle_CUDA_naive_seq.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include <cuda_runtime.h>\n#include <device_launch_parameters.h>\n#include <string.h> // For strcmp and sscanf\n#include <time.h>   // For time()\n"
+  },
+  "target_files_expected": [
+    "ex_particle_CUDA_float_seq.cu",
+    "ex_particle_CUDA_naive_seq.cu"
+  ],
+  "target_files_extracted": [
+    "ex_particle_CUDA_float_seq.cu",
+    "ex_particle_CUDA_naive_seq.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 31.878,
+      "prompt_tokens": 7223,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\npsed_time(likelihood_time, exponential_time));\n                                               ^\n\nex_particle_CUDA_naive_seq.cu(387): error: a val",
+      "build_error_snippet": "rm: cannot remove 'particlefilter_naive': No such file or directory\nrm: cannot remove 'particlefilter_float': No such file or directory\nmake: *** [Makefile:18: clean] Error 1\n\nex_particle_CUDA_naive_seq.cu(1): error: this declaration has no storage class or type specifier\n  ex_particle_CUDA_float_seq.cu\n  ^\n\nex_particle_CUDA_naive_seq.cu(1): error: expected a \";\"\n  ex_particle_CUDA_float_seq.cu\n                            ^\n\n/usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h(13): error: identifier \"__mbstate_t\" is undefined\n    __mbstate_t __state;\n    ^\n\n/usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h(13): error: identifier \"__mbstate_t\" is undefined\n    __mbstate_t __state;\n    ^\n\n/usr/include/stdio.h(53): error: identifier \"__gnuc\n...[truncated]...\nready been defined\n          printf(\"TIME TO GET EXP TOOK: %f\\n\", elapsed_time(likelihood_time, exponential_time));\n          ^\n\nex_particle_CUDA_naive_seq.cu(387): error: too many initializer values\n          printf(\"TIME TO GET EXP TOOK: %f\\n\", elapsed_time(likelihood_time, exponential_time));\n                                               ^\n\nex_particle_CUDA_naive_seq.cu(387): error: a value of type \"const char *\" cannot be used to initialize an entity of type \"int\"\n          printf(\"TIME TO GET EXP TOOK: %f\\n\", elapsed_time(likelihood_time, exponential_time));\n                 ^\n\nError limit reached.\n100 errors detected in the compilation of \"ex_particle_CUDA_naive_seq.cu\".\nCompilation terminated.\nmake: *** [Makefile:12: naive] Error 4\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 30.535,
+      "prompt_tokens": 23770,
+      "completion_tokens": 15895,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "rm: cannot remove 'particlefilter_naive': No such file or directory\nrm: cannot remove 'particlefilter_float': No such file or directory\nmake: *** [Makefile:18: clean] Error 1\n\nex_particle_CUDA_naive_seq.cu(320): error: calling a __device__ function(\"roundDouble_device(double)\") from a __host__ function(\"particleFilter\") is not allowed\n      double xe_host = roundDouble_device(IszY / 2.0);\n                       ^\n\nex_particle_CUDA_naive_seq.cu(321): error: calling a __device__ function(\"_Z18roundDouble_device1?\") from a __host__ function(\"particleFilter\") is not allowed\n      double ye_host = roundDouble_device(IszX / 2.0);\n                       ^\n\nex_particle_CUDA_naive_seq.cu(399): error: no instance of overloaded function \"cudaMalloc\" m\n...[truncated]...\n464-D: conversion from a string literal to \"char *\" is deprecated\n      char *usage = \"openmp.out -x <dimX> -y <dimY> -z <Nfr> -np <Nparticles>\";\n                    ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nex_particle_CUDA_naive_seq.cu(606): error: calling a __device__ function(\"_Z12randn_device1?1?\") from a __host__ function(\"main\") is not allowed\n                  I_host[x * IszY * Nfr + y * Nfr + z] = I_host[x * IszY * Nfr + y * Nfr + z] + (int)(5 * randn_device(seed_host, 0));\n                                                                                                          ^\n\n16 errors detected in the compilation of \"ex_particle_CUDA_naive_seq.cu\".\nmake: *** [Makefile:12: naive] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

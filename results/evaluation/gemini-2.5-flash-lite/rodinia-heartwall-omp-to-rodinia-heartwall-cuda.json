@@ -1,0 +1,76 @@
+{
+  "source_spec": "rodinia-heartwall-omp",
+  "target_spec": "rodinia-heartwall-cuda",
+  "kernel": "heartwall",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:10:36Z",
+  "prompt_tokens": 104297,
+  "completion_tokens": 32768,
+  "llm_response_time_seconds": 71.058,
+  "build_status": "fail",
+  "build_time_seconds": 0.233,
+  "build_error_snippet": "kernel.cu(7): warning #1835-D: attribute \"__global__\" does not apply here\n  __attribute__((global)) void kernel_gpu(public_struct public,\n                 ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nkernel.cu(7): error: incomplete type is not allowed\n  __attribute__((global)) void kernel_gpu(public_struct public,\n                               ^\n\nkernel.cu(7): error: identifier \"public_struct\" is undefined\n  __attribute__((global)) void kernel_gpu(public_struct public,\n                                          ^\n\nkernel.cu(7): error: expected a \")\"\n  __attribute__((global)) void kernel_gpu(public_struct public,\n                                                        ^\n\nkernel.cu(8): error: expected a \";\n...[truncated]...\nn.cu(165): error: declaration is incompatible with overloaded function \"cudaMalloc\" (declared at line 731 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/cuda_device_runtime_api.h)\n   cudaMalloc((void **)&common_change.d_frame, common.frame_mem);\n   ^\n\nmain.cu(165): error: too many initializer values\n   cudaMalloc((void **)&common_change.d_frame, common.frame_mem);\n                                               ^\n\nmain.cu(165): error: a value of type \"void **\" cannot be used to initialize an entity of type \"int\"\n   cudaMalloc((void **)&common_change.d_frame, common.frame_mem);\n              ^\n\nError limit reached.\n100 errors detected in the compilation of \"main.cu\".\nCompilation terminated.\nmake: *** [Makefile:12: main.o] Error 4\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: *)&common_change.d_frame, common.frame_mem);\n              ^\n\nError limit reached.\n100 errors detected in the compilation of \"main.cu\".\nCompilation terminated.\nmake: *** [Makefile:12: main.o] Error 4",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.133,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel.cu": "//======================================================================================================================================================================================================"
+  },
+  "target_files_expected": [
+    "kernel.cu",
+    "main.cu",
+    "setdevice.cu"
+  ],
+  "target_files_extracted": [
+    "kernel.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 36.711,
+      "prompt_tokens": 43923,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "Your response did not include any of the expected output files. Please translate each target file using this format:\n\n```c kernel.cu\n// your translated code here\n```\n\n```c main.cu\n// your translated c",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": true
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 34.347,
+      "prompt_tokens": 60374,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "kernel.cu(7): warning #1835-D: attribute \"__global__\" does not apply here\n  __attribute__((global)) void kernel_gpu(public_struct public,\n                 ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nkernel.cu(7): error: incomplete type is not allowed\n  __attribute__((global)) void kernel_gpu(public_struct public,\n                               ^\n\nkernel.cu(7): error: identifier \"public_struct\" is undefined\n  __attribute__((global)) void kernel_gpu(public_struct public,\n                                          ^\n\nkernel.cu(7): error: expected a \")\"\n  __attribute__((global)) void kernel_gpu(public_struct public,\n                                                        ^\n\nkernel.cu(8): error: expected a \";\n...[truncated]...\nn.cu(165): error: declaration is incompatible with overloaded function \"cudaMalloc\" (declared at line 731 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/cuda_device_runtime_api.h)\n   cudaMalloc((void **)&common_change.d_frame, common.frame_mem);\n   ^\n\nmain.cu(165): error: too many initializer values\n   cudaMalloc((void **)&common_change.d_frame, common.frame_mem);\n                                               ^\n\nmain.cu(165): error: a value of type \"void **\" cannot be used to initialize an entity of type \"int\"\n   cudaMalloc((void **)&common_change.d_frame, common.frame_mem);\n              ^\n\nError limit reached.\n100 errors detected in the compilation of \"main.cu\".\nCompilation terminated.\nmake: *** [Makefile:12: main.o] Error 4\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

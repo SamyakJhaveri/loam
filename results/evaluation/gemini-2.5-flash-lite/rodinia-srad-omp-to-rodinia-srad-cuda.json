@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-srad-omp",
+  "target_spec": "rodinia-srad-cuda",
+  "kernel": "srad",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:16:09Z",
+  "prompt_tokens": 9558,
+  "completion_tokens": 7133,
+  "llm_response_time_seconds": 13.282,
+  "build_status": "fail",
+  "build_time_seconds": 0.519,
+  "build_error_snippet": "srad.cu(37): warning #550-D: variable \"size_R\" was set but never used\n   int rows, cols, size_I, size_R, niter = 10, iter, k;\n                           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nsrad.cu(37): warning #177-D: variable \"iter\" was declared but never referenced\n   int rows, cols, size_I, size_R, niter = 10, iter, k;\n                                               ^\n\nsrad.cu(38): warning #177-D: variable \"q0sqr\" was declared but never referenced\n      float *I, *J, q0sqr, sum, sum2, tmp, meanROI,varROI ;\n                    ^\n\nsrad.cu(38): warning #177-D: variable \"sum\" was declared but never referenced\n      float *I, *J, q0sqr, sum, sum2, tmp, meanROI,varROI ;\n                           ^\n\n...[truncated]...\n4): warning #177-D: variable \"D\" was declared but never referenced\n   float *c, D;\n             ^\n\nsrad.cu(46): warning #177-D: variable \"i_main\" was declared but never referenced\n   int i_main, j_main;\n       ^\n\nsrad.cu(46): warning #177-D: variable \"j_main\" was declared but never referenced\n   int i_main, j_main;\n               ^\n\nsrad.cu(47): warning #550-D: variable \"nthreads\" was set but never used\n      int nthreads;\n          ^\n\n/usr/bin/ld: /tmp/tmpxft_000570f8_00000000-11_srad.o: in function `main':\ntmpxft_000570f8_00000000-6_srad.cudafe1.cpp:(.text+0x62c): undefined reference to `srad_cuda(float*, float*, int, int, int, int, int, int, float, int)'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:12: release] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: fe1.cpp:(.text+0x62c): undefined reference to `srad_cuda(float*, float*, int, int, int, int, int, int, float, int)'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:12: release] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.068,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "srad.cu": "// srad.cu : Defines the entry point for the console application.\n//\n\n//#define OUTPUT\n\n\n#define OPEN\n#define\tITERATION\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#in",
+    "srad_kernel.cu": "// srad_kernel.cu\n#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include \"srad.h\"\n\n__global__ void srad_step1_kernel(float *J, float *dN, float *dS, float *dW, float *dE, float *c, int rows"
+  },
+  "target_files_expected": [
+    "srad.cu",
+    "srad_kernel.cu"
+  ],
+  "target_files_extracted": [
+    "srad.cu",
+    "srad_kernel.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.188,
+      "prompt_tokens": 2885,
+      "completion_tokens": 3553,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\ning #177-D: variable \"j\" was declared but never referenced\n   int i, j;\n          ^\n\nsrad.cu(47): warning #550-D: variable \"nthreads\" was set but",
+      "build_error_snippet": "srad.cu(37): warning #550-D: variable \"size_R\" was set but never used\n   int rows, cols, size_I, size_R, niter = 10, iter, k;\n                           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nsrad.cu(37): warning #177-D: variable \"iter\" was declared but never referenced\n   int rows, cols, size_I, size_R, niter = 10, iter, k;\n                                               ^\n\nsrad.cu(38): warning #177-D: variable \"q0sqr\" was declared but never referenced\n      float *I, *J, q0sqr, sum, sum2, tmp, meanROI,varROI ;\n                    ^\n\nsrad.cu(38): warning #177-D: variable \"sum\" was declared but never referenced\n      float *I, *J, q0sqr, sum, sum2, tmp, meanROI,varROI ;\n                           ^\n\n...[truncated]...\n,cE;\n                  ^\n\nsrad.cu(44): warning #177-D: variable \"D\" was declared but never referenced\n   float *c, D;\n             ^\n\nsrad.cu(46): warning #177-D: variable \"i\" was declared but never referenced\n   int i, j;\n       ^\n\nsrad.cu(46): warning #177-D: variable \"j\" was declared but never referenced\n   int i, j;\n          ^\n\nsrad.cu(47): warning #550-D: variable \"nthreads\" was set but never used\n      int nthreads;\n          ^\n\n/usr/bin/ld: /tmp/tmpxft_000570ce_00000000-11_srad.o: in function `main':\ntmpxft_000570ce_00000000-6_srad.cudafe1.cpp:(.text+0x62c): undefined reference to `srad_cuda(float*, float*, int, int, int, int, int, int, float, int)'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:12: release] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 7.094,
+      "prompt_tokens": 6673,
+      "completion_tokens": 3580,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "srad.cu(37): warning #550-D: variable \"size_R\" was set but never used\n   int rows, cols, size_I, size_R, niter = 10, iter, k;\n                           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nsrad.cu(37): warning #177-D: variable \"iter\" was declared but never referenced\n   int rows, cols, size_I, size_R, niter = 10, iter, k;\n                                               ^\n\nsrad.cu(38): warning #177-D: variable \"q0sqr\" was declared but never referenced\n      float *I, *J, q0sqr, sum, sum2, tmp, meanROI,varROI ;\n                    ^\n\nsrad.cu(38): warning #177-D: variable \"sum\" was declared but never referenced\n      float *I, *J, q0sqr, sum, sum2, tmp, meanROI,varROI ;\n                           ^\n\n...[truncated]...\n4): warning #177-D: variable \"D\" was declared but never referenced\n   float *c, D;\n             ^\n\nsrad.cu(46): warning #177-D: variable \"i_main\" was declared but never referenced\n   int i_main, j_main;\n       ^\n\nsrad.cu(46): warning #177-D: variable \"j_main\" was declared but never referenced\n   int i_main, j_main;\n               ^\n\nsrad.cu(47): warning #550-D: variable \"nthreads\" was set but never used\n      int nthreads;\n          ^\n\n/usr/bin/ld: /tmp/tmpxft_000570f8_00000000-11_srad.o: in function `main':\ntmpxft_000570f8_00000000-6_srad.cudafe1.cpp:(.text+0x62c): undefined reference to `srad_cuda(float*, float*, int, int, int, int, int, int, float, int)'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:12: release] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "source_spec": "rodinia-lavamd-omp",
+  "target_spec": "rodinia-lavamd-cuda",
+  "kernel": "lavamd",
+  "model": "groq-llama-3.3-70b-versatile",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-27T01:10:16Z",
+  "prompt_tokens": 16905,
+  "completion_tokens": 2667,
+  "llm_response_time_seconds": 8.834,
+  "build_status": "fail",
+  "build_time_seconds": 0.123,
+  "build_error_snippet": "rm: cannot remove './kernel/*.o': No such file or directory\nrm: cannot remove './util/num/*.o': No such file or directory\nrm: cannot remove './util/timer/*.o': No such file or directory\nrm: cannot remove './util/device/*.o': No such file or directory\nrm: cannot remove 'lavaMD': No such file or directory\nmake: *** [makefile:87: clean] Error 1\n\nmain.c: In function \u2018main\u2019:\nmain.c:95:20: warning: implicit declaration of function \u2018strcmp\u2019 [-Wimplicit-function-declaration]\n   95 |                 if(strcmp(argv[dim_cpu.cur_arg], \"-boxes1d\")==0){\n      |                    ^~~~~~\nmain.c:42:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018strcmp\u2019\n   41 | #include \"./kernel/kernel_gpu_cuda_wrapper.h\"   // (in library path specified here)\n  +++ |+#include <string.h>\n   42 | \nmain.c:228:15: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  228 |         srand(time(NULL));\n      |               ^~~~\nmain.c:42:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   41 | #include \"./kernel/kernel_gpu_cuda_wrapper.h\"   // (in library path specified here)\n  +++ |+#include <time.h>\n   42 | \n./kernel/kernel_gpu_cuda_wrapper.cu:1:10: fatal error: device.cu: No such file or directory\n    1 | #include \"device.cu\"\n      |          ^~~~~~~~~~~\ncompilation terminated.\nmake: *** [makefile:58: kernel/kernel_gpu_cuda_wrapper.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: : fatal error: device.cu: No such file or directory\n    1 | #include \"device.cu\"\n      |          ^~~~~~~~~~~\ncompilation terminated.\nmake: *** [makefile:58: kernel/kernel_gpu_cuda_wrapper.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_cuda.cu": "__global__ void kernel_gpu_cuda(\tpar_str par, \n\t\t\t\t\t\t\t\t\tdim_str dim,\n\t\t\t\t\t\t\t\t\tbox_str* box,\n\t\t\t\t\t\t\t\t\tFOUR_VECTOR* rv,\n\t\t\t\t\t\t\t\t\tfp* qv,\n\t\t\t\t\t\t\t\t\tFOUR_VECTOR* fv)\n{\n\t// ... (rest of the code remains the",
+    "kernel/kernel_gpu_cuda_wrapper.cu": "#include \"device.cu\"\n\nvoid kernel_gpu_cuda_wrapper(\tpar_str par_cpu, \n\t\t\t\t\t\t\t\tdim_str dim_cpu,\n\t\t\t\t\t\t\t\tbox_str* box_cpu,\n\t\t\t\t\t\t\t\tFOUR_VECTOR* rv_cpu,\n\t\t\t\t\t\t\t\tfp* qv_cpu,\n\t\t\t\t\t\t\t\tFOUR_VECTOR* fv_cpu)\n{",
+    "util/device/device.cu": "void setdevice(void){\n\n\t// variables\n\tint num_devices;\n\tint device;\n\n\t// work\n\tcudaGetDeviceCount(&num_devices);\n\tif (num_devices > 1) {\n\t\t\n\t\t// variables\n\t\tint max_multiprocessors; \n\t\tint max_device;"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_cuda.cu",
+    "kernel/kernel_gpu_cuda_wrapper.cu",
+    "util/device/device.cu"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_cuda.cu",
+    "kernel/kernel_gpu_cuda_wrapper.cu",
+    "util/device/device.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.153,
+      "prompt_tokens": 7535,
+      "completion_tokens": 1670,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nER_THREADS);\n                 ^\n\n./kernel/kernel_gpu_cuda_wrapper.cu(49): error: identifier \"kernel_gpu_cuda\" is undefined\n   kernel_gpu_cuda<<<d",
+      "build_error_snippet": "main.c: In function \u2018main\u2019:\nmain.c:95:20: warning: implicit declaration of function \u2018strcmp\u2019 [-Wimplicit-function-declaration]\n   95 |                 if(strcmp(argv[dim_cpu.cur_arg], \"-boxes1d\")==0){\n      |                    ^~~~~~\nmain.c:42:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018strcmp\u2019\n   41 | #include \"./kernel/kernel_gpu_cuda_wrapper.h\"   // (in library path specified here)\n  +++ |+#include <string.h>\n   42 | \nmain.c:228:15: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  228 |         srand(time(NULL));\n      |               ^~~~\nmain.c:42:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   41 | #include \"./kernel/kernel_gpu_cuda_wrapper.\n...[truncated]...\nfp fxij,fyij,fzij;\n      ^\n\n./kernel/kernel_gpu_cuda_wrapper.cu(44): error: identifier \"THREE_VECTOR\" is undefined\n   THREE_VECTOR d;\n   ^\n\n./kernel/kernel_gpu_cuda_wrapper.cu(46): error: identifier \"NUMBER_THREADS\" is undefined\n   dim3 dimBlock(NUMBER_THREADS);\n                 ^\n\n./kernel/kernel_gpu_cuda_wrapper.cu(49): error: identifier \"kernel_gpu_cuda\" is undefined\n   kernel_gpu_cuda<<<dimGrid, dimBlock>>>(par_cpu, dim_cpu, box_cpu, rv_cpu, qv_cpu, fv_cpu);\n   ^\n\n./kernel/kernel_gpu_cuda_wrapper.cu(51): error: identifier \"checkCUDAError\" is undefined\n   checkCUDAError(\"kernel launch\");\n   ^\n\n23 errors detected in the compilation of \"./kernel/kernel_gpu_cuda_wrapper.cu\".\nmake: *** [makefile:58: kernel/kernel_gpu_cuda_wrapper.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 2.681,
+      "prompt_tokens": 9370,
+      "completion_tokens": 997,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "rm: cannot remove './kernel/*.o': No such file or directory\nrm: cannot remove './util/num/*.o': No such file or directory\nrm: cannot remove './util/timer/*.o': No such file or directory\nrm: cannot remove './util/device/*.o': No such file or directory\nrm: cannot remove 'lavaMD': No such file or directory\nmake: *** [makefile:87: clean] Error 1\n\nmain.c: In function \u2018main\u2019:\nmain.c:95:20: warning: implicit declaration of function \u2018strcmp\u2019 [-Wimplicit-function-declaration]\n   95 |                 if(strcmp(argv[dim_cpu.cur_arg], \"-boxes1d\")==0){\n      |                    ^~~~~~\nmain.c:42:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018strcmp\u2019\n   41 | #include \"./kernel/kernel_gpu_cuda_wrapper.h\"   // (in library path specified here)\n  +++ |+#include <string.h>\n   42 | \nmain.c:228:15: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  228 |         srand(time(NULL));\n      |               ^~~~\nmain.c:42:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   41 | #include \"./kernel/kernel_gpu_cuda_wrapper.h\"   // (in library path specified here)\n  +++ |+#include <time.h>\n   42 | \n./kernel/kernel_gpu_cuda_wrapper.cu:1:10: fatal error: device.cu: No such file or directory\n    1 | #include \"device.cu\"\n      |          ^~~~~~~~~~~\ncompilation terminated.\nmake: *** [makefile:58: kernel/kernel_gpu_cuda_wrapper.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}
