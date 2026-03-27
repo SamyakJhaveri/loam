@@ -1,0 +1,645 @@
+{
+  "analysis": "sloc_characterization",
+  "method": "physical_sloc_from_source_files",
+  "note": "SOURCE SLoC counted from actual Rodinia/XSBench repository files (the code sent to the LLM as input). Physical lines = non-blank, non-comment lines (approximates cloc; does not parse string literals).",
+  "kernels": {
+    "backprop": {
+      "kernel": "backprop",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/backprop",
+      "num_source_files": 2,
+      "num_target_files": 2,
+      "physical_sloc": 197,
+      "total_nonblank_lines": 216,
+      "files": [
+        {
+          "file": "backprop_cuda.cu",
+          "physical_sloc": 135,
+          "total_nonblank_lines": 143
+        },
+        {
+          "file": "backprop_cuda_kernel.cu",
+          "physical_sloc": 62,
+          "total_nonblank_lines": 73
+        }
+      ],
+      "omp_physical_sloc": 449,
+      "omp_num_files": 4,
+      "omp_num_target_files": 1,
+      "category": "ml",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.5789
+    },
+    "bfs": {
+      "kernel": "bfs",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/bfs",
+      "num_source_files": 3,
+      "num_target_files": 3,
+      "physical_sloc": 242,
+      "total_nonblank_lines": 310,
+      "files": [
+        {
+          "file": "bfs.cu",
+          "physical_sloc": 206,
+          "total_nonblank_lines": 248
+        },
+        {
+          "file": "kernel.cu",
+          "physical_sloc": 21,
+          "total_nonblank_lines": 34
+        },
+        {
+          "file": "kernel2.cu",
+          "physical_sloc": 15,
+          "total_nonblank_lines": 28
+        }
+      ],
+      "omp_physical_sloc": 144,
+      "omp_num_files": 1,
+      "omp_num_target_files": 1,
+      "category": "graph",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.6316
+    },
+    "bptree": {
+      "kernel": "bptree",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/b+tree",
+      "num_source_files": 5,
+      "num_target_files": 5,
+      "physical_sloc": 327,
+      "total_nonblank_lines": 437,
+      "files": [
+        {
+          "file": "kernel/kernel_gpu_cuda.cu",
+          "physical_sloc": 0,
+          "total_nonblank_lines": 1
+        },
+        {
+          "file": "kernel/kernel_gpu_cuda_2.cu",
+          "physical_sloc": 0,
+          "total_nonblank_lines": 1
+        },
+        {
+          "file": "kernel/kernel_gpu_cuda_wrapper.cu",
+          "physical_sloc": 127,
+          "total_nonblank_lines": 174
+        },
+        {
+          "file": "kernel/kernel_gpu_cuda_wrapper_2.cu",
+          "physical_sloc": 165,
+          "total_nonblank_lines": 213
+        },
+        {
+          "file": "util/cuda/cuda.cu",
+          "physical_sloc": 35,
+          "total_nonblank_lines": 48
+        }
+      ],
+      "omp_physical_sloc": 1721,
+      "omp_num_files": 3,
+      "omp_num_target_files": 2,
+      "category": "other",
+      "complexity_class": "multi_to_multi",
+      "pass_rate": 0.3684
+    },
+    "cfd": {
+      "kernel": "cfd",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/cfd",
+      "num_source_files": 4,
+      "num_target_files": 4,
+      "physical_sloc": 1955,
+      "total_nonblank_lines": 2115,
+      "files": [
+        {
+          "file": "euler3d.cu",
+          "physical_sloc": 454,
+          "total_nonblank_lines": 502
+        },
+        {
+          "file": "euler3d_double.cu",
+          "physical_sloc": 456,
+          "total_nonblank_lines": 497
+        },
+        {
+          "file": "pre_euler3d.cu",
+          "physical_sloc": 532,
+          "total_nonblank_lines": 566
+        },
+        {
+          "file": "pre_euler3d_double.cu",
+          "physical_sloc": 513,
+          "total_nonblank_lines": 550
+        }
+      ],
+      "omp_physical_sloc": 400,
+      "omp_num_files": 1,
+      "omp_num_target_files": 1,
+      "category": "physics",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.3684
+    },
+    "heartwall": {
+      "kernel": "heartwall",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/heartwall",
+      "num_source_files": 3,
+      "num_target_files": 3,
+      "physical_sloc": 1046,
+      "total_nonblank_lines": 1662,
+      "files": [
+        {
+          "file": "kernel.cu",
+          "physical_sloc": 595,
+          "total_nonblank_lines": 1004
+        },
+        {
+          "file": "main.cu",
+          "physical_sloc": 431,
+          "total_nonblank_lines": 632
+        },
+        {
+          "file": "setdevice.cu",
+          "physical_sloc": 20,
+          "total_nonblank_lines": 26
+        }
+      ],
+      "omp_physical_sloc": 837,
+      "omp_num_files": 3,
+      "omp_num_target_files": 3,
+      "category": "image",
+      "complexity_class": "multi_to_multi",
+      "pass_rate": 0.0
+    },
+    "hotspot": {
+      "kernel": "hotspot",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/hotspot",
+      "num_source_files": 1,
+      "num_target_files": 1,
+      "physical_sloc": 243,
+      "total_nonblank_lines": 269,
+      "files": [
+        {
+          "file": "hotspot.cu",
+          "physical_sloc": 243,
+          "total_nonblank_lines": 269
+        }
+      ],
+      "omp_physical_sloc": 262,
+      "omp_num_files": 1,
+      "omp_num_target_files": 1,
+      "category": "physics",
+      "complexity_class": "single_file",
+      "pass_rate": 0.0
+    },
+    "hotspot3d": {
+      "kernel": "hotspot3d",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/hotspot3D",
+      "num_source_files": 2,
+      "num_target_files": 2,
+      "physical_sloc": 246,
+      "total_nonblank_lines": 250,
+      "files": [
+        {
+          "file": "3D.cu",
+          "physical_sloc": 157,
+          "total_nonblank_lines": 161
+        },
+        {
+          "file": "opt1.cu",
+          "physical_sloc": 89,
+          "total_nonblank_lines": 89
+        }
+      ],
+      "omp_physical_sloc": 206,
+      "omp_num_files": 1,
+      "omp_num_target_files": 1,
+      "category": "physics",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.6842
+    },
+    "kmeans": {
+      "kernel": "kmeans",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/kmeans",
+      "num_source_files": 2,
+      "num_target_files": 2,
+      "physical_sloc": 299,
+      "total_nonblank_lines": 394,
+      "files": [
+        {
+          "file": "kmeans_cuda.cu",
+          "physical_sloc": 191,
+          "total_nonblank_lines": 243
+        },
+        {
+          "file": "kmeans_cuda_kernel.cu",
+          "physical_sloc": 108,
+          "total_nonblank_lines": 151
+        }
+      ],
+      "omp_physical_sloc": 1048,
+      "omp_num_files": 4,
+      "omp_num_target_files": 1,
+      "category": "ml",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.4375
+    },
+    "lavamd": {
+      "kernel": "lavamd",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/lavaMD",
+      "num_source_files": 3,
+      "num_target_files": 3,
+      "physical_sloc": 200,
+      "total_nonblank_lines": 394,
+      "files": [
+        {
+          "file": "kernel/kernel_gpu_cuda.cu",
+          "physical_sloc": 82,
+          "total_nonblank_lines": 164
+        },
+        {
+          "file": "kernel/kernel_gpu_cuda_wrapper.cu",
+          "physical_sloc": 88,
+          "total_nonblank_lines": 177
+        },
+        {
+          "file": "util/device/device.cu",
+          "physical_sloc": 30,
+          "total_nonblank_lines": 53
+        }
+      ],
+      "omp_physical_sloc": 258,
+      "omp_num_files": 2,
+      "omp_num_target_files": 1,
+      "category": "molecular_dynamics",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.6316
+    },
+    "lud": {
+      "kernel": "lud",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/lud",
+      "num_source_files": 2,
+      "num_target_files": 2,
+      "physical_sloc": 271,
+      "total_nonblank_lines": 329,
+      "files": [
+        {
+          "file": "cuda/lud.cu",
+          "physical_sloc": 135,
+          "total_nonblank_lines": 160
+        },
+        {
+          "file": "cuda/lud_kernel.cu",
+          "physical_sloc": 136,
+          "total_nonblank_lines": 169
+        }
+      ],
+      "omp_physical_sloc": 400,
+      "omp_num_files": 3,
+      "omp_num_target_files": 1,
+      "category": "linear_algebra",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.5263
+    },
+    "myocyte": {
+      "kernel": "myocyte",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/myocyte",
+      "num_source_files": 16,
+      "num_target_files": 16,
+      "physical_sloc": 3304,
+      "total_nonblank_lines": 4562,
+      "files": [
+        {
+          "file": "embedded_fehlberg_7_8.cu",
+          "physical_sloc": 266,
+          "total_nonblank_lines": 403
+        },
+        {
+          "file": "embedded_fehlberg_7_8_2.cu",
+          "physical_sloc": 171,
+          "total_nonblank_lines": 315
+        },
+        {
+          "file": "kernel.cu",
+          "physical_sloc": 69,
+          "total_nonblank_lines": 105
+        },
+        {
+          "file": "kernel_2.cu",
+          "physical_sloc": 82,
+          "total_nonblank_lines": 120
+        },
+        {
+          "file": "kernel_cam.cu",
+          "physical_sloc": 272,
+          "total_nonblank_lines": 316
+        },
+        {
+          "file": "kernel_cam_2.cu",
+          "physical_sloc": 272,
+          "total_nonblank_lines": 316
+        },
+        {
+          "file": "kernel_ecc.cu",
+          "physical_sloc": 692,
+          "total_nonblank_lines": 845
+        },
+        {
+          "file": "kernel_ecc_2.cu",
+          "physical_sloc": 692,
+          "total_nonblank_lines": 845
+        },
+        {
+          "file": "kernel_fin.cu",
+          "physical_sloc": 73,
+          "total_nonblank_lines": 95
+        },
+        {
+          "file": "kernel_fin_2.cu",
+          "physical_sloc": 72,
+          "total_nonblank_lines": 93
+        },
+        {
+          "file": "main.cu",
+          "physical_sloc": 45,
+          "total_nonblank_lines": 150
+        },
+        {
+          "file": "master.cu",
+          "physical_sloc": 60,
+          "total_nonblank_lines": 78
+        },
+        {
+          "file": "solver.cu",
+          "physical_sloc": 113,
+          "total_nonblank_lines": 232
+        },
+        {
+          "file": "solver_2.cu",
+          "physical_sloc": 134,
+          "total_nonblank_lines": 211
+        },
+        {
+          "file": "work.cu",
+          "physical_sloc": 141,
+          "total_nonblank_lines": 194
+        },
+        {
+          "file": "work_2.cu",
+          "physical_sloc": 150,
+          "total_nonblank_lines": 244
+        }
+      ],
+      "omp_physical_sloc": 1806,
+      "omp_num_files": 10,
+      "omp_num_target_files": 10,
+      "category": "other",
+      "complexity_class": "multi_to_multi",
+      "pass_rate": 0.1053
+    },
+    "nn": {
+      "kernel": "nn",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/nn",
+      "num_source_files": 1,
+      "num_target_files": 1,
+      "physical_sloc": 259,
+      "total_nonblank_lines": 304,
+      "files": [
+        {
+          "file": "nn_cuda.cu",
+          "physical_sloc": 259,
+          "total_nonblank_lines": 304
+        }
+      ],
+      "omp_physical_sloc": 111,
+      "omp_num_files": 1,
+      "omp_num_target_files": 1,
+      "category": "graph",
+      "complexity_class": "single_file",
+      "pass_rate": 0.6842
+    },
+    "nw": {
+      "kernel": "nw",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/nw",
+      "num_source_files": 2,
+      "num_target_files": 2,
+      "physical_sloc": 319,
+      "total_nonblank_lines": 331,
+      "files": [
+        {
+          "file": "needle.cu",
+          "physical_sloc": 202,
+          "total_nonblank_lines": 214
+        },
+        {
+          "file": "needle_kernel.cu",
+          "physical_sloc": 117,
+          "total_nonblank_lines": 117
+        }
+      ],
+      "omp_physical_sloc": 291,
+      "omp_num_files": 1,
+      "omp_num_target_files": 1,
+      "category": "other",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.0
+    },
+    "particlefilter": {
+      "kernel": "particlefilter",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/particlefilter",
+      "num_source_files": 2,
+      "num_target_files": 2,
+      "physical_sloc": 1023,
+      "total_nonblank_lines": 1428,
+      "files": [
+        {
+          "file": "ex_particle_CUDA_float_seq.cu",
+          "physical_sloc": 551,
+          "total_nonblank_lines": 769
+        },
+        {
+          "file": "ex_particle_CUDA_naive_seq.cu",
+          "physical_sloc": 472,
+          "total_nonblank_lines": 659
+        }
+      ],
+      "omp_physical_sloc": 400,
+      "omp_num_files": 1,
+      "omp_num_target_files": 1,
+      "category": "physics",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.4211
+    },
+    "pathfinder": {
+      "kernel": "pathfinder",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/pathfinder",
+      "num_source_files": 1,
+      "num_target_files": 1,
+      "physical_sloc": 195,
+      "total_nonblank_lines": 215,
+      "files": [
+        {
+          "file": "pathfinder.cu",
+          "physical_sloc": 195,
+          "total_nonblank_lines": 215
+        }
+      ],
+      "omp_physical_sloc": 103,
+      "omp_num_files": 1,
+      "omp_num_target_files": 1,
+      "category": "graph",
+      "complexity_class": "single_file",
+      "pass_rate": 0.7368
+    },
+    "srad": {
+      "kernel": "srad",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/srad/srad_v2",
+      "num_source_files": 2,
+      "num_target_files": 2,
+      "physical_sloc": 391,
+      "total_nonblank_lines": 425,
+      "files": [
+        {
+          "file": "srad.cu",
+          "physical_sloc": 197,
+          "total_nonblank_lines": 217
+        },
+        {
+          "file": "srad_kernel.cu",
+          "physical_sloc": 194,
+          "total_nonblank_lines": 208
+        }
+      ],
+      "omp_physical_sloc": 173,
+      "omp_num_files": 1,
+      "omp_num_target_files": 1,
+      "category": "image",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.0
+    },
+    "streamcluster": {
+      "kernel": "streamcluster",
+      "suite": "rodinia",
+      "source_api": "cuda",
+      "source_dir": "rodinia/rodinia-src/cuda/streamcluster",
+      "num_source_files": 2,
+      "num_target_files": 2,
+      "physical_sloc": 372,
+      "total_nonblank_lines": 460,
+      "files": [
+        {
+          "file": "streamcluster_cuda.cu",
+          "physical_sloc": 252,
+          "total_nonblank_lines": 324
+        },
+        {
+          "file": "streamcluster_header.cu",
+          "physical_sloc": 120,
+          "total_nonblank_lines": 136
+        }
+      ],
+      "omp_physical_sloc": 981,
+      "omp_num_files": 1,
+      "omp_num_target_files": 1,
+      "category": "other",
+      "complexity_class": "multi_to_single",
+      "pass_rate": 0.2632
+    },
+    "xsbench": {
+      "kernel": "xsbench",
+      "suite": "xsbench",
+      "source_api": "cuda",
+      "source_dir": "xsbench/xsbench-src/cuda",
+      "num_source_files": 6,
+      "num_target_files": 6,
+      "physical_sloc": 1390,
+      "total_nonblank_lines": 1828,
+      "files": [
+        {
+          "file": "Main.cu",
+          "physical_sloc": 65,
+          "total_nonblank_lines": 92
+        },
+        {
+          "file": "io.cu",
+          "physical_sloc": 391,
+          "total_nonblank_lines": 437
+        },
+        {
+          "file": "Simulation.cu",
+          "physical_sloc": 647,
+          "total_nonblank_lines": 915
+        },
+        {
+          "file": "GridInit.cu",
+          "physical_sloc": 142,
+          "total_nonblank_lines": 216
+        },
+        {
+          "file": "XSutils.cu",
+          "physical_sloc": 62,
+          "total_nonblank_lines": 67
+        },
+        {
+          "file": "Materials.cu",
+          "physical_sloc": 83,
+          "total_nonblank_lines": 101
+        }
+      ],
+      "omp_physical_sloc": 1238,
+      "omp_num_files": 6,
+      "omp_num_target_files": 6,
+      "category": "physics",
+      "complexity_class": "multi_to_multi",
+      "pass_rate": 0.2667
+    }
+  },
+  "summary": {
+    "total_kernels": 18,
+    "min_sloc": 195,
+    "max_sloc": 3304,
+    "mean_sloc": 682.2,
+    "median_sloc": 309.0,
+    "std_sloc": 797.9,
+    "total_sloc_all_kernels": 12279,
+    "distribution": {
+      "<100": 0,
+      "100-500": 13,
+      "500-1000": 0,
+      ">1000": 5
+    },
+    "pareval_repo_threshold": 133,
+    "kernels_above_pareval_threshold": 18,
+    "pct_above_pareval_threshold": 100.0,
+    "sloc_vs_pass_rate_spearman": -0.6347
+  }
+}

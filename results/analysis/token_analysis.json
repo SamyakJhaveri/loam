@@ -1,0 +1,1040 @@
+{
+  "analysis": "token_usage",
+  "total_results": 500,
+  "grand_total_tokens": 27844892,
+  "grand_total_cost_usd": 55.6873,
+  "by_model": {
+    "claude-sonnet-4-6": {
+      "display_name": "Claude Sonnet 4",
+      "total_results": 161,
+      "pass_count": 113,
+      "pass_rate": 0.7019,
+      "prompt_tokens": {
+        "count": 161,
+        "mean": 38084.2,
+        "median": 26238,
+        "std": 37380.5,
+        "min": 1561,
+        "max": 177807,
+        "total": 6131564
+      },
+      "completion_tokens": {
+        "count": 161,
+        "mean": 12135.7,
+        "median": 8563,
+        "std": 10491.3,
+        "min": 1085,
+        "max": 32768,
+        "total": 1953840
+      },
+      "response_time_seconds": {
+        "count": 161,
+        "mean": 138.4,
+        "median": 87.5,
+        "std": 130.7,
+        "min": 12.5,
+        "max": 908.1,
+        "total": 22275.4
+      },
+      "tokens_per_second": {
+        "count": 161,
+        "mean": 89.5,
+        "median": 89.2,
+        "std": 10.3,
+        "min": 30.2,
+        "max": 120.9,
+        "total": 14416.3
+      },
+      "cost_usd": {
+        "total": 47.7023,
+        "mean_per_task": 0.296288,
+        "cost_per_pass": 0.209042,
+        "total_pass_cost": 23.6218,
+        "total_fail_cost": 24.0805
+      },
+      "pass_prompt_tokens_mean": 27449.9,
+      "fail_prompt_tokens_mean": 63119.2,
+      "pass_completion_tokens_mean": 8446.2,
+      "fail_completion_tokens_mean": 20821.3
+    },
+    "gemini-2.5-flash-lite": {
+      "display_name": "Gemini 2.5 Flash-Lite",
+      "total_results": 161,
+      "pass_count": 17,
+      "pass_rate": 0.1056,
+      "prompt_tokens": {
+        "count": 161,
+        "mean": 53887.5,
+        "median": 53742,
+        "std": 37920.4,
+        "min": 1511,
+        "max": 172656,
+        "total": 8675885
+      },
+      "completion_tokens": {
+        "count": 161,
+        "mean": 17860.4,
+        "median": 16125,
+        "std": 11080.8,
+        "min": 850,
+        "max": 32768,
+        "total": 2875532
+      },
+      "response_time_seconds": {
+        "count": 161,
+        "mean": 38.6,
+        "median": 34.4,
+        "std": 23.1,
+        "min": 2.7,
+        "max": 92.5,
+        "total": 6218.0
+      },
+      "tokens_per_second": {
+        "count": 161,
+        "mean": 451.0,
+        "median": 446.4,
+        "std": 69.8,
+        "min": 266.9,
+        "max": 652.2,
+        "total": 72606.3
+      },
+      "cost_usd": {
+        "total": 1.5134,
+        "mean_per_task": 0.0094,
+        "cost_per_pass": 0.002231,
+        "total_pass_cost": 0.0379,
+        "total_fail_cost": 1.4754
+      },
+      "pass_prompt_tokens_mean": 10805.6,
+      "fail_prompt_tokens_mean": 58973.5,
+      "pass_completion_tokens_mean": 4736.2,
+      "fail_completion_tokens_mean": 19409.8
+    },
+    "groq-llama-3.3-70b-versatile": {
+      "display_name": "Groq Llama 3.3 70B",
+      "total_results": 161,
+      "pass_count": 30,
+      "pass_rate": 0.1863,
+      "prompt_tokens": {
+        "count": 161,
+        "mean": 39786.7,
+        "median": 37117,
+        "std": 30716.7,
+        "min": 0,
+        "max": 143146,
+        "total": 6405664
+      },
+      "completion_tokens": {
+        "count": 161,
+        "mean": 7626.1,
+        "median": 4656,
+        "std": 7382.5,
+        "min": 0,
+        "max": 32768,
+        "total": 1227805
+      },
+      "response_time_seconds": {
+        "count": 160,
+        "mean": 26.3,
+        "median": 15.7,
+        "std": 25.3,
+        "min": 2.0,
+        "max": 115.7,
+        "total": 4209.8
+      },
+      "tokens_per_second": {
+        "count": 160,
+        "mean": 316.3,
+        "median": 289.3,
+        "std": 100.4,
+        "min": 112.8,
+        "max": 601.6,
+        "total": 50603.7
+      },
+      "cost_usd": {
+        "total": 4.7493,
+        "mean_per_task": 0.029499,
+        "cost_per_pass": 0.011473,
+        "total_pass_cost": 0.3442,
+        "total_fail_cost": 4.4051
+      },
+      "pass_prompt_tokens_mean": 15098.5,
+      "fail_prompt_tokens_mean": 45440.5,
+      "pass_completion_tokens_mean": 3247.2,
+      "fail_completion_tokens_mean": 8628.9
+    },
+    "azure-gpt-4.1": {
+      "display_name": "Azure GPT-4.1",
+      "total_results": 17,
+      "pass_count": 9,
+      "pass_rate": 0.5294,
+      "prompt_tokens": {
+        "count": 17,
+        "mean": 28181.3,
+        "median": 16005,
+        "std": 32950.3,
+        "min": 2462,
+        "max": 129404,
+        "total": 479082
+      },
+      "completion_tokens": {
+        "count": 17,
+        "mean": 5618.8,
+        "median": 4427,
+        "std": 5112.7,
+        "min": 964,
+        "max": 22164,
+        "total": 95520
+      },
+      "response_time_seconds": {
+        "count": 17,
+        "mean": 58.9,
+        "median": 41.5,
+        "std": 60.5,
+        "min": 5.8,
+        "max": 275.3,
+        "total": 1000.6
+      },
+      "tokens_per_second": {
+        "count": 17,
+        "mean": 107.6,
+        "median": 87.3,
+        "std": 55.1,
+        "min": 65.4,
+        "max": 285.9,
+        "total": 1828.6
+      },
+      "cost_usd": {
+        "total": 1.7223,
+        "mean_per_task": 0.101313,
+        "cost_per_pass": 0.0504,
+        "total_pass_cost": 0.4536,
+        "total_fail_cost": 1.2687
+      },
+      "pass_prompt_tokens_mean": 14850.9,
+      "fail_prompt_tokens_mean": 43178.0,
+      "pass_completion_tokens_mean": 2587.3,
+      "fail_completion_tokens_mean": 9029.2
+    }
+  },
+  "by_kernel": {
+    "backprop": {
+      "total_results": 19,
+      "pass_count": 11,
+      "pass_rate": 0.5789,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 14969.7,
+        "median": 11057,
+        "std": 5948.9,
+        "min": 8433,
+        "max": 28256,
+        "total": 284425
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 7275.2,
+        "median": 5942,
+        "std": 4025.4,
+        "min": 2925,
+        "max": 16520,
+        "total": 138228
+      }
+    },
+    "bfs": {
+      "total_results": 19,
+      "pass_count": 12,
+      "pass_rate": 0.6316,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 7348.6,
+        "median": 4464,
+        "std": 5512.5,
+        "min": 3241,
+        "max": 25115,
+        "total": 139623
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 4752.4,
+        "median": 1779,
+        "std": 5197.6,
+        "min": 869,
+        "max": 21403,
+        "total": 90295
+      }
+    },
+    "bptree": {
+      "total_results": 19,
+      "pass_count": 7,
+      "pass_rate": 0.3684,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 35832.4,
+        "median": 25996,
+        "std": 19163.0,
+        "min": 16011,
+        "max": 82739,
+        "total": 680815
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 9062.6,
+        "median": 2717,
+        "std": 10030.1,
+        "min": 1606,
+        "max": 32768,
+        "total": 172189
+      }
+    },
+    "cfd": {
+      "total_results": 19,
+      "pass_count": 7,
+      "pass_rate": 0.3684,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 53978.1,
+        "median": 56689,
+        "std": 18215.6,
+        "min": 21755,
+        "max": 79925,
+        "total": 1025584
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 10853.9,
+        "median": 7253,
+        "std": 7191.6,
+        "min": 4195,
+        "max": 32768,
+        "total": 206224
+      }
+    },
+    "heartwall": {
+      "total_results": 19,
+      "pass_count": 0,
+      "pass_rate": 0.0,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 104693.2,
+        "median": 115300,
+        "std": 14639.0,
+        "min": 75295,
+        "max": 118382,
+        "total": 1989171
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 26830.3,
+        "median": 32768,
+        "std": 9534.3,
+        "min": 2346,
+        "max": 32768,
+        "total": 509776
+      }
+    },
+    "hotspot": {
+      "total_results": 19,
+      "pass_count": 0,
+      "pass_rate": 0.0,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 11872.8,
+        "median": 12544,
+        "std": 1623.5,
+        "min": 9095,
+        "max": 14175,
+        "total": 225584
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 7307.8,
+        "median": 8290,
+        "std": 1919.3,
+        "min": 3089,
+        "max": 9582,
+        "total": 138848
+      }
+    },
+    "hotspot3d": {
+      "total_results": 19,
+      "pass_count": 13,
+      "pass_rate": 0.6842,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 5953.4,
+        "median": 3793,
+        "std": 3351.0,
+        "min": 3050,
+        "max": 13517,
+        "total": 113114
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 4553.0,
+        "median": 3491,
+        "std": 2807.6,
+        "min": 2237,
+        "max": 14231,
+        "total": 86507
+      }
+    },
+    "kmeans": {
+      "total_results": 16,
+      "pass_count": 7,
+      "pass_rate": 0.4375,
+      "prompt_tokens": {
+        "count": 16,
+        "mean": 70974.4,
+        "median": 76457.0,
+        "std": 22247.7,
+        "min": 37117,
+        "max": 96516,
+        "total": 1135591
+      },
+      "completion_tokens": {
+        "count": 16,
+        "mean": 4871.0,
+        "median": 3235.5,
+        "std": 4706.6,
+        "min": 1461,
+        "max": 20771,
+        "total": 77936
+      }
+    },
+    "lavamd": {
+      "total_results": 19,
+      "pass_count": 12,
+      "pass_rate": 0.6316,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 19872.3,
+        "median": 16759,
+        "std": 5667.6,
+        "min": 12273,
+        "max": 34890,
+        "total": 377573
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 1974.1,
+        "median": 1312,
+        "std": 1456.7,
+        "min": 850,
+        "max": 6868,
+        "total": 37507
+      }
+    },
+    "lud": {
+      "total_results": 19,
+      "pass_count": 10,
+      "pass_rate": 0.5263,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 19470.7,
+        "median": 13488,
+        "std": 10327.8,
+        "min": 6771,
+        "max": 42431,
+        "total": 369943
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 4599.1,
+        "median": 2644,
+        "std": 5399.8,
+        "min": 1094,
+        "max": 20225,
+        "total": 87383
+      }
+    },
+    "myocyte": {
+      "total_results": 19,
+      "pass_count": 2,
+      "pass_rate": 0.1053,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 148839.7,
+        "median": 172589,
+        "std": 36873.3,
+        "min": 33618,
+        "max": 177807,
+        "total": 2827954
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 27909.4,
+        "median": 32768,
+        "std": 9811.8,
+        "min": 1172,
+        "max": 32768,
+        "total": 530278
+      }
+    },
+    "nn": {
+      "total_results": 19,
+      "pass_count": 13,
+      "pass_rate": 0.6842,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 8356.9,
+        "median": 9064,
+        "std": 2908.2,
+        "min": 4556,
+        "max": 12289,
+        "total": 158781
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 4447.6,
+        "median": 3685,
+        "std": 1963.0,
+        "min": 2380,
+        "max": 7841,
+        "total": 84504
+      }
+    },
+    "nw": {
+      "total_results": 19,
+      "pass_count": 0,
+      "pass_rate": 0.0,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 19866.3,
+        "median": 18290,
+        "std": 5576.5,
+        "min": 14119,
+        "max": 28906,
+        "total": 377460
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 15339.0,
+        "median": 10993,
+        "std": 9582.2,
+        "min": 7370,
+        "max": 32768,
+        "total": 291441
+      }
+    },
+    "particlefilter": {
+      "total_results": 19,
+      "pass_count": 8,
+      "pass_rate": 0.4211,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 29021.1,
+        "median": 31844,
+        "std": 9934.8,
+        "min": 15039,
+        "max": 41859,
+        "total": 551400
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 11097.8,
+        "median": 7001,
+        "std": 7942.4,
+        "min": 5194,
+        "max": 32675,
+        "total": 210859
+      }
+    },
+    "pathfinder": {
+      "total_results": 19,
+      "pass_count": 14,
+      "pass_rate": 0.7368,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 4851.6,
+        "median": 3307,
+        "std": 2629.7,
+        "min": 1511,
+        "max": 9934,
+        "total": 92181
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 2854.9,
+        "median": 2428,
+        "std": 1334.7,
+        "min": 1401,
+        "max": 6555,
+        "total": 54244
+      }
+    },
+    "srad": {
+      "total_results": 19,
+      "pass_count": 0,
+      "pass_rate": 0.0,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 14330.1,
+        "median": 15917,
+        "std": 3150.0,
+        "min": 7637,
+        "max": 18016,
+        "total": 272271
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 7276.1,
+        "median": 7133,
+        "std": 3937.1,
+        "min": 2545,
+        "max": 19060,
+        "total": 138246
+      }
+    },
+    "streamcluster": {
+      "total_results": 19,
+      "pass_count": 5,
+      "pass_rate": 0.2632,
+      "prompt_tokens": {
+        "count": 19,
+        "mean": 30849.6,
+        "median": 30467,
+        "std": 12217.0,
+        "min": 14418,
+        "max": 61852,
+        "total": 586142
+      },
+      "completion_tokens": {
+        "count": 19,
+        "mean": 9004.8,
+        "median": 9424,
+        "std": 6392.6,
+        "min": 2286,
+        "max": 23925,
+        "total": 171092
+      }
+    },
+    "xsbench": {
+      "total_results": 180,
+      "pass_count": 48,
+      "pass_rate": 0.2667,
+      "prompt_tokens": {
+        "count": 180,
+        "mean": 58247.7,
+        "median": 58445.0,
+        "std": 18912.0,
+        "min": 0,
+        "max": 106693,
+        "total": 10484583
+      },
+      "completion_tokens": {
+        "count": 180,
+        "mean": 17373.0,
+        "median": 16384.0,
+        "std": 10254.0,
+        "min": 0,
+        "max": 32768,
+        "total": 3127140
+      }
+    }
+  },
+  "by_direction": {
+    "cuda-to-omp": {
+      "total_results": 287,
+      "pass_count": 110,
+      "pass_rate": 0.3833,
+      "prompt_tokens": {
+        "count": 287,
+        "mean": 37739.9,
+        "median": 18373,
+        "std": 41851.9,
+        "min": 2459,
+        "max": 177807,
+        "total": 10831352
+      },
+      "completion_tokens": {
+        "count": 287,
+        "mean": 9800.1,
+        "median": 5942,
+        "std": 9943.5,
+        "min": 850,
+        "max": 32768,
+        "total": 2812634
+      }
+    },
+    "cuda-to-omp_target": {
+      "total_results": 15,
+      "pass_count": 5,
+      "pass_rate": 0.3333,
+      "prompt_tokens": {
+        "count": 15,
+        "mean": 65332.9,
+        "median": 75446,
+        "std": 15030.9,
+        "min": 30905,
+        "max": 78366,
+        "total": 979993
+      },
+      "completion_tokens": {
+        "count": 15,
+        "mean": 20106.1,
+        "median": 17707,
+        "std": 6244.3,
+        "min": 13606,
+        "max": 31362,
+        "total": 301591
+      }
+    },
+    "cuda-to-opencl": {
+      "total_results": 15,
+      "pass_count": 5,
+      "pass_rate": 0.3333,
+      "prompt_tokens": {
+        "count": 15,
+        "mean": 75505.1,
+        "median": 75989,
+        "std": 23070.6,
+        "min": 47309,
+        "max": 106693,
+        "total": 1132576
+      },
+      "completion_tokens": {
+        "count": 15,
+        "mean": 9767.9,
+        "median": 6501,
+        "std": 9033.3,
+        "min": 2987,
+        "max": 29213,
+        "total": 146518
+      }
+    },
+    "omp-to-cuda": {
+      "total_results": 63,
+      "pass_count": 17,
+      "pass_rate": 0.2698,
+      "prompt_tokens": {
+        "count": 63,
+        "mean": 33730.8,
+        "median": 23704,
+        "std": 28078.4,
+        "min": 1511,
+        "max": 106865,
+        "total": 2125041
+      },
+      "completion_tokens": {
+        "count": 63,
+        "mean": 13238.9,
+        "median": 7745,
+        "std": 11406.1,
+        "min": 1172,
+        "max": 32768,
+        "total": 834050
+      }
+    },
+    "omp-to-omp_target": {
+      "total_results": 15,
+      "pass_count": 4,
+      "pass_rate": 0.2667,
+      "prompt_tokens": {
+        "count": 15,
+        "mean": 53025.3,
+        "median": 57686,
+        "std": 16732.2,
+        "min": 26226,
+        "max": 68992,
+        "total": 795379
+      },
+      "completion_tokens": {
+        "count": 15,
+        "mean": 23606.1,
+        "median": 18472,
+        "std": 7683.4,
+        "min": 15982,
+        "max": 32768,
+        "total": 354092
+      }
+    },
+    "omp-to-opencl": {
+      "total_results": 15,
+      "pass_count": 5,
+      "pass_rate": 0.3333,
+      "prompt_tokens": {
+        "count": 15,
+        "mean": 65580.8,
+        "median": 68955,
+        "std": 17548.9,
+        "min": 42644,
+        "max": 85362,
+        "total": 983712
+      },
+      "completion_tokens": {
+        "count": 15,
+        "mean": 4903.6,
+        "median": 3663,
+        "std": 1913.5,
+        "min": 2942,
+        "max": 7460,
+        "total": 73554
+      }
+    },
+    "omp_target-to-cuda": {
+      "total_results": 15,
+      "pass_count": 6,
+      "pass_rate": 0.4,
+      "prompt_tokens": {
+        "count": 15,
+        "mean": 40416.5,
+        "median": 44025,
+        "std": 16297.2,
+        "min": 15629,
+        "max": 55101,
+        "total": 606248
+      },
+      "completion_tokens": {
+        "count": 15,
+        "mean": 18298.9,
+        "median": 15310,
+        "std": 7460.8,
+        "min": 9300,
+        "max": 32768,
+        "total": 274484
+      }
+    },
+    "omp_target-to-omp": {
+      "total_results": 15,
+      "pass_count": 2,
+      "pass_rate": 0.1333,
+      "prompt_tokens": {
+        "count": 15,
+        "mean": 47451.7,
+        "median": 53640,
+        "std": 13448.5,
+        "min": 0,
+        "max": 54148,
+        "total": 711776
+      },
+      "completion_tokens": {
+        "count": 15,
+        "mean": 23677.0,
+        "median": 28046,
+        "std": 9645.3,
+        "min": 0,
+        "max": 31672,
+        "total": 355155
+      }
+    },
+    "omp_target-to-opencl": {
+      "total_results": 15,
+      "pass_count": 5,
+      "pass_rate": 0.3333,
+      "prompt_tokens": {
+        "count": 15,
+        "mean": 58135.6,
+        "median": 58441,
+        "std": 18318.1,
+        "min": 35877,
+        "max": 84636,
+        "total": 872034
+      },
+      "completion_tokens": {
+        "count": 15,
+        "mean": 8085.9,
+        "median": 4898,
+        "std": 6359.7,
+        "min": 2911,
+        "max": 20860,
+        "total": 121288
+      }
+    },
+    "opencl-to-cuda": {
+      "total_results": 15,
+      "pass_count": 5,
+      "pass_rate": 0.3333,
+      "prompt_tokens": {
+        "count": 15,
+        "mean": 56834.3,
+        "median": 55927,
+        "std": 16468.6,
+        "min": 28452,
+        "max": 72726,
+        "total": 852514
+      },
+      "completion_tokens": {
+        "count": 15,
+        "mean": 20643.9,
+        "median": 19396,
+        "std": 8788.0,
+        "min": 1267,
+        "max": 32768,
+        "total": 309659
+      }
+    },
+    "opencl-to-omp": {
+      "total_results": 15,
+      "pass_count": 0,
+      "pass_rate": 0.0,
+      "prompt_tokens": {
+        "count": 15,
+        "mean": 63275.1,
+        "median": 69764,
+        "std": 9721.7,
+        "min": 43623,
+        "max": 70260,
+        "total": 949126
+      },
+      "completion_tokens": {
+        "count": 15,
+        "mean": 21922.6,
+        "median": 27229,
+        "std": 10124.7,
+        "min": 1261,
+        "max": 32766,
+        "total": 328839
+      }
+    },
+    "opencl-to-omp_target": {
+      "total_results": 15,
+      "pass_count": 5,
+      "pass_rate": 0.3333,
+      "prompt_tokens": {
+        "count": 15,
+        "mean": 56829.6,
+        "median": 55668,
+        "std": 16020.3,
+        "min": 27989,
+        "max": 71915,
+        "total": 852444
+      },
+      "completion_tokens": {
+        "count": 15,
+        "mean": 16055.5,
+        "median": 15241,
+        "std": 2839.5,
+        "min": 12579,
+        "max": 22162,
+        "total": 240833
+      }
+    }
+  },
+  "by_augment_level": {
+    "L0": {
+      "total_results": 152,
+      "pass_count": 52,
+      "pass_rate": 0.3421,
+      "prompt_tokens": {
+        "count": 152,
+        "mean": 38530.9,
+        "median": 25948.0,
+        "std": 34963.7,
+        "min": 1511,
+        "max": 177760,
+        "total": 5856701
+      },
+      "completion_tokens": {
+        "count": 152,
+        "mean": 11501.9,
+        "median": 7279.5,
+        "std": 10358.9,
+        "min": 964,
+        "max": 32768,
+        "total": 1748295
+      }
+    },
+    "L1": {
+      "total_results": 87,
+      "pass_count": 32,
+      "pass_rate": 0.3678,
+      "prompt_tokens": {
+        "count": 87,
+        "mean": 45065.5,
+        "median": 37116,
+        "std": 37007.7,
+        "min": 2459,
+        "max": 177787,
+        "total": 3920696
+      },
+      "completion_tokens": {
+        "count": 87,
+        "mean": 12759.4,
+        "median": 8776,
+        "std": 10972.2,
+        "min": 995,
+        "max": 32768,
+        "total": 1110067
+      }
+    },
+    "L2": {
+      "total_results": 87,
+      "pass_count": 31,
+      "pass_rate": 0.3563,
+      "prompt_tokens": {
+        "count": 87,
+        "mean": 44644.1,
+        "median": 37150,
+        "std": 36883.9,
+        "min": 0,
+        "max": 177760,
+        "total": 3884033
+      },
+      "completion_tokens": {
+        "count": 87,
+        "mean": 12198.5,
+        "median": 8260,
+        "std": 10554.4,
+        "min": 0,
+        "max": 32768,
+        "total": 1061272
+      }
+    },
+    "L3": {
+      "total_results": 87,
+      "pass_count": 29,
+      "pass_rate": 0.3333,
+      "prompt_tokens": {
+        "count": 87,
+        "mean": 46804.3,
+        "median": 42353,
+        "std": 36474.2,
+        "min": 3050,
+        "max": 177807,
+        "total": 4071978
+      },
+      "completion_tokens": {
+        "count": 87,
+        "mean": 13103.1,
+        "median": 8563,
+        "std": 10660.1,
+        "min": 869,
+        "max": 32768,
+        "total": 1139971
+      }
+    },
+    "L4": {
+      "total_results": 87,
+      "pass_count": 25,
+      "pass_rate": 0.2874,
+      "prompt_tokens": {
+        "count": 87,
+        "mean": 45503.3,
+        "median": 39182,
+        "std": 35670.5,
+        "min": 2635,
+        "max": 177574,
+        "total": 3958787
+      },
+      "completion_tokens": {
+        "count": 87,
+        "mean": 12564.3,
+        "median": 9216,
+        "std": 10408.8,
+        "min": 850,
+        "max": 32768,
+        "total": 1093092
+      }
+    }
+  },
+  "correlations": {
+    "kernel_mean_prompt_vs_pass_rate_spearman": -0.5501,
+    "pass_mean_prompt_tokens": 22912.1,
+    "fail_mean_prompt_tokens": 53837.0,
+    "completion_tokens_vs_pass_spearman": -0.4779,
+    "pass_mean_completion_tokens": 6838.1,
+    "fail_mean_completion_tokens": 15096.9,
+    "note": "Negative prompt correlation: larger kernels (more prompt tokens) are harder to translate. Completion correlation shows whether successful translations produce more or fewer output tokens."
+  }
+}

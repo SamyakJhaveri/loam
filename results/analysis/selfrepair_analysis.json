@@ -1,0 +1,339 @@
+{
+  "analysis": "self_repair_breakdown",
+  "total_results": 500,
+  "single_attempt_count": 135,
+  "total_multi_attempt": 365,
+  "full_repair_count": 35,
+  "partial_repair_count": 56,
+  "no_repair_count": 242,
+  "regression_count": 32,
+  "overall_repair_rate": 0.0959,
+  "overall_any_improvement_rate": 0.2493,
+  "by_model": {
+    "azure-gpt-4.1": {
+      "display_name": "Azure GPT-4.1",
+      "total_multi_attempt": 10,
+      "full_repair": 2,
+      "partial_repair": 3,
+      "no_repair": 5,
+      "regression": 0,
+      "repair_rate": 0.2,
+      "any_improvement_rate": 0.5,
+      "by_initial_failure": {
+        "BUILD_FAIL": {
+          "no_repair": 4,
+          "partial_repair": 3,
+          "full_repair": 1
+        },
+        "RUN_FAIL": {
+          "full_repair": 1,
+          "no_repair": 1
+        }
+      }
+    },
+    "claude-sonnet-4-6": {
+      "display_name": "Claude Sonnet 4",
+      "total_multi_attempt": 65,
+      "full_repair": 17,
+      "partial_repair": 1,
+      "no_repair": 47,
+      "regression": 0,
+      "repair_rate": 0.2615,
+      "any_improvement_rate": 0.2769,
+      "by_initial_failure": {
+        "BUILD_FAIL": {
+          "no_repair": 16,
+          "full_repair": 12,
+          "partial_repair": 1
+        },
+        "RUN_FAIL": {
+          "no_repair": 31,
+          "full_repair": 5
+        }
+      }
+    },
+    "gemini-2.5-flash-lite": {
+      "display_name": "Gemini 2.5 Flash-Lite",
+      "total_multi_attempt": 148,
+      "full_repair": 4,
+      "partial_repair": 44,
+      "no_repair": 92,
+      "regression": 8,
+      "repair_rate": 0.027,
+      "any_improvement_rate": 0.3243,
+      "by_initial_failure": {
+        "BUILD_FAIL": {
+          "no_repair": 69,
+          "partial_repair": 6,
+          "regression": 2,
+          "full_repair": 4
+        },
+        "EXTRACTION_FAIL": {
+          "partial_repair": 38,
+          "no_repair": 8
+        },
+        "RUN_FAIL": {
+          "regression": 6,
+          "no_repair": 15
+        }
+      }
+    },
+    "groq-llama-3.3-70b-versatile": {
+      "display_name": "Groq Llama 3.3 70B",
+      "total_multi_attempt": 142,
+      "full_repair": 12,
+      "partial_repair": 8,
+      "no_repair": 98,
+      "regression": 24,
+      "repair_rate": 0.0845,
+      "any_improvement_rate": 0.1408,
+      "by_initial_failure": {
+        "BUILD_FAIL": {
+          "no_repair": 75,
+          "full_repair": 9,
+          "regression": 7,
+          "partial_repair": 6
+        },
+        "EXTRACTION_FAIL": {
+          "no_repair": 9,
+          "partial_repair": 2
+        },
+        "RUN_FAIL": {
+          "regression": 17,
+          "full_repair": 3,
+          "no_repair": 14
+        }
+      }
+    }
+  },
+  "by_initial_failure": {
+    "BUILD_FAIL": {
+      "total": 215,
+      "full_repair": 26,
+      "partial_repair": 16,
+      "no_repair": 164,
+      "regression": 9,
+      "repair_rate": 0.1209
+    },
+    "EXTRACTION_FAIL": {
+      "total": 57,
+      "full_repair": 0,
+      "partial_repair": 40,
+      "no_repair": 17,
+      "regression": 0,
+      "repair_rate": 0.0
+    },
+    "RUN_FAIL": {
+      "total": 93,
+      "full_repair": 9,
+      "partial_repair": 0,
+      "no_repair": 61,
+      "regression": 23,
+      "repair_rate": 0.0968
+    }
+  },
+  "by_kernel": {
+    "backprop": {
+      "total_multi_attempt": 8,
+      "full_repair": 0,
+      "partial_repair": 0,
+      "no_repair": 8,
+      "regression": 0,
+      "repair_rate": 0.0
+    },
+    "bfs": {
+      "total_multi_attempt": 8,
+      "full_repair": 1,
+      "partial_repair": 0,
+      "no_repair": 6,
+      "regression": 1,
+      "repair_rate": 0.125
+    },
+    "bptree": {
+      "total_multi_attempt": 14,
+      "full_repair": 2,
+      "partial_repair": 4,
+      "no_repair": 8,
+      "regression": 0,
+      "repair_rate": 0.1429
+    },
+    "cfd": {
+      "total_multi_attempt": 12,
+      "full_repair": 0,
+      "partial_repair": 0,
+      "no_repair": 12,
+      "regression": 0,
+      "repair_rate": 0.0
+    },
+    "heartwall": {
+      "total_multi_attempt": 19,
+      "full_repair": 0,
+      "partial_repair": 6,
+      "no_repair": 12,
+      "regression": 1,
+      "repair_rate": 0.0
+    },
+    "hotspot": {
+      "total_multi_attempt": 19,
+      "full_repair": 0,
+      "partial_repair": 5,
+      "no_repair": 12,
+      "regression": 2,
+      "repair_rate": 0.0
+    },
+    "hotspot3d": {
+      "total_multi_attempt": 7,
+      "full_repair": 1,
+      "partial_repair": 0,
+      "no_repair": 5,
+      "regression": 1,
+      "repair_rate": 0.1429
+    },
+    "kmeans": {
+      "total_multi_attempt": 10,
+      "full_repair": 1,
+      "partial_repair": 0,
+      "no_repair": 6,
+      "regression": 3,
+      "repair_rate": 0.1
+    },
+    "lavamd": {
+      "total_multi_attempt": 9,
+      "full_repair": 2,
+      "partial_repair": 0,
+      "no_repair": 5,
+      "regression": 2,
+      "repair_rate": 0.2222
+    },
+    "lud": {
+      "total_multi_attempt": 9,
+      "full_repair": 0,
+      "partial_repair": 2,
+      "no_repair": 6,
+      "regression": 1,
+      "repair_rate": 0.0
+    },
+    "myocyte": {
+      "total_multi_attempt": 18,
+      "full_repair": 1,
+      "partial_repair": 4,
+      "no_repair": 13,
+      "regression": 0,
+      "repair_rate": 0.0556
+    },
+    "nn": {
+      "total_multi_attempt": 14,
+      "full_repair": 8,
+      "partial_repair": 2,
+      "no_repair": 4,
+      "regression": 0,
+      "repair_rate": 0.5714
+    },
+    "nw": {
+      "total_multi_attempt": 19,
+      "full_repair": 0,
+      "partial_repair": 4,
+      "no_repair": 15,
+      "regression": 0,
+      "repair_rate": 0.0
+    },
+    "particlefilter": {
+      "total_multi_attempt": 12,
+      "full_repair": 1,
+      "partial_repair": 0,
+      "no_repair": 11,
+      "regression": 0,
+      "repair_rate": 0.0833
+    },
+    "pathfinder": {
+      "total_multi_attempt": 9,
+      "full_repair": 4,
+      "partial_repair": 0,
+      "no_repair": 2,
+      "regression": 3,
+      "repair_rate": 0.4444
+    },
+    "srad": {
+      "total_multi_attempt": 19,
+      "full_repair": 0,
+      "partial_repair": 1,
+      "no_repair": 13,
+      "regression": 5,
+      "repair_rate": 0.0
+    },
+    "streamcluster": {
+      "total_multi_attempt": 16,
+      "full_repair": 2,
+      "partial_repair": 0,
+      "no_repair": 14,
+      "regression": 0,
+      "repair_rate": 0.125
+    },
+    "xsbench": {
+      "total_multi_attempt": 143,
+      "full_repair": 12,
+      "partial_repair": 28,
+      "no_repair": 90,
+      "regression": 13,
+      "repair_rate": 0.0839
+    }
+  },
+  "token_overhead": {
+    "total_extra_prompt_tokens": 11194810,
+    "total_extra_completion_tokens": 2297938,
+    "total_extra_tokens": 13492748,
+    "full_repair_extra_prompt_tokens": 833667,
+    "full_repair_extra_completion_tokens": 185539,
+    "mean_extra_tokens_per_retry": 36966.4
+  },
+  "repair_trajectories": [
+    {
+      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL",
+      "count": 163
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 RUN_FAIL",
+      "count": 61
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 BUILD_FAIL",
+      "count": 28
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 PASS",
+      "count": 26
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 EXTRACTION_FAIL",
+      "count": 17
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL",
+      "count": 16
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 EXTRACTION_FAIL",
+      "count": 13
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 RUN_FAIL",
+      "count": 12
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 BUILD_FAIL",
+      "count": 10
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 PASS",
+      "count": 9
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 EXTRACTION_FAIL",
+      "count": 9
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 OTHER",
+      "count": 1
+    }
+  ]
+}
