@@ -101,9 +101,9 @@ ParEval \cite{ParEval2024} asks whether LLMs can *generate* parallel code from s
 
 ### 2.4 Repository-Level Code Translation
 
-**RepoTransBench** \cite{RepoTransBench2024} evaluates repository-level translation across general-purpose programming languages, finding systematic failures at scale consistent with ParEval-Repo.
+**RepoTransBench** \cite{RepoTransBench2025} evaluates repository-level translation across general-purpose programming languages, finding systematic failures at scale consistent with ParEval-Repo.
 
-**AlphaTrans** \cite{AlphaTrans2024} proposes compositional code translation with validation, decomposing repository-level translation into per-method tasks. This compositional philosophy is related to ParBench's kernel-centric design, though AlphaTrans targets sequential languages.
+**AlphaTrans** \cite{AlphaTrans2025} proposes compositional code translation with validation, decomposing repository-level translation into per-method tasks. This compositional philosophy is related to ParBench's kernel-centric design, though AlphaTrans targets sequential languages.
 
 **LASSI** \cite{LASSI2024} (CLUSTER'24) evaluates an LLM self-correcting pipeline for parallel code translation with iterative compiler feedback. ParBench includes a self-repair loop as a component of its evaluation methodology; LASSI's contribution is the repair system itself, while ParBench's is the evaluation framework.
 
@@ -172,7 +172,7 @@ The following condensed listing illustrates the essential structure using the BF
 }
 ```
 
-This design separates the definition of correctness from the mechanism of verification: the harness can evolve independently of what "correct" means for each kernel. Across the current benchmark collection, 184 specs are defined: 60 from Rodinia \cite{Rodinia2009}, 4 from XSBench \cite{XSBench2014}, and 120 from HeCBench \cite{HeCBench2021}.
+This design separates the definition of correctness from the mechanism of verification: the harness can evolve independently of what "correct" means for each kernel. Across the current benchmark collection, 184 specs are defined: 60 from Rodinia \cite{Rodinia2009}, 4 from XSBench \cite{XSBench2014}, and 120 from HeCBench \cite{HeCBench2023}.
 
 ### 3.B Harness Pipeline: Build, Run, Verify
 
@@ -239,7 +239,7 @@ The benchmark corpus was assembled through a systematic selection process: surve
 
 A survey of 35 open-source HPC benchmark repositories was conducted, spanning suites, mini-applications, proxy applications, full applications, libraries, and microbenchmarks. The survey covered GPU computing across multiple parallel APIs.
 
-A central finding of the survey is that repository-level counting dramatically overstates the available benchmark material. Naive analysis identifies 21 repositories containing both CUDA and OpenMP implementations, but kernel-level analysis reveals 472 independent CUDA--OpenMP translation pairs across those same repositories. The discrepancy ranges from 20x to 60x, driven primarily by large suites such as HeCBench \cite{HeCBench2021} (325 kernels with CUDA and OpenMP implementations) and other multi-API benchmark collections. This motivates a kernel-centric evaluation strategy: benchmarks should be evaluated at the granularity of individual computational kernels, not entire repositories.
+A central finding of the survey is that repository-level counting dramatically overstates the available benchmark material. Naive analysis identifies 21 repositories containing both CUDA and OpenMP implementations, but kernel-level analysis reveals 472 independent CUDA--OpenMP translation pairs across those same repositories. The discrepancy ranges from 20x to 60x, driven primarily by large suites such as HeCBench \cite{HeCBench2023} (325 kernels with CUDA and OpenMP implementations) and other multi-API benchmark collections. This motivates a kernel-centric evaluation strategy: benchmarks should be evaluated at the granularity of individual computational kernels, not entire repositories.
 
 [TABLE 3: Survey -- Kernel-Level Translation Pair Counts.]
 
