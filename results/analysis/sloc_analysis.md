@@ -6,26 +6,26 @@ Source: actual CUDA source files from the benchmark repositories.
 
 ## Per-Kernel SLoC
 
-| Kernel | Category | CUDA SLoC | CUDA Files | OMP SLoC | OMP Files | Complexity | Pass Rate |
-|--------|----------|----------:|----------:|---------:|----------:|------------|----------:|
-| myocyte | other | 3,304 | 16 | 1806 | 10 | multi_to_multi | 10.5% |
-| cfd | physics | 1,955 | 4 | 400 | 1 | multi_to_single | 36.8% |
-| xsbench | physics | 1,390 | 6 | 1238 | 6 | multi_to_multi | 26.7% |
-| heartwall | image | 1,046 | 3 | 837 | 3 | multi_to_multi | 0.0% |
-| particlefilter | physics | 1,023 | 2 | 400 | 1 | multi_to_single | 42.1% |
-| srad | image | 391 | 2 | 173 | 1 | multi_to_single | 0.0% |
-| streamcluster | other | 372 | 2 | 981 | 1 | multi_to_single | 26.3% |
-| bptree | other | 327 | 5 | 1721 | 3 | multi_to_multi | 36.8% |
-| nw | other | 319 | 2 | 291 | 1 | multi_to_single | 0.0% |
-| kmeans | ml | 299 | 2 | 1048 | 4 | multi_to_single | 43.8% |
-| lud | linear_algebra | 271 | 2 | 400 | 3 | multi_to_single | 52.6% |
-| nn | graph | 259 | 1 | 111 | 1 | single_file | 68.4% |
-| hotspot3d | physics | 246 | 2 | 206 | 1 | multi_to_single | 68.4% |
-| hotspot | physics | 243 | 1 | 262 | 1 | single_file | 0.0% |
-| bfs | graph | 242 | 3 | 144 | 1 | multi_to_single | 63.2% |
-| lavamd | molecular_dynamics | 200 | 3 | 258 | 2 | multi_to_single | 63.2% |
-| backprop | ml | 197 | 2 | 449 | 4 | multi_to_single | 57.9% |
-| pathfinder | graph | 195 | 1 | 103 | 1 | single_file | 73.7% |
+| Kernel | Category | CUDA SLoC | Src Files | Tgt Files | OMP SLoC | OMP Files | Complexity | Pass Rate |
+|--------|----------|----------:|----------:|----------:|---------:|----------:|------------|----------:|
+| myocyte | other | 3,304 | 16 | 16 | 1806 | 10 | multi_to_multi | 10.5% |
+| cfd | physics | 1,955 | 4 | 4 | 400 | 1 | multi_to_single | 36.8% |
+| xsbench | physics | 1,390 | 6 | 6 | 1238 | 6 | multi_to_multi | 26.7% |
+| heartwall | image | 1,046 | 3 | 3 | 837 | 3 | multi_to_multi | 0.0% |
+| particlefilter | physics | 1,023 | 2 | 2 | 400 | 1 | multi_to_single | 42.1% |
+| srad | image | 391 | 2 | 2 | 173 | 1 | multi_to_single | 0.0% |
+| streamcluster | other | 372 | 2 | 2 | 981 | 1 | multi_to_single | 26.3% |
+| bptree | other | 327 | 5 | 5 | 1721 | 3 | multi_to_multi | 36.8% |
+| nw | other | 319 | 2 | 2 | 291 | 1 | multi_to_single | 0.0% |
+| kmeans | ml | 299 | 2 | 2 | 1048 | 4 | multi_to_single | 43.8% |
+| lud | linear_algebra | 271 | 2 | 2 | 400 | 3 | multi_to_single | 52.6% |
+| nn | graph | 259 | 1 | 1 | 111 | 1 | single_file | 68.4% |
+| hotspot3d | physics | 246 | 2 | 2 | 206 | 1 | multi_to_single | 68.4% |
+| hotspot | physics | 243 | 1 | 1 | 262 | 1 | single_file | 0.0% |
+| bfs | graph | 242 | 3 | 3 | 144 | 1 | multi_to_single | 63.2% |
+| lavamd | molecular_dynamics | 200 | 3 | 3 | 258 | 2 | multi_to_single | 63.2% |
+| backprop | ml | 197 | 2 | 2 | 449 | 4 | multi_to_single | 57.9% |
+| pathfinder | graph | 195 | 1 | 1 | 103 | 1 | single_file | 73.7% |
 
 ## Summary Statistics
 

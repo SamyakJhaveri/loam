@@ -59,6 +59,23 @@ Of 365 retried translations:
 | Full-repair extra prompt tokens | 833,667 |
 | Full-repair extra completion tokens | 185,539 |
 
+## Table 5: Repair Trajectory Patterns
+
+| Trajectory | Count | % of Multi-Attempt |
+|------------|------:|-------------------:|
+| BUILD_FAIL → BUILD_FAIL | 163 | 44.7% |
+| RUN_FAIL → RUN_FAIL | 61 | 16.7% |
+| EXTRACTION_FAIL → BUILD_FAIL | 28 | 7.7% |
+| BUILD_FAIL → PASS | 26 | 7.1% |
+| EXTRACTION_FAIL → EXTRACTION_FAIL | 17 | 4.7% |
+| BUILD_FAIL → RUN_FAIL | 16 | 4.4% |
+| RUN_FAIL → EXTRACTION_FAIL | 13 | 3.6% |
+| EXTRACTION_FAIL → RUN_FAIL | 12 | 3.3% |
+| RUN_FAIL → BUILD_FAIL | 10 | 2.7% |
+| RUN_FAIL → PASS | 9 | 2.5% |
+| BUILD_FAIL → EXTRACTION_FAIL | 9 | 2.5% |
+| BUILD_FAIL → OTHER | 1 | 0.3% |
+
 ## Interpretation
 
 Self-repair (retry with error feedback) converts failing translations to PASS.

@@ -269,6 +269,12 @@ def main() -> int:
     pass_prompts = [p for p, s in zip(all_prompt, all_pass) if s == 1.0]
     fail_prompts = [p for p, s in zip(all_prompt, all_pass) if s == 0.0]
 
+    # Completion tokens vs pass/fail correlation
+    all_completion = [r.get("completion_tokens", 0) for r in results]
+    corr_completion_vs_pass = spearman_correlation(all_completion, all_pass)
+    pass_completions = [c for c, s in zip(all_completion, all_pass) if s == 1.0]
+    fail_completions = [c for c, s in zip(all_completion, all_pass) if s == 0.0]
+
     # ── Grand totals ──────────────────────────────────────────────────
     grand_total_cost = sum(m["cost_usd"]["total"] for m in by_model.values())
     grand_total_tokens = sum(
@@ -289,9 +295,13 @@ def main() -> int:
             "kernel_mean_prompt_vs_pass_rate_spearman": corr_prompt_vs_pass,
             "pass_mean_prompt_tokens": round(mean(pass_prompts), 1),
             "fail_mean_prompt_tokens": round(mean(fail_prompts), 1),
+            "completion_tokens_vs_pass_spearman": corr_completion_vs_pass,
+            "pass_mean_completion_tokens": round(mean(pass_completions), 1),
+            "fail_mean_completion_tokens": round(mean(fail_completions), 1),
             "note": (
-                "Pass results have larger prompts on average because "
-                "simpler kernels (fewer tokens) also tend to be easier to translate."
+                "Negative prompt correlation: larger kernels (more prompt tokens) "
+                "are harder to translate. Completion correlation shows whether "
+                "successful translations produce more or fewer output tokens."
             ),
         },
     }
@@ -401,10 +411,13 @@ def main() -> int:
         "",
         "## Correlations",
         "",
-        f"- **Kernel-level**: Spearman(mean prompt tokens, pass rate) = "
+        f"- **Kernel-level (prompt)**: Spearman(mean prompt tokens, pass rate) = "
         f"**{corr_prompt_vs_pass}**",
-        f"- **Result-level**: Mean prompt tokens for PASS = "
+        f"- **Result-level (prompt)**: Mean prompt tokens for PASS = "
         f"**{mean(pass_prompts):,.0f}**, for FAIL = **{mean(fail_prompts):,.0f}**",
+        f"- **Result-level (completion)**: Spearman(completion tokens, pass) = "
+        f"**{corr_completion_vs_pass}**; Mean completion for PASS = "
+        f"**{mean(pass_completions):,.0f}**, for FAIL = **{mean(fail_completions):,.0f}**",
         "",
     ])
 

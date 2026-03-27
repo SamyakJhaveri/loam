@@ -9,6 +9,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/backprop",
       "num_source_files": 2,
+      "num_target_files": 2,
       "physical_sloc": 197,
       "total_nonblank_lines": 216,
       "files": [
@@ -25,6 +26,7 @@
       ],
       "omp_physical_sloc": 449,
       "omp_num_files": 4,
+      "omp_num_target_files": 1,
       "category": "ml",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.5789
@@ -35,6 +37,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/bfs",
       "num_source_files": 3,
+      "num_target_files": 3,
       "physical_sloc": 242,
       "total_nonblank_lines": 310,
       "files": [
@@ -56,6 +59,7 @@
       ],
       "omp_physical_sloc": 144,
       "omp_num_files": 1,
+      "omp_num_target_files": 1,
       "category": "graph",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.6316
@@ -66,6 +70,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/b+tree",
       "num_source_files": 5,
+      "num_target_files": 5,
       "physical_sloc": 327,
       "total_nonblank_lines": 437,
       "files": [
@@ -97,6 +102,7 @@
       ],
       "omp_physical_sloc": 1721,
       "omp_num_files": 3,
+      "omp_num_target_files": 2,
       "category": "other",
       "complexity_class": "multi_to_multi",
       "pass_rate": 0.3684
@@ -107,6 +113,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/cfd",
       "num_source_files": 4,
+      "num_target_files": 4,
       "physical_sloc": 1955,
       "total_nonblank_lines": 2115,
       "files": [
@@ -133,6 +140,7 @@
       ],
       "omp_physical_sloc": 400,
       "omp_num_files": 1,
+      "omp_num_target_files": 1,
       "category": "physics",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.3684
@@ -143,6 +151,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/heartwall",
       "num_source_files": 3,
+      "num_target_files": 3,
       "physical_sloc": 1046,
       "total_nonblank_lines": 1662,
       "files": [
@@ -164,6 +173,7 @@
       ],
       "omp_physical_sloc": 837,
       "omp_num_files": 3,
+      "omp_num_target_files": 3,
       "category": "image",
       "complexity_class": "multi_to_multi",
       "pass_rate": 0.0
@@ -174,6 +184,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/hotspot",
       "num_source_files": 1,
+      "num_target_files": 1,
       "physical_sloc": 243,
       "total_nonblank_lines": 269,
       "files": [
@@ -185,6 +196,7 @@
       ],
       "omp_physical_sloc": 262,
       "omp_num_files": 1,
+      "omp_num_target_files": 1,
       "category": "physics",
       "complexity_class": "single_file",
       "pass_rate": 0.0
@@ -195,6 +207,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/hotspot3D",
       "num_source_files": 2,
+      "num_target_files": 2,
       "physical_sloc": 246,
       "total_nonblank_lines": 250,
       "files": [
@@ -211,6 +224,7 @@
       ],
       "omp_physical_sloc": 206,
       "omp_num_files": 1,
+      "omp_num_target_files": 1,
       "category": "physics",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.6842
@@ -221,6 +235,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/kmeans",
       "num_source_files": 2,
+      "num_target_files": 2,
       "physical_sloc": 299,
       "total_nonblank_lines": 394,
       "files": [
@@ -237,6 +252,7 @@
       ],
       "omp_physical_sloc": 1048,
       "omp_num_files": 4,
+      "omp_num_target_files": 1,
       "category": "ml",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.4375
@@ -247,6 +263,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/lavaMD",
       "num_source_files": 3,
+      "num_target_files": 3,
       "physical_sloc": 200,
       "total_nonblank_lines": 394,
       "files": [
@@ -268,6 +285,7 @@
       ],
       "omp_physical_sloc": 258,
       "omp_num_files": 2,
+      "omp_num_target_files": 1,
       "category": "molecular_dynamics",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.6316
@@ -278,6 +296,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/lud",
       "num_source_files": 2,
+      "num_target_files": 2,
       "physical_sloc": 271,
       "total_nonblank_lines": 329,
       "files": [
@@ -294,6 +313,7 @@
       ],
       "omp_physical_sloc": 400,
       "omp_num_files": 3,
+      "omp_num_target_files": 1,
       "category": "linear_algebra",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.5263
@@ -304,6 +324,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/myocyte",
       "num_source_files": 16,
+      "num_target_files": 16,
       "physical_sloc": 3304,
       "total_nonblank_lines": 4562,
       "files": [
@@ -390,6 +411,7 @@
       ],
       "omp_physical_sloc": 1806,
       "omp_num_files": 10,
+      "omp_num_target_files": 10,
       "category": "other",
       "complexity_class": "multi_to_multi",
       "pass_rate": 0.1053
@@ -400,6 +422,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/nn",
       "num_source_files": 1,
+      "num_target_files": 1,
       "physical_sloc": 259,
       "total_nonblank_lines": 304,
       "files": [
@@ -411,6 +434,7 @@
       ],
       "omp_physical_sloc": 111,
       "omp_num_files": 1,
+      "omp_num_target_files": 1,
       "category": "graph",
       "complexity_class": "single_file",
       "pass_rate": 0.6842
@@ -421,6 +445,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/nw",
       "num_source_files": 2,
+      "num_target_files": 2,
       "physical_sloc": 319,
       "total_nonblank_lines": 331,
       "files": [
@@ -437,6 +462,7 @@
       ],
       "omp_physical_sloc": 291,
       "omp_num_files": 1,
+      "omp_num_target_files": 1,
       "category": "other",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.0
@@ -447,6 +473,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/particlefilter",
       "num_source_files": 2,
+      "num_target_files": 2,
       "physical_sloc": 1023,
       "total_nonblank_lines": 1428,
       "files": [
@@ -463,6 +490,7 @@
       ],
       "omp_physical_sloc": 400,
       "omp_num_files": 1,
+      "omp_num_target_files": 1,
       "category": "physics",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.4211
@@ -473,6 +501,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/pathfinder",
       "num_source_files": 1,
+      "num_target_files": 1,
       "physical_sloc": 195,
       "total_nonblank_lines": 215,
       "files": [
@@ -484,6 +513,7 @@
       ],
       "omp_physical_sloc": 103,
       "omp_num_files": 1,
+      "omp_num_target_files": 1,
       "category": "graph",
       "complexity_class": "single_file",
       "pass_rate": 0.7368
@@ -494,6 +524,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/srad/srad_v2",
       "num_source_files": 2,
+      "num_target_files": 2,
       "physical_sloc": 391,
       "total_nonblank_lines": 425,
       "files": [
@@ -510,6 +541,7 @@
       ],
       "omp_physical_sloc": 173,
       "omp_num_files": 1,
+      "omp_num_target_files": 1,
       "category": "image",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.0
@@ -520,6 +552,7 @@
       "source_api": "cuda",
       "source_dir": "rodinia/rodinia-src/cuda/streamcluster",
       "num_source_files": 2,
+      "num_target_files": 2,
       "physical_sloc": 372,
       "total_nonblank_lines": 460,
       "files": [
@@ -536,6 +569,7 @@
       ],
       "omp_physical_sloc": 981,
       "omp_num_files": 1,
+      "omp_num_target_files": 1,
       "category": "other",
       "complexity_class": "multi_to_single",
       "pass_rate": 0.2632
@@ -546,6 +580,7 @@
       "source_api": "cuda",
       "source_dir": "xsbench/xsbench-src/cuda",
       "num_source_files": 6,
+      "num_target_files": 6,
       "physical_sloc": 1390,
       "total_nonblank_lines": 1828,
       "files": [
@@ -582,6 +617,7 @@
       ],
       "omp_physical_sloc": 1238,
       "omp_num_files": 6,
+      "omp_num_target_files": 6,
       "category": "physics",
       "complexity_class": "multi_to_multi",
       "pass_rate": 0.2667

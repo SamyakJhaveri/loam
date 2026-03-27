@@ -1032,6 +1032,9 @@
     "kernel_mean_prompt_vs_pass_rate_spearman": -0.5501,
     "pass_mean_prompt_tokens": 22912.1,
     "fail_mean_prompt_tokens": 53837.0,
-    "note": "Pass results have larger prompts on average because simpler kernels (fewer tokens) also tend to be easier to translate."
+    "completion_tokens_vs_pass_spearman": -0.4779,
+    "pass_mean_completion_tokens": 6838.1,
+    "fail_mean_completion_tokens": 15096.9,
+    "note": "Negative prompt correlation: larger kernels (more prompt tokens) are harder to translate. Completion correlation shows whether successful translations produce more or fewer output tokens."
   }
 }

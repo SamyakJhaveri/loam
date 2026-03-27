@@ -74,6 +74,7 @@ Grand total: **27,844,892 tokens**, estimated cost: **$55.69**.
 
 ## Correlations
 
-- **Kernel-level**: Spearman(mean prompt tokens, pass rate) = **-0.5501**
-- **Result-level**: Mean prompt tokens for PASS = **22,912**, for FAIL = **53,837**
+- **Kernel-level (prompt)**: Spearman(mean prompt tokens, pass rate) = **-0.5501**
+- **Result-level (prompt)**: Mean prompt tokens for PASS = **22,912**, for FAIL = **53,837**
+- **Result-level (completion)**: Spearman(completion tokens, pass) = **-0.4779**; Mean completion for PASS = **6,838**, for FAIL = **15,097**
 

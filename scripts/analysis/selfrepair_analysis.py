@@ -273,6 +273,17 @@ def main() -> int:
         ) if repairs else 0,
     }
 
+    # ── Repair trajectory patterns ─────────────────────────────────────
+    trajectories: dict[str, int] = defaultdict(int)
+    for r in multi_attempt:
+        attempts = r.get("attempts", [])
+        if len(attempts) < 2:
+            continue
+        statuses = [classify_attempt_status(a) for a in attempts]
+        trajectory = " → ".join(statuses)
+        trajectories[trajectory] += 1
+    sorted_trajectories = sorted(trajectories.items(), key=lambda x: -x[1])
+
     # ── Build output ──────────────────────────────────────────────────
     output = {
         "analysis": "self_repair_breakdown",
@@ -291,6 +302,9 @@ def main() -> int:
         "by_initial_failure": by_initial_failure,
         "by_kernel": by_kernel,
         "token_overhead": token_overhead,
+        "repair_trajectories": [
+            {"trajectory": t, "count": c} for t, c in sorted_trajectories
+        ],
     }
 
     json_path = output_dir / "selfrepair_analysis.json"
@@ -373,6 +387,18 @@ def main() -> int:
         f"| Mean extra tokens per retry | {token_overhead['mean_extra_tokens_per_retry']:,.0f} |",
         f"| Full-repair extra prompt tokens | {token_overhead['full_repair_extra_prompt_tokens']:,} |",
         f"| Full-repair extra completion tokens | {token_overhead['full_repair_extra_completion_tokens']:,} |",
+        "",
+        "## Table 5: Repair Trajectory Patterns",
+        "",
+        "| Trajectory | Count | % of Multi-Attempt |",
+        "|------------|------:|-------------------:|",
+    ])
+
+    for trajectory, count in sorted_trajectories[:15]:
+        pct = count / len(repairs) * 100
+        md_lines.append(f"| {trajectory} | {count} | {pct:.1f}% |")
+
+    md_lines.extend([
         "",
         "## Interpretation",
         "",

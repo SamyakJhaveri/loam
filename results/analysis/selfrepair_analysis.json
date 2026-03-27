@@ -285,5 +285,55 @@
     "full_repair_extra_prompt_tokens": 833667,
     "full_repair_extra_completion_tokens": 185539,
     "mean_extra_tokens_per_retry": 36966.4
-  }
+  },
+  "repair_trajectories": [
+    {
+      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL",
+      "count": 163
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 RUN_FAIL",
+      "count": 61
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 BUILD_FAIL",
+      "count": 28
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 PASS",
+      "count": 26
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 EXTRACTION_FAIL",
+      "count": 17
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL",
+      "count": 16
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 EXTRACTION_FAIL",
+      "count": 13
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 RUN_FAIL",
+      "count": 12
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 BUILD_FAIL",
+      "count": 10
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 PASS",
+      "count": 9
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 EXTRACTION_FAIL",
+      "count": 9
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 OTHER",
+      "count": 1
+    }
+  ]
 }

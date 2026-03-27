@@ -168,6 +168,7 @@ def analyze_kernel(
 
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     source_dir_rel, payload_files = get_spec_source_info(spec)
+    translation_targets = spec["files"].get("translation_targets", [])
     source_dir = project_root / source_dir_rel
 
     if not source_dir.exists():
@@ -210,9 +211,11 @@ def analyze_kernel(
 
     omp_sloc = None
     omp_file_count = None
+    omp_target_count = None
     if omp_spec_path.exists():
         omp_spec = json.loads(omp_spec_path.read_text(encoding="utf-8"))
         omp_source_dir_rel, omp_files = get_spec_source_info(omp_spec)
+        omp_target_count = len(omp_spec["files"].get("translation_targets", []))
         omp_source_dir = project_root / omp_source_dir_rel
         omp_file_count = len(omp_files)
         if omp_source_dir.exists():
@@ -230,11 +233,13 @@ def analyze_kernel(
         "source_api": "cuda",
         "source_dir": source_dir_rel,
         "num_source_files": len(payload_files),
+        "num_target_files": len(translation_targets),
         "physical_sloc": total_sloc,
         "total_nonblank_lines": total_lines,
         "files": file_slocs,
         "omp_physical_sloc": omp_sloc,
         "omp_num_files": omp_file_count,
+        "omp_num_target_files": omp_target_count,
     }
 
 
@@ -375,8 +380,8 @@ def main() -> int:
         "",
         "## Per-Kernel SLoC",
         "",
-        "| Kernel | Category | CUDA SLoC | CUDA Files | OMP SLoC | OMP Files | Complexity | Pass Rate |",
-        "|--------|----------|----------:|----------:|---------:|----------:|------------|----------:|",
+        "| Kernel | Category | CUDA SLoC | Src Files | Tgt Files | OMP SLoC | OMP Files | Complexity | Pass Rate |",
+        "|--------|----------|----------:|----------:|----------:|---------:|----------:|------------|----------:|",
     ]
 
     for k in sorted(kernels, key=lambda x: x["physical_sloc"], reverse=True):
@@ -386,7 +391,8 @@ def main() -> int:
         omp_f_str = str(omp_files) if omp_files is not None else "N/A"
         md_lines.append(
             f"| {k['kernel']} | {k['category']} | {k['physical_sloc']:,} | "
-            f"{k['num_source_files']} | {omp_str} | {omp_f_str} | "
+            f"{k['num_source_files']} | {k.get('num_target_files', 'N/A')} | "
+            f"{omp_str} | {omp_f_str} | "
             f"{k['complexity_class']} | {k['pass_rate']:.1%} |"
         )
 
