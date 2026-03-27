@@ -1,0 +1,4980 @@
+{
+  "total_results": 500,
+  "total_pass": 169,
+  "total_failures": 331,
+  "status_counts": {
+    "BUILD_FAIL": 202,
+    "PASS": 169,
+    "RUN_FAIL": 89,
+    "EXTRACTION_FAIL": 39,
+    "ERROR": 1
+  },
+  "build_fail_categories": {
+    "missing_target_api": {
+      "count": 177,
+      "examples": [
+        {
+          "file": "rodinia-backprop-cuda-to-rodinia-backprop-omp.json",
+          "model": "azure-gpt-4.1",
+          "kernel": "backprop",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "backprop.c: In function \u2018bpnn_read\u2019:\nbackprop.c:389:13: warning: implicit declaration of function \u2018open\u2019; did you mean \u2018popen\u2019? [-Wimplicit-function-declaration]\n  389 |   if ((fd = open(filename, 0, 0644)) == -1) {\n      |             ^~~~\n      |             popen\nbackprop.c:395:3: warning: implic"
+        },
+        {
+          "file": "rodinia-myocyte-cuda-to-rodinia-myocyte-omp.json",
+          "model": "azure-gpt-4.1",
+          "kernel": "myocyte",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "rm: cannot remove '*.o': No such file or directory\nrm: cannot remove 'myocyte.out': No such file or directory\nrm: cannot remove 'output.txt': No such file or directory\nmake: *** [Makefile:32: clean] Error 1\n\nIn file included from main.c:88:\nembedded_fehlberg_7_8.c:11:6: error: conflicting types for "
+        },
+        {
+          "file": "rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp.json",
+          "model": "azure-gpt-4.1",
+          "kernel": "particlefilter",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:420:31: error: array subscript is not an integer\n  420 |             arrayX[x] = arrayX[xj[x]] + 1.0 + 5.0 * randn(s"
+        }
+      ],
+      "by_model": {
+        "azure-gpt-4.1": 4,
+        "claude-sonnet-4-6": 14,
+        "gemini-2.5-flash-lite": 88,
+        "groq-llama-3.3-70b-versatile": 71
+      },
+      "by_direction": {
+        "cuda-to-omp": 101,
+        "omp-to-cuda": 26,
+        "cuda-to-omp_target": 7,
+        "omp-to-omp_target": 9,
+        "omp_target-to-cuda": 7,
+        "opencl-to-cuda": 4,
+        "opencl-to-omp": 10,
+        "opencl-to-omp_target": 10,
+        "omp_target-to-omp": 3
+      },
+      "by_kernel": {
+        "backprop": 8,
+        "myocyte": 15,
+        "particlefilter": 7,
+        "streamcluster": 14,
+        "heartwall": 14,
+        "bfs": 5,
+        "bptree": 7,
+        "cfd": 3,
+        "hotspot3d": 6,
+        "kmeans": 5,
+        "lavamd": 4,
+        "lud": 7,
+        "nn": 3,
+        "pathfinder": 4,
+        "srad": 3,
+        "xsbench": 64,
+        "hotspot": 4,
+        "nw": 4
+      }
+    },
+    "linker_error": {
+      "count": 3,
+      "examples": [
+        {
+          "file": "rodinia-bfs-omp-to-rodinia-bfs-cuda.json",
+          "model": "claude-sonnet-4-6",
+          "kernel": "bfs",
+          "direction": "omp-to-cuda",
+          "snippet_preview": "bfs.cu(31): warning #550-D: variable \"num_omp_threads\" was set but never used\n      int num_omp_threads;\n          ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/usr/bin/ld: /tmp/tmpxft_00056dd3_00000000-11_bfs.o: in function `BFSGraph(int, char**)':\ntmpxft_00056d"
+        },
+        {
+          "file": "rodinia-srad-omp-to-rodinia-srad-cuda.json",
+          "model": "claude-sonnet-4-6",
+          "kernel": "srad",
+          "direction": "omp-to-cuda",
+          "snippet_preview": "srad.cu(73): warning #550-D: variable \"nthreads\" was set but never used\n      int nthreads;\n          ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n/usr/bin/ld: /tmp/tmpxft_000574dd_00000000-11_srad.o: in function `main':\ntmpxft_000574dd_00000000-6_srad.cudafe1.cp"
+        },
+        {
+          "file": "rodinia-srad-omp-to-rodinia-srad-cuda.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "srad",
+          "direction": "omp-to-cuda",
+          "snippet_preview": "srad.cu(37): warning #550-D: variable \"size_R\" was set but never used\n   int rows, cols, size_I, size_R, niter = 10, iter, k;\n                           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nsrad.cu(37): warning #177-D: variable \"iter\" was declared but nev"
+        }
+      ],
+      "by_model": {
+        "claude-sonnet-4-6": 2,
+        "gemini-2.5-flash-lite": 1
+      },
+      "by_direction": {
+        "omp-to-cuda": 3
+      },
+      "by_kernel": {
+        "bfs": 1,
+        "srad": 2
+      }
+    },
+    "type_mismatch": {
+      "count": 1,
+      "examples": [
+        {
+          "file": "rodinia-bfs-omp-to-rodinia-bfs-cuda.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "bfs",
+          "direction": "omp-to-cuda",
+          "snippet_preview": "bfs.cu(43): error: no instance of overloaded function \"atomicExch\" matches the argument list\n            argument types are: (bool *, bool)\n          atomicExch(d_stop, true);\n          ^\n\nbfs.cu(44): error: expression must be a modifiable lvalue\n          d_updating_graph_mask[tid] = false;\n       "
+        }
+      ],
+      "by_model": {
+        "gemini-2.5-flash-lite": 1
+      },
+      "by_direction": {
+        "omp-to-cuda": 1
+      },
+      "by_kernel": {
+        "bfs": 1
+      }
+    },
+    "retained_cuda_types": {
+      "count": 9,
+      "examples": [
+        {
+          "file": "rodinia-cfd-cuda-to-rodinia-cfd-omp-L1.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "cfd",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "euler3d_cpu.cpp:168:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  168 | float3 ff_flux_contribution_momentum_x;\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:169:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  169 | float3 ff_flux_contribution_momentum_y;\n      | ^"
+        },
+        {
+          "file": "rodinia-cfd-cuda-to-rodinia-cfd-omp-L2.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "cfd",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "euler3d_cpu.cpp:166:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  166 | float3 ff_flux_contribution_momentum_x[1];\n      | ^~~~~~\n      | float\neuler3d_cpu.cpp:167:1: error: \u2018float3\u2019 does not name a type; did you mean \u2018float\u2019?\n  167 | float3 ff_flux_contribution_momentum_y[1];\n   "
+        },
+        {
+          "file": "rodinia-cfd-cuda-to-rodinia-cfd-omp-L3.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "cfd",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "euler3d_cpu.cpp:57:55: error: \u2018float3\u2019 has not been declared\n   57 | inline void compute_flux_contribution(float& density, float3& momentum, float& density_energy, float& pressure, float3& velocity, float3& fc_momentum_x, float3& fc_momentum_y, float3& fc_momentum_z, float3& fc_density_energy)\n     "
+        }
+      ],
+      "by_model": {
+        "gemini-2.5-flash-lite": 5,
+        "groq-llama-3.3-70b-versatile": 4
+      },
+      "by_direction": {
+        "cuda-to-omp": 9
+      },
+      "by_kernel": {
+        "cfd": 9
+      }
+    },
+    "retained_cuda_api": {
+      "count": 6,
+      "examples": [
+        {
+          "file": "rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L2.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "myocyte",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "rm: cannot remove 'myocyte.out': No such file or directory\nrm: cannot remove 'output.txt': No such file or directory\nmake: *** [Makefile:32: clean] Error 1\n\nmain.c:7:11: error: expected \u2018;\u2019 before \u2018void\u2019\n    7 | __global__ void kernel( int timeinst,\n      |           ^~~~~\n      |           ;\nmain.c"
+        },
+        {
+          "file": "rodinia-nw-cuda-to-rodinia-nw-omp-L3.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "nw",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "needle.cpp:88:1: error: \u2018__host__\u2019 does not name a type\n   88 | __host__ __device__ int\n      | ^~~~~~~~\nneedle.cpp: In function \u2018void needle_kernel_1(int*, int*, int, int, int, int)\u2019:\nneedle.cpp:162:40: error: \u2018maximum\u2019 was not declared in this scope; did you mean \u2018fmaximum\u2019?\n  162 |           temp"
+        },
+        {
+          "file": "rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp-L1.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "particlefilter",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:487:5: warning: implicit declaration of function \u2018check_error\u2019 [-Wimplicit-function-declaration]\n  487 |     check_e"
+        }
+      ],
+      "by_model": {
+        "gemini-2.5-flash-lite": 5,
+        "groq-llama-3.3-70b-versatile": 1
+      },
+      "by_direction": {
+        "cuda-to-omp": 6
+      },
+      "by_kernel": {
+        "myocyte": 2,
+        "nw": 1,
+        "particlefilter": 3
+      }
+    },
+    "missing_header": {
+      "count": 2,
+      "examples": [
+        {
+          "file": "rodinia-bptree-omp-to-rodinia-bptree-cuda.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "bptree",
+          "direction": "omp-to-cuda",
+          "snippet_preview": "rm: cannot remove '*.out': No such file or directory\nrm: cannot remove './kernel/*.o': No such file or directory\nrm: cannot remove './util/timer/*.o': No such file or directory\nrm: cannot remove './util/num/*.o': No such file or directory\nrm: cannot remove './util/cuda/*.o': No such file or director"
+        },
+        {
+          "file": "rodinia-lavamd-omp-to-rodinia-lavamd-cuda.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "lavamd",
+          "direction": "omp-to-cuda",
+          "snippet_preview": "rm: cannot remove './kernel/*.o': No such file or directory\nrm: cannot remove './util/num/*.o': No such file or directory\nrm: cannot remove './util/timer/*.o': No such file or directory\nrm: cannot remove './util/device/*.o': No such file or directory\nrm: cannot remove 'lavaMD': No such file or direc"
+        }
+      ],
+      "by_model": {
+        "groq-llama-3.3-70b-versatile": 2
+      },
+      "by_direction": {
+        "omp-to-cuda": 2
+      },
+      "by_kernel": {
+        "bptree": 1,
+        "lavamd": 1
+      }
+    },
+    "undeclared_identifier": {
+      "count": 1,
+      "examples": [
+        {
+          "file": "rodinia-pathfinder-omp-to-rodinia-pathfinder-cuda.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "pathfinder",
+          "direction": "omp-to-cuda",
+          "snippet_preview": "pathfinder.cu(18): warning #20095-D: a host variable \"cols\" cannot be directly written in a device function\n              cols = atoi(argv[1]);\n              ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\npathfinder.cu(19): warning #20095-D: a host variable \"rows\" "
+        }
+      ],
+      "by_model": {
+        "groq-llama-3.3-70b-versatile": 1
+      },
+      "by_direction": {
+        "omp-to-cuda": 1
+      },
+      "by_kernel": {
+        "pathfinder": 1
+      }
+    },
+    "syntax_error": {
+      "count": 1,
+      "examples": [
+        {
+          "file": "xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target-L3.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "xsbench",
+          "direction": "cuda-to-omp_target",
+          "snippet_preview": "\"Main.c\", line 6: error: expected a declaration\n  if( in.simulation_method == EVENT_BASED )\n  ^\n\n\"Main.c\", line 37: warning: parsing restarts here after previous syntax error [end_of_flush]\n  release_device_memory(GSD);\n                            ^\n\nRemark: individual warnings can be suppressed wit"
+        }
+      ],
+      "by_model": {
+        "groq-llama-3.3-70b-versatile": 1
+      },
+      "by_direction": {
+        "cuda-to-omp_target": 1
+      },
+      "by_kernel": {
+        "xsbench": 1
+      }
+    },
+    "other_build": {
+      "count": 2,
+      "examples": [
+        {
+          "file": "xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target-L4.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "xsbench",
+          "direction": "cuda-to-omp_target",
+          "snippet_preview": "\"Simulation.c\", line 12: warning: missing return statement at end of non-void function \"run_event_based_simulation_optimization_5\" [implicit_return_from_non_void_function]\n  }\n  ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Simulation.c\", line 21: warning: "
+        },
+        {
+          "file": "xsbench-xsbench-omp_target-to-xsbench-xsbench-cuda-L4.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "xsbench",
+          "direction": "omp_target-to-cuda",
+          "snippet_preview": "(empty)"
+        }
+      ],
+      "by_model": {
+        "groq-llama-3.3-70b-versatile": 2
+      },
+      "by_direction": {
+        "cuda-to-omp_target": 1,
+        "omp_target-to-cuda": 1
+      },
+      "by_kernel": {
+        "xsbench": 2
+      }
+    }
+  },
+  "run_fail_categories": {
+    "wrong_args": {
+      "count": 35,
+      "examples": [
+        {
+          "file": "rodinia-heartwall-cuda-to-rodinia-heartwall-omp.json",
+          "model": "azure-gpt-4.1",
+          "kernel": "heartwall",
+          "direction": "cuda-to-omp",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "WG size of kernel = 131 \nERROR: usage: heartwall <inputfile> <num of frames>\n",
+          "exit_code": 1
+        },
+        {
+          "file": "rodinia-hotspot-cuda-to-rodinia-hotspot-omp.json",
+          "model": "azure-gpt-4.1",
+          "kernel": "hotspot",
+          "direction": "cuda-to-omp",
+          "stderr_preview": "rodinia/openmp/hotspot/hotspot <grid_rows/grid_cols> <pyramid_height> <sim_time> <temp_file> <power_file> <output_file>\n\t<grid_rows/grid_cols>  - number of rows/cols in the grid (positive integer)\n\t<p",
+          "stdout_preview": "WG size of kernel = 16 X 16\n",
+          "exit_code": 1
+        },
+        {
+          "file": "rodinia-nw-cuda-to-rodinia-nw-omp.json",
+          "model": "azure-gpt-4.1",
+          "kernel": "nw",
+          "direction": "cuda-to-omp",
+          "stderr_preview": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/nw/needle <max_rows/max_cols> <penalty> \n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n",
+          "stdout_preview": "WG size of kernel = 16 \n",
+          "exit_code": 1
+        }
+      ],
+      "by_model": {
+        "azure-gpt-4.1": 4,
+        "claude-sonnet-4-6": 17,
+        "gemini-2.5-flash-lite": 10,
+        "groq-llama-3.3-70b-versatile": 4
+      },
+      "by_direction": {
+        "cuda-to-omp": 30,
+        "omp-to-cuda": 5
+      },
+      "by_kernel": {
+        "heartwall": 1,
+        "hotspot": 13,
+        "nw": 10,
+        "srad": 11
+      }
+    },
+    "data_file_missing": {
+      "count": 2,
+      "examples": [
+        {
+          "file": "rodinia-nn-omp-to-rodinia-nn-cuda.json",
+          "model": "claude-sonnet-4-6",
+          "kernel": "nn",
+          "direction": "omp-to-cuda",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "error opening a db\n",
+          "exit_code": 1
+        },
+        {
+          "file": "rodinia-nn-omp-to-rodinia-nn-cuda.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "nn",
+          "direction": "omp-to-cuda",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "error opening a db\n",
+          "exit_code": 1
+        }
+      ],
+      "by_model": {
+        "claude-sonnet-4-6": 1,
+        "gemini-2.5-flash-lite": 1
+      },
+      "by_direction": {
+        "omp-to-cuda": 2
+      },
+      "by_kernel": {
+        "nn": 2
+      }
+    },
+    "wrong_checksum": {
+      "count": 38,
+      "examples": [
+        {
+          "file": "xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L1.json",
+          "model": "claude-sonnet-4-6",
+          "kernel": "xsbench",
+          "direction": "cuda-to-omp",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "=================\nRunning history-based simulation...\n\nSimulation complete.\n================================================================================\n                                     RESULT",
+          "exit_code": 1
+        },
+        {
+          "file": "xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L2.json",
+          "model": "claude-sonnet-4-6",
+          "kernel": "xsbench",
+          "direction": "cuda-to-omp",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "=================\nRunning history-based simulation...\n\nSimulation complete.\n================================================================================\n                                     RESULT",
+          "exit_code": 1
+        },
+        {
+          "file": "xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L3.json",
+          "model": "claude-sonnet-4-6",
+          "kernel": "xsbench",
+          "direction": "cuda-to-omp",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "==================\nRunning history-based simulation...\n\nSimulation complete.\n================================================================================\n                                     RESUL",
+          "exit_code": 1
+        }
+      ],
+      "by_model": {
+        "claude-sonnet-4-6": 13,
+        "gemini-2.5-flash-lite": 15,
+        "groq-llama-3.3-70b-versatile": 10
+      },
+      "by_direction": {
+        "cuda-to-omp": 5,
+        "omp-to-omp_target": 1,
+        "omp_target-to-omp": 2,
+        "opencl-to-omp": 5,
+        "cuda-to-opencl": 10,
+        "omp-to-opencl": 6,
+        "omp_target-to-opencl": 9
+      },
+      "by_kernel": {
+        "xsbench": 38
+      }
+    },
+    "simulation_mode_unsupported": {
+      "count": 6,
+      "examples": [
+        {
+          "file": "xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L4.json",
+          "model": "claude-sonnet-4-6",
+          "kernel": "xsbench",
+          "direction": "omp_target-to-omp",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "============================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntialization complete. Allocated 240 MB of data.\n\n================================",
+          "exit_code": 1
+        },
+        {
+          "file": "xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L1.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "xsbench",
+          "direction": "omp_target-to-omp",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "=========================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntialization complete. Allocated 240 MB of data.\n\n===================================",
+          "exit_code": 1
+        },
+        {
+          "file": "xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L2.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "xsbench",
+          "direction": "omp_target-to-omp",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "=========================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntialization complete. Allocated 240 MB of data.\n\n===================================",
+          "exit_code": 1
+        }
+      ],
+      "by_model": {
+        "claude-sonnet-4-6": 1,
+        "gemini-2.5-flash-lite": 5
+      },
+      "by_direction": {
+        "omp_target-to-omp": 6
+      },
+      "by_kernel": {
+        "xsbench": 6
+      }
+    },
+    "segfault": {
+      "count": 3,
+      "examples": [
+        {
+          "file": "rodinia-kmeans-cuda-to-rodinia-kmeans-omp-L3.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "kmeans",
+          "direction": "cuda-to-omp",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "(empty)",
+          "exit_code": -11
+        },
+        {
+          "file": "rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp-L4.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "particlefilter",
+          "direction": "cuda-to-omp",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "(empty)",
+          "exit_code": -11
+        },
+        {
+          "file": "rodinia-nn-cuda-to-rodinia-nn-omp-L1.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "nn",
+          "direction": "cuda-to-omp",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "(empty)",
+          "exit_code": -11
+        }
+      ],
+      "by_model": {
+        "gemini-2.5-flash-lite": 2,
+        "groq-llama-3.3-70b-versatile": 1
+      },
+      "by_direction": {
+        "cuda-to-omp": 3
+      },
+      "by_kernel": {
+        "kmeans": 1,
+        "particlefilter": 1,
+        "nn": 1
+      }
+    },
+    "abort": {
+      "count": 1,
+      "examples": [
+        {
+          "file": "rodinia-lud-cuda-to-rodinia-lud-omp-L2.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "lud",
+          "direction": "cuda-to-omp",
+          "stderr_preview": "*** stack smashing detected ***: terminated\n",
+          "stdout_preview": "(empty)",
+          "exit_code": -6
+        }
+      ],
+      "by_model": {
+        "groq-llama-3.3-70b-versatile": 1
+      },
+      "by_direction": {
+        "cuda-to-omp": 1
+      },
+      "by_kernel": {
+        "lud": 1
+      }
+    },
+    "gpu_memory_error": {
+      "count": 4,
+      "examples": [
+        {
+          "file": "xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L2.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "xsbench",
+          "direction": "omp-to-cuda",
+          "stderr_preview": "GPUassert: an illegal memory access was encountered Simulation.cu 27\n",
+          "stdout_preview": "TION - DO NOT PROFILE\n================================================================================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntializa",
+          "exit_code": 188
+        },
+        {
+          "file": "xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L3.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "xsbench",
+          "direction": "omp-to-cuda",
+          "stderr_preview": "GPUassert: an illegal memory access was encountered Simulation.cu 27\n",
+          "stdout_preview": "TION - DO NOT PROFILE\n================================================================================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntializa",
+          "exit_code": 188
+        },
+        {
+          "file": "xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L4.json",
+          "model": "groq-llama-3.3-70b-versatile",
+          "kernel": "xsbench",
+          "direction": "omp-to-cuda",
+          "stderr_preview": "GPUassert: an illegal memory access was encountered Simulation.cu 27\n",
+          "stdout_preview": "TION - DO NOT PROFILE\n================================================================================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntializa",
+          "exit_code": 188
+        }
+      ],
+      "by_model": {
+        "groq-llama-3.3-70b-versatile": 4
+      },
+      "by_direction": {
+        "omp-to-cuda": 3,
+        "opencl-to-cuda": 1
+      },
+      "by_kernel": {
+        "xsbench": 4
+      }
+    }
+  },
+  "extraction_fail_categories": {
+    "no_code_blocks": {
+      "count": 39,
+      "examples": [
+        {
+          "file": "rodinia-bptree-cuda-to-rodinia-bptree-omp-L3.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "bptree",
+          "direction": "cuda-to-omp",
+          "error_message": "LLM response did not contain parseable code for any of the expected target files: ['kernel/kernel_cpu.c', 'kernel/kernel_cpu_2.c']"
+        },
+        {
+          "file": "rodinia-kmeans-cuda-to-rodinia-kmeans-omp-L4.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "kmeans",
+          "direction": "cuda-to-omp",
+          "error_message": "LLM response did not contain parseable code for any of the expected target files: ['kmeans_openmp/kmeans_clustering.c']"
+        },
+        {
+          "file": "rodinia-lud-omp-to-rodinia-lud-cuda.json",
+          "model": "gemini-2.5-flash-lite",
+          "kernel": "lud",
+          "direction": "omp-to-cuda",
+          "error_message": "LLM response did not contain parseable code for any of the expected target files: ['cuda/lud.cu', 'cuda/lud_kernel.cu']"
+        }
+      ],
+      "by_model": {
+        "gemini-2.5-flash-lite": 11,
+        "groq-llama-3.3-70b-versatile": 28
+      },
+      "by_direction": {
+        "cuda-to-omp": 22,
+        "omp-to-cuda": 3,
+        "opencl-to-cuda": 5,
+        "cuda-to-omp_target": 1,
+        "omp-to-omp_target": 1,
+        "omp-to-opencl": 4,
+        "omp_target-to-cuda": 1,
+        "omp_target-to-omp": 1,
+        "omp_target-to-opencl": 1
+      },
+      "by_kernel": {
+        "bptree": 4,
+        "kmeans": 3,
+        "lud": 1,
+        "nw": 4,
+        "srad": 3,
+        "xsbench": 16,
+        "heartwall": 4,
+        "hotspot": 2,
+        "lavamd": 2
+      }
+    }
+  },
+  "error_count": 1,
+  "error_examples": [
+    {
+      "file": "xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "error_message": "LLM call failed: Error code: 503 - {'error': {'message': 'llama-3.3-70b-versatile is currently over capacity. Please try again and back off exponentially. Visit https://groqstatus.com to see if there "
+    }
+  ],
+  "per_kernel": {
+    "backprop": {
+      "total": 19,
+      "pass": 11,
+      "build_fail": {
+        "missing_target_api": 8
+      },
+      "run_fail": {},
+      "extraction_fail": {},
+      "error": 0
+    },
+    "bfs": {
+      "total": 19,
+      "pass": 12,
+      "build_fail": {
+        "linker_error": 1,
+        "missing_target_api": 5,
+        "type_mismatch": 1
+      },
+      "run_fail": {},
+      "extraction_fail": {},
+      "error": 0
+    },
+    "bptree": {
+      "total": 19,
+      "pass": 7,
+      "build_fail": {
+        "missing_target_api": 7,
+        "missing_header": 1
+      },
+      "run_fail": {},
+      "extraction_fail": {
+        "no_code_blocks": 4
+      },
+      "error": 0
+    },
+    "cfd": {
+      "total": 19,
+      "pass": 7,
+      "build_fail": {
+        "retained_cuda_types": 9,
+        "missing_target_api": 3
+      },
+      "run_fail": {},
+      "extraction_fail": {},
+      "error": 0
+    },
+    "heartwall": {
+      "total": 19,
+      "pass": 0,
+      "build_fail": {
+        "missing_target_api": 14
+      },
+      "run_fail": {
+        "wrong_args": 1
+      },
+      "extraction_fail": {
+        "no_code_blocks": 4
+      },
+      "error": 0
+    },
+    "hotspot": {
+      "total": 19,
+      "pass": 0,
+      "build_fail": {
+        "missing_target_api": 4
+      },
+      "run_fail": {
+        "wrong_args": 13
+      },
+      "extraction_fail": {
+        "no_code_blocks": 2
+      },
+      "error": 0
+    },
+    "hotspot3d": {
+      "total": 19,
+      "pass": 13,
+      "build_fail": {
+        "missing_target_api": 6
+      },
+      "run_fail": {},
+      "extraction_fail": {},
+      "error": 0
+    },
+    "kmeans": {
+      "total": 16,
+      "pass": 7,
+      "build_fail": {
+        "missing_target_api": 5
+      },
+      "run_fail": {
+        "segfault": 1
+      },
+      "extraction_fail": {
+        "no_code_blocks": 3
+      },
+      "error": 0
+    },
+    "lavamd": {
+      "total": 19,
+      "pass": 12,
+      "build_fail": {
+        "missing_target_api": 4,
+        "missing_header": 1
+      },
+      "run_fail": {},
+      "extraction_fail": {
+        "no_code_blocks": 2
+      },
+      "error": 0
+    },
+    "lud": {
+      "total": 19,
+      "pass": 10,
+      "build_fail": {
+        "missing_target_api": 7
+      },
+      "run_fail": {
+        "abort": 1
+      },
+      "extraction_fail": {
+        "no_code_blocks": 1
+      },
+      "error": 0
+    },
+    "myocyte": {
+      "total": 19,
+      "pass": 2,
+      "build_fail": {
+        "missing_target_api": 15,
+        "retained_cuda_api": 2
+      },
+      "run_fail": {},
+      "extraction_fail": {},
+      "error": 0
+    },
+    "nn": {
+      "total": 19,
+      "pass": 13,
+      "build_fail": {
+        "missing_target_api": 3
+      },
+      "run_fail": {
+        "data_file_missing": 2,
+        "segfault": 1
+      },
+      "extraction_fail": {},
+      "error": 0
+    },
+    "nw": {
+      "total": 19,
+      "pass": 0,
+      "build_fail": {
+        "retained_cuda_api": 1,
+        "missing_target_api": 4
+      },
+      "run_fail": {
+        "wrong_args": 10
+      },
+      "extraction_fail": {
+        "no_code_blocks": 4
+      },
+      "error": 0
+    },
+    "particlefilter": {
+      "total": 19,
+      "pass": 8,
+      "build_fail": {
+        "missing_target_api": 7,
+        "retained_cuda_api": 3
+      },
+      "run_fail": {
+        "segfault": 1
+      },
+      "extraction_fail": {},
+      "error": 0
+    },
+    "pathfinder": {
+      "total": 19,
+      "pass": 14,
+      "build_fail": {
+        "missing_target_api": 4,
+        "undeclared_identifier": 1
+      },
+      "run_fail": {},
+      "extraction_fail": {},
+      "error": 0
+    },
+    "srad": {
+      "total": 19,
+      "pass": 0,
+      "build_fail": {
+        "linker_error": 2,
+        "missing_target_api": 3
+      },
+      "run_fail": {
+        "wrong_args": 11
+      },
+      "extraction_fail": {
+        "no_code_blocks": 3
+      },
+      "error": 0
+    },
+    "streamcluster": {
+      "total": 19,
+      "pass": 5,
+      "build_fail": {
+        "missing_target_api": 14
+      },
+      "run_fail": {},
+      "extraction_fail": {},
+      "error": 0
+    },
+    "xsbench": {
+      "total": 180,
+      "pass": 48,
+      "build_fail": {
+        "missing_target_api": 64,
+        "syntax_error": 1,
+        "other_build": 2
+      },
+      "run_fail": {
+        "wrong_checksum": 38,
+        "simulation_mode_unsupported": 6,
+        "gpu_memory_error": 4
+      },
+      "extraction_fail": {
+        "no_code_blocks": 16
+      },
+      "error": 1
+    }
+  },
+  "per_model": {
+    "azure-gpt-4.1": {
+      "total": 17,
+      "pass": 9,
+      "build_fail": {
+        "missing_target_api": 4
+      },
+      "run_fail": {
+        "wrong_args": 4
+      },
+      "extraction_fail": {},
+      "error": 0
+    },
+    "claude-sonnet-4-6": {
+      "total": 161,
+      "pass": 113,
+      "build_fail": {
+        "missing_target_api": 14,
+        "linker_error": 2
+      },
+      "run_fail": {
+        "wrong_args": 17,
+        "data_file_missing": 1,
+        "wrong_checksum": 13,
+        "simulation_mode_unsupported": 1
+      },
+      "extraction_fail": {},
+      "error": 0
+    },
+    "gemini-2.5-flash-lite": {
+      "total": 161,
+      "pass": 17,
+      "build_fail": {
+        "missing_target_api": 88,
+        "type_mismatch": 1,
+        "retained_cuda_types": 5,
+        "retained_cuda_api": 5,
+        "linker_error": 1
+      },
+      "run_fail": {
+        "wrong_args": 10,
+        "segfault": 2,
+        "data_file_missing": 1,
+        "wrong_checksum": 15,
+        "simulation_mode_unsupported": 5
+      },
+      "extraction_fail": {
+        "no_code_blocks": 11
+      },
+      "error": 0
+    },
+    "groq-llama-3.3-70b-versatile": {
+      "total": 161,
+      "pass": 30,
+      "build_fail": {
+        "missing_target_api": 71,
+        "missing_header": 2,
+        "retained_cuda_types": 4,
+        "retained_cuda_api": 1,
+        "undeclared_identifier": 1,
+        "syntax_error": 1,
+        "other_build": 2
+      },
+      "run_fail": {
+        "abort": 1,
+        "segfault": 1,
+        "wrong_args": 4,
+        "wrong_checksum": 10,
+        "gpu_memory_error": 4
+      },
+      "extraction_fail": {
+        "no_code_blocks": 28
+      },
+      "error": 1
+    }
+  },
+  "per_direction": {
+    "cuda-to-omp": {
+      "total": 287,
+      "pass": 110,
+      "build_fail": {
+        "missing_target_api": 101,
+        "retained_cuda_types": 9,
+        "retained_cuda_api": 6
+      },
+      "run_fail": {
+        "wrong_args": 30,
+        "wrong_checksum": 5,
+        "segfault": 3,
+        "abort": 1
+      },
+      "extraction_fail": {
+        "no_code_blocks": 22
+      },
+      "error": 0
+    },
+    "omp-to-cuda": {
+      "total": 63,
+      "pass": 17,
+      "build_fail": {
+        "missing_target_api": 26,
+        "linker_error": 3,
+        "type_mismatch": 1,
+        "missing_header": 2,
+        "undeclared_identifier": 1
+      },
+      "run_fail": {
+        "wrong_args": 5,
+        "data_file_missing": 2,
+        "gpu_memory_error": 3
+      },
+      "extraction_fail": {
+        "no_code_blocks": 3
+      },
+      "error": 0
+    },
+    "cuda-to-omp_target": {
+      "total": 15,
+      "pass": 5,
+      "build_fail": {
+        "missing_target_api": 7,
+        "syntax_error": 1,
+        "other_build": 1
+      },
+      "run_fail": {},
+      "extraction_fail": {
+        "no_code_blocks": 1
+      },
+      "error": 0
+    },
+    "cuda-to-opencl": {
+      "total": 15,
+      "pass": 5,
+      "build_fail": {},
+      "run_fail": {
+        "wrong_checksum": 10
+      },
+      "extraction_fail": {},
+      "error": 0
+    },
+    "omp-to-omp_target": {
+      "total": 15,
+      "pass": 4,
+      "build_fail": {
+        "missing_target_api": 9
+      },
+      "run_fail": {
+        "wrong_checksum": 1
+      },
+      "extraction_fail": {
+        "no_code_blocks": 1
+      },
+      "error": 0
+    },
+    "omp-to-opencl": {
+      "total": 15,
+      "pass": 5,
+      "build_fail": {},
+      "run_fail": {
+        "wrong_checksum": 6
+      },
+      "extraction_fail": {
+        "no_code_blocks": 4
+      },
+      "error": 0
+    },
+    "omp_target-to-cuda": {
+      "total": 15,
+      "pass": 6,
+      "build_fail": {
+        "missing_target_api": 7,
+        "other_build": 1
+      },
+      "run_fail": {},
+      "extraction_fail": {
+        "no_code_blocks": 1
+      },
+      "error": 0
+    },
+    "omp_target-to-omp": {
+      "total": 15,
+      "pass": 2,
+      "build_fail": {
+        "missing_target_api": 3
+      },
+      "run_fail": {
+        "wrong_checksum": 2,
+        "simulation_mode_unsupported": 6
+      },
+      "extraction_fail": {
+        "no_code_blocks": 1
+      },
+      "error": 1
+    },
+    "omp_target-to-opencl": {
+      "total": 15,
+      "pass": 5,
+      "build_fail": {},
+      "run_fail": {
+        "wrong_checksum": 9
+      },
+      "extraction_fail": {
+        "no_code_blocks": 1
+      },
+      "error": 0
+    },
+    "opencl-to-cuda": {
+      "total": 15,
+      "pass": 5,
+      "build_fail": {
+        "missing_target_api": 4
+      },
+      "run_fail": {
+        "gpu_memory_error": 1
+      },
+      "extraction_fail": {
+        "no_code_blocks": 5
+      },
+      "error": 0
+    },
+    "opencl-to-omp": {
+      "total": 15,
+      "pass": 0,
+      "build_fail": {
+        "missing_target_api": 10
+      },
+      "run_fail": {
+        "wrong_checksum": 5
+      },
+      "extraction_fail": {},
+      "error": 0
+    },
+    "opencl-to-omp_target": {
+      "total": 15,
+      "pass": 5,
+      "build_fail": {
+        "missing_target_api": 10
+      },
+      "run_fail": {},
+      "extraction_fail": {},
+      "error": 0
+    }
+  },
+  "classified_results": [
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/azure-gpt-4.1/rodinia-backprop-cuda-to-rodinia-backprop-omp.json",
+      "model": "azure-gpt-4.1",
+      "kernel": "backprop",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/azure-gpt-4.1/rodinia-heartwall-cuda-to-rodinia-heartwall-omp.json",
+      "model": "azure-gpt-4.1",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/azure-gpt-4.1/rodinia-hotspot-cuda-to-rodinia-hotspot-omp.json",
+      "model": "azure-gpt-4.1",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/azure-gpt-4.1/rodinia-myocyte-cuda-to-rodinia-myocyte-omp.json",
+      "model": "azure-gpt-4.1",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "type_mismatch"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/azure-gpt-4.1/rodinia-nw-cuda-to-rodinia-nw-omp.json",
+      "model": "azure-gpt-4.1",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/azure-gpt-4.1/rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp.json",
+      "model": "azure-gpt-4.1",
+      "kernel": "particlefilter",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "type_mismatch"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/azure-gpt-4.1/rodinia-srad-cuda-to-rodinia-srad-omp.json",
+      "model": "azure-gpt-4.1",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/azure-gpt-4.1/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp.json",
+      "model": "azure-gpt-4.1",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-backprop-omp-to-rodinia-backprop-cuda.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "backprop",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-bfs-omp-to-rodinia-bfs-cuda.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "bfs",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "linker_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L1.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L2.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "type_mismatch",
+        "redefinition"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L3.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L4.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-heartwall-cuda-to-rodinia-heartwall-omp.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-heartwall-omp-to-rodinia-heartwall-cuda.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "heartwall",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L1.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L2.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L3.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L4.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-hotspot-cuda-to-rodinia-hotspot-omp.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-hotspot-omp-to-rodinia-hotspot-cuda.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "hotspot",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L1.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L2.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L3.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L4.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-myocyte-cuda-to-rodinia-myocyte-omp.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-myocyte-omp-to-rodinia-myocyte-cuda.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "myocyte",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-nn-omp-to-rodinia-nn-cuda.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "nn",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "data_file_missing",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-nw-cuda-to-rodinia-nw-omp-L1.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-nw-cuda-to-rodinia-nw-omp-L2.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-nw-cuda-to-rodinia-nw-omp-L3.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-nw-cuda-to-rodinia-nw-omp-L4.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-nw-cuda-to-rodinia-nw-omp.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-nw-omp-to-rodinia-nw-cuda.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "nw",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-srad-cuda-to-rodinia-srad-omp-L1.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-srad-cuda-to-rodinia-srad-omp-L2.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-srad-cuda-to-rodinia-srad-omp-L3.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-srad-cuda-to-rodinia-srad-omp-L4.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-srad-cuda-to-rodinia-srad-omp.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-srad-omp-to-rodinia-srad-cuda.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "srad",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "linker_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/rodinia-streamcluster-omp-to-rodinia-streamcluster-cuda.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "streamcluster",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L1.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L2.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L3.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L4.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-cuda-to-xsbench-xsbench-omp.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target-L4.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L1.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L2.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L4.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "simulation_mode_unsupported",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L1.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L2.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L3.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L4.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/claude-sonnet-4-6/xsbench-xsbench-opencl-to-xsbench-xsbench-omp.json",
+      "model": "claude-sonnet-4-6",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-backprop-cuda-to-rodinia-backprop-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "backprop",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-backprop-omp-to-rodinia-backprop-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "backprop",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bfs-cuda-to-rodinia-bfs-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bfs",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bfs-cuda-to-rodinia-bfs-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bfs",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bfs-cuda-to-rodinia-bfs-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bfs",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bfs-cuda-to-rodinia-bfs-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bfs",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bfs-cuda-to-rodinia-bfs-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bfs",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bfs-omp-to-rodinia-bfs-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bfs",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "type_mismatch",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bptree-cuda-to-rodinia-bptree-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bptree",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bptree-cuda-to-rodinia-bptree-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bptree",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bptree-cuda-to-rodinia-bptree-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bptree",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bptree-cuda-to-rodinia-bptree-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bptree",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "undeclared_identifier",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bptree-cuda-to-rodinia-bptree-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bptree",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-bptree-omp-to-rodinia-bptree-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "bptree",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "undeclared_identifier",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-cfd-cuda-to-rodinia-cfd-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "cfd",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_types",
+      "secondary_categories": [
+        "missing_target_api",
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-cfd-cuda-to-rodinia-cfd-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "cfd",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_types",
+      "secondary_categories": [
+        "missing_target_api",
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-cfd-cuda-to-rodinia-cfd-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "cfd",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_types",
+      "secondary_categories": [
+        "missing_target_api"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-cfd-cuda-to-rodinia-cfd-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "cfd",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_types",
+      "secondary_categories": [
+        "missing_target_api",
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-cfd-cuda-to-rodinia-cfd-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "cfd",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_types",
+      "secondary_categories": [
+        "missing_target_api",
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-cfd-omp-to-rodinia-cfd-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "cfd",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "redefinition"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "redefinition"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "redefinition"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-heartwall-cuda-to-rodinia-heartwall-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "redefinition"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-heartwall-omp-to-rodinia-heartwall-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "heartwall",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "type_mismatch",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-hotspot-cuda-to-rodinia-hotspot-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-hotspot-omp-to-rodinia-hotspot-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "hotspot",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-hotspot3d-cuda-to-rodinia-hotspot3d-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "hotspot3d",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-hotspot3d-cuda-to-rodinia-hotspot3d-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "hotspot3d",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-hotspot3d-omp-to-rodinia-hotspot3d-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "hotspot3d",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-kmeans-cuda-to-rodinia-kmeans-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "kmeans",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-kmeans-cuda-to-rodinia-kmeans-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "kmeans",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-kmeans-cuda-to-rodinia-kmeans-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "kmeans",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "segfault",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-kmeans-cuda-to-rodinia-kmeans-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "kmeans",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-kmeans-cuda-to-rodinia-kmeans-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "kmeans",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-lavamd-cuda-to-rodinia-lavamd-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "lavamd",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-lavamd-omp-to-rodinia-lavamd-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "lavamd",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-lud-cuda-to-rodinia-lud-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "lud",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-lud-cuda-to-rodinia-lud-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "lud",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-lud-cuda-to-rodinia-lud-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "lud",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-lud-cuda-to-rodinia-lud-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "lud",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-lud-cuda-to-rodinia-lud-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "lud",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-lud-omp-to-rodinia-lud-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "lud",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_api",
+      "secondary_categories": [
+        "missing_target_api",
+        "missing_header",
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-myocyte-cuda-to-rodinia-myocyte-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "undeclared_identifier",
+        "type_mismatch"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-myocyte-omp-to-rodinia-myocyte-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "myocyte",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-nn-cuda-to-rodinia-nn-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "nn",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-nn-cuda-to-rodinia-nn-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "nn",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-nn-omp-to-rodinia-nn-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "nn",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "data_file_missing",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-nw-cuda-to-rodinia-nw-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-nw-cuda-to-rodinia-nw-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-nw-cuda-to-rodinia-nw-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_api",
+      "secondary_categories": [
+        "missing_target_api",
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-nw-cuda-to-rodinia-nw-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-nw-cuda-to-rodinia-nw-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-nw-omp-to-rodinia-nw-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "nw",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "particlefilter",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_api",
+      "secondary_categories": [
+        "missing_target_api",
+        "missing_header",
+        "undeclared_identifier",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "particlefilter",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_api",
+      "secondary_categories": [
+        "missing_target_api",
+        "missing_header",
+        "undeclared_identifier",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "particlefilter",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "segfault",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "particlefilter",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_api",
+      "secondary_categories": [
+        "missing_target_api",
+        "missing_header",
+        "undeclared_identifier",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-particlefilter-omp-to-rodinia-particlefilter-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "particlefilter",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "type_mismatch"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-pathfinder-cuda-to-rodinia-pathfinder-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "pathfinder",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-pathfinder-cuda-to-rodinia-pathfinder-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "pathfinder",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-pathfinder-cuda-to-rodinia-pathfinder-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "pathfinder",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-pathfinder-cuda-to-rodinia-pathfinder-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "pathfinder",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-srad-cuda-to-rodinia-srad-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-srad-cuda-to-rodinia-srad-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-srad-cuda-to-rodinia-srad-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-srad-cuda-to-rodinia-srad-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-srad-cuda-to-rodinia-srad-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-srad-omp-to-rodinia-srad-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "srad",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "linker_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/rodinia-streamcluster-omp-to-rodinia-streamcluster-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "streamcluster",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "type_mismatch"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "type_mismatch"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 3,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp-to-xsbench-xsbench-opencl.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-cuda-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-cuda-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-cuda-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-cuda-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "simulation_mode_unsupported",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "simulation_mode_unsupported",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "simulation_mode_unsupported",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "simulation_mode_unsupported",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "simulation_mode_unsupported",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-opencl-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-opencl",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-opencl-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-opencl-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-opencl",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-opencl-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-omp_target-to-xsbench-xsbench-opencl.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-opencl",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 1,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 2,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "type_mismatch"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-omp.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-omp_target-L1.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-omp_target-L2.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-omp_target-L3.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-omp_target-L4.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/gemini-2.5-flash-lite/xsbench-xsbench-opencl-to-xsbench-xsbench-omp_target.json",
+      "model": "gemini-2.5-flash-lite",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-backprop-cuda-to-rodinia-backprop-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "backprop",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-backprop-cuda-to-rodinia-backprop-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "backprop",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-backprop-cuda-to-rodinia-backprop-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "backprop",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-backprop-omp-to-rodinia-backprop-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "backprop",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-bptree-cuda-to-rodinia-bptree-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "bptree",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-bptree-cuda-to-rodinia-bptree-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "bptree",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-bptree-cuda-to-rodinia-bptree-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "bptree",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-bptree-cuda-to-rodinia-bptree-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "bptree",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-bptree-cuda-to-rodinia-bptree-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "bptree",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "undeclared_identifier",
+        "syntax_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-bptree-omp-to-rodinia-bptree-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "bptree",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_header",
+      "secondary_categories": [
+        "syntax_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-cfd-cuda-to-rodinia-cfd-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "cfd",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_types",
+      "secondary_categories": [
+        "missing_target_api",
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-cfd-cuda-to-rodinia-cfd-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "cfd",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_types",
+      "secondary_categories": [
+        "missing_target_api",
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-cfd-cuda-to-rodinia-cfd-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "cfd",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-cfd-cuda-to-rodinia-cfd-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "cfd",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_types",
+      "secondary_categories": [
+        "missing_target_api",
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-cfd-cuda-to-rodinia-cfd-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "cfd",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_types",
+      "secondary_categories": [
+        "missing_target_api"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-cfd-omp-to-rodinia-cfd-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "cfd",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "redefinition"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-heartwall-cuda-to-rodinia-heartwall-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-heartwall-cuda-to-rodinia-heartwall-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "heartwall",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-heartwall-omp-to-rodinia-heartwall-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "heartwall",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-hotspot-cuda-to-rodinia-hotspot-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-hotspot-cuda-to-rodinia-hotspot-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "hotspot",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-hotspot-omp-to-rodinia-hotspot-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "hotspot",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-hotspot3d-cuda-to-rodinia-hotspot3d-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "hotspot3d",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-hotspot3d-cuda-to-rodinia-hotspot3d-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "hotspot3d",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-hotspot3d-omp-to-rodinia-hotspot3d-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "hotspot3d",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-kmeans-cuda-to-rodinia-kmeans-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "kmeans",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-kmeans-cuda-to-rodinia-kmeans-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "kmeans",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-kmeans-cuda-to-rodinia-kmeans-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "kmeans",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-kmeans-cuda-to-rodinia-kmeans-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "kmeans",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-lavamd-cuda-to-rodinia-lavamd-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "lavamd",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-lavamd-cuda-to-rodinia-lavamd-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "lavamd",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-lavamd-cuda-to-rodinia-lavamd-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "lavamd",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-lavamd-cuda-to-rodinia-lavamd-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "lavamd",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-lavamd-omp-to-rodinia-lavamd-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "lavamd",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_header",
+      "secondary_categories": [
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-lud-cuda-to-rodinia-lud-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "lud",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "abort",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-lud-cuda-to-rodinia-lud-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "lud",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-lud-cuda-to-rodinia-lud-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "lud",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_api",
+      "secondary_categories": [
+        "missing_target_api",
+        "missing_header",
+        "syntax_error",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-myocyte-cuda-to-rodinia-myocyte-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-myocyte-cuda-to-rodinia-myocyte-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "myocyte",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-nn-cuda-to-rodinia-nn-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "nn",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "segfault",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-nn-omp-to-rodinia-nn-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "nn",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-nw-cuda-to-rodinia-nw-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-nw-cuda-to-rodinia-nw-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-nw-cuda-to-rodinia-nw-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-nw-cuda-to-rodinia-nw-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-nw-cuda-to-rodinia-nw-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "nw",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-nw-omp-to-rodinia-nw-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "nw",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "particlefilter",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "type_mismatch",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "particlefilter",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "type_mismatch",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "particlefilter",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-particlefilter-cuda-to-rodinia-particlefilter-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "particlefilter",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-particlefilter-omp-to-rodinia-particlefilter-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "particlefilter",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "missing_header",
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-pathfinder-omp-to-rodinia-pathfinder-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "pathfinder",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "undeclared_identifier",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-srad-cuda-to-rodinia-srad-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-srad-cuda-to-rodinia-srad-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-srad-cuda-to-rodinia-srad-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-srad-cuda-to-rodinia-srad-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-srad-cuda-to-rodinia-srad-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "srad",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_args",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-srad-omp-to-rodinia-srad-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "srad",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-streamcluster-cuda-to-rodinia-streamcluster-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "streamcluster",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/rodinia-streamcluster-omp-to-rodinia-streamcluster-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "streamcluster",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "type_mismatch"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "syntax_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-omp_target.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "type_mismatch"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "gpu_memory_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "gpu_memory_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "gpu_memory_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-omp_target.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 1,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 3,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 4,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp-to-xsbench-xsbench-opencl.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 0,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-cuda-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 2,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-cuda-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-cuda-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 2,
+      "overall_status": "ERROR",
+      "primary_category": "api_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 4,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-opencl-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-opencl",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-opencl-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-opencl-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-opencl",
+      "augment_level": 3,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-opencl-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-omp_target-to-xsbench-xsbench-opencl.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "omp_target-to-opencl",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 1,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 2,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 4,
+      "overall_status": "EXTRACTION_FAIL",
+      "primary_category": "no_code_blocks",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "gpu_memory_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "implicit_declaration"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-omp.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-omp_target-L1.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-omp_target-L2.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-omp_target-L3.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-omp_target-L4.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/tmp/wt-s-taxonomy/results/evaluation/groq-llama-3.3-70b-versatile/xsbench-xsbench-opencl-to-xsbench-xsbench-omp_target.json",
+      "model": "groq-llama-3.3-70b-versatile",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "undeclared_identifier",
+        "syntax_error"
+      ]
+    }
+  ]
+}
