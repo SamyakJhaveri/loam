@@ -1185,8 +1185,10 @@ def evaluate_translation(
     # -- Build result JSON --
     # last_llm_response was saved inside the loop before restore_files() ran
     extracted_last = extract_code_blocks(last_llm_response, target_filenames)
-    translated_files_preview = {
-        f: extracted_last[f][:200] for f in target_filenames if f in extracted_last
+    # Store FULL translated files — truncating to 200 chars made retroactive
+    # re-verification impossible (discovered in S-VERIFY session, 2026-03-27).
+    translated_files_full = {
+        f: extracted_last[f] for f in target_filenames if f in extracted_last
     }
 
     metrics_dict: dict[str, Any] = {}
@@ -1229,9 +1231,11 @@ def evaluate_translation(
             (final_run_result.stderr or "")[-500:]
             if final_run_result and final_run_result.status != Status.PASS else None
         ),
+        # Store stdout for ALL results (not just failures) — needed for
+        # retroactive re-verification with stdout_pattern strategies.
         "run_stdout_snippet": (
             (final_run_result.stdout or "")[-500:]
-            if final_run_result and final_run_result.status != Status.PASS else None
+            if final_run_result else None
         ),
         # Verify
         "verify_status": (
@@ -1252,10 +1256,10 @@ def evaluate_translation(
         "timing_method": timing_method,
         "speedup_ratio": speedup_ratio,
         # Code
-        "translated_files": translated_files_preview,
+        "translated_files": translated_files_full,
         "target_files_expected": target_filenames,
         "target_files_extracted": [
-            f for f in target_filenames if f in translated_files_preview
+            f for f in target_filenames if f in translated_files_full
         ],
         # Retry tracking
         "max_retries": max_retries,

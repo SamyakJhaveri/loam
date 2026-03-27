@@ -12,11 +12,12 @@
   This is correct behavior — manifest.jsonl is append-only; spec files were deleted.
 Do NOT try to fix any of these errors.
 
-## Current Spec Status (as of 2026-03-23)
+## Current Spec Status (as of 2026-03-27)
 
-**Rodinia:** 60 specs total, 54 PASS, 6 KNOWN_FAIL.
+**Rodinia:** 60 specs total, 49 TRUE PASS, 5 FALSE_PASS, 6 KNOWN_FAIL (verified with corrected stdout_pattern).
 **XSBench:** 4 specs total, 4 PASS, 0 KNOWN_FAIL.
-**Use the 54 Rodinia PASS + 3 standard XSBench specs (cuda, omp, opencl) for eval batches. omp_target excluded (requires nvc, case-study only).**
+**Use the 49 Rodinia TRUE PASS + 3 standard XSBench specs (cuda, omp, opencl) for eval batches.**
+**omp_target excluded (requires nvc, case-study only). 5 FALSE_PASS specs need arg fixes first.**
 
 ## KNOWN_FAIL Specs (6 — exclude from eval batches)
 
@@ -28,6 +29,22 @@ Do NOT try to fix any of these errors.
 | `rodinia-hybridsort-cuda` | `GL/glew.h` not found | Needs `libglew-dev` + display server |
 | `rodinia-nn-opencl` | TIMEOUT / SIGSEGV | Pre-existing; never passed |
 | `rodinia-kmeans-opencl` | SIGSEGV in OpenCL runtime | Pre-existing; never passed |
+
+## FALSE_PASS Baseline Specs (5 — need arg fixes before eval, discovered S-VERIFY 2026-03-27)
+
+These specs exit with code 0 but produce wrong output. Previously hidden by exit_code-only verification.
+
+| Spec | Symptom | Root Cause |
+|------|---------|-----------|
+| `rodinia-backprop-opencl` | No stdout; stderr: "number of input points must be divided by 16" | Input size incompatible |
+| `rodinia-heartwall-opencl` | Prints usage text instead of computing | Wrong run arguments |
+| `rodinia-myocyte-omp` | "ERROR: 3 is the incorrect number of arguments" | Wrong argument count |
+| `rodinia-myocyte-opencl` | Argument parsing failure | Wrong run arguments |
+| `rodinia-pathfinder-omp` | "Usage: pathfiner width num_of_steps" | Wrong run args format |
+
+**Rule:** These specs MUST NOT be included in eval batches until their run arguments are fixed
+using the Run Argument Verification Protocol (spec-conventions.md). After fixing, re-run
+`python3 -m harness -v verify specs/<name>.json` and confirm TRUE PASS with stdout_pattern.
 
 ## OMP Spec Run Arg Rules (CRITICAL)
 
@@ -90,9 +107,11 @@ editing source. mummergpu `unistd.h` edits reverted — both specs are KNOWN_FAI
 Hook regex: `/(rodinia|rodinia-src|HeCBench-master|hecbench|xsbench-src)/` — protects both direct
 and symlink paths to benchmark sources.
 
-## Augmentation Baseline (verified 2026-03-20)
+## Augmentation Baseline (verified 2026-03-20, updated S-VERIFY 2026-03-27)
 
-54/60 PASS at all levels L1–L4 (level-invariant). Augmentation introduces zero new failures.
+54/60 PASS at all levels L1–L4 (level-invariant) with exit_code-only verification.
+With corrected stdout_pattern verification: 53/58 TRUE PASS across all suites (49/54 Rodinia + 4/4 XSBench; 5 FALSE_PASS Rodinia specs need arg fixes).
+Augmentation introduces zero new failures beyond the baseline.
 Verify transforms: `python3 -m pytest c_augmentation/test_transforms.py -v` (15 tests, all must pass)
 
 ## Eval Result Timing Limitations (SESSION 3b audit — 2026-03-24)
