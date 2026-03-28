@@ -2,7 +2,7 @@
 
 > **Deadline:** SC26 paper submission — **April 8, 2026**
 > **Sprint window:** March 18 → April 8 (21 days)
-> **Last updated:** 2026-03-24 (Day 7 audit — S1–S6 complete, 4-model L0 baseline done; see §1.8)
+> **Last updated:** 2026-03-28 (Day 11 — S-VERIFY complete 2026-03-27; 3-model eval baseline verified; see §1.10)
 > **Authors:** Samyak, Erel, Gal (advised)
 >
 > **How to use this document:**
@@ -436,6 +436,27 @@ Data retained for paper comparison table.
 
 ---
 
+### 1.10 Days 10-11 (2026-03-27–28) — S-VERIFY Complete + Paper Expansion
+
+#### Completed Sessions
+
+| Session | Description | Commit | Date | Key Result |
+|---------|------------|--------|------|-----------|
+| **S-VERIFY** | Fix verification + re-verify all results | various | 03-27 | stdout_pattern+exit_code conjunction; 9 FALSE_PASS specs fixed; 54/60 Rodinia TRUE PASS + 4/4 XSBench PASS (58 total non-KNOWN_FAIL); eval 105/468 = 22.44% |
+| **S-FIGURES** | Updated paper figures | `9789e20` | 03-27 | System architecture figure added; all paper figures updated |
+| **S13** | Paper draft expansion | `56cc02b` | 03-27 | Results and Discussion sections expanded |
+
+#### Post-S-VERIFY Eval Data (authoritative as of 2026-03-28)
+
+- **468 evaluated tasks** (504 raw files; 36 kmeans/mummergpu excluded from summary)
+- **3 models:** claude-sonnet-4-6 (81/156 = 51.92%), gemini-2.5-flash-lite (11/156 = 7.05%), groq-llama-3.3-70b-versatile (13/156 = 8.33%)
+- **12 translation directions**; highest: cuda-to-opencl 33.33%, opencl-to-cuda 33.33%; lowest: omp-to-omp_target 0%, opencl-to-omp 0%
+- **Failure taxonomy:** BUILD_FAIL 180 (38.46%), RUN_FAIL 89 (19.02%), EXTRACTION_FAIL 49 (10.47%), VERIFY_FAIL 45 (9.62%)
+- **Self-repair:** 78 first-attempt PASS + 27 repaired by retry = 105 total PASS
+- **Augmentation (Rodinia):** 54/60 level-invariant PASS at L1-L4; 6 KNOWN_FAIL at all levels
+
+---
+
 ## 2. The Plan — Three Weeks
 
 ### Week 1 (March 18–24): Scale Up Rodinia + Iterative Repair
@@ -446,6 +467,7 @@ Data retained for paper comparison table.
 ### Week 2 (March 25–31): Augmented Eval + Cross-Direction + Paper Draft
 
 **Goal (revised Day 8):** Complete Rodinia L1-L4 augmented eval (S7), run cross-direction evals (S9/S10/S10b), refresh dashboard (W-S11), write paper §1-§5 (S12 + W-S12 done), begin §6-§8.
+**Actual achievement (Day 11):** S7/S8/S9 evals complete. S-VERIFY complete (105/468 = 22.44% verified PASS). S13 paper draft expansion done. S-FIGURES updated. W-S11 dashboard refresh merged.
 **Original goal (superseded):** Clone HeCBench, run HeCBench evaluation. *(HeCBench deferred — paper deadline takes priority. OpenACC descoped — no source exists.)*
 
 ### Week 3 (April 1–7): Paper + Final Results + Polish
