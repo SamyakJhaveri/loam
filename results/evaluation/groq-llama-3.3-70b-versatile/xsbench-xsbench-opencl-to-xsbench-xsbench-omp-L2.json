@@ -5,13 +5,13 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 2,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T09:48:59Z",
-  "prompt_tokens": 54882,
-  "completion_tokens": 16285,
-  "llm_response_time_seconds": 59.732,
+  "timestamp": "2026-03-28T03:51:15Z",
+  "prompt_tokens": 55205,
+  "completion_tokens": 12369,
+  "llm_response_time_seconds": 44.424,
   "build_status": "fail",
-  "build_time_seconds": 0.024,
-  "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:67:40: error: too many arguments to function \u2018run_event_based_simulation\u2019\n   67 |                         verification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~\nIn file included from Main.c:1:\nXSbench_header.h:117:20: note: declared here\n  117 | unsigned long long run_event_based_simulation(Inputs in, SimulationData SD, int mype);\n      |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:108: Main.o] Error 1\n",
+  "build_time_seconds": 0.033,
+  "build_error_snippet": "io.c:1:20: error: unknown type name \u2018Inputs\u2019\n    1 | int print_results( Inputs in, int mype, double runtime, int nprocs, unsigned long long vhash, double sim_runtime );\n      |                    ^~~~~~\nmake: *** [Makefile:108: io.o] Error 1\n",
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -20,7 +20,7 @@
   "verify_status": null,
   "verify_strategy": null,
   "overall_status": "BUILD_FAIL",
-  "error_message": "Build failed: ared here\n  117 | unsigned long long run_event_based_simulation(Inputs in, SimulationData SD, int mype);\n      |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:108: Main.o] Error 1",
+  "error_message": "Build failed: s\u2019\n    1 | int print_results( Inputs in, int mype, double runtime, int nprocs, unsigned long long vhash, double sim_runtime );\n      |                    ^~~~~~\nmake: *** [Makefile:108: io.o] Error 1",
   "metrics": {},
   "baseline_wall_time_seconds": 0.787,
   "translated_wall_time_seconds": null,
@@ -29,8 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef _OPENMP\n#include <omp.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization &",
-    "io.c": "#include \"XSbench_header.h\"\n\n// Prints program logo\nvoid logo(int version)\n{\n\tborder_print();\n\tprintf(\n\t\"                   __   __ ___________                 _                        \\n\"\n\t\"         "
+    "io.c": "int print_results( Inputs in, int mype, double runtime, int nprocs, unsigned long long vhash, double sim_runtime );\n"
   },
   "target_files_expected": [
     "Main.c",
@@ -41,7 +40,6 @@
     "Materials.c"
   ],
   "target_files_extracted": [
-    "Main.c",
     "io.c"
   ],
   "max_retries": 2,
@@ -49,9 +47,9 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 42.792,
+      "llm_response_time_seconds": 41.824,
       "prompt_tokens": 21418,
-      "completion_tokens": 11885,
+      "completion_tokens": 12208,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
@@ -64,15 +62,15 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 16.94,
-      "prompt_tokens": 33464,
-      "completion_tokens": 4400,
+      "llm_response_time_seconds": 2.6,
+      "prompt_tokens": 33787,
+      "completion_tokens": 161,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:67:40: error: too many arguments to function \u2018run_event_based_simulation\u2019\n   67 |                         verification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~\nIn file included from Main.c:1:\nXSbench_header.h:117:20: note: declared here\n  117 | unsigned long long run_event_based_simulation(Inputs in, SimulationData SD, int mype);\n      |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:108: Main.o] Error 1\n",
+      "build_error_snippet": "io.c:1:20: error: unknown type name \u2018Inputs\u2019\n    1 | int print_results( Inputs in, int mype, double runtime, int nprocs, unsigned long long vhash, double sim_runtime );\n      |                    ^~~~~~\nmake: *** [Makefile:108: io.o] Error 1\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null

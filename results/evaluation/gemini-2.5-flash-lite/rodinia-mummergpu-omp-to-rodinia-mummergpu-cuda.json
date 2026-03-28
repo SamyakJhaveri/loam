@@ -1,0 +1,76 @@
+{
+  "source_spec": "rodinia-mummergpu-omp",
+  "target_spec": "rodinia-mummergpu-cuda",
+  "kernel": "mummergpu",
+  "model": "gemini-2.5-flash-lite",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-28T01:26:51Z",
+  "prompt_tokens": 165468,
+  "completion_tokens": 32767,
+  "llm_response_time_seconds": 61.394,
+  "build_status": "fail",
+  "build_time_seconds": 0.537,
+  "build_error_snippet": "cc1plus: warning: command-line option \u2018-Wimplicit\u2019 is valid for C/ObjC but not for C++\nmummergpu_gold.cpp:332:25: warning: invalid suffix on literal; C++11 requires a space between literal and string macro [-Wliteral-suffix]\n  332 |                 XPRINTF(\"In node (\"fNID\"): starting with %c [%d] =>  \\n\",\n      |                         ^\nmummergpu_gold.cpp:355:29: warning: invalid suffix on literal; C++11 requires a space between literal and string macro [-Wliteral-suffix]\n  355 |                     XPRINTF(\" In node: (\"fNID\")\\n\", NID(cur));\n      |                             ^\nmummergpu_gold.cpp: In function \u2018void rc_kernel_gold(int, MatchResults*, char*, char*, const int*, const int*, PixelOfNode*, PixelOfChildren*, int, int)\u2019:\nmummerg\n...[truncated]...\nfunction returning non-void [-Wreturn-type]\n 2180 | }\n      | ^\nsuffix-tree.cpp: In function \u2018void printAlignments(ReferencePage*, Alignment*, char*, int, TextureAddress, int, int, int, bool, bool)\u2019:\nsuffix-tree.cpp:2491:21: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018unsigned int\u2019 [-Wsign-compare]\n 2491 |   if (printParentId == matchNodeId)\n      |       ~~~~~~~~~~~~~~^~~~~~~~~~~~~~\nsuffix-tree.cpp:2631:21: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018unsigned int\u2019 [-Wsign-compare]\n 2631 |             if (cid == matchNodeId)\n      |                 ~~~~^~~~~~~~~~~~~~\nmake[1]: *** [Makefile:114: obj/release/suffix-tree.cpp_o] Error 1\nmake: *** [Makefile:4: mummer] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: mpare]\n 2631 |             if (cid == matchNodeId)\n      |                 ~~~~^~~~~~~~~~~~~~\nmake[1]: *** [Makefile:114: obj/release/suffix-tree.cpp_o] Error 1\nmake: *** [Makefile:4: mummer] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "src/common.cu": "#ifndef COMMON_CU__\n#define COMMON_CU__ 1\n// Children are labeled as ACGT$\nconst int basecount = 5;\n\n\n// Note: max pixel size is 16 bytes\n\n\n// COALESCED_QUERIES only works in the forward kernel and is NOT STABLE\n// COALESCED_QUERIES and QRYTEX are mutually exclusive\n#ifndef QRYTEX\n#define QRYTEX 0\n#endif\n\n#ifndef COALESCED_QUERIES\n#define COALESCED_QUERIES 0\n#endif\n\n// Reference parameters\n#ifndef REFTEX\n#define REFTEX 0\n#endif\n\n#ifndef REORDER_REF\n#define REORDER_REF 0\n#endif\n\n// Tree parameters\n#ifndef TREETEX\n#define TREETEX 1\n#endif\n\n#if !TREETEX\n#define NODETEX 0\n#define CHILDTEX 0\n#else\n#define NODETEX 1\n#define CHILDTEX 1\n#endif\n\n// #ifndef NODETEX\n// #define NODETEX 1\n// #endif\n// \n// #ifndef CHILDTEX\n// #define CHILDTEX 1\n// #endif\n\n#ifndef MERGETEX\n#define MERGETEX 0\n#endif\n\n#ifndef REORDER_TREE\n#define REORDER_TREE 1\n#endif\n\n// Curl up node reordering\n#ifndef RENUMBER_TREE\n#define RENUMBER_TREE 1\n#endif\n\n#if MERGETEX && (CHILDTEX != NODETEX)\n#error CHILDTEX must equal NODETEX when using MERGETEX\n#endif\n\n#if QRYTEX && COALESCED_QUERIES\n#error QRYTEX and COALESCED_QUERIES are mutually exclusive\n#endif\n\n// Two level tree means that nodes with nodeid < threshhold (define in the \n// kernel), are accessed through the constant memory, instead of global/tex\n// Since the access patterns for PixelOfNode and PixelOfChildren are different\n// we provide the option to store one side in a single-level memory hierarchy,\n// and the other in a double-level.\n#ifndef TWO_LEVEL_NODE_TREE\n#define TWO_LEVEL_NODE_TREE 0\n#endif\n\n#ifndef TWO_LEVEL_CHILD_TREE\n#define TWO_LEVEL_CHILD_TREE 0\n#endif\n\n\n//PARMETERS FROM PAPER:\n// #define QRYTEX 0\n// #define COALESCED_QUERIES 0\n// \n// // Reference parameters\n// #define REFTEX 1\n// #define REORDER_REF 1\n// \n// // Tree parameters\n// #define NODETEX 1\n// #define CHILDTEX 1\n// #define REORDER_TREE 1\n// #define MERGETEX 0\n// \n// // Two level tree means that nodes with nodeid < threshhold (define in the \n// // kernel), are accessed through the constant memory, instead of global/tex\n// // Since the access patterns for PixelOfNode and PixelOfChildren are different\n// // we provide the option to store one side in a single-level memory hierarchy,\n// // and the other in a double-level.\n// #define TWO_LEVEL_NODE_TREE 0\n// #define TWO_LEVEL_CHILD_TREE 0\n\n\n// DO NOT USE in device mode, emulation ONLY\n#define TREE_ACCESS_HISTOGRAM 0\n\n// 4 bytes\nstruct TextureAddress {\n    union {\n        unsigned int data;\n        \n        struct {\n#if REORDER_TREE\n            unsigned short x;  // really just 12 bits\n            unsigned short y;  // really just 12 bits\n#else\n            unsigned int x;\n#endif\n        };\n    };\n};\n\n// Store the start, end coordinate of node, and the parent, suffix links\nstruct PixelOfNode\n{\n  union\n  {\n    uint4 data;\n    struct\n    {\n      unsigned char parent[3];\n      unsigned char suffix[3];\n\n      unsigned char start [3];\n      unsigned char end   [3];\n      unsigned char depth [3];\n\n      unsigned char pad;\n    };\n  };\n};\n\n// If leafchar is 0, store the ACGT$ links, else store the leafid\nstruct PixelOfChildren\n{\n  union\n  {\n    uint4 data;\n\n    union\n    {\n      struct\n      {\n        unsigned char a[3];\n        unsigned char c[3];\n        unsigned char g[3];\n        unsigned char t[3];\n        unsigned char d[3];\n\n        char leafchar;\n      };\n      \n      struct\n      {\n        unsigned char leafid [3];\n        unsigned char pad [12];\n        char leafchar0;\n      };\n    };\n  };\n};\n\ntypedef struct MatchInfo\n{\n  unsigned int resultsoffset;\n  unsigned int queryid;\n  TextureAddress matchnode;\n  unsigned int numLeaves;\n  unsigned short edgematch;\n  unsigned short qrystartpos;\n} MatchInfo;\n\ntypedef struct Alignment\n{\n  int left_in_ref;\n  unsigned short matchlen;\n} Alignment;\n\n\n\nstatic const int MAX_TEXTURE_DIMENSION = 4096;\nstatic const int MAX_GRID_DIMENSION = 65535;\nstatic const int MAX_QUERY_LEN = 8192;\n\n#define FORWARD   0x0000\n#define REVERSE   0x8000\n#define FRMASK    0x8000\n#define FRUMASK   0x7FFF\n#define MK3(base) (base[0] | (base[1] << 8) | (base[2]) << 16)\n\n#endif\n"
+  },
+  "target_files_expected": [
+    "src/common.cu",
+    "src/mummergpu.cu",
+    "src/mummergpu_kernel.cu"
+  ],
+  "target_files_extracted": [
+    "src/common.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 30.405,
+      "prompt_tokens": 74503,
+      "completion_tokens": 16384,
+      "finish_reason": "length",
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "Your response did not include any of the expected output files. Please translate each target file using this format:\n\n```c src/common.cu\n// your translated code here\n```\n\n```c src/mummergpu.cu\n// your",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": true
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 30.989,
+      "prompt_tokens": 90965,
+      "completion_tokens": 16383,
+      "finish_reason": "length",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "cc1plus: warning: command-line option \u2018-Wimplicit\u2019 is valid for C/ObjC but not for C++\nmummergpu_gold.cpp:332:25: warning: invalid suffix on literal; C++11 requires a space between literal and string macro [-Wliteral-suffix]\n  332 |                 XPRINTF(\"In node (\"fNID\"): starting with %c [%d] =>  \\n\",\n      |                         ^\nmummergpu_gold.cpp:355:29: warning: invalid suffix on literal; C++11 requires a space between literal and string macro [-Wliteral-suffix]\n  355 |                     XPRINTF(\" In node: (\"fNID\")\\n\", NID(cur));\n      |                             ^\nmummergpu_gold.cpp: In function \u2018void rc_kernel_gold(int, MatchResults*, char*, char*, const int*, const int*, PixelOfNode*, PixelOfChildren*, int, int)\u2019:\nmummerg\n...[truncated]...\nfunction returning non-void [-Wreturn-type]\n 2180 | }\n      | ^\nsuffix-tree.cpp: In function \u2018void printAlignments(ReferencePage*, Alignment*, char*, int, TextureAddress, int, int, int, bool, bool)\u2019:\nsuffix-tree.cpp:2491:21: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018unsigned int\u2019 [-Wsign-compare]\n 2491 |   if (printParentId == matchNodeId)\n      |       ~~~~~~~~~~~~~~^~~~~~~~~~~~~~\nsuffix-tree.cpp:2631:21: warning: comparison of integer expressions of different signedness: \u2018int\u2019 and \u2018unsigned int\u2019 [-Wsign-compare]\n 2631 |             if (cid == matchNodeId)\n      |                 ~~~~^~~~~~~~~~~~~~\nmake[1]: *** [Makefile:114: obj/release/suffix-tree.cpp_o] Error 1\nmake: *** [Makefile:4: mummer] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

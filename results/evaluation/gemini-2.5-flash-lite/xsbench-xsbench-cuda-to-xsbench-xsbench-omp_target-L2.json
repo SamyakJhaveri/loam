@@ -5,12 +5,12 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 2,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-26T06:03:15Z",
+  "timestamp": "2026-03-28T04:14:09Z",
   "prompt_tokens": 75474,
   "completion_tokens": 17623,
-  "llm_response_time_seconds": 40.978,
+  "llm_response_time_seconds": 34.566,
   "build_status": "fail",
-  "build_time_seconds": 0.072,
+  "build_time_seconds": 0.07,
   "build_error_snippet": "\"Main.c\", line 53: warning: function \"move_simulation_data_to_device\" declared implicitly [implicit_func_decl]\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 53: error: a value of type \"int\" cannot be used to initialize an entity of type \"SimulationData\" (aka \"struct <unnamed>\")\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\n\"Main.c\", line 70: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
@@ -29,7 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "Main.c": "#include \"XSbench_header.h\"\n\n// Forward declarations for functions used in main\nunsigned long long run_event_based_simulation_baseline(Inputs in, SimulationData GSD, int mype);\nunsigned long long run_"
+    "Main.c": "#include \"XSbench_header.h\"\n\n// Forward declarations for functions used in main\nunsigned long long run_event_based_simulation_baseline(Inputs in, SimulationData GSD, int mype);\nunsigned long long run_event_based_simulation_optimization_1(Inputs in, SimulationData GSD, int mype);\nunsigned long long run_event_based_simulation_optimization_2(Inputs in, SimulationData GSD, int mype);\nunsigned long long run_event_based_simulation_optimization_3(Inputs in, SimulationData GSD, int mype);\nunsigned long long run_event_based_simulation_optimization_4(Inputs in, SimulationData GSD, int mype);\nunsigned long long run_event_based_simulation_optimization_5(Inputs in, SimulationData GSD, int mype);\nunsigned long long run_event_based_simulation_optimization_6(Inputs in, SimulationData GSD, int mype);\nvoid release_device_memory(SimulationData GSD);\n\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization & Command Line Read-In\n\t// =====================================================================\n\tint version = 20;\n\tint mype = 0;\n\tdouble omp_start, omp_end;\n\tint nprocs = 1;\n\tunsigned long long verification;\n\n\t// Process CLI Fields -- store in \"Inputs\" structure\n\tInputs in = read_CLI( argc, argv );\n\n\t// Print-out of Input Summary\n\tif( mype == 0 )\n\t\tprint_inputs( in, nprocs, version );\n\n\t// =====================================================================\n\t// Prepare Nuclide Energy Grids, Unionized Energy Grid, & Material Data\n\t// This is not reflective of a real Monte Carlo simulation workload,\n\t// therefore, do not profile this region!\n\t// =====================================================================\n\t\n\tSimulationData SD;\n\n\t// If read from file mode is selected, skip initialization and load\n\t// all simulation data structures from file instead\n\tif( in.binary_mode == READ )\n\t\tSD = binary_read(in);\n\telse\n\t\tSD = grid_init_do_not_profile( in, mype );\n\n\t// If writing from file mode is selected, write all simulation data\n\t// structures to file\n\tif( in.binary_mode == WRITE && mype == 0 )\n\t\tbinary_write(in, SD);\n\n\t// Move data to GPU\n\tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n\n\t// =====================================================================\n\t// Cross Section (XS) Parallel Lookup Simulation\n\t// This is the section that should be profiled, as it reflects a \n\t// realistic continuous energy Monte Carlo macroscopic cross section\n\t// lookup kernel.\n\t// =====================================================================\n\tif( mype == 0 )\n\t{\n\t\tprintf(\"\\n\");\n\t\tborder_print();\n\t\tcenter_print(\"SIMULATION\", 79);\n\t\tborder_print();\n\t}\n\n\t// Start Simulation Timer\n\tomp_start = get_time();\n\n\t// Run simulation\n\tif( in.simulation_method == EVENT_BASED )\n\t{\n\t\tif( in.kernel_id == 0 )\n\t\t\tverification = run_event_based_simulation_baseline(in, GSD, mype);\n\t\telse if( in.kernel_id == 1 )\n\t\t\tverification = run_event_based_simulation_optimization_1(in, GSD, mype);\n\t\telse if( in.kernel_id == 2 )\n\t\t\tverification = run_event_based_simulation_optimization_2(in, GSD, mype);\n\t\telse if( in.kernel_id == 3 )\n\t\t\tverification = run_event_based_simulation_optimization_3(in, GSD, mype);\n\t\telse if( in.kernel_id == 4 )\n\t\t\tverification = run_event_based_simulation_optimization_4(in, GSD, mype);\n\t\telse if( in.kernel_id == 5 )\n\t\t\tverification = run_event_based_simulation_optimization_5(in, GSD, mype);\n\t\telse if( in.kernel_id == 6 )\n\t\t\tverification = run_event_based_simulation_optimization_6(in, GSD, mype);\n\t\telse\n\t\t{\n\t\t\tprintf(\"Error: No kernel ID %d found!\\n\", in.kernel_id);\n\t\t\texit(1);\n\t\t}\n\t}\n\telse\n\t{\n\t\tprintf(\"History-based simulation not implemented in CUDA code. Instead,\\nuse the event-based method with \\\"-m event\\\" argument.\\n\");\n\t\texit(1);\n\t}\n\n\tif( mype == 0)\t\n\t{\t\n\t\tprintf(\"\\n\" );\n\t\tprintf(\"Simulation complete.\\n\" );\n\t}\n\n\t// End Simulation Timer\n\tomp_end = get_time();\n\n\t// Release device memory\n\trelease_device_memory(GSD);\n\n\t// Final Hash Step\n\tverification = verification % 999983;\n\n\t// Print / Save Results and Exit\n\tint is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verification );\n\n\treturn is_invalid_result;\n}\n\n"
   },
   "target_files_expected": [
     "Main.c",
@@ -47,7 +47,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 35.48,
+      "llm_response_time_seconds": 31.568,
       "prompt_tokens": 29450,
       "completion_tokens": 16384,
       "finish_reason": "length",
@@ -62,7 +62,7 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 5.498,
+      "llm_response_time_seconds": 2.998,
       "prompt_tokens": 46024,
       "completion_tokens": 1239,
       "finish_reason": "stop",

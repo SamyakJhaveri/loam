@@ -144,6 +144,11 @@
         "method": "self_checking",
         "strategies": [
             {
+                "type": "stdout_pattern",
+                "pattern": "Iterations Progress",
+                "description": "SRAD iterations completed"
+            },
+            {
                 "type": "exit_code",
                 "expected": 0,
                 "description": "Process exits cleanly"

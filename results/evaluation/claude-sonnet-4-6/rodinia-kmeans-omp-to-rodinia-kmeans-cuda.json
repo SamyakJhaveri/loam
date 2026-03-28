@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-kmeans-omp",
+  "target_spec": "rodinia-kmeans-cuda",
+  "kernel": "kmeans",
+  "model": "claude-sonnet-4-6",
+  "augment_level": 0,
+  "translation_mode": "kernel_centric",
+  "timestamp": "2026-03-28T00:54:37Z",
+  "prompt_tokens": 150127,
+  "completion_tokens": 4835,
+  "llm_response_time_seconds": 53.862,
+  "build_status": "fail",
+  "build_time_seconds": 0.711,
+  "build_error_snippet": "cluster.c: In function \u2018cluster\u2019:\ncluster.c:111:17: warning: implicit declaration of function \u2018allocateMemory\u2019 [-Wimplicit-function-declaration]\n  111 |                 allocateMemory(npoints, nfeatures, nclusters, features);\n      |                 ^~~~~~~~~~~~~~\ncluster.c:149:17: warning: implicit declaration of function \u2018deallocateMemory\u2019 [-Wimplicit-function-declaration]\n  149 |                 deallocateMemory();                                                     /* free device memory (@ kmeans_cuda.cu) */\n      |                 ^~~~~~~~~~~~~~~~\nkmeans.c: In function \u2018setup\u2019:\nkmeans.c:131:30: warning: implicit declaration of function \u2018getopt\u2019 [-Wimplicit-function-declaration]\n  131 |                 while ( (opt=getopt(argc,argv,\"i:t\n...[truncated]...\nle, &npoints,   sizeof(int));\n      |         ^~~~\n      |         fread\nkmeans.c:179:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  179 |         close(infile);\n      |         ^~~~~\n      |         pclose\nkmeans_clustering.c: In function \u2018kmeans_clustering\u2019:\nkmeans_clustering.c:149:33: warning: implicit declaration of function \u2018kmeansCuda\u2019 [-Wimplicit-function-declaration]\n  149 |                 delta = (float) kmeansCuda(feature,                     /* in: [npoints][nfeatures] */\n      |                                 ^~~~~~~~~~\n/usr/bin/ld: cannot find -lcudart: No such file or directory\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:25: kmeans] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ] */\n      |                                 ^~~~~~~~~~\n/usr/bin/ld: cannot find -lcudart: No such file or directory\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:25: kmeans] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kmeans_cuda.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <float.h>\n#include <math.h>\n#include <cuda.h>\n#include \"kmeans.h\"\n\n#ifndef FLT_MAX\n#define FLT_MAX 3.40282347e+38\n#endif\n\n/* Declaration of the kernel launcher from kmeans_cuda_kernel.cu */\nvoid kmeans_cuda_kernel_wrapper(\n    float *d_feature,\n    float *d_clusters,\n    int   *d_membership,\n    int    npoints,\n    int    nclusters,\n    int    nfeatures,\n    int   *d_delta_out\n);\n\nfloat euclid_dist_2(float *pt1, float *pt2, int numdims)\n{\n    int i;\n    float ans = 0.0f;\n    for (i = 0; i < numdims; i++)\n        ans += (pt1[i] - pt2[i]) * (pt1[i] - pt2[i]);\n    return ans;\n}\n\nint find_nearest_point(float *pt, int nfeatures, float **pts, int npts)\n{\n    int index = 0, i;\n    float min_dist = FLT_MAX;\n    for (i = 0; i < npts; i++) {\n        float dist = euclid_dist_2(pt, pts[i], nfeatures);\n        if (dist < min_dist) {\n            min_dist = dist;\n            index = i;\n        }\n    }\n    return index;\n}\n\nfloat** kmeans_clustering(float **feature,\n                          int    nfeatures,\n                          int    npoints,\n                          int    nclusters,\n                          float  threshold,\n                          int   *membership)\n{\n    int i, j, n = 0, loop = 0;\n    int *new_centers_len;\n    float **new_centers;\n    float **clusters;\n    float delta;\n\n    /* Allocate clusters output */\n    clusters    = (float**) malloc(nclusters * sizeof(float*));\n    clusters[0] = (float*)  malloc(nclusters * nfeatures * sizeof(float));\n    for (i = 1; i < nclusters; i++)\n        clusters[i] = clusters[i-1] + nfeatures;\n\n    /* Initialize cluster centers with first nclusters points */\n    for (i = 0; i < nclusters; i++) {\n        for (j = 0; j < nfeatures; j++)\n            clusters[i][j] = feature[n][j];\n        n++;\n    }\n\n    for (i = 0; i < npoints; i++)\n        membership[i] = -1;\n\n    new_centers_len = (int*) calloc(nclusters, sizeof(int));\n    new_centers     = (float**) malloc(nclusters * sizeof(float*));\n    new_centers[0]  = (float*)  calloc(nclusters * nfeatures, sizeof(float));\n    for (i = 1; i < nclusters; i++)\n        new_centers[i] = new_centers[i-1] + nfeatures;\n\n    /* Allocate device memory */\n    float *d_feature;\n    float *d_clusters;\n    int   *d_membership;\n    int   *d_delta_out;\n\n    size_t feature_size  = (size_t)npoints   * nfeatures * sizeof(float);\n    size_t clusters_size = (size_t)nclusters * nfeatures * sizeof(float);\n    size_t member_size   = (size_t)npoints   * sizeof(int);\n\n    cudaMalloc((void**)&d_feature,    feature_size);\n    cudaMalloc((void**)&d_clusters,   clusters_size);\n    cudaMalloc((void**)&d_membership, member_size);\n    cudaMalloc((void**)&d_delta_out,  sizeof(int));\n\n    /* Copy feature data (feature[0] is contiguous) */\n    cudaMemcpy(d_feature, feature[0], feature_size, cudaMemcpyHostToDevice);\n\n    /* Initialize membership on device */\n    cudaMemcpy(d_membership, membership, member_size, cudaMemcpyHostToDevice);\n\n    printf(\"num of threads = %d\\n\", 1);\n\n    do {\n        delta = 0.0f;\n\n        /* Copy current cluster centers to device */\n        cudaMemcpy(d_clusters, clusters[0], clusters_size, cudaMemcpyHostToDevice);\n\n        /* Reset delta counter on device */\n        int zero = 0;\n        cudaMemcpy(d_delta_out, &zero, sizeof(int), cudaMemcpyHostToDevice);\n\n        /* Launch kernel */\n        kmeans_cuda_kernel_wrapper(\n            d_feature,\n            d_clusters,\n            d_membership,\n            npoints,\n            nclusters,\n            nfeatures,\n            d_delta_out\n        );\n        cudaDeviceSynchronize();\n\n        /* Get delta */\n        int delta_int = 0;\n        cudaMemcpy(&delta_int, d_delta_out, sizeof(int), cudaMemcpyDeviceToHost);\n        delta = (float)delta_int;\n\n        /* Get membership back */\n        cudaMemcpy(membership, d_membership, member_size, cudaMemcpyDeviceToHost);\n\n        /* Recompute new centers on CPU */\n        memset(new_centers[0], 0, nclusters * nfeatures * sizeof(float));\n        memset(new_centers_len, 0, nclusters * sizeof(int));\n\n        for (i = 0; i < npoints; i++) {\n            int idx = membership[i];\n            new_centers_len[idx]++;\n            for (j = 0; j < nfeatures; j++)\n                new_centers[idx][j] += feature[i][j];\n        }\n\n        /* Update cluster centers */\n        for (i = 0; i < nclusters; i++) {\n            for (j = 0; j < nfeatures; j++) {\n                if (new_centers_len[i] > 0)\n                    clusters[i][j] = new_centers[i][j] / new_centers_len[i];\n                new_centers[i][j] = 0.0f;\n            }\n            new_centers_len[i] = 0;\n        }\n\n    } while (delta > threshold && loop++ < 500);\n\n    cudaFree(d_feature);\n    cudaFree(d_clusters);\n    cudaFree(d_membership);\n    cudaFree(d_delta_out);\n\n    free(new_centers[0]);\n    free(new_centers);\n    free(new_centers_len);\n\n    return clusters;\n}\n",
+    "kmeans_cuda_kernel.cu": "#include <stdio.h>\n#include <cuda.h>\n\n#ifndef FLT_MAX\n#define FLT_MAX 3.40282347e+38\n#endif\n\n/*\n * Each thread handles one point.\n * Finds the nearest cluster center and updates membership.\n * Atomically increments delta if membership changed.\n */\n__global__ void kmeans_kernel(\n    float *feature,      /* [npoints * nfeatures] row-major */\n    float *clusters,     /* [nclusters * nfeatures] row-major */\n    int   *membership,   /* [npoints] */\n    int    npoints,\n    int    nclusters,\n    int    nfeatures,\n    int   *delta_out     /* single int, atomically incremented */\n)\n{\n    int point_id = blockIdx.x * blockDim.x + threadIdx.x;\n    if (point_id >= npoints) return;\n\n    float min_dist = FLT_MAX;\n    int   index    = 0;\n\n    for (int c = 0; c < nclusters; c++) {\n        float dist = 0.0f;\n        for (int f = 0; f < nfeatures; f++) {\n            float diff = feature[point_id * nfeatures + f]\n                       - clusters[c * nfeatures + f];\n            dist += diff * diff;\n        }\n        if (dist < min_dist) {\n            min_dist = dist;\n            index    = c;\n        }\n    }\n\n    if (membership[point_id] != index) {\n        atomicAdd(delta_out, 1);\n        membership[point_id] = index;\n    }\n}\n\nvoid kmeans_cuda_kernel_wrapper(\n    float *d_feature,\n    float *d_clusters,\n    int   *d_membership,\n    int    npoints,\n    int    nclusters,\n    int    nfeatures,\n    int   *d_delta_out\n)\n{\n    int block_size = 256;\n    int grid_size  = (npoints + block_size - 1) / block_size;\n\n    kmeans_kernel<<<grid_size, block_size>>>(\n        d_feature,\n        d_clusters,\n        d_membership,\n        npoints,\n        nclusters,\n        nfeatures,\n        d_delta_out\n    );\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans_cuda.cu",
+    "kmeans_cuda_kernel.cu"
+  ],
+  "target_files_extracted": [
+    "kmeans_cuda.cu",
+    "kmeans_cuda_kernel.cu"
+  ],
+  "max_retries": 2,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 28.982,
+      "prompt_tokens": 73757,
+      "completion_tokens": 2433,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n149 |                 delta = (float) kmeansCuda(feature,                     /* in: [npoints][nfeatures] */\n      |                             ",
+      "build_error_snippet": "cluster.c: In function \u2018cluster\u2019:\ncluster.c:111:17: warning: implicit declaration of function \u2018allocateMemory\u2019 [-Wimplicit-function-declaration]\n  111 |                 allocateMemory(npoints, nfeatures, nclusters, features);\n      |                 ^~~~~~~~~~~~~~\ncluster.c:149:17: warning: implicit declaration of function \u2018deallocateMemory\u2019 [-Wimplicit-function-declaration]\n  149 |                 deallocateMemory();                                                     /* free device memory (@ kmeans_cuda.cu) */\n      |                 ^~~~~~~~~~~~~~~~\nkmeans.c: In function \u2018setup\u2019:\nkmeans.c:131:30: warning: implicit declaration of function \u2018getopt\u2019 [-Wimplicit-function-declaration]\n  131 |                 while ( (opt=getopt(argc,argv,\"i:t\n...[truncated]...\nn]\n  179 |         close(infile);\n      |         ^~~~~\n      |         pclose\nkmeans_clustering.c: In function \u2018kmeans_clustering\u2019:\nkmeans_clustering.c:149:33: warning: implicit declaration of function \u2018kmeansCuda\u2019 [-Wimplicit-function-declaration]\n  149 |                 delta = (float) kmeansCuda(feature,                     /* in: [npoints][nfeatures] */\n      |                                 ^~~~~~~~~~\nkmeans_cuda.cu(12): error: linkage specification is incompatible with previous \"kmeans_clustering\" (declared at line 56 of kmeans.h)\n  extern \"C\" float** kmeans_clustering(float**, int, int, int, float, int*);\n                     ^\n\n1 error detected in the compilation of \"kmeans_cuda.cu\".\nmake: *** [Makefile:31: kmeans_cuda.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 24.88,
+      "prompt_tokens": 76370,
+      "completion_tokens": 2402,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "cluster.c: In function \u2018cluster\u2019:\ncluster.c:111:17: warning: implicit declaration of function \u2018allocateMemory\u2019 [-Wimplicit-function-declaration]\n  111 |                 allocateMemory(npoints, nfeatures, nclusters, features);\n      |                 ^~~~~~~~~~~~~~\ncluster.c:149:17: warning: implicit declaration of function \u2018deallocateMemory\u2019 [-Wimplicit-function-declaration]\n  149 |                 deallocateMemory();                                                     /* free device memory (@ kmeans_cuda.cu) */\n      |                 ^~~~~~~~~~~~~~~~\nkmeans.c: In function \u2018setup\u2019:\nkmeans.c:131:30: warning: implicit declaration of function \u2018getopt\u2019 [-Wimplicit-function-declaration]\n  131 |                 while ( (opt=getopt(argc,argv,\"i:t\n...[truncated]...\nle, &npoints,   sizeof(int));\n      |         ^~~~\n      |         fread\nkmeans.c:179:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  179 |         close(infile);\n      |         ^~~~~\n      |         pclose\nkmeans_clustering.c: In function \u2018kmeans_clustering\u2019:\nkmeans_clustering.c:149:33: warning: implicit declaration of function \u2018kmeansCuda\u2019 [-Wimplicit-function-declaration]\n  149 |                 delta = (float) kmeansCuda(feature,                     /* in: [npoints][nfeatures] */\n      |                                 ^~~~~~~~~~\n/usr/bin/ld: cannot find -lcudart: No such file or directory\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:25: kmeans] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

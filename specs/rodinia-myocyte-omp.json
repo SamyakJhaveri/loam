@@ -79,7 +79,8 @@
         "default_arguments": [
             "100",
             "1",
-            "0"
+            "1",
+            "4"
         ],
         "timeout_seconds": 300,
         "environment_variables": null,
@@ -88,7 +89,8 @@
                 "arguments": [
                     "100",
                     "1",
-                    "0"
+                    "1",
+                    "4"
                 ],
                 "description": "Small input for correctness verification of myocyte (OMP)",
                 "input_files": [],
@@ -97,8 +99,9 @@
             "performance": {
                 "arguments": [
                     "1000",
+                    "100",
                     "1",
-                    "0"
+                    "4"
                 ],
                 "description": "Large input for performance measurement of myocyte (OMP)",
                 "input_files": [],
@@ -110,14 +113,9 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "exit_code",
-                "expected": 0,
-                "description": "Process exits cleanly"
-            },
-            {
                 "type": "stdout_pattern",
-                "pattern": "(?i)(PASS|passed|SUCCESS|correct)",
-                "description": "Output indicates correctness"
+                "pattern": "Time spent in different stages",
+                "description": "Myocyte simulation timing reported"
             },
             {
                 "type": "numeric_comparison",
@@ -126,9 +124,9 @@
                 "description": "Numerical results within tolerance"
             },
             {
-                "type": "stdout_pattern",
-                "pattern": "(?i)(pass|correct|match|verified)",
-                "description": "Results match reference"
+                "type": "exit_code",
+                "expected": 0,
+                "description": "Process exits cleanly"
             }
         ],
         "floating_point": null

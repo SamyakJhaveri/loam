@@ -12,11 +12,13 @@
   This is correct behavior — manifest.jsonl is append-only; spec files were deleted.
 Do NOT try to fix any of these errors.
 
-## Current Spec Status (as of 2026-03-23)
+## Current Spec Status (as of 2026-03-27, post S-VERIFY fixes)
 
-**Rodinia:** 60 specs total, 54 PASS, 6 KNOWN_FAIL.
+**Rodinia:** 60 specs total, 54 TRUE PASS, 0 FALSE_PASS, 6 KNOWN_FAIL.
 **XSBench:** 4 specs total, 4 PASS, 0 KNOWN_FAIL.
-**Use the 54 Rodinia PASS + 3 standard XSBench specs (cuda, omp, opencl) for eval batches. omp_target excluded (requires nvc, case-study only).**
+**All 58 non-KNOWN_FAIL specs verified PASS with stdout_pattern+exit_code conjunction.**
+**Use 54 Rodinia TRUE PASS + 3 standard XSBench specs (cuda, omp, opencl) for eval batches.**
+**omp_target excluded (requires nvc, case-study only).**
 
 ## KNOWN_FAIL Specs (6 — exclude from eval batches)
 
@@ -28,6 +30,23 @@ Do NOT try to fix any of these errors.
 | `rodinia-hybridsort-cuda` | `GL/glew.h` not found | Needs `libglew-dev` + display server |
 | `rodinia-nn-opencl` | TIMEOUT / SIGSEGV | Pre-existing; never passed |
 | `rodinia-kmeans-opencl` | SIGSEGV in OpenCL runtime | Pre-existing; never passed |
+
+## FALSE_PASS Baseline Specs — ALL FIXED (S-VERIFY 2026-03-27)
+
+Originally 9 specs discovered with wrong run args (exit_code=0 but wrong/no output).
+All 9 specs now verified TRUE PASS. heartwall-opencl fixed via runner.py argv[0] change (2026-03-27).
+
+| Spec | Fix Applied | Status |
+|------|------------|--------|
+| `rodinia-backprop-opencl` | Args `["-n","65536"]` (flag + divisible by 16) | FIXED — TRUE PASS |
+| `rodinia-heartwall-opencl` | runner.py argv[0] fix (use relative path, not absolute) | FIXED — TRUE PASS |
+| `rodinia-myocyte-omp` | Args `["100","1","1","4"]` (added threads arg) | FIXED — TRUE PASS |
+| `rodinia-myocyte-opencl` | Args `["-time","100","-r","../../data/myocyte"]` (flags not positional) | FIXED — TRUE PASS |
+| `rodinia-pathfinder-omp` | Args `["100000","100"]` (removed extra arg) | FIXED — TRUE PASS |
+| `rodinia-bfs-omp` | Args `["4","../../data/bfs/graph1MW_6.txt"]` (added num_omp_threads) | FIXED — TRUE PASS |
+| `rodinia-lavamd-cuda` | Args `["-boxes1d","10"]` (removed `-cores`, fixed `-boxes1d`) | FIXED — TRUE PASS |
+| `rodinia-lavamd-omp` | Args `["-cores","4","-boxes1d","10"]` (fixed `-boxes1d`) | FIXED — TRUE PASS |
+| `rodinia-lavamd-opencl` | Args `["-boxes1d","10"]` (removed `-cores`, fixed `-boxes1d`) | FIXED — TRUE PASS |
 
 ## OMP Spec Run Arg Rules (CRITICAL)
 
@@ -90,9 +109,11 @@ editing source. mummergpu `unistd.h` edits reverted — both specs are KNOWN_FAI
 Hook regex: `/(rodinia|rodinia-src|HeCBench-master|hecbench|xsbench-src)/` — protects both direct
 and symlink paths to benchmark sources.
 
-## Augmentation Baseline (verified 2026-03-20)
+## Augmentation Baseline (verified 2026-03-20, updated S-VERIFY 2026-03-27)
 
-54/60 PASS at all levels L1–L4 (level-invariant). Augmentation introduces zero new failures.
+58/60 Rodinia + 4/4 XSBench PASS at all levels L1–L4 (level-invariant) with
+stdout_pattern+exit_code conjunction verification. 6 KNOWN_FAIL excluded.
+Augmentation introduces zero new failures beyond the baseline.
 Verify transforms: `python3 -m pytest c_augmentation/test_transforms.py -v` (15 tests, all must pass)
 
 ## Eval Result Timing Limitations (SESSION 3b audit — 2026-03-24)

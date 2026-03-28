@@ -5,18 +5,18 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 1,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T08:46:13Z",
-  "prompt_tokens": 74314,
-  "completion_tokens": 3726,
-  "llm_response_time_seconds": 16.913,
+  "timestamp": "2026-03-28T02:45:27Z",
+  "prompt_tokens": 75875,
+  "completion_tokens": 4080,
+  "llm_response_time_seconds": 20.385,
   "build_status": "pass",
-  "build_time_seconds": 0.456,
+  "build_time_seconds": 0.457,
   "build_error_snippet": null,
   "run_status": "fail",
-  "run_time_seconds": 0.28,
+  "run_time_seconds": 0.322,
   "run_exit_code": 1,
-  "run_stderr_snippet": "3 warnings and 5 errors generated.\n",
-  "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.141 seconds\nLookups:     17,000,000\nLookups/s:   120,567,348\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,630,786\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "==============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.179 seconds\nLookups:     17,000,000\nLookups/s:   94,971,993\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
   "verify_status": null,
   "verify_strategy": null,
   "overall_status": "RUN_FAIL",
@@ -29,7 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "kernel.cl": "// kernel.cl\ntypedef struct {\n    double energy;\n    double total_xs;\n    double elastic_xs;\n    double absorbtion_xs;\n    double fission_xs;\n    double nu_fission_xs;\n} NuclideGridPoint;\n\ntypedef str"
+    "kernel.cl": "// kernel.cl\ntypedef struct {\n    double energy;\n    double total_xs;\n    double elastic_xs;\n    double absorbtion_xs;\n    double fission_xs;\n    double nu_fission_xs;\n} NuclideGridPoint;\n\ntypedef struct {\n    int nthreads;\n    long n_isotopes;\n    long n_gridpoints;\n    int lookups;\n    char HM;\n    int grid_type; \n    int hash_bins;\n    int particles;\n    int simulation_method;\n    int binary_mode;\n    int kernel_id;\n    double p_energy_samples[1000000];\n    int mat_samples[1000000];\n} Inputs;\n\n__kernel void macro_xs_lookup_kernel(__global Inputs * in, int max_num_nucs, __global int * num_nucs, __global double * concs, __global double * unionized_energy_array, __global int * index_grid, __global NuclideGridPoint * nuclide_grids, __global int * mats, __global int * verification)\n{\n    int i = get_global_id(0);\n\n    if (i >= in->lookups)\n        return;\n\n    double macro_xs_vector[5] = {0};\n\n    double p_energy = in->p_energy_samples[i];\n    int mat = in->mat_samples[i];\n\n    long idx = -1;\n\n    if (in->grid_type == 0) { // UNIONIZED\n        idx = 0; // This is a placeholder, you need to implement the actual logic for UNIONIZED\n    } else if (in->grid_type == 1) { // NUCLIDE\n        idx = 0; // This is a placeholder, you need to implement the actual logic for NUCLIDE\n    } else if (in->grid_type == 2) { // HASH\n        idx = 0; // This is a placeholder, you need to implement the actual logic for HASH\n    }\n\n    for (int j = 0; j < num_nucs[mat]; j++) {\n        double xs_vector[5];\n        int p_nuc = mats[mat * max_num_nucs + j];\n        double conc = concs[mat * max_num_nucs + j];\n\n        // Calculate micro XS\n        NuclideGridPoint low, high;\n        low.energy = nuclide_grids[p_nuc * in->n_gridpoints].energy;\n        high.energy = nuclide_grids[p_nuc * in->n_gridpoints + 1].energy;\n\n        double f = (high.energy - p_energy) / (high.energy - low.energy);\n\n        xs_vector[0] = high.total_xs - f * (high.total_xs - low.total_xs);\n        xs_vector[1] = high.elastic_xs - f * (high.elastic_xs - low.elastic_xs);\n        xs_vector[2] = high.absorbtion_xs - f * (high.absorbtion_xs - low.absorbtion_xs);\n        xs_vector[3] = high.fission_xs - f * (high.fission_xs - low.fission_xs);\n        xs_vector[4] = high.nu_fission_xs - f * (high.nu_fission_xs - low.nu_fission_xs);\n\n        for (int k = 0; k < 5; k++)\n            macro_xs_vector[k] += xs_vector[k] * conc;\n    }\n\n    double max = -1.0;\n    int max_idx = 0;\n    for (int j = 0; j < 5; j++) {\n        if (macro_xs_vector[j] > max) {\n            max = macro_xs_vector[j];\n            max_idx = j;\n        }\n    }\n    verification[i] = max_idx + 1;\n}\n"
   },
   "target_files_expected": [
     "kernel.cl"
@@ -42,32 +42,32 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 10.243,
+      "llm_response_time_seconds": 15.123,
       "prompt_tokens": 36358,
-      "completion_tokens": 1560,
+      "completion_tokens": 3121,
       "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "fail",
       "verify_status": null,
-      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n3 warnings and 32 errors generated.\n```\nFix the runtime error.",
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n3 warnings and 47 errors generated.\n```\nFix the runtime error.",
       "build_error_snippet": null,
-      "run_stderr_snippet": "3 warnings and 32 errors generated.\n",
-      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.140 seconds\nLookups:     17,000,000\nLookups/s:   121,428,687\nSimulation Kernel Only Statistics\nRuntime:     0.025 seconds\nLookups/s:   680,003,891\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "run_stderr_snippet": "3 warnings and 47 errors generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.148 seconds\nLookups:     17,000,000\nLookups/s:   114,864,863\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,145,504\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
       "extraction_fail": null
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 6.67,
-      "prompt_tokens": 37956,
-      "completion_tokens": 2166,
+      "llm_response_time_seconds": 5.262,
+      "prompt_tokens": 39517,
+      "completion_tokens": 959,
       "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "fail",
       "verify_status": null,
       "error_feedback_sent": null,
       "build_error_snippet": null,
-      "run_stderr_snippet": "3 warnings and 5 errors generated.\n",
-      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.141 seconds\nLookups:     17,000,000\nLookups/s:   120,567,348\nSimulation Kernel Only Statistics\nRuntime:     0.027 seconds\nLookups/s:   629,630,786\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "==============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.179 seconds\nLookups:     17,000,000\nLookups/s:   94,971,993\nSimulation Kernel Only Statistics\nRuntime:     0.028 seconds\nLookups/s:   607,140,334\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
       "extraction_fail": null
     }
   ]

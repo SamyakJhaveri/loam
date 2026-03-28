@@ -69,8 +69,8 @@
         "executable": "./lavaMD",
         "default_arguments": [
             "-cores",
-            "1",
-            "-boxes",
+            "4",
+            "-boxes1d",
             "10"
         ],
         "timeout_seconds": 300,
@@ -79,8 +79,8 @@
             "correctness": {
                 "arguments": [
                     "-cores",
-                    "1",
-                    "-boxes",
+                    "4",
+                    "-boxes1d",
                     "10"
                 ],
                 "description": "Small input for correctness verification of lavaMD (OMP)",
@@ -90,8 +90,8 @@
             "performance": {
                 "arguments": [
                     "-cores",
-                    "1",
-                    "-boxes",
+                    "4",
+                    "-boxes1d",
                     "30"
                 ],
                 "description": "Large input for performance measurement of lavaMD (OMP)",
@@ -103,6 +103,11 @@
     "verification": {
         "method": "self_checking",
         "strategies": [
+            {
+                "type": "stdout_pattern",
+                "pattern": "Total time:",
+                "description": "lavaMD OMP kernel computation completed"
+            },
             {
                 "type": "exit_code",
                 "expected": 0,

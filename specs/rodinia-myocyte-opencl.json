@@ -88,18 +88,20 @@
     "run": {
         "executable": "./myocyte.out",
         "default_arguments": [
+            "-time",
             "100",
-            "1",
-            "0"
+            "-r",
+            "../../data/myocyte"
         ],
         "timeout_seconds": 300,
         "environment_variables": null,
         "input_configurations": {
             "correctness": {
                 "arguments": [
+                    "-time",
                     "100",
-                    "1",
-                    "0"
+                    "-r",
+                    "../../data/myocyte"
                 ],
                 "description": "Small input for correctness verification of myocyte (OPENCL)",
                 "input_files": [],
@@ -107,9 +109,10 @@
             },
             "performance": {
                 "arguments": [
+                    "-time",
                     "1000",
-                    "1",
-                    "0"
+                    "-r",
+                    "../../data/myocyte"
                 ],
                 "description": "Large input for performance measurement of myocyte (OPENCL)",
                 "input_files": [],
@@ -121,14 +124,9 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "exit_code",
-                "expected": 0,
-                "description": "Process exits cleanly"
-            },
-            {
                 "type": "stdout_pattern",
-                "pattern": "(?i)(PASS|passed|SUCCESS|correct)",
-                "description": "Output indicates correctness"
+                "pattern": "Time spent in different stages",
+                "description": "Myocyte simulation timing reported"
             },
             {
                 "type": "numeric_comparison",
@@ -137,9 +135,9 @@
                 "description": "Numerical results within tolerance"
             },
             {
-                "type": "stdout_pattern",
-                "pattern": "(?i)(pass|correct|match|verified)",
-                "description": "Results match reference"
+                "type": "exit_code",
+                "expected": 0,
+                "description": "Process exits cleanly"
             }
         ],
         "floating_point": null

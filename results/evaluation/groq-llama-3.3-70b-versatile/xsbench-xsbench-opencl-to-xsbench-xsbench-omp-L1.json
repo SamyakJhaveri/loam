@@ -5,13 +5,13 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 1,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T09:48:52Z",
-  "prompt_tokens": 43623,
-  "completion_tokens": 1261,
-  "llm_response_time_seconds": 7.731,
+  "timestamp": "2026-03-28T03:50:34Z",
+  "prompt_tokens": 55198,
+  "completion_tokens": 12395,
+  "llm_response_time_seconds": 41.692,
   "build_status": "fail",
-  "build_time_seconds": 0.024,
-  "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:67:40: error: too many arguments to function \u2018run_event_based_simulation\u2019\n   67 |                         verification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~\nIn file included from Main.c:1:\nXSbench_header.h:117:20: note: declared here\n  117 | unsigned long long run_event_based_simulation(Inputs in, SimulationData SD, int mype);\n      |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:108: Main.o] Error 1\n",
+  "build_time_seconds": 0.033,
+  "build_error_snippet": "io.c:2:20: error: unknown type name \u2018Inputs\u2019\n    2 | int print_results( Inputs in, int mype, double runtime, int nprocs, unsigned long long vhash, double sim_runtime )\n      |                    ^~~~~~\nmake: *** [Makefile:108: io.o] Error 1\n",
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -20,7 +20,7 @@
   "verify_status": null,
   "verify_strategy": null,
   "overall_status": "BUILD_FAIL",
-  "error_message": "Build failed: ared here\n  117 | unsigned long long run_event_based_simulation(Inputs in, SimulationData SD, int mype);\n      |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:108: Main.o] Error 1",
+  "error_message": "Build failed: ts\u2019\n    2 | int print_results( Inputs in, int mype, double runtime, int nprocs, unsigned long long vhash, double sim_runtime )\n      |                    ^~~~~~\nmake: *** [Makefile:108: io.o] Error 1",
   "metrics": {},
   "baseline_wall_time_seconds": 0.787,
   "translated_wall_time_seconds": null,
@@ -29,7 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef _OPENMP\n#include <omp.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization &"
+    "io.c": "// io.c\nint print_results( Inputs in, int mype, double runtime, int nprocs, unsigned long long vhash, double sim_runtime )\n{\n    // function body...\n}\n"
   },
   "target_files_expected": [
     "Main.c",
@@ -40,16 +40,16 @@
     "Materials.c"
   ],
   "target_files_extracted": [
-    "Main.c"
+    "io.c"
   ],
   "max_retries": 2,
   "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 4.282,
+      "llm_response_time_seconds": 39.213,
       "prompt_tokens": 21415,
-      "completion_tokens": 632,
+      "completion_tokens": 12207,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
@@ -62,15 +62,15 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 3.449,
-      "prompt_tokens": 22208,
-      "completion_tokens": 629,
+      "llm_response_time_seconds": 2.479,
+      "prompt_tokens": 33783,
+      "completion_tokens": 188,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:67:40: error: too many arguments to function \u2018run_event_based_simulation\u2019\n   67 |                         verification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~\nIn file included from Main.c:1:\nXSbench_header.h:117:20: note: declared here\n  117 | unsigned long long run_event_based_simulation(Inputs in, SimulationData SD, int mype);\n      |                    ^~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:108: Main.o] Error 1\n",
+      "build_error_snippet": "io.c:2:20: error: unknown type name \u2018Inputs\u2019\n    2 | int print_results( Inputs in, int mype, double runtime, int nprocs, unsigned long long vhash, double sim_runtime )\n      |                    ^~~~~~\nmake: *** [Makefile:108: io.o] Error 1\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null

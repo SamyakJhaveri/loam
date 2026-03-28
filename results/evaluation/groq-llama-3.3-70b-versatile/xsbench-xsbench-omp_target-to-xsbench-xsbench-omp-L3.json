@@ -5,13 +5,13 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 3,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T12:25:36Z",
-  "prompt_tokens": 43541,
-  "completion_tokens": 13899,
-  "llm_response_time_seconds": 58.601,
+  "timestamp": "2026-03-28T06:16:13Z",
+  "prompt_tokens": 43479,
+  "completion_tokens": 13680,
+  "llm_response_time_seconds": 47.611,
   "build_status": "fail",
-  "build_time_seconds": 0.024,
-  "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:12:13: error: \u2018in\u2019 undeclared (first use in this function); did you mean \u2018yn\u2019?\n   12 |         if( in.simulation_method == EVENT_BASED )\n      |             ^~\n      |             yn\nMain.c:12:13: note: each undeclared identifier is reported only once for each function it appears in\nMain.c:15:25: error: \u2018verification\u2019 undeclared (first use in this function)\n   15 |                         verification = run_event_based_simulation(in, SD, mype);\n      |                         ^~~~~~~~~~~~\nMain.c:15:71: error: \u2018SD\u2019 undeclared (first use in this function)\n   15 |                         verification = run_event_based_simulation(in, SD, mype);\n      |                                                                       ^~\nMain.c:15:75: error: \u2018mype\u2019 undeclared (first use in this function)\n   15 |                         verification = run_event_based_simulation(in, SD, mype);\n      |                                                                           ^~~~\nmake: *** [Makefile:108: Main.o] Error 1\n",
+  "build_time_seconds": 0.046,
+  "build_error_snippet": "io.c: In function \u2018read_CLI\u2019:\nio.c:13:5: error: \u2018input\u2019 undeclared (first use in this function); did you mean \u2018Inputs\u2019?\n   13 |     input.HM = (char *) malloc( 6 * sizeof(char) );\n      |     ^~~~~\n      |     Inputs\nio.c:13:5: note: each undeclared identifier is reported only once for each function it appears in\nio.c: In function \u2018load_mats\u2019:\nio.c:28:34: error: \u2018num_mats\u2019 undeclared (first use in this function)\n   28 |     int * mats = (int *) malloc( num_mats * (*max_num_nucs) * sizeof(int) );\n      |                                  ^~~~~~~~\nio.c: In function \u2018calculate_macro_xs\u2019:\nio.c:61:17: error: \u2018high\u2019 undeclared (first use in this function)\n   61 |     double f = (high->energy - low->energy);\n      |                 ^~~~\nio.c:61:32:\n...[truncated]...\n undeclared (first use in this function); did you mean \u2018pow\u2019?\n   61 |     double f = (high->energy - low->energy);\n      |                                ^~~\n      |                                pow\nio.c: In function \u2018grid_init_do_not_profile\u2019:\nio.c:78:5: error: \u2018SD\u2019 undeclared (first use in this function)\n   78 |     SD.nuclide_grid     = (NuclideGridPoint *) malloc( SD.length_nuclide_grid * sizeof(NuclideGridPoint) );\n      |     ^~\nio.c: In function \u2018read_CLI\u2019:\nio.c:20:1: warning: control reaches end of non-void function [-Wreturn-type]\n   20 | }\n      | ^\nio.c: In function \u2018grid_init_do_not_profile\u2019:\nio.c:97:1: warning: control reaches end of non-void function [-Wreturn-type]\n   97 | }\n      | ^\nmake: *** [Makefile:108: io.o] Error 1\n",
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -20,7 +20,7 @@
   "verify_status": null,
   "verify_strategy": null,
   "overall_status": "BUILD_FAIL",
-  "error_message": "Build failed: verification = run_event_based_simulation(in, SD, mype);\n      |                                                                           ^~~~\nmake: *** [Makefile:108: Main.o] Error 1",
+  "error_message": "Build failed: 20 | }\n      | ^\nio.c: In function \u2018grid_init_do_not_profile\u2019:\nio.c:97:1: warning: control reaches end of non-void function [-Wreturn-type]\n   97 | }\n      | ^\nmake: *** [Makefile:108: io.o] Error 1",
   "metrics": {},
   "baseline_wall_time_seconds": 0.787,
   "translated_wall_time_seconds": null,
@@ -29,9 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\t// ... (rest of the code remains the same)\n\n\t// Run simulation\n\tif( in.simulation_method == EVENT_",
-    "Simulation.c": "unsigned long long run_event_based_simulation(Inputs in, SimulationData SD, int mype)\n{\n\tif( mype == 0)\t\n\t\tprintf(\"Beginning event based simulation...\\n\");\n\t\n\t// ... (rest of the code remains the same",
-    "GridInit.c": "SimulationData grid_init_do_not_profile( Inputs in, int mype )\n{\n\t// ... (rest of the code remains the same)\n\n\t// Initialize Nuclide Grid\n\tSD.length_nuclide_grid = in.n_isotopes * in.n_gridpoints;\n\tSD"
+    "io.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\n// ...\n\nInputs read_CLI( int argc, char * argv[] )\n{\n    // ...\n\n    input.HM = (char *) malloc( 6 * sizeof(char) );\n    if (input.HM == NULL) {\n        printf(\"Error: Memory allocation failed\\n\");\n        exit(1);\n    }\n\n    // ...\n}\n\n// ...\n\nint * load_mats( int * num_nucs, long n_isotopes, int * max_num_nucs )\n{\n    // ...\n\n    int * mats = (int *) malloc( num_mats * (*max_num_nucs) * sizeof(int) );\n    if (mats == NULL) {\n        printf(\"Error: Memory allocation failed\\n\");\n        exit(1);\n    }\n\n    // ...\n\n    for( int m = 0; m < num_mats; m++ )\n    {\n        if( m * (*max_num_nucs) >= num_mats * (*max_num_nucs) )\n        {\n            printf(\"Error: Index out of bounds\\n\");\n            exit(1);\n        }\n\n        // ...\n    }\n\n    return mats;\n}\n\n// ...\n\nvoid calculate_macro_xs( double p_energy, int mat, long n_isotopes,\n                         long n_gridpoints, int *  num_nucs,\n                         double *  concs,\n                         double *  egrid, int *  index_data,\n                         NuclideGridPoint *  nuclide_grids,\n                         int *  mats,\n                         double *  macro_xs_vector, int grid_type, int hash_bins, int max_num_nucs ){\n    // ...\n\n    double f = (high->energy - low->energy);\n    if (f == 0) {\n        printf(\"Error: Division by zero\\n\");\n        exit(1);\n    }\n\n    f = (high->energy - p_energy) / f;\n\n    // ...\n}\n\n// ...\n\nSimulationData grid_init_do_not_profile( Inputs in, int mype )\n{\n    // ...\n\n    SD.nuclide_grid     = (NuclideGridPoint *) malloc( SD.length_nuclide_grid * sizeof(NuclideGridPoint) );\n    if (SD.nuclide_grid == NULL) {\n        printf(\"Error: Memory allocation failed\\n\");\n        exit(1);\n    }\n\n    // ...\n\n    for( int i = 0; i < SD.length_nuclide_grid; i++ )\n    {\n        if (i >= SD.length_nuclide_grid) {\n            printf(\"Error: Index out of bounds\\n\");\n            exit(1);\n        }\n\n        // ...\n    }\n\n    return SD;\n}\n"
   },
   "target_files_expected": [
     "Main.c",
@@ -42,18 +40,16 @@
     "Materials.c"
   ],
   "target_files_extracted": [
-    "Main.c",
-    "Simulation.c",
-    "GridInit.c"
+    "io.c"
   ],
   "max_retries": 2,
   "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 50.435,
+      "llm_response_time_seconds": 42.787,
       "prompt_tokens": 15327,
-      "completion_tokens": 12857,
+      "completion_tokens": 12795,
       "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "fail",
@@ -66,15 +62,15 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 8.166,
-      "prompt_tokens": 28214,
-      "completion_tokens": 1042,
+      "llm_response_time_seconds": 4.824,
+      "prompt_tokens": 28152,
+      "completion_tokens": 885,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:12:13: error: \u2018in\u2019 undeclared (first use in this function); did you mean \u2018yn\u2019?\n   12 |         if( in.simulation_method == EVENT_BASED )\n      |             ^~\n      |             yn\nMain.c:12:13: note: each undeclared identifier is reported only once for each function it appears in\nMain.c:15:25: error: \u2018verification\u2019 undeclared (first use in this function)\n   15 |                         verification = run_event_based_simulation(in, SD, mype);\n      |                         ^~~~~~~~~~~~\nMain.c:15:71: error: \u2018SD\u2019 undeclared (first use in this function)\n   15 |                         verification = run_event_based_simulation(in, SD, mype);\n      |                                                                       ^~\nMain.c:15:75: error: \u2018mype\u2019 undeclared (first use in this function)\n   15 |                         verification = run_event_based_simulation(in, SD, mype);\n      |                                                                           ^~~~\nmake: *** [Makefile:108: Main.o] Error 1\n",
+      "build_error_snippet": "io.c: In function \u2018read_CLI\u2019:\nio.c:13:5: error: \u2018input\u2019 undeclared (first use in this function); did you mean \u2018Inputs\u2019?\n   13 |     input.HM = (char *) malloc( 6 * sizeof(char) );\n      |     ^~~~~\n      |     Inputs\nio.c:13:5: note: each undeclared identifier is reported only once for each function it appears in\nio.c: In function \u2018load_mats\u2019:\nio.c:28:34: error: \u2018num_mats\u2019 undeclared (first use in this function)\n   28 |     int * mats = (int *) malloc( num_mats * (*max_num_nucs) * sizeof(int) );\n      |                                  ^~~~~~~~\nio.c: In function \u2018calculate_macro_xs\u2019:\nio.c:61:17: error: \u2018high\u2019 undeclared (first use in this function)\n   61 |     double f = (high->energy - low->energy);\n      |                 ^~~~\nio.c:61:32:\n...[truncated]...\n undeclared (first use in this function); did you mean \u2018pow\u2019?\n   61 |     double f = (high->energy - low->energy);\n      |                                ^~~\n      |                                pow\nio.c: In function \u2018grid_init_do_not_profile\u2019:\nio.c:78:5: error: \u2018SD\u2019 undeclared (first use in this function)\n   78 |     SD.nuclide_grid     = (NuclideGridPoint *) malloc( SD.length_nuclide_grid * sizeof(NuclideGridPoint) );\n      |     ^~\nio.c: In function \u2018read_CLI\u2019:\nio.c:20:1: warning: control reaches end of non-void function [-Wreturn-type]\n   20 | }\n      | ^\nio.c: In function \u2018grid_init_do_not_profile\u2019:\nio.c:97:1: warning: control reaches end of non-void function [-Wreturn-type]\n   97 | }\n      | ^\nmake: *** [Makefile:108: io.o] Error 1\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null

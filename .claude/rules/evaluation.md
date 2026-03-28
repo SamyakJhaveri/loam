@@ -223,20 +223,35 @@ Llama 3.3 70B via Groq cannot handle multi-file kernels with large prompt+respon
 - `heartwall` (3 target files, 89K prompt tokens): hits cap on attempt 2 → EXTRACTION_FAIL
 For future groq-llama eval batches, skip these two kernels or use batched translation.
 
-## Verification Strategy Limitation (SESSION 3 — 2026-03-23)
+## Verification Strategy Fix (S-VERIFY — 2026-03-27)
 
-**17/17 Rodinia OMP specs use `exit_code == 0` as their primary (and effective) verification.**
-Exit-code-only verification proves "didn't crash" but NOT functional correctness. A translated
-kernel that computes wrong results but exits cleanly is incorrectly marked PASS.
+**Bug found and fixed:** `verify_run()` used "first definitive result wins" — since `exit_code`
+was listed first in all 46 dual-strategy specs, `stdout_pattern` was NEVER evaluated. PASS
+meant "exited with code 0", not "produced correct output."
 
-All 5 groq-llama PASS results (bfs, hotspot3d, lud, nn, pathfinder) were verified only by
-exit code. The fallback `stdout_pattern` strategies in 9 specs are never reached because
-the `exit_code` strategy short-circuits first (see `harness/verifier.py` lines 49-69).
-The baseline stdout snippets contain no "PASS"/"FAIL" assertions from the Rodinia source.
+**Fix (two-part):**
+1. **Verifier semantics** (`harness/verifier.py`): Changed from disjunction to conjunction.
+   ALL non-SKIP strategies must PASS for overall PASS. FAIL on any failure returns immediately.
+2. **Strategy ordering** (64 specs): `stdout_pattern` before `exit_code`. Ordering no longer
+   affects correctness (conjunction), but gives earlier/more informative failure messages.
+3. **Pattern replacement** (51 specs): Generic `(?i)(pass|correct|match|verified)` replaced
+   with kernel-specific patterns from actual binary stdout (e.g., `"Training done"` for backprop).
+4. **New patterns** (16 specs): Added `stdout_pattern` to 16 of 18 exit_code-only specs.
+   Two specs (`bfs-omp`, `lavamd-omp`) kept exit_code-only — no meaningful stdout.
 
-**Impact on SC26 paper:** PASS = "successfully translated, compiled, and ran without crashing."
-It does NOT claim numerical output equivalence. The paper's methodology section must state
-this clearly. Future work: implement `numeric_comparison` strategy for floating-point outputs.
+**Corrected baseline (post arg fixes + runner.py argv[0] fix):** 58/58 TRUE PASS — 54 Rodinia + 4 XSBench.
+6 KNOWN_FAIL excluded. heartwall-opencl promoted to TRUE PASS via runner.py argv[0] fix (2026-03-27).
+Originally 9 FALSE_PASS specs discovered; all 9 now fixed (8 via corrected run args, 1 via runner.py).
+moved to KNOWN_FAIL. Additional fixes: bfs-omp, lavamd-cuda, lavamd-omp, lavamd-opencl.
+
+**169 existing PASS eval results:** Cannot be retroactively re-verified — `translated_files`
+was truncated to 200 bytes and `run_stdout_snippet` was null for PASS results. Pipeline now
+stores full code and stdout for all future results.
+
+**Impact on SC26 paper:** Future eval batches will use corrected verification with conjunction
+semantics. Existing L0 results verified exit_code only — must be re-run for valid data.
+
+**Details:** `results/evaluation/reverification_analysis.md`
 
 ## Python Gotcha: null JSON values
 

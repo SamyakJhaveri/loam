@@ -111,6 +111,11 @@
         "method": "self_checking",
         "strategies": [
             {
+                "type": "stdout_pattern",
+                "pattern": "Computation Done",
+                "description": "SRAD computation completed"
+            },
+            {
                 "type": "exit_code",
                 "expected": 0,
                 "description": "Process exits cleanly"

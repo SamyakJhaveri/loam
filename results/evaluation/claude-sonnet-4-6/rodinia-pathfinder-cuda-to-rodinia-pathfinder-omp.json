@@ -5,31 +5,31 @@
   "model": "claude-sonnet-4-6",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-24T05:19:07Z",
-  "prompt_tokens": 3149,
-  "completion_tokens": 2158,
-  "llm_response_time_seconds": 22.382,
+  "timestamp": "2026-03-28T07:40:39Z",
+  "prompt_tokens": 8525,
+  "completion_tokens": 4564,
+  "llm_response_time_seconds": 52.284,
   "build_status": "pass",
-  "build_time_seconds": 0.064,
+  "build_time_seconds": 0.066,
   "build_error_snippet": null,
   "run_status": "pass",
-  "run_time_seconds": 0.087,
+  "run_time_seconds": 0.001,
   "run_exit_code": 0,
   "run_stderr_snippet": null,
-  "run_stdout_snippet": null,
-  "verify_status": "pass",
-  "verify_strategy": "exit_code",
-  "overall_status": "PASS",
-  "error_message": null,
+  "run_stdout_snippet": "Usage: dynproc row_len col_len pyramid_height\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern 'timer:' NOT found in stdout. Pathfinder computation timer reported",
   "metrics": {},
   "baseline_wall_time_seconds": 0.001,
-  "translated_wall_time_seconds": 0.087,
+  "translated_wall_time_seconds": 0.001,
   "translated_cpu_time_seconds": null,
   "translated_kernel_time_seconds": null,
   "timing_method": "wall_time",
-  "speedup_ratio": 0.0115,
+  "speedup_ratio": 1.0,
   "translated_files": {
-    "pathfinder.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <string.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 256\n#define STR_SIZE 256\n#define DEVICE 0\n#define HALO 1\n\nvoid run"
+    "pathfinder.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <time.h>\n#include <assert.h>\n#include <omp.h>\n#include <string.h>\n#include \"timer.h\"\n\n#define BLOCK_SIZE 256\n#define STR_SIZE 256\n#define DEVICE 0\n#define HALO 1\n\nvoid run(int argc, char** argv);\n\nint rows, cols;\nint* data;\nint** wall;\nint* result;\n#define M_SEED 9\nint pyramid_height;\n\nvoid init(int argc, char** argv)\n{\n    if(argc==4){\n        cols = atoi(argv[1]);\n        rows = atoi(argv[2]);\n        pyramid_height=atoi(argv[3]);\n    }else{\n        printf(\"Usage: dynproc row_len col_len pyramid_height\\n\");\n        exit(0);\n    }\n    data = new int[rows*cols];\n    wall = new int*[rows];\n    for(int n=0; n<rows; n++)\n        wall[n]=data+cols*n;\n    result = new int[cols];\n    \n    int seed = M_SEED;\n    srand(seed);\n\n    for (int i = 0; i < rows; i++)\n    {\n        for (int j = 0; j < cols; j++)\n        {\n            wall[i][j] = rand() % 10;\n        }\n    }\n#ifdef BENCH_PRINT\n    for (int i = 0; i < rows; i++)\n    {\n        for (int j = 0; j < cols; j++)\n        {\n            printf(\"%d \",wall[i][j]);\n        }\n        printf(\"\\n\");\n    }\n#endif\n}\n\nvoid fatal(char *s)\n{\n    fprintf(stderr, \"error: %s\\n\", s);\n}\n\n#define IN_RANGE(x, min, max)   ((x)>=(min) && (x)<=(max))\n#define CLAMP_RANGE(x, min, max) x = (x<(min)) ? min : ((x>(max)) ? max : x)\n#define MIN(a, b) ((a)<=(b) ? (a) : (b))\n\nvoid dynproc_kernel_omp(\n    int iteration,\n    int *gpuWall,\n    int *gpuSrc,\n    int *gpuResults,\n    int cols,\n    int rows,\n    int startStep,\n    int border,\n    int blockCols)\n{\n    #pragma omp parallel for schedule(static)\n    for (int bx = 0; bx < blockCols; bx++)\n    {\n        int prev[BLOCK_SIZE];\n        int res[BLOCK_SIZE];\n        bool computed_arr[BLOCK_SIZE];\n\n        int small_block_cols = BLOCK_SIZE - iteration * HALO * 2;\n\n        int blkX = small_block_cols * bx - border;\n        int blkXmax = blkX + BLOCK_SIZE - 1;\n\n        int validXmin = (blkX < 0) ? -blkX : 0;\n        int validXmax = (blkXmax > cols-1) ? BLOCK_SIZE-1-(blkXmax-cols+1) : BLOCK_SIZE-1;\n\n        // Load prev from gpuSrc\n        for (int tx = 0; tx < BLOCK_SIZE; tx++)\n        {\n            int xidx = blkX + tx;\n            prev[tx] = 0;\n            res[tx] = 0;\n            computed_arr[tx] = false;\n            if (IN_RANGE(xidx, 0, cols-1))\n            {\n                prev[tx] = gpuSrc[xidx];\n            }\n        }\n\n        for (int i = 0; i < iteration; i++)\n        {\n            for (int tx = 0; tx < BLOCK_SIZE; tx++)\n                computed_arr[tx] = false;\n\n            // Compute W, E, isValid for each thread\n            int W_arr[BLOCK_SIZE], E_arr[BLOCK_SIZE];\n            bool isValid_arr[BLOCK_SIZE];\n\n            for (int tx = 0; tx < BLOCK_SIZE; tx++)\n            {\n                int W = tx - 1;\n                int E = tx + 1;\n                W = (W < validXmin) ? validXmin : W;\n                E = (E > validXmax) ? validXmax : E;\n                W_arr[tx] = W;\n                E_arr[tx] = E;\n                isValid_arr[tx] = IN_RANGE(tx, validXmin, validXmax);\n            }\n\n            for (int tx = 0; tx < BLOCK_SIZE; tx++)\n            {\n                int xidx = blkX + tx;\n                if (IN_RANGE(tx, i+1, BLOCK_SIZE-i-2) && isValid_arr[tx])\n                {\n                    computed_arr[tx] = true;\n                    int left = prev[W_arr[tx]];\n                    int up = prev[tx];\n                    int right = prev[E_arr[tx]];\n                    int shortest = MIN(left, up);\n                    shortest = MIN(shortest, right);\n                    int index = cols * (startStep + i) + xidx;\n                    res[tx] = shortest + gpuWall[index];\n                }\n            }\n\n            if (i == iteration - 1)\n                break;\n\n            for (int tx = 0; tx < BLOCK_SIZE; tx++)\n            {\n                if (computed_arr[tx])\n                    prev[tx] = res[tx];\n            }\n        }\n\n        // Write results back\n        for (int tx = 0; tx < BLOCK_SIZE; tx++)\n        {\n            int xidx = blkX + tx;\n            if (computed_arr[tx])\n            {\n                gpuResults[xidx] = res[tx];\n            }\n        }\n    }\n}\n\nint calc_path(int *gpuWall, int *gpuResult[2], int rows, int cols,\n              int pyramid_height, int blockCols, int borderCols)\n{\n    int src = 1, dst = 0;\n    for (int t = 0; t < rows-1; t += pyramid_height)\n    {\n        int temp = src;\n        src = dst;\n        dst = temp;\n\n        int iteration = MIN(pyramid_height, rows-t-1);\n\n        dynproc_kernel_omp(\n            iteration,\n            gpuWall,\n            gpuResult[src],\n            gpuResult[dst],\n            cols, rows, t, borderCols, blockCols);\n    }\n    return dst;\n}\n\nint main(int argc, char** argv)\n{\n    run(argc, argv);\n    return EXIT_SUCCESS;\n}\n\nvoid run(int argc, char** argv)\n{\n    init(argc, argv);\n\n    int borderCols = (pyramid_height) * HALO;\n    int smallBlockCol = BLOCK_SIZE - (pyramid_height) * HALO * 2;\n    int blockCols = cols / smallBlockCol + ((cols % smallBlockCol == 0) ? 0 : 1);\n\n    printf(\"pyramidHeight: %d\\ngridSize: [%d]\\nborder:[%d]\\nblockSize: %d\\nblockGrid:[%d]\\ntargetBlock:[%d]\\n\",\n           pyramid_height, cols, borderCols, BLOCK_SIZE, blockCols, smallBlockCol);\n\n    int *gpuWall, *gpuResult[2];\n    int size = rows * cols;\n\n    gpuResult[0] = new int[cols];\n    gpuResult[1] = new int[cols];\n    memcpy(gpuResult[0], data, sizeof(int) * cols);\n    gpuWall = new int[size - cols];\n    memcpy(gpuWall, data + cols, sizeof(int) * (size - cols));\n\n    long long kernel_usecs;\n    startTime();\n\n    int final_ret = calc_path(gpuWall, gpuResult, rows, cols,\n                              pyramid_height, blockCols, borderCols);\n\n    stopTime(kernel_usecs);\n\n    memcpy(result, gpuResult[final_ret], sizeof(int) * cols);\n\n#ifdef BENCH_PRINT\n    for (int i = 0; i < cols; i++)\n        printf(\"%d \", data[i]);\n    printf(\"\\n\");\n    for (int i = 0; i < cols; i++)\n        printf(\"%d \", result[i]);\n    printf(\"\\n\");\n#endif\n\n    printf(\"timer: %f\\n\", (double)kernel_usecs / 1000.0);\n\n    delete [] gpuWall;\n    delete [] gpuResult[0];\n    delete [] gpuResult[1];\n\n    delete [] data;\n    delete [] wall;\n    delete [] result;\n}\n"
   },
   "target_files_expected": [
     "pathfinder.cpp"
@@ -38,18 +38,37 @@
     "pathfinder.cpp"
   ],
   "max_retries": 2,
-  "total_attempts": 1,
+  "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 22.382,
+      "llm_response_time_seconds": 25.444,
       "prompt_tokens": 3149,
-      "completion_tokens": 2158,
+      "completion_tokens": 2182,
+      "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "pass",
-      "verify_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'timer:' NOT found in stdout. Pathfinder computation timer reported\nEnsure the translated code produces the same output format as the or",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 26.84,
+      "prompt_tokens": 5376,
+      "completion_tokens": 2382,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
       "error_feedback_sent": null,
-      "finish_reason": "end_turn"
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
     }
   ]
 }

@@ -114,6 +114,11 @@
         "method": "self_checking",
         "strategies": [
             {
+                "type": "stdout_pattern",
+                "pattern": "Ending simulation",
+                "description": "Hotspot simulation completed"
+            },
+            {
                 "type": "exit_code",
                 "expected": 0,
                 "description": "Process exits cleanly"

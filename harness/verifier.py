@@ -15,7 +15,12 @@ def verify_run(
     spec: dict[str, Any],
     run_result: RunResult,
 ) -> VerificationResult:
-    """Apply verification strategies in order; first match wins.
+    """Apply ALL verification strategies; every non-SKIP strategy must PASS.
+
+    Returns PASS only when every implemented strategy passes.  Returns FAIL
+    on the first strategy that fails (with that strategy's details).  SKIP
+    strategies (unimplemented types like numeric_comparison) are ignored —
+    they neither block a PASS nor cause a FAIL.
 
     Supported strategy types
     ------------------------
@@ -46,6 +51,8 @@ def verify_run(
             details="No verification strategies defined in spec",
         )
 
+    passed_strategies: list[str] = []
+
     for strategy in strategies:
         stype = strategy.get("type", "")
 
@@ -61,12 +68,20 @@ def verify_run(
             result = _stub_strategy(stype)
         else:
             log.warning("Unknown verification strategy type: %s", stype)
-            continue
+            result = _stub_strategy(stype)
 
-        # If the strategy produced a definitive PASS or FAIL, return it.
-        # SKIP means "this strategy is unimplemented / not applicable".
-        if result.status in (Status.PASS, Status.FAIL):
+        if result.status in (Status.FAIL, Status.ERROR):
             return result
+        if result.status == Status.PASS:
+            passed_strategies.append(stype)
+        # SKIP: ignore and continue to next strategy
+
+    if passed_strategies:
+        return VerificationResult(
+            status=Status.PASS,
+            strategy_used="+".join(passed_strategies),
+            details=f"All {len(passed_strategies)} strategies passed: {', '.join(passed_strategies)}",
+        )
 
     # If we exhausted all strategies without a PASS/FAIL, report overall
     return VerificationResult(

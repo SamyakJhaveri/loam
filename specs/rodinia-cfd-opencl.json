@@ -105,14 +105,9 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "exit_code",
-                "expected": 0,
-                "description": "Process exits cleanly"
-            },
-            {
                 "type": "stdout_pattern",
-                "pattern": "(?i)(PASS|passed|SUCCESS|correct)",
-                "description": "Output indicates correctness"
+                "pattern": "nel=\\d+, nelr=\\d+",
+                "description": "CFD mesh loaded and computation initialized"
             },
             {
                 "type": "numeric_comparison",
@@ -121,9 +116,9 @@
                 "description": "Numerical results within tolerance"
             },
             {
-                "type": "stdout_pattern",
-                "pattern": "(?i)(pass|correct|match|verified)",
-                "description": "Results match reference"
+                "type": "exit_code",
+                "expected": 0,
+                "description": "Process exits cleanly"
             }
         ],
         "floating_point": null

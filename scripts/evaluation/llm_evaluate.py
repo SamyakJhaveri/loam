@@ -494,6 +494,9 @@ def call_llm(
             logger.info(
                 "Calling Anthropic model=%s messages=%d", model, len(messages)
             )
+        # No `thinking` parameter = extended thinking disabled (base capability only).
+        # This ensures parity with Gemini (reasoning_effort="none") and Groq (no
+        # thinking capability). All models evaluated at equivalent base level.
         response = client.messages.create(
             model=model,
             max_tokens=16384,
@@ -1026,22 +1029,6 @@ def evaluate_translation(
                     "Extracted %d/%d target files", len(extracted), len(target_filenames)
                 )
 
-            # -- Warn on partial extraction: some files extracted but not all --
-            # If only a subset is extracted, the build proceeds with the remaining
-            # reference files intact — this can produce a misleading BUILD_FAIL
-            # (wrong interface) or a false PASS (reference code runs correctly).
-            if extracted and len(extracted) < len(target_filenames):
-                missing = [f for f in target_filenames if f not in extracted]
-                logger.warning(
-                    "Partial extraction on attempt %d: extracted %d/%d target files; "
-                    "missing: %s. Build will use original reference files for missing "
-                    "targets — result may be misleading.",
-                    attempt_num,
-                    len(extracted),
-                    len(target_filenames),
-                    missing,
-                )
-
             # -- Write extracted files to disk --
             for fname, code in extracted.items():
                 fp = source_dir / fname
@@ -1065,6 +1052,44 @@ def evaluate_translation(
                         + "".join(
                             f"```c {f}\n// your translated code here\n```\n\n"
                             for f in target_filenames
+                        )
+                    )
+                    attempt_record["error_feedback_sent"] = extraction_feedback[:200]
+                attempts.append(attempt_record)
+                if attempt_num == max_retries:
+                    break
+                messages.append({"role": "assistant", "content": response_text})
+                messages.append({"role": "user", "content": extraction_feedback})
+                restore_files(backup_info)
+                backup_info = backup_files(target_file_paths)
+                continue
+
+            # -- Guard: EXTRACTION_FAIL on partial extraction or 0-byte extracted files --
+            # Some extracted files missing → reference files remain on disk for those
+            # targets, producing a false PASS or misleading BUILD_FAIL. Treat the same
+            # as zero extraction: fail fast and ask LLM to re-emit the missing files.
+            # Also catch 0-byte extractions — an empty file is not a translation.
+            _missing_files = [f for f in target_filenames if f not in extracted]
+            _empty_files = [f for f, c in extracted.items() if not c.strip()]
+            _partial_fail_files = _missing_files + _empty_files
+            if _partial_fail_files:
+                final_status = "EXTRACTION_FAIL"
+                error_message = (
+                    f"Partial extraction on attempt {attempt_num}: "
+                    f"missing {len(_missing_files)} file(s), "
+                    f"{len(_empty_files)} empty file(s). "
+                    f"Missing: {_missing_files}. Empty: {_empty_files}."
+                )
+                attempt_record["extraction_fail"] = True
+                attempt_record["partial_extraction"] = True
+                if attempt_num < max_retries:
+                    extraction_feedback = (
+                        f"Your response was missing {len(_partial_fail_files)} expected "
+                        f"file(s). Please include ALL target files in your response. "
+                        f"Re-emit the following missing/empty files using this format:\n\n"
+                        + "".join(
+                            f"```c {f}\n// your translated code here\n```\n\n"
+                            for f in _partial_fail_files
                         )
                     )
                     attempt_record["error_feedback_sent"] = extraction_feedback[:200]
@@ -1185,8 +1210,10 @@ def evaluate_translation(
     # -- Build result JSON --
     # last_llm_response was saved inside the loop before restore_files() ran
     extracted_last = extract_code_blocks(last_llm_response, target_filenames)
-    translated_files_preview = {
-        f: extracted_last[f][:200] for f in target_filenames if f in extracted_last
+    # Store FULL translated files — truncating to 200 chars made retroactive
+    # re-verification impossible (discovered in S-VERIFY session, 2026-03-27).
+    translated_files_full = {
+        f: extracted_last[f] for f in target_filenames if f in extracted_last
     }
 
     metrics_dict: dict[str, Any] = {}
@@ -1229,9 +1256,11 @@ def evaluate_translation(
             (final_run_result.stderr or "")[-500:]
             if final_run_result and final_run_result.status != Status.PASS else None
         ),
+        # Store stdout for ALL results (not just failures) — needed for
+        # retroactive re-verification with stdout_pattern strategies.
         "run_stdout_snippet": (
             (final_run_result.stdout or "")[-500:]
-            if final_run_result and final_run_result.status != Status.PASS else None
+            if final_run_result else None
         ),
         # Verify
         "verify_status": (
@@ -1252,10 +1281,10 @@ def evaluate_translation(
         "timing_method": timing_method,
         "speedup_ratio": speedup_ratio,
         # Code
-        "translated_files": translated_files_preview,
+        "translated_files": translated_files_full,
         "target_files_expected": target_filenames,
         "target_files_extracted": [
-            f for f in target_filenames if f in translated_files_preview
+            f for f in target_filenames if f in translated_files_full
         ],
         # Retry tracking
         "max_retries": max_retries,

@@ -5,10 +5,10 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 4,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-26T06:32:56Z",
+  "timestamp": "2026-03-28T03:38:39Z",
   "prompt_tokens": 16691,
   "completion_tokens": 9160,
-  "llm_response_time_seconds": 25.629,
+  "llm_response_time_seconds": 17.112,
   "build_status": null,
   "build_time_seconds": null,
   "build_error_snippet": null,
@@ -38,7 +38,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 12.879,
+      "llm_response_time_seconds": 8.265,
       "prompt_tokens": 6106,
       "completion_tokens": 4328,
       "finish_reason": "stop",
@@ -47,13 +47,13 @@
       "verify_status": null,
       "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n<x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value",
       "build_error_snippet": null,
-      "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>       - x1 value of the speckle\n\t<x2>       - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
+      "run_stderr_snippet": "Usage: ./srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>       - x1 value of the speckle\n\t<x2>       - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
       "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
       "extraction_fail": null
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 12.75,
+      "llm_response_time_seconds": 8.847,
       "prompt_tokens": 10585,
       "completion_tokens": 4832,
       "finish_reason": "stop",

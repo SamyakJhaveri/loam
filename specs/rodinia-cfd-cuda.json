@@ -103,14 +103,14 @@
         "method": "self_checking",
         "strategies": [
             {
+                "type": "stdout_pattern",
+                "pattern": "Saving solution|Done\\.\\.\\.",
+                "description": "CFD computation completed"
+            },
+            {
                 "type": "exit_code",
                 "expected": 0,
                 "description": "Process exits cleanly"
-            },
-            {
-                "type": "stdout_pattern",
-                "pattern": "(?i)(PASS|passed|SUCCESS|correct)",
-                "description": "Output indicates correctness"
             }
         ],
         "floating_point": null

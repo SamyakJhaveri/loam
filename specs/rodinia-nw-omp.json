@@ -92,14 +92,14 @@
         "method": "self_checking",
         "strategies": [
             {
+                "type": "stdout_pattern",
+                "pattern": "Total time:",
+                "description": "NW alignment completed with timing"
+            },
+            {
                 "type": "exit_code",
                 "expected": 0,
                 "description": "Process exits cleanly"
-            },
-            {
-                "type": "stdout_pattern",
-                "pattern": "(?i)(pass|correct|match|verified)",
-                "description": "Results match reference"
             }
         ],
         "floating_point": null

@@ -117,14 +117,14 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "exit_code",
-                "expected": 0,
-                "description": "Process exits with code 0 on valid checksum, 1 on invalid"
-            },
-            {
                 "type": "stdout_pattern",
                 "pattern": "Verification checksum: \\d+ \\(Valid\\)",
                 "description": "XSBench self-verification reports valid checksum"
+            },
+            {
+                "type": "exit_code",
+                "expected": 0,
+                "description": "Process exits with code 0 on valid checksum, 1 on invalid"
             }
         ],
         "floating_point": null

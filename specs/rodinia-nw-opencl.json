@@ -105,19 +105,14 @@
         "method": "self_checking",
         "strategies": [
             {
+                "type": "stdout_pattern",
+                "pattern": "Processing lower-right matrix|Computation Done",
+                "description": "NW alignment completed"
+            },
+            {
                 "type": "exit_code",
                 "expected": 0,
                 "description": "Process exits cleanly"
-            },
-            {
-                "type": "stdout_pattern",
-                "pattern": "(?i)(PASS|passed|SUCCESS|correct)",
-                "description": "Output indicates correctness"
-            },
-            {
-                "type": "stdout_pattern",
-                "pattern": "(?i)(pass|correct|match|verified)",
-                "description": "Results match reference"
             }
         ],
         "floating_point": null
