@@ -78,9 +78,7 @@
     "run": {
         "executable": "./lavaMD",
         "default_arguments": [
-            "-cores",
-            "1",
-            "-boxes",
+            "-boxes1d",
             "10"
         ],
         "timeout_seconds": 300,
@@ -90,9 +88,7 @@
         "input_configurations": {
             "correctness": {
                 "arguments": [
-                    "-cores",
-                    "1",
-                    "-boxes",
+                    "-boxes1d",
                     "10"
                 ],
                 "description": "Small input for correctness verification of lavaMD (CUDA)",
@@ -101,9 +97,7 @@
             },
             "performance": {
                 "arguments": [
-                    "-cores",
-                    "1",
-                    "-boxes",
+                    "-boxes1d",
                     "30"
                 ],
                 "description": "Large input for performance measurement of lavaMD (CUDA)",
@@ -117,8 +111,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "thread block size of kernel",
-                "description": "CUDA kernel thread block configured"
+                "pattern": "Total time:",
+                "description": "lavaMD CUDA kernel computation completed"
             },
             {
                 "type": "exit_code",

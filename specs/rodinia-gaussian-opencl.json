@@ -113,8 +113,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "Create matrix internally",
-                "description": "Matrix created for Gaussian elimination"
+                "pattern": "Total:",
+                "description": "Gaussian elimination completed"
             },
             {
                 "type": "exit_code",

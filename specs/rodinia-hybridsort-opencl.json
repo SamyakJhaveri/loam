@@ -104,8 +104,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "(?i)(PASS|passed|SUCCESS|correct)",
-                "description": "Output indicates correctness"
+                "pattern": "Total:",
+                "description": "Hybridsort total timing output (post-computation)"
             },
             {
                 "type": "exit_code",

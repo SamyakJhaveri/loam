@@ -5,13 +5,13 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T17:09:16Z",
-  "prompt_tokens": 61078,
-  "completion_tokens": 13624,
-  "llm_response_time_seconds": 50.286,
+  "timestamp": "2026-03-28T04:15:49Z",
+  "prompt_tokens": 61654,
+  "completion_tokens": 13907,
+  "llm_response_time_seconds": 48.685,
   "build_status": "fail",
   "build_time_seconds": 0.072,
-  "build_error_snippet": "\"Main.c\", line 42: warning: function \"move_simulation_data_to_device\" declared implicitly [implicit_func_decl]\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 42: error: a value of type \"int\" cannot be used to initialize an entity of type \"SimulationData\" (aka \"struct <unnamed>\")\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\n\"Main.c\", line 59: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\n\"Main.c\", line 65: warning: function \"run_event_based_simulation_baseline\" declared i\n...[truncated]...\nMain.c\", line 100: warning: function \"release_device_memory\" declared implicitly [implicit_func_decl]\n  \trelease_device_memory(GSD);\n  \t^\n\n\"Main.c\", line 111: warning: declaration is incompatible with previous \"release_device_memory\" (declared implicitly) [decl_incompatible_with_previous_use]\n  void release_device_memory(SimulationData GSD) {\n       ^\n\n\"Main.c\", line 115: warning: declaration is incompatible with previous \"run_event_based_simulation_optimization_6\" (declared implicitly) [decl_incompatible_with_previous_use]\n  unsigned long long run_event_based_simulation_optimization_6(Inputs in, SimulationData GSD, int mype) {\n                     ^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+  "build_error_snippet": "\"Main.c\", line 6: error: expected a declaration\n  if( in.simulation_method == EVENT_BASED )\n  ^\n\n\"Main.c\", line 37: warning: parsing restarts here after previous syntax error [end_of_flush]\n  omp_end = get_time();\n                      ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 40: warning: this declaration has no storage class or type specifier [missing_decl_specifiers]\n  release_device_memory(GSD);\n  ^\n\n\"Main.c\", line 40: warning: identifier-list parameters may only be used in a function definition [param_id_list_needs_function_def]\n  release_device_memory(GSD);\n  ^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -20,7 +20,7 @@
   "verify_status": null,
   "verify_strategy": null,
   "overall_status": "BUILD_FAIL",
-  "error_message": "Build failed: run_event_based_simulation_optimization_6(Inputs in, SimulationData GSD, int mype) {\n                     ^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2",
+  "error_message": "Build failed: y only be used in a function definition [param_id_list_needs_function_def]\n  release_device_memory(GSD);\n  ^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2",
   "metrics": {},
   "baseline_wall_time_seconds": 0.564,
   "translated_wall_time_seconds": null,
@@ -29,7 +29,9 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "Main.c": "#include \"XSbench_header.h\"\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization & Command Line Read-In\n\t// =============="
+    "Main.c": "#include \"XSbench_header.h\"\n\n// ... (rest of the code remains the same)\n\n// Run simulation\nif( in.simulation_method == EVENT_BASED )\n{\n\tif( in.kernel_id == 0 )\n\t\tverification = run_event_based_simulation_baseline(in, GSD, mype);\n\telse if( in.kernel_id == 1 )\n\t\tverification = run_event_based_simulation_optimization_1(in, GSD, mype);\n\telse if( in.kernel_id == 2 )\n\t\tverification = run_event_based_simulation_optimization_2(in, GSD, mype);\n\telse if( in.kernel_id == 3 )\n\t\tverification = run_event_based_simulation_optimization_3(in, GSD, mype);\n\telse if( in.kernel_id == 4 )\n\t\tverification = run_event_based_simulation_optimization_4(in, GSD, mype);\n\telse if( in.kernel_id == 5 )\n\t\tverification = run_event_based_simulation_optimization_5(in, GSD, mype);\n\telse if( in.kernel_id == 6 )\n\t\tverification = run_event_based_simulation_optimization_6(in, GSD, mype);\n\telse\n\t{\n\t\tprintf(\"Error: No kernel ID %d found!\\n\", in.kernel_id);\n\t\texit(1);\n\t}\n}\nelse\n{\n\tprintf(\"History-based simulation not implemented in OpenMP code. Instead,\\nuse the event-based method with \\\"-m event\\\" argument.\\n\");\n\texit(1);\n}\n\n// ... (rest of the code remains the same)\n\n// End Simulation Timer\nomp_end = get_time();\n\n// Release target device memory\nrelease_device_memory(GSD);\n\n// ... (rest of the code remains the same)\n",
+    "Simulation.c": "#include \"XSbench_header.h\"\n\n// ... (rest of the code remains the same)\n\nunsigned long long run_event_based_simulation_optimization_6(Inputs in, SimulationData GSD, int mype)\n{\n\t// ... (rest of the code remains the same)\n}\n\n// ... (rest of the code remains the same)\n",
+    "GridInit.c": "#include \"XSbench_header.h\"\n\n// ... (rest of the code remains the same)\n\nvoid release_device_memory(SimulationData GSD) {\n\t#pragma omp target\n\t{\n\t\tfree(GSD.num_nucs);\n\t\tfree(GSD.concs);\n\t\tfree(GSD.mats);\n\t\tfree(GSD.unionized_energy_array);\n\t\tfree(GSD.nuclide_grid);\n\t}\n}\n"
   },
   "target_files_expected": [
     "Main.c",
@@ -40,16 +42,18 @@
     "Materials.c"
   ],
   "target_files_extracted": [
-    "Main.c"
+    "Main.c",
+    "Simulation.c",
+    "GridInit.c"
   ],
   "max_retries": 2,
   "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 44.426,
+      "llm_response_time_seconds": 44.379,
       "prompt_tokens": 24087,
-      "completion_tokens": 12740,
+      "completion_tokens": 13316,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
@@ -62,15 +66,15 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 5.86,
-      "prompt_tokens": 36991,
-      "completion_tokens": 884,
+      "llm_response_time_seconds": 4.306,
+      "prompt_tokens": 37567,
+      "completion_tokens": 591,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "\"Main.c\", line 42: warning: function \"move_simulation_data_to_device\" declared implicitly [implicit_func_decl]\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 42: error: a value of type \"int\" cannot be used to initialize an entity of type \"SimulationData\" (aka \"struct <unnamed>\")\n  \tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n  \t                     ^\n\n\"Main.c\", line 59: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\n\"Main.c\", line 65: warning: function \"run_event_based_simulation_baseline\" declared i\n...[truncated]...\nMain.c\", line 100: warning: function \"release_device_memory\" declared implicitly [implicit_func_decl]\n  \trelease_device_memory(GSD);\n  \t^\n\n\"Main.c\", line 111: warning: declaration is incompatible with previous \"release_device_memory\" (declared implicitly) [decl_incompatible_with_previous_use]\n  void release_device_memory(SimulationData GSD) {\n       ^\n\n\"Main.c\", line 115: warning: declaration is incompatible with previous \"run_event_based_simulation_optimization_6\" (declared implicitly) [decl_incompatible_with_previous_use]\n  unsigned long long run_event_based_simulation_optimization_6(Inputs in, SimulationData GSD, int mype) {\n                     ^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+      "build_error_snippet": "\"Main.c\", line 6: error: expected a declaration\n  if( in.simulation_method == EVENT_BASED )\n  ^\n\n\"Main.c\", line 37: warning: parsing restarts here after previous syntax error [end_of_flush]\n  omp_end = get_time();\n                      ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 40: warning: this declaration has no storage class or type specifier [missing_decl_specifiers]\n  release_device_memory(GSD);\n  ^\n\n\"Main.c\", line 40: warning: identifier-list parameters may only be used in a function definition [param_id_list_needs_function_def]\n  release_device_memory(GSD);\n  ^\n\n1 error detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null

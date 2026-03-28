@@ -5,13 +5,13 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 1,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T12:24:34Z",
-  "prompt_tokens": 43495,
-  "completion_tokens": 13771,
-  "llm_response_time_seconds": 55.192,
-  "build_status": "fail",
-  "build_time_seconds": 0.066,
-  "build_error_snippet": "io.c: In function \u2018read_CLI\u2019:\nio.c:16:18: warning: \u2018input.nthreads\u2019 is used uninitialized [-Wuninitialized]\n   16 |         if (input.nthreads < 1) {\n      |             ~~~~~^~~~~~~~~\nio.c:11:16: note: \u2018input\u2019 declared here\n   11 |         Inputs input;\n      |                ^~~~~\nSimulation.c: In function \u2018run_event_based_simulation\u2019:\nSimulation.c:17:16: error: \u2018validation_hash\u2019 undeclared (first use in this function)\n   17 |         return validation_hash;\n      |                ^~~~~~~~~~~~~~~\nSimulation.c:17:16: note: each undeclared identifier is reported only once for each function it appears in\nSimulation.c:18:1: warning: control reaches end of non-void function [-Wreturn-type]\n   18 | }\n      | ^\nmake: *** [Makefile:108: Simulation.o] Error 1\n",
+  "timestamp": "2026-03-28T06:14:33Z",
+  "prompt_tokens": 43498,
+  "completion_tokens": 13377,
+  "llm_response_time_seconds": 50.878,
+  "build_status": null,
+  "build_time_seconds": null,
+  "build_error_snippet": null,
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -19,8 +19,8 @@
   "run_stdout_snippet": null,
   "verify_status": null,
   "verify_strategy": null,
-  "overall_status": "BUILD_FAIL",
-  "error_message": "Build failed: orted only once for each function it appears in\nSimulation.c:18:1: warning: control reaches end of non-void function [-Wreturn-type]\n   18 | }\n      | ^\nmake: *** [Makefile:108: Simulation.o] Error 1",
+  "overall_status": "EXTRACTION_FAIL",
+  "error_message": "LLM response did not contain parseable code for any of the expected target files: ['Main.c', 'io.c', 'Simulation.c', 'GridInit.c', 'XSutils.c', 'Materials.c']",
   "metrics": {},
   "baseline_wall_time_seconds": 0.787,
   "translated_wall_time_seconds": null,
@@ -28,14 +28,7 @@
   "translated_kernel_time_seconds": null,
   "timing_method": null,
   "speedup_ratio": null,
-  "translated_files": {
-    "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\t// ... (rest of the code remains the same)\n\n\t// Check if read_CLI returns an error\n\tInputs in = re",
-    "io.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\n// ... (rest of the code remains the same)\n\nInputs read_CLI( int argc, char * argv[] )\n{\n\tInputs input;\n\n\t// ... (rest of the code remai",
-    "Simulation.c": "#include \"XSbench_header.h\"\n\n// ... (rest of the code remains the same)\n\nunsigned long long run_event_based_simulation(Inputs in, SimulationData SD, int mype)\n{\n\t// ... (rest of the code remains the s",
-    "GridInit.c": "#include \"XSbench_header.h\"\n\nSimulationData grid_init_do_not_profile( Inputs in, int mype )\n{\n\t// ... (rest of the code remains the same)\n\n\t// Check for null pointer dereferences\n\tif (SD.nuclide_grid ",
-    "XSutils.c": "#include \"XSbench_header.h\"\n\n// ... (rest of the code remains the same)\n\nsize_t estimate_mem_usage( Inputs in )\n{\n\t// ... (rest of the code remains the same)\n\n\t// Check for division by zero\n\tif (in.n_",
-    "Materials.c": "// Material data is hard coded into the functions in this file.\n// Note that there are 12 materials present in H-M (large or small)\n\n#include \"XSbench_header.h\"\n\n// ... (rest of the code remains the s"
-  },
+  "translated_files": {},
   "target_files_expected": [
     "Main.c",
     "io.c",
@@ -44,22 +37,15 @@
     "XSutils.c",
     "Materials.c"
   ],
-  "target_files_extracted": [
-    "Main.c",
-    "io.c",
-    "Simulation.c",
-    "GridInit.c",
-    "XSutils.c",
-    "Materials.c"
-  ],
+  "target_files_extracted": [],
   "max_retries": 2,
   "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 48.668,
+      "llm_response_time_seconds": 46.869,
       "prompt_tokens": 15324,
-      "completion_tokens": 12817,
+      "completion_tokens": 12820,
       "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "fail",
@@ -72,18 +58,18 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 6.524,
-      "prompt_tokens": 28171,
-      "completion_tokens": 954,
+      "llm_response_time_seconds": 4.009,
+      "prompt_tokens": 28174,
+      "completion_tokens": 557,
       "finish_reason": "stop",
-      "build_status": "fail",
+      "build_status": null,
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "io.c: In function \u2018read_CLI\u2019:\nio.c:16:18: warning: \u2018input.nthreads\u2019 is used uninitialized [-Wuninitialized]\n   16 |         if (input.nthreads < 1) {\n      |             ~~~~~^~~~~~~~~\nio.c:11:16: note: \u2018input\u2019 declared here\n   11 |         Inputs input;\n      |                ^~~~~\nSimulation.c: In function \u2018run_event_based_simulation\u2019:\nSimulation.c:17:16: error: \u2018validation_hash\u2019 undeclared (first use in this function)\n   17 |         return validation_hash;\n      |                ^~~~~~~~~~~~~~~\nSimulation.c:17:16: note: each undeclared identifier is reported only once for each function it appears in\nSimulation.c:18:1: warning: control reaches end of non-void function [-Wreturn-type]\n   18 | }\n      | ^\nmake: *** [Makefile:108: Simulation.o] Error 1\n",
+      "build_error_snippet": null,
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
-      "extraction_fail": null
+      "extraction_fail": true
     }
   ]
 }

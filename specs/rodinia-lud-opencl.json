@@ -102,8 +102,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "Creating matrix internally",
-                "description": "Matrix created for LU decomposition"
+                "pattern": "Total:",
+                "description": "LU decomposition completed"
             },
             {
                 "type": "exit_code",

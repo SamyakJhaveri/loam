@@ -110,7 +110,11 @@ def run_spec(
     exe_path = working_dir / executable
 
     arguments: list[str] = config.get("arguments", [])
-    cmd: list[str] = [str(exe_path)] + [str(a) for a in arguments]
+    # Use the spec's executable name (e.g. "./heartwall.out") as argv[0],
+    # not the resolved absolute path. On POSIX, subprocess resolves relative
+    # paths in cmd[0] against cwd. This avoids bugs in programs that parse
+    # argv[0] (heartwall's main.c:71 starts at i=0, matching 'h' in /home/...).
+    cmd: list[str] = [executable] + [str(a) for a in arguments]
 
     # Environment
     env = os.environ.copy()

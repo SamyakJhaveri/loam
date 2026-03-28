@@ -93,8 +93,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "Processing bottom-right matrix",
-                "description": "NW alignment second phase completed"
+                "pattern": "Total time:",
+                "description": "NW alignment completed with timing"
             },
             {
                 "type": "exit_code",

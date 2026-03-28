@@ -12,12 +12,13 @@
   This is correct behavior — manifest.jsonl is append-only; spec files were deleted.
 Do NOT try to fix any of these errors.
 
-## Current Spec Status (as of 2026-03-27)
+## Current Spec Status (as of 2026-03-27, post S-VERIFY fixes)
 
-**Rodinia:** 60 specs total, 49 TRUE PASS, 5 FALSE_PASS, 6 KNOWN_FAIL (verified with corrected stdout_pattern).
+**Rodinia:** 60 specs total, 54 TRUE PASS, 0 FALSE_PASS, 6 KNOWN_FAIL.
 **XSBench:** 4 specs total, 4 PASS, 0 KNOWN_FAIL.
-**Use the 49 Rodinia TRUE PASS + 3 standard XSBench specs (cuda, omp, opencl) for eval batches.**
-**omp_target excluded (requires nvc, case-study only). 5 FALSE_PASS specs need arg fixes first.**
+**All 58 non-KNOWN_FAIL specs verified PASS with stdout_pattern+exit_code conjunction.**
+**Use 54 Rodinia TRUE PASS + 3 standard XSBench specs (cuda, omp, opencl) for eval batches.**
+**omp_target excluded (requires nvc, case-study only).**
 
 ## KNOWN_FAIL Specs (6 — exclude from eval batches)
 
@@ -30,21 +31,22 @@ Do NOT try to fix any of these errors.
 | `rodinia-nn-opencl` | TIMEOUT / SIGSEGV | Pre-existing; never passed |
 | `rodinia-kmeans-opencl` | SIGSEGV in OpenCL runtime | Pre-existing; never passed |
 
-## FALSE_PASS Baseline Specs (5 — need arg fixes before eval, discovered S-VERIFY 2026-03-27)
+## FALSE_PASS Baseline Specs — ALL FIXED (S-VERIFY 2026-03-27)
 
-These specs exit with code 0 but produce wrong output. Previously hidden by exit_code-only verification.
+Originally 9 specs discovered with wrong run args (exit_code=0 but wrong/no output).
+All 9 specs now verified TRUE PASS. heartwall-opencl fixed via runner.py argv[0] change (2026-03-27).
 
-| Spec | Symptom | Root Cause |
-|------|---------|-----------|
-| `rodinia-backprop-opencl` | No stdout; stderr: "number of input points must be divided by 16" | Input size incompatible |
-| `rodinia-heartwall-opencl` | Prints usage text instead of computing | Wrong run arguments |
-| `rodinia-myocyte-omp` | "ERROR: 3 is the incorrect number of arguments" | Wrong argument count |
-| `rodinia-myocyte-opencl` | Argument parsing failure | Wrong run arguments |
-| `rodinia-pathfinder-omp` | "Usage: pathfiner width num_of_steps" | Wrong run args format |
-
-**Rule:** These specs MUST NOT be included in eval batches until their run arguments are fixed
-using the Run Argument Verification Protocol (spec-conventions.md). After fixing, re-run
-`python3 -m harness -v verify specs/<name>.json` and confirm TRUE PASS with stdout_pattern.
+| Spec | Fix Applied | Status |
+|------|------------|--------|
+| `rodinia-backprop-opencl` | Args `["-n","65536"]` (flag + divisible by 16) | FIXED — TRUE PASS |
+| `rodinia-heartwall-opencl` | runner.py argv[0] fix (use relative path, not absolute) | FIXED — TRUE PASS |
+| `rodinia-myocyte-omp` | Args `["100","1","1","4"]` (added threads arg) | FIXED — TRUE PASS |
+| `rodinia-myocyte-opencl` | Args `["-time","100","-r","../../data/myocyte"]` (flags not positional) | FIXED — TRUE PASS |
+| `rodinia-pathfinder-omp` | Args `["100000","100"]` (removed extra arg) | FIXED — TRUE PASS |
+| `rodinia-bfs-omp` | Args `["4","../../data/bfs/graph1MW_6.txt"]` (added num_omp_threads) | FIXED — TRUE PASS |
+| `rodinia-lavamd-cuda` | Args `["-boxes1d","10"]` (removed `-cores`, fixed `-boxes1d`) | FIXED — TRUE PASS |
+| `rodinia-lavamd-omp` | Args `["-cores","4","-boxes1d","10"]` (fixed `-boxes1d`) | FIXED — TRUE PASS |
+| `rodinia-lavamd-opencl` | Args `["-boxes1d","10"]` (removed `-cores`, fixed `-boxes1d`) | FIXED — TRUE PASS |
 
 ## OMP Spec Run Arg Rules (CRITICAL)
 
@@ -109,8 +111,8 @@ and symlink paths to benchmark sources.
 
 ## Augmentation Baseline (verified 2026-03-20, updated S-VERIFY 2026-03-27)
 
-54/60 PASS at all levels L1–L4 (level-invariant) with exit_code-only verification.
-With corrected stdout_pattern verification: 53/58 TRUE PASS across all suites (49/54 Rodinia + 4/4 XSBench; 5 FALSE_PASS Rodinia specs need arg fixes).
+58/60 Rodinia + 4/4 XSBench PASS at all levels L1–L4 (level-invariant) with
+stdout_pattern+exit_code conjunction verification. 6 KNOWN_FAIL excluded.
 Augmentation introduces zero new failures beyond the baseline.
 Verify transforms: `python3 -m pytest c_augmentation/test_transforms.py -v` (15 tests, all must pass)
 

@@ -134,8 +134,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "PARSEC Benchmark Suite",
-                "description": "Streamcluster benchmark identified"
+                "pattern": "Total:",
+                "description": "Streamcluster computation completed"
             },
             {
                 "type": "numeric_comparison",

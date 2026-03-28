@@ -5,13 +5,13 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 3,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T08:12:02Z",
-  "prompt_tokens": 61055,
-  "completion_tokens": 15829,
-  "llm_response_time_seconds": 61.5,
+  "timestamp": "2026-03-28T02:09:22Z",
+  "prompt_tokens": 60803,
+  "completion_tokens": 12789,
+  "llm_response_time_seconds": 46.903,
   "build_status": "fail",
-  "build_time_seconds": 0.079,
-  "build_error_snippet": "io.c: In function \u2018binary_read\u2019:\nio.c:487:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  487 |         fread(&SD, sizeof(SimulationData), 1, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:498:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  498 |         fread(SD.num_nucs,       sizeof(int), SD.length_num_nucs, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:499:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  499 |         fread(SD.concs,          sizeof(double), SD.length_concs, fp);\n      |      \n...[truncated]...\n    |                   ^\nSimulation.c:72:35: error: \u2018SimulationData\u2019 has no member named \u2018verification\u2019\n   72 |                 verification += SD.verification[i];\n      |                                   ^\nSimulation.c:65:16: warning: unused variable \u2018end_time\u2019 [-Wunused-variable]\n   65 |         double end_time = get_time();\n      |                ^~~~~~~~\nSimulation.c:10:13: warning: unused variable \u2018nblocks\u2019 [-Wunused-variable]\n   10 |         int nblocks = ceil( (double) in.lookups / (double) nthreads);\n      |             ^~~~~~~\nSimulation.c:6:16: warning: unused variable \u2018start_time\u2019 [-Wunused-variable]\n    6 |         double start_time = get_time();\n      |                ^~~~~~~~~~\nmake: *** [Makefile:108: Simulation.o] Error 1\n",
+  "build_time_seconds": 0.033,
+  "build_error_snippet": "io.c:1:1: error: unknown type name \u2018SimulationData\u2019\n    1 | SimulationData binary_read( Inputs in )\n      | ^~~~~~~~~~~~~~\nio.c:1:29: error: unknown type name \u2018Inputs\u2019\n    1 | SimulationData binary_read( Inputs in )\n      |                             ^~~~~~\nmake: *** [Makefile:108: io.o] Error 1\n",
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -20,7 +20,7 @@
   "verify_status": null,
   "verify_strategy": null,
   "overall_status": "BUILD_FAIL",
-  "error_message": "Build failed: tion.c:6:16: warning: unused variable \u2018start_time\u2019 [-Wunused-variable]\n    6 |         double start_time = get_time();\n      |                ^~~~~~~~~~\nmake: *** [Makefile:108: Simulation.o] Error 1",
+  "error_message": "Build failed: )\n      | ^~~~~~~~~~~~~~\nio.c:1:29: error: unknown type name \u2018Inputs\u2019\n    1 | SimulationData binary_read( Inputs in )\n      |                             ^~~~~~\nmake: *** [Makefile:108: io.o] Error 1",
   "metrics": {},
   "baseline_wall_time_seconds": 0.787,
   "translated_wall_time_seconds": null,
@@ -29,7 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "Simulation.c": "#include \"XSbench_header.h\"\n\nunsigned long long run_event_based_simulation_baseline(Inputs in, SimulationData SD, int mype)\n{\n\t// Start Simulation Timer\n\tdouble start_time = get_time();\n\n\t// Run simul"
+    "io.c": "SimulationData binary_read( Inputs in )\n{\n\tSimulationData SD;\n\t\n\tconst char * fname = \"XS_data.dat\";\n\tprintf(\"Reading all data structures from binary file %s...\\n\", fname);\n\n\tFILE * fp = fopen(fname, \"r\");\n\tassert(fp != NULL);\n\n\t// Read SimulationData Object. Include pointers, even though we won't be using them.\n\tsize_t ret = fread(&SD, sizeof(SimulationData), 1, fp);\n\tassert(ret == 1);\n\n\t// Allocate space for arrays on heap\n\tSD.num_nucs = (int *) malloc(SD.length_num_nucs * sizeof(int));\n\tSD.concs = (double *) malloc(SD.length_concs * sizeof(double));\n\tSD.mats = (int *) malloc(SD.length_mats * sizeof(int));\n\tSD.nuclide_grid = (NuclideGridPoint *) malloc(SD.length_nuclide_grid * sizeof(NuclideGridPoint));\n\tSD.index_grid = (int *) malloc( SD.length_index_grid * sizeof(int));\n\tSD.unionized_energy_array = (double *) malloc( SD.length_unionized_energy_array * sizeof(double));\n\n\t// Read heap arrays into SimulationData Object\n\tret = fread(SD.num_nucs, sizeof(int), SD.length_num_nucs, fp);\n\tassert(ret == SD.length_num_nucs);\n\n\tret = fread(SD.concs, sizeof(double), SD.length_concs, fp);\n\tassert(ret == SD.length_concs);\n\n\tret = fread(SD.mats, sizeof(int), SD.length_mats, fp);\n\tassert(ret == SD.length_mats);\n\n\tret = fread(SD.nuclide_grid, sizeof(NuclideGridPoint), SD.length_nuclide_grid, fp);\n\tassert(ret == SD.length_nuclide_grid);\n\n\tret = fread(SD.index_grid, sizeof(int), SD.length_index_grid, fp);\n\tassert(ret == SD.length_index_grid);\n\n\tret = fread(SD.unionized_energy_array, sizeof(double), SD.length_unionized_energy_array, fp);\n\tassert(ret == SD.length_unionized_energy_array);\n\n\tfclose(fp);\n\n\treturn SD;\n}\n"
   },
   "target_files_expected": [
     "Main.c",
@@ -40,37 +40,37 @@
     "Materials.c"
   ],
   "target_files_extracted": [
-    "Simulation.c"
+    "io.c"
   ],
   "max_retries": 2,
   "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 45.674,
+      "llm_response_time_seconds": 42.662,
       "prompt_tokens": 24211,
-      "completion_tokens": 12467,
+      "completion_tokens": 12241,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
-      "error_feedback_sent": "The translation failed to compile with this error:\n```\nvariable \u2018omp_end\u2019 [-Wunused-variable]\n   65 |         double omp_end = get_time();\n      |                ^~~~~~~\nSimulation.c:10:13: warning: u",
-      "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:62:40: warning: implicit declaration of function \u2018run_event_based_simulation_baseline\u2019; did you mean \u2018run_event_based_simulation\u2019? [-Wimplicit-function-declaration]\n   62 |                         verification = run_event_based_simulation_baseline(in, SD, mype);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |                                        run_event_based_simulation\nMain.c:66:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_2\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   66 |                         verification = run_event_based_simulation_optimization_2(in, SD, mype)\n...[truncated]...\n+1;\n      |                   ^\nSimulation.c:72:35: error: \u2018SimulationData\u2019 has no member named \u2018verification\u2019\n   72 |                 verification += SD.verification[i];\n      |                                   ^\nSimulation.c:65:16: warning: unused variable \u2018omp_end\u2019 [-Wunused-variable]\n   65 |         double omp_end = get_time();\n      |                ^~~~~~~\nSimulation.c:10:13: warning: unused variable \u2018nblocks\u2019 [-Wunused-variable]\n   10 |         int nblocks = ceil( (double) in.lookups / (double) nthreads);\n      |             ^~~~~~~\nSimulation.c:6:16: warning: unused variable \u2018omp_start\u2019 [-Wunused-variable]\n    6 |         double omp_start = get_time();\n      |                ^~~~~~~~~\nmake: *** [Makefile:108: Simulation.o] Error 1\n",
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nfread(SD.index_grid, sizeof(int), SD.length_index_grid, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:483",
+      "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:62:40: warning: implicit declaration of function \u2018run_event_based_simulation_baseline\u2019; did you mean \u2018run_event_based_simulation\u2019? [-Wimplicit-function-declaration]\n   62 |                         verification = run_event_based_simulation_baseline(in, SD, mype);\n      |                                        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n      |                                        run_event_based_simulation\nMain.c:66:40: warning: implicit declaration of function \u2018run_event_based_simulation_optimization_2\u2019; did you mean \u2018run_event_based_simulation_optimization_1\u2019? [-Wimplicit-function-declaration]\n   66 |                         verification = run_event_based_simulation_optimization_2(in, SD, mype)\n...[truncated]...\nth_nuclide_grid, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:482:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  482 |         fread(SD.index_grid, sizeof(int), SD.length_index_grid, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:483:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  483 |         fread(SD.unionized_energy_array, sizeof(double), SD.length_unionized_energy_array, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile:108: io.o] Error 1\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 15.826,
-      "prompt_tokens": 36844,
-      "completion_tokens": 3362,
+      "llm_response_time_seconds": 4.241,
+      "prompt_tokens": 36592,
+      "completion_tokens": 548,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "io.c: In function \u2018binary_read\u2019:\nio.c:487:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  487 |         fread(&SD, sizeof(SimulationData), 1, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:498:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  498 |         fread(SD.num_nucs,       sizeof(int), SD.length_num_nucs, fp);\n      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nio.c:499:9: warning: ignoring return value of \u2018fread\u2019 declared with attribute \u2018warn_unused_result\u2019 [-Wunused-result]\n  499 |         fread(SD.concs,          sizeof(double), SD.length_concs, fp);\n      |      \n...[truncated]...\n    |                   ^\nSimulation.c:72:35: error: \u2018SimulationData\u2019 has no member named \u2018verification\u2019\n   72 |                 verification += SD.verification[i];\n      |                                   ^\nSimulation.c:65:16: warning: unused variable \u2018end_time\u2019 [-Wunused-variable]\n   65 |         double end_time = get_time();\n      |                ^~~~~~~~\nSimulation.c:10:13: warning: unused variable \u2018nblocks\u2019 [-Wunused-variable]\n   10 |         int nblocks = ceil( (double) in.lookups / (double) nthreads);\n      |             ^~~~~~~\nSimulation.c:6:16: warning: unused variable \u2018start_time\u2019 [-Wunused-variable]\n    6 |         double start_time = get_time();\n      |                ^~~~~~~~~~\nmake: *** [Makefile:108: Simulation.o] Error 1\n",
+      "build_error_snippet": "io.c:1:1: error: unknown type name \u2018SimulationData\u2019\n    1 | SimulationData binary_read( Inputs in )\n      | ^~~~~~~~~~~~~~\nio.c:1:29: error: unknown type name \u2018Inputs\u2019\n    1 | SimulationData binary_read( Inputs in )\n      |                             ^~~~~~\nmake: *** [Makefile:108: io.o] Error 1\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null

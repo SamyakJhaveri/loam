@@ -5,12 +5,12 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-27T01:07:32Z",
-  "prompt_tokens": 14083,
-  "completion_tokens": 2925,
-  "llm_response_time_seconds": 7.337,
+  "timestamp": "2026-03-28T01:31:39Z",
+  "prompt_tokens": 13957,
+  "completion_tokens": 2914,
+  "llm_response_time_seconds": 7.115,
   "build_status": "fail",
-  "build_time_seconds": 0.341,
+  "build_time_seconds": 0.338,
   "build_error_snippet": "backprop.c:92:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   92 | bpnn_randomize_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~~~~~~\nbackprop.c:106:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  106 | bpnn_randomize_row(w, m)\n      | ^~~~~~~~~~~~~~~~~~\nbackprop.c:118:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n  118 | bpnn_zero_weights(w, m, n)\n      | ^~~~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_initialize\u2019:\nbackprop.c:132:6: warning: type of \u2018seed\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  132 | void bpnn_initialize(seed)\n      |      ^~~~~~~~~~~~~~~\nbackprop.c: In function \u2018bpnn_adjust_weights\u2019:\nbackprop.c:305:6: warning: type of \u2018ndelta\u2019 defaults to \u2018int\u2019 [-Wimplicit-int]\n  305 | void bpnn_adjust_we\n...[truncated]...\n  22 |   load(net);\n      |   ^~~~\nfacetrain.c:25:3: warning: implicit declaration of function \u2018bpnn_train_cuda\u2019; did you mean \u2018bpnn_train\u2019? [-Wimplicit-function-declaration]\n   25 |   bpnn_train_cuda(net, &out_err, &hid_err);\n      |   ^~~~~~~~~~~~~~~\n      |   bpnn_train\nimagenet.c:6:8: warning: type defaults to \u2018int\u2019 in declaration of \u2018layer_size\u2019 [-Wimplicit-int]\n    6 | extern layer_size;\n      |        ^~~~~~~~~~\nimagenet.c:8:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n    8 | load(net)\n      | ^~~~\nbackprop_cuda.cu(10): error: identifier \"bpnn_train_kernel\" is undefined\n    bpnn_train_kernel(net, eo, eh);\n    ^\n\n1 error detected in the compilation of \"backprop_cuda.cu\".\nmake: *** [Makefile:37: backprop_cuda.o] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
@@ -29,25 +29,23 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "backprop_cuda.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include \"backprop.h\"\n#include <cuda_runtime.h>\n\n// ... (rest of the code remains the same)\n\nvoid bpnn_train_cuda(BPNN *net, float *eo, float *",
-    "backprop_cuda_kernel.cu": "\n"
+    "backprop_cuda.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include \"backprop.h\"\n#include <cuda_runtime.h>\n\n// ... (rest of the code remains the same)\n\nvoid bpnn_train_cuda(BPNN *net, float *eo, float *eh) {\n  bpnn_train_kernel(net, eo, eh);\n}\n"
   },
   "target_files_expected": [
     "backprop_cuda.cu",
     "backprop_cuda_kernel.cu"
   ],
   "target_files_extracted": [
-    "backprop_cuda.cu",
-    "backprop_cuda_kernel.cu"
+    "backprop_cuda.cu"
   ],
   "max_retries": 2,
   "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 5.319,
+      "llm_response_time_seconds": 5.041,
       "prompt_tokens": 5732,
-      "completion_tokens": 2423,
+      "completion_tokens": 2297,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
@@ -60,9 +58,9 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 2.018,
-      "prompt_tokens": 8351,
-      "completion_tokens": 502,
+      "llm_response_time_seconds": 2.074,
+      "prompt_tokens": 8225,
+      "completion_tokens": 617,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,

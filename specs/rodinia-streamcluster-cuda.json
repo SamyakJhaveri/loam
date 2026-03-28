@@ -122,8 +122,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "PARSEC Benchmark Suite",
-                "description": "Streamcluster benchmark identified"
+                "pattern": "time =",
+                "description": "Streamcluster total execution time printed (always output, not #ifdef guarded)"
             },
             {
                 "type": "exit_code",

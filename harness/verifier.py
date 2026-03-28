@@ -68,7 +68,7 @@ def verify_run(
             result = _stub_strategy(stype)
         else:
             log.warning("Unknown verification strategy type: %s", stype)
-            continue
+            result = _stub_strategy(stype)
 
         if result.status in (Status.FAIL, Status.ERROR):
             return result

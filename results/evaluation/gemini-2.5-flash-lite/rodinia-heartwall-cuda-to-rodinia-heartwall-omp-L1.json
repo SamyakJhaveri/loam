@@ -5,10 +5,10 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 1,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-26T06:03:15Z",
+  "timestamp": "2026-03-28T03:06:33Z",
   "prompt_tokens": 115364,
   "completion_tokens": 32768,
-  "llm_response_time_seconds": 61.049,
+  "llm_response_time_seconds": 58.599,
   "build_status": "fail",
   "build_time_seconds": 0.037,
   "build_error_snippet": "In file included from main.c:16:\ndefine.c:57:16: error: duplicate member \u2018d_endoT\u2019\n   57 |         float *d_endoT;\n      |                ^~~~~~~\ndefine.c:58:16: error: duplicate member \u2018d_epiT\u2019\n   58 |         float *d_epiT;\n      |                ^~~~~~\nIn file included from main.c:17:\nkernel.c:7:13: error: unknown type name \u2018public_struct\u2019\n    7 | void kernel(public_struct public,\n      |             ^~~~~~~~~~~~~\nkernel.c:8:33: error: unknown type name \u2018private_struct\u2019\n    8 |                                 private_struct private){\n      |                                 ^~~~~~~~~~~~~~\nmain.c: In function \u2018write_data\u2019:\nmain.c:63:26: warning: too many arguments for format [-Wformat-extra-args]\n   63 |             fprintf(fid, \"\\n--endo-\n...[truncated]...\nmber \u2018d_in2_sub\u2019 in something not a structure or union\n  636 |                 free(private[i].d_in2_sub);\n      |                                ^\nmain.c:638:32: error: request for member \u2018d_in2_sub2_sqr\u2019 in something not a structure or union\n  638 |                 free(private[i].d_in2_sub2_sqr);\n      |                                ^\nmain.c:640:32: error: request for member \u2018d_tMask\u2019 in something not a structure or union\n  640 |                 free(private[i].d_tMask);\n      |                                ^\nmain.c:641:32: error: request for member \u2018d_mask_conv\u2019 in something not a structure or union\n  641 |                 free(private[i].d_mask_conv);\n      |                                ^\nmake: *** [makefile:12: main.o] Error 1\n",
@@ -29,7 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "define.c": "#ifndef DEFINE_H\n#define DEFINE_H\n\n#define ALL_POINTS 30\n#define ENDO_POINTS 20\n#define EPI_POINTS 10\n#define NUMBER_THREADS 256\n\ntypedef struct params_common_change {\n\tint frame_no;\n\tfloat *d_frame;\n"
+    "define.c": "#ifndef DEFINE_H\n#define DEFINE_H\n\n#define ALL_POINTS 30\n#define ENDO_POINTS 20\n#define EPI_POINTS 10\n#define NUMBER_THREADS 256\n\ntypedef struct params_common_change {\n\tint frame_no;\n\tfloat *d_frame;\n} params_common_change;\n\ntypedef struct params_common {\n\tint no_frames;\n\tint frame_rows;\n\tint frame_cols;\n\tint frame_elem;\n\tlong frame_mem;\n\n\tint sSize;\n\tint tSize;\n\tint maxMove;\n\tfloat alpha;\n\n\tint endoPoints;\n\tlong endo_mem;\n\tint *endoRow;\n\tint *endoCol;\n\tint *d_endoRow;\n\tint *d_endoCol;\n\tint *tEndoRowLoc;\n\tint *tEndoColLoc;\n\tint *d_tEndoRowLoc;\n\tint *d_tEndoColLoc;\n\tfloat *d_endoT;\n\n\tint epiPoints;\n\tlong epi_mem;\n\tint *epiRow;\n\tint *epiCol;\n\tint *d_epiRow;\n\tint *d_epiCol;\n\tint *tEpiRowLoc;\n\tint *tEpiColLoc;\n\tint *d_tEpiRowLoc;\n\tint *d_tEpiColLoc;\n\tfloat *d_epiT;\n\n\tint allPoints;\n\n\tint in_rows;\n\tint in_cols;\n\tint in_elem;\n\tlong in_mem;\n\n\tfloat *d_endoT;\n\tfloat *d_epiT;\n\n\tint in2_rows;\n\tint in2_cols;\n\tint in2_elem;\n\tlong in2_mem;\n\n\tint conv_rows;\n\tint conv_cols;\n\tint conv_elem;\n\tlong conv_mem;\n\tint ioffset;\n\tint joffset;\n\n\tint in2_pad_add_rows;\n\tint in2_pad_add_cols;\n\n\tint in2_pad_cumv_rows;\n\tint in2_pad_cumv_cols;\n\tint in2_pad_cumv_elem;\n\tlong in2_pad_cumv_mem;\n\n\tint in2_pad_cumv_sel_rowlow;\n\tint in2_pad_cumv_sel_rowhig;\n\tint in2_pad_cumv_sel_collow;\n\tint in2_pad_cumv_sel_colhig;\n\tint in2_pad_cumv_sel_rows;\n\tint in2_pad_cumv_sel_cols;\n\tint in2_pad_cumv_sel_elem;\n\tlong in2_pad_cumv_sel_mem;\n\n\tint in2_pad_cumv_sel2_rowlow;\n\tint in2_pad_cumv_sel2_rowhig;\n\tint in2_pad_cumv_sel2_collow;\n\tint in2_pad_cumv_sel2_colhig;\n\tint in2_sub_cumh_rows;\n\tint in2_sub_cumh_cols;\n\tint in2_sub_cumh_elem;\n\tlong in2_sub_cumh_mem;\n\n\tint in2_sub_cumh_sel_rowlow;\n\tint in2_sub_cumh_sel_rowhig;\n\tint in2_sub_cumh_sel_collow;\n\tint in2_sub_cumh_sel_colhig;\n\tint in2_sub_cumh_sel_rows;\n\tint in2_sub_cumh_sel_cols;\n\tint in2_sub_cumh_sel_elem;\n\tlong in2_sub_cumh_sel_mem;\n\n\tint in2_sub2_rows;\n\tint in2_sub2_cols;\n\tint in2_sub2_elem;\n\tlong in2_sub2_mem;\n\n\tint in2_sqr_rows;\n\tint in2_sqr_cols;\n\tint in2_sqr_elem;\n\tlong in2_sqr_mem;\n\n\tint in2_sqr_sub2_rows;\n\tint in2_sqr_sub2_cols;\n\tint in2_sqr_sub2_elem;\n\tlong in2_sqr_sub2_mem;\n\n\tint in_sqr_rows;\n\tint in_sqr_cols;\n\tint in_sqr_elem;\n\tlong in_sqr_mem;\n\n\tint tMask_rows;\n\tint tMask_cols;\n\tint tMask_elem;\n\tlong tMask_mem;\n\n\tint mask_rows;\n\tint mask_cols;\n\tint mask_elem;\n\tlong mask_mem;\n\n\tint mask_conv_rows;\n\tint mask_conv_cols;\n\tint mask_conv_elem;\n\tlong mask_conv_mem;\n\tint mask_conv_ioffset;\n\tint mask_conv_joffset;\n\n} params_common;\n\ntypedef struct params_unique {\n\tint point_no;\n\tint *d_Row;\n\tint *d_Col;\n\tint *d_tRowLoc;\n\tint *d_tColLoc;\n\tfloat *d_T;\n\tfloat *d_in2;\n\tfloat *d_conv;\n\tfloat *d_in2_pad_cumv;\n\tfloat *d_in2_pad_cumv_sel;\n\tfloat *d_in2_sub_cumh;\n\tfloat *d_in2_sub_cumh_sel;\n\tfloat *d_in2_sub2;\n\tfloat *d_in2_sqr;\n\tfloat *d_in2_sqr_sub2;\n\tfloat *d_in_sqr;\n\tfloat *d_tMask;\n\tfloat *d_mask_conv;\n\tint in_pointer;\n} params_unique;\n\n#endif // DEFINE_H\n"
   },
   "target_files_expected": [
     "define.c",
@@ -44,7 +44,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 35.896,
+      "llm_response_time_seconds": 28.087,
       "prompt_tokens": 49457,
       "completion_tokens": 16384,
       "finish_reason": "length",
@@ -59,7 +59,7 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 25.153,
+      "llm_response_time_seconds": 30.512,
       "prompt_tokens": 65907,
       "completion_tokens": 16384,
       "finish_reason": "length",

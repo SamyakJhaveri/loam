@@ -30,6 +30,29 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
+# Specs to exclude from aggregation — KNOWN_FAIL specs whose eval results
+# exist but should not count toward pass rates or failure taxonomies.
+# Exclusion is spec-level (not kernel-level) to avoid accidentally excluding
+# valid translations of kernels that are only partially KNOWN_FAIL.
+# E.g. kmeans-cuda is KNOWN_FAIL but kmeans-omp is valid — kernel-level
+# exclusion of "kmeans" would wrongly drop kmeans-omp-to-kmeans-cuda results.
+#
+# Full KNOWN_FAIL list (from .claude/rules/known-issues.md):
+#   kmeans-cuda:    texture<> removed in CUDA 12
+#   mummergpu-cuda: texture<> removed in CUDA 12
+#   mummergpu-omp:  texture<> + cuMemGetInfo_v2 signature
+#   hybridsort-cuda: GL/glew.h not found
+#   nn-opencl:      TIMEOUT / SIGSEGV (pre-existing)
+#   kmeans-opencl:  SIGSEGV in OpenCL runtime (pre-existing)
+EXCLUDED_SPECS: frozenset[str] = frozenset({
+    "rodinia-kmeans-cuda",
+    "rodinia-mummergpu-cuda",
+    "rodinia-mummergpu-omp",
+    "rodinia-hybridsort-cuda",
+    "rodinia-nn-opencl",
+    "rodinia-kmeans-opencl",
+})
+
 
 # --------------------------------------------------------------------------- #
 # Loading                                                                      #
@@ -82,6 +105,11 @@ def load_results(results_dir: Path, model_filter: str | None = None) -> list[dic
                 tgt = data.get("target_spec", "")
                 if src and tgt:
                     data["direction"] = _direction_from_ids(src, tgt)
+            # Skip results where source or target is a KNOWN_FAIL spec
+            src_spec = data.get("source_spec", "")
+            tgt_spec = data.get("target_spec", "")
+            if src_spec in EXCLUDED_SPECS or tgt_spec in EXCLUDED_SPECS:
+                continue
             records.append(data)
 
     return records

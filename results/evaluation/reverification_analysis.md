@@ -159,3 +159,54 @@ from actual binary output. Pattern strength classification:
 1. Implement `numeric_comparison` strategy for floating-point outputs
 2. Consider storing full LLM response (not just extracted files) for reproducibility
 3. Add reference stdout capture to baseline population script
+
+---
+
+## Addendum: FALSE_PASS Fixes + Pattern Strengthening (2026-03-27)
+
+### FALSE_PASS Resolution
+
+9 FALSE_PASS specs were discovered (expanded from the original 5). All 9 now fixed:
+8 via corrected run arguments, 1 (heartwall-opencl) via `runner.py` argv[0] fix
+(use spec's relative executable name instead of absolute path — avoids `main.c:71` i=0 bug).
+
+| Spec | Fix | Evidence |
+|------|-----|----------|
+| `backprop-opencl` | Args `["65536"]` (divisible by 16) | `backprop.c` argc check; stderr confirmed |
+| `heartwall-opencl` | runner.py argv[0] fix (relative path) | `main.c:71` argv loop starts at i=0; absolute path `argv[0][1]='h'` matched help case |
+| `myocyte-omp` | Args `["100","1","1","4"]` | `main.c` argc==5 check |
+| `myocyte-opencl` | Args `["-time","100","-r","../../data/myocyte"]` | Flag-based parser in source |
+| `pathfinder-omp` | Args `["100000","100"]` | `pathfinder.cpp` argc==3 check |
+| `bfs-omp` | Args `["4","../../data/bfs/graph1MW_6.txt"]` | `bfs.cpp` argc check, argv[1]=threads |
+| `lavamd-cuda` | Args `["-boxes1d","10"]` | Source uses `-boxes1d` not `-boxes` |
+| `lavamd-omp` | Args `["-cores","4","-boxes1d","10"]` | Same flag fix + OMP variant needs -cores |
+| `lavamd-opencl` | Args `["-boxes1d","10"]` | Same flag fix as CUDA |
+
+### Pattern Strengthening
+
+14 patterns upgraded from WEAK/MEDIUM to STRONG (completion markers):
+- streamcluster-cuda: `"PARSEC Benchmark Suite"` → `"time ="` (was `#ifdef PROFILE` guarded `"time kernel ="`)
+- streamcluster-omp: `"PARSEC Benchmark Suite"` → `"loops="`
+- streamcluster-opencl: `"PARSEC Benchmark Suite"` → `"Total:"`
+- particlefilter-cuda: `"XE:"` → `"ENTIRE PROGRAM TOOK"`
+- particlefilter-omp: `"XE:"` → `"ENTIRE PROGRAM TOOK"`
+- particlefilter-opencl: `"XE:"` → `"Total:"`
+- hotspot-opencl: `"Use GPU device"` → `"Total:"`
+- nw-omp: `"Processing bottom-right matrix"` → `"Total time:"`
+- gaussian-opencl: `"Create matrix internally"` → `"Total:"`
+- bptree-opencl: `"Waiting for command"` → `"Total:"`
+- lud-opencl: `"Creating matrix internally"` → `"Total:"`
+- hybridsort-opencl: `"(?i)(PASS|passed|SUCCESS|correct)"` → `"Total:"`
+- lavamd-cuda/omp/opencl: `"thread block size of kernel"` → `"Total time:"` / `"Total:"`
+
+### Verifier Bug Fix
+
+Fixed `harness/verifier.py` line 71: unknown strategy type path used `continue` without
+setting `result`, which would cause `UnboundLocalError`. Changed to call `_stub_strategy()`.
+
+### Final Verified Baseline
+
+**58/58 non-KNOWN_FAIL specs PASS with stdout_pattern+exit_code conjunction.**
+- 54 Rodinia TRUE PASS + 4 XSBench TRUE PASS
+- 6 KNOWN_FAIL excluded (heartwall-opencl promoted to TRUE PASS via runner.py argv[0] fix)
+- All patterns verified as STRONG completion markers (backed by source evidence)

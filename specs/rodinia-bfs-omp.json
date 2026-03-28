@@ -59,6 +59,7 @@
     "run": {
         "executable": "./bfs",
         "default_arguments": [
+            "4",
             "../../data/bfs/graph1MW_6.txt"
         ],
         "timeout_seconds": 300,
@@ -66,6 +67,7 @@
         "input_configurations": {
             "correctness": {
                 "arguments": [
+                    "4",
                     "../../data/bfs/graph1MW_6.txt"
                 ],
                 "description": "Small input for correctness verification of bfs (OMP)",
@@ -79,6 +81,11 @@
     "verification": {
         "method": "self_checking",
         "strategies": [
+            {
+                "type": "stdout_pattern",
+                "pattern": "Result stored in",
+                "description": "BFS traversal completed and results written to file"
+            },
             {
                 "type": "exit_code",
                 "expected": 0,

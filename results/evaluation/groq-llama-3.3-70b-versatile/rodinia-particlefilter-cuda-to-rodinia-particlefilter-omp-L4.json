@@ -5,12 +5,12 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 4,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T23:20:34Z",
-  "prompt_tokens": 35313,
-  "completion_tokens": 5194,
-  "llm_response_time_seconds": 18.217,
+  "timestamp": "2026-03-28T04:12:27Z",
+  "prompt_tokens": 35440,
+  "completion_tokens": 5327,
+  "llm_response_time_seconds": 20.437,
   "build_status": "fail",
-  "build_time_seconds": 0.037,
+  "build_time_seconds": 0.038,
   "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\n/usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/Scrt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:4: openmp] Error 1\n",
   "run_status": null,
   "run_time_seconds": null,
@@ -29,7 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "ex_particle_OPENMP_seq.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <limits.h>\n#include <math.h>\n#include <unistd.h>\n#include <fcntl.h>\n#include <float.h>\n#include <sys/time.h>\n#include <time.h> // Ad"
+    "ex_particle_OPENMP_seq.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <limits.h>\n#include <math.h>\n#include <unistd.h>\n#include <fcntl.h>\n#include <float.h>\n#include <sys/time.h>\n#include <omp.h>\n#include <time.h> // Added this line\n#define PI 3.1415926535897932\n\n// ... rest of the code remains the same ...\n"
   },
   "target_files_expected": [
     "ex_particle_OPENMP_seq.c"
@@ -42,24 +42,24 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 16.466,
+      "llm_response_time_seconds": 18.818,
       "prompt_tokens": 15029,
-      "completion_tokens": 5060,
+      "completion_tokens": 5186,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
-      "error_feedback_sent": "The translation failed to compile with this error:\n```\n;\n      |            ^~\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:509:19: warning: implicit declaration of function ",
-      "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018particleFilter\u2019:\nex_particle_OPENMP_seq.c:422:12: error: redefinition of \u2018xe\u2019\n  422 |     double xe = 0;\n      |            ^~\nex_particle_OPENMP_seq.c:328:12: note: previous definition of \u2018xe\u2019 with type \u2018double\u2019\n  328 |     double xe = roundDouble(IszY / 2.0);\n      |            ^~\nex_particle_OPENMP_seq.c:423:12: error: redefinition of \u2018ye\u2019\n  423 |     double ye = 0;\n      |            ^~\nex_particle_OPENMP_seq.c:329:12: note: previous definition of \u2018ye\u2019 with type \u2018double\u2019\n  329 |     double ye = roundDouble(IszX / 2.0);\n      |            ^~\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:509:19: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  509 |         seed[i] = time(0) * i;\n      |                   ^~~~\nex_particle_OPENMP_seq.c:11:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   10 | #include <omp.h>\n  +++ |+#include <time.h>\n   11 | #define PI 3.1415926535897932\nmake: *** [Makefile:4: openmp] Error 1\n",
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\ntement before \u2018)\u2019 token\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:528:19: warning: implicit declaration of function ",
+      "build_error_snippet": "rm: cannot remove 'particle_filter': No such file or directory\nmake: *** [Makefile:12: clean] Error 1\n\nex_particle_OPENMP_seq.c: In function \u2018calcLikelihoodSum\u2019:\nex_particle_OPENMP_seq.c:299:123: error: expected \u2018;\u2019 before \u2018)\u2019 token\n  299 |         likelihoodSum = likelihoodSum + ((pow((double) (I[ind[y]] - 100), 2) - pow((double) (I[ind[y]] - 228), 2)) / 50.0));\n      |                                                                                                                           ^\n      |                                                                                                                           ;\nex_particle_OPENMP_seq.c:299:123: error: expected statement before \u2018)\u2019 token\nex_particle_OPENMP_seq.c: In function \u2018main\u2019:\nex_particle_OPENMP_seq.c:528:19: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  528 |         seed[i] = time(0) * i;\n      |                   ^~~~\nex_particle_OPENMP_seq.c:11:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   10 | #include <omp.h>\n  +++ |+#include <time.h>\n   11 | #define PI 3.1415926535897932\nmake: *** [Makefile:4: openmp] Error 1\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 1.751,
-      "prompt_tokens": 20284,
-      "completion_tokens": 134,
+      "llm_response_time_seconds": 1.619,
+      "prompt_tokens": 20411,
+      "completion_tokens": 141,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,

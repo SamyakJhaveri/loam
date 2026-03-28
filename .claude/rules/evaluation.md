@@ -239,17 +239,17 @@ meant "exited with code 0", not "produced correct output."
 4. **New patterns** (16 specs): Added `stdout_pattern` to 16 of 18 exit_code-only specs.
    Two specs (`bfs-omp`, `lavamd-omp`) kept exit_code-only — no meaningful stdout.
 
-**Corrected baseline:** 53/58 TRUE PASS — 49/54 Rodinia + 4/4 XSBench (was 58/58 with exit_code-only).
-5 FALSE_PASS specs discovered: `backprop-opencl`, `heartwall-opencl`, `myocyte-omp`,
-`myocyte-opencl`, `pathfinder-omp` — all exit cleanly but produce wrong output (bad run args).
+**Corrected baseline (post arg fixes + runner.py argv[0] fix):** 58/58 TRUE PASS — 54 Rodinia + 4 XSBench.
+6 KNOWN_FAIL excluded. heartwall-opencl promoted to TRUE PASS via runner.py argv[0] fix (2026-03-27).
+Originally 9 FALSE_PASS specs discovered; all 9 now fixed (8 via corrected run args, 1 via runner.py).
+moved to KNOWN_FAIL. Additional fixes: bfs-omp, lavamd-cuda, lavamd-omp, lavamd-opencl.
 
 **169 existing PASS eval results:** Cannot be retroactively re-verified — `translated_files`
 was truncated to 200 bytes and `run_stdout_snippet` was null for PASS results. Pipeline now
 stores full code and stdout for all future results.
 
-**Impact on SC26 paper:** Future eval batches will use corrected verification. Report that
-existing L0 results verified exit_code only. The 5 FALSE_PASS baseline specs need arg fixes
-before inclusion in reported results.
+**Impact on SC26 paper:** Future eval batches will use corrected verification with conjunction
+semantics. Existing L0 results verified exit_code only — must be re-run for valid data.
 
 **Details:** `results/evaluation/reverification_analysis.md`
 

@@ -76,6 +76,7 @@
     "run": {
         "executable": "./backprop.out",
         "default_arguments": [
+            "-n",
             "65536"
         ],
         "timeout_seconds": 300,
@@ -83,6 +84,7 @@
         "input_configurations": {
             "correctness": {
                 "arguments": [
+                    "-n",
                     "65536"
                 ],
                 "description": "Small input for correctness verification of backprop (OPENCL)",
@@ -91,6 +93,7 @@
             },
             "performance": {
                 "arguments": [
+                    "-n",
                     "1048576"
                 ],
                 "description": "Large input for performance measurement of backprop (OPENCL)",
@@ -104,7 +107,7 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "Training done",
+                "pattern": "Finish the training for one iteration",
                 "description": "Computation completed successfully"
             },
             {

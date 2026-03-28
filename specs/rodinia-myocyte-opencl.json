@@ -88,18 +88,20 @@
     "run": {
         "executable": "./myocyte.out",
         "default_arguments": [
+            "-time",
             "100",
-            "1",
-            "0"
+            "-r",
+            "../../data/myocyte"
         ],
         "timeout_seconds": 300,
         "environment_variables": null,
         "input_configurations": {
             "correctness": {
                 "arguments": [
+                    "-time",
                     "100",
-                    "1",
-                    "0"
+                    "-r",
+                    "../../data/myocyte"
                 ],
                 "description": "Small input for correctness verification of myocyte (OPENCL)",
                 "input_files": [],
@@ -107,9 +109,10 @@
             },
             "performance": {
                 "arguments": [
+                    "-time",
                     "1000",
-                    "1",
-                    "0"
+                    "-r",
+                    "../../data/myocyte"
                 ],
                 "description": "Large input for performance measurement of myocyte (OPENCL)",
                 "input_files": [],

@@ -127,8 +127,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "XE:",
-                "description": "Particle filter position estimate computed"
+                "pattern": "Total:",
+                "description": "Particle filter computation completed"
             },
             {
                 "type": "exit_code",

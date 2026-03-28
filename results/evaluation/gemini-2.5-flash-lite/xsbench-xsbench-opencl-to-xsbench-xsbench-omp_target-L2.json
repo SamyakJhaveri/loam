@@ -5,12 +5,12 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 2,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-26T06:30:07Z",
+  "timestamp": "2026-03-28T05:07:42Z",
   "prompt_tokens": 70084,
   "completion_tokens": 17220,
-  "llm_response_time_seconds": 40.167,
+  "llm_response_time_seconds": 32.588,
   "build_status": "fail",
-  "build_time_seconds": 0.072,
+  "build_time_seconds": 0.07,
   "build_error_snippet": "\"Main.c\", line 62: warning: function \"get_time\" declared implicitly [implicit_func_decl]\n  \tomp_start = get_time();\n  \t            ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 70: error: too many arguments in function call\n  \t\t\tverification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n  \t\t\t                                                        ^\n\n\"Main.c\", line 100: error: too many arguments in function call\n  \tint is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verification, sim_runtime );\n  \t                                                                                          ^\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
@@ -29,7 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization & Comm"
+    "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization & Command Line Read-In\n\t// =====================================================================\n\tint version = 20;\n\tint mype = 0;\n\tdouble omp_start, omp_end;\n\tint nprocs = 1;\n\tunsigned long long verification;\n\n\t#ifdef MPI\n\tMPI_Status stat;\n\tMPI_Init(&argc, &argv);\n\tMPI_Comm_size(MPI_COMM_WORLD, &nprocs);\n\tMPI_Comm_rank(MPI_COMM_WORLD, &mype);\n\t#endif\n\n\t// Process CLI Fields -- store in \"Inputs\" structure\n\tInputs in = read_CLI( argc, argv );\n\n\t// Print-out of Input Summary\n\tif( mype == 0 )\n\t\tprint_inputs( in, nprocs, version );\n\n\t// =====================================================================\n\t// Prepare Nuclide Energy Grids, Unionized Energy Grid, & Material Data\n\t// This is not reflective of a real Monte Carlo simulation workload,\n\t// therefore, do not profile this region!\n\t// =====================================================================\n\t\n\tSimulationData SD;\n\n\t// If read from file mode is selected, skip initialization and load\n\t// all simulation data structures from file instead\n\tif( in.binary_mode == READ )\n\t\tSD = binary_read(in);\n\telse\n\t\tSD = grid_init_do_not_profile( in, mype );\n\n\t// If writing from file mode is selected, write all simulation data\n\t// structures to file\n\tif( in.binary_mode == WRITE && mype == 0 )\n\t\tbinary_write(in, SD);\n\n\n\t// =====================================================================\n\t// Cross Section (XS) Parallel Lookup Simulation\n\t// This is the section that should be profiled, as it reflects a \n\t// realistic continuous energy Monte Carlo macroscopic cross section\n\t// lookup kernel.\n\t// =====================================================================\n\n\n\t// Start Simulation Timer\n\tomp_start = get_time();\n\n\tdouble sim_runtime;\n\n\t// Run simulation\n\tif( in.simulation_method == EVENT_BASED )\n\t{\n\t\tif( in.kernel_id == 0 )\n\t\t\tverification = run_event_based_simulation(in, SD, mype, &sim_runtime);\n\t\telse\n\t\t{\n\t\t\tprintf(\"Error: No kernel ID %d found!\\n\", in.kernel_id);\n\t\t\texit(1);\n\t\t}\n\t}\n\telse\n\t{\n\t\tprintf(\"History-based simulation not implemented in OpenMP offload code. Instead,\\nuse the event-based method with \\\"-m event\\\" argument.\\n\");\n\t\texit(1);\n\t}\n\n\tif( mype == 0)\t\n\t{\t\n\t\tprintf(\"\\n\" );\n\t\tprintf(\"Simulation complete.\\n\" );\n\t}\n\n\t// End Simulation Timer\n\tomp_end = get_time();\n\n\t// =====================================================================\n\t// Output Results & Finalize\n\t// =====================================================================\n\n\t// Final Hash Step\n\tverification = verification % 999983;\n\n\t// Print / Save Results and Exit\n\tint is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verification, sim_runtime );\n\n\t#ifdef MPI\n\tMPI_Finalize();\n\t#endif\n\n\treturn is_invalid_result;\n}\n\n"
   },
   "target_files_expected": [
     "Main.c",
@@ -47,7 +47,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 37.642,
+      "llm_response_time_seconds": 30.64,
       "prompt_tokens": 26772,
       "completion_tokens": 16382,
       "finish_reason": "length",
@@ -62,7 +62,7 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 2.525,
+      "llm_response_time_seconds": 1.948,
       "prompt_tokens": 43312,
       "completion_tokens": 838,
       "finish_reason": "stop",

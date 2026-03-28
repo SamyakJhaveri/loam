@@ -5,13 +5,13 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T17:18:50Z",
-  "prompt_tokens": 55668,
-  "completion_tokens": 13057,
-  "llm_response_time_seconds": 47.539,
-  "build_status": "fail",
-  "build_time_seconds": 0.051,
-  "build_error_snippet": "\"Main.c\", line 1: warning: this declaration has no storage class or type specifier [missing_decl_specifiers]\n  filename=Main.cpp\n  ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 1: error: identifier \"Main\" is undefined\n  filename=Main.cpp\n           ^\n\nAt end of source: error: expected a \";\"\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+  "timestamp": "2026-03-28T05:09:15Z",
+  "prompt_tokens": 53247,
+  "completion_tokens": 10693,
+  "llm_response_time_seconds": 40.456,
+  "build_status": null,
+  "build_time_seconds": null,
+  "build_error_snippet": null,
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -19,8 +19,8 @@
   "run_stdout_snippet": null,
   "verify_status": null,
   "verify_strategy": null,
-  "overall_status": "BUILD_FAIL",
-  "error_message": "Build failed: r: identifier \"Main\" is undefined\n  filename=Main.cpp\n           ^\n\nAt end of source: error: expected a \";\"\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2",
+  "overall_status": "EXTRACTION_FAIL",
+  "error_message": "LLM response did not contain parseable code for any of the expected target files: ['Main.c', 'io.c', 'Simulation.c', 'GridInit.c', 'XSutils.c', 'Materials.c']",
   "metrics": {},
   "baseline_wall_time_seconds": 0.564,
   "translated_wall_time_seconds": null,
@@ -28,9 +28,7 @@
   "translated_kernel_time_seconds": null,
   "timing_method": null,
   "speedup_ratio": null,
-  "translated_files": {
-    "Main.c": "filename=Main.cpp\n"
-  },
+  "translated_files": {},
   "target_files_expected": [
     "Main.c",
     "io.c",
@@ -39,41 +37,39 @@
     "XSutils.c",
     "Materials.c"
   ],
-  "target_files_extracted": [
-    "Main.c"
-  ],
+  "target_files_extracted": [],
   "max_retries": 2,
   "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 44.401,
+      "llm_response_time_seconds": 37.486,
       "prompt_tokens": 21344,
-      "completion_tokens": 12814,
+      "completion_tokens": 10395,
       "finish_reason": "stop",
       "build_status": "fail",
       "run_status": null,
       "verify_status": null,
-      "error_feedback_sent": "The translation failed to compile with this error:\n```\n/usr/bin/ld: warning: /tmp/pgcudafatwGrycOEgL47t.o: missing .note.GNU-stack section implies executable stack\n/usr/bin/ld: NOTE: This behaviour is",
-      "build_error_snippet": "/usr/bin/ld: warning: /tmp/pgcudafatwGrycOEgL47t.o: missing .note.GNU-stack section implies executable stack\n/usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker\n/usr/bin/ld: /usr/lib/x86_64-linux-gnu/crt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n/usr/bin/ld: warning: /tmp/pgcudafatajpBcan4DJNOP.o: missing .note.GNU-stack section implies executable stack\n/usr/bin/ld: NOTE: This behaviour i",
+      "build_error_snippet": "/usr/bin/ld: warning: /tmp/pgcudafatajpBcan4DJNOP.o: missing .note.GNU-stack section implies executable stack\n/usr/bin/ld: NOTE: This behaviour is deprecated and will be removed in a future version of the linker\n/usr/bin/ld: /usr/lib/x86_64-linux-gnu/crt1.o: in function `_start':\n(.text+0x1b): undefined reference to `main'\npgacclnk: child process exit status 1: /usr/bin/ld\nmake: *** [Makefile:101: XSBench] Error 2\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 3.138,
-      "prompt_tokens": 34324,
-      "completion_tokens": 243,
+      "llm_response_time_seconds": 2.97,
+      "prompt_tokens": 31903,
+      "completion_tokens": 298,
       "finish_reason": "stop",
-      "build_status": "fail",
+      "build_status": null,
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "\"Main.c\", line 1: warning: this declaration has no storage class or type specifier [missing_decl_specifiers]\n  filename=Main.cpp\n  ^\n\nRemark: individual warnings can be suppressed with \"--diag_suppress <warning-name>\"\n\n\"Main.c\", line 1: error: identifier \"Main\" is undefined\n  filename=Main.cpp\n           ^\n\nAt end of source: error: expected a \";\"\n\n2 errors detected in the compilation of \"Main.c\".\nmake: *** [Makefile:104: Main.o] Error 2\n",
+      "build_error_snippet": null,
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
-      "extraction_fail": null
+      "extraction_fail": true
     }
   ]
 }

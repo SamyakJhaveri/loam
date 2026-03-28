@@ -124,8 +124,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "Use GPU device",
-                "description": "OpenCL device selected for hotspot computation"
+                "pattern": "Total:",
+                "description": "Hotspot simulation completed"
             },
             {
                 "type": "exit_code",

@@ -5,15 +5,15 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T16:54:59Z",
+  "timestamp": "2026-03-28T03:08:32Z",
   "prompt_tokens": 44141,
-  "completion_tokens": 1267,
-  "llm_response_time_seconds": 7.199,
+  "completion_tokens": 1263,
+  "llm_response_time_seconds": 6.724,
   "build_status": "pass",
-  "build_time_seconds": 21.983,
+  "build_time_seconds": 22.365,
   "build_error_snippet": null,
   "run_status": "fail",
-  "run_time_seconds": 0.359,
+  "run_time_seconds": 0.38,
   "run_exit_code": 188,
   "run_stderr_snippet": "GPUassert: an illegal memory access was encountered Simulation.cu 27\n",
   "run_stdout_snippet": ":             17,000,000\nEst. Memory Usage (MB):       241\nBinary File Mode:             Off\n================================================================================\n                         INITIALIZATION - DO NOT PROFILE\n================================================================================\nIntializing nuclide grids...\nIntializing unionized grid...\nIntializing material data...\nIntialization complete. Allocated 240 MB of data on CPU.\nRunning baseline event-based simulation...\n",
@@ -29,7 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "Main.cu": "#include \"XSbench_header.cuh\"\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization & Command Line Read-In\n\t// ============"
+    "Main.cu": "#include \"XSbench_header.cuh\"\n\nint main( int argc, char* argv[] )\n{\n\t// =====================================================================\n\t// Initialization & Command Line Read-In\n\t// =====================================================================\n\tint version = 20;\n\tint mype = 0;\n\tdouble omp_start, omp_end;\n\tint nprocs = 1;\n\tunsigned long long verification;\n\n\t// Process CLI Fields -- store in \"Inputs\" structure\n\tInputs in = read_CLI( argc, argv );\n\n\t// Print-out of Input Summary\n\tif( mype == 0 )\n\t\tprint_inputs( in, nprocs, version );\n\n\t// =====================================================================\n\t// Prepare Nuclide Energy Grids, Unionized Energy Grid, & Material Data\n\t// This is not reflective of a real Monte Carlo simulation workload,\n\t// therefore, do not profile this region!\n\t// =====================================================================\n\t\n\tSimulationData SD;\n\n\t// If read from file mode is selected, skip initialization and load\n\t// all simulation data structures from file instead\n\tif( in.binary_mode == READ )\n\t\tSD = binary_read(in);\n\telse\n\t\tSD = grid_init_do_not_profile( in, mype );\n\n\t// If writing from file mode is selected, write all simulation data\n\t// structures to file\n\tif( in.binary_mode == WRITE && mype == 0 )\n\t\tbinary_write(in, SD);\n\n\t// =====================================================================\n\t// Cross Section (XS) Parallel Lookup Simulation\n\t// This is the section that should be profiled, as it reflects a \n\t// realistic continuous energy Monte Carlo macroscopic cross section\n\t// lookup kernel.\n\t// =====================================================================\n\n\n\t// Start Simulation Timer\n\tomp_start = get_time();\n\n\tdouble sim_runtime;\n\n\t// Run simulation\n\tif( in.simulation_method == EVENT_BASED )\n\t{\n\t\tif( in.kernel_id == 0 )\n\t\t\tverification = run_event_based_simulation_baseline(in, SD, mype);\n\t\telse\n\t\t{\n\t\t\tprintf(\"Error: No kernel ID %d found!\\n\", in.kernel_id);\n\t\t\texit(1);\n\t\t}\n\t}\n\telse\n\t{\n\t\tprintf(\"History-based simulation not implemented in CUDA code. Instead,\\nuse the event-based method with \\\"-m event\\\" argument.\\n\");\n\t\texit(1);\n\t}\n\n\tif( mype == 0)\t\n\t{\t\n\t\tprintf(\"\\n\" );\n\t\tprintf(\"Simulation complete.\\n\" );\n\t}\n\n\t// End Simulation Timer\n\tomp_end = get_time();\n\n\t// =====================================================================\n\t// Output Results & Finalize\n\t// =====================================================================\n\n\t// Final Hash Step\n\tverification = verification % 999983;\n\n\t// Print / Save Results and Exit\n\tint is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verification );\n\n\treturn is_invalid_result;\n}\n"
   },
   "target_files_expected": [
     "Main.cu",
@@ -47,7 +47,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 4.382,
+      "llm_response_time_seconds": 4.181,
       "prompt_tokens": 21720,
       "completion_tokens": 591,
       "finish_reason": "stop",
@@ -62,9 +62,9 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 2.817,
+      "llm_response_time_seconds": 2.543,
       "prompt_tokens": 22421,
-      "completion_tokens": 676,
+      "completion_tokens": 672,
       "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "fail",

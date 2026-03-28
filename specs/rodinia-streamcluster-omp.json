@@ -112,8 +112,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "PARSEC Benchmark Suite",
-                "description": "Streamcluster benchmark identified"
+                "pattern": "loops=",
+                "description": "Streamcluster computation completed"
             },
             {
                 "type": "exit_code",

@@ -191,13 +191,13 @@
     },
     "baseline_results": {
         "reference_platform": "rtx4070-linux-x86_64",
-        "timestamp": "2026-03-06T22:15:55.274895+00:00",
+        "timestamp": "2026-03-27T00:00:00+00:00",
         "configurations": {
             "correctness": {
                 "status": "pass",
                 "exit_code": 0,
-                "stdout_snippet": "WG size of kernel = 256 \n/home/samyak/Desktop/parbench_sam/rodinia/opencl/heartwall/heartwall.out <-f video_file> <-i input_file> <-n num_frames> [-p platform_id] [-n device_id]\n",
-                "wall_time_seconds": 0.001,
+                "stdout_snippet": "WG size of kernel = 256 \n# of platforms 1\n\tPlatform 0: NVIDIA Corporation\nSelecting platform 0\n# of devices 1\n\tDevice 0: NVIDIA GeForce RTX 4070\nSelecting device 0\n-----OpenCL Compiler Output-----\n--------------------------------\ntSize is 25, sSize is 40\n# of workgroups = 51, # of threads/workgroup = 256 (ensure that device can handle)\nframe progress: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 \nTime spent in different stages of the application:\nInit: 426.324005\nMemAlloc: 0.011000\nHtoD: 1.543040\nExec: 55.503292\nDtoH: 0.005632\nClose: 1.176000\nTotal: 496.575989\n",
+                "wall_time_seconds": 0.548,
                 "metrics": {}
             }
         }

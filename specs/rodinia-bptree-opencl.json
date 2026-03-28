@@ -115,8 +115,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "Waiting for command",
-                "description": "B-tree ready to process queries"
+                "pattern": "Total:",
+                "description": "B+tree computation completed"
             },
             {
                 "type": "exit_code",

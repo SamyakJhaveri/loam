@@ -5,10 +5,10 @@
   "model": "gemini-2.5-flash-lite",
   "augment_level": 3,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-26T06:32:02Z",
+  "timestamp": "2026-03-28T03:37:58Z",
   "prompt_tokens": 16464,
   "completion_tokens": 19060,
-  "llm_response_time_seconds": 50.743,
+  "llm_response_time_seconds": 38.064,
   "build_status": "fail",
   "build_time_seconds": 0.015,
   "build_error_snippet": "srad.cpp:1:5: error: stray \u2018`\u2019 in program\n    1 | The `usage` function prints the correct usage message, which lists 8 arguments after the program name. Therefore, `argc` should be 9 (1 for the program name + 8 arguments).\n      |     ^\nsrad.cpp:1:11: error: stray \u2018`\u2019 in program\n    1 | The `usage` function prints the correct usage message, which lists 8 arguments after the program name. Therefore, `argc` should be 9 (1 for the program name + 8 arguments).\n      |           ^\nsrad.cpp:1:115: error: stray \u2018`\u2019 in program\n    1 | The `usage` function prints the correct usage message, which lists 8 arguments after the program name. Therefore, `argc` should be 9 (1 for the program name + 8 arguments).\n      |                                     \n...[truncated]...\n+ 8 arguments).\n      |                                                                                                                        ^\nsrad.cpp:3:37: error: stray \u2018`\u2019 in program\n    3 | The provided error message from the `usage` function itself is:\n      |                                     ^\nsrad.cpp:3:43: error: stray \u2018`\u2019 in program\n    3 | The provided error message from the `usage` function itself is:\n      |                                           ^\nsrad.cpp:1:1: error: \u2018The\u2019 does not name a type\n    1 | The `usage` function prints the correct usage message, which lists 8 arguments after the program name. Therefore, `argc` should be 9 (1 for the program name + 8 arguments).\n      | ^~~\nmake: *** [Makefile:6: bfs] Error 1\n",
@@ -29,7 +29,7 @@
   "timing_method": null,
   "speedup_ratio": null,
   "translated_files": {
-    "srad.cpp": "The `usage` function prints the correct usage message, which lists 8 arguments after the program name. Therefore, `argc` should be 9 (1 for the program name + 8 arguments).\n\nThe provided error message"
+    "srad.cpp": "The `usage` function prints the correct usage message, which lists 8 arguments after the program name. Therefore, `argc` should be 9 (1 for the program name + 8 arguments).\n\nThe provided error message from the `usage` function itself is:\n"
   },
   "target_files_expected": [
     "srad.cpp"
@@ -42,7 +42,7 @@
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 12.02,
+      "llm_response_time_seconds": 8.799,
       "prompt_tokens": 6103,
       "completion_tokens": 4107,
       "finish_reason": "stop",
@@ -51,13 +51,13 @@
       "verify_status": null,
       "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n<x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value",
       "build_error_snippet": null,
-      "run_stderr_snippet": "Usage: /home/samyak/Desktop/parbench_sam/rodinia/openmp/srad/srad_v2/srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>       - x1 value of the speckle\n\t<x2>       - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
+      "run_stderr_snippet": "Usage: ./srad <rows> <cols> <y1> <y2> <x1> <x2> <lamda> <no. of iter>\n\t<rows>   - number of rows\n\t<cols>    - number of cols\n\t<y1> \t - y1 value of the speckle\n\t<y2>      - y2 value of the speckle\n\t<x1>       - x1 value of the speckle\n\t<x2>       - x2 value of the speckle\n\t<lamda>   - lambda (0,1)\n\t<no. of iter>   - number of iterations\n",
       "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
       "extraction_fail": null
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 38.723,
+      "llm_response_time_seconds": 29.265,
       "prompt_tokens": 10361,
       "completion_tokens": 14953,
       "finish_reason": "stop",

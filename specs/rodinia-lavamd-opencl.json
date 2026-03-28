@@ -83,9 +83,7 @@
     "run": {
         "executable": "./lavaMD.out",
         "default_arguments": [
-            "-cores",
-            "1",
-            "-boxes",
+            "-boxes1d",
             "10"
         ],
         "timeout_seconds": 300,
@@ -93,9 +91,7 @@
         "input_configurations": {
             "correctness": {
                 "arguments": [
-                    "-cores",
-                    "1",
-                    "-boxes",
+                    "-boxes1d",
                     "10"
                 ],
                 "description": "Small input for correctness verification of lavaMD (OPENCL)",
@@ -104,9 +100,7 @@
             },
             "performance": {
                 "arguments": [
-                    "-cores",
-                    "1",
-                    "-boxes",
+                    "-boxes1d",
                     "30"
                 ],
                 "description": "Large input for performance measurement of lavaMD (OPENCL)",
@@ -120,8 +114,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "WG size of kernel",
-                "description": "OpenCL workgroup configured"
+                "pattern": "Total:",
+                "description": "lavaMD OpenCL computation completed"
             },
             {
                 "type": "exit_code",

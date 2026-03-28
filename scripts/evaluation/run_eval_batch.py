@@ -95,6 +95,14 @@ def _build_tasks(
         src_spec_path = project_root / entry["spec_file"]
         tgt_spec_path = project_root / index[tgt_key]
 
+        # Skip pairs where either spec file has been deleted (phantom specs)
+        if not src_spec_path.exists():
+            print(f"  ⚠ SKIP {kernel}: source spec not found: {src_spec_path}", flush=True)
+            continue
+        if not tgt_spec_path.exists():
+            print(f"  ⚠ SKIP {kernel}: target spec not found: {tgt_spec_path}", flush=True)
+            continue
+
         for model in models:
             for level in levels:
                 tasks.append({
@@ -147,25 +155,48 @@ def run_batch(
         prefix = f"[{i:3d}/{total}] {src_id} → {tgt_id} [{model}]{level_tag}"
 
         if resume and result_file.exists():
-            print(f"{prefix}  ⟳ SKIP (result exists)", flush=True)
-            existing = json.loads(result_file.read_text())
-            results.append(existing)
-            consecutive_failures = 0
-            continue
+            try:
+                existing = json.loads(result_file.read_text())
+            except (json.JSONDecodeError, ValueError):
+                print(f"{prefix}  ↺ RETRY (corrupted file)", flush=True)
+            else:
+                existing_status = existing.get("overall_status", "")
+                # Retry ERROR and EXTRACTION_FAIL results — these are transient
+                # failures (API errors, partial code extraction) worth re-running.
+                # All other statuses (PASS, BUILD_FAIL, RUN_FAIL, VERIFY_FAIL, SKIP)
+                # are deterministic outcomes that won't change on retry.
+                if existing_status not in ("ERROR", "EXTRACTION_FAIL"):
+                    print(f"{prefix}  ⟳ SKIP ({existing_status})", flush=True)
+                    results.append(existing)
+                    consecutive_failures = 0
+                    continue
+                print(f"{prefix}  ↺ RETRY ({existing_status})", flush=True)
 
         print(f"{prefix}", flush=True)
         t0 = time.time()
 
-        result = evaluate_translation(
-            source_path=task["src_spec"],
-            target_path=task["tgt_spec"],
-            model=model,
-            project_root=project_root,
-            augment_level=augment_level,
-            use_cpu_timing=use_cpu_timing,
-            max_retries=max_retries,
-            verbose=verbose,
-        )
+        try:
+            result = evaluate_translation(
+                source_path=task["src_spec"],
+                target_path=task["tgt_spec"],
+                model=model,
+                project_root=project_root,
+                augment_level=augment_level,
+                use_cpu_timing=use_cpu_timing,
+                max_retries=max_retries,
+                verbose=verbose,
+            )
+        except FileNotFoundError as exc:
+            elapsed = time.time() - t0
+            print(f"  ✗ SKIP (spec file missing: {exc})", flush=True)
+            results.append({
+                "overall_status": "SKIP",
+                "source_spec": task["src_id"],
+                "target_spec": task["tgt_id"],
+                "model": model,
+                "error_message": f"Spec file not found: {exc}",
+            })
+            continue
 
         elapsed = time.time() - t0
         status = result.get("overall_status", "?")

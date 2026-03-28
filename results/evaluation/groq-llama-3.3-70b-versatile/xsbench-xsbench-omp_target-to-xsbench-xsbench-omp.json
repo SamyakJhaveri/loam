@@ -5,13 +5,13 @@
   "model": "groq-llama-3.3-70b-versatile",
   "augment_level": 0,
   "translation_mode": "kernel_centric",
-  "timestamp": "2026-03-25T17:31:35Z",
-  "prompt_tokens": 43483,
-  "completion_tokens": 13537,
-  "llm_response_time_seconds": 47.514,
-  "build_status": "fail",
-  "build_time_seconds": 0.024,
-  "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:21:59: error: \u2018mype\u2019 undeclared (first use in this function)\n   21 |         SimulationData SD = grid_init_do_not_profile( in, mype );\n      |                                                           ^~~~\nMain.c:21:59: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:108: Main.o] Error 1\n",
+  "timestamp": "2026-03-28T06:13:41Z",
+  "prompt_tokens": 43475,
+  "completion_tokens": 13383,
+  "llm_response_time_seconds": 51.257,
+  "build_status": null,
+  "build_time_seconds": null,
+  "build_error_snippet": null,
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -19,8 +19,8 @@
   "run_stdout_snippet": null,
   "verify_status": null,
   "verify_strategy": null,
-  "overall_status": "BUILD_FAIL",
-  "error_message": "Build failed: ^~~~\nMain.c:21:59: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:108: Main.o] Error 1",
+  "overall_status": "EXTRACTION_FAIL",
+  "error_message": "LLM response did not contain parseable code for any of the expected target files: ['Main.c', 'io.c', 'Simulation.c', 'GridInit.c', 'XSutils.c', 'Materials.c']",
   "metrics": {},
   "baseline_wall_time_seconds": 0.787,
   "translated_wall_time_seconds": null,
@@ -28,11 +28,7 @@
   "translated_kernel_time_seconds": null,
   "timing_method": null,
   "speedup_ratio": null,
-  "translated_files": {
-    "Main.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\nint main( int argc, char* argv[] )\n{\n\t// ... (rest of the code remains the same)\n\n\t// Check if read_CLI returns an error\n\tInputs in = re",
-    "io.c": "#include \"XSbench_header.h\"\n\n#ifdef MPI\n#include<mpi.h>\n#endif\n\n// ... (rest of the code remains the same)\n\nInputs read_CLI( int argc, char * argv[] )\n{\n\t// ... (rest of the code remains the same)\n\n\t/",
-    "GridInit.c": "#include \"XSbench_header.h\"\n\nSimulationData grid_init_do_not_profile( Inputs in, int mype )\n{\n\t// ... (rest of the code remains the same)\n\n\t// Check if memory allocation fails\n\tSD.nuclide_grid = (Nucl"
-  },
+  "translated_files": {},
   "target_files_expected": [
     "Main.c",
     "io.c",
@@ -41,19 +37,15 @@
     "XSutils.c",
     "Materials.c"
   ],
-  "target_files_extracted": [
-    "Main.c",
-    "io.c",
-    "GridInit.c"
-  ],
+  "target_files_extracted": [],
   "max_retries": 2,
   "total_attempts": 2,
   "attempts": [
     {
       "attempt": 1,
-      "llm_response_time_seconds": 43.361,
+      "llm_response_time_seconds": 47.528,
       "prompt_tokens": 15324,
-      "completion_tokens": 12805,
+      "completion_tokens": 12797,
       "finish_reason": "stop",
       "build_status": "pass",
       "run_status": "fail",
@@ -66,18 +58,18 @@
     },
     {
       "attempt": 2,
-      "llm_response_time_seconds": 4.153,
-      "prompt_tokens": 28159,
-      "completion_tokens": 732,
+      "llm_response_time_seconds": 3.729,
+      "prompt_tokens": 28151,
+      "completion_tokens": 586,
       "finish_reason": "stop",
-      "build_status": "fail",
+      "build_status": null,
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "Main.c: In function \u2018main\u2019:\nMain.c:21:59: error: \u2018mype\u2019 undeclared (first use in this function)\n   21 |         SimulationData SD = grid_init_do_not_profile( in, mype );\n      |                                                           ^~~~\nMain.c:21:59: note: each undeclared identifier is reported only once for each function it appears in\nmake: *** [Makefile:108: Main.o] Error 1\n",
+      "build_error_snippet": null,
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
-      "extraction_fail": null
+      "extraction_fail": true
     }
   ]
 }
