@@ -2,18 +2,18 @@
 
 > **How to use:** Copy-paste one prompt per Claude Code session. Run `/clear` between sessions.
 > Each prompt is self-contained with full context, exact commands, and verification steps.
-> Updated: 2026-03-26 (Day 9 of 21). **13 days remain.** Deadline: April 8, 2026.
-> **Models (Gal, 2026-03-23):** GPT-4.1 | Claude Sonnet 4.6 | Gemini 2.5 Flash-Lite | Llama 3.3 70B
+> Updated: 2026-03-28 (Day 11 of 21). **11 days remain.** Deadline: April 8, 2026.
+> **Models (3 active):** Claude Sonnet 4.6 | Gemini 2.5 Flash-Lite | Llama 3.3 70B (azure-gpt-4.1 DISABLED)
 
 ---
 
-## Critical Assessment (2026-03-26)
+## Critical Assessment (2026-03-28)
 
-Six gaps threaten submission. Ordered by severity:
+Five gaps threaten submission. Ordered by severity:
 
 | Gap | Severity | Description | Blocks |
 |-----|----------|-------------|--------|
-| Verification is exit-code only | **CRITICAL** | "PASS" means didn't crash, not correct output | Paper credibility |
+| ~~Verification is exit-code only~~ | ~~CRITICAL~~ | **RESOLVED (S-VERIFY, 2026-03-27).** All 58 non-KNOWN_FAIL specs verified TRUE PASS with stdout_pattern+exit_code conjunction. Eval results: 105/468 PASS (22.44%). | ~~Paper credibility~~ |
 | No LaTeX paper | **CRITICAL** | Markdown only; SC26 requires ACM/IEEE LaTeX | Submission |
 | No `requirements.txt` | **CRITICAL** | Reviewers cannot reproduce | Artifact evaluation |
 | No anonymous repo | **CRITICAL** | Double-blind review requires it | Submission |
@@ -42,8 +42,11 @@ Six gaps threaten submission. Ordered by severity:
 | W-S11 | Mar 25 | Dashboard refresh | 12 viz files updated; all numbers verified against data |
 | W-S12-PARTIAL | Mar 25 | Paper Sections 3-5 | 3289 words; Methodology + System Design + Experimental Setup |
 | W-S14 | Mar 24 | Publication figures | 6 figures (F2-F6) + 1 LaTeX table (T2) from L0 data |
+| S-VERIFY | Mar 27 | Verification fix + re-verify | All 58 non-KNOWN_FAIL specs TRUE PASS; stdout_pattern+exit_code conjunction; 9 FALSE_PASS specs fixed |
+| S-FIGURES | Mar 27 | Updated paper figures | System architecture figure added; all paper figures updated |
+| S13 | Mar 27 | Paper draft expansion | Results and Discussion sections expanded |
 
-**Totals:** 500 result JSON files across 4 models. 17 Rodinia kernels + 1 XSBench kernel evaluated. 2 directions complete (cuda-to-omp, omp-to-cuda). L1-L4 augmentation complete for cuda-to-omp.
+**Totals:** 504 raw result JSON files across 3 models (468 in eval_summary, 36 excluded kmeans/mummergpu). 17 Rodinia kernels + 1 XSBench kernel evaluated. 12 translation directions. L0-L4 augmentation complete for cuda-to-omp. Verified pass rate: 105/468 = 22.44%.
 
 ---
 
@@ -61,7 +64,7 @@ Six gaps threaten submission. Ordered by severity:
 
 | # | Session | Priority | Group | Parallel? | Lane | Effort | Dependencies | Status |
 |---|---------|----------|-------|-----------|------|--------|-------------|--------|
-| 1 | S-VERIFY | P0 | G1 | Yes (with S-DEPS, W-S16, S-TAXONOMY, S-ANALYSIS) | GPU | 1-2 days | None | NOT STARTED |
+| 1 | S-VERIFY | P0 | G1 | Yes (with S-DEPS, W-S16, S-TAXONOMY, S-ANALYSIS) | GPU | 1-2 days | None | **COMPLETED (2026-03-27)** |
 | 2 | S-DEPS | P0 | G1 | Yes | Any | 30 min | None | NOT STARTED |
 | 3 | W-S16 | P0 | G1 | Yes | Worktree | 4 hours | None | NOT STARTED |
 | 4 | W-S17 | P0 | G4 | Yes (with W-S15) | Worktree | 2-3 days | S13 complete, paper draft finalized | NOT STARTED |
@@ -69,11 +72,11 @@ Six gaps threaten submission. Ordered by severity:
 | 6 | S10 | P1 | G2 | Yes (with S12, S-BIB, S-FIGURES) | GPU | 1 day compute | S-VERIFY complete | NOT STARTED |
 | 7 | S-TAXONOMY | P1 | G1 | Yes | Any | 3 hours | None | NOT STARTED |
 | 8 | S12 | P1 | G2 | Yes | Supervised | 1 day | None (Paraval reading is a soft dep) | NOT STARTED |
-| 9 | S13 | P1 | G3 | Yes (with S10b, S-TIMING) | Supervised | 1 day | S10 complete, S-VERIFY complete | NOT STARTED |
+| 9 | S13 | P1 | G3 | Yes (with S10b, S-TIMING) | Supervised | 1 day | S10 complete, S-VERIFY complete | **COMPLETED (2026-03-27)** |
 | 10 | W-S15 | P1 | G4 | Yes (with W-S17) | Worktree | 4 hours | S13 complete | NOT STARTED |
 | 11 | S10b | P2 | G3 | Yes (with S13, S-TIMING) | GPU | 1 day compute | S10 complete | NOT STARTED |
 | 12 | S-ANALYSIS | P2 | G1 | Yes | Any | 3 hours | None | NOT STARTED |
-| 13 | S-FIGURES | P2 | G2 | Yes | Any | 4 hours | S-VERIFY data available | NOT STARTED |
+| 13 | S-FIGURES | P2 | G2 | Yes | Any | 4 hours | S-VERIFY data available | **COMPLETED (2026-03-27)** |
 | 14 | S-BIB | P2 | G2 | Yes | Any | 2 hours | None | NOT STARTED |
 | 15 | S-TIMING | P2 | G3 | Yes | GPU | 4 hours | GPU idle (no eval running) | NOT STARTED |
 
@@ -172,7 +175,7 @@ Three execution lanes run concurrently. Only one GPU eval at a time.
 | Day | Date | GPU Lane | Worktree Lane | Supervised Lane |
 |-----|------|----------|---------------|-----------------|
 | 9 | Mar 26 | **S-VERIFY** starts (fix verifier logic) | **W-S16** starts (anon repo) | **S-DEPS** (30 min); **S-TAXONOMY** (3h); **S-ANALYSIS** (3h) |
-| 10 | Mar 27 | S-VERIFY continues (re-verify 500 results) | W-S16 completes; merge branch | Review S-TAXONOMY + S-ANALYSIS outputs |
+| 10 | Mar 27 | **S-VERIFY COMPLETED** (re-verified all results; 105/468 PASS) | W-S16 completes; merge branch | Review S-TAXONOMY + S-ANALYSIS outputs |
 | 11 | Mar 28 | **S10** starts (cuda-to-opencl, 51 tasks) | **S-FIGURES** starts (regen with verified data) | **S12** starts (Intro + Related Work) |
 | 12 | Mar 29 | S10 continues | S-FIGURES completes; **S-BIB** starts | S12 continues |
 | 13 | Mar 30 | S10 completes; **S10b** starts (3 OpenCL dirs) | S-BIB completes | **S13** starts (Results + Discussion) |
@@ -272,7 +275,7 @@ DECISIONS:
 EXTERNAL DEPS:
 - [x] Sessions 1 + 1.5 + 1.6 must be complete — DONE
 - [x] Session 3b complete (all 3 active models have L0 baselines)
-- [ ] S-VERIFY should be complete so results are verified, not just exit-code PASS
+- [x] S-VERIFY COMPLETED (2026-03-27) — results verified with stdout_pattern+exit_code conjunction
 - [x] API keys for 3 models (ANTHROPIC_API_KEY, GEMINI_API_KEY, GROQ_API_KEY)
 
 # Session Goal
@@ -674,9 +677,9 @@ ultrathink
 
 ## CONTEXT
 
-You are building a structured error taxonomy from 500 existing LLM evaluation
-result JSONs. This is a pure analysis task — no evals, no GPU, no harness runs.
-Safe for worktree execution.
+You are building a structured error taxonomy from 468 evaluated LLM translation
+tasks (504 raw result JSONs, minus 36 excluded kmeans/mummergpu). This is a pure
+analysis task — no evals, no GPU, no harness runs. Safe for worktree execution.
 
 ## BEFORE YOU START — What I Need From You
 
@@ -692,11 +695,11 @@ DECISIONS:
       clean counting, with a secondary_categories field for multi-cause failures.
 
 EXTERNAL DEPS:
-- None. All 500 result JSONs already exist in results/evaluation/. This session
-  is read-only on evaluation data.
+- None. All 468 evaluated result JSONs already exist in results/evaluation/. This session
+  is read-only on evaluation data. (504 raw files on disk; 36 kmeans/mummergpu excluded.)
 
 # Session Goal
-Build a structured error taxonomy from all 500 result JSONs. Classify every
+Build a structured error taxonomy from all 468 evaluated result JSONs. Classify every
 non-PASS result by root cause category. Produce publication-ready tables showing
 failure distributions per model, per direction, and per error category.
 
@@ -706,20 +709,19 @@ missing #pragma omp." SC26 reviewers expect quantitative taxonomy tables with
 counts. This data exists in the `build_error_snippet` and `run_stderr_snippet`
 fields of the result JSONs but has never been systematically extracted.
 
-Current failure distribution across 500 tasks:
-  PASS: 169 (33.8%)
-  BUILD_FAIL: 202 (40.4%)
-  RUN_FAIL: 89 (17.8%)
-  EXTRACTION_FAIL: 39 (7.8%)
-  VERIFY_FAIL: 0 (0.0%)
-  ERROR: 1 (0.2%)
+Current failure distribution across 468 evaluated tasks (post S-VERIFY, 2026-03-27):
+  PASS: 105 (22.44%)
+  BUILD_FAIL: 180 (38.46%)
+  RUN_FAIL: 89 (19.02%)
+  EXTRACTION_FAIL: 49 (10.47%)
+  VERIFY_FAIL: 45 (9.62%)
 
-The 331 non-PASS results each have error data that can be classified.
+The 363 non-PASS results each have error data that can be classified.
 
 # Context
 - Result JSONs live in: results/evaluation/{model_name}/
-- 4 model directories: azure-gpt-4.1 (17 files), claude-sonnet-4-6 (161),
-  gemini-2.5-flash-lite (161), groq-llama-3.3-70b-versatile (161)
+- 3 model directories: claude-sonnet-4-6 (168 files), gemini-2.5-flash-lite (168),
+  groq-llama-3.3-70b-versatile (168). Note: 36 files are kmeans/mummergpu (excluded from summary).
 - Key fields per JSON:
   - overall_status: PASS | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL | EXTRACTION_FAIL | ERROR
   - build_error_snippet: truncated compiler error output (for BUILD_FAIL)
@@ -815,9 +817,9 @@ cd /home/samyak/Desktop/parbench_sam
 #
 #    results/analysis/error_taxonomy.json — structured data:
 #    {
-#      "total_results": 500,
-#      "total_failures": 331,
-#      "by_status": {"BUILD_FAIL": 202, "RUN_FAIL": 89, ...},
+#      "total_results": 468,
+#      "total_failures": 363,
+#      "by_status": {"BUILD_FAIL": 180, "RUN_FAIL": 89, "VERIFY_FAIL": 45, "EXTRACTION_FAIL": 49},
 #      "build_fail_categories": {
 #        "retained_cuda_api": {"count": N, "by_model": {...}, "by_direction": {...}},
 #        ...
@@ -866,9 +868,10 @@ print('VALIDATION PASSED: every failure is classified')
 # Step 4: Review the markdown tables
 # Read results/analysis/error_taxonomy.md
 # Verify:
-# - All BUILD_FAIL categories sum to 202
+# - All BUILD_FAIL categories sum to 180
 # - All RUN_FAIL categories sum to 89
-# - All EXTRACTION_FAIL categories sum to 39
+# - All EXTRACTION_FAIL categories sum to 49
+# - All VERIFY_FAIL categories sum to 45
 # - No double-counting across categories
 
 # Step 5: Refine categories if needed
@@ -886,7 +889,7 @@ git add results/analysis/error_taxonomy.json
 git add results/analysis/error_taxonomy.md
 
 # Commit message:
-# "S-TAXONOMY: Build error taxonomy from 500 result JSONs (8 BUILD_FAIL + 5 RUN_FAIL + 3 EXTRACTION_FAIL categories)"
+# "S-TAXONOMY: Build error taxonomy from 468 result JSONs (8 BUILD_FAIL + 5 RUN_FAIL + 3 EXTRACTION_FAIL + VERIFY_FAIL categories)"
 
 # Step 7: Show me:
 # - Top 3 BUILD_FAIL root causes with counts and percentages
@@ -901,7 +904,7 @@ git add results/analysis/error_taxonomy.md
 - [ ] `results/analysis/error_taxonomy.json` exists with per-model, per-direction, per-category counts
 - [ ] `results/analysis/error_taxonomy.md` has publication-ready tables (5 tables minimum)
 - [ ] Every non-PASS result is classified into exactly one primary category
-- [ ] Validation check passes: total classified == total failures (331)
+- [ ] Validation check passes: total classified == total failures (363)
 - [ ] "other" categories contain <20% of their respective status totals
 - [ ] Top 3 BUILD_FAIL root causes identified with counts
 - [ ] Top 3 RUN_FAIL root causes identified with counts
@@ -935,7 +938,7 @@ ultrathink
 ## CONTEXT
 
 You are extracting three independent analyses from EXISTING data — no new evals
-needed. All 500 result JSONs + spec files + source files are available. Safe for
+needed. All 468 evaluated result JSONs + spec files + source files are available. Safe for
 worktree execution (though SLoC counting needs source files — see Part 1 note).
 
 ## BEFORE YOU START — What I Need From You
@@ -944,7 +947,7 @@ DECISIONS:
 - [ ] SLoC counting method: PHYSICAL lines (non-blank, non-comment) or LOGICAL
       lines (statements)? Recommendation: physical SLoC — simpler, industry-standard
       (what cloc and sloccount report), matches ParEval-Repo's methodology.
-- [ ] Should token analysis include the azure-gpt-4.1 data (17 results)?
+- [ ] Should token analysis include the azure-gpt-4.1 data (17 legacy results, model DISABLED)?
       It uses a different API and has no L1-L4 data. Recommendation: include
       for cross-model comparison but note the smaller sample size.
 - [ ] For self-repair analysis: count only "full repair" (status improved to PASS)
@@ -979,7 +982,7 @@ Extract three publication-ready analyses from existing result data:
    per-attempt status data that enables this breakdown.
 
 # Context
-- 500 result JSONs in results/evaluation/{model}/
+- 468 evaluated result JSONs in results/evaluation/{model}/ (504 raw; 36 kmeans/mummergpu excluded)
 - Each has: prompt_tokens, completion_tokens, total_attempts, attempts[]
 - 18 kernels evaluated (17 Rodinia + 1 XSBench)
 - Source files in rodinia/rodinia-src/ (EMPTY in worktree) and xsbench/xsbench-src/ (gitignored)
@@ -1041,7 +1044,7 @@ python3 scripts/analysis/sloc_analysis.py \
 # Step 3: Create scripts/analysis/token_analysis.py
 # The script must:
 #
-# a) Read ALL 500 result JSONs
+# a) Read ALL 468 evaluated result JSONs (skip kmeans/mummergpu)
 #
 # b) Compute per-model statistics:
 #    - mean, median prompt_tokens
@@ -1095,7 +1098,7 @@ python3 scripts/analysis/token_analysis.py \
 # Step 5: Create scripts/analysis/selfrepair_analysis.py
 # The script must:
 #
-# a) Read ALL 500 result JSONs
+# a) Read ALL 468 evaluated result JSONs (skip kmeans/mummergpu)
 #
 # b) Identify multi-attempt results (total_attempts > 1)
 #    For each, read the attempts[] array:
@@ -1156,7 +1159,7 @@ assert len(sloc['kernels']) >= 17, f'Expected >=17 kernels, got {len(sloc[\"kern
 tokens = json.load(open('results/analysis/token_analysis.json'))
 total = sum(m['total_results'] for m in tokens['by_model'].values())
 print(f'Token analysis: {total} results analyzed')
-assert total == 500, f'Expected 500 results, got {total}'
+assert total == 468, f'Expected 468 results, got {total}'
 
 # Check self-repair analysis
 repair = json.load(open('results/analysis/selfrepair_analysis.json'))
@@ -1187,7 +1190,7 @@ git add results/analysis/token_analysis.json results/analysis/token_analysis.md
 git add results/analysis/selfrepair_analysis.json results/analysis/selfrepair_analysis.md
 
 # Commit message:
-# "S-ANALYSIS: SLoC characterization (18 kernels) + token usage (500 results) + self-repair breakdown"
+# "S-ANALYSIS: SLoC characterization (18 kernels) + token usage (468 results) + self-repair breakdown"
 
 # Step 9: Show me the key findings:
 # SLoC:
@@ -1197,7 +1200,7 @@ git add results/analysis/selfrepair_analysis.json results/analysis/selfrepair_an
 #
 # Tokens:
 # - Which model is cheapest per successful translation?
-# - Total evaluation cost (all 500 tasks)?
+# - Total evaluation cost (all 468 evaluated tasks)?
 # - Does prompt size predict failure?
 #
 # Self-repair:
@@ -1211,7 +1214,7 @@ git add results/analysis/selfrepair_analysis.json results/analysis/selfrepair_an
 - [ ] `results/analysis/sloc_analysis.json` + `.md` exist with data for all 18 kernels
 - [ ] SLoC table includes: kernel name, file count, total SLoC, category, complexity class
 - [ ] SLoC summary: min, max, mean, median, and comparison with 133 SLoC threshold
-- [ ] `results/analysis/token_analysis.json` + `.md` exist with data for all 500 results
+- [ ] `results/analysis/token_analysis.json` + `.md` exist with data for all 468 evaluated results
 - [ ] Token analysis includes: per-model summary, per-kernel prompt size, cost estimates
 - [ ] `results/analysis/selfrepair_analysis.json` + `.md` exist
 - [ ] Self-repair analysis includes: per-model repair rates, per-failure-type repair rates
@@ -1247,7 +1250,7 @@ git add results/analysis/selfrepair_analysis.json results/analysis/selfrepair_an
 
 ---
 
-## SESSION S-VERIFY -- Fix Verification Strategy Ordering + Re-Verify PASS Results
+## SESSION S-VERIFY -- Fix Verification Strategy Ordering + Re-Verify PASS Results [COMPLETED 2026-03-27]
 
 **Priority: P0 -- CRITICAL** | **Parallel Group 1** | **Lane: GPU** | **Duration: 1-2 days** | **Worktree: NO**
 
@@ -1311,9 +1314,9 @@ but fixing this would strengthen the claim to actual functional correctness.
 - 46 specs have both exit_code and stdout_pattern -- ALL 46 have exit_code first
 - 18 specs have ONLY exit_code (no stdout_pattern at all)
 - 0 specs have stdout_pattern before exit_code (the bug is universal)
-- 500 total eval result files, 169 are PASS
-- Per-model PASS counts: claude-sonnet-4-6=113/161, azure-gpt-4.1=9/17,
-  groq-llama-3.3-70b-versatile=30/161, gemini-2.5-flash-lite=17/161
+- 468 evaluated result files (504 raw on disk; 36 kmeans/mummergpu excluded), 105 are PASS
+- Per-model PASS counts (post S-VERIFY): claude-sonnet-4-6=81/156, gemini-2.5-flash-lite=11/156,
+  groq-llama-3.3-70b-versatile=13/156
 
 # Verifier Code Reference (harness/verifier.py lines 49-69):
 #   for strategy in strategies:
@@ -1815,11 +1818,9 @@ ultrathink
 ## BEFORE YOU START -- What I Need From You
 
 DECISIONS:
-- [ ] S-VERIFY should ideally complete first so we know which PASS results are
-      TRUE_PASS (correct output). CPU timing on FALSE_PASS results is wasted work.
-      Confirm: proceed with S-TIMING before S-VERIFY, or wait?
-      Recommendation: Wait for S-VERIFY. If not possible, run baseline timing
-      (Part 1) now and defer eval re-timing (Part 2) until after S-VERIFY.
+- [x] S-VERIFY COMPLETED (2026-03-27). 105/468 are TRUE_PASS with stdout_pattern+exit_code
+      conjunction. All FALSE_PASS specs have been fixed. CPU timing should run on the 105
+      verified PASS results only.
 - [ ] The existing --use-cpu-timing flag in run_eval_batch.py already exists and
       works end-to-end. The flag passes use_cpu_timing=True to evaluate_translation()
       (llm_evaluate.py:850) which passes measure_cpu_time=True to run_spec()
@@ -1837,7 +1838,7 @@ DECISIONS:
 
 EXTERNAL DEPS:
 - [ ] GPU machine available (all timing requires actual execution)
-- [ ] S-VERIFY should complete first (determines which results are TRUE_PASS)
+- [x] S-VERIFY COMPLETED (2026-03-27) — 105 TRUE_PASS results identified
 - [ ] /usr/bin/time must be GNU time (not shell builtin). Verify with:
       /usr/bin/time --version  # should print "GNU time 1.x"
 - [ ] No concurrent GPU eval sessions (S10, S10b) running -- timing needs
@@ -1850,7 +1851,7 @@ Populate CPU timing data (user+system time via GNU /usr/bin/time -v) for:
 This gives the paper wall-clock-independent timing data for performance comparison.
 
 # Why This Matters
-All 500 eval result files have translated_cpu_time_seconds = null and
+All 468 eval result files have translated_cpu_time_seconds = null and
 translated_kernel_time_seconds = null. The baseline_results in specs have
 wall_time (duration_seconds) but no cpu_time. The paper cannot make any
 performance claims without timing data. Even CPU time (not kernel time) is
@@ -1874,7 +1875,7 @@ No code changes are needed. This session only USES the existing infrastructure.
 - GNU time: /usr/bin/time -v (parses "User time (seconds)" + "System time (seconds)")
 - runner.py already has the full measure_cpu_time pipeline implemented
 - 58 baseline PASS specs (54 Rodinia + 4 XSBench)
-- 169 PASS eval results across 4 models (after S-VERIFY, number may decrease)
+- 105 PASS eval results across 3 models (post S-VERIFY, 2026-03-27)
 - Current baseline_results in specs have only wall_time (duration_seconds field)
 
 # ============================================================
@@ -2095,7 +2096,7 @@ git add results/evaluation/*/
 ## PAPER WRITING SESSION PROMPTS
 
 The paper draft (`docs/paper/paper_draft.md`) has all 8 sections drafted (S1-S8, ~11500 words, merged 2026-03-25 from W-S12-PARTIAL). However:
-- S1 (Introduction) and S2 (Related Work) need revision with S7/S8/S9 data (total tasks 452->500, direction asymmetry, augmentation proof)
+- S1 (Introduction) and S2 (Related Work) need revision with S7/S8/S9 data (total tasks now 468 post S-VERIFY, direction asymmetry, augmentation proof)
 - S6 (Results) needs updating with omp-to-cuda direction asymmetry, XSBench cross-direction data, and any S-VERIFY corrections
 - S7 (Discussion) and S8 (Conclusion) need revision once S6 is finalized
 - No bibliography file exists (`docs/paper/references.bib` needed for W-S17 LaTeX conversion)
@@ -2118,7 +2119,7 @@ W-S12-PARTIAL, merged 2026-03-25) but were written with L0 data only. Now we hav
 - L0-L4 augmentation data for 3 models (S7, 348 result files)
 - omp-to-cuda direction data for 3 models (S9, 48 result files)
 - XSBench 12-direction data for 3 models (S8, 180 result files)
-- Total: 500 evaluated translation tasks across 4 models
+- Total: 468 evaluated translation tasks across 3 models (105/468 = 22.44% PASS, post S-VERIFY)
 - Cross-direction asymmetry: cuda-to-omp is 18.8pp easier than omp-to-cuda (aggregate)
 
 If running in a worktree: cd $(git rev-parse --show-toplevel)
@@ -2128,10 +2129,9 @@ This session does NOT need Rodinia source. It reads results/ and writes docs/pap
 ## BEFORE YOU START — What I Need From You
 
 DECISIONS:
-- [ ] The Introduction currently cites "452 evaluated tasks" in the Abstract and body.
-      The actual total is now 500 (eval_summary.json). Should we update to 500 throughout,
-      or keep 452 which was accurate for the data that S6 results tables cover?
-      Recommendation: use 500 in Abstract/Intro, clarify scope per-section in Results.
+- [ ] The Introduction should cite "468 evaluated tasks" (post S-VERIFY verified total).
+      eval_summary.json excludes 36 kmeans/mummergpu results (KNOWN_FAIL source specs).
+      Recommendation: use 468 in Abstract/Intro, clarify scope per-section in Results.
 - [ ] Paraval (ParEval-Repo) reading: Has Samyak read the paper? If yes, provide any
       specific differentiators to emphasize. If not, proceed with existing S2 positioning
       (which is already strong — DOI 10.1145/3754598.3754669 cited).
@@ -2140,16 +2140,16 @@ DECISIONS:
 
 DATA SOURCES (read ALL before writing):
 1. docs/paper/paper_draft.md            — existing S1 + S2 text to revise
-2. results/evaluation/eval_summary.json — authoritative aggregate numbers (500 tasks)
+2. results/evaluation/eval_summary.json — authoritative aggregate numbers (468 tasks, post S-VERIFY)
 3. results/evaluation/s9_direction_comparison.txt — direction asymmetry data
 4. docs/paper/paper_sections_3_4_5.md   — W-S12-PARTIAL original draft (for context)
 
 ### SESSION GOAL
 
 Revise S1 (Introduction) and S2 (Related Work) to reflect the complete evaluation
-dataset (500 tasks, 12 directions, L0-L4 augmentation) while maintaining academic
-tone and SC26 quality. S1 and S2 are the first thing reviewers read — they must be
-airtight.
+dataset (468 tasks, 3 models, 12 directions, L0-L4 augmentation, 22.44% overall PASS)
+while maintaining academic tone and SC26 quality. S1 and S2 are the first thing
+reviewers read — they must be airtight.
 
 ## WHAT TO REVISE IN S1 (Introduction)
 
@@ -2160,8 +2160,8 @@ Findings Preview. The structure is sound. Specific changes needed:
    - "452 evaluated tasks" -> 500 (if decision above approves)
    - Verify "17 Rodinia kernels" still correct for primary eval (it is)
    - Add "12 translation directions" to the scope (currently says "six")
-   - Update augmentation finding: "5.5pp degradation" — verify against actual L0-L4
-     data: Claude=70.6% at all levels, Gemini=23.5%->5.9%, Groq=29.4%->23.5%
+   - Update pass rate: overall 105/468 = 22.44% (post S-VERIFY with stdout_pattern verification)
+   - Per-model: claude-sonnet-4-6 51.92%, gemini-2.5-flash-lite 7.05%, groq 8.33%
 
 2. Add direction asymmetry to Key Findings Preview (S1.4):
    - "CUDA-to-OpenMP is 18.8 percentage points easier than OpenMP-to-CUDA in aggregate"
@@ -2181,8 +2181,8 @@ Parallel Code Evaluation, Repository-Level Translation, LLM-for-HPC, ParaCodex. 
 structure and positioning are strong. Specific changes:
 
 1. Verify Table 1 numbers match eval_summary.json:
-   - "184 specs, 3 suites, 6 directions, 4 models" — directions now 12, verify
-   - "70.6% PASS (Claude Sonnet 4.6)" — still correct for L0 cuda-to-omp
+   - "184 specs, 3 suites, 12 directions, 3 models" — verify directions=12, models=3
+   - "51.92% PASS (Claude Sonnet 4.6)" — overall rate post S-VERIFY (was 70.6% for L0 cuda-to-omp only)
 
 2. Check if any new related work should be added:
    - LASSI (already cited in S2.4)
@@ -2203,7 +2203,7 @@ structure and positioning are strong. Specific changes:
 Invoke: "Use the paper-drafter agent to revise S1 Introduction"
 Agent MUST pre-read these files:
   1. docs/paper/paper_draft.md               — current text to revise
-  2. results/evaluation/eval_summary.json     — authoritative 500-task numbers
+  2. results/evaluation/eval_summary.json     — authoritative 468-task numbers (post S-VERIFY)
   3. results/evaluation/s9_direction_comparison.txt  — direction asymmetry
 Agent writing rules (non-negotiable):
   1. Data-backed claims only — cite specific numbers from results files
@@ -2224,12 +2224,12 @@ Agent writing rules (non-negotiable):
 # Step 8: Update Data Verification Notes at bottom of paper_draft.md
 # Step 9: Verify: grep for all numbers in S1/S2 and cross-check against data files
 # Step 10: Git commit and push
-# Message: "SC26 paper: revise S1-S2 with 500-task data, direction asymmetry, augmentation proof"
+# Message: "SC26 paper: revise S1-S2 with 468-task data, direction asymmetry, augmentation proof"
 
 ## ACCEPTANCE CRITERIA
 
 - [ ] All aggregate numbers in S1 match eval_summary.json
-- [ ] Direction asymmetry finding (18.8pp) added to S1.4 Key Findings
+- [ ] Direction asymmetry finding added to S1.4 Key Findings (18.8pp is L0-Rodinia-only; full-dataset gap is ~10pp: cuda-to-omp 24.31% vs omp-to-cuda 14.29%)
 - [ ] Training-data contamination argument strengthened with L4 evidence
 - [ ] Table 1 in S2 updated if direction count changed (6 -> 12)
 - [ ] Every \cite{} in S1-S2 corresponds to a subsection in S2
@@ -2256,7 +2256,7 @@ Agent writing rules (non-negotiable):
 
 ---
 
-## SESSION S13 — Paper Draft: Results + Discussion + Conclusion Revision (S6-S8)
+## SESSION S13 — Paper Draft: Results + Discussion + Conclusion Revision (S6-S8) [COMPLETED 2026-03-27]
 
 **Priority: P1 — HIGH** | **Group 3** | **Lane: Supervised** | **Duration: 1 day** | **Worktree: YES**
 
@@ -2282,9 +2282,9 @@ The Rodinia submodule is EMPTY in worktrees — that is expected and fine.
 ## BEFORE YOU START — What I Need From You
 
 DECISIONS:
-- [ ] S-VERIFY status: Has verification been upgraded beyond exit-code-only?
-      If YES: S6 tables may have changed PASS/FAIL counts. Re-read all data.
-      If NO: S7.4 Threats to Validity already acknowledges this honestly. Keep as-is.
+- [x] S-VERIFY status: COMPLETED (2026-03-27). Verification upgraded to stdout_pattern+exit_code
+      conjunction. All 58 non-KNOWN_FAIL specs verified TRUE PASS. Eval results: 105/468 PASS (22.44%).
+      S6 tables MUST use post-S-VERIFY numbers.
 - [ ] S10 status: Is cuda-to-opencl data available?
       If YES: Add S6.6 subsection with cuda-to-opencl results alongside XSBench.
       If NO: Keep S6.6 as-is with XSBench cross-direction only + "Rodinia cross-direction
@@ -2299,7 +2299,7 @@ DATA SOURCES (read ALL before writing):
 
 Primary (MUST read):
 1. docs/paper/paper_draft.md                           — existing S6-S8 text to revise
-2. results/evaluation/eval_summary.json                — authoritative 500-task aggregate
+2. results/evaluation/eval_summary.json                — authoritative 468-task aggregate (post S-VERIFY)
 3. results/evaluation/s9_direction_comparison.txt      — direction asymmetry per-kernel
 
 Secondary (read if available):
@@ -2321,7 +2321,7 @@ S6 currently has 6 subsections: 6.1 Overall Pass Rates, 6.2 Failure Taxonomy,
 
 ### S6.1 Overall Pass Rates
 
-Current Table 7 shows L0 cuda-to-omp for 4 models (17 kernels each, 68 tasks).
+Current Table 7 shows overall pass rates for 3 models (468 evaluated tasks, 105 PASS = 22.44%).
 Changes needed:
 - Verify all numbers still match eval_summary.json (they should unless S-VERIFY changed them)
 - If S-VERIFY changed any PASS/FAIL outcomes, update Table 7 + all derived numbers
@@ -2329,7 +2329,7 @@ Changes needed:
 
 ### S6.2 Failure Taxonomy
 
-Current: 26 BUILD_FAIL, 10 RUN_FAIL, 2 EXTRACTION_FAIL, 0 VERIFY_FAIL out of 38 L0 failures.
+Current: 180 BUILD_FAIL, 89 RUN_FAIL, 49 EXTRACTION_FAIL, 45 VERIFY_FAIL out of 363 total failures (468 tasks).
 Changes needed:
 - If S-TAXONOMY produced a detailed classification, integrate the BUILD_FAIL subcategories:
   (retained CUDA calls, missing pragma, wrong types, missing headers, etc.)
@@ -2423,7 +2423,7 @@ Agent MUST pre-read:
 
 - [ ] Every number in Table 7 (S6.1) matches eval_summary.json
 - [ ] Rodinia omp-to-cuda results added to S6.6 with per-model and per-kernel data
-- [ ] Direction asymmetry (18.8pp) discussed in both S6.6 and new S7.X subsection
+- [ ] Direction asymmetry discussed in both S6.6 and new S7.X subsection (18.8pp is L0-Rodinia-only; full-dataset gap is ~10pp: 24.31% vs 14.29%)
 - [ ] At least 3 table references and 3 figure references in S6
 - [ ] S7.4 Threats to Validity honestly addresses all known weaknesses
 - [ ] S8 updated with revised aggregate numbers
@@ -2458,7 +2458,7 @@ Agent MUST pre-read:
 
 ---
 
-## SESSION S-FIGURES — Regenerate Publication Figures with Complete Data
+## SESSION S-FIGURES — Regenerate Publication Figures with Complete Data [COMPLETED 2026-03-27]
 
 **Priority: P2 — MEDIUM** | **Group 2** | **Lane: Any** | **Duration: 4 hours** | **Worktree: YES**
 
@@ -2525,7 +2525,7 @@ Use clean boxes and arrows. No photographs or icons — geometric shapes only.
 
 ### F2: Kernel x Model Heatmap (UPDATE)
 
-Currently: L0 cuda-to-omp, 17 kernels x 4 models.
+Currently: All directions, 17 kernels + xsbench x 3 models. Overall 105/468 = 22.44% PASS.
 Update: Add omp-to-cuda data as a second panel or side-by-side comparison.
 Data: Table 8 from paper_draft.md + s9_direction_comparison.txt
 Colors: green (PASS), red (BUILD_FAIL), orange (RUN_FAIL), grey (EXTRACTION_FAIL)
@@ -2533,10 +2533,10 @@ Sort kernels by difficulty (always-pass at top, always-fail at bottom).
 
 ### F3: Failure Taxonomy (UPDATE)
 
-Currently: Stacked bar chart, L0 cuda-to-omp, 4 models.
+Currently: Stacked bar chart, all tasks, 3 models. 105 PASS / 180 BUILD_FAIL / 89 RUN_FAIL / 49 EXTRACTION_FAIL / 45 VERIFY_FAIL.
 Update: Add omp-to-cuda failure distribution as grouped bars or second panel.
 Data: eval_summary.json by_model and by_direction sections.
-Categories: PASS, BUILD_FAIL, RUN_FAIL, EXTRACTION_FAIL, VERIFY_FAIL (always 0).
+Categories: PASS (105), BUILD_FAIL (180), RUN_FAIL (89), EXTRACTION_FAIL (49), VERIFY_FAIL (45).
 
 ### F4: Augmentation Robustness Curve (UPDATE)
 
@@ -3190,7 +3190,7 @@ The paper draft exists across these files:
 - Sections 6-8 (Results, Discussion, Conclusion) — check `docs/paper/paper_draft.md` or separate files
 
 Ground truth data:
-- `results/evaluation/eval_summary.json` — canonical aggregate numbers (500 tasks, 4 models)
+- `results/evaluation/eval_summary.json` — canonical aggregate numbers (468 tasks, 3 models)
 - `results/evaluation/` — 500 individual result JSON files
 - `docs/paper/figures/` — 6 figures (F2-F6) + 1 LaTeX table (T2)
 
@@ -3219,51 +3219,45 @@ Map the argument arc:
 
 Read `results/evaluation/eval_summary.json` and verify EVERY number in the paper.
 
-The eval_summary.json contains:
-- total_tasks: 500
-- by_model: claude-sonnet-4-6 (113/161, 70.19%), azure-gpt-4.1 (9/17, 52.94%),
-  groq-llama-3.3-70b-versatile (30/161, 18.63%), gemini-2.5-flash-lite (17/161, 10.56%)
-- by_direction: cuda-to-omp (110/287, 38.33%), omp-to-cuda (17/63, 26.98%), plus 10 more
-- by_augment_level: L0 (52/152, 34.21%), L1 (32/87, 36.78%), L2 (31/87, 35.63%),
-  L3 (29/87, 33.33%), L4 (25/87, 28.74%)
-- failure_taxonomy: BUILD_FAIL=202, RUN_FAIL=89, VERIFY_FAIL=0, EXTRACTION_FAIL=39
-- self_repair: attempt_1_pass=134, total_repaired_by_retry=35
+The eval_summary.json contains (post S-VERIFY, 2026-03-27):
+- total_tasks: 468
+- by_model: claude-sonnet-4-6 (81/156, 51.92%), gemini-2.5-flash-lite (11/156, 7.05%),
+  groq-llama-3.3-70b-versatile (13/156, 8.33%)
+- by_direction: cuda-to-omp (62/255, 24.31%), omp-to-cuda (9/63, 14.29%), plus 10 more
+- by_augment_level: L0 (31/132, 23.48%), L1 (20/84, 23.81%), L2 (21/84, 25.00%),
+  L3 (17/84, 20.24%), L4 (16/84, 19.05%)
+- failure_taxonomy: BUILD_FAIL=180, RUN_FAIL=89, VERIFY_FAIL=45, EXTRACTION_FAIL=49
+- self_repair: attempt_1_pass=78, total_repaired_by_retry=27
 
-IMPORTANT DISTINCTION — the paper uses TWO different denominators:
-- **L0 cuda-to-omp headline numbers** (17 kernels x 4 models = 68 tasks):
-  Claude 12/17=70.6%, GPT-4.1 9/17=52.9%, Llama 5/17=29.4%, Gemini 4/17=23.5%
-- **Overall numbers** (all levels, directions, models = 500 tasks):
-  Claude 113/161=70.2%, Llama 30/161=18.6%, Gemini 17/161=10.6%
+IMPORTANT: Post S-VERIFY (2026-03-27), all numbers changed. The paper must use verified data:
+- **Overall numbers** (3 models, 468 evaluated tasks):
+  Claude 81/156=51.92%, Gemini 11/156=7.05%, Groq 13/156=8.33%
+  Overall: 105/468=22.44%
 
-Make sure the paper is ALWAYS clear about which subset each number comes from. If the paper
-says "70.6%" it must specify "(L0, cuda-to-omp, 17 kernels)". If it says "70.2%" it must
-specify "(all levels and directions, 161 tasks)".
+Make sure the paper is ALWAYS clear about which subset each number comes from.
 
 Check every number. Create a verification checklist:
 ```
-[ ] Total tasks = 500
-[ ] Claude L0 cuda-to-omp = 12/17 = 70.6% (or 70.59%)
-[ ] Claude overall = 113/161 = 70.2% (or 70.19%)
-[ ] GPT-4.1 = 9/17 = 52.9% (L0 cuda-to-omp only; no L1-L4 or other directions)
-[ ] Llama L0 cuda-to-omp = 5/17 = 29.4%
-[ ] Llama overall = 30/161 = 18.6%
-[ ] Gemini L0 cuda-to-omp = 4/17 = 23.5%
-[ ] Gemini overall = 17/161 = 10.6%
-[ ] BUILD_FAIL total = 202 (percentage of all failures: 202/330 = 61.2%)
-[ ] RUN_FAIL total = 89 (27.0% of failures)
-[ ] EXTRACTION_FAIL = 39 (11.8% of failures)
-[ ] VERIFY_FAIL = 0 across all 500 tasks
-[ ] Self-repair: 35 repaired by retry
-[ ] Augmentation L0-L4 per-model rates (check each individual value)
-[ ] XSBench: 48/180 = 26.7%
-[ ] omp-to-cuda: 17/63 = 27.0%
-[ ] Per-kernel: pathfinder 73.7% (highest), heartwall/hotspot/nw/srad 0% (lowest)
+[ ] Total evaluated tasks = 468 (504 raw; 36 kmeans/mummergpu excluded)
+[ ] Models = 3 (azure-gpt-4.1 DISABLED)
+[ ] Claude overall = 81/156 = 51.92%
+[ ] Gemini overall = 11/156 = 7.05%
+[ ] Groq overall = 13/156 = 8.33%
+[ ] Overall PASS = 105/468 = 22.44%
+[ ] BUILD_FAIL total = 180 (38.46% of all 468 tasks)
+[ ] RUN_FAIL total = 89 (19.02%)
+[ ] EXTRACTION_FAIL = 49 (10.47%)
+[ ] VERIFY_FAIL = 45 (9.62%)
+[ ] Self-repair: 78 first-attempt PASS, 27 repaired by retry, 105 total
+[ ] Augmentation L0-L4: L0=23.48%, L1=23.81%, L2=25.00%, L3=20.24%, L4=19.05%
+[ ] Per-kernel highest: bptree 66.67%, hotspot3d 61.11%, particlefilter 55.56%
+[ ] Per-kernel lowest: heartwall 0%, myocyte 0%, nw 0%
 ```
 
-CRITICAL: The paper's Abstract says "BUILD_FAIL accounts for 68.4% of all failures (26/38)".
-This is the L0 cuda-to-omp subset (38 failures out of 68 tasks). The OVERALL failure
-breakdown is 202/330 = 61.2%. Both numbers may be valid but they MUST be labeled with
-their scope. Verify which the paper uses where and ensure consistency.
+CRITICAL: Post S-VERIFY (2026-03-27), the failure breakdown is: BUILD_FAIL 180/468 = 38.46%
+of all tasks (or 180/363 = 49.59% of failures only). VERIFY_FAIL is now 45 (9.62%), not zero.
+The paper must use these post-S-VERIFY numbers. Any pre-S-VERIFY numbers (e.g., "68.4%",
+"61.2%", "202 BUILD_FAIL", "0 VERIFY_FAIL") are stale and must be replaced.
 
 ## Step 3: Consistency pass
 
@@ -3280,21 +3274,18 @@ their scope. Verify which the paper uses where and ensure consistency.
 Flag every sentence that overstates what was evaluated:
 - "184 specs" = framework CAPACITY, not evaluation scope
 - Evaluation covered: 17 Rodinia kernels + 1 XSBench kernel = 18 kernels
-- GPT-4.1 was only evaluated on L0 cuda-to-omp (17 tasks) — no L1-L4, no other directions
-- Only 3 of 4 models have L1-L4 augmentation data
-- "6 translation directions" = framework capacity; evaluation covered cuda-to-omp +
-  omp-to-cuda (Rodinia) + 12 XSBench directions (case-study, not standard batch)
-- Correct phrasing: "ParBench curates 184 specs" (capacity) vs "We evaluate 500 tasks" (actual)
+- 3 models evaluated (azure-gpt-4.1 DISABLED); 468 evaluated tasks in summary
+- 12 translation directions evaluated
+- Correct phrasing: "ParBench curates 184 specs" (capacity) vs "We evaluate 468 tasks" (actual)
 
 ## Step 5: Threats to validity
 
 Verify S7 (or wherever threats are discussed) honestly addresses ALL of:
-1. Exit-code verification limitation (PASS means "didn't crash", not "correct output")
-   — unless S-VERIFY has already fixed this
+1. ~~Exit-code verification limitation~~ — **RESOLVED by S-VERIFY (2026-03-27)**: stdout_pattern+exit_code conjunction now verifies functional correctness
 2. Single-run evaluation (no statistical significance; no confidence intervals)
 3. Wall-clock timing only (no kernel-time measurement; speedup_ratio unreliable)
-4. Small model sample (4 models; results may not generalize to other LLMs)
-5. GPT-4.1 evaluated on subset only (17/500 tasks)
+4. Small model sample (3 models; results may not generalize to other LLMs)
+5. ~~GPT-4.1 evaluated on subset only~~ — **RESOLVED**: azure-gpt-4.1 DISABLED, excluded from analysis
 6. Training data contamination: augmentation mitigates but does not eliminate
 7. Rodinia-dominant evaluation (17/18 kernels are Rodinia)
 8. Temperature/sampling: single temperature setting per model
@@ -3634,20 +3625,21 @@ Create these files:
 ### Error taxonomy table (in S6 Results)
 ```latex
 \begin{table}[t]
-\caption{Failure taxonomy across 500 evaluated translation tasks. VERIFY\_FAIL is zero:
-when LLM-translated code compiles and runs, the parallel logic is correct.}
+\caption{Failure taxonomy across 468 evaluated translation tasks. BUILD\_FAIL dominates
+at 38.46\%, while VERIFY\_FAIL (9.62\%) confirms that some translations compile and run
+but produce incorrect output.}
 \label{tab:error_taxonomy}
 \centering\small
 \begin{tabular}{lrr}
 \toprule
-Failure Type & Count & \% of Failures \\
+Failure Type & Count & \% of Total \\
 \midrule
-BUILD\_FAIL      & 202 & 61.2\% \\
-RUN\_FAIL        &  89 & 27.0\% \\
-EXTRACTION\_FAIL &  39 & 11.8\% \\
-VERIFY\_FAIL     &   0 &  0.0\% \\
+BUILD\_FAIL      & 180 & 38.46\% \\
+RUN\_FAIL        &  89 & 19.02\% \\
+EXTRACTION\_FAIL &  49 & 10.47\% \\
+VERIFY\_FAIL     &  45 &  9.62\% \\
 \midrule
-Total failures   & 330 &        \\
+Total failures   & 363 &        \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -3672,9 +3664,10 @@ Gemini 2.5 Flash-Lite & 23.5\% & 17.6\% & 11.8\% & 11.8\% &  5.9\% \\
 \end{tabular}
 \end{table}
 ```
-NOTE: Verify these per-model per-level numbers against the individual result files.
-eval_summary.json has aggregate by_augment_level but NOT per-model-per-level. You may
-need to compute these from the raw results or check the paper text for the source.
+NOTE: These per-model per-level numbers are PRE-S-VERIFY placeholders. Post S-VERIFY
+(2026-03-27), overall per-level rates are: L0=23.48%, L1=23.81%, L2=25.00%, L3=20.24%,
+L4=19.05%. Per-model: claude=51.92%, gemini=7.05%, groq=8.33% (overall).
+Verify against eval_summary.json and compute per-model-per-level from raw results.
 
 ### Model comparison table
 Copy and adapt `docs/paper/figures/t2_model_comparison.tex` into S5 or S6.
@@ -3707,8 +3700,8 @@ For each figure, use appropriate width:
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{figures/f3_failure_taxonomy.pdf}
-\caption{Failure taxonomy across 500 evaluated tasks. BUILD\_FAIL dominates at 61.2\%
-of all failures, while VERIFY\_FAIL is zero.}
+\caption{Failure taxonomy across 468 evaluated tasks. BUILD\_FAIL dominates at 38.46\%
+of all tasks; VERIFY\_FAIL (9.62\%) reveals translations that compile and run but produce wrong output.}
 \label{fig:failure_taxonomy}
 \end{figure}
 
@@ -3716,8 +3709,8 @@ of all failures, while VERIFY\_FAIL is zero.}
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/f2_kernel_model_heatmap.pdf}
-\caption{Per-kernel pass rates across four models (L0, cuda-to-omp). Pathfinder (73.7\%)
-and hotspot3D (68.4\%) are easiest; heartwall, hotspot, nw, and srad (0\%) are hardest.}
+\caption{Per-kernel pass rates across three models (all directions). bptree (66.67\%)
+and hotspot3D (61.11\%) are easiest; heartwall, myocyte, and nw (0\%) are hardest.}
 \label{fig:kernel_heatmap}
 \end{figure*}
 ```
@@ -3817,7 +3810,7 @@ grep -rn "samyak\|jhaveri" . --include="*.tex" --include="*.bib" | wc -l  # Must
 ## LaTeX gotchas to watch for
 
 1. **Underscore in text mode**: `BUILD_FAIL` -> `BUILD\_FAIL` (or `\texttt{BUILD\_FAIL}`)
-2. **Percent sign**: `70.6%` -> `70.6\%`
+2. **Percent sign**: `51.92%` -> `51.92\%`
 3. **Ampersand in text**: `&` -> `\&`
 4. **Hash in text**: `#pragma` -> use `\texttt` or `\lstinline`
 5. **Tilde**: `~` is a non-breaking space; use `\textasciitilde` for literal
@@ -4000,8 +3993,8 @@ Source: results/evaluation/eval_summary.json
 
 | Location in Paper | Claim | eval_summary.json Field | Actual Value | Match? |
 |-------------------|-------|------------------------|--------------|--------|
-| Abstract | "500 tasks" | total_tasks | 500 | YES |
-| Abstract | "70.6% PASS" | L0 cuda-to-omp Claude | 12/17 | YES |
+| Abstract | "468 tasks" | total_tasks | 468 | YES |
+| Abstract | "51.92% PASS" | Overall Claude pass rate | 81/156 | YES |
 | ... | ... | ... | ... | ... |
 ```
 
@@ -4032,9 +4025,9 @@ for k in sorted(d['by_kernel'].keys()):
 
 Cross-check paper's scope claims:
 - "184 specs" -> must use "curates" or "supports" (not "evaluates")
-- "500 tasks" -> matches total_tasks
+- "468 tasks" -> matches total_tasks
 - "17 Rodinia kernels" -> check by_kernel count (minus xsbench = 17 Rodinia)
-- "4 LLMs" -> verify all 4 appear in by_model
+- "3 LLMs" -> verify all 3 appear in by_model (azure-gpt-4.1 DISABLED)
 - Translation directions -> verify which were actually evaluated vs claimed as supported
 
 ### 1e. Anonymous repo spot-check
@@ -4100,16 +4093,15 @@ Once ALL audit checks pass:
    Attached is the ParBench paper draft for SC26, ready for your review.
 
    Key numbers:
-   - 500 translation tasks across 4 LLMs, 18 kernels, multiple directions
-   - Claude Sonnet 4.6: 70.6% PASS (best); Gemini Flash-Lite: 23.5% (worst)
-   - Zero VERIFY_FAIL across all 500 tasks
-   - Augmentation: Claude perfectly level-invariant; Gemini degrades 75% at L4
+   - 468 evaluated translation tasks across 3 LLMs, 18 kernels, 12 directions
+   - Claude Sonnet 4.6: 51.92% PASS (best); Gemini Flash-Lite: 7.05% (worst)
+   - Verified with stdout_pattern+exit_code conjunction (post S-VERIFY)
+   - Augmentation: level-invariant across L1-L4 (54/60 Rodinia PASS)
 
    Known limitations (addressed in Threats to Validity):
-   - Exit-code verification (PASS = didn't crash, not verified output)
    - Single-run evaluation (no statistical significance)
    - Wall-clock timing only (no kernel profiling)
-   - 4 models is a small sample
+   - 3 models is a small sample
 
    I need feedback by [DATE] to meet the April 8 deadline.
    Expecting 2-3 revision cycles.
