@@ -1,0 +1,1064 @@
+{
+  "generated_at": "2026-03-28T15:20:28.178073",
+  "alpha": 0.05,
+  "total_records": 546,
+  "wilson_cis": {
+    "by_model": {
+      "claude-sonnet-4-6": {
+        "rate": 0.5385,
+        "ci_lower": 0.466,
+        "ci_upper": 0.6093,
+        "n": 182
+      },
+      "gemini-2.5-flash-lite": {
+        "rate": 0.0824,
+        "ci_lower": 0.0506,
+        "ci_upper": 0.1315,
+        "n": 182
+      },
+      "groq-llama-3.3-70b-versatile": {
+        "rate": 0.0989,
+        "ci_lower": 0.0635,
+        "ci_upper": 0.1509,
+        "n": 182
+      }
+    },
+    "by_direction": {
+      "cuda-to-omp": {
+        "rate": 0.2431,
+        "ci_lower": 0.1946,
+        "ci_upper": 0.2993,
+        "n": 255
+      },
+      "cuda-to-omp_target": {
+        "rate": 0.2667,
+        "ci_lower": 0.109,
+        "ci_upper": 0.5195,
+        "n": 15
+      },
+      "cuda-to-opencl": {
+        "rate": 0.303,
+        "ci_lower": 0.2055,
+        "ci_upper": 0.4222,
+        "n": 66
+      },
+      "omp-to-cuda": {
+        "rate": 0.1429,
+        "ci_lower": 0.077,
+        "ci_upper": 0.2497,
+        "n": 63
+      },
+      "omp-to-omp_target": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.2039,
+        "n": 15
+      },
+      "omp-to-opencl": {
+        "rate": 0.381,
+        "ci_lower": 0.25,
+        "ci_upper": 0.5319,
+        "n": 42
+      },
+      "omp_target-to-cuda": {
+        "rate": 0.2667,
+        "ci_lower": 0.109,
+        "ci_upper": 0.5195,
+        "n": 15
+      },
+      "omp_target-to-omp": {
+        "rate": 0.2,
+        "ci_lower": 0.0705,
+        "ci_upper": 0.4519,
+        "n": 15
+      },
+      "omp_target-to-opencl": {
+        "rate": 0.2667,
+        "ci_lower": 0.109,
+        "ci_upper": 0.5195,
+        "n": 15
+      },
+      "opencl-to-cuda": {
+        "rate": 0.3333,
+        "ci_lower": 0.1518,
+        "ci_upper": 0.5829,
+        "n": 15
+      },
+      "opencl-to-omp": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.2039,
+        "n": 15
+      },
+      "opencl-to-omp_target": {
+        "rate": 0.2667,
+        "ci_lower": 0.109,
+        "ci_upper": 0.5195,
+        "n": 15
+      }
+    },
+    "by_kernel": {
+      "backprop": {
+        "rate": 0.625,
+        "ci_lower": 0.4271,
+        "ci_upper": 0.7884,
+        "n": 24
+      },
+      "bfs": {
+        "rate": 0.1667,
+        "ci_lower": 0.0668,
+        "ci_upper": 0.3585,
+        "n": 24
+      },
+      "bptree": {
+        "rate": 0.5833,
+        "ci_lower": 0.3883,
+        "ci_upper": 0.7553,
+        "n": 24
+      },
+      "cfd": {
+        "rate": 0.2083,
+        "ci_lower": 0.0924,
+        "ci_upper": 0.4047,
+        "n": 24
+      },
+      "dwt2d": {
+        "rate": 0.6667,
+        "ci_lower": 0.2077,
+        "ci_upper": 0.9385,
+        "n": 3
+      },
+      "gaussian": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.5615,
+        "n": 3
+      },
+      "heartwall": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.138,
+        "n": 24
+      },
+      "hotspot": {
+        "rate": 0.125,
+        "ci_lower": 0.0434,
+        "ci_upper": 0.31,
+        "n": 24
+      },
+      "hotspot3d": {
+        "rate": 0.625,
+        "ci_lower": 0.4271,
+        "ci_upper": 0.7884,
+        "n": 24
+      },
+      "lavamd": {
+        "rate": 0.3333,
+        "ci_lower": 0.1797,
+        "ci_upper": 0.5329,
+        "n": 24
+      },
+      "lud": {
+        "rate": 0.4167,
+        "ci_lower": 0.2447,
+        "ci_upper": 0.6117,
+        "n": 24
+      },
+      "myocyte": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.1546,
+        "n": 21
+      },
+      "nn": {
+        "rate": 0.1667,
+        "ci_lower": 0.0584,
+        "ci_upper": 0.3922,
+        "n": 18
+      },
+      "nw": {
+        "rate": 0.0476,
+        "ci_lower": 0.0085,
+        "ci_upper": 0.2267,
+        "n": 21
+      },
+      "particlefilter": {
+        "rate": 0.4762,
+        "ci_lower": 0.2834,
+        "ci_upper": 0.6763,
+        "n": 21
+      },
+      "pathfinder": {
+        "rate": 0.1429,
+        "ci_lower": 0.0498,
+        "ci_upper": 0.3464,
+        "n": 21
+      },
+      "srad": {
+        "rate": 0.1429,
+        "ci_lower": 0.0498,
+        "ci_upper": 0.3464,
+        "n": 21
+      },
+      "streamcluster": {
+        "rate": 0.0476,
+        "ci_lower": 0.0085,
+        "ci_upper": 0.2267,
+        "n": 21
+      },
+      "xsbench": {
+        "rate": 0.1889,
+        "ci_lower": 0.1384,
+        "ci_upper": 0.2523,
+        "n": 180
+      }
+    },
+    "by_level": {
+      "L0": {
+        "rate": 0.2714,
+        "ci_lower": 0.2158,
+        "ci_upper": 0.3353,
+        "n": 210
+      },
+      "L1": {
+        "rate": 0.2381,
+        "ci_lower": 0.1597,
+        "ci_upper": 0.3394,
+        "n": 84
+      },
+      "L2": {
+        "rate": 0.25,
+        "ci_lower": 0.1697,
+        "ci_upper": 0.3521,
+        "n": 84
+      },
+      "L3": {
+        "rate": 0.2024,
+        "ci_lower": 0.1304,
+        "ci_upper": 0.3004,
+        "n": 84
+      },
+      "L4": {
+        "rate": 0.1905,
+        "ci_lower": 0.1208,
+        "ci_upper": 0.2872,
+        "n": 84
+      }
+    }
+  },
+  "model_comparison": {
+    "omnibus_chi2": 133.5548,
+    "omnibus_p": 0.0,
+    "dof": 2,
+    "cramers_v": 0.4946,
+    "cramers_v_interpretation": "medium",
+    "min_expected_count": 43.7,
+    "low_expected_counts": false,
+    "n_total": 546,
+    "alpha_pairwise": 0.016667,
+    "pairwise": [
+      {
+        "pair": "claude-sonnet-4-6 vs gemini-2.5-flash-lite",
+        "odds_ratio": 12.9889,
+        "or_ci_lower": 7.1046,
+        "or_ci_upper": 23.7467,
+        "p_value": 0.0,
+        "p_corrected": 0.0,
+        "significant": "True",
+        "cohens_h": 1.0654,
+        "effect_size": "large"
+      },
+      {
+        "pair": "claude-sonnet-4-6 vs groq-llama-3.3-70b-versatile",
+        "odds_ratio": 10.6296,
+        "or_ci_lower": 6.0279,
+        "or_ci_upper": 18.7443,
+        "p_value": 0.0,
+        "p_corrected": 0.0,
+        "significant": "True",
+        "cohens_h": 1.008,
+        "effect_size": "large"
+      },
+      {
+        "pair": "gemini-2.5-flash-lite vs groq-llama-3.3-70b-versatile",
+        "odds_ratio": 0.8184,
+        "or_ci_lower": 0.399,
+        "or_ci_upper": 1.6784,
+        "p_value": 0.71556,
+        "p_corrected": 1.0,
+        "significant": "False",
+        "cohens_h": -0.0575,
+        "effect_size": "small"
+      }
+    ]
+  },
+  "chi2_augmentation_by_model": [
+    {
+      "group": "claude-sonnet-4-6",
+      "group_key": "model",
+      "levels_tested": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "contingency_table": [
+        [
+          9,
+          8
+        ],
+        [
+          8,
+          9
+        ],
+        [
+          8,
+          9
+        ],
+        [
+          7,
+          10
+        ],
+        [
+          9,
+          8
+        ]
+      ],
+      "chi2": 0.6596,
+      "p_value": 0.956211,
+      "p_corrected_bonferroni": 1.0,
+      "dof": 4,
+      "cramers_v": 0.0881,
+      "cramers_v_interpretation": "negligible",
+      "df_star": 1,
+      "low_expected_counts": false,
+      "significant_at_05": false,
+      "n_total": 85,
+      "n_bonferroni_tests": 4,
+      "fisher_exact_l0_vs_augmented": {
+        "table": [
+          [
+            9,
+            8
+          ],
+          [
+            32,
+            36
+          ]
+        ],
+        "odds_ratio": 1.2656,
+        "p_value": 0.787895,
+        "p_corrected": 1.0
+      }
+    },
+    {
+      "group": "gemini-2.5-flash-lite",
+      "group_key": "model",
+      "levels_tested": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "contingency_table": [
+        [
+          3,
+          14
+        ],
+        [
+          3,
+          14
+        ],
+        [
+          3,
+          14
+        ],
+        [
+          2,
+          15
+        ],
+        [
+          0,
+          17
+        ]
+      ],
+      "chi2": 3.5504,
+      "p_value": 0.470261,
+      "p_corrected_bonferroni": 1.0,
+      "dof": 4,
+      "cramers_v": 0.2044,
+      "cramers_v_interpretation": "small",
+      "df_star": 1,
+      "low_expected_counts": true,
+      "significant_at_05": false,
+      "n_total": 85,
+      "n_bonferroni_tests": 4,
+      "fisher_exact_l0_vs_augmented": {
+        "table": [
+          [
+            3,
+            14
+          ],
+          [
+            8,
+            60
+          ]
+        ],
+        "odds_ratio": 1.6071,
+        "p_value": 0.685867,
+        "p_corrected": 1.0
+      }
+    },
+    {
+      "group": "groq-llama-3.3-70b-versatile",
+      "group_key": "model",
+      "levels_tested": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "contingency_table": [
+        [
+          3,
+          14
+        ],
+        [
+          2,
+          15
+        ],
+        [
+          2,
+          15
+        ],
+        [
+          2,
+          15
+        ],
+        [
+          1,
+          16
+        ]
+      ],
+      "chi2": 1.1333,
+      "p_value": 0.888948,
+      "p_corrected_bonferroni": 1.0,
+      "dof": 4,
+      "cramers_v": 0.1155,
+      "cramers_v_interpretation": "small",
+      "df_star": 1,
+      "low_expected_counts": true,
+      "significant_at_05": false,
+      "n_total": 85,
+      "n_bonferroni_tests": 4,
+      "fisher_exact_l0_vs_augmented": {
+        "table": [
+          [
+            3,
+            14
+          ],
+          [
+            7,
+            61
+          ]
+        ],
+        "odds_ratio": 1.8673,
+        "p_value": 0.411001,
+        "p_corrected": 1.0
+      }
+    }
+  ],
+  "chi2_augmentation_by_direction": [
+    {
+      "group": "cuda-to-omp",
+      "group_key": "direction",
+      "levels_tested": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "contingency_table": [
+        [
+          15,
+          36
+        ],
+        [
+          13,
+          38
+        ],
+        [
+          13,
+          38
+        ],
+        [
+          11,
+          40
+        ],
+        [
+          10,
+          41
+        ]
+      ],
+      "chi2": 1.6196,
+      "p_value": 0.805267,
+      "p_corrected_bonferroni": 1.0,
+      "dof": 4,
+      "cramers_v": 0.0797,
+      "cramers_v_interpretation": "negligible",
+      "df_star": 1,
+      "low_expected_counts": false,
+      "significant_at_05": false,
+      "n_total": 255,
+      "n_bonferroni_tests": 2,
+      "fisher_exact_l0_vs_augmented": {
+        "table": [
+          [
+            15,
+            36
+          ],
+          [
+            47,
+            157
+          ]
+        ],
+        "odds_ratio": 1.3918,
+        "p_value": 0.363763,
+        "p_corrected": 0.727526
+      }
+    }
+  ],
+  "augmentation_trends": {
+    "overall": {
+      "z": -1.2387,
+      "p_value": 0.215461,
+      "trend_direction": "decreasing",
+      "alpha_corrected": 0.0125,
+      "significant": false,
+      "levels": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "pass_counts": [
+        15,
+        13,
+        13,
+        11,
+        10
+      ],
+      "total_counts": [
+        51,
+        51,
+        51,
+        51,
+        51
+      ]
+    },
+    "claude-sonnet-4-6": {
+      "z": -0.1535,
+      "p_value": 0.878013,
+      "trend_direction": "decreasing",
+      "alpha_corrected": 0.0125,
+      "significant": false,
+      "levels": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "pass_counts": [
+        9,
+        8,
+        8,
+        7,
+        9
+      ],
+      "total_counts": [
+        17,
+        17,
+        17,
+        17,
+        17
+      ]
+    },
+    "gemini-2.5-flash-lite": {
+      "z": -1.5995,
+      "p_value": 0.109713,
+      "trend_direction": "decreasing",
+      "alpha_corrected": 0.0125,
+      "significant": false,
+      "levels": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "pass_counts": [
+        3,
+        3,
+        3,
+        2,
+        0
+      ],
+      "total_counts": [
+        17,
+        17,
+        17,
+        17,
+        17
+      ]
+    },
+    "groq-llama-3.3-70b-versatile": {
+      "z": -0.9522,
+      "p_value": 0.341,
+      "trend_direction": "decreasing",
+      "alpha_corrected": 0.0125,
+      "significant": false,
+      "levels": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "pass_counts": [
+        3,
+        2,
+        2,
+        2,
+        1
+      ],
+      "total_counts": [
+        17,
+        17,
+        17,
+        17,
+        17
+      ]
+    }
+  },
+  "direction_asymmetry": [
+    {
+      "pair": "cuda-to-opencl vs opencl-to-cuda",
+      "forward_direction": "cuda-to-opencl",
+      "reverse_direction": "opencl-to-cuda",
+      "n_paired": 3,
+      "forward_pass_rate": 0.3333,
+      "reverse_pass_rate": 0.3333,
+      "table": {
+        "both_pass": 1,
+        "reverse_only": 0,
+        "forward_only": 0,
+        "both_fail": 2
+      },
+      "discordant": 0,
+      "method": "exact",
+      "p_value": 1.0,
+      "alpha_corrected": 0.008333,
+      "significant": false,
+      "cohens_h": 0.0,
+      "effect_size": "small"
+    },
+    {
+      "pair": "opencl-to-omp_target vs omp_target-to-opencl",
+      "forward_direction": "opencl-to-omp_target",
+      "reverse_direction": "omp_target-to-opencl",
+      "n_paired": 3,
+      "forward_pass_rate": 0.3333,
+      "reverse_pass_rate": 0.3333,
+      "table": {
+        "both_pass": 1,
+        "reverse_only": 0,
+        "forward_only": 0,
+        "both_fail": 2
+      },
+      "discordant": 0,
+      "method": "exact",
+      "p_value": 1.0,
+      "alpha_corrected": 0.008333,
+      "significant": false,
+      "cohens_h": 0.0,
+      "effect_size": "small"
+    },
+    {
+      "pair": "cuda-to-omp_target vs omp_target-to-cuda",
+      "forward_direction": "cuda-to-omp_target",
+      "reverse_direction": "omp_target-to-cuda",
+      "n_paired": 3,
+      "forward_pass_rate": 0.3333,
+      "reverse_pass_rate": 0.3333,
+      "table": {
+        "both_pass": 1,
+        "reverse_only": 0,
+        "forward_only": 0,
+        "both_fail": 2
+      },
+      "discordant": 0,
+      "method": "exact",
+      "p_value": 1.0,
+      "alpha_corrected": 0.008333,
+      "significant": false,
+      "cohens_h": 0.0,
+      "effect_size": "small"
+    },
+    {
+      "pair": "omp_target-to-omp vs omp-to-omp_target",
+      "forward_direction": "omp_target-to-omp",
+      "reverse_direction": "omp-to-omp_target",
+      "n_paired": 3,
+      "forward_pass_rate": 0.0,
+      "reverse_pass_rate": 0.0,
+      "table": {
+        "both_pass": 0,
+        "reverse_only": 0,
+        "forward_only": 0,
+        "both_fail": 3
+      },
+      "discordant": 0,
+      "method": "exact",
+      "p_value": 1.0,
+      "alpha_corrected": 0.008333,
+      "significant": false,
+      "cohens_h": 0.0,
+      "effect_size": "small"
+    },
+    {
+      "pair": "omp-to-cuda vs cuda-to-omp",
+      "forward_direction": "omp-to-cuda",
+      "reverse_direction": "cuda-to-omp",
+      "n_paired": 51,
+      "forward_pass_rate": 0.1765,
+      "reverse_pass_rate": 0.2941,
+      "table": {
+        "both_pass": 5,
+        "reverse_only": 10,
+        "forward_only": 4,
+        "both_fail": 32
+      },
+      "discordant": 14,
+      "method": "exact",
+      "p_value": 0.179565,
+      "alpha_corrected": 0.008333,
+      "significant": false,
+      "cohens_h": -0.2793,
+      "effect_size": "medium"
+    },
+    {
+      "pair": "omp-to-opencl vs opencl-to-omp",
+      "forward_direction": "omp-to-opencl",
+      "reverse_direction": "opencl-to-omp",
+      "n_paired": 3,
+      "forward_pass_rate": 0.3333,
+      "reverse_pass_rate": 0.0,
+      "table": {
+        "both_pass": 0,
+        "reverse_only": 0,
+        "forward_only": 1,
+        "both_fail": 2
+      },
+      "discordant": 1,
+      "method": "exact",
+      "p_value": 1.0,
+      "alpha_corrected": 0.008333,
+      "significant": false,
+      "cohens_h": 1.231,
+      "effect_size": "large"
+    }
+  ],
+  "augmentation_curves": {
+    "claude-sonnet-4-6": {
+      "L0": {
+        "rate": 0.5571,
+        "ci_lower": 0.4408,
+        "ci_upper": 0.6675,
+        "n": 70,
+        "pass": 39,
+        "total": 70
+      },
+      "L1": {
+        "rate": 0.5357,
+        "ci_lower": 0.3581,
+        "ci_upper": 0.7047,
+        "n": 28,
+        "pass": 15,
+        "total": 28
+      },
+      "L2": {
+        "rate": 0.5714,
+        "ci_lower": 0.3907,
+        "ci_upper": 0.7349,
+        "n": 28,
+        "pass": 16,
+        "total": 28
+      },
+      "L3": {
+        "rate": 0.4643,
+        "ci_lower": 0.2953,
+        "ci_upper": 0.6419,
+        "n": 28,
+        "pass": 13,
+        "total": 28
+      },
+      "L4": {
+        "rate": 0.5357,
+        "ci_lower": 0.3581,
+        "ci_upper": 0.7047,
+        "n": 28,
+        "pass": 15,
+        "total": 28
+      }
+    },
+    "gemini-2.5-flash-lite": {
+      "L0": {
+        "rate": 0.1,
+        "ci_lower": 0.0493,
+        "ci_upper": 0.1923,
+        "n": 70,
+        "pass": 7,
+        "total": 70
+      },
+      "L1": {
+        "rate": 0.1071,
+        "ci_lower": 0.0371,
+        "ci_upper": 0.272,
+        "n": 28,
+        "pass": 3,
+        "total": 28
+      },
+      "L2": {
+        "rate": 0.1071,
+        "ci_lower": 0.0371,
+        "ci_upper": 0.272,
+        "n": 28,
+        "pass": 3,
+        "total": 28
+      },
+      "L3": {
+        "rate": 0.0714,
+        "ci_lower": 0.0198,
+        "ci_upper": 0.2265,
+        "n": 28,
+        "pass": 2,
+        "total": 28
+      },
+      "L4": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.1206,
+        "n": 28,
+        "pass": 0,
+        "total": 28
+      }
+    },
+    "groq-llama-3.3-70b-versatile": {
+      "L0": {
+        "rate": 0.1571,
+        "ci_lower": 0.0901,
+        "ci_upper": 0.2599,
+        "n": 70,
+        "pass": 11,
+        "total": 70
+      },
+      "L1": {
+        "rate": 0.0714,
+        "ci_lower": 0.0198,
+        "ci_upper": 0.2265,
+        "n": 28,
+        "pass": 2,
+        "total": 28
+      },
+      "L2": {
+        "rate": 0.0714,
+        "ci_lower": 0.0198,
+        "ci_upper": 0.2265,
+        "n": 28,
+        "pass": 2,
+        "total": 28
+      },
+      "L3": {
+        "rate": 0.0714,
+        "ci_lower": 0.0198,
+        "ci_upper": 0.2265,
+        "n": 28,
+        "pass": 2,
+        "total": 28
+      },
+      "L4": {
+        "rate": 0.0357,
+        "ci_lower": 0.0063,
+        "ci_upper": 0.1771,
+        "n": 28,
+        "pass": 1,
+        "total": 28
+      }
+    }
+  },
+  "sample_size_flags": [
+    {
+      "cell": "kernel:dwt2d",
+      "n": 3,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "kernel:gaussian",
+      "n": 3,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:claude-sonnet-4-6/cuda-to-omp_target",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:claude-sonnet-4-6/omp-to-omp_target",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:claude-sonnet-4-6/omp_target-to-cuda",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:claude-sonnet-4-6/omp_target-to-omp",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:claude-sonnet-4-6/omp_target-to-opencl",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:claude-sonnet-4-6/opencl-to-cuda",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:claude-sonnet-4-6/opencl-to-omp",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:claude-sonnet-4-6/opencl-to-omp_target",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:gemini-2.5-flash-lite/cuda-to-omp_target",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:gemini-2.5-flash-lite/omp-to-omp_target",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:gemini-2.5-flash-lite/omp_target-to-cuda",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:gemini-2.5-flash-lite/omp_target-to-omp",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:gemini-2.5-flash-lite/omp_target-to-opencl",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:gemini-2.5-flash-lite/opencl-to-cuda",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:gemini-2.5-flash-lite/opencl-to-omp",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:gemini-2.5-flash-lite/opencl-to-omp_target",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:groq-llama-3.3-70b-versatile/cuda-to-omp_target",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:groq-llama-3.3-70b-versatile/omp-to-omp_target",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:groq-llama-3.3-70b-versatile/omp_target-to-cuda",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:groq-llama-3.3-70b-versatile/omp_target-to-omp",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:groq-llama-3.3-70b-versatile/omp_target-to-opencl",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:groq-llama-3.3-70b-versatile/opencl-to-cuda",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:groq-llama-3.3-70b-versatile/opencl-to-omp",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    },
+    {
+      "cell": "model_x_dir:groq-llama-3.3-70b-versatile/opencl-to-omp_target",
+      "n": 5,
+      "adequate": false,
+      "note": "n < 10; CI width exceeds 30pp"
+    }
+  ],
+  "pass_at_k": {}
+}
