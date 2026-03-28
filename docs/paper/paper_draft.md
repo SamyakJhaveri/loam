@@ -4,14 +4,14 @@
 
 **Venue:** SC26 -- Supercomputing 2026 (full technical paper)
 **Format:** ACM sigconf double-column, ~10 pages + appendices
-**Status:** DRAFT -- S1--S8 complete (2026-03-25)
+**Status:** DRAFT -- S1--S8 complete; S1/S2/Abstract revised with 500-task data (2026-03-27); S6 revised with cross-direction data + 500-task numbers (S13, 2026-03-27)
 **Author:** \author{[Anonymous for Review]}
 
 ---
 
 ## Abstract
 
-Large language models (LLMs) are increasingly applied to parallel code generation, yet no benchmark framework systematically evaluates their ability to *translate* parallel code across GPU programming APIs -- and prior approaches share a critical blind spot: benchmark codes widely known in the HPC community are also present in LLM training data, making it impossible to distinguish genuine parallel reasoning from memorized translations. We present **ParBench**, a build-run-verify benchmark framework for evaluating LLM-based parallel code translation at the kernel level, with an integrated augmentation engine that systematically tests any reliance on training-data pattern-matching. ParBench curates 184 specs across three benchmark suites (Rodinia, HeCBench, XSBench), three parallel APIs (CUDA, OpenMP, OpenCL), and six translation directions. Evaluating four LLMs on CUDA-to-OpenMP translation of 17 Rodinia kernels, we find that kernel-centric isolation unlocks substantial capability: Claude Sonnet 4.6 achieves 70.6% PASS, GPT-4.1 achieves 52.9%, Llama 3.3 70B achieves 29.4%, and Gemini 2.5 Flash-Lite achieves 23.5% -- compared to 0% in repository-level approaches \cite{ParEvalRepo2025}. A failure taxonomy reveals that BUILD\_FAIL accounts for 68.4% of all failures (26/38), while VERIFY\_FAIL is zero across all 452 evaluated tasks -- indicating that when LLM-translated code compiles and runs, the parallel computation logic is correct. An AST-driven augmentation engine applies six semantics-preserving transforms at five levels (L0--L4); 54/60 Rodinia specs PASS at all levels L1--L4 with zero correctness regressions, confirming level-invariant semantics preservation. LLM augmentation robustness evaluation reveals a sharp model-capability tier: Claude Sonnet 4.6 maintains identical pass rates across all five augmentation levels (perfectly level-invariant), while Gemini 2.5 Flash-Lite degrades by 75% from L0 to L4, providing direct evidence that augmentation robustness discriminates structural reasoning from surface pattern-matching. ParBench is publicly available as an extensible framework for the HPC community.
+Large language models (LLMs) are increasingly applied to parallel code generation, yet no benchmark framework systematically evaluates their ability to *translate* parallel code across GPU programming APIs -- and prior approaches share a critical blind spot: benchmark codes widely known in the HPC community are also present in LLM training data, making it impossible to distinguish genuine parallel reasoning from memorized translations. We present **ParBench**, a build-run-verify benchmark framework for evaluating LLM-based parallel code translation at the kernel level, with an integrated augmentation engine that systematically tests any reliance on training-data pattern-matching. ParBench curates 184 specs across three benchmark suites (Rodinia, HeCBench, XSBench), three parallel APIs (CUDA, OpenMP, OpenCL), and twelve translation directions. Evaluating four LLMs on CUDA-to-OpenMP translation of 17 Rodinia kernels, we find that kernel-centric isolation unlocks substantial capability: Claude Sonnet 4.6 achieves 70.6% PASS, GPT-4.1 achieves 52.9%, Llama 3.3 70B achieves 29.4%, and Gemini 2.5 Flash-Lite achieves 23.5% -- compared to 0% in repository-level approaches \cite{ParEvalRepo2025}. A failure taxonomy reveals that BUILD\_FAIL accounts for 68.4% of all failures (26/38), while VERIFY\_FAIL is zero across all 500 evaluated tasks -- indicating that when LLM-translated code compiles and runs, the parallel computation logic is correct. An AST-driven augmentation engine applies six semantics-preserving transforms at five levels (L0--L4); 54/60 Rodinia specs PASS at all levels L1--L4 with zero correctness regressions, confirming level-invariant semantics preservation. LLM augmentation robustness evaluation reveals a sharp model-capability tier: Claude Sonnet 4.6 maintains identical pass rates across all five augmentation levels (perfectly level-invariant), while Gemini 2.5 Flash-Lite degrades by 75% from L0 to L4, providing direct evidence that augmentation robustness discriminates structural reasoning from surface pattern-matching. ParBench is publicly available as an extensible framework for the HPC community.
 
 ---
 
@@ -33,7 +33,7 @@ The existing landscape of code benchmarks does not address kernel-level parallel
 
 **Repository-level translation** is evaluated by ParEval-Repo \cite{ParEvalRepo2025}, which tests translation of six full HPC applications (109--3,039 source lines of code) across three directions (CUDA-to-OpenMP-Offload, CUDA-to-Kokkos, OpenMP-to-OpenMP-Offload) using five state-of-the-art models. The finding is definitive: no model achieves pass@k > 0 on applications larger than 133 SLoC. The authors identify a specific root cause: models must generate Makefiles and build infrastructure alongside the translated code, and build-system generation is the binding constraint, not parallel logic translation. ParEval-Repo even includes XSBench -- a widely-used Monte Carlo neutron transport kernel -- and achieves 0% pass for all models.
 
-**Training data contamination -- the invisible gap.** A fourth and more fundamental gap cuts across all of the above: the benchmark codes used in prior work are already known to the models that trained on them. Rodinia \cite{Rodinia2009} (introduced in 2009) has been cited thousands of times, forked and republished in hundreds of GitHub repositories, and discussed in blog posts, tutorials, and academic papers that are standard LLM training data. XSBench, HPL, LULESH, and similar proxy applications are similarly ubiquitous. An LLM that has seen `backprop.cu` during pre-training need not understand thread-index arithmetic to produce a plausible OpenMP translation -- it can pattern-match from a memorized example. Without a mechanism to systematically vary the input code, there is no way to distinguish genuine parallel reasoning from training-data recall. This is not a criticism of any specific prior work; it is a structural limitation of evaluating LLM capability on any well-known, widely-published codebase. ParBench addresses this directly: the augmentation engine applies six AST-level transforms that alter variable names, condition orderings, arithmetic forms, and function identifiers, producing code that cannot be matched against any published version. Augmentation is a methodological necessity -- without it, LLM evaluation on HPC benchmarks is partially measuring what the model has memorized.
+**Training data contamination -- the invisible gap.** A fourth and more fundamental gap cuts across all of the above: the benchmark codes used in prior work are already known to the models that trained on them. Rodinia \cite{Rodinia2009} (introduced in 2009) has been cited thousands of times, forked and republished in hundreds of GitHub repositories, and discussed in blog posts, tutorials, and academic papers that are standard LLM training data. XSBench, HPL, LULESH, and similar proxy applications are similarly ubiquitous. An LLM that has seen `backprop.cu` during pre-training need not understand thread-index arithmetic to produce a plausible OpenMP translation -- it can pattern-match from a memorized example. Without a mechanism to systematically vary the input code, there is no way to distinguish genuine parallel reasoning from training-data recall. This is not a criticism of any specific prior work; it is a structural limitation of evaluating LLM capability on any well-known, widely-published codebase. ParBench addresses this directly: the augmentation engine applies six AST-level transforms that alter variable names, condition orderings, arithmetic forms, and function identifiers, producing code that cannot be matched against any published version. The augmentation results presented in this paper confirm the practical importance of this concern: at least one evaluated model exhibits sharp pass-rate degradation under augmentation, providing direct evidence of reliance on surface pattern-matching (Section 6.5). Augmentation is a methodological necessity -- without it, LLM evaluation on HPC benchmarks is partially measuring what the model has memorized.
 
 **The gap in benchmark selection rationale.** A final dimension on which prior work is incomplete is the *why* of benchmark selection. Which parallel APIs matter most? Which kernels are representative? Existing frameworks do not answer these questions systematically. ParBench's selection is grounded in a comprehensive empirical survey of 35 open-source HPC repositories covering all major parallel programming models. That survey identified 472 CUDA-OpenMP kernel pairs across 21 repositories -- the largest available translation opportunity in the ecosystem, and the practical bottleneck for real-world GPU-to-CPU portability work. It further identified which benchmark suites provide the same kernel implemented across multiple APIs (Rodinia, HeCBench, XSBench), which have automatable build/run/verify pipelines, and which have self-checking output patterns. The choice of CUDA-to-OpenMP as the primary translation direction, and of Rodinia as the primary evaluation substrate, follows directly from this survey -- not from convenience.
 
@@ -43,11 +43,11 @@ Together, these four gaps define the problem that ParBench is designed to solve:
 
 This paper presents ParBench and makes the following contributions:
 
-1. **ParBench framework** -- The first build/run/verify benchmark framework for LLM-based parallel code translation at the kernel level, supporting 184 specs across three benchmark suites (Rodinia, HeCBench, XSBench), three parallel APIs (CUDA, OpenMP, OpenCL), and six translation directions. Kernel-centric translation mode isolates the translation skill from build-system generation.
+1. **ParBench framework** -- The first build/run/verify benchmark framework for LLM-based parallel code translation at the kernel level, supporting 184 specs across three benchmark suites (Rodinia, HeCBench, XSBench), three parallel APIs (CUDA, OpenMP, OpenCL), and twelve translation directions. Kernel-centric translation mode isolates the translation skill from build-system generation.
 
 2. **AST-driven augmentation engine** -- Six semantics-preserving source-level transforms at five augmentation levels (L0--L4) that systematically test whether LLMs reason about parallel structure or pattern-match from training data. Level-invariant: 54/60 Rodinia specs PASS at all levels L1--L4 with zero correctness regressions. LLM evaluation at L0--L4 reveals a sharp model-capability tier: Claude Sonnet 4.6 is perfectly level-invariant (identical results at all 5 levels), while Gemini 2.5 Flash-Lite degrades by 75% at L4, establishing augmentation robustness as a discriminator of genuine parallel reasoning.
 
-3. **Empirical evaluation** -- Comparative analysis of four LLMs (Claude Sonnet 4.6, GPT-4.1, Gemini 2.5 Flash-Lite, Llama 3.3 70B) on CUDA-to-OpenMP translation, including a failure taxonomy showing BUILD\_FAIL dominance (68.4%) and zero VERIFY\_FAIL across all 452 evaluated tasks, per-kernel difficulty analysis with four-model kernel tiers, self-repair effectiveness measurement, and augmentation robustness characterization across five levels.
+3. **Empirical evaluation** -- Comparative analysis of four LLMs (Claude Sonnet 4.6, GPT-4.1, Gemini 2.5 Flash-Lite, Llama 3.3 70B) on CUDA-to-OpenMP translation, including a failure taxonomy showing BUILD\_FAIL dominance (68.4%) and zero VERIFY\_FAIL across all 500 evaluated tasks, per-kernel difficulty analysis with four-model kernel tiers, self-repair effectiveness measurement, and augmentation robustness characterization across five levels.
 
 ### 1.4 Key Findings Preview
 
@@ -55,11 +55,13 @@ ParBench produces several findings with immediate relevance for the HPC and LLM 
 
 **Kernel-centric isolation unlocks success.** Claude Sonnet 4.6 achieves 70.6% PASS and GPT-4.1 achieves 52.9% PASS on CUDA-to-OpenMP translation (L0, 17 kernels), results that directly contrast with the 0% achieved by all models on repository-level approaches \cite{ParEvalRepo2025}. The gap quantifies the orthogonality of translation skill and build-system-generation skill.
 
-**BUILD\_FAIL dominates; VERIFY\_FAIL is zero.** Of the 38 failures across four evaluated models at L0, 26 (68.4%) are BUILD\_FAIL and 0 (0%) are VERIFY\_FAIL. When LLMs produce compilable OpenMP code, the parallel logic is correct. The bottleneck is API-specific syntax -- missing `#pragma omp` directives, retained CUDA memory management calls, wrong type annotations -- not an inability to reason about parallel computation. Zero VERIFY\_FAIL extends across all 452 evaluated tasks (all models, all augmentation levels), not just L0.
+**BUILD\_FAIL dominates; VERIFY\_FAIL is zero.** Of the 38 failures across four evaluated models at L0, 26 (68.4%) are BUILD\_FAIL and 0 (0%) are VERIFY\_FAIL. When LLMs produce compilable OpenMP code, the parallel logic is correct. The bottleneck is API-specific syntax -- missing `#pragma omp` directives, retained CUDA memory management calls, wrong type annotations -- not an inability to reason about parallel computation. Zero VERIFY\_FAIL extends across all 500 evaluated tasks (all models, all augmentation levels, all twelve translation directions), not just L0.
 
 **Augmentation robustness reveals a model-capability tier.** Claude Sonnet 4.6 maintains identical pass rates (12/17 = 70.6%) at all five augmentation levels (L0--L4), providing strong evidence of structural reasoning about parallel computation. Gemini 2.5 Flash-Lite degrades from 4/17 (23.5%) at L0 to 1/17 (5.9%) at L4 -- a 75% degradation -- suggesting reliance on surface pattern-matching disrupted by augmentation. Groq Llama 3.3 70B exhibits non-monotonic fluctuation (5, 6, 6, 4, 4 across L0--L4), indicating stochastic surface sensitivity.
 
 **Model capability spread.** Claude Sonnet 4.6 (70.6%) > GPT-4.1 (52.9%) > Llama 3.3 70B (29.4%) > Gemini 2.5 Flash-Lite (23.5%) on CUDA-to-OpenMP at L0 -- a 47.1-percentage-point spread across four models. The gap between the two strongest models (Claude vs. GPT-4.1: 17.7pp) is smaller than the gap between competent and weak models (GPT-4.1 vs. Groq: 23.5pp), suggesting a capability threshold below which parallel code translation quality degrades sharply.
+
+**Direction asymmetry.** CUDA-to-OpenMP translation is 18.8 percentage points easier than OpenMP-to-CUDA in aggregate (41.7% vs. 22.9% pass rate across 48 kernel-model evaluations). Of the 48 cells in the cross-direction comparison, 11 pass CUDA-to-OpenMP only while only 2 pass OpenMP-to-CUDA only. The asymmetry is consistent across all three models evaluated in both directions (GPT-4.1 was evaluated at L0 only in the primary direction due to API access constraints): Claude (+25.0pp), Gemini (+18.8pp), and Groq (+12.5pp). This indicates that removing CUDA-specific constructs (`cudaMalloc`, kernel launches, `threadIdx`) is easier for LLMs than introducing them from OpenMP source -- with practical implications for LLM-assisted portability tooling, where CUDA-to-CPU translation is substantially more viable today than the reverse.
 
 ---
 
@@ -77,11 +79,11 @@ The question "Can LLMs translate parallel code?" can be asked at three granulari
 | SWE-bench \cite{SWEbench2024} | ICLR'24 | Repository | Can LLMs resolve real GitHub issues? | Yes (test suite) | -- | 2,294 issues, 12 repos | Claude 3.5: ~49% resolve rate |
 | ParEval \cite{ParEval2024} | HPDC'24 | Task | Can LLMs *generate* parallel code from descriptions? | Yes (correctness check) | -- | 420 tasks, 6 parallel APIs | Partial capability; CUDA/OpenMP harder than MPI |
 | ParEval-Repo \cite{ParEvalRepo2025} | ICPP'25 | Repository | Can LLMs *translate* entire HPC repositories? | Yes (build + functional) | -- | 6 apps (109--3,039 SLoC), 3 directions, 5 models | 0% pass@1 for apps >133 SLoC; build-system generation is binding constraint |
-| **ParBench (ours)** | **SC26** | **Kernel** | **Can LLMs translate parallel computation patterns?** | **Yes (build+run+verify)** | **Yes (6 AST transforms, L0--L4)** | **184 specs, 3 suites, 6 directions, 4 models** | **70.6% PASS (Claude Sonnet 4.6); 0% VERIFY\_FAIL; BUILD\_FAIL dominates** |
+| **ParBench (ours)** | **SC26** | **Kernel** | **Can LLMs translate parallel computation patterns?** | **Yes (build+run+verify)** | **Yes (6 AST transforms, L0--L4)** | **184 specs, 3 suites, 12 directions, 4 models** | **70.6% PASS (Claude Sonnet 4.6); 0% VERIFY\_FAIL; BUILD\_FAIL dominates** |
 
 *Table 1: Related work comparison. ParBench is the only kernel-level framework with a build+run+verify harness and augmentation engine. ParEval-Repo (project shorthand: "Paraval") is the closest prior work; ParBench's kernel-centric design directly addresses its key failure mode (build-system generation). Venue: ICPP'25 = 54th Int'l Conference on Parallel Processing, San Diego, CA, Sep 2025 (DOI: 10.1145/3754598.3754669).*
 
-ParEval \cite{ParEval2024} asks whether LLMs can *generate* parallel code from scratch (task-level granularity). ParEval-Repo \cite{ParEvalRepo2025} asks whether LLMs can translate *entire repositories* including Makefiles and project structure (repository-level granularity). ParBench asks whether LLMs can translate *parallel computation patterns* when provided with kernel files and existing infrastructure (kernel-level granularity). These are not competing benchmarks -- they measure orthogonal capabilities. The three together characterize where LLM capability for parallel code begins and ends: generation is partially possible, repository-level translation is not, and kernel-level translation is the productive middle ground.
+ParEval \cite{ParEval2024} asks whether LLMs can *generate* parallel code from scratch (task-level granularity). ParEval-Repo \cite{ParEvalRepo2025} asks whether LLMs can translate *entire repositories* including Makefiles and project structure (repository-level granularity). ParBench asks whether LLMs can translate *parallel computation patterns* when provided with kernel files and existing infrastructure (kernel-level granularity). These are not competing benchmarks -- they measure orthogonal capabilities. The three together characterize where LLM capability for parallel code begins and ends: generation is partially possible, repository-level translation is not, and kernel-level translation is the productive middle ground. ParBench evaluates this capability across twelve directions, three parallel APIs (plus OMP-target variants), and five augmentation levels.
 
 ### 2.2 Code Synthesis and Translation Benchmarks
 
@@ -97,7 +99,11 @@ ParEval \cite{ParEval2024} asks whether LLMs can *generate* parallel code from s
 
 **ParEval** \cite{ParEval2024} (Davis et al., HPDC'24) presents 420 parallel code *generation* tasks spanning OpenMP, MPI, CUDA, Kokkos, and HIP. Tasks are described in natural language and models must generate correct parallel implementations. ParEval does not evaluate translation between APIs, does not include a build/run/verify pipeline, and does not test augmentation robustness. Its contribution is establishing a baseline of LLM capability at parallel code synthesis -- a necessary precursor to translation evaluation.
 
-**ParEval-Repo** \cite{ParEvalRepo2025} (Davis et al., ICPP'25, DOI: 10.1145/3754598.3754669) extends the evaluation to six full HPC applications (109--3,039 SLoC) in three translation directions (CUDA-to-OpenMP-Offload, CUDA-to-Kokkos, OpenMP-to-OpenMP-Offload). Five models are evaluated: GPT-4o, o3/o4-mini, Llama 3.3, QwQ-32B, and Gemini. The key finding -- no model achieves pass@1 > 0 on applications larger than 133 SLoC -- motivates ParBench's kernel-centric design directly. The root cause identified by ParEval-Repo is not a failure of parallel logic translation but a failure to generate correct build infrastructure (Makefiles, CMake, cross-file dependencies) alongside the translated code. ParBench operationalizes this insight by design: hold all infrastructure constant, provide it as context, and measure only the translation of the parallel computation itself. The same kernel that achieves 0% in ParEval-Repo (XSBench) achieves 4/4 PASS in ParBench under kernel-centric evaluation.
+**ParEval-Repo** \cite{ParEvalRepo2025} (Davis et al., ICPP'25, DOI: 10.1145/3754598.3754669) extends the evaluation to six full HPC applications (109--3,039 SLoC) in three translation directions (CUDA-to-OpenMP-Offload, CUDA-to-Kokkos, OpenMP-to-OpenMP-Offload). Five models are evaluated: GPT-4o, o3/o4-mini, Llama 3.3, QwQ-32B, and Gemini. The key finding -- no model achieves pass@1 > 0 on applications larger than 133 SLoC -- is an important contribution that identifies the repository-level failure mode and motivates ParBench's kernel-centric design directly. The root cause identified by ParEval-Repo is not a failure of parallel logic translation but a failure to generate correct build infrastructure (Makefiles, CMake, cross-file dependencies) alongside the translated code. ParBench operationalizes this insight by providing all build infrastructure (Makefiles, headers, support files) as fixed context, isolating the parallel logic translation skill from build-system generation.
+
+Where ParEval-Repo evaluates six representative HPC applications, ParBench's benchmark corpus is drawn from a 35-repository survey that identified 472 CUDA--OpenMP kernel pairs -- systematic selection rather than convenience sampling. ParBench evaluates twelve translation directions across three core APIs (CUDA, OpenMP, OpenCL) plus OMP-target variants, compared to ParEval-Repo's three directions. Critically, in ParBench the LLM never sees the verification logic -- the harness (build/run/verify) is external to the prompt. The model receives only source code and a translation instruction; test suites and correctness checks are applied after translation, preventing test leakage.
+
+The same kernel that achieves 0% in ParEval-Repo (XSBench) achieves 4/4 PASS in ParBench's harness baseline under kernel-centric evaluation, and Claude Sonnet 4.6 achieves non-zero pass rates across multiple XSBench translation directions in the LLM evaluation. Together, ParBench and ParEval-Repo provide a complementary picture: ParEval-Repo establishes that repository-level translation is beyond current LLM capability, while ParBench demonstrates that the parallel logic translation skill, when isolated from build-system generation, is substantially present.
 
 ### 2.4 Repository-Level Code Translation
 
@@ -300,13 +306,15 @@ Four large language models are evaluated, selected to span major commercial API 
 
 ### 5.B Translation Directions
 
-Six translation directions are evaluated across the three parallel APIs:
+Twelve translation directions are evaluated across four parallel APIs. Six core directions span the three primary APIs:
 
 - CUDA to OpenMP and OpenMP to CUDA
 - CUDA to OpenCL and OpenCL to CUDA
 - OpenMP to OpenCL and OpenCL to OpenMP
 
-CUDA to OpenMP serves as the primary evaluation direction, as it represents the most common real-world HPC translation need: migrating GPU-accelerated CUDA code to the portable, CPU-parallel OpenMP model. The remaining five directions provide cross-directional comparison and test whether translation difficulty is symmetric across API pairs. Not all directions apply to every kernel, as some benchmarks lack implementations in all three APIs; the evaluation covers all valid source--target pairs within the benchmark suite.
+Six additional directions involve OpenMP target offload (OMP-target) variants, evaluated on XSBench where the OMP-target implementation is available: CUDA to OMP-target, OMP-target to CUDA, OMP to OMP-target, OMP-target to OMP, OMP-target to OpenCL, and OpenCL to OMP-target.
+
+CUDA to OpenMP serves as the primary evaluation direction, as it represents the most common real-world HPC translation need: migrating GPU-accelerated CUDA code to the portable, CPU-parallel OpenMP model. The remaining directions provide cross-directional comparison and test whether translation difficulty is symmetric across API pairs. Not all directions apply to every kernel, as some benchmarks lack implementations in all APIs; the evaluation covers all valid source--target pairs within the benchmark suite.
 
 ### 5.C Augmentation Protocol
 
@@ -334,7 +342,7 @@ CUDA compilation uses `nvcc` from the NVIDIA HPC SDK 24.3 (CUDA 12.3). C/C++ com
 
 ## S6 Results
 
-This section presents ParBench evaluation results for four LLMs on CUDA-to-OpenMP translation of 17 Rodinia kernels, augmentation robustness across five levels (L0--L4), self-repair effectiveness, and cross-direction results on XSBench. All evaluations use temperature=0, up to three self-repair retry attempts, and the build/run/verify pipeline described in S3.B.
+This section presents ParBench evaluation results across 500 evaluated tasks: four LLMs on CUDA-to-OpenMP translation of 17 Rodinia kernels, augmentation robustness across five levels (L0--L4), self-repair effectiveness, Rodinia cross-direction evaluation (OpenMP-to-CUDA), and extended suite results on XSBench across twelve translation directions. All evaluations use temperature=0, up to two self-repair retry attempts (three total attempts per task), and the build/run/verify pipeline described in S3.B.
 
 ### 6.1 Overall Pass Rates -- CUDA-to-OpenMP, L0
 
@@ -365,7 +373,9 @@ Of the 38 total failures across four models at L0, the distribution is:
 
 [FIGURE 3: Failure taxonomy stacked bar chart. X-axis: models (Claude Sonnet 4.6, GPT-4.1, Llama 3.3 70B, Gemini 2.5 Flash-Lite). Y-axis: task count stacked by outcome (PASS, BUILD\_FAIL, RUN\_FAIL, EXTRACTION\_FAIL). Data source: results/evaluation/eval\_summary.json.]
 
-The zero VERIFY\_FAIL finding is the most significant result in this taxonomy. VERIFY\_FAIL would indicate that the LLM produced code that compiles, runs to completion, and produces output -- but incorrect output. The absence of VERIFY\_FAIL across all 68 L0 tasks, and indeed across all 452 evaluated tasks spanning all models and augmentation levels, means that whenever LLMs produce compilable, executable OpenMP code from CUDA source, the parallel computation logic is correct. The translation preserves the algorithmic structure: thread decomposition, loop nesting, reduction operations, and data dependencies are faithfully mapped from CUDA to OpenMP.
+The zero VERIFY\_FAIL finding is the most significant result in this taxonomy. VERIFY\_FAIL would indicate that the LLM produced code that compiles, runs to completion, and produces output -- but incorrect output. The absence of VERIFY\_FAIL across all 68 L0 tasks, and indeed across all 500 evaluated tasks spanning all models, all augmentation levels, and all twelve translation directions, means that whenever LLMs produce compilable, executable parallel code from a source API, the parallel computation logic is correct. The translation preserves the algorithmic structure: thread decomposition, loop nesting, reduction operations, and data dependencies are faithfully mapped across APIs.
+
+Across all 500 evaluated tasks, the failure distribution is: BUILD\_FAIL 202/331 (61.0%), RUN\_FAIL 89/331 (26.9%), EXTRACTION\_FAIL 39/331 (11.8%), VERIFY\_FAIL 0/331 (0%). BUILD\_FAIL dominance persists across directions: in the OpenMP-to-CUDA direction (48 Rodinia tasks), BUILD\_FAIL accounts for 28/37 failures (75.7%), higher than the 20/28 (71.4%) in CUDA-to-OpenMP for the same model set -- consistent with the additional CUDA API surface that must be correctly generated in the reverse direction.
 
 BUILD\_FAIL dominance (68.4% of failures) indicates that the primary bottleneck is API-specific syntax rather than parallel reasoning. Examination of build error logs reveals recurring patterns: retained CUDA memory management calls (`cudaMalloc`, `cudaFree`, `cudaMemcpy`) in otherwise-OpenMP code, missing `#pragma omp parallel for` directives, incorrect function signatures for OpenMP runtime calls, and failure to eliminate device-specific type annotations. These are syntactic failures -- the model demonstrates understanding of the parallel computation structure but fails to fully translate the API surface.
 
@@ -401,6 +411,8 @@ Table 8 presents the full kernel-by-model result matrix for all four models, rev
 
 [FIGURE 4: Kernel-by-model heatmap. Rows: 17 kernels sorted by difficulty. Columns: 4 models. Cell color: green (PASS), red (BUILD\_FAIL), orange (RUN\_FAIL), grey (EXTRACTION\_FAIL).]
 
+The per-kernel analysis above addresses the primary CUDA-to-OpenMP direction with four models. Section 6.6 presents the cross-direction comparison (Table 11), where 16 of these kernels are evaluated in both CUDA-to-OpenMP and OpenMP-to-CUDA directions with three models, revealing per-kernel direction asymmetry.
+
 Kernels partition into distinct difficulty tiers based on four-model consensus:
 
 **Always-pass (2 kernels: hotspot3d, nn).** All four models achieve PASS. These kernels share characteristics that favor translation: straightforward thread-index-to-loop-index mapping, minimal shared memory usage, and well-known algorithmic structures (3D stencil computation, k-nearest-neighbor search). They represent the tier where all evaluated models possess sufficient parallel API knowledge.
@@ -427,7 +439,7 @@ The transition from three-model to four-model analysis fundamentally changes the
 
 ### 6.4 Self-Repair Effectiveness
 
-ParBench's evaluation pipeline permits up to three retry attempts with failure-specific diagnostics injected into subsequent prompts. Table 9 summarizes self-repair effectiveness.
+ParBench's evaluation pipeline permits up to two retry attempts with failure-specific diagnostics injected into subsequent prompts (three total attempts per task). Table 9 summarizes self-repair effectiveness.
 
 [TABLE 9: Self-repair effectiveness across L0 translation tasks (4 models, 68 tasks).]
 
@@ -442,7 +454,7 @@ ParBench's evaluation pipeline permits up to three retry attempts with failure-s
 
 At L0, self-repair adds 6 additional PASS results beyond first-attempt success, a 25.0% relative improvement (6 repairs from 24 first-attempt passes). First-attempt passes account for 80% of all passes (24/30), indicating that translation capability is primarily determined by the model's initial response quality rather than iterative repair.
 
-Across all 452 evaluated tasks (all models, all augmentation levels), the pattern is consistent: 127 first-attempt passes (28.1% of tasks) and 31 repairs, yielding a 24.4% relative improvement. The repair mechanism is effective for syntax-level BUILD errors -- missing headers, undeclared variables, incorrect type annotations -- where the compiler error message provides actionable feedback. However, self-repair is ineffective for systematic API translation failures. Kernels like myocyte (BUILD\_FAIL for all models across all attempts) exhibit translation failures too fundamental for incremental compiler-feedback-driven correction. Similarly, RUN\_FAIL kernels like srad fail identically across all retry attempts for all models, as the runtime crash does not produce the kind of structured error feedback that enables self-correction.
+Across all 500 evaluated tasks (all models, all augmentation levels, all twelve translation directions), the pattern is consistent: 134 first-attempt passes (26.8% of tasks) and 35 repairs, yielding 169 total passes (33.8% overall) and a 26.1% relative improvement (35/134). The repair mechanism is effective for syntax-level BUILD errors -- missing headers, undeclared variables, incorrect type annotations -- where the compiler error message provides actionable feedback. However, self-repair is ineffective for systematic API translation failures. Kernels like myocyte (BUILD\_FAIL for all models across all attempts) exhibit translation failures too fundamental for incremental compiler-feedback-driven correction. Similarly, RUN\_FAIL kernels like srad fail identically across all retry attempts for all models, as the runtime crash does not produce the kind of structured error feedback that enables self-correction.
 
 ### 6.5 Augmentation Robustness -- LLM Evaluation
 
@@ -476,6 +488,23 @@ The augmentation robustness results stratify model capability in a way that L0 r
 
 ### 6.6 Cross-Direction and Extended Suite Results
 
+**Rodinia cross-direction evaluation: OpenMP-to-CUDA.** To test whether translation difficulty is direction-dependent, 16 Rodinia kernels were evaluated in the reverse direction (OpenMP-to-CUDA) using three models at L0, yielding 48 tasks. (The 17th kernel, kmeans, is excluded because it lacks a valid OpenMP source spec for use as OMP-to-CUDA input.) that are directly comparable to the same 48 kernel-model cells in the CUDA-to-OpenMP direction. (GPT-4.1 was evaluated at L0 only in the primary direction due to API access constraints and is excluded from this comparison.) Table 11 presents the cross-direction comparison.
+
+[TABLE 11: Direction comparison -- CUDA-to-OpenMP vs. OpenMP-to-CUDA (L0, 16 Rodinia kernels, 3 models). GPT-4.1 excluded (evaluated in primary direction only).]
+
+| Model | CUDA-to-OpenMP | OpenMP-to-CUDA | Gap |
+|-------|:----------:|:----------:|:---:|
+| claude-sonnet-4-6 | 11/16 (68.8%) | 7/16 (43.8%) | +25.0pp |
+| gemini-2.5-flash-lite | 4/16 (25.0%) | 1/16 (6.2%) | +18.8pp |
+| groq-llama-3.3-70b-versatile | 5/16 (31.2%) | 3/16 (18.8%) | +12.5pp |
+| **Aggregate** | **20/48 (41.7%)** | **11/48 (22.9%)** | **+18.8pp** |
+
+CUDA-to-OpenMP translation is 18.8 percentage points easier than OpenMP-to-CUDA in aggregate (41.7% vs. 22.9%). The gap is consistent across all three models, with Claude exhibiting the largest absolute gap (+25.0pp) and Groq the smallest (+12.5pp). This asymmetry is consistent with the nature of the translation task: CUDA-to-OpenMP requires *removing* CUDA-specific constructs (`cudaMalloc`, kernel launch syntax, `threadIdx`/`blockIdx` indexing) and replacing them with OpenMP directives, while OpenMP-to-CUDA requires *introducing* all of these constructs from OpenMP source that contains no explicit thread-block decomposition, device memory management, or kernel launch configuration.
+
+Per-kernel direction asymmetry reveals structured patterns across the 48 kernel-model cells: 9 cells (18.8%) pass in both directions (BOTH\_PASS), 11 cells (22.9%) pass CUDA-to-OpenMP only (C2O\_ONLY), only 2 cells (4.2%) pass OpenMP-to-CUDA only (O2C\_ONLY), and 26 cells (54.2%) fail in both directions (BOTH\_FAIL). The 11:2 ratio of direction-exclusive passes strongly favors CUDA-to-OpenMP. The two O2C\_ONLY exceptions are pathfinder (Gemini) and myocyte (Groq) -- isolated cases where a model succeeds at introducing CUDA constructs but fails at removing them, possibly due to kernel-specific patterns in training data.
+
+The failure taxonomy shifts between directions. In CUDA-to-OpenMP (48 tasks), failures divide as BUILD\_FAIL 20/28 (71.4%), RUN\_FAIL 6/28 (21.4%), and EXTRACTION\_FAIL 2/28 (7.1%). In OpenMP-to-CUDA (48 tasks), BUILD\_FAIL rises to 28/37 (75.7%), RUN\_FAIL is 7/37 (18.9%), and EXTRACTION\_FAIL is 2/37 (5.4%). The higher BUILD\_FAIL share in the reverse direction reflects the additional CUDA API surface -- kernel launch syntax, device memory allocation, thread-index arithmetic -- that must be correctly generated from OpenMP source. Rodinia CUDA-to-OpenCL cross-direction evaluation is planned as future work.
+
 **XSBench cross-direction evaluation.** XSBench was evaluated across all 12 API directions (CUDA to OpenMP, OpenMP to CUDA, CUDA to OpenCL, OpenCL to CUDA, OpenMP to OpenCL, OpenCL to OpenMP, and their reverse OMP-target variants) for three models at five augmentation levels, yielding 180 evaluated tasks. Selected directional aggregate results across all augmentation levels (3 models × 5 levels = 15 tasks per direction):
 
 - CUDA to OpenCL: 5/15 PASS (33.3%) [L0 only: 1/3, driven by Claude PASS]
@@ -485,8 +514,6 @@ The augmentation robustness results stratify model capability in a way that L0 r
 Claude achieves non-zero pass rates in 10 of 12 evaluated directions, demonstrating broader cross-directional capability than Gemini or Groq. The 0% pass rate for OpenCL-to-OpenMP across all models highlights an asymmetry in translation difficulty: OpenCL's explicit device management and separate kernel compilation model present a qualitatively different challenge when mapping to OpenMP's directive-based paradigm.
 
 A key finding is that ParBench's kernel-centric approach achieves non-zero pass rates across multiple translation directions on XSBench -- the same benchmark for which ParEval-Repo \cite{ParEvalRepo2025} reports 0% at the repository level. This confirms that the kernel-centric advantage generalizes beyond the primary CUDA-to-OpenMP direction.
-
-**Rodinia cross-direction evaluation.** Evaluation of Rodinia kernels across non-primary translation directions (OpenMP-to-CUDA, CUDA-to-OpenCL) is ongoing and deferred to future work.
 
 **HeCBench.** 120 specs (60 CUDA, 60 OpenMP) are curated and schema-validated; evaluation is pending deployment of HeCBench source on the evaluation platform.
 
@@ -502,7 +529,7 @@ The implication is that LLMs possess substantial internalized knowledge of paral
 
 ### 7.2 BUILD\_FAIL as the Actionable Bottleneck
 
-The zero VERIFY\_FAIL finding across all 452 translation tasks is, arguably, the most important empirical result in this evaluation. It establishes that when LLMs produce compilable, executable OpenMP code from CUDA source, the parallel computation logic is correct. Thread decomposition is preserved. Reduction semantics are maintained. Data dependencies are respected. The models have internalized the computational structure of these parallel kernels.
+The zero VERIFY\_FAIL finding across all 500 translation tasks is, arguably, the most important empirical result in this evaluation. It establishes that when LLMs produce compilable, executable code in the target API -- whether translating CUDA to OpenMP, OpenMP to CUDA, or across any of the twelve evaluated directions -- the parallel computation logic is correct. Thread decomposition is preserved. Reduction semantics are maintained. Data dependencies are respected. The models have internalized the computational structure of these parallel kernels.
 
 What they fail at is API-specific syntax. BUILD\_FAIL accounts for 26 of 38 L0 failures (68.4%), and the recurring error patterns -- retained `cudaMalloc`/`cudaFree` calls, missing OpenMP pragma directives, incorrect type coercions -- are syntactic, not algorithmic. This finding has a direct practical implication: targeted fine-tuning on OpenMP idioms, or few-shot prompting with canonical CUDA-to-OpenMP translation examples, would likely close a substantial portion of the BUILD\_FAIL gap. The parallel reasoning is already present in the model weights; the API surface coverage is the limiting factor.
 
@@ -516,7 +543,19 @@ The four-model per-kernel analysis reveals that the proprietary/open-weight dist
 
 GPT-4.1's intermediate position (52.9%) with 4 BUILD\_FAIL and 4 RUN\_FAIL shows a more balanced failure profile than Gemini's BUILD\_FAIL-dominated failures (10/13) or Claude's RUN\_FAIL-leaning failures (3/5). This suggests different failure modes across model families: some models fail at compilation (syntactic gap) while others compile successfully but produce semantically incorrect runtime behavior (reasoning gap).
 
-### 7.4 Threats to Validity
+### 7.4 Direction Asymmetry
+
+The cross-direction evaluation (S6.6, Table 11) reveals that CUDA-to-OpenMP translation is consistently easier than OpenMP-to-CUDA across all three models evaluated in both directions, with an aggregate gap of 18.8 percentage points (41.7% vs. 22.9%). This finding has a structural explanation rooted in the programming models.
+
+CUDA source code encodes explicit thread decomposition: `threadIdx`, `blockIdx`, and `blockDim` define the mapping from threads to data elements; `__shared__` memory declares the scratchpad; `cudaMalloc`/`cudaMemcpy` manage device memory; and kernel launch syntax (`<<<blocks, threads>>>`) parameterizes the execution configuration. When translating CUDA to OpenMP, the LLM must *remove* this explicit machinery and replace it with higher-level directives (`#pragma omp parallel for`). The CUDA source provides a complete blueprint of the parallelism structure that the LLM can read and simplify.
+
+In the reverse direction, OpenMP source provides only high-level annotations (`#pragma omp parallel for reduction(+:sum)`) over sequential-looking loop nests. The LLM must *introduce* thread-block geometry, device memory allocation, kernel launch parameters, and explicit synchronization -- none of which are present in the source. This is a generative task (introducing structure) rather than a reductive one (simplifying structure), and generative tasks are inherently harder because the model must make design choices not constrained by the input.
+
+The per-kernel asymmetry data quantifies this effect: of 48 kernel-model cells, 11 pass CUDA-to-OMP only while only 2 pass OMP-to-CUDA only -- a 5.5:1 ratio. The two counter-examples (pathfinder for Gemini, myocyte for Groq) prevent over-generalization but do not challenge the dominant pattern. Notably, the direction asymmetry is model-dependent: Claude achieves BOTH\_PASS on 7 of 16 kernels (bptree, cfd, hotspot3d, lavamd, lud, particlefilter, pathfinder), while Gemini achieves zero BOTH\_PASS cells and Groq achieves only 2 (bfs, lud). Kernels that are universally easy in CUDA-to-OpenMP (nn passes for all 3 models) fail universally in the reverse direction (nn is C2O\_ONLY for all 3), demonstrating that the asymmetry is strongest for kernels where models rely on recognizable CUDA patterns rather than deep structural reasoning.
+
+The practical implication is that LLM-assisted portability tooling is substantially more viable for CUDA-to-CPU translation (where organizations migrate away from NVIDIA-specific code) than for the reverse. Teams seeking to CUDA-accelerate existing OpenMP code should expect roughly half the success rate of the inverse operation with current models.
+
+### 7.5 Threats to Validity
 
 Several threats to the validity of these findings must be acknowledged.
 
@@ -526,17 +565,17 @@ Several threats to the validity of these findings must be acknowledged.
 
 **Exit-code-only verification.** Most Rodinia specs use exit\_code verification, which confirms that the translated code runs to completion and exits cleanly but does not catch numeric output errors for specs without stdout\_pattern verification. While the zero VERIFY\_FAIL rate across all tasks is a strong signal, it reflects the verification granularity of the current spec corpus. Future work should expand stdout\_pattern coverage to include numeric output comparison for additional kernels.
 
-**Single translation direction emphasis.** The primary results report CUDA-to-OpenMP in detail. XSBench cross-direction results (S6.6) provide initial evidence of generalizability across directions, but whether the CUDA-to-OpenMP findings fully generalize to all six directions is an open question. Each direction involves different translation challenges: OpenMP-to-CUDA requires introducing explicit thread-block decomposition, and CUDA-to-OpenCL requires generating separate kernel files.
+**Single translation direction emphasis.** The primary results report CUDA-to-OpenMP in detail. Rodinia cross-direction results (S6.6) confirm that CUDA-to-OpenMP is 18.8pp easier than the reverse direction, and XSBench cross-direction results span all 12 API directions. However, whether the per-kernel findings fully generalize across all directions is not yet established. Each direction involves different translation challenges: OpenMP-to-CUDA requires introducing explicit thread-block decomposition, and CUDA-to-OpenCL requires generating separate kernel files.
 
 **Temperature and seed.** All evaluations use temperature=0 and augmentation seed=42 for deterministic reproducibility. This provides a single point estimate rather than a distribution. Results could differ with temperature greater than 0, and the variance of LLM translation quality is not characterized by this evaluation.
 
 **Four-model evaluation.** Four models are evaluated, spanning the proprietary/open-weight divide. Reasoning models (e.g., GPT-o1, Claude with extended thinking) are intentionally excluded to isolate base API knowledge from on-the-fly reasoning capability. The four-model set does not represent the full landscape of available LLMs; additional models would strengthen generalizability claims.
 
-**Reference implementation as ground truth.** The Rodinia OpenMP reference output serves as the correctness standard. Floating-point non-associativity between CUDA GPU computation and OpenMP CPU computation could in principle cause false VERIFY\_FAIL results. Empirically, this is not observed: VERIFY\_FAIL is zero across all 452 tasks. This may reflect that the correctness configurations use small problem sizes where floating-point divergence is minimal, or that the kernels in this evaluation do not trigger significant non-associativity.
+**Reference implementation as ground truth.** The Rodinia OpenMP reference output serves as the correctness standard. Floating-point non-associativity between CUDA GPU computation and OpenMP CPU computation could in principle cause false VERIFY\_FAIL results. Empirically, this is not observed: VERIFY\_FAIL is zero across all 500 tasks. This may reflect that the correctness configurations use small problem sizes where floating-point divergence is minimal, or that the kernels in this evaluation do not trigger significant non-associativity.
 
 **Kernel-centric scope.** ParBench intentionally excludes project-level restructuring (CMake generation, header reorganization, build-system adaptation). This is a design choice that enables measurement of translation skill in isolation, but it means results do not characterize LLM capability for end-to-end deployment. ParEval-Repo \cite{ParEvalRepo2025} provides the complementary measurement.
 
-### 7.5 Augmentation Robustness Reveals a Model-Capability Tier
+### 7.6 Augmentation Robustness Reveals a Model-Capability Tier
 
 The augmentation robustness results stratify models in a way that the L0 results alone cannot. Claude's level-invariance -- identical results at all five levels -- provides strong evidence that it reasons about parallel program structure rather than pattern-matching from training data. The alternative hypothesis -- that Claude memorized all 17 Rodinia kernels in all four augmentation variants -- is implausible given that the augmented variants did not exist in any training corpus. The augmented code at L4 has all variable names changed, all boolean conditions reversed, all compound assignments expanded, and all helper functions renamed; these specific variants are generated deterministically by ParBench (seed=42) and have never been published.
 
@@ -546,7 +585,7 @@ Groq Llama 3.3 70B's non-monotonic behavior (5, 6, 6, 4, 4 across L0--L4) may re
 
 These findings suggest that augmentation robustness is a better discriminator of genuine parallel reasoning capability than pass@1 at L0 alone. A model that achieves high pass@1 on unmodified code but degrades under augmentation is likely leveraging training-data familiarity rather than structural understanding. Augmentation robustness should be considered a standard evaluation dimension for LLM code translation benchmarks, particularly when the benchmark codes are drawn from well-known, widely-published sources.
 
-### 7.6 Implications
+### 7.7 Implications
 
 The findings suggest several directions for improving LLM-based parallel code translation.
 
@@ -566,11 +605,11 @@ The findings suggest several directions for improving LLM-based parallel code tr
 
 This paper presented ParBench, a build-run-verify benchmark framework for evaluating LLM-based parallel code translation at the kernel level. ParBench makes four contributions.
 
-First, ParBench provides the first systematic framework for evaluating kernel-level parallel code translation, supporting 184 specs across three benchmark suites (Rodinia, HeCBench, XSBench), three parallel APIs (CUDA, OpenMP, OpenCL), and six translation directions. The kernel-centric design isolates translation skill from build-system generation, the binding constraint identified by repository-level evaluation \cite{ParEvalRepo2025}.
+First, ParBench provides the first systematic framework for evaluating kernel-level parallel code translation, supporting 184 specs across three benchmark suites (Rodinia, HeCBench, XSBench), three parallel APIs (CUDA, OpenMP, OpenCL), and twelve translation directions. The kernel-centric design isolates translation skill from build-system generation, the binding constraint identified by repository-level evaluation \cite{ParEvalRepo2025}.
 
 Second, an AST-driven augmentation engine applies six semantics-preserving transforms at five augmentation levels (L0--L4). The engine is level-invariant at the harness level: 54/60 Rodinia specs achieve PASS at all levels L1--L4 with zero correctness regressions, confirming that the transforms preserve semantics and providing a validated baseline for LLM robustness evaluation.
 
-Third, empirical evaluation of four LLMs on CUDA-to-OpenMP translation of 17 Rodinia kernels establishes that kernel-centric translation is a measurably viable task: Claude Sonnet 4.6 achieves 70.6% PASS, GPT-4.1 achieves 52.9%, Llama 3.3 70B achieves 29.4%, and Gemini 2.5 Flash-Lite achieves 23.5% -- 30 of 68 tasks (44.1%) passing overall. A failure taxonomy reveals that BUILD\_FAIL accounts for 68.4% of failures (26/38) while VERIFY\_FAIL is zero across all 452 evaluated tasks -- establishing that LLMs correctly reason about parallel computation logic when API syntax is not the blocker. These results stand in direct contrast to the 0% pass rates reported for repository-level approaches on comparable HPC kernels.
+Third, empirical evaluation of four LLMs on CUDA-to-OpenMP translation of 17 Rodinia kernels establishes that kernel-centric translation is a measurably viable task: Claude Sonnet 4.6 achieves 70.6% PASS, GPT-4.1 achieves 52.9%, Llama 3.3 70B achieves 29.4%, and Gemini 2.5 Flash-Lite achieves 23.5% -- 30 of 68 tasks (44.1%) passing overall. A failure taxonomy reveals that BUILD\_FAIL accounts for 68.4% of failures (26/38) while VERIFY\_FAIL is zero across all 500 evaluated tasks -- establishing that LLMs correctly reason about parallel computation logic when API syntax is not the blocker. Cross-direction evaluation reveals a consistent direction asymmetry: CUDA-to-OpenMP is 18.8 percentage points easier than OpenMP-to-CUDA (41.7% vs. 22.9%), reflecting the structural advantage of translating from an explicit thread-decomposition model to a directive-based model.
 
 Fourth, LLM augmentation robustness evaluation at L0--L4 reveals a sharp model-capability tier. Claude Sonnet 4.6 demonstrates perfect level-invariance -- identical results at all five augmentation levels -- establishing that capability-tier models reason about parallel structure rather than memorize surface patterns. Gemini 2.5 Flash-Lite degrades by 75% from L0 to L4, consistent with reliance on surface pattern-matching disrupted by augmentation. This augmentation robustness dimension provides a more discriminating evaluation than pass@1 alone.
 
@@ -578,7 +617,7 @@ Fourth, LLM augmentation robustness evaluation at L0--L4 reveals a sharp model-c
 
 Four directions for future work are prioritized.
 
-**Cross-direction expansion.** XSBench cross-direction evaluation is complete across all 12 API directions, confirming that the kernel-centric advantage generalizes beyond CUDA-to-OpenMP. Rodinia cross-direction evaluation (OpenMP-to-CUDA, CUDA-to-OpenCL) is ongoing. OpenMP-to-CUDA requires the LLM to introduce explicit thread-block decomposition absent from OpenMP source, a fundamentally different challenge. CUDA-to-OpenCL requires generating structurally distinct output (separate `.cl` kernel files), testing the single-to-multi file generation capability. Extension to CUDA-to-HIP and CUDA-to-SYCL would address additional portability-relevant API pairs.
+**Cross-direction expansion.** XSBench cross-direction evaluation is complete across all 12 API directions, and Rodinia OpenMP-to-CUDA evaluation confirms a consistent 18.8pp direction asymmetry favoring CUDA-to-OpenMP (S6.6). Rodinia CUDA-to-OpenCL evaluation is planned. CUDA-to-OpenCL requires generating structurally distinct output (separate `.cl` kernel files), testing the single-to-multi file generation capability. Extension to CUDA-to-HIP and CUDA-to-SYCL would address additional portability-relevant API pairs.
 
 **Extended benchmark suites.** HeCBench provides 120 curated specs spanning 13 computational domains beyond Rodinia's coverage; evaluation is pending platform deployment. Polybench and NAS parallel benchmarks represent additional extension targets that would broaden domain coverage and increase the statistical power of cross-model comparisons.
 
@@ -590,7 +629,7 @@ Four directions for future work are prioritized.
 
 ## Data Verification Notes
 
-All quantitative claims in this draft are verified against source files as of 2026-03-25:
+All quantitative claims in this draft are verified against source files as of 2026-03-27 (S1/S2/Abstract updated S12; S6 updated S13):
 
 | Claim | Value | Source |
 |-------|-------|--------|
@@ -602,14 +641,14 @@ All quantitative claims in this draft are verified against source files as of 20
 | BUILD\_FAIL total (L0) | 26/38 = 68.4% | Computed: 2+4+10+10 = 26 failures out of 38 total |
 | RUN\_FAIL total (L0) | 10/38 = 26.3% | Computed: 3+4+1+2 = 10 |
 | EXTRACTION\_FAIL total (L0) | 2/38 = 5.3% | Computed: 0+0+1+1 = 2 |
-| VERIFY\_FAIL total (all tasks) | 0 | All 452 tasks across all models and levels |
+| VERIFY\_FAIL total (all tasks) | 0 | All 500 tasks across all models, levels, and directions (eval\_summary.json 2026-03-26) |
 | Capability spread | 47.1pp (70.6% - 23.5%) | Computed from L0 pass rates |
 | L0 first-attempt PASS | 24 (35.3% of 68 tasks) | Individual result JSONs |
 | L0 repaired by retry | 6 | Individual result JSONs |
 | L0 relative improvement | 25.0% (6/24) | Computed |
-| All-task first-attempt PASS | 127 (28.1% of 452) | Individual result JSONs |
-| All-task repaired by retry | 31 | Individual result JSONs |
-| All-task relative improvement | 24.4% (31/127) | Computed |
+| All-task first-attempt PASS | 134 (26.8% of 500) | eval\_summary.json self\_repair.attempt\_1\_pass |
+| All-task repaired by retry | 35 | eval\_summary.json self\_repair.total\_repaired\_by\_retry |
+| All-task relative improvement | 26.1% (35/134) | Computed |
 | Claude augmentation L0-L4 | 12/17 at all 5 levels | Individual L1-L4 result JSONs |
 | Gemini augmentation L4 | 1/17 (5.9%) | Individual L4 result JSONs |
 | Groq augmentation L0-L4 | 5, 6, 6, 4, 4 | Individual L1-L4 result JSONs |
@@ -627,6 +666,23 @@ All quantitative claims in this draft are verified against source files as of 20
 | XSBench OMP-to-CUDA all-levels | 6/15 = 40.0% | results/evaluation/*/xsbench-*-omp-to-*-cuda*.json |
 | XSBench OpenCL-to-OMP all-levels | 0/15 = 0% | results/evaluation/*/xsbench-*-opencl-to-*-omp.json |
 | Claude L0 directions non-zero | 10/12 | Individual L0 result JSONs |
+| Total evaluated tasks | 500 | eval\_summary.json total\_tasks (2026-03-26) |
+| Translation directions | 12 | eval\_summary.json by\_direction keys (2026-03-26) |
+| Direction asymmetry (aggregate) | +18.8pp (cuda→omp 41.7% vs omp→cuda 22.9%) | s9\_direction\_comparison.txt SECTION 2 |
+| Direction asymmetry (Claude) | +25.0pp (68.8% vs 43.8%) | s9\_direction\_comparison.txt SECTION 4 |
+| Direction asymmetry (Gemini) | +18.8pp (25.0% vs 6.2%) | s9\_direction\_comparison.txt SECTION 4 |
+| Direction asymmetry (Groq) | +12.5pp (31.2% vs 18.8%) | s9\_direction\_comparison.txt SECTION 4 |
+| C2O\_ONLY cells | 11/48 | s9\_direction\_comparison.txt SECTION 3 |
+| O2C\_ONLY cells | 2/48 | s9\_direction\_comparison.txt SECTION 3 |
+| BOTH\_PASS cells | 9/48 | s9\_direction\_comparison.txt SECTION 3 |
+| BOTH\_FAIL cells | 26/48 | s9\_direction\_comparison.txt SECTION 3 |
+| OMP-to-CUDA aggregate | 11/48 = 22.9% | s9\_direction\_comparison.txt SECTION 2 |
+| OMP-to-CUDA Claude | 7/16 = 43.8% | s9\_direction\_comparison.txt SECTION 4 |
+| OMP-to-CUDA Gemini | 1/16 = 6.2% | s9\_direction\_comparison.txt SECTION 4 |
+| OMP-to-CUDA Groq | 3/16 = 18.8% | s9\_direction\_comparison.txt SECTION 4 |
+| O2C failure taxonomy (48) | BUILD=28/37 (75.7%), RUN=7/37, EXTRACT=2/37 | s9\_direction\_comparison.txt SECTION 5 |
+| C2O failure taxonomy (48) | BUILD=20/28 (71.4%), RUN=6/28, EXTRACT=2/28 | s9\_direction\_comparison.txt SECTION 5 |
+| Failure taxonomy (all 500) | BUILD=202, RUN=89, EXTRACT=39, VERIFY=0, ERROR=1 | eval\_summary.json failure\_taxonomy (169 PASS + 331 fail = 500) |
 | ParEval-Repo 0% pass@1 | >133 SLoC applications | \cite{ParEvalRepo2025} |
 | GPU | NVIDIA GeForce RTX 4070 | System hardware |
 | CPU | AMD Ryzen 9 7900X | System hardware |
