@@ -41,7 +41,7 @@ GPU:           NVIDIA GeForce RTX 4070
 ## Common Commands
 
 ```bash
-# Validate all specs (120 HeCBench errors are expected — do not fix)
+# Validate all specs (~135 HeCBench errors are expected — do not fix)
 python3 scripts/validate_schema.py --all
 
 # Validate one spec
@@ -63,7 +63,7 @@ python3 scripts/augmentation/augment_verify.py specs/<name>.json \
 # LLM Evaluation — ALWAYS pass --suite to avoid cross-suite name collisions
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia --direction cuda-to-omp \
-  --models claude-sonnet-4-20250514 \
+  --models claude-sonnet-4-6 \
   --project-root /home/samyak/Desktop/parbench_sam \
   --resume -v
 ```

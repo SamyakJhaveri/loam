@@ -111,8 +111,8 @@ and symlink paths to benchmark sources.
 
 ## Augmentation Baseline (verified 2026-03-20, updated S-VERIFY 2026-03-27)
 
-58/60 Rodinia + 4/4 XSBench PASS at all levels L1–L4 (level-invariant) with
-stdout_pattern+exit_code conjunction verification. 6 KNOWN_FAIL excluded.
+54/60 Rodinia + 4/4 XSBench PASS at all levels L1–L4 (level-invariant) with
+stdout_pattern+exit_code conjunction verification. 6 Rodinia KNOWN_FAIL excluded (4 BUILD_FAIL + 2 FAIL).
 Augmentation introduces zero new failures beyond the baseline.
 Verify transforms: `python3 -m pytest c_augmentation/test_transforms.py -v` (15 tests, all must pass)
 
@@ -177,17 +177,20 @@ the possibility that Flash Lite used inference-time reasoning while Claude/Llama
 The `reasoning_effort="none"` parameter in `llm_evaluate.py` is a belt-and-suspenders
 safety measure, not a fix for an active problem.
 
-## Per-Kernel Capability Anomaly: backprop (discovered 2026-03-25)
+## Per-Kernel Capability Anomaly: backprop (discovered 2026-03-25, updated 2026-03-28)
 
-**Observation:** In the L0 CUDA-to-OpenMP 4-model evaluation, `backprop` shows an anomalous
-tier pattern: Gemini 2.5 Flash-Lite (weakest overall, 23.5%) passes, but GPT-4.1
-(second-strongest, 52.9%) fails with BUILD_FAIL. This violates the naive assumption that
-stronger models dominate everywhere.
+**Observation:** In the 3-model evaluation, `backprop` (9/18 = 50.00% overall) shows an
+anomalous tier pattern: Gemini 2.5 Flash-Lite (weakest overall, 7.05%) passes backprop
+at L0 CUDA-to-OMP, while Groq Llama 3.3 70B (8.33% overall) fails with BUILD_FAIL.
+This violates the naive assumption that stronger models dominate everywhere.
+
+*Historical note:* Originally observed in a 4-model evaluation that included azure-gpt-4.1.
+GPT-4.1 was subsequently dropped (zero result files on disk). The anomaly persists in the
+current 3-model data.
 
 **Interpretation:** Domain-specific model strength. Backprop's reduction-heavy ML kernel
 involves `__syncthreads()` and shared memory accumulation idioms that may appear heavily
-in Gemini's training data relative to its overall OpenMP coverage. GPT-4.1 fails despite
-succeeding on bptree, cfd, kmeans (all more complex kernels).
+in Gemini's training data relative to its overall OpenMP coverage.
 
 **Paper treatment:** Backprop is in its own tier "Claude+Gemini only" in S6.3. The anomaly
 is discussed as evidence that per-kernel difficulty is not fully predicted by aggregate pass rate.
