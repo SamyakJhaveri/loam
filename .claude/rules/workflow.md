@@ -107,9 +107,10 @@ Use `/dream` to consolidate periodically.
 
 ## Model Selection
 
-- **Plan mode** → uses Opus (deep reasoning for architecture)
-- **Execution mode** → uses Sonnet (fast implementation)
-- Use Haiku only for quick triage (which specs are ready? quick counts)
+- **All modes** → use Opus exclusively. Never use Sonnet or Haiku.
+- **Fast mode** → enable only during implementation (Stage 4). Disable for reading,
+  exploration, planning, and verification — these benefit from full reasoning depth.
+- Subagents and agent team teammates: always Opus. Specify `model: "opus"` explicitly.
 
 ## Subagent Patterns
 
@@ -300,8 +301,8 @@ I'll check in periodically. Write progress to docs/overnight_log.md.
 | Lead + 3 teammates | ~4x | Multi-model analysis, paper drafting |
 | Lead + 4+ teammates | ~5x+ | Rare; only for 4-model comparison |
 
-- **Default teammate model:** Tell lead "Use Sonnet for teammates" for data-gathering work
-- **Reserve Opus for:** Lead's synthesis, paper drafting, adversarial review
+- **All teammates use Opus.** Always specify "Use Opus for all teammates" when creating teams.
+- **Fast mode for teammates:** Only enable for implementation-heavy teammates, not research/analysis.
 - **Kill early:** If a teammate finishes its analysis, shut it down rather than letting it idle
 
 ### Controls Cheat Sheet
