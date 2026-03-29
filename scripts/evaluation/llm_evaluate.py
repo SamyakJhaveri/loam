@@ -102,6 +102,15 @@ MODEL_REGISTRY: dict[str, dict[str, str]] = {
         "provider": "google",
         "notes": "Gemini 2.5 Flash-Lite via Google AI (OpenAI-compatible endpoint)",
     },
+    "gemini-2.5-flash": {
+        "provider": "google",
+        "notes": "Gemini 2.5 Flash via Google AI (thinking disabled via reasoning_effort=none)",
+    },
+    "together-qwen-3.5-397b-a17b": {
+        "provider": "together",
+        "api_model": "Qwen/Qwen3.5-397B-A17B",
+        "notes": "Qwen 3.5 397B MoE via Together AI (thinking disabled)",
+    },
 }
 
 # Human-readable API display names (fallback: .upper())
@@ -154,6 +163,106 @@ def _head_tail(text: str, max_len: int = 1500, head: int = 750, tail: int = 750)
     if len(text) <= max_len:
         return text
     return text[:head] + "\n...[truncated]...\n" + text[-tail:]
+
+
+def _strip_comments(code: str) -> str:
+    """Strip C/C++ comments from source code, preserving string and char literals.
+
+    Handles:
+      - // line comments
+      - /* block comments */
+      - String literals ("..." including escaped quotes)
+      - Character literals ('...' including escaped quotes)
+      - Raw string literals (R"delim(...)delim")
+
+    Uses a state-machine approach to avoid stripping comment-like sequences
+    inside string or character literals.
+    """
+    result: list[str] = []
+    i = 0
+    n = len(code)
+
+    while i < n:
+        c = code[i]
+
+        # Check for raw string literal: R"delim(...)delim"
+        if c == 'R' and i + 1 < n and code[i + 1] == '"':
+            # Find the delimiter between " and (
+            delim_start = i + 2
+            paren_pos = code.find('(', delim_start)
+            if paren_pos != -1 and paren_pos - delim_start <= 16:
+                delim = code[delim_start:paren_pos]
+                # Find closing )delim"
+                closing = ')' + delim + '"'
+                end_pos = code.find(closing, paren_pos + 1)
+                if end_pos != -1:
+                    end_pos += len(closing)
+                    result.append(code[i:end_pos])
+                    i = end_pos
+                    continue
+            # Not a valid raw string — treat R as normal character
+            result.append(c)
+            i += 1
+            continue
+
+        # Check for string literal
+        if c == '"':
+            result.append(c)
+            i += 1
+            while i < n and code[i] != '"':
+                if code[i] == '\\' and i + 1 < n:
+                    result.append(code[i])
+                    result.append(code[i + 1])
+                    i += 2
+                else:
+                    result.append(code[i])
+                    i += 1
+            if i < n:
+                result.append(code[i])  # closing "
+                i += 1
+            continue
+
+        # Check for character literal
+        if c == "'":
+            result.append(c)
+            i += 1
+            while i < n and code[i] != "'":
+                if code[i] == '\\' and i + 1 < n:
+                    result.append(code[i])
+                    result.append(code[i + 1])
+                    i += 2
+                else:
+                    result.append(code[i])
+                    i += 1
+            if i < n:
+                result.append(code[i])  # closing '
+                i += 1
+            continue
+
+        # Check for line comment
+        if c == '/' and i + 1 < n and code[i + 1] == '/':
+            # Skip until end of line (but keep the newline)
+            i += 2
+            while i < n and code[i] != '\n':
+                i += 1
+            continue
+
+        # Check for block comment
+        if c == '/' and i + 1 < n and code[i + 1] == '*':
+            i += 2
+            while i + 1 < n and not (code[i] == '*' and code[i + 1] == '/'):
+                # Preserve newlines to keep line numbers stable
+                if code[i] == '\n':
+                    result.append('\n')
+                i += 1
+            if i + 1 < n:
+                i += 2  # skip */
+            continue
+
+        result.append(c)
+        i += 1
+
+    return ''.join(result)
 
 
 def _read_support_files(
@@ -308,6 +417,31 @@ def _unstage_support_headers(staged_files: list[Path]) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _anonymize_build_cmd(build_cmd: str, kernel_name: str) -> str:
+    """Anonymize a build command by removing kernel-specific names.
+
+    Replaces kernel name references with generic equivalents:
+    - 'make bfs' → 'make' (use default target)
+    - Preserves compiler flags and options
+    """
+    if not build_cmd or build_cmd == "(not specified)":
+        return build_cmd
+
+    # For simple 'make <target>' commands, strip the target to use default
+    # (the Makefile's default target will build the right thing)
+    make_with_target = re.match(
+        r'^(make)\s+' + re.escape(kernel_name) + r'(\s|$)',
+        build_cmd,
+    )
+    if make_with_target:
+        rest = build_cmd[make_with_target.end():].strip()
+        return f"make {rest}".strip() if rest else "make"
+
+    # For other commands, replace the kernel name with a generic placeholder
+    # (e.g. in 'gcc -o bfs bfs.c', replace 'bfs' but not flags)
+    return build_cmd.replace(kernel_name, "program")
+
+
 def build_translation_prompt(
     source_spec: dict[str, Any],
     target_spec: dict[str, Any],
@@ -315,11 +449,19 @@ def build_translation_prompt(
     project_root: Path,
     source_support: tuple[dict[str, str], dict[str, str]] | None = None,
     target_infrastructure: dict[str, str] | None = None,
-) -> tuple[str, str]:
+) -> tuple[str, str, dict[str, str]]:
     """Build system + user messages for the translation request.
 
+    Prompt anonymization is applied by default to prevent LLM data contamination:
+    - Kernel name and description are stripped
+    - Source code comments are stripped
+    - Source/support file headers are genericized (Source File 1, Header File 1, etc.)
+    - Target filenames are genericized (translated_0.ext) via anon_map
+    - Build commands are anonymized
+
     Returns:
-        (system_msg, user_msg) — both plain strings.
+        (system_msg, user_msg, anon_map) where anon_map maps generic target
+        filenames (shown to the LLM) back to real filenames (for disk I/O).
     """
     src_api = source_spec["identity"]["parallel_api"]
     tgt_api = target_spec["identity"]["parallel_api"]
@@ -328,10 +470,19 @@ def build_translation_prompt(
     tgt_lang = LANG_FOR_API.get(tgt_api, "cpp")
 
     kernel_name = source_spec["identity"]["kernel_name"]
-    description = source_spec["identity"].get("description", "")
 
     # Target filenames the LLM must produce (kernel-centric: always use translation_targets)
     target_filenames: list[str] = target_spec["files"]["translation_targets"]
+
+    # Build anonymization map: generic filename → real filename
+    # e.g. "translated_0.cpp" → "bfs.cpp", "translated_1.h" → "bfs_kernel.h"
+    anon_map: dict[str, str] = {}
+    anon_target_filenames: list[str] = []
+    for idx, real_fname in enumerate(target_filenames):
+        ext = Path(real_fname).suffix  # e.g. ".cpp", ".cu", ".cl"
+        generic_fname = f"translated_{idx}{ext}"
+        anon_map[generic_fname] = real_fname
+        anon_target_filenames.append(generic_fname)
 
     # Build command and environment from target spec
     build_cmd = (
@@ -339,6 +490,8 @@ def build_translation_prompt(
         .get("commands", {})
         .get("build", "(not specified)")
     )
+    anon_build_cmd = _anonymize_build_cmd(build_cmd, kernel_name)
+
     sys_deps: list[str] = (
         target_spec.get("build", {})
         .get("environment", {})
@@ -347,6 +500,7 @@ def build_translation_prompt(
     )
 
     # ---- System message ----
+    # No kernel name — only mentions API translation task generically
     system_msg = (
         f"You are a parallel programming expert specializing in {src_display} to "
         f"{tgt_display} translation. Translate the provided source code to {tgt_display}. "
@@ -360,14 +514,12 @@ def build_translation_prompt(
     # ---- User message ----
     lines: list[str] = []
     lines.append("## Translation Task")
-    lines.append(f"Kernel: {kernel_name}")
-    if description:
-        lines.append(f"Description: {description}")
+    # Kernel name and description intentionally omitted (anonymization)
     lines.append(f"Source API: {src_display} → Target API: {tgt_display}")
     lines.append("")
 
     lines.append("## Target Files to Produce")
-    for fname in target_filenames:
+    for fname in anon_target_filenames:
         lines.append(f"- {fname}")
     if target_infrastructure:
         lines.append("")
@@ -378,8 +530,8 @@ def build_translation_prompt(
     lines.append("")
 
     lines.append("## Build Command (your code must work with this)")
-    lines.append(f"```")
-    lines.append(build_cmd)
+    lines.append("```")
+    lines.append(anon_build_cmd)
     lines.append("```")
     lines.append("")
 
@@ -390,11 +542,11 @@ def build_translation_prompt(
         lines.append("")
 
     lines.append(f"## Source Code ({src_display})")
-    for fname, contents in source_payload.items():
+    for file_idx, (fname, contents) in enumerate(source_payload.items(), start=1):
         src_lang = LANG_FOR_API.get(src_api, "c")
-        lines.append(f"### {fname}")
+        lines.append(f"### Source File {file_idx}")
         lines.append(f"```{src_lang}")
-        lines.append(contents)
+        lines.append(_strip_comments(contents))
         lines.append("```")
         lines.append("")
 
@@ -408,11 +560,19 @@ def build_translation_prompt(
                 "them, inline the definitions directly rather than using `#include`._"
             )
             lines.append("")
+            header_idx = 0
+            code_idx = 0
             for fname, contents in {**headers, **code}.items():
                 src_lang = LANG_FOR_API.get(src_api, "c")
-                lines.append(f"### {fname}")
+                ext = Path(fname).suffix.lower()
+                if ext in _SUPPORT_HEADER_EXTS:
+                    header_idx += 1
+                    lines.append(f"### Header File {header_idx}")
+                else:
+                    code_idx += 1
+                    lines.append(f"### Code File {code_idx}")
                 lines.append(f"```{src_lang}")
-                lines.append(contents)
+                lines.append(_strip_comments(contents))
                 lines.append("```")
                 lines.append("")
 
@@ -423,16 +583,18 @@ def build_translation_prompt(
             "Your translated code must be compatible with them._"
         )
         lines.append("")
+        infra_idx = 0
         for fname, contents in target_infrastructure.items():
+            infra_idx += 1
             lang = _lang_hint_from_filename(fname)
-            lines.append(f"### {fname}")
+            lines.append(f"### Infrastructure File {infra_idx}")
             lines.append(f"```{lang}")
-            lines.append(contents)
+            lines.append(_strip_comments(contents))
             lines.append("```")
             lines.append("")
 
     user_msg = "\n".join(lines)
-    return system_msg, user_msg
+    return system_msg, user_msg, anon_map
 
 
 # ---------------------------------------------------------------------------
@@ -445,6 +607,7 @@ def call_llm(
     system_msg: str,
     messages: list[dict[str, str]],
     verbose: bool = False,
+    temperature: float = 0.0,
 ) -> dict[str, Any]:
     """Call the LLM and return response + usage metadata.
 
@@ -454,6 +617,8 @@ def call_llm(
         messages: Conversation list of {"role": ..., "content": ...} dicts.
             Supports multi-turn for retry loops.
         verbose: Log request info to stderr.
+        temperature: Sampling temperature (0.0 = greedy/deterministic,
+            0.5+ = stochastic for pass@k multi-sampling).
 
     Returns:
         {response_text, prompt_tokens, completion_tokens, duration_seconds, finish_reason}
@@ -468,6 +633,8 @@ def call_llm(
         gemini-*          → OpenAI SDK (GEMINI_API_KEY or GOOGLE_API_KEY,
                             base_url=https://generativelanguage.googleapis.com/v1beta/openai/)
                             Model name passed as-is (no prefix stripping).
+        together-*        → OpenAI SDK (TOGETHER_API_KEY, base_url=https://api.together.xyz/v1)
+                            Uses api_model from MODEL_REGISTRY, or strips "together-" prefix.
 
     ParaCodex (future):
         Add `elif model.startswith("paracodex")` branch here.
@@ -500,7 +667,7 @@ def call_llm(
         response = client.messages.create(
             model=model,
             max_tokens=16384,
-            temperature=0,
+            temperature=temperature,
             system=system_msg,
             messages=messages,
         )
@@ -539,7 +706,7 @@ def call_llm(
         }
         # o1/o3/o4 reasoning models do not accept temperature
         if not model.startswith(("o1-", "o3-", "o4-")):
-            kwargs["temperature"] = 0
+            kwargs["temperature"] = temperature
 
         response = client.chat.completions.create(**kwargs)
         response_text = response.choices[0].message.content or ""
@@ -586,7 +753,7 @@ def call_llm(
         response = client_az.chat.completions.create(
             model=azure_model,
             max_completion_tokens=16384,
-            temperature=0,
+            temperature=temperature,
             messages=full_messages,
         )
         response_text = response.choices[0].message.content or ""
@@ -621,7 +788,7 @@ def call_llm(
         response = client_groq.chat.completions.create(
             model=groq_model,
             max_tokens=16384,
-            temperature=0,
+            temperature=temperature,
             messages=full_messages,
         )
         response_text = response.choices[0].message.content or ""
@@ -655,7 +822,7 @@ def call_llm(
         response = client_gemini.chat.completions.create(
             model=model,
             max_tokens=16384,
-            temperature=0,
+            temperature=temperature,
             messages=full_messages,
             # Explicitly disable thinking/reasoning so all models are evaluated
             # at equivalent base capability — no inference-time compute scaling.
@@ -668,10 +835,56 @@ def call_llm(
         completion_tokens = response.usage.completion_tokens
         finish_reason = response.choices[0].finish_reason or "unknown"
 
+    elif model.startswith("together-"):
+        # ---- Together AI (OpenAI-compatible) path ----
+        api_key = os.environ.get("TOGETHER_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "Set TOGETHER_API_KEY environment variable to use Together AI models."
+            )
+        try:
+            import openai
+        except ImportError:
+            raise ImportError(
+                "openai package not installed. Run: python3 -m pip install openai"
+            )
+
+        # Resolve actual API model name: prefer MODEL_REGISTRY.api_model, else strip prefix
+        registry_entry = MODEL_REGISTRY.get(model, {})
+        together_model = registry_entry.get("api_model", model[len("together-"):])
+
+        client_together = openai.OpenAI(
+            api_key=api_key,
+            base_url="https://api.together.xyz/v1",
+        )
+        full_messages = [{"role": "system", "content": system_msg}] + messages
+        if verbose:
+            logger.info(
+                "Calling Together AI model=%s (api_model=%s) messages=%d",
+                model, together_model, len(full_messages),
+            )
+        response = client_together.chat.completions.create(
+            model=together_model,
+            max_tokens=16384,
+            temperature=temperature,
+            messages=full_messages,
+            # Explicitly disable thinking/reasoning for Qwen 3.5 (thinking ON by
+            # default). Uses Together AI's chat_template_kwargs passthrough to set
+            # enable_thinking=False in the Jinja2 chat template.
+            # Ref: https://docs.together.ai/reference/chat-completions
+            extra_body={
+                "chat_template_kwargs": {"enable_thinking": False},
+            },
+        )
+        response_text = response.choices[0].message.content or ""
+        prompt_tokens = response.usage.prompt_tokens
+        completion_tokens = response.usage.completion_tokens
+        finish_reason = response.choices[0].finish_reason or "unknown"
+
     else:
         raise ValueError(
             f"Unknown model provider for '{model}'. "
-            "Expected prefix: claude-*, gpt-*, o1-*, o3-*, o4-*, azure-*, groq-*, gemini-*"
+            "Expected prefix: claude-*, gpt-*, o1-*, o3-*, o4-*, azure-*, groq-*, gemini-*, together-*"
         )
 
     duration = time.monotonic() - t0
@@ -851,6 +1064,9 @@ def evaluate_translation(
     verbose: bool = False,
     dry_run: bool = False,
     use_cpu_timing: bool = False,
+    temperature: float = 0.0,
+    sample_id: int = 0,
+    save_to_disk: bool = True,
 ) -> dict[str, Any]:
     """Translate source → target using the LLM, then build/run/verify.
 
@@ -904,12 +1120,14 @@ def evaluate_translation(
         target_spec, prompt_target_filenames, project_root
     )
 
-    # Build prompt
-    system_msg, user_msg = build_translation_prompt(
+    # Build prompt (returns anon_map: generic filename → real filename)
+    system_msg, user_msg, anon_map = build_translation_prompt(
         source_spec, target_spec, source_payload, project_root,
         source_support=source_support,
         target_infrastructure=target_infrastructure,
     )
+    # Generic filenames shown to LLM (keys of anon_map)
+    anon_target_filenames: list[str] = list(anon_map.keys())
 
     if dry_run:
         print("=" * 70)
@@ -1003,7 +1221,7 @@ def evaluate_translation(
 
             # -- Call LLM --
             try:
-                llm_result = call_llm(model, system_msg, messages, verbose=verbose)
+                llm_result = call_llm(model, system_msg, messages, verbose=verbose, temperature=temperature)
             except Exception as exc:
                 error_message = f"LLM call failed: {exc}"
                 logger.error(error_message)
@@ -1022,14 +1240,18 @@ def evaluate_translation(
             total_completion_tokens += llm_result["completion_tokens"]
             total_llm_time += llm_result["duration_seconds"]
 
-            # -- Extract code blocks --
-            extracted = extract_code_blocks(response_text, target_filenames)
+            # -- Extract code blocks using anonymized filenames --
+            # The LLM was told to produce generic filenames (translated_0.cpp, etc.)
+            anon_extracted = extract_code_blocks(response_text, anon_target_filenames)
             if verbose:
                 logger.info(
-                    "Extracted %d/%d target files", len(extracted), len(target_filenames)
+                    "Extracted %d/%d target files", len(anon_extracted), len(anon_target_filenames)
                 )
 
-            # -- Write extracted files to disk --
+            # De-anonymize: map generic filenames back to real filenames
+            extracted = {anon_map[gf]: code for gf, code in anon_extracted.items()}
+
+            # -- Write extracted files to disk using real filenames --
             for fname, code in extracted.items():
                 fp = source_dir / fname
                 fp.parent.mkdir(parents=True, exist_ok=True)
@@ -1042,16 +1264,17 @@ def evaluate_translation(
                 final_status = "EXTRACTION_FAIL"
                 error_message = (
                     f"LLM response did not contain parseable code for any of the "
-                    f"expected target files: {target_filenames}"
+                    f"expected target files: {anon_target_filenames}"
                 )
                 attempt_record["extraction_fail"] = True
                 if attempt_num < max_retries:
+                    # Use anonymized filenames in feedback (LLM knows generic names)
                     extraction_feedback = (
                         "Your response did not include any of the expected output files. "
                         "Please translate each target file using this format:\n\n"
                         + "".join(
                             f"```c {f}\n// your translated code here\n```\n\n"
-                            for f in target_filenames
+                            for f in anon_target_filenames
                         )
                     )
                     attempt_record["error_feedback_sent"] = extraction_feedback[:200]
@@ -1072,6 +1295,9 @@ def evaluate_translation(
             _missing_files = [f for f in target_filenames if f not in extracted]
             _empty_files = [f for f, c in extracted.items() if not c.strip()]
             _partial_fail_files = _missing_files + _empty_files
+            # Map real filenames back to anonymized names for feedback to LLM
+            _real_to_anon = {v: k for k, v in anon_map.items()}
+            _anon_partial_fail = [_real_to_anon.get(f, f) for f in _partial_fail_files]
             if _partial_fail_files:
                 final_status = "EXTRACTION_FAIL"
                 error_message = (
@@ -1083,13 +1309,14 @@ def evaluate_translation(
                 attempt_record["extraction_fail"] = True
                 attempt_record["partial_extraction"] = True
                 if attempt_num < max_retries:
+                    # Use anonymized filenames in feedback (LLM knows generic names)
                     extraction_feedback = (
-                        f"Your response was missing {len(_partial_fail_files)} expected "
+                        f"Your response was missing {len(_anon_partial_fail)} expected "
                         f"file(s). Please include ALL target files in your response. "
                         f"Re-emit the following missing/empty files using this format:\n\n"
                         + "".join(
                             f"```c {f}\n// your translated code here\n```\n\n"
-                            for f in _partial_fail_files
+                            for f in _anon_partial_fail
                         )
                     )
                     attempt_record["error_feedback_sent"] = extraction_feedback[:200]
@@ -1209,7 +1436,9 @@ def evaluate_translation(
 
     # -- Build result JSON --
     # last_llm_response was saved inside the loop before restore_files() ran
-    extracted_last = extract_code_blocks(last_llm_response, target_filenames)
+    # Extract using anonymized filenames (what the LLM produced), then de-anonymize
+    anon_extracted_last = extract_code_blocks(last_llm_response, anon_target_filenames)
+    extracted_last = {anon_map[gf]: code for gf, code in anon_extracted_last.items()}
     # Store FULL translated files — truncating to 200 chars made retroactive
     # re-verification impossible (discovered in S-VERIFY session, 2026-03-27).
     translated_files_full = {
@@ -1226,6 +1455,8 @@ def evaluate_translation(
         "kernel": kernel_name,
         "model": model,
         "augment_level": augment_level,
+        "temperature": temperature,
+        "sample_id": sample_id,
         "translation_mode": translation_mode,
         "timestamp": timestamp,
         # LLM usage (totals across all attempts)
@@ -1293,13 +1524,17 @@ def evaluate_translation(
     }
 
     # -- Save result to disk --
-    out_dir = project_root / "results" / "evaluation" / model
-    out_dir.mkdir(parents=True, exist_ok=True)
-    level_tag = f"-L{augment_level}" if augment_level > 0 else ""
-    out_file = out_dir / f"{source_id}-to-{target_id}{level_tag}.json"
-    out_file.write_text(json.dumps(result, indent=2), encoding="utf-8")
-    if verbose:
-        logger.info("Result saved: %s", out_file)
+    # When called from run_eval_batch.py, save_to_disk=False to avoid dual-write
+    # (the batch runner owns file I/O with its own resume/overwrite logic).
+    if save_to_disk:
+        out_dir = project_root / "results" / "evaluation" / model
+        out_dir.mkdir(parents=True, exist_ok=True)
+        level_tag = f"-L{augment_level}" if augment_level > 0 else ""
+        sample_tag = f"-s{sample_id}" if sample_id > 0 else ""
+        out_file = out_dir / f"{source_id}-to-{target_id}{level_tag}{sample_tag}.json"
+        out_file.write_text(json.dumps(result, indent=2), encoding="utf-8")
+        if verbose:
+            logger.info("Result saved: %s", out_file)
 
     return result
 
@@ -1435,6 +1670,18 @@ def main() -> None:
             "Not yet implemented; accepted but has no effect."
         ),
     )
+    parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.0,
+        help="Sampling temperature (0.0=greedy, 0.5+ for pass@k multi-sampling). Default: 0.0",
+    )
+    parser.add_argument(
+        "--sample-id",
+        type=int,
+        default=0,
+        help="Sample index for pass@k runs (0=default, >0 adds -s{N} to filename). Default: 0",
+    )
 
     args = parser.parse_args()
 
@@ -1475,6 +1722,8 @@ def main() -> None:
         verbose=args.verbose,
         dry_run=args.dry_run,
         use_cpu_timing=args.use_cpu_timing,
+        temperature=args.temperature,
+        sample_id=args.sample_id,
     )
 
     _print_result(result, as_json=args.as_json, verbose=args.verbose)

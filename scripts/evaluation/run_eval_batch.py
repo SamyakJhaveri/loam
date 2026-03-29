@@ -63,8 +63,9 @@ def _build_tasks(
     kernels: list[str] | None,
     models: list[str],
     augment_levels: list[int] | None = None,
+    num_samples: int = 1,
 ) -> list[dict]:
-    """Return a list of task dicts: {src_spec, tgt_spec, kernel, model, augment_level}."""
+    """Return a list of task dicts: {src_spec, tgt_spec, kernel, model, augment_level, sample_id}."""
     src_api, tgt_api = direction.split("-to-")
     levels = augment_levels or [0]
 
@@ -105,25 +106,28 @@ def _build_tasks(
 
         for model in models:
             for level in levels:
-                tasks.append({
-                    "kernel": kernel,
-                    "src_spec": src_spec_path,
-                    "tgt_spec": tgt_spec_path,
-                    "model": model,
-                    "augment_level": level,
-                    "src_id": src_spec_path.stem,
-                    "tgt_id": tgt_spec_path.stem,
-                })
+                for sid in range(num_samples):
+                    tasks.append({
+                        "kernel": kernel,
+                        "src_spec": src_spec_path,
+                        "tgt_spec": tgt_spec_path,
+                        "model": model,
+                        "augment_level": level,
+                        "sample_id": sid,
+                        "src_id": src_spec_path.stem,
+                        "tgt_id": tgt_spec_path.stem,
+                    })
 
         seen_kernels.add(kernel)
 
     return tasks
 
 
-def _result_path(project_root: Path, model: str, src_id: str, tgt_id: str, augment_level: int = 0) -> Path:
+def _result_path(project_root: Path, model: str, src_id: str, tgt_id: str, augment_level: int = 0, sample_id: int = 0) -> Path:
     safe_model = model.replace("/", "_")
     level_tag = f"-L{augment_level}" if augment_level > 0 else ""
-    return project_root / "results" / "evaluation" / safe_model / f"{src_id}-to-{tgt_id}{level_tag}.json"
+    sample_tag = f"-s{sample_id}" if sample_id > 0 else ""
+    return project_root / "results" / "evaluation" / safe_model / f"{src_id}-to-{tgt_id}{level_tag}{sample_tag}.json"
 
 
 # --------------------------------------------------------------------------- #
@@ -138,6 +142,7 @@ def run_batch(
     use_cpu_timing: bool,
     verbose: bool,
     max_retries: int = 1,
+    temperature: float = 0.0,
 ) -> list[dict]:
     """Execute all tasks sequentially; return list of result dicts."""
     results: list[dict] = []
@@ -149,10 +154,12 @@ def run_batch(
         tgt_id = task["tgt_id"]
         model = task["model"]
         augment_level = task.get("augment_level", 0)
-        result_file = _result_path(project_root, model, src_id, tgt_id, augment_level)
+        sample_id = task.get("sample_id", 0)
+        result_file = _result_path(project_root, model, src_id, tgt_id, augment_level, sample_id)
 
         level_tag = f" L{augment_level}" if augment_level > 0 else ""
-        prefix = f"[{i:3d}/{total}] {src_id} → {tgt_id} [{model}]{level_tag}"
+        sample_tag = f" s{sample_id}" if sample_id > 0 else ""
+        prefix = f"[{i:3d}/{total}] {src_id} → {tgt_id} [{model}]{level_tag}{sample_tag}"
 
         if resume and result_file.exists():
             try:
@@ -185,6 +192,9 @@ def run_batch(
                 use_cpu_timing=use_cpu_timing,
                 max_retries=max_retries,
                 verbose=verbose,
+                temperature=temperature,
+                sample_id=sample_id,
+                save_to_disk=False,  # batch runner owns file I/O (avoids dual-write)
             )
         except FileNotFoundError as exc:
             elapsed = time.time() - t0
@@ -441,6 +451,19 @@ def main() -> None:
         help="Max LLM attempts per task with error feedback (1=zero-shot, default: 1).",
     )
     parser.add_argument(
+        "--temperature",
+        type=float,
+        default=0.0,
+        help="Sampling temperature (0.0=greedy, 0.5+ for pass@k multi-sampling). Default: 0.0",
+    )
+    parser.add_argument(
+        "--num-samples",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Number of independent samples per task for pass@k (default: 1).",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         default=False,
@@ -469,6 +492,7 @@ def main() -> None:
         kernels=args.kernels,
         models=args.models,
         augment_levels=args.augment_levels,
+        num_samples=args.num_samples,
     )
 
     if not tasks:
@@ -480,6 +504,8 @@ def main() -> None:
         f"direction={args.direction}  "
         f"models={args.models}  "
         f"augment_levels={args.augment_levels}  "
+        f"temperature={args.temperature}  "
+        f"num_samples={args.num_samples}  "
         f"resume={args.resume}",
         flush=True,
     )
@@ -494,6 +520,7 @@ def main() -> None:
         use_cpu_timing=args.use_cpu_timing,
         verbose=args.verbose,
         max_retries=args.max_retries,
+        temperature=args.temperature,
     )
     total_elapsed = time.time() - t_start
 
@@ -512,6 +539,8 @@ def main() -> None:
         "models": args.models,
         "suite": args.suite,
         "kernels": args.kernels,
+        "temperature": args.temperature,
+        "num_samples": args.num_samples,
         "total_tasks": len(results),
         "total_elapsed_seconds": round(total_elapsed, 1),
         "results": results,
