@@ -32,6 +32,9 @@ from collections import defaultdict
 
 # Per-million-token pricing
 MODEL_PRICING = {
+    "together-qwen-3.5-397b-a17b": {"input": 0.50, "output": 1.50, "display": "Qwen 3.5 397B (Together)"},
+    "gemini-2.5-flash": {"input": 0.15, "output": 0.60, "display": "Gemini 2.5 Flash"},
+    # Legacy models (kept for historical result analysis)
     "claude-sonnet-4-6": {"input": 3.00, "output": 15.00, "display": "Claude Sonnet 4"},
     "gemini-2.5-flash-lite": {"input": 0.075, "output": 0.30, "display": "Gemini 2.5 Flash-Lite"},
     "groq-llama-3.3-70b-versatile": {"input": 0.59, "output": 0.79, "display": "Groq Llama 3.3 70B"},

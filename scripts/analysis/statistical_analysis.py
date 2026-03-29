@@ -339,15 +339,12 @@ def compute_augmentation_trends(records: list[dict], alpha: float = 0.05) -> dic
     """Run Cochran-Armitage trend tests per model and overall (cuda-to-omp only).
 
     Restricts to cuda-to-omp for balanced design (same kernels at every level).
-    Bonferroni correction: 3 per-model + 1 overall = 4 tests.
+    Bonferroni correction: N per-model + 1 overall tests.
     """
     # Filter to cuda-to-omp only
     filtered = [r for r in records if r.get("direction") == "cuda-to-omp"]
     if not filtered:
         return {"error": "No cuda-to-omp records found"}
-
-    n_tests = 4  # 3 models + 1 overall
-    alpha_corrected = alpha / n_tests
 
     # Group by (model, level)
     by_model_level: dict[str, dict[int, dict[str, int]]] = defaultdict(
@@ -363,6 +360,10 @@ def compute_augmentation_trends(records: list[dict], alpha: float = 0.05) -> dic
         if r.get("overall_status") == "PASS":
             by_model_level[m][lv]["pass"] += 1
             overall_level[lv]["pass"] += 1
+
+    # Bonferroni: N per-model tests + 1 overall = N+1 tests
+    n_tests = len(by_model_level) + 1
+    alpha_corrected = alpha / n_tests
 
     results = {}
 

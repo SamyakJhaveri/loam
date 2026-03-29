@@ -487,10 +487,8 @@ def main() -> None:
         "--expected-models",
         nargs="+",
         default=[
-            "azure-gpt-4.1",
-            "claude-sonnet-4-6",
-            "gemini-2.5-flash-lite",
-            "groq-llama-3.3-70b-versatile",
+            "together-qwen-3.5-397b-a17b",
+            "gemini-2.5-flash",
         ],
         metavar="MODEL",
         help="Models expected in the full matrix (used by --show-gaps).",

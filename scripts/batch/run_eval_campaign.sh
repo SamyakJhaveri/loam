@@ -1,52 +1,212 @@
 #!/usr/bin/env bash
-# run_qwen_campaign.sh — Full Qwen 3.5 397B-A17B eval campaign
+# run_eval_campaign.sh — Generic full eval campaign for any model
 #
-# Runs ~790 evaluations: 158 task pairs × 5 augmentation levels (L0-L4)
+# Two modes:
+#   PRIMARY (default):  790 tasks — 158 pairs × L0-L4, max_retries=3, temp=0.0
+#   PASS@K:             158 tasks — 158 pairs × L0 only, 5 samples each, temp=0.7
+#
 # Self-launches in a detached tmux session so you can safely disconnect SSH.
 #
 # Usage:
-#   bash scripts/batch/run_qwen_campaign.sh          # launch in tmux (default)
-#   bash scripts/batch/run_qwen_campaign.sh --attach  # attach to running session
+#   bash scripts/batch/run_eval_campaign.sh <MODEL>                 # primary campaign
+#   bash scripts/batch/run_eval_campaign.sh <MODEL> pass@k          # pass@k sweep
+#   bash scripts/batch/run_eval_campaign.sh <MODEL> --attach        # attach to primary session
+#   bash scripts/batch/run_eval_campaign.sh <MODEL> pass@k --attach # attach to pass@k session
 #
-# Attach later with:
-#   tmux attach -t qwen_campaign
+# Examples:
+#   bash scripts/batch/run_eval_campaign.sh together-qwen-3.5-397b-a17b
+#   bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash pass@k
 #
-# Model: together-qwen-3.5-397b-a17b (Qwen 3.5 397B MoE via Together AI)
+# Primary campaign:
+#   Levels: L0-L4 (5 augmentation levels)
+#   Max retries: 3 (iterative self-repair with error feedback)
+#   Temperature: 0.0 (greedy/deterministic)
+#   Samples: 1
+#   Total: 158 L0 pairs × 5 levels = 790 tasks
+#
+# Pass@k sweep:
+#   Levels: L0 only
+#   Max retries: 1 (zero-shot, no repair)
+#   Temperature: 0.7 (stochastic sampling)
+#   Samples: 5 (independent samples per task)
+#   Total: 158 L0 pairs × 5 samples = 790 tasks
+#
 # Suites: Rodinia (110 pairs, incl. KNOWN_FAIL) + XSBench (6) + RSBench (6) + mixbench (6) + HeCBench (30)
-#   HeCBench: cuda↔omp (11, incl. iso2dfd dup) + cuda↔omp_target (19, excl. 2 KNOWN_FAIL targets)
+#   HeCBench: cuda<->omp (11, incl. iso2dfd dup) + cuda<->omp_target (19, excl. 2 KNOWN_FAIL targets)
 #   Note: ~14 Rodinia tasks involve KNOWN_FAIL specs — runner handles these gracefully
-# Levels: L0-L4 (5 augmentation levels)
-# Total: 790 evaluation tasks
 #
-# Results written to: results/evaluation/together-qwen-3.5-397b-a17b/
-# Log file: results/evaluation/qwen_campaign.log
-# Done marker: results/evaluation/qwen_campaign_done.marker
+# Results written to: results/evaluation/<MODEL>/
+# Log file: results/evaluation/<MODEL_SHORT>_{campaign,passk}.log
+# Done marker: results/evaluation/<MODEL_SHORT>_{campaign,passk}_done.marker
 
 set -euo pipefail
 
-SESSION="qwen_campaign"
 PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
-LOGFILE="$PROJECT_ROOT/results/evaluation/qwen_campaign.log"
 
-# ── If called with --attach, just attach to existing session ─────────────────
-if [[ "${1:-}" == "--attach" ]]; then
+# ── Usage ────────────────────────────────────────────────────────────────────
+usage() {
+    echo "Usage: $0 <MODEL> [pass@k] [--attach]"
+    echo ""
+    echo "  MODEL     Model ID to evaluate. Examples:"
+    echo "              together-qwen-3.5-397b-a17b"
+    echo "              gemini-2.5-flash"
+    echo ""
+    echo "  pass@k    Run pass@k sweep instead of primary campaign:"
+    echo "              L0 only, temperature=0.7, num_samples=5, max_retries=1"
+    echo ""
+    echo "  --attach  Attach to an existing tmux session for this model/mode"
+    echo ""
+    echo "The script auto-launches in a tmux session."
+    echo "You can safely disconnect SSH — the session will keep running."
+    exit 1
+}
+
+# ── Parse arguments ─────────────────────────────────────────────────────────
+MODEL=""
+MODE="primary"
+ATTACH=false
+INSIDE_TMUX=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --attach)      ATTACH=true ;;
+        --inside-tmux) INSIDE_TMUX=true ;;
+        --help|-h)     usage ;;
+        pass@k)        MODE="passk" ;;
+        -*)            echo "Unknown flag: $arg"; usage ;;
+        *)
+            if [ -z "$MODEL" ]; then
+                MODEL="$arg"
+            else
+                echo "Unexpected argument: $arg"; usage
+            fi
+            ;;
+    esac
+done
+
+if [ -z "$MODEL" ]; then
+    usage
+fi
+
+# ── Derive names from MODEL and MODE ────────────────────────────────────────
+MODEL_SHORT=$(echo "$MODEL" | sed 's/[^a-zA-Z0-9_-]/_/g' | cut -c1-30)
+
+if [ "$MODE" = "passk" ]; then
+    SESSION="${MODEL_SHORT}_passk"
+    LOGFILE="$PROJECT_ROOT/results/evaluation/${MODEL_SHORT}_passk.log"
+    DONE_MARKER="$PROJECT_ROOT/results/evaluation/${MODEL_SHORT}_passk_done.marker"
+    MODE_DISPLAY="pass@k sweep"
+else
+    SESSION="${MODEL_SHORT}_campaign"
+    LOGFILE="$PROJECT_ROOT/results/evaluation/${MODEL_SHORT}_campaign.log"
+    DONE_MARKER="$PROJECT_ROOT/results/evaluation/${MODEL_SHORT}_campaign_done.marker"
+    MODE_DISPLAY="primary campaign"
+fi
+
+# ── Mode-specific configuration ─────────────────────────────────────────────
+if [ "$MODE" = "passk" ]; then
+    AUGMENT_LEVELS="0"
+    MAX_RETRIES=1
+    TEMPERATURE=0.7
+    NUM_SAMPLES=5
+    EXPECTED_TASKS=790    # 158 pairs × 5 samples
+else
+    AUGMENT_LEVELS="0 1 2 3 4"
+    MAX_RETRIES=3
+    TEMPERATURE=0.0
+    NUM_SAMPLES=1
+    EXPECTED_TASKS=790    # 158 pairs × 5 levels
+fi
+
+# ── --attach mode ────────────────────────────────────────────────────────────
+if $ATTACH; then
     exec tmux attach -t "$SESSION"
 fi
 
-# ── If we are NOT already inside tmux, launch ourselves in a new session ──────
-if [[ -z "${TMUX:-}" ]]; then
+# ── API key check function ──────────────────────────────────────────────────
+check_api_key() {
+    case "$MODEL" in
+        together-*)
+            if [ -z "${TOGETHER_API_KEY:-}" ]; then
+                echo "  FATAL: TOGETHER_API_KEY is not set."
+                echo "  Set it with:  export TOGETHER_API_KEY='your-key-here'"
+                exit 1
+            fi
+            echo "  OK: TOGETHER_API_KEY is set"
+            ;;
+        gemini-*)
+            if [ -z "${GEMINI_API_KEY:-}${GOOGLE_API_KEY:-}" ]; then
+                echo "  FATAL: Neither GEMINI_API_KEY nor GOOGLE_API_KEY is set."
+                echo "  Set one with:  export GEMINI_API_KEY='your-key-here'"
+                exit 1
+            fi
+            if [ -n "${GEMINI_API_KEY:-}" ]; then
+                echo "  OK: GEMINI_API_KEY is set"
+            else
+                echo "  OK: GOOGLE_API_KEY is set"
+            fi
+            ;;
+        claude-*)
+            if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+                echo "  FATAL: ANTHROPIC_API_KEY is not set."
+                echo "  Set it with:  export ANTHROPIC_API_KEY='your-key-here'"
+                exit 1
+            fi
+            echo "  OK: ANTHROPIC_API_KEY is set"
+            ;;
+        azure-*)
+            if [ -z "${AZURE_OPENAI_API_KEY:-}" ]; then
+                echo "  FATAL: AZURE_OPENAI_API_KEY is not set."
+                exit 1
+            fi
+            echo "  OK: AZURE_OPENAI_API_KEY is set"
+            ;;
+        groq-*)
+            if [ -z "${GROQ_API_KEY:-}" ]; then
+                echo "  FATAL: GROQ_API_KEY is not set."
+                echo "  Set it with:  export GROQ_API_KEY='your-key-here'"
+                exit 1
+            fi
+            echo "  OK: GROQ_API_KEY is set"
+            ;;
+        gpt-*|o1-*|o3-*|o4-*)
+            if [ -z "${OPENAI_API_KEY:-}" ]; then
+                echo "  FATAL: OPENAI_API_KEY is not set."
+                exit 1
+            fi
+            echo "  OK: OPENAI_API_KEY is set"
+            ;;
+        *)
+            echo "  WARNING: Unknown model prefix '$MODEL' — cannot verify API key."
+            echo "  The pipeline will fail if the correct key is not set."
+            ;;
+    esac
+}
+
+# ── If we are NOT already inside tmux, launch ourselves in a new session ─────
+if ! $INSIDE_TMUX; then
+    # Check API key BEFORE launching tmux (fail fast with clear error)
+    echo "--- Pre-launch API key check ---"
+    check_api_key
+    echo ""
+
     # Kill stale session if it exists
     tmux kill-session -t "$SESSION" 2>/dev/null || true
 
     # Ensure log directory exists
     mkdir -p "$(dirname "$LOGFILE")"
 
-    # Create a new detached session that runs this very script (now inside tmux)
-    tmux new-session -d -s "$SESSION" -x 220 -y 50 \
-        "bash \"$0\" --inside-tmux 2>&1 | tee \"$LOGFILE\"; echo ''; echo '=== SESSION FINISHED ==='; read -r -p 'Press Enter to close...'"
+    # Build the inner command — pass MODEL, MODE, and --inside-tmux
+    INNER_ARGS="\"$MODEL\""
+    if [ "$MODE" = "passk" ]; then
+        INNER_ARGS="\"$MODEL\" pass@k"
+    fi
 
-    echo ""
-    echo "Launched tmux session '$SESSION'."
+    # Create a new detached session that runs this script with --inside-tmux
+    tmux new-session -d -s "$SESSION" -x 220 -y 50 \
+        "bash \"$0\" $INNER_ARGS --inside-tmux 2>&1 | tee \"$LOGFILE\"; echo ''; echo '=== SESSION FINISHED ==='; read -r -p 'Press Enter to close...'"
+
+    echo "Launched tmux session '$SESSION' ($MODE_DISPLAY)."
     echo ""
     echo "  Attach with:  tmux attach -t $SESSION"
     echo "  Log file:     $LOGFILE"
@@ -61,7 +221,7 @@ fi
 trap 'echo ""; echo "INTERRUPTED at $(date -Iseconds)"; exit 130' INT TERM
 
 echo "============================================================"
-echo " Qwen 3.5 397B-A17B — Full Eval Campaign"
+echo " $MODEL — ${MODE_DISPLAY^^}"
 echo " $(date)"
 echo " Repo: $PROJECT_ROOT"
 echo "============================================================"
@@ -74,15 +234,7 @@ echo ""
 
 # ── Pre-flight: verify API key ───────────────────────────────────────────────
 echo "--- Pre-flight checks ---"
-if [ -z "${TOGETHER_API_KEY:-}" ]; then
-    echo "  FATAL: TOGETHER_API_KEY is not set."
-    echo ""
-    echo "  Set it with:  export TOGETHER_API_KEY='your-key-here'"
-    echo "  Or add to ~/.bashrc for persistence."
-    exit 1
-else
-    echo "  OK: TOGETHER_API_KEY is set"
-fi
+check_api_key
 
 # ── System info ───────────────────────────────────────────────────────────────
 GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 || echo "N/A")
@@ -91,15 +243,14 @@ echo "  CUDA: $(nvcc --version 2>&1 | tail -1 || echo 'N/A')"
 echo ""
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-MODEL="together-qwen-3.5-397b-a17b"
-AUGMENT_LEVELS="0 1 2 3 4"
-MAX_RETRIES=2
-
 echo "Configuration:"
+echo "  Mode: $MODE_DISPLAY"
 echo "  Model: $MODEL"
 echo "  Augment levels: $AUGMENT_LEVELS"
 echo "  Max retries per task: $MAX_RETRIES"
-echo "  Total estimated tasks: 790"
+echo "  Temperature: $TEMPERATURE"
+echo "  Samples per task: $NUM_SAMPLES"
+echo "  Total estimated tasks: $EXPECTED_TASKS"
 echo ""
 
 # ── Helper: run one suite+direction (with optional --kernels) ────────────────
@@ -125,6 +276,8 @@ run_batch() {
         --models $MODEL
         --augment-levels $AUGMENT_LEVELS
         --max-retries $MAX_RETRIES
+        --temperature $TEMPERATURE
+        --num-samples $NUM_SAMPLES
         --resume -v
         --project-root "$PROJECT_ROOT")
 
@@ -151,16 +304,15 @@ HECBENCH_OMP_TARGET_TARGETS="heat2d floydwarshall page-rank jacobi nqueen md con
 # Format: run_batch SUITE DIRECTION BATCH_IDX TOTAL [KERNEL1 KERNEL2 ...]
 # Ordered: Rodinia first (largest), then smaller suites, HeCBench last
 #
-# Rodinia:   110 L0 tasks × 5 levels = 550 (includes KNOWN_FAIL specs; ~14 extra vs ideal 96)
-# XSBench:     6 L0 tasks × 5 levels =  30
-# RSBench:     6 L0 tasks × 5 levels =  30
-# mixbench:    6 L0 tasks × 5 levels =  30
-# HeCBench:   30 L0 tasks × 5 levels = 150 (includes iso2dfd manifest duplicate)
-#   cuda↔omp:         5+5 = 10 unique pairs (11 tasks due to dup)
-#   cuda→omp_target:       8 unique pairs (9 tasks due to dup)
-#   omp_target→cuda:      10 unique pairs
+# Rodinia:   110 L0 task pairs (includes KNOWN_FAIL specs; ~14 extra vs ideal 96)
+# XSBench:     6 L0 task pairs
+# RSBench:     6 L0 task pairs
+# mixbench:    6 L0 task pairs
+# HeCBench:   30 L0 task pairs (includes iso2dfd manifest duplicate)
 # ─────────────────────────────────────────────────────────
-# Grand total: 158 L0 tasks × 5 levels = 790 tasks
+# 158 L0 pairs total
+# Primary: × 5 levels × 1 sample = 790 tasks
+# Pass@k:  × 1 level  × 5 samples = 790 tasks
 
 TOTAL_BATCHES=28  # 6 rodinia + 6 xsbench + 6 rsbench + 6 mixbench + 4 hecbench = 28
 BATCH_IDX=0
@@ -260,6 +412,8 @@ if [ "${#FAILED_BATCHES[@]}" -gt 0 ]; then
             --models $MODEL
             --augment-levels $AUGMENT_LEVELS
             --max-retries $MAX_RETRIES
+            --temperature $TEMPERATURE
+            --num-samples $NUM_SAMPLES
             --resume -v
             --project-root "$PROJECT_ROOT")
         if [ ${#KERNEL_ARGS[@]} -gt 0 ]; then
@@ -290,7 +444,7 @@ for SUITE in rodinia xsbench rsbench mixbench hecbench; do
     echo "  $SUITE: $COUNT files"
     TOTAL_FILES=$((TOTAL_FILES + COUNT))
 done
-echo "  Total: $TOTAL_FILES / 790 expected"
+echo "  Total: $TOTAL_FILES / $EXPECTED_TASKS expected"
 echo ""
 
 # ── Regenerate analysis ──────────────────────────────────────────────────────
@@ -316,11 +470,11 @@ echo " RESULTS SUMMARY"
 echo "============================================================"
 echo ""
 
-python3 << 'PYEOF'
-import json, glob, os
+python3 - "$MODEL" << 'PYEOF'
+import json, glob, os, sys
 
+MODEL = sys.argv[1]
 BASE = "/home/samyak/Desktop/parbench_sam"
-MODEL = "together-qwen-3.5-397b-a17b"
 MODEL_DIR = f"{BASE}/results/evaluation/{MODEL}"
 
 if not os.path.isdir(MODEL_DIR):
@@ -402,11 +556,11 @@ PYEOF
 END_TIME=$(date +%s)
 ELAPSED=$(( (END_TIME - START_TIME) / 60 ))
 
-DONE_MARKER="$PROJECT_ROOT/results/evaluation/qwen_campaign_done.marker"
 {
     echo "COMPLETED $(date -Iseconds)"
     echo "MODEL=$MODEL"
-    echo "FILES=$TOTAL_FILES/790"
+    echo "MODE=$MODE_DISPLAY"
+    echo "FILES=$TOTAL_FILES/$EXPECTED_TASKS"
     echo "ELAPSED=${ELAPSED}m"
     if [ "${#FAILED_BATCHES[@]}" -gt 0 ]; then
         echo "FAILED_BATCHES=${FAILED_BATCHES[*]}"
@@ -418,13 +572,17 @@ DONE_MARKER="$PROJECT_ROOT/results/evaluation/qwen_campaign_done.marker"
 # ── Final banner ─────────────────────────────────────────────────────────────
 echo ""
 echo "============================================================"
-echo " QWEN CAMPAIGN COMPLETE — $(date)"
+echo " ${MODE_DISPLAY^^} COMPLETE — $(date)"
 echo " Model: $MODEL"
-echo " Total results: $TOTAL_FILES / 790"
+echo " Total results: $TOTAL_FILES / $EXPECTED_TASKS"
 echo " Elapsed: ${ELAPSED} minutes"
 if [ "${#FAILED_BATCHES[@]}" -gt 0 ]; then
     echo " WARNING: Batches still failed after retry: ${FAILED_BATCHES[*]}"
-    echo " Re-run:  bash scripts/batch/run_qwen_campaign.sh"
+    if [ "$MODE" = "passk" ]; then
+        echo " Re-run:  bash scripts/batch/run_eval_campaign.sh $MODEL pass@k"
+    else
+        echo " Re-run:  bash scripts/batch/run_eval_campaign.sh $MODEL"
+    fi
     echo " (--resume will skip completed tasks)"
 else
     echo " All batches completed successfully."

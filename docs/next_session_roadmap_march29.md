@@ -1,13 +1,138 @@
 # Next Session Roadmap — ParBench SC26
 
-**Generated:** 2026-03-28
-**Last session:** Pre-commit review + Qwen campaign preparation
-**SC26 deadline:** April 8, 2026 (11 days remaining)
+**Generated:** 2026-03-28, **Updated:** 2026-03-29
+**Last session:** Session 12 — Campaign launch preparation + related work research
+**SC26 deadline:** April 8, 2026 (10 days remaining)
 **Project root:** `/home/samyak/Desktop/parbench_sam`
 
 ---
 
-## 1. Session Accomplishments (What Was Done This Session)
+## 0. Session Update — March 29, 2026
+
+### DECISIONS MADE
+
+1. **2-Model Eval Campaign (D1):** The primary campaign uses exactly 2 models:
+   - **Qwen 3.5 397B-A17B** (`together-qwen-3.5-397b-a17b`) via Together AI — large MoE architecture (397B total / 17B active)
+   - **Gemini 2.5 Flash** (`gemini-2.5-flash`) via Google AI — dense architecture
+   - The previous 3-model pilot lineup (Claude Sonnet, Gemini Flash Lite, Groq Llama 70B) is superseded. Pilot data stashed to `results/evaluation_backup_20260328/`.
+   - A 3rd model may be added later without infrastructure changes.
+
+2. **Division of Labor:** Samyak runs Qwen on the Linux GPU machine (RTX 4070). Erel runs Gemini on their machine. Both use the identical `run_eval_campaign.sh` script.
+
+3. **Campaign Scope (D2):** 790 tasks per model = 5 suites x 6 directions x ~26 spec-pairs x 5 augmentation levels (L0-L4).
+
+4. **Self-Repair Protocol (D3):** Primary campaign uses `max_retries=3`, `temperature=0.0`, `num_samples=1`. Each task gets up to 3 LLM calls with iterative error feedback.
+
+5. **pass@k Sweep (D4):** Separate sweep at L0 only, `temperature=0.7`, `num_samples=5`, `max_retries=1` (zero-shot per sample). Measures sampling variance orthogonal to augmentation.
+
+6. **Single Parameterized Script (D5):** `scripts/batch/run_eval_campaign.sh MODEL [MODE]` replaces per-model scripts. Old `run_qwen_campaign.sh` deleted; `run_gemini_campaign.sh` was created and removed within the session (never committed).
+
+All decisions are formally documented with rationale and reviewer-ready defenses in `docs/experimental_decisions_log.md` (7 decisions D1-D7, 5 insights I1-I5).
+
+### COMPLETED THIS SESSION
+
+- [x] **Augmentation smoke tests:** 50/50 PASS across RSBench (3), mixbench (3), HeCBench (4 spot-checked) at L0-L4. Level-invariance confirmed for all 64 non-KNOWN_FAIL specs across 5 suites (D6).
+- [x] **`.cc` suffix bug fixed** in `harness/spec_loader.py:199` — HeCBench `.cc` files were silently skipping augmentation (D7).
+- [x] **Pipeline audit:** 8 analysis scripts audited, 4 P1 issues found and fixed:
+  - `analyze_eval.py`: expected-models list updated for 2-model lineup
+  - `token_analysis.py`: pricing data updated for new models
+  - `statistical_analysis.py`: Bonferroni correction count updated
+  - `selfrepair_analysis.py`: display names updated for new models
+- [x] **All 14 SC26 paper metrics verified** as implemented in the analysis pipeline (zero gaps in metric coverage).
+- [x] **Single campaign script created:** `scripts/batch/run_eval_campaign.sh` — supports `primary` (L0-L4, retries=3, greedy) and `pass@k` (L0, retries=1, T=0.7, 5 samples) modes. 28 batches per model with automatic pass-2 retry.
+- [x] **Old per-model script deleted:** `run_qwen_campaign.sh` (replaced by generic `run_eval_campaign.sh`)
+- [x] **Related work research:** 7 critical papers researched with structured comparison notes written to `docs/related_work_research_notes.md`:
+  - LASSI (Dearing et al., CLUSTER 2024) — 80-85% with agentic self-correction
+  - CodeRosetta (TehraniJamsaz et al., NeurIPS 2024) — specialized C++/CUDA model, BLEU only
+  - HPC-Coder-V2 (Chaturvedi et al., arXiv 2024) — fine-tuned HPC LLM
+  - OMPify (Kadosh et al., IWOMP 2023) — pragma prediction only
+  - TransCoder (Roziere et al., NeurIPS 2020) — foundational unsupervised translation
+  - HPCorpus/MonoCoder (Kadosh et al., 2023-2024) — HPC training data
+  - TRACY (Gong et al., arXiv 2025) — execution efficiency benchmarking
+- [x] **5 additional related papers discovered:** UniPar, OMPar, OMPGPT, TransCoder-ST, BabelTower
+- [x] **Experimental decisions log created:** `docs/experimental_decisions_log.md` (7 decisions, 5 insights)
+- [x] **Differentiation matrix built:** 8-way feature comparison table in `docs/related_work_research_notes.md` showing ParBench's unique combination of multi-API + build+run+verify + real HPC benchmarks + AST augmentation + general-purpose LLMs
+
+### READY TO LAUNCH
+
+All infrastructure is verified and campaign-ready. Commands:
+
+```bash
+# Primary campaign (Samyak — Qwen on Linux GPU machine)
+export TOGETHER_API_KEY='...'
+bash scripts/batch/run_eval_campaign.sh together-qwen-3.5-397b-a17b
+
+# Primary campaign (Erel — Gemini on their machine)
+export GEMINI_API_KEY='...'   # or GOOGLE_API_KEY
+bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash
+
+# pass@k sweep (after primary completes)
+bash scripts/batch/run_eval_campaign.sh together-qwen-3.5-397b-a17b pass@k
+bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash pass@k
+
+# Post-campaign analysis (after results arrive)
+source env_parbench/bin/activate
+python3 scripts/evaluation/analyze_eval.py --project-root /home/samyak/Desktop/parbench_sam --write-dashboard
+python3 scripts/analysis/statistical_analysis.py --project-root /home/samyak/Desktop/parbench_sam -v
+```
+
+### UPDATED PRIORITY LIST
+
+Items re-prioritized based on what was completed this session:
+
+| # | Priority | Item | Status | Depends On | Est. |
+|---|----------|------|--------|------------|------|
+| 1 | **P0** | Launch Qwen primary campaign | **READY** | API key | ~2-4 hrs runtime |
+| 2 | **P0** | Launch Gemini primary campaign (Erel) | **READY** | API key | ~2-4 hrs runtime |
+| 3 | **P1** | Post-campaign statistical analysis | Waiting | P0 campaigns | 1 session |
+| 4 | **P1** | Paper draft: fix stale 4-model refs + false claims | NOT STARTED | -- | 1 session |
+| 5 | **P1** | Paper draft: write Related Work section | ~~NOT STARTED~~ **NOTES READY** | -- | 1 session |
+| 6 | **P1** | Paper draft: write Methodology (augmentation, verification) | NOT STARTED | -- | 1 session |
+| 7 | **P2** | LaTeX transfer (IEEE/ACM template) | NOT STARTED | P1 items | 2-3 sessions |
+| 8 | **P2** | pass@k sweep (both models) | Waiting | P0 campaigns | ~2-4 hrs runtime |
+| 9 | **P2** | Token efficiency + error taxonomy analysis scripts | NOT STARTED | P0 campaigns | 1 session |
+| 10 | **P3** | Anonymous GitHub repo for double-blind review | NOT STARTED | P2 LaTeX | 1 session |
+| 11 | **P3** | Dashboard refresh (GitHub Pages) | Waiting | P0 campaigns | 30 min |
+| 12 | **P3** | Consider 3rd model addition | DEFERRED | P0 campaigns | TBD |
+
+**Key changes from previous roadmap:**
+- ~~Priority 1 (Run Qwen Campaign)~~ → now split into P0 #1 (Qwen) + P0 #2 (Gemini) — both ready
+- ~~Priority 3 (Re-run 3-model eval)~~ → **DROPPED**. Old 3-model pilot data is superseded by new 2-model campaign. Not re-running old models.
+- ~~Priority 4 (Related Work)~~ → **UPGRADED to P1 #5** with research notes already written. Only paper prose remains.
+- Pipeline audit items → **ALL COMPLETED** (4 P1 fixes applied)
+- Augmentation verification → **COMPLETED** (64/64 specs level-invariant across 5 suites)
+- Analysis script gaps → **NO GAPS** in the 14 tracked SC26 metrics. Token efficiency and error taxonomy are enhancements (P2 #9), not blockers.
+
+### BLOCKERS / RISKS
+
+- **No blockers.** Campaign can launch immediately on both machines.
+- **No augmentation failures.** All 64 non-KNOWN_FAIL specs verified PASS at L0-L4 — clean baseline.
+- **No P0 pipeline issues.** All 4 P1 script issues found during audit are fixed.
+- **Cosmetic only:** RSBench comma-formatted numbers in `lookups_per_second` output — verification uses `stdout_pattern` + `exit_code` conjunction, not numeric parsing, so this is harmless.
+- **Risk: API rate limits.** Overnight campaign runtime depends on Together AI and Google AI rate limits and availability. The campaign script has automatic pass-2 retry for failed batches.
+- **Risk: Erel coordination.** Gemini campaign depends on Erel's machine availability and API key. Same script, no code changes needed — just needs `GEMINI_API_KEY` or `GOOGLE_API_KEY` set.
+- **Risk: SC26 deadline pressure.** 10 days remaining. Critical path: launch campaigns (day 0-1) → analysis (day 2) → paper writing (days 3-7) → LaTeX + polish (days 8-10). Related work notes being ready saves ~1 session.
+
+### UPDATED SESSION SEQUENCE
+
+| Session | Duration | Depends On | What | Status |
+|---------|----------|------------|------|--------|
+| S12 (this) | Done | -- | Campaign prep, related work research, pipeline audit | **DONE** |
+| S13 | 2-4 hrs | API keys | Launch Qwen + Gemini campaigns, monitor | **READY** |
+| S14 | 2 hrs | S13 | Post-campaign: analyze_eval + statistical_analysis | Waiting |
+| S15 | 3 hrs | S12 notes | Related work section (prose from research notes) | Ready (can parallel S14) |
+| S16 | 3 hrs | S14 | Paper draft fixes (stale data, false claims, methodology) | Waiting |
+| S17 | 2-4 hrs | S13 | pass@k sweep (both models) | Waiting |
+| S18 | 4-6 hrs | S16 | LaTeX transfer (template + first pass) | Waiting |
+| S19 | 2 hrs | S18 | LaTeX polish + figures + tables | Waiting |
+| S20 | 2 hrs | S19 | Anonymous repo + final review + submission | Waiting |
+
+**Critical path:** S13 → S14 → S16 → S18 → S19 → S20
+**Parallel tracks:** S15 (related work) can run alongside S14; S17 (pass@k) can run alongside S15-S16.
+
+---
+
+## 1. Session Accomplishments (What Was Done — March 28 Session)
 
 ### Benchmark Suite Expansion
 - **Re-cloned and re-verified Rodinia** (clean submodule reset at `9c10d3ea`):
@@ -508,7 +633,7 @@ These require human judgment before proceeding:
 | S-NEXT-1 | 2-4 hrs | API key | Launch Qwen campaign, monitor |
 | S-NEXT-2 | 2 hrs | S-NEXT-1 | Post-campaign analysis: run analyze_eval + statistical_analysis |
 | S-NEXT-3 | 3 hrs | S-NEXT-2 | Related work research + writing (LASSI, CodeRosetta focus) |
-| S-NEXT-4 | 3 hrs | S-NEXT-2 | Paper draft updates (fix stale data, add stats, threats) |
+| S-NEXT-4 | 3 hrs | S-NEXT-2 | Paper draft updates (fix stale data, add stats, threats). **Key inputs:** `docs/experimental_decisions_log.md` (D1-D7 decisions with reviewer defenses), `docs/related_work_research_notes.md` (7 papers + differentiation matrix), eval results from S-NEXT-2 |
 | S-NEXT-5 | 4-6 hrs | S-NEXT-4 | LaTeX transfer (template setup + first pass) |
 | S-NEXT-6 | 2 hrs | S-NEXT-5 | LaTeX polish + figures + tables |
 | S-NEXT-7 | 2 hrs | S-NEXT-6 | Anonymous repo creation |

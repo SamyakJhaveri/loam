@@ -40,6 +40,9 @@ STATUS_ORDER = {
 }
 
 MODEL_DISPLAY = {
+    "together-qwen-3.5-397b-a17b": "Qwen 3.5 397B (Together)",
+    "gemini-2.5-flash": "Gemini 2.5 Flash",
+    # Legacy models (kept for historical result analysis)
     "claude-sonnet-4-6": "Claude Sonnet 4",
     "gemini-2.5-flash-lite": "Gemini 2.5 Flash-Lite",
     "groq-llama-3.3-70b-versatile": "Groq Llama 3.3 70B",
