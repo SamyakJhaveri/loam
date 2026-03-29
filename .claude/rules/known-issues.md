@@ -12,15 +12,18 @@
   This is correct behavior — manifest.jsonl is append-only; spec files were deleted.
 Do NOT try to fix any of these errors.
 
-## Current Spec Status (as of 2026-03-27, post S-VERIFY fixes)
+## Current Spec Status (as of 2026-03-28, post campaign expansion)
 
 **Rodinia:** 60 specs total, 54 TRUE PASS, 0 FALSE_PASS, 6 KNOWN_FAIL.
 **XSBench:** 4 specs total, 4 PASS, 0 KNOWN_FAIL.
-**All 58 non-KNOWN_FAIL specs verified PASS with stdout_pattern+exit_code conjunction.**
+**RSBench:** 3 specs (cuda, omp, opencl), untested — newly added 2026-03-28.
+**mixbench:** 3 specs (cuda, omp, opencl), untested — newly added 2026-03-28.
+**HeCBench (curated):** 10 kernels, 23 specs (cuda + omp/omp_target), 2 KNOWN_FAIL.
+**All 58 Rodinia+XSBench non-KNOWN_FAIL specs verified PASS with stdout_pattern+exit_code conjunction.**
 **Use 54 Rodinia TRUE PASS + 3 standard XSBench specs (cuda, omp, opencl) for eval batches.**
-**omp_target excluded (requires nvc, case-study only).**
+**RSBench/mixbench/HeCBench curated specs need baseline verification before eval batches.**
 
-## KNOWN_FAIL Specs (6 — exclude from eval batches)
+## KNOWN_FAIL Specs (8 — exclude from eval batches)
 
 | Spec | Error | Why deferred |
 |------|-------|-------------|
@@ -30,6 +33,8 @@ Do NOT try to fix any of these errors.
 | `rodinia-hybridsort-cuda` | `GL/glew.h` not found | Needs `libglew-dev` + display server |
 | `rodinia-nn-opencl` | TIMEOUT / SIGSEGV | Pre-existing; never passed |
 | `rodinia-kmeans-opencl` | SIGSEGV in OpenCL runtime | Pre-existing; never passed |
+| `hecbench-stencil1d-omp_target` | BUILD_FAIL | omp_target compile issue |
+| `hecbench-scan-omp_target` | VERIFY_FAIL | Output mismatch on CPU target |
 
 ## FALSE_PASS Baseline Specs — ALL FIXED (S-VERIFY 2026-03-27)
 

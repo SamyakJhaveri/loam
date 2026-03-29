@@ -1,41 +1,42 @@
 {
   "spec_version": "1.0.0",
   "identity": {
-    "kernel_name": "iso2dfd",
-    "parallel_api": "omp",
-    "unique_id": "hecbench-iso2dfd-omp",
+    "kernel_name": "heat2d",
+    "parallel_api": "omp_target",
+    "unique_id": "hecbench-heat2d-omp_target",
     "source_suite": "hecbench"
   },
   "provenance": {
     "repository": {
       "url": "https://github.com/zjin-lcf/HeCBench",
-      "commit": "archive-download",
+      "commit": "22785cdd708de5dca56525a277b31fe119171fd1",
       "branch": "master"
     },
     "repo_root": "HeCBench-master/",
-    "source_path": "src/iso2dfd-omp",
+    "source_path": "src/heat2d-omp",
     "license": "MIT"
   },
   "files": {
     "prompt_payload": [
-      "iso2dfd.cpp"
+      "main.cpp"
     ],
     "support_files": [
       "Makefile",
-      "Makefile.aomp",
       "Makefile.nvc",
-      "iso2dfd.h"
+      "Makefile.aomp",
+      "CMakeLists.txt",
+      "README"
     ],
     "verification_only": [],
     "translation_targets": [
-      "iso2dfd.cpp"
+      "main.cpp"
     ]
   },
   "implementation": {
-    "api": "omp",
+    "api": "omp_target",
     "api_version": null,
     "language": "C++",
-    "language_standard": "C++17"
+    "language_standard": "C++14"
   },
   "build": {
     "environment": {
@@ -43,16 +44,16 @@
       "conda": null,
       "system": {
         "dependencies": [
-          "GCC >= 9.0 with OpenMP support"
+          "nvidia-hpc-sdk (nvc++ with OpenMP target offload)"
         ]
       }
     },
     "build_system": "make",
-    "working_directory": "src/iso2dfd-omp",
+    "working_directory": "src/heat2d-omp",
     "commands": {
       "configure": null,
-      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
-      "clean": "make -f Makefile.aomp clean"
+      "build": "make -f Makefile.nvc SM=cc89 CC=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/nvc++",
+      "clean": "make -f Makefile.nvc clean"
     },
     "variables": null,
     "outputs": {
@@ -62,20 +63,20 @@
   "run": {
     "executable": "./main",
     "default_arguments": [
-      "2048",
-      "2048",
-      "1000"
+      "1024",
+      "1024",
+      "100"
     ],
     "timeout_seconds": 300,
     "environment_variables": null,
     "input_configurations": {
       "correctness": {
         "arguments": [
-          "2048",
-          "2048",
-          "10"
+          "1024",
+          "1024",
+          "100"
         ],
-        "description": "10 time-steps for correctness; Euclidean norm comparison of GPU vs CPU wavefield",
+        "description": "2D heat equation on 1024x1024 grid, 100 iterations for correctness validation (OMP target offload)",
         "input_files": [],
         "expected_results": {
           "stdout_pattern": "PASS"
@@ -83,11 +84,11 @@
       },
       "performance": {
         "arguments": [
-          "2048",
-          "2048",
+          "4096",
+          "4096",
           "1000"
         ],
-        "description": "1000 time-steps for performance measurement",
+        "description": "2D heat equation on 4096x4096 grid, 1000 iterations for performance measurement",
         "input_files": [],
         "expected_results": {
           "stdout_pattern": "PASS"
@@ -101,7 +102,7 @@
       {
         "type": "stdout_pattern",
         "pattern": "PASS",
-        "description": "Euclidean norm of GPU vs CPU wavefield below threshold"
+        "description": "GPU Laplacian result compared against CPU reference with periodic boundary conditions"
       },
       {
         "type": "exit_code",
@@ -112,27 +113,33 @@
     "floating_point": {
       "tolerance": 1e-06,
       "tolerance_type": "absolute",
-      "note": "Euclidean norm comparison between GPU and CPU wavefield snapshots"
+      "note": "Floating-point comparison of 2D heat equation results"
     }
   },
   "performance": {
     "metrics": [
       {
-        "name": "kernel_time",
+        "name": "throughput",
         "extraction": {
           "type": "regex",
-          "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(us\\)",
+          "pattern": "BW =\\s+([\\d.]+)\\s+GB/s",
           "capture_group": 1
         },
-        "unit": "us"
+        "unit": "GB/s"
       }
     ],
     "warmup_runs": 1,
     "measurement_runs": 5
   },
   "hardware": {
-    "target": "cpu",
-    "requirements": null,
+    "target": "gpu",
+    "requirements": {
+      "gpu": {
+        "vendor": "NVIDIA",
+        "min_compute_capability": "sm_60",
+        "min_memory_gb": 2
+      }
+    },
     "reference_platform": {
       "platform_id": "rtx4070-r9-7900x",
       "gpu": {
@@ -159,35 +166,29 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-03-03T18:52:35Z",
+    "timestamp": "2026-03-28T23:15:00Z",
     "configurations": {
       "correctness": {
         "status": "pass",
         "exit_code": 0,
-        "stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nTotal kernel execution time 11.9873 (ms)\nAverage kernel execution time 1198.73 (us)\nComputing wavefield in CPU ..\nInitializing ... \nCPU time: 19 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
-        "wall_time_seconds": 0.077
-      },
-      "performance": {
-        "status": "pass",
-        "wall_time_seconds": 0.077,
-        "metrics": {
-          "kernel_time_us": 1198.73
-        }
+        "stdout_snippet": "Ly,Lx = 1024,1024\n niter = 100\nDevice: iters =      100, (Lx,Ly) =   1024,   1024, t =    355.3 usec/iter, BW = 23.612 GB/s, P = 17.709 Gflop/s\nPASS",
+        "wall_time_seconds": null
       }
     }
   },
   "metadata": {
-    "description": "2D isotropic finite-difference wave propagation stencil on GPU. Applies 2nd-order time-stepping to a 2D grid, verified against CPU reference via Euclidean norm comparison.",
-    "domain": "seismic / stencil computation",
-    "complexity": "O(Lx \u00d7 Ly \u00d7 niter)",
+    "description": "2D heat equation (Laplacian) solver using OpenMP target offload. Periodic boundary conditions with 5-point stencil, verified against CPU reference.",
+    "domain": "stencil computation",
+    "complexity": "O(Lx * Ly * niter)",
     "tags": [
-      "iso2dfd",
-      "finite-difference",
-      "wave-propagation",
+      "heat-equation",
+      "laplacian",
+      "omp-target",
       "stencil",
-      "seismic"
+      "2d",
+      "periodic-bc"
     ],
     "multi_file": false,
-    "translation_complexity": "single_file"
+    "translation_complexity": null
   }
 }

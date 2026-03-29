@@ -90,6 +90,9 @@ docs/               design docs, plans
 presentations/      pptx, xlsx, speaking notes
 rodinia/rodinia-src/ Rodinia source (commit 9c10d3ea) — git submodule
 xsbench/xsbench-src/ XSBench source (commit ba08e52) — regular clone, gitignored
+rsbench/rsbench-src/ RSBench source — regular clone, gitignored
+mixbench/mixbench-src/ mixbench source — regular clone, gitignored
+HeCBench-master/    HeCBench source (1.4 GB) — wget download, gitignored
 results/            phase3/ (CUDA/OMP), phase5/ (HeCBench), augmentation/, evaluation/
 analysis/           data/ (CSV, JSON surveys), reports/ (markdown)
 ```
@@ -107,7 +110,7 @@ analysis/           data/ (CSV, JSON surveys), reports/ (markdown)
 > Full details in `.claude/rules/known-issues.md`
 
 - **HeCBench missing:** ~135 validation errors — pre-existing, ignore
-- **6 KNOWN_FAIL specs:** Exclude from eval batches (see known-issues.md)
+- **8 KNOWN_FAIL specs:** Exclude from eval batches (see known-issues.md)
 - **Git worktrees + submodules:** Never run evaluations in worktrees
 
 ## GitHub Pages

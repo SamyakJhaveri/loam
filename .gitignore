@@ -14,6 +14,18 @@ parbench_sam/downloads/
 # XSBench source (regular clone, not submodule — commit pinned in spec provenance)
 xsbench/xsbench-src/
 
+# RSBench source (regular clone — commit pinned in spec provenance)
+rsbench/rsbench-src/
+
+# mixbench source (regular clone — commit pinned in spec provenance)
+mixbench/mixbench-src/
+
+# HeCBench source tree (1.4 GB — re-download via wget)
+HeCBench-master/
+
+# Evaluation result backups (large, not tracked)
+results/evaluation_backup*/
+
 # Local machine-specific config (absolute paths)
 parbench_sam/config/paths.json
 

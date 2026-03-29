@@ -1,9 +1,9 @@
 {
   "spec_version": "1.0.0",
   "identity": {
-    "kernel_name": "iso2dfd",
-    "parallel_api": "omp",
-    "unique_id": "hecbench-iso2dfd-omp",
+    "kernel_name": "md",
+    "parallel_api": "cuda",
+    "unique_id": "hecbench-md-cuda",
     "source_suite": "hecbench"
   },
   "provenance": {
@@ -13,26 +13,30 @@
       "branch": "master"
     },
     "repo_root": "HeCBench-master/",
-    "source_path": "src/iso2dfd-omp",
+    "source_path": "src/md-cuda",
     "license": "MIT"
   },
   "files": {
     "prompt_payload": [
-      "iso2dfd.cpp"
+      "main.cu"
     ],
     "support_files": [
       "Makefile",
-      "Makefile.aomp",
-      "Makefile.nvc",
-      "iso2dfd.h"
+      "CMakeLists.txt",
+      "MD.h",
+      "reference.h",
+      "utils.h",
+      "LICENSE"
     ],
-    "verification_only": [],
+    "verification_only": [
+      "reference.h"
+    ],
     "translation_targets": [
-      "iso2dfd.cpp"
+      "main.cu"
     ]
   },
   "implementation": {
-    "api": "omp",
+    "api": "cuda",
     "api_version": null,
     "language": "C++",
     "language_standard": "C++17"
@@ -43,16 +47,17 @@
       "conda": null,
       "system": {
         "dependencies": [
-          "GCC >= 9.0 with OpenMP support"
+          "CUDA Toolkit >= 11.0",
+          "GCC >= 9.0"
         ]
       }
     },
     "build_system": "make",
-    "working_directory": "src/iso2dfd-omp",
+    "working_directory": "src/md-cuda",
     "commands": {
       "configure": null,
-      "build": "make -f Makefile.aomp CC=g++ DEVICE=cpu",
-      "clean": "make -f Makefile.aomp clean"
+      "build": "make ARCH=sm_89",
+      "clean": "make clean"
     },
     "variables": null,
     "outputs": {
@@ -62,35 +67,32 @@
   "run": {
     "executable": "./main",
     "default_arguments": [
-      "2048",
-      "2048",
-      "1000"
+      "1",
+      "100"
     ],
     "timeout_seconds": 300,
     "environment_variables": null,
     "input_configurations": {
       "correctness": {
         "arguments": [
-          "2048",
-          "2048",
-          "10"
+          "1",
+          "100"
         ],
-        "description": "10 time-steps for correctness; Euclidean norm comparison of GPU vs CPU wavefield",
+        "description": "Molecular dynamics with class_size=1 (24576 atoms), 100 iterations; verifies GPU vs CPU force calculation",
         "input_files": [],
         "expected_results": {
-          "stdout_pattern": "PASS"
+          "stdout_pattern": "Max error between host and device"
         }
       },
       "performance": {
         "arguments": [
-          "2048",
-          "2048",
-          "1000"
+          "1",
+          "100"
         ],
-        "description": "1000 time-steps for performance measurement",
+        "description": "Same config for timing measurement",
         "input_files": [],
         "expected_results": {
-          "stdout_pattern": "PASS"
+          "stdout_pattern": "Max error between host and device"
         }
       }
     }
@@ -100,8 +102,8 @@
     "strategies": [
       {
         "type": "stdout_pattern",
-        "pattern": "PASS",
-        "description": "Euclidean norm of GPU vs CPU wavefield below threshold"
+        "pattern": "Max error between host and device",
+        "description": "CPU reference force calculation compared to GPU; prints max error (should be 0 for single precision)"
       },
       {
         "type": "exit_code",
@@ -109,11 +111,7 @@
         "description": "Process exits cleanly"
       }
     ],
-    "floating_point": {
-      "tolerance": 1e-06,
-      "tolerance_type": "absolute",
-      "note": "Euclidean norm comparison between GPU and CPU wavefield snapshots"
-    }
+    "floating_point": null
   },
   "performance": {
     "metrics": [
@@ -121,18 +119,24 @@
         "name": "kernel_time",
         "extraction": {
           "type": "regex",
-          "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(us\\)",
+          "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(s\\)",
           "capture_group": 1
         },
-        "unit": "us"
+        "unit": "s"
       }
     ],
     "warmup_runs": 1,
     "measurement_runs": 5
   },
   "hardware": {
-    "target": "cpu",
-    "requirements": null,
+    "target": "gpu",
+    "requirements": {
+      "gpu": {
+        "vendor": "NVIDIA",
+        "min_compute_capability": "sm_60",
+        "min_memory_gb": 2
+      }
+    },
     "reference_platform": {
       "platform_id": "rtx4070-r9-7900x",
       "gpu": {
@@ -159,35 +163,35 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-03-03T18:52:35Z",
+    "timestamp": "2026-03-28T20:00:00Z",
     "configurations": {
       "correctness": {
         "status": "pass",
         "exit_code": 0,
-        "stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nTotal kernel execution time 11.9873 (ms)\nAverage kernel execution time 1198.73 (us)\nComputing wavefield in CPU ..\nInitializing ... \nCPU time: 19 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
-        "wall_time_seconds": 0.077
+        "stdout_snippet": "Max error between host and device: 0\nAverage kernel execution time 0.00445281 (s)",
+        "wall_time_seconds": null
       },
       "performance": {
         "status": "pass",
-        "wall_time_seconds": 0.077,
+        "wall_time_seconds": null,
         "metrics": {
-          "kernel_time_us": 1198.73
+          "kernel_time_s": 0.00445281
         }
       }
     }
   },
   "metadata": {
-    "description": "2D isotropic finite-difference wave propagation stencil on GPU. Applies 2nd-order time-stepping to a 2D grid, verified against CPU reference via Euclidean norm comparison.",
-    "domain": "seismic / stencil computation",
-    "complexity": "O(Lx \u00d7 Ly \u00d7 niter)",
+    "description": "Lennard-Jones molecular dynamics force calculation on GPU. Computes pairwise forces using neighbor lists with cutoff distance, verified against CPU reference implementation.",
+    "domain": "molecular dynamics",
+    "complexity": "O(N x maxNeighbors)",
     "tags": [
-      "iso2dfd",
-      "finite-difference",
-      "wave-propagation",
-      "stencil",
-      "seismic"
+      "molecular-dynamics",
+      "lennard-jones",
+      "force-calculation",
+      "neighbor-list",
+      "pairwise"
     ],
     "multi_file": false,
-    "translation_complexity": "single_file"
+    "translation_complexity": null
   }
 }

@@ -22,7 +22,6 @@
     ],
     "support_files": [
       "Makefile",
-      "CMakeLists.txt",
       "iso2dfd.h"
     ],
     "verification_only": [],
@@ -62,20 +61,20 @@
   "run": {
     "executable": "./main",
     "default_arguments": [
-      "2048",
-      "2048",
-      "1000"
+      "1000",
+      "1000",
+      "100"
     ],
     "timeout_seconds": 300,
     "environment_variables": null,
     "input_configurations": {
       "correctness": {
         "arguments": [
-          "2048",
-          "2048",
-          "10"
+          "1000",
+          "1000",
+          "100"
         ],
-        "description": "10 time-steps for correctness; Euclidean norm comparison of GPU vs CPU wavefield",
+        "description": "2D finite-difference wave propagation with 1000x1000 grid, 100 iterations; GPU vs CPU within_epsilon check",
         "input_files": [],
         "expected_results": {
           "stdout_pattern": "PASS"
@@ -83,11 +82,11 @@
       },
       "performance": {
         "arguments": [
-          "2048",
-          "2048",
+          "1000",
+          "1000",
           "1000"
         ],
-        "description": "1000 time-steps for performance measurement",
+        "description": "1000 iterations for timing measurement",
         "input_files": [],
         "expected_results": {
           "stdout_pattern": "PASS"
@@ -101,24 +100,29 @@
       {
         "type": "stdout_pattern",
         "pattern": "PASS",
-        "description": "Euclidean norm of GPU vs CPU wavefield below threshold"
+        "description": "GPU wavefield compared to CPU reference via within_epsilon (tolerance 0.1); prints PASS or FAIL"
       },
       {
         "type": "exit_code",
         "expected": 0,
-        "description": "Process exits cleanly"
+        "description": "Process exits with 0 on PASS, 1 on FAIL"
       }
     ],
-    "floating_point": {
-      "tolerance": 1e-06,
-      "tolerance_type": "absolute",
-      "note": "Euclidean norm comparison between GPU and CPU wavefield snapshots"
-    }
+    "floating_point": null
   },
   "performance": {
     "metrics": [
       {
-        "name": "kernel_time",
+        "name": "total_kernel_time",
+        "extraction": {
+          "type": "regex",
+          "pattern": "Total kernel execution time\\s+([\\d.eE+-]+)\\s+\\(ms\\)",
+          "capture_group": 1
+        },
+        "unit": "ms"
+      },
+      {
+        "name": "avg_kernel_time",
         "extraction": {
           "type": "regex",
           "pattern": "Average kernel execution time\\s+([\\d.eE+-]+)\\s+\\(us\\)",
@@ -165,33 +169,34 @@
   },
   "baseline_results": {
     "reference_platform": "rtx4070-r9-7900x",
-    "timestamp": "2026-03-03T18:52:35Z",
+    "timestamp": "2026-03-28T20:00:00Z",
     "configurations": {
       "correctness": {
         "status": "pass",
         "exit_code": 0,
-        "stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nRunning on:: NVIDIA GeForce RTX 4070\nThe Device Max Work Group Size is : 1024\nTotal kernel execution time 1.47852 (ms)\nAverage kernel execution time 147.852 (us)\nComputing wavefield in CPU ..\nInitializing ... \nHost time: 20 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
-        "wall_time_seconds": 0.138
+        "stdout_snippet": "Total kernel execution time 2.414 (ms)\nAverage kernel execution time 24.14 (us)\nPASS\nFinished.",
+        "wall_time_seconds": null
       },
       "performance": {
         "status": "pass",
-        "wall_time_seconds": 0.138,
+        "wall_time_seconds": null,
         "metrics": {
-          "kernel_time_us": 147.852
+          "total_kernel_time_ms": 2.414,
+          "avg_kernel_time_us": 24.14
         }
       }
     }
   },
   "metadata": {
-    "description": "2D isotropic finite-difference wave propagation stencil on GPU. Applies 2nd-order time-stepping to a 2D grid, verified against CPU reference via Euclidean norm comparison.",
-    "domain": "seismic / stencil computation",
-    "complexity": "O(Lx \u00d7 Ly \u00d7 niter)",
+    "description": "ISO2DFD: 2D finite-difference wave propagation in isotropic media. 2nd-order stencil kernel for solving the 2D acoustic wave equation, verified by comparing GPU output against CPU reference within epsilon tolerance.",
+    "domain": "physics",
+    "complexity": "O(N^2 x iterations)",
     "tags": [
-      "iso2dfd",
       "finite-difference",
       "wave-propagation",
       "stencil",
-      "seismic"
+      "acoustic",
+      "isotropic"
     ],
     "multi_file": false,
     "translation_complexity": null
