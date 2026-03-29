@@ -31,6 +31,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime
 import json
 import logging
@@ -1068,6 +1069,38 @@ def _check_stdout_error_indicators(stdout: str) -> str | None:
     return None
 
 
+def _build_cross_api_verify_spec(target_spec: dict, source_spec: dict) -> dict:
+    """Build verification spec for cross-API translation.
+
+    For cross-API translations (e.g., CUDA→OMP), the LLM's translated code
+    produces stdout matching the SOURCE implementation's patterns, not the
+    TARGET's. This function creates a hybrid verification spec that uses:
+    - SOURCE spec's stdout_pattern (matches what the LLM actually produces)
+    - TARGET spec's exit_code (binary runs in the target environment)
+
+    Same-API translations (augmentation-only) should NOT use this function —
+    they use the target spec directly.
+    """
+    verify_spec = copy.deepcopy(target_spec)
+
+    source_verification = source_spec.get("verification") or {}
+    source_strategies = source_verification.get("strategies", [])
+    target_verification = verify_spec.get("verification") or {}
+    target_strategies = target_verification.get("strategies", [])
+
+    # Extract source's stdout_pattern strategies
+    source_stdout = [s for s in source_strategies if s.get("type") == "stdout_pattern"]
+
+    if source_stdout:
+        # Keep target's non-stdout strategies (exit_code, etc.)
+        non_stdout = [s for s in target_strategies if s.get("type") != "stdout_pattern"]
+        # Source stdout_pattern first (more informative failure), then exit_code
+        verify_spec["verification"] = verify_spec.get("verification") or {}
+        verify_spec["verification"]["strategies"] = source_stdout + non_stdout
+
+    return verify_spec
+
+
 def _build_retry_message(
     build_result: Any | None,
     run_result: Any | None,
@@ -1145,6 +1178,8 @@ def evaluate_translation(
     source_id = source_spec["identity"]["unique_id"]
     target_id = target_spec["identity"]["unique_id"]
     kernel_name = source_spec["identity"]["kernel_name"]
+    source_api = source_spec.get("identity", {}).get("parallel_api", "")
+    target_api = target_spec.get("identity", {}).get("parallel_api", "")
 
     if verbose:
         logger.info("Evaluating: %s → %s  model=%s", source_id, target_id, model)
@@ -1408,8 +1443,18 @@ def evaluate_translation(
                     attempt_record["run_stderr_snippet"] = (run_result.stderr or "")[-500:]
                     attempt_record["run_stdout_snippet"] = (run_result.stdout or "")[-500:]
                 else:
-                    # -- Verify --
-                    verify_result = verify_run(target_spec, run_result)
+                    # -- Direction-aware verification --
+                    # For cross-API translations, the LLM's output matches the SOURCE
+                    # implementation's stdout patterns, not the TARGET's.
+                    if source_api != target_api:
+                        verify_spec = _build_cross_api_verify_spec(target_spec, source_spec)
+                        if verbose:
+                            logger.info("Cross-API (%s→%s): using source stdout_pattern for verification",
+                                        source_api, target_api)
+                    else:
+                        verify_spec = target_spec
+
+                    verify_result = verify_run(verify_spec, run_result)
                     final_verify_result = verify_result
                     attempt_record["verify_status"] = verify_result.status.value
 
@@ -1519,6 +1564,7 @@ def evaluate_translation(
         "temperature": temperature,
         "sample_id": sample_id,
         "translation_mode": translation_mode,
+        "verification_mode": "cross_api_source_pattern" if source_api != target_api else "same_api_target_pattern",
         "timestamp": timestamp,
         # LLM usage (totals across all attempts)
         "prompt_tokens": total_prompt_tokens,
