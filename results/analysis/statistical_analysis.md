@@ -1,15 +1,15 @@
 # ParBench Statistical Analysis
 
-**Generated:** 2026-03-28T15:20:28.178073  |  **Records:** 546  |  **Alpha:** 0.05
+**Generated:** 2026-03-28T15:54:49.618640  |  **Records:** 562  |  **Alpha:** 0.05
 
 ## 1. Pass Rates with 95% Wilson Score CIs
 
 ### By Model
 | Model | Rate | 95% CI | n |
 |-------|-----:|-------:|--:|
-| claude-sonnet-4-6 | 53.8% | [46.6%, 60.9%] | 182 |
-| gemini-2.5-flash-lite | 8.2% | [5.1%, 13.2%] | 182 |
-| groq-llama-3.3-70b-versatile | 9.9% | [6.3%, 15.1%] | 182 |
+| claude-sonnet-4-6 | 54.3% | [47.1%, 61.2%] | 188 |
+| gemini-2.5-flash-lite | 8.6% | [5.3%, 13.5%] | 187 |
+| groq-llama-3.3-70b-versatile | 10.2% | [6.6%, 15.3%] | 187 |
 
 ### By Direction
 | Direction | Rate | 95% CI | n |
@@ -19,7 +19,7 @@
 | cuda-to-opencl | 30.3% | [20.5%, 42.2%] | 66 |
 | omp-to-cuda | 14.3% | [7.7%, 25.0%] | 63 |
 | omp-to-omp_target | 0.0% | [0.0%, 20.4%] | 15 |
-| omp-to-opencl | 38.1% | [25.0%, 53.2%] | 42 |
+| omp-to-opencl | 37.9% | [26.6%, 50.8%] | 58 |
 | omp_target-to-cuda | 26.7% | [10.9%, 51.9%] | 15 |
 | omp_target-to-omp | 20.0% | [7.0%, 45.2%] | 15 |
 | omp_target-to-opencl | 26.7% | [10.9%, 51.9%] | 15 |
@@ -41,19 +41,19 @@
 | hotspot3d | 62.5% | [42.7%, 78.8%] | 24 |
 | lavamd | 33.3% | [18.0%, 53.3%] | 24 |
 | lud | 41.7% | [24.5%, 61.2%] | 24 |
-| myocyte | 0.0% | [0.0%, 15.5%] | 21 |
+| myocyte | 4.2% | [0.7%, 20.2%] | 24 |
 | nn | 16.7% | [5.8%, 39.2%] | 18 |
-| nw | 4.8% | [0.9%, 22.7%] | 21 |
-| particlefilter | 47.6% | [28.3%, 67.6%] | 21 |
-| pathfinder | 14.3% | [5.0%, 34.6%] | 21 |
-| srad | 14.3% | [5.0%, 34.6%] | 21 |
-| streamcluster | 4.8% | [0.9%, 22.7%] | 21 |
+| nw | 12.5% | [4.3%, 31.0%] | 24 |
+| particlefilter | 41.7% | [24.5%, 61.2%] | 24 |
+| pathfinder | 20.8% | [9.2%, 40.5%] | 24 |
+| srad | 16.7% | [6.7%, 35.9%] | 24 |
+| streamcluster | 4.5% | [0.8%, 21.8%] | 22 |
 | xsbench | 18.9% | [13.8%, 25.2%] | 180 |
 
 ### By Augmentation Level
 | Level | Rate | 95% CI | n |
 |-------|-----:|-------:|--:|
-| L0 | 27.1% | [21.6%, 33.5%] | 210 |
+| L0 | 27.9% | [22.4%, 34.1%] | 226 |
 | L1 | 23.8% | [16.0%, 33.9%] | 84 |
 | L2 | 25.0% | [17.0%, 35.2%] | 84 |
 | L3 | 20.2% | [13.0%, 30.0%] | 84 |
@@ -61,15 +61,15 @@
 
 ## 2. Model Comparison
 
-**Omnibus chi-squared:** chi2(2) = 133.55, p = 0.00e+00
-**Cramer's V:** 0.495 (medium)
+**Omnibus chi-squared:** chi2(2) = 136.93, p = 0.00e+00
+**Cramer's V:** 0.494 (medium)
 
 ### Pairwise Comparisons (Fisher's exact, Bonferroni-corrected)
 | Pair | OR [95% CI] | p (corrected) | Cohen's h | Effect |
 |------|-------------|-------------:|----------:|:------:|
-| claude-sonnet-4-6 vs gemini-2.5-flash-lite | 12.99 [7.10, 23.75] | 0.0000 ** | 1.065 | large |
-| claude-sonnet-4-6 vs groq-llama-3.3-70b-versatile | 10.63 [6.03, 18.74] | 0.0000 ** | 1.008 | large |
-| gemini-2.5-flash-lite vs groq-llama-3.3-70b-versatile | 0.82 [0.40, 1.68] | 1.0000 | -0.058 | small |
+| claude-sonnet-4-6 vs gemini-2.5-flash-lite | 12.68 [7.05, 22.80] | 0.0000 ** | 1.062 | large |
+| claude-sonnet-4-6 vs groq-llama-3.3-70b-versatile | 10.49 [6.02, 18.26] | 0.0000 ** | 1.007 | large |
+| gemini-2.5-flash-lite vs groq-llama-3.3-70b-versatile | 0.83 [0.41, 1.66] | 1.0000 | -0.055 | small |
 
 ## 3. Augmentation Level Independence (Chi-Squared)
 
@@ -98,19 +98,19 @@
 
 | Direction Pair | n paired | Fwd Rate | Rev Rate | Cohen's h | p-value | Significant? |
 |----------------|--------:|--------:|--------:|----------:|--------:|:------------:|
-| cuda-to-opencl vs opencl-to-cuda | 3 | 33.3% | 33.3% | 0.000 | 1.0000 | No |
 | opencl-to-omp_target vs omp_target-to-opencl | 3 | 33.3% | 33.3% | 0.000 | 1.0000 | No |
-| cuda-to-omp_target vs omp_target-to-cuda | 3 | 33.3% | 33.3% | 0.000 | 1.0000 | No |
-| omp_target-to-omp vs omp-to-omp_target | 3 | 0.0% | 0.0% | 0.000 | 1.0000 | No |
-| omp-to-cuda vs cuda-to-omp | 51 | 17.6% | 29.4% | -0.279 | 0.1796 | No |
 | omp-to-opencl vs opencl-to-omp | 3 | 33.3% | 0.0% | 1.231 | 1.0000 | No |
+| omp_target-to-omp vs omp-to-omp_target | 3 | 0.0% | 0.0% | 0.000 | 1.0000 | No |
+| cuda-to-opencl vs opencl-to-cuda | 3 | 33.3% | 33.3% | 0.000 | 1.0000 | No |
+| omp_target-to-cuda vs cuda-to-omp_target | 3 | 33.3% | 33.3% | 0.000 | 1.0000 | No |
+| omp-to-cuda vs cuda-to-omp | 51 | 17.6% | 29.4% | -0.279 | 0.1796 | No |
 
 ## 6. Augmentation Curves with CIs
 
 ### claude-sonnet-4-6
 | Level | Rate | 95% CI | Pass/Total |
 |-------|-----:|-------:|----------:|
-| L0 | 55.7% | [44.1%, 66.8%] | 39/70 |
+| L0 | 56.6% | [45.4%, 67.1%] | 43/76 |
 | L1 | 53.6% | [35.8%, 70.5%] | 15/28 |
 | L2 | 57.1% | [39.1%, 73.5%] | 16/28 |
 | L3 | 46.4% | [29.5%, 64.2%] | 13/28 |
@@ -119,7 +119,7 @@
 ### gemini-2.5-flash-lite
 | Level | Rate | 95% CI | Pass/Total |
 |-------|-----:|-------:|----------:|
-| L0 | 10.0% | [4.9%, 19.2%] | 7/70 |
+| L0 | 10.7% | [5.5%, 19.7%] | 8/75 |
 | L1 | 10.7% | [3.7%, 27.2%] | 3/28 |
 | L2 | 10.7% | [3.7%, 27.2%] | 3/28 |
 | L3 | 7.1% | [2.0%, 22.7%] | 2/28 |
@@ -128,7 +128,7 @@
 ### groq-llama-3.3-70b-versatile
 | Level | Rate | 95% CI | Pass/Total |
 |-------|-----:|-------:|----------:|
-| L0 | 15.7% | [9.0%, 26.0%] | 11/70 |
+| L0 | 16.0% | [9.4%, 25.9%] | 12/75 |
 | L1 | 7.1% | [2.0%, 22.7%] | 2/28 |
 | L2 | 7.1% | [2.0%, 22.7%] | 2/28 |
 | L3 | 7.1% | [2.0%, 22.7%] | 2/28 |

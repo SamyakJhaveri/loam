@@ -55,7 +55,7 @@ The following condensed listing illustrates the essential structure using the BF
 }
 ```
 
-This design separates the definition of correctness from the mechanism of verification: the harness can evolve independently of what "correct" means for each kernel. Across the current benchmark collection, 184 specs are defined: 60 from Rodinia \cite{Rodinia2009}, 4 from XSBench \cite{XSBench2014}, and 120 from HeCBench \cite{HeCBench2021}.
+This design separates the definition of correctness from the mechanism of verification: the harness can evolve independently of what "correct" means for each kernel. Across the current benchmark collection, 184 specs are defined: 60 from Rodinia \cite{Rodinia2009}, 4 from XSBench \cite{XSBench2014}, and 120 from HeCBench \cite{HeCBench2023}.
 
 ### B. Harness Pipeline: Build, Run, Verify
 
@@ -119,7 +119,7 @@ The benchmark corpus was assembled through a systematic selection process: surve
 
 A survey of 35 open-source HPC benchmark repositories was conducted, spanning suites, mini-applications, proxy applications, full applications, libraries, and microbenchmarks. The survey covered GPU computing across multiple parallel APIs.
 
-A central finding of the survey is that repository-level counting dramatically overstates the available benchmark material. Naive analysis identifies 21 repositories containing both CUDA and OpenMP implementations, but kernel-level analysis reveals 472 independent CUDA--OpenMP translation pairs across those same repositories. The discrepancy ranges from 20$\times$ to 60$\times$, driven primarily by large suites such as HeCBench \cite{HeCBench2021} (325 kernels with CUDA and OpenMP implementations) and other multi-API benchmark collections. This motivates a kernel-centric evaluation strategy: benchmarks should be evaluated at the granularity of individual computational kernels, not entire repositories.
+A central finding of the survey is that repository-level counting dramatically overstates the available benchmark material. Naive analysis identifies 21 repositories containing both CUDA and OpenMP implementations, but kernel-level analysis reveals 472 independent CUDA--OpenMP translation pairs across those same repositories. The discrepancy ranges from 20$\times$ to 60$\times$, driven primarily by large suites such as HeCBench \cite{HeCBench2023} (325 kernels with CUDA and OpenMP implementations) and other multi-API benchmark collections. This motivates a kernel-centric evaluation strategy: benchmarks should be evaluated at the granularity of individual computational kernels, not entire repositories.
 
 Five criteria guided suite selection: (1) availability of multiple API implementations of the same algorithm, (2) established community adoption with substantial citation history, (3) buildability with modern toolchains (CUDA 12, GCC 11+), (4) coverage of diverse computational domains, and (5) realistic complexity representative of production HPC workloads. Rodinia \cite{Rodinia2009} was selected as the primary suite: 22 distinct kernels across 3 APIs with over 14,000 citations, making it a de facto standard in GPU benchmarking. XSBench \cite{XSBench2014} was selected as a secondary suite: a production-grade Monte Carlo neutron transport proxy application providing a single complex kernel with 4 API variants.
 
@@ -155,7 +155,7 @@ This section describes the models, translation directions, augmentation protocol
 
 ### A. Models
 
-Four large language models are evaluated, selected to span major commercial API providers and one open-weight alternative: GPT-4.1 (OpenAI, accessed via Azure), Claude Sonnet 4.6 (Anthropic), Gemini 2.5 Flash-Lite (Google), and Llama 3.3 70B (Meta, accessed via Groq). All models are queried at temperature 0 to ensure deterministic outputs and reproducibility across runs. Reasoning and chain-of-thought modes are explicitly disabled for all models. This is a deliberate design choice: the evaluation targets raw translation competence---whether a model's internalized knowledge of parallel programming patterns suffices to produce correct translations---rather than the capacity of a multi-step reasoning scaffold to search for solutions.
+Three large language models are evaluated, selected to span a major commercial API provider, a cost-efficient proprietary alternative, and an open-weight model: Claude Sonnet 4.6 (Anthropic), Gemini 2.5 Flash-Lite (Google), and Llama 3.3 70B (Meta, accessed via Groq). All models are queried at temperature 0 to ensure deterministic outputs and reproducibility across runs. Reasoning and chain-of-thought modes are explicitly disabled for all models. This is a deliberate design choice: the evaluation targets raw translation competence---whether a model's internalized knowledge of parallel programming patterns suffices to produce correct translations---rather than the capacity of a multi-step reasoning scaffold to search for solutions.
 
 [TABLE IV: Model configurations. Columns: human-readable name, API model identifier, provider, access method, and parameter count (where publicly disclosed).]
 
