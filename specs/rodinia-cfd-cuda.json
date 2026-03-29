@@ -28,10 +28,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "euler3d.cu",
-            "euler3d_double.cu",
-            "pre_euler3d.cu",
-            "pre_euler3d_double.cu"
+            "euler3d.cu"
         ]
     },
     "implementation": {

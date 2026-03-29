@@ -666,7 +666,7 @@ def call_llm(
         # thinking capability). All models evaluated at equivalent base level.
         response = client.messages.create(
             model=model,
-            max_tokens=16384,
+            max_tokens=32768,
             temperature=temperature,
             system=system_msg,
             messages=messages,
@@ -701,7 +701,7 @@ def call_llm(
             )
         kwargs: dict[str, Any] = {
             "model": model,
-            "max_completion_tokens": 16384,
+            "max_completion_tokens": 32768,
             "messages": full_messages,
         }
         # o1/o3/o4 reasoning models do not accept temperature
@@ -752,7 +752,7 @@ def call_llm(
             )
         response = client_az.chat.completions.create(
             model=azure_model,
-            max_completion_tokens=16384,
+            max_completion_tokens=32768,
             temperature=temperature,
             messages=full_messages,
         )
@@ -787,7 +787,7 @@ def call_llm(
             )
         response = client_groq.chat.completions.create(
             model=groq_model,
-            max_tokens=16384,
+            max_tokens=32768,
             temperature=temperature,
             messages=full_messages,
         )
@@ -821,7 +821,7 @@ def call_llm(
             )
         response = client_gemini.chat.completions.create(
             model=model,
-            max_tokens=16384,
+            max_tokens=32768,
             temperature=temperature,
             messages=full_messages,
             # Explicitly disable thinking/reasoning so all models are evaluated
@@ -865,7 +865,7 @@ def call_llm(
             )
         response = client_together.chat.completions.create(
             model=together_model,
-            max_tokens=16384,
+            max_tokens=32768,
             temperature=temperature,
             messages=full_messages,
             # Explicitly disable thinking/reasoning for Qwen 3.5 (thinking ON by
@@ -895,6 +895,34 @@ def call_llm(
         "finish_reason": finish_reason,
         "duration_seconds": round(duration, 3),
     }
+
+
+# ---------------------------------------------------------------------------
+# Think-tag stripping (belt-and-suspenders for reasoning models)
+# ---------------------------------------------------------------------------
+
+_THINK_BLOCK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
+_DANGLING_THINK_RE = re.compile(r"^.*?</think>\s*", re.DOTALL)
+
+
+def strip_think_tags(text: str) -> str:
+    """Remove <think>...</think> blocks from LLM response text.
+
+    Handles three cases:
+      1. Complete <think>...</think> blocks anywhere in the response.
+      2. Dangling </think> at the start (opening <think> was in a prior chunk
+         or the response started mid-thought).
+      3. Unclosed <think>... at the end (response was truncated mid-thought).
+    """
+    # Case 1: complete blocks
+    text = _THINK_BLOCK_RE.sub("", text)
+    # Case 2: dangling </think> (no opening tag found — strip everything before it)
+    if "</think>" in text and "<think>" not in text:
+        text = _DANGLING_THINK_RE.sub("", text)
+    # Case 3: unclosed <think> at the end
+    if "<think>" in text and "</think>" not in text:
+        text = text[: text.index("<think>")]
+    return text.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -1017,6 +1045,27 @@ def restore_files(backup_info: dict[Path, bool]) -> None:
 # ---------------------------------------------------------------------------
 # Retry feedback
 # ---------------------------------------------------------------------------
+
+
+# Patterns that indicate a runtime error even when exit_code==0 and
+# stdout_pattern matches.  These catch false positives like OpenCL kernel
+# compilation failures where the host program gracefully continues.
+_STDOUT_ERROR_PATTERNS = [
+    (re.compile(r"clBuildProgram\s*\(\)\s*=>\s*-\d+", re.IGNORECASE), "OpenCL kernel build failure"),
+    (re.compile(r"clCompileProgram\s*\(\)\s*=>\s*-\d+", re.IGNORECASE), "OpenCL kernel compile failure"),
+    (re.compile(r"Segmentation fault", re.IGNORECASE), "Segfault in stdout"),
+    (re.compile(r"CUDA error:", re.IGNORECASE), "CUDA runtime error"),
+    (re.compile(r"cudaError(?!Success)\w*:", re.IGNORECASE), "CUDA error"),
+]
+
+
+def _check_stdout_error_indicators(stdout: str) -> str | None:
+    """Return a rejection reason if stdout contains known error indicators, else None."""
+    for pattern, reason in _STDOUT_ERROR_PATTERNS:
+        m = pattern.search(stdout)
+        if m:
+            return f"{reason}: {m.group(0)}"
+    return None
 
 
 def _build_retry_message(
@@ -1229,7 +1278,7 @@ def evaluate_translation(
                 attempts.append(attempt_record)
                 break
 
-            response_text = llm_result["response_text"]
+            response_text = strip_think_tags(llm_result["response_text"])
             last_llm_response = response_text
             attempt_record["llm_response_time_seconds"] = llm_result["duration_seconds"]
             attempt_record["prompt_tokens"] = llm_result["prompt_tokens"]
@@ -1368,8 +1417,20 @@ def evaluate_translation(
                     final_metrics = extract_metrics(target_spec, run_result)
 
                     if verify_result.status == Status.PASS:
-                        final_status = "PASS"
-                        error_message = None  # clear any error from a previous attempt
+                        # Post-verification sanity check: reject if stdout
+                        # contains error indicators that the pattern matcher
+                        # missed (e.g., OpenCL clBuildProgram failures where
+                        # the host continues and prints expected output).
+                        stdout_text = run_result.stdout or ""
+                        reject_reason = _check_stdout_error_indicators(stdout_text)
+                        if reject_reason:
+                            final_status = "VERIFY_FAIL"
+                            error_message = f"False positive rejected: {reject_reason}"
+                            if verbose:
+                                logger.warning("PASS downgraded to VERIFY_FAIL: %s", reject_reason)
+                        else:
+                            final_status = "PASS"
+                            error_message = None  # clear any error from a previous attempt
                     else:
                         final_status = "VERIFY_FAIL"
                         error_message = f"Verify failed: {verify_result.details}"

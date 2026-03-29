@@ -26,8 +26,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "ex_particle_CUDA_float_seq.cu",
-            "ex_particle_CUDA_naive_seq.cu"
+            "ex_particle_CUDA_float_seq.cu"
         ]
     },
     "implementation": {
