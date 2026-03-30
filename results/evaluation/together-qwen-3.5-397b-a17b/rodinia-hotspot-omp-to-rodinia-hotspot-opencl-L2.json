@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-hotspot-omp",
+  "target_spec": "rodinia-hotspot-opencl",
+  "kernel": "hotspot",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 2,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "512",
+    "512",
+    "2",
+    "4",
+    "../../data/hotspot/temp_512",
+    "../../data/hotspot/power_512",
+    "output.out"
+  ],
+  "timestamp": "2026-03-30T20:01:10Z",
+  "prompt_tokens": 47250,
+  "completion_tokens": 20996,
+  "llm_response_time_seconds": 236.017,
+  "build_status": "pass",
+  "build_time_seconds": 0.179,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "Error: The file was not opened\n",
+  "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.159,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot_kernel.cl": "#define BLOCK_SIZE 16\n\nconst float amb_temp = 80.0f;\n\n__kernel void hotspot(\n    const int num_iterations,\n    const __global float* power,\n    const __global float* temp,\n    __global float* result,\n    const int col,\n    const int row,\n    const int borderCols,\n    const int borderRows,\n    const float Cap,\n    const float Rx,\n    const float Ry,\n    const float Rz,\n    const float step)\n{\n    float Cap_1 = step / Cap;\n    float Rx_1 = 1.0f / Rx;\n    float Ry_1 = 1.0f / Ry;\n    float Rz_1 = 1.0f / Rz;\n\n    int blockCols = (col + borderCols - 1) / BLOCK_SIZE;\n    int blockRows = (row + borderRows - 1) / BLOCK_SIZE;\n    \n    int r_start = get_group_id(1) * BLOCK_SIZE;\n    int c_start = get_group_id(0) * BLOCK_SIZE;\n    int r_end = r_start + BLOCK_SIZE > row ? row : r_start + BLOCK_SIZE;\n    int c_end = c_start + BLOCK_SIZE > col ? col : c_start + BLOCK_SIZE;\n\n    int is_border_block = (r_start == 0) || (c_start == 0) || (r_end == row) || (c_end == col);\n\n    const __global float* in_ptr = temp;\n    __global float* out_ptr = result;\n\n    for (int i = 0; i < num_iterations; i++) {\n        for (int r = r_start; r < r_end; r++) {\n            for (int c = c_start; c < c_end; c++) {\n                float delta;\n                int idx = r * col + c;\n\n                if (is_border_block) {\n                    if ((r == 0) && (c == 0)) {\n                        delta = Cap_1 * (power[0] +\n                            (in_ptr[1] - in_ptr[0]) * Rx_1 +\n                            (in_ptr[col] - in_ptr[0]) * Ry_1 +\n                            (amb_temp - in_ptr[0]) * Rz_1);\n                    }\n                    else if ((r == 0) && (c == col - 1)) {\n                        delta = Cap_1 * (power[c] +\n                            (in_ptr[c - 1] - in_ptr[c]) * Rx_1 +\n                            (in_ptr[c + col] - in_ptr[c]) * Ry_1 +\n                            (amb_temp - in_ptr[c]) * Rz_1);\n                    }\n                    else if ((r == row - 1) && (c == col - 1)) {\n                        delta = Cap_1 * (power[idx] +\n                            (in_ptr[idx - 1] - in_ptr[idx]) * Rx_1 +\n                            (in_ptr[(r - 1) * col + c] - in_ptr[idx]) * Ry_1 +\n                            (amb_temp - in_ptr[idx]) * Rz_1);\n                    }\n                    else if ((r == row - 1) && (c == 0)) {\n                        delta = Cap_1 * (power[r * col] +\n                            (in_ptr[r * col + 1] - in_ptr[r * col]) * Rx_1 +\n                            (in_ptr[(r - 1) * col] - in_ptr[r * col]) * Ry_1 +\n                            (amb_temp - in_ptr[r * col]) * Rz_1);\n                    }\n                    else if (r == 0) {\n                        delta = Cap_1 * (power[c] +\n                            (in_ptr[c + 1] + in_ptr[c - 1] - 2.0f * in_ptr[c]) * Rx_1 +\n                            (in_ptr[col + c] - in_ptr[c]) * Ry_1 +\n                            (amb_temp - in_ptr[c]) * Rz_1);\n                    }\n                    else if (c == col - 1) {\n                        delta = Cap_1 * (power[idx] +\n                            (in_ptr[(r + 1) * col + c] + in_ptr[(r - 1) * col + c] - 2.0f * in_ptr[idx]) * Ry_1 +\n                            (in_ptr[idx - 1] - in_ptr[idx]) * Rx_1 +\n                            (amb_temp - in_ptr[idx]) * Rz_1);\n                    }\n                    else if (r == row - 1) {\n                        delta = Cap_1 * (power[idx] +\n                            (in_ptr[idx + 1] + in_ptr[idx - 1] - 2.0f * in_ptr[idx]) * Rx_1 +\n                            (in_ptr[(r - 1) * col + c] - in_ptr[idx]) * Ry_1 +\n                            (amb_temp - in_ptr[idx]) * Rz_1);\n                    }\n                    else if (c == 0) {\n                        delta = Cap_1 * (power[r * col] +\n                            (in_ptr[(r + 1) * col] + in_ptr[(r - 1) * col] - 2.0f * in_ptr[r * col]) * Ry_1 +\n                            (in_ptr[r * col + 1] - in_ptr[r * col]) * Rx_1 +\n                            (amb_temp - in_ptr[r * col]) * Rz_1);\n                    }\n                    else {\n                        delta = Cap_1 * (power[idx] +\n                            (in_ptr[(r + 1) * col + c] + in_ptr[(r - 1) * col + c] - 2.0f * in_ptr[idx]) * Ry_1 +\n                            (in_ptr[idx + 1] + in_ptr[idx - 1] - 2.0f * in_ptr[idx]) * Rx_1 +\n                            (amb_temp - in_ptr[idx]) * Rz_1);\n                    }\n                } else {\n                    delta = Cap_1 * (power[idx] +\n                        (in_ptr[(r + 1) * col + c] + in_ptr[(r - 1) * col + c] - 2.0f * in_ptr[idx]) * Ry_1 +\n                        (in_ptr[idx + 1] + in_ptr[idx - 1] - 2.0f * in_ptr[idx]) * Rx_1 +\n                        (amb_temp - in_ptr[idx]) * Rz_1);\n                }\n\n                out_ptr[idx] = in_ptr[idx] + delta;\n            }\n        }\n        \n        const __global float* tmp_in = in_ptr;\n        in_ptr = out_ptr;\n        out_ptr = tmp_in;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "hotspot_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "hotspot_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 121.467,
+      "prompt_tokens": 7800,
+      "completion_tokens": 11077,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nError: The file was not opened\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Error: The file was not opened\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 15.038,
+      "prompt_tokens": 18915,
+      "completion_tokens": 1581,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nError: The file was not opened\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Error: The file was not opened\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 99.512,
+      "prompt_tokens": 20535,
+      "completion_tokens": 8338,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Error: The file was not opened\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,101 @@
+{
+  "source_spec": "rodinia-bfs-omp",
+  "target_spec": "rodinia-bfs-cuda",
+  "kernel": "bfs",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "4",
+    "../../data/bfs/graph1MW_6.txt"
+  ],
+  "timestamp": "2026-03-30T14:59:11Z",
+  "prompt_tokens": 7855,
+  "completion_tokens": 3398,
+  "llm_response_time_seconds": 33.694,
+  "build_status": "pass",
+  "build_time_seconds": 0.548,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.629,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Reading File\nStart traversing the tree\nResult stored in result.txt\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.546,
+  "translated_wall_time_seconds": 0.629,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.868,
+  "translated_files": {
+    "bfs.cu": "#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <stdlib.h>\n\nstruct Node\n{\n\tint starting;\n\tint no_of_edges;\n};\n\nvoid BFSGraph(int argc, char** argv);\n\nvoid Usage(int argc, char**argv){\n\tfprintf(stderr,\"Usage: %s <num_threads> <input_file>\\n\", argv[0]);\n}\n\n__global__ void bfs_expand_kernel(int no_of_nodes, Node* d_graph_nodes, bool* d_graph_mask, bool* d_updating_graph_mask, bool* d_graph_visited, int* d_graph_edges, int* d_cost) {\n\tint tid = blockIdx.x * blockDim.x + threadIdx.x;\n\tif (tid >= no_of_nodes) return;\n\n\tif (d_graph_mask[tid] == true) { \n\t\td_graph_mask[tid] = false;\n\t\tint start = d_graph_nodes[tid].starting;\n\t\tint end = start + d_graph_nodes[tid].no_of_edges;\n\t\tfor(int i = start; i < end; i++)\n\t\t{\n\t\t\tint id = d_graph_edges[i];\n\t\t\tif(!d_graph_visited[id])\n\t\t\t{\n\t\t\t\td_cost[id] = d_cost[tid] + 1;\n\t\t\t\td_updating_graph_mask[id] = true;\n\t\t\t}\n\t\t}\n\t}\n}\n\n__global__ void bfs_update_kernel(int no_of_nodes, bool* d_graph_mask, bool* d_updating_graph_mask, bool* d_graph_visited, bool* d_stop) {\n\tint tid = blockIdx.x * blockDim.x + threadIdx.x;\n\tif (tid >= no_of_nodes) return;\n\n\tif (d_updating_graph_mask[tid] == true){\n\t\td_graph_mask[tid] = true;\n\t\td_graph_visited[tid] = true;\n\t\t*d_stop = true;\n\t\td_updating_graph_mask[tid] = false;\n\t}\n}\n\nint main( int argc, char** argv) \n{\n\tBFSGraph( argc, argv);\n\treturn 0;\n}\n\nvoid BFSGraph( int argc, char** argv) \n{\n\tint no_of_nodes = 0;\n\tint edge_list_size = 0;\n\tchar *input_f;\n\t\n\tif(argc!=3){\n\t\tUsage(argc, argv);\n\t\texit(0);\n\t}\n\t\n\tinput_f = argv[2];\n\t\n\tprintf(\"Reading File\\n\");\n\t\n\tFILE *fp = fopen(input_f,\"r\");\n\tif(!fp)\n\t{\n\t\tprintf(\"Error Reading graph file\\n\");\n\t\treturn;\n\t}\n\n\tint source = 0;\n\n\tfscanf(fp,\"%d\",&no_of_nodes);\n   \n\t\n\tNode* h_graph_nodes = (Node*) malloc(sizeof(Node)*no_of_nodes);\n\tbool *h_graph_mask = (bool*) malloc(sizeof(bool)*no_of_nodes);\n\tbool *h_updating_graph_mask = (bool*) malloc(sizeof(bool)*no_of_nodes);\n\tbool *h_graph_visited = (bool*) malloc(sizeof(bool)*no_of_nodes);\n\n\tint start, edgeno;   \n\t\n\tfor( unsigned int i = 0; no_of_nodes > i; i++) \n\t{\n\t\tfscanf(fp,\"%d %d\",&start,&edgeno);\n\t\th_graph_nodes[i].starting = start;\n\t\th_graph_nodes[i].no_of_edges = edgeno;\n\t\th_graph_mask[i]=false;\n\t\th_updating_graph_mask[i]=false;\n\t\th_graph_visited[i]=false;\n\t}\n\n\t\n\tfscanf(fp,\"%d\",&source);\n\t\n\n\t\n\th_graph_mask[source]=true;\n\th_graph_visited[source]=true;\n\n\tfscanf(fp,\"%d\",&edge_list_size);\n\n\tint id,cost;\n\tint* h_graph_edges = (int*) malloc(sizeof(int)*edge_list_size);\n\tfor(int i=0; edge_list_size > i ; i++)\n\t{\n\t\tfscanf(fp,\"%d\",&id);\n\t\tfscanf(fp,\"%d\",&cost);\n\t\th_graph_edges[i] = id;\n\t}\n\n\tif(fp)\n\t\tfclose(fp);    \n\n\n\t\n\tint* h_cost = (int*) malloc( sizeof(int)*no_of_nodes);\n\tfor(int i=0;no_of_nodes > i;i++)\n\t\th_cost[i]=-1;\n\th_cost[source]=0;\n\t\n\tprintf(\"Start traversing the tree\\n\");\n\t\n\t// CUDA device pointers\n\tNode* d_graph_nodes;\n\tbool* d_graph_mask;\n\tbool* d_updating_graph_mask;\n\tbool* d_graph_visited;\n\tint* d_graph_edges;\n\tint* d_cost;\n\tbool* d_stop;\n\n\tcudaMalloc(&d_graph_nodes, sizeof(Node)*no_of_nodes);\n\tcudaMalloc(&d_graph_mask, sizeof(bool)*no_of_nodes);\n\tcudaMalloc(&d_updating_graph_mask, sizeof(bool)*no_of_nodes);\n\tcudaMalloc(&d_graph_visited, sizeof(bool)*no_of_nodes);\n\tcudaMalloc(&d_graph_edges, sizeof(int)*edge_list_size);\n\tcudaMalloc(&d_cost, sizeof(int)*no_of_nodes);\n\tcudaMalloc(&d_stop, sizeof(bool));\n\n\tcudaMemcpy(d_graph_nodes, h_graph_nodes, sizeof(Node)*no_of_nodes, cudaMemcpyHostToDevice);\n\tcudaMemcpy(d_graph_mask, h_graph_mask, sizeof(bool)*no_of_nodes, cudaMemcpyHostToDevice);\n\tcudaMemcpy(d_updating_graph_mask, h_updating_graph_mask, sizeof(bool)*no_of_nodes, cudaMemcpyHostToDevice);\n\tcudaMemcpy(d_graph_visited, h_graph_visited, sizeof(bool)*no_of_nodes, cudaMemcpyHostToDevice);\n\tcudaMemcpy(d_graph_edges, h_graph_edges, sizeof(int)*edge_list_size, cudaMemcpyHostToDevice);\n\tcudaMemcpy(d_cost, h_cost, sizeof(int)*no_of_nodes, cudaMemcpyHostToDevice);\n\n\tint k=0;\n\tbool stop;\n\t\n\t// Setup kernel launch parameters\n\tint threads_per_block = 256;\n\tint blocks = (no_of_nodes + threads_per_block - 1) / threads_per_block;\n\n\tdo\n\t{\n\t\tstop = false;\n\t\tcudaMemcpy(d_stop, &stop, sizeof(bool), cudaMemcpyHostToDevice);\n\n\t\t// Expand step\n\t\tbfs_expand_kernel<<<blocks, threads_per_block>>>(no_of_nodes, d_graph_nodes, d_graph_mask, d_updating_graph_mask, d_graph_visited, d_graph_edges, d_cost);\n\n\t\t// Update step\n\t\tbfs_update_kernel<<<blocks, threads_per_block>>>(no_of_nodes, d_graph_mask, d_updating_graph_mask, d_graph_visited, d_stop);\n\n\t\tcudaMemcpy(&stop, d_stop, sizeof(bool), cudaMemcpyDeviceToHost);\n\t\t\n\t\tk++;\n\t}\n\twhile(stop);\n\t\n\tcudaDeviceSynchronize();\n\n\t// Copy result back\n\tcudaMemcpy(h_cost, d_cost, sizeof(int)*no_of_nodes, cudaMemcpyDeviceToHost);\n\n\tFILE *fpo = fopen(\"result.txt\",\"w\");\n\tfor(int i=0;no_of_nodes > i;i++)\n\t\tfprintf(fpo,\"%d) cost:%d\\n\",i,h_cost[i]);\n\tfclose(fpo);\n\tprintf(\"Result stored in result.txt\\n\");\n\n\t// Cleanup\n\tcudaFree(d_graph_nodes);\n\tcudaFree(d_graph_mask);\n\tcudaFree(d_updating_graph_mask);\n\tcudaFree(d_graph_visited);\n\tcudaFree(d_graph_edges);\n\tcudaFree(d_cost);\n\tcudaFree(d_stop);\n\n\tfree( h_graph_nodes);\n\tfree( h_graph_edges);\n\tfree( h_graph_mask);\n\tfree( h_updating_graph_mask);\n\tfree( h_graph_visited);\n\tfree( h_cost);\n}\n"
+  },
+  "target_files_expected": [
+    "bfs.cu",
+    "kernel.cu",
+    "kernel2.cu"
+  ],
+  "target_files_extracted": [
+    "bfs.cu"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 13.716,
+      "prompt_tokens": 1419,
+      "completion_tokens": 1629,
+      "finish_reason": "stop",
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "Your response was missing 2 expected file(s). The other files from your previous response were saved successfully. Please provide ONLY the following missing/empty files:\n\n```c translated_1.cu\n// your ",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": true,
+      "partial_extraction": true
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 1.666,
+      "prompt_tokens": 3120,
+      "completion_tokens": 140,
+      "finish_reason": "stop",
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "Your response was missing 1 expected file(s). The other files from your previous response were saved successfully. Please provide ONLY the following missing/empty files:\n\n```c translated_0.cu\n// your ",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": true,
+      "partial_extraction": true
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 18.312,
+      "prompt_tokens": 3316,
+      "completion_tokens": 1629,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

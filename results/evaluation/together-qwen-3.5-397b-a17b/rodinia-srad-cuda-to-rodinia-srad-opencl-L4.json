@@ -1,0 +1,103 @@
+{
+  "source_spec": "rodinia-srad-cuda",
+  "target_spec": "rodinia-srad-opencl",
+  "kernel": "srad",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "512",
+    "512",
+    "0",
+    "127",
+    "0",
+    "127",
+    "0.5",
+    "2"
+  ],
+  "timestamp": "2026-03-30T19:15:31Z",
+  "prompt_tokens": 50897,
+  "completion_tokens": 9660,
+  "llm_response_time_seconds": 80.777,
+  "build_status": "pass",
+  "build_time_seconds": 0.254,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.164,
+  "run_exit_code": 245,
+  "run_stderr_snippet": "1 warning and 4 errors generated.\n",
+  "run_stdout_snippet": "OpenCL extension 'cl_khr_fp32' - ignoring\n#pragma OPENCL EXTENSION cl_khr_fp32 : enable\n                         ^\n<kernel>:18:1: error: unknown type name '__global__'\n__global__ void\n^\n<kernel>:18:12: error: expected identifier or '('\n__global__ void\n           ^\n<kernel>:205:1: error: unknown type name '__global__'\n__global__ void\n^\n<kernel>:205:12: error: expected identifier or '('\n__global__ void\n           ^\n\n>>>>\n--------------------------------\nError at line 247: CL_BUILD_PROGRAM_FAILURE\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 245)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.085,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#define STR_SIZE 256\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_SIZE RD_WG_SIZE_0_0\n#elif defined(RD_WG_SIZE_0)\n        #define BLOCK_SIZE RD_WG_SIZE_0\n#elif defined(RD_WG_SIZE)\n        #define BLOCK_SIZE RD_WG_SIZE\n#else\n        #define BLOCK_SIZE 16\n#endif\n\n#define GPU\n#define TIMER\n\n#pragma OPENCL EXTENSION cl_khr_fp32 : enable\n\n__global__ void\nsrad_kernel_1(\n          float *E_C, \n          float *W_C, \n          float *N_C, \n          float *S_C,\n          float * J_cuda, \n          float * C_cuda, \n          int cols, \n          int rows, \n          float q0sqr\n) \n{\n  int bx = get_block_id(0);\n  int by = get_block_id(1);\n  int tx = get_thread_id(0);\n  int ty = get_thread_id(1);\n  \n  int index   = cols * BLOCK_SIZE * by + BLOCK_SIZE * bx + cols * ty + tx;\n  \n  float n, w, e, s, jc, g2, l, num, den, qsqr, c;\n\n  __shared__ float temp[BLOCK_SIZE][BLOCK_SIZE];\n  __shared__ float temp_result[BLOCK_SIZE][BLOCK_SIZE];\n\n  __shared__ float north[BLOCK_SIZE][BLOCK_SIZE];\n  __shared__ float south[BLOCK_SIZE][BLOCK_SIZE];\n  __shared__ float  east[BLOCK_SIZE][BLOCK_SIZE];\n  __shared__ float  west[BLOCK_SIZE][BLOCK_SIZE];\n\n  // Load central value\n  if (index < cols * rows) {\n      temp[ty][tx] = J_cuda[index];\n  } else {\n      temp[ty][tx] = 0.0f;\n  }\n  __syncthreads();\n\n  jc = temp[ty][tx];\n\n  // Calculate neighbor indices carefully to avoid out-of-bounds reads if possible, \n  // but the original logic relies on specific wrapping/fallback for boundaries.\n  // We implement the boundary checks explicitly.\n  \n  int idx_n = index - cols;\n  int idx_s = index + cols;\n  int idx_w = index - 1;\n  int idx_e = index + 1;\n\n  // Load North\n  if (by == 0 && ty == 0) {\n      // Top edge of grid: wrap to itself or specific row as per original CUDA code\n      // Original: if (0 == by) north = J_cuda[BLOCK_SIZE * bx + tx];\n      int wrap_idx = BLOCK_SIZE * bx + tx;\n      if (wrap_idx < cols * rows) north[ty][tx] = J_cuda[wrap_idx];\n      else north[ty][tx] = jc;\n  } else {\n      if (idx_n >= 0 && idx_n < cols * rows) north[ty][tx] = J_cuda[idx_n];\n      else north[ty][tx] = jc;\n  }\n\n  // Load South\n  if (by == get_num_blocks(1) - 1 && ty == BLOCK_SIZE - 1) {\n      // Bottom edge\n      int wrap_idx = cols * BLOCK_SIZE * (get_num_blocks(1) - 1) + BLOCK_SIZE * bx + cols * (BLOCK_SIZE - 1) + tx;\n      if (wrap_idx < cols * rows) south[ty][tx] = J_cuda[wrap_idx];\n      else south[ty][tx] = jc;\n  } else {\n      if (idx_s < cols * rows) south[ty][tx] = J_cuda[idx_s];\n      else south[ty][tx] = jc;\n  }\n\n  // Load West\n  if (bx == 0 && tx == 0) {\n      // Left edge\n      int wrap_idx = cols * BLOCK_SIZE * by + cols * ty;\n      if (wrap_idx < cols * rows) west[ty][tx] = J_cuda[wrap_idx];\n      else west[ty][tx] = jc;\n  } else {\n      if (idx_w >= 0 && idx_w < cols * rows) west[ty][tx] = J_cuda[idx_w];\n      else west[ty][tx] = jc;\n  }\n\n  // Load East\n  if (bx == get_num_blocks(0) - 1 && tx == BLOCK_SIZE - 1) {\n      // Right edge\n      int wrap_idx = cols * BLOCK_SIZE * by + BLOCK_SIZE * (get_num_blocks(0) - 1) + cols * ty + BLOCK_SIZE - 1;\n      if (wrap_idx < cols * rows) east[ty][tx] = J_cuda[wrap_idx];\n      else east[ty][tx] = jc;\n  } else {\n      if (idx_e < cols * rows) east[ty][tx] = J_cuda[idx_e];\n      else east[ty][tx] = jc;\n  }\n\n  __syncthreads();\n\n  // Determine differences based on position\n  if (0 == ty && 0 == tx) { \n      n  = north[ty][tx] - jc;\n      s  = temp[ty+1][tx] - jc;\n      w  = west[ty][tx]  - jc; \n      e  = temp[ty][tx+1] - jc;\n  }\t    \n  else if (ty == 0 && tx == BLOCK_SIZE-1) { \n      n  = north[ty][tx] - jc;\n      s  = temp[ty+1][tx] - jc;\n      w  = temp[ty][tx-1] - jc; \n      e  = east[ty][tx] - jc;\n  }\n  else if (ty == BLOCK_SIZE -1 && tx == BLOCK_SIZE - 1) { \n      n  = temp[ty-1][tx] - jc;\n      s  = south[ty][tx] - jc;\n      w  = temp[ty][tx-1] - jc; \n      e  = east[ty][tx]  - jc;\n  }\n  else if (ty == BLOCK_SIZE -1 && tx == 0) {\n      n  = temp[ty-1][tx] - jc;\n      s  = south[ty][tx] - jc;\n      w  = west[ty][tx]  - jc; \n      e  = temp[ty][tx+1] - jc;\n  }\n  else if (0 == ty) { \n      n  = north[ty][tx] - jc;\n      s  = temp[ty+1][tx] - jc;\n      w  = temp[ty][tx-1] - jc; \n      e  = temp[ty][tx+1] - jc;\n  }\n  else if (tx == BLOCK_SIZE -1) { \n      n  = temp[ty-1][tx] - jc;\n      s  = temp[ty+1][tx] - jc;\n      w  = temp[ty][tx-1] - jc; \n      e  = east[ty][tx] - jc;\n  }\n  else if (ty == BLOCK_SIZE -1) { \n      n  = temp[ty-1][tx] - jc;\n      s  = south[ty][tx] - jc;\n      w  = temp[ty][tx-1] - jc; \n      e  = temp[ty][tx+1] - jc;\n  }\n  else if (0 == tx) { \n      n  = temp[ty-1][tx] - jc;\n      s  = temp[ty+1][tx] - jc;\n      w  = west[ty][tx] - jc; \n      e  = temp[ty][tx+1] - jc;\n  }\n  else {  \n      n  = temp[ty-1][tx] - jc;\n      s  = temp[ty+1][tx] - jc;\n      w  = temp[ty][tx-1] - jc; \n      e  = temp[ty][tx+1] - jc;\n  }\n\n  if (jc == 0.0f) {\n      g2 = 0.0f;\n      l = 0.0f;\n  } else {\n      g2 = ( n * n + s * s + w * w + e * e ) / (jc * jc);\n      l = ( n + s + w + e ) / jc;\n  }\n\n  num  = (0.5*g2) - ((1.0/16.0)*(l*l));\n  den  = 1.0f + (0.25f*l);\n  \n  if (den == 0.0f) qsqr = 0.0f;\n  else qsqr = num/(den*den);\n\n  float denom_q = q0sqr * (1.0f + q0sqr);\n  if (denom_q == 0.0f) den = 0.0f;\n  else den = (qsqr - q0sqr) / denom_q;\n  \n  c = 1.0f / (1.0f + den);\n\n  if (c < 0.0f) temp_result[ty][tx] = 0.0f;\n  else if (c > 1.0f) temp_result[ty][tx] = 1.0f;\n  else temp_result[ty][tx] = c;\n\n  __syncthreads();\n\n  if (index < cols * rows) {\n      C_cuda[index] = temp_result[ty][tx];\n      E_C[index] = e;\n      W_C[index] = w;\n      S_C[index] = s;\n      N_C[index] = n;\n  }\n}\n\n__global__ void\nsrad_kernel_2(\n          float *E_C, \n          float *W_C, \n          float *N_C, \n          float *S_C,\t\n          float * J_cuda, \n          float * C_cuda, \n          int cols, \n          int rows, \n          float lambda,\n          float q0sqr\n) \n{\n  int bx = get_block_id(0);\n  int by = get_block_id(1);\n  int tx = get_thread_id(0);\n  int ty = get_thread_id(1);\n\n  int index   = cols * BLOCK_SIZE * by + BLOCK_SIZE * bx + cols * ty + tx;\n  \n  float cc, cn, cs, ce, cw, d_sum;\n\n  __shared__ float south_c[BLOCK_SIZE][BLOCK_SIZE];\n  __shared__ float  east_c[BLOCK_SIZE][BLOCK_SIZE];\n  __shared__ float c_cuda_temp[BLOCK_SIZE][BLOCK_SIZE];\n  __shared__ float c_cuda_result[BLOCK_SIZE][BLOCK_SIZE];\n  __shared__ float temp[BLOCK_SIZE][BLOCK_SIZE];\n\n  if (index < cols * rows) temp[ty][tx] = J_cuda[index];\n  else temp[ty][tx] = 0.0f;\n  __syncthreads();\n\n  int idx_s = index + cols;\n  int idx_e = index + 1;\n\n  // Load South C\n  if (by == get_num_blocks(1) - 1 && ty == BLOCK_SIZE - 1) {\n      int wrap_idx = cols * BLOCK_SIZE * (get_num_blocks(1) - 1) + BLOCK_SIZE * bx + cols * (BLOCK_SIZE - 1) + tx;\n      if (wrap_idx < cols * rows) south_c[ty][tx] = C_cuda[wrap_idx];\n      else south_c[ty][tx] = 0.0f;\n  } else {\n      if (idx_s < cols * rows) south_c[ty][tx] = C_cuda[idx_s];\n      else south_c[ty][tx] = 0.0f;\n  }\n  __syncthreads();\n\n  // Load East C\n  if (bx == get_num_blocks(0) - 1 && tx == BLOCK_SIZE - 1) {\n      int wrap_idx = cols * BLOCK_SIZE * by + BLOCK_SIZE * (get_num_blocks(0) - 1) + cols * ty + BLOCK_SIZE - 1;\n      if (wrap_idx < cols * rows) east_c[ty][tx] = C_cuda[wrap_idx];\n      else east_c[ty][tx] = 0.0f;\n  } else {\n      if (idx_e < cols * rows) east_c[ty][tx] = C_cuda[idx_e];\n      else east_c[ty][tx] = 0.0f;\n  }\n  __syncthreads();\n\n  if (index < cols * rows) c_cuda_temp[ty][tx] = C_cuda[index];\n  else c_cuda_temp[ty][tx] = 0.0f;\n  __syncthreads();\n\n  cc = c_cuda_temp[ty][tx];\n\n  if (ty == BLOCK_SIZE -1 && tx == BLOCK_SIZE - 1) { \n      cn  = cc;\n      cs  = south_c[ty][tx];\n      cw  = cc; \n      ce  = east_c[ty][tx];\n  } \n  else if (tx == BLOCK_SIZE -1) { \n      cn  = cc;\n      cs  = c_cuda_temp[ty+1][tx];\n      cw  = cc; \n      ce  = east_c[ty][tx];\n  }\n  else if (ty == BLOCK_SIZE -1) { \n      cn  = cc;\n      cs  = south_c[ty][tx];\n      cw  = cc; \n      ce  = c_cuda_temp[ty][tx+1];\n  }\n  else { \n      cn  = cc;\n      cs  = c_cuda_temp[ty+1][tx];\n      cw  = cc; \n      ce  = c_cuda_temp[ty][tx+1];\n  }\n\n  d_sum = cn * N_C[index] + cs * S_C[index] + cw * W_C[index] + ce * E_C[index];\n\n  c_cuda_result[ty][tx] = temp[ty][tx] + 0.25f * lambda * d_sum;\n\n  __syncthreads();\n              \n  if (index < cols * rows) {\n      J_cuda[index] = c_cuda_result[ty][tx];\n  }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 19.246,
+      "prompt_tokens": 13943,
+      "completion_tokens": 2541,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 245):\n```\n1 warning and 4 errors generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 warning and 4 errors generated.\n",
+      "run_stdout_snippet": "OpenCL extension 'cl_khr_fp32' - ignoring\n#pragma OPENCL EXTENSION cl_khr_fp32 : enable\n                         ^\n<kernel>:18:1: error: unknown type name '__global__'\n__global__ void\n^\n<kernel>:18:12: error: expected identifier or '('\n__global__ void\n           ^\n<kernel>:168:1: error: unknown type name '__global__'\n__global__ void\n^\n<kernel>:168:12: error: expected identifier or '('\n__global__ void\n           ^\n\n>>>>\n--------------------------------\nError at line 247: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 31.246,
+      "prompt_tokens": 16526,
+      "completion_tokens": 3860,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 245):\n```\n1 warning and 4 errors generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 warning and 4 errors generated.\n",
+      "run_stdout_snippet": "OpenCL extension 'cl_khr_fp32' - ignoring\n#pragma OPENCL EXTENSION cl_khr_fp32 : enable\n                         ^\n<kernel>:18:1: error: unknown type name '__global__'\n__global__ void\n^\n<kernel>:18:12: error: expected identifier or '('\n__global__ void\n           ^\n<kernel>:248:1: error: unknown type name '__global__'\n__global__ void\n^\n<kernel>:248:12: error: expected identifier or '('\n__global__ void\n           ^\n\n>>>>\n--------------------------------\nError at line 247: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 30.285,
+      "prompt_tokens": 20428,
+      "completion_tokens": 3259,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 warning and 4 errors generated.\n",
+      "run_stdout_snippet": "OpenCL extension 'cl_khr_fp32' - ignoring\n#pragma OPENCL EXTENSION cl_khr_fp32 : enable\n                         ^\n<kernel>:18:1: error: unknown type name '__global__'\n__global__ void\n^\n<kernel>:18:12: error: expected identifier or '('\n__global__ void\n           ^\n<kernel>:205:1: error: unknown type name '__global__'\n__global__ void\n^\n<kernel>:205:12: error: expected identifier or '('\n__global__ void\n           ^\n\n>>>>\n--------------------------------\nError at line 247: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    }
+  ]
+}

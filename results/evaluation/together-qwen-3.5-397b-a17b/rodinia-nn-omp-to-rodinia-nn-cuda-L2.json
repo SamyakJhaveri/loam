@@ -1,0 +1,99 @@
+{
+  "source_spec": "rodinia-nn-omp",
+  "target_spec": "rodinia-nn-cuda",
+  "kernel": "nn",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 2,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "filelist_4",
+    "5",
+    "30",
+    "90"
+  ],
+  "timestamp": "2026-03-30T16:02:46Z",
+  "prompt_tokens": 10671,
+  "completion_tokens": 4560,
+  "llm_response_time_seconds": 40.916,
+  "build_status": "pass",
+  "build_time_seconds": 0.984,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.217,
+  "run_exit_code": -6,
+  "run_stderr_snippet": "The 5 nearest neighbors are:\n1992  3 22  0  7 ALBERTO    66.5  79.2  129  899 --> 0.000000\n1961  4  8 12 12 LESLIE     26.5  34.3  143  792 --> 0.000000\n1962  2  2  0  8 ERNESTO    35.9  33.6   93  336 --> 0.000000\n1991  4 26 12 24 WILLIAM    27.9  59.9  135  196 --> 0.000000\n1986  5 10  0 27 GORDON     34.1 334.3   55  803 --> 0.000000\nfree(): double free detected in tcache 2\n",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -6)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.078,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nn_cuda.cu": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n\n#define MAX_ARGS 10\n#define REC_LENGTH 49\t\n#define REC_WINDOW 10\t\n#define LATITUDE_POS 28\t\n#define OPEN 10000.0f\n\nstruct neighbor {\n\tchar entry[REC_LENGTH];\n\tdouble dist;\n};\n\n__device__ float parse_float(const char* str) {\n    float result = 0.0f;\n    float sign = 1.0f;\n    float fraction = 0.0f;\n    float divisor = 1.0f;\n    int i = 0;\n    int has_digit = 0;\n    int has_decimal = 0;\n\n    while (str[i] == ' ' || str[i] == '\\t') i++;\n\n    if (str[i] == '-') {\n        sign = -1.0f;\n        i++;\n    } else if (str[i] == '+') {\n        i++;\n    }\n\n    while (str[i] != '\\0' && str[i] != ' ' && str[i] != '\\t' && str[i] != '\\n') {\n        if (str[i] == '.') {\n            has_decimal = 1;\n            i++;\n            continue;\n        }\n        \n        if (str[i] >= '0' && str[i] <= '9') {\n            has_digit = 1;\n            if (!has_decimal) {\n                result = result * 10.0f + (str[i] - '0');\n            } else {\n                fraction = fraction * 10.0f + (str[i] - '0');\n                divisor *= 10.0f;\n            }\n        }\n        i++;\n    }\n\n    if (has_digit) {\n        result += fraction / divisor;\n    }\n\n    return result * sign;\n}\n\n__global__ void compute_distances(const char* sandbox, int rec_count, float target_lat, float target_long, float* z) {\n    int i = blockIdx.x * blockDim.x + threadIdx.x;\n    if (i < rec_count) {\n        const char* rec_iter = sandbox + (i * REC_LENGTH + LATITUDE_POS - 1);\n        float tmp_lat = parse_float(rec_iter);\n        float tmp_long = parse_float(rec_iter + 5);\n        float diff_lat = tmp_lat - target_lat;\n        float diff_long = tmp_long - target_long;\n        z[i] = sqrtf(diff_lat * diff_lat + diff_long * diff_long);\n    }\n}\n\nint main(int argc, char* argv[]) {\n    long long time0 = clock();\n    FILE   *flist,*fp;\n    int    i=0,j=0, k=0, rec_count=0, done=0;\n    char   *sandbox = NULL, *rec_iter,*rec_iter2, dbname[64];\n    struct neighbor *neighbors = NULL;\n    float target_lat, target_long, tmp_lat=0, tmp_long=0;\n\n    if(argc < 5) {\n        fprintf(stderr, \"Invalid set of arguments\\n\");\n        exit(-1);\n    }\n\n    flist = fopen(argv[1], \"r\");\n    if(!flist) {\n        printf(\"error opening flist\\n\");\n        exit(1);\n    }\n\n    k = atoi(argv[2]);\n    target_lat = atof(argv[3]);\n    target_long = atof(argv[4]);\n\n    neighbors = (struct neighbor*)malloc(k*sizeof(struct neighbor));\n\n    if(neighbors == NULL) {\n        fprintf(stderr, \"no room for neighbors\\n\");\n        exit(0);\n    }\n\n    for( j = 0 ; j < k ; j++ ) { \n        neighbors[j].dist = OPEN;\n    }\n\n    if(fscanf(flist, \"%s\\n\", dbname) != 1) {\n        fprintf(stderr, \"error reading filelist\\n\");\n        exit(0);\n    }\n\n    fp = fopen(dbname, \"r\");\n    if(!fp) {\n        printf(\"error opening flist\\n\");\n        exit(1);\n    }\n\n    // Allocate sandbox dynamically to avoid stack issues and ensure proper alignment for CUDA\n    sandbox = (char*)malloc(REC_LENGTH * REC_WINDOW);\n    if (!sandbox) {\n        fprintf(stderr, \"no room for sandbox\\n\");\n        exit(0);\n    }\n\n    float *z_host = (float *) malloc(REC_WINDOW * sizeof(float));\n    float *z_dev = NULL;\n    cudaMalloc(&z_dev, REC_WINDOW * sizeof(float));\n\n    while(!done) {\n        \n        rec_count = fread(sandbox, REC_LENGTH, REC_WINDOW, fp);\n        if( rec_count != REC_WINDOW ) {\n            if(!ferror(flist)) {\n                fclose(fp);\n\n                if(feof(flist))\n                    done = 1;\n                else {\n                    if(fscanf(flist, \"%s\\n\", dbname) != 1) {\n                        fprintf(stderr, \"error reading filelist\\n\");\n                        exit(0);\n                    }\n\n                    fp = fopen(dbname, \"r\");\n\n                    if(!fp) {\n                        printf(\"error opening a db\\n\");\n                        exit(1);\n                    }\n                }\n            } else {\n                perror(\"Error\");\n                exit(0);\n            }\n        }\n\n        if (rec_count > 0) {\n            int threadsPerBlock = 256;\n            int blocksPerGrid = (rec_count + threadsPerBlock - 1) / threadsPerBlock;\n            \n            compute_distances<<<blocksPerGrid, threadsPerBlock>>>(sandbox, rec_count, target_lat, target_long, z_dev);\n            cudaDeviceSynchronize();\n            \n            cudaMemcpy(z_host, z_dev, REC_WINDOW * sizeof(float), cudaMemcpyDeviceToHost);\n        }\n\n        for( i = 0 ; i < rec_count ; i++ ) {\n            float max_dist = -1.0f;\n            int max_idx = 0;\n            \n            for( j = 0 ; j < k ; j++ ) {\n                if( neighbors[j].dist > max_dist ) {\n                    max_dist = neighbors[j].dist;\n                    max_idx = j;\n                }\n            }\n            \n            if( z_host[i] < neighbors[max_idx].dist ) {\n                // Ensure we don't overflow the buffer when adding null terminator\n                int end_pos = (i+1)*REC_LENGTH-1;\n                if (end_pos < REC_LENGTH * REC_WINDOW) {\n                    sandbox[end_pos] = '\\0';\n                }\n                strcpy(neighbors[max_idx].entry, sandbox + i*REC_LENGTH);\n                neighbors[max_idx].dist = z_host[i];\n            }\n        }\n    }\n\n    fprintf(stderr, \"The %d nearest neighbors are:\\n\", k);\n    for( j = 0 ; j < k ; j++ ) {\n        if( !(neighbors[j].dist == OPEN) )\n            fprintf(stderr, \"%s --> %f\\n\", neighbors[j].entry, neighbors[j].dist);\n    }\n\n    fclose(flist);\n    if(fp) fclose(fp);\n\n    cudaFree(z_dev);\n    free(z_host);\n    free(sandbox);\n    free(neighbors);\n\n    long long time1 = clock();\n    printf(\"total time : %15.12f s\", (float) (time1 - time0) / 1000000);\n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "nn_cuda.cu"
+  ],
+  "target_files_extracted": [
+    "nn_cuda.cu"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 14.428,
+      "prompt_tokens": 1976,
+      "completion_tokens": 1266,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n^\n\nnn_cuda.cu(22): error: calling a __host__ function(\"atof\") from a __global__ function(\"compute_distances\") is not allowed\n\nnn_cuda.cu(22): err",
+      "build_error_snippet": "nn_cuda.cu(34): warning #177-D: variable \"rec_iter\" was declared but never referenced\n      char sandbox[49 * 10], *rec_iter,*rec_iter2, dbname[64];\n                              ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nnn_cuda.cu(34): warning #177-D: variable \"rec_iter2\" was declared but never referenced\n      char sandbox[49 * 10], *rec_iter,*rec_iter2, dbname[64];\n                                        ^\n\nnn_cuda.cu(36): warning #177-D: variable \"tmp_lat\" was declared but never referenced\n      float target_lat, target_long, tmp_lat=0, tmp_long=0;\n                                     ^\n\nnn_cuda.cu(36): warning #177-D: variable \"tmp_long\" was declared but never referenced\n      float target_lat, target_long, tmp_lat=0, tmp_long=0;\n                                                ^\n\nnn_cuda.cu(22): error: calling a __host__ function(\"atof\") from a __global__ function(\"compute_distances\") is not allowed\n\nnn_cuda.cu(22): error: identifier \"atof\" is undefined in device code\n\nnn_cuda.cu(23): error: calling a __host__ function(\"atof\") from a __global__ function(\"compute_distances\") is not allowed\n\nnn_cuda.cu(23): error: identifier \"atof\" is undefined in device code\n\n4 errors detected in the compilation of \"nn_cuda.cu\".\nmake: *** [Makefile:12: nn] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 15.009,
+      "prompt_tokens": 3420,
+      "completion_tokens": 1596,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -6):\n```\n> 0.000000\n1961  4  8 12 12 LESLIE     26.5  34.3  143  792 --> 0.000000\n1962  2  2  0  8 ERNESTO    35.9  33.6   93  336 --> 0.000000\n1991  ",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "The 5 nearest neighbors are:\n1992  3 22  0  7 ALBERTO    66.5  79.2  129  899 --> 0.000000\n1961  4  8 12 12 LESLIE     26.5  34.3  143  792 --> 0.000000\n1962  2  2  0  8 ERNESTO    35.9  33.6   93  336 --> 0.000000\n1991  4 26 12 24 WILLIAM    27.9  59.9  135  196 --> 0.000000\n1986  5 10  0 27 GORDON     34.1 334.3   55  803 --> 0.000000\nfree(): double free detected in tcache 2\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 11.479,
+      "prompt_tokens": 5275,
+      "completion_tokens": 1698,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "The 5 nearest neighbors are:\n1992  3 22  0  7 ALBERTO    66.5  79.2  129  899 --> 0.000000\n1961  4  8 12 12 LESLIE     26.5  34.3  143  792 --> 0.000000\n1962  2  2  0  8 ERNESTO    35.9  33.6   93  336 --> 0.000000\n1991  4 26 12 24 WILLIAM    27.9  59.9  135  196 --> 0.000000\n1986  5 10  0 27 GORDON     34.1 334.3   55  803 --> 0.000000\nfree(): double free detected in tcache 2\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

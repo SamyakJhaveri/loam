@@ -1,0 +1,99 @@
+{
+  "source_spec": "rodinia-nn-omp",
+  "target_spec": "rodinia-nn-opencl",
+  "kernel": "nn",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 2,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "filelist_4",
+    "5",
+    "30",
+    "90"
+  ],
+  "timestamp": "2026-03-30T21:10:13Z",
+  "prompt_tokens": 35594,
+  "completion_tokens": 4325,
+  "llm_response_time_seconds": 18.327,
+  "build_status": "pass",
+  "build_time_seconds": 0.672,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.064,
+  "run_exit_code": -11,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -11)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 300.039,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nearestNeighbor_kernel.cl": "#define MAX_ARGS 10\n#define REC_LENGTH 49\n#define REC_WINDOW 10\n#define LATITUDE_POS 28\n#define OPEN 10000.0\n\n// Match the host struct exactly: char[49] + double (with padding for double alignment)\n// char[49] is 49 bytes. double requires 8-byte alignment. \n// 49 % 8 = 1. Padding = 7 bytes. Total = 49 + 7 + 8 = 64 bytes.\n// In OpenCL, we must replicate this layout.\ntypedef struct {\n    char entry[REC_LENGTH];\n    // Explicit padding to match C struct alignment for double on most platforms\n    // char[49] ends at index 48. Next is 49. \n    // double needs to start at offset divisible by 8. Next is 56.\n    // Padding bytes: 56 - 49 = 7.\n    char padding[7];\n    double dist;\n} neighbor_t;\n\n__kernel void compute_distances(\n    const char *sandbox,\n    float *z,\n    int rec_count,\n    float target_lat,\n    float target_long)\n{\n    int i = get_global_id(0);\n    if (i >= rec_count) return;\n\n    const char *rec_iter = sandbox + (i * REC_LENGTH + LATITUDE_POS - 1);\n    \n    float tmp_lat = 0.0f;\n    float tmp_long = 0.0f;\n    \n    // Simple parser for latitude\n    int idx = 0;\n    float sign = 1.0f;\n    float val = 0.0f;\n    float frac = 0.0f;\n    float divisor = 1.0f;\n    int has_dot = 0;\n    \n    char c = rec_iter[idx];\n    if (c == '-') { \n        sign = -1.0f; \n        idx++; \n        c = rec_iter[idx]; \n    }\n    \n    while (c != '\\0' && c != ' ' && c != '\\n' && c != '\\r') {\n        if (c == '.') {\n            has_dot = 1;\n            divisor = 10.0f;\n        } else if (c >= '0' && c <= '9') {\n            int digit = c - '0';\n            if (!has_dot) {\n                val = val * 10.0f + (float)digit;\n            } else {\n                frac = frac + (float)digit / divisor;\n                divisor *= 10.0f;\n            }\n        }\n        idx++;\n        c = rec_iter[idx];\n    }\n    tmp_lat = sign * (val + frac);\n\n    // Parse longitude (offset by 5)\n    rec_iter += 5;\n    idx = 0;\n    sign = 1.0f;\n    val = 0.0f;\n    frac = 0.0f;\n    divisor = 1.0f;\n    has_dot = 0;\n    \n    c = rec_iter[idx];\n    if (c == '-') { \n        sign = -1.0f; \n        idx++; \n        c = rec_iter[idx]; \n    }\n    \n    while (c != '\\0' && c != ' ' && c != '\\n' && c != '\\r') {\n        if (c == '.') {\n            has_dot = 1;\n            divisor = 10.0f;\n        } else if (c >= '0' && c <= '9') {\n            int digit = c - '0';\n            if (!has_dot) {\n                val = val * 10.0f + (float)digit;\n            } else {\n                frac = frac + (float)digit / divisor;\n                divisor *= 10.0f;\n            }\n        }\n        idx++;\n        c = rec_iter[idx];\n    }\n    tmp_long = sign * (val + frac);\n\n    float diff_lat = tmp_lat - target_lat;\n    float diff_long = tmp_long - target_long;\n    z[i] = sqrt(diff_lat * diff_lat + diff_long * diff_long);\n}\n\n__kernel void update_neighbors(\n    const float *z,\n    const char *sandbox,\n    neighbor_t *neighbors,\n    int rec_count,\n    int k)\n{\n    int i = get_global_id(0);\n    if (i >= rec_count) return;\n\n    float current_dist = z[i];\n    \n    // Find the neighbor with the maximum distance\n    double max_dist = -1.0;\n    int max_idx = 0;\n    \n    for (int j = 0; j < k; j++) {\n        if (neighbors[j].dist > max_dist) {\n            max_dist = neighbors[j].dist;\n            max_idx = j;\n        }\n    }\n    \n    // If current record is closer, replace the furthest neighbor\n    if ((double)current_dist < neighbors[max_idx].dist) {\n        const char *src = sandbox + (i * REC_LENGTH);\n        // Copy entry\n        for (int c = 0; c < REC_LENGTH; c++) {\n            neighbors[max_idx].entry[c] = src[c];\n        }\n        // Padding is automatically handled by struct layout, just set dist\n        neighbors[max_idx].dist = (double)current_dist;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "nearestNeighbor_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "nearestNeighbor_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.742,
+      "prompt_tokens": 10696,
+      "completion_tokens": 1176,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.16,
+      "prompt_tokens": 11904,
+      "completion_tokens": 1058,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 9.425,
+      "prompt_tokens": 12994,
+      "completion_tokens": 2091,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

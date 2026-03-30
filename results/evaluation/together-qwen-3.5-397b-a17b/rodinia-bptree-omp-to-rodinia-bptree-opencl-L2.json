@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-bptree-omp",
+  "target_spec": "rodinia-bptree-opencl",
+  "kernel": "bptree",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 2,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-03-30T13:09:44Z",
+  "prompt_tokens": 73204,
+  "completion_tokens": 3450,
+  "llm_response_time_seconds": 14.623,
+  "build_status": "pass",
+  "build_time_seconds": 0.543,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.483,
+  "run_exit_code": 245,
+  "run_stderr_snippet": "9 errors generated.\n",
+  "run_stdout_snippet": " reside in '__global', '__constant' or '__local' address space\n    const int *end,\n               ^\n<kernel>:21:10: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    int *recstart,\n         ^\n<kernel>:22:10: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    int *reclength)\n         ^\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 245)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.453,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#define DEFAULT_ORDER 508\n\ntypedef struct {\n    int value;\n} record;\n\ntypedef struct {\n    int location;\n    int indices[DEFAULT_ORDER + 1];\n    int keys[DEFAULT_ORDER + 1];\n    char is_leaf;\n    int num_keys;\n} knode;\n\nkernel void findK(\n    long maxheight,\n    const knode *knodes,\n    long knodes_elem,\n    const record *records,\n    long *currKnode,\n    long *offset,\n    const int *keys,\n    record *ans)\n{\n    int bid = get_global_id(0) / get_local_size(0);\n    int thid = get_local_id(0);\n    int threadsPerBlock = get_local_size(0);\n\n    if (bid >= get_global_size(0) / get_local_size(0)) return;\n\n    long current_knode = currKnode[bid];\n    long current_offset = offset[bid];\n    int key_val = keys[bid];\n\n    for (long i = 0; i < maxheight; i++) {\n        if (thid < threadsPerBlock) {\n            int k_idx = (int)current_knode;\n            if (knodes[k_idx].keys[thid] <= key_val && knodes[k_idx].keys[thid + 1] > key_val) {\n                if (knodes[current_offset].indices[thid] < knodes_elem) {\n                    current_offset = knodes[current_offset].indices[thid];\n                }\n            }\n        }\n        if (thid == 0) {\n            current_knode = current_offset;\n        }\n    }\n\n    if (thid < threadsPerBlock) {\n        int k_idx = (int)current_knode;\n        if (knodes[k_idx].keys[thid] == key_val) {\n            ans[bid].value = records[knodes[k_idx].indices[thid]].value;\n        }\n    }\n}\n",
+    "kernel/kernel_gpu_opencl_2.cl": "#define DEFAULT_ORDER 508\n\ntypedef struct {\n    int location;\n    int indices[DEFAULT_ORDER + 1];\n    int keys[DEFAULT_ORDER + 1];\n    char is_leaf;\n    int num_keys;\n} knode;\n\nkernel void findRangeK(\n    const knode *knodes,\n    long knodes_elem,\n    long maxheight,\n    long *currKnode,\n    long *offset,\n    long *lastKnode,\n    long *offset_2,\n    const int *start,\n    const int *end,\n    int *recstart,\n    int *reclength)\n{\n    int bid = get_global_id(0) / get_local_size(0);\n    int thid = get_local_id(0);\n    int threadsPerBlock = get_local_size(0);\n\n    if (bid >= get_global_size(0) / get_local_size(0)) return;\n\n    long current_knode = currKnode[bid];\n    long current_offset = offset[bid];\n    long last_knode = lastKnode[bid];\n    long last_offset = offset_2[bid];\n    int start_val = start[bid];\n    int end_val = end[bid];\n\n    for (long i = 0; i < maxheight; i++) {\n        if (thid < threadsPerBlock) {\n            int k_idx_curr = (int)current_knode;\n            int k_idx_last = (int)last_knode;\n\n            if (knodes[k_idx_curr].keys[thid] <= start_val && knodes[k_idx_curr].keys[thid + 1] > start_val) {\n                if (knodes[current_offset].indices[thid] < knodes_elem) {\n                    current_offset = knodes[current_offset].indices[thid];\n                }\n            }\n\n            if (knodes[k_idx_last].keys[thid] <= end_val && knodes[k_idx_last].keys[thid + 1] > end_val) {\n                if (knodes[last_offset].indices[thid] < knodes_elem) {\n                    last_offset = knodes[last_offset].indices[thid];\n                }\n            }\n        }\n        if (thid == 0) {\n            current_knode = current_offset;\n            last_knode = last_offset;\n        }\n    }\n\n    if (thid < threadsPerBlock) {\n        int k_idx_curr = (int)current_knode;\n        int k_idx_last = (int)last_knode;\n\n        if (knodes[k_idx_curr].keys[thid] == start_val) {\n            recstart[bid] = knodes[k_idx_curr].indices[thid];\n        }\n\n        if (knodes[k_idx_last].keys[thid] == end_val) {\n            reclength[bid] = knodes[k_idx_last].indices[thid] - recstart[bid] + 1;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.792,
+      "prompt_tokens": 23209,
+      "completion_tokens": 1160,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 245):\n```\n9 errors generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "9 errors generated.\n",
+      "run_stdout_snippet": " reside in '__global', '__constant' or '__local' address space\n    const int *end,\n               ^\n<kernel>:21:10: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    int *recstart,\n         ^\n<kernel>:22:10: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    int *reclength)\n         ^\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.297,
+      "prompt_tokens": 24406,
+      "completion_tokens": 1145,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 245):\n```\n9 errors generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "9 errors generated.\n",
+      "run_stdout_snippet": " reside in '__global', '__constant' or '__local' address space\n    const int *end,\n               ^\n<kernel>:21:10: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    int *recstart,\n         ^\n<kernel>:22:10: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    int *reclength)\n         ^\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 5.534,
+      "prompt_tokens": 25589,
+      "completion_tokens": 1145,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "9 errors generated.\n",
+      "run_stdout_snippet": " reside in '__global', '__constant' or '__local' address space\n    const int *end,\n               ^\n<kernel>:21:10: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    int *recstart,\n         ^\n<kernel>:22:10: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    int *reclength)\n         ^\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    }
+  ]
+}

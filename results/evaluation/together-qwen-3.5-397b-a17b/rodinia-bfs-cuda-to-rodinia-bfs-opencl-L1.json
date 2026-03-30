@@ -1,0 +1,92 @@
+{
+  "source_spec": "rodinia-bfs-cuda",
+  "target_spec": "rodinia-bfs-opencl",
+  "kernel": "bfs",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "timestamp": "2026-03-30T10:56:56Z",
+  "prompt_tokens": 43832,
+  "completion_tokens": 8076,
+  "llm_response_time_seconds": 41.21,
+  "build_status": "pass",
+  "build_time_seconds": 0.797,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.582,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\nInit: 97.166000\nMemAlloc: 0.003000\nHtoD: 2.200160\nExec: 0.524320\nDtoH: 0.236352\nClose: 0.892000\nTotal: 102.122002\n--cambine:passed:-)\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern 'Result stored in' NOT found in stdout. BFS results written to output file",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.519,
+  "translated_wall_time_seconds": 0.582,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.8918,
+  "translated_files": {
+    "Kernels.cl": "#ifndef _KERNEL_H_\n#define _KERNEL_H_\n\nstruct Node {\n    int starting;\n    int no_of_edges;\n};\n\n__kernel void\nBFS_1(__global struct Node* g_graph_nodes, __global int* g_graph_edges, __global char* g_graph_mask, __global char* g_updating_graph_mask, __global char *g_graph_visited, __global int* v_0, int no_of_nodes) \n{\n\tint tid = get_global_id(0);\n\tif( tid < no_of_nodes && g_graph_mask[tid])\n\t{\n\t\tg_graph_mask[tid]=0;\n\t\tfor(int i=g_graph_nodes[tid].starting; i<(g_graph_nodes[tid].no_of_edges + g_graph_nodes[tid].starting); i++)\n\t\t\t{\n\t\t\tint id = g_graph_edges[i];\n\t\t\tif(!g_graph_visited[id])\n\t\t\t\t{\n\t\t\t\tv_0[id]=v_0[tid]+1;\n\t\t\t\tg_updating_graph_mask[id]=1;\n\t\t\t\t}\n\t\t\t}\n\t}\n}\n\n#endif \n\n#ifndef _KERNEL2_H_\n#define _KERNEL2_H_\n\n__kernel void\nBFS_2(__global char* g_graph_mask, __global char *g_updating_graph_mask, __global char* g_graph_visited, __global char *g_over, int no_of_nodes)\n{\n\tint tid = get_global_id(0);\n\tif( no_of_nodes > tid && g_updating_graph_mask[tid])\n\t{\n\n\t\tg_graph_mask[tid]=1;\n\t\tg_graph_visited[tid]=1;\n\t\t*g_over=1;\n\t\tg_updating_graph_mask[tid]=0;\n\t}\n}\n\n#endif\n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.984,
+      "prompt_tokens": 14148,
+      "completion_tokens": 361,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n~~~~~~~^\n<kernel>:5:23: note: forward declaration of 'struct Node'\nBFS_1(__global struct Node* g_graph_nodes, __global int* g_graph_edges, _",
+      "build_error_snippet": null,
+      "run_stderr_snippet": " i=g_graph_nodes[tid].starting; i<(g_graph_nodes[tid].no_of_edges + g_graph_nodes[tid].starting); i++)\n                                                                                           ~~~~~~~~~~~~~^\n<kernel>:5:23: note: forward declaration of 'struct Node'\nBFS_1(__global struct Node* g_graph_nodes, __global int* g_graph_edges, __global char* g_graph_mask, __global char* g_updating_graph_mask, __global char *g_graph_visited, __global int* v_0, int no_of_nodes) \n                      ^\n\n",
+      "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 2.352,
+      "prompt_tokens": 14628,
+      "completion_tokens": 379,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Result stored in' NOT found in stdout. BFS results written to output file\nEnsure the translated code produces the same output format as",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 35.874,
+      "prompt_tokens": 15056,
+      "completion_tokens": 7336,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

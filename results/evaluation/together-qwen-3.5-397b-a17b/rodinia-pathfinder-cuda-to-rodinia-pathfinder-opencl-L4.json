@@ -1,0 +1,98 @@
+{
+  "source_spec": "rodinia-pathfinder-cuda",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "100000",
+    "100",
+    "20"
+  ],
+  "timestamp": "2026-03-30T19:00:48Z",
+  "prompt_tokens": 18768,
+  "completion_tokens": 6207,
+  "llm_response_time_seconds": 51.673,
+  "build_status": "pass",
+  "build_time_seconds": 0.485,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern 'pyramidHeight:' NOT found in stdout. Pathfinder grid configured",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": 0.001,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "#define BLOCK_SIZE 256\n#define HALO 1\n\n#define IN_RANGE(x, min, max) ((x)>=((min)) && (x)<=((max)))\n#define MIN(a, b) ((a)<=((b)) ? (a) : (b))\n\n__kernel void dynproc_kernel(\n    int data_5,\n    __global int *var_15,\n    __global int *item_25,\n    __global int *elem_31,\n    int v_38,\n    int data_11,\n    int x_23,\n    int val_19,\n    int theHalo,\n    __local int var_34[BLOCK_SIZE],\n    __local int x_22[BLOCK_SIZE],\n    __global int *d_outputBuffer)\n{\n    int elem_16 = get_group_id(0);\n    int data_3 = get_local_id(0);\n\n    int elem_24 = BLOCK_SIZE - data_5 * HALO * 2;\n\n    int item_30 = elem_24 * elem_16 - val_19;\n    int x_10 = item_30 + BLOCK_SIZE - 1;\n\n    int data_21 = item_30 + data_3;\n\n    int tmp_27 = (0 > item_30) ? -item_30 : 0;\n    int val_41 = (v_38 - 1 < x_10) ? BLOCK_SIZE - 1 - (x_10 - v_38 + 1) : BLOCK_SIZE - 1;\n\n    int W = data_3 - 1;\n    int E = data_3 + 1;\n\n    W = (tmp_27 > W) ? tmp_27 : W;\n    E = (val_41 < E) ? val_41 : E;\n\n    bool tmp_26 = IN_RANGE(data_3, tmp_27, val_41);\n\n    if (IN_RANGE(data_21, 0, v_38 - 1)) {\n        var_34[data_3] = item_25[data_21];\n    }\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    bool tmp_6 = false;\n    for (int i = 0; i < data_5; i++) {\n        tmp_6 = false;\n        if (IN_RANGE(data_3, i + 1, BLOCK_SIZE - i - 2) && tmp_26) {\n            tmp_6 = true;\n            int left = var_34[W];\n            int x_39 = var_34[data_3];\n            int right = var_34[E];\n            int elem_28 = MIN(left, x_39);\n            elem_28 = MIN(elem_28, right);\n            int elem_35 = v_38 * (x_23 + i) + data_21;\n            x_22[data_3] = elem_28 + var_15[elem_35];\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n\n        if (data_5 - 1 == i)\n            break;\n\n        if (tmp_6)\n            var_34[data_3] = x_22[data_3];\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    if (tmp_6) {\n        elem_31[data_21] = x_22[data_3];\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.858,
+      "prompt_tokens": 5389,
+      "completion_tokens": 821,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'pyramidHeight:' NOT found in stdout. Pathfinder grid configured\nEnsure the translated code produces the same output format as the origi",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 5.129,
+      "prompt_tokens": 6256,
+      "completion_tokens": 821,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'pyramidHeight:' NOT found in stdout. Pathfinder grid configured\nEnsure the translated code produces the same output format as the origi",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 39.686,
+      "prompt_tokens": 7123,
+      "completion_tokens": 4565,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

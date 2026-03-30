@@ -1,0 +1,96 @@
+{
+  "source_spec": "rodinia-backprop-omp",
+  "target_spec": "rodinia-backprop-opencl",
+  "kernel": "backprop",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "65536"
+  ],
+  "timestamp": "2026-03-30T13:16:27Z",
+  "prompt_tokens": 44151,
+  "completion_tokens": 9850,
+  "llm_response_time_seconds": 74.596,
+  "build_status": "pass",
+  "build_time_seconds": 0.645,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern 'Training done' NOT found in stdout. Computation completed successfully",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.001,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.0,
+  "translated_files": {
+    "backprop_kernel.cl": "#define WIDTH 16\n#define HEIGHT 16\n#define BLOCK_SIZE 16\n#define ETA 0.3f\n#define MOMENTUM 0.3f\n\nfloat squash(float x) {\n    return 1.0f / (1.0f + exp(-x));\n}\n\n__kernel void bpnn_layerforward_ocl(__global float *l1,\n                                    __global float *l2,\n                                    __global float *conn,\n                                    __global float *partial_sum,\n                                    __local float *local_conn,\n                                    __local float *local_l1,\n                                    int n1,\n                                    int n2) {\n    int gid1 = get_global_id(1);\n    int gid0 = get_global_id(0);\n    \n    int block_id = gid1 / BLOCK_SIZE;\n    int j_idx = gid1 % BLOCK_SIZE;\n    int j = j_idx + 1;\n    \n    if (j > n2) return;\n    \n    int k_start = block_id * BLOCK_SIZE;\n    int k = k_start + gid0;\n    \n    // Load l1 into local memory\n    if (k <= n1) {\n        local_l1[gid0] = l1[k];\n    } else {\n        local_l1[gid0] = 0.0f;\n    }\n    barrier(CLK_LOCAL_MEM_FENCE);\n    \n    float term = 0.0f;\n    // Skip k=0 as host adds bias manually\n    if (k <= n1 && k != 0) {\n        term = conn[k * (n2 + 1) + j] * local_l1[gid0];\n    }\n    \n    local_conn[gid0] = term;\n    barrier(CLK_LOCAL_MEM_FENCE);\n    \n    if (gid0 == 0) {\n        float sum = 0.0f;\n        for (int i = 0; i < BLOCK_SIZE; i++) {\n            sum += local_conn[i];\n        }\n        partial_sum[block_id * n2 + (j - 1)] = sum;\n    }\n}\n\n__kernel void bpnn_adjust_weights_ocl(__global float *delta,\n                                      int ndelta,\n                                      __global float *ly,\n                                      int nly,\n                                      __global float *w,\n                                      __global float *oldw) {\n    int j = get_global_id(1);\n    int k = get_global_id(0);\n    \n    if (j >= 1 && j <= ndelta && k <= nly) {\n        float new_dw = (ETA * delta[j] * ly[k]) + (MOMENTUM * oldw[k * (ndelta + 1) + j]);\n        w[k * (ndelta + 1) + j] += new_dw;\n        oldw[k * (ndelta + 1) + j] = new_dw;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "backprop_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "backprop_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.693,
+      "prompt_tokens": 14187,
+      "completion_tokens": 484,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Training done' NOT found in stdout. Computation completed successfully\nEnsure the translated code produces the same output format as th",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 2.582,
+      "prompt_tokens": 14717,
+      "completion_tokens": 484,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Training done' NOT found in stdout. Computation completed successfully\nEnsure the translated code produces the same output format as th",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 69.321,
+      "prompt_tokens": 15247,
+      "completion_tokens": 8882,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

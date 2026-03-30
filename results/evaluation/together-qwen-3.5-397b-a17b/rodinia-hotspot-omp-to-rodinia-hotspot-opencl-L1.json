@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-hotspot-omp",
+  "target_spec": "rodinia-hotspot-opencl",
+  "kernel": "hotspot",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "512",
+    "512",
+    "2",
+    "4",
+    "../../data/hotspot/temp_512",
+    "../../data/hotspot/power_512",
+    "output.out"
+  ],
+  "timestamp": "2026-03-30T19:57:07Z",
+  "prompt_tokens": 39868,
+  "completion_tokens": 17449,
+  "llm_response_time_seconds": 242.242,
+  "build_status": "pass",
+  "build_time_seconds": 0.181,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "Error: The file was not opened\n",
+  "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.159,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot_kernel.cl": "#define BLOCK_SIZE 16\n\n#define MAX_PD\t(3.0e6)\n#define PRECISION\t0.001\n#define SPEC_HEAT_SI 1.75e6\n#define K_SI 100\n#define FACTOR_CHIP\t0.5\n\nconst float t_chip = 0.0005f;\nconst float chip_height = 0.016f;\nconst float chip_width = 0.016f;\nconst float amb_temp = 80.0f;\n\n__kernel void hotspot(\n    int num_iterations,\n    __global const float *power,\n    __global const float *temp_in,\n    __global float *temp_out,\n    int col,\n    int row,\n    int borderCols,\n    int borderRows,\n    float Cap,\n    float Rx,\n    float Ry,\n    float Rz,\n    float step)\n{\n    float Cap_1 = step / Cap;\n    float Rx_1 = 1.0f / Rx;\n    float Ry_1 = 1.0f / Ry;\n    float Rz_1 = 1.0f / Rz;\n\n    // Calculate total number of blocks based on grid dimensions\n    int blockCols = (col + BLOCK_SIZE - 1) / BLOCK_SIZE;\n    int blockRows = (row + BLOCK_SIZE - 1) / BLOCK_SIZE;\n    \n    // Get block IDs using standard OpenCL function\n    int block_id_x = get_group_id(0);\n    int block_id_y = get_group_id(1);\n    \n    // Calculate chunk index\n    int chunk = block_id_y * blockCols + block_id_x;\n    \n    int chunks_in_row = blockCols;\n    int chunks_in_col = blockRows;\n\n    int r_start = BLOCK_SIZE * (chunk / chunks_in_col);\n    int c_start = BLOCK_SIZE * (chunk % chunks_in_row);\n    int r_end = r_start + BLOCK_SIZE > row ? row : r_start + BLOCK_SIZE;\n    int c_end = c_start + BLOCK_SIZE > col ? col : c_start + BLOCK_SIZE;\n\n    int local_r = get_local_id(1);\n    int local_c = get_local_id(0);\n\n    // Boundary check for the block\n    if (r_start + local_r >= r_end || c_start + local_c >= c_end) {\n        return;\n    }\n\n    int r = r_start + local_r;\n    int c = c_start + local_c;\n    int idx = r * col + c;\n\n    float delta;\n\n    bool is_r0 = (r == 0);\n    bool is_r_last = (r == row - 1);\n    bool is_c0 = (c == 0);\n    bool is_c_last = (c == col - 1);\n\n    if (is_r0 && is_c0) {\n        // Top-left corner\n        delta = Cap_1 * (power[0] +\n            (temp_in[1] - temp_in[0]) * Rx_1 +\n            (temp_in[col] - temp_in[0]) * Ry_1 +\n            (amb_temp - temp_in[0]) * Rz_1);\n    }\n    else if (is_r0 && is_c_last) {\n        // Top-right corner\n        delta = Cap_1 * (power[c] +\n            (temp_in[c-1] - temp_in[c]) * Rx_1 +\n            (temp_in[c+col] - temp_in[c]) * Ry_1 +\n            (amb_temp - temp_in[c]) * Rz_1);\n    }\n    else if (is_r_last && is_c_last) {\n        // Bottom-right corner\n        delta = Cap_1 * (power[idx] +\n            (temp_in[idx-1] - temp_in[idx]) * Rx_1 +\n            (temp_in[(r-1)*col+c] - temp_in[idx]) * Ry_1 +\n            (amb_temp - temp_in[idx]) * Rz_1);\n    }\n    else if (is_r_last && is_c0) {\n        // Bottom-left corner\n        delta = Cap_1 * (power[r*col] +\n            (temp_in[r*col+1] - temp_in[r*col]) * Rx_1 +\n            (temp_in[(r-1)*col] - temp_in[r*col]) * Ry_1 +\n            (amb_temp - temp_in[r*col]) * Rz_1);\n    }\n    else if (is_r0) {\n        // Top edge\n        delta = Cap_1 * (power[c] +\n            (temp_in[c+1] + temp_in[c-1] - 2.0f * temp_in[c]) * Rx_1 +\n            (temp_in[col+c] - temp_in[c]) * Ry_1 +\n            (amb_temp - temp_in[c]) * Rz_1);\n    }\n    else if (is_c_last) {\n        // Right edge\n        delta = Cap_1 * (power[idx] +\n            (temp_in[(r+1)*col+c] + temp_in[(r-1)*col+c] - 2.0f * temp_in[idx]) * Ry_1 +\n            (temp_in[idx-1] - temp_in[idx]) * Rx_1 +\n            (amb_temp - temp_in[idx]) * Rz_1);\n    }\n    else if (is_r_last) {\n        // Bottom edge\n        delta = Cap_1 * (power[idx] +\n            (temp_in[idx+1] + temp_in[idx-1] - 2.0f * temp_in[idx]) * Rx_1 +\n            (temp_in[(r-1)*col+c] - temp_in[idx]) * Ry_1 +\n            (amb_temp - temp_in[idx]) * Rz_1);\n    }\n    else if (is_c0) {\n        // Left edge\n        delta = Cap_1 * (power[r*col] +\n            (temp_in[(r+1)*col] + temp_in[(r-1)*col] - 2.0f * temp_in[r*col]) * Ry_1 +\n            (temp_in[r*col+1] - temp_in[r*col]) * Rx_1 +\n            (amb_temp - temp_in[r*col]) * Rz_1);\n    }\n    else {\n        // Interior\n        delta = Cap_1 * (power[idx] +\n            (temp_in[(r+1)*col+c] + temp_in[(r-1)*col+c] - 2.0f * temp_in[idx]) * Ry_1 +\n            (temp_in[idx+1] + temp_in[idx-1] - 2.0f * temp_in[idx]) * Rx_1 +\n            (amb_temp - temp_in[idx]) * Rz_1);\n    }\n\n    temp_out[idx] = temp_in[idx] + delta;\n}\n"
+  },
+  "target_files_expected": [
+    "hotspot_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "hotspot_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 15.467,
+      "prompt_tokens": 7800,
+      "completion_tokens": 1519,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nError: The file was not opened\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Error: The file was not opened\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 186.307,
+      "prompt_tokens": 9358,
+      "completion_tokens": 13314,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nError: The file was not opened\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Error: The file was not opened\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 40.468,
+      "prompt_tokens": 22710,
+      "completion_tokens": 2616,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Error: The file was not opened\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\n",
+      "extraction_fail": null
+    }
+  ]
+}

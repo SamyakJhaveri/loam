@@ -1,0 +1,97 @@
+{
+  "source_spec": "rodinia-bfs-omp",
+  "target_spec": "rodinia-bfs-opencl",
+  "kernel": "bfs",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "4",
+    "../../data/bfs/graph1MW_6.txt"
+  ],
+  "timestamp": "2026-03-30T13:21:34Z",
+  "prompt_tokens": 48872,
+  "completion_tokens": 12434,
+  "llm_response_time_seconds": 133.174,
+  "build_status": "pass",
+  "build_time_seconds": 0.802,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Reading File\nError Reading graph file\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern 'Result stored in' NOT found in stdout. BFS traversal completed and results written to file",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.519,
+  "translated_wall_time_seconds": 0.001,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 519.0,
+  "translated_files": {
+    "Kernels.cl": "kernel void BFS_1(\n    const int* d_graph_nodes,\n    const int* d_graph_edges,\n    char* d_graph_mask,\n    char* d_updating_graph_mask,\n    const char* d_graph_visited,\n    int* d_cost,\n    int no_of_nodes\n) {\n    int x_12 = get_global_id(0);\n    \n    if (x_12 >= no_of_nodes) return;\n\n    if (d_graph_mask[x_12] == 1) {\n        d_graph_mask[x_12] = 0;\n        \n        int starting = d_graph_nodes[x_12 * 2];\n        int no_of_edges = d_graph_nodes[x_12 * 2 + 1];\n        \n        for (int i = starting; i < (starting + no_of_edges); i++) {\n            int x_3 = d_graph_edges[i];\n            if (d_graph_visited[x_3] == 0) {\n                d_cost[x_3] = d_cost[x_12] + 1;\n                d_updating_graph_mask[x_3] = 1;\n            }\n        }\n    }\n}\n\nkernel void BFS_2(\n    char* d_graph_mask,\n    char* d_updating_graph_mask,\n    char* d_graph_visited,\n    char* d_over,\n    int no_of_nodes\n) {\n    int item_5 = get_global_id(0);\n    \n    if (item_5 >= no_of_nodes) return;\n\n    if (d_updating_graph_mask[item_5] == 1) {\n        d_graph_mask[item_5] = 1;\n        d_graph_visited[item_5] = 1;\n        d_over[0] = 1;\n        d_updating_graph_mask[item_5] = 0;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.503,
+      "prompt_tokens": 12836,
+      "completion_tokens": 426,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Result stored in' NOT found in stdout. BFS traversal completed and results written to file\nEnsure the translated code produces the same",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 44.851,
+      "prompt_tokens": 13313,
+      "completion_tokens": 9359,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Result stored in' NOT found in stdout. BFS traversal completed and results written to file\nEnsure the translated code produces the same",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 85.82,
+      "prompt_tokens": 22723,
+      "completion_tokens": 2649,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

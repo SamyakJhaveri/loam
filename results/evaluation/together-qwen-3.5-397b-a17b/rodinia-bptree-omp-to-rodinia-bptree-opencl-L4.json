@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-bptree-omp",
+  "target_spec": "rodinia-bptree-opencl",
+  "kernel": "bptree",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-03-30T13:10:56Z",
+  "prompt_tokens": 73155,
+  "completion_tokens": 9146,
+  "llm_response_time_seconds": 78.37,
+  "build_status": "pass",
+  "build_time_seconds": 0.552,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.48,
+  "run_exit_code": 245,
+  "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-cd72c4.d\n1 error generated.\n",
+  "run_stdout_snippet": "ta to a GPU suitable structure...\nTree transformation took 0.065966\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n<<<<\n<kernel>:1:10: fatal error: 'CL/cl.h' file not found\n#include <CL/cl.h>\n         ^~~~~~~~~\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 245)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.453,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#include <CL/cl.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include \"../common.h\"\n#include \"../util/timer/timer.h\"\n#include \"../util/opencl/opencl.h\"\n\n// Device kernel source embedded as a string\nconst char *kernel_source_str = \n\"#pragma OPENCL EXTENSION cl_khr_fp64 : enable\\n\"\n\"typedef struct record { int value; } record;\\n\"\n\"typedef struct knode { int location; int indices[256+1]; int keys[256+1]; char is_leaf; int num_keys; } knode;\\n\"\n\"__kernel void findK(long maxheight, __global knode *knodes, long knodes_elem, __global record *records, __global long *currKnode, __global long *offset, __global int *keys, __global record *ans) {\\n\"\n\"    int bid = get_group_id(0); int thid = get_local_id(0); int threadsPerBlock = get_local_size(0);\\n\"\n\"    int i; long current_offset = offset[bid]; long current_knode = currKnode[bid];\\n\"\n\"    for(i = 0; i < maxheight; i++) {\\n\"\n\"        if(thid < threadsPerBlock) {\\n\"\n\"            if(keys[bid] >= knodes[current_knode].keys[thid] && keys[bid] < knodes[current_knode].keys[thid+1]) {\\n\"\n\"                if(knodes_elem > knodes[current_offset].indices[thid]) current_offset = knodes[current_offset].indices[thid];\\n\"\n\"            }\\n\"\n\"        }\\n\"\n\"        if(thid == 0) { currKnode[bid] = current_offset; current_knode = current_offset; }\\n\"\n\"    }\\n\"\n\"    if(thid < threadsPerBlock) {\\n\"\n\"        if(keys[bid] == knodes[current_knode].keys[thid]) ans[bid].value = records[knodes[current_knode].indices[thid]].value;\\n\"\n\"    }\\n\"\n\"}\";\n\nvoid kernel_cpu(int cores_arg, record *records, knode *knodes, long knodes_elem, int order, long maxheight, int count, long *currKnode, long *offset, int *keys, record *ans) {\n    long long time0, time1, time2;\n    time0 = get_time();\n\n    cl_int error;\n    cl_uint num_platforms;\n    error = clGetPlatformIDs(0, NULL, &num_platforms);\n    if (error != CL_SUCCESS) { fprintf(stderr, \"Failed to get platforms\\n\"); exit(1); }\n\n    cl_platform_id *platforms = malloc(sizeof(cl_platform_id) * num_platforms);\n    clGetPlatformIDs(num_platforms, platforms, NULL);\n    cl_platform_id platform = platforms[0];\n    free(platforms);\n\n    cl_uint num_devices;\n    clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices);\n    if (num_devices == 0) { fprintf(stderr, \"No devices found\\n\"); exit(1); }\n\n    cl_device_id *devices = malloc(sizeof(cl_device_id) * num_devices);\n    clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, num_devices, devices, NULL);\n    cl_device_id device = devices[0];\n    free(devices);\n\n    cl_context context = clCreateContext(NULL, 1, &device, NULL, NULL, &error);\n    if (error != CL_SUCCESS) { fprintf(stderr, \"Failed to create context\\n\"); exit(1); }\n\n    cl_command_queue queue = clCreateCommandQueue(context, device, 0, &error);\n    if (error != CL_SUCCESS) { fprintf(stderr, \"Failed to create queue\\n\"); exit(1); }\n\n    time1 = get_time();\n\n    // Create buffers\n    cl_mem records_buf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(record) * knodes_elem, records, &error);\n    cl_mem knodes_buf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(knode) * knodes_elem, knodes, &error);\n    cl_mem currKnode_buf = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(long) * count, currKnode, &error);\n    cl_mem offset_buf = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(long) * count, offset, &error);\n    cl_mem keys_buf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * count, keys, &error);\n    cl_mem ans_buf = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(record) * count, ans, &error);\n\n    // Create program and kernel\n    cl_program program = clCreateProgramWithSource(context, 1, &kernel_source_str, NULL, &error);\n    char options[64];\n    sprintf(options, \"-DDEFAULT_ORDER=%d\", order);\n    clBuildProgram(program, 1, &device, options, NULL, NULL);\n\n    cl_kernel kernel = clCreateKernel(program, \"findK\", &error);\n\n    // Set args\n    clSetKernelArg(kernel, 0, sizeof(long), &maxheight);\n    clSetKernelArg(kernel, 1, sizeof(cl_mem), &knodes_buf);\n    clSetKernelArg(kernel, 2, sizeof(long), &knodes_elem);\n    clSetKernelArg(kernel, 3, sizeof(cl_mem), &records_buf);\n    clSetKernelArg(kernel, 4, sizeof(cl_mem), &currKnode_buf);\n    clSetKernelArg(kernel, 5, sizeof(cl_mem), &offset_buf);\n    clSetKernelArg(kernel, 6, sizeof(cl_mem), &keys_buf);\n    clSetKernelArg(kernel, 7, sizeof(cl_mem), &ans_buf);\n\n    // Execute\n    size_t local_size = order < 1024 ? order : 1024;\n    size_t global_size = count * local_size;\n    clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &global_size, &local_size, 0, NULL, NULL);\n    clFinish(queue);\n\n    // Read back\n    clEnqueueReadBuffer(queue, ans_buf, CL_TRUE, 0, sizeof(record) * count, ans, 0, NULL, NULL);\n\n    time2 = get_time();\n\n    printf(\"Time spent in different stages of CPU/MCPU KERNEL:\\n\");\n    printf(\"%15.12f s, %15.12f % : MCPU: SET DEVICE\\n\", (float)(time1-time0)/1000000, (float)(time1-time0)/(float)(time2-time0)*100);\n    printf(\"%15.12f s, %15.12f % : CPU/MCPU: KERNEL\\n\", (float)(time2-time1)/1000000, (float)(time2-time1)/(float)(time2-time0)*100);\n    printf(\"Total time:\\n\");\n    printf(\"%.12f s\\n\", (float)(time2-time0)/1000000);\n\n    // Cleanup\n    clReleaseMemObject(records_buf);\n    clReleaseMemObject(knodes_buf);\n    clReleaseMemObject(currKnode_buf);\n    clReleaseMemObject(offset_buf);\n    clReleaseMemObject(keys_buf);\n    clReleaseMemObject(ans_buf);\n    clReleaseKernel(kernel);\n    clReleaseProgram(program);\n    clReleaseCommandQueue(queue);\n    clReleaseContext(context);\n}\n",
+    "kernel/kernel_gpu_opencl_2.cl": "#include <CL/cl.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include \"../common.h\"\n#include \"../util/timer/timer.h\"\n#include \"../util/opencl/opencl.h\"\n\nconst char *kernel_source_str_2 = \n\"#pragma OPENCL EXTENSION cl_khr_fp64 : enable\\n\"\n\"typedef struct knode { int location; int indices[256+1]; int keys[256+1]; char is_leaf; int num_keys; } knode;\\n\"\n\"__kernel void findRangeK(long maxheight, __global knode *knodes, long knodes_elem, __global long *currKnode, __global long *offset, __global long *lastKnode, __global long *offset_2, __global int *start, __global int *end, __global int *recstart, __global int *reclength) {\\n\"\n\"    int bid = get_group_id(0); int thid = get_local_id(0); int threadsPerBlock = get_local_size(0);\\n\"\n\"    int i; long current_offset = offset[bid]; long current_offset_2 = offset_2[bid];\\n\"\n\"    long current_knode = currKnode[bid]; long current_lastKnode = lastKnode[bid];\\n\"\n\"    for(i = 0; i < maxheight; i++) {\\n\"\n\"        if(thid < threadsPerBlock) {\\n\"\n\"            if((start[bid] >= knodes[current_knode].keys[thid]) && (start[bid] < knodes[current_knode].keys[thid+1])) {\\n\"\n\"                if(knodes_elem > knodes[current_knode].indices[thid]) current_offset = knodes[current_knode].indices[thid];\\n\"\n\"            }\\n\"\n\"            if((end[bid] >= knodes[current_lastKnode].keys[thid]) && (end[bid] < knodes[current_lastKnode].keys[thid+1])) {\\n\"\n\"                if(knodes_elem > knodes[current_lastKnode].indices[thid]) current_offset_2 = knodes[current_lastKnode].indices[thid];\\n\"\n\"            }\\n\"\n\"        }\\n\"\n\"        if(thid == 0) {\\n\"\n\"            currKnode[bid] = current_offset; lastKnode[bid] = current_offset_2;\\n\"\n\"            current_knode = current_offset; current_lastKnode = current_offset_2;\\n\"\n\"        }\\n\"\n\"    }\\n\"\n\"    if(thid < threadsPerBlock) {\\n\"\n\"        if(start[bid] == knodes[current_knode].keys[thid]) recstart[bid] = knodes[current_knode].indices[thid];\\n\"\n\"        if(end[bid] == knodes[current_lastKnode].keys[thid]) reclength[bid] = knodes[current_lastKnode].indices[thid] - recstart[bid] + 1;\\n\"\n\"    }\\n\"\n\"}\";\n\nvoid kernel_cpu_2(int cores_arg, knode *knodes, long knodes_elem, int order, long maxheight, int count, long *currKnode, long *offset, long *lastKnode, long *offset_2, int *start, int *end, int *recstart, int *reclength) {\n    long long time0, time1, time2;\n    time0 = get_time();\n\n    cl_int error;\n    cl_uint num_platforms;\n    clGetPlatformIDs(0, NULL, &num_platforms);\n    cl_platform_id *platforms = malloc(sizeof(cl_platform_id) * num_platforms);\n    clGetPlatformIDs(num_platforms, platforms, NULL);\n    cl_platform_id platform = platforms[0];\n    free(platforms);\n\n    cl_uint num_devices;\n    clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 0, NULL, &num_devices);\n    cl_device_id *devices = malloc(sizeof(cl_device_id) * num_devices);\n    clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, num_devices, devices, NULL);\n    cl_device_id device = devices[0];\n    free(devices);\n\n    cl_context context = clCreateContext(NULL, 1, &device, NULL, NULL, &error);\n    cl_command_queue queue = clCreateCommandQueue(context, device, 0, &error);\n\n    time1 = get_time();\n\n    cl_mem knodes_buf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(knode) * knodes_elem, knodes, &error);\n    cl_mem currKnode_buf = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(long) * count, currKnode, &error);\n    cl_mem offset_buf = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(long) * count, offset, &error);\n    cl_mem lastKnode_buf = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(long) * count, lastKnode, &error);\n    cl_mem offset_2_buf = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR, sizeof(long) * count, offset_2, &error);\n    cl_mem start_buf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * count, start, &error);\n    cl_mem end_buf = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * count, end, &error);\n    cl_mem recstart_buf = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * count, recstart, &error);\n    cl_mem reclength_buf = clCreateBuffer(context, CL_MEM_WRITE_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * count, reclength, &error);\n\n    cl_program program = clCreateProgramWithSource(context, 1, &kernel_source_str_2, NULL, &error);\n    char options[64];\n    sprintf(options, \"-DDEFAULT_ORDER=%d\", order);\n    clBuildProgram(program, 1, &device, options, NULL, NULL);\n\n    cl_kernel kernel = clCreateKernel(program, \"findRangeK\", &error);\n\n    clSetKernelArg(kernel, 0, sizeof(long), &maxheight);\n    clSetKernelArg(kernel, 1, sizeof(cl_mem), &knodes_buf);\n    clSetKernelArg(kernel, 2, sizeof(long), &knodes_elem);\n    clSetKernelArg(kernel, 3, sizeof(cl_mem), &currKnode_buf);\n    clSetKernelArg(kernel, 4, sizeof(cl_mem), &offset_buf);\n    clSetKernelArg(kernel, 5, sizeof(cl_mem), &lastKnode_buf);\n    clSetKernelArg(kernel, 6, sizeof(cl_mem), &offset_2_buf);\n    clSetKernelArg(kernel, 7, sizeof(cl_mem), &start_buf);\n    clSetKernelArg(kernel, 8, sizeof(cl_mem), &end_buf);\n    clSetKernelArg(kernel, 9, sizeof(cl_mem), &recstart_buf);\n    clSetKernelArg(kernel, 10, sizeof(cl_mem), &reclength_buf);\n\n    size_t local_size = order < 1024 ? order : 1024;\n    size_t global_size = count * local_size;\n    clEnqueueNDRangeKernel(queue, kernel, 1, NULL, &global_size, &local_size, 0, NULL, NULL);\n    clFinish(queue);\n\n    clEnqueueReadBuffer(queue, recstart_buf, CL_TRUE, 0, sizeof(int) * count, recstart, 0, NULL, NULL);\n    clEnqueueReadBuffer(queue, reclength_buf, CL_TRUE, 0, sizeof(int) * count, reclength, 0, NULL, NULL);\n\n    time2 = get_time();\n\n    printf(\"Time spent in different stages of CPU/MCPU KERNEL:\\n\");\n    printf(\"%15.12f s, %15.12f % : MCPU: SET DEVICE\\n\", (float)(time1-time0)/1000000, (float)(time1-time0)/(float)(time2-time0)*100);\n    printf(\"%15.12f s, %15.12f % : CPU/MCPU: KERNEL\\n\", (float)(time2-time1)/1000000, (float)(time2-time1)/(float)(time2-time0)*100);\n    printf(\"Total time:\\n\");\n    printf(\"%.12f s\\n\", (float)(time2-time0)/1000000);\n\n    clReleaseMemObject(knodes_buf);\n    clReleaseMemObject(currKnode_buf);\n    clReleaseMemObject(offset_buf);\n    clReleaseMemObject(lastKnode_buf);\n    clReleaseMemObject(offset_2_buf);\n    clReleaseMemObject(start_buf);\n    clReleaseMemObject(end_buf);\n    clReleaseMemObject(recstart_buf);\n    clReleaseMemObject(reclength_buf);\n    clReleaseKernel(kernel);\n    clReleaseProgram(program);\n    clReleaseCommandQueue(queue);\n    clReleaseContext(context);\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.794,
+      "prompt_tokens": 23201,
+      "completion_tokens": 1136,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Total time:' NOT found in stdout. B-tree operations completed with timing\nEnsure the translated code produces the same output format as",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 9.498,
+      "prompt_tokens": 24385,
+      "completion_tokens": 1136,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Total time:' NOT found in stdout. B-tree operations completed with timing\nEnsure the translated code produces the same output format as",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 63.078,
+      "prompt_tokens": 25569,
+      "completion_tokens": 6874,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-cd72c4.d\n1 error generated.\n",
+      "run_stdout_snippet": "ta to a GPU suitable structure...\nTree transformation took 0.065966\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n<<<<\n<kernel>:1:10: fatal error: 'CL/cl.h' file not found\n#include <CL/cl.h>\n         ^~~~~~~~~\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    }
+  ]
+}

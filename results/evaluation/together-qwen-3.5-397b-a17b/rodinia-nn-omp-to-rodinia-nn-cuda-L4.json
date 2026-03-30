@@ -1,0 +1,84 @@
+{
+  "source_spec": "rodinia-nn-omp",
+  "target_spec": "rodinia-nn-cuda",
+  "kernel": "nn",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "filelist_4",
+    "5",
+    "30",
+    "90"
+  ],
+  "timestamp": "2026-03-30T16:03:56Z",
+  "prompt_tokens": 5783,
+  "completion_tokens": 3225,
+  "llm_response_time_seconds": 16.564,
+  "build_status": "pass",
+  "build_time_seconds": 0.984,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.204,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "total time :  0.152002006769 s",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.078,
+  "translated_wall_time_seconds": 0.204,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.3824,
+  "translated_files": {
+    "nn_cuda.cu": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n\n#define MAX_ARGS 10\n#define REC_LENGTH 49\t\n#define REC_WINDOW 10\t\n#define LATITUDE_POS 28\t\n#define OPEN 10000\t\n\nstruct neighbor {\n\tchar entry[REC_LENGTH];\n\tdouble dist;\n};\n\n// Helper function to parse float from string manually (device-side compatible)\n__device__ float parse_float(const char* str) {\n    float result = 0.0f;\n    float sign = 1.0f;\n    float fraction = 0.0f;\n    float divisor = 1.0f;\n    int i = 0;\n    int has_digit = 0;\n    int has_decimal = 0;\n\n    // Skip leading whitespace\n    while (str[i] == ' ' || str[i] == '\\t') i++;\n\n    // Handle sign\n    if (str[i] == '-') {\n        sign = -1.0f;\n        i++;\n    } else if (str[i] == '+') {\n        i++;\n    }\n\n    // Parse integer part\n    while (str[i] >= '0' && str[i] <= '9') {\n        result = result * 10.0f + (str[i] - '0');\n        i++;\n        has_digit = 1;\n    }\n\n    // Parse fractional part\n    if (str[i] == '.') {\n        has_decimal = 1;\n        i++;\n        while (str[i] >= '0' && str[i] <= '9') {\n            divisor *= 10.0f;\n            fraction += (str[i] - '0') / divisor;\n            i++;\n            has_digit = 1;\n        }\n    }\n\n    if (!has_digit) return 0.0f;\n\n    return sign * (result + fraction);\n}\n\n__global__ void compute_distances(const char* elem_9, int x_6, float target_lat, float target_long, float* z) {\n    int i = threadIdx.x + blockIdx.x * blockDim.x;\n    if (i < x_6) {\n        const char* rec_start = elem_9 + (i * REC_LENGTH);\n        const char* lat_str = rec_start + LATITUDE_POS - 1;\n        const char* lon_str = lat_str + 5; // Latitude is typically 5 chars, longitude follows\n        \n        float x_4 = parse_float(lat_str);\n        float data_7 = parse_float(lon_str);\n        \n        float diff_lat = x_4 - target_lat;\n        float diff_long = data_7 - target_long;\n        z[i] = sqrtf(diff_lat * diff_lat + diff_long * diff_long);\n    }\n}\n\nint main(int argc, char* argv[]) {\n    long long data_5 = clock();\n    FILE   *elem_11, *item_8;\n    int    i=0, j=0, k=0, x_6=0, item_1=0;\n    char   elem_9[REC_LENGTH * REC_WINDOW], *rec_iter, tmp_10, data_0[64];\n    struct neighbor *val_14 = NULL;\n    float target_lat, target_long, var_12=0, var_2=0;\n\n    if(5 > argc) {\n        fprintf(stderr, \"Invalid set of arguments\\n\");\n        exit(-1);\n    }\n\n    elem_11 = fopen(argv[1], \"r\");\n    if(!elem_11) {\n        printf(\"error opening flist\\n\");\n        exit(1);\n    }\n\n    k = atoi(argv[2]);\n    target_lat = atof(argv[3]);\n    target_long = atof(argv[4]);\n\n    val_14 = (struct neighbor*)malloc(k * sizeof(struct neighbor));\n\n    if(NULL == val_14) {\n        fprintf(stderr, \"no room for neighbors\\n\");\n        exit(0);\n    }\n\n    for( j = 0 ; k > j ; j++ ) { \n        val_14[j].dist = OPEN;\n    }\n\n    if(fscanf(elem_11, \"%s\\n\", data_0) != 1) {\n        fprintf(stderr, \"error reading filelist\\n\");\n        exit(0);\n    }\n\n    item_8 = fopen(data_0, \"r\");\n    if(!item_8) {\n        printf(\"error opening flist\\n\");\n        exit(1);\n    }\n\n    float *z_host = (float *) malloc(REC_WINDOW * sizeof(float));\n    float *z_dev = NULL;\n    cudaMalloc(&z_dev, REC_WINDOW * sizeof(float));\n\n    char *elem_9_dev = NULL;\n    cudaMalloc(&elem_9_dev, REC_LENGTH * REC_WINDOW);\n\n    while(!item_1) {\n        \n        x_6 = fread(elem_9, REC_LENGTH, REC_WINDOW, item_8);\n        if( REC_WINDOW != x_6 ) {\n            if(!ferror(elem_11)) {\n                fclose(item_8);\n\n                if(feof(elem_11))\n                    item_1 = 1;\n                else {\n                    if(fscanf(elem_11, \"%s\\n\", data_0) != 1) {\n                        fprintf(stderr, \"error reading filelist\\n\");\n                        exit(0);\n                    }\n\n                    item_8 = fopen(data_0, \"r\");\n\n                    if(!item_8) {\n                        printf(\"error opening a db\\n\");\n                        exit(1);\n                    }\n                }\n            } else {\n                perror(\"Error\");\n                exit(0);\n            }\n        }\n\n        if (x_6 > 0) {\n            cudaMemcpy(elem_9_dev, elem_9, REC_LENGTH * REC_WINDOW, cudaMemcpyHostToDevice);\n\n            int threads_per_block = 256;\n            int blocks = (x_6 + threads_per_block - 1) / threads_per_block;\n            compute_distances<<<blocks, threads_per_block>>>(elem_9_dev, x_6, target_lat, target_long, z_dev);\n            cudaDeviceSynchronize();\n\n            cudaMemcpy(z_host, z_dev, x_6 * sizeof(float), cudaMemcpyDeviceToHost);\n\n            for( i = 0 ; x_6 > i ; i++ ) {\n                float data_13 = -1;\n                int x_15 = 0;\n                \n                for( j = 0 ; k > j ; j++ ) {\n                    if( data_13 < val_14[j].dist ) {\n                        data_13 = val_14[j].dist;\n                        x_15 = j;\n                    }\n                }\n                \n                if( val_14[x_15].dist > z_host[i] ) {\n                    elem_9[(i+1)*REC_LENGTH-1] = '\\0';\n                    strcpy(val_14[x_15].entry, elem_9 + i*REC_LENGTH);\n                    val_14[x_15].dist = z_host[i];\n                }\n            }\n        }\n    }\n\n    fprintf(stderr, \"The %d nearest neighbors are:\\n\", k);\n    for( j = 0 ; k > j ; j++ ) {\n        if( !(OPEN == val_14[j].dist) )\n            fprintf(stderr, \"%s --> %f\\n\", val_14[j].entry, val_14[j].dist);\n    }\n\n    fclose(elem_11);\n\n    cudaFree(z_dev);\n    cudaFree(elem_9_dev);\n    free(z_host);\n    free(val_14);\n\n    long long tmp_3 = clock();\n    printf(\"total time : %15.12f s\", (float) (tmp_3 - data_5) / 1000000);\n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "nn_cuda.cu"
+  ],
+  "target_files_extracted": [
+    "nn_cuda.cu"
+  ],
+  "max_retries": 3,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.531,
+      "prompt_tokens": 2094,
+      "completion_tokens": 1417,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n^\n\nnn_cuda.cu(21): error: calling a __host__ function(\"atof\") from a __global__ function(\"compute_distances\") is not allowed\n\nnn_cuda.cu(21): err",
+      "build_error_snippet": "nn_cuda.cu(31): warning #177-D: variable \"rec_iter\" was declared but never referenced\n      char elem_9[49 * 10], *rec_iter, tmp_10, data_0[64];\n                             ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nnn_cuda.cu(31): warning #177-D: variable \"tmp_10\" was declared but never referenced\n      char elem_9[49 * 10], *rec_iter, tmp_10, data_0[64];\n                                       ^\n\nnn_cuda.cu(33): warning #177-D: variable \"var_12\" was declared but never referenced\n      float target_lat, target_long, var_12=0, var_2=0;\n                                     ^\n\nnn_cuda.cu(33): warning #177-D: variable \"var_2\" was declared but never referenced\n      float target_lat, target_long, var_12=0, var_2=0;\n                                               ^\n\nnn_cuda.cu(21): error: calling a __host__ function(\"atof\") from a __global__ function(\"compute_distances\") is not allowed\n\nnn_cuda.cu(21): error: identifier \"atof\" is undefined in device code\n\nnn_cuda.cu(22): error: calling a __host__ function(\"atof\") from a __global__ function(\"compute_distances\") is not allowed\n\nnn_cuda.cu(22): error: identifier \"atof\" is undefined in device code\n\n4 errors detected in the compilation of \"nn_cuda.cu\".\nmake: *** [Makefile:12: nn] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 9.033,
+      "prompt_tokens": 3689,
+      "completion_tokens": 1808,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

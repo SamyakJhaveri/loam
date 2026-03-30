@@ -1,0 +1,332 @@
+{
+  "generated_at": "2026-03-30T05:06:54.718708",
+  "total_tasks": 188,
+  "by_model": {
+    "together-qwen-3.5-397b-a17b": {
+      "pass": 45,
+      "total": 188,
+      "rate": 0.2394,
+      "by_status": {
+        "PASS": 45,
+        "BUILD_FAIL": 61,
+        "VERIFY_FAIL": 31,
+        "RUN_FAIL": 51
+      }
+    }
+  },
+  "by_direction": {
+    "cuda-to-omp": {
+      "pass": 31,
+      "total": 80,
+      "rate": 0.3875,
+      "by_status": {
+        "PASS": 31,
+        "BUILD_FAIL": 24,
+        "VERIFY_FAIL": 12,
+        "RUN_FAIL": 13
+      }
+    },
+    "cuda-to-opencl": {
+      "pass": 0,
+      "total": 28,
+      "rate": 0.0,
+      "by_status": {
+        "VERIFY_FAIL": 11,
+        "RUN_FAIL": 17
+      }
+    },
+    "omp-to-cuda": {
+      "pass": 14,
+      "total": 80,
+      "rate": 0.175,
+      "by_status": {
+        "BUILD_FAIL": 37,
+        "VERIFY_FAIL": 8,
+        "RUN_FAIL": 21,
+        "PASS": 14
+      }
+    }
+  },
+  "by_kernel": {
+    "backprop": {
+      "pass": 3,
+      "total": 15,
+      "rate": 0.2,
+      "by_status": {
+        "PASS": 3,
+        "BUILD_FAIL": 7,
+        "VERIFY_FAIL": 5
+      }
+    },
+    "bfs": {
+      "pass": 0,
+      "total": 15,
+      "rate": 0.0,
+      "by_status": {
+        "VERIFY_FAIL": 9,
+        "RUN_FAIL": 4,
+        "BUILD_FAIL": 2
+      }
+    },
+    "bptree": {
+      "pass": 1,
+      "total": 15,
+      "rate": 0.0667,
+      "by_status": {
+        "RUN_FAIL": 7,
+        "PASS": 1,
+        "BUILD_FAIL": 7
+      }
+    },
+    "cfd": {
+      "pass": 9,
+      "total": 15,
+      "rate": 0.6,
+      "by_status": {
+        "PASS": 9,
+        "VERIFY_FAIL": 5,
+        "RUN_FAIL": 1
+      }
+    },
+    "dwt2d": {
+      "pass": 0,
+      "total": 5,
+      "rate": 0.0,
+      "by_status": {
+        "RUN_FAIL": 5
+      }
+    },
+    "gaussian": {
+      "pass": 0,
+      "total": 3,
+      "rate": 0.0,
+      "by_status": {
+        "RUN_FAIL": 3
+      }
+    },
+    "heartwall": {
+      "pass": 0,
+      "total": 10,
+      "rate": 0.0,
+      "by_status": {
+        "BUILD_FAIL": 10
+      }
+    },
+    "hotspot": {
+      "pass": 0,
+      "total": 10,
+      "rate": 0.0,
+      "by_status": {
+        "RUN_FAIL": 8,
+        "BUILD_FAIL": 2
+      }
+    },
+    "hotspot3d": {
+      "pass": 7,
+      "total": 10,
+      "rate": 0.7,
+      "by_status": {
+        "BUILD_FAIL": 3,
+        "PASS": 7
+      }
+    },
+    "lavamd": {
+      "pass": 4,
+      "total": 10,
+      "rate": 0.4,
+      "by_status": {
+        "BUILD_FAIL": 6,
+        "PASS": 4
+      }
+    },
+    "lud": {
+      "pass": 6,
+      "total": 10,
+      "rate": 0.6,
+      "by_status": {
+        "PASS": 6,
+        "BUILD_FAIL": 2,
+        "RUN_FAIL": 2
+      }
+    },
+    "myocyte": {
+      "pass": 0,
+      "total": 10,
+      "rate": 0.0,
+      "by_status": {
+        "VERIFY_FAIL": 2,
+        "BUILD_FAIL": 8
+      }
+    },
+    "nn": {
+      "pass": 2,
+      "total": 10,
+      "rate": 0.2,
+      "by_status": {
+        "BUILD_FAIL": 3,
+        "PASS": 2,
+        "RUN_FAIL": 5
+      }
+    },
+    "nw": {
+      "pass": 2,
+      "total": 10,
+      "rate": 0.2,
+      "by_status": {
+        "PASS": 2,
+        "RUN_FAIL": 7,
+        "BUILD_FAIL": 1
+      }
+    },
+    "particlefilter": {
+      "pass": 9,
+      "total": 10,
+      "rate": 0.9,
+      "by_status": {
+        "PASS": 9,
+        "RUN_FAIL": 1
+      }
+    },
+    "pathfinder": {
+      "pass": 0,
+      "total": 10,
+      "rate": 0.0,
+      "by_status": {
+        "VERIFY_FAIL": 10
+      }
+    },
+    "srad": {
+      "pass": 1,
+      "total": 10,
+      "rate": 0.1,
+      "by_status": {
+        "RUN_FAIL": 8,
+        "PASS": 1,
+        "BUILD_FAIL": 1
+      }
+    },
+    "streamcluster": {
+      "pass": 1,
+      "total": 10,
+      "rate": 0.1,
+      "by_status": {
+        "BUILD_FAIL": 9,
+        "PASS": 1
+      }
+    }
+  },
+  "by_augment_level": {
+    "L0": {
+      "pass": 10,
+      "total": 38,
+      "rate": 0.2632,
+      "by_status": {
+        "PASS": 10,
+        "VERIFY_FAIL": 5,
+        "BUILD_FAIL": 12,
+        "RUN_FAIL": 11
+      }
+    },
+    "L1": {
+      "pass": 7,
+      "total": 38,
+      "rate": 0.1842,
+      "by_status": {
+        "PASS": 7,
+        "VERIFY_FAIL": 7,
+        "BUILD_FAIL": 13,
+        "RUN_FAIL": 11
+      }
+    },
+    "L2": {
+      "pass": 11,
+      "total": 38,
+      "rate": 0.2895,
+      "by_status": {
+        "PASS": 11,
+        "VERIFY_FAIL": 7,
+        "BUILD_FAIL": 10,
+        "RUN_FAIL": 10
+      }
+    },
+    "L3": {
+      "pass": 10,
+      "total": 37,
+      "rate": 0.2703,
+      "by_status": {
+        "BUILD_FAIL": 12,
+        "VERIFY_FAIL": 6,
+        "RUN_FAIL": 9,
+        "PASS": 10
+      }
+    },
+    "L4": {
+      "pass": 7,
+      "total": 37,
+      "rate": 0.1892,
+      "by_status": {
+        "BUILD_FAIL": 14,
+        "VERIFY_FAIL": 6,
+        "RUN_FAIL": 10,
+        "PASS": 7
+      }
+    }
+  },
+  "failure_taxonomy": {
+    "BUILD_FAIL": 61,
+    "RUN_FAIL": 51,
+    "VERIFY_FAIL": 31,
+    "EXTRACTION_FAIL": 0
+  },
+  "self_repair": {
+    "attempt_1_pass": 14,
+    "total_repaired_by_retry": 31,
+    "total_with_attempts": 188
+  },
+  "by_complexity": {
+    "multi_to_multi": {
+      "pass": 1,
+      "total": 25,
+      "rate": 0.04,
+      "by_status": {
+        "RUN_FAIL": 7,
+        "PASS": 1,
+        "BUILD_FAIL": 15,
+        "VERIFY_FAIL": 2
+      }
+    },
+    "multi_to_single": {
+      "pass": 18,
+      "total": 60,
+      "rate": 0.3,
+      "by_status": {
+        "PASS": 18,
+        "BUILD_FAIL": 14,
+        "VERIFY_FAIL": 11,
+        "RUN_FAIL": 17
+      }
+    },
+    "single_file": {
+      "pass": 20,
+      "total": 58,
+      "rate": 0.3448,
+      "by_status": {
+        "PASS": 20,
+        "VERIFY_FAIL": 15,
+        "RUN_FAIL": 18,
+        "BUILD_FAIL": 5
+      }
+    },
+    "single_to_multi": {
+      "pass": 6,
+      "total": 45,
+      "rate": 0.1333,
+      "by_status": {
+        "BUILD_FAIL": 27,
+        "VERIFY_FAIL": 3,
+        "PASS": 6,
+        "RUN_FAIL": 9
+      }
+    }
+  }
+}

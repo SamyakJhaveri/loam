@@ -1,0 +1,100 @@
+{
+  "source_spec": "rodinia-nw-omp",
+  "target_spec": "rodinia-nw-cuda",
+  "kernel": "nw",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "2048",
+    "10",
+    "4"
+  ],
+  "timestamp": "2026-03-30T16:10:32Z",
+  "prompt_tokens": 27366,
+  "completion_tokens": 10741,
+  "llm_response_time_seconds": 54.407,
+  "build_status": "pass",
+  "build_time_seconds": 1.638,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.3,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Start Needleman-Wunsch\nNum of threads: 4\nProcessing top-left matrix\nProcessing bottom-right matrix\nTotal time: 0.229 seconds\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.116,
+  "translated_wall_time_seconds": 0.3,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.3867,
+  "translated_files": {
+    "needle.cu": "#define LIMIT -999\n\n#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n\n#define BLOCK_SIZE 16\n\nvoid runTest( int argc, char** argv);\n\nlong long get_time()\n{\n    struct timeval tv;\n    gettimeofday(&tv, NULL);\n    return (tv.tv_sec * 1000000) + tv.tv_usec;\n}\n\n__device__ int maximum_device( int a, int b, int c){\n    int k;\n    if( b >= a )\n        k = b;\n    else \n        k = a;\n\n    if( c >= k )\n        return(c);\n    else\n        return(k);\n}\n\n// Host version for traceback\ninline int maximum_host( int a, int b, int c){\n    int k;\n    if( b >= a )\n        k = b;\n    else \n        k = a;\n\n    if( c >= k )\n        return(c);\n    else\n        return(k);\n}\n\n__device__ int blosum62[24][24] = {\n{ 4, -1, -2, -2,  0, -1, -1,  0, -2, -1, -1, -1, -1, -2, -1,  1,  0, -3, -2,  0, -2, -1,  0, -4},\n{-1,  5,  0, -2, -3,  1,  0, -2,  0, -3, -2,  2, -1, -3, -2, -1, -1, -3, -2, -3, -1,  0, -1, -4},\n{-2,  0,  6,  1, -3,  0,  0,  0,  1, -3, -3,  0, -2, -3, -2,  1,  0, -4, -2, -3,  3,  0, -1, -4},\n{-2, -2,  1,  6, -3,  0,  2, -1, -1, -3, -4, -1, -3, -3, -1,  0, -1, -4, -3, -3,  4,  1, -1, -4},\n{ 0, -3, -3, -3,  9, -3, -4, -3, -3, -1, -1, -3, -1, -2, -3, -1, -1, -2, -2, -1, -3, -3, -2, -4},\n{-1,  1,  0,  0, -3,  5,  2, -2,  0, -3, -2,  1,  0, -3, -1,  0, -1, -2, -1, -2,  0,  3, -1, -4},\n{-1,  0,  0,  2, -4,  2,  5, -2,  0, -3, -3,  1, -2, -3, -1,  0, -1, -3, -2, -2,  1,  4, -1, -4},\n{ 0, -2,  0, -1, -3, -2, -2,  6, -2, -4, -4, -2, -3, -3, -2,  0, -2, -2, -3, -3, -1, -2, -1, -4},\n{-2,  0,  1, -1, -3,  0,  0, -2,  8, -3, -3, -1, -2, -1, -2, -1, -2, -2,  2, -3,  0,  0, -1, -4},\n{-1, -3, -3, -3, -1, -3, -3, -4, -3,  4,  2, -3,  1,  0, -3, -2, -1, -3, -1,  3, -3, -3, -1, -4},\n{-1, -2, -3, -4, -1, -2, -3, -4, -3,  2,  4, -2,  2,  0, -3, -2, -1, -2, -1,  1, -4, -3, -1, -4},\n{-1,  2,  0, -1, -3,  1,  1, -2, -1, -3, -2,  5, -1, -3, -1,  0, -1, -3, -2, -2,  0,  1, -1, -4},\n{-1, -1, -2, -3, -1,  0, -2, -3, -2,  1,  2, -1,  5,  0, -2, -1, -1, -1, -1,  1, -3, -1, -1, -4},\n{-2, -3, -3, -3, -2, -3, -3, -3, -1,  0,  0, -3,  0,  6, -4, -2, -2,  1,  3, -1, -3, -3, -1, -4},\n{-1, -2, -2, -1, -3, -1, -1, -2, -2, -3, -3, -1, -2, -4,  7, -1, -1, -4, -3, -2, -2, -1, -2, -4},\n{ 1, -1,  1,  0, -1,  0,  0,  0, -1, -2, -2,  0, -1, -2, -1,  4,  1, -3, -2, -2,  0,  0,  0, -4},\n{ 0, -1,  0, -1, -1, -1, -1, -2, -2, -1, -1, -1, -1, -2, -1,  1,  5, -2, -2,  0, -1, -1,  0, -4},\n{-3, -3, -4, -4, -2, -2, -3, -2, -2, -3, -2, -3, -1,  1, -4, -3, -2, 11,  2, -3, -4, -3, -2, -4},\n{-2, -2, -2, -3, -2, -1, -2, -3,  2, -1, -1, -2, -1,  3, -3, -2, -2,  2,  7, -1, -3, -2, -1, -4},\n{ 0, -3, -3, -3, -1, -2, -2, -3, -3,  3,  1, -2,  1, -1, -2, -2,  0, -3, -1,  4, -3, -2, -1, -4},\n{-2, -1,  3,  4, -3,  0,  1, -1,  0, -3, -4,  0, -3, -3, -2,  0, -1, -4, -3, -3,  4,  1, -1, -4},\n{-1,  0,  0,  1, -3,  3,  4, -2,  0, -3, -3,  1, -1, -3, -1,  0, -1, -3, -2, -2,  1,  4, -1, -4},\n{ 0, -1, -1, -1, -2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -2,  0,  0, -2, -1, -1, -1, -1, -1, -4},\n{-4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4,  1}\n};\n\ndouble gettime() {\n  struct timeval t;\n  gettimeofday(&t,NULL);\n  return t.tv_sec+t.tv_usec*1e-6;\n}\n\n__global__ void nw_optimized_kernel_top(int *input_itemsets, int *referrence,\n        int max_rows, int max_cols, int penalty)\n{\n    int blk = blockIdx.x + 1;\n    if (blk > (max_cols-1)/BLOCK_SIZE) return;\n\n    int elem_19 = threadIdx.x;\n    if (elem_19 >= blk) return;\n\n    int item_11 = blk - 1 - elem_19;\n    \n    // Use local arrays in registers/memory for the block\n    int elem_23[(BLOCK_SIZE + 1) * (BLOCK_SIZE+1)];\n    int item_16[BLOCK_SIZE * BLOCK_SIZE];\n\n    // Load referrence\n    for ( int i = 0; i < BLOCK_SIZE; ++i )\n    {\n        for ( int j = 0; j < BLOCK_SIZE; ++j)\n        {\n            item_16[i*BLOCK_SIZE + j] = referrence[max_cols*(item_11*BLOCK_SIZE + i + 1) + elem_19*BLOCK_SIZE +  j + 1];\n        }\n    }\n\n    // Load input_itemsets\n    for ( int i = 0; i < BLOCK_SIZE + 1; ++i )\n    {\n        for ( int j = 0; j < BLOCK_SIZE + 1; ++j)\n        {\n            elem_23[i*(BLOCK_SIZE + 1) + j] = input_itemsets[max_cols*(item_11*BLOCK_SIZE + i) + elem_19*BLOCK_SIZE +  j];\n        }\n    }\n\n    // Compute\n    for ( int i = 1; i < BLOCK_SIZE + 1; ++i )\n    {\n        for ( int j = 1; j < BLOCK_SIZE + 1; ++j)\n        {\n            elem_23[i*(BLOCK_SIZE + 1) + j] = maximum_device( elem_23[(i - 1)*(BLOCK_SIZE + 1) + j - 1] + item_16[(i - 1)*BLOCK_SIZE + j - 1],\n                    elem_23[i*(BLOCK_SIZE + 1) + j - 1] - penalty,\n                    elem_23[(i - 1)*(BLOCK_SIZE + 1) + j] - penalty);\n        }\n    }\n\n    // Store results\n    for ( int i = 0; i < BLOCK_SIZE; ++i )\n    {\n        for ( int j = 0; j < BLOCK_SIZE; ++j)\n        {\n            input_itemsets[max_cols*(item_11*BLOCK_SIZE + i + 1) + elem_19*BLOCK_SIZE +  j + 1] = elem_23[(i + 1)*(BLOCK_SIZE+1) + j + 1];\n        }\n    }\n}\n\n__global__ void nw_optimized_kernel_bottom(int *input_itemsets, int *referrence,\n        int max_rows, int max_cols, int penalty, int total_blocks)\n{\n    int blk = blockIdx.x + 2;\n    if (blk > total_blocks) return;\n\n    int elem_10 = threadIdx.x + (blk - 1);\n    int max_elem = total_blocks - 1; // (max_cols-1)/BLOCK_SIZE\n    \n    if (elem_10 >= max_elem) return;\n\n    int elem_2 = total_blocks + blk - 2 - elem_10;\n\n    int var_1[(BLOCK_SIZE + 1) * (BLOCK_SIZE+1)];\n    int tmp_12[BLOCK_SIZE * BLOCK_SIZE];\n\n    // Load referrence\n    for ( int i = 0; i < BLOCK_SIZE; ++i )\n    {\n        for ( int j = 0; j < BLOCK_SIZE; ++j)\n        {\n            tmp_12[i*BLOCK_SIZE + j] = referrence[max_cols*(elem_2*BLOCK_SIZE + i + 1) + elem_10*BLOCK_SIZE +  j + 1];\n        }\n    }\n\n    // Load input_itemsets\n    for ( int i = 0; i < BLOCK_SIZE + 1; ++i )\n    {\n        for ( int j = 0; j < BLOCK_SIZE + 1; ++j)\n        {\n            var_1[i*(BLOCK_SIZE + 1) + j] = input_itemsets[max_cols*(elem_2*BLOCK_SIZE + i) + elem_10*BLOCK_SIZE +  j];\n        }\n    }\n\n    // Compute\n    for ( int i = 1; i < BLOCK_SIZE + 1; ++i )\n    {\n        for ( int j = 1; j < BLOCK_SIZE + 1; ++j)\n        {\n            var_1[i*(BLOCK_SIZE + 1) + j] = maximum_device( var_1[(i - 1)*(BLOCK_SIZE + 1) + j - 1] + tmp_12[(i - 1)*BLOCK_SIZE + j - 1],\n                    var_1[i*(BLOCK_SIZE + 1) + j - 1] - penalty,\n                    var_1[(i - 1)*(BLOCK_SIZE + 1) + j] - penalty);\n        }\n    }\n\n    // Store results\n    for ( int i = 0; i < BLOCK_SIZE; ++i )\n    {\n        for ( int j = 0; j < BLOCK_SIZE; ++j)\n        {\n            input_itemsets[max_cols*(elem_2*BLOCK_SIZE + i + 1) + elem_10*BLOCK_SIZE +  j + 1] = var_1[(i + 1)*(BLOCK_SIZE+1) + j +1];\n        }\n    }\n}\n\nvoid nw_optimized(int *input_itemsets, int *tmp_0, int *referrence,\n        int max_rows, int max_cols, int penalty)\n{\n    int total_blocks = (max_cols-1)/BLOCK_SIZE;\n    \n    int *d_input, *d_ref;\n    size_t size = (size_t)max_rows * max_cols * sizeof(int);\n    \n    cudaMalloc(&d_input, size);\n    cudaMalloc(&d_ref, size);\n    \n    cudaMemcpy(d_input, input_itemsets, size, cudaMemcpyHostToDevice);\n    cudaMemcpy(d_ref, referrence, size, cudaMemcpyHostToDevice);\n\n    printf(\"Processing top-left matrix\\n\");\n\n    for( int blk = 1; blk <= total_blocks; blk++ )\n    {\n        int threads = blk;\n        if (threads > BLOCK_SIZE) threads = BLOCK_SIZE; \n        \n        nw_optimized_kernel_top<<<1, threads>>>(d_input, d_ref, max_rows, max_cols, penalty);\n        cudaDeviceSynchronize();\n    }\n\n    printf(\"Processing bottom-right matrix\\n\");\n\n    for ( int blk = 2; blk <= total_blocks; blk++ )\n    {\n        int count = total_blocks - (blk - 1);\n        if (count <= 0) continue;\n        \n        nw_optimized_kernel_bottom<<<1, count>>>(d_input, d_ref, max_rows, max_cols, penalty, total_blocks);\n        cudaDeviceSynchronize();\n    }\n\n    cudaMemcpy(input_itemsets, d_input, size, cudaMemcpyDeviceToHost);\n\n    cudaFree(d_input);\n    cudaFree(d_ref);\n}\n\nint main( int argc, char** argv) \n{\n    runTest( argc, argv);\n    return EXIT_SUCCESS;\n}\n\nvoid usage(int argc, char **argv)\n{\n    fprintf(stderr, \"Usage: %s <max_rows/max_cols> <penalty> <num_threads>\\n\", argv[0]);\n    fprintf(stderr, \"\\t<dimension>      - x and y dimensions\\n\");\n    fprintf(stderr, \"\\t<penalty>        - penalty(positive integer)\\n\");\n    fprintf(stderr, \"\\t<num_threads>    - no. of threads\\n\");\n    exit(1);\n}\n\nvoid runTest( int argc, char** argv) \n{\n    int data_7, val_5, var_20;\n    int *tmp_18, *x_9, *elem_17;\n    int val_6;\n\n    if (4 == argc)\n    {\n        data_7 = atoi(argv[1]);\n        val_5 = atoi(argv[1]);\n        var_20 = atoi(argv[2]);\n        val_6 = atoi(argv[3]);\n    }\n    else{\n        usage(argc, argv);\n    }\n\n    data_7 += 1;\n    val_5 += 1;\n    elem_17 = (int *)malloc( data_7 * val_5 * sizeof(int) );\n    tmp_18 = (int *)malloc( data_7 * val_5 * sizeof(int) );\n    x_9 = (int *)malloc( data_7 * val_5 * sizeof(int) );\n\n    if (!tmp_18)\n        fprintf(stderr, \"error: can not allocate memory\");\n\n    srand ( 7 );\n\n    for (int i = 0 ; val_5 > i; i++){\n        for (int j = 0 ; data_7 > j; j++){\n            tmp_18[i*val_5+j] = 0;\n        }\n    }\n\n    printf(\"Start Needleman-Wunsch\\n\");\n\n    for( int i=1; data_7 > i ; i++){    \n        tmp_18[i*val_5] = rand() % 10 + 1;\n    }\n    for( int j=1; val_5 > j ; j++){    \n        tmp_18[j] = rand() % 10 + 1;\n    }\n\n    for (int i = 1 ; val_5 > i; i++){\n        for (int j = 1 ; data_7 > j; j++){\n            elem_17[i*val_5+j] = blosum62[tmp_18[i*val_5]][tmp_18[j]];\n        }\n    }\n\n    for( int i = 1; data_7 > i ; i++)\n        tmp_18[i*val_5] = -i * var_20;\n    for( int j = 1; val_5 > j ; j++)\n        tmp_18[j] = -j * var_20;\n\n    printf(\"Num of threads: %d\\n\", val_6);\n   \n    long long v_4 = get_time();\n\n    nw_optimized( tmp_18, x_9, elem_17,\n        data_7, val_5, var_20 );\n\n    long long tmp_22 = get_time();\n\n    printf(\"Total time: %.3f seconds\\n\", ((float) (tmp_22 - v_4)) / (1000*1000));\n\n#define TRACEBACK\n#ifdef TRACEBACK\n\n    FILE *elem_14 = fopen(\"result.txt\",\"w\");\n    fprintf(elem_14, \"print traceback value GPU:\\n\");\n\n    for (int i = data_7 - 2,  j = data_7 - 2; i >= 0 && j >= 0;){\n        int v_3, n, w, x_8;\n        if ( data_7 - 2 == i && data_7 - 2 == j )\n            fprintf(elem_14, \"%d \", tmp_18[ i * val_5 + j]); \n        if ( 0 == i && 0 == j )\n            break;\n        if ( 0 < i && 0 < j ){\n            v_3 = tmp_18[(i - 1) * val_5 + j - 1];\n            w  = tmp_18[ i * val_5 + j - 1 ];\n            n  = tmp_18[(i - 1) * val_5 + j];\n        }\n        else if ( 0 == i ){\n            v_3 = n = LIMIT;\n            w  = tmp_18[ i * val_5 + j - 1 ];\n        }\n        else if ( 0 == j ){\n            v_3 = w = LIMIT;\n            n  = tmp_18[(i - 1) * val_5 + j];\n        }\n        else{\n        }\n\n        int elem_21, tmp_13, var_15;\n        elem_21 = v_3 + elem_17[i * val_5 + j];\n        tmp_13 = w - var_20;\n        var_15 = n - var_20;\n\n        x_8 = maximum_host(elem_21, tmp_13, var_15);\n        if(elem_21 == x_8)\n            x_8 = v_3;\n        if(tmp_13 == x_8)\n            x_8 = w;\n        if(var_15 == x_8)\n            x_8 = n;\n\n        fprintf(elem_14, \"%d \", x_8);\n\n        if(v_3 == x_8 )\n        {i--; j--; continue;}\n\n        else if(w == x_8 )\n        {j--; continue;}\n\n        else if(n == x_8 )\n        {i--; continue;}\n\n        else\n            ;\n    }\n\n    fclose(elem_14);\n\n#endif\n\n    free(elem_17);\n    free(tmp_18);\n    free(x_9);\n}\n"
+  },
+  "target_files_expected": [
+    "needle.cu",
+    "needle_kernel.cu"
+  ],
+  "target_files_extracted": [
+    "needle.cu"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 27.154,
+      "prompt_tokens": 5383,
+      "completion_tokens": 5429,
+      "finish_reason": "stop",
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "Your response was missing 1 expected file(s). The other files from your previous response were saved successfully. Please provide ONLY the following missing/empty files:\n\n```c translated_1.cu\n// your ",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": true,
+      "partial_extraction": true
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 1.181,
+      "prompt_tokens": 10868,
+      "completion_tokens": 53,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n\"-diag-suppress <warning-number>\"\n\nneedle.cu(317): warning #174-D: expression has no effect\n      for (int i = data_7 - 2, j = data_7 - 2; 0 <= i",
+      "build_error_snippet": "needle.cu(291): warning #20091-D: a __device__ variable \"blosum62\" cannot be directly read in a host function\n              elem_17[i*val_5+j] = blosum62[tmp_18[i*val_5]][tmp_18[j]];\n                                   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nneedle.cu(317): warning #174-D: expression has no effect\n      for (int i = data_7 - 2, j = data_7 - 2; 0 <= i, 0 <= j;){\n                                               ^\n\nneedle.cu(344): error: calling a __device__ function(\"maximum(int, int, int)\") from a __host__ function(\"runTest\") is not allowed\n          x_8 = maximum(elem_21, tmp_13, var_15);\n                ^\n\n1 error detected in the compilation of \"needle.cu\".\nmake: *** [Makefile:12: release] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 26.072,
+      "prompt_tokens": 11115,
+      "completion_tokens": 5259,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

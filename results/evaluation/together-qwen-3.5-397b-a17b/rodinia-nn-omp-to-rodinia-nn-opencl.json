@@ -1,0 +1,99 @@
+{
+  "source_spec": "rodinia-nn-omp",
+  "target_spec": "rodinia-nn-opencl",
+  "kernel": "nn",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "filelist_4",
+    "5",
+    "30",
+    "90"
+  ],
+  "timestamp": "2026-03-30T21:09:17Z",
+  "prompt_tokens": 36584,
+  "completion_tokens": 5611,
+  "llm_response_time_seconds": 27.003,
+  "build_status": "pass",
+  "build_time_seconds": 0.673,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.064,
+  "run_exit_code": -11,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -11)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 300.039,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nearestNeighbor_kernel.cl": "#define MAX_ARGS 10\n#define REC_LENGTH 49\n#define REC_WINDOW 10\n#define LATITUDE_POS 28\n#define OPEN 10000.0\n\n// Match the C++ struct exactly: char[49] + double\n// In OpenCL, double is 8 bytes. \n// Total size should be 49 + 8 = 57 bytes? \n// C++ might pad to align double? \n// C++ struct: char[49] (offset 0-48), double (offset 49?). \n// If packed, size is 57. If aligned to 8, size might be 60.\n// OpenCL defaults to alignment rules similar to C. \n// To be safe and avoid -11, we explicitly match the layout.\n// However, OpenCL structs passed as arguments must be power-of-2 aligned sometimes?\n// The safest fix for -11 when host is fixed is to ensure the types match exactly.\n// Source: double dist.\ntypedef struct {\n    char entry[REC_LENGTH];\n    double dist;\n} neighbor_t;\n\n__kernel void compute_distances(\n    const char *sandbox,\n    double *z,\n    double target_lat,\n    double target_long,\n    int rec_count)\n{\n    int i = get_global_id(0);\n    if (i >= rec_count) return;\n\n    const char *rec_iter = sandbox + (i * REC_LENGTH + LATITUDE_POS - 1);\n    \n    double val_lat = 0.0;\n    double val_long = 0.0;\n    \n    // Parse latitude\n    {\n        const char *p = rec_iter;\n        double sign = 1.0;\n        double res = 0.0;\n        double frac = 0.0;\n        double div = 1.0;\n        int in_frac = 0;\n        \n        while (*p == ' ') p++;\n        if (*p == '-') { sign = -1.0; p++; }\n        else if (*p == '+') { p++; }\n        \n        while (*p != '\\0' && *p != ' ' && *p != '\\n' && *p != '\\r') {\n            if (*p == '.') {\n                in_frac = 1;\n                p++;\n                continue;\n            }\n            if (*p >= '0' && *p <= '9') {\n                int digit = *p - '0';\n                if (!in_frac) {\n                    res = res * 10.0 + (double)digit;\n                } else {\n                    div *= 10.0;\n                    frac += (double)digit / div;\n                }\n            } else {\n                break;\n            }\n            p++;\n        }\n        val_lat = sign * (res + frac);\n    }\n\n    // Parse longitude (offset +5)\n    {\n        const char *p = rec_iter + 5;\n        double sign = 1.0;\n        double res = 0.0;\n        double frac = 0.0;\n        double div = 1.0;\n        int in_frac = 0;\n        \n        while (*p == ' ') p++;\n        if (*p == '-') { sign = -1.0; p++; }\n        else if (*p == '+') { p++; }\n        \n        while (*p != '\\0' && *p != ' ' && *p != '\\n' && *p != '\\r') {\n            if (*p == '.') {\n                in_frac = 1;\n                p++;\n                continue;\n            }\n            if (*p >= '0' && *p <= '9') {\n                int digit = *p - '0';\n                if (!in_frac) {\n                    res = res * 10.0 + (double)digit;\n                } else {\n                    div *= 10.0;\n                    frac += (double)digit / div;\n                }\n            } else {\n                break;\n            }\n            p++;\n        }\n        val_long = sign * (res + frac);\n    }\n\n    double diff_lat = val_lat - target_lat;\n    double diff_long = val_long - target_long;\n    z[i] = sqrt((diff_lat * diff_lat) + (diff_long * diff_long));\n}\n\n__kernel void update_neighbors(\n    const double *z,\n    const char *sandbox,\n    neighbor_t *neighbors,\n    int rec_count,\n    int k)\n{\n    int i = get_global_id(0);\n    if (i >= rec_count) return;\n\n    double current_dist = z[i];\n    \n    double max_dist = -1.0;\n    int max_idx = 0;\n    \n    // Find the neighbor with the largest distance (the one to replace)\n    for (int j = 0; j < k; j++) {\n        if (neighbors[j].dist > max_dist) {\n            max_dist = neighbors[j].dist;\n            max_idx = j;\n        }\n    }\n    \n    if (current_dist < max_dist) {\n        const char *src = sandbox + (i * REC_LENGTH);\n        // Copy string manually to avoid alignment/struct issues\n        for (int c = 0; c < REC_LENGTH - 1; c++) {\n            neighbors[max_idx].entry[c] = src[c];\n        }\n        neighbors[max_idx].entry[REC_LENGTH - 1] = '\\0';\n        neighbors[max_idx].dist = current_dist;\n    }\n}\n\n__kernel void init_neighbors(neighbor_t *neighbors, int k) {\n    int i = get_global_id(0);\n    if (i < k) {\n        neighbors[i].dist = OPEN;\n        for (int j = 0; j < REC_LENGTH - 1; j++) {\n            neighbors[i].entry[j] = '\\0';\n        }\n        neighbors[i].entry[REC_LENGTH - 1] = '\\0';\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "nearestNeighbor_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "nearestNeighbor_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.133,
+      "prompt_tokens": 10696,
+      "completion_tokens": 1246,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 10.378,
+      "prompt_tokens": 11974,
+      "completion_tokens": 1908,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 10.492,
+      "prompt_tokens": 13914,
+      "completion_tokens": 2457,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

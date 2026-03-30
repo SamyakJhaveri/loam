@@ -1,0 +1,92 @@
+{
+  "source_spec": "rodinia-bfs-cuda",
+  "target_spec": "rodinia-bfs-opencl",
+  "kernel": "bfs",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "timestamp": "2026-03-30T10:57:57Z",
+  "prompt_tokens": 43726,
+  "completion_tokens": 989,
+  "llm_response_time_seconds": 6.179,
+  "build_status": "pass",
+  "build_time_seconds": 0.793,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.606,
+  "run_exit_code": -11,
+  "run_stderr_snippet": "BFS_2( char* g_graph_mask, char *g_updating_graph_mask, char* g_graph_visited, char *g_over, int no_of_nodes)\n                                                              ^\n<kernel>:24:86: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\nBFS_2( char* g_graph_mask, char *g_updating_graph_mask, char* g_graph_visited, char *g_over, int no_of_nodes)\n                                                                                     ^\n\n",
+  "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -11)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.519,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Kernels.cl": "#ifndef _KERNEL_H_\n#define _KERNEL_H_\n\n__kernel void\nBFS_1( Node* x_0, int* g_graph_edges, char* g_graph_mask, char* elem_1, char *v_3, int* g_cost, int tmp_2) \n{\n\tint tid = get_global_id(0);\n\tif( tid < tmp_2 && g_graph_mask[tid])\n\t{\n\t\tg_graph_mask[tid]=0;\n\t\tfor(int i=x_0[tid].starting; (x_0[tid].no_of_edges + x_0[tid].starting) > i; i++)\n\t\t\t{\n\t\t\tint v_4 = g_graph_edges[i];\n\t\t\tif(!v_3[v_4])\n\t\t\t\t{\n\t\t\t\tg_cost[v_4]=g_cost[tid]+1;\n\t\t\t\telem_1[v_4]=1;\n\t\t\t\t}\n\t\t\t}\n\t}\n}\n\n__kernel void\nBFS_2( char* g_graph_mask, char *g_updating_graph_mask, char* g_graph_visited, char *g_over, int no_of_nodes)\n{\n\tint tid = get_global_id(0);\n\tif( tid < no_of_nodes && g_updating_graph_mask[tid])\n\t{\n\n\t\tg_graph_mask[tid]=1;\n\t\tg_graph_visited[tid]=1;\n\t\tg_over[0]=1;\n\t\tg_updating_graph_mask[tid]=0;\n\t}\n}\n\n#endif \n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.053,
+      "prompt_tokens": 14152,
+      "completion_tokens": 329,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\nnter arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\nBFS_2( char* g_graph_mask, char *g_upd",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "BFS_2( char* g_graph_mask, char *g_updating_graph_mask, char* g_graph_visited, char *g_over, int no_of_nodes)\n                                                              ^\n<kernel>:24:86: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\nBFS_2( char* g_graph_mask, char *g_updating_graph_mask, char* g_graph_visited, char *g_over, int no_of_nodes)\n                                                                                     ^\n\n",
+      "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 1.941,
+      "prompt_tokens": 14575,
+      "completion_tokens": 330,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\nnter arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\nBFS_2( char* g_graph_mask, char *g_upd",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "BFS_2( char* g_graph_mask, char *g_updating_graph_mask, char* g_graph_visited, char *g_over, int no_of_nodes)\n                                                              ^\n<kernel>:24:86: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\nBFS_2( char* g_graph_mask, char *g_updating_graph_mask, char* g_graph_visited, char *g_over, int no_of_nodes)\n                                                                                     ^\n\n",
+      "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 2.185,
+      "prompt_tokens": 14999,
+      "completion_tokens": 330,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "BFS_2( char* g_graph_mask, char *g_updating_graph_mask, char* g_graph_visited, char *g_over, int no_of_nodes)\n                                                              ^\n<kernel>:24:86: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\nBFS_2( char* g_graph_mask, char *g_updating_graph_mask, char* g_graph_visited, char *g_over, int no_of_nodes)\n                                                                                     ^\n\n",
+      "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+      "extraction_fail": null
+    }
+  ]
+}

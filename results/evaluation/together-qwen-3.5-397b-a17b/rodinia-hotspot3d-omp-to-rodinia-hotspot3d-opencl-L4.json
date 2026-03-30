@@ -1,0 +1,101 @@
+{
+  "source_spec": "rodinia-hotspot3d-omp",
+  "target_spec": "rodinia-hotspot3d-opencl",
+  "kernel": "hotspot3d",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "512",
+    "8",
+    "100",
+    "../../data/hotspot3D/power_512x8",
+    "../../data/hotspot3D/temp_512x8",
+    "output.out"
+  ],
+  "timestamp": "2026-03-30T20:14:11Z",
+  "prompt_tokens": 25284,
+  "completion_tokens": 1333,
+  "llm_response_time_seconds": 11.693,
+  "build_status": "pass",
+  "build_time_seconds": 0.191,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "Usage: ./hotspot3D.out <-n rows/cols> <-l layers> <-i iterations> <-f powerFile tempFile outputFile> [-p platform] [-d device]\n\t<rows/cols>  - number of rows/cols in the grid (positive integer)\n\t<layers>  - number of layers in the grid (positive integer)\n\t<iteration> - number of iterations\n\t<powerFile>  - name of the file containing the initial power values of each cell\n\t<tempFile>  - name of the file containing the initial temperature values of each cell\n\t<outputFile - output file\n",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.156,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspotKernel.cl": "__kernel void hotspotOpt1(\n    __global float *pIn,\n    __global float *tIn,\n    __global float *tOut,\n    float stepDivCap,\n    int numCols,\n    int numRows,\n    int layers,\n    float ce,\n    float cw,\n    float cn,\n    float cs,\n    float ct,\n    float cb,\n    float cc)\n{\n    int x = get_global_id(0);\n    int y = get_global_id(1);\n    int z;\n\n    if (x >= numCols || y >= numRows) return;\n\n    for (z = 0; z < layers; z++) {\n        int c = x + y * numCols + z * numCols * numRows;\n\n        int w = (0 == x) ? c : c - 1;\n        int e = (numCols - 1 == x) ? c : c + 1;\n        int n = (0 == y) ? c : c - numCols;\n        int s = (numRows - 1 == y) ? c : c + numCols;\n        int b = (0 == z) ? c : c - numCols * numRows;\n        int t = (layers - 1 == z) ? c : c + numCols * numRows;\n\n        tOut[c] = cc * tIn[c] + cw * tIn[w] + ce * tIn[e]\n                + cs * tIn[s] + cn * tIn[n] + cb * tIn[b] + ct * tIn[t]\n                + stepDivCap * pIn[c] + ct * 80.0f;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "hotspotKernel.cl"
+  ],
+  "target_files_extracted": [
+    "hotspotKernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.992,
+      "prompt_tokens": 7843,
+      "completion_tokens": 484,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nteger)\n\t<layers>  - number of layers in the grid (positive integer)\n\t<iteration> - number of iterations\n\t<powerFile>  - name of the file conta",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Usage: ./hotspot3D.out <-n rows/cols> <-l layers> <-i iterations> <-f powerFile tempFile outputFile> [-p platform] [-d device]\n\t<rows/cols>  - number of rows/cols in the grid (positive integer)\n\t<layers>  - number of layers in the grid (positive integer)\n\t<iteration> - number of iterations\n\t<powerFile>  - name of the file containing the initial power values of each cell\n\t<tempFile>  - name of the file containing the initial temperature values of each cell\n\t<outputFile - output file\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.573,
+      "prompt_tokens": 8436,
+      "completion_tokens": 460,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nteger)\n\t<layers>  - number of layers in the grid (positive integer)\n\t<iteration> - number of iterations\n\t<powerFile>  - name of the file conta",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Usage: ./hotspot3D.out <-n rows/cols> <-l layers> <-i iterations> <-f powerFile tempFile outputFile> [-p platform] [-d device]\n\t<rows/cols>  - number of rows/cols in the grid (positive integer)\n\t<layers>  - number of layers in the grid (positive integer)\n\t<iteration> - number of iterations\n\t<powerFile>  - name of the file containing the initial power values of each cell\n\t<tempFile>  - name of the file containing the initial temperature values of each cell\n\t<outputFile - output file\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 3.128,
+      "prompt_tokens": 9005,
+      "completion_tokens": 389,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Usage: ./hotspot3D.out <-n rows/cols> <-l layers> <-i iterations> <-f powerFile tempFile outputFile> [-p platform] [-d device]\n\t<rows/cols>  - number of rows/cols in the grid (positive integer)\n\t<layers>  - number of layers in the grid (positive integer)\n\t<iteration> - number of iterations\n\t<powerFile>  - name of the file containing the initial power values of each cell\n\t<tempFile>  - name of the file containing the initial temperature values of each cell\n\t<outputFile - output file\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

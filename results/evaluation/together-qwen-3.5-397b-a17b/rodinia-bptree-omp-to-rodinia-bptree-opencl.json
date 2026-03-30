@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-bptree-omp",
+  "target_spec": "rodinia-bptree-opencl",
+  "kernel": "bptree",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-03-30T13:07:26Z",
+  "prompt_tokens": 73056,
+  "completion_tokens": 15518,
+  "llm_response_time_seconds": 114.502,
+  "build_status": "pass",
+  "build_time_seconds": 0.552,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.49,
+  "run_exit_code": 245,
+  "run_stderr_snippet": "1 error generated.\n",
+  "run_stdout_snippet": "put from file file...\nTransforming data to a GPU suitable structure...\nTree transformation took 0.068899\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n<<<<\n<kernel>:1:1: error: expected identifier or '('\n...\n^\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 245)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.453,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#include <CL/cl.h>\n#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <stdbool.h>\n#include <stdint.h>\n\n#include \"../common.h\"\n#include \"../util/timer/timer.h\"\n\n// OpenCL kernel source\nconst char *kernel_source = \n\"#define DEFAULT_ORDER 508\\n\"\n\"\\n\"\n\"typedef struct {\\n\"\n\"    int value;\\n\"\n\"} record;\\n\"\n\"\\n\"\n\"typedef struct {\\n\"\n\"    int location;\\n\"\n\"    int indices[DEFAULT_ORDER + 1];\\n\"\n\"    int keys[DEFAULT_ORDER + 1];\\n\"\n\"    char is_leaf;\\n\"\n\"    int num_keys;\\n\"\n\"} knode;\\n\"\n\"\\n\"\n\"kernel void findK(\\n\"\n\"    long maxheight,\\n\"\n\"    const global knode *knodes,\\n\"\n\"    long knodes_elem,\\n\"\n\"    const global record *records,\\n\"\n\"    global long *currKnode,\\n\"\n\"    global long *offset,\\n\"\n\"    global int *keys,\\n\"\n\"    global record *ans)\\n\"\n\"{\\n\"\n\"    int bid = get_group_id(0);\\n\"\n\"    int thid = get_local_id(0);\\n\"\n\"    int threadsPerBlock = get_local_size(0);\\n\"\n\"    \\n\"\n\"    long current_offset = offset[bid];\\n\"\n\"    long current_knode = currKnode[bid];\\n\"\n\"    int key_val = keys[bid];\\n\"\n\"    \\n\"\n\"    for (int i = 0; i < maxheight; i++) {\\n\"\n\"        if (thid < threadsPerBlock) {\\n\"\n\"            if ((knodes[current_knode].keys[thid] <= key_val) && \\n\"\n\"                (knodes[current_knode].keys[thid + 1] > key_val)) {\\n\"\n\"                \\n\"\n\"                if (knodes[current_offset].indices[thid] < knodes_elem) {\\n\"\n\"                    current_offset = knodes[current_offset].indices[thid];\\n\"\n\"                }\\n\"\n\"            }\\n\"\n\"        }\\n\"\n\"        current_knode = current_offset;\\n\"\n\"    }\\n\"\n\"    \\n\"\n\"    currKnode[bid] = current_knode;\\n\"\n\"    offset[bid] = current_offset;\\n\"\n\"    \\n\"\n\"    if (thid < threadsPerBlock) {\\n\"\n\"        if (knodes[current_knode].keys[thid] == key_val) {\\n\"\n\"            ans[bid].value = records[knodes[current_knode].indices[thid]].value;\\n\"\n\"        }\\n\"\n\"    }\\n\"\n\"}\\n\";\n\nvoid kernel_cpu(\tint cores_arg,\n\t\t\trecord *records,\n\t\t\tknode *knodes,\n\t\t\tlong knodes_elem,\n\t\t\tint order,\n\t\t\tlong maxheight,\n\t\t\tint count,\n\t\t\tlong *currKnode,\n\t\t\tlong *offset,\n\t\t\tint *keys,\n\t\t\trecord *ans)\n{\n\tlong long time0;\n\tlong long time1;\n\tlong long time2;\n\n\ttime0 = get_time();\n\n\tcl_int error;\n\tcl_uint num_platforms;\n\terror = clGetPlatformIDs(0, NULL, &num_platforms);\n\tif (error != CL_SUCCESS) { fprintf(stderr, \"Error: %d\\n\", error); exit(1); }\n\n\tcl_platform_id *platforms = malloc(sizeof(cl_platform_id) * num_platforms);\n\terror = clGetPlatformIDs(num_platforms, platforms, NULL);\n\tif (error != CL_SUCCESS) { free(platforms); exit(1); }\n\n\tcl_platform_id platform = platforms[0];\n\tcl_uint devices_size;\n\terror = clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 0, NULL, &devices_size);\n\tif (error != CL_SUCCESS || devices_size == 0) { free(platforms); exit(1); }\n\n\tcl_device_id *devices = malloc(devices_size);\n\terror = clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, devices_size, devices, NULL);\n\tif (error != CL_SUCCESS) { free(platforms); free(devices); exit(1); }\n\n\tcl_device_id device = devices[0];\n\n\tcl_context_properties props[] = { CL_CONTEXT_PLATFORM, (cl_context_properties)platform, 0 };\n\tcl_context context = clCreateContextFromType(props, CL_DEVICE_TYPE_ALL, NULL, NULL, &error);\n\tif (error != CL_SUCCESS) { free(platforms); free(devices); exit(1); }\n\n\tcl_command_queue queue = clCreateCommandQueue(context, device, 0, &error);\n\tif (error != CL_SUCCESS) { free(platforms); free(devices); clReleaseContext(context); exit(1); }\n\n\ttime1 = get_time();\n\n\tcl_program program = clCreateProgramWithSource(context, 1, &kernel_source, NULL, &error);\n\tif (error != CL_SUCCESS) { /* handle error */ }\n\n\tchar opts[256];\n\tsprintf(opts, \"-DDEFAULT_ORDER=%d\", order);\n\terror = clBuildProgram(program, 1, &device, opts, NULL, NULL);\n\tif (error != CL_SUCCESS) { /* handle error */ }\n\n\tcl_kernel kernel = clCreateKernel(program, \"findK\", &error);\n\tif (error != CL_SUCCESS) { /* handle error */ }\n\n\tcl_mem recordsD = clCreateBuffer(context, CL_MEM_READ_ONLY, count * sizeof(record), NULL, &error);\n\tcl_mem knodesD = clCreateBuffer(context, CL_MEM_READ_ONLY, knodes_elem * sizeof(knode), NULL, &error);\n\tcl_mem currKnodeD = clCreateBuffer(context, CL_MEM_READ_WRITE, count * sizeof(long), NULL, &error);\n\tcl_mem offsetD = clCreateBuffer(context, CL_MEM_READ_WRITE, count * sizeof(long), NULL, &error);\n\tcl_mem keysD = clCreateBuffer(context, CL_MEM_READ_ONLY, count * sizeof(int), NULL, &error);\n\tcl_mem ansD = clCreateBuffer(context, CL_MEM_WRITE_ONLY, count * sizeof(record), NULL, &error);\n\n\tclEnqueueWriteBuffer(queue, recordsD, CL_TRUE, 0, count * sizeof(record), records, 0, NULL, NULL);\n\tclEnqueueWriteBuffer(queue, knodesD, CL_TRUE, 0, knodes_elem * sizeof(knode), knodes, 0, NULL, NULL);\n\tclEnqueueWriteBuffer(queue, currKnodeD, CL_TRUE, 0, count * sizeof(long), currKnode, 0, NULL, NULL);\n\tclEnqueueWriteBuffer(queue, offsetD, CL_TRUE, 0, count * sizeof(long), offset, 0, NULL, NULL);\n\tclEnqueueWriteBuffer(queue, keysD, CL_TRUE, 0, count * sizeof(int), keys, 0, NULL, NULL);\n\n\tint threadsPerBlock = order < 1024 ? order : 1024;\n\tsize_t global = count * threadsPerBlock;\n\tsize_t local = threadsPerBlock;\n\n\tclSetKernelArg(kernel, 0, sizeof(long), &maxheight);\n\tclSetKernelArg(kernel, 1, sizeof(cl_mem), &knodesD);\n\tclSetKernelArg(kernel, 2, sizeof(long), &knodes_elem);\n\tclSetKernelArg(kernel, 3, sizeof(cl_mem), &recordsD);\n\tclSetKernelArg(kernel, 4, sizeof(cl_mem), &currKnodeD);\n\tclSetKernelArg(kernel, 5, sizeof(cl_mem), &offsetD);\n\tclSetKernelArg(kernel, 6, sizeof(cl_mem), &keysD);\n\tclSetKernelArg(kernel, 7, sizeof(cl_mem), &ansD);\n\n\tclEnqueueNDRangeKernel(queue, kernel, 1, NULL, &global, &local, 0, NULL, NULL);\n\tclFinish(queue);\n\n\tclEnqueueReadBuffer(queue, ansD, CL_TRUE, 0, count * sizeof(record), ans, 0, NULL, NULL);\n\n\ttime2 = get_time();\n\n\tprintf(\"Time spent in different stages of CPU/MCPU KERNEL:\\n\");\n\tprintf(\"%15.12f s, %15.12f % : MCPU: SET DEVICE\\n\", (float)(time1-time0)/1000000, (float)(time1-time0)/(float)(time2-time0)*100);\n\tprintf(\"%15.12f s, %15.12f % : CPU/MCPU: KERNEL\\n\", (float)(time2-time1)/1000000, (float)(time2-time1)/(float)(time2-time0)*100);\n\tprintf(\"Total time:\\n\");\n\tprintf(\"%.12f s\\n\", (float)(time2-time0)/1000000);\n\n\t// Cleanup\n\tclReleaseKernel(kernel);\n\tclReleaseProgram(program);\n\tclReleaseMemObject(recordsD);\n\tclReleaseMemObject(knodesD);\n\tclReleaseMemObject(currKnodeD);\n\tclReleaseMemObject(offsetD);\n\tclReleaseMemObject(keysD);\n\tclReleaseMemObject(ansD);\n\tclReleaseCommandQueue(queue);\n\tclReleaseContext(context);\n\tfree(platforms);\n\tfree(devices);\n}\n",
+    "kernel/kernel_gpu_opencl_2.cl": "...\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.731,
+      "prompt_tokens": 23209,
+      "completion_tokens": 1095,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Total time:' NOT found in stdout. B-tree operations completed with timing\nEnsure the translated code produces the same output format as",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 5.418,
+      "prompt_tokens": 24352,
+      "completion_tokens": 1095,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Total time:' NOT found in stdout. B-tree operations completed with timing\nEnsure the translated code produces the same output format as",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 102.353,
+      "prompt_tokens": 25495,
+      "completion_tokens": 13328,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "put from file file...\nTransforming data to a GPU suitable structure...\nTree transformation took 0.068899\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n<<<<\n<kernel>:1:1: error: expected identifier or '('\n...\n^\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    }
+  ]
+}

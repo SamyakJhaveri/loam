@@ -1,0 +1,97 @@
+{
+  "source_spec": "rodinia-nw-cuda",
+  "target_spec": "rodinia-nw-opencl",
+  "kernel": "nw",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "2048",
+    "10"
+  ],
+  "timestamp": "2026-03-30T18:27:49Z",
+  "prompt_tokens": 47419,
+  "completion_tokens": 10266,
+  "llm_response_time_seconds": 91.839,
+  "build_status": "pass",
+  "build_time_seconds": 0.354,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.001,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "Usage: ./nw.out <max_rows/max_cols> <penalty> [-p platform] [-d device]\n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n\t<file> - filename\n\t[platform] - platform id\n\t[device] - device id\n",
+  "run_stdout_snippet": "WG size of kernel = 16 \n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.09,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nw.cl": "#define LIMIT -999\n\n#ifdef RD_WG_SIZE_0_0\n\t#define BLOCK_SIZE RD_WG_SIZE_0_0\n#elif defined(RD_WG_SIZE_0)\n\t#define BLOCK_SIZE RD_WG_SIZE_0\n#elif defined(RD_WG_SIZE)\n\t#define BLOCK_SIZE RD_WG_SIZE\n#else\n\t#define BLOCK_SIZE 16\n#endif\n\n__attribute__((always_inline)) static int\nmaximum( int a,\n\t\t int b,\n\t\t int c){\n\nint k;\nif( b >= a )\nk = b;\nelse \nk = a;\n\nif( c >= k )\nreturn(c);\nelse\nreturn(k);\n\n}\n\n__kernel void\nnw_kernel1(  const int* referrence,\n\t\t\t  int* matrix_cuda, \n\t\t\t  int* output_buffer,\n\t\t\t  __local int* temp_local,\n\t\t\t  __local int* ref_local,\n\t\t\t  int cols,\n\t\t\t  int penalty,\n\t\t\t  int i,\n\t\t\t  int block_width,\n\t\t\t  int worksize,\n\t\t\t  int offset_r,\n\t\t\t  int offset_c) \n{\n  int bx = get_group_id(0);\n  int tx = get_local_id(0);\n\n  int b_index_x = bx;\n  int b_index_y = i - 1 - bx;\n\n  int index   = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + tx + ( cols + 1 );\n  int index_n   = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + tx + ( 1 );\n  int index_w   = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + ( cols );\n  int index_nw =  cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x;\n\n  // temp_local is sized (BLOCK_SIZE+1)*(BLOCK_SIZE+1)\n  // ref_local is sized BLOCK_SIZE*BLOCK_SIZE\n  // We access them as 1D arrays mapped to 2D logic\n\n  if (0 == tx)\n      temp_local[0 * (BLOCK_SIZE+1) + 0] = matrix_cuda[index_nw];\n\n  for ( int ty = 0 ; ty < BLOCK_SIZE ; ty++)\n      ref_local[ty * BLOCK_SIZE + tx] = referrence[index + cols * ty];\n\n  barrier(CLK_LOCAL_MEM_FENCE);\n\n  temp_local[(tx + 1) * (BLOCK_SIZE+1) + 0] = matrix_cuda[index_w + cols * tx];\n\n  barrier(CLK_LOCAL_MEM_FENCE);\n\n  temp_local[0 * (BLOCK_SIZE+1) + (tx + 1)] = matrix_cuda[index_n];\n  \n  barrier(CLK_LOCAL_MEM_FENCE);\n\n  for( int m = 0 ; m < BLOCK_SIZE ; m++){\n   \n      if ( m >= tx ){\n\n          int t_index_x =  tx + 1;\n          int t_index_y =  m - tx + 1;\n\n          int curr_idx = t_index_y * (BLOCK_SIZE+1) + t_index_x;\n          int nw_idx = (t_index_y-1) * (BLOCK_SIZE+1) + (t_index_x-1);\n          int w_idx = t_index_y * (BLOCK_SIZE+1) + (t_index_x-1);\n          int n_idx = (t_index_y-1) * (BLOCK_SIZE+1) + t_index_x;\n          int ref_idx = (t_index_y-1) * BLOCK_SIZE + (t_index_x-1);\n\n          temp_local[curr_idx] = maximum( temp_local[nw_idx] + ref_local[ref_idx],\n                                          temp_local[w_idx]  - penalty, \n                                          temp_local[n_idx]  - penalty);\n      }\n\n      barrier(CLK_LOCAL_MEM_FENCE);\n  }\n\n  for( int m = BLOCK_SIZE - 2 ; 0 <= m ; m--){\n   \n      if ( m >= tx){\n\n          int t_index_x =  tx + BLOCK_SIZE - m ;\n          int t_index_y =  BLOCK_SIZE - tx;\n\n          int curr_idx = t_index_y * (BLOCK_SIZE+1) + t_index_x;\n          int nw_idx = (t_index_y-1) * (BLOCK_SIZE+1) + (t_index_x-1);\n          int w_idx = t_index_y * (BLOCK_SIZE+1) + (t_index_x-1);\n          int n_idx = (t_index_y-1) * (BLOCK_SIZE+1) + t_index_x;\n          int ref_idx = (t_index_y-1) * BLOCK_SIZE + (t_index_x-1);\n\n          temp_local[curr_idx] = maximum( temp_local[nw_idx] + ref_local[ref_idx],\n                                          temp_local[w_idx]  - penalty, \n                                          temp_local[n_idx]  - penalty);\n      }\n\n      barrier(CLK_LOCAL_MEM_FENCE);\n  }\n\n  for ( int ty = 0 ; ty < BLOCK_SIZE ; ty++)\n      matrix_cuda[index + ty * cols] = temp_local[(ty+1) * (BLOCK_SIZE+1) + (tx+1)];\n\n}\n\n\n__kernel void\nnw_kernel2(  const int* referrence,\n\t\t\t  int* matrix_cuda, \n\t\t\t  int* output_buffer,\n\t\t\t  __local int* temp_local,\n\t\t\t  __local int* ref_local,\n\t\t\t  int cols,\n\t\t\t  int penalty,\n\t\t\t  int i,\n\t\t\t  int block_width,\n\t\t\t  int worksize,\n\t\t\t  int offset_r,\n\t\t\t  int offset_c) \n{\n\n  int bx = get_group_id(0);\n  int tx = get_local_id(0);\n\n  int b_index_x = bx + block_width - i  ;\n  int b_index_y = block_width - bx -1;\n\n  int index   = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + tx + ( cols + 1 );\n  int index_n   = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + tx + ( 1 );\n  int index_w   = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + ( cols );\n  int index_nw =  cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x;\n\n  for ( int ty = 0 ; ty < BLOCK_SIZE ; ty++)\n      ref_local[ty * BLOCK_SIZE + tx] = referrence[index + cols * ty];\n\n  barrier(CLK_LOCAL_MEM_FENCE);\n\n  if (0 == tx)\n      temp_local[0 * (BLOCK_SIZE+1) + 0] = matrix_cuda[index_nw];\n\n  temp_local[(tx + 1) * (BLOCK_SIZE+1) + 0] = matrix_cuda[index_w + cols * tx];\n\n  barrier(CLK_LOCAL_MEM_FENCE);\n\n  temp_local[0 * (BLOCK_SIZE+1) + (tx + 1)] = matrix_cuda[index_n];\n  \n  barrier(CLK_LOCAL_MEM_FENCE);\n\n  for( int m = 0 ; m < BLOCK_SIZE ; m++){\n   \n      if ( m >= tx ){\n\n          int t_index_x =  tx + 1;\n          int t_index_y =  m - tx + 1;\n\n          int curr_idx = t_index_y * (BLOCK_SIZE+1) + t_index_x;\n          int nw_idx = (t_index_y-1) * (BLOCK_SIZE+1) + (t_index_x-1);\n          int w_idx = t_index_y * (BLOCK_SIZE+1) + (t_index_x-1);\n          int n_idx = (t_index_y-1) * (BLOCK_SIZE+1) + t_index_x;\n          int ref_idx = (t_index_y-1) * BLOCK_SIZE + (t_index_x-1);\n\n          temp_local[curr_idx] = maximum( temp_local[nw_idx] + ref_local[ref_idx],\n                                          temp_local[w_idx]  - penalty, \n                                          temp_local[n_idx]  - penalty);\n      }\n\n      barrier(CLK_LOCAL_MEM_FENCE);\n  }\n\n  for( int m = BLOCK_SIZE - 2 ; 0 <= m ; m--){\n   \n      if ( m >= tx){\n\n          int t_index_x =  tx + BLOCK_SIZE - m ;\n          int t_index_y =  BLOCK_SIZE - tx;\n\n          int curr_idx = t_index_y * (BLOCK_SIZE+1) + t_index_x;\n          int nw_idx = (t_index_y-1) * (BLOCK_SIZE+1) + (t_index_x-1);\n          int w_idx = t_index_y * (BLOCK_SIZE+1) + (t_index_x-1);\n          int n_idx = (t_index_y-1) * (BLOCK_SIZE+1) + t_index_x;\n          int ref_idx = (t_index_y-1) * BLOCK_SIZE + (t_index_x-1);\n\n          temp_local[curr_idx] = maximum( temp_local[nw_idx] + ref_local[ref_idx],\n                                          temp_local[w_idx]  - penalty, \n                                          temp_local[n_idx]  - penalty);\n      }\n\n      barrier(CLK_LOCAL_MEM_FENCE);\n  }\n\n  for ( int ty = 0 ; ty < BLOCK_SIZE ; ty++)\n      matrix_cuda[index + ty * cols] = temp_local[(ty+1) * (BLOCK_SIZE+1) + (tx+1)];\n\n}\n"
+  },
+  "target_files_expected": [
+    "nw.cl"
+  ],
+  "target_files_extracted": [
+    "nw.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 14.039,
+      "prompt_tokens": 12544,
+      "completion_tokens": 1643,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nUsage: ./nw.out <max_rows/max_cols> <penalty> [-p platform] [-d device]\n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integ",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Usage: ./nw.out <max_rows/max_cols> <penalty> [-p platform] [-d device]\n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n\t<file> - filename\n\t[platform] - platform id\n\t[device] - device id\n",
+      "run_stdout_snippet": "WG size of kernel = 16 \n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 61.469,
+      "prompt_tokens": 14288,
+      "completion_tokens": 6198,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\nUsage: ./nw.out <max_rows/max_cols> <penalty> [-p platform] [-d device]\n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integ",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Usage: ./nw.out <max_rows/max_cols> <penalty> [-p platform] [-d device]\n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n\t<file> - filename\n\t[platform] - platform id\n\t[device] - device id\n",
+      "run_stdout_snippet": "WG size of kernel = 16 \n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 16.331,
+      "prompt_tokens": 20587,
+      "completion_tokens": 2425,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Usage: ./nw.out <max_rows/max_cols> <penalty> [-p platform] [-d device]\n\t<dimension>  - x and y dimensions\n\t<penalty> - penalty(positive integer)\n\t<file> - filename\n\t[platform] - platform id\n\t[device] - device id\n",
+      "run_stdout_snippet": "WG size of kernel = 16 \n",
+      "extraction_fail": null
+    }
+  ]
+}

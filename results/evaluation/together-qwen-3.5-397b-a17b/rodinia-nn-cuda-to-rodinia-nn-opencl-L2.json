@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-nn-cuda",
+  "target_spec": "rodinia-nn-opencl",
+  "kernel": "nn",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 2,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "filelist_4",
+    "-r",
+    "5",
+    "-lat",
+    "30",
+    "-lng",
+    "90"
+  ],
+  "timestamp": "2026-03-30T18:12:00Z",
+  "prompt_tokens": 44959,
+  "completion_tokens": 9202,
+  "llm_response_time_seconds": 46.911,
+  "build_status": "pass",
+  "build_time_seconds": 0.669,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.067,
+  "run_exit_code": -11,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -11)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 300.039,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nearestNeighbor_kernel.cl": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n#include <vector>\n#include <CL/cl.h>\n\n#include \"clutils.h\"\n\n#ifdef TIMING\n#include <sys/time.h>\n\nstruct timeval tv;\nstruct timeval tv_total_start, tv_total_end;\nstruct timeval tv_h2d_start, tv_h2d_end;\nstruct timeval tv_d2h_start, tv_d2h_end;\nstruct timeval tv_kernel_start, tv_kernel_end;\nstruct timeval tv_mem_alloc_start, tv_mem_alloc_end;\nstruct timeval tv_close_start, tv_close_end;\nfloat init_time = 0, mem_alloc_time = 0, h2d_time = 0, kernel_time = 0,\n      d2h_time = 0, close_time = 0, total_time = 0;\n\nvoid tvsub(struct timeval *t1, struct timeval *t2, struct timeval *r) {\n    r->tv_sec = t1->tv_sec - t2->tv_sec;\n    r->tv_usec = t1->tv_usec - t2->tv_usec;\n    if (r->tv_usec < 0) {\n        r->tv_sec--;\n        r->tv_usec += 1000000;\n    }\n}\n#endif\n\n#define min( a, b )\t\t\ta > b ? b : a\n#define ceilDiv( a, b )\t\t( a + b - 1 ) / b\n#define print( x )\t\t\tprintf( #x \": %lu\\n\", (unsigned long) x )\n#define DEBUG\t\t\t\tfalse\n\n#define DEFAULT_THREADS_PER_BLOCK 256\n\n#define MAX_ARGS 10\n#define REC_LENGTH 53 \n#define LATITUDE_POS 28\t\n#define OPEN 10000\t\n\ntypedef struct latLong\n{\n  float lat;\n  float lng;\n} LatLong;\n\ntypedef struct record\n{\n  char recString[REC_LENGTH];\n  float distance;\n} Record;\n\nint loadData(char *filename,std::vector<Record> &records,std::vector<LatLong> &locations);\nvoid findLowest(std::vector<Record> &records,float *distances,int numRecords,int topN);\nvoid printUsage();\nint parseCommandline(int argc, char *argv[], char* filename,int *r,float *lat,float *lng,\n                     int *q, int *t, int *p, int *d);\n\nconst char *kernel_source = \n\"typedef struct latLong { float lat; float lng; } LatLong;\\n\"\n\"__kernel void euclid(__global LatLong *d_locations, __global float *d_distances, int numRecords, float lat, float lng) {\\n\"\n\"    int globalId = get_global_id(0);\\n\"\n\"    if (globalId < numRecords) {\\n\"\n\"        LatLong loc = d_locations[globalId];\\n\"\n\"        float diff_lat = lat - loc.lat;\\n\"\n\"        float diff_lng = lng - loc.lng;\\n\"\n\"        d_distances[globalId] = sqrt(diff_lat * diff_lat + diff_lng * diff_lng);\\n\"\n\"    }\\n\"\n\"}\";\n\nint main(int argc, char* argv[])\n{\n\tint    i=0;\n\tfloat lat = 0.0f, lng = 0.0f;\n\tint quiet=0,timing=0,platform=0,device=0;\n\n    std::vector<Record> records;\n\tstd::vector<LatLong> locations;\n\tchar filename[100];\n\tint resultsCount=10;\n\n    memset(filename, 0, 100);\n    \n    if (parseCommandline(argc, argv, filename,&resultsCount,&lat,&lng,\n                     &quiet, &timing, &platform, &device)) {\n      printUsage();\n      return 0;\n    }\n\n    int numRecords = loadData(filename,records,locations);\n    if (numRecords == 0) {\n        fprintf(stderr, \"No records loaded.\\n\");\n        return 1;\n    }\n    if (resultsCount > numRecords) resultsCount = numRecords;\n\n    cl_int status;\n    cl_context context;\n    cl_device_id device;\n    cl_command_queue command_queue;\n    cl_program program;\n    cl_kernel kernel;\n    cl_mem d_locations_mem;\n    cl_mem d_distances_mem;\n\n    context = cl_init_context(platform, device, quiet);\n    \n    status = clGetContextInfo(context, CL_CONTEXT_DEVICES, sizeof(cl_device_id), &device, NULL);\n    if (status != CL_SUCCESS) {\n        fprintf(stderr, \"Failed to get device from context\\n\");\n        exit(1);\n    }\n\n    size_t maxGridX = 65535; \n    unsigned long threadsPerBlock = DEFAULT_THREADS_PER_BLOCK;\n    \n    cl_ulong totalDeviceMemory;\n    status = clGetDeviceInfo(device, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(cl_ulong), &totalDeviceMemory, NULL);\n    cl_ulong freeDeviceMemory = totalDeviceMemory; \n    \n    unsigned long usableDeviceMemory = freeDeviceMemory * 85 / 100; \n    unsigned long maxThreads = usableDeviceMemory / 12; \n    if ( numRecords > maxThreads )\n    {\n        fprintf( stderr, \"Error: Input too large.\\n\" );\n        exit( 1 );\n    }\n    unsigned long blocks = ceilDiv( numRecords, threadsPerBlock ); \n    unsigned long gridY = ceilDiv( blocks, maxGridX );\n    unsigned long gridX = ceilDiv( blocks, gridY );\n\n    if ( DEBUG )\n    {\n        print( totalDeviceMemory ); \n        print( freeDeviceMemory );\n        print( usableDeviceMemory );\n        print( maxGridX ); \n        print( threadsPerBlock );\n        print( maxThreads );\n        print( blocks ); \n        print( gridY );\n        print( gridX );\n    }\n\n    float *distances = (float *)malloc(sizeof(float) * numRecords);\n    if (!distances) {\n        fprintf(stderr, \"Failed to allocate host memory for distances\\n\");\n        exit(1);\n    }\n    \n    d_locations_mem = cl_allocBuffer(sizeof(LatLong) * numRecords, CL_MEM_READ_WRITE);\n    d_distances_mem = cl_allocBuffer(sizeof(float) * numRecords, CL_MEM_READ_WRITE);\n\n    cl_copyBufferToDevice(d_locations_mem, &locations[0], sizeof(LatLong) * numRecords, CL_TRUE);\n\n#ifdef  TIMING\n    gettimeofday(&tv_kernel_start, NULL);\n#endif\n\n    program = clCreateProgramWithSource(context, 1, &kernel_source, NULL, &status);\n    if (status != CL_SUCCESS) {\n        fprintf(stderr, \"Failed to create program: %d\\n\", status);\n        exit(1);\n    }\n    \n    status = clBuildProgram(program, 1, &device, NULL, NULL, NULL);\n    if (status != CL_SUCCESS) {\n        fprintf(stderr, \"Failed to build program: %d\\n\", status);\n        size_t log_size;\n        clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, 0, NULL, &log_size);\n        char *log = (char*)malloc(log_size);\n        clGetProgramBuildInfo(program, device, CL_PROGRAM_BUILD_LOG, log_size, log, NULL);\n        fprintf(stderr, \"Build log: %s\\n\", log);\n        free(log);\n        exit(1);\n    }\n\n    kernel = clCreateKernel(program, \"euclid\", &status);\n    if (status != CL_SUCCESS) {\n        fprintf(stderr, \"Failed to create kernel: %d\\n\", status);\n        exit(1);\n    }\n\n    status = clSetKernelArg(kernel, 0, sizeof(cl_mem), &d_locations_mem);\n    status |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &d_distances_mem);\n    status |= clSetKernelArg(kernel, 2, sizeof(int), &numRecords);\n    status |= clSetKernelArg(kernel, 3, sizeof(float), &lat);\n    status |= clSetKernelArg(kernel, 4, sizeof(float), &lng);\n\n    if (status != CL_SUCCESS) {\n        fprintf(stderr, \"Failed to set kernel arguments: %d\\n\", status);\n        exit(1);\n    }\n\n    size_t global_work_size = (size_t)numRecords;\n    size_t local_work_size = threadsPerBlock;\n\n    command_queue = cl_getCommandQueue();\n    \n    status = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);\n    if (status != CL_SUCCESS) {\n        fprintf(stderr, \"Failed to enqueue kernel: %d\\n\", status);\n        exit(1);\n    }\n    \n    clFinish(command_queue);\n\n#ifdef  TIMING\n    gettimeofday(&tv_kernel_end, NULL);\n    tvsub(&tv_kernel_end, &tv_kernel_start, &tv);\n    kernel_time += tv.tv_sec * 1000.0 + (float) tv.tv_usec / 1000.0;\n#endif\n\n    cl_copyBufferToHost(distances, d_distances_mem, sizeof(float)*numRecords, CL_TRUE);\n\n    findLowest(records,distances,numRecords,resultsCount);\n\n    if (!quiet)\n    for(i=0;i<resultsCount;i++) {\n      printf(\"%s --> Distance=%f\\n\",records[i].recString,records[i].distance);\n    }\n    free(distances);\n    \n    cl_freeMem(d_locations_mem);\n    cl_freeMem(d_distances_mem);\n    cl_freeKernel(kernel);\n    cl_freeProgram(program);\n    cl_cleanup();\n\n#ifdef  TIMING\n    printf(\"Exec: %f\\n\", kernel_time);\n#endif\n    return 0;\n}\n\nint loadData(char *filename,std::vector<Record> &records,std::vector<LatLong> &locations){\n    FILE   *flist,*fp;\n\tint    i=0;\n\tchar dbname[64];\n\tint recNum=0;\n\n    flist = fopen(filename, \"r\");\n    if (!flist) {\n        fprintf(stderr, \"error opening filelist: %s\\n\", filename);\n        exit(0);\n    }\n    \n    while(!feof(flist)) {\n        if(fscanf(flist, \"%s\\n\", dbname) != 1) {\n            if (!feof(flist)) {\n                fprintf(stderr, \"error reading filelist\\n\");\n            }\n            break;\n        }\n        fp = fopen(dbname, \"r\");\n        if(!fp) {\n            printf(\"error opening a db: %s\\n\", dbname);\n            exit(1);\n        }\n        \n        while(!feof(fp)){\n            Record record;\n            LatLong latLong;\n            memset(record.recString, 0, REC_LENGTH);\n            if (fgets(record.recString, 49, fp) == NULL) break;\n            if (feof(fp)) break;\n\n            char substr[6];\n\n            for(i=0;i<5;i++) substr[i] = *(record.recString+i+28);\n            substr[5] = '\\0';\n            latLong.lat = atof(substr);\n\n            for(i=0;i<5;i++) substr[i] = *(record.recString+i+33);\n            substr[5] = '\\0';\n            latLong.lng = atof(substr);\n\n            locations.push_back(latLong);\n            records.push_back(record);\n            recNum++;\n        }\n        fclose(fp);\n    }\n    fclose(flist);\n\n    return recNum;\n}\n\nvoid findLowest(std::vector<Record> &records,float *distances,int numRecords,int topN){\n  int i,j;\n  float val;\n  int minLoc;\n  Record *tempRec;\n  float tempDist;\n\n  for(i=0;i<topN;i++) {\n    minLoc = i;\n    for(j=i;j<numRecords;j++) {\n      val = distances[j];\n      if (val < distances[minLoc]) minLoc = j;\n    }\n    \n    tempRec = &records[i];\n    records[i] = records[minLoc];\n    records[minLoc] = *tempRec;\n\n    tempDist = distances[i];\n    distances[i] = distances[minLoc];\n    distances[minLoc] = tempDist;\n\n    records[i].distance = distances[i];\n  }\n}\n\nint parseCommandline(int argc, char *argv[], char* filename,int *r,float *lat,float *lng,\n                     int *q, int *t, int *p, int *d){\n    int i;\n    if (argc < 2) return 1; \n    strncpy(filename,argv[1],99);\n    filename[99] = '\\0';\n    char flag;\n\n    *r = 10; \n    *lat = 0.0f;\n    *lng = 0.0f;\n    *q = 0;\n    *t = 0;\n    *p = -1;\n    *d = -1;\n\n    for(i=1;i<argc;i++) {\n      if (argv[i][0]=='-') {\n        flag = argv[i][1];\n          switch (flag) {\n            case 'r': \n              i++;\n              if(i<argc) *r = atoi(argv[i]);\n              break;\n            case 'l': \n              if (argv[i][2]=='a') {\n                i++;\n                if(i<argc) *lat = atof(argv[i]);\n              }\n              else {\n                i++;\n                if(i<argc) *lng = atof(argv[i]);\n              }\n              break;\n            case 'h': \n              return 1;\n            case 'q': \n              *q = 1;\n              break;\n            case 't': \n              *t = 1;\n              break;\n            case 'p': \n              i++;\n              if(i<argc) *p = atoi(argv[i]);\n              break;\n            case 'd': \n              i++;\n              if(i<argc) *d = atoi(argv[i]);\n              break;\n        }\n      }\n    }\n    if ((*d >= 0 && *p<0) || (*p>=0 && *d<0)) \n      return 1;\n    return 0;\n}\n\nvoid printUsage(){\n  printf(\"Nearest Neighbor Usage\\n\");\n  printf(\"\\n\");\n  printf(\"nearestNeighbor [filename] -r [int] -lat [float] -lng [float] [-hqt] [-p [int] -d [int]]\\n\");\n  printf(\"\\n\");\n  printf(\"example:\\n\");\n  printf(\"$ ./nearestNeighbor filelist.txt -r 5 -lat 30 -lng 90\\n\");\n  printf(\"\\n\");\n  printf(\"filename     the filename that lists the data input files\\n\");\n  printf(\"-r [int]     the number of records to return (default: 10)\\n\");\n  printf(\"-lat [float] the latitude for nearest neighbors (default: 0)\\n\");\n  printf(\"-lng [float] the longitude for nearest neighbors (default: 0)\\n\");\n  printf(\"\\n\");\n  printf(\"-h, --help   Display the help file\\n\");\n  printf(\"-q           Quiet mode. Suppress all text output.\\n\");\n  printf(\"-t           Print timing information.\\n\");\n  printf(\"\\n\");\n  printf(\"-p [int]     Choose the platform (must choose both platform and device)\\n\");\n  printf(\"-d [int]     Choose the device (must choose both platform and device)\\n\");\n  printf(\"\\n\");\n  printf(\"\\n\");\n  printf(\"Notes: 1. The filename is required as the first parameter.\\n\");\n  printf(\"       2. If you declare either the device or the platform,\\n\");\n  printf(\"          you must declare both.\\n\\n\");\n}\n"
+  },
+  "target_files_expected": [
+    "nearestNeighbor_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "nearestNeighbor_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 16.055,
+      "prompt_tokens": 12216,
+      "completion_tokens": 2601,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 15.11,
+      "prompt_tokens": 14849,
+      "completion_tokens": 3013,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 15.746,
+      "prompt_tokens": 17894,
+      "completion_tokens": 3588,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-bptree-omp",
+  "target_spec": "rodinia-bptree-opencl",
+  "kernel": "bptree",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-03-30T13:10:04Z",
+  "prompt_tokens": 73581,
+  "completion_tokens": 7818,
+  "llm_response_time_seconds": 45.443,
+  "build_status": "pass",
+  "build_time_seconds": 0.547,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.598,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "_mem=4000000\nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n--------------------------------\n# of blocks = 10000, # of threads/block = 256 (ensure that device can handle)\nTime spent in different stages of GPU_CUDA KERNEL:\nInit: 68.500999\nMemAlloc: 0.004000\nHtoD: 1.080160\nExec: 0.041600\nDtoH: 0.002496\nClose: 44.949001\nTotal: 115.008003\n> > > > > > > > > > \n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern 'Total time:' NOT found in stdout. B-tree operations completed with timing",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.453,
+  "translated_wall_time_seconds": 0.598,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.7575,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\ntypedef struct record {\n    int value;\n} record;\n\ntypedef struct knode {\n    int location;\n    int indices [256 + 1];\n    int keys [256 + 1];\n    char is_leaf;\n    int num_keys;\n} knode;\n\n__kernel void findK(\n    long maxheight,\n    __global knode *knodes,\n    long knodes_elem,\n    __global record *records,\n    __global long *currKnode,\n    __global long *offset,\n    __global int *keys,\n    __global record *ans)\n{\n    int bid = get_global_id(0) / get_local_size(0);\n    int thid = get_global_id(0) % get_local_size(0);\n    int threadsPerBlock = get_local_size(0);\n    \n    if (bid >= get_num_groups(0)) return;\n\n    long local_currKnode = currKnode[bid];\n    long local_offset = offset[bid];\n    int local_key = keys[bid];\n    \n    for (long i = 0; i < maxheight; i++) {\n        if (thid < threadsPerBlock) {\n            if ((knodes[local_currKnode].keys[thid] <= local_key) && \n                (knodes[local_currKnode].keys[thid+1] > local_key)) {\n                if (knodes[local_offset].indices[thid] < knodes_elem) {\n                    local_offset = knodes[local_offset].indices[thid];\n                }\n            }\n        }\n        if (thid == 0) {\n            local_currKnode = local_offset;\n        }\n    }\n\n    if (thid < threadsPerBlock) {\n        if (local_key == knodes[local_currKnode].keys[thid]) {\n            ans[bid].value = records[knodes[local_currKnode].indices[thid]].value;\n        }\n    }\n    \n    if (thid == 0) {\n        currKnode[bid] = local_currKnode;\n        offset[bid] = local_offset;\n    }\n}\n",
+    "kernel/kernel_gpu_opencl_2.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\ntypedef struct knode {\n    int location;\n    int indices [256 + 1];\n    int keys [256 + 1];\n    char is_leaf;\n    int num_keys;\n} knode;\n\n__kernel void findRangeK(\n    long maxheight,\n    __global knode *knodes,\n    long knodes_elem,\n    __global long *currKnode,\n    __global long *offset,\n    __global long *lastKnode,\n    __global long *offset_2,\n    __global int *start,\n    __global int *end,\n    __global int *recstart,\n    __global int *reclength)\n{\n    int bid = get_global_id(0) / get_local_size(0);\n    int thid = get_global_id(0) % get_local_size(0);\n    int threadsPerBlock = get_local_size(0);\n    \n    if (bid >= get_num_groups(0)) return;\n\n    long local_currKnode = currKnode[bid];\n    long local_offset = offset[bid];\n    long local_lastKnode = lastKnode[bid];\n    long local_offset_2 = offset_2[bid];\n    int local_start = start[bid];\n    int local_end = end[bid];\n    \n    for (long i = 0; i < maxheight; i++) {\n        if (thid < threadsPerBlock) {\n            if ((knodes[local_currKnode].keys[thid] <= local_start) && \n                (local_start < knodes[local_currKnode].keys[thid+1])) {\n                if (knodes_elem > knodes[local_currKnode].indices[thid]) {\n                    local_offset = knodes[local_currKnode].indices[thid];\n                }\n            }\n            if ((local_end >= knodes[local_lastKnode].keys[thid]) && \n                (local_end < knodes[local_lastKnode].keys[thid+1])) {\n                if (knodes_elem > knodes[local_lastKnode].indices[thid]) {\n                    local_offset_2 = knodes[local_lastKnode].indices[thid];\n                }\n            }\n        }\n        if (thid == 0) {\n            local_currKnode = local_offset;\n            local_lastKnode = local_offset_2;\n        }\n    }\n\n    if (thid < threadsPerBlock) {\n        if (knodes[local_currKnode].keys[thid] == local_start) {\n            recstart[bid] = knodes[local_currKnode].indices[thid];\n        }\n        if (knodes[local_lastKnode].keys[thid] == local_end) {\n            reclength[bid] = knodes[local_lastKnode].indices[thid] - recstart[bid] + 1;\n        }\n    }\n    \n    if (thid == 0) {\n        currKnode[bid] = local_currKnode;\n        offset[bid] = local_offset;\n        lastKnode[bid] = local_lastKnode;\n        offset_2[bid] = local_offset_2;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.857,
+      "prompt_tokens": 23202,
+      "completion_tokens": 1277,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Total time:' NOT found in stdout. B-tree operations completed with timing\nEnsure the translated code produces the same output format as",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 6.537,
+      "prompt_tokens": 24527,
+      "completion_tokens": 1277,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'Total time:' NOT found in stdout. B-tree operations completed with timing\nEnsure the translated code produces the same output format as",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 31.049,
+      "prompt_tokens": 25852,
+      "completion_tokens": 5264,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "source_spec": "rodinia-kmeans-omp",
+  "target_spec": "rodinia-kmeans-opencl",
+  "kernel": "kmeans",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "verification_mode": "cross_api_source_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "-i",
+    "../../data/kmeans/kdd_cup"
+  ],
+  "timestamp": "2026-03-30T20:14:23Z",
+  "prompt_tokens": 128945,
+  "completion_tokens": 10492,
+  "llm_response_time_seconds": 97.408,
+  "build_status": "pass",
+  "build_time_seconds": 0.841,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.522,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel_swap = 256, WG size of kernel_kmeans = 256 \n\nI/O completed\n\nNumber of objects: 494020\nNumber of features: 34\nnum_devices = 1\nERROR: clBuildProgram() => -11\nERROR: clEnqueueWriteBuffer d_cluster (size:494020) => -38\niterated 1 times\nNumber of Iteration: 1\nInit: 0.000000\nMemAlloc: 0.000000\nHtoD: 0.000000\nExec: 0.000000\nDtoH: 0.000000\nClose: 0.015000\nTotal: 471.966003\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern 'number of Clusters' NOT found in stdout. K-means clustering completed",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.498,
+  "translated_wall_time_seconds": 0.522,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.8697,
+  "translated_files": {
+    "kmeans.cl": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <math.h>\n#include <float.h>\n#include <CL/cl.h>\n\n#ifndef FLT_MAX\n#define FLT_MAX 3.40282347e+38\n#endif\n\n// Inline kernel source\nconst char *kernel_source = \n\"__inline float euclid_dist_2(float *pt1, float *pt2, int numdims) { \"\n\"    float ans = 0.0f; \"\n\"    for (int i = 0; i < numdims; i++) { \"\n\"        float diff = pt1[i] - pt2[i]; \"\n\"        ans += diff * diff; \"\n\"    } \"\n\"    return ans; \"\n\"} \"\n\"__inline int find_nearest_point(float *pt, int nfeatures, float *clusters, int nclusters) { \"\n\"    int index = 0; \"\n\"    float min_dist = FLT_MAX; \"\n\"    for (int i = 0; i < nclusters; i++) { \"\n\"        float dist = euclid_dist_2(pt, clusters + i * nfeatures, nfeatures); \"\n\"        if (dist < min_dist) { \"\n\"            min_dist = dist; \"\n\"            index = i; \"\n\"        } \"\n\"    } \"\n\"    return index; \"\n\"} \"\n\"void kmeans_step( \"\n\"    const int npoints, \"\n\"    const int nfeatures, \"\n\"    const int nclusters, \"\n\"    const float *feature_data, \"\n\"    float *cluster_data, \"\n\"    int *membership, \"\n\"    int *partial_counts, \"\n\"    float *partial_centers, \"\n\"    float *delta_vals) \"\n\"{ \"\n\"    int tid = get_global_id(0); \"\n\"    if (tid >= npoints) return; \"\n\"    float *pt = feature_data + tid * nfeatures; \"\n\"    int index = find_nearest_point(pt, nfeatures, cluster_data, nclusters); \"\n\"    float delta = 0.0f; \"\n\"    if (membership[tid] != index) delta = 1.0f; \"\n\"    membership[tid] = index; \"\n\"    delta_vals[tid] = delta; \"\n\"    partial_counts[tid * nclusters + index] = 1; \"\n\"    for (int j = 0; j < nfeatures; j++) { \"\n\"        partial_centers[tid * nclusters * nfeatures + index * nfeatures + j] = pt[j]; \"\n\"    } \"\n\"} \"\n\"void kmeans_aggregate( \"\n\"    const int npoints, \"\n\"    const int nfeatures, \"\n\"    const int nclusters, \"\n\"    const int nthreads, \"\n\"    int *partial_counts, \"\n\"    float *partial_centers, \"\n\"    float *cluster_data, \"\n\"    int *cluster_counts) \"\n\"{ \"\n\"    int i = get_global_id(0); \"\n\"    if (i >= nclusters) return; \"\n\"    float sum_val = 0.0f; \"\n\"    int count = 0; \"\n\"    for (int t = 0; t < nthreads; t++) { \"\n\"        int c = partial_counts[t * nclusters + i]; \"\n\"        count += c; \"\n\"        if (c > 0) { \"\n\"            for (int k = 0; k < nfeatures; k++) { \"\n\"                sum_val += partial_centers[(t * nclusters + i) * nfeatures + k]; \"\n\"            } \"\n\"        } \"\n\"    } \"\n\"    cluster_counts[i] = count; \"\n\"    if (count > 0) { \"\n\"        for (int k = 0; k < nfeatures; k++) { \"\n\"            cluster_data[i * nfeatures + k] = sum_val / count; \"\n\"        } \"\n\"    } \"\n\"} \";\n\nfloat euclid_dist_2_host(float *pt1, float *pt2, int numdims) {\n    float ans = 0.0f;\n    for (int i = 0; i < numdims; i++) {\n        float diff = pt1[i] - pt2[i];\n        ans += diff * diff;\n    }\n    return ans;\n}\n\nint find_nearest_point_host(float *pt, int nfeatures, float **pts, int npts) {\n    int index = 0;\n    float min_dist = FLT_MAX;\n    for (int i = 0; i < npts; i++) {\n        float dist = euclid_dist_2_host(pt, pts[i], nfeatures);\n        if (dist < min_dist) {\n            min_dist = dist;\n            index = i;\n        }\n    }\n    return index;\n}\n\nfloat **kmeans_clustering(float **feature, int nfeatures, int npoints, int nclusters, float threshold, int *membership) {\n    cl_platform_id platform;\n    cl_device_id device;\n    cl_context context;\n    cl_command_queue queue;\n    cl_program program;\n    cl_kernel kernel_step, kernel_agg;\n    \n    cl_uint num_platforms, num_devices;\n    if (clGetPlatformIDs(1, &platform, &num_platforms) != CL_SUCCESS || num_platforms == 0) {\n        fprintf(stderr, \"Failed to find platform\\n\");\n        return NULL;\n    }\n    if (clGetDeviceIDs(platform, CL_DEVICE_TYPE_ALL, 1, &device, &num_devices) != CL_SUCCESS || num_devices == 0) {\n        fprintf(stderr, \"Failed to find device\\n\");\n        return NULL;\n    }\n    \n    context = clCreateContext(NULL, 1, &device, NULL, NULL, NULL);\n    queue = clCreateCommandQueue(context, device, 0, NULL);\n    \n    program = clCreateProgramWithSource(context, 1, &kernel_source, NULL, NULL);\n    if (clBuildProgram(program, 1, &device, NULL, NULL, NULL) != CL_SUCCESS) {\n        fprintf(stderr, \"Failed to build program\\n\");\n        return NULL;\n    }\n    \n    kernel_step = clCreateKernel(program, \"kmeans_step\", NULL);\n    kernel_agg = clCreateKernel(program, \"kmeans_aggregate\", NULL);\n    \n    size_t feat_size = (size_t)npoints * nfeatures * sizeof(float);\n    size_t clust_size = (size_t)nclusters * nfeatures * sizeof(float);\n    size_t mem_size = npoints * sizeof(int);\n    size_t partial_counts_size = (size_t)npoints * nclusters * sizeof(int);\n    size_t partial_centers_size = (size_t)npoints * nclusters * nfeatures * sizeof(float);\n    size_t delta_size = npoints * sizeof(float);\n    size_t cluster_counts_size = nclusters * sizeof(int);\n    \n    cl_mem d_feature = clCreateBuffer(context, CL_MEM_READ_ONLY, feat_size, NULL, NULL);\n    cl_mem d_clusters = clCreateBuffer(context, CL_MEM_READ_WRITE, clust_size, NULL, NULL);\n    cl_mem d_membership = clCreateBuffer(context, CL_MEM_READ_WRITE, mem_size, NULL, NULL);\n    cl_mem d_partial_counts = clCreateBuffer(context, CL_MEM_READ_WRITE, partial_counts_size, NULL, NULL);\n    cl_mem d_partial_centers = clCreateBuffer(context, CL_MEM_READ_WRITE, partial_centers_size, NULL, NULL);\n    cl_mem d_delta = clCreateBuffer(context, CL_MEM_READ_WRITE, delta_size, NULL, NULL);\n    cl_mem d_cluster_counts = clCreateBuffer(context, CL_MEM_READ_WRITE, cluster_counts_size, NULL, NULL);\n    \n    float *feat_flat = feature[0];\n    clEnqueueWriteBuffer(queue, d_feature, CL_TRUE, 0, feat_size, feat_flat, 0, NULL, NULL);\n    \n    float *init_clusters = malloc(clust_size);\n    for (int i = 0; i < nclusters; i++) {\n        for (int j = 0; j < nfeatures; j++) {\n            init_clusters[i * nfeatures + j] = feature[i][j];\n        }\n    }\n    clEnqueueWriteBuffer(queue, d_clusters, CL_TRUE, 0, clust_size, init_clusters, 0, NULL, NULL);\n    free(init_clusters);\n    \n    clEnqueueWriteBuffer(queue, d_membership, CL_TRUE, 0, mem_size, membership, 0, NULL, NULL);\n    \n    int loop = 0;\n    float delta = 0.0;\n    int nthreads = npoints; \n    \n    do {\n        delta = 0.0;\n        int zero = 0;\n        clEnqueueFillBuffer(queue, d_partial_counts, &zero, sizeof(int), partial_counts_size, 0, NULL, NULL);\n        clEnqueueFillBuffer(queue, d_partial_centers, &zero, sizeof(float), partial_centers_size, 0, NULL, NULL);\n        \n        clSetKernelArg(kernel_step, 0, sizeof(int), &npoints);\n        clSetKernelArg(kernel_step, 1, sizeof(int), &nfeatures);\n        clSetKernelArg(kernel_step, 2, sizeof(int), &nclusters);\n        clSetKernelArg(kernel_step, 3, sizeof(cl_mem), &d_feature);\n        clSetKernelArg(kernel_step, 4, sizeof(cl_mem), &d_clusters);\n        clSetKernelArg(kernel_step, 5, sizeof(cl_mem), &d_membership);\n        clSetKernelArg(kernel_step, 6, sizeof(cl_mem), &d_partial_counts);\n        clSetKernelArg(kernel_step, 7, sizeof(cl_mem), &d_partial_centers);\n        clSetKernelArg(kernel_step, 8, sizeof(cl_mem), &d_delta);\n        \n        size_t global_step = npoints;\n        if (clEnqueueTask(queue, kernel_step, 1, NULL, &global_step, NULL, 0, NULL, NULL) != CL_SUCCESS) {\n            fprintf(stderr, \"Failed to enqueue step kernel\\n\");\n            break;\n        }\n        \n        clSetKernelArg(kernel_agg, 0, sizeof(int), &npoints);\n        clSetKernelArg(kernel_agg, 1, sizeof(int), &nfeatures);\n        clSetKernelArg(kernel_agg, 2, sizeof(int), &nclusters);\n        clSetKernelArg(kernel_agg, 3, sizeof(int), &nthreads);\n        clSetKernelArg(kernel_agg, 4, sizeof(cl_mem), &d_partial_counts);\n        clSetKernelArg(kernel_agg, 5, sizeof(cl_mem), &d_partial_centers);\n        clSetKernelArg(kernel_agg, 6, sizeof(cl_mem), &d_clusters);\n        clSetKernelArg(kernel_agg, 7, sizeof(cl_mem), &d_cluster_counts);\n        \n        size_t global_agg = nclusters;\n        if (clEnqueueTask(queue, kernel_agg, 1, NULL, &global_agg, NULL, 0, NULL, NULL) != CL_SUCCESS) {\n            fprintf(stderr, \"Failed to enqueue aggregate kernel\\n\");\n            break;\n        }\n        \n        clFinish(queue);\n        \n        float *host_delta = malloc(delta_size);\n        clEnqueueReadBuffer(queue, d_delta, CL_TRUE, 0, delta_size, host_delta, 0, NULL, NULL);\n        for (int i = 0; i < npoints; i++) delta += host_delta[i];\n        free(host_delta);\n        \n        loop++;\n    } while (delta > threshold && loop < 500);\n    \n    float *final_clusters = malloc(clust_size);\n    clEnqueueReadBuffer(queue, d_clusters, CL_TRUE, 0, clust_size, final_clusters, 0, NULL, NULL);\n    \n    float **clusters = malloc(nclusters * sizeof(float*));\n    clusters[0] = final_clusters;\n    for (int i = 1; i < nclusters; i++) clusters[i] = clusters[i-1] + nfeatures;\n    \n    clReleaseMemObject(d_feature);\n    clReleaseMemObject(d_clusters);\n    clReleaseMemObject(d_membership);\n    clReleaseMemObject(d_partial_counts);\n    clReleaseMemObject(d_partial_centers);\n    clReleaseMemObject(d_delta);\n    clReleaseMemObject(d_cluster_counts);\n    clReleaseKernel(kernel_step);\n    clReleaseKernel(kernel_agg);\n    clReleaseProgram(program);\n    clReleaseCommandQueue(queue);\n    clReleaseContext(context);\n    \n    return clusters;\n}\n\nint cluster(int numObjects, int numAttributes, float **attributes, int nclusters, float threshold, float ***cluster_centres) {\n    int *membership = malloc(numObjects * sizeof(int));\n    srand(7);\n    float **tmp = kmeans_clustering(attributes, numAttributes, numObjects, nclusters, threshold, membership);\n    if (*cluster_centres) {\n        free((*cluster_centres)[0]);\n        free(*cluster_centres);\n    }\n    *cluster_centres = tmp;\n    free(membership);\n    return 0;\n}\n\nint main(int argc, char **argv) {\n    char *filename = NULL;\n    int nclusters = 5;\n    float threshold = 0.001;\n    int isBinaryFile = 0;\n    int numAttributes, numObjects;\n    float *buf;\n    float **attributes;\n    float **cluster_centres = NULL;\n    \n    for (int i = 1; i < argc; i++) {\n        if (strcmp(argv[i], \"-i\") == 0 && i+1 < argc) filename = argv[++i];\n        else if (strcmp(argv[i], \"-k\") == 0 && i+1 < argc) nclusters = atoi(argv[++i]);\n        else if (strcmp(argv[i], \"-t\") == 0 && i+1 < argc) threshold = atof(argv[++i]);\n        else if (strcmp(argv[i], \"-b\") == 0) isBinaryFile = 1;\n    }\n    \n    if (!filename) {\n        fprintf(stderr, \"Usage: %s -i filename\\n\", argv[0]);\n        return -1;\n    }\n    \n    FILE *infile = fopen(filename, \"r\");\n    if (!infile) {\n        fprintf(stderr, \"Error: no such file (%s)\\n\", filename);\n        return 1;\n    }\n    \n    char line[1024];\n    numObjects = 0;\n    while (fgets(line, sizeof(line), infile)) {\n        if (strtok(line, \" \\t\\n\")) numObjects++;\n    }\n    rewind(infile);\n    numAttributes = 0;\n    while (fgets(line, sizeof(line), infile)) {\n        if (strtok(line, \" \\t\\n\")) {\n            char *tok = strtok(NULL, \" ,\\t\\n\");\n            while (tok) { numAttributes++; tok = strtok(NULL, \" ,\\t\\n\"); }\n            break;\n        }\n    }\n    rewind(infile);\n    \n    buf = malloc(numObjects * numAttributes * sizeof(float));\n    attributes = malloc(numObjects * sizeof(float*));\n    attributes[0] = buf;\n    for (int i = 1; i < numObjects; i++) attributes[i] = attributes[i-1] + numAttributes;\n    \n    int idx = 0;\n    while (fgets(line, sizeof(line), infile)) {\n        if (!strtok(line, \" \\t\\n\")) continue;\n        for (int j = 0; j < numAttributes; j++) {\n            char *tok = strtok(NULL, \" ,\\t\\n\");\n            if (tok) buf[idx++] = atof(tok);\n        }\n    }\n    fclose(infile);\n    \n    printf(\"I/O completed\\n\");\n    \n    cluster(numObjects, numAttributes, attributes, nclusters, threshold, &cluster_centres);\n    \n    printf(\"number of Clusters %d\\n\", nclusters);\n    printf(\"number of Attributes %d\\n\\n\", numAttributes);\n    printf(\"Time for process: %f\\n\", 0.0);\n    \n    free(attributes);\n    free(cluster_centres[0]);\n    free(cluster_centres);\n    free(buf);\n    \n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans.cl"
+  ],
+  "target_files_extracted": [
+    "kmeans.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.258,
+      "prompt_tokens": 40392,
+      "completion_tokens": 813,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'number of Clusters' NOT found in stdout. K-means clustering completed\nEnsure the translated code produces the same output format as the",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 51.144,
+      "prompt_tokens": 41254,
+      "completion_tokens": 5996,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern 'number of Clusters' NOT found in stdout. K-means clustering completed\nEnsure the translated code produces the same output format as the",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 39.006,
+      "prompt_tokens": 47299,
+      "completion_tokens": 3683,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}
