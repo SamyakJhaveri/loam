@@ -1193,6 +1193,23 @@ def _check_stdout_error_indicators(stdout: str) -> str | None:
     return None
 
 
+def _is_kernel_only_translation(target_spec: dict) -> bool:
+    """Check if this is a kernel-only translation (e.g., OpenCL .cl files).
+
+    For kernel-only translations, the host code is untouched — only compute
+    kernel files are translated. This means the translated binary uses the
+    TARGET's argc parsing and stdout format, not the SOURCE's.
+
+    Currently this applies to OpenCL targets where translation_targets are
+    all .cl files. CUDA (.cu) and OMP (.c/.cpp) targets contain host code
+    and are full-program translations.
+    """
+    targets = target_spec.get("files", {}).get("translation_targets", [])
+    if not targets:
+        return False
+    return all(t.endswith(".cl") for t in targets)
+
+
 def _build_cross_api_verify_spec(target_spec: dict, source_spec: dict) -> dict:
     """Build verification spec for cross-API translation.
 
@@ -1205,6 +1222,10 @@ def _build_cross_api_verify_spec(target_spec: dict, source_spec: dict) -> dict:
     Same-API translations (augmentation-only) should NOT use this function —
     they use the target spec directly.
     """
+    # Kernel-only: host code untouched, stdout matches target patterns
+    if _is_kernel_only_translation(target_spec):
+        return copy.deepcopy(target_spec)
+
     verify_spec = copy.deepcopy(target_spec)
 
     source_verification = source_spec.get("verification") or {}
@@ -1221,12 +1242,12 @@ def _build_cross_api_verify_spec(target_spec: dict, source_spec: dict) -> dict:
         # Combine source + target stdout patterns via regex alternation.
         # Source patterns first (LLM usually preserves source output format),
         # target patterns as fallback (some translations produce target-native output).
-        source_patterns = [s.get("expected_pattern", "") for s in source_stdout if s.get("expected_pattern")]
-        target_patterns = [s.get("expected_pattern", "") for s in target_stdout if s.get("expected_pattern")]
+        source_patterns = [s.get("pattern", "") for s in source_stdout if s.get("pattern")]
+        target_patterns = [s.get("pattern", "") for s in target_stdout if s.get("pattern")]
         all_patterns = source_patterns + [p for p in target_patterns if p not in source_patterns]
         if all_patterns:
             combined_pattern = "|".join(f"(?:{p})" for p in all_patterns)
-            combined_stdout = [{"type": "stdout_pattern", "expected_pattern": combined_pattern}]
+            combined_stdout = [{"type": "stdout_pattern", "pattern": combined_pattern}]
             verify_spec["verification"] = verify_spec.get("verification") or {}
             verify_spec["verification"]["strategies"] = combined_stdout + non_stdout
         else:
@@ -1247,6 +1268,10 @@ def _build_cross_api_run_spec(target_spec: dict, source_spec: dict) -> dict:
 
     Same-API translations (augmentation-only) should NOT use this function.
     """
+    # Kernel-only: host code untouched, use target's run args
+    if _is_kernel_only_translation(target_spec):
+        return copy.deepcopy(target_spec)
+
     run_spec_dict = copy.deepcopy(target_spec)
 
     source_run = source_spec.get("run") or {}
@@ -1613,9 +1638,10 @@ def evaluate_translation(
                         target_spec_resolved, source_spec
                     )
                     if verbose:
+                        mode = "kernel-only (target args)" if _is_kernel_only_translation(target_spec) else "full-program (source args)"
                         logger.info(
-                            "Cross-API (%s→%s): using source run args",
-                            source_api, target_api,
+                            "Cross-API (%s→%s): %s",
+                            source_api, target_api, mode,
                         )
                 else:
                     cross_run = target_spec_resolved
@@ -1646,8 +1672,9 @@ def evaluate_translation(
                     if source_api != target_api:
                         verify_spec = _build_cross_api_verify_spec(target_spec, source_spec)
                         if verbose:
-                            logger.info("Cross-API (%s→%s): using source stdout_pattern for verification",
-                                        source_api, target_api)
+                            mode = "kernel-only (target patterns)" if _is_kernel_only_translation(target_spec) else "full-program (combined patterns)"
+                            logger.info("Cross-API verify (%s→%s): %s",
+                                        source_api, target_api, mode)
                     else:
                         verify_spec = target_spec
 
@@ -1773,8 +1800,13 @@ def evaluate_translation(
         "temperature": temperature,
         "sample_id": sample_id,
         "translation_mode": translation_mode,
-        "verification_mode": "cross_api_source_pattern" if source_api != target_api else "same_api_target_pattern",
-        "run_args_mode": "cross_api_source_args" if source_api != target_api else "same_api_target_args",
+        "translation_type": "kernel_only" if _is_kernel_only_translation(target_spec) else "full_program",
+        "verification_mode": ("same_api_target_pattern" if source_api == target_api
+                              else "kernel_only_target_pattern" if _is_kernel_only_translation(target_spec)
+                              else "cross_api_combined_pattern"),
+        "run_args_mode": ("same_api_target_args" if source_api == target_api
+                          else "kernel_only_target_args" if _is_kernel_only_translation(target_spec)
+                          else "cross_api_source_args"),
         "run_arguments_used": _correctness_args if _correctness_args else None,
         "timestamp": timestamp,
         # LLM usage (totals across all attempts)

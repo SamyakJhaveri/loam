@@ -202,3 +202,29 @@ is discussed as evidence that per-kernel difficulty is not fully predicted by ag
 
 **Rule:** When writing per-kernel tier descriptions from tabular data, verify EVERY cell in
 the table against the prose claim. Do not assume rank-ordering is monotonic per kernel.
+
+## OpenCL Kernel-Only Translation (SESSION S-OCLFIX — 2026-03-30)
+
+**Bug fixed:** `llm_evaluate.py` cross-API run/verify logic assumed all translations rewrite
+the host code (correct for CUDA↔OMP). But X-to-OpenCL is "kernel-only" — only `.cl` kernel
+files are translated, host code is untouched. Three bugs caused 0% pass rate on ALL
+OpenCL-target translations:
+
+1. `_build_cross_api_run_spec()` sent SOURCE args to OpenCL binary (host expects TARGET args)
+2. `_build_cross_api_verify_spec()` used SOURCE stdout patterns (host prints TARGET patterns)
+3. Dead code: pattern extraction used key `"expected_pattern"` but specs use `"pattern"` —
+   combined-pattern logic never fired, fell back to source-only patterns
+
+**Fix:** Added `_is_kernel_only_translation(target_spec)` predicate. Returns `True` when ALL
+`translation_targets` end with `.cl`. When True, both functions return `copy.deepcopy(target_spec)`
+(target args and patterns unchanged). When False (CUDA/OMP targets), existing code path
+is completely unchanged.
+
+**Result JSON fields added:**
+- `translation_type`: `"kernel_only"` or `"full_program"`
+- `run_args_mode`: `"kernel_only_target_args"` / `"cross_api_source_args"` / `"same_api_target_args"`
+- `verification_mode`: `"kernel_only_target_pattern"` / `"cross_api_combined_pattern"` / `"same_api_target_pattern"`
+
+**Rule:** When adding new cross-API translation targets, check if they are kernel-only
+(host code untouched) or full-program (host code rewritten by LLM). The `.cl` heuristic
+works for OpenCL but may need extension for future APIs with separate kernel files.
