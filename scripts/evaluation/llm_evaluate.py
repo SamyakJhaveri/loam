@@ -946,7 +946,7 @@ def call_llm(
             )
         response = client_gemini.chat.completions.create(
             model=model,
-            max_tokens=32768,
+            max_tokens=65536,
             temperature=temperature,
             messages=full_messages,
             # Explicitly disable thinking/reasoning so all models are evaluated
@@ -990,7 +990,7 @@ def call_llm(
             )
         response = client_together.chat.completions.create(
             model=together_model,
-            max_tokens=32768,
+            max_tokens=81920,
             temperature=temperature,
             messages=full_messages,
             # Explicitly disable thinking/reasoning for Qwen 3.5 (thinking ON by
@@ -1216,13 +1216,46 @@ def _build_cross_api_verify_spec(target_spec: dict, source_spec: dict) -> dict:
     source_stdout = [s for s in source_strategies if s.get("type") == "stdout_pattern"]
 
     if source_stdout:
-        # Keep target's non-stdout strategies (exit_code, etc.)
+        target_stdout = [s for s in target_strategies if s.get("type") == "stdout_pattern"]
         non_stdout = [s for s in target_strategies if s.get("type") != "stdout_pattern"]
-        # Source stdout_pattern first (more informative failure), then exit_code
-        verify_spec["verification"] = verify_spec.get("verification") or {}
-        verify_spec["verification"]["strategies"] = source_stdout + non_stdout
+        # Combine source + target stdout patterns via regex alternation.
+        # Source patterns first (LLM usually preserves source output format),
+        # target patterns as fallback (some translations produce target-native output).
+        source_patterns = [s.get("expected_pattern", "") for s in source_stdout if s.get("expected_pattern")]
+        target_patterns = [s.get("expected_pattern", "") for s in target_stdout if s.get("expected_pattern")]
+        all_patterns = source_patterns + [p for p in target_patterns if p not in source_patterns]
+        if all_patterns:
+            combined_pattern = "|".join(f"(?:{p})" for p in all_patterns)
+            combined_stdout = [{"type": "stdout_pattern", "expected_pattern": combined_pattern}]
+            verify_spec["verification"] = verify_spec.get("verification") or {}
+            verify_spec["verification"]["strategies"] = combined_stdout + non_stdout
+        else:
+            verify_spec["verification"] = verify_spec.get("verification") or {}
+            verify_spec["verification"]["strategies"] = source_stdout + non_stdout
 
     return verify_spec
+
+
+def _build_cross_api_run_spec(target_spec: dict, source_spec: dict) -> dict:
+    """Build run spec for cross-API translation.
+
+    For cross-API translations (e.g., CUDA→OMP), LLMs preserve the SOURCE
+    code's argc/argv parsing pattern rather than adapting to the TARGET API's
+    calling convention. This function creates a hybrid run spec that uses:
+    - TARGET spec's executable, timeout, environment (binary lives in target dir)
+    - SOURCE spec's input_configurations.correctness.arguments (matches translated code's argc)
+
+    Same-API translations (augmentation-only) should NOT use this function.
+    """
+    run_spec_dict = copy.deepcopy(target_spec)
+
+    source_run = source_spec.get("run") or {}
+    source_input_configs = source_run.get("input_configurations", {})
+
+    if source_input_configs:
+        run_spec_dict.setdefault("run", {})["input_configurations"] = source_input_configs
+
+    return run_spec_dict
 
 
 def _build_retry_message(
@@ -1400,6 +1433,7 @@ def evaluate_translation(
     final_status = "ERROR"
     error_message: str | None = None
     last_llm_response: str = ""  # saved across loop iterations for preview
+    _correctness_args: list[str] = []  # populated in run stage for result metadata
 
     # Accumulated extracted files across all attempts (merge for partial extraction).
     # On partial EXTRACTION_FAIL retries, the LLM produces only missing files.
@@ -1572,8 +1606,27 @@ def evaluate_translation(
                 error_message = f"Build failed: {(build_result.stderr or '')[-200:].strip()}"
             else:
                 # -- Run --
+                # Cross-API: LLMs preserve source argc parsing,
+                # so use source args for the translated binary.
+                if source_api != target_api:
+                    cross_run = _build_cross_api_run_spec(
+                        target_spec_resolved, source_spec
+                    )
+                    if verbose:
+                        logger.info(
+                            "Cross-API (%s→%s): using source run args",
+                            source_api, target_api,
+                        )
+                else:
+                    cross_run = target_spec_resolved
+
+                # Capture which args are being used for auditability
+                _run_spec_used = cross_run
+                _run_configs = (_run_spec_used.get("run") or {}).get("input_configurations", {})
+                _correctness_args = (_run_configs.get("correctness") or {}).get("arguments", [])
+
                 run_result = run_spec(
-                    target_spec_resolved,
+                    cross_run,
                     project_root,
                     verbose=verbose,
                     measure_cpu_time=use_cpu_timing,
@@ -1721,6 +1774,8 @@ def evaluate_translation(
         "sample_id": sample_id,
         "translation_mode": translation_mode,
         "verification_mode": "cross_api_source_pattern" if source_api != target_api else "same_api_target_pattern",
+        "run_args_mode": "cross_api_source_args" if source_api != target_api else "same_api_target_args",
+        "run_arguments_used": _correctness_args if _correctness_args else None,
         "timestamp": timestamp,
         # LLM usage (totals across all attempts)
         "prompt_tokens": total_prompt_tokens,
