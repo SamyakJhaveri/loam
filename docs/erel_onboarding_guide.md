@@ -592,6 +592,43 @@ The result JSON is written to:
 
 ## 7. Running the Campaign
 
+### 7.0 Pre-campaign: Pull fixes, clear old results, update paths
+
+**If you have already run a Gemini campaign before**, you MUST do these steps first.
+If this is your first run, skip to 7.1.
+
+**Pull latest pipeline fixes:**
+```bash
+cd ~/Desktop/parbench_sam    # your project root
+git pull origin main
+```
+
+Recent fixes that affect result correctness:
+- **pass@k filename collision fix** (`0b952d9`): Sample 0 now gets `-s0` tag, preventing
+  overwrites with primary campaign results.
+- **cross-API run args fix** (`3fbaacf`): Fixes ~20-30% false VERIFY_FAIL/RUN_FAIL.
+
+**Clear old Gemini results** (required — `--resume` would skip existing files):
+```bash
+rm -rf results/evaluation/gemini-2.5-flash/
+rm -f results/evaluation/gemini-2_5-flash_campaign.log
+rm -f results/evaluation/gemini-2_5-flash_campaign_done.marker
+rm -f results/evaluation/gemini-2_5-flash_passk.log
+rm -f results/evaluation/gemini-2_5-flash_passk_done.marker
+
+# Verify clean
+ls results/evaluation/gemini-2.5-flash/ 2>/dev/null && echo "NOT CLEAN" || echo "CLEAN"
+```
+
+**Update campaign script paths** (two hardcoded references to Samyak's machine):
+```bash
+nano scripts/batch/run_eval_campaign.sh
+```
+- Line 44: Change `PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"` to YOUR project root
+- Line 477: Change `BASE = "/home/samyak/Desktop/parbench_sam"` to YOUR project root
+
+Verify: `grep -n "samyak" scripts/batch/run_eval_campaign.sh` should return nothing.
+
 ### 7.1 Primary campaign (790 tasks)
 
 The primary campaign runs:
@@ -629,6 +666,7 @@ The pass@k sweep runs:
 - **5 independent samples** per pair (temperature=0.7)
 - **max_retries=1** (zero-shot, no repair)
 - **Total: 790 tasks** (158 pairs x 5 samples)
+- **Filenames:** `-s0` through `-s4` tags — do NOT collide with primary results
 
 ### 7.3 Resuming after interruption
 

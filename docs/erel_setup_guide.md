@@ -1,9 +1,9 @@
-# Erel's ParBench Setup Guide
+# Erel's ParBench Setup & Campaign Guide
 
 **Purpose:** Quick-start guide for running ParBench eval campaigns on Erel's machine.
 For the full onboarding walkthrough, see `docs/erel_onboarding_guide.md`.
 
-**Last updated:** 2026-03-30
+**Last updated:** 2026-03-30 (updated with full redo instructions for Gemini primary + pass@k)
 
 ---
 
@@ -117,11 +117,17 @@ export GEMINI_API_KEY="your-key-here"
 
 ---
 
-## 5. Pull Pipeline Fixes First
+## 5. Pull Latest Pipeline Fixes
 
-**Critical:** Before running any eval campaign, ensure you have the latest pipeline fixes
-merged. Without the source-args fix, approximately 20-30% of VERIFY_FAILs and RUN_FAILs
-are false negatives caused by argument mismatches between source and target specs.
+**Critical:** Before running any eval campaign, pull the latest code. Recent commits
+fix issues that affect result correctness:
+
+- **pass@k filename collision fix** (`0b952d9`): When `--num-samples > 1`, sample 0
+  now gets a `-s0` tag, preventing overwrites with primary campaign L0 results.
+- **cross-API run args fix** (`3fbaacf`): Target spec run arguments are now correctly
+  generated for cross-API translations (fixes ~20-30% false VERIFY_FAIL/RUN_FAIL).
+- **Qwen eval data + figure updates** (`2d6e4ac`, `37dc809`): Updated paper figures
+  and viz data.
 
 ```bash
 cd /root/parbench
@@ -130,7 +136,29 @@ git pull origin main
 
 ---
 
-## 6. Verification Checklist
+## 6. Clear Old Gemini Results (REQUIRED before redo)
+
+**You must delete all existing Gemini results before re-running the campaign.**
+The `--resume` flag skips tasks whose result files already exist on disk. If you don't
+delete them first, the campaign will skip everything and think it's already done.
+
+```bash
+# Delete ALL existing Gemini primary + pass@k results
+rm -rf /root/parbench/results/evaluation/gemini-2.5-flash/
+
+# Also delete old log/marker files
+rm -f /root/parbench/results/evaluation/gemini-2_5-flash_campaign.log
+rm -f /root/parbench/results/evaluation/gemini-2_5-flash_campaign_done.marker
+rm -f /root/parbench/results/evaluation/gemini-2_5-flash_passk.log
+rm -f /root/parbench/results/evaluation/gemini-2_5-flash_passk_done.marker
+
+# Verify the directory is gone
+ls /root/parbench/results/evaluation/gemini-2.5-flash/ 2>/dev/null && echo "NOT CLEAN" || echo "CLEAN -- ready to go"
+```
+
+---
+
+## 7. Verification Checklist
 
 Run these before starting any campaign:
 
@@ -151,45 +179,157 @@ python3 -m harness -v verify specs/rodinia-bfs-omp.json
 
 ---
 
-## 7. Running Eval Campaigns
+## 8. Update Campaign Script Paths
 
-### Single model, single direction
+The campaign script has two hardcoded paths that point to Samyak's machine.
+You MUST change them to your project root before running:
 
 ```bash
-source env_parbench/bin/activate
+nano scripts/batch/run_eval_campaign.sh
+```
 
+**Change line 44:**
+```bash
+# FROM:
+PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
+# TO:
+PROJECT_ROOT="/root/parbench"
+```
+
+**Change line 477 (inside the Python heredoc):**
+```python
+# FROM:
+BASE = "/home/samyak/Desktop/parbench_sam"
+# TO:
+BASE = "/root/parbench"
+```
+
+**Verify no stale paths remain:**
+```bash
+grep -n "samyak" scripts/batch/run_eval_campaign.sh
+# Should return nothing
+```
+
+---
+
+## 9. Running the Gemini Eval Campaign (Full Redo)
+
+The campaign runs **28 batches** across 5 suites (Rodinia, XSBench, RSBench, mixbench,
+HeCBench) and 6 translation directions each. It self-launches in a tmux session so you
+can safely disconnect SSH.
+
+### Step 1: Primary campaign (790 tasks)
+
+This runs all 158 source-target pairs at 5 augmentation levels (L0-L4), with iterative
+self-repair (up to 3 attempts per task), deterministic decoding (temperature=0.0).
+
+```bash
+cd /root/parbench
+source env_parbench/bin/activate
+export GEMINI_API_KEY="your-key-here"
+
+bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash
+```
+
+**Monitor progress:**
+```bash
+# Attach to tmux session
+tmux attach -t gemini-2_5-flash_campaign
+# Detach without stopping: Ctrl+B, then D
+
+# Or watch the log file
+tail -f results/evaluation/gemini-2_5-flash_campaign.log
+
+# Count completed result files
+ls results/evaluation/gemini-2.5-flash/*.json 2>/dev/null | wc -l
+# Target: ~790 files (some KNOWN_FAIL specs produce fewer)
+```
+
+**If interrupted (SSH drops, reboot, etc.):** Just re-run the exact same command.
+`--resume` skips completed tasks automatically:
+```bash
+bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash
+```
+
+**When it finishes**, check the done marker:
+```bash
+cat results/evaluation/gemini-2_5-flash_campaign_done.marker
+```
+
+### Step 2: Pass@k sweep (790 tasks) — run AFTER primary completes
+
+This runs 158 pairs at L0 only, with 5 independent stochastic samples per pair
+(temperature=0.7), zero-shot (no retries). Result files get `-s0` through `-s4` tags,
+so they do NOT collide with primary campaign results.
+
+```bash
+bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash pass@k
+```
+
+**Monitor:**
+```bash
+tmux attach -t gemini-2_5-flash_passk
+# Or:
+tail -f results/evaluation/gemini-2_5-flash_passk.log
+```
+
+**If interrupted:** Same as primary — just re-run:
+```bash
+bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash pass@k
+```
+
+### Alternative: Manual batch commands (if you prefer not to use the campaign script)
+
+You can run individual suite+direction batches directly. This gives you more control
+but requires you to run each direction manually.
+
+**Primary mode (one suite, one direction):**
+```bash
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-omp \
   --models gemini-2.5-flash \
+  --augment-levels 0 1 2 3 4 \
+  --max-retries 3 \
+  --temperature 0.0 \
+  --num-samples 1 \
   --project-root /root/parbench \
   --resume -v
 ```
 
-### All directions for one model
-
+**Pass@k mode (one suite, one direction):**
 ```bash
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
-  --direction all \
+  --direction cuda-to-omp \
   --models gemini-2.5-flash \
+  --augment-levels 0 \
+  --max-retries 1 \
+  --temperature 0.7 \
+  --num-samples 5 \
   --project-root /root/parbench \
   --resume -v
 ```
 
-### Full campaign (tmux, survives SSH disconnect)
-
+**All 6 directions per suite (primary example):**
 ```bash
-bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash
-# Attach: tmux attach -t gemini-2_5-flash_campaign
-# Detach: Ctrl+B, then D
+for DIR in cuda-to-omp omp-to-cuda cuda-to-opencl opencl-to-cuda omp-to-opencl opencl-to-omp; do
+  python3 scripts/evaluation/run_eval_batch.py \
+    --suite rodinia --direction $DIR \
+    --models gemini-2.5-flash \
+    --augment-levels 0 1 2 3 4 \
+    --max-retries 3 --temperature 0.0 --num-samples 1 \
+    --project-root /root/parbench --resume -v
+done
 ```
 
-**Note:** Always pass `--suite rodinia` to avoid matching HeCBench kernels by name.
+Repeat the loop above for each suite: `rodinia`, `xsbench`, `rsbench`, `mixbench`.
+HeCBench requires `--kernels` to filter to curated kernels (the campaign script handles
+this automatically — see the script source for the exact kernel lists).
 
 ---
 
-## 8. Known Issues
+## 10. Known Issues
 
 - **Git worktrees** do NOT initialize the Rodinia submodule -- always run from the main repo
 - **8 KNOWN_FAIL specs** are auto-excluded from eval batches:
@@ -197,44 +337,85 @@ bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash
   `nn-opencl`, `kmeans-opencl`, `hecbench-stencil1d-omp_target`, `hecbench-scan-omp_target`
 - **Results** are written to `results/evaluation/{model}/` -- use `--resume` to skip existing
 - **Rate limiting (429):** Re-run the same command; `--resume` skips completed tasks
+- **pass@k result files** now use `-s0` through `-s4` tags (even sample 0). They do NOT
+  overwrite primary campaign results. Both can coexist in the same directory.
 
 ---
 
-## 9. Verifying Results
+## 11. Post-Campaign: Verify & Share Results
+
+### Verify completeness
+
+After BOTH campaigns (primary + pass@k) are done:
+
+```bash
+source env_parbench/bin/activate
+
+# Count primary results (no -s tag)
+PRIMARY=$(ls results/evaluation/gemini-2.5-flash/*.json 2>/dev/null | grep -v '\-s[0-9]' | wc -l)
+echo "Primary results: $PRIMARY (target: ~790)"
+
+# Count pass@k results (-s0 through -s4 tags)
+PASSK=$(ls results/evaluation/gemini-2.5-flash/*-s[0-9].json 2>/dev/null | wc -l)
+echo "Pass@k results: $PASSK (target: ~790)"
+
+# Per-suite breakdown
+for SUITE in rodinia xsbench rsbench mixbench hecbench; do
+  COUNT=$(ls results/evaluation/gemini-2.5-flash/${SUITE}-*.json 2>/dev/null | wc -l)
+  echo "  $SUITE: $COUNT files"
+done
+```
+
+### Quick status breakdown
+
+```bash
+python3 -c "
+import json, glob
+files = glob.glob('results/evaluation/gemini-2.5-flash/*.json')
+# Separate primary vs pass@k
+primary = [f for f in files if '-s0.' not in f and '-s1.' not in f and '-s2.' not in f and '-s3.' not in f and '-s4.' not in f]
+passk = [f for f in files if f not in primary]
+
+for label, flist in [('PRIMARY', primary), ('PASS@K', passk)]:
+    counts = {}
+    for f in flist:
+        r = json.loads(open(f).read())
+        s = r.get('overall_status', 'UNKNOWN')
+        counts[s] = counts.get(s, 0) + 1
+    total = len(flist)
+    passes = counts.get('PASS', 0)
+    print(f'{label}: {passes}/{total} PASS ({100*passes/total:.1f}%)' if total else f'{label}: no results')
+    for s, n in sorted(counts.items(), key=lambda x: -x[1]):
+        print(f'  {s}: {n}')
+    print()
+"
+```
+
+### Run the analysis pipeline
 
 ```bash
 python3 scripts/evaluation/analyze_eval.py \
   --project-root /root/parbench \
-  --output-dir results/evaluation
-
-# Quick status breakdown
-python3 -c "
-import json, glob
-files = glob.glob('results/evaluation/gemini-2.5-flash/*.json')
-counts = {}
-for f in files:
-    r = json.loads(open(f).read())
-    s = r.get('overall_status', 'UNKNOWN')
-    counts[s] = counts.get(s, 0) + 1
-total = len(files)
-passes = counts.get('PASS', 0)
-print(f'Total: {total}, PASS: {passes}/{total} ({100*passes/total:.1f}%)')
-for s, n in sorted(counts.items(), key=lambda x: -x[1]):
-    print(f'  {s}: {n}')
-"
+  --write-dashboard
 ```
 
-### Sharing results with Samyak
+### Share results with Samyak
 
 ```bash
-# Option 1: tarball
+# Option 1: tarball (includes both primary + pass@k)
 tar czf gemini-2.5-flash-results.tar.gz \
   results/evaluation/gemini-2.5-flash/ \
-  results/evaluation/eval_summary.json
+  results/evaluation/eval_summary.json \
+  results/evaluation/eval_summary.md \
+  results/evaluation/gemini-2_5-flash_campaign.log \
+  results/evaluation/gemini-2_5-flash_campaign_done.marker \
+  results/evaluation/gemini-2_5-flash_passk.log \
+  results/evaluation/gemini-2_5-flash_passk_done.marker
 
 # Option 2: push to a branch
-git checkout -b erel/gemini-2.5-flash-results
+git checkout -b erel/gemini-2.5-flash-redo
 git add results/evaluation/gemini-2.5-flash/
-git commit -m "Add Gemini 2.5 Flash eval results (Erel's machine, RTX 4060 Laptop)"
-git push -u origin erel/gemini-2.5-flash-results
+git add results/evaluation/eval_summary.json results/evaluation/eval_summary.md
+git commit -m "Gemini 2.5 Flash eval redo: primary + pass@k (RTX 4060 Laptop, post pipeline fixes)"
+git push -u origin erel/gemini-2.5-flash-redo
 ```
