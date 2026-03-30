@@ -34,48 +34,64 @@ import matplotlib.colors as mcolors  # noqa: E402
 import matplotlib.patches as mpatches  # noqa: E402
 from matplotlib.patches import Patch, FancyBboxPatch, FancyArrowPatch  # noqa: E402
 import numpy as np  # noqa: E402
+import scienceplots  # noqa: E402, F401
+
+plt.style.use(["science", "ieee", "no-latex"])
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # ---------------------------------------------------------------------------
-# SC26 Outfit-Derived Palette
+# Okabe-Ito Colorblind-Safe Palette (Okabe & Ito, 2008)
 # ---------------------------------------------------------------------------
-# Rose Pink, Saffron Amber, Teal, Gold, Charcoal, Slate, Warm Linen
+# Validated for protanopia, deuteranopia, and tritanopia.
 
+OKABE_ITO = {
+    "orange":     "#E69F00",
+    "sky_blue":   "#56B4E9",
+    "green":      "#009E73",
+    "yellow":     "#F0E442",
+    "blue":       "#0072B2",
+    "vermillion": "#D55E00",
+    "purple":     "#CC79A7",
+    "black":      "#000000",
+}
+
+# Legacy PALETTE keys remapped to Okabe-Ito for components that still
+# reference PALETTE (F1 architecture diagram, F2 heatmap, F4 funnel, etc.)
 PALETTE = {
-    "rose":      "#C8607A",
-    "rose_tint":  "#F8E0E5",
-    "rose_dark":  "#9E4860",
-    "saffron":    "#D48A35",
+    "rose":         OKABE_ITO["vermillion"],
+    "rose_tint":    "#F5D5C8",
+    "rose_dark":    "#A34A00",
+    "saffron":      OKABE_ITO["orange"],
     "saffron_tint": "#FBF0DD",
-    "saffron_dark": "#A66B28",
-    "teal":       "#2E8E9E",
-    "teal_tint":  "#D8F0F4",
-    "teal_dark":  "#1B6573",
-    "gold":       "#E6A84D",
-    "gold_tint":  "#FDF5E3",
-    "gold_dark":  "#B5843B",
-    "charcoal":   "#2D3436",
-    "slate":      "#636e72",
-    "linen":      "#F5F0EB",
+    "saffron_dark": "#B37D00",
+    "teal":         OKABE_ITO["blue"],
+    "teal_tint":    "#C8E0F0",
+    "teal_dark":    "#004A75",
+    "gold":         OKABE_ITO["yellow"],
+    "gold_tint":    "#FDF5E3",
+    "gold_dark":    "#B5A23B",
+    "charcoal":     OKABE_ITO["black"],
+    "slate":        "#636e72",
+    "linen":        "#F5F0EB",
 }
 
-# Status → color mapping (SC26 palette)
+# Status → color mapping (Okabe-Ito)
 STATUS_COLORS: dict[str, str] = {
-    "PASS":            PALETTE["teal"],       # #2E8E9E
-    "BUILD_FAIL":      PALETTE["rose"],       # #C8607A
-    "RUN_FAIL":        PALETTE["saffron"],    # #D48A35
-    "VERIFY_FAIL":     PALETTE["gold"],       # #E6A84D
-    "EXTRACTION_FAIL": PALETTE["slate"],      # #636e72
+    "PASS":            OKABE_ITO["green"],       # #009E73
+    "BUILD_FAIL":      OKABE_ITO["vermillion"],  # #D55E00
+    "RUN_FAIL":        OKABE_ITO["orange"],      # #E69F00
+    "VERIFY_FAIL":     OKABE_ITO["blue"],        # #0072B2
+    "EXTRACTION_FAIL": OKABE_ITO["purple"],      # #CC79A7
 }
 
-# Model → color mapping (SC26 palette)
+# Model → color mapping (Okabe-Ito)
 MODEL_COLORS: dict[str, str] = {
-    "together-qwen-3.5-397b-a17b":  PALETTE["saffron"],    # #D48A35
-    "claude-sonnet-4-6":            PALETTE["teal"],       # #2E8E9E
-    "azure-gpt-4.1":                PALETTE["gold"],       # #E6A84D
-    "groq-llama-3.3-70b-versatile": PALETTE["rose"],       # #C8607A
-    "gemini-2.5-flash-lite":        PALETTE["slate"],      # #636e72
+    "together-qwen-3.5-397b-a17b":  OKABE_ITO["orange"],      # #E69F00
+    "claude-sonnet-4-6":            OKABE_ITO["blue"],         # #0072B2
+    "azure-gpt-4.1":                OKABE_ITO["yellow"],       # #F0E442
+    "groq-llama-3.3-70b-versatile": OKABE_ITO["vermillion"],   # #D55E00
+    "gemini-2.5-flash-lite":        OKABE_ITO["purple"],       # #CC79A7
 }
 
 # Model → line style for print-safe rendering
@@ -89,8 +105,8 @@ MODEL_LINESTYLE: dict[str, tuple[str, str]] = {
 STATUS_HATCH: dict[str, str] = {
     "PASS":            "",
     "BUILD_FAIL":      "///",
-    "RUN_FAIL":        "\\\\\\\\",
-    "VERIFY_FAIL":     "xxx",
+    "RUN_FAIL":        "xxx",
+    "VERIFY_FAIL":     "\\\\\\\\",
     "EXTRACTION_FAIL": "...",
 }
 
@@ -151,24 +167,24 @@ def _save_figure(
 
 
 def setup_rcparams() -> None:
-    """Configure matplotlib for publication-quality output."""
+    """Configure matplotlib for publication-quality output (IEEE SC26).
+
+    SciencePlots 'ieee' style handles most settings; we override DPI (600
+    for IEEE camera-ready) and enforce minimum 8pt fonts throughout.
+    """
     plt.rcParams.update({
-        "font.family": "serif",
         "font.size": 10,
-        "axes.titlesize": 12,
-        "axes.labelsize": 11,
+        "axes.titlesize": 11,
+        "axes.labelsize": 10,
         "xtick.labelsize": 9,
         "ytick.labelsize": 9,
         "legend.fontsize": 9,
-        "figure.dpi": 300,
-        "savefig.dpi": 300,
+        "figure.dpi": 600,
+        "savefig.dpi": 600,
         "savefig.bbox": "tight",
         "savefig.pad_inches": 0.1,
         "pdf.fonttype": 42,  # TrueType (required by ACM/IEEE venues)
         "ps.fonttype": 42,
-        "axes.linewidth": 0.8,
-        "xtick.major.width": 0.6,
-        "ytick.major.width": 0.6,
     })
 
 
@@ -522,7 +538,7 @@ def generate_f2_api_cooccurrence(
         N=256,
     )
 
-    fig, ax = plt.subplots(figsize=(9, 8))
+    fig, ax = plt.subplots(figsize=(3.5, 3.0))
     im = ax.imshow(data, cmap=cmap, aspect="equal", vmin=0, vmax=data.max())
 
     # Annotate each cell with count
@@ -533,19 +549,19 @@ def generate_f2_api_cooccurrence(
             norm_val = data[i, j] / data.max()
             text_color = "white" if norm_val > 0.55 else PALETTE["charcoal"]
             fontweight = "bold"
-            fontsize = 10
+            fontsize = 8
             # Highlight CUDA-OpenMP cell (row=0/CUDA, col=1/OpenMP or row=1/OpenMP, col=0/CUDA)
             is_cuda_omp = (
                 (row_labels[i] == "CUDA" and apis[j] == "OpenMP")
                 or (row_labels[i] == "OpenMP" and apis[j] == "CUDA")
             )
             if is_cuda_omp:
-                fontsize = 12
+                fontsize = 9
                 fontweight = "extra bold"
                 # Draw a rectangle border to highlight
                 rect = plt.Rectangle(
                     (j - 0.5, i - 0.5), 1, 1,
-                    linewidth=2.5, edgecolor=PALETTE["rose"],
+                    linewidth=2.0, edgecolor=PALETTE["rose"],
                     facecolor="none", zorder=3,
                 )
                 ax.add_patch(rect)
@@ -560,26 +576,26 @@ def generate_f2_api_cooccurrence(
     ax.set_xticks(range(n))
     ax.set_xticklabels(
         [a.replace("OpenMP_Target", "OMP\nTarget") for a in apis],
-        rotation=45, ha="right", fontsize=9,
+        rotation=45, ha="right", fontsize=8,
     )
     ax.set_yticks(range(n))
     ax.set_yticklabels(
         [a.replace("OpenMP_Target", "OMP Target") for a in row_labels],
-        fontsize=9,
+        fontsize=8,
     )
 
     # Grid lines
     for i in range(n + 1):
-        ax.axhline(i - 0.5, color="white", linewidth=1.5)
-        ax.axvline(i - 0.5, color="white", linewidth=1.5)
+        ax.axhline(i - 0.5, color="white", linewidth=1.0)
+        ax.axvline(i - 0.5, color="white", linewidth=1.0)
 
     # Colorbar
     cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    cbar.set_label("Number of Repositories", fontsize=10)
+    cbar.set_label("Number of Repositories", fontsize=8)
 
     ax.set_title(
-        "API Co-occurrence Across 35 HPC Benchmark Repositories",
-        fontsize=12, fontweight="bold", pad=12,
+        "API Co-occurrence Across 35 HPC Repos",
+        fontsize=9, fontweight="bold", pad=8,
     )
 
     fig.tight_layout()
@@ -623,17 +639,17 @@ def generate_f3_repo_vs_kernel(
     x = np.arange(len(labels))
     bar_width = 0.32
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(3.5, 2.5))
 
     bars_repo = ax.bar(
         x - bar_width / 2, repo_counts, bar_width,
         color=PALETTE["teal_tint"], edgecolor=PALETTE["teal"],
-        linewidth=1.2, label="Repository Count",
+        linewidth=1.2, hatch="///", label="Repository Count",
     )
     bars_kernel = ax.bar(
         x + bar_width / 2, kernel_counts, bar_width,
         color=PALETTE["teal"], edgecolor=PALETTE["teal_dark"],
-        linewidth=1.2, label="Kernel Count",
+        linewidth=1.2, hatch="\\\\", label="Kernel Count",
     )
 
     # Log scale
@@ -644,12 +660,12 @@ def generate_f3_repo_vs_kernel(
     for i, (r, k) in enumerate(zip(repo_counts, kernel_counts)):
         ax.text(
             x[i] - bar_width / 2, r * 1.15, str(int(r)),
-            ha="center", va="bottom", fontsize=9, fontweight="bold",
+            ha="center", va="bottom", fontsize=8, fontweight="bold",
             color=PALETTE["teal_dark"],
         )
         ax.text(
             x[i] + bar_width / 2, k * 1.15, str(int(k)),
-            ha="center", va="bottom", fontsize=9, fontweight="bold",
+            ha="center", va="bottom", fontsize=8, fontweight="bold",
             color=PALETTE["charcoal"],
         )
 
@@ -658,18 +674,18 @@ def generate_f3_repo_vs_kernel(
         max_val = max(repo_counts[i], kernel_counts[i])
         ax.text(
             x[i], max_val * 2.2, mult,
-            ha="center", va="bottom", fontsize=13, fontweight="bold",
+            ha="center", va="bottom", fontsize=10, fontweight="bold",
             color=PALETTE["rose"],
         )
 
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, fontsize=11)
-    ax.set_ylabel("Count (log scale)", fontsize=11)
-    ax.legend(loc="lower right", frameon=True, framealpha=0.9, fontsize=10)
+    ax.set_xticklabels(labels, fontsize=9)
+    ax.set_ylabel("Count (log scale)")
+    ax.legend(loc="lower right", frameon=True, framealpha=0.9, fontsize=8)
     ax.grid(axis="y", linestyle="--", alpha=0.3, linewidth=0.6)
     ax.set_title(
-        "Repository-Level vs. Kernel-Level Translation Pair Counts",
-        fontsize=12, fontweight="bold", pad=12,
+        "Repo vs. Kernel Translation Pair Counts",
+        fontsize=9, fontweight="bold", pad=8,
     )
 
     fig.tight_layout()
@@ -713,7 +729,7 @@ def generate_f4_selection_funnel(
             print(f"  {lbl.replace(chr(10), ' ')}: {val}{exc_str}")
 
     n = len(stages)
-    fig, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(3.5, 3.0))
 
     max_val = max(values)
     y_positions = list(range(n - 1, -1, -1))  # bottom to top
@@ -742,14 +758,14 @@ def generate_f4_selection_funnel(
         ax.text(
             0.5, y, f"{value}",
             ha="center", va="center",
-            fontsize=14, fontweight="bold",
+            fontsize=9, fontweight="bold",
             color=text_color,
         )
         # Stage label on the left
         ax.text(
             -0.02, y, label,
             ha="right", va="center",
-            fontsize=9, color=PALETTE["charcoal"],
+            fontsize=8, color=PALETTE["charcoal"],
         )
         # Exclusion reason on the right
         if exc:
@@ -777,7 +793,7 @@ def generate_f4_selection_funnel(
     ax.axis("off")
     ax.set_title(
         "HeCBench Kernel Selection Pipeline",
-        fontsize=12, fontweight="bold", pad=12,
+        fontsize=9, fontweight="bold", pad=8,
     )
 
     fig.tight_layout()
@@ -915,7 +931,7 @@ def generate_f5_heatmap(
     n_c2ocl = max(len(c2ocl_models), 1)
 
     fig, (ax1, ax2, ax3) = plt.subplots(
-        1, 3, figsize=(8, 9),
+        1, 3, figsize=(7.16, 3.5),
         gridspec_kw={"width_ratios": [n_c2o, n_o2c, n_c2ocl], "wspace": 0.4},
     )
 
@@ -1040,7 +1056,7 @@ def generate_f6_taxonomy(
         print(f"  omp-to-cuda: {len(o2c_records)} tasks, {len(o2c_models)} models")
 
     fig, (ax1, ax2) = plt.subplots(
-        1, 2, figsize=(11, 5),
+        1, 2, figsize=(7.16, 3.0),
         gridspec_kw={"width_ratios": [len(c2o_models), len(o2c_models)], "wspace": 0.3},
     )
 
@@ -1110,7 +1126,7 @@ def generate_f7_augmentation(
         aug_data = AUG_ROBUSTNESS
         aug_total = AUG_TOTAL
 
-    fig, ax = plt.subplots(figsize=(7, 4.5))
+    fig, ax = plt.subplots(figsize=(3.5, 2.5))
 
     for model, pass_counts in aug_data.items():
         if model not in MODEL_LINESTYLE:
@@ -1169,7 +1185,7 @@ def generate_f8_cross_direction(
     directions = ["cuda-to-omp", "omp-to-cuda", "cuda-to-opencl"]
     dir_labels = ["CUDA \u2192 OMP", "OMP \u2192 CUDA", "CUDA \u2192 OpenCL"]
 
-    fig, ax = plt.subplots(figsize=(8, 5))
+    fig, ax = plt.subplots(figsize=(7.16, 3.0))
     x = np.arange(len(directions))
     bar_width = 0.5
 
@@ -1282,7 +1298,7 @@ def generate_f9_xsbench(
     bounds = list(range(len(STATUS_ORDER) + 1))
     norm = mcolors.BoundaryNorm(bounds, cmap.N)
 
-    fig, ax = plt.subplots(figsize=(6, 7))
+    fig, ax = plt.subplots(figsize=(3.5, 3.0))
     ax.imshow(matrix, cmap=cmap, norm=norm, aspect="auto")
 
     for i, d in enumerate(directions):
