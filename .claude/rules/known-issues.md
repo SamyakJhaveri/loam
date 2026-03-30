@@ -16,7 +16,7 @@ Do NOT try to fix any of these errors.
 
 **Rodinia:** 60 specs total, 54 TRUE PASS, 0 FALSE_PASS, 6 KNOWN_FAIL.
 **XSBench:** 4 specs total, 4 PASS, 0 KNOWN_FAIL.
-**RSBench:** 3 specs (cuda, omp, opencl), untested — newly added 2026-03-28.
+**RSBench:** 4 specs (cuda, omp, opencl, omp_target), untested — newly added 2026-03-28.
 **mixbench:** 3 specs (cuda, omp, opencl), untested — newly added 2026-03-28.
 **HeCBench (curated):** 10 kernels, 25 specs (cuda + omp/omp_target), 23 PASS, 2 KNOWN_FAIL.
 **All 58 Rodinia+XSBench non-KNOWN_FAIL specs verified PASS with stdout_pattern+exit_code conjunction.**

@@ -63,6 +63,13 @@ Use these at the right phase — don't skip them, don't over-invoke them.
 | New benchmark suite | `/gen-spec` | `/gen-spec xsbench` | Full guided spec generation wizard |
 | Bug fix workflow | `/fix-bug` | `/fix-bug "description"` | Reproduce → diagnose → fix → verify loop |
 | New feature | `/feature-dev` | `/feature-dev "name"` | Explore → plan → implement → verify |
+| Stress-test research claims | `/grill-research` | `/grill-research` | Adversarial interrogation of paper claims |
+| Simulate peer review | `/paper-review-sim` | `/paper-review-sim` | Multi-reviewer simulation (SC/ICSE style) |
+| Overnight LLM eval | `/overnight-eval` | `/overnight-eval rodinia` | tmux-based long-running eval batch |
+| Explore failure hypotheses | `/hypothesis-tree` | `/hypothesis-tree "why X fails"` | Structured hypothesis tree with evidence |
+| Verify citations | `/cite-check` | `/cite-check` | Check paper citations against source data |
+| Catch up on recent work | `/catchup` | `/catchup` | Summarize recent git/result changes |
+| Interpret eval results | `/interpret-results` | `/interpret-results` | Hypothesis-first result interpretation |
 
 **Critical ordering:** Implement → `/review` → `/validate` → commit → push → `dashboard-refresher` (if eval or spec data changed)
 
@@ -329,6 +336,11 @@ Teammates inherit every safety mechanism from project settings.json:
 - `git push --force` / `git reset --hard` — denied for all teammates
 - `sentinel-cleanup.sh` — any teammate's file edit invalidates validation sentinel
 - Ruff auto-lint — Python files auto-linted after any teammate's edits
+
+### Known Limitations
+
+- **Delegate mode permission propagation (GitHub #25037):** Delegate mode may fail to
+  propagate tool permissions to teammates. Workaround: use `bypassPermissions` mode.
 
 ### Anti-Patterns for Agent Teams
 

@@ -63,6 +63,9 @@ env_parbench/
 # Post-session validation sentinel (written by /validate, never committed)
 .validation_passed
 
+# Bash audit log (written by bash-audit-log.sh hook, grows unbounded)
+.claude/audit.log
+
 # Build artifacts
 *.o
 *.out

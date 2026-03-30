@@ -170,8 +170,16 @@ Conditional: `augmentation.md`, `evaluation.md`, `github-pages.md`, `spec-conven
 Key agents: `plan-reviewer`, `verify-app`, `explorer`, `eval-batcher`, `paper-drafter`, `self-critic`,
 `dashboard-refresher`, `rodinia-verifier`, `xsbench-explorer`.
 
-**Skills** (`.claude/skills/`, 10 skills): `/feature-dev`, `/fix-bug`, `/review`, `/gen-spec`,
-`/augment-test`, `/validate`, `/eval-run`, `/session-start`, `/dream`, `/agent-team`. Invoke via `/skill-name`.
+**Skills** (`.claude/skills/`, 17 skills): Invoke via `/skill-name`.
+Core: `/feature-dev`, `/fix-bug`, `/review`, `/gen-spec`, `/augment-test`, `/validate`,
+`/eval-run`, `/session-start`, `/dream`, `/agent-team`.
+Research: `/grill-research`, `/paper-review-sim`, `/hypothesis-tree`, `/cite-check`,
+`/interpret-results`, `/catchup`, `/overnight-eval`.
 
-**Agent Teams** (experimental): Spawn coordinated Claude Code sessions for multi-model
-analysis, paper drafting, debugging. See `.claude/rules/workflow.md` § Agent Teams.
+**Hooks** (`.claude/hooks/`, 8 scripts): Pre/PostToolUse + Stop hooks in `settings.json`.
+Safety: `protect-benchmark-sources`, `pre-commit-gate`, `result-immutability`, `sentinel-cleanup`.
+Observability: `bash-audit-log`, `post-compact-recovery`. Process: `dream-hook`, `should-dream`.
+
+**Agent Teams** (experimental, enabled via `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`):
+Spawn coordinated Claude Code sessions for multi-model analysis, paper drafting, debugging.
+See `.claude/rules/workflow.md` § Agent Teams.

@@ -159,6 +159,130 @@ _SUPPORT_HEADER_EXTS = frozenset({".h", ".hpp", ".cuh"})
 _SUPPORT_CODE_EXTS = frozenset({".c", ".cpp", ".cu", ".cc", ".cxx"})
 
 
+def _load_source_files_for_repair(
+    source_spec: dict[str, Any],
+    project_root: Path,
+) -> dict[str, str]:
+    """Load source code files from the source spec for linker symbol search.
+
+    Reads both prompt_payload and support_files (C/C++/CUDA sources and headers)
+    from the source spec's source_dir. Used by analyze_build_failure() to locate
+    definitions of symbols reported in linker errors.
+
+    Returns:
+        dict mapping filename → content. Empty dict if source_dir is missing.
+    """
+    source_resolved = resolve_paths(source_spec, project_root)
+    source_dir: Path = source_resolved["_resolved"]["source_dir"]
+    if not source_dir.is_dir():
+        return {}
+
+    source_files: dict[str, str] = {}
+
+    # Collect filenames from prompt_payload and support_files
+    files_section = source_spec.get("files") or {}
+    filenames: list[str] = []
+    filenames.extend(files_section.get("prompt_payload", []))
+    filenames.extend(files_section.get("support_files", []))
+
+    for fname in filenames:
+        fp = source_dir / fname
+        ext = Path(fname).suffix.lower()
+        if ext in (".c", ".cpp", ".cu", ".cc", ".cxx", ".h", ".hpp", ".cuh"):
+            try:
+                source_files[fname] = fp.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                pass
+
+    return source_files
+
+
+def analyze_build_failure(
+    build_error_snippet: str,
+    source_files: dict[str, str],
+) -> str:
+    """Parse linker errors and generate targeted repair instructions.
+
+    Analyzes undefined-reference and multiple-definition linker errors,
+    searches source files for the missing/duplicate symbols, and returns
+    human-readable repair hints for the LLM retry prompt.
+
+    Handles both GCC and Clang linker error formats:
+      - GCC:   undefined reference to `symbol'
+      - Clang: undefined reference to `symbol'  (same backtick-quote style)
+      - ld:    undefined reference to 'symbol'  (single quotes)
+      - GCC:   multiple definition of `symbol'
+      - Clang: duplicate symbol 'symbol'
+
+    Returns empty string if no linker errors are detected.
+    """
+    if not build_error_snippet:
+        return ""
+
+    # Parse linker error patterns (GCC/Clang/ld formats)
+    undefined = re.findall(
+        r"undefined reference to [`'](\w+)'", build_error_snippet
+    )
+    multiple_def = re.findall(
+        r"(?:multiple definition of|duplicate symbol) [`'](\w+)'",
+        build_error_snippet,
+    )
+
+    if not undefined and not multiple_def:
+        return ""  # Not a linker error — no hints to add
+
+    repair_hints: list[str] = []
+
+    for symbol in sorted(set(undefined)):
+        # Search source files for function definitions matching the symbol
+        for fname, content in source_files.items():
+            # Match common C/C++/CUDA function definition patterns:
+            #   return_type symbol(  or  __global__ void symbol(
+            pattern = re.compile(
+                rf"(?:^|\n)\s*(?:__global__|__device__|__host__|static|inline|extern|"
+                rf"void|int|float|double|unsigned|long|short|char|size_t|auto|bool|"
+                rf"template\s*<[^>]*>)\s+.*?\b{re.escape(symbol)}\s*\(",
+                re.MULTILINE,
+            )
+            match = pattern.search(content)
+            if match:
+                # match.start() may land on the \n anchor before the line;
+                # count newlines up through the match start for the correct line
+                pos = match.start()
+                if pos < len(content) and content[pos] == "\n":
+                    pos += 1  # skip the anchor newline to get the actual line
+                line_num = content[:pos].count("\n") + 1
+                repair_hints.append(
+                    f"MISSING SYMBOL: `{symbol}` -- found definition in source file "
+                    f"`{fname}` around line {line_num}. You must include this function "
+                    f"in your translated output. Inline the function body or ensure it "
+                    f"is defined before use."
+                )
+                break
+        else:
+            repair_hints.append(
+                f"MISSING SYMBOL: `{symbol}` -- not found in source files. "
+                f"This may be a CUDA-specific function that needs an OpenMP/target-API "
+                f"equivalent, or a utility function that should be included in your "
+                f"translation."
+            )
+
+    for symbol in sorted(set(multiple_def)):
+        repair_hints.append(
+            f"DUPLICATE SYMBOL: `{symbol}` is defined in multiple output files. "
+            f"Keep it in only one file (the main source) and use a forward "
+            f"declaration or #include in others. Alternatively, mark it as "
+            f"'static' or 'inline'."
+        )
+
+    if repair_hints:
+        return (
+            "\n\n## Linker Error Analysis\n\n"
+            + "\n".join(f"- {h}" for h in repair_hints)
+        )
+    return ""
+
+
 def _head_tail(text: str, max_len: int = 1500, head: int = 750, tail: int = 750) -> str:
     """Return head+tail of text if longer than max_len, else full text."""
     if len(text) <= max_len:
@@ -1194,6 +1318,9 @@ def evaluate_translation(
     # Read support files (headers + code) to include in prompt
     source_support = _read_support_files(source_spec, project_root)
 
+    # Pre-load source files for linker error analysis during retries
+    source_files_for_repair = _load_source_files_for_repair(source_spec, project_root)
+
     # Kernel-centric target filenames (all specs have translation_targets after SESSION 1.6)
     translation_mode = "kernel_centric"
     prompt_target_filenames: list[str] = target_spec["files"]["translation_targets"]
@@ -1486,6 +1613,18 @@ def evaluate_translation(
                 feedback = _build_retry_message(
                     final_build_result, final_run_result, final_verify_result
                 )
+
+                # Enrich BUILD_FAIL feedback with linker error analysis
+                if final_status == "BUILD_FAIL" and source_files_for_repair:
+                    build_stderr = (final_build_result.stderr or "") if final_build_result else ""
+                    linker_hints = analyze_build_failure(build_stderr, source_files_for_repair)
+                    if linker_hints:
+                        feedback += linker_hints
+                        logger.info(
+                            "Linker error analysis added %d hint(s) to retry feedback",
+                            linker_hints.count("- "),
+                        )
+
                 attempt_record["error_feedback_sent"] = feedback[:200]  # abbreviated in record
 
             attempts.append(attempt_record)
