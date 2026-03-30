@@ -2,12 +2,10 @@
 \toprule
 Direction & Model & PASS & Total & Rate (\%) & BUILD\_FAIL & RUN\_FAIL & VERIFY\_FAIL & EXTR\_FAIL \\
 \midrule
-CUDA$\to$OMP & Claude Sonnet 4 & 9 & 16 & 56.3 & 2 & 1 & 4 & 0 \\
- & Gemini Flash-Lite & 3 & 16 & 18.8 & 8 & 2 & 2 & 1 \\
- & Llama 3.3 70B & 3 & 16 & 18.8 & 8 & 2 & 2 & 1 \\
+CUDA$\to$OMP & Qwen 3.5 397B-A17B & 7 & 18 & 38.9 & 6 & 3 & 2 & 0 \\
 \midrule
-OMP$\to$CUDA & Claude Sonnet 4 & 6 & 16 & 37.5 & -- & -- & -- & -- \\
- & Llama 3.3 70B & 3 & 16 & 18.8 & -- & -- & -- & -- \\
- & Gemini Flash-Lite & 0 & 16 & 0.0 & -- & -- & -- & -- \\
+OMP$\to$CUDA & Qwen 3.5 397B-A17B & 3 & 18 & 16.7 & 10 & 4 & 1 & 0 \\
+\midrule
+CUDA$\to$OCL & Qwen 3.5 397B-A17B & 0 & 7 & 0.0 & 0 & 5 & 2 & 0 \\
 \bottomrule
 \end{tabular}

@@ -71,14 +71,16 @@ STATUS_COLORS: dict[str, str] = {
 
 # Model → color mapping (SC26 palette)
 MODEL_COLORS: dict[str, str] = {
+    "together-qwen-3.5-397b-a17b":  PALETTE["saffron"],    # #D48A35
     "claude-sonnet-4-6":            PALETTE["teal"],       # #2E8E9E
     "azure-gpt-4.1":                PALETTE["gold"],       # #E6A84D
     "groq-llama-3.3-70b-versatile": PALETTE["rose"],       # #C8607A
-    "gemini-2.5-flash-lite":        PALETTE["saffron"],    # #D48A35
+    "gemini-2.5-flash-lite":        PALETTE["slate"],      # #636e72
 }
 
 # Model → line style for print-safe rendering
 MODEL_LINESTYLE: dict[str, tuple[str, str]] = {
+    "together-qwen-3.5-397b-a17b":  ("D-.", "dashdot"),
     "claude-sonnet-4-6":            ("o-", "solid"),
     "gemini-2.5-flash-lite":        ("s--", "dashed"),
     "groq-llama-3.3-70b-versatile": ("^:", "dotted"),
@@ -101,6 +103,7 @@ STATUS_ABBREV: dict[str, str] = {
 }
 
 MODEL_DISPLAY: dict[str, str] = {
+    "together-qwen-3.5-397b-a17b": "Qwen 3.5\n397B",
     "claude-sonnet-4-6": "Claude\nSonnet 4",
     "azure-gpt-4.1": "GPT-4.1",
     "groq-llama-3.3-70b-versatile": "Llama 3.3\n70B",
@@ -108,6 +111,7 @@ MODEL_DISPLAY: dict[str, str] = {
 }
 
 MODEL_DISPLAY_SHORT: dict[str, str] = {
+    "together-qwen-3.5-397b-a17b": "Qwen 3.5 397B-A17B",
     "claude-sonnet-4-6": "Claude Sonnet 4",
     "azure-gpt-4.1": "GPT-4.1",
     "groq-llama-3.3-70b-versatile": "Llama 3.3 70B",
@@ -181,19 +185,6 @@ AUG_ROBUSTNESS: dict[str, list[int]] = {
 }
 AUG_TOTAL = 17  # Rodinia cuda-to-omp kernels evaluated
 
-# Verified S9 Rodinia direction comparison data (L0, 16 shared kernels, 3 models)
-# Source: results/evaluation/s9_direction_comparison.txt, verified 2026-03-26
-RODINIA_DIRECTION: dict[str, dict[str, int]] = {
-    "claude-sonnet-4-6":              {"c2o": 11, "o2c": 7, "total": 16},
-    "gemini-2.5-flash-lite":          {"c2o": 4,  "o2c": 1, "total": 16},
-    "groq-llama-3.3-70b-versatile":   {"c2o": 5,  "o2c": 3, "total": 16},
-}
-
-# S9 failure taxonomy by direction (L0, 16 kernels × 3 models = 48 tasks each)
-RODINIA_DIR_TAXONOMY: dict[str, dict[str, int]] = {
-    "cuda-to-omp": {"PASS": 20, "BUILD_FAIL": 20, "RUN_FAIL": 6, "EXTRACTION_FAIL": 2},
-    "omp-to-cuda": {"PASS": 11, "BUILD_FAIL": 28, "RUN_FAIL": 7, "EXTRACTION_FAIL": 2},
-}
 
 # Verified XSBench L0 cross-direction data (individual files, 2026-03-25)
 XSBENCH_L0: dict[str, dict[str, str]] = {
@@ -217,12 +208,6 @@ _XS_MODEL_DISPLAY = {
     "gemini": "Gemini Flash-Lite",
     "groq":   "Llama 3.3 70B",
 }
-_XS_MODEL_COLORS = {
-    "claude": PALETTE["teal"],
-    "gemini": PALETTE["saffron"],
-    "groq":   PALETTE["rose"],
-}
-
 
 def _augment_level_from_stem(stem: str) -> int:
     """Return the augmentation level encoded in a result filename stem."""
@@ -889,52 +874,67 @@ def generate_f5_heatmap(
     formats: list[str],
     verbose: bool,
 ) -> None:
-    """Generate F5: Dual-panel kernel x model heatmap (cuda-to-omp + omp-to-cuda)."""
-    # Build both matrices
+    """Generate F5: Triple-panel kernel heatmap (cuda-to-omp + omp-to-cuda + cuda-to-opencl)."""
     c2o_kernels, c2o_models, c2o_lookup = build_kernel_model_matrix(
         records, level=0, suite="rodinia", direction="cuda-to-omp",
     )
     o2c_kernels, o2c_models, o2c_lookup = build_kernel_model_matrix(
         records, level=0, suite="rodinia", direction="omp-to-cuda",
     )
+    c2ocl_kernels, c2ocl_models, c2ocl_lookup = build_kernel_model_matrix(
+        records, level=0, suite="rodinia", direction="cuda-to-opencl",
+    )
 
     if verbose:
         print(f"  cuda-to-omp: {len(c2o_kernels)} kernels x {len(c2o_models)} models")
         print(f"  omp-to-cuda: {len(o2c_kernels)} kernels x {len(o2c_models)} models")
+        print(f"  cuda-to-opencl: {len(c2ocl_kernels)} kernels x {len(c2ocl_models)} models")
 
-    # Unified kernel list sorted by total PASS count across both panels
-    all_kernels = sorted(set(c2o_kernels) | set(o2c_kernels))
+    # Unified kernel list for c2o + o2c (same kernels)
+    all_kernels_main = sorted(set(c2o_kernels) | set(o2c_kernels))
     kernel_pass = defaultdict(int)
-    for k in all_kernels:
+    for k in all_kernels_main:
         for m in c2o_models:
             if c2o_lookup.get((k, m)) == "PASS":
                 kernel_pass[k] += 1
         for m in o2c_models:
             if o2c_lookup.get((k, m)) == "PASS":
                 kernel_pass[k] += 1
-    kernels = sorted(all_kernels, key=lambda k: (-kernel_pass[k], k))
+    kernels_main = sorted(all_kernels_main, key=lambda k: (-kernel_pass[k], k))
 
-    # Create dual-panel figure
-    n_c2o = len(c2o_models)
-    n_o2c = len(o2c_models)
-    fig, (ax1, ax2) = plt.subplots(
-        1, 2, figsize=(10, 9),
-        gridspec_kw={"width_ratios": [n_c2o, n_o2c], "wspace": 0.15},
-        sharey=True,
+    # c2ocl kernels sorted by PASS count
+    c2ocl_pass = defaultdict(int)
+    for k in c2ocl_kernels:
+        for m in c2ocl_models:
+            if c2ocl_lookup.get((k, m)) == "PASS":
+                c2ocl_pass[k] += 1
+    kernels_ocl = sorted(c2ocl_kernels, key=lambda k: (-c2ocl_pass[k], k))
+
+    n_c2o = max(len(c2o_models), 1)
+    n_o2c = max(len(o2c_models), 1)
+    n_c2ocl = max(len(c2ocl_models), 1)
+
+    fig, (ax1, ax2, ax3) = plt.subplots(
+        1, 3, figsize=(8, 9),
+        gridspec_kw={"width_ratios": [n_c2o, n_o2c, n_c2ocl], "wspace": 0.4},
     )
 
     present1 = _draw_heatmap_panel(
-        ax1, kernels, c2o_models, c2o_lookup,
-        "CUDA \u2192 OpenMP (L0)", show_y_labels=True,
+        ax1, kernels_main, c2o_models, c2o_lookup,
+        f"CUDA \u2192 OMP (L0)\n{len(c2o_kernels)} kernels", show_y_labels=True,
     )
     present2 = _draw_heatmap_panel(
-        ax2, kernels, o2c_models, o2c_lookup,
-        "OpenMP \u2192 CUDA (L0)", show_y_labels=False,
+        ax2, kernels_main, o2c_models, o2c_lookup,
+        f"OMP \u2192 CUDA (L0)\n{len(o2c_kernels)} kernels", show_y_labels=False,
+    )
+    present3 = _draw_heatmap_panel(
+        ax3, kernels_ocl, c2ocl_models, c2ocl_lookup,
+        f"CUDA \u2192 OpenCL (L0)\n{len(c2ocl_kernels)} kernels", show_y_labels=True,
     )
 
     # Shared legend at bottom
     all_present = sorted(
-        present1 | present2,
+        present1 | present2 | present3,
         key=lambda s: STATUS_ORDER.index(s),
     )
     legend_handles = [
@@ -944,17 +944,6 @@ def generate_f5_heatmap(
         )
         for s in all_present
     ]
-    # Add N/A entry if any cells are missing
-    has_na = any(
-        (k, m) not in o2c_lookup
-        for k in kernels
-        for m in o2c_models
-    )
-    if has_na:
-        legend_handles.append(
-            Patch(facecolor=NA_COLOR, edgecolor="black", linewidth=0.5, label="N/A"),
-        )
-
     fig.legend(
         handles=legend_handles,
         loc="lower center", bbox_to_anchor=(0.5, -0.02),
@@ -1055,10 +1044,18 @@ def generate_f6_taxonomy(
         gridspec_kw={"width_ratios": [len(c2o_models), len(o2c_models)], "wspace": 0.3},
     )
 
-    _draw_taxonomy_panel(ax1, c2o_records, c2o_models, "CUDA \u2192 OpenMP (L0, 17 kernels)")
-    _draw_taxonomy_panel(ax2, o2c_records, o2c_models, "OpenMP \u2192 CUDA (L0, 16 kernels)")
+    n_c2o = len(set(r["kernel"] for r in c2o_records))
+    n_o2c = len(set(r["kernel"] for r in o2c_records))
+    _draw_taxonomy_panel(ax1, c2o_records, c2o_models, f"CUDA \u2192 OpenMP (L0, {n_c2o} kernels)")
+    _draw_taxonomy_panel(ax2, o2c_records, o2c_models, f"OpenMP \u2192 CUDA (L0, {n_o2c} kernels)")
 
     # Shared legend at top
+    # Include all statuses that appear in the data
+    all_statuses = set()
+    for r in c2o_records + o2c_records:
+        s = r.get("overall_status", "UNKNOWN")
+        if s in STATUS_COLORS:
+            all_statuses.add(s)
     handles = [
         Patch(
             facecolor=STATUS_COLORS[s], hatch=STATUS_HATCH[s],
@@ -1066,7 +1063,7 @@ def generate_f6_taxonomy(
             label=s.replace("_", " "),
         )
         for s in STATUS_ORDER
-        if s != "VERIFY_FAIL"  # Always 0, omit from legend
+        if s in all_statuses
     ]
     fig.legend(
         handles=handles,
@@ -1084,21 +1081,41 @@ def generate_f6_taxonomy(
 
 
 def generate_f7_augmentation(
+    records: list[dict],
     output_dir: Path,
     formats: list[str],
     verbose: bool,
 ) -> None:
-    """Generate F7: Augmentation robustness — pass rate vs. augmentation level.
-
-    Uses AUG_ROBUSTNESS verified data (Rodinia cuda-to-omp, seed=42, 17 kernels).
-    """
+    """Generate F7: Augmentation robustness — pass rate vs. augmentation level."""
     levels = [0, 1, 2, 3, 4]
     level_labels = ["L0\n(original)", "L1", "L2", "L3", "L4\n(max)"]
 
+    # Compute from records if available
+    c2o_all = [r for r in records if r.get("suite") == "rodinia" and r.get("direction") == "cuda-to-omp"]
+    if c2o_all:
+        # Derive per-model, per-level pass counts
+        model_level_pass: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+        model_level_total: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
+        for r in c2o_all:
+            m = r["model"]
+            lvl = r.get("augment_level", 0)
+            model_level_total[m][lvl] += 1
+            if r.get("overall_status") == "PASS":
+                model_level_pass[m][lvl] += 1
+        aug_data = {}
+        for m in model_level_pass:
+            aug_data[m] = [model_level_pass[m].get(lvl, 0) for lvl in levels]
+        aug_total = max(model_level_total[m].get(0, 0) for m in model_level_total) if model_level_total else AUG_TOTAL
+    else:
+        aug_data = AUG_ROBUSTNESS
+        aug_total = AUG_TOTAL
+
     fig, ax = plt.subplots(figsize=(7, 4.5))
 
-    for model, pass_counts in AUG_ROBUSTNESS.items():
-        rates = [c / AUG_TOTAL * 100 for c in pass_counts]
+    for model, pass_counts in aug_data.items():
+        if model not in MODEL_LINESTYLE:
+            continue
+        rates = [c / aug_total * 100 for c in pass_counts]
         marker_ls, ls = MODEL_LINESTYLE[model]
         color = MODEL_COLORS[model]
         label = MODEL_DISPLAY_SHORT.get(model, model)
@@ -1110,7 +1127,6 @@ def generate_f7_augmentation(
             markersize=7,
             label=label,
         )
-        # Annotate endpoint
         ax.annotate(
             f"{rates[-1]:.0f}%",
             xy=(4, rates[-1]),
@@ -1126,14 +1142,11 @@ def generate_f7_augmentation(
     ax.set_xlim(-0.2, 4.7)
     ax.yaxis.set_major_locator(plt.MultipleLocator(10))
     ax.grid(axis="y", linestyle="--", alpha=0.4, linewidth=0.6)
-
-    # Highlight L0 baseline
     ax.axvline(0, color="grey", linewidth=0.8, linestyle="--", alpha=0.5)
-
     ax.legend(loc="upper right", frameon=True, framealpha=0.9, fontsize=9)
     ax.set_title(
-        "Augmentation Robustness: Pass Rate across L0\u2013L4\n"
-        "(Rodinia CUDA\u2192OpenMP, 17 kernels, seed=42)",
+        f"Augmentation Robustness: Pass Rate across L0\u2013L4\n"
+        f"(Rodinia CUDA\u2192OpenMP, {aug_total} kernels, seed=42)",
         fontsize=10,
     )
 
@@ -1142,136 +1155,101 @@ def generate_f7_augmentation(
 
 
 # ---------------------------------------------------------------------------
-# F8: Cross-Direction Comparison (Rodinia + XSBench)
+# F8: Cross-Direction Comparison (Rodinia)
 # ---------------------------------------------------------------------------
 
 
 def generate_f8_cross_direction(
+    records: list[dict],
     output_dir: Path,
     formats: list[str],
     verbose: bool,
 ) -> None:
-    """Generate F8: Cross-direction comparison — Rodinia asymmetry + XSBench."""
-    fig, (ax1, ax2) = plt.subplots(
-        2, 1, figsize=(10, 8),
-        gridspec_kw={"height_ratios": [1, 1.2], "hspace": 0.4},
-    )
+    """Generate F8: Cross-direction comparison — status breakdown per direction."""
+    directions = ["cuda-to-omp", "omp-to-cuda", "cuda-to-opencl"]
+    dir_labels = ["CUDA \u2192 OMP", "OMP \u2192 CUDA", "CUDA \u2192 OpenCL"]
 
-    # --- Panel A: Rodinia direction asymmetry (3 models + aggregate) ---
-    dir_models = list(RODINIA_DIRECTION.keys())
-    n = len(dir_models) + 1  # +1 for aggregate
-    x = np.arange(n)
-    bar_width = 0.32
+    fig, ax = plt.subplots(figsize=(8, 5))
+    x = np.arange(len(directions))
+    bar_width = 0.5
 
-    c2o_rates = [
-        RODINIA_DIRECTION[m]["c2o"] / RODINIA_DIRECTION[m]["total"] * 100
-        for m in dir_models
-    ]
-    o2c_rates = [
-        RODINIA_DIRECTION[m]["o2c"] / RODINIA_DIRECTION[m]["total"] * 100
-        for m in dir_models
-    ]
-    # Aggregate
-    agg_c2o = sum(RODINIA_DIRECTION[m]["c2o"] for m in dir_models)
-    agg_o2c = sum(RODINIA_DIRECTION[m]["o2c"] for m in dir_models)
-    agg_total = sum(RODINIA_DIRECTION[m]["total"] for m in dir_models)
-    c2o_rates.append(agg_c2o / agg_total * 100)
-    o2c_rates.append(agg_o2c / agg_total * 100)
+    # Compute per-direction status counts from L0 Rodinia records
+    dir_status: dict[str, dict[str, int]] = {}
+    dir_totals: dict[str, int] = {}
+    for d in directions:
+        filtered = filter_records(records, level=0, suite="rodinia", direction=d)
+        counts: dict[str, int] = defaultdict(int)
+        for r in filtered:
+            status = r.get("overall_status", "UNKNOWN")
+            counts[status] += 1
+        dir_status[d] = counts
+        dir_totals[d] = len(filtered)
 
-    labels = [MODEL_DISPLAY_SHORT.get(m, m) for m in dir_models] + ["Aggregate"]
+    if verbose:
+        for d, lbl in zip(directions, dir_labels):
+            print(f"  {lbl}: {dir_totals[d]} tasks, {dir_status[d]}")
 
-    bars_c2o = ax1.bar(
-        x - bar_width / 2, c2o_rates, bar_width,
-        color=PALETTE["teal"], edgecolor="black", linewidth=0.5,
-        label="CUDA \u2192 OpenMP",
-    )
-    bars_o2c = ax1.bar(
-        x + bar_width / 2, o2c_rates, bar_width,
-        color=PALETTE["rose"], edgecolor="black", linewidth=0.5,
-        label="OpenMP \u2192 CUDA",
-    )
-
-    # Annotate bars with values and gap
-    for i in range(n):
-        ax1.text(
-            x[i] - bar_width / 2, c2o_rates[i] + 1.5,
-            f"{c2o_rates[i]:.1f}%", ha="center", va="bottom",
-            fontsize=7, fontweight="bold", color=PALETTE["teal_dark"],
-        )
-        ax1.text(
-            x[i] + bar_width / 2, o2c_rates[i] + 1.5,
-            f"{o2c_rates[i]:.1f}%", ha="center", va="bottom",
-            fontsize=7, fontweight="bold", color=PALETTE["rose_dark"],
-        )
-        gap = c2o_rates[i] - o2c_rates[i]
-        if gap > 0:
-            mid_y = max(c2o_rates[i], o2c_rates[i]) + 8
-            ax1.text(
-                x[i], mid_y, f"+{gap:.1f}pp",
-                ha="center", va="bottom",
-                fontsize=7, color=PALETTE["charcoal"],
-                fontstyle="italic",
-            )
-
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(labels, fontsize=9)
-    ax1.set_ylabel("Pass Rate (%)")
-    ax1.set_ylim(0, 90)
-    ax1.yaxis.set_major_locator(plt.MultipleLocator(10))
-    ax1.grid(axis="y", linestyle="--", alpha=0.3, linewidth=0.6)
-    ax1.legend(loc="upper right", frameon=True, framealpha=0.9, fontsize=9)
-    ax1.set_title(
-        "Rodinia Direction Asymmetry (L0, 16 shared kernels, 3 models)\n"
-        "CUDA\u2192OMP is consistently easier than OMP\u2192CUDA (+18.8pp aggregate)",
-        fontsize=10, fontweight="bold",
-    )
-    # Vertical separator before aggregate
-    ax1.axvline(x[-1] - 0.5, color=PALETTE["slate"], linewidth=0.8,
-                linestyle="--", alpha=0.4)
-
-    # --- Panel B: XSBench cross-direction bar chart ---
-    directions = list(XSBENCH_L0.keys())
-    n_dirs = len(directions)
-    n_models = len(_XS_MODELS)
-    xs_bar_width = 0.22
-    x2 = np.arange(n_dirs)
-
-    for i, model in enumerate(_XS_MODELS):
-        is_pass = np.array([
-            1 if XSBENCH_L0[d][model] == "PASS" else 0
-            for d in directions
-        ], dtype=float)
-        offset = (i - n_models / 2 + 0.5) * xs_bar_width
-        ax2.bar(
-            x2 + offset, is_pass, xs_bar_width,
-            color=_XS_MODEL_COLORS[model],
+    bottoms = np.zeros(len(directions))
+    for status in STATUS_ORDER:
+        counts = np.array([dir_status[d].get(status, 0) for d in directions], dtype=float)
+        if counts.sum() == 0:
+            continue
+        ax.bar(
+            x, counts, bar_width,
+            bottom=bottoms,
+            color=STATUS_COLORS[status],
+            hatch=STATUS_HATCH[status],
             edgecolor="black", linewidth=0.5,
-            label=_XS_MODEL_DISPLAY[model],
+            label=status.replace("_", " "),
         )
-        for j, (d, v) in enumerate(zip(directions, is_pass)):
-            if v == 0:
-                status = XSBENCH_L0[d][model]
-                abbrev = STATUS_ABBREV.get(status, "?")
-                ax2.text(
-                    x2[j] + offset, 0.02, abbrev,
-                    ha="center", va="bottom",
-                    fontsize=5, color="#555555", rotation=90,
+        for i, (count, bottom) in enumerate(zip(counts, bottoms)):
+            if count > 0:
+                ax.text(
+                    x[i], bottom + count / 2, str(int(count)),
+                    ha="center", va="center",
+                    fontsize=9, fontweight="bold",
+                    color=_text_color_for_bg(STATUS_COLORS[status]),
                 )
+        bottoms += counts
 
-    ax2.set_xticks(x2)
-    dir_labels = [d.replace("-to-", "\u2192").replace("_target", "-T") for d in directions]
-    ax2.set_xticklabels(dir_labels, rotation=35, ha="right", fontsize=7)
-    ax2.set_yticks([0, 1])
-    ax2.set_yticklabels(["FAIL", "PASS"])
-    ax2.set_ylabel("Result")
-    ax2.set_ylim(-0.1, 1.3)
-    ax2.set_title(
-        "XSBench Cross-Direction Results (L0, 12 directions, 3 models)\n"
-        "Claude: 10/12 PASS  |  Gemini: 0/12 PASS  |  Llama: 1/12 PASS",
+    # Annotate pass rate above each bar
+    for i, d in enumerate(directions):
+        total = dir_totals[d]
+        passed = dir_status[d].get("PASS", 0)
+        rate = passed / total * 100 if total else 0
+        ax.text(
+            x[i], bottoms[i] + 0.5, f"{rate:.0f}%",
+            ha="center", va="bottom",
+            fontsize=10, fontweight="bold", color=PALETTE["charcoal"],
+        )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(dir_labels, fontsize=11)
+    ax.set_ylabel("Number of Tasks (L0)")
+    max_y = max(bottoms) * 1.15 if max(bottoms) > 0 else 1
+    ax.set_ylim(0, max_y)
+    ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.grid(axis="y", linestyle="--", alpha=0.3, linewidth=0.6)
+
+    handles = [
+        Patch(
+            facecolor=STATUS_COLORS[s], hatch=STATUS_HATCH[s],
+            edgecolor="black", linewidth=0.5,
+            label=s.replace("_", " "),
+        )
+        for s in STATUS_ORDER
+        if any(dir_status[d].get(s, 0) > 0 for d in directions)
+    ]
+    ax.legend(handles=handles, loc="upper right", frameon=True, framealpha=0.9, fontsize=9)
+
+    n_kernels_c2o = dir_totals.get("cuda-to-omp", 0)
+    n_kernels_o2c = dir_totals.get("omp-to-cuda", 0)
+    n_kernels_c2ocl = dir_totals.get("cuda-to-opencl", 0)
+    ax.set_title(
+        f"Cross-Direction Status Breakdown (L0, Rodinia)\n"
+        f"C\u2192O: {n_kernels_c2o} kernels | O\u2192C: {n_kernels_o2c} kernels | C\u2192OCL: {n_kernels_c2ocl} kernels",
         fontsize=10, fontweight="bold",
     )
-    ax2.legend(loc="upper right", frameon=True, framealpha=0.9, fontsize=8)
-    ax2.grid(axis="y", linestyle="--", alpha=0.3, linewidth=0.6)
 
     _save_figure(fig, output_dir, "f8_cross_direction_comparison", formats)
     plt.close(fig)
@@ -1380,15 +1358,16 @@ def generate_t2_latex(
 ) -> None:
     """Generate T2: Model comparison LaTeX table — both directions."""
     lines = [
-        r"\begin{tabular}{llrrrrrr}",
+        r"\begin{tabular}{llrrrrrrr}",
         r"\toprule",
-        r"Direction & Model & PASS & Total & Rate (\%) & BUILD\_FAIL & RUN\_FAIL & EXTR\_FAIL \\",
+        r"Direction & Model & PASS & Total & Rate (\%) & BUILD\_FAIL & RUN\_FAIL & VERIFY\_FAIL & EXTR\_FAIL \\",
         r"\midrule",
     ]
 
     for direction, dir_label in [
         ("cuda-to-omp", r"CUDA$\to$OMP"),
         ("omp-to-cuda", r"OMP$\to$CUDA"),
+        ("cuda-to-opencl", r"CUDA$\to$OCL"),
     ]:
         filtered = filter_records(records, level=0, suite="rodinia", direction=direction)
         model_stats: dict[str, dict] = {}
@@ -1414,12 +1393,13 @@ def generate_t2_latex(
             rate = p / t * 100 if t else 0
             bf = info["by_status"].get("BUILD_FAIL", 0)
             rf = info["by_status"].get("RUN_FAIL", 0)
+            vf = info["by_status"].get("VERIFY_FAIL", 0)
             ef = info["by_status"].get("EXTRACTION_FAIL", 0)
             d_label = dir_label if i == 0 else ""
             lines.append(
-                f"{d_label} & {display} & {p} & {t} & {rate:.1f} & {bf} & {rf} & {ef} \\\\"
+                f"{d_label} & {display} & {p} & {t} & {rate:.1f} & {bf} & {rf} & {vf} & {ef} \\\\"
             )
-        if direction == "cuda-to-omp":
+        if direction != "cuda-to-opencl":
             lines.append(r"\midrule")
 
     lines.append(r"\bottomrule")
@@ -1477,7 +1457,7 @@ def main() -> None:
     else:
         requested = {
             "f1", "f2", "f3", "f4",
-            "f5", "f6", "f7", "f8", "f9",
+            "f5", "f6", "f7", "f8",
             "t2",
         }
 
@@ -1538,7 +1518,7 @@ def main() -> None:
 
     # F5: Dual-panel heatmap (cuda-to-omp + omp-to-cuda)
     if "f5" in requested:
-        print("Generating F5: Kernel x Model Heatmap (dual-panel)...")
+        print("Generating F5: Kernel x Model Heatmap (triple-panel)...")
         generate_f5_heatmap(records, output_dir, formats, args.verbose)
         print()
 
@@ -1550,14 +1530,14 @@ def main() -> None:
 
     # F7: Augmentation robustness line chart
     if "f7" in requested:
-        print("Generating F7: Augmentation Robustness (3 models, L0-L4)...")
-        generate_f7_augmentation(output_dir, formats, args.verbose)
+        print("Generating F7: Augmentation Robustness (L0-L4)...")
+        generate_f7_augmentation(records, output_dir, formats, args.verbose)
         print()
 
-    # F8: Cross-direction comparison (Rodinia + XSBench)
+    # F8: Cross-direction comparison (Rodinia)
     if "f8" in requested:
-        print("Generating F8: Cross-Direction Comparison (Rodinia + XSBench)...")
-        generate_f8_cross_direction(output_dir, formats, args.verbose)
+        print("Generating F8: Cross-Direction Comparison (Rodinia)...")
+        generate_f8_cross_direction(records, output_dir, formats, args.verbose)
         print()
 
     # F9: XSBench direction x model heatmap
