@@ -28,10 +28,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "main-cuda.cpp",
-            "mix_kernels_cuda.cu",
-            "mix_kernels_cuda.h",
-            "lcutil.h"
+            "mix_kernels_cuda.cu"
         ]
     },
     "implementation": {

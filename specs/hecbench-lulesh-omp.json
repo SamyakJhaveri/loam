@@ -33,9 +33,6 @@
         "verification_only": [],
         "translation_targets": [
             "lulesh.cc",
-            "lulesh-init.cc",
-            "lulesh-util.cc",
-            "lulesh-viz.cc",
             "lulesh.h"
         ]
     },

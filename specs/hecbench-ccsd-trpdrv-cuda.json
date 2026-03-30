@@ -31,8 +31,6 @@
       "reference.h"
     ],
     "translation_targets": [
-      "main.cu",
-      "ccsd_trpdrv.cu",
       "ccsd_tengy.cu"
     ]
   },

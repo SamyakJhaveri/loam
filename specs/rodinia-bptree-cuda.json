@@ -42,8 +42,7 @@
             "kernel/kernel_gpu_cuda.cu",
             "kernel/kernel_gpu_cuda_2.cu",
             "kernel/kernel_gpu_cuda_wrapper.cu",
-            "kernel/kernel_gpu_cuda_wrapper_2.cu",
-            "util/cuda/cuda.cu"
+            "kernel/kernel_gpu_cuda_wrapper_2.cu"
         ]
     },
     "implementation": {

@@ -33,8 +33,7 @@
     "translation_targets": [
       "main.cu",
       "cuThomasBatch.cu",
-      "cuThomasBatch.h",
-      "ThomasMatrix.hpp"
+      "cuThomasBatch.h"
     ]
   },
   "implementation": {

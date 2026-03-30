@@ -35,9 +35,6 @@
     ],
     "translation_targets": [
       "main.cu",
-      "backprop.cu",
-      "facetrain.cu",
-      "imagenet.cu",
       "bpnn_layerforward.h",
       "bpnn_adjust_weights.h"
     ]

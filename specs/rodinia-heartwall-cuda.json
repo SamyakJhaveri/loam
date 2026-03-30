@@ -34,8 +34,7 @@
         "verification_only": [],
         "translation_targets": [
             "kernel.cu",
-            "main.cu",
-            "setdevice.cu"
+            "main.cu"
         ]
     },
     "implementation": {

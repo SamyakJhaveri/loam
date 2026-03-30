@@ -41,7 +41,6 @@
         "translation_targets": [
             "components.cu",
             "dwt.cu",
-            "dwt_cuda/common.cu",
             "dwt_cuda/fdwt53.cu",
             "dwt_cuda/fdwt97.cu",
             "dwt_cuda/rdwt53.cu",

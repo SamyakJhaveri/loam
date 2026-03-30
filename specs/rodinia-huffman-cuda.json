@@ -46,7 +46,6 @@
         "translation_targets": [
             "hist.cu",
             "main_test_cu.cu",
-            "pabio_kernels_v2.cu",
             "pack_kernels.cu",
             "scan.cu",
             "scanLargeArray_kernel.cu",

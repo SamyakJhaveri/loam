@@ -32,8 +32,6 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "define.c",
-            "kernel.c",
             "main.c"
         ]
     },

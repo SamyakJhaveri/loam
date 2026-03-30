@@ -36,8 +36,7 @@
     ],
     "translation_targets": [
       "GSimulation.cu",
-      "GSimulationKernels.hpp",
-      "main.cu"
+      "GSimulationKernels.hpp"
     ]
   },
   "implementation": {

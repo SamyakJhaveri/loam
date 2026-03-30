@@ -31,12 +31,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "Main.c",
-            "io.c",
-            "Simulation.c",
-            "GridInit.c",
-            "XSutils.c",
-            "Materials.c"
+            "Simulation.c"
         ]
     },
     "implementation": {

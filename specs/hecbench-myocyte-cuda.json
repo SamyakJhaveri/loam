@@ -38,8 +38,7 @@
     "translation_targets": [
       "kernel.cu",
       "kernel_cam.cu",
-      "kernel_ecc.cu",
-      "main.cu"
+      "kernel_ecc.cu"
     ]
   },
   "implementation": {

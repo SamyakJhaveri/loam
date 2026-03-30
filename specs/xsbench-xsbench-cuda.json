@@ -31,12 +31,8 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "Main.cu",
-            "io.cu",
             "Simulation.cu",
-            "GridInit.cu",
-            "XSutils.cu",
-            "Materials.cu"
+            "GridInit.cu"
         ]
     },
     "implementation": {

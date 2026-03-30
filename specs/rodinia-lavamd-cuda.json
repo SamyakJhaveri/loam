@@ -36,8 +36,7 @@
         "verification_only": [],
         "translation_targets": [
             "kernel/kernel_gpu_cuda.cu",
-            "kernel/kernel_gpu_cuda_wrapper.cu",
-            "util/device/device.cu"
+            "kernel/kernel_gpu_cuda_wrapper.cu"
         ]
     },
     "implementation": {

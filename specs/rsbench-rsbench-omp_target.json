@@ -31,12 +31,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "main.c",
-            "io.c",
-            "simulation.c",
-            "init.c",
-            "material.c",
-            "utils.c"
+            "simulation.c"
         ]
     },
     "implementation": {

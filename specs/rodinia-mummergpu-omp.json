@@ -38,15 +38,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "src/PoolMalloc.cpp",
-            "src/common.cu",
-            "src/morton.c",
-            "src/mummergpu.cu",
-            "src/mummergpu_gold.cpp",
-            "src/mummergpu_kernel.cu",
-            "src/mummergpu_main.cpp",
-            "src/smith-waterman.cpp",
-            "src/suffix-tree.cpp"
+            "src/mummergpu_gold.cpp"
         ]
     },
     "implementation": {

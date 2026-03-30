@@ -1401,6 +1401,12 @@ def evaluate_translation(
     error_message: str | None = None
     last_llm_response: str = ""  # saved across loop iterations for preview
 
+    # Accumulated extracted files across all attempts (merge for partial extraction).
+    # On partial EXTRACTION_FAIL retries, the LLM produces only missing files.
+    # This dict keeps successfully extracted files from prior attempts so they
+    # aren't lost when restore_files() wipes the working directory.
+    accumulated_extracted: dict[str, str] = {}
+
     try:
         for attempt_num in range(1, max_retries + 1):
             # Reset per-attempt accumulators so the final result JSON always
@@ -1462,8 +1468,15 @@ def evaluate_translation(
             # De-anonymize: map generic filenames back to real filenames
             extracted = {anon_map[gf]: code for gf, code in anon_extracted.items()}
 
-            # -- Write extracted files to disk using real filenames --
-            for fname, code in extracted.items():
+            # Merge into accumulator — newer extractions win for duplicate keys,
+            # so re-emitted files get the latest version while previously-extracted
+            # files from earlier attempts are preserved.
+            accumulated_extracted.update(extracted)
+
+            # -- Write ALL accumulated files to disk (not just current attempt) --
+            # This ensures files from prior partial-extraction attempts survive
+            # restore_files() calls that wipe the working directory.
+            for fname, code in accumulated_extracted.items():
                 fp = source_dir / fname
                 fp.parent.mkdir(parents=True, exist_ok=True)
                 fp.write_text(code, encoding="utf-8")
@@ -1494,17 +1507,18 @@ def evaluate_translation(
                     break
                 messages.append({"role": "assistant", "content": response_text})
                 messages.append({"role": "user", "content": extraction_feedback})
-                restore_files(backup_info)
-                backup_info = backup_files(target_file_paths)
+                # Do NOT restore_files here — accumulated_extracted files on disk
+                # must survive across extraction retries so the LLM can produce
+                # only the missing files on the next attempt.
                 continue
 
             # -- Guard: EXTRACTION_FAIL on partial extraction or 0-byte extracted files --
-            # Some extracted files missing → reference files remain on disk for those
-            # targets, producing a false PASS or misleading BUILD_FAIL. Treat the same
-            # as zero extraction: fail fast and ask LLM to re-emit the missing files.
-            # Also catch 0-byte extractions — an empty file is not a translation.
-            _missing_files = [f for f in target_filenames if f not in extracted]
-            _empty_files = [f for f, c in extracted.items() if not c.strip()]
+            # Check against accumulated_extracted (not just this attempt's extracted)
+            # so that files successfully extracted in prior attempts count toward
+            # completeness.  This prevents the pipeline from regressing when a retry
+            # produces only the missing files (by design).
+            _missing_files = [f for f in target_filenames if f not in accumulated_extracted]
+            _empty_files = [f for f, c in accumulated_extracted.items() if f in target_filenames and not c.strip()]
             _partial_fail_files = _missing_files + _empty_files
             # Map real filenames back to anonymized names for feedback to LLM
             _real_to_anon = {v: k for k, v in anon_map.items()}
@@ -1523,8 +1537,9 @@ def evaluate_translation(
                     # Use anonymized filenames in feedback (LLM knows generic names)
                     extraction_feedback = (
                         f"Your response was missing {len(_anon_partial_fail)} expected "
-                        f"file(s). Please include ALL target files in your response. "
-                        f"Re-emit the following missing/empty files using this format:\n\n"
+                        f"file(s). The other files from your previous response were saved "
+                        f"successfully. Please provide ONLY the following missing/empty "
+                        f"files:\n\n"
                         + "".join(
                             f"```c {f}\n// your translated code here\n```\n\n"
                             for f in _anon_partial_fail
@@ -1536,8 +1551,10 @@ def evaluate_translation(
                     break
                 messages.append({"role": "assistant", "content": response_text})
                 messages.append({"role": "user", "content": extraction_feedback})
-                restore_files(backup_info)
-                backup_info = backup_files(target_file_paths)
+                # Do NOT restore_files here — accumulated_extracted files on disk
+                # must survive across extraction retries.  The next attempt will
+                # write accumulated_extracted (which includes prior successes)
+                # back to disk after merging any newly extracted files.
                 continue
 
             # -- Build --

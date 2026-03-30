@@ -37,9 +37,7 @@
             "KeccakTreeCPU.h"
         ],
         "translation_targets": [
-            "main.cu",
             "KeccakTreeGPU.cu",
-            "KeccakF.cu",
             "Test.cu"
         ]
     },

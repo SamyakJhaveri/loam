@@ -39,9 +39,7 @@
       "KeccakTreeCPU.h"
     ],
     "translation_targets": [
-      "main.cpp",
       "KeccakTreeGPU.cpp",
-      "KeccakF.cpp",
       "Test.cpp"
     ]
   },

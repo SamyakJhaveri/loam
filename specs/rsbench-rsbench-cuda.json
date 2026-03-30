@@ -31,12 +31,8 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "main.cu",
-            "io.cu",
             "simulation.cu",
-            "init.cu",
-            "material.cu",
-            "utils.cu"
+            "init.cu"
         ]
     },
     "implementation": {

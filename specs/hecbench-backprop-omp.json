@@ -32,9 +32,7 @@
     "verification_only": [],
     "translation_targets": [
       "main.cpp",
-      "backprop.cpp",
-      "facetrain.cpp",
-      "imagenet.cpp"
+      "backprop.cpp"
     ]
   },
   "implementation": {

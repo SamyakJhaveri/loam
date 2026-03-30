@@ -30,11 +30,7 @@
         ],
         "verification_only": [],
         "translation_targets": [
-            "lulesh.cu",
-            "lulesh-init.cu",
-            "lulesh-util.cu",
-            "lulesh-viz.cu",
-            "lulesh.h"
+            "lulesh.cu"
         ]
     },
     "implementation": {
