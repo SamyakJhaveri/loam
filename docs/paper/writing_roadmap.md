@@ -106,10 +106,10 @@ IEEE double-column = ~20 columns of content across 10 pages. Each column is ~55 
 | Subsection | Status | Action |
 |------------|--------|--------|
 | 6.1 Overall Pass Rates | EXISTS but COMPLETELY STALE | REWRITE with [PLACEHOLDER] — all numbers from new campaign. Structure: Table 7 (model x pass rate), comparison with ParEval-Repo 0%. |
-| 6.2 Failure Taxonomy | EXISTS but STALE | REWRITE with [PLACEHOLDER] — Figure 3 stacked bar. Keep the qualitative analysis structure (BUILD_FAIL = syntax, VERIFY_FAIL = logic, etc.) but all numbers are placeholders. |
+| 6.2 Failure Taxonomy | EXISTS but STALE | REWRITE with [PLACEHOLDER] — Figure 5 stacked bar. Keep the qualitative analysis structure (BUILD_FAIL = syntax, VERIFY_FAIL = logic, etc.) but all numbers are placeholders. |
 | 6.3 Per-Kernel Analysis | EXISTS but STALE | REWRITE with [PLACEHOLDER] — Table 8 kernel-by-model matrix. Keep tier structure but tiers will change with new models. Add 5-suite kernel coverage. |
 | 6.4 Self-Repair Effectiveness | EXISTS but STALE | REWRITE with [PLACEHOLDER] — Table 9. Keep structure: first-attempt vs repaired vs persistent. Add self-repair transition analysis (W12): which failure modes are recoverable? |
-| 6.5 Augmentation Robustness | EXISTS but STALE | REWRITE with [PLACEHOLDER] — Table 10, Figure 5. CRITICAL: report per-model curves (not just aggregate). Frame as "augmentation robustness discriminates model capability" not "level-invariance" (Simpson's Paradox insight from audit). Add Cochran-Armitage trend test per model. |
+| 6.5 Augmentation Robustness | EXISTS but STALE | REWRITE with [PLACEHOLDER] — Table 10, Figure 7. CRITICAL: report per-model curves (not just aggregate). Frame as "augmentation robustness discriminates model capability" not "level-invariance" (Simpson's Paradox insight from audit). Add Cochran-Armitage trend test per model. |
 | 6.6 Cross-Direction & Extended Suite | EXISTS but STALE | REWRITE with [PLACEHOLDER] — now covers 5 suites, 8 directions. Keep direction asymmetry analysis structure. Add HeCBench-specific results. |
 | NEW: 6.7 pass@k Analysis | DOES NOT EXIST | WRITE NEW — pass@5 at L0, temperature=0.7 results (D4). Hard vs noisy failures. Compare pass@1 (greedy) vs pass@5. |
 | NEW: 6.8 Statistical Summary | DOES NOT EXIST | WRITE NEW — Wilson CIs for all major rates, chi-squared for model comparison, Cochran-Armitage for augmentation trends, McNemar for direction asymmetry. Addresses W4 directly. |
@@ -224,11 +224,13 @@ Every number/table/figure that depends on new campaign data. These MUST remain a
 | Figure | Content | Data Source |
 |--------|---------|-------------|
 | Figure 1 | System architecture | AVAILABLE (model-independent) |
-| Figure 2 | API co-occurrence heatmap | AVAILABLE (model-independent) |
-| Figure 3 | Failure taxonomy stacked bar | [PLACEHOLDER] — from campaign results |
-| Figure 4 | Kernel-by-model heatmap | [PLACEHOLDER] — from campaign results |
-| Figure 5 | Augmentation robustness lines | [PLACEHOLDER] — from campaign results |
-| Figure 6 | Cross-direction bar chart | [PLACEHOLDER] — from campaign results |
+| Figure 2 | API co-occurrence heatmap (survey) | AVAILABLE (model-independent) |
+| Figure 3 | Repo vs kernel comparison (survey) | AVAILABLE (model-independent) |
+| Figure 4 | HeCBench selection funnel (survey) | AVAILABLE (model-independent) |
+| Figure 5 | Failure taxonomy stacked bar | [PLACEHOLDER] — from campaign results |
+| Figure 6 | Kernel-by-model heatmap | [PLACEHOLDER] — from campaign results |
+| Figure 7 | Augmentation robustness lines | [PLACEHOLDER] — from campaign results |
+| Figure 8 | Cross-direction bar chart | [PLACEHOLDER] — from campaign results |
 | NEW Figure | pass@k comparison | [PLACEHOLDER] — from pass@k sweep |
 
 ---
@@ -348,11 +350,11 @@ Every number/table/figure that depends on new campaign data. These MUST remain a
 
 **S6 Structure (keep this order):**
 1. Overall pass rates (Table 7) — headline numbers
-2. Failure taxonomy (Figure 3) — BUILD_FAIL/RUN_FAIL/VERIFY_FAIL/EXTRACTION_FAIL
-3. Per-kernel analysis (Table 8, Figure 4) — difficulty tiers
+2. Failure taxonomy (Figure 5) — BUILD_FAIL/RUN_FAIL/VERIFY_FAIL/EXTRACTION_FAIL
+3. Per-kernel analysis (Table 8, Figure 6) — difficulty tiers
 4. Self-repair effectiveness (Table 9) — with transition analysis
-5. Augmentation robustness (Table 10, Figure 5) — PER-MODEL curves (critical)
-6. Cross-direction & extended suite (Table 11, Figure 6)
+5. Augmentation robustness (Table 10, Figure 7) — PER-MODEL curves (critical)
+6. Cross-direction & extended suite (Table 11, Figure 8)
 7. pass@k analysis (NEW — Table, Figure)
 8. Statistical summary (NEW — CIs, tests)
 

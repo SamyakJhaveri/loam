@@ -11,7 +11,7 @@
 
 ## Abstract
 
-Large language models (LLMs) are increasingly applied to parallel code generation, yet no benchmark framework systematically evaluates their ability to *translate* parallel code across GPU programming APIs -- and prior approaches share a critical blind spot: benchmark codes widely known in the HPC community are also present in LLM training data, making it impossible to distinguish genuine parallel reasoning from memorized translations. We present **ParBench**, a build-run-verify benchmark framework for evaluating LLM-based parallel code translation at the kernel level, with an integrated augmentation engine that systematically tests reliance on training-data pattern-matching. ParBench curates 96 benchmark specifications across five HPC benchmark suites (Rodinia, XSBench, RSBench, mixbench, HeCBench), six translation directions across three API pairs (CUDA, OpenMP, OpenCL), with two additional OpenMP-target directions evaluated as case studies. Evaluating two LLMs -- Qwen 3.5 397B-A17B (a 397-billion-parameter Mixture-of-Experts model) and Gemini 2.5 Flash -- across [PLACEHOLDER: total_tasks] translation tasks spanning [PLACEHOLDER: kernel_count] kernels, six directions, and five augmentation levels, we find [PLACEHOLDER: capability_gap_description]: [PLACEHOLDER: model1_name] achieves [PLACEHOLDER: model1_overall_rate] PASS [PLACEHOLDER: model1_ci], while [PLACEHOLDER: model2_name] achieves [PLACEHOLDER: model2_overall_rate] [PLACEHOLDER: model2_ci] ([PLACEHOLDER: statistical_comparison]). On the primary CUDA-to-OpenMP direction at L0, [PLACEHOLDER: best_model_cuda_to_omp_L0_description] -- compared to 0% in repository-level approaches \cite{ParEvalRepo2025}. BUILD\_FAIL accounts for [PLACEHOLDER: build_fail_rate] of all tasks; VERIFY\_FAIL accounts for [PLACEHOLDER: verify_fail_rate], indicating [PLACEHOLDER: failure_taxonomy_interpretation]. An AST-driven augmentation engine applies six semantics-preserving transforms at five levels (L0--L4); 68 of 88 non-KNOWN\_FAIL specs across all five suites (54 Rodinia, 4 XSBench, 3 RSBench, 3 mixbench, and 4 spot-checked HeCBench) PASS at every level L1--L4 with zero correctness regressions, confirming level-invariant semantics preservation. LLM augmentation robustness evaluation reveals [PLACEHOLDER: augmentation_trend_description], providing evidence that augmentation robustness discriminates structural reasoning from surface pattern-matching. ParBench is publicly available as an extensible framework for the HPC community.
+Large language models (LLMs) are increasingly applied to parallel code generation, yet no benchmark framework systematically evaluates their ability to *translate* parallel code across GPU programming APIs -- and prior approaches share a critical blind spot: benchmark codes widely known in the HPC community are also present in LLM training data, making it impossible to distinguish genuine parallel reasoning from memorized translations. We present **ParBench**, a build-run-verify benchmark framework for evaluating LLM-based parallel code translation at the kernel level, with an integrated augmentation engine that systematically tests reliance on training-data pattern-matching. ParBench curates 96 benchmark specifications across five HPC benchmark suites (Rodinia, XSBench, RSBench, mixbench, HeCBench), six translation directions across three API pairs (CUDA, OpenMP, OpenCL), with two additional OpenMP-target directions evaluated as case studies. Evaluating two LLMs -- Qwen 3.5 397B-A17B (a 397-billion-parameter Mixture-of-Experts model) and Gemini 2.5 Flash -- across 1,420 translation tasks spanning 35 kernels, six directions, and five augmentation levels, we find [PENDING: capability gap description -- awaiting primary campaign results]: [PENDING: model1 name and overall rate with CI] while [PENDING: model2 name and overall rate with CI] ([PENDING: statistical comparison]). On the primary CUDA-to-OpenMP direction at L0, [PENDING: best model cuda-to-omp L0 description] -- compared to 0% in repository-level approaches \cite{ParEvalRepo2025}. BUILD\_FAIL accounts for [PENDING: build fail rate] of all tasks; VERIFY\_FAIL accounts for [PENDING: verify fail rate], indicating [PENDING: failure taxonomy interpretation]. An AST-driven augmentation engine applies six semantics-preserving transforms at five levels (L0--L4); 68 of 88 non-KNOWN\_FAIL specs across all five suites (54 Rodinia, 4 XSBench, 3 RSBench, 3 mixbench, and 4 spot-checked HeCBench) PASS at every level L1--L4 with zero correctness regressions, confirming level-invariant semantics preservation. LLM augmentation robustness evaluation reveals [PENDING: augmentation trend description -- awaiting primary campaign results], providing evidence that augmentation robustness discriminates structural reasoning from surface pattern-matching. ParBench is publicly available as an extensible framework for the HPC community.
 
 ---
 
@@ -35,7 +35,7 @@ The existing landscape of code benchmarks does not address kernel-level parallel
 
 **Training data contamination -- the invisible gap.** A fourth gap cuts across all of the above: benchmark codes used in prior work are likely present in LLM training data, making it impossible to distinguish genuine parallel reasoning from memorized translations. Rodinia \cite{Rodinia2009}, XSBench, and similar proxy applications have been republished across hundreds of GitHub repositories. ParBench addresses this directly through an AST-driven augmentation engine that produces semantically equivalent but syntactically novel code variants, testing whether models reason about parallel structure or pattern-match from training data (Section 2.5, Section 3.C). Empirical results confirm the practical importance of this concern (Section 6.5).
 
-**The gap in benchmark selection rationale.** A final dimension on which prior work is incomplete is the *why* of benchmark selection. Which parallel APIs matter most? Which kernels are representative? Existing frameworks do not answer these questions systematically. ParBench's selection is grounded in a comprehensive empirical survey of 35 open-source HPC repositories covering all major parallel programming models. That survey identified 472 CUDA-OpenMP kernel pairs across 21 repositories -- the largest available translation opportunity in the ecosystem, and the practical bottleneck for real-world GPU-to-CPU portability work. It further identified which benchmark suites provide the same kernel implemented across multiple APIs (Rodinia, HeCBench, XSBench, RSBench, mixbench), which have automatable build/run/verify pipelines, and which have self-checking output patterns. The choice of CUDA-to-OpenMP as the primary translation direction, and of Rodinia as the primary evaluation substrate, follows directly from this survey -- not from convenience.
+**The gap in benchmark selection rationale.** A final dimension on which prior work is incomplete is the *why* of benchmark selection. Which parallel APIs matter most? Which kernels are representative? Existing frameworks do not answer these questions systematically. ParBench's selection is grounded in a comprehensive empirical survey of 35 open-source HPC repositories covering all major parallel programming models. That survey identified 472 CUDA-OpenMP kernel pairs across just 6 repositories -- the largest available translation opportunity in the ecosystem, and the practical bottleneck for real-world GPU-to-CPU portability work (Figure 2 visualizes API co-occurrence across surveyed repositories; Figure 3 illustrates how repository-level counting understates kernel-level translation opportunities by up to two orders of magnitude). The survey further identified which benchmark suites provide the same kernel implemented across multiple APIs (Rodinia, HeCBench, XSBench, RSBench, mixbench), which have automatable build/run/verify pipelines, and which have self-checking output patterns. The choice of CUDA-to-OpenMP as the primary translation direction, and of Rodinia as the primary evaluation substrate, follows directly from this survey -- not from convenience.
 
 Together, these four gaps define the problem that ParBench is designed to solve: kernel-level evaluation granularity, build-infrastructure isolation, training-data robustness through augmentation, and survey-grounded benchmark selection.
 
@@ -47,21 +47,21 @@ This paper presents ParBench and makes the following contributions:
 
 2. **AST-driven augmentation engine** -- Six semantics-preserving source-level transforms at five augmentation levels (L0--L4) that systematically test whether LLMs reason about parallel structure or pattern-match from training data. Level-invariant: 68 of 88 non-KNOWN\_FAIL specs across five suites PASS at all levels L1--L4 with zero correctness regressions. LLM evaluation at L0--L4 measures augmentation robustness as a discriminator of genuine parallel reasoning versus surface pattern-matching.
 
-3. **Empirical evaluation** -- Comparative analysis of two LLMs (Qwen 3.5 397B-A17B, Gemini 2.5 Flash) across [PLACEHOLDER: total_tasks] translation tasks spanning six directions and five augmentation levels, producing a failure taxonomy ([PLACEHOLDER: build_fail_rate] BUILD\_FAIL, [PLACEHOLDER: verify_fail_rate] VERIFY\_FAIL), per-kernel difficulty tiers, self-repair effectiveness measurement, augmentation robustness characterization with statistical independence testing, and a pass@k analysis at temperature 0.7 to separate deterministic failures from sampling-sensitive cases. The two models represent distinct architecture families (Mixture-of-Experts vs. dense) from different providers, testing whether architectural diversity produces divergent translation capabilities.
+3. **Empirical evaluation** -- Comparative analysis of two LLMs (Qwen 3.5 397B-A17B, Gemini 2.5 Flash) across 1,420 translation tasks spanning six directions and five augmentation levels, producing a failure taxonomy ([PENDING: build fail rate] BUILD\_FAIL, [PENDING: verify fail rate] VERIFY\_FAIL), per-kernel difficulty tiers, self-repair effectiveness measurement, augmentation robustness characterization with statistical independence testing, and a pass@k analysis at temperature 0.7 to separate deterministic failures from sampling-sensitive cases. The two models represent distinct architecture families (Mixture-of-Experts vs. dense) from different providers, testing whether architectural diversity produces divergent translation capabilities.
 
 ### 1.4 Key Findings Preview
 
 ParBench produces several findings with immediate relevance for the HPC and LLM research communities:
 
-**Kernel-centric isolation unlocks success.** [PLACEHOLDER: best_model_name] achieves [PLACEHOLDER: best_model_cuda_to_omp_L0_rate] PASS on CUDA-to-OpenMP translation at L0 ([PLACEHOLDER: best_model_cuda_to_omp_L0_count] Rodinia kernels), demonstrating that kernel-level evaluation reveals capability that repository-level approaches obscure. The gap quantifies the orthogonality of translation skill and build-system-generation skill.
+**Kernel-centric isolation unlocks success.** [PENDING: best model name] achieves [PENDING: best model cuda-to-omp L0 rate] PASS on CUDA-to-OpenMP translation at L0 ([PENDING: kernel count] kernels across five suites), demonstrating that kernel-level evaluation reveals capability that repository-level approaches obscure. The gap quantifies the orthogonality of translation skill and build-system-generation skill.
 
-**Capability gap and failure taxonomy.** [PLACEHOLDER: model_comparison_description]: [PLACEHOLDER: model1_name] achieves [PLACEHOLDER: model1_overall_rate] PASS [PLACEHOLDER: model1_ci] across all [PLACEHOLDER: total_tasks] tasks, while [PLACEHOLDER: model2_name] achieves [PLACEHOLDER: model2_overall_rate] [PLACEHOLDER: model2_ci] ([PLACEHOLDER: statistical_test_result]). BUILD\_FAIL accounts for [PLACEHOLDER: build_fail_rate] of all tasks, making it the dominant failure mode. VERIFY\_FAIL accounts for [PLACEHOLDER: verify_fail_rate], indicating that [PLACEHOLDER: verify_fail_interpretation]. The primary bottleneck remains API-specific syntax -- missing `#pragma omp` directives, retained CUDA memory management calls, wrong type annotations -- rather than an inability to reason about parallel computation.
+**Capability gap and failure taxonomy.** [PENDING: model comparison description -- awaiting primary campaign results]. BUILD\_FAIL accounts for [PENDING: build fail rate] of all tasks, making it the dominant failure mode. VERIFY\_FAIL accounts for [PENDING: verify fail rate], indicating that [PENDING: verify fail interpretation]. The primary bottleneck remains API-specific syntax -- missing `#pragma omp` directives, retained CUDA memory management calls, wrong type annotations -- rather than an inability to reason about parallel computation.
 
-**Augmentation robustness discriminates reasoning from pattern-matching.** [PLACEHOLDER: augmentation_overall_trend_description]. Per-model analysis reveals [PLACEHOLDER: augmentation_per_model_description], providing evidence that augmentation robustness measures a dimension of capability distinct from aggregate pass rate.
+**Augmentation robustness discriminates reasoning from pattern-matching.** [PENDING: augmentation overall trend description]. Per-model analysis reveals [PENDING: augmentation per-model description], providing evidence that augmentation robustness measures a dimension of capability distinct from aggregate pass rate.
 
-**Direction asymmetry.** [PLACEHOLDER: direction_asymmetry_description]. The trend suggests that removing CUDA-specific constructs (explicit thread indexing, device memory management) is generally easier for LLMs than introducing them from directive-based OpenMP source, reflecting the structural advantage of translating from a more explicit to a more abstract programming model.
+**Direction asymmetry.** [PENDING: direction asymmetry description]. The trend suggests that removing CUDA-specific constructs (explicit thread indexing, device memory management) is generally easier for LLMs than introducing them from directive-based OpenMP source, reflecting the structural advantage of translating from a more explicit to a more abstract programming model.
 
-**Self-repair effectiveness.** [PLACEHOLDER: self_repair_description]. The gap between first-attempt pass rate and final pass rate (after up to 3 retries with error feedback) quantifies the value of lightweight agentic error correction, directly comparable to the full agentic approaches evaluated by LASSI \cite{LASSI2024}.
+**Self-repair effectiveness.** [PENDING: self-repair description]. The gap between first-attempt pass rate and final pass rate (after up to 3 retries with error feedback) quantifies the value of lightweight agentic error correction, directly comparable to the full agentic approaches evaluated by LASSI \cite{LASSI2024}.
 
 ---
 
@@ -85,7 +85,7 @@ LLM-based code translation has advanced rapidly, but its application to parallel
 | ParEval-Repo \cite{ParEvalRepo2025} | ICPP'25 | Repository | Build + functional | Yes | -- | 6 apps |
 | HPC-Coder-V2 \cite{HPCCoderV2} | arXiv'24 | Task | pass@k | Yes | -- | ParEval tasks |
 | TRACY \cite{TRACY2025} | arXiv'25 | Function | Tests + efficiency | -- | Stress tests | 1,000 tasks |
-| **ParBench (ours)** | **SC26** | **Kernel** | **Build+Run+Verify** | **Yes** | **Yes (L0--L4)** | **96 specs, 5 suites, 6 dirs, 2 models** |
+| **ParBench (ours)** | **SC26** | **Kernel** | **Build+Run+Verify** | **Yes** | **Yes (L0--L4)** | **96 specs, 35 kernels, 5 suites, 6 dirs** |
 
 *Table 1: Related work comparison along the granularity--verification axes. ParBench is the only framework combining kernel-level granularity, conjunction verification (stdout pattern AND exit code), and AST-driven augmentation for robustness testing. Dashes indicate the feature is absent.*
 
@@ -127,7 +127,7 @@ ParBench's augmentation engine addresses this concern directly. Six AST-driven t
 
 ### 2.6 Positioning ParBench
 
-ParBench is, to our knowledge, the only framework that combines all of the following: (1) kernel-level granularity targeting real HPC benchmark suites, (2) conjunction verification (build + run + verify against reference output), (3) AST-driven augmentation for robustness testing, (4) multi-API evaluation across CUDA, OpenMP, and OpenCL with 6 translation directions, and (5) multi-model evaluation of general-purpose LLMs. LASSI shares verification rigor but evaluates an agentic pipeline rather than raw model capability; CodeRosetta shares the HPC translation domain but relies on proxy metrics rather than functional correctness; ParEval and ParEval-Repo share the HPC evaluation focus but target generation and repository-level translation, respectively. ParBench's contribution is the evaluation *framework* --- a reusable, extensible measurement instrument for parallel code translation that can evaluate any model (general-purpose or fine-tuned) and any agentic pipeline against a common, augmentation-hardened standard.
+ParBench is, to our knowledge, the only framework that combines all of the following: (1) kernel-level granularity targeting real HPC benchmark suites, (2) conjunction verification (build + run + verify against reference output), (3) AST-driven augmentation for robustness testing, (4) multi-API evaluation across CUDA, OpenMP, and OpenCL with 6 translation directions, (5) multi-model evaluation of general-purpose LLMs, and (6) survey-grounded benchmark curation. No prior parallel code translation benchmark documents its selection rationale against a systematic survey of the available ecosystem. ParBench's curation is grounded in a 35-repository empirical survey that quantified kernel-level translation opportunities across all major parallel APIs (Section 4.A, Figures 2--4), ensuring that benchmark selection reflects the actual distribution of multi-API code in the HPC open-source ecosystem rather than researcher convenience. LASSI shares verification rigor but evaluates an agentic pipeline rather than raw model capability; CodeRosetta shares the HPC translation domain but relies on proxy metrics rather than functional correctness; ParEval and ParEval-Repo share the HPC evaluation focus but target generation and repository-level translation, respectively. ParBench's contribution is the evaluation *framework* --- a reusable, extensible measurement instrument for parallel code translation that can evaluate any model (general-purpose or fine-tuned) and any agentic pipeline against a common, augmentation-hardened standard.
 
 
 ---
@@ -246,37 +246,57 @@ The evaluation pipeline orchestrates LLM-based parallel code translation through
 
 ## S4 Benchmark Curation
 
-The benchmark corpus was assembled through a systematic selection process: surveying available HPC benchmark repositories, analyzing kernel-level translation opportunities, and filtering to a representative subset verified through the full build/run/verify pipeline.
+The benchmark corpus was assembled through a four-stage systematic process: surveying the landscape of open-source HPC benchmark repositories, quantifying kernel-level translation opportunities across parallel APIs, filtering candidate kernels through build/run/verify automation requirements, and verifying each selected kernel through the complete pipeline on the evaluation platform.
 
 ### 4.A Suite Selection
 
-A survey of 35 open-source HPC benchmark repositories was conducted, spanning suites, mini-applications, proxy applications, full applications, libraries, and microbenchmarks. The survey covered GPU computing across multiple parallel APIs.
+**Survey methodology.** We conducted a systematic survey of open-source HPC benchmark repositories, beginning with 40 candidate archives identified from the ECP proxy application catalog, published benchmark suites, and HPC conference proceedings. After excluding 5 repositories for download failures or insufficient documentation, 35 repositories were analyzed in detail. These span six benchmark types: suites (e.g., HeCBench \cite{HeCBench2023}, Rodinia \cite{Rodinia2009}, RAJAPerf, NAS NPB), mini-applications (e.g., BabelStream, CloverLeaf, LULESH, miniBUDE), proxy applications (e.g., SW4lite, CoMD, Kripke), full applications (e.g., LAMMPS, GROMACS), libraries (e.g., Kokkos Kernels, AMReX, MFEM), and microbenchmarks (e.g., STREAM, OSU OMB). Of the 35, 30 were classified Tier A (documented build, automated verification, active maintenance) and 5 as Tier B (partial verification or limited API coverage). Each repository was cataloged by the parallel APIs it provides, its kernel count, build system, and verification method.
 
-A central finding of the survey is that repository-level counting dramatically overstates the available benchmark material. Naive analysis identifies 21 repositories containing both CUDA and OpenMP implementations, but kernel-level analysis reveals 472 independent CUDA--OpenMP translation pairs across those same repositories. The discrepancy ranges from 20x to 60x, driven primarily by large suites such as HeCBench \cite{HeCBench2023} (325 kernels with CUDA and OpenMP implementations) and other multi-API benchmark collections. This motivates a kernel-centric evaluation strategy: benchmarks should be evaluated at the granularity of individual computational kernels, not entire repositories.
+**Repository-level vs. kernel-level counting.** A central finding of the survey is that repository-level counting dramatically understates the available benchmark material for translation evaluation. The API co-occurrence matrix (Figure 2) identifies 6 repositories containing both CUDA and OpenMP implementations. However, kernel-level analysis --- enumerating individual computational kernels that have verified equivalent implementations across APIs --- reveals 472 independent CUDA--OpenMP translation pairs across those same 6 repositories, a 79x multiplier (Figure 3). This extreme concentration is driven by large multi-kernel suites: HeCBench alone contributes 325 CUDA--OpenMP kernel pairs, RAJAPerf contributes 106, and Rodinia contributes 19. The same pattern holds across other API pairs: 633 CUDA--HIP kernel pairs (across 3 repositories, a 211x multiplier) and 616 CUDA--SYCL pairs (across 2 repositories, a 308x multiplier). This finding motivates a kernel-centric evaluation strategy in which benchmarks are evaluated at the granularity of individual computational kernels rather than entire repositories.
+
+[Figure 2: API co-occurrence heatmap illustrating which parallel APIs appear together across the 35 surveyed repositories. The heatmap is derived from the API pairwise coverage matrix, with cell values indicating the number of repositories supporting each API pair.]
+
+[Figure 3: Repository-level vs. kernel-level translation pair counts. Left bars show the number of repositories containing both APIs; right bars show the number of independent kernel-level translation pairs. The multipliers (79x--308x) demonstrate that repository-level counting substantially underestimates the translation evaluation opportunity.]
 
 [TABLE 3: Survey -- Kernel-Level Translation Pair Counts.]
 
-| API Pair | Repos with Both APIs | Kernel Pairs Available |
-|----------|:--------------------:|:---------------------:|
-| CUDA -- OpenMP | 21 | 472 |
-| CUDA -- HIP | 10 | 633 |
-| CUDA -- SYCL | 9 | 616 |
-| CUDA -- OpenCL | 7 | ~200 |
+| API Pair | Repos with Both APIs | Kernel Pairs Available | Primary Sources |
+|----------|:--------------------:|:---------------------:|:---------------|
+| CUDA -- HIP | 3 | 633 | HeCBench (504), RAJAPerf (106), CloverLeaf (16) |
+| CUDA -- SYCL | 2 | 616 | HeCBench (487), RAJAPerf (106), CloverLeaf (16) |
+| CUDA -- OpenMP | 6 | 472 | HeCBench (325), RAJAPerf (106), Rodinia (19) |
+| HIP -- OpenMP | 2 | 453 | HeCBench (324), RAJAPerf (106), CloverLeaf (16) |
+| CUDA -- OpenCL | 6 | ~200 | Rodinia (19), Parboil, SHOC |
 
-Five criteria guided suite selection:
-1. Multiple parallel API variants of the *same* kernel in the same source tree
-2. Build, run, and verify automatable without human intervention
-3. Self-checking output patterns (deterministic checksums, tolerance-bounded comparison, or labeled correctness output)
-4. Publicly available under an open-source license
-5. Representative domain coverage
+**Selection criteria.** Five criteria guided suite selection from the surveyed repositories:
 
-[FIGURE 2: API Co-occurrence Heatmap illustrating which parallel APIs appear together in the same repositories.]
+1. **Multi-API kernel equivalence.** The repository must provide implementations of the *same* kernel in multiple parallel APIs within the same source tree, ensuring that translation pairs have authoritative reference implementations rather than independently developed programs.
+2. **Build-run-verify automation.** Each kernel must be buildable, runnable, and verifiable without human intervention, using Makefiles or CMake, command-line arguments, and deterministic output.
+3. **Self-checking correctness.** Kernels must produce self-checking output --- deterministic checksums, tolerance-bounded numerical comparison, or labeled correctness indicators (e.g., `PASS`/`FAIL`, `verify()`) --- enabling automated correctness verification without external reference files.
+4. **Open-source availability.** All source code must be publicly available under an open-source license, ensuring reproducibility.
+5. **Domain diversity.** Selected suites should collectively span a broad range of computational domains (graph traversal, stencil computation, linear algebra, molecular dynamics, machine learning, signal processing, etc.) to avoid over-representing any single algorithmic pattern.
+
+These criteria are intentionally conservative: they exclude repositories that require interactive execution, external datasets not bundled with the source, or proprietary licenses. Applying them to the 35 surveyed repositories yields five suites that satisfy all five criteria and collectively provide maximum coverage of the CUDA--OpenMP--OpenCL API triple.
 
 ### 4.B Kernel Selection
 
-**Rodinia** \cite{Rodinia2009} provides ParBench's primary evaluation substrate. With thousands of citations, Rodinia is among the most-studied GPU benchmark suites in HPC literature, and critically provides CUDA, OpenMP, and OpenCL implementations of most kernels in the same source tree -- making it ideal for translation benchmarking where the reference implementation for each API is authoritative.
+Kernel selection proceeds in two stages: selection from HeCBench (which provides the largest pool of multi-API kernels) and curation of kernels from Rodinia and three additional suites.
 
-ParBench includes 60 Rodinia specs covering 22 kernels across three APIs (22 CUDA, 18 OpenMP, 20 OpenCL; coverage is non-uniform because not all kernels have all three API variants). After systematic verification on the evaluation platform, 54/60 achieve PASS and 6 are KNOWN\_FAIL for platform-specific reasons:
+**HeCBench selection funnel.** HeCBench \cite{HeCBench2023} is the largest source of multi-API kernel implementations in the survey, with 513 kernels spanning CUDA, HIP, SYCL, and OpenMP. We applied a structured selection funnel to identify kernels suitable for automated translation evaluation (Figure 4):
+
+1. **4-API filter.** 327 kernels provide implementations in all four APIs (CUDA, HIP, SYCL, OpenMP).
+2. **Build system filter.** 325 of these 327 have Makefiles present in the CUDA variant (2 excluded for missing build infrastructure).
+3. **Self-checking filter.** 242 of the 325 contain self-checking output patterns --- string matching for `PASS`, `FAIL`, `verify`, or `correct` in the source --- enabling automated correctness verification.
+4. **Complexity filter.** Kernels with more than 15 source files (too complex for single-prompt translation) or fewer than 2 files (too trivial to exercise meaningful translation competence) were excluded, as were kernels requiring external input data files not bundled with the source.
+5. **Domain diversity selection.** From the remaining pool, 60 kernels were selected to maximize coverage across computational domains.
+
+[Figure 4: HeCBench kernel selection funnel. Starting from 327 kernels with all 4 API variants, successive filters for build infrastructure (325), self-checking patterns (242), complexity bounds, and domain diversity yield the 60-kernel working set.]
+
+The 60 selected HeCBench kernels span 41 distinct computational domains, including machine learning (6 kernels: backprop, geglu, knn, maxpool3d, rmsnorm, softmax-online), signal processing (4: convolutionseparable, dct8x8, fft, fwt), cryptography (3: aes, chacha20, secp256k1), bioinformatics (2: deredundancy, nw), dense linear algebra (2: gaussian, lud), graph algorithms (2: floydwarshall, mis), image processing (2: bilateral, sobel), memory bandwidth (2: babelstream, triad), numerical linear algebra (2: eigenvalue, thomas), and 29 additional domains with one kernel each. All 60 CUDA variants pass build/run/verify on the evaluation platform; 41 of the 60 OpenMP variants pass (68.3%), with the remaining 19 exhibiting upstream HeCBench issues (missing OMP source directories, numerical mismatches, runtime crashes, or timeouts) rather than ParBench harness defects.
+
+From this 60-kernel working set, a curated subset of **10 kernels** was selected for inclusion in the evaluation corpus. These 10 were chosen for verified correctness across multiple APIs and maximum domain diversity: stencil computation (stencil1d, heat2d, iso2dfd), graph algorithms (floydwarshall, page-rank), combinatorial search (nqueen), molecular dynamics (md), signal processing (convolution1d, scan), and numerical methods (jacobi). The curated subset provides 25 specs across three API variants (CUDA, CPU OpenMP, and OMP-target GPU offload).
+
+**Rodinia.** Rodinia \cite{Rodinia2009} provides ParBench's primary evaluation substrate. With thousands of citations, Rodinia is among the most-studied GPU benchmark suites in HPC literature, and critically provides CUDA, OpenMP, and OpenCL implementations of most kernels in the same source tree --- making it ideal for translation benchmarking where the reference implementation for each API is authoritative. ParBench includes 60 Rodinia specs covering 22 kernels across three APIs (22 CUDA, 18 OpenMP, 20 OpenCL; coverage is non-uniform because not all kernels have all three API variants). After systematic verification on the evaluation platform, 54/60 achieve PASS and 6 are KNOWN\_FAIL for platform-specific reasons:
 
 - 2 specs fail because CUDA 12 removed the deprecated `texture<>` reference API (kmeans-cuda, mummergpu-cuda);
 - 1 spec fails due to a missing OpenGL dependency (hybridsort-cuda);
@@ -289,30 +309,36 @@ However, Rodinia's age and wide availability raise a legitimate concern: its sou
 
 **XSBench** \cite{XSBench2014} is a Monte Carlo neutron transport proxy application that implements the continuous-energy macroscopic cross-section lookup kernel from OpenMC. It provides 4 specs (CUDA, OpenMP, OpenCL, OMP-target), all 4 PASS. XSBench is included specifically because it is also evaluated in prior repository-level work \cite{ParEvalRepo2025}, enabling direct comparison of evaluation granularity on the same kernel.
 
-**RSBench and mixbench.** RSBench \cite{RSBench2014} (4 specs: CUDA, OpenMP, OpenCL, OMP-target, all PASS) is a simplified reactor simulation proxy derived from the same OpenMC cross-section lookup as XSBench but using a multipole method, adding complex arithmetic and Faddeeva function evaluation patterns less likely to appear in training data. mixbench \cite{mixbench2017} (3 specs: CUDA, OpenMP, OpenCL, all PASS) is a GPU micro-benchmark measuring the balance between compute throughput and memory bandwidth -- the operational intensity axis of the roofline model. Together they contribute domain diversity beyond Rodinia's traditional HPC kernels: nuclear physics simulation and fine-grained GPU optimization patterns.
+**RSBench and mixbench.** RSBench \cite{RSBench2014} (4 specs: CUDA, OpenMP, OpenCL, OMP-target) is a simplified reactor simulation proxy derived from the same OpenMC cross-section lookup as XSBench but using a multipole method, adding complex arithmetic and Faddeeva function evaluation patterns less likely to appear in training data. mixbench \cite{mixbench2017} (3 specs: CUDA, OpenMP, OpenCL) is a GPU micro-benchmark measuring the balance between compute throughput and memory bandwidth --- the operational intensity axis of the roofline model. Together they contribute domain diversity beyond Rodinia's traditional HPC kernels: nuclear physics simulation and fine-grained GPU characterization.
 
-**HeCBench (curated)** \cite{HeCBench2023} contributes 10 diverse kernels selected from the larger HeCBench collection (325+ kernels). These 10 kernels were chosen for verified correctness across multiple APIs and domain diversity: stencil computation (stencil1d, heat2d, iso2dfd), graph algorithms (floydwarshall, page-rank), combinatorial search (nqueen), molecular dynamics (md), signal processing (convolution1d, scan), and numerical methods (jacobi). The curated subset provides 25 specs across three APIs (CUDA, CPU OpenMP, OMP-target GPU offload), of which 23 PASS and 2 are KNOWN\_FAIL (stencil1d-omp\_target build failure, scan-omp\_target verification mismatch). Crucially, HeCBench kernels are less widely known than Rodinia, reducing the likelihood that LLMs have memorized their implementations.
+### 4.C API Coverage
 
-In total, the five suites contribute 96 specs, of which 88 achieve PASS and 8 are KNOWN\_FAIL. The selected kernels span computational domains including graph traversal (bfs, floydwarshall, page-rank), physics simulation (hotspot, hotspot3d, cfd, srad, iso2dfd), machine learning (backprop, nn), linear algebra (lud, nw), molecular dynamics (lavamd, md), nuclear physics (xsbench, rsbench), stencil computation (stencil1d, heat2d, jacobi), signal processing (convolution1d, scan), biophysical simulation (myocyte, heartwall), particle methods (particlefilter, streamcluster), dynamic programming (pathfinder), combinatorial search (nqueen), and GPU micro-benchmarking (mixbench).
+The survey data directly inform ParBench's API selection. CUDA serves as the primary source language, reflecting its dominant position in GPU programming: it appears in more surveyed repositories than any other GPU-native API and contributes the largest kernel count in the survey. OpenMP is the primary translation target: the kernel-level survey identified CUDA-to-OpenMP as the largest translation opportunity among CPU-targeting APIs, with 472 kernel pairs across 6 repositories (Table 3). This is not coincidental --- OpenMP's pragma-based parallelism model makes it the natural CPU-parallel counterpart to CUDA's GPU-native model, and benchmark developers routinely provide both implementations.
+
+OpenCL provides a secondary translation target that exercises a qualitatively different programming model from both CUDA and OpenMP. Where CUDA uses unified host-device source files and implicit memory management (in modern CUDA), and OpenMP uses compiler directives over sequential code, OpenCL requires explicit kernel compilation from string sources, manual buffer management, and strict host-device code separation. Rodinia's particular strength lies in its OpenCL coverage: 20 of 22 Rodinia kernels have OpenCL implementations, compared to only sparse OpenCL coverage in HeCBench and RAJAPerf. This makes Rodinia the primary source for OpenCL translation pairs.
+
+OpenMP target offload (OMP-target) provides a fourth API that uses compiler-directed GPU offloading via `#pragma omp target`. It is available for XSBench, RSBench, and the HeCBench curated kernels, and requires the NVIDIA HPC compiler (`nvc`) rather than standard GCC. Because `nvc` is not universally available and OMP-target's compilation model differs substantially from CPU OpenMP, OMP-target directions are evaluated as case studies rather than as part of the standard evaluation.
+
+Together, these four APIs cover the principal parallel programming paradigms in HPC: GPU-native (CUDA), directive-based CPU parallelism (OpenMP), portable heterogeneous compute (OpenCL), and directive-based GPU offload (OMP-target). The API pairwise coverage matrix from the survey (Table 3) confirms that CUDA--OpenMP is the highest-volume translation direction, justifying its selection as the primary evaluation axis.
+
+### 4.D Evaluation Corpus
+
+The five suites contribute a total of 96 benchmark specifications, of which 88 achieve PASS through the complete build/run/verify pipeline and 8 are KNOWN\_FAIL (Table 4). The 88 verified-PASS specs constitute the evaluation corpus.
 
 [TABLE 4: Suite summary showing total specs, verified PASS, KNOWN\_FAIL, and API coverage for each of the five benchmark suites.]
 
 | Suite | Kernels | Total Specs | PASS | KNOWN\_FAIL | APIs |
 |:------|:-------:|:-----------:|:----:|:----------:|:-----|
 | Rodinia | 22 | 60 | 54 | 6 | CUDA, OpenMP, OpenCL |
+| HeCBench (curated) | 10 | 25 | 23 | 2 | CUDA, OpenMP, OMP-target |
 | XSBench | 1 | 4 | 4 | 0 | CUDA, OpenMP, OpenCL, OMP-target |
 | RSBench | 1 | 4 | 4 | 0 | CUDA, OpenMP, OpenCL, OMP-target |
 | mixbench | 1 | 3 | 3 | 0 | CUDA, OpenMP, OpenCL |
-| HeCBench (curated) | 10 | 25 | 23 | 2 | CUDA, OpenMP, OMP-target |
 | **Total** | **35** | **96** | **88** | **8** | |
 
-### 4.C API Coverage
+The selected kernels span computational domains including graph traversal (bfs, floydwarshall, page-rank), physics simulation (hotspot, hotspot3d, cfd, srad, iso2dfd), machine learning (backprop, nn), linear algebra (lud, nw), molecular dynamics (lavamd, md), nuclear physics (xsbench, rsbench), stencil computation (stencil1d, heat2d, jacobi), signal processing (convolution1d, scan), biophysical simulation (myocyte, heartwall), particle methods (particlefilter, streamcluster), dynamic programming (pathfinder), combinatorial search (nqueen), and GPU micro-benchmarking (mixbench).
 
-CUDA serves as the primary source language, reflecting its dominant position in GPU programming. OpenMP is the primary translation target, selected because the kernel-level survey identified CUDA-to-OpenMP as the largest translation opportunity (472 kernel pairs across 21 repositories). OpenCL provides a secondary target that exercises a qualitatively different programming model: explicit memory management, separate kernel compilation, and host-device code separation. OpenMP target offload (OMP-target) provides a fourth API that uses compiler-directed GPU offloading via `#pragma omp target`; it is available for XSBench, RSBench, and the HeCBench curated kernels, and requires the NVIDIA HPC compiler (`nvc`). Together, these four APIs cover the principal parallel programming paradigms in HPC: GPU-native (CUDA), directive-based CPU parallelism (OpenMP), portable heterogeneous (OpenCL), and directive-based GPU offload (OMP-target).
-
-### 4.D Evaluation Corpus
-
-The 88 verified-PASS specs across all five suites constitute the evaluation corpus. At L0 (unaugmented), the corpus yields 142 unique translation pairs per model across six standard translation directions (with two additional OMP-target directions evaluated as case studies). The OMP-target variants are included selectively: XSBench and RSBench OMP-target specs serve as case studies requiring the NVIDIA HPC compiler, while HeCBench OMP-target specs participate in standard evaluation where the target spec passes verification. The selection is principled rather than exhaustive: the spec schema permits straightforward extension to additional suites, kernels, and APIs without modification to the evaluation harness. Each kernel in the corpus was independently verified through the complete build/run/verify pipeline prior to inclusion in any LLM evaluation experiment.
+At L0 (unaugmented), the corpus yields 142 unique translation pairs per model across six standard translation directions, with two additional OMP-target directions evaluated as case studies. The OMP-target variants are included selectively: XSBench and RSBench OMP-target specs serve as case studies requiring the NVIDIA HPC compiler, while HeCBench OMP-target specs participate in standard evaluation where the target spec passes verification. The selection is principled rather than exhaustive: the spec schema permits straightforward extension to additional suites, kernels, and APIs without modification to the evaluation harness. Each kernel in the corpus was independently verified through the complete build/run/verify pipeline prior to inclusion in any LLM evaluation experiment.
 
 ---
 
@@ -372,7 +398,7 @@ All Qwen 3.5 evaluations are conducted on a single workstation to eliminate cros
 
 CUDA compilation uses `nvcc` from the NVIDIA HPC SDK 24.3 (CUDA 12.3). C/C++ compilation uses GCC 12.4 with the `-fopenmp` flag for OpenMP targets. OpenCL programs link against the NVIDIA runtime from the HPC SDK. The evaluation harness and all scripting infrastructure run on Python 3.12.3. LLM API calls are issued from the evaluation machine; network latency does not affect correctness evaluation. All campaigns were executed via a single parameterized script ensuring identical batch logic, retry policy, and analysis pipeline across all models and modes (D5).
 
-Gemini 2.5 Flash evaluations are conducted by a collaborator on a separate machine with identical software configuration. [PLACEHOLDER: gemini\_hardware -- GPU model, CPU model, and OS for Erel's evaluation machine.]
+Gemini 2.5 Flash evaluations are conducted by a collaborator on a separate machine with identical software configuration. [PENDING: Gemini hardware -- GPU model, CPU model, and OS for Erel's evaluation machine.]
 
 [TABLE 6: Hardware and software configuration. Rows: GPU model, CPU model, operating system, CUDA toolkit version, C/C++ compiler, OpenCL runtime, Python version. Separate columns for Qwen (primary) and Gemini (collaborator) evaluation machines.]
 
@@ -380,7 +406,7 @@ Gemini 2.5 Flash evaluations are conducted by a collaborator on a separate machi
 
 ## S6 Results
 
-This section presents ParBench evaluation results across [PLACEHOLDER: total_tasks_all] evaluated tasks: two LLMs -- Qwen 3.5 397B-A17B (Mixture-of-Experts) and Gemini 2.5 Flash (dense) -- evaluated on parallel code translation across five benchmark suites (Rodinia, XSBench, RSBench, mixbench, HeCBench curated), six translation directions, and five augmentation levels (L0--L4). All primary campaign evaluations use temperature=0, up to three self-repair retry attempts (four total attempts per task), and the build/run/verify pipeline described in S3.B. A separate pass@k sweep (S6.7) evaluates sampling variance at temperature=0.7.
+This section presents ParBench evaluation results across [PENDING: total evaluated tasks] evaluated tasks: two LLMs -- Qwen 3.5 397B-A17B (Mixture-of-Experts) and Gemini 2.5 Flash (dense) -- evaluated on parallel code translation across five benchmark suites (Rodinia, XSBench, RSBench, mixbench, HeCBench curated), six translation directions, and five augmentation levels (L0--L4). All primary campaign evaluations use temperature=0, up to three self-repair retry attempts (four total attempts per task), and the build/run/verify pipeline described in S3.B. A separate pass@k sweep (S6.7) evaluates sampling variance at temperature=0.7.
 
 ### 6.1 Overall Pass Rates
 
@@ -390,30 +416,30 @@ Table 7 summarizes aggregate pass rates for the two evaluated models across all 
 
 | Model | PASS | BUILD\_FAIL | RUN\_FAIL | VERIFY\_FAIL | EXTRACTION\_FAIL | Total | Rate | 95% Wilson CI |
 |-------|-----:|----------:|--------:|------------:|----------------:|------:|-----:|:-------------:|
-| Qwen 3.5 397B-A17B | [PLACEHOLDER: qwen_pass] | [PLACEHOLDER: qwen_build] | [PLACEHOLDER: qwen_run] | [PLACEHOLDER: qwen_verify] | [PLACEHOLDER: qwen_extract] | [PLACEHOLDER: qwen_total] | [PLACEHOLDER: qwen_rate] | [PLACEHOLDER: qwen_ci] |
-| Gemini 2.5 Flash | [PLACEHOLDER: gemini_pass] | [PLACEHOLDER: gemini_build] | [PLACEHOLDER: gemini_run] | [PLACEHOLDER: gemini_verify] | [PLACEHOLDER: gemini_extract] | [PLACEHOLDER: gemini_total] | [PLACEHOLDER: gemini_rate] | [PLACEHOLDER: gemini_ci] |
-| **Aggregate** | [PLACEHOLDER: agg_pass] | [PLACEHOLDER: agg_build] | [PLACEHOLDER: agg_run] | [PLACEHOLDER: agg_verify] | [PLACEHOLDER: agg_extract] | [PLACEHOLDER: agg_total] | [PLACEHOLDER: agg_rate] | [PLACEHOLDER: agg_ci] |
+| Qwen 3.5 397B-A17B | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] |
+| Gemini 2.5 Flash | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] |
+| **Aggregate** | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] |
 
-[PLACEHOLDER: overall_comparison_prose -- describe the capability gap pattern between Qwen and Gemini; note whether the spread is large (qualitatively different tiers) or modest (comparable capability). Reference MoE vs dense architecture where appropriate.]
+[PENDING: overall comparison prose -- describe the capability gap pattern between Qwen and Gemini; note whether the spread is large (qualitatively different tiers) or modest (comparable capability). Reference MoE vs dense architecture where appropriate. Awaiting primary campaign results.]
 
-These results contrast sharply with repository-level evaluation. ParEval-Repo \cite{ParEvalRepo2025} reports 0% pass@1 for all models on applications larger than 133 SLoC, including XSBench. ParBench's kernel-centric approach -- isolating the translation task from build-system generation -- achieves [PLACEHOLDER: best_model_rate] for the stronger model on the same class of HPC kernels. The gap quantifies the degree to which build-system generation, rather than parallel logic translation, is the binding constraint in repository-level approaches.
+These results contrast sharply with repository-level evaluation. ParEval-Repo \cite{ParEvalRepo2025} reports 0% pass@1 for all models on applications larger than 133 SLoC, including XSBench. ParBench's kernel-centric approach -- isolating the translation task from build-system generation -- achieves [PENDING: best model rate] for the stronger model on the same class of HPC kernels. The gap quantifies the degree to which build-system generation, rather than parallel logic translation, is the binding constraint in repository-level approaches.
 
-Statistical comparison: a chi-squared test of independence between model identity and pass/fail outcome yields [PLACEHOLDER: chi2_stat] (df=1, p=[PLACEHOLDER: chi2_p]). [PLACEHOLDER: chi2_interpretation -- if significant, the two models differ meaningfully; if not, they are statistically comparable. Report Cramer's V or Cohen's h for effect size.]
+Statistical comparison: a chi-squared test of independence between model identity and pass/fail outcome yields [PENDING: chi2 stat] (df=1, p=[PENDING: chi2 p-value]). [PENDING: chi2 interpretation with Cramer's V effect size.]
 
 ### 6.2 Failure Taxonomy
 
-Of the [PLACEHOLDER: total_failures_all] total failures across both models, the distribution is:
+Of the [PENDING: total failure count] total failures across both models, the distribution is:
 
-- BUILD\_FAIL: [PLACEHOLDER: build_fail_count]/[PLACEHOLDER: total_failures_all] ([PLACEHOLDER: build_fail_pct_of_failures])
-- RUN\_FAIL: [PLACEHOLDER: run_fail_count]/[PLACEHOLDER: total_failures_all] ([PLACEHOLDER: run_fail_pct_of_failures])
-- VERIFY\_FAIL: [PLACEHOLDER: verify_fail_count]/[PLACEHOLDER: total_failures_all] ([PLACEHOLDER: verify_fail_pct_of_failures])
-- EXTRACTION\_FAIL: [PLACEHOLDER: extract_fail_count]/[PLACEHOLDER: total_failures_all] ([PLACEHOLDER: extract_fail_pct_of_failures])
+- BUILD\_FAIL: [PENDING: count/total (pct)]
+- RUN\_FAIL: [PENDING: count/total (pct)]
+- VERIFY\_FAIL: [PENDING: count/total (pct)]
+- EXTRACTION\_FAIL: [PENDING: count/total (pct)]
 
-[FIGURE 3: Failure taxonomy stacked bar chart. X-axis: models (Qwen 3.5 397B-A17B, Gemini 2.5 Flash). Y-axis: task count stacked by outcome (PASS, BUILD\_FAIL, RUN\_FAIL, VERIFY\_FAIL, EXTRACTION\_FAIL). Data source: results/evaluation/eval\_summary.json.]
+[FIGURE 5: Failure taxonomy stacked bar chart. X-axis: models (Qwen 3.5 397B-A17B, Gemini 2.5 Flash). Y-axis: task count stacked by outcome (PASS, BUILD\_FAIL, RUN\_FAIL, VERIFY\_FAIL, EXTRACTION\_FAIL). Data source: results/evaluation/eval\_summary.json.]
 
-**BUILD\_FAIL dominance.** [PLACEHOLDER: build_fail_analysis -- describe whether BUILD\_FAIL remains the dominant failure mode and its percentage of total failures. Expected pattern: retained CUDA memory management calls (cudaMalloc, cudaFree, cudaMemcpy) in otherwise-OpenMP code, missing #pragma omp parallel for directives, incorrect function signatures for OpenMP runtime calls, failure to eliminate device-specific type annotations. These are syntactic failures indicating the model demonstrates understanding of the parallel computation structure but fails to fully translate the API surface.]
+**BUILD\_FAIL dominance.** [PENDING: BUILD_FAIL analysis -- describe whether BUILD_FAIL remains the dominant failure mode and its percentage of total failures. Expected pattern: retained CUDA memory management calls in otherwise-OpenMP code, missing #pragma omp directives, incorrect function signatures. These are syntactic failures indicating the model demonstrates understanding of the parallel computation structure but fails to fully translate the API surface. Awaiting primary campaign results.]
 
-**VERIFY\_FAIL analysis.** [PLACEHOLDER: verify_fail_analysis -- describe the rate of VERIFY\_FAIL and what it reveals. VERIFY\_FAIL indicates translations that compile and execute but produce incorrect output. These identify cases where LLMs produce code that is syntactically valid and structurally plausible but introduces subtle parallel logic errors -- incorrect thread-index mappings, wrong reduction scoping, or missed data dependencies. The conjunctive verification (exit\_code AND stdout\_pattern) catches translations that would have appeared correct under exit-code-only checking.]
+**VERIFY\_FAIL analysis.** [PENDING: VERIFY_FAIL analysis -- describe the rate of VERIFY_FAIL and what it reveals. VERIFY_FAIL indicates translations that compile and execute but produce incorrect output, identifying subtle parallel logic errors. The conjunctive verification (exit_code AND stdout_pattern) catches translations that would have appeared correct under exit-code-only checking. Awaiting primary campaign results.]
 
 **Self-repair by failure mode transition.** To address the question of which failure modes are recoverable through self-repair (W12), Table 7b breaks down the transitions from initial failure to final outcome across all attempts.
 
@@ -421,12 +447,12 @@ Of the [PLACEHOLDER: total_failures_all] total failures across both models, the 
 
 | Initial Failure | -> PASS | -> Same Fail | -> Different Fail | -> Regression | Total |
 |-----------------|--------:|-------------:|------------------:|--------------:|------:|
-| BUILD\_FAIL | [PLACEHOLDER: bf_to_pass] | [PLACEHOLDER: bf_persistent] | [PLACEHOLDER: bf_to_other] | [PLACEHOLDER: bf_regress] | [PLACEHOLDER: bf_total] |
-| RUN\_FAIL | [PLACEHOLDER: rf_to_pass] | [PLACEHOLDER: rf_persistent] | [PLACEHOLDER: rf_to_other] | [PLACEHOLDER: rf_regress] | [PLACEHOLDER: rf_total] |
-| VERIFY\_FAIL | [PLACEHOLDER: vf_to_pass] | [PLACEHOLDER: vf_persistent] | [PLACEHOLDER: vf_to_other] | [PLACEHOLDER: vf_regress] | [PLACEHOLDER: vf_total] |
-| EXTRACTION\_FAIL | [PLACEHOLDER: ef_to_pass] | [PLACEHOLDER: ef_persistent] | [PLACEHOLDER: ef_to_other] | [PLACEHOLDER: ef_regress] | [PLACEHOLDER: ef_total] |
+| BUILD\_FAIL | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] |
+| RUN\_FAIL | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] |
+| VERIFY\_FAIL | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] |
+| EXTRACTION\_FAIL | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] |
 
-[PLACEHOLDER: repair_transition_analysis -- describe which failure modes are most recoverable. Expected pattern: BUILD\_FAIL is the most recoverable (compiler errors provide actionable feedback), VERIFY\_FAIL is least recoverable (output mismatch provides weak signal), RUN\_FAIL recovery depends on whether crash is from a simple pointer error vs. fundamental logic issue.]
+[PENDING: repair transition analysis -- describe which failure modes are most recoverable. Expected pattern: BUILD_FAIL most recoverable (compiler errors provide actionable feedback), VERIFY_FAIL least recoverable (output mismatch provides weak signal). Awaiting primary campaign results.]
 
 ### 6.3 Per-Kernel Analysis
 
@@ -434,20 +460,17 @@ Table 8 presents the kernel-by-model result matrix for the primary CUDA-to-OpenM
 
 [TABLE 8: Per-kernel results for CUDA-to-OpenMP translation (L0, 2 models). KNOWN\_FAIL source specs excluded. Suites: Rodinia (up to 16 kernels), XSBench (1), RSBench (1), mixbench (1), HeCBench curated (up to 10).]
 
-[PLACEHOLDER: per_kernel_table -- Full kernel x model matrix with Suite, Kernel, Category columns and one column per model showing PASS/BUILD\_FAIL/RUN\_FAIL/VERIFY\_FAIL/EXTRACTION\_FAIL. Sort by difficulty (all-pass first, then partial, then all-fail).]
+[PENDING: per-kernel table -- Full kernel x model matrix with Suite, Kernel, Category columns and one column per model showing outcome. Sort by difficulty (all-pass first, then partial, then all-fail). Awaiting primary campaign results.]
 
-[FIGURE 4: Kernel-by-model heatmap. Rows: kernels across all 5 suites sorted by difficulty. Columns: 2 models. Cell color: green (PASS), red (BUILD\_FAIL), orange (RUN\_FAIL), yellow (VERIFY\_FAIL), grey (EXTRACTION\_FAIL).]
+[FIGURE 6: Kernel-by-model heatmap. Rows: kernels across all 5 suites sorted by difficulty. Columns: 2 models. Cell color: green (PASS), red (BUILD\_FAIL), orange (RUN\_FAIL), yellow (VERIFY\_FAIL), grey (EXTRACTION\_FAIL).]
 
 Kernels partition into distinct difficulty tiers based on two-model consensus. The conjunctive verification (exit\_code AND stdout\_pattern) produces a sharper tier separation than exit-code-only verification, with VERIFY\_FAIL now distinguishing translations that produce wrong output from those that fail to build or run.
 
-[PLACEHOLDER: tier_description -- Partition kernels into difficulty tiers based on two-model consensus:
-- **Always-pass** (both models PASS): identify shared characteristics favoring translation -- straightforward thread-index-to-loop-index mapping, minimal shared memory usage, well-known algorithmic structures
-- **Single-model-pass** (one model PASS, one FAIL): identify which model succeeds and what distinguishes these kernels -- they delineate the capability boundary between the two models
-- **Always-fail** (both models FAIL): identify common failure modes and kernel characteristics. Distinguish between those where both models produce BUILD\_FAIL (consistent API syntax gap) vs. those with heterogeneous failure modes (different degrees of partial capability). Kernels with VERIFY\_FAIL instances are notably more advanced failures than pure BUILD\_FAIL]
+[PENDING: tier description -- Partition kernels into difficulty tiers based on two-model consensus: always-pass, single-model-pass, always-fail. Identify shared characteristics per tier and distinguish BUILD_FAIL-only from heterogeneous failure modes. Awaiting primary campaign results.]
 
-[PLACEHOLDER: kernel_anomalies -- Identify any surprising per-kernel results: cases where the overall weaker model passes a kernel that the stronger model fails, kernels that are easy for both models despite apparent complexity, or kernels that are hard for both despite apparent simplicity. Note which suites contribute to which tiers -- do non-Rodinia kernels (XSBench, RSBench, mixbench, HeCBench) cluster in different tiers than Rodinia kernels?]
+[PENDING: kernel anomalies -- Identify surprising per-kernel results: cross-model inversions, suite-level clustering patterns. Awaiting primary campaign results.]
 
-**Sample size note (W1).** The primary CUDA-to-OpenMP direction at L0 evaluates [PLACEHOLDER: c2o_l0_kernel_count] kernels across 5 suites with 2 models, yielding [PLACEHOLDER: c2o_l0_total_tasks] tasks. Non-primary directions have smaller sample sizes (see S6.6) and findings from those directions should be considered exploratory.
+**Sample size note (W1).** The primary CUDA-to-OpenMP direction at L0 evaluates 24 kernel pairs across 5 suites with 2 models, yielding 48 tasks. Non-primary directions have smaller sample sizes (see S6.6) and findings from those directions should be considered exploratory.
 
 ### 6.4 Self-Repair Effectiveness
 
@@ -457,17 +480,17 @@ ParBench's evaluation pipeline permits up to three retry attempts with failure-s
 
 | Metric | Qwen 3.5 | Gemini 2.5 Flash | Combined |
 |--------|----------:|------------------:|---------:|
-| Total tasks | [PLACEHOLDER: qwen_total_sr] | [PLACEHOLDER: gemini_total_sr] | [PLACEHOLDER: combined_total_sr] |
-| First-attempt PASS | [PLACEHOLDER: qwen_first_pass] ([PLACEHOLDER: qwen_first_pct]) | [PLACEHOLDER: gemini_first_pass] ([PLACEHOLDER: gemini_first_pct]) | [PLACEHOLDER: combined_first_pass] ([PLACEHOLDER: combined_first_pct]) |
-| Repaired (attempt 2-4) | [PLACEHOLDER: qwen_repaired] ([PLACEHOLDER: qwen_repair_pct]) | [PLACEHOLDER: gemini_repaired] ([PLACEHOLDER: gemini_repair_pct]) | [PLACEHOLDER: combined_repaired] ([PLACEHOLDER: combined_repair_pct]) |
-| Total PASS | [PLACEHOLDER: qwen_total_pass_sr] ([PLACEHOLDER: qwen_total_pass_pct]) | [PLACEHOLDER: gemini_total_pass_sr] ([PLACEHOLDER: gemini_total_pass_pct]) | [PLACEHOLDER: combined_total_pass_sr] ([PLACEHOLDER: combined_total_pass_pct]) |
-| Relative improvement | [PLACEHOLDER: qwen_rel_improve] | [PLACEHOLDER: gemini_rel_improve] | [PLACEHOLDER: combined_rel_improve] |
-| Persistent fail | [PLACEHOLDER: qwen_persistent] ([PLACEHOLDER: qwen_persist_pct]) | [PLACEHOLDER: gemini_persistent] ([PLACEHOLDER: gemini_persist_pct]) | [PLACEHOLDER: combined_persistent] ([PLACEHOLDER: combined_persist_pct]) |
-| Regression | [PLACEHOLDER: qwen_regression] | [PLACEHOLDER: gemini_regression] | [PLACEHOLDER: combined_regression] |
+| Total tasks | [PENDING] | [PENDING] | [PENDING] |
+| First-attempt PASS | [PENDING] | [PENDING] | [PENDING] |
+| Repaired (attempt 2-4) | [PENDING] | [PENDING] | [PENDING] |
+| Total PASS | [PENDING] | [PENDING] | [PENDING] |
+| Relative improvement | [PENDING] | [PENDING] | [PENDING] |
+| Persistent fail | [PENDING] | [PENDING] | [PENDING] |
+| Regression | [PENDING] | [PENDING] | [PENDING] |
 
-[PLACEHOLDER: repair_statistics -- Describe the self-repair patterns. Key questions: (1) What fraction of all PASSes come from first-attempt vs repair? (2) How does the repair rate differ between models -- does the stronger model also self-repair more effectively, or is repair rate independent of base capability? (3) What is the attempt-number distribution -- do most repairs happen on attempt 2 (first retry) or later? (4) Is there a meaningful regression rate where repair makes things worse?]
+[PENDING: self-repair statistics -- describe repair patterns: first-attempt vs retry fraction, per-model repair rate differences, attempt-number distribution, regression rate. Awaiting primary campaign results.]
 
-The self-repair data positions ParBench's 3-retry protocol as a controlled middle ground on the agentic spectrum. LASSI \cite{LASSI2024} reports 80--85% pass rates with a complete agentic self-correction pipeline (compilation feedback, execution analysis, profiling). ParBench's self-repair protocol provides only error feedback (compiler output or output mismatch) without retrieval augmentation or tool access. The gap between ParBench's repair rate ([PLACEHOLDER: combined_total_pass_pct]) and LASSI's agentic rate (80--85%) quantifies the value of agentic infrastructure beyond simple error feedback.
+The self-repair data positions ParBench's 3-retry protocol as a controlled middle ground on the agentic spectrum. LASSI \cite{LASSI2024} reports 80--85% pass rates with a complete agentic self-correction pipeline (compilation feedback, execution analysis, profiling). ParBench's self-repair protocol provides only error feedback (compiler output or output mismatch) without retrieval augmentation or tool access. The gap between ParBench's repair rate ([PENDING: combined total pass pct]) and LASSI's agentic rate (80--85%) quantifies the value of agentic infrastructure beyond simple error feedback.
 
 ### 6.5 Augmentation Robustness
 
@@ -479,49 +502,44 @@ Table 10 presents per-model pass rates across augmentation levels L0--L4 for CUD
 
 | Level | Qwen 3.5 397B-A17B | Gemini 2.5 Flash |
 |:-----:|:-------------------:|:----------------:|
-| L0 | [PLACEHOLDER: qwen_l0_c2o] | [PLACEHOLDER: gemini_l0_c2o] |
-| L1 | [PLACEHOLDER: qwen_l1_c2o] | [PLACEHOLDER: gemini_l1_c2o] |
-| L2 | [PLACEHOLDER: qwen_l2_c2o] | [PLACEHOLDER: gemini_l2_c2o] |
-| L3 | [PLACEHOLDER: qwen_l3_c2o] | [PLACEHOLDER: gemini_l3_c2o] |
-| L4 | [PLACEHOLDER: qwen_l4_c2o] | [PLACEHOLDER: gemini_l4_c2o] |
+| L0 | [PENDING] | [PENDING] |
+| L1 | [PENDING] | [PENDING] |
+| L2 | [PENDING] | [PENDING] |
+| L3 | [PENDING] | [PENDING] |
+| L4 | [PENDING] | [PENDING] |
 
-[FIGURE 5: Augmentation robustness line chart. X-axis: augmentation levels L0--L4. Y-axis: pass rate (%). Two lines: Qwen 3.5 (color 1), Gemini 2.5 Flash (color 2). Error bars: Wilson 95% CIs.]
+[FIGURE 7: Augmentation robustness line chart. X-axis: augmentation levels L0--L4. Y-axis: pass rate (%). Two lines: Qwen 3.5 (color 1), Gemini 2.5 Flash (color 2). Error bars: Wilson 95% CIs.]
 
-[PLACEHOLDER: augmentation_curves -- Describe per-model augmentation curves. Key patterns to report:
-1. Does either model show statistical stability (flat curve) or degradation (declining curve)?
-2. Cochran-Armitage trend test per model: Qwen z=[PLACEHOLDER: qwen_ca_z], p=[PLACEHOLDER: qwen_ca_p]; Gemini z=[PLACEHOLDER: gemini_ca_z], p=[PLACEHOLDER: gemini_ca_p]
-3. If one model is stable and the other degrades, this demonstrates that augmentation robustness discriminates model capability -- it separates models that reason about parallel structure from those that pattern-match
-4. If both degrade, characterize the rate: gradual vs cliff-drop, and at which level the degradation begins
-5. Check for Simpson's Paradox: do per-model trends cancel in aggregate? If so, report per-model curves only and explicitly flag the paradox]
+[PENDING: augmentation curves -- Describe per-model augmentation curves including Cochran-Armitage trend tests, stability vs degradation patterns, and Simpson's Paradox check. Awaiting primary campaign results.]
 
-The augmentation robustness results discriminate model capability in a way that L0 pass rates alone cannot. [PLACEHOLDER: augmentation_discrimination_prose -- describe how the augmentation curves reveal a different capability picture than the L0 results. Do the two models separate more or less under augmentation? Does the MoE architecture (Qwen) show different augmentation sensitivity than the dense architecture (Gemini)?]
+The augmentation robustness results discriminate model capability in a way that L0 pass rates alone cannot. [PENDING: augmentation discrimination prose -- describe how augmentation curves reveal a different capability picture than L0 results, including MoE vs dense architecture sensitivity comparison. Awaiting primary campaign results.]
 
 ### 6.6 Cross-Direction Analysis
 
 Table 11 presents pass rates broken down by translation direction for each model at L0.
 
-[TABLE 11: Pass rates by translation direction (L0, all suites, 2 models). Directions with fewer than [PLACEHOLDER: min_n_threshold] kernel-model pairs are marked as exploratory.]
+[TABLE 11: Pass rates by translation direction (L0, all suites, 2 models). Directions with fewer than 10 kernel-model pairs are marked as exploratory.]
 
 | Direction | Qwen 3.5 | Gemini 2.5 Flash | Combined | N (pairs) | Note |
 |-----------|----------:|------------------:|---------:|----------:|:-----|
-| cuda-to-omp | [PLACEHOLDER: qwen_c2o] | [PLACEHOLDER: gemini_c2o] | [PLACEHOLDER: combined_c2o] | [PLACEHOLDER: n_c2o] | Primary |
-| omp-to-cuda | [PLACEHOLDER: qwen_o2c] | [PLACEHOLDER: gemini_o2c] | [PLACEHOLDER: combined_o2c] | [PLACEHOLDER: n_o2c] | |
-| cuda-to-opencl | [PLACEHOLDER: qwen_c2cl] | [PLACEHOLDER: gemini_c2cl] | [PLACEHOLDER: combined_c2cl] | [PLACEHOLDER: n_c2cl] | |
-| opencl-to-cuda | [PLACEHOLDER: qwen_cl2c] | [PLACEHOLDER: gemini_cl2c] | [PLACEHOLDER: combined_cl2c] | [PLACEHOLDER: n_cl2c] | |
-| omp-to-opencl | [PLACEHOLDER: qwen_o2cl] | [PLACEHOLDER: gemini_o2cl] | [PLACEHOLDER: combined_o2cl] | [PLACEHOLDER: n_o2cl] | |
-| opencl-to-omp | [PLACEHOLDER: qwen_cl2o] | [PLACEHOLDER: gemini_cl2o] | [PLACEHOLDER: combined_cl2o] | [PLACEHOLDER: n_cl2o] | |
-| cuda-to-omp\_target | [PLACEHOLDER: qwen_c2ot] | [PLACEHOLDER: gemini_c2ot] | [PLACEHOLDER: combined_c2ot] | [PLACEHOLDER: n_c2ot] | HeCBench |
-| omp\_target-to-cuda | [PLACEHOLDER: qwen_ot2c] | [PLACEHOLDER: gemini_ot2c] | [PLACEHOLDER: combined_ot2c] | [PLACEHOLDER: n_ot2c] | HeCBench |
+| cuda-to-omp | [PENDING] | [PENDING] | [PENDING] | 24 | Primary |
+| omp-to-cuda | [PENDING] | [PENDING] | [PENDING] | 24 | |
+| cuda-to-opencl | [PENDING] | [PENDING] | [PENDING] | 20 | |
+| opencl-to-cuda | [PENDING] | [PENDING] | [PENDING] | 20 | |
+| omp-to-opencl | [PENDING] | [PENDING] | [PENDING] | 18 | |
+| opencl-to-omp | [PENDING] | [PENDING] | [PENDING] | 18 | |
+| cuda-to-omp\_target | [PENDING] | [PENDING] | [PENDING] | 8 | HeCBench case study |
+| omp\_target-to-cuda | [PENDING] | [PENDING] | [PENDING] | 10 | HeCBench case study |
 
-[FIGURE 6: Cross-direction grouped bar chart. X-axis: 8 directions. Y-axis: pass rate (%). Grouped bars: one per model.]
+[FIGURE 8: Cross-direction grouped bar chart. X-axis: 8 directions. Y-axis: pass rate (%). Grouped bars: one per model.]
 
-**Direction asymmetry.** [PLACEHOLDER: direction_asymmetry_prose -- For each bidirectional pair (cuda/omp, cuda/opencl, omp/opencl, cuda/omp\_target), report the pass rate gap. The asymmetry has a structural explanation: CUDA-to-OpenMP requires removing CUDA-specific constructs (cudaMalloc, kernel launch syntax, threadIdx/blockIdx indexing) and replacing them with OpenMP directives -- a reductive task. OpenMP-to-CUDA requires introducing all of these constructs -- a generative task. Generative tasks are inherently harder because the model must make design choices not constrained by the input.]
+**Direction asymmetry.** [PENDING: direction asymmetry prose -- for each bidirectional pair, report the pass rate gap. CUDA-to-OpenMP is a reductive task; OpenMP-to-CUDA is a generative task. Awaiting primary campaign results.]
 
-McNemar's test for paired direction comparison (using kernel-model pairs evaluated in both directions): [PLACEHOLDER: mcnemar_result -- report test statistic and p-value for each bidirectional pair. This tests whether the probability of passing in direction A but failing in direction B differs from the reverse.]
+McNemar's test for paired direction comparison (using kernel-model pairs evaluated in both directions): [PENDING: McNemar test statistics and p-values for each bidirectional pair.]
 
-**Per-suite direction results.** [PLACEHOLDER: per_suite_direction_prose -- describe how pass rates vary across suites within the same direction. Do XSBench, RSBench, mixbench, and HeCBench kernels show different pass rate patterns than Rodinia? This addresses W13 (asymmetric reporting) by explicitly separating suite-level results.]
+**Per-suite direction results.** [PENDING: per-suite direction prose -- describe how pass rates vary across suites within the same direction, separating Rodinia from XSBench, RSBench, mixbench, and HeCBench. Awaiting primary campaign results.]
 
-**Sample size caveat (W1).** The primary direction (cuda-to-omp) has the largest sample size ([PLACEHOLDER: n_c2o] pairs) and supports the most reliable conclusions. Directions with fewer than [PLACEHOLDER: min_n_threshold] pairs should be considered exploratory. [PLACEHOLDER: which_directions_exploratory -- list which directions have small N and thus limited statistical power.]
+**Sample size caveat (W1).** The primary direction (cuda-to-omp) has the largest sample size (24 pairs) and supports the most reliable conclusions. Directions with fewer than 10 pairs should be considered exploratory. The two HeCBench case-study directions (cuda-to-omp\_target with 8 pairs and omp\_target-to-cuda with 10 pairs) have limited statistical power.
 
 ### 6.7 pass@k Analysis
 
@@ -531,12 +549,12 @@ To characterize sampling variance independent of self-repair, a separate pass@k 
 
 | Model | pass@1 (greedy, T=0) | pass@1 (T=0.7) | pass@5 (T=0.7) | Hard Fail % | Noisy Fail % |
 |-------|---------------------:|----------------:|----------------:|------------:|-------------:|
-| Qwen 3.5 397B-A17B | [PLACEHOLDER: qwen_p1_greedy] | [PLACEHOLDER: qwen_p1_t07] | [PLACEHOLDER: qwen_p5_t07] | [PLACEHOLDER: qwen_hard_fail] | [PLACEHOLDER: qwen_noisy_fail] |
-| Gemini 2.5 Flash | [PLACEHOLDER: gemini_p1_greedy] | [PLACEHOLDER: gemini_p1_t07] | [PLACEHOLDER: gemini_p5_t07] | [PLACEHOLDER: gemini_hard_fail] | [PLACEHOLDER: gemini_noisy_fail] |
+| Qwen 3.5 397B-A17B | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] |
+| Gemini 2.5 Flash | [PENDING] | [PENDING] | [PENDING] | [PENDING] | [PENDING] |
 
 Hard failures are defined as kernels where pass@5 = 0 (the model fundamentally cannot translate this kernel across any sample). Noisy failures have pass@1 = 0 but pass@5 > 0, indicating partial capability that does not reliably surface under greedy decoding.
 
-[PLACEHOLDER: passk_analysis -- Describe the gap between greedy pass@1 and pass@5. Key questions: (1) How many hard failures vs noisy failures exist per model? (2) Does pass@5 substantially exceed pass@1, suggesting that models have latent capability not captured by greedy decoding? (3) Do the same kernels that are hard failures for both models overlap? If so, these are genuinely difficult kernels; if not, difficulty is model-specific. (4) How does the greedy T=0 pass@1 compare to the T=0.7 pass@1 -- does temperature help or hurt?]
+[PENDING: pass@k analysis -- describe the gap between greedy pass@1 and pass@5, hard vs noisy failure counts per model, cross-model overlap of hard failures, and temperature effect on pass@1. Awaiting pass@k sweep results.]
 
 ### 6.8 Statistical Summary
 
@@ -546,12 +564,12 @@ Table 13 consolidates the statistical tests applied throughout S6.
 
 | Test | Statistic | p-value | Effect Size | Interpretation |
 |------|-----------|---------|-------------|----------------|
-| Model comparison (chi-squared) | [PLACEHOLDER: model_chi2] | [PLACEHOLDER: model_chi2_p] | Cramer's V = [PLACEHOLDER: model_cramers_v] | [PLACEHOLDER: model_chi2_interp] |
-| Qwen augmentation trend (Cochran-Armitage) | z = [PLACEHOLDER: qwen_ca_z_full] | [PLACEHOLDER: qwen_ca_p_full] | -- | [PLACEHOLDER: qwen_ca_interp] |
-| Gemini augmentation trend (Cochran-Armitage) | z = [PLACEHOLDER: gemini_ca_z_full] | [PLACEHOLDER: gemini_ca_p_full] | -- | [PLACEHOLDER: gemini_ca_interp] |
-| Direction asymmetry: cuda-omp (McNemar) | [PLACEHOLDER: mcnemar_c2o_stat] | [PLACEHOLDER: mcnemar_c2o_p] | -- | [PLACEHOLDER: mcnemar_c2o_interp] |
-| Direction asymmetry: cuda-opencl (McNemar) | [PLACEHOLDER: mcnemar_c2cl_stat] | [PLACEHOLDER: mcnemar_c2cl_p] | -- | [PLACEHOLDER: mcnemar_c2cl_interp] |
-| Direction asymmetry: omp-opencl (McNemar) | [PLACEHOLDER: mcnemar_o2cl_stat] | [PLACEHOLDER: mcnemar_o2cl_p] | -- | [PLACEHOLDER: mcnemar_o2cl_interp] |
+| Model comparison (chi-squared) | [PENDING] | [PENDING] | Cramer's V = [PENDING] | [PENDING] |
+| Qwen augmentation trend (Cochran-Armitage) | z = [PENDING] | [PENDING] | -- | [PENDING] |
+| Gemini augmentation trend (Cochran-Armitage) | z = [PENDING] | [PENDING] | -- | [PENDING] |
+| Direction asymmetry: cuda-omp (McNemar) | [PENDING] | [PENDING] | -- | [PENDING] |
+| Direction asymmetry: cuda-opencl (McNemar) | [PENDING] | [PENDING] | -- | [PENDING] |
+| Direction asymmetry: omp-opencl (McNemar) | [PENDING] | [PENDING] | -- | [PENDING] |
 
 Methodological notes: Wilson confidence intervals are preferred over Wald intervals because they provide better coverage near boundary proportions (0% or 100%), which several per-kernel and per-direction rates approach. Cochran-Armitage tests model a linear trend in pass rate across ordered augmentation levels (L0 < L1 < L2 < L3 < L4), which is the appropriate test for the hypothesis that increasing augmentation intensity degrades model performance. McNemar's test is used for direction asymmetry because each kernel-model pair is evaluated in both directions, creating natural pairing.
 
@@ -561,53 +579,39 @@ Methodological notes: Wilson confidence intervals are preferred over Wald interv
 
 ### 7.1 The Kernel-Centric Advantage
 
-ParBench's central design decision -- isolating kernel-level translation from build-system generation -- produces a qualitatively different evaluation outcome than repository-level approaches. The stronger model achieves [PLACEHOLDER: best_model_rate_discussion] PASS on CUDA-to-OpenMP translation of the same class of HPC kernels for which ParEval-Repo \cite{ParEvalRepo2025} reports 0% pass@1 at the repository level. This is not a comparison of different benchmarks or different models; it is a comparison of evaluation granularity applied to overlapping computational domains.
+ParBench's central design decision -- isolating kernel-level translation from build-system generation -- produces a qualitatively different evaluation outcome than repository-level approaches. The stronger model achieves [PENDING: best model rate] PASS on CUDA-to-OpenMP translation of the same class of HPC kernels for which ParEval-Repo \cite{ParEvalRepo2025} reports 0% pass@1 at the repository level. This is not a comparison of different benchmarks or different models; it is a comparison of evaluation granularity applied to overlapping computational domains.
 
 The implication is that LLMs possess substantial internalized knowledge of parallel programming patterns -- thread decomposition, reduction operations, stencil computation, synchronization -- that is masked when evaluation conflates translation skill with build-system generation. ParBench's kernel-centric design separates these orthogonal capabilities, enabling measurement of each in isolation. The two evaluation granularities are complementary: ParEval-Repo measures end-to-end deployment capability; ParBench measures translation capability. Both are needed to characterize LLM parallel programming skill.
 
 ### 7.2 BUILD\_FAIL as the Actionable Bottleneck
 
-BUILD\_FAIL accounts for [PLACEHOLDER: build_fail_pct_all_failures_disc] of all failures across [PLACEHOLDER: total_tasks_disc] tasks, establishing that the primary bottleneck is API-specific syntax rather than parallel reasoning capability. The recurring error patterns -- retained `cudaMalloc`/`cudaFree` calls, missing OpenMP pragma directives, incorrect type coercions -- are syntactic, not algorithmic. This finding has a direct practical implication: targeted fine-tuning on OpenMP idioms, or few-shot prompting with canonical CUDA-to-OpenMP translation examples, would likely close a substantial portion of the BUILD\_FAIL gap. The parallel reasoning capability is already present in the model weights; the API surface coverage is the limiting factor.
+BUILD\_FAIL accounts for [PENDING: BUILD_FAIL pct of all failures] of all failures across [PENDING: total tasks] tasks, establishing that the primary bottleneck is API-specific syntax rather than parallel reasoning capability. The recurring error patterns -- retained `cudaMalloc`/`cudaFree` calls, missing OpenMP pragma directives, incorrect type coercions -- are syntactic, not algorithmic. This finding has a direct practical implication: targeted fine-tuning on OpenMP idioms, or few-shot prompting with canonical CUDA-to-OpenMP translation examples, would likely close a substantial portion of the BUILD\_FAIL gap. The parallel reasoning capability is already present in the model weights; the API surface coverage is the limiting factor.
 
-VERIFY\_FAIL accounts for [PLACEHOLDER: verify_fail_pct_disc] of all failures, providing a more nuanced picture than the BUILD\_FAIL-only story suggests. These are translations that compile, run to completion, and produce output -- but incorrect output. The conjunctive verification upgrade (exit\_code AND stdout\_pattern) catches these cases, which weaker verification would miss. VERIFY\_FAIL indicates genuine parallel logic errors: wrong thread-index mappings, incorrect reduction scoping, or missed data dependencies that produce numerically wrong results. While rarer than BUILD\_FAIL, VERIFY\_FAIL demonstrates that LLMs do not always correctly reason about parallel computation structure even when they produce syntactically valid code.
+VERIFY\_FAIL accounts for [PENDING: VERIFY_FAIL pct of all failures] of all failures, providing a more nuanced picture than the BUILD\_FAIL-only story suggests. These are translations that compile, run to completion, and produce output -- but incorrect output. The conjunctive verification upgrade (exit\_code AND stdout\_pattern) catches these cases, which weaker verification would miss. VERIFY\_FAIL indicates genuine parallel logic errors: wrong thread-index mappings, incorrect reduction scoping, or missed data dependencies that produce numerically wrong results. While rarer than BUILD\_FAIL, VERIFY\_FAIL demonstrates that LLMs do not always correctly reason about parallel computation structure even when they produce syntactically valid code.
 
 ### 7.3 Model Capability Analysis
 
-[PLACEHOLDER: model_comparison_discussion -- Describe the capability spread between Qwen 3.5 397B-A17B and Gemini 2.5 Flash. Key dimensions to discuss:
-1. Overall pass rate gap: is it large (qualitatively different tiers) or modest?
-2. MoE vs dense architecture implications: does Qwen's MoE structure (397B total, 17B active) outperform Gemini's dense architecture on HPC translation? The MoE architecture activates different parameter subsets for different inputs, which could provide an advantage on diverse kernel types.
-3. Failure profile comparison: do the two models produce the same distribution of failure types, or does one model fail "further along" the pipeline (more VERIFY\_FAIL vs BUILD\_FAIL)?
-4. Per-kernel agreement: on what fraction of kernels do both models agree (both PASS or both FAIL)? High agreement suggests kernel difficulty is an intrinsic property; low agreement suggests model-specific strengths.]
+[PENDING: model comparison discussion -- describe capability spread between Qwen 3.5 397B-A17B and Gemini 2.5 Flash: overall pass rate gap, MoE vs dense architecture implications, failure profile comparison, per-kernel agreement. Awaiting primary campaign results.]
 
-The comparison with LASSI \cite{LASSI2024} frames these results on a capability spectrum. LASSI reports 80--85% pass rates with a complete agentic self-correction pipeline, while ParBench's primary campaign achieves [PLACEHOLDER: combined_total_pass_pct_disc] with a 3-retry error-feedback protocol. The gap quantifies the value of agentic infrastructure: compilation feedback, execution analysis, profiling, and retrieval augmentation collectively improve pass rates from [PLACEHOLDER: combined_total_pass_pct_disc] to 80--85%. This positions three tiers of capability:
+The comparison with LASSI \cite{LASSI2024} frames these results on a capability spectrum. LASSI reports 80--85% pass rates with a complete agentic self-correction pipeline, while ParBench's primary campaign achieves [PENDING: combined total pass pct] with a 3-retry error-feedback protocol. The gap quantifies the value of agentic infrastructure: compilation feedback, execution analysis, profiling, and retrieval augmentation collectively improve pass rates from [PENDING: combined total pass pct] to 80--85%. This positions three tiers of capability:
 
-1. **Raw model capability** (pass@k floor): [PLACEHOLDER: passk_floor_rate] -- what the model achieves zero-shot without any feedback
-2. **Controlled self-repair** (primary campaign): [PLACEHOLDER: combined_total_pass_pct_disc] -- error feedback without tools
+1. **Raw model capability** (pass@k floor): [PENDING: pass@k floor rate] -- what the model achieves zero-shot without any feedback
+2. **Controlled self-repair** (primary campaign): [PENDING: combined total pass pct] -- error feedback without tools
 3. **Agentic system** (LASSI): 80--85% -- full tooling including profiling and RAG
 
 ### 7.4 Direction Asymmetry
 
-[PLACEHOLDER: asymmetry_discussion -- Describe the direction asymmetry findings from S6.6. Key points:
-1. Is cuda-to-omp easier than omp-to-cuda, and by how much?
-2. Structural explanation: CUDA-to-OpenMP is a reductive task (remove explicit machinery, replace with directives); OpenMP-to-CUDA is a generative task (introduce thread-block geometry, device memory, kernel launches). Generative tasks are harder because the model must make unconstrained design choices.
-3. Is the asymmetry consistent across both models, or does one model show it while the other does not?
-4. For cuda/opencl and omp/opencl pairs, is there a similar asymmetry pattern? OpenCL is more verbose than CUDA, which may affect direction asymmetry differently.
-5. Practical implication: LLM-assisted portability tooling is more viable for CUDA-to-CPU translation than for the reverse.]
+[PENDING: direction asymmetry discussion -- describe whether cuda-to-omp is easier than omp-to-cuda and by how much, structural explanation (reductive vs generative task), cross-model consistency of asymmetry, patterns for cuda/opencl and omp/opencl pairs, and practical implications. Awaiting primary campaign results.]
 
 ### 7.5 Augmentation Robustness Interpretation
 
-[PLACEHOLDER: augmentation_interpretation -- Interpret the per-model augmentation curves from S6.5. Key framing:
-1. The finding is NOT necessarily "level-invariance" (which was an artifact of Simpson's Paradox in the pilot). The finding is "augmentation robustness discriminates model capability."
-2. If one model is stable and the other degrades, this directly tests the memorization hypothesis: a model that degrades under surface-level code transformations is likely leveraging training-data familiarity rather than structural understanding.
-3. If both models degrade, the rate of degradation is informative: does the MoE architecture degrade differently from the dense architecture?
-4. Simpson's Paradox check: do per-model trends cancel in aggregate? If the aggregate curve appears flat but individual model curves trend downward, this is Simpson's Paradox -- the aggregate is misleading.
-5. Connection to pass@k: kernels that are "noisy failures" (pass@5>0, pass@1=0) may also be the kernels most sensitive to augmentation, suggesting a link between sampling variance and augmentation sensitivity.]
+[PENDING: augmentation interpretation -- interpret per-model augmentation curves. Key framing: augmentation robustness discriminates model capability (not necessarily level-invariance); memorization hypothesis test; MoE vs dense degradation comparison; Simpson's Paradox check; connection to pass@k. Awaiting primary campaign results.]
 
 ### 7.6 Threats to Validity
 
 Several threats to the validity of these findings must be acknowledged.
 
-**Sample size and suite scope.** The evaluation spans [PLACEHOLDER: total_kernels_across_suites] kernels across five suites (Rodinia, XSBench, RSBench, mixbench, HeCBench curated), a significant expansion from single-suite evaluations. For the primary CUDA-to-OpenMP direction at L0, [PLACEHOLDER: c2o_l0_kernel_count_threats] kernels are evaluated. Non-primary directions have smaller sample sizes; findings from directions with fewer than [PLACEHOLDER: min_n_threats] kernel-model pairs should be considered exploratory rather than confirmatory (W1). While five suites span diverse computational domains (graph algorithms, stencil computation, particle transport, micro-benchmarks, molecular dynamics, linear algebra), generalization to additional suites (NAS, Polybench) is not established.
+**Sample size and suite scope.** The evaluation spans 35 kernels across five suites (Rodinia, XSBench, RSBench, mixbench, HeCBench curated), a significant expansion from single-suite evaluations. For the primary CUDA-to-OpenMP direction at L0, 24 kernel pairs are evaluated. Non-primary directions have smaller sample sizes; findings from directions with fewer than 10 kernel-model pairs should be considered exploratory rather than confirmatory (W1). While five suites span diverse computational domains (graph algorithms, stencil computation, particle transport, micro-benchmarks, molecular dynamics, linear algebra), generalization to additional suites (NAS, Polybench) is not established.
 
 **Rodinia training-data familiarity (W11).** Rodinia is a 15+ year-old benchmark suite whose kernels are extensively documented and almost certainly present in LLM training data. The augmentation engine addresses surface-level memorization (variable names, code formatting), but cannot address algorithmic-level memorization (the LLM may "know" that BFS uses a frontier-based approach regardless of variable names). The five-suite expansion mitigates this concern: RSBench, mixbench, and HeCBench curated kernels are drawn from different eras and communities, providing benchmarks with varying degrees of training-data exposure. However, algorithmic memorization remains an irreducible threat for any evaluation using published benchmark codes.
 
@@ -623,11 +627,11 @@ Several threats to the validity of these findings must be acknowledged.
 
 The findings suggest several directions for improving LLM-based parallel code translation.
 
-**LLMs can translate kernel-level parallel code with meaningful success rates.** The [PLACEHOLDER: best_model_rate_implications]% pass rate for the stronger model on CUDA-to-OpenMP translation -- compared to 0% for repository-level approaches on the same kernels -- demonstrates that kernel-level translation is a tractable task for current LLMs. This has practical implications for HPC portability: organizations migrating CUDA codebases to OpenMP can use LLMs as a first-pass translation tool, with human review for the [PLACEHOLDER: fail_rate_implications]% that fail.
+**LLMs can translate kernel-level parallel code with meaningful success rates.** The [PENDING: best model rate]% pass rate for the stronger model on CUDA-to-OpenMP translation -- compared to 0% for repository-level approaches on the same kernels -- demonstrates that kernel-level translation is a tractable task for current LLMs. This has practical implications for HPC portability: organizations migrating CUDA codebases to OpenMP can use LLMs as a first-pass translation tool, with human review for the [PENDING: fail rate]% that fail.
 
-**BUILD\_FAIL dominance suggests targeted solutions.** With [PLACEHOLDER: build_fail_pct_implications]% of failures occurring at the compilation stage, the highest-ROI intervention is improving LLM coverage of API-specific syntax. Few-shot prompting with canonical translation patterns, fine-tuning on verified translation corpora, or hybrid approaches that pair LLM translation with rule-based API syntax correction could close a substantial portion of the failure gap. The parallel reasoning capability demonstrated by VERIFY\_FAIL cases (compilable but incorrect) is a harder problem, but a less frequent one.
+**BUILD\_FAIL dominance suggests targeted solutions.** With [PENDING: BUILD_FAIL pct]% of failures occurring at the compilation stage, the highest-ROI intervention is improving LLM coverage of API-specific syntax. Few-shot prompting with canonical translation patterns, fine-tuning on verified translation corpora, or hybrid approaches that pair LLM translation with rule-based API syntax correction could close a substantial portion of the failure gap. The parallel reasoning capability demonstrated by VERIFY\_FAIL cases (compilable but incorrect) is a harder problem, but a less frequent one.
 
-**Augmentation should be standard practice for LLM-on-code evaluation.** [PLACEHOLDER: augmentation_implication_prose -- if augmentation discriminates model capability, it should be adopted as a standard evaluation dimension. The L0-L4 ladder provides a natural curriculum. Without augmentation, an evaluation on well-known benchmarks risks conflating memorization with reasoning. ParBench's augmentation engine demonstrates a practical approach to this concern.]
+**Augmentation should be standard practice for LLM-on-code evaluation.** [PENDING: augmentation implication prose -- describe whether augmentation discriminates model capability and should be adopted as a standard evaluation dimension. Awaiting primary campaign results.]
 
 **Framework extensibility enables community adoption.** ParBench's spec schema is the extension point: adding a new kernel requires one JSON file with no modification to the harness or evaluation pipeline. The build/run/verify pipeline is benchmark-agnostic; any kernel with a deterministic correctness check can be onboarded. The five-suite expansion from Rodinia (the initial suite) to RSBench, mixbench, and HeCBench demonstrates this extensibility in practice.
 
@@ -645,7 +649,7 @@ First, ParBench provides the first systematic framework for evaluating kernel-le
 
 Second, an AST-driven augmentation engine applies six semantics-preserving transforms at five augmentation levels (L0--L4). The engine is level-invariant: 68 of 88 non-KNOWN\_FAIL specs across all five suites (54 Rodinia, 4 XSBench, 3 RSBench, 3 mixbench, and 4 spot-checked HeCBench) achieve PASS at every level L1--L4 with zero correctness regressions, confirming that the transforms preserve semantics. This validated baseline enables LLM robustness evaluation that distinguishes genuine parallel reasoning from training-data pattern-matching -- a methodological necessity when evaluating on well-known HPC benchmarks.
 
-Third, empirical evaluation of two LLMs -- Qwen 3.5 397B-A17B (Mixture-of-Experts, 397B total / 17B active parameters) and Gemini 2.5 Flash (dense architecture) -- across [PLACEHOLDER: total_tasks] translation tasks reveals [PLACEHOLDER: capability_gap_summary]. On the primary CUDA-to-OpenMP direction at L0, [PLACEHOLDER: best_model_cuda_to_omp_summary]. A failure taxonomy reveals that BUILD\_FAIL accounts for [PLACEHOLDER: build_fail_of_failures] of all failures while VERIFY\_FAIL accounts for [PLACEHOLDER: verify_fail_of_failures] -- establishing that API syntax is the primary bottleneck, though a meaningful minority of translations that compile and run produce incorrect parallel logic. Cross-direction evaluation reveals [PLACEHOLDER: direction_asymmetry_summary], reflecting the structural advantage of translating from an explicit thread-decomposition model to a directive-based model. Augmentation robustness evaluation at L0--L4 reveals [PLACEHOLDER: augmentation_summary], demonstrating that augmentation provides a more discriminating evaluation dimension than aggregate pass rate alone.
+Third, empirical evaluation of two LLMs -- Qwen 3.5 397B-A17B (Mixture-of-Experts, 397B total / 17B active parameters) and Gemini 2.5 Flash (dense architecture) -- across 1,420 translation tasks reveals [PENDING: capability gap summary]. On the primary CUDA-to-OpenMP direction at L0, [PENDING: best model cuda-to-omp summary]. A failure taxonomy reveals that BUILD\_FAIL accounts for [PENDING: BUILD_FAIL pct of all failures] of all failures while VERIFY\_FAIL accounts for [PENDING: VERIFY_FAIL pct of all failures] -- establishing that API syntax is the primary bottleneck, though a meaningful minority of translations that compile and run produce incorrect parallel logic. Cross-direction evaluation reveals [PENDING: direction asymmetry summary], reflecting the structural advantage of translating from an explicit thread-decomposition model to a directive-based model. Augmentation robustness evaluation at L0--L4 reveals [PENDING: augmentation summary], demonstrating that augmentation provides a more discriminating evaluation dimension than aggregate pass rate alone.
 
 ### 8.2 Future Work
 

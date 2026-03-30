@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Generate publication-quality figures for the SC26 paper.
 
-Reads eval results from results/evaluation/ and generates figures F1-F6
+Reads eval results from results/evaluation/ and generates figures F1-F9
 plus a LaTeX table T2. Designed to be rerun as more data arrives.
+
+Figures F2-F4 are survey data visualizations (API co-occurrence, repo vs
+kernel counts, HeCBench selection funnel). Figures F5-F9 are evaluation
+result visualizations (heatmaps, taxonomy, augmentation, cross-direction).
 
 Usage:
     python3 scripts/evaluation/generate_paper_figures.py \\
@@ -15,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import re
 import sys
@@ -486,7 +491,317 @@ def generate_f1_architecture(
 
 
 # ---------------------------------------------------------------------------
-# F2: Kernel x Model Heatmap (dual-panel: cuda-to-omp + omp-to-cuda)
+# F2: API Co-occurrence Heatmap (survey data)
+# ---------------------------------------------------------------------------
+
+
+def generate_f2_api_cooccurrence(
+    project_root: Path,
+    output_dir: Path,
+    formats: list[str],
+    verbose: bool,
+) -> None:
+    """Generate F2: API co-occurrence heatmap across 35 surveyed HPC repos.
+
+    Data source: analysis/data/API_pairwise_coverage_matrix__counts_.csv
+    """
+    csv_path = project_root / "analysis" / "data" / "API_pairwise_coverage_matrix__counts_.csv"
+    if not csv_path.exists():
+        print(f"  ERROR: {csv_path} not found — skipping F2", file=sys.stderr)
+        return
+
+    # Read the CSV into a matrix
+    with open(csv_path, newline="") as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        apis = [h.strip() for h in header[1:] if h.strip()]
+        matrix = []
+        row_labels = []
+        for row in reader:
+            if not row or not row[0].strip():
+                continue
+            row_labels.append(row[0].strip())
+            matrix.append([int(x.strip()) for x in row[1:] if x.strip()])
+
+    n = len(apis)
+    data = np.array(matrix, dtype=float)
+
+    if verbose:
+        print(f"  Loaded {n}x{n} co-occurrence matrix from {csv_path}")
+        print(f"  APIs: {apis}")
+
+    # Build a sequential colormap from linen (low) to teal (high)
+    cmap = mcolors.LinearSegmentedColormap.from_list(
+        "sc26_cooccurrence",
+        [PALETTE["linen"], PALETTE["teal_tint"], PALETTE["teal"], PALETTE["teal_dark"]],
+        N=256,
+    )
+
+    fig, ax = plt.subplots(figsize=(9, 8))
+    im = ax.imshow(data, cmap=cmap, aspect="equal", vmin=0, vmax=data.max())
+
+    # Annotate each cell with count
+    for i in range(n):
+        for j in range(n):
+            val = int(data[i, j])
+            # Determine text color based on background intensity
+            norm_val = data[i, j] / data.max()
+            text_color = "white" if norm_val > 0.55 else PALETTE["charcoal"]
+            fontweight = "bold"
+            fontsize = 10
+            # Highlight CUDA-OpenMP cell (row=0/CUDA, col=1/OpenMP or row=1/OpenMP, col=0/CUDA)
+            is_cuda_omp = (
+                (row_labels[i] == "CUDA" and apis[j] == "OpenMP")
+                or (row_labels[i] == "OpenMP" and apis[j] == "CUDA")
+            )
+            if is_cuda_omp:
+                fontsize = 12
+                fontweight = "extra bold"
+                # Draw a rectangle border to highlight
+                rect = plt.Rectangle(
+                    (j - 0.5, i - 0.5), 1, 1,
+                    linewidth=2.5, edgecolor=PALETTE["rose"],
+                    facecolor="none", zorder=3,
+                )
+                ax.add_patch(rect)
+            ax.text(
+                j, i, str(val),
+                ha="center", va="center",
+                fontsize=fontsize, fontweight=fontweight,
+                color=text_color,
+            )
+
+    # Axis labels
+    ax.set_xticks(range(n))
+    ax.set_xticklabels(
+        [a.replace("OpenMP_Target", "OMP\nTarget") for a in apis],
+        rotation=45, ha="right", fontsize=9,
+    )
+    ax.set_yticks(range(n))
+    ax.set_yticklabels(
+        [a.replace("OpenMP_Target", "OMP Target") for a in row_labels],
+        fontsize=9,
+    )
+
+    # Grid lines
+    for i in range(n + 1):
+        ax.axhline(i - 0.5, color="white", linewidth=1.5)
+        ax.axvline(i - 0.5, color="white", linewidth=1.5)
+
+    # Colorbar
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("Number of Repositories", fontsize=10)
+
+    ax.set_title(
+        "API Co-occurrence Across 35 HPC Benchmark Repositories",
+        fontsize=12, fontweight="bold", pad=12,
+    )
+
+    fig.tight_layout()
+    _save_figure(fig, output_dir, "f2_api_cooccurrence_survey", formats)
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# F3: Repository-Level vs Kernel-Level Counts
+# ---------------------------------------------------------------------------
+
+
+def generate_f3_repo_vs_kernel(
+    output_dir: Path,
+    formats: list[str],
+    verbose: bool,
+) -> None:
+    """Generate F3: Grouped bar chart comparing repo-level vs kernel-level counts.
+
+    Data sources: analysis/data/API_pairwise_coverage_matrix__counts_.csv (repo counts)
+                  analysis/reports/kernel_level_analysis.md (kernel counts)
+    Pairs: CUDA-OpenMP (6 repos, 472 kernels), CUDA-HIP (3 repos, 633 kernels),
+           CUDA-SYCL (2 repos, 616 kernels).
+    """
+    # Repo counts from API_pairwise_coverage_matrix__counts_.csv (authoritative)
+    # Kernel counts from kernel_level_analysis.md (verified)
+    pairs = [
+        ("CUDA\u2013OpenMP",  6, 472),
+        ("CUDA\u2013HIP",     3, 633),
+        ("CUDA\u2013SYCL",    2, 616),
+    ]
+    labels = [p[0] for p in pairs]
+    repo_counts = np.array([p[1] for p in pairs], dtype=float)
+    kernel_counts = np.array([p[2] for p in pairs], dtype=float)
+    multipliers = [f"{int(k / r)}x" for r, k in zip(repo_counts, kernel_counts)]
+
+    if verbose:
+        for lbl, r, k, m in zip(labels, repo_counts, kernel_counts, multipliers):
+            print(f"  {lbl}: {int(r)} repos -> {int(k)} kernels ({m})")
+
+    x = np.arange(len(labels))
+    bar_width = 0.32
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+
+    bars_repo = ax.bar(
+        x - bar_width / 2, repo_counts, bar_width,
+        color=PALETTE["teal_tint"], edgecolor=PALETTE["teal"],
+        linewidth=1.2, label="Repository Count",
+    )
+    bars_kernel = ax.bar(
+        x + bar_width / 2, kernel_counts, bar_width,
+        color=PALETTE["teal"], edgecolor=PALETTE["teal_dark"],
+        linewidth=1.2, label="Kernel Count",
+    )
+
+    # Log scale
+    ax.set_yscale("log")
+    ax.set_ylim(5, 2500)
+
+    # Annotate bars with exact counts
+    for i, (r, k) in enumerate(zip(repo_counts, kernel_counts)):
+        ax.text(
+            x[i] - bar_width / 2, r * 1.15, str(int(r)),
+            ha="center", va="bottom", fontsize=9, fontweight="bold",
+            color=PALETTE["teal_dark"],
+        )
+        ax.text(
+            x[i] + bar_width / 2, k * 1.15, str(int(k)),
+            ha="center", va="bottom", fontsize=9, fontweight="bold",
+            color=PALETTE["charcoal"],
+        )
+
+    # Multiplier labels above each pair
+    for i, mult in enumerate(multipliers):
+        max_val = max(repo_counts[i], kernel_counts[i])
+        ax.text(
+            x[i], max_val * 2.2, mult,
+            ha="center", va="bottom", fontsize=13, fontweight="bold",
+            color=PALETTE["rose"],
+        )
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, fontsize=11)
+    ax.set_ylabel("Count (log scale)", fontsize=11)
+    ax.legend(loc="lower right", frameon=True, framealpha=0.9, fontsize=10)
+    ax.grid(axis="y", linestyle="--", alpha=0.3, linewidth=0.6)
+    ax.set_title(
+        "Repository-Level vs. Kernel-Level Translation Pair Counts",
+        fontsize=12, fontweight="bold", pad=12,
+    )
+
+    fig.tight_layout()
+    _save_figure(fig, output_dir, "f3_repo_vs_kernel", formats)
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# F4: HeCBench Kernel Selection Funnel
+# ---------------------------------------------------------------------------
+
+
+def generate_f4_selection_funnel(
+    output_dir: Path,
+    formats: list[str],
+    verbose: bool,
+) -> None:
+    """Generate F4: HeCBench kernel selection pipeline funnel diagram.
+
+    Data source: analysis/reports/kernel_selection_candidates.md and
+    analysis/reports/kernel_level_analysis.md.
+    Stages: 506 total -> 327 (4-API) -> 325 (Makefiles) -> 242 (self-checking)
+            -> 60 final (complexity, deps, diversity filters).
+    """
+    # Data verified against source files
+    stages = [
+        ("HeCBench kernels total",                           506, None),
+        ("All 4 API variants\n(CUDA, HIP, SYCL, OMP)",      327, "\u2212179: missing API variants"),
+        ("With Makefiles",                                   325, "\u22122: no Makefile"),
+        ("With self-checking\n(PASS/FAIL/verify patterns)",  242, "\u221283: no verification"),
+        ("Final selected\n(complexity, deps, diversity)",      60, "\u2212182: complexity/deps/diversity"),
+    ]
+
+    labels = [s[0] for s in stages]
+    values = [s[1] for s in stages]
+    exclusions = [s[2] for s in stages]
+
+    if verbose:
+        for lbl, val, exc in stages:
+            exc_str = f" ({exc})" if exc else ""
+            print(f"  {lbl.replace(chr(10), ' ')}: {val}{exc_str}")
+
+    n = len(stages)
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    max_val = max(values)
+    y_positions = list(range(n - 1, -1, -1))  # bottom to top
+
+    # Color gradient from teal_tint (widest) to teal_dark (narrowest)
+    stage_colors = [
+        PALETTE["teal_tint"],
+        PALETTE["teal_tint"],
+        PALETTE["teal"],
+        PALETTE["teal"],
+        PALETTE["teal_dark"],
+    ]
+
+    for i, (label, value, exc) in enumerate(stages):
+        y = y_positions[i]
+        bar_width = value / max_val * 0.85  # normalized width
+        ax.barh(
+            y, bar_width, height=0.65,
+            left=(1 - bar_width) / 2,  # center the bar
+            color=stage_colors[i],
+            edgecolor=PALETTE["charcoal"],
+            linewidth=0.8,
+        )
+        # Value label inside bar
+        text_color = _text_color_for_bg(stage_colors[i])
+        ax.text(
+            0.5, y, f"{value}",
+            ha="center", va="center",
+            fontsize=14, fontweight="bold",
+            color=text_color,
+        )
+        # Stage label on the left
+        ax.text(
+            -0.02, y, label,
+            ha="right", va="center",
+            fontsize=9, color=PALETTE["charcoal"],
+        )
+        # Exclusion reason on the right
+        if exc:
+            ax.text(
+                1.02, y, exc,
+                ha="left", va="center",
+                fontsize=8, color=PALETTE["rose_dark"],
+                fontstyle="italic",
+            )
+
+    # Draw connecting arrows between stages
+    for i in range(n - 1):
+        y_from = y_positions[i]
+        y_to = y_positions[i + 1]
+        ax.annotate(
+            "", xy=(0.5, y_to + 0.35), xytext=(0.5, y_from - 0.35),
+            arrowprops=dict(
+                arrowstyle="-|>", color=PALETTE["slate"],
+                lw=1.2, shrinkA=0, shrinkB=0,
+            ),
+        )
+
+    ax.set_xlim(-0.45, 1.45)
+    ax.set_ylim(-0.6, n - 0.4)
+    ax.axis("off")
+    ax.set_title(
+        "HeCBench Kernel Selection Pipeline",
+        fontsize=12, fontweight="bold", pad=12,
+    )
+
+    fig.tight_layout()
+    _save_figure(fig, output_dir, "f4_selection_funnel", formats)
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# F5: Kernel x Model Heatmap (dual-panel: cuda-to-omp + omp-to-cuda)
 # ---------------------------------------------------------------------------
 
 
@@ -568,13 +883,13 @@ def _draw_heatmap_panel(
     return present
 
 
-def generate_f2_heatmap(
+def generate_f5_heatmap(
     records: list[dict],
     output_dir: Path,
     formats: list[str],
     verbose: bool,
 ) -> None:
-    """Generate F2: Dual-panel kernel x model heatmap (cuda-to-omp + omp-to-cuda)."""
+    """Generate F5: Dual-panel kernel x model heatmap (cuda-to-omp + omp-to-cuda)."""
     # Build both matrices
     c2o_kernels, c2o_models, c2o_lookup = build_kernel_model_matrix(
         records, level=0, suite="rodinia", direction="cuda-to-omp",
@@ -646,12 +961,12 @@ def generate_f2_heatmap(
         ncol=len(legend_handles), frameon=False, fontsize=9,
     )
 
-    _save_figure(fig, output_dir, "f2_kernel_model_heatmap", formats)
+    _save_figure(fig, output_dir, "f5_kernel_model_heatmap", formats)
     plt.close(fig)
 
 
 # ---------------------------------------------------------------------------
-# F3: Failure Taxonomy (dual-direction stacked bar)
+# F6: Failure Taxonomy (dual-direction stacked bar)
 # ---------------------------------------------------------------------------
 
 
@@ -708,13 +1023,13 @@ def _draw_taxonomy_panel(
     ax.set_title(title, fontsize=10, fontweight="bold")
 
 
-def generate_f3_taxonomy(
+def generate_f6_taxonomy(
     records: list[dict],
     output_dir: Path,
     formats: list[str],
     verbose: bool,
 ) -> None:
-    """Generate F3: Failure taxonomy — dual-direction stacked bar chart."""
+    """Generate F6: Failure taxonomy — dual-direction stacked bar chart."""
     c2o_records = filter_records(records, level=0, suite="rodinia", direction="cuda-to-omp")
     o2c_records = filter_records(records, level=0, suite="rodinia", direction="omp-to-cuda")
 
@@ -759,21 +1074,21 @@ def generate_f3_taxonomy(
         ncol=len(handles), frameon=False, fontsize=9,
     )
 
-    _save_figure(fig, output_dir, "f3_failure_taxonomy", formats)
+    _save_figure(fig, output_dir, "f6_failure_taxonomy", formats)
     plt.close(fig)
 
 
 # ---------------------------------------------------------------------------
-# F4: Augmentation Robustness Line Chart
+# F7: Augmentation Robustness Line Chart
 # ---------------------------------------------------------------------------
 
 
-def generate_f4_augmentation(
+def generate_f7_augmentation(
     output_dir: Path,
     formats: list[str],
     verbose: bool,
 ) -> None:
-    """Generate F4: Augmentation robustness — pass rate vs. augmentation level.
+    """Generate F7: Augmentation robustness — pass rate vs. augmentation level.
 
     Uses AUG_ROBUSTNESS verified data (Rodinia cuda-to-omp, seed=42, 17 kernels).
     """
@@ -822,21 +1137,21 @@ def generate_f4_augmentation(
         fontsize=10,
     )
 
-    _save_figure(fig, output_dir, "f4_augmentation_robustness", formats)
+    _save_figure(fig, output_dir, "f7_augmentation_robustness", formats)
     plt.close(fig)
 
 
 # ---------------------------------------------------------------------------
-# F5: Cross-Direction Comparison (Rodinia + XSBench)
+# F8: Cross-Direction Comparison (Rodinia + XSBench)
 # ---------------------------------------------------------------------------
 
 
-def generate_f5_cross_direction(
+def generate_f8_cross_direction(
     output_dir: Path,
     formats: list[str],
     verbose: bool,
 ) -> None:
-    """Generate F5: Cross-direction comparison — Rodinia asymmetry + XSBench."""
+    """Generate F8: Cross-direction comparison — Rodinia asymmetry + XSBench."""
     fig, (ax1, ax2) = plt.subplots(
         2, 1, figsize=(10, 8),
         gridspec_kw={"height_ratios": [1, 1.2], "hspace": 0.4},
@@ -958,21 +1273,21 @@ def generate_f5_cross_direction(
     ax2.legend(loc="upper right", frameon=True, framealpha=0.9, fontsize=8)
     ax2.grid(axis="y", linestyle="--", alpha=0.3, linewidth=0.6)
 
-    _save_figure(fig, output_dir, "f5_cross_direction_comparison", formats)
+    _save_figure(fig, output_dir, "f8_cross_direction_comparison", formats)
     plt.close(fig)
 
 
 # ---------------------------------------------------------------------------
-# F6: XSBench Direction x Model Heatmap
+# F9: XSBench Direction x Model Heatmap
 # ---------------------------------------------------------------------------
 
 
-def generate_f6_xsbench(
+def generate_f9_xsbench(
     output_dir: Path,
     formats: list[str],
     verbose: bool,
 ) -> None:
-    """Generate F6: XSBench 12-direction x 3-model status heatmap (L0)."""
+    """Generate F9: XSBench 12-direction x 3-model status heatmap (L0)."""
     directions = list(XSBENCH_L0.keys())
     models = _XS_MODELS
 
@@ -1049,7 +1364,7 @@ def generate_f6_xsbench(
         fontsize=10, pad=40,
     )
 
-    _save_figure(fig, output_dir, "f6_xsbench_heatmap", formats)
+    _save_figure(fig, output_dir, "f9_xsbench_heatmap", formats)
     plt.close(fig)
 
 
@@ -1160,21 +1475,39 @@ def main() -> None:
     if args.figures:
         requested = {f.strip().lower() for f in args.figures.split(",")}
     else:
-        requested = {"f1", "f2", "f3", "f4", "f5", "f6", "t2"}
+        requested = {
+            "f1", "f2", "f3", "f4",
+            "f5", "f6", "f7", "f8", "f9",
+            "t2",
+        }
 
-    # Load data
-    records = load_individual_results(results_dir)
-    if not records:
-        print("ERROR: No result files found in", results_dir, file=sys.stderr)
-        sys.exit(1)
-    summary = load_eval_summary(results_dir)
+    # Determine whether eval data is needed (F5-F9, T2)
+    eval_figures = {"f5", "f6", "f7", "f8", "f9", "t2"}
+    needs_eval = requested & eval_figures
 
-    c2o_records = filter_records(records, level=0, suite="rodinia", direction="cuda-to-omp")
-    o2c_records = filter_records(records, level=0, suite="rodinia", direction="omp-to-cuda")
+    records: list[dict] = []
+    has_eval_data = False
+    if needs_eval:
+        records = load_individual_results(results_dir)
+        summary_path = results_dir / "eval_summary.json"
+        if not records or not summary_path.exists():
+            print(
+                f"WARNING: Eval data not found in {results_dir} — "
+                f"skipping figures {sorted(needs_eval)}",
+                file=sys.stderr,
+            )
+            requested -= eval_figures
+        else:
+            has_eval_data = True
+            summary = json.loads(summary_path.read_text())
 
-    print(f"Loaded {len(records)} total results")
-    print(f"  L0 Rodinia cuda-to-omp: {len(c2o_records)}")
-    print(f"  L0 Rodinia omp-to-cuda: {len(o2c_records)}")
+            c2o_records = filter_records(records, level=0, suite="rodinia", direction="cuda-to-omp")
+            o2c_records = filter_records(records, level=0, suite="rodinia", direction="omp-to-cuda")
+
+            print(f"Loaded {len(records)} total results")
+            print(f"  L0 Rodinia cuda-to-omp: {len(c2o_records)}")
+            print(f"  L0 Rodinia omp-to-cuda: {len(o2c_records)}")
+
     print(f"Output: {output_dir}")
     print(f"Formats: {formats}")
     print()
@@ -1185,34 +1518,52 @@ def main() -> None:
         generate_f1_architecture(output_dir, formats, args.verbose)
         print()
 
-    # F2: Dual-panel heatmap (cuda-to-omp + omp-to-cuda)
+    # F2: API co-occurrence heatmap (survey data)
     if "f2" in requested:
-        print("Generating F2: Kernel x Model Heatmap (dual-panel)...")
-        generate_f2_heatmap(records, output_dir, formats, args.verbose)
+        print("Generating F2: API Co-occurrence Heatmap (survey)...")
+        generate_f2_api_cooccurrence(project_root, output_dir, formats, args.verbose)
         print()
 
-    # F3: Failure taxonomy (dual-direction stacked bars)
+    # F3: Repository vs kernel-level counts (survey data)
     if "f3" in requested:
-        print("Generating F3: Failure Taxonomy (dual-direction)...")
-        generate_f3_taxonomy(records, output_dir, formats, args.verbose)
+        print("Generating F3: Repo vs Kernel-Level Counts...")
+        generate_f3_repo_vs_kernel(output_dir, formats, args.verbose)
         print()
 
-    # F4: Augmentation robustness line chart
+    # F4: HeCBench kernel selection funnel (survey data)
     if "f4" in requested:
-        print("Generating F4: Augmentation Robustness (3 models, L0-L4)...")
-        generate_f4_augmentation(output_dir, formats, args.verbose)
+        print("Generating F4: HeCBench Selection Funnel...")
+        generate_f4_selection_funnel(output_dir, formats, args.verbose)
         print()
 
-    # F5: Cross-direction comparison (Rodinia + XSBench)
+    # F5: Dual-panel heatmap (cuda-to-omp + omp-to-cuda)
     if "f5" in requested:
-        print("Generating F5: Cross-Direction Comparison (Rodinia + XSBench)...")
-        generate_f5_cross_direction(output_dir, formats, args.verbose)
+        print("Generating F5: Kernel x Model Heatmap (dual-panel)...")
+        generate_f5_heatmap(records, output_dir, formats, args.verbose)
         print()
 
-    # F6: XSBench direction x model heatmap
+    # F6: Failure taxonomy (dual-direction stacked bars)
     if "f6" in requested:
-        print("Generating F6: XSBench Direction x Model Heatmap (L0)...")
-        generate_f6_xsbench(output_dir, formats, args.verbose)
+        print("Generating F6: Failure Taxonomy (dual-direction)...")
+        generate_f6_taxonomy(records, output_dir, formats, args.verbose)
+        print()
+
+    # F7: Augmentation robustness line chart
+    if "f7" in requested:
+        print("Generating F7: Augmentation Robustness (3 models, L0-L4)...")
+        generate_f7_augmentation(output_dir, formats, args.verbose)
+        print()
+
+    # F8: Cross-direction comparison (Rodinia + XSBench)
+    if "f8" in requested:
+        print("Generating F8: Cross-Direction Comparison (Rodinia + XSBench)...")
+        generate_f8_cross_direction(output_dir, formats, args.verbose)
+        print()
+
+    # F9: XSBench direction x model heatmap
+    if "f9" in requested:
+        print("Generating F9: XSBench Direction x Model Heatmap (L0)...")
+        generate_f9_xsbench(output_dir, formats, args.verbose)
         print()
 
     # T2: LaTeX table (both directions)
