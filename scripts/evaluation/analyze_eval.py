@@ -61,10 +61,12 @@ EXCLUDED_SPECS: frozenset[str] = frozenset({
 def _augment_level_from_filename(stem: str) -> int:
     """Extract augmentation level from result file stem.
 
-    Convention: {src_id}-to-{tgt_id}-L{N}.json  →  N
-                {src_id}-to-{tgt_id}.json         →  0
+    Convention: {src_id}-to-{tgt_id}-L{N}.json         →  N
+                {src_id}-to-{tgt_id}-L{N}-s{M}.json    →  N
+                {src_id}-to-{tgt_id}.json               →  0
+                {src_id}-to-{tgt_id}-s{M}.json          →  0
     """
-    m = re.search(r"-L(\d+)$", stem)
+    m = re.search(r"-L(\d+)(?:-s\d+)?$", stem)
     return int(m.group(1)) if m else 0
 
 

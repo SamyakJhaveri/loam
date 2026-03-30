@@ -114,6 +114,7 @@ def _build_tasks(
                         "model": model,
                         "augment_level": level,
                         "sample_id": sid,
+                        "num_samples": num_samples,
                         "src_id": src_spec_path.stem,
                         "tgt_id": tgt_spec_path.stem,
                     })
@@ -123,10 +124,10 @@ def _build_tasks(
     return tasks
 
 
-def _result_path(project_root: Path, model: str, src_id: str, tgt_id: str, augment_level: int = 0, sample_id: int = 0) -> Path:
+def _result_path(project_root: Path, model: str, src_id: str, tgt_id: str, augment_level: int = 0, sample_id: int = 0, num_samples: int = 1) -> Path:
     safe_model = model.replace("/", "_")
     level_tag = f"-L{augment_level}" if augment_level > 0 else ""
-    sample_tag = f"-s{sample_id}" if sample_id > 0 else ""
+    sample_tag = f"-s{sample_id}" if num_samples > 1 else ""
     return project_root / "results" / "evaluation" / safe_model / f"{src_id}-to-{tgt_id}{level_tag}{sample_tag}.json"
 
 
@@ -155,10 +156,11 @@ def run_batch(
         model = task["model"]
         augment_level = task.get("augment_level", 0)
         sample_id = task.get("sample_id", 0)
-        result_file = _result_path(project_root, model, src_id, tgt_id, augment_level, sample_id)
+        num_samples = task.get("num_samples", 1)
+        result_file = _result_path(project_root, model, src_id, tgt_id, augment_level, sample_id, num_samples)
 
         level_tag = f" L{augment_level}" if augment_level > 0 else ""
-        sample_tag = f" s{sample_id}" if sample_id > 0 else ""
+        sample_tag = f" s{sample_id}" if num_samples > 1 else ""
         prefix = f"[{i:3d}/{total}] {src_id} → {tgt_id} [{model}]{level_tag}{sample_tag}"
 
         if resume and result_file.exists():
