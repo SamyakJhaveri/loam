@@ -112,4 +112,174 @@ Pipeline is correctly configured (not a pipeline bug):
 
 ---
 
+## Finding 2: Threats to Validity — Comprehensive Adversarial Review (2026-03-31)
+
+**Source:** Adversarial SC26 reviewer simulation (critic agent, Opus)
+**Scope:** Full ParBench evaluation methodology, not just lavamd
+**Suggested section:** Threats to Validity (Section 7 or 8), partially Discussion
+**Status:** Pre-submission checklist — some threats require action, others require prose
+
+### Threat Inventory (Priority-Ordered)
+
+#### TIER 1: Must Address Before Submission (FATAL/MAJOR)
+
+**Threat A: Single-Model Results**
+- **Severity:** FATAL without mitigation
+- **Issue:** If the paper only reports results from one model, it cannot claim to benchmark
+  "LLMs" — it benchmarks one LLM. SC26 requires generalizability.
+- **Current state:** Qwen 3.5 397B is the primary model. Historical pilot data exists for
+  Claude Sonnet / Groq Llama 70B / Gemini Flash-Lite, but the full campaign infrastructure
+  is only validated for Qwen + Gemini (planned).
+- **Mitigation:** Minimum 3 models from different providers/architectures before submission.
+  Qwen (MoE/Together) + Gemini (dense/Google) + one Anthropic or OpenAI model.
+- **Paper treatment:** Report per-model results; do not aggregate across models without
+  acknowledging architecture differences.
+
+**Threat B: Rodinia Monoculture (External Validity)**
+- **Severity:** MAJOR
+- **Issue:** All evaluation results are from Rodinia benchmarks (21 kernels, circa 2009).
+  Rodinia is likely in every LLM's training corpus. The benchmark is called "ParBench"
+  (implying generality), but the evaluation is effectively "RodiniaBench."
+- **Current state:** XSBench specs exist and are verified PASS (4/4). RSBench (4 specs)
+  and mixbench (3 specs) are untested. HeCBench curated (25 specs, 23 PASS).
+- **Mitigation:** Include at least 5-10 non-Rodinia kernels in the eval campaign.
+  XSBench is lowest-hanging fruit (specs already verified).
+- **Paper treatment:** Either include multi-suite results OR explicitly scope claims to
+  Rodinia and acknowledge generalization as an open question. Option A is much stronger.
+
+**Threat C: Binary PASS/FAIL at a Performance Conference**
+- **Severity:** MAJOR
+- **Issue:** SC is a *supercomputing* conference. A paper that measures only correctness
+  (PASS/FAIL) without performance will raise eyebrows. A 100x-slower-but-correct
+  translation gets PASS — is that useful?
+- **Current state:** `speedup_ratio` is unreliable (sub-millisecond baselines, wall-clock
+  timing). `translated_kernel_time_seconds` is null in all result files.
+- **Mitigation options:**
+  1. Run `nvprof`/`ncu` on PASS results for CUDA kernel time, `omp_get_wtime()` for OMP
+  2. Present failure taxonomy (BUILD/RUN/VERIFY) as a first-class result — this is arguably
+     more interesting than raw pass rate and IS within ParBench's current capabilities
+  3. Frame the paper as "correctness-first evaluation" with performance as future work
+- **Paper treatment:** The failure taxonomy (130 BUILD_FAIL, 120 RUN_FAIL, 46 VERIFY_FAIL,
+  132 PASS from current data) tells a richer story than "22.4% pass rate." BUILD_FAIL =
+  model doesn't understand target syntax. RUN_FAIL = understands syntax but not semantics.
+  VERIFY_FAIL = semantics close but not exact. Present this taxonomy prominently.
+
+**Threat D: Pseudoreplication via Augmentation Levels**
+- **Severity:** MAJOR
+- **Issue:** Augmentation levels L0-L4 are deterministic transforms of the same source
+  (seed=42+level). Treating 5 levels × 18 kernels = 90 as 90 independent samples inflates
+  statistical confidence. The correct analysis unit is 18 kernels at L0, with L1-L4 as
+  *within-subject repeated measures*.
+- **Example:** Reporting "cuda-to-omp: 57.8% (52/90)" when the independent sample is
+  actually 18 kernels is pseudoreplication (Hurlbert, 1984).
+- **Mitigation:**
+  1. Report per-level results separately (L0 pass rate as primary metric)
+  2. Use paired tests (McNemar's) for direction asymmetry comparisons on the same kernels
+  3. Frame augmentation as a *robustness probe* ("does L3 augmentation degrade pass rate?")
+     rather than a sample-size multiplier
+  4. Report confidence intervals on the L0 sample (n=18 per direction)
+- **Paper treatment:** Primary metric = per-kernel pass@1 at L0. Augmentation results
+  presented as a separate robustness analysis, NOT aggregated with L0 to inflate N.
+- **Key statistical note:** With n=18 at L0, a 61.1% pass rate has 95% CI of roughly
+  36-83%. Cannot claim statistical significance between directions without paired tests.
+
+#### TIER 2: Should Address in Paper (MODERATE)
+
+**Threat 1: Filename Anonymization Reduces Naming Signal**
+- **Severity:** MODERATE (defensible)
+- **Issue:** Target filenames like `kernel_gpu_cuda.cu` encode naming conventions. Anonymizing
+  to `translated_0.cu` removes this signal. The model must infer naming from infrastructure
+  headers shown as read-only context.
+- **Defense (strong):** Frame as deliberately conservative. "Results are a lower bound on
+  translation capability; non-anonymized prompts could only improve pass rates." The
+  anonymization prevents training-data contamination.
+- **Killer evidence:** Run a 5-10 kernel ablation study (real filenames vs. anonymized).
+  If delta is <5pp, the threat is a non-issue. This costs ~50 API calls and <2 hours.
+  **Do this before submission — "future work" is the weakest play in academic writing.**
+- **Paper treatment:** Acknowledge in Threats to Validity with the "lower bound" framing.
+  If ablation is run, report the delta.
+
+**Threat E: Contamination Despite Anonymization**
+- **Severity:** MODERATE
+- **Issue:** Filenames and kernel names are stripped, but algorithmic structure, struct
+  names (`FOUR_VECTOR`, `par_str`, `box_str`), and magic constants
+  (`NUMBER_PAR_PER_BOX = 100`) survive anonymization. A model with Rodinia in its training
+  data can recognize kernels from struct names alone.
+- **Defense:** Augmentation L3-L4 partially addresses this via variable renaming and
+  arithmetic transformations. Compare L0 vs. L4 pass rates: if L4 is significantly lower,
+  contamination may be contributing to L0 performance. If L0 ≈ L4, surface features
+  aren't the driver.
+- **Paper treatment:** Acknowledge that full decontamination is impossible without
+  rewriting algorithms. Present L0-vs-L4 delta as indirect evidence of contamination effect.
+
+**Threat G: Temperature=0.0 and pass@k Interaction**
+- **Severity:** MODERATE
+- **Issue:** All results use `temperature: 0.0` (greedy decoding). Multiple samples at
+  temperature=0.0 produce identical or near-identical output (modulo API nondeterminism).
+  pass@k at temperature=0.0 measures API randomness, not model capability.
+- **Mitigation:** If pass@k is reported, must use temperature > 0.0 for k > 1 samples.
+  Alternatively, report only pass@1 with temperature=0.0 (standard practice).
+- **Paper treatment:** State temperature explicitly. If pass@k is a contribution, use
+  appropriate temperature. If not, report pass@1 only.
+
+#### TIER 3: Acknowledge Briefly (MINOR)
+
+**Threat 2: No Explicit API-Mapping Guidance**
+- **Severity:** MINOR
+- **Issue:** Prompt says "translate OpenCL to CUDA" without mapping rules. But the system
+  message says "You are a parallel programming expert specializing in X to Y translation."
+  This is a design choice: ParBench measures *internalized API knowledge*, not
+  *resourced problem-solving*.
+- **Paper treatment:** Frame as intentional. Cite LASSI (Dearing et al., CLUSTER 2024)
+  for comparison with agentic self-correction (80-85% vs. ParBench's ~30%).
+- **Note:** The self-repair mechanism (compiler error feedback) partially compensates.
+  Report pass@1 vs. pass@3 to quantify what error feedback adds.
+
+**Threat F: Stale Eval Summary**
+- **Severity:** MINOR (if resolved before submission)
+- **Issue:** eval_summary.json may not reflect latest on-disk results (generated before
+  pipeline fixes). Pre-fix vs. post-fix results must be clearly separated.
+- **Mitigation:** Re-generate summary from actual results before any paper numbers.
+
+**Threat H: Verification Proxy, Not Checksums**
+- **Severity:** MINOR
+- **Issue:** Most Rodinia specs verify via `stdout_pattern` (e.g., "Total time:") + exit_code.
+  This is a proxy for correctness, not a checksum. A translation printing "Total time: 0.000"
+  with wrong computational results would PASS.
+- **Defense:** XSBench uses real checksums (941535/945990). Rodinia lacks built-in checksums
+  for most kernels. The stdout_pattern + exit_code conjunction was validated during S-VERIFY
+  (54/60 TRUE PASS, 0 FALSE_PASS).
+- **Paper treatment:** Acknowledge as limitation. Note XSBench's stronger verification.
+
+**Threat 3: Truncated Error Feedback**
+- **Severity:** NEGLIGIBLE
+- **Issue:** Originally cited as 500 chars, but actual truncation is 1500 chars (750 head +
+  750 tail via `_head_tail()`). The 500-char figure is for run stderr, not build errors.
+- **Paper treatment:** Not worth mentioning. Combine with Threat 2 if space permits.
+
+### Pre-Submission Action Items
+
+| Priority | Action | Effort | Impact |
+|----------|--------|--------|--------|
+| P0 | Run 3+ models (Qwen + Gemini + 1 more) | ~24h compute | Addresses FATAL Threat A |
+| P0 | Include XSBench in eval campaign (5+ kernels) | ~4h | Addresses MAJOR Threat B |
+| P1 | Separate L0 from L1-L4 in all reported statistics | ~2h analysis | Addresses MAJOR Threat D |
+| P1 | Present failure taxonomy as first-class result | ~4h writing | Addresses MAJOR Threat C |
+| P1 | Run filename ablation (5-10 kernels, real vs. anon) | ~2h | Addresses MODERATE Threat 1 |
+| P2 | Compute L0-vs-L4 pass rate delta | ~1h analysis | Addresses MODERATE Threat E |
+| P2 | Add paired statistical tests (McNemar's) | ~2h | Addresses MAJOR Threat D |
+| P3 | Re-generate eval_summary.json from disk | ~10min | Addresses MINOR Threat F |
+
+### Related Work for Threats Section
+
+- Hurlbert (1984): "Pseudoreplication and the Design of Ecological Field Experiments" — 
+  foundational paper on why L0-L4 are not independent samples
+- LASSI (Dearing et al., CLUSTER 2024): Agentic self-correction benchmark for comparison
+  with ParBench's error-feedback-only retry mechanism
+- SWE-bench validity critiques (Jimenez et al., 2024): Faced similar questions about
+  task specification sufficiency
+- TransCoder (Roziere et al., 2020): Neural code translation and contamination risks
+
+---
+
 <!-- Add new findings below this line -->
