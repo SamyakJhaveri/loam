@@ -3,7 +3,7 @@
 #
 # Two modes:
 #   PRIMARY (default):  790 tasks — 158 pairs × L0-L4, max_retries=3, temp=0.0
-#   PASS@K:             158 tasks — 158 pairs × L0 only, 5 samples each, temp=0.7
+#   PASS@K:             158 tasks — 158 pairs × L0 only, 3 samples each, temp=0.7
 #
 # Self-launches in a detached tmux session so you can safely disconnect SSH.
 #
@@ -28,8 +28,8 @@
 #   Levels: L0 only
 #   Max retries: 1 (zero-shot, no repair)
 #   Temperature: 0.7 (stochastic sampling)
-#   Samples: 5 (independent samples per task)
-#   Total: 158 L0 pairs × 5 samples = 790 tasks
+#   Samples: 3 (independent samples per task)
+#   Total: 158 L0 pairs × 3 samples = 474 tasks
 #
 # Suites: Rodinia (110 pairs, incl. KNOWN_FAIL) + XSBench (6) + RSBench (6) + mixbench (6) + HeCBench (30)
 #   HeCBench: cuda<->omp (11, incl. iso2dfd dup) + cuda<->omp_target (19, excl. 2 KNOWN_FAIL targets)
@@ -52,7 +52,7 @@ usage() {
     echo "              gemini-2.5-flash"
     echo ""
     echo "  pass@k    Run pass@k sweep instead of primary campaign:"
-    echo "              L0 only, temperature=0.7, num_samples=5, max_retries=1"
+    echo "              L0 only, temperature=0.7, num_samples=3, max_retries=1"
     echo ""
     echo "  --attach  Attach to an existing tmux session for this model/mode"
     echo ""
@@ -108,8 +108,8 @@ if [ "$MODE" = "passk" ]; then
     AUGMENT_LEVELS="0"
     MAX_RETRIES=1
     TEMPERATURE=0.7
-    NUM_SAMPLES=5
-    EXPECTED_TASKS=790    # 158 pairs × 5 samples
+    NUM_SAMPLES=3
+    EXPECTED_TASKS=474    # 158 pairs × 3 samples
 else
     AUGMENT_LEVELS="0 1 2 3 4"
     MAX_RETRIES=3
@@ -312,7 +312,7 @@ HECBENCH_OMP_TARGET_TARGETS="heat2d floydwarshall page-rank jacobi nqueen md con
 # ─────────────────────────────────────────────────────────
 # 158 L0 pairs total
 # Primary: × 5 levels × 1 sample = 790 tasks
-# Pass@k:  × 1 level  × 5 samples = 790 tasks
+# Pass@k:  × 1 level  × 3 samples = 474 tasks
 
 TOTAL_BATCHES=28  # 6 rodinia + 6 xsbench + 6 rsbench + 6 mixbench + 4 hecbench = 28
 BATCH_IDX=0
