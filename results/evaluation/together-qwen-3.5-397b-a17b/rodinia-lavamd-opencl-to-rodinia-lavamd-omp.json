@@ -1,0 +1,98 @@
+{
+  "source_spec": "rodinia-lavamd-opencl",
+  "target_spec": "rodinia-lavamd-omp",
+  "kernel": "lavamd",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "-boxes1d",
+    "10"
+  ],
+  "timestamp": "2026-03-31T13:46:53Z",
+  "prompt_tokens": 36605,
+  "completion_tokens": 3006,
+  "llm_response_time_seconds": 48.464,
+  "build_status": "pass",
+  "build_time_seconds": 0.153,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 6.879,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Configuration used: cores = 1, boxes1d = 10\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?:Total:)|(?:Total time:)' NOT found in stdout. ",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 6.879,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0001,
+  "translated_files": {
+    "kernel/kernel_cpu.c": "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n#include <stdio.h>\n#include <stdlib.h>\n#include <stdbool.h>\n#include <string.h>\n#include <time.h>\n#include <math.h>\n#include <omp.h>\n#include <sys/time.h>\n\n#define fp float\n#define NUMBER_PAR_PER_BOX 100\n#define NUMBER_THREADS 128\n#define DOT(A,B) ((A.x)*(B.x)+(A.y)*(B.y)+(A.z)*(B.z))\n\ntypedef struct\n{\n\tfp x, y, z;\n} THREE_VECTOR;\n\ntypedef struct\n{\n\tfp v, x, y, z;\n} FOUR_VECTOR;\n\ntypedef struct nei_str\n{\n\tint x, y, z;\n\tint number;\n\tlong offset;\n} nei_str;\n\ntypedef struct box_str\n{\n\tint x, y, z;\n\tint number;\n\tlong offset;\n\tint nn;\n\tnei_str nei[26];\n} box_str;\n\ntypedef struct par_str\n{\n\tfp alpha;\n} par_str;\n\ntypedef struct dim_str\n{\n\tint cur_arg;\n\tint arch_arg;\n\tint cores_arg;\n\tint boxes1d_arg;\n\tlong number_boxes;\n\tlong box_mem;\n\tlong space_elem;\n\tlong space_mem;\n\tlong space_mem2;\n} dim_str;\n\nvoid kernel_cpu(\tpar_str par_cpu,\n\t\t\t\t\tdim_str dim_cpu,\n\t\t\t\t\tbox_str* box_cpu,\n\t\t\t\t\tFOUR_VECTOR* rv_cpu,\n\t\t\t\t\tfp* qv_cpu,\n\t\t\t\t\tFOUR_VECTOR* fv_cpu)\n{\n\tlong bx;\n\tint k, j, wtx;\n\tfp a2;\n\tint first_i, pointer, first_j;\n\tfp r2, u2, vij, fs, fxij, fyij, fzij;\n\tTHREE_VECTOR d;\n\n\tFOUR_VECTOR rA_shared[NUMBER_PAR_PER_BOX];\n\tFOUR_VECTOR rB_shared[NUMBER_PAR_PER_BOX];\n\tfp qB_shared[NUMBER_PAR_PER_BOX];\n\n#pragma omp parallel for schedule(static)\n\tfor(bx = 0; bx < dim_cpu.number_boxes; bx++) {\n\t\t\n\t\ta2 = 2.0 * par_cpu.alpha * par_cpu.alpha;\n\t\tfirst_i = box_cpu[bx].offset;\n\n\t\tfor(wtx = 0; wtx < NUMBER_PAR_PER_BOX; wtx++) {\n\t\t\trA_shared[wtx] = rv_cpu[first_i + wtx];\n\t\t}\n\n\t\tfor (k = 0; k < (1 + box_cpu[bx].nn); k++) {\n\t\t\tif(k == 0) {\n\t\t\t\tpointer = bx;\n\t\t\t} else {\n\t\t\t\tpointer = box_cpu[bx].nei[k-1].number;\n\t\t\t}\n\n\t\t\tfirst_j = box_cpu[pointer].offset;\n\n\t\t\tfor(wtx = 0; wtx < NUMBER_PAR_PER_BOX; wtx++) {\n\t\t\t\trB_shared[wtx] = rv_cpu[first_j + wtx];\n\t\t\t\tqB_shared[wtx] = qv_cpu[first_j + wtx];\n\t\t\t}\n\n\t\t\tfor(wtx = 0; wtx < NUMBER_PAR_PER_BOX; wtx++) {\n\t\t\t\tfor (j = 0; j < NUMBER_PAR_PER_BOX; j++) {\n\t\t\t\t\tr2 = rA_shared[wtx].v + rB_shared[j].v - DOT(rA_shared[wtx], rB_shared[j]);\n\t\t\t\t\tu2 = a2 * r2;\n\t\t\t\t\tvij = exp(-u2);\n\t\t\t\t\tfs = 2.0 * vij;\n\t\t\t\t\td.x = rA_shared[wtx].x - rB_shared[j].x;\n\t\t\t\t\tfxij = fs * d.x;\n\t\t\t\t\td.y = rA_shared[wtx].y - rB_shared[j].y;\n\t\t\t\t\tfyij = fs * d.y;\n\t\t\t\t\td.z = rA_shared[wtx].z - rB_shared[j].z;\n\t\t\t\t\tfzij = fs * d.z;\n\n\t\t\t\t\tfv_cpu[first_i + wtx].v += qB_shared[j] * vij;\n\t\t\t\t\tfv_cpu[first_i + wtx].x += qB_shared[j] * fxij;\n\t\t\t\t\tfv_cpu[first_i + wtx].y += qB_shared[j] * fyij;\n\t\t\t\t\tfv_cpu[first_i + wtx].z += qB_shared[j] * fzij;\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}\n\n#ifdef __cplusplus\n}\n#endif\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_cpu.c"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_cpu.c"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 19.202,
+      "prompt_tokens": 11050,
+      "completion_tokens": 1013,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n^~~~\nmain.c:42:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   41 | #include \"./kernel/kernel_cpu.h\"  ",
+      "build_error_snippet": "rm: cannot remove './util/device/*.o': No such file or directory\nmake: *** [makefile:67: clean] Error 1\n\nmain.c: In function \u2018main\u2019:\nmain.c:95:20: warning: implicit declaration of function \u2018strcmp\u2019 [-Wimplicit-function-declaration]\n   95 |                 if(strcmp(argv[dim_cpu.cur_arg], \"-cores\")==0){\n      |                    ^~~~~~\nmain.c:42:1: note: include \u2018<string.h>\u2019 or provide a declaration of \u2018strcmp\u2019\n   41 | #include \"./kernel/kernel_cpu.h\"                                // (in library path specified here)\n  +++ |+#include <string.h>\n   42 | \nmain.c:253:15: warning: implicit declaration of function \u2018time\u2019 [-Wimplicit-function-declaration]\n  253 |         srand(time(NULL));\n      |               ^~~~\nmain.c:42:1: note: \u2018time\u2019 is defined in header \u2018<time.h>\u2019; did you forget to \u2018#include <time.h>\u2019?\n   41 | #include \"./kernel/kernel_cpu.h\"                                // (in library path specified here)\n  +++ |+#include <time.h>\n   42 | \n./kernel/kernel_cpu.c:12:10: fatal error: ./util/timer/timer.h: No such file or directory\n   12 | #include \"./util/timer/timer.h\"\n      |          ^~~~~~~~~~~~~~~~~~~~~~\ncompilation terminated.\nmake: *** [makefile:45: kernel/kernel_cpu.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 18.233,
+      "prompt_tokens": 12257,
+      "completion_tokens": 993,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?:Total:)|(?:Total time:)' NOT found in stdout. \nEnsure the translated code produces the same output format as the original.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 11.029,
+      "prompt_tokens": 13298,
+      "completion_tokens": 1000,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}
