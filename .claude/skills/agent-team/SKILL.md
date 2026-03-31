@@ -52,7 +52,50 @@ the top of every teammate prompt, before the task description.
 - Delegate bulk reads to subagents — do not load large files into main teammate context.
 - Write findings incrementally to durable files (survive compaction).
 - Cross-reference facts against 2+ sources before stating them.
-- Never hold >50K tokens of raw content in a single teammate context.
+- Never hold >30K tokens of raw file content in a single teammate context.
+
+### 3a. Context Discipline Protocol
+
+Every teammate prompt MUST enforce these rules to prevent context rot (loading
+irrelevant data that degrades reasoning quality):
+
+**File Budget Rule:** Each teammate prompt specifies an explicit IN SCOPE and
+OUT OF SCOPE list. IN SCOPE names the exact files, directories, or glob patterns
+the teammate may read. OUT OF SCOPE names areas that are adjacent but irrelevant.
+No open-ended "read everything in X/" instructions — always specify file patterns.
+
+**Read Strategy — Grep-First, Range-Read Second:**
+1. Use Grep to locate relevant sections/fields before reading any file.
+2. Use Read with `offset` and `limit` parameters — never read an entire file >200
+   lines without explicit justification in the teammate's task description.
+3. When reading JSON result files, specify which fields to extract (e.g.,
+   `overall_status`, `build_error_snippet`, `attempts[]`, `model_id`), not
+   "read the whole file." Use Grep for field extraction where possible.
+
+**Subagent Delegation Rule:** Bulk reads (>5 files or >500 total lines) MUST be
+delegated to Explore subagents. Only summaries return to the teammate's main
+context. A teammate's main context is for reasoning, not storage.
+
+**Context Ceiling:** No teammate should hold >30K tokens of raw file content.
+If approaching this limit, stop and summarize accumulated data into a structured
+findings block before reading more files.
+
+**Conditional Loading:** Only load additional context when a specific question
+demands it. Do not pre-load files "just in case" they might be relevant. If a
+teammate's task says "read X if needed to answer Y," the teammate should first
+attempt to answer Y without X, and only load X when stuck.
+
+**Copy-paste these rules into every teammate prompt as part of MANDATORY DIRECTIVES:**
+```
+## CONTEXT RULES (enforced)
+- IN SCOPE: [list specific files/globs/fields]
+- OUT OF SCOPE: [list adjacent but irrelevant areas]
+- Grep first, then Read with line ranges. Never read >200 lines without justification.
+- For JSON results: extract specific fields, don't read whole files.
+- Delegate bulk reads (>5 files or >500 lines) to Explore subagents.
+- Stay under 30K tokens of raw file content. Summarize before reading more.
+- Only load additional files when a specific question demands it.
+```
 
 ### 4. Skill & Agent Reuse
 
@@ -153,10 +196,16 @@ Pre-built team configurations for common ParBench workflows. Use with
 
 | Teammate | Role | Scope | Task |
 |----------|------|-------|------|
-| claude-analyst | Claude results analyst | `results/evaluation/claude-sonnet-4-6/` | Read all result JSONs. Compute pass rate by direction, per-kernel failure patterns, self-repair stats (attempts[]), token usage. |
-| gemini-analyst | Gemini results analyst | `results/evaluation/gemini-2.5-flash-lite/` | Same analysis as claude-analyst for Gemini results. |
-| groq-analyst | Groq results analyst | `results/evaluation/groq-llama-3.3-70b/` | Same analysis as claude-analyst for Groq results. |
-| comparator | Cross-model comparator | Read-only across all result dirs | After analysts report: compute deltas, identify per-kernel anomalies (e.g., backprop tier inversion), rank models by direction. |
+| claude-analyst | Claude results analyst | `results/evaluation/claude-sonnet-4-6/` | Delegate file reads to Explore subagent. Extract fields: `overall_status`, `build_error_snippet`, `run_stderr_snippet`, `attempts[]`, `model_id`, `direction`, `tokens_used`. Compute pass rate by direction, per-kernel failure patterns, self-repair stats, token usage. |
+| gemini-analyst | Gemini results analyst | `results/evaluation/gemini-2.5-flash-lite/` | Same analysis and field extraction as claude-analyst for Gemini results. |
+| groq-analyst | Groq results analyst | `results/evaluation/groq-llama-3.3-70b/` | Same analysis and field extraction as claude-analyst for Groq results. |
+| comparator | Cross-model comparator | Read-only: analyst summaries only | After analysts report: compute deltas, identify per-kernel anomalies (e.g., backprop tier inversion), rank models by direction. Does NOT re-read result files — works from analyst summaries. |
+
+**Context scoping per teammate:**
+- **claude-analyst** — IN SCOPE: `results/evaluation/claude-sonnet-4-6/*.json` (fields: `overall_status`, `build_error_snippet`, `attempts`, `model_id`, `direction`). OUT OF SCOPE: all other model directories, `results/augmentation/`, `specs/`, `c_augmentation/`.
+- **gemini-analyst** — IN SCOPE: `results/evaluation/gemini-2.5-flash-lite/*.json` (same fields). OUT OF SCOPE: all other model directories.
+- **groq-analyst** — IN SCOPE: `results/evaluation/groq-llama-3.3-70b/*.json` (same fields). OUT OF SCOPE: all other model directories.
+- **comparator** — IN SCOPE: summaries from the three analysts (no raw file reads). OUT OF SCOPE: all `results/evaluation/` files directly.
 
 **Estimated cost:** ~4x token multiplier.
 
@@ -166,9 +215,14 @@ Pre-built team configurations for common ParBench workflows. Use with
 
 | Teammate | Role | Scope | Task |
 |----------|------|-------|------|
-| data-processor | Eval data processor | `results/evaluation/` | Build complete data tables: pass rates, failure taxonomy, per-kernel tiers, direction asymmetry. Output as markdown tables. |
+| data-processor | Eval data processor | `results/evaluation/` | Delegate per-model reads to Explore subagents. Extract fields: `overall_status`, `direction`, `kernel_name`, `attempts[]`. Build pass rates, failure taxonomy, per-kernel tiers, direction asymmetry. Output as markdown tables. |
 | lit-reviewer | Related work searcher | WebSearch + `docs/` | Search for SWE-bench, HumanEval, TransCoder, LASSI, CodeRosetta, HPC-Coder-v2, OMPify, HPCorpus. Summarize each with differentiation from ParBench. |
-| methods-reader | Methodology documenter | `c_augmentation/`, `results/augmentation/`, `harness/` | Document augmentation methodology, transform catalog, level-invariance evidence, harness pipeline stages. |
+| methods-reader | Methodology documenter | `c_augmentation/`, `results/augmentation/` | Document augmentation methodology, transform catalog, level-invariance evidence, harness pipeline stages. |
+
+**Context scoping per teammate:**
+- **data-processor** — IN SCOPE: `results/evaluation/*/*.json` (fields: `overall_status`, `direction`, `kernel_name`, `attempts`). OUT OF SCOPE: `results/augmentation/`, `specs/`, source code directories.
+- **lit-reviewer** — IN SCOPE: WebSearch results, `docs/related_work/` if it exists. OUT OF SCOPE: all `results/`, `specs/`, `c_augmentation/`, source directories.
+- **methods-reader** — IN SCOPE: `c_augmentation/augment_dataset.py` (transform classes only, use Grep), `results/augmentation/full_aug_results.json` (summary fields), `harness/__init__.py` (pipeline overview). OUT OF SCOPE: `results/evaluation/`, `specs/`, individual augmentation phase files (delegate to subagent if needed).
 
 **Estimated cost:** ~3x token multiplier.
 
@@ -178,9 +232,14 @@ Pre-built team configurations for common ParBench workflows. Use with
 
 | Teammate | Role | Scope | Task |
 |----------|------|-------|------|
-| build-investigator | Build stage analyst | `harness/builder.py`, spec's `build` section, Makefiles in source dirs | Trace build commands, check compiler flags, identify missing headers or API mismatches. |
-| run-investigator | Run stage analyst | `harness/runner.py`, spec's `run` section, source argc parsing | Verify run args match source's init()/argc check. Test with reference executable. |
-| verify-investigator | Verify stage analyst | `harness/verifier.py`, spec's `verify` section, reference output | Check verify config (stdout_pattern, exit_code), compare actual vs expected output. |
+| build-investigator | Build stage analyst | `harness/builder.py`, spec's `build` section, Makefiles in source dirs | Grep for build command construction in builder.py. Read only the spec's `build` section (not full spec). Check compiler flags and missing headers. |
+| run-investigator | Run stage analyst | `harness/runner.py`, spec's `run` section, source argc parsing | Grep for arg handling in runner.py. Read spec's `run` section only. Read source's main()/init() argc check (Grep first, then targeted Read). |
+| verify-investigator | Verify stage analyst | `harness/verifier.py`, spec's `verify` section, reference output | Grep for verify logic in verifier.py. Read spec's `verify` section only. Compare actual vs expected output patterns. |
+
+**Context scoping per teammate:**
+- **build-investigator** — IN SCOPE: `harness/builder.py` (Grep for build command functions), the failing spec's `build` section, Makefile in the specific source dir. OUT OF SCOPE: `harness/runner.py`, `harness/verifier.py`, `results/`, other specs.
+- **run-investigator** — IN SCOPE: `harness/runner.py` (Grep for run/execute functions), the failing spec's `run` section, source file's argc/argv parsing (Grep for `argc`). OUT OF SCOPE: `harness/builder.py`, `harness/verifier.py`, `results/`, other specs.
+- **verify-investigator** — IN SCOPE: `harness/verifier.py` (Grep for verify/check functions), the failing spec's `verify` section, reference output file if specified. OUT OF SCOPE: `harness/builder.py`, `harness/runner.py`, `results/`, other specs.
 
 **Usage:** `/agent-team --scenario failure-investigation "rodinia-hotspot-omp VERIFY_FAIL"`
 
@@ -192,10 +251,16 @@ Pre-built team configurations for common ParBench workflows. Use with
 
 | Teammate | Role | Scope | Task |
 |----------|------|-------|------|
-| claude-classifier | Claude failure classifier | `results/evaluation/claude-sonnet-4-6/` | Read every non-PASS result JSON. Classify by: error category (BUILD_FAIL/RUN_FAIL/VERIFY_FAIL/EXTRACTION_FAIL), root cause (missing header, wrong API call, segfault, timeout, wrong output), affected kernels. |
-| gemini-classifier | Gemini failure classifier | `results/evaluation/gemini-2.5-flash-lite/` | Same classification for Gemini results. |
-| groq-classifier | Groq failure classifier | `results/evaluation/groq-llama-3.3-70b/` | Same classification for Groq results. |
-| taxonomy-synthesizer | Cross-model synthesizer | Read-only across all result dirs | Merge per-model classifications into unified taxonomy table. Identify model-specific vs universal failure patterns. |
+| claude-classifier | Claude failure classifier | `results/evaluation/claude-sonnet-4-6/` | Delegate file reads to Explore subagent with field filter: `overall_status`, `build_error_snippet`, `run_stderr_snippet`, `direction`, `kernel_name`. Classify non-PASS results by: error category, root cause, affected kernels. |
+| gemini-classifier | Gemini failure classifier | `results/evaluation/gemini-2.5-flash-lite/` | Same field extraction and classification for Gemini results. |
+| groq-classifier | Groq failure classifier | `results/evaluation/groq-llama-3.3-70b/` | Same field extraction and classification for Groq results. |
+| taxonomy-synthesizer | Cross-model synthesizer | Classifier summaries only | Merge per-model classifications into unified taxonomy table. Does NOT re-read result files — works from classifier summaries. |
+
+**Context scoping per teammate:**
+- **claude-classifier** — IN SCOPE: `results/evaluation/claude-sonnet-4-6/*.json` (fields: `overall_status`, `build_error_snippet`, `run_stderr_snippet`, `direction`, `kernel_name`). OUT OF SCOPE: other model directories, `specs/`, `results/augmentation/`.
+- **gemini-classifier** — IN SCOPE: `results/evaluation/gemini-2.5-flash-lite/*.json` (same fields). OUT OF SCOPE: other model directories.
+- **groq-classifier** — IN SCOPE: `results/evaluation/groq-llama-3.3-70b/*.json` (same fields). OUT OF SCOPE: other model directories.
+- **taxonomy-synthesizer** — IN SCOPE: summaries from the three classifiers only. OUT OF SCOPE: all `results/evaluation/` files directly.
 
 **Estimated cost:** ~4x token multiplier.
 
@@ -205,9 +270,14 @@ Pre-built team configurations for common ParBench workflows. Use with
 
 | Teammate | Role | Scope | Task |
 |----------|------|-------|------|
-| analyzer | Eval summary generator | `scripts/evaluation/analyze_eval.py`, `results/evaluation/` | Run analyze_eval.py with --write-dashboard --show-gaps. Verify eval_summary.json correctness. |
+| analyzer | Eval summary generator | `scripts/evaluation/analyze_eval.py`, `results/evaluation/` | Run analyze_eval.py with --write-dashboard --show-gaps. Verify eval_summary.json correctness against result file count. |
 | classifier | Translation classifier | `scripts/evaluation/classify_translation_pairs.py`, `results/evaluation/` | Run classify_translation_pairs.py. Verify translation_complexity.csv output. |
-| viz-refresher | Dashboard data refresher | `scripts/generate_viz_data.py`, `visualizations/` | Run generate_viz_data.py. Verify all data JS files updated. Check hardcoded counts in HTML files. |
+| viz-refresher | Dashboard data refresher | `scripts/generate_viz_data.py`, `visualizations/` | Run generate_viz_data.py. Verify data JS files updated. Grep for hardcoded counts in HTML files. |
+
+**Context scoping per teammate:**
+- **analyzer** — IN SCOPE: `scripts/evaluation/analyze_eval.py` (Grep for CLI args), `results/evaluation/eval_summary.json` (output verification). OUT OF SCOPE: individual result JSONs (the script reads them), `visualizations/`, `c_augmentation/`.
+- **classifier** — IN SCOPE: `scripts/evaluation/classify_translation_pairs.py` (Grep for CLI args), `results/evaluation/translation_complexity.csv` (output verification). OUT OF SCOPE: individual result JSONs, `visualizations/`.
+- **viz-refresher** — IN SCOPE: `scripts/generate_viz_data.py` (Grep for output paths), `visualizations/*.js` (verify timestamps), `visualizations/*.html` (Grep for hardcoded counts). OUT OF SCOPE: `results/evaluation/` individual files, `scripts/evaluation/`.
 
 **Estimated cost:** ~3x token multiplier.
 
@@ -217,10 +287,14 @@ Pre-built team configurations for common ParBench workflows. Use with
 
 | Teammate | Role | Scope | Task |
 |----------|------|-------|------|
-| phase3-reader | Phase 3 results reader | `results/augmentation/phase3_*.json` | Read all phase 3 augmentation result files. Extract per-spec, per-level pass/fail. |
-| phase4-reader | Phase 4 results reader | `results/augmentation/phase4_*.json` | Same for phase 4 results. |
-| phase5-reader | Phase 5 results reader | `results/augmentation/phase5_*.json`, `results/augmentation/full_aug_results.json` | Same for phase 5 + combined results. |
-| retest-reader | Retest results reader | `results/augmentation/retest_post_m9.json`, `results/augmentation/retest_post_session2.json` | Read retest results. Cross-check against phase results for consistency. |
+| phase3-reader | Phase 3 results reader | `results/augmentation/phase3_*.json` | Extract per-spec, per-level pass/fail from phase 3 files. Use Grep for `"status"` fields, then targeted Read for failures only. |
+| phase4-reader | Phase 4 results reader | `results/augmentation/phase4_*.json` | Same extraction for phase 4 results. |
+| phase5-reader | Phase 5 results reader | `results/augmentation/phase5_*.json`, `full_aug_results.json` | Same for phase 5. For `full_aug_results.json`: extract only `status` and `spec_id` fields per entry (file may be large). |
+| retest-reader | Retest results reader | `results/augmentation/retest_post_m9.json`, `retest_post_session2.json` | Extract `status` and `spec_id` from retest files. Cross-check against phase results for consistency. |
+
+**Context scoping per teammate:**
+- **All readers** — IN SCOPE: only the specific phase files listed in their scope column (fields: `status`, `spec_id`, `level`, `error_message` for failures). OUT OF SCOPE: `results/evaluation/`, `specs/`, `c_augmentation/`, other phase files.
+- **phase5-reader** — `full_aug_results.json` may be large. Grep for field names first, then Read with line ranges. Do not load the entire file.
 
 After all readers report, the lead verifies the level-invariance claim:
 54/60 Rodinia PASS at all L1-L4, 6 KNOWN_FAIL excluded.
@@ -253,3 +327,9 @@ for research or analysis.
 - **Context window pressure:** Each teammate has its own context window, but
   large result directories (160+ JSON files) can exhaust it. Teammates should
   use subagents for bulk reads and only retain summaries in their main context.
+- **Open-ended read instructions cause context rot:** Never give teammates
+  instructions like "read all files in X/" or "read the entire directory."
+  Always specify: file glob patterns, which JSON fields to extract, and line
+  budgets. Open-ended reads fill context with irrelevant data and degrade
+  reasoning quality on the actual task. Use the IN SCOPE / OUT OF SCOPE
+  template from §3a instead.
