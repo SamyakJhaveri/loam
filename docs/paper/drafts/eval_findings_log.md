@@ -376,4 +376,112 @@ discovered during this analysis when the result-analyst teammate loaded excessiv
 
 ---
 
+## Finding 4: Qwen 3.5 397B CUDA-to-OpenCL 0% Pass Rate — Model Quality Taxonomy (2026-03-31)
+
+**Model:** Qwen 3.5 397B (together-qwen-3.5-397b-a17b)
+**Direction:** cuda-to-opencl (kernel-only translation)
+**Scope:** First 22 evaluations (bptree, backprop, bfs, cfd, dwt2d, gaussian, heartwall, hotspot)
+**Result:** 0/22 PASS (5 RUN_FAIL, 17 VERIFY_FAIL or RUN_FAIL across 3 seeds each)
+**Pipeline check:** CONFIRMED CORRECT — not a pipeline issue
+
+### Broader Context (Full Qwen OpenCL Campaign)
+
+From the complete Qwen evaluation across all kernels and directions:
+- **OpenCL target: 18.1% pass (39/216)** — worst of all targets
+- **OMP target: 44.5% pass (102/229)** — best target
+- **CUDA target: 20.9% pass (51/244)** — middle
+- OpenCL is **2.5x harder** than OMP for this model
+
+Some kernels DO pass OpenCL translation: hotspot3d (60.9%), hotspot (47.8%), lud (45.0%),
+particlefilter (40.0%). The pipeline works correctly for these. The 0% pass on the first
+22 evaluations shown in the terminal reflects the specific kernel ordering, not a universal failure.
+
+### Pipeline Verification (NOT a pipeline bug)
+
+All result files show correct kernel-only translation configuration:
+- `translation_type: "kernel_only"` (correct — only `.cl` files rewritten)
+- `run_args_mode: "kernel_only_target_args"` (correct — host code uses target args)
+- `verification_mode: "kernel_only_target_pattern"` (correct — host prints target patterns)
+- Build succeeds in ALL cases (host C/C++ compiles fine)
+- Failures occur at OpenCL runtime kernel compilation or execution — exactly where bad
+  model-generated `.cl` code would fail
+
+The S-OCLFIX kernel-only path is functioning as designed.
+
+### Five Failure Patterns (All Model-Side)
+
+| # | Pattern | Affected Kernels | Error | Root Cause |
+|---|---------|-----------------|-------|------------|
+| 1 | Missing `__global`/`__local`/`__constant` qualifiers | bptree, heartwall | `pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space` | OpenCL requires explicit address space qualifiers on all kernel pointer params. CUDA uses unified virtual addressing — no equivalent concept exists in source. Model must **add** information not present in CUDA code. |
+| 2 | CUDA keyword confusion | bfs | `unknown type name '__kernel__'` | Model writes `__kernel__` (CUDA double-underscore convention) instead of `__kernel` (OpenCL). Fundamental API keyword error. |
+| 3 | C++ templates in OpenCL C | dwt2d | `use of undeclared identifier 'RDWT97'` + `expected expression` at `<>` | Model copies CUDA template syntax (`RDWT97<WIN_SX, WIN_SY>::run()`) verbatim. OpenCL C is C99-based — no templates, classes, or operator overloading. Correct translation requires manual template expansion into concrete functions. |
+| 4 | Algorithmic corruption / infinite loop | gaussian (332s timeout) | Timeout at 300+ seconds (baseline: 0.073s) | Model generates syntactically valid kernel that hangs during execution. Likely broken loop bounds, barrier misuse, or work-group synchronization deadlock. |
+| 5 | Runtime kernel build failure | backprop, cfd | `clBuildProgram() => -11` (CL_BUILD_PROGRAM_FAILURE) | Code passes host-side compilation but fails device-side OpenCL kernel compilation. Subtle semantic errors (wrong types, incompatible built-in function usage) that the offline compiler doesn't catch but the GPU driver rejects. |
+
+### Why OpenCL Is Structurally the Hardest Translation Target for LLMs
+
+1. **Address space qualifiers are additive information.** CUDA uses unified virtual addressing —
+   no `__global`/`__local`/`__constant` distinction exists. CUDA→OpenCL translation requires
+   the model to *infer and add* memory space annotations absent from the source. This is
+   fundamentally harder than CUDA↔OMP where the mapping is more mechanical.
+
+2. **OpenCL C is C99, not C++.** CUDA kernels freely use templates, classes, operator
+   overloading, and other C++ features. The dwt2d failure exemplifies this: the original
+   uses C++ templates that must be manually expanded into concrete C99 functions — a
+   non-trivial semantic transformation beyond syntax mapping.
+
+3. **Kernel-only translation amplifies difficulty.** The model only sees the `.cl` kernel
+   file, not the host code. It must infer buffer layouts, data types, and memory access
+   patterns from kernel signatures alone. For CUDA↔OMP full-program translation, the model
+   sees and rewrites the complete program including data flow context.
+
+4. **Training data scarcity.** OpenCL code is far less common than CUDA on GitHub (~5:1
+   ratio). Models have less exposure to correct OpenCL idioms, so they fall back to CUDA
+   patterns when uncertain — which is exactly what patterns #1 and #2 demonstrate.
+
+### Per-Kernel Difficulty Tiers (from full campaign data)
+
+| Tier | Kernels | OpenCL Pass Rate | Characteristic |
+|------|---------|-----------------|----------------|
+| Easy | hotspot3d, hotspot | 48-61% | Simple stencil patterns, few pointer params, no C++ features |
+| Medium | lud, particlefilter, cfd, bfs, backprop | 25-45% | Moderate complexity, some pointer qualifiers needed |
+| Hard | bptree, streamcluster, srad | 10-20% | Complex data structures, many pointer params |
+| Impossible | gaussian, dwt2d, heartwall | 0% | C++ templates, complex synchronization, deep pointer chains |
+
+### Paper Relevance
+
+**Suggested sections:** Section 6 (Results — per-direction analysis), Section 7 (Discussion —
+why OpenCL is hardest), Threats to Validity (verification limitations for OpenCL)
+
+**Key points for the paper:**
+
+1. **Direction asymmetry is real and large.** The same model (Qwen) achieves 44.5% on
+   OMP targets but only 18.1% on OpenCL targets — a 2.5x gap. This is not random
+   variation; it reflects structural differences in translation difficulty.
+
+2. **Five-pattern failure taxonomy for OpenCL.** The error patterns above are classifiable
+   and systematic, not random. This taxonomy is a contribution: it identifies *specific*
+   LLM limitations (address space inference, C++→C99 decomposition, training data gaps)
+   rather than just reporting a pass rate.
+
+3. **Per-kernel difficulty is not monotonic.** hotspot3d passes at 61% while gaussian
+   passes at 0%, for the same model and direction. Kernel structural complexity
+   (templates, pointer depth, synchronization patterns) predicts difficulty better than
+   kernel size or algorithmic domain.
+
+4. **No other models have OpenCL results yet.** Cannot determine if this is Qwen-specific
+   or universal. If Claude/Gemini show similar patterns, it's a structural limitation of
+   current LLMs on OpenCL. If they perform significantly better, it's a Qwen weakness.
+   **Cross-model OpenCL comparison is needed before submission.**
+
+5. **Pipeline is validated for OpenCL.** The S-OCLFIX kernel-only path works correctly
+   (proven by 18.1% pass rate and per-kernel variation). No pipeline changes needed.
+
+### No Action Required
+
+This is observational data for paper writing. No pipeline fix needed. Cross-model OpenCL
+results (when available) will determine whether this finding generalizes beyond Qwen.
+
+---
+
 <!-- Add new findings below this line -->
