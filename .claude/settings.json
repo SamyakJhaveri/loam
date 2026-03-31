@@ -29,6 +29,11 @@
             "type": "command",
             "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/bash-audit-log.sh",
             "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/protect-cuda-omp-results.sh",
+            "timeout": 10
           }
         ]
       },

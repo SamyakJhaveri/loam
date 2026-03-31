@@ -16,6 +16,16 @@ every teammate prompt.
   Valid scenarios: `multi-model-eval`, `paper-assembly`, `failure-investigation`,
   `cross-model-taxonomy`, `post-batch-analysis`, `augmentation-audit`.
 
+## CRITICAL: TeamCreate Is Required — No Exceptions
+
+This skill MUST use **TeamCreate** to create a proper agent team. NEVER use standalone
+`Agent` tool calls without the `team_name` parameter. The entire purpose of `/agent-team`
+is team infrastructure: TeamCreate for setup, SendMessage for cross-talk, shared task
+list, teammate lifecycle management. Standalone subagents (Agent without `team_name`)
+**cannot cross-talk, do not appear as teammates, and miss all coordination benefits**.
+If you find yourself about to call Agent without `team_name`, STOP — you are violating
+this skill's core contract. Use TeamCreate first, then spawn teammates with `team_name`.
+
 ## Samyak's Agent Team Operating Procedures (MANDATORY)
 
 These rules apply to EVERY agent team. Embed them as `## MANDATORY DIRECTIVES` at

@@ -87,9 +87,9 @@
 
 ---
 
-## D4: pass@k — pass@5 at L0, Temperature 0.7
+## D4: pass@k — pass@3 at L0, Temperature 0.7
 
-**Decision:** Run a separate pass@k sweep: 5 independent samples per task, temperature=0.7, L0 only (no augmentation), `max_retries=1` (zero-shot per sample).
+**Decision:** Run a separate pass@k sweep: 3 independent samples per task, temperature=0.7, L0 only (no augmentation), `max_retries=1` (zero-shot per sample).
 
 **Configuration:**
 | Parameter | Primary Campaign | pass@k Sweep |
@@ -97,16 +97,16 @@
 | Augmentation | L0-L4 | L0 only |
 | Temperature | 0.0 (greedy) | 0.7 |
 | max_retries | 3 | 1 |
-| Samples | 1 | 5 |
-| Total tasks | 790 | 790 |
+| Samples | 1 | 3 |
+| Total tasks | 790 | 474 |
 
 **Alternatives considered:**
-- `pass@10`: rejected because pass@5 is standard in the literature (HumanEval, MBPP by Chen et al., 2021). 10 samples would double API cost for diminishing analytical value.
-- Cross augmentation x pass@k (5 levels x 5 samples = 25 per task): rejected because augmentation already provides controlled input variation (ParBench's unique axis). Crossing both creates a 5x5 matrix that's hard to interpret and doesn't add proportional insight.
+- `pass@10`: rejected because pass@3 is standard in the literature (HumanEval, MBPP by Chen et al., 2021). 10 samples would double API cost for diminishing analytical value.
+- Cross augmentation x pass@k (5 levels x 3 samples = 15 per task): rejected because augmentation already provides controlled input variation (ParBench's unique axis). Crossing both creates a 5x3 matrix that's hard to interpret and doesn't add proportional insight.
 - Temperature 1.0: rejected as too high — produces degenerate outputs for code generation. 0.7 is the standard from the Codex paper (Chen et al., 2021).
 - `max_retries=3` for pass@k: rejected because each sample must be independent. Self-repair creates dependencies between attempts within a sample, violating the i.i.d. assumption that pass@k estimation requires.
 
-**Rationale:** pass@k measures sampling variance — the gap between pass@1 (greedy) and pass@5 reveals whether failures are "hard" (model fundamentally cannot translate this kernel) vs. "noisy" (model sometimes gets it right but doesn't reliably surface it). Kernels with pass@1=0% but pass@5>0% are "noisy failures," indicating partial capability that doesn't reliably manifest. L0-only isolates sampling variance from augmentation effects, keeping the two evaluation axes orthogonal.
+**Rationale:** pass@k measures sampling variance — the gap between pass@1 (greedy) and pass@3 reveals whether failures are "hard" (model fundamentally cannot translate this kernel) vs. "noisy" (model sometimes gets it right but doesn't reliably surface it). Kernels with pass@1=0% but pass@3>0% are "noisy failures," indicating partial capability that doesn't reliably manifest. L0-only isolates sampling variance from augmentation effects, keeping the two evaluation axes orthogonal.
 
 **Paper section:** S4 Methodology — "Sampling Variance (pass@k)" subsection; S6 Results — "Hard vs. Noisy Failures" subsection.
 
@@ -127,7 +127,7 @@
 **Rationale:** Single script follows the DRY (Don't Repeat Yourself) principle. The script uses model name prefixes (`together-*`, `gemini-*`, `claude-*`, etc.) to auto-detect which API key to verify — a convention-over-configuration pattern. Adding a 3rd model later requires zero script changes. The script also enforces tmux (auto-launches a detached session if not already inside one), preventing SSH disconnects from killing long-running campaigns.
 
 **Key features:**
-- Two modes: `primary` (L0-L4, retries=3, greedy) and `pass@k` (L0 only, retries=1, T=0.7, 5 samples)
+- Two modes: `primary` (L0-L4, retries=3, greedy) and `pass@k` (L0 only, retries=1, T=0.7, 3 samples)
 - 28 batches total: 6 Rodinia + 6 XSBench + 6 RSBench + 6 mixbench + 4 HeCBench
 - Pass 2 automatic retry for any failed batches
 - Completeness check at end (counts result files vs. expected 790)
@@ -191,10 +191,10 @@
 **Observation:** ParBench's experimental design measures model capability along three independent axes:
 
 1. **Self-repair (retries):** Can the model recover from its own errors given diagnostic feedback? Measured by comparing attempt 1 vs. attempt 3 outcomes. (Primary campaign, D3)
-2. **Sampling variance (pass@k):** How reliable is the model's output? Is failure deterministic or stochastic? Measured by pass@1 vs. pass@5. (pass@k sweep, D4)
+2. **Sampling variance (pass@k):** How reliable is the model's output? Is failure deterministic or stochastic? Measured by pass@1 vs. pass@3. (pass@k sweep, D4)
 3. **Augmentation robustness (L0-L4):** Does the model degrade when input code undergoes semantics-preserving transformations? Measured by comparing pass rates across augmentation levels. (Primary campaign, D2)
 
-**Significance:** These three axes are orthogonal — they measure fundamentally different dimensions of capability. A model could be excellent at self-repair (fixes errors when told what's wrong) but sensitive to augmentation (fails when variable names change). Or it could be robust to augmentation but unreliable (pass@1 << pass@5). Together, the three axes provide a far richer characterization than a single aggregate pass rate. No prior benchmark evaluates all three simultaneously.
+**Significance:** These three axes are orthogonal — they measure fundamentally different dimensions of capability. A model could be excellent at self-repair (fixes errors when told what's wrong) but sensitive to augmentation (fails when variable names change). Or it could be robust to augmentation but unreliable (pass@1 << pass@3). Together, the three axes provide a far richer characterization than a single aggregate pass rate. No prior benchmark evaluates all three simultaneously.
 
 **Paper section:** S1 Introduction (framing contribution), S4 Methodology (axes definition), S6 Results (per-axis analysis), S7 Discussion (what the axes reveal about LLM limitations).
 

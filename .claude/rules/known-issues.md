@@ -109,10 +109,17 @@ editing source. mummergpu `unistd.h` edits reverted — both specs are KNOWN_FAI
 - Use 3 standard API specs (cuda, omp, opencl) for eval batches (omp_target = case-study only)
 - SESSION 8 ran all 12 directions including omp_target (30 result files exist); those are case-study data, not part of the standard eval batch suite
 
-## Hook Protection (updated 2026-03-23)
+## Hook Protection (updated 2026-03-30)
 
 Hook regex: `/(rodinia|rodinia-src|HeCBench-master|hecbench|xsbench-src)/` — protects both direct
 and symlink paths to benchmark sources.
+
+**CUDA↔OMP Result Protection Hook** (`protect-cuda-omp-results.sh` — added 2026-03-30):
+- Blocks `rm` commands targeting `results/evaluation/` files matching `*cuda*omp*` or `*omp*cuda*`
+- Blocks wildcard `rm` in `results/evaluation/` that could expand to CUDA↔OMP files
+- Blocks `run_eval_batch.py` with `cuda-to-omp` or `omp-to-cuda` direction without `--resume`
+- ALLOWS all OpenCL-related operations (cuda-to-opencl, opencl-to-cuda, etc.)
+- Registered as PreToolUse hook on Bash in `settings.json`
 
 ## Augmentation Baseline (verified 2026-03-20, updated S-VERIFY 2026-03-27)
 

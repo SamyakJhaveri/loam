@@ -16,7 +16,7 @@
 | **W2** | Missing LASSI comparison | **ADDRESSED** | S2.3 has a full dedicated paragraph on LASSI (lines 104--106) comparing methodology, 80--85% pass rates, and positioning ParBench as complementary. S6.4 references the three-tier agentic gap. S7.3 frames the LASSI comparison quantitatively. |
 | **W3** | Missing CodeRosetta comparison | **ADDRESSED** | S2.2 has a dedicated paragraph (line 100) covering encoder-decoder vs. general-purpose LLM, BLEU vs. build+run+verify, and single-direction limitation. Table 1 includes CodeRosetta row. |
 | **W4** | No statistical rigor | **ADDRESSED (structurally)** | S5.D defines Wilson CIs, chi-squared, Cochran-Armitage, McNemar tests. S6.8 has a full Statistical Summary table (Table 13). All numbers are [PLACEHOLDER] pending campaign data. The statistical framework is correct and comprehensive. |
-| **W5** | Temperature=0 methodology | **ADDRESSED** | S5.D redefines metric as "greedy-decode pass@1". S6.7 adds a full pass@k section (Table 12) with T=0.7, 5 samples. S7.6 acknowledges the limitation. Three orthogonal axes (self-repair, pass@k, augmentation) are cleanly separated. |
+| **W5** | Temperature=0 methodology | **ADDRESSED** | S5.D redefines metric as "greedy-decode pass@1". S6.7 adds a full pass@k section (Table 12) with T=0.7, 3 samples. S7.6 acknowledges the limitation. Three orthogonal axes (self-repair, pass@k, augmentation) are cleanly separated. |
 | **W6** | Format (ACM vs IEEE) | **ADDRESSED** | Writing roadmap (G.1) and decisions log both say IEEE IEEEtran. However, line 6 of paper_draft.md still says "ACM sigconf" -- see BLOCKER B1 below. |
 | **W7** | 4-model vs 3-model inconsistency | **ADDRESSED (superseded)** | Draft is fully rewritten for 2-model (Qwen 3.5 + Gemini 2.5 Flash). No references to "3 models" or "4 models" in the main body (lines 1--670). Pilot models mentioned only in S5.A line 335 as supplementary material and in archived data notes (lines 674--709). |
 | **W8** | Augmentation confound (L0 different directions than L1-L4) | **ADDRESSED** | S6.5 Table 10 restricts to "CUDA-to-OpenMP direction only" to eliminate direction-composition confound. S5.C states augmentation is evaluated "across all six directions" in the campaign design (D2). Per-model curves are explicitly required in S6.5 placeholders. |
@@ -81,7 +81,7 @@
 - **INCONSISTENCY (MAJOR B3).** Multiple task-count formulations appear:
   - S5.C line 355: "710 translation tasks per model" (142 L0 pairs x 5 levels)
   - Writing roadmap D2: "790 tasks per model" (including KNOWN\_FAIL specs handled gracefully)
-  - Decisions log D4: "790" for pass@k sweep
+  - Decisions log D4: "474" for pass@k sweep
   - Abstract line 14: "[PLACEHOLDER: total_tasks]"
   - Data verification table line 682: "710 (142 x 5 levels)" and line 683: "~1,420 (710 x 2 models)"
   - **The discrepancy is 710 vs 790.** The difference is whether KNOWN\_FAIL specs are included in the count. The campaign script handles them "gracefully" (they produce expected failures), so they ARE run but excluded from analysis. The paper should use 710 (non-KNOWN\_FAIL tasks per model) for the headline task count, and note that 8 KNOWN\_FAIL specs produce expected failures.

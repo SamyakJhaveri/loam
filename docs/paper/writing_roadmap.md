@@ -70,7 +70,7 @@ IEEE double-column = ~20 columns of content across 10 pages. Each column is ~55 
 | 3.A Spec Schema | EXISTS (good) | KEEP — update "184 specs" to actual count with 5 suites. The BFS JSON example is good. |
 | 3.B Harness Pipeline | EXISTS (good) | KEEP as-is. Minor: clarify that EXTRACTION_FAIL is added by the eval pipeline, not the harness. |
 | 3.C Augmentation Engine | EXISTS (good) | KEEP — 6 transforms, Table 2, level definitions are well-written. Update augmentation baseline to "64+ non-KNOWN_FAIL specs verified level-invariant across 5 suites" (was "54/60 Rodinia"). |
-| 3.D Evaluation Pipeline | EXISTS (good) | MINOR UPDATE — add mention of pass@k mode (temperature=0.7, 5 samples, max_retries=1). Add parameterized campaign script as reproducibility feature (D5). Update "three LLM providers" to reflect new providers (Together AI, Google AI). |
+| 3.D Evaluation Pipeline | EXISTS (good) | MINOR UPDATE — add mention of pass@k mode (temperature=0.7, 3 samples, max_retries=1). Add parameterized campaign script as reproducibility feature (D5). Update "three LLM providers" to reflect new providers (Together AI, Google AI). |
 | Figure 1 | EXISTS | KEEP — system architecture diagram. |
 
 **DELETE:** Any specific pilot model names in 3.D.
@@ -111,7 +111,7 @@ IEEE double-column = ~20 columns of content across 10 pages. Each column is ~55 
 | 6.4 Self-Repair Effectiveness | EXISTS but STALE | REWRITE with [PLACEHOLDER] — Table 9. Keep structure: first-attempt vs repaired vs persistent. Add self-repair transition analysis (W12): which failure modes are recoverable? |
 | 6.5 Augmentation Robustness | EXISTS but STALE | REWRITE with [PLACEHOLDER] — Table 10, Figure 7. CRITICAL: report per-model curves (not just aggregate). Frame as "augmentation robustness discriminates model capability" not "level-invariance" (Simpson's Paradox insight from audit). Add Cochran-Armitage trend test per model. |
 | 6.6 Cross-Direction & Extended Suite | EXISTS but STALE | REWRITE with [PLACEHOLDER] — now covers 5 suites, 8 directions. Keep direction asymmetry analysis structure. Add HeCBench-specific results. |
-| NEW: 6.7 pass@k Analysis | DOES NOT EXIST | WRITE NEW — pass@5 at L0, temperature=0.7 results (D4). Hard vs noisy failures. Compare pass@1 (greedy) vs pass@5. |
+| NEW: 6.7 pass@k Analysis | DOES NOT EXIST | WRITE NEW — pass@3 at L0, temperature=0.7 results (D4). Hard vs noisy failures. Compare pass@1 (greedy) vs pass3. |
 | NEW: 6.8 Statistical Summary | DOES NOT EXIST | WRITE NEW — Wilson CIs for all major rates, chi-squared for model comparison, Cochran-Armitage for augmentation trends, McNemar for direction asymmetry. Addresses W4 directly. |
 
 **DELETE:** All specific numbers from pilot (54.26%, 8.56%, 10.16%, chi2=136.93, OR=12.68, etc.). All references to Claude/Gemini-Lite/Llama per-kernel results.
@@ -157,7 +157,7 @@ Each audit weakness (W1-W17) is assigned to the section(s) that must address it.
 | **W2** Missing LASSI comparison | CRITICAL | S2.3, S7.7 | Add dedicated LASSI paragraph. Frame three-tier comparison: pass@k (floor) < primary campaign (middle) < LASSI agentic (ceiling). Quantify the gap. | MUST ADDRESS — model-independent |
 | **W3** Missing CodeRosetta | CRITICAL | S2.2, S7.7 | Add CodeRosetta paragraph. Note: encoder-decoder vs general-purpose, BLEU vs build+run+verify, single direction vs 8 directions. | MUST ADDRESS — model-independent |
 | **W4** No statistical rigor | MAJOR | S6.8 (NEW), all tables | Wilson CIs on all pass rates, chi-squared for model comparison, Cochran-Armitage for augmentation trends. Already in analysis pipeline (`statistical_analysis.py`). | MUST ADDRESS — run after campaign |
-| **W5** Temperature=0 methodology | MAJOR | S5.D, S6.7 (NEW) | Addressed by pass@k sweep (D4): 5 samples at T=0.7, L0 only. Redefine primary metric as "greedy-decode pass@1". | FULLY ADDRESSED by campaign design |
+| **W5** Temperature=0 methodology | MAJOR | S5.D, S6.7 (NEW) | Addressed by pass@k sweep (D4): 3 samples at T=0.7, L0 only. Redefine primary metric as "greedy-decode pass@1". | FULLY ADDRESSED by campaign design |
 | **W6** Format (ACM vs IEEE) | MAJOR | LaTeX transfer | Use IEEE IEEEtran template. | ADDRESSED — decision made |
 | **W7** 4-model vs 3-model | MAJOR | All sections | SUPERSEDED — new campaign is 2-model. Clean slate: no legacy model references. | SUPERSEDED — fresh start |
 | **W8** Augmentation confound | MAJOR | S6.5, S7.6 | New campaign runs L0-L4 for ALL directions (not just cuda-to-omp). Eliminates the direction-composition confound. Report per-model curves. | FULLY ADDRESSED by campaign design (D2) |
@@ -197,7 +197,7 @@ Every number/table/figure that depends on new campaign data. These MUST remain a
 | S1.3 | `[SPEC_COUNT]` | Total specs across 5 suites (~96 non-KNOWN_FAIL) |
 | S1.3 | `[DIRECTION_COUNT]` | Number of translation directions (8 core) |
 | S1.4 | `[PRIMARY_DIR_PASS]` | Best model cuda-to-omp L0 pass rate |
-| S1.4 | `[PASSK_FINDING]` | pass@1 vs pass@5 gap summary |
+| S1.4 | `[PASSK_FINDING]` | pass@1 vs pass@3 gap summary |
 | S5.B | `[PAIRS_PER_MODEL]` | ~142 at L0, ~710 at L0-L4 |
 | S6 all | Every number in S6 | All results from new campaign |
 | S7 all | Every comparison number | Derived from S6 data |
@@ -335,7 +335,7 @@ Every number/table/figure that depends on new campaign data. These MUST remain a
 
 **S5.D Metrics:** Add:
 - Greedy-decode pass@1 (primary metric, T=0)
-- pass@5 (sampling metric, T=0.7, L0 only — addresses W5)
+- pass@3 (sampling metric, T=0.7, L0 only — addresses W5)
 - Self-repair rate (with transition analysis)
 - Augmentation robustness (per-model Cochran-Armitage)
 - Wilson 95% CIs on all rates
@@ -360,7 +360,7 @@ Every number/table/figure that depends on new campaign data. These MUST remain a
 
 **S6.5 Augmentation — REFRAME:** The finding is NOT "level-invariance" (which was an artifact of Simpson's Paradox in the pilot). The finding is "augmentation robustness discriminates model capability." Per-model curves are mandatory. If one model is stable and the other degrades, that's the headline. If both degrade, that's a different (but still interesting) finding.
 
-**S6.7 pass@k — WRITE NEW:** Compare pass@1 (greedy, T=0) vs pass@5 (T=0.7). Identify hard failures (pass@5=0) vs noisy failures (pass@5>0 but pass@1=0). The gap quantifies sampling variance.
+**S6.7 pass@k — WRITE NEW:** Compare pass@1 (greedy, T=0) vs pass@3 (T=0.7). Identify hard failures (pass@3=0) vs noisy failures (pass@3>0 but pass@1=0). The gap quantifies sampling variance.
 
 **S7 Structure:**
 1. Kernel-centric advantage (keep — model-independent argument)
@@ -431,7 +431,7 @@ These items require user input before proceeding:
 
 2. **3rd model addition:** D1 says "A 3rd model may be added later." If a 3rd model is added, S5, S6, S7, and Abstract all need updates. **Recommendation:** Write for 2 models now; adding a 3rd is additive, not restructuring.
 
-3. **pass@k scope:** D4 specifies pass@5 at L0 only with T=0.7. If pass@k results are not ready by paper writing time, S6.7 can be marked as "future work" and the column budget redistributed. **Recommendation:** Include pass@k if results arrive; omit section if not.
+3. **pass@k scope:** D4 specifies pass@3 at L0 only with T=0.7. If pass@k results are not ready by paper writing time, S6.7 can be marked as "future work" and the column budget redistributed. **Recommendation:** Include pass@k if results arrive; omit section if not.
 
 4. **HeCBench results:** The curated 10 kernels are now in the campaign scope (D2). If HeCBench results arrive, S6 gets richer data. If not, the 4 non-HeCBench suites still provide ~114 pairs/model at L0. **Recommendation:** Include whatever arrives; don't block on HeCBench.
 

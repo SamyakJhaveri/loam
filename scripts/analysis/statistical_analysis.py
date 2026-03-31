@@ -929,15 +929,15 @@ def _build_markdown(data: dict) -> str:
         lines += [
             "## 8. Pass@k Estimates",
             "",
-            "| Task | n | c | pass@1 | pass@5 | pass@10 |",
+            "| Task | n | c | pass@1 | pass@3 | pass@10 |",
             "|------|--:|--:|-------:|-------:|--------:|",
         ]
         for key, vals in sorted(pk.items()):
             p1 = vals.get("pass@1", "---")
-            p5 = vals.get("pass@5", "---")
+            p3 = vals.get("pass@3", "---")
             p10 = vals.get("pass@10", "---")
             lines.append(
-                f"| {key} | {vals['n']} | {vals['c']} | {p1} | {p5} | {p10} |"
+                f"| {key} | {vals['n']} | {vals['c']} | {p1} | {p3} | {p10} |"
             )
         lines.append("")
 

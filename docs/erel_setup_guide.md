@@ -256,10 +256,10 @@ bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash
 cat results/evaluation/gemini-2_5-flash_campaign_done.marker
 ```
 
-### Step 2: Pass@k sweep (790 tasks) — run AFTER primary completes
+### Step 2: Pass@k sweep (474 tasks) — run AFTER primary completes
 
-This runs 158 pairs at L0 only, with 5 independent stochastic samples per pair
-(temperature=0.7), zero-shot (no retries). Result files get `-s0` through `-s4` tags,
+This runs 158 pairs at L0 only, with 3 independent stochastic samples per pair
+(temperature=0.7), zero-shot (no retries). Result files get `-s0` through `-s2` tags,
 so they do NOT collide with primary campaign results.
 
 ```bash
@@ -306,7 +306,7 @@ python3 scripts/evaluation/run_eval_batch.py \
   --augment-levels 0 \
   --max-retries 1 \
   --temperature 0.7 \
-  --num-samples 5 \
+  --num-samples 3 \
   --project-root /root/parbench \
   --resume -v
 ```
@@ -337,7 +337,7 @@ this automatically — see the script source for the exact kernel lists).
   `nn-opencl`, `kmeans-opencl`, `hecbench-stencil1d-omp_target`, `hecbench-scan-omp_target`
 - **Results** are written to `results/evaluation/{model}/` -- use `--resume` to skip existing
 - **Rate limiting (429):** Re-run the same command; `--resume` skips completed tasks
-- **pass@k result files** now use `-s0` through `-s4` tags (even sample 0). They do NOT
+- **pass@k result files** now use `-s0` through `-s2` tags (even sample 0). They do NOT
   overwrite primary campaign results. Both can coexist in the same directory.
 
 ---
@@ -355,9 +355,9 @@ source env_parbench/bin/activate
 PRIMARY=$(ls results/evaluation/gemini-2.5-flash/*.json 2>/dev/null | grep -v '\-s[0-9]' | wc -l)
 echo "Primary results: $PRIMARY (target: ~790)"
 
-# Count pass@k results (-s0 through -s4 tags)
+# Count pass@k results (-s0 through -s2 tags)
 PASSK=$(ls results/evaluation/gemini-2.5-flash/*-s[0-9].json 2>/dev/null | wc -l)
-echo "Pass@k results: $PASSK (target: ~790)"
+echo "Pass@k results: $PASSK (target: ~474)"
 
 # Per-suite breakdown
 for SUITE in rodinia xsbench rsbench mixbench hecbench; do
@@ -373,7 +373,7 @@ python3 -c "
 import json, glob
 files = glob.glob('results/evaluation/gemini-2.5-flash/*.json')
 # Separate primary vs pass@k
-primary = [f for f in files if '-s0.' not in f and '-s1.' not in f and '-s2.' not in f and '-s3.' not in f and '-s4.' not in f]
+primary = [f for f in files if '-s0.' not in f and '-s1.' not in f and '-s2.' not in f]
 passk = [f for f in files if f not in primary]
 
 for label, flist in [('PRIMARY', primary), ('PASS@K', passk)]:

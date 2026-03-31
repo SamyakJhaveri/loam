@@ -23,7 +23,7 @@
 
 4. **Self-Repair Protocol (D3):** Primary campaign uses `max_retries=3`, `temperature=0.0`, `num_samples=1`. Each task gets up to 3 LLM calls with iterative error feedback.
 
-5. **pass@k Sweep (D4):** Separate sweep at L0 only, `temperature=0.7`, `num_samples=5`, `max_retries=1` (zero-shot per sample). Measures sampling variance orthogonal to augmentation.
+5. **pass@k Sweep (D4):** Separate sweep at L0 only, `temperature=0.7`, `num_samples=3`, `max_retries=1` (zero-shot per sample). Measures sampling variance orthogonal to augmentation.
 
 6. **Single Parameterized Script (D5):** `scripts/batch/run_eval_campaign.sh MODEL [MODE]` replaces per-model scripts. Old `run_qwen_campaign.sh` deleted; `run_gemini_campaign.sh` was created and removed within the session (never committed).
 
@@ -39,7 +39,7 @@ All decisions are formally documented with rationale and reviewer-ready defenses
   - `statistical_analysis.py`: Bonferroni correction count updated
   - `selfrepair_analysis.py`: display names updated for new models
 - [x] **All 14 SC26 paper metrics verified** as implemented in the analysis pipeline (zero gaps in metric coverage).
-- [x] **Single campaign script created:** `scripts/batch/run_eval_campaign.sh` — supports `primary` (L0-L4, retries=3, greedy) and `pass@k` (L0, retries=1, T=0.7, 5 samples) modes. 28 batches per model with automatic pass-2 retry.
+- [x] **Single campaign script created:** `scripts/batch/run_eval_campaign.sh` — supports `primary` (L0-L4, retries=3, greedy) and `pass@k` (L0, retries=1, T=0.7, 3 samples) modes. 28 batches per model with automatic pass-2 retry.
 - [x] **Old per-model script deleted:** `run_qwen_campaign.sh` (replaced by generic `run_eval_campaign.sh`)
 - [x] **Related work research:** 7 critical papers researched with structured comparison notes written to `docs/related_work_research_notes.md`:
   - LASSI (Dearing et al., CLUSTER 2024) — 80-85% with agentic self-correction

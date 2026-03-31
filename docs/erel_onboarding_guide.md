@@ -663,10 +663,10 @@ bash scripts/batch/run_eval_campaign.sh gemini-2.5-flash pass@k
 
 The pass@k sweep runs:
 - **158 pairs at L0 only**
-- **5 independent samples** per pair (temperature=0.7)
+- **3 independent samples** per pair (temperature=0.7)
 - **max_retries=1** (zero-shot, no repair)
-- **Total: 790 tasks** (158 pairs x 5 samples)
-- **Filenames:** `-s0` through `-s4` tags — do NOT collide with primary results
+- **Total: 474 tasks** (158 pairs x 3 samples)
+- **Filenames:** `-s0` through `-s2` tags — do NOT collide with primary results
 
 ### 7.3 Resuming after interruption
 

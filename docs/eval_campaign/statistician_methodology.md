@@ -524,7 +524,7 @@ pass@k = 1 - prod((n-c-i) / (n-i) for i in range(k))
 | Parameter | Value | Rationale |
 |---|---|---|
 | n (samples per task) | 10 | Balances cost vs CI width; standard in HumanEval/SWE-bench |
-| k values to report | 1, 3, 5 | k=1 = greedy, k=3 = practical budget, k=5 = generous budget |
+| k values to report | 1, 3, 5| k=1 = greedy, k=3 = practical budget, k=5 = generous budget |
 | Temperature | 0.8 | Standard for pass@k (higher diversity than greedy); Chen et al. default |
 | Top-p | 0.95 | Standard nucleus sampling |
 
@@ -555,7 +555,7 @@ Before committing to full pass@k evaluation (expensive: 10x current cost), run a
 | Temperature | 0.8 |
 | Total API calls | 5 kernels x 3 models x 10 samples = 150 calls |
 
-**Decision gate:** If pass@5 is within 5 percentage points of pass@1 (greedy) for all
+**Decision gate:** If pass@3 is within 5 percentage points of pass@1 (greedy) for all
 models, independent sampling adds little information over self-repair. Report pass@1 with
 self-repair as the primary metric and pass@k as supplementary.
 
@@ -597,7 +597,6 @@ def pass_at_k_table(task_results: dict[str, tuple[int, int]],
 # Example: if backprop gets 7/10 correct samples
 print(f"pass@1 = {pass_at_k(10, 7, 1):.3f}")  # 0.700
 print(f"pass@3 = {pass_at_k(10, 7, 3):.3f}")  # 0.992
-print(f"pass@5 = {pass_at_k(10, 7, 5):.3f}")  # 1.000
 ```
 
 ---
