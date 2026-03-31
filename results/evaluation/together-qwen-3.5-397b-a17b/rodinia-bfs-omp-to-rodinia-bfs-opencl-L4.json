@@ -1,0 +1,97 @@
+{
+  "source_spec": "rodinia-bfs-omp",
+  "target_spec": "rodinia-bfs-opencl",
+  "kernel": "bfs",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "../../data/bfs/graph1MW_6.txt"
+  ],
+  "timestamp": "2026-03-31T04:42:53Z",
+  "prompt_tokens": 40055,
+  "completion_tokens": 1231,
+  "llm_response_time_seconds": 12.636,
+  "build_status": "pass",
+  "build_time_seconds": 0.791,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.617,
+  "run_exit_code": -11,
+  "run_stderr_snippet": " ^\n<kernel>:29:11: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* h_updating_graph_mask,\n          ^\n<kernel>:30:11: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* h_graph_visited,\n          ^\n<kernel>:31:11: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* stop,\n          ^\n\n",
+  "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -11)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.519,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Kernels.cl": "kernel void BFS_1(\n    const Node* h_graph_nodes,\n    const int* h_graph_edges,\n    char* h_graph_mask,\n    char* h_updating_graph_mask,\n    const char* h_graph_visited,\n    int* h_cost,\n    int no_of_nodes)\n{\n    int x_12 = get_global_id(0);\n    if (x_12 >= no_of_nodes) return;\n\n    if (h_graph_mask[x_12] == 1) {\n        h_graph_mask[x_12] = 0;\n        int start = h_graph_nodes[x_12].starting;\n        int end = start + h_graph_nodes[x_12].no_of_edges;\n        for (int i = start; i < end; i++) {\n            int x_3 = h_graph_edges[i];\n            if (h_graph_visited[x_3] == 0) {\n                h_cost[x_3] = h_cost[x_12] + 1;\n                h_updating_graph_mask[x_3] = 1;\n            }\n        }\n    }\n}\n\nkernel void BFS_2(\n    char* h_graph_mask,\n    char* h_updating_graph_mask,\n    char* h_graph_visited,\n    char* stop,\n    int no_of_nodes)\n{\n    int item_5 = get_global_id(0);\n    if (item_5 >= no_of_nodes) return;\n\n    if (h_updating_graph_mask[item_5] == 1) {\n        h_graph_mask[item_5] = 1;\n        h_graph_visited[item_5] = 1;\n        *stop = 1;\n        h_updating_graph_mask[item_5] = 0;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.314,
+      "prompt_tokens": 12836,
+      "completion_tokens": 410,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\nointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* h_graph_visited,\n         ",
+      "build_error_snippet": null,
+      "run_stderr_snippet": " ^\n<kernel>:29:11: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* h_updating_graph_mask,\n          ^\n<kernel>:30:11: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* h_graph_visited,\n          ^\n<kernel>:31:11: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* stop,\n          ^\n\n",
+      "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 6.727,
+      "prompt_tokens": 13352,
+      "completion_tokens": 411,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\no kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* h_graph_visited,\n          ^\n<kernel>:31:20:",
+      "build_error_snippet": null,
+      "run_stderr_snippet": " error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* h_updating_graph_mask,\n          ^\n<kernel>:30:11: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* h_graph_visited,\n          ^\n<kernel>:31:20: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    volatile char* stop,\n                   ^\n\n",
+      "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 2.595,
+      "prompt_tokens": 13867,
+      "completion_tokens": 410,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": " ^\n<kernel>:29:11: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* h_updating_graph_mask,\n          ^\n<kernel>:30:11: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* h_graph_visited,\n          ^\n<kernel>:31:11: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    char* stop,\n          ^\n\n",
+      "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-hotspot-omp",
+  "target_spec": "rodinia-hotspot-opencl",
+  "kernel": "hotspot",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "512",
+    "2",
+    "4",
+    "../../data/hotspot/temp_512",
+    "../../data/hotspot/power_512",
+    "output.out"
+  ],
+  "timestamp": "2026-03-31T05:06:51Z",
+  "prompt_tokens": 27635,
+  "completion_tokens": 4029,
+  "llm_response_time_seconds": 34.7,
+  "build_status": "pass",
+  "build_time_seconds": 0.181,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.202,
+  "run_exit_code": 245,
+  "run_stderr_snippet": "1 error generated.\n",
+  "run_stdout_snippet": "WG size of kernel = 16 X 16\nPlatform: NVIDIA Corporation\nnum_devices = 1\nDevice: NVIDIA GeForce RTX 4070\nUse GPU device\n<<<<\n<kernel>:122:23: error: read-only variable is not assignable\n            temp[idx] = current_temp;\n            ~~~~~~~~~ ^\n\n>>>>\nError at line 306: CL_BUILD_PROGRAM_FAILURE\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 245)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.159,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot_kernel.cl": "#define BLOCK_SIZE 16\n\n#define MAX_PD\t(3.0e6)\n#define PRECISION\t0.001\n#define SPEC_HEAT_SI 1.75e6\n#define K_SI 100\n#define FACTOR_CHIP\t0.5\n\nconst float t_chip = 0.0005f;\nconst float chip_height = 0.016f;\nconst float chip_width = 0.016f;\nconst float amb_temp = 80.0f;\n\n__kernel void hotspot(\n    int num_iterations,\n    const __global float *power,\n    const __global float *temp,\n    __global float *result,\n    int col,\n    int row,\n    int borderCols,\n    int borderRows,\n    float Cap,\n    float Rx,\n    float Ry,\n    float Rz,\n    float step)\n{\n    float Cap_1 = step / Cap;\n    float Rx_1 = 1.0f / Rx;\n    float Ry_1 = 1.0f / Ry;\n    float Rz_1 = 1.0f / Rz;\n\n    int block_id_x = get_group_id(0);\n    int block_id_y = get_group_id(1);\n\n    int c_start = block_id_x * BLOCK_SIZE;\n    int r_start = block_id_y * BLOCK_SIZE;\n    \n    int c_end = c_start + BLOCK_SIZE;\n    if (c_end > col) c_end = col;\n    \n    int r_end = r_start + BLOCK_SIZE;\n    if (r_end > row) r_end = row;\n\n    int local_c = get_local_id(0);\n    int local_r = get_local_id(1);\n\n    int c = c_start + local_c;\n    int r = r_start + local_r;\n\n    if (r >= r_end || c >= c_end) {\n        return;\n    }\n\n    int idx = r * col + c;\n    float current_temp = temp[idx];\n    \n    for (int iter = 0; iter < num_iterations; iter++) {\n        float delta;\n        \n        bool r0 = (r == 0);\n        bool r_max = (r == row - 1);\n        bool c0 = (c == 0);\n        bool c_max = (c == col - 1);\n\n        float t_up = (r0) ? current_temp : temp[idx - col];\n        float t_down = (r_max) ? current_temp : temp[idx + col];\n        float t_left = (c0) ? current_temp : temp[idx - 1];\n        float t_right = (c_max) ? current_temp : temp[idx + 1];\n\n        if (r0 && c0) {\n            delta = Cap_1 * (power[idx] +\n                (t_right - current_temp) * Rx_1 +\n                (t_down - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        } else if (r0 && c_max) {\n            delta = Cap_1 * (power[idx] +\n                (t_left - current_temp) * Rx_1 +\n                (t_down - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        } else if (r_max && c_max) {\n            delta = Cap_1 * (power[idx] +\n                (t_left - current_temp) * Rx_1 +\n                (t_up - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        } else if (r_max && c0) {\n            delta = Cap_1 * (power[idx] +\n                (t_right - current_temp) * Rx_1 +\n                (t_up - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        } else if (r0) {\n            delta = Cap_1 * (power[idx] +\n                (t_right + t_left - 2.0f * current_temp) * Rx_1 +\n                (t_down - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        } else if (c_max) {\n            delta = Cap_1 * (power[idx] +\n                (t_down + t_up - 2.0f * current_temp) * Ry_1 +\n                (t_left - current_temp) * Rx_1 +\n                (amb_temp - current_temp) * Rz_1);\n        } else if (r_max) {\n            delta = Cap_1 * (power[idx] +\n                (t_right + t_left - 2.0f * current_temp) * Rx_1 +\n                (t_up - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        } else if (c0) {\n            delta = Cap_1 * (power[idx] +\n                (t_down + t_up - 2.0f * current_temp) * Ry_1 +\n                (t_right - current_temp) * Rx_1 +\n                (amb_temp - current_temp) * Rz_1);\n        } else {\n            delta = Cap_1 * (power[idx] +\n                (t_down + t_up - 2.0f * current_temp) * Ry_1 +\n                (t_right + t_left - 2.0f * current_temp) * Rx_1 +\n                (amb_temp - current_temp) * Rz_1);\n        }\n\n        current_temp = current_temp + delta;\n        \n        if (iter < num_iterations - 1) {\n            temp[idx] = current_temp;\n        }\n    }\n    \n    result[idx] = current_temp;\n}\n"
+  },
+  "target_files_expected": [
+    "hotspot_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "hotspot_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 10.913,
+      "prompt_tokens": 7800,
+      "completion_tokens": 1408,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 245):\n```\n1 warning generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 warning generated.\n",
+      "run_stdout_snippet": "poration\nnum_devices = 1\nDevice: NVIDIA GeForce RTX 4070\nUse GPU device\n<<<<\n<kernel>:37:22: warning: implicit declaration of function 'get_block_id' is invalid in OpenCL\n    int block_id_x = get_block_id(0); // Simulated via global/local logic below\n                     ^\n(): Warning: Function hotspot is a kernel, so overriding noinline attribute. The function may be inlined when called.\nptxas fatal   : Unresolved extern function 'get_block_id'\n\n>>>>\nError at line 306: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 10.794,
+      "prompt_tokens": 9246,
+      "completion_tokens": 1305,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 245):\n```\n1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\nPlatform: NVIDIA Corporation\nnum_devices = 1\nDevice: NVIDIA GeForce RTX 4070\nUse GPU device\n<<<<\n<kernel>:116:23: error: read-only variable is not assignable\n            temp[idx] = result[idx];\n            ~~~~~~~~~ ^\n\n>>>>\nError at line 306: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 12.993,
+      "prompt_tokens": 10589,
+      "completion_tokens": 1316,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\nPlatform: NVIDIA Corporation\nnum_devices = 1\nDevice: NVIDIA GeForce RTX 4070\nUse GPU device\n<<<<\n<kernel>:122:23: error: read-only variable is not assignable\n            temp[idx] = current_temp;\n            ~~~~~~~~~ ^\n\n>>>>\nError at line 306: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "source_spec": "rodinia-pathfinder-omp",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-c",
+    "100000",
+    "-r",
+    "100",
+    "-h",
+    "20"
+  ],
+  "timestamp": "2026-03-31T07:51:09Z",
+  "prompt_tokens": 9057,
+  "completion_tokens": 772,
+  "llm_response_time_seconds": 13.924,
+  "build_status": "pass",
+  "build_time_seconds": 0.484,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.255,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Init: 134.490997\nMemAlloc: 0.003000\nHtoD: 2.202656\nExec: 0.216192\nDtoH: 0.017600\nClose: 0.858000\nTotal: 140.466003\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": 0.255,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "__kernel void dynproc_kernel(\n    int pyramid_height,\n    __global const int* wall,\n    __global const int* src,\n    __global int* dst,\n    int cols,\n    int rows,\n    int t_start,\n    int borderCols,\n    int halo,\n    __local int* local_src,\n    __local int* local_dst,\n    __global int* outputBuffer)\n{\n    int gid = get_global_id(0);\n    int lid = get_local_id(0);\n    int lsize = get_local_size(0);\n\n    if (gid >= cols) return;\n\n    int current_row = t_start;\n    int steps = pyramid_height;\n\n    // Pointers to current source and destination within the iteration\n    __global const int* cur_src = src;\n    __global int* cur_dst = dst;\n\n    for (int step = 0; step < steps; step++) {\n        int row_idx = current_row + step;\n        if (row_idx >= rows - 1) break;\n\n        int val = cur_src[gid];\n        if (gid > 0) {\n            int left = cur_src[gid - 1];\n            if (left < val) val = left;\n        }\n        if (gid < cols - 1) {\n            int right = cur_src[gid + 1];\n            if (right < val) val = right;\n        }\n\n        cur_dst[gid] = wall[row_idx * cols + gid] + val;\n\n        // Swap pointers for next iteration if not the last step\n        if (step < steps - 1) {\n            __global const int* temp_src = cur_src;\n            cur_src = cur_dst;\n            cur_dst = (__global int*)temp_src;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.22,
+      "prompt_tokens": 4332,
+      "completion_tokens": 353,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n1 warning and 1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 warning and 1 error generated.\n",
+      "run_stdout_snippet": "***********\n<kernel>:41:18: warning: initializing '__generic int *' with an expression of type 'const __global int *' discards qualifiers\n            int* temp = src;\n                 ^      ~~~\n<kernel>:43:17: error: assigning '__generic int *' to '__global int *' changes address space of pointer\n            dst = temp;\n                ^ ~~~~\n\n\n*************************************************\n*** END OUTPUT FROM COMPILING THE KERNEL FILE ***\n*************************************************\n\n\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 10.704,
+      "prompt_tokens": 4725,
+      "completion_tokens": 419,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

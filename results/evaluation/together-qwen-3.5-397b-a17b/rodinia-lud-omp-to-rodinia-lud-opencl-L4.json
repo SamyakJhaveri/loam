@@ -1,0 +1,98 @@
+{
+  "source_spec": "rodinia-lud-omp",
+  "target_spec": "rodinia-lud-opencl",
+  "kernel": "lud",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-s",
+    "256"
+  ],
+  "timestamp": "2026-03-31T05:20:26Z",
+  "prompt_tokens": 43846,
+  "completion_tokens": 5476,
+  "llm_response_time_seconds": 59.161,
+  "build_status": "pass",
+  "build_time_seconds": 0.467,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.274,
+  "run_exit_code": 255,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nERROR:  perimeter clEnqueueNDRangeKernel()=>-52 failed\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 255)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.07,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "lud_kernel.cl": "#define BLOCK_SIZE 16\n\n__kernel void lud_diagonal(__global float* a, __local float* local_a, const int size, const int offset) {\n    int i = get_global_id(0);\n    int j, k;\n\n    if (i >= BLOCK_SIZE) return;\n\n    // Load diagonal block into local memory\n    for (int row = 0; row < BLOCK_SIZE; row++) {\n        for (int col = 0; col < BLOCK_SIZE; col++) {\n            local_a[row * BLOCK_SIZE + col] = a[(offset + row) * size + (offset + col)];\n        }\n    }\n    __syncthreads();\n\n    for (i = 0; i < BLOCK_SIZE; i++) {\n        // Update upper triangle in the diagonal block\n        for (j = i; j < BLOCK_SIZE; j++) {\n            float sum = 0.0f;\n            for (k = 0; k < i; k++) {\n                sum += local_a[i * BLOCK_SIZE + k] * local_a[k * BLOCK_SIZE + j];\n            }\n            local_a[i * BLOCK_SIZE + j] -= sum;\n        }\n\n        // Compute reciprocal of diagonal element\n        float diag_inv = 1.0f / local_a[i * BLOCK_SIZE + i];\n\n        // Update lower triangle in the diagonal block\n        for (j = i + 1; j < BLOCK_SIZE; j++) {\n            float sum = 0.0f;\n            for (k = 0; k < i; k++) {\n                sum += local_a[j * BLOCK_SIZE + k] * local_a[k * BLOCK_SIZE + i];\n            }\n            local_a[j * BLOCK_SIZE + i] = (local_a[j * BLOCK_SIZE + i] - sum) * diag_inv;\n        }\n        __syncthreads();\n    }\n\n    // Write back to global memory\n    for (int row = 0; row < BLOCK_SIZE; row++) {\n        for (int col = 0; col < BLOCK_SIZE; col++) {\n            a[(offset + row) * size + (offset + col)] = local_a[row * BLOCK_SIZE + col];\n        }\n    }\n}\n\n__kernel void lud_perimeter(__global float* a, __local float* local_diag, __local float* local_work, const int size, const int offset) {\n    int idx = get_global_id(0);\n    int total_blocks = (size - offset - BLOCK_SIZE) / BLOCK_SIZE;\n    \n    if (total_blocks <= 0) return;\n    if (idx >= 2 * total_blocks * BLOCK_SIZE) return;\n\n    int block_idx = idx / BLOCK_SIZE;\n    int inner_idx = idx % BLOCK_SIZE;\n\n    int i, j, k;\n    float sum;\n\n    // First half: Update rows to the right of the diagonal block\n    if (block_idx < total_blocks) {\n        int global_row = offset + inner_idx;\n        int global_col_start = offset + BLOCK_SIZE + block_idx * BLOCK_SIZE;\n\n        // Load necessary diagonal row into local memory\n        for (k = 0; k < BLOCK_SIZE; k++) {\n            local_diag[k] = a[(offset + inner_idx) * size + (offset + k)];\n        }\n        __syncthreads();\n\n        for (j = 0; j < BLOCK_SIZE; j++) {\n            int global_col = global_col_start + j;\n            sum = 0.0f;\n            for (k = 0; k < inner_idx; k++) {\n                sum += local_diag[k] * a[(offset + k) * size + global_col];\n            }\n            a[global_row * size + global_col] -= sum;\n        }\n    } \n    // Second half: Update columns below the diagonal block\n    else {\n        int col_block = block_idx - total_blocks;\n        int global_col = offset + inner_idx;\n        int global_row_start = offset + BLOCK_SIZE + col_block * BLOCK_SIZE;\n\n        // Load diagonal column into local memory\n        for (k = 0; k < BLOCK_SIZE; k++) {\n            local_diag[k] = a[(offset + k) * size + (offset + inner_idx)];\n        }\n        __syncthreads();\n\n        float diag_val = a[(offset + inner_idx) * size + (offset + inner_idx)];\n\n        for (i = 0; i < BLOCK_SIZE; i++) {\n            int global_row = global_row_start + i;\n            sum = 0.0f;\n            for (k = 0; k < inner_idx; k++) {\n                sum += a[global_row * size + (offset + k)] * local_diag[k];\n            }\n            a[global_row * size + global_col] = (a[global_row * size + global_col] - sum) / diag_val;\n        }\n    }\n}\n\n__kernel void lud_internal(__global float* a, __local float* local_row_block, __local float* local_col_block, const int size, const int offset) {\n    int gx = get_global_id(0);\n    int gy = get_global_id(1);\n\n    int num_blocks = (size - offset - BLOCK_SIZE) / BLOCK_SIZE;\n    \n    if (num_blocks <= 0) return;\n    \n    int total_width = num_blocks * BLOCK_SIZE;\n    if (gx >= total_width || gy >= total_width) return;\n\n    // Determine block coordinates\n    int block_x = gx / BLOCK_SIZE;\n    int block_y = gy / BLOCK_SIZE;\n    int local_x = gx % BLOCK_SIZE;\n    int local_y = gy % BLOCK_SIZE;\n\n    int global_row = offset + BLOCK_SIZE + block_y * BLOCK_SIZE + local_y;\n    int global_col = offset + BLOCK_SIZE + block_x * BLOCK_SIZE + local_x;\n\n    int data_3 = offset + BLOCK_SIZE + block_y * BLOCK_SIZE;\n    int data_13 = offset + BLOCK_SIZE + block_x * BLOCK_SIZE;\n\n    // Load val_11: Rows (data_3 .. data_3+BS-1), Columns (offset .. offset+BS-1)\n    for (int i = 0; i < BLOCK_SIZE; i++) {\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n            local_row_block[i * BLOCK_SIZE + j] = a[(data_3 + i) * size + (offset + j)];\n        }\n    }\n    \n    // Load tmp_6: Rows (offset .. offset+BS-1), Columns (data_13 .. data_13+BS-1)\n    for (int i = 0; i < BLOCK_SIZE; i++) {\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n            local_col_block[i * BLOCK_SIZE + j] = a[(offset + i) * size + (data_13 + j)];\n        }\n    }\n    __syncthreads();\n\n    float sum = 0.0f;\n    for (int k = 0; k < BLOCK_SIZE; k++) {\n        sum += local_row_block[local_y * BLOCK_SIZE + k] * local_col_block[k * BLOCK_SIZE + local_x];\n    }\n\n    a[global_row * size + global_col] -= sum;\n}\n"
+  },
+  "target_files_expected": [
+    "lud_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "lud_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 23.395,
+      "prompt_tokens": 12580,
+      "completion_tokens": 2178,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 255):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nERROR:  perimeter clEnqueueNDRangeKernel()=>-52 failed\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 14.94,
+      "prompt_tokens": 14791,
+      "completion_tokens": 1651,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 255):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nERROR:  perimeter clEnqueueNDRangeKernel()=>-52 failed\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 20.826,
+      "prompt_tokens": 16475,
+      "completion_tokens": 1647,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nERROR:  perimeter clEnqueueNDRangeKernel()=>-52 failed\n",
+      "extraction_fail": null
+    }
+  ]
+}

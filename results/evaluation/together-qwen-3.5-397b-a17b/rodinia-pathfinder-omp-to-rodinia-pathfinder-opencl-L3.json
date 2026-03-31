@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-pathfinder-omp",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-c",
+    "100000",
+    "-r",
+    "100",
+    "-h",
+    "20"
+  ],
+  "timestamp": "2026-03-31T07:51:34Z",
+  "prompt_tokens": 4331,
+  "completion_tokens": 326,
+  "llm_response_time_seconds": 2.382,
+  "build_status": "pass",
+  "build_time_seconds": 0.48,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.241,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Init: 123.021004\nMemAlloc: 0.004000\nHtoD: 2.246752\nExec: 0.153536\nDtoH: 0.017248\nClose: 0.851000\nTotal: 128.826004\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": 0.241,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "#define MIN(a, b) ((a) <= (b) ? (a) : (b))\n\n__kernel void dynproc_kernel(\n    int arg0,\n    __global const int* d_gpuWall,\n    __global const int* d_gpuResult_src,\n    __global int* d_gpuResult_dst,\n    int cols,\n    int rows,\n    int t,\n    int borderCols,\n    int theHalo,\n    __local int* local_src,\n    __local int* local_dst,\n    __global int* d_outputBuffer)\n{\n    int gid = get_global_id(0);\n    int lid = get_local_id(0);\n    int lsize = get_local_size(0);\n\n    if (gid >= cols) return;\n\n    int min_val;\n    int current_val;\n\n    current_val = d_gpuResult_src[gid];\n    min_val = current_val;\n\n    if (gid > 0) {\n        int left = d_gpuResult_src[gid - 1];\n        if (left < min_val) min_val = left;\n    }\n\n    if (gid < cols - 1) {\n        int right = d_gpuResult_src[gid + 1];\n        if (right < min_val) min_val = right;\n    }\n\n    d_gpuResult_dst[gid] = d_gpuWall[t * cols + gid] + min_val;\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.382,
+      "prompt_tokens": 4331,
+      "completion_tokens": 326,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

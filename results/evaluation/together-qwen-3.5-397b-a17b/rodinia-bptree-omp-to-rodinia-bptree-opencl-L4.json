@@ -1,0 +1,103 @@
+{
+  "source_spec": "rodinia-bptree-omp",
+  "target_spec": "rodinia-bptree-opencl",
+  "kernel": "bptree",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-03-31T04:41:09Z",
+  "prompt_tokens": 72768,
+  "completion_tokens": 3079,
+  "llm_response_time_seconds": 16.577,
+  "build_status": "pass",
+  "build_time_seconds": 0.545,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.487,
+  "run_exit_code": 245,
+  "run_stderr_snippet": "1 error generated.\n",
+  "run_stdout_snippet": "GPU suitable structure...\nTree transformation took 0.068955\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n<<<<\n<kernel>:2:18: error: unknown type name 'knode'\n    const global knode *knodes,\n                 ^\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 245)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.453,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "kernel void findK(\n    long maxheight,\n    const global knode *knodes,\n    long knodes_elem,\n    const global record *records,\n    global long *currKnode,\n    global long *offset,\n    global const int *keys,\n    global record *ans)\n{\n    int bid = get_group_id(0);\n    int thid = get_local_id(0);\n    int order = DEFAULT_ORDER;\n    int threadsPerBlock = (order < 1024) ? order : 1024;\n\n    if (bid >= get_num_groups(0)) return;\n    if (thid >= threadsPerBlock) return;\n\n    long current_offset = offset[bid];\n    long current_knode = currKnode[bid];\n    int key_val = keys[bid];\n\n    for (int i = 0; i < maxheight; i++) {\n        if (thid < threadsPerBlock) {\n            if (key_val >= knodes[current_knode].keys[thid] && key_val < knodes[current_knode].keys[thid + 1]) {\n                if (knodes_elem > knodes[current_offset].indices[thid]) {\n                    current_offset = knodes[current_offset].indices[thid];\n                }\n            }\n        }\n        if (thid == 0) {\n            currKnode[bid] = current_offset;\n            current_knode = current_offset;\n        }\n    }\n\n    if (thid < threadsPerBlock) {\n        if (key_val == knodes[current_knode].keys[thid]) {\n            ans[bid].value = records[knodes[current_knode].indices[thid]].value;\n        }\n    }\n}\n",
+    "kernel/kernel_gpu_opencl_2.cl": "kernel void findRangeK(\n    const global knode *knodes,\n    long knodes_elem,\n    long maxheight,\n    int order,\n    int count,\n    global long *currKnode,\n    global long *offset,\n    global long *lastKnode,\n    global long *offset_2,\n    global const int *start,\n    global const int *end,\n    global int *recstart,\n    global int *reclength)\n{\n    int bid = get_group_id(0);\n    int thid = get_local_id(0);\n    int threadsPerBlock = (order < 1024) ? order : 1024;\n\n    if (bid >= get_num_groups(0)) return;\n    if (thid >= threadsPerBlock) return;\n\n    long current_offset = offset[bid];\n    long current_knode = currKnode[bid];\n    long last_offset = offset_2[bid];\n    long last_knode = lastKnode[bid];\n    int start_val = start[bid];\n    int end_val = end[bid];\n\n    for (int i = 0; i < maxheight; i++) {\n        if (thid < threadsPerBlock) {\n            if ((start_val >= knodes[current_knode].keys[thid]) && (start_val < knodes[current_knode].keys[thid + 1])) {\n                if (knodes_elem > knodes[current_knode].indices[thid]) {\n                    current_offset = knodes[current_knode].indices[thid];\n                }\n            }\n            if ((end_val >= knodes[last_knode].keys[thid]) && (end_val < knodes[last_knode].keys[thid + 1])) {\n                if (knodes_elem > knodes[last_knode].indices[thid]) {\n                    last_offset = knodes[last_knode].indices[thid];\n                }\n            }\n        }\n        if (thid == 0) {\n            currKnode[bid] = current_offset;\n            lastKnode[bid] = last_offset;\n            current_knode = current_offset;\n            last_knode = last_offset;\n        }\n    }\n\n    if (thid < threadsPerBlock) {\n        if (start_val == knodes[current_knode].keys[thid]) {\n            recstart[bid] = knodes[current_knode].indices[thid];\n        }\n    }\n\n    if (thid < threadsPerBlock) {\n        if (end_val == knodes[last_knode].keys[thid]) {\n            reclength[bid] = knodes[last_knode].indices[thid] - recstart[bid] + 1;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.947,
+      "prompt_tokens": 23201,
+      "completion_tokens": 1017,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 245):\n```\n1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "GPU suitable structure...\nTree transformation took 0.069250\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n<<<<\n<kernel>:2:18: error: unknown type name 'knode'\n    const global knode *knodes,\n                 ^\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.996,
+      "prompt_tokens": 24256,
+      "completion_tokens": 1017,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 245):\n```\n1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "GPU suitable structure...\nTree transformation took 0.067784\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n<<<<\n<kernel>:2:18: error: unknown type name 'knode'\n    const global knode *knodes,\n                 ^\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 5.634,
+      "prompt_tokens": 25311,
+      "completion_tokens": 1045,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "GPU suitable structure...\nTree transformation took 0.068955\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n<<<<\n<kernel>:2:18: error: unknown type name 'knode'\n    const global knode *knodes,\n                 ^\n\n>>>>\n--------------------------------\nError at line 258: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    }
+  ]
+}

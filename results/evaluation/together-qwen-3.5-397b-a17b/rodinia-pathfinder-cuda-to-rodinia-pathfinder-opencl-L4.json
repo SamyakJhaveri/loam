@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-pathfinder-cuda",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-c",
+    "100000",
+    "-r",
+    "100",
+    "-h",
+    "20"
+  ],
+  "timestamp": "2026-03-31T04:33:02Z",
+  "prompt_tokens": 19048,
+  "completion_tokens": 2763,
+  "llm_response_time_seconds": 19.344,
+  "build_status": "pass",
+  "build_time_seconds": 0.483,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.226,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "Error: clGetKernelWorkGroupInfo() returned a max work group size of zero!\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "#define BLOCK_SIZE 256\n#define HALO 1\n\n#define IN_RANGE(x, min, max)   ((x)>=((min)) && (x)<=((max)))\n#define MIN(a, b) ((a)<=((b)) ? (a) : (b))\n\nvoid dynproc_kernel(\n                int data_5, \n                const int *var_15,\n                const int *item_25,\n                int *elem_31,\n                int v_38, \n                int data_11,\n                int x_23,\n                int val_19,\n                int theHalo,\n                int *local_var_34,\n                int *local_x_22,\n                int *d_outputBuffer)\n{\n        int data_3 = get_local_id(0);\n        int elem_16 = get_group_id(0);\n\n        int elem_24 = BLOCK_SIZE - data_5 * theHalo * 2;\n\n        int item_30 = elem_24 * elem_16 - val_19;\n        int x_10 = item_30 + BLOCK_SIZE - 1;\n\n        int data_21 = item_30 + data_3;\n\n        int tmp_27 = (0 > item_30) ? -item_30 : 0;\n        int val_41 = (v_38 - 1 < x_10) ? BLOCK_SIZE - 1 - (x_10 - v_38 + 1) : BLOCK_SIZE - 1;\n\n        int W = data_3 - 1;\n        int E = data_3 + 1;\n\n        W = (tmp_27 > W) ? tmp_27 : W;\n        E = (val_41 < E) ? val_41 : E;\n\n        bool tmp_26 = IN_RANGE(data_3, tmp_27, val_41);\n\n        if (IN_RANGE(data_21, 0, v_38 - 1)) {\n            local_var_34[data_3] = item_25[data_21];\n        } else {\n            local_var_34[data_3] = 0; \n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n\n        bool tmp_6 = false;\n        for (int i = 0; i < data_5; i++) {\n            tmp_6 = false;\n            if (IN_RANGE(data_3, i + 1, BLOCK_SIZE - i - 2) && tmp_26) {\n                tmp_6 = true;\n                int left = local_var_34[W];\n                int x_39 = local_var_34[data_3];\n                int right = local_var_34[E];\n                int elem_28 = MIN(left, x_39);\n                elem_28 = MIN(elem_28, right);\n                int elem_35 = v_38 * (x_23 + i) + data_21;\n                \n                if (elem_35 >= 0 && elem_35 < (data_11 - 1) * data_11) { \n                    local_x_22[data_3] = elem_28 + var_15[elem_35];\n                } else {\n                    local_x_22[data_3] = elem_28;\n                }\n            }\n            barrier(CLK_LOCAL_MEM_FENCE);\n            \n            if (data_5 - 1 == i)\n                break;\n            \n            if (tmp_6)\n                local_var_34[data_3] = local_x_22[data_3];\n            barrier(CLK_LOCAL_MEM_FENCE);\n        }\n\n        if (tmp_6 && IN_RANGE(data_21, 0, v_38 - 1)) {\n            elem_31[data_21] = local_x_22[data_3];\n        }\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.698,
+      "prompt_tokens": 5389,
+      "completion_tokens": 931,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "\nError at clBuildProgram! Error code -11\n\n\n*************************************************\n***   OUTPUT FROM COMPILING THE KERNEL FILE   ***\n*************************************************\n<kernel>:8:6: error: attribute 'reqd_work_group_size' can only be applied to an OpenCL kernel function\nvoid dynproc_kernel(\n     ^\n\n\n*************************************************\n*** END OUTPUT FROM COMPILING THE KERNEL FILE ***\n*************************************************\n\n\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 4.648,
+      "prompt_tokens": 6356,
+      "completion_tokens": 916,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "Error: clGetKernelWorkGroupInfo() returned a max work group size of zero!\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 8.998,
+      "prompt_tokens": 7303,
+      "completion_tokens": 916,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "Error: clGetKernelWorkGroupInfo() returned a max work group size of zero!\n",
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "source_spec": "rodinia-lud-cuda",
+  "target_spec": "rodinia-lud-opencl",
+  "kernel": "lud",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-s",
+    "256"
+  ],
+  "timestamp": "2026-03-31T01:43:48Z",
+  "prompt_tokens": 43297,
+  "completion_tokens": 4387,
+  "llm_response_time_seconds": 35.806,
+  "build_status": "pass",
+  "build_time_seconds": 0.468,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.271,
+  "run_exit_code": 255,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nERROR:  diagnal clEnqueueNDRangeKernel()=>-52 failed\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 255)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.07,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "lud_kernel.cl": "#ifdef BLOCK_SIZE\n#define LOCAL_SIZE BLOCK_SIZE\n#else\n#define LOCAL_SIZE 16\n#endif\n\n__kernel void \nlud_diagonal(__global float *m, int matrix_dim, int offset)\n{\n  int i, j;\n  __local float shadow[LOCAL_SIZE][LOCAL_SIZE];\n  int local_id = get_local_id(0);\n\n  int array_offset = offset * matrix_dim + offset;\n  for (i = 0; i < LOCAL_SIZE; i++) {\n    shadow[i][local_id] = m[array_offset + local_id];\n    array_offset += matrix_dim;\n  }\n  __syncthreads();\n\n  for (i = 0; i < LOCAL_SIZE - 1; i++) {\n    if (local_id > i) {\n      float sum = 0.0f;\n      for (j = 0; j < i; j++) {\n        sum += shadow[local_id][j] * shadow[j][i];\n      }\n      shadow[local_id][i] -= sum;\n      shadow[local_id][i] /= shadow[i][i];\n    }\n    __syncthreads();\n\n    if (local_id > i) {\n      float sum = 0.0f;\n      for (j = 0; j < i + 1; j++) {\n        sum += shadow[i + 1][j] * shadow[j][local_id];\n      }\n      shadow[i + 1][local_id] -= sum;\n    }\n    __syncthreads();\n  }\n\n  array_offset = (offset + 1) * matrix_dim + offset;\n  for (i = 1; i < LOCAL_SIZE; i++) {\n    m[array_offset + local_id] = shadow[i][local_id];\n    array_offset += matrix_dim;\n  }\n}\n\n__kernel void\nlud_perimeter(__global float *m, int matrix_dim, int offset)\n{\n  __local float dia[LOCAL_SIZE][LOCAL_SIZE];\n  __local float peri_row[LOCAL_SIZE][LOCAL_SIZE];\n  __local float peri_col[LOCAL_SIZE][LOCAL_SIZE];\n\n  int i, j, array_offset;\n  int idx;\n  int local_id = get_local_id(0);\n  int group_id = get_group_id(0);\n\n  if (local_id < LOCAL_SIZE) {\n    idx = local_id;\n    \n    array_offset = offset * matrix_dim + offset;\n    for (i = 0; i < LOCAL_SIZE / 2; i++) {\n      dia[i][idx] = m[array_offset + idx];\n      array_offset += matrix_dim;\n    }\n    \n    array_offset = offset * matrix_dim + offset;\n    for (i = 0; i < LOCAL_SIZE; i++) {\n      peri_row[i][idx] = m[array_offset + (group_id + 1) * LOCAL_SIZE + idx];\n      array_offset += matrix_dim;\n    }\n  } else {\n    idx = local_id - LOCAL_SIZE;\n    \n    array_offset = (offset + LOCAL_SIZE / 2) * matrix_dim + offset;\n    for (i = LOCAL_SIZE / 2; i < LOCAL_SIZE; i++) {\n      dia[i][idx] = m[array_offset + idx];\n      array_offset += matrix_dim;\n    }\n    \n    array_offset = (offset + (group_id + 1) * LOCAL_SIZE) * matrix_dim + offset;\n    for (i = 0; i < LOCAL_SIZE; i++) {\n      peri_col[i][idx] = m[array_offset + idx];\n      array_offset += matrix_dim;\n    }\n  }\n  __syncthreads();\n\n  if (local_id < LOCAL_SIZE) {\n    idx = local_id;\n    for (i = 1; i < LOCAL_SIZE; i++) {\n      float sum = 0.0f;\n      for (j = 0; j < i; j++) {\n        sum += dia[i][j] * peri_row[j][idx];\n      }\n      peri_row[i][idx] -= sum;\n    }\n  } else {\n    idx = local_id - LOCAL_SIZE;\n    for (i = 0; i < LOCAL_SIZE; i++) {\n      float sum = 0.0f;\n      for (j = 0; j < i; j++) {\n        sum += peri_col[idx][j] * dia[j][i];\n      }\n      peri_col[idx][i] -= sum;\n      peri_col[idx][i] /= dia[i][i];\n    }\n  }\n\n  __syncthreads();\n\n  if (local_id < LOCAL_SIZE) {\n    idx = local_id;\n    array_offset = (offset + 1) * matrix_dim + offset;\n    for (i = 1; i < LOCAL_SIZE; i++) {\n      m[array_offset + (group_id + 1) * LOCAL_SIZE + idx] = peri_row[i][idx];\n      array_offset += matrix_dim;\n    }\n  } else {\n    idx = local_id - LOCAL_SIZE;\n    array_offset = (offset + (group_id + 1) * LOCAL_SIZE) * matrix_dim + offset;\n    for (i = 0; i < LOCAL_SIZE; i++) {\n      m[array_offset + idx] = peri_col[i][idx];\n      array_offset += matrix_dim;\n    }\n  }\n}\n\n__kernel void\nlud_internal(__global float *m, int matrix_dim, int offset)\n{\n  __local float peri_row[LOCAL_SIZE][LOCAL_SIZE];\n  __local float peri_col[LOCAL_SIZE][LOCAL_SIZE];\n\n  int i;\n  float sum;\n  int local_x = get_local_id(0);\n  int local_y = get_local_id(1);\n  int group_x = get_group_id(0);\n  int group_y = get_group_id(1);\n\n  int global_row_id = offset + (group_y + 1) * LOCAL_SIZE;\n  int global_col_id = offset + (group_x + 1) * LOCAL_SIZE;\n\n  peri_row[local_y][local_x] = m[(offset + local_y) * matrix_dim + global_col_id + local_x];\n  peri_col[local_y][local_x] = m[(global_row_id + local_y) * matrix_dim + offset + local_x];\n\n  __syncthreads();\n\n  sum = 0.0f;\n  for (i = 0; i < LOCAL_SIZE; i++) {\n    sum += peri_col[local_y][i] * peri_row[i][local_x];\n  }\n  m[(global_row_id + local_y) * matrix_dim + global_col_id + local_x] -= sum;\n}\n"
+  },
+  "target_files_expected": [
+    "lud_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "lud_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 12.166,
+      "prompt_tokens": 12979,
+      "completion_tokens": 1375,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 255):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nERROR:  diagnal clEnqueueNDRangeKernel()=>-52 failed\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 12.599,
+      "prompt_tokens": 14387,
+      "completion_tokens": 1506,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 255):\n```\n1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nERROR: clBuildProgram() => -11\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 11.041,
+      "prompt_tokens": 15931,
+      "completion_tokens": 1506,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "WG size of kernel = 16 X 16\nGenerate input matrix internally, size =256\nCreating matrix internally size=256\nnum_devices = 1\nCreate GPU context\nERROR:  diagnal clEnqueueNDRangeKernel()=>-52 failed\n",
+      "extraction_fail": null
+    }
+  ]
+}

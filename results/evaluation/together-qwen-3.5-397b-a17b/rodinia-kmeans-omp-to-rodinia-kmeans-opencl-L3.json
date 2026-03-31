@@ -1,0 +1,98 @@
+{
+  "source_spec": "rodinia-kmeans-omp",
+  "target_spec": "rodinia-kmeans-opencl",
+  "kernel": "kmeans",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-i",
+    "../../data/kmeans/kdd_cup"
+  ],
+  "timestamp": "2026-03-31T05:13:40Z",
+  "prompt_tokens": 132448,
+  "completion_tokens": 7511,
+  "llm_response_time_seconds": 87.422,
+  "build_status": "pass",
+  "build_time_seconds": 0.838,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.512,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel_swap = 256, WG size of kernel_kmeans = 256 \n\nI/O completed\n\nNumber of objects: 494020\nNumber of features: 34\nnum_devices = 1\nERROR: clBuildProgram() => -11\nERROR: clEnqueueWriteBuffer d_cluster (size:494020) => -38\niterated 1 times\nNumber of Iteration: 1\nInit: 0.000000\nMemAlloc: 0.000000\nHtoD: 0.000000\nExec: 0.000000\nDtoH: 0.000000\nClose: 0.013000\nTotal: 461.941986\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.498,
+  "translated_wall_time_seconds": 0.512,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.9258,
+  "translated_files": {
+    "kmeans.cl": "#ifndef FLT_MAX\n#define FLT_MAX 3.40282347e+38F\n#endif\n\n#define RANDOM_MAX 2147483647\n\n// Helper function to calculate Euclidean distance squared\nfloat euclid_dist_2(float *pt1, float *pt2, int numdims) {\n    float ans = 0.0f;\n    for (int i = 0; i < numdims; i++) {\n        float diff = pt1[i] - pt2[i];\n        ans += diff * diff;\n    }\n    return ans;\n}\n\n// Helper function to find the nearest cluster center\nint find_nearest_point(float *pt, int nfeatures, float *clusters, int nclusters) {\n    int index = 0;\n    float min_dist = FLT_MAX;\n\n    for (int i = 0; i < nclusters; i++) {\n        float dist = euclid_dist_2(pt, clusters + (i * nfeatures), nfeatures);\n        if (dist < min_dist) {\n            min_dist = dist;\n            index = i;\n        }\n    }\n    return index;\n}\n\n// Kernel to initialize cluster centers with the first n points and reset membership\n__kernel void kmeans_init_kernel(float *feature,\n                                 float *clusters,\n                                 int *membership,\n                                 int nfeatures,\n                                 int nclusters,\n                                 int npoints) {\n    int i = get_global_id(0);\n\n    if (i < nclusters) {\n        // Initialize cluster i with feature point i (assuming nclusters <= npoints)\n        for (int j = 0; j < nfeatures; j++) {\n            clusters[i * nfeatures + j] = feature[i * nfeatures + j];\n        }\n    }\n\n    if (i < npoints) {\n        membership[i] = -1;\n    }\n}\n\n// Kernel to assign points to nearest clusters and accumulate partial sums\n// Each work group corresponds to one \"thread\" in the OpenMP model\n__kernel void kmeans_assign_kernel(float *feature,\n                                   float *clusters,\n                                   int *membership,\n                                   int *partial_new_centers_len,\n                                   float *partial_new_centers,\n                                   int nfeatures,\n                                   int nclusters,\n                                   int npoints,\n                                   int nthreads,\n                                   volatile float *delta_global) {\n    int i = get_global_id(0);\n    int tid = get_group_id(0); // Map group ID to thread ID\n\n    if (i >= npoints || tid >= nthreads) return;\n\n    float *pt = feature + (i * nfeatures);\n    \n    // Find nearest cluster\n    int index = find_nearest_point(pt, nfeatures, clusters, nclusters);\n\n    // Check for change\n    float delta_val = 0.0f;\n    if (membership[i] != index) {\n        delta_val = 1.0f;\n    }\n\n    // Update membership\n    membership[i] = index;\n\n    // Update partial sums for this thread\n    int len_idx = tid * nclusters + index;\n    partial_new_centers_len[len_idx]++;\n\n    float *partial_center = partial_new_centers + (tid * nclusters * nfeatures) + (index * nfeatures);\n    \n    for (int j = 0; j < nfeatures; j++) {\n        partial_center[j] += pt[j];\n    }\n\n    // Accumulate delta globally\n    if (delta_val > 0.0f) {\n        atomic_add(delta_global, 1);\n    }\n}\n\n// Kernel to aggregate partial sums and update cluster centers\n__kernel void kmeans_update_kernel(float *clusters,\n                                   float *new_centers,\n                                   int *new_centers_len,\n                                   int *partial_new_centers_len,\n                                   float *partial_new_centers,\n                                   int nfeatures,\n                                   int nclusters,\n                                   int nthreads) {\n    int i = get_global_id(0); // Cluster index\n\n    if (i >= nclusters) return;\n\n    int total_count = 0;\n    \n    // Aggregate from all threads\n    for (int t = 0; t < nthreads; t++) {\n        int len_idx = t * nclusters + i;\n        int count = partial_new_centers_len[len_idx];\n        total_count += count;\n\n        float *partial_center = partial_new_centers + (t * nclusters * nfeatures) + (i * nfeatures);\n        float *new_center = new_centers + (i * nfeatures);\n\n        for (int j = 0; j < nfeatures; j++) {\n            new_center[j] += partial_center[j];\n            // Reset partials for next iteration\n            partial_center[j] = 0.0f;\n        }\n        \n        // Reset partial count\n        partial_new_centers_len[len_idx] = 0;\n    }\n\n    // Update center if there are points\n    if (total_count > 0) {\n        float *new_center = new_centers + (i * nfeatures);\n        float *cluster = clusters + (i * nfeatures);\n        float inv_count = 1.0f / (float)total_count;\n        \n        for (int j = 0; j < nfeatures; j++) {\n            cluster[j] = new_center[j] * inv_count;\n            new_center[j] = 0.0f; // Reset for next\n        }\n    }\n    \n    // Reset global count accumulator (if used by host logic, though here we just compute locally)\n    // The host or a separate mechanism needs to track the total count if needed, \n    // but for the algorithm, resetting the partials is sufficient.\n    // We don't have a global new_centers_len array in this kernel signature to reset, \n    // as the aggregation is done locally in the loop above.\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans.cl"
+  ],
+  "target_files_extracted": [
+    "kmeans.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 62.479,
+      "prompt_tokens": 40397,
+      "completion_tokens": 4895,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness\nEnsure the translated code produces the same outpu",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 14.69,
+      "prompt_tokens": 45345,
+      "completion_tokens": 1308,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness\nEnsure the translated code produces the same outpu",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 10.253,
+      "prompt_tokens": 46706,
+      "completion_tokens": 1308,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

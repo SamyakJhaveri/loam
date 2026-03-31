@@ -1,0 +1,98 @@
+{
+  "source_spec": "rodinia-kmeans-omp",
+  "target_spec": "rodinia-kmeans-opencl",
+  "kernel": "kmeans",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-i",
+    "../../data/kmeans/kdd_cup"
+  ],
+  "timestamp": "2026-03-31T05:15:18Z",
+  "prompt_tokens": 124368,
+  "completion_tokens": 2967,
+  "llm_response_time_seconds": 29.609,
+  "build_status": "pass",
+  "build_time_seconds": 0.842,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.514,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel_swap = 256, WG size of kernel_kmeans = 256 \n\nI/O completed\n\nNumber of objects: 494020\nNumber of features: 34\nnum_devices = 1\nERROR: clCreateKernel() 0 => -46\nERROR: clEnqueueWriteBuffer d_cluster (size:494020) => -38\niterated 1 times\nNumber of Iteration: 1\nInit: 0.000000\nMemAlloc: 0.000000\nHtoD: 0.000000\nExec: 0.000000\nDtoH: 0.000000\nClose: 0.012000\nTotal: 461.126007\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.498,
+  "translated_wall_time_seconds": 0.514,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.9144,
+  "translated_files": {
+    "kmeans.cl": "#ifndef FLT_MAX\n#define FLT_MAX 3.40282347e+38F\n#endif\n\n__attribute__((always_inline))\nfloat euclid_dist_2_cl(const float *pt1,\n                       const float *pt2,\n                       int numdims)\n{\n    float ans = 0.0f;\n    for (int i = 0; i < numdims; i++) {\n        float diff = pt1[i] - pt2[i];\n        ans += diff * diff;\n    }\n    return ans;\n}\n\nint find_nearest_point_cl(const float *pt,\n                          int nfeatures,\n                          const float *clusters,\n                          int nclusters,\n                          int nfeatures_per_cluster)\n{\n    int index = 0;\n    float min_dist = FLT_MAX;\n\n    for (int i = 0; i < nclusters; i++) {\n        float dist = euclid_dist_2_cl(pt, clusters + (i * nfeatures_per_cluster), nfeatures);\n        if (dist < min_dist) {\n            min_dist = dist;\n            index = i;\n        }\n    }\n    return index;\n}\n\nvoid kmeans_clustering_kernel(const float *feature,\n                              int nfeatures,\n                              int npoints,\n                              int nclusters,\n                              float threshold,\n                              int *membership,\n                              float *clusters,\n                              int *new_centers_len,\n                              float *new_centers,\n                              int *partial_new_centers_len,\n                              float *partial_new_centers,\n                              int nthreads,\n                              int tid,\n                              int start_idx,\n                              int end_idx,\n                              float *delta_out)\n{\n    float delta = 0.0f;\n\n    for (int i = start_idx; i < end_idx; i++) {\n        int index = find_nearest_point_cl(feature + (i * nfeatures),\n                                          nfeatures,\n                                          clusters,\n                                          nclusters,\n                                          nfeatures);\n\n        if (index != membership[i]) {\n            delta += 1.0f;\n        }\n\n        membership[i] = index;\n\n        partial_new_centers_len[tid * nclusters + index]++;\n\n        for (int j = 0; j < nfeatures; j++) {\n            partial_new_centers[(tid * nclusters + index) * nfeatures + j] += feature[i * nfeatures + j];\n        }\n    }\n\n    *delta_out = delta;\n}\n\nvoid aggregate_centers_kernel(float *new_centers_len,\n                              float *new_centers,\n                              int *partial_new_centers_len,\n                              float *partial_new_centers,\n                              int nclusters,\n                              int nthreads,\n                              int nfeatures)\n{\n    for (int i = 0; i < nclusters; i++) {\n        float count = 0.0f;\n        for (int j = 0; j < nthreads; j++) {\n            count += partial_new_centers_len[j * nclusters + i];\n            partial_new_centers_len[j * nclusters + i] = 0;\n\n            for (int k = 0; k < nfeatures; k++) {\n                new_centers[i * nfeatures + k] += partial_new_centers[(j * nclusters + i) * nfeatures + k];\n                partial_new_centers[(j * nclusters + i) * nfeatures + k] = 0.0f;\n            }\n        }\n        new_centers_len[i] = count;\n    }\n}\n\nvoid update_centers_kernel(float *clusters,\n                           float *new_centers,\n                           float *new_centers_len,\n                           int nclusters,\n                           int nfeatures)\n{\n    for (int i = 0; i < nclusters; i++) {\n        if (new_centers_len[i] > 0.0f) {\n            for (int j = 0; j < nfeatures; j++) {\n                clusters[i * nfeatures + j] = new_centers[i * nfeatures + j] / new_centers_len[i];\n                new_centers[i * nfeatures + j] = 0.0f;\n            }\n        } else {\n            for (int j = 0; j < nfeatures; j++) {\n                new_centers[i * nfeatures + j] = 0.0f;\n            }\n        }\n        new_centers_len[i] = 0.0f;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans.cl"
+  ],
+  "target_files_extracted": [
+    "kmeans.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 8.993,
+      "prompt_tokens": 40414,
+      "completion_tokens": 989,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness\nEnsure the translated code produces the same outpu",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 10.365,
+      "prompt_tokens": 41456,
+      "completion_tokens": 989,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness\nEnsure the translated code produces the same outpu",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 10.251,
+      "prompt_tokens": 42498,
+      "completion_tokens": 989,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

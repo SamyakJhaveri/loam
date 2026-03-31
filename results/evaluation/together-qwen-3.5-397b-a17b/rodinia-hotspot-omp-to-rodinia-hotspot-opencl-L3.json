@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-hotspot-omp",
+  "target_spec": "rodinia-hotspot-opencl",
+  "kernel": "hotspot",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "512",
+    "2",
+    "4",
+    "../../data/hotspot/temp_512",
+    "../../data/hotspot/power_512",
+    "output.out"
+  ],
+  "timestamp": "2026-03-31T05:07:48Z",
+  "prompt_tokens": 32987,
+  "completion_tokens": 10196,
+  "llm_response_time_seconds": 145.056,
+  "build_status": "pass",
+  "build_time_seconds": 0.179,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.235,
+  "run_exit_code": 245,
+  "run_stderr_snippet": "4 warnings generated.\n",
+  "run_stdout_snippet": ": warning: implicit declaration of function '__get_local_id' is invalid in OpenCL\n    int local_c = __get_local_id(0);\n                  ^\n<kernel>:53:5: warning: implicit declaration of function '__barrier' is invalid in OpenCL\n    __barrier(CLK_LOCAL_MEM_FENCE);\n    ^\n(): Warning: Function hotspot is a kernel, so overriding noinline attribute. The function may be inlined when called.\nptxas fatal   : Unresolved extern function '__get_global_id'\n\n>>>>\nError at line 306: CL_BUILD_PROGRAM_FAILURE\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 245)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.159,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot_kernel.cl": "#define BLOCK_SIZE 16\n\nconst float amb_temp = 80.0f;\n\n__kernel void hotspot(\n    const int num_iterations,\n    const __global const float *power,\n    const __global float *temp,\n    __global float *result,\n    const int col,\n    const int row,\n    const int borderCols,\n    const int borderRows,\n    const float Cap,\n    const float Rx,\n    const float Ry,\n    const float Rz,\n    const float step)\n{\n    float Cap_1 = step / Cap;\n    float Rx_1 = 1.0f / Rx;\n    float Ry_1 = 1.0f / Ry;\n    float Rz_1 = 1.0f / Rz;\n\n    int c_start = __get_global_id(0) * BLOCK_SIZE;\n    int r_start = __get_global_id(1) * BLOCK_SIZE;\n    \n    int local_c = __get_local_id(0);\n    int local_r = __get_local_id(1);\n\n    int c_end = c_start + BLOCK_SIZE;\n    int r_end = r_start + BLOCK_SIZE;\n\n    if (c_end > col) c_end = col;\n    if (r_end > row) r_end = row;\n\n    // Use local memory for the block to support multiple iterations without global races\n    __local float local_temp[BLOCK_SIZE][BLOCK_SIZE];\n    __local float local_power[BLOCK_SIZE][BLOCK_SIZE];\n\n    int global_c = c_start + local_c;\n    int global_r = r_start + local_r;\n\n    // Load data into local memory\n    if (global_r < row && global_c < col) {\n        local_temp[local_r][local_c] = temp[global_r * col + global_c];\n        local_power[local_r][local_c] = power[global_r * col + global_c];\n    } else {\n        local_temp[local_r][local_c] = 0.0f;\n        local_power[local_r][local_c] = 0.0f;\n    }\n\n    __barrier(CLK_LOCAL_MEM_FENCE);\n\n    // Perform iterations\n    for (int iter = 0; iter < num_iterations; iter++) {\n        // Compute update for each cell in the block\n        if (global_r < row && global_c < col) {\n            float t_curr = local_temp[local_r][local_c];\n            float p_curr = local_power[local_r][local_c];\n            float delta;\n\n            // Boundary checks based on global coordinates\n            if (global_r == 0 && global_c == 0) {\n                float t_right = (local_c + 1 < BLOCK_SIZE) ? local_temp[local_r][local_c + 1] : t_curr;\n                float t_down  = (local_r + 1 < BLOCK_SIZE) ? local_temp[local_r + 1][local_c] : t_curr;\n                delta = Cap_1 * (p_curr + \n                    (t_right - t_curr) * Rx_1 + \n                    (t_down - t_curr) * Ry_1 + \n                    (amb_temp - t_curr) * Rz_1);\n            }\n            else if (global_r == 0 && global_c == col - 1) {\n                float t_left = (local_c - 1 >= 0) ? local_temp[local_r][local_c - 1] : t_curr;\n                float t_down = (local_r + 1 < BLOCK_SIZE) ? local_temp[local_r + 1][local_c] : t_curr;\n                delta = Cap_1 * (p_curr + \n                    (t_left - t_curr) * Rx_1 + \n                    (t_down - t_curr) * Ry_1 + \n                    (amb_temp - t_curr) * Rz_1);\n            }\n            else if (global_r == row - 1 && global_c == col - 1) {\n                float t_left = (local_c - 1 >= 0) ? local_temp[local_r][local_c - 1] : t_curr;\n                float t_up   = (local_r - 1 >= 0) ? local_temp[local_r - 1][local_c] : t_curr;\n                delta = Cap_1 * (p_curr + \n                    (t_left - t_curr) * Rx_1 + \n                    (t_up - t_curr) * Ry_1 + \n                    (amb_temp - t_curr) * Rz_1);\n            }\n            else if (global_r == row - 1 && global_c == 0) {\n                float t_right = (local_c + 1 < BLOCK_SIZE) ? local_temp[local_r][local_c + 1] : t_curr;\n                float t_up    = (local_r - 1 >= 0) ? local_temp[local_r - 1][local_c] : t_curr;\n                delta = Cap_1 * (p_curr + \n                    (t_right - t_curr) * Rx_1 + \n                    (t_up - t_curr) * Ry_1 + \n                    (amb_temp - t_curr) * Rz_1);\n            }\n            else if (global_r == 0) {\n                float t_right = (local_c + 1 < BLOCK_SIZE) ? local_temp[local_r][local_c + 1] : t_curr;\n                float t_left  = (local_c - 1 >= 0) ? local_temp[local_r][local_c - 1] : t_curr;\n                float t_down  = (local_r + 1 < BLOCK_SIZE) ? local_temp[local_r + 1][local_c] : t_curr;\n                delta = Cap_1 * (p_curr + \n                    (t_right + t_left - 2.0f * t_curr) * Rx_1 + \n                    (t_down - t_curr) * Ry_1 + \n                    (amb_temp - t_curr) * Rz_1);\n            }\n            else if (global_c == col - 1) {\n                float t_up    = (local_r - 1 >= 0) ? local_temp[local_r - 1][local_c] : t_curr;\n                float t_down  = (local_r + 1 < BLOCK_SIZE) ? local_temp[local_r + 1][local_c] : t_curr;\n                float t_left  = (local_c - 1 >= 0) ? local_temp[local_r][local_c - 1] : t_curr;\n                delta = Cap_1 * (p_curr + \n                    (t_up + t_down - 2.0f * t_curr) * Ry_1 + \n                    (t_left - t_curr) * Rx_1 + \n                    (amb_temp - t_curr) * Rz_1);\n            }\n            else if (global_r == row - 1) {\n                float t_right = (local_c + 1 < BLOCK_SIZE) ? local_temp[local_r][local_c + 1] : t_curr;\n                float t_left  = (local_c - 1 >= 0) ? local_temp[local_r][local_c - 1] : t_curr;\n                float t_up    = (local_r - 1 >= 0) ? local_temp[local_r - 1][local_c] : t_curr;\n                delta = Cap_1 * (p_curr + \n                    (t_right + t_left - 2.0f * t_curr) * Rx_1 + \n                    (t_up - t_curr) * Ry_1 + \n                    (amb_temp - t_curr) * Rz_1);\n            }\n            else if (global_c == 0) {\n                float t_up    = (local_r - 1 >= 0) ? local_temp[local_r - 1][local_c] : t_curr;\n                float t_down  = (local_r + 1 < BLOCK_SIZE) ? local_temp[local_r + 1][local_c] : t_curr;\n                float t_right = (local_c + 1 < BLOCK_SIZE) ? local_temp[local_r][local_c + 1] : t_curr;\n                delta = Cap_1 * (p_curr + \n                    (t_up + t_down - 2.0f * t_curr) * Ry_1 + \n                    (t_right - t_curr) * Rx_1 + \n                    (amb_temp - t_curr) * Rz_1);\n            }\n            else {\n                float t_up    = local_temp[local_r - 1][local_c];\n                float t_down  = local_temp[local_r + 1][local_c];\n                float t_right = local_temp[local_r][local_c + 1];\n                float t_left  = local_temp[local_r][local_c - 1];\n                delta = Cap_1 * (p_curr + \n                    (t_up + t_down - 2.0f * t_curr) * Ry_1 + \n                    (t_right + t_left - 2.0f * t_curr) * Rx_1 + \n                    (amb_temp - t_curr) * Rz_1);\n            }\n\n            local_temp[local_r][local_c] = t_curr + delta;\n        }\n        \n        __barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    // Write result back to global memory\n    if (global_r < row && global_c < col) {\n        result[global_r * col + global_c] = local_temp[local_r][local_c];\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "hotspot_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "hotspot_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 45.789,
+      "prompt_tokens": 7797,
+      "completion_tokens": 1396,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 245):\n```\n2 warnings and 1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "2 warnings and 1 error generated.\n",
+      "run_stdout_snippet": ":20: warning: duplicate 'const' declaration specifier\n    const __global const float *power,\n                   ^\n<kernel>:25:19: warning: implicit declaration of function '__get_global_id' is invalid in OpenCL\n    int c_start = __get_global_id(0) * BLOCK_SIZE;\n                  ^\n<kernel>:112:41: error: read-only variable is not assignable\n                    temp[r2 * col + c2] = result[r2 * col + c2];\n                    ~~~~~~~~~~~~~~~~~~~ ^\n\n>>>>\nError at line 306: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 81.114,
+      "prompt_tokens": 9235,
+      "completion_tokens": 6682,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 245):\n```\n4 warnings generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "4 warnings generated.\n",
+      "run_stdout_snippet": " warning: implicit declaration of function '__get_local_id' is invalid in OpenCL\n    int local_c = __get_local_id(0);\n                  ^\n<kernel>:109:5: warning: implicit declaration of function '__barrier' is invalid in OpenCL\n    __barrier(CLK_LOCAL_MEM_FENCE);\n    ^\n(): Warning: Function hotspot is a kernel, so overriding noinline attribute. The function may be inlined when called.\nptxas fatal   : Unresolved extern function '__get_global_id'\n\n>>>>\nError at line 306: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 18.153,
+      "prompt_tokens": 15955,
+      "completion_tokens": 2118,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "4 warnings generated.\n",
+      "run_stdout_snippet": ": warning: implicit declaration of function '__get_local_id' is invalid in OpenCL\n    int local_c = __get_local_id(0);\n                  ^\n<kernel>:53:5: warning: implicit declaration of function '__barrier' is invalid in OpenCL\n    __barrier(CLK_LOCAL_MEM_FENCE);\n    ^\n(): Warning: Function hotspot is a kernel, so overriding noinline attribute. The function may be inlined when called.\nptxas fatal   : Unresolved extern function '__get_global_id'\n\n>>>>\nError at line 306: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "source_spec": "rodinia-bptree-omp",
+  "target_spec": "rodinia-bptree-opencl",
+  "kernel": "bptree",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-03-31T04:40:50Z",
+  "prompt_tokens": 47703,
+  "completion_tokens": 2490,
+  "llm_response_time_seconds": 13.178,
+  "build_status": "pass",
+  "build_time_seconds": 0.545,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.682,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "n>:1:9: note: previous definition is here\n#define DEFAULT_ORDER 256\n        ^\n(): Warning: Function findK is a kernel, so overriding noinline attribute. The function may be inlined when called.\n\n\n>>>>\n--------------------------------\n# of blocks = 10000, # of threads/block = 256 (ensure that device can handle)\nTime spent in different stages of GPU_CUDA KERNEL:\nInit: 100.977997\nMemAlloc: 0.004000\nHtoD: 1.188128\nExec: 0.034496\nDtoH: 0.002496\nClose: 47.171001\nTotal: 149.841995\n> > > > > > > > > > \n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.453,
+  "translated_wall_time_seconds": 0.682,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.6642,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#define DEFAULT_ORDER 508\n\ntypedef struct {\n    int value;\n} record;\n\ntypedef struct {\n    int location;\n    int indices[DEFAULT_ORDER + 1];\n    int keys[DEFAULT_ORDER + 1];\n    char is_leaf;\n    int num_keys;\n} knode;\n\n__kernel void findK(\n    long maxheight,\n    __global knode *knodes,\n    long knodes_elem,\n    __global record *records,\n    __global long *currKnode,\n    __global long *offset,\n    __global int *keys,\n    __global record *ans)\n{\n    int bid = get_group_id(0);\n    int thid = get_local_id(0);\n    int threadsPerBlock = get_local_size(0);\n    \n    long current_knode_idx = currKnode[bid];\n    long offset_val = offset[bid];\n    int key_val = keys[bid];\n    \n    for (long i = 0; i < maxheight; i++) {\n        if (thid < threadsPerBlock) {\n            int k_idx = (int)current_knode_idx;\n            if (knodes[k_idx].keys[thid] <= key_val && knodes[k_idx].keys[thid + 1] > key_val) {\n                long next_idx = knodes[offset_val].indices[thid];\n                if (next_idx < knodes_elem) {\n                    offset_val = next_idx;\n                }\n            }\n        }\n        current_knode_idx = offset_val;\n    }\n    \n    if (thid < threadsPerBlock) {\n        int k_idx = (int)current_knode_idx;\n        if (knodes[k_idx].keys[thid] == key_val) {\n            long rec_idx = knodes[k_idx].indices[thid];\n            ans[bid].value = records[rec_idx].value;\n        }\n    }\n    \n    if (thid == 0) {\n        currKnode[bid] = current_knode_idx;\n        offset[bid] = offset_val;\n    }\n}\n",
+    "kernel/kernel_gpu_opencl_2.cl": "#define DEFAULT_ORDER 508\n\ntypedef struct {\n    int location;\n    int indices[DEFAULT_ORDER + 1];\n    int keys[DEFAULT_ORDER + 1];\n    char is_leaf;\n    int num_keys;\n} knode;\n\n__kernel void findRangeK(\n    long maxheight,\n    __global knode *knodes,\n    long knodes_elem,\n    __global long *currKnode,\n    __global long *offset,\n    __global long *lastKnode,\n    __global long *offset_2,\n    __global int *start,\n    __global int *end,\n    __global int *recstart,\n    __global int *reclength)\n{\n    int bid = get_group_id(0);\n    int thid = get_local_id(0);\n    int threadsPerBlock = get_local_size(0);\n    \n    long current_knode_idx = currKnode[bid];\n    long last_knode_idx = lastKnode[bid];\n    long offset_val = offset[bid];\n    long offset_2_val = offset_2[bid];\n    int start_val = start[bid];\n    int end_val = end[bid];\n    \n    for (long i = 0; i < maxheight; i++) {\n        if (thid < threadsPerBlock) {\n            int k_idx = (int)current_knode_idx;\n            if (knodes[k_idx].keys[thid] <= start_val && start_val < knodes[k_idx].keys[thid + 1]) {\n                long next_idx = knodes[k_idx].indices[thid];\n                if (next_idx < knodes_elem) {\n                    offset_val = next_idx;\n                }\n            }\n            \n            int l_idx = (int)last_knode_idx;\n            if (end_val >= knodes[l_idx].keys[thid] && end_val < knodes[l_idx].keys[thid + 1]) {\n                long next_idx_2 = knodes[l_idx].indices[thid];\n                if (next_idx_2 < knodes_elem) {\n                    offset_2_val = next_idx_2;\n                }\n            }\n        }\n        current_knode_idx = offset_val;\n        last_knode_idx = offset_2_val;\n    }\n    \n    if (thid < threadsPerBlock) {\n        int k_idx = (int)current_knode_idx;\n        if (knodes[k_idx].keys[thid] == start_val) {\n            recstart[bid] = knodes[k_idx].indices[thid];\n        }\n        \n        int l_idx = (int)last_knode_idx;\n        if (knodes[l_idx].keys[thid] == end_val) {\n            reclength[bid] = knodes[l_idx].indices[thid] - recstart[bid] + 1;\n        }\n    }\n    \n    if (thid == 0) {\n        currKnode[bid] = current_knode_idx;\n        lastKnode[bid] = last_knode_idx;\n        offset[bid] = offset_val;\n        offset_2[bid] = offset_2_val;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.037,
+      "prompt_tokens": 23202,
+      "completion_tokens": 1266,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 202):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "file...\nTransforming data to a GPU suitable structure...\nTree transformation took 0.070273\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \nknodes_elem=7874, knodes_unit_mem=2068, knodes_mem=16283432\nPlatform: NVIDIA Corporation\nDevice num: 1\nCreating GPU Context\nDevice: NVIDIA GeForce RTX 4070\n-----OpenCL Compiler Output-----\n--------------------------------\n# of blocks = 6000, # of threads/block = 256 (ensure that device can handle)\nError at line 705: CL_INVALID_WORK_GROUP_SIZE\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 6.141,
+      "prompt_tokens": 24501,
+      "completion_tokens": 1224,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

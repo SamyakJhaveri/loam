@@ -1,0 +1,98 @@
+{
+  "source_spec": "rodinia-kmeans-omp",
+  "target_spec": "rodinia-kmeans-opencl",
+  "kernel": "kmeans",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-i",
+    "../../data/kmeans/kdd_cup"
+  ],
+  "timestamp": "2026-03-31T05:12:48Z",
+  "prompt_tokens": 123195,
+  "completion_tokens": 1860,
+  "llm_response_time_seconds": 19.251,
+  "build_status": "pass",
+  "build_time_seconds": 0.841,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.516,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel_swap = 256, WG size of kernel_kmeans = 256 \n\nI/O completed\n\nNumber of objects: 494020\nNumber of features: 34\nnum_devices = 1\nERROR: clBuildProgram() => -11\nERROR: clEnqueueWriteBuffer d_cluster (size:494020) => -38\niterated 1 times\nNumber of Iteration: 1\nInit: 0.000000\nMemAlloc: 0.000000\nHtoD: 0.000000\nExec: 0.000000\nDtoH: 0.000000\nClose: 0.014000\nTotal: 466.309998\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.498,
+  "translated_wall_time_seconds": 0.516,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.9031,
+  "translated_files": {
+    "kmeans.cl": "#ifndef FLT_MAX\n#define FLT_MAX 3.40282347e+38F\n#endif\n\n__kernel void find_nearest_points_kernel(\n    const float *features,\n    const float *clusters,\n    int *membership,\n    int npoints,\n    int nfeatures,\n    int nclusters,\n    int *partial_counts,\n    float *partial_sums,\n    float *delta_contrib)\n{\n    int i = get_global_id(0);\n    if (i >= npoints) return;\n\n    int best_index = 0;\n    float min_dist = FLT_MAX;\n\n    const float *pt = features + (i * nfeatures);\n\n    for (int c = 0; c < nclusters; c++) {\n        const float *center = clusters + (c * nfeatures);\n        float dist = 0.0f;\n        for (int d = 0; d < nfeatures; d++) {\n            float diff = pt[d] - center[d];\n            dist += diff * diff;\n        }\n\n        if (dist < min_dist) {\n            min_dist = dist;\n            best_index = c;\n        }\n    }\n\n    int old_membership = membership[i];\n    if (old_membership != best_index) {\n        delta_contrib[0] += 1.0f;\n    }\n    membership[i] = best_index;\n\n    partial_counts[best_index]++;\n    for (int d = 0; d < nfeatures; d++) {\n        partial_sums[best_index * nfeatures + d] += pt[d];\n    }\n}\n\n__kernel void reset_partial_arrays_kernel(\n    int *partial_counts,\n    float *partial_sums,\n    int nclusters,\n    int nfeatures)\n{\n    int idx = get_global_id(0);\n    int total_size = nclusters * nfeatures;\n    \n    if (idx < nclusters) {\n        partial_counts[idx] = 0;\n    }\n    if (idx < total_size) {\n        partial_sums[idx] = 0.0f;\n    }\n}\n\n__kernel void update_centers_kernel(\n    float *clusters,\n    const int *counts,\n    const float *sums,\n    int nclusters,\n    int nfeatures)\n{\n    int c = get_global_id(0);\n    if (c >= nclusters) return;\n\n    int count = counts[c];\n    if (count > 0) {\n        for (int d = 0; d < nfeatures; d++) {\n            clusters[c * nfeatures + d] = sums[c * nfeatures + d] / count;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans.cl"
+  ],
+  "target_files_extracted": [
+    "kmeans.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.36,
+      "prompt_tokens": 40392,
+      "completion_tokens": 620,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness\nEnsure the translated code produces the same outpu",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 6.52,
+      "prompt_tokens": 41065,
+      "completion_tokens": 620,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness\nEnsure the translated code produces the same outpu",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 6.371,
+      "prompt_tokens": 41738,
+      "completion_tokens": 620,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

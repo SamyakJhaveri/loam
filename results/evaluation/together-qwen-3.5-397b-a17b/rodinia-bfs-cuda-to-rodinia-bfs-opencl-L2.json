@@ -1,0 +1,82 @@
+{
+  "source_spec": "rodinia-bfs-cuda",
+  "target_spec": "rodinia-bfs-opencl",
+  "kernel": "bfs",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 2,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "../../data/bfs/graph1MW_6.txt"
+  ],
+  "timestamp": "2026-03-30T23:24:42Z",
+  "prompt_tokens": 28781,
+  "completion_tokens": 784,
+  "llm_response_time_seconds": 8.117,
+  "build_status": "pass",
+  "build_time_seconds": 0.794,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.628,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\nInit: 126.829002\nMemAlloc: 0.005000\nHtoD: 2.123488\nExec: 0.533632\nDtoH: 0.223008\nClose: 0.910000\nTotal: 131.832993\n--cambine:passed:-)\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.519,
+  "translated_wall_time_seconds": 0.628,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.8264,
+  "translated_files": {
+    "Kernels.cl": "#ifndef _KERNEL_H_\n#define _KERNEL_H_\n\nstruct Node {\n    int starting;\n    int no_of_edges;\n};\n\n__kernel void\nBFS_1(__global const struct Node* g_graph_nodes, __global const int* g_graph_edges, __global char* g_graph_mask, __global char* g_updating_graph_mask, __global const char* g_graph_visited, __global int* g_cost, int no_of_nodes) \n{\n    int tid = get_global_id(0);\n    if(tid < no_of_nodes && g_graph_mask[tid])\n    {\n        g_graph_mask[tid] = 0;\n        int start = g_graph_nodes[tid].starting;\n        int end = start + g_graph_nodes[tid].no_of_edges;\n        for(int i = start; i < end; i++)\n        {\n            int id = g_graph_edges[i];\n            if(!g_graph_visited[id])\n            {\n                g_cost[id] = g_cost[tid] + 1;\n                g_updating_graph_mask[id] = 1;\n            }\n        }\n    }\n}\n\n#endif\n\n#ifndef _KERNEL2_H_\n#define _KERNEL2_H_\n\n__kernel void\nBFS_2(__global char* g_graph_mask, __global char* g_updating_graph_mask, __global char* g_graph_visited, __global char* g_over, int no_of_nodes)\n{\n    int tid = get_global_id(0);\n    if(tid < no_of_nodes && g_updating_graph_mask[tid])\n    {\n        g_graph_mask[tid] = 1;\n        g_graph_visited[tid] = 1;\n        *g_over = 1;\n        g_updating_graph_mask[tid] = 0;\n    }\n}\n\n#endif\n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.109,
+      "prompt_tokens": 14145,
+      "completion_tokens": 383,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -11):\n```\ne: forward declaration of 'struct Node'\nBFS_1(__global const struct Node* g_graph_nodes, __global const int* g_graph_edges, __global char* g",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "12:40: error: subscript of pointer to incomplete type 'const __global struct Node'\n        int end = start + g_graph_nodes[tid].no_of_edges;\n                          ~~~~~~~~~~~~~^\n<kernel>:5:29: note: forward declaration of 'struct Node'\nBFS_1(__global const struct Node* g_graph_nodes, __global const int* g_graph_edges, __global char* g_graph_mask, __global char* g_updating_graph_mask, __global const char* g_graph_visited, __global int* g_cost, int no_of_nodes) \n                            ^\n\n",
+      "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 6.008,
+      "prompt_tokens": 14636,
+      "completion_tokens": 401,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

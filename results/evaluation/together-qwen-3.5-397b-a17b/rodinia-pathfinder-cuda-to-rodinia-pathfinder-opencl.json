@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-pathfinder-cuda",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-c",
+    "100000",
+    "-r",
+    "100",
+    "-h",
+    "20"
+  ],
+  "timestamp": "2026-03-31T04:31:57Z",
+  "prompt_tokens": 17441,
+  "completion_tokens": 1999,
+  "llm_response_time_seconds": 15.567,
+  "build_status": "pass",
+  "build_time_seconds": 0.477,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.215,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "Using 10000000 for local work size. \n\nError attempting to launch dynproc_kernel. Error in clCreateProgramWithSource with error code -48\n\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "#define BLOCK_SIZE 256\n#define HALO 1\n\n#define IN_RANGE(x, min, max) ((x)>= (min) && (x)<= (max))\n#define MIN(a, b) ((a)<= (b) ? (a) : (b))\n\nvoid dynproc_kernel(\n    int iteration,\n    const int *gpuWall,\n    const int *gpuSrc,\n    int *gpuResults,\n    int cols,\n    int rows,\n    int startStep,\n    int border,\n    int theHalo,\n    local int* prev,\n    local int* result,\n    int* outputBuffer)\n{\n    int bx = get_group_id(0);\n    int tx = get_local_id(0);\n\n    int small_block_cols = BLOCK_SIZE - iteration * theHalo * 2;\n\n    int blkX = small_block_cols * bx - border;\n    int blkXmax = blkX + BLOCK_SIZE - 1;\n\n    int xidx = blkX + tx;\n\n    int validXmin = (blkX < 0) ? -blkX : 0;\n    int validXmax = (blkXmax > cols - 1) ? BLOCK_SIZE - 1 - (blkXmax - cols + 1) : BLOCK_SIZE - 1;\n\n    int W = tx - 1;\n    int E = tx + 1;\n\n    W = (W < validXmin) ? validXmin : W;\n    E = (E > validXmax) ? validXmax : E;\n\n    bool isValid = IN_RANGE(tx, validXmin, validXmax);\n\n    if (IN_RANGE(xidx, 0, cols - 1)) {\n        prev[tx] = gpuSrc[xidx];\n    } else {\n        prev[tx] = 0;\n    }\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    bool computed = false;\n    for (int i = 0; i < iteration; i++) {\n        computed = false;\n        if (IN_RANGE(tx, i + 1, BLOCK_SIZE - i - 2) && isValid) {\n            computed = true;\n            int left = prev[W];\n            int up = prev[tx];\n            int right = prev[E];\n            int shortest = MIN(left, up);\n            shortest = MIN(shortest, right);\n            int index = cols * (startStep + i) + xidx;\n            result[tx] = shortest + gpuWall[index];\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n        \n        if (i == iteration - 1)\n            break;\n        \n        if (computed)\n            prev[tx] = result[tx];\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    if (computed && IN_RANGE(xidx, 0, cols - 1)) {\n        gpuResults[xidx] = result[tx];\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.799,
+      "prompt_tokens": 5113,
+      "completion_tokens": 673,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "Using 10000000 for local work size. \n\nError attempting to launch dynproc_kernel. Error in clCreateProgramWithSource with error code -48\n\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 5.08,
+      "prompt_tokens": 5817,
+      "completion_tokens": 663,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "Error: clGetKernelWorkGroupInfo() returned a max work group size of zero!\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 4.688,
+      "prompt_tokens": 6511,
+      "completion_tokens": 663,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "Using 10000000 for local work size. \n\nError attempting to launch dynproc_kernel. Error in clCreateProgramWithSource with error code -48\n\n",
+      "extraction_fail": null
+    }
+  ]
+}
