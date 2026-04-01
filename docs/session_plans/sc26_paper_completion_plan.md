@@ -332,6 +332,300 @@ Create stub files for Erel to flesh out:
 
 ---
 
+## Session 4b: Unified Figure Script — Deduplicate, Fix, Consolidate
+
+**Owner:** Samyak
+**Created:** 2026-04-01 (brainstorming session output)
+**Objective:** Merge two inconsistent figure-generation scripts into one unified script
+with consistent Okabe-Ito palette, scienceplots IEEE styling, deduplicated figures, and
+a critical data-selection bug fix. Produces 10 generated figures (6 main body + 4 appendix)
+plus the T2 LaTeX table.
+
+**Dependency:** Session 4 complete. No Gemini data needed — script handles multi-model
+dynamically when data arrives.
+
+### Why This Session Exists
+
+Two figure scripts exist with incompatible visual styles:
+
+| Script | Figures | Palette | Style Library |
+|--------|---------|---------|---------------|
+| `scripts/evaluation/generate_paper_figures.py` (1,460 lines) | F1-F9, T2 | **Okabe-Ito** (colorblind-safe) | `scienceplots` + IEEE + hatching |
+| `scripts/generate_appendix_c_figures.py` (946 lines) | C.1-C.7 | **Custom hex** (NOT colorblind-safe) | Plain matplotlib + serif |
+
+**Problems discovered in 2026-04-01 session:**
+1. **Color palette clash** — f-series uses Okabe-Ito (`#009E73` green, `#D55E00` vermillion),
+   c-series uses custom colors (`#27ae60` green, `#C8607A` rose). A colorblind reviewer
+   will struggle with c-series. ~20-35% chance at least one SC reviewer is colorblind.
+2. **Visual inconsistency** — Different fonts, no hatching in c-series, no scienceplots.
+   Looks like two different people made figures with no coordination.
+3. **Overlapping figures** — C.1 ≈ F5 (heatmaps), C.7 ≈ F7 (augmentation), C.6 ≈ F9 (XSBench).
+4. **Blocking data bug** — C.1 and C.5 use `sample_id is not None` filter which includes ALL
+   1,018 records (base + samples + augmented) instead of just 468 true sample files. This
+   corrupts the majority vote in the heatmap and invalidates pass@k calculations.
+5. **Misplaced figures** — pass@k (C.5) and XSBench comparison (C.6) belong in main body,
+   not appendix. These are standard LLM eval metrics and a core contribution argument.
+
+### Design Decisions (approved in brainstorming)
+
+1. **One unified script** — merge both into `scripts/generate_paper_figures.py`
+2. **Deduplicate aggressively** — 10 generated figures, down from 16
+3. **Okabe-Ito palette** + `scienceplots` IEEE style + hatching throughout
+4. **Fix sample_id bug** — use filename-based `is_sample` flag (regex `-s\d+$`)
+5. **Promote C.5 and C.6 to main body**, demote F2 and F4 to appendix
+6. **`scienceplots` required** — ensure installed in `env_parbench`
+
+### Figure Roster (Final)
+
+**Main body (6 generated + 1 external drawio):**
+
+| New ID | Old Source | Function Name | Description |
+|--------|-----------|---------------|-------------|
+| F1 | External `parbench_architecture.drawio` | N/A — not generated | System architecture |
+| F2 | f-series F3 | `generate_f2_repo_vs_kernel()` | Repo vs kernel translation pair counts |
+| F3 | f-series F5 | `generate_f3_kernel_heatmap()` | Kernel×model heatmap, multi-panel by direction |
+| F4 | f-series F6 | `generate_f4_failure_taxonomy()` | Failure taxonomy stacked bars by model |
+| F5 | c-series C.5 | `generate_f5_pass_at_k()` | pass@1 vs pass@3 by direction (**uses `is_sample` filter**) |
+| F6 | c-series C.6 | `generate_f6_xsbench_comparison()` | ParBench kernel-level vs ParEval-Repo repo-level (0%) |
+| F7 | f-series F7 | `generate_f7_augmentation()` | Augmentation robustness line chart, per-model |
+
+**Appendix (4 generated):**
+
+| New ID | Old Source | Function Name | Description |
+|--------|-----------|---------------|-------------|
+| C.1 | c-series C.2a | `generate_c1_repair_transitions()` | Self-repair transition matrix |
+| C.2 | c-series C.2b | `generate_c2_repair_rate()` | Self-repair rate by direction |
+| C.3 | c-series C.3 | `generate_c3_transform_frequency()` | Transform frequency heatmap per kernel |
+| C.4 | f-series F4 | `generate_c4_selection_funnel()` | HeCBench selection funnel |
+
+**Also generated:** `generate_t2_model_table()` — LaTeX model comparison table.
+
+**Dropped entirely:**
+
+| Old ID | Why Dropped |
+|--------|-------------|
+| f-series F1 (architecture) | External drawio — not script-generated |
+| f-series F2 (API co-occurrence) | Survey detail — describe in Appendix A prose instead |
+| f-series F8 (cross-direction bars) | Superseded by pass@k (F5) — more standard metric |
+| f-series F9 (XSBench multi-model heatmap) | Superseded by F6 ParBench-vs-ParEval argument |
+| c-series C.1 (kernel×direction heatmap) | Absorbed into F3 multi-model heatmap |
+| c-series C.7 (level invariance) | Absorbed into F7 multi-model augmentation chart |
+
+### Agent Team Structure
+
+Use `/agent-team` with 3 teammates. **Critical: data-scout reports verified numbers
+directly to BOTH script-writer and critic** so the critic has independent ground truth.
+
+| Teammate | Role | Scope (file ownership) | Reports to |
+|----------|------|------------------------|------------|
+| **data-scout** | Extract verified stats from eval + augmentation data | `results/` (read-only) | script-writer AND critic |
+| **script-writer** | Write unified `scripts/generate_paper_figures.py` | `scripts/generate_paper_figures.py` (overwrite), `docs/paper/appendix_findings.md` (edit), `docs/paper/paper_draft.md` (edit figure refs) | team lead |
+| **critic** | Verify script output matches data-scout's numbers | All files (read-only) | team lead |
+
+### Tasks
+
+#### 4b.1 Install scienceplots
+```bash
+source env_parbench/bin/activate
+pip install scienceplots
+python3 -c "import scienceplots; print('OK')"
+```
+
+#### 4b.2 Data Extraction (data-scout teammate)
+Extract from actual result files (NOT from this plan's numbers — they may be stale):
+
+**From `results/evaluation/together-qwen-3.5-397b-a17b/` (1,018 files):**
+- All unique kernels grouped by suite
+- All unique directions with per-direction status counts
+- Sample file count (filename matches `-s\d+$`): expect 468
+- Base file count (no `-s\d+` or `-L\d+` suffix): expect 110
+- Augmented file count (filename matches `-L\d+$`): expect 440
+- Multi-attempt stats: count with `total_attempts > 1`, max attempts
+- Self-repair transitions: initial attempt failure mode → final `overall_status`
+- pass@k raw data: per kernel-direction, how many of [s0, s1, s2] PASS
+
+**From `results/augmentation/`:**
+- `eval_cuda.json`, `eval_omp.json`, `eval_opencl.json`: entry counts, transform type names from `transforms_applied`, per-kernel transform site counts
+- `phase{3,4,5}_*.json`: entry counts per level per suite, PASS counts
+
+Report as structured markdown tables. Send to script-writer and critic.
+
+#### 4b.3 Write Unified Script (script-writer teammate)
+
+Overwrite `scripts/generate_paper_figures.py` with a unified script containing:
+
+**Shared foundation:**
+- `scienceplots` with `["science", "ieee", "no-latex"]`
+- Okabe-Ito status colors:
+  ```python
+  STATUS_COLORS = {
+      "PASS": "#009E73",
+      "BUILD_FAIL": "#D55E00",
+      "RUN_FAIL": "#E69F00",
+      "VERIFY_FAIL": "#0072B2",
+      "EXTRACTION_FAIL": "#CC79A7",
+  }
+  ```
+- Hatching patterns for b/w printing (same as current f-series `STATUS_HATCH`)
+- 300 DPI PNG + vector PDF
+- White backgrounds, `plt.tight_layout()`
+- Single `load_eval_results(project_root, file_filter=None)` with `is_sample` field
+  on every record (determined by filename regex `-s\d+$`, NOT by `sample_id` field)
+
+**CLI:**
+```bash
+python3 scripts/generate_paper_figures.py \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --figure all \
+  --output-dir docs/paper/figures
+# Single: --figure F3, --figure C.1, etc.
+```
+
+**Source code to reference:**
+- Current f-series implementations: `scripts/evaluation/generate_paper_figures.py`
+  - Lines 80-109: Okabe-Ito palette, STATUS_COLORS, STATUS_HATCH, MODEL_COLORS, MODEL_LINESTYLE
+  - Lines 402-564: `generate_f1_architecture()` — SKIP (external drawio)
+  - Lines 565-676: `generate_f2_api_cooccurrence()` — SKIP (dropped)
+  - Lines 677-760: `generate_f3_repo_vs_kernel()` → becomes **F2**
+  - Lines 761-939: `generate_f4_selection_funnel()` → becomes **C.4**
+  - Lines 940-1070: `generate_f5_heatmap()` → becomes **F3** (absorb C.1 concept)
+  - Lines 1071-1131: `generate_f6_taxonomy()` → becomes **F4**
+  - Lines 1132-1210: `generate_f7_augmentation()` → becomes **F7**
+  - Lines 1211-1307: `generate_f8_cross_direction()` — SKIP (replaced by F5 pass@k)
+  - Lines 1308-1392: `generate_f9_xsbench()` — SKIP (replaced by F6)
+  - Lines 1393+: `generate_t2_latex()` → keep as **T2**
+
+- Current c-series implementations: `scripts/generate_appendix_c_figures.py`
+  - Lines 274-394: `generate_c1_heatmap()` — SKIP (absorbed into F3)
+  - Lines 395-469: `generate_c2a_transition_matrix()` → becomes **C.1**
+  - Lines 470-539: `generate_c2b_repair_rate()` → becomes **C.2**
+  - Lines 540-633: `generate_c3_transform_frequency()` → becomes **C.3**
+  - Lines 634-713: `generate_c5_pass_at_k()` → becomes **F5** (FIX: use `is_sample` filter)
+  - Lines 714-787: `generate_c6_xsbench_comparison()` → becomes **F6**
+  - Lines 788-860: `generate_c7_level_invariance()` — SKIP (absorbed into F7)
+
+**Critical bug fix for F5 (pass@k):**
+```python
+# WRONG (all 1,018 records pass this filter):
+sample_records = [r for r in records if r.get("sample_id") is not None]
+
+# CORRECT (only 468 true sample files):
+sample_records = [r for r in records if r.get("is_sample", False)]
+```
+
+#### 4b.4 Update Paper References (script-writer teammate)
+
+**`docs/paper/paper_draft.md`** — Update all figure/table references to new numbering:
+- Old F3 → F2, old F5 → F3, old F6 → F4, C.5 → F5, C.6 → F6, old F7 → F7
+- Remove references to dropped F2 (API co-occurrence), F8 (cross-direction), F9 (XSBench heatmap)
+- Search for: `Figure 2`, `Figure 3`, `Figure 4`, `Figure 5`, `Figure 6`, `Figure 7`, `Figure 8`, `Figure 9`, `[FIGURE`
+
+**`docs/paper/appendix_findings.md`** — Update C.1-C.4 references:
+- Old C.2a → C.1, old C.2b → C.2, old C.3 → C.3, old F4 → C.4
+- Remove old C.1 (kernel heatmap), old C.5 (promoted), old C.6 (promoted), old C.7 (absorbed)
+
+#### 4b.5 Critic Review (critic teammate)
+
+Using data-scout's verified numbers as ground truth, verify:
+1. Every figure function uses Okabe-Ito hex values (not custom hex)
+2. `is_sample` filter used in F3 and F5 (not `sample_id is not None`)
+3. F5 pass@k formula: `pass@k = 1 - C(n-c, k) / C(n, k)` with n=3 (not n=8)
+4. C.1 transition matrix counts match data-scout's self-repair numbers
+5. C.3 transform types match data-scout's list (5 types, not 6)
+6. All 10 figures generate without errors
+7. Output file count: 20 PNG + 20 PDF = 22 total (10 figures × 2 formats + T2 .tex)
+8. Paper draft figure references renumbered correctly (no stale F8/F9/old C.1)
+
+#### 4b.6 Run and Verify
+```bash
+source env_parbench/bin/activate
+python3 scripts/generate_paper_figures.py \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --figure all \
+  --output-dir docs/paper/figures -v
+```
+Verify:
+- 22 output files (10 figures × {png,pdf} + t2_model_comparison.tex + possibly old files to clean)
+- Single-figure mode: `--figure F3` works, `--figure C.1` works
+- No matplotlib warnings about missing fonts or styles
+
+#### 4b.7 Cleanup
+- Delete `scripts/generate_appendix_c_figures.py` (absorbed)
+- Delete stale figure files: `docs/paper/figures/f1_*.{png,pdf}` (external drawio),
+  `docs/paper/figures/f8_*.{png,pdf}`, `docs/paper/figures/f9_*.{png,pdf}`,
+  `docs/paper/figures/c1_kernel_*.{png,pdf}`, `docs/paper/figures/c5_*.{png,pdf}`,
+  `docs/paper/figures/c6_*.{png,pdf}`, `docs/paper/figures/c7_*.{png,pdf}`
+- Update `scripts/evaluation/test_generate_paper_figures.py` if it imports from old locations
+
+### Acceptance Criteria
+
+- [ ] Single script `scripts/generate_paper_figures.py` generates all 10 figures + T2
+- [ ] `scripts/generate_appendix_c_figures.py` deleted
+- [ ] All figures use Okabe-Ito palette (verified by critic against hex values)
+- [ ] All figures use scienceplots IEEE style with hatching
+- [ ] F5 pass@k uses `is_sample` filter (468 records, not 1,018)
+- [ ] F3 heatmap majority vote uses `is_sample` filter
+- [ ] Paper draft figure references renumbered (no stale F8/F9/old C references)
+- [ ] Appendix references updated (C.1-C.4 only)
+- [ ] 22 output files generated without errors
+- [ ] Critic confirms all numbers match data-scout's verified ground truth
+- [ ] No stale figure files remain in `docs/paper/figures/`
+
+### Key Files Reference
+
+| File | Purpose | Action |
+|------|---------|--------|
+| `scripts/evaluation/generate_paper_figures.py` | Current f-series script (1,460 lines) | OVERWRITE with unified script |
+| `scripts/generate_appendix_c_figures.py` | Current c-series script (946 lines) | DELETE after merge |
+| `scripts/evaluation/test_generate_paper_figures.py` | Tests for figure script | UPDATE imports |
+| `docs/paper/paper_draft.md` | Main paper | EDIT figure references |
+| `docs/paper/appendix_findings.md` | Appendix C | EDIT figure references |
+| `docs/paper/figures/` | Output directory | REGENERATE + DELETE stale |
+| `results/evaluation/together-qwen-3.5-397b-a17b/` | 1,018 eval JSONs | READ (data-scout) |
+| `results/augmentation/eval_*.json` | Augmentation eval data | READ (data-scout) |
+| `results/augmentation/phase{3,4,5}_*.json` | Phase augmentation data | READ (data-scout) |
+
+### Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `ModuleNotFoundError: scienceplots` | `pip install scienceplots` in env_parbench |
+| Figures look different from before | Expected — Okabe-Ito replaces custom palette |
+| pass@k values changed from c-series | Expected — bug fix: n=3 not n=8 |
+| `KeyError: 'is_sample'` | Ensure `load_eval_results()` sets `is_sample` on every record |
+| Stale figures in output dir | Run 4b.7 cleanup step |
+
+### Copy-Pasteable Claude Code Prompt
+
+```
+Session 4b: Unified Figure Script
+
+Use /agent-team with 3 teammates: data-scout, script-writer, critic.
+
+CONTEXT: Two figure scripts exist with incompatible styles:
+- scripts/evaluation/generate_paper_figures.py (f-series, Okabe-Ito, scienceplots)
+- scripts/generate_appendix_c_figures.py (c-series, custom hex, plain matplotlib)
+
+Read the full Session 4b plan at:
+docs/session_plans/sc26_paper_completion_plan.md (search for "Session 4b")
+
+It contains the complete figure roster, agent team structure, source line references,
+bug fix details, file ownership map, and acceptance criteria.
+
+Key deliverables:
+1. Unified scripts/generate_paper_figures.py with 10 figures (F2-F7 main, C.1-C.4 appendix) + T2
+2. Delete scripts/generate_appendix_c_figures.py
+3. Fix sample_id bug (use is_sample filename flag, not sample_id field)
+4. Update paper_draft.md and appendix_findings.md figure references
+5. All figures use Okabe-Ito + scienceplots + hatching
+6. Critic verifies output against data-scout ground truth
+
+Ground truth source: actual result JSON files in results/evaluation/ and results/augmentation/
+Do NOT trust numbers in this prompt — extract fresh from data files.
+```
+
+---
+
 ## Session 5: Erel — Appendix, LaTeX Conversion & Figure/Table Labeling
 
 **Owner:** Erel
