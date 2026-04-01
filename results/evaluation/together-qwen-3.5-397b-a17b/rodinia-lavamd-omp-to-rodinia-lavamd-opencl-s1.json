@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-lavamd-omp",
+  "target_spec": "rodinia-lavamd-opencl",
+  "kernel": "lavamd",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-boxes1d",
+    "10"
+  ],
+  "timestamp": "2026-03-31T23:44:12Z",
+  "prompt_tokens": 9882,
+  "completion_tokens": 849,
+  "llm_response_time_seconds": 7.482,
+  "build_status": "pass",
+  "build_time_seconds": 0.217,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.188,
+  "run_exit_code": 204,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "WG size of kernel = 128 \nConfiguration used: arch = 0, cores = 1, boxes1d = 10\nPlatform: NVIDIA Corporation\nDevice: NVIDIA GeForce RTX 4070\n# of blocks = 1000, # of threads/block = 128 (ensure that device can handle)\nError at line 471: CL_INVALID_KERNEL_ARGS\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 204)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n#define fp double\n\n#define NUMBER_PAR_PER_BOX 100\n\n#define DOT(A,B) ((A.x)*(B.x)+(A.y)*(B.y)+(A.z)*(B.z))\n\ntypedef struct\n{\n    fp x, y, z;\n} THREE_VECTOR;\n\ntypedef struct\n{\n    fp v, x, y, z;\n} FOUR_VECTOR;\n\ntypedef struct nei_str\n{\n    int x, y, z;\n    int number;\n    long offset;\n} nei_str;\n\ntypedef struct box_str\n{\n    int x, y, z;\n    int number;\n    long offset;\n    int nn;\n    nei_str nei[26];\n} box_str;\n\ntypedef struct par_str\n{\n    fp alpha;\n} par_str;\n\ntypedef struct dim_str\n{\n    int cur_arg;\n    int arch_arg;\n    int cores_arg;\n    int boxes1d_arg;\n    long number_boxes;\n    long box_mem;\n    long space_elem;\n    long space_mem;\n    long space_mem2;\n} dim_str;\n\n__kernel void kernel_gpu_opencl(\n    par_str par,\n    dim_str dim,\n    __global box_str* box,\n    __global FOUR_VECTOR* rv,\n    __global fp* qv,\n    __global FOUR_VECTOR* fv)\n{\n    int l = get_global_id(0) / NUMBER_PAR_PER_BOX;\n    int local_id = get_global_id(0) % NUMBER_PAR_PER_BOX;\n\n    if (l >= dim.number_boxes) return;\n\n    fp alpha = par.alpha;\n    fp a2 = 2.0 * alpha * alpha;\n\n    long first_i = box[l].offset;\n    FOUR_VECTOR* rA = &rv[first_i];\n    FOUR_VECTOR* fA = &fv[first_i];\n\n    int i = local_id;\n\n    FOUR_VECTOR rA_i = rA[i];\n    FOUR_VECTOR fA_i = {0.0, 0.0, 0.0, 0.0};\n\n    for (int k = 0; k < (1 + box[l].nn); k++) {\n        int pointer;\n        if (k == 0) {\n            pointer = l;\n        } else {\n            pointer = box[l].nei[k-1].number;\n        }\n\n        long first_j = box[pointer].offset;\n        FOUR_VECTOR* rB = &rv[first_j];\n        fp* qB = &qv[first_j];\n\n        for (int j = 0; j < NUMBER_PAR_PER_BOX; j++) {\n            FOUR_VECTOR rB_j = rB[j];\n            fp qB_j = qB[j];\n\n            fp r2 = rA_i.v + rB_j.v - DOT(rA_i, rB_j);\n            fp u2 = a2 * r2;\n            fp vij = exp(-u2);\n            fp fs = 2.0 * vij;\n\n            THREE_VECTOR d;\n            d.x = rA_i.x - rB_j.x;\n            d.y = rA_i.y - rB_j.y;\n            d.z = rA_i.z - rB_j.z;\n\n            fp fxij = fs * d.x;\n            fp fyij = fs * d.y;\n            fp fzij = fs * d.z;\n\n            fA_i.v += qB_j * vij;\n            fA_i.x += qB_j * fxij;\n            fA_i.y += qB_j * fyij;\n            fA_i.z += qB_j * fzij;\n        }\n    }\n\n    fA[i] = fA_i;\n}\n\n#ifdef __cplusplus\n}\n#endif\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.482,
+      "prompt_tokens": 9882,
+      "completion_tokens": 849,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "WG size of kernel = 128 \nConfiguration used: arch = 0, cores = 1, boxes1d = 10\nPlatform: NVIDIA Corporation\nDevice: NVIDIA GeForce RTX 4070\n# of blocks = 1000, # of threads/block = 128 (ensure that device can handle)\nError at line 471: CL_INVALID_KERNEL_ARGS\n",
+      "extraction_fail": null
+    }
+  ]
+}

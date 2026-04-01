@@ -1,0 +1,65 @@
+{
+  "source_spec": "mixbench-mixbench-opencl",
+  "target_spec": "mixbench-mixbench-omp",
+  "kernel": "mixbench",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-01T02:13:45Z",
+  "prompt_tokens": 8624,
+  "completion_tokens": 1227,
+  "llm_response_time_seconds": 26.913,
+  "build_status": "fail",
+  "build_time_seconds": 0.566,
+  "build_error_snippet": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp: In function \u2018int main(int, char**)\u2019:\n/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:123:20: error: too many arguments to function \u2018void mixbenchCPU(void*, size_t)\u2019\n  123 |         mixbenchCPU(c, datasize, args.block_strided, args.use_os_timer, args.wg_size, args.elements_per_wi, args.fusion_degree);\n      |         ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nIn file included from /home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:7:\n/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.h:11:6: note: declared here\n   11 | void mixbenchCPU(void*, size_t);\n      |      ^~~~~~~~~~~\ngmake[2]: *** [CMakeFiles/mixbench-cpu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: pu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 120.0,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "mix_kernels_cpu.cpp": "#include <cstdio>\n#include <cstdlib>\n#include <cstring>\n#include <cmath>\n#include <omp.h>\n#include <chrono>\n#include \"mix_kernels_cpu.h\"\n#include \"version_info.h\"\n\n#define DEF_VECTOR_SIZE (32*1024*1024)\n\ntypedef struct{\n\tint device_index;\n\tbool block_strided;\n\tbool host_allocated;\n\tbool use_os_timer;\n\tint wg_size;\n\tunsigned int vecwidth;\n\tunsigned int elements_per_wi;\n\tunsigned int fusion_degree;\n} ArgParams;\n\nbool argument_parsing(int argc, char* argv[], ArgParams *output){\n\tint arg_count = 0;\n\tfor(int i=1; i<argc; i++) {\n\t\tif( (strcmp(argv[i], \"-h\")==0) || (strcmp(argv[i], \"--help\")==0) ) {\n\t\t\treturn false;\n\t\t} else if( (strcmp(argv[i], \"-w\")==0) || (strcmp(argv[i], \"--workgroup-stride\")==0) ) {\n\t\t\toutput->block_strided = true;\n\t\t} else if( (strcmp(argv[i], \"-H\")==0) || (strcmp(argv[i], \"--host-alloc\")==0) ) {\n\t\t\toutput->host_allocated = true;\n\t\t} else if( (strcmp(argv[i], \"-t\")==0) || (strcmp(argv[i], \"--use-os-timer\")==0) ) {\n\t\t\toutput->use_os_timer = true;\n\t\t} else {\n\t\t\tunsigned long value = strtoul(argv[i], NULL, 10);\n\t\t\tswitch( arg_count ){\n\t\t\t\t\n\t\t\t\tcase 0:\n\t\t\t\t\toutput->device_index = value;\n\t\t\t\t\targ_count++;\n\t\t\t\t\tbreak;\n\t\t\t\t\n\t\t\t\tcase 1:\n\t\t\t\t\toutput->wg_size = value;\n\t\t\t\t\targ_count++;\n\t\t\t\t\tbreak;\n\t\t\t\t\n\t\t\t\tcase 2:\n\t\t\t\t\toutput->vecwidth = value;\n\t\t\t\t\targ_count++;\n\t\t\t\t\tbreak;\n\t\t\t\t\n\t\t\t\tcase 3:\n\t\t\t\t\toutput->elements_per_wi = value;\n\t\t\t\t\targ_count++;\n\t\t\t\t\tbreak;\n\t\t\t\tcase 4:\n\t\t\t\t\toutput->fusion_degree = value;\n\t\t\t\t\targ_count++;\n\t\t\t\t\tbreak;\n\t\t\t\tdefault:\n\t\t\t\t\treturn false;\n\t\t\t}\n\t\t}\n\t}\n\treturn true;\n}\n\n// Mock device info printing to match OpenCL output format roughly\nvoid PrintDeviceInfo(int index) {\n    printf(\"------------------------ Device specifications ------------------------\\n\");\n    printf(\"Platform:            OpenMP\\n\");\n    printf(\"Device:              CPU/%s\\n\", \"GCC\");\n    printf(\"Driver version:      %d.%d\\n\", __GNUC__, __GNUC_MINOR__);\n    printf(\"Address bits:        64\\n\");\n    printf(\"GPU clock rate:      0 MHz\\n\");\n    printf(\"Total global mem:    0 MB\\n\");\n    printf(\"Max allowed buffer:  0 MB\\n\");\n    printf(\"OpenCL version:      N/A (OpenMP)\\n\");\n    printf(\"Total CUs:           %d\\n\", omp_get_max_threads());\n    printf(\"-----------------------------------------------------------------------\\n\");\n}\n\nint main(int argc, char* argv[]) {\n\tprintf(\"mixbench-ocl (%s)\\n\", VERSION_INFO);\n\n\tArgParams args = {1, false, false, false, 256, DEF_VECTOR_SIZE/(1024*1024), 8, 4};\n\n\tif( !argument_parsing(argc, argv, &args) ){\n\t\tprintf(\"Usage: mixbench-ocl [options] [device index [workgroup size [array size(1024^2) [elements per workitem [fusion degree]]]]]\\n\");\n\t\tprintf(\"\\nOptions:\\n\"\n\t\t\t\"  -h or --help              Show this message\\n\"\n\t\t\t\"  -H or --host-alloc        Use host allocated buffer (CL_MEM_ALLOC_HOST_PTR)\\n\"\n\t\t\t\"  -w or --workgroup-stride  Workitem strides equal to the width of a workgroup length (default: NDRange length)\\n\"\n\t\t\t\"  -t or --use-os-timer      Use standard OS timer instead of OpenCL profiling timer\\n\"\n\t\t\t\"\\n\");\n\n\t\tPrintDeviceInfo(0);\n\t\texit(1);\n\t}\n\n\tprintf(\"Use \\\"-h\\\" argument to see available options\\n\");\n\t\n\tconst size_t VEC_WIDTH = 1024*1024*args.vecwidth;\n\tunsigned int datasize = VEC_WIDTH*sizeof(double);\n\n\tif( args.device_index > omp_get_num_devices() ) {\n\t\tfprintf(stderr, \"Error: No OpenMP device selected\\n\");\n\t\texit(1);\n\t}\n\tPrintDeviceInfo(args.device_index);\n\n\tprintf(\"Buffer size:            %dMB\\n\", datasize/(1024*1024));\n\tprintf(\"Workgroup size:         %d\\n\", args.wg_size);\n\tprintf(\"Elements per workitem:  %d\\n\", args.elements_per_wi);\n\tprintf(\"Workitem fusion degree: %d\\n\", args.fusion_degree);\n\t\n\tdouble *c;\n\tc = (double*)malloc(datasize);\n\n\t// In OpenMP version, we ignore block_strided/host_allocated/use_os_timer/wg_size \n\t// as they are GPU-specific concepts, but we pass the logic parameters\n\tmixbenchCPU(c, datasize, args.block_strided, args.use_os_timer, args.wg_size, args.elements_per_wi, args.fusion_degree);\n\n\tfree(c);\n\n\treturn 0;\n}\n"
+  },
+  "target_files_expected": [
+    "mix_kernels_cpu.cpp"
+  ],
+  "target_files_extracted": [
+    "mix_kernels_cpu.cpp"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 26.913,
+      "prompt_tokens": 8624,
+      "completion_tokens": 1227,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp: In function \u2018int main(int, char**)\u2019:\n/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:123:20: error: too many arguments to function \u2018void mixbenchCPU(void*, size_t)\u2019\n  123 |         mixbenchCPU(c, datasize, args.block_strided, args.use_os_timer, args.wg_size, args.elements_per_wi, args.fusion_degree);\n      |         ~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nIn file included from /home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:7:\n/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.h:11:6: note: declared here\n   11 | void mixbenchCPU(void*, size_t);\n      |      ^~~~~~~~~~~\ngmake[2]: *** [CMakeFiles/mixbench-cpu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

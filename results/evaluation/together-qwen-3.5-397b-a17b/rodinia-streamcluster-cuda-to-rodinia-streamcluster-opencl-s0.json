@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-streamcluster-cuda",
+  "target_spec": "rodinia-streamcluster-opencl",
+  "kernel": "streamcluster",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "10",
+    "20",
+    "256",
+    "65536",
+    "65536",
+    "1000",
+    "none",
+    "output.txt",
+    "1",
+    "-p",
+    "0"
+  ],
+  "timestamp": "2026-03-31T22:12:08Z",
+  "prompt_tokens": 21514,
+  "completion_tokens": 345,
+  "llm_response_time_seconds": 4.999,
+  "build_status": "pass",
+  "build_time_seconds": 0.741,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.151,
+  "run_exit_code": 255,
+  "run_stderr_snippet": "har *switch_membership_d)\n                                                                                            ^\n<kernel>:22:80: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n                                        const float *coord_d, float *work_mem_d, const int *center_table_d, char *switch_membership_d)\n                                                                                                                  ^\n\n",
+  "run_stdout_snippet": "PARSEC Benchmark Suite\n--cambine: device name=NVIDIA GeForce RTX 4070\nexception caught in main function->InitCL()::Error: Building Program (clBuildProgram)\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 255)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.092,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Kernels.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\ntypedef struct {\n  float weight;\n  long assign;\n  float cost;\n} Point_Struct;\n\nstatic float\nd_dist(int p1, int p2, int num, int dim, const float *coord_d)\n{\n\tfloat retval = 0.0;\n\tfor(int i = 0; i < dim; i++){\n\t\tfloat tmp = coord_d[(i*num)+p1] - coord_d[(i*num)+p2];\n\t\tretval += tmp * tmp;\n\t}\n\treturn retval;\n}\n\n__kernel void\nkernel_compute_cost(int num, int dim, long x, const Point_Struct *p, int K, int stride,\n\t\t\t\t\tconst float *coord_d, float *work_mem_d, const int *center_table_d, char *switch_membership_d)\n{\n\t\n\tconst int tid = get_global_id(0);\n\n\tif(tid < num)\n\t{\n\t\tfloat *lower = &work_mem_d[tid*stride];\n\t\t\n\t\tfloat x_cost = d_dist(tid, x, num, dim, coord_d) * p[tid].weight;\n\t\t\n\t\tif ( x_cost < p[tid].cost )\n\t\t{\n\t\t\tswitch_membership_d[tid] = 1;\n\t\t\tlower[K] += x_cost - p[tid].cost;\n\t\t}\n\t\telse\n\t\t{\n\t\t\tlower[center_table_d[p[tid].assign]] += p[tid].cost - x_cost;\n\t\t}\n\t}\n}\n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.999,
+      "prompt_tokens": 21514,
+      "completion_tokens": 345,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "har *switch_membership_d)\n                                                                                            ^\n<kernel>:22:80: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n                                        const float *coord_d, float *work_mem_d, const int *center_table_d, char *switch_membership_d)\n                                                                                                                  ^\n\n",
+      "run_stdout_snippet": "PARSEC Benchmark Suite\n--cambine: device name=NVIDIA GeForce RTX 4070\nexception caught in main function->InitCL()::Error: Building Program (clBuildProgram)\n",
+      "extraction_fail": null
+    }
+  ]
+}

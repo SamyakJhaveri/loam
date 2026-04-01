@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-pathfinder-omp",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-c",
+    "100000",
+    "-r",
+    "100",
+    "-h",
+    "20"
+  ],
+  "timestamp": "2026-04-01T00:23:26Z",
+  "prompt_tokens": 4332,
+  "completion_tokens": 1311,
+  "llm_response_time_seconds": 19.317,
+  "build_status": "pass",
+  "build_time_seconds": 0.479,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.217,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "1 error generated.\n",
+  "run_stdout_snippet": "\nError at clBuildProgram! Error code -11\n\n\n*************************************************\n***   OUTPUT FROM COMPILING THE KERNEL FILE   ***\n*************************************************\n<kernel>:4:6: error: attribute 'reqd_work_group_size' can only be applied to an OpenCL kernel function\nvoid dynproc_kernel(\n     ^\n\n\n*************************************************\n*** END OUTPUT FROM COMPILING THE KERNEL FILE ***\n*************************************************\n\n\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "#define MIN(a, b) ((a) <= (b) ? (a) : (b))\n\n__attribute__((reqd_work_group_size(1, 1, 1)))\nvoid dynproc_kernel(\n    int arg0,\n    const __global int* d_gpuWall,\n    const __global int* src_buf,\n    __global int* dst_buf,\n    int cols,\n    int rows,\n    int t,\n    int borderCols,\n    int theHalo,\n    __local int* local_src,\n    __local int* local_dst,\n    __global int* d_outputBuffer\n)\n{\n    int n = 0; // Single thread handles all columns sequentially per step due to reqd_work_group_size(1,1,1) and algorithm dependency\n\n    int current_t = t;\n    int steps_to_run = arg0;\n\n    // We need to iterate 'steps_to_run' times, swapping src/dst buffers logically\n    // Since we cannot swap global pointers easily in a loop without extra args, \n    // we use the logical swap pattern from the host or perform iterations internally.\n    // However, the host launches this kernel multiple times for each pyramid_height chunk.\n    // Inside one launch, we perform 'arg0' steps.\n    \n    // The host passes src_buf and dst_buf for the current swap state.\n    // But wait, the OpenMP code does:\n    // temp = src; src = dst; dst = temp;\n    // Then computes dst using src.\n    // So in each step, the 'src' is the previous 'dst', and 'dst' becomes the new result.\n    \n    // Since the kernel is launched in a loop by the host with swapped buffers,\n    // this kernel only needs to perform ONE step of the recurrence?\n    // Let's re-read the host code:\n    // for (int t = 0; t < rows - 1; t += pyramid_height) {\n    //   swap(src, dst);\n    //   set args...\n    //   launch\n    // }\n    // The host loop increments t by pyramid_height.\n    // The kernel argument 'arg0' is MIN(pyramid_height, rows-t-1).\n    // This implies the kernel is expected to run 'arg0' steps internally?\n    // OR the host launches the kernel 'pyramid_height' times?\n    // Looking at the host code: \"cl.launch(kn);\" is called once per outer loop iteration.\n    // Therefore, the kernel MUST perform 'arg0' iterations internally.\n    \n    // But how to handle the buffer swapping inside the kernel?\n    // The host passes d_gpuResult[src] and d_gpuResult[final_ret].\n    // If the kernel runs multiple steps, it needs to swap these pointers logically inside.\n    \n    int step_count = arg0;\n    \n    // We need a temporary buffer for swapping if we do multiple steps inside?\n    // No, the host manages two buffers (0 and 1).\n    // If step_count > 1, we need to alternate between the two passed buffers?\n    // Actually, if the host swaps the pointers passed to src and dst for the next launch,\n    // then for a single launch with step_count > 1, we must simulate the swapping internally.\n    \n    // Let's assume the passed src_buf is the input for step 0, and dst_buf is the output for step 0.\n    // For step 1, the input should be the output of step 0 (dst_buf), and the output should be src_buf (reused).\n    \n    const __global int* current_src = src_buf;\n    __global int* current_dst = dst_buf;\n    \n    for (int step = 0; step < step_count; step++) {\n        // Process all columns for this step\n        // Since work group size is 1, we loop over cols\n        for (n = 0; n < cols; n++) {\n            int min_val = current_src[n];\n            \n            if (n > 0) {\n                int left = current_src[n - 1];\n                if (left < min_val) min_val = left;\n            }\n            \n            if (n < cols - 1) {\n                int right = current_src[n + 1];\n                if (right < min_val) min_val = right;\n            }\n            \n            // wall index: wall[t + 1 + step][n]\n            // The host passes d_gpuWall which is (data + cols), i.e., starting from row 1.\n            // Original row index in wall: t + 1 + step\n            // Index in d_gpuWall: (t + 1 + step - 1) * cols + n = (t + step) * cols + n\n            int wall_val = d_gpuWall[(t + step) * cols + n];\n            \n            current_dst[n] = wall_val + min_val;\n        }\n        \n        // Swap pointers for next iteration if needed\n        if (step < step_count - 1) {\n            const __global int* temp_ptr = current_src;\n            current_src = current_dst;\n            current_dst = (__global int*)temp_ptr;\n        }\n    }\n    \n    // Optional: Write something to outputBuffer to indicate completion or debug, \n    // though the original OpenMP code doesn't explicitly write to a separate output buffer aside from result.\n    // The infrastructure code reads d_outputBuffer but the OpenMP code doesn't write to it.\n    // We'll leave it untouched or write a marker if required by infrastructure, \n    // but the prompt says \"Preserve the algorithm...\". The OpenMP code doesn't write to it.\n    // The infrastructure expects it though. Let's write a simple marker.\n    if (get_global_id(0) == 0) {\n        d_outputBuffer[0] = 1; \n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 19.317,
+      "prompt_tokens": 4332,
+      "completion_tokens": 1311,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "\nError at clBuildProgram! Error code -11\n\n\n*************************************************\n***   OUTPUT FROM COMPILING THE KERNEL FILE   ***\n*************************************************\n<kernel>:4:6: error: attribute 'reqd_work_group_size' can only be applied to an OpenCL kernel function\nvoid dynproc_kernel(\n     ^\n\n\n*************************************************\n*** END OUTPUT FROM COMPILING THE KERNEL FILE ***\n*************************************************\n\n\n",
+      "extraction_fail": null
+    }
+  ]
+}

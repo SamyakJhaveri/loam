@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-pathfinder-cuda",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-c",
+    "100000",
+    "-r",
+    "100",
+    "-h",
+    "20"
+  ],
+  "timestamp": "2026-03-31T22:10:00Z",
+  "prompt_tokens": 5113,
+  "completion_tokens": 626,
+  "llm_response_time_seconds": 4.215,
+  "build_status": "pass",
+  "build_time_seconds": 0.483,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.222,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "2 errors generated.\n",
+  "run_stdout_snippet": "**************************\n***   OUTPUT FROM COMPILING THE KERNEL FILE   ***\n*************************************************\n<kernel>:21:11: error: use of undeclared identifier 'blockIdx'\n        int bx = blockIdx.x;\n                 ^\n<kernel>:22:9: error: use of undeclared identifier 'threadIdx'\n        int tx=threadIdx.x;\n               ^\n\n\n*************************************************\n*** END OUTPUT FROM COMPILING THE KERNEL FILE ***\n*************************************************\n\n\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "#define BLOCK_SIZE 256\n#define HALO 1\n\n#define IN_RANGE(x, min, max) ((x)>=((min)) && (x)<=((max)))\n#define MIN(a, b) ((a)<=((b)) ? (a) : (b))\n\nkernel void dynproc_kernel(\n                int iteration, \n                global const int *gpuWall,\n                global const int *gpuSrc,\n                global int *gpuResults,\n                int cols, \n                int rows,\n                int startStep,\n                int border,\n                int theHalo,\n                local int* prev,\n                local int* result,\n                global int* d_outputBuffer)\n{\n\tint bx = blockIdx.x;\n\tint tx=threadIdx.x;\n\t\n\tint small_block_cols = BLOCK_SIZE-iteration*theHalo*2;\n\n\tint blkX = small_block_cols*bx-border;\n\tint blkXmax = blkX+BLOCK_SIZE-1;\n\n\tint xidx = blkX+tx;\n\n\tint validXmin = (blkX < 0) ? -blkX : 0;\n\tint validXmax = (blkXmax > cols-1) ? BLOCK_SIZE-1-(blkXmax-cols+1) : BLOCK_SIZE-1;\n\n\tint W = tx-1;\n\tint E = tx+1;\n\t\n\tW = (W < validXmin) ? validXmin : W;\n\tE = (E > validXmax) ? validXmax : E;\n\n\tbool isValid = IN_RANGE(tx, validXmin, validXmax);\n\n\tif(IN_RANGE(xidx, 0, cols-1)){\n            prev[tx] = gpuSrc[xidx];\n\t} else {\n            prev[tx] = 0;\n        }\n\tbarrier(CLK_LOCAL_MEM_FENCE); \n        bool computed;\n        for (int i=0; i<iteration ; i++){ \n            computed = false;\n            if( IN_RANGE(tx, i+1, BLOCK_SIZE-i-2) &&  \\\n                  isValid){\n                  computed = true;\n                  int left = prev[W];\n                  int up = prev[tx];\n                  int right = prev[E];\n                  int shortest = MIN(left, up);\n                  shortest = MIN(shortest, right);\n                  int index = cols*(startStep+i)+xidx;\n                  result[tx] = shortest + gpuWall[index];\n\t\n            }\n            barrier(CLK_LOCAL_MEM_FENCE);\n            if(i==iteration-1)\n                break;\n            if(computed)\t \n                prev[tx]= result[tx];\n\t    barrier(CLK_LOCAL_MEM_FENCE); \n      }\n\n      \n      if (IN_RANGE(xidx, 0, cols-1) && computed){\n          gpuResults[xidx]=result[tx];\t\t\n      }\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.215,
+      "prompt_tokens": 5113,
+      "completion_tokens": 626,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "2 errors generated.\n",
+      "run_stdout_snippet": "**************************\n***   OUTPUT FROM COMPILING THE KERNEL FILE   ***\n*************************************************\n<kernel>:21:11: error: use of undeclared identifier 'blockIdx'\n        int bx = blockIdx.x;\n                 ^\n<kernel>:22:9: error: use of undeclared identifier 'threadIdx'\n        int tx=threadIdx.x;\n               ^\n\n\n*************************************************\n*** END OUTPUT FROM COMPILING THE KERNEL FILE ***\n*************************************************\n\n\n",
+      "extraction_fail": null
+    }
+  ]
+}

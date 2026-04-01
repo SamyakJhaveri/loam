@@ -1,0 +1,65 @@
+{
+  "source_spec": "mixbench-mixbench-cuda",
+  "target_spec": "mixbench-mixbench-opencl",
+  "kernel": "mixbench",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-01T02:07:36Z",
+  "prompt_tokens": 12133,
+  "completion_tokens": 1335,
+  "llm_response_time_seconds": 17.749,
+  "build_status": "pass",
+  "build_time_seconds": 0.472,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 4.386,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "8.71\n          192,     96.250,    0.41,31539.20, 327.68,     48.125,   30.26,  426.96,   8.87,    192.500,    0.00,     inf,    inf,    96.250,    0.80,16069.01, 166.95\n          256,    128.250,    0.54,31776.91, 247.77,     64.125,   40.31,  427.00,   6.66,    256.500,    0.00,     inf,    inf,   128.250,    1.07,16101.52, 125.55\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 30.0,
+  "translated_wall_time_seconds": 4.386,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 6.8399,
+  "translated_files": {
+    "mix_kernels.cl": "#ifndef MIX_Kernels_CL_H\n#define MIX_Kernels_CL_H\n\n#ifdef ENABLE_DP\n#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#endif\n\n#ifdef ENABLE_HP\n#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n#endif\n\n#ifdef class_T\ntypedef class_T T;\n#else\ntypedef float T;\n#endif\n\n#ifdef BLOCK_STRIDED\n#define STRIDE_MODE 1\n#else\n#define STRIDE_MODE 0\n#endif\n\n#ifndef ELEMENTS_PER_THREAD\n#define ELEMENTS_PER_THREAD 8\n#endif\n\n#ifndef FUSION_DEGREE\n#define FUSION_DEGREE 4\n#endif\n\n#ifndef COMPUTE_ITERATIONS\n#define COMPUTE_ITERATIONS 1\n#endif\n\n#ifndef blockdim\n#define blockdim 256\n#endif\n\ninline T conv_int(int i) {\n#ifdef ENABLE_HP\n    if (sizeof(T) == 4 && sizeof(half2) == 4) { // Approximation for half2 context if needed, but usually T is explicit\n        // This template specialization logic is hard to map directly. \n        // We rely on the build parameter -Dclass_T=half2 to set T to half2\n        return __float2half((float)i); // Fallback, actual half2 handling below\n    }\n#endif\n    return (T)i;\n}\n\n#ifdef ENABLE_HP\ninline half2 conv_int_half2(int i) {\n    return __float2half2((float)i);\n}\n#endif\n\ninline T mad_impl(T a, T b, T c) {\n    return a * b + c;\n}\n\n#ifdef ENABLE_HP\ninline half2 mad_impl_half2(half2 a, half2 b, half2 c) {\n    return __hfma(a, b, c);\n}\n#endif\n\ninline int equal_impl(T a, T b) {\n    return (a == b) ? 1 : 0;\n}\n\n#ifdef ENABLE_HP\ninline int equal_impl_half2(half2 a, half2 b) {\n    return (a.x == b.x && a.y == b.y) ? 1 : 0;\n}\n#endif\n\n__kernel void benchmark_func(T seed, __global T *g_data) {\n    const unsigned int blockSize = blockdim;\n    const int stride = blockSize;\n    \n    // Calculate index based on striding mode\n    int idx;\n    if (STRIDE_MODE) {\n        // Block strided: blockIdx.x * blockSize * granularity + threadIdx.x\n        // In OpenCL: get_group_id(0) * blockSize * ELEMENTS_PER_THREAD + get_local_id(0)\n        idx = get_group_id(0) * blockSize * ELEMENTS_PER_THREAD + get_local_id(0);\n    } else {\n        // NDRange linear: global_id\n        idx = get_global_id(0);\n    }\n\n    const int big_stride = get_num_groups(0) * blockSize * ELEMENTS_PER_THREAD;\n\n    T tmps[ELEMENTS_PER_THREAD];\n\n    // Load data\n    for (int j = 0; j < ELEMENTS_PER_THREAD; j++) {\n        // Initial load for k=0, then we loop fusion_degree\n        // The CUDA code loads: g_data[idx + j*stride + k*big_stride]\n        // Since we process k in the outer loop, we load inside the k loop\n        // But to match the structure exactly:\n        // CUDA: tmps[j] = g_data[idx+j*stride+k*big_stride];\n        // We must do this inside the k loop.\n    }\n\n    for (int k = 0; k < FUSION_DEGREE; k++) {\n        // Load\n        for (int j = 0; j < ELEMENTS_PER_THREAD; j++) {\n            tmps[j] = g_data[idx + j * stride + k * big_stride];\n\n            // Compute iterations\n            // Unroll hint: TemperateUnroll ? 4 : 128. \n            // In OpenCL, we can't dynamically choose unroll based on boolean template easily without macros.\n            // We assume standard unroll or let compiler decide.\n            for (int i = 0; i < COMPUTE_ITERATIONS; i++) {\n#ifdef ENABLE_HP\n                if (sizeof(T) == sizeof(half2)) {\n                    tmps[j] = mad_impl_half2(tmps[j], tmps[j], seed);\n                } else {\n                    tmps[j] = mad_impl(tmps[j], tmps[j], seed);\n                }\n#else\n                tmps[j] = mad_impl(tmps[j], tmps[j], seed);\n#endif\n            }\n        }\n\n        T sum = conv_int(0);\n#ifdef ENABLE_HP\n        if (sizeof(T) == sizeof(half2)) {\n            sum = conv_int_half2(0);\n        }\n#endif\n\n        // Reduction\n        for (int j = 0; j < ELEMENTS_PER_THREAD; j += 2) {\n#ifdef ENABLE_HP\n            if (sizeof(T) == sizeof(half2)) {\n                sum = mad_impl_half2(tmps[j], tmps[j+1], sum);\n            } else {\n                sum = mad_impl(tmps[j], tmps[j+1], sum);\n            }\n#else\n            sum = mad_impl(tmps[j], tmps[j+1], sum);\n#endif\n        }\n\n        // Check and store\n        int is_neg_one = 0;\n#ifdef ENABLE_HP\n        if (sizeof(T) == sizeof(half2)) {\n            half2 neg_one = __float2half2(-1.0f);\n            if (equal_impl_half2(sum, neg_one)) is_neg_one = 1;\n        } else {\n            if (equal_impl(sum, (T)-1)) is_neg_one = 1;\n        }\n#else\n        if (equal_impl(sum, (T)-1)) is_neg_one = 1;\n#endif\n\n        if (is_neg_one) {\n            g_data[idx + k * big_stride] = sum;\n        }\n    }\n}\n\n#endif\n"
+  },
+  "target_files_expected": [
+    "mix_kernels.cl"
+  ],
+  "target_files_extracted": [
+    "mix_kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 17.749,
+      "prompt_tokens": 12133,
+      "completion_tokens": 1335,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

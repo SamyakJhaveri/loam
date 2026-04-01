@@ -1,0 +1,73 @@
+{
+  "source_spec": "rodinia-bptree-omp",
+  "target_spec": "rodinia-bptree-opencl",
+  "kernel": "bptree",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-03-31T23:33:53Z",
+  "prompt_tokens": 23209,
+  "completion_tokens": 1278,
+  "llm_response_time_seconds": 11.072,
+  "build_status": "pass",
+  "build_time_seconds": 0.544,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.505,
+  "run_exit_code": 210,
+  "run_stderr_snippet": "14 warnings generated.\n",
+  "run_stdout_snippet": "\n                   ^\n<kernel>:24:20: warning: unknown attribute 'opencl_arg' ignored\n    __attribute__((opencl_arg(10))) __global int *reclength\n                   ^\n<kernel>:12:16: warning: unknown attribute 'opencl_global_work_dim' ignored\n__attribute__((opencl_global_work_dim(1)))\n               ^\n<kernel>:11:16: warning: unknown attribute 'opencl_kernel' ignored\n__attribute__((opencl_kernel))\n               ^\n\n\n>>>>\n--------------------------------\nError at line 266: CL_INVALID_KERNEL_NAME\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 210)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.453,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "__attribute__((reqd_opencl_version(2.0)))\n\ntypedef struct {\n    int value;\n} record;\n\ntypedef struct {\n    int location;\n    int indices [256 + 1];\n    int keys [256 + 1];\n    char is_leaf;\n    int num_keys;\n} knode;\n\n__attribute__((opencl_kernel))\n__attribute__((opencl_global_work_dim(1)))\nvoid findK(\n    __attribute__((opencl_arg(0))) long maxheight,\n    __attribute__((opencl_arg(1))) __global const knode *knodes,\n    __attribute__((opencl_arg(2))) long knodes_elem,\n    __attribute__((opencl_arg(3))) __global const record *records,\n    __attribute__((opencl_arg(4))) __global long *currKnode,\n    __attribute__((opencl_arg(5))) __global long *offset,\n    __attribute__((opencl_arg(6))) __global const int *keys,\n    __attribute__((opencl_arg(7))) __global record *ans\n) {\n    int bid = get_group_id(0);\n    int thid = get_local_id(0);\n    int i;\n    long current_offset;\n\n    current_offset = currKnode[bid];\n\n    for (i = 0; i < maxheight; i++) {\n        if (thid < knodes[current_offset].num_keys - 1) {\n            if ((knodes[current_offset].keys[thid] <= keys[bid]) && (knodes[current_offset].keys[thid + 1] > keys[bid])) {\n                if (knodes[current_offset].indices[thid] < knodes_elem) {\n                    current_offset = knodes[current_offset].indices[thid];\n                }\n            }\n        }\n    }\n\n    currKnode[bid] = current_offset;\n    offset[bid] = current_offset;\n\n    if (thid < knodes[current_offset].num_keys) {\n        if (knodes[current_offset].keys[thid] == keys[bid]) {\n            ans[bid].value = records[knodes[current_offset].indices[thid]].value;\n        }\n    }\n}\n",
+    "kernel/kernel_gpu_opencl_2.cl": "__attribute__((reqd_opencl_version(2.0)))\n\ntypedef struct {\n    int location;\n    int indices [256 + 1];\n    int keys [256 + 1];\n    char is_leaf;\n    int num_keys;\n} knode;\n\n__attribute__((opencl_kernel))\n__attribute__((opencl_global_work_dim(1)))\nvoid findRangeK(\n    __attribute__((opencl_arg(0))) long maxheight,\n    __attribute__((opencl_arg(1))) __global const knode *knodes,\n    __attribute__((opencl_arg(2))) long knodes_elem,\n    __attribute__((opencl_arg(3))) __global long *currKnode,\n    __attribute__((opencl_arg(4))) __global long *offset,\n    __attribute__((opencl_arg(5))) __global long *lastKnode,\n    __attribute__((opencl_arg(6))) __global long *offset_2,\n    __attribute__((opencl_arg(7))) __global const int *start,\n    __attribute__((opencl_arg(8))) __global const int *end,\n    __attribute__((opencl_arg(9))) __global int *recstart,\n    __attribute__((opencl_arg(10))) __global int *reclength\n) {\n    int bid = get_group_id(0);\n    int thid = get_local_id(0);\n    int i;\n    long curr_offset;\n    long last_offset;\n\n    curr_offset = currKnode[bid];\n    last_offset = lastKnode[bid];\n\n    for (i = 0; i < maxheight; i++) {\n        if (thid < knodes[curr_offset].num_keys - 1) {\n            if ((knodes[curr_offset].keys[thid] <= start[bid]) && (knodes[curr_offset].keys[thid + 1] > start[bid])) {\n                if (knodes[curr_offset].indices[thid] < knodes_elem) {\n                    curr_offset = knodes[curr_offset].indices[thid];\n                }\n            }\n        }\n\n        if (thid < knodes[last_offset].num_keys - 1) {\n            if ((knodes[last_offset].keys[thid] <= end[bid]) && (knodes[last_offset].keys[thid + 1] > end[bid])) {\n                if (knodes[last_offset].indices[thid] < knodes_elem) {\n                    last_offset = knodes[last_offset].indices[thid];\n                }\n            }\n        }\n    }\n\n    currKnode[bid] = curr_offset;\n    offset[bid] = curr_offset;\n    lastKnode[bid] = last_offset;\n    offset_2[bid] = last_offset;\n\n    if (thid < knodes[curr_offset].num_keys) {\n        if (knodes[curr_offset].keys[thid] == start[bid]) {\n            recstart[bid] = knodes[curr_offset].indices[thid];\n        }\n    }\n\n    if (thid < knodes[last_offset].num_keys) {\n        if (knodes[last_offset].keys[thid] == end[bid]) {\n            reclength[bid] = knodes[last_offset].indices[thid] - recstart[bid] + 1;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 11.072,
+      "prompt_tokens": 23209,
+      "completion_tokens": 1278,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "14 warnings generated.\n",
+      "run_stdout_snippet": "\n                   ^\n<kernel>:24:20: warning: unknown attribute 'opencl_arg' ignored\n    __attribute__((opencl_arg(10))) __global int *reclength\n                   ^\n<kernel>:12:16: warning: unknown attribute 'opencl_global_work_dim' ignored\n__attribute__((opencl_global_work_dim(1)))\n               ^\n<kernel>:11:16: warning: unknown attribute 'opencl_kernel' ignored\n__attribute__((opencl_kernel))\n               ^\n\n\n>>>>\n--------------------------------\nError at line 266: CL_INVALID_KERNEL_NAME\n",
+      "extraction_fail": null
+    }
+  ]
+}

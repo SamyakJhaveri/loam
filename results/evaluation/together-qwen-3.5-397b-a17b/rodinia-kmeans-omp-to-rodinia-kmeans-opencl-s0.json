@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-kmeans-omp",
+  "target_spec": "rodinia-kmeans-opencl",
+  "kernel": "kmeans",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-i",
+    "../../data/kmeans/kdd_cup"
+  ],
+  "timestamp": "2026-03-31T23:43:18Z",
+  "prompt_tokens": 40392,
+  "completion_tokens": 656,
+  "llm_response_time_seconds": 6.754,
+  "build_status": "pass",
+  "build_time_seconds": 0.832,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.529,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel_swap = 256, WG size of kernel_kmeans = 256 \n\nI/O completed\n\nNumber of objects: 494020\nNumber of features: 34\nnum_devices = 1\nERROR: clCreateKernel() 0 => -46\nERROR: clEnqueueWriteBuffer d_cluster (size:494020) => -38\niterated 1 times\nNumber of Iteration: 1\nInit: 0.000000\nMemAlloc: 0.000000\nHtoD: 0.000000\nExec: 0.000000\nDtoH: 0.000000\nClose: 0.019000\nTotal: 477.463013\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.498,
+  "translated_wall_time_seconds": 0.529,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 2.8318,
+  "translated_files": {
+    "kmeans.cl": "#ifndef FLT_MAX\n#define FLT_MAX 3.40282347e+38F\n#endif\n\n__attribute__((always_inline))\nfloat euclid_dist_2(const float *pt1,\n                    const float *pt2,\n                    const int numdims)\n{\n    float ans = 0.0f;\n    for (int i = 0; i < numdims; i++) {\n        float diff = pt1[i] - pt2[i];\n        ans += diff * diff;\n    }\n    return ans;\n}\n\n__attribute__((always_inline))\nint find_nearest_point(const float *pt,\n                       const int nfeatures,\n                       const float *clusters,\n                       const int nclusters)\n{\n    int index = 0;\n    float min_dist = FLT_MAX;\n\n    for (int i = 0; i < nclusters; i++) {\n        float dist = euclid_dist_2(pt, clusters + (i * nfeatures), nfeatures);\n        if (dist < min_dist) {\n            min_dist = dist;\n            index = i;\n        }\n    }\n    return index;\n}\n\nvoid kmeans_clustering_kernel(const float *feature,\n                              const int nfeatures,\n                              const int npoints,\n                              const int nclusters,\n                              const float threshold,\n                              int *membership,\n                              float *clusters,\n                              int *new_centers_len,\n                              float *new_centers,\n                              float *delta_ptr,\n                              const int max_loop)\n{\n    int loop = 0;\n    float delta;\n\n    do {\n        delta = 0.0f;\n\n        for (int i = 0; i < npoints; i++) {\n            int index = find_nearest_point(feature + (i * nfeatures),\n                                           nfeatures,\n                                           clusters,\n                                           nclusters);\n\n            if (membership[i] != index) {\n                delta += 1.0f;\n            }\n\n            membership[i] = index;\n\n            new_centers_len[index]++;\n            for (int j = 0; j < nfeatures; j++) {\n                new_centers[index * nfeatures + j] += feature[i * nfeatures + j];\n            }\n        }\n\n        for (int i = 0; i < nclusters; i++) {\n            if (new_centers_len[i] > 0) {\n                for (int j = 0; j < nfeatures; j++) {\n                    clusters[i * nfeatures + j] = new_centers[i * nfeatures + j] / (float)new_centers_len[i];\n                    new_centers[i * nfeatures + j] = 0.0f;\n                }\n                new_centers_len[i] = 0;\n            }\n        }\n\n        loop++;\n    } while (delta > threshold && loop < max_loop);\n\n    *delta_ptr = delta;\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans.cl"
+  ],
+  "target_files_extracted": [
+    "kmeans.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.754,
+      "prompt_tokens": 40392,
+      "completion_tokens": 656,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

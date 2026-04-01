@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-backprop-omp",
+  "target_spec": "rodinia-backprop-opencl",
+  "kernel": "backprop",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-n",
+    "65536"
+  ],
+  "timestamp": "2026-03-31T23:35:05Z",
+  "prompt_tokens": 14187,
+  "completion_tokens": 552,
+  "llm_response_time_seconds": 16.803,
+  "build_status": "pass",
+  "build_time_seconds": 0.642,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.206,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Random number generator seed: 7\nInput layer size : 65536\nStarting training kernel\nnum_devices = 1\nPerforming GPU computation\nInit: 136.955002\nMemAlloc: 0.006000\nHtoD: 0.556704\nExec: 0.020256\nDtoH: 0.244928\nClose: 0.226000\nTotal: 141.091003\nERROR: 1  clEnqueueReadBuffer: input_ocl\n\nFinish the training for one iteration\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.206,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0049,
+  "translated_files": {
+    "backprop_kernel.cl": "#define WIDTH 16\n#define HEIGHT 16\n#define BLOCK_SIZE 16\n#define ETA 0.3f\n#define MOMENTUM 0.3f\n\nfloat squash(float x) {\n    return 1.0f / (1.0f + exp(-x));\n}\n\nkernel void bpnn_layerforward_ocl(global float* l1,\n                                  global float* l2,\n                                  global float* conn_flat,\n                                  global float* partial_sum,\n                                  local float* local_conn,\n                                  local float* local_l1,\n                                  int n1,\n                                  int n2) {\n    int j = get_global_id(1);\n    int block_idx = get_global_id(0) / BLOCK_SIZE;\n    int local_idx = get_local_id(0);\n    \n    if (j >= n2 || j == 0) return;\n\n    float sum = 0.0f;\n    \n    int start_k = block_idx * BLOCK_SIZE;\n    int end_k = start_k + BLOCK_SIZE;\n    if (end_k > n1 + 1) end_k = n1 + 1;\n\n    for (int k = start_k; k < end_k; k++) {\n        if (k <= n1) {\n            float weight = conn_flat[k * (n2 + 1) + j];\n            float input_val = l1[k];\n            sum += weight * input_val;\n        }\n    }\n\n    partial_sum[block_idx * n2 + (j - 1)] = sum;\n}\n\nkernel void bpnn_adjust_weights_ocl(global float* delta,\n                                    int ndelta,\n                                    global float* ly,\n                                    int nly,\n                                    global float* w_flat,\n                                    global float* oldw_flat) {\n    int j = get_global_id(1);\n    int k = get_global_id(0);\n\n    if (j > ndelta || j == 0) return;\n    if (k > nly) return;\n\n    float delta_val = delta[j];\n    float ly_val = ly[k];\n    \n    float new_dw = (ETA * delta_val * ly_val) + (MOMENTUM * oldw_flat[k * (ndelta + 1) + j]);\n    \n    w_flat[k * (ndelta + 1) + j] += new_dw;\n    oldw_flat[k * (ndelta + 1) + j] = new_dw;\n}\n"
+  },
+  "target_files_expected": [
+    "backprop_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "backprop_kernel.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 16.803,
+      "prompt_tokens": 14187,
+      "completion_tokens": 552,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

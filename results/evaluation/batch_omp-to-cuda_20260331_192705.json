@@ -1,0 +1,1111 @@
+{
+  "direction": "omp-to-cuda",
+  "models": [
+    "together-qwen-3.5-397b-a17b"
+  ],
+  "suite": "hecbench",
+  "kernels": [
+    "stencil1d",
+    "heat2d",
+    "floydwarshall",
+    "scan",
+    "iso2dfd"
+  ],
+  "temperature": 0.7,
+  "num_samples": 3,
+  "total_tasks": 15,
+  "total_elapsed_seconds": 361.5,
+  "results": [
+    {
+      "source_spec": "hecbench-scan-omp",
+      "target_spec": "hecbench-scan-cuda",
+      "kernel": "scan",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-01T02:21:03Z",
+      "prompt_tokens": 2253,
+      "completion_tokens": 2345,
+      "llm_response_time_seconds": 26.517,
+      "build_status": "fail",
+      "build_time_seconds": 0.231,
+      "build_error_snippet": "main.cu(167): error: expected an expression\n      scan_kernel_with_conflicts<T, N><<num_teams_dim, block_dim>>>(in_dev, out_dev, num_blocks);\n                                                                  ^\n\nmain.cu(184): error: expected an expression\n      scan_kernel_no_conflicts<T, N><<num_teams_dim, block_dim>>>(in_dev, out_dev, num_blocks);\n                                                                ^\n\n2 errors detected in the compilation of \"main.cu\".\nmake: *** [Makefile:50: main.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: lock_dim>>>(in_dev, out_dev, num_blocks);\n                                                                ^\n\n2 errors detected in the compilation of \"main.cu\".\nmake: *** [Makefile:50: main.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <chrono>\n\ntemplate<typename T>\nvoid verify(const T* ref_out, const T* out, int64_t n)\n{\n  int error = memcmp(ref_out, out, n * sizeof(T));\n  if (error) {\n    for (int64_t i = 0; i < n; i++) {\n      if (ref_out[i] != out[i]) {\n        printf(\"@%zu: %lf != %lf\\n\", i, (double)ref_out[i], (double)out[i]);\n        break;\n      }\n    }\n  }\n  printf(\"%s\\n\", error ? \"FAIL\" : \"PASS\");\n}\n\n#define LOG_MEM_BANKS 5\n#define OFFSET(n) ((n) >> LOG_MEM_BANKS)\n\ntemplate<typename T, int N>\n__global__ void scan_kernel_with_conflicts(T* in, T* out, int64_t num_blocks) {\n  int64_t bid = blockIdx.x;\n  if (bid >= num_blocks) return;\n\n  T temp[N];\n  int thid = threadIdx.x;\n\n  T* t_in = in + bid * N;\n  T* t_out = out + bid * N;\n\n  int offset = 1;\n\n  if (2*thid < N) temp[2*thid] = t_in[2*thid];\n  if (2*thid+1 < N) temp[2*thid+1] = t_in[2*thid+1];\n\n  for (int d = N >> 1; d > 0; d >>= 1) {\n    __syncthreads();\n    if (thid < d) {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      if (bi < N) temp[bi] += temp[ai];\n    }\n    offset *= 2;\n  }\n\n  if (thid == 0) temp[N-1] = 0; \n\n  for (int d = 1; d < N; d *= 2) {\n    offset >>= 1;\n    __syncthreads();\n    if (thid < d) {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      if (ai < N && bi < N) {\n        T t = temp[ai];\n        temp[ai] = temp[bi];\n        temp[bi] += t;\n      }\n    }\n  }\n  __syncthreads();\n\n  if (2*thid < N) t_out[2*thid] = temp[2*thid];\n  if (2*thid+1 < N) t_out[2*thid+1] = temp[2*thid+1];\n}\n\ntemplate<typename T, int N>\n__global__ void scan_kernel_no_conflicts(T* in, T* out, int64_t num_blocks) {\n  int64_t bid = blockIdx.x;\n  if (bid >= num_blocks) return;\n\n  T temp[2*N]; // Sized to handle offset mapping safely\n  int thid = threadIdx.x;\n\n  T* t_in = in + bid * N;\n  T* t_out = out + bid * N;\n\n  int a = thid;\n  int b = a + (N/2);\n  int oa = OFFSET(a);\n  int ob = OFFSET(b);\n\n  if (a < N) temp[a + oa] = t_in[a];\n  if (b < N) temp[b + ob] = t_in[b];\n\n  int offset = 1;\n  for (int d = N >> 1; d > 0; d >>= 1) {\n    __syncthreads();\n    if (thid < d) {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      ai += OFFSET(ai);\n      bi += OFFSET(bi);\n      if (bi < 2*N) temp[bi] += temp[ai];\n    }\n    offset *= 2;\n  }\n\n  if (thid == 0) {\n    int idx = N-1 + OFFSET(N-1);\n    if (idx < 2*N) temp[idx] = 0;\n  }\n\n  for (int d = 1; d < N; d *= 2) {\n    offset >>= 1;\n    __syncthreads();\n    if (thid < d) {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      ai += OFFSET(ai);\n      bi += OFFSET(bi);\n      if (ai < 2*N && bi < 2*N) {\n        T t = temp[ai];\n        temp[ai] = temp[bi];\n        temp[bi] += t;\n      }\n    }\n  }\n  __syncthreads();\n\n  if (a < N) t_out[a] = temp[a + oa];\n  if (b < N) t_out[b] = temp[b + ob];\n}\n\ntemplate<typename T, int N>\nvoid runTest (const int64_t n, const int repeat, bool timing = false)\n{\n  int64_t num_blocks = (n + N - 1) / N;\n  int64_t nelems = num_blocks * N;\n  int64_t bytes = nelems * sizeof(T);\n\n  T *in_host = (T*) malloc (bytes);\n  T *out_host = (T*) malloc (bytes);\n  T *ref_out_host = (T*) malloc (bytes);\n\n  srand(123);\n  for (int64_t k = 0; k < nelems; k++) in_host[k] = rand() % 5 + 1;\n\n  // Compute reference on CPU\n  T *t_in = in_host;\n  T *t_out = ref_out_host;\n  for (int64_t k = 0; k < num_blocks; k++) {\n    t_out[0] = 0;\n    for (int i = 1; i < N; i++)\n      t_out[i] = t_out[i-1] + t_in[i-1];\n    t_out += N;\n    t_in += N;\n  }\n\n  T *in_dev, *out_dev;\n  cudaMalloc(&in_dev, bytes);\n  cudaMalloc(&out_dev, bytes);\n  cudaMemcpy(in_dev, in_host, bytes, cudaMemcpyHostToDevice);\n\n  int threads_per_block = N/2;\n  dim3 block_dim(threads_per_block);\n  dim3 num_teams_dim(num_blocks);\n\n  // First pass: With bank conflicts\n  auto start = std::chrono::steady_clock::now();\n\n  for (int i = 0; i < repeat; i++) {\n    scan_kernel_with_conflicts<T, N><<num_teams_dim, block_dim>>>(in_dev, out_dev, num_blocks);\n  }\n\n  auto end = std::chrono::steady_clock::now();\n  auto time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  \n  if (timing) {\n    printf(\"Element size in bytes is %zu. Average execution time of scan (w/  bank conflicts): %f (us)\\n\",\n           sizeof(T), (time_ns * 1e-3f) / repeat);\n  }\n\n  cudaMemcpy(out_host, out_dev, bytes, cudaMemcpyDeviceToHost);\n  if (!timing) verify(ref_out_host, out_host, nelems);\n\n  // Second pass: Without bank conflicts\n  start = std::chrono::steady_clock::now();\n  for (int i = 0; i < repeat; i++) {\n    scan_kernel_no_conflicts<T, N><<num_teams_dim, block_dim>>>(in_dev, out_dev, num_blocks);\n  }\n\n  end = std::chrono::steady_clock::now();\n  auto bcao_time_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  \n  if (timing) {\n    printf(\"Element size in bytes is %zu. Average execution time of scan (w/o bank conflicts): %f (us). \",\n           sizeof(T), (bcao_time_ns * 1e-3f) / repeat);\n    printf(\"Reduce the time by %.1f%%\\n\", (time_ns - bcao_time_ns) * 1.0 / time_ns * 100);\n  }\n\n  cudaMemcpy(out_host, out_dev, bytes, cudaMemcpyDeviceToHost);\n  if (!timing) verify(ref_out_host, out_host, nelems);\n\n  cudaFree(in_dev);\n  cudaFree(out_dev);\n  free(in_host);\n  free(out_host);\n  free(ref_out_host);\n}\n\ntemplate<int N>\nvoid run (const int n, const int repeat) {\n  for (int i = 0; i < 2; i++) {\n    bool report_timing = i > 0;\n    printf(\"\\nThe number of elements to scan in a thread block: %d\\n\", N);\n    runTest< char, N>(n, repeat, report_timing);\n    runTest<short, N>(n, repeat, report_timing);\n    runTest<  int, N>(n, repeat, report_timing);\n    runTest< long, N>(n, repeat, report_timing);\n  }\n}\n\nint main(int argc, char* argv[])\n{\n  if (argc != 3) {\n    printf(\"Usage: %s <number of elements> <repeat>\\n\", argv[0]);\n    return 1;\n  }\n  const int n = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  run< 128>(n, repeat);\n  run< 256>(n, repeat);\n  run< 512>(n, repeat);\n  run<1024>(n, repeat);\n  run<2048>(n, repeat);\n\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cu"
+      ],
+      "target_files_extracted": [
+        "main.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 26.517,
+          "prompt_tokens": 2253,
+          "completion_tokens": 2345,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "main.cu(167): error: expected an expression\n      scan_kernel_with_conflicts<T, N><<num_teams_dim, block_dim>>>(in_dev, out_dev, num_blocks);\n                                                                  ^\n\nmain.cu(184): error: expected an expression\n      scan_kernel_no_conflicts<T, N><<num_teams_dim, block_dim>>>(in_dev, out_dev, num_blocks);\n                                                                ^\n\n2 errors detected in the compilation of \"main.cu\".\nmake: *** [Makefile:50: main.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-scan-omp",
+      "target_spec": "hecbench-scan-cuda",
+      "kernel": "scan",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-01T02:21:30Z",
+      "prompt_tokens": 2253,
+      "completion_tokens": 2350,
+      "llm_response_time_seconds": 27.837,
+      "build_status": "fail",
+      "build_time_seconds": 0.381,
+      "build_error_snippet": "main.cu(42): warning #1215-D: function \"cudaThreadSynchronize\" (declared at line 1075 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/cuda_runtime_api.h) was declared deprecated\n      cudaThreadSynchronize();\n      ^\n          detected during:\n            instantiation of \"void runTest<T,N>(int64_t, int, __nv_bool) [with T=char, N=128]\" at line 228\n            instantiation of \"void run<N>(int, int) [with N=128]\" at line 244\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nmain.cu(57): warning #1215-D: function \"cudaThreadSynchronize\" (declared at line 1075 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/cuda_runtime_api.h) was declared deprecated\n      cudaThreadSynchronize();\n      ^\n  \n...[truncated]...\nall must be configured\n      scanKernelWithConflicts<T, N>(d_in, d_out, num_blocks);\n      ^\n          detected during:\n            instantiation of \"void runTest<T,N>(int64_t, int, __nv_bool) [with T=long, N=2048]\" at line 231\n            instantiation of \"void run<N>(int, int) [with N=2048]\" at line 248\n\nmain.cu(198): error: a __global__ function call must be configured\n      scanKernelNoConflicts<T, N>(d_in, d_out, num_blocks);\n      ^\n          detected during:\n            instantiation of \"void runTest<T,N>(int64_t, int, __nv_bool) [with T=long, N=2048]\" at line 231\n            instantiation of \"void run<N>(int, int) [with N=2048]\" at line 248\n\n40 errors detected in the compilation of \"main.cu\".\nmake: *** [Makefile:50: main.o] Error 1\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: =long, N=2048]\" at line 231\n            instantiation of \"void run<N>(int, int) [with N=2048]\" at line 248\n\n40 errors detected in the compilation of \"main.cu\".\nmake: *** [Makefile:50: main.o] Error 1",
+      "metrics": {},
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <cuda_runtime.h>\n\ntemplate<typename T>\nvoid verify(const T* ref_out, const T* out, int64_t n)\n{\n  int error = 0;\n  for (int64_t i = 0; i < n; i++) {\n    if (ref_out[i] != out[i]) {\n      error = 1;\n      printf(\"@%zu: %lf != %lf\\n\", i, (double)ref_out[i], (double)out[i]);\n      break;\n    }\n  }\n  printf(\"%s\\n\", error ? \"FAIL\" : \"PASS\");\n}\n\n#define LOG_MEM_BANKS 5\n#define OFFSET(n) ((n) >> LOG_MEM_BANKS)\n\ntemplate<typename T, int N>\n__global__ void scanKernelWithConflicts(T* in, T* out, int64_t num_blocks)\n{\n  int64_t bid = blockIdx.x;\n  if (bid >= num_blocks) return;\n\n  T temp[N];\n  int thid = threadIdx.x;\n  \n  T* t_in  = in + bid * N;\n  T* t_out = out + bid * N;\n\n  int offset = 1;\n\n  if (2*thid < N) temp[2*thid]   = t_in[2*thid];\n  if (2*thid+1 < N) temp[2*thid+1] = t_in[2*thid+1];\n\n  for (int d = N >> 1; d > 0; d >>= 1)\n  {\n    cudaThreadSynchronize(); // Equivalent to barrier\n    if (thid < d)\n    {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      if (bi < N) temp[bi] += temp[ai];\n    }\n    offset *= 2;\n  }\n\n  if (thid == 0 && N-1 < N) temp[N-1] = 0; \n  \n  for (int d = 1; d < N; d *= 2) \n  {\n    offset >>= 1;\n    cudaThreadSynchronize();\n    if (thid < d)\n    {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      if (ai < N && bi < N) {\n        T t = temp[ai];\n        temp[ai] = temp[bi];\n        temp[bi] += t;\n      }\n    }\n  }\n  \n  if (2*thid < N) t_out[2*thid] = temp[2*thid];\n  if (2*thid+1 < N) t_out[2*thid+1] = temp[2*thid+1];\n}\n\ntemplate<typename T, int N>\n__global__ void scanKernelNoConflicts(T* in, T* out, int64_t num_blocks)\n{\n  int64_t bid = blockIdx.x;\n  if (bid >= num_blocks) return;\n\n  T temp[2*N]; // Sized to handle offsets\n  int thid = threadIdx.x;\n  \n  T* t_in  = in + bid * N;\n  T* t_out = out + bid * N;\n\n  int a = thid;\n  int b = a + (N/2);\n  int oa = OFFSET(a);\n  int ob = OFFSET(b);\n\n  if (a < N) temp[a + oa] = t_in[a];\n  if (b < N) temp[b + ob] = t_in[b];\n\n  int offset = 1;\n  for (int d = N >> 1; d > 0; d >>= 1)\n  {\n    cudaThreadSynchronize();\n    if (thid < d)\n    {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      ai += OFFSET(ai);\n      bi += OFFSET(bi);\n      if (bi < 2*N) temp[bi] += temp[ai];\n    }\n    offset *= 2;\n  }\n\n  if (thid == 0) {\n    int idx = N-1+OFFSET(N-1);\n    if (idx < 2*N) temp[idx] = 0;\n  } \n  \n  for (int d = 1; d < N; d *= 2) \n  {\n    offset >>= 1;\n    cudaThreadSynchronize();\n    if (thid < d)\n    {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      ai += OFFSET(ai);\n      bi += OFFSET(bi);\n      if (ai < 2*N && bi < 2*N) {\n        T t = temp[ai];\n        temp[ai] = temp[bi];\n        temp[bi] += t;\n      }\n    }\n  }\n  \n  cudaThreadSynchronize();\n\n  if (a < N) t_out[a] = temp[a + oa];\n  if (b < N) t_out[b] = temp[b + ob];\n}\n\ntemplate<typename T, int N>\nvoid runTest (const int64_t n, const int repeat, bool timing = false)\n{\n  int64_t num_blocks = (n + N - 1) / N;\n  int64_t nelems = num_blocks * N; \n  int64_t bytes = nelems * sizeof(T);\n\n  T *in = (T*) malloc (bytes);\n  T *out = (T*) malloc (bytes);\n  T *ref_out = (T*) malloc (bytes);\n  T *d_in, *d_out;\n\n  cudaMalloc(&d_in, bytes);\n  cudaMalloc(&d_out, bytes);\n\n  srand(123);\n  for (int64_t n = 0; n < nelems; n++) in[n] = rand() % 5 + 1;\n\n  // Reference calculation\n  T *t_in = in;\n  T *t_out = ref_out;\n  for (int64_t n = 0; n < num_blocks; n++) {\n    t_out[0] = 0;\n    for (int i = 1; i < N; i++)\n      t_out[i] = t_out[i-1] + t_in[i-1];\n    t_out += N;\n    t_in += N;\n  }\n\n  cudaMemcpy(d_in, in, bytes, cudaMemcpyHostToDevice);\n\n  int threads = N/2;\n  dim3 block(threads);\n  dim3 grid(num_blocks);\n\n  cudaEvent_t start, stop;\n  cudaEventCreate(&start);\n  cudaEventCreate(&stop);\n\n  // First kernel (with conflicts)\n  cudaEventRecord(start);\n  for (int i = 0; i < repeat; i++) {\n    scanKernelWithConflicts<T, N>(d_in, d_out, num_blocks);\n  }\n  cudaEventRecord(stop);\n  cudaEventSynchronize(stop);\n  float time_ms = 0;\n  cudaEventElapsedTime(&time_ms, start, stop);\n  \n  if (timing) {\n    printf(\"Element size in bytes is %zu. Average execution time of scan (w/  bank conflicts): %f (us)\\n\",\n           sizeof(T), (time_ms * 1000.0f) / repeat);\n  }\n  \n  cudaMemcpy(out, d_out, bytes, cudaMemcpyDeviceToHost);\n  if (!timing) verify(ref_out, out, nelems);\n\n  // Second kernel (no conflicts)\n  cudaEventRecord(start);\n  for (int i = 0; i < repeat; i++) {\n    scanKernelNoConflicts<T, N>(d_in, d_out, num_blocks);\n  }\n  cudaEventRecord(stop);\n  cudaEventSynchronize(stop);\n  float bcao_time_ms = 0;\n  cudaEventElapsedTime(&bcao_time_ms, start, stop);\n\n  if (timing) {\n    printf(\"Element size in bytes is %zu. Average execution time of scan (w/o bank conflicts): %f (us). \",\n           sizeof(T), (bcao_time_ms * 1000.0f) / repeat);\n    printf(\"Reduce the time by %.1f%%\\n\", (time_ms - bcao_time_ms) * 1.0 / time_ms * 100);\n  }\n\n  cudaMemcpy(out, d_out, bytes, cudaMemcpyDeviceToHost);\n  if (!timing) verify(ref_out, out, nelems);\n\n  cudaFree(d_in);\n  cudaFree(d_out);\n  cudaEventDestroy(start);\n  cudaEventDestroy(stop);\n  free(in);\n  free(out);\n  free(ref_out);\n}\n\ntemplate<int N>\nvoid run (const int n, const int repeat) {\n  for (int i = 0; i < 2; i++) {\n    bool report_timing = i > 0;\n    printf(\"\\nThe number of elements to scan in a thread block: %d\\n\", N);\n    runTest< char, N>(n, repeat, report_timing);\n    runTest<short, N>(n, repeat, report_timing);\n    runTest<  int, N>(n, repeat, report_timing);\n    runTest< long, N>(n, repeat, report_timing);\n  }\n}\n\nint main(int argc, char* argv[])\n{\n  if (argc != 3) {\n    printf(\"Usage: %s <number of elements> <repeat>\\n\", argv[0]);\n    return 1;\n  }\n  const int n = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  run< 128>(n, repeat);\n  run< 256>(n, repeat);\n  run< 512>(n, repeat);\n  run<1024>(n, repeat);\n  run<2048>(n, repeat);\n\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cu"
+      ],
+      "target_files_extracted": [
+        "main.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 27.837,
+          "prompt_tokens": 2253,
+          "completion_tokens": 2350,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "main.cu(42): warning #1215-D: function \"cudaThreadSynchronize\" (declared at line 1075 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/cuda_runtime_api.h) was declared deprecated\n      cudaThreadSynchronize();\n      ^\n          detected during:\n            instantiation of \"void runTest<T,N>(int64_t, int, __nv_bool) [with T=char, N=128]\" at line 228\n            instantiation of \"void run<N>(int, int) [with N=128]\" at line 244\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nmain.cu(57): warning #1215-D: function \"cudaThreadSynchronize\" (declared at line 1075 of /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include/cuda_runtime_api.h) was declared deprecated\n      cudaThreadSynchronize();\n      ^\n  \n...[truncated]...\nall must be configured\n      scanKernelWithConflicts<T, N>(d_in, d_out, num_blocks);\n      ^\n          detected during:\n            instantiation of \"void runTest<T,N>(int64_t, int, __nv_bool) [with T=long, N=2048]\" at line 231\n            instantiation of \"void run<N>(int, int) [with N=2048]\" at line 248\n\nmain.cu(198): error: a __global__ function call must be configured\n      scanKernelNoConflicts<T, N>(d_in, d_out, num_blocks);\n      ^\n          detected during:\n            instantiation of \"void runTest<T,N>(int64_t, int, __nv_bool) [with T=long, N=2048]\" at line 231\n            instantiation of \"void run<N>(int, int) [with N=2048]\" at line 248\n\n40 errors detected in the compilation of \"main.cu\".\nmake: *** [Makefile:50: main.o] Error 1\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-scan-omp",
+      "target_spec": "hecbench-scan-cuda",
+      "kernel": "scan",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "10000",
+        "1"
+      ],
+      "timestamp": "2026-04-01T02:21:58Z",
+      "prompt_tokens": 2253,
+      "completion_tokens": 2153,
+      "llm_response_time_seconds": 26.985,
+      "build_status": "pass",
+      "build_time_seconds": 1.743,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.185,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " scan (w/o bank conflicts): 1.343000 (us). Reduce the time by 48.8%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 2.655000 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 1.352000 (us). Reduce the time by 49.1%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 2.715000 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 1.423000 (us). Reduce the time by 47.6%\n",
+      "verify_status": "fail",
+      "verify_strategy": "stdout_pattern",
+      "overall_status": "VERIFY_FAIL",
+      "error_message": "Verify failed: Pattern '(?:PASS)' NOT found in stdout. ",
+      "metrics": {
+        "scan_with_bank_conflicts": {
+          "value": 3.286,
+          "unit": "us"
+        },
+        "scan_without_bank_conflicts": {
+          "value": 1.373,
+          "unit": "us"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.185,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <chrono>\n\ntemplate<typename T>\nvoid verify(const T* ref_out, const T* out, int64_t n)\n{\n  int error = memcmp(ref_out, out, n * sizeof(T));\n  if (error) {\n    for (int64_t i = 0; i < n; i++) {\n      if (ref_out[i] != out[i]) {\n        printf(\"@%zu: %lf != %lf\\n\", i, (double)ref_out[i], (double)out[i]);\n        break;\n      }\n    }\n  }\n  printf(\"%s\\n\", error ? \"FAIL\" : \"PASS\");\n}\n\n#define LOG_MEM_BANKS 5\n#define OFFSET(n) ((n) >> LOG_MEM_BANKS)\n\ntemplate<typename T, int N>\n__global__ void scanKernelWithConflicts(const T* in, T* out, int64_t num_blocks) {\n  int64_t bid = blockIdx.x;\n  if (bid >= num_blocks) return;\n\n  T temp[N];\n  int thid = threadIdx.x;\n  \n  const T* t_in  = in + bid * N;\n  T* t_out = out + bid * N;\n\n  int offset = 1;\n\n  temp[2*thid]   = t_in[2*thid];\n  temp[2*thid+1] = t_in[2*thid+1];\n\n  for (int d = N >> 1; d > 0; d >>= 1)\n  {\n    __syncthreads();\n    if (thid < d)\n    {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      temp[bi] += temp[ai];\n    }\n    offset *= 2;\n  }\n\n  if (thid == 0) temp[N-1] = 0; \n  for (int d = 1; d < N; d *= 2) \n  {\n    offset >>= 1;\n    __syncthreads();\n    if (thid < d)\n    {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      T t = temp[ai];\n      temp[ai] = temp[bi];\n      temp[bi] += t;\n    }\n  }\n  t_out[2*thid] = temp[2*thid];\n  t_out[2*thid+1] = temp[2*thid+1];\n}\n\ntemplate<typename T, int N>\n__global__ void scanKernelNoConflicts(const T* in, T* out, int64_t num_blocks) {\n  int64_t bid = blockIdx.x;\n  if (bid >= num_blocks) return;\n\n  T temp[2*N];\n  int thid = threadIdx.x;\n  \n  const T* t_in  = in + bid * N;\n  T* t_out = out + bid * N;\n\n  int a = thid;\n  int b = a + (N/2);\n  int oa = OFFSET(a);\n  int ob = OFFSET(b);\n\n  temp[a + oa] = t_in[a];\n  temp[b + ob] = t_in[b];\n\n  int offset = 1;\n  for (int d = N >> 1; d > 0; d >>= 1)\n  {\n    __syncthreads();\n    if (thid < d)\n    {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      ai += OFFSET(ai);\n      bi += OFFSET(bi);\n      temp[bi] += temp[ai];\n    }\n    offset *= 2;\n  }\n\n  if (thid == 0) temp[N-1+OFFSET(N-1)] = 0; \n  for (int d = 1; d < N; d *= 2) \n  {\n    offset >>= 1;\n    __syncthreads();\n    if (thid < d)\n    {\n      int ai = offset*(2*thid+1)-1;\n      int bi = offset*(2*thid+2)-1;\n      ai += OFFSET(ai);\n      bi += OFFSET(bi);\n      T t = temp[ai];\n      temp[ai] = temp[bi];\n      temp[bi] += t;\n    }\n  }\n  __syncthreads();\n\n  t_out[a] = temp[a + oa];\n  t_out[b] = temp[b + ob];\n}\n\ntemplate<typename T, int N>\nvoid runTest (const int64_t n, const int repeat, bool timing = false)\n{\n  int64_t num_blocks = (n + N - 1) / N;\n  int64_t nelems = num_blocks * N; \n  int64_t bytes = nelems * sizeof(T);\n\n  T *in = (T*) malloc (bytes);\n  T *out = (T*) malloc (bytes);\n  T *ref_out = (T*) malloc (bytes);\n\n  srand(123);\n  for (int64_t idx = 0; idx < nelems; idx++) in[idx] = rand() % 5 + 1;\n\n  T *t_in = in;\n  T *t_out = ref_out;\n  for (int64_t blk = 0; blk < num_blocks; blk++) {\n    t_out[0] = 0;\n    for (int i = 1; i < N; i++)\n      t_out[i] = t_out[i-1] + t_in[i-1];\n    t_out += N;\n    t_in += N;\n  }\n\n  T *d_in, *d_out;\n  cudaMalloc(&d_in, bytes);\n  cudaMalloc(&d_out, bytes);\n  cudaMemcpy(d_in, in, bytes, cudaMemcpyHostToDevice);\n\n  int threads_per_block = N/2;\n  \n  auto start = std::chrono::steady_clock::now();\n\n  for (int i = 0; i < repeat; i++) {\n    scanKernelWithConflicts<T, N><<<num_blocks, threads_per_block>>>(d_in, d_out, num_blocks);\n  }\n\n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  \n  cudaMemcpy(out, d_out, bytes, cudaMemcpyDeviceToHost);\n\n  if (timing) {\n    printf(\"Element size in bytes is %zu. Average execution time of scan (w/  bank conflicts): %f (us)\\n\",\n           sizeof(T), (time * 1e-3f) / repeat);\n  }\n  if (!timing) verify(ref_out, out, nelems);\n\n  start = std::chrono::steady_clock::now();\n  for (int i = 0; i < repeat; i++) {\n    scanKernelNoConflicts<T, N><<<num_blocks, threads_per_block>>>(d_in, d_out, num_blocks);\n  }\n\n  end = std::chrono::steady_clock::now();\n  auto bcao_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  \n  cudaMemcpy(out, d_out, bytes, cudaMemcpyDeviceToHost);\n\n  if (timing) {\n    printf(\"Element size in bytes is %zu. Average execution time of scan (w/o bank conflicts): %f (us). \",\n           sizeof(T), (bcao_time * 1e-3f) / repeat);\n    printf(\"Reduce the time by %.1f%%\\n\", (time - bcao_time) * 1.0 / time * 100);\n  }\n\n  if (!timing) verify(ref_out, out, nelems);\n\n  cudaFree(d_in);\n  cudaFree(d_out);\n  free(in);\n  free(out);\n  free(ref_out);\n}\n\ntemplate<int N>\nvoid run (const int n, const int repeat) {\n  for (int i = 0; i < 2; i++) {\n    bool report_timing = i > 0;\n    printf(\"\\nThe number of elements to scan in a thread block: %d\\n\", N);\n    runTest< char, N>(n, repeat, report_timing);\n    runTest<short, N>(n, repeat, report_timing);\n    runTest<  int, N>(n, repeat, report_timing);\n    runTest< long, N>(n, repeat, report_timing);\n  }\n}\n\nint main(int argc, char* argv[])\n{\n  if (argc != 3) {\n    printf(\"Usage: %s <number of elements> <repeat>\\n\", argv[0]);\n    return 1;\n  }\n  const int n = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  run< 128>(n, repeat);\n  run< 256>(n, repeat);\n  run< 512>(n, repeat);\n  run<1024>(n, repeat);\n  run<2048>(n, repeat);\n\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cu"
+      ],
+      "target_files_extracted": [
+        "main.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 26.985,
+          "prompt_tokens": 2253,
+          "completion_tokens": 2153,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "fail",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-floydwarshall-omp",
+      "target_spec": "hecbench-floydwarshall-cuda",
+      "kernel": "floydwarshall",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "1024",
+        "1",
+        "16"
+      ],
+      "timestamp": "2026-04-01T02:22:27Z",
+      "prompt_tokens": 1805,
+      "completion_tokens": 1738,
+      "llm_response_time_seconds": 19.846,
+      "build_status": "pass",
+      "build_time_seconds": 0.688,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.624,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time 0.006641 (s)\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 0.006641,
+          "unit": "s"
+        }
+      },
+      "baseline_wall_time_seconds": 0.74,
+      "translated_wall_time_seconds": 0.624,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.1859,
+      "translated_files": {
+        "main.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <assert.h>\n#include <string.h>\n#include <chrono>\n\n#define MAXDISTANCE    (200)\n\nunsigned int minimum(unsigned int a, unsigned int b) \n{\n  return (b < a) ? b : a;\n}\n\nvoid floydWarshallCPUReference(unsigned int * pathDistanceMatrix,\n    unsigned int * pathMatrix, unsigned int numNodes)\n{\n  unsigned int distanceYtoX, distanceYtoK, distanceKtoX, indirectDistance;\n\n  unsigned int width = numNodes;\n  unsigned int yXwidth;\n\n  for(unsigned int k = 0; k < numNodes; ++k)\n  {\n    for(unsigned int y = 0; y < numNodes; ++y)\n    {\n      yXwidth =  y*numNodes;\n      for(unsigned int x = 0; x < numNodes; ++x)\n      {\n        distanceYtoX = pathDistanceMatrix[yXwidth + x];\n        distanceYtoK = pathDistanceMatrix[yXwidth + k];\n        distanceKtoX = pathDistanceMatrix[k * width + x];\n\n        indirectDistance = distanceYtoK + distanceKtoX;\n\n        if(indirectDistance < distanceYtoX)\n        {\n          pathDistanceMatrix[yXwidth + x] = indirectDistance;\n          pathMatrix[yXwidth + x]         = k;\n        }\n      }\n    }\n  }\n}\n\n__global__ void floydWarshallKernel(unsigned int *pathDistanceMatrix,\n                                    unsigned int *pathMatrix,\n                                    unsigned int numNodes,\n                                    unsigned int k)\n{\n  unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;\n  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;\n\n  if (y < numNodes && x < numNodes) {\n    unsigned int yXwidth = y * numNodes;\n    unsigned int distanceYtoX = pathDistanceMatrix[yXwidth + x];\n    unsigned int distanceYtoK = pathDistanceMatrix[yXwidth + k];\n    unsigned int distanceKtoX = pathDistanceMatrix[k * numNodes + x];\n    unsigned int indirectDistance = distanceYtoK + distanceKtoX;\n\n    if (indirectDistance < distanceYtoX) {\n      pathDistanceMatrix[yXwidth + x] = indirectDistance;\n      pathMatrix[yXwidth + x] = k;\n    }\n  }\n}\n\nint main(int argc, char** argv) {\n  if (argc != 4) {\n    printf(\"Usage: %s <number of nodes> <iterations> <block size>\\n\", argv[0]);\n    return 1;\n  }\n  \n  unsigned int numNodes = atoi(argv[1]);\n  unsigned int numIterations = atoi(argv[2]);\n  unsigned int blockSize = atoi(argv[3]);\n\n  if(numNodes % blockSize != 0) {\n    numNodes = (numNodes / blockSize + 1) * blockSize;\n  }\n\n  unsigned int* pathMatrix = NULL;\n  unsigned int* pathDistanceMatrix = NULL;\n  unsigned int* verificationPathDistanceMatrix = NULL;\n  unsigned int* verificationPathMatrix = NULL;\n  unsigned int matrixSize;\n  unsigned int matrixSizeBytes;\n\n  matrixSize = numNodes * numNodes;\n  matrixSizeBytes = numNodes * numNodes * sizeof(unsigned int);\n  pathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathDistanceMatrix != NULL);\n\n  pathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathMatrix != NULL);\n\n  srand(2);\n  for(unsigned int i = 0; i < numNodes; i++)\n    for(unsigned int j = 0; j < numNodes; j++)\n    {\n      int index = i*numNodes + j;\n      pathDistanceMatrix[index] = rand() % (MAXDISTANCE + 1);\n    }\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    unsigned int iXWidth = i * numNodes;\n    pathDistanceMatrix[iXWidth + i] = 0;\n  }\n\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    for(unsigned int j = 0; j < i; ++j)\n    {\n      pathMatrix[i * numNodes + j] = i;\n      pathMatrix[j * numNodes + i] = j;\n    }\n    pathMatrix[i * numNodes + i] = i;\n  }\n\n  verificationPathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (verificationPathDistanceMatrix != NULL);\n\n  verificationPathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert(verificationPathMatrix != NULL);\n\n  memcpy(verificationPathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes);\n  memcpy(verificationPathMatrix, pathMatrix, matrixSizeBytes);\n\n  unsigned int numPasses = numNodes;\n\n  unsigned int *d_pathDistanceMatrix;\n  unsigned int *d_pathMatrix;\n\n  cudaMalloc(&d_pathDistanceMatrix, matrixSizeBytes);\n  cudaMalloc(&d_pathMatrix, matrixSizeBytes);\n\n  cudaMemcpy(d_pathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes, cudaMemcpyHostToDevice);\n  cudaMemcpy(d_pathMatrix, pathMatrix, matrixSizeBytes, cudaMemcpyHostToDevice);\n\n  float total_time = 0.f;\n\n  dim3 block(blockSize, blockSize);\n  dim3 grid((numNodes + blockSize - 1) / blockSize, (numNodes + blockSize - 1) / blockSize);\n\n  for (unsigned int n = 0; n < numIterations; n++) {\n    auto start = std::chrono::steady_clock::now();\n\n    for(unsigned int k = 0; k < numPasses; k++)\n    {\n      floydWarshallKernel<<<grid, block>>>(d_pathDistanceMatrix, d_pathMatrix, numNodes, k);\n    }\n    \n    cudaDeviceSynchronize();\n\n    auto end = std::chrono::steady_clock::now();\n    auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    total_time += time;\n  }\n\n  printf(\"Average kernel execution time %f (s)\\n\", (total_time * 1e-9f) / numIterations);\n\n  cudaMemcpy(pathDistanceMatrix, d_pathDistanceMatrix, matrixSizeBytes, cudaMemcpyDeviceToHost);\n\n  floydWarshallCPUReference(verificationPathDistanceMatrix,\n      verificationPathMatrix, numNodes);\n  \n  if(memcmp(pathDistanceMatrix, verificationPathDistanceMatrix,\n        numNodes*numNodes*sizeof(unsigned int)) == 0)\n  {\n    printf(\"PASS\\n\");\n  }\n  else\n  {\n    printf(\"FAIL\\n\");\n    if (numNodes <= 8) \n    {\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"host: %u \", verificationPathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"device: %u \", pathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n    }\n  }\n\n  free(pathDistanceMatrix);\n  free(pathMatrix);\n  free(verificationPathDistanceMatrix);\n  free(verificationPathMatrix);\n  \n  cudaFree(d_pathDistanceMatrix);\n  cudaFree(d_pathMatrix);\n\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cu"
+      ],
+      "target_files_extracted": [
+        "main.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 19.846,
+          "prompt_tokens": 1805,
+          "completion_tokens": 1738,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-floydwarshall-omp",
+      "target_spec": "hecbench-floydwarshall-cuda",
+      "kernel": "floydwarshall",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "1024",
+        "1",
+        "16"
+      ],
+      "timestamp": "2026-04-01T02:22:48Z",
+      "prompt_tokens": 1805,
+      "completion_tokens": 1742,
+      "llm_response_time_seconds": 16.386,
+      "build_status": "pass",
+      "build_time_seconds": 0.685,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.62,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time 0.006630 (s)\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 0.00663,
+          "unit": "s"
+        }
+      },
+      "baseline_wall_time_seconds": 0.74,
+      "translated_wall_time_seconds": 0.62,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.1935,
+      "translated_files": {
+        "main.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <assert.h>\n#include <string.h>\n#include <chrono>\n\n#define MAXDISTANCE    (200)\n\nunsigned int minimum(unsigned int a, unsigned int b) \n{\n  return (b < a) ? b : a;\n}\n\nvoid floydWarshallCPUReference(unsigned int * pathDistanceMatrix,\n    unsigned int * pathMatrix, unsigned int numNodes)\n{\n  unsigned int distanceYtoX, distanceYtoK, distanceKtoX, indirectDistance;\n\n  unsigned int width = numNodes;\n  unsigned int yXwidth;\n\n  for(unsigned int k = 0; k < numNodes; ++k)\n  {\n    for(unsigned int y = 0; y < numNodes; ++y)\n    {\n      yXwidth =  y*numNodes;\n      for(unsigned int x = 0; x < numNodes; ++x)\n      {\n        distanceYtoX = pathDistanceMatrix[yXwidth + x];\n        distanceYtoK = pathDistanceMatrix[yXwidth + k];\n        distanceKtoX = pathDistanceMatrix[k * width + x];\n\n        indirectDistance = distanceYtoK + distanceKtoX;\n\n        if(indirectDistance < distanceYtoX)\n        {\n          pathDistanceMatrix[yXwidth + x] = indirectDistance;\n          pathMatrix[yXwidth + x]         = k;\n        }\n      }\n    }\n  }\n}\n\n__global__ void floydWarshallKernel(unsigned int * pathDistanceMatrix,\n    unsigned int * pathMatrix, unsigned int numNodes, unsigned int k)\n{\n  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;\n  unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;\n\n  if (x < numNodes && y < numNodes) {\n    unsigned int yXwidth = y * numNodes;\n    unsigned int distanceYtoX = pathDistanceMatrix[yXwidth + x];\n    unsigned int distanceYtoK = pathDistanceMatrix[yXwidth + k];\n    unsigned int distanceKtoX = pathDistanceMatrix[k * numNodes + x];\n    unsigned int indirectDistance = distanceYtoK + distanceKtoX;\n\n    if(indirectDistance < distanceYtoX)\n    {\n      pathDistanceMatrix[yXwidth + x] = indirectDistance;\n      pathMatrix[yXwidth + x]         = k;\n    }\n  }\n}\n\nint main(int argc, char** argv) {\n  if (argc != 4) {\n    printf(\"Usage: %s <number of nodes> <iterations> <block size>\\n\", argv[0]);\n    return 1;\n  }\n  \n  unsigned int numNodes = atoi(argv[1]);\n  unsigned int numIterations = atoi(argv[2]);\n  unsigned int blockSize = atoi(argv[3]);\n\n  if(numNodes % blockSize != 0) {\n    numNodes = (numNodes / blockSize + 1) * blockSize;\n  }\n\n  unsigned int* pathMatrix = NULL;\n  unsigned int* pathDistanceMatrix = NULL;\n  unsigned int* verificationPathDistanceMatrix = NULL;\n  unsigned int* verificationPathMatrix = NULL;\n  unsigned int matrixSize;\n  unsigned int matrixSizeBytes;\n\n  matrixSize = numNodes * numNodes;\n  matrixSizeBytes = numNodes * numNodes * sizeof(unsigned int);\n  pathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathDistanceMatrix != NULL) ;\n\n  pathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathMatrix != NULL) ;\n\n  srand(2);\n  for(unsigned int i = 0; i < numNodes; i++)\n    for(unsigned int j = 0; j < numNodes; j++)\n    {\n      int index = i*numNodes + j;\n      pathDistanceMatrix[index] = rand() % (MAXDISTANCE + 1);\n    }\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    unsigned int iXWidth = i * numNodes;\n    pathDistanceMatrix[iXWidth + i] = 0;\n  }\n\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    for(unsigned int j = 0; j < i; ++j)\n    {\n      pathMatrix[i * numNodes + j] = i;\n      pathMatrix[j * numNodes + i] = j;\n    }\n    pathMatrix[i * numNodes + i] = i;\n  }\n\n  verificationPathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (verificationPathDistanceMatrix != NULL);\n\n  verificationPathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert(verificationPathMatrix != NULL);\n\n  memcpy(verificationPathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes);\n  memcpy(verificationPathMatrix, pathMatrix, matrixSizeBytes);\n\n  unsigned int numPasses = numNodes;\n\n  unsigned int *d_pathDistanceMatrix = NULL;\n  unsigned int *d_pathMatrix = NULL;\n\n  cudaMalloc(&d_pathDistanceMatrix, matrixSizeBytes);\n  cudaMalloc(&d_pathMatrix, matrixSizeBytes);\n\n  cudaMemcpy(d_pathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes, cudaMemcpyHostToDevice);\n  cudaMemcpy(d_pathMatrix, pathMatrix, matrixSizeBytes, cudaMemcpyHostToDevice);\n\n  dim3 block(blockSize, blockSize);\n  dim3 grid((numNodes + blockSize - 1) / blockSize, (numNodes + blockSize - 1) / blockSize);\n\n  float total_time = 0.f;\n\n  for (unsigned int n = 0; n < numIterations; n++) {\n    auto start = std::chrono::steady_clock::now();\n\n    for(unsigned int k = 0; k < numPasses; k++)\n    {\n      floydWarshallKernel<<<grid, block>>>(d_pathDistanceMatrix, d_pathMatrix, numNodes, k);\n    }\n    \n    cudaDeviceSynchronize();\n\n    auto end = std::chrono::steady_clock::now();\n    auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    total_time += time;\n  }\n\n  printf(\"Average kernel execution time %f (s)\\n\", (total_time * 1e-9f) / numIterations);\n\n  cudaMemcpy(pathDistanceMatrix, d_pathDistanceMatrix, matrixSizeBytes, cudaMemcpyDeviceToHost);\n\n  floydWarshallCPUReference(verificationPathDistanceMatrix,\n      verificationPathMatrix, numNodes);\n  \n  if(memcmp(pathDistanceMatrix, verificationPathDistanceMatrix,\n        numNodes*numNodes*sizeof(unsigned int)) == 0)\n  {\n    printf(\"PASS\\n\");\n  }\n  else\n  {\n    printf(\"FAIL\\n\");\n    if (numNodes <= 8) \n    {\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"host: %u \", verificationPathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"device: %u \", pathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n    }\n  }\n\n  free(pathDistanceMatrix);\n  free(pathMatrix);\n  free(verificationPathDistanceMatrix);\n  free(verificationPathMatrix);\n  cudaFree(d_pathDistanceMatrix);\n  cudaFree(d_pathMatrix);\n  \n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cu"
+      ],
+      "target_files_extracted": [
+        "main.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 16.386,
+          "prompt_tokens": 1805,
+          "completion_tokens": 1742,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-floydwarshall-omp",
+      "target_spec": "hecbench-floydwarshall-cuda",
+      "kernel": "floydwarshall",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "1024",
+        "1",
+        "16"
+      ],
+      "timestamp": "2026-04-01T02:23:06Z",
+      "prompt_tokens": 1805,
+      "completion_tokens": 1740,
+      "llm_response_time_seconds": 19.399,
+      "build_status": "pass",
+      "build_time_seconds": 0.673,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.619,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time 0.006628 (s)\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 0.006628,
+          "unit": "s"
+        }
+      },
+      "baseline_wall_time_seconds": 0.74,
+      "translated_wall_time_seconds": 0.619,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 1.1955,
+      "translated_files": {
+        "main.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <assert.h>\n#include <string.h>\n#include <chrono>\n\n#define MAXDISTANCE    (200)\n\nunsigned int minimum(unsigned int a, unsigned int b) \n{\n  return (b < a) ? b : a;\n}\n\nvoid floydWarshallCPUReference(unsigned int * pathDistanceMatrix,\n    unsigned int * pathMatrix, unsigned int numNodes)\n{\n  unsigned int distanceYtoX, distanceYtoK, distanceKtoX, indirectDistance;\n\n  unsigned int width = numNodes;\n  unsigned int yXwidth;\n\n  for(unsigned int k = 0; k < numNodes; ++k)\n  {\n    for(unsigned int y = 0; y < numNodes; ++y)\n    {\n      yXwidth =  y*numNodes;\n      for(unsigned int x = 0; x < numNodes; ++x)\n      {\n        distanceYtoX = pathDistanceMatrix[yXwidth + x];\n        distanceYtoK = pathDistanceMatrix[yXwidth + k];\n        distanceKtoX = pathDistanceMatrix[k * width + x];\n\n        indirectDistance = distanceYtoK + distanceKtoX;\n\n        if(indirectDistance < distanceYtoX)\n        {\n          pathDistanceMatrix[yXwidth + x] = indirectDistance;\n          pathMatrix[yXwidth + x]         = k;\n        }\n      }\n    }\n  }\n}\n\n__global__ void floydWarshallKernel(unsigned int *pathDistanceMatrix,\n                                    unsigned int *pathMatrix,\n                                    unsigned int numNodes,\n                                    unsigned int k)\n{\n  unsigned int y = blockIdx.y * blockDim.y + threadIdx.y;\n  unsigned int x = blockIdx.x * blockDim.x + threadIdx.x;\n\n  if (y < numNodes && x < numNodes) {\n    unsigned int yXwidth = y * numNodes;\n    unsigned int distanceYtoX = pathDistanceMatrix[yXwidth + x];\n    unsigned int distanceYtoK = pathDistanceMatrix[yXwidth + k];\n    unsigned int distanceKtoX = pathDistanceMatrix[k * numNodes + x];\n    unsigned int indirectDistance = distanceYtoK + distanceKtoX;\n\n    if (indirectDistance < distanceYtoX) {\n      pathDistanceMatrix[yXwidth + x] = indirectDistance;\n      pathMatrix[yXwidth + x]         = k;\n    }\n  }\n}\n\nint main(int argc, char** argv) {\n  if (argc != 4) {\n    printf(\"Usage: %s <number of nodes> <iterations> <block size>\\n\", argv[0]);\n    return 1;\n  }\n  \n  unsigned int numNodes = atoi(argv[1]);\n  unsigned int numIterations = atoi(argv[2]);\n  unsigned int blockSize = atoi(argv[3]);\n\n  if(numNodes % blockSize != 0) {\n    numNodes = (numNodes / blockSize + 1) * blockSize;\n  }\n\n  unsigned int* pathMatrix = NULL;\n  unsigned int* pathDistanceMatrix = NULL;\n  unsigned int* verificationPathDistanceMatrix = NULL;\n  unsigned int* verificationPathMatrix = NULL;\n  unsigned int matrixSize;\n  unsigned int matrixSizeBytes;\n\n  matrixSize = numNodes * numNodes;\n  matrixSizeBytes = numNodes * numNodes * sizeof(unsigned int);\n  pathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathDistanceMatrix != NULL);\n\n  pathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathMatrix != NULL);\n\n  srand(2);\n  for(unsigned int i = 0; i < numNodes; i++)\n    for(unsigned int j = 0; j < numNodes; j++)\n    {\n      int index = i*numNodes + j;\n      pathDistanceMatrix[index] = rand() % (MAXDISTANCE + 1);\n    }\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    unsigned int iXWidth = i * numNodes;\n    pathDistanceMatrix[iXWidth + i] = 0;\n  }\n\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    for(unsigned int j = 0; j < i; ++j)\n    {\n      pathMatrix[i * numNodes + j] = i;\n      pathMatrix[j * numNodes + i] = j;\n    }\n    pathMatrix[i * numNodes + i] = i;\n  }\n\n  verificationPathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (verificationPathDistanceMatrix != NULL);\n\n  verificationPathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert(verificationPathMatrix != NULL);\n\n  memcpy(verificationPathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes);\n  memcpy(verificationPathMatrix, pathMatrix, matrixSizeBytes);\n\n  unsigned int numPasses = numNodes;\n\n  unsigned int *d_pathDistanceMatrix = NULL;\n  unsigned int *d_pathMatrix = NULL;\n\n  cudaMalloc(&d_pathDistanceMatrix, matrixSizeBytes);\n  cudaMalloc(&d_pathMatrix, matrixSizeBytes);\n\n  cudaMemcpy(d_pathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes, cudaMemcpyHostToDevice);\n  cudaMemcpy(d_pathMatrix, pathMatrix, matrixSizeBytes, cudaMemcpyHostToDevice);\n\n  dim3 block(blockSize, blockSize);\n  dim3 grid((numNodes + blockSize - 1) / blockSize, (numNodes + blockSize - 1) / blockSize);\n\n  float total_time = 0.f;\n\n  for (unsigned int n = 0; n < numIterations; n++) {\n    auto start = std::chrono::steady_clock::now();\n\n    for(unsigned int k = 0; k < numPasses; k++)\n    {\n      floydWarshallKernel<<<grid, block>>>(d_pathDistanceMatrix, d_pathMatrix, numNodes, k);\n    }\n    cudaDeviceSynchronize();\n\n    auto end = std::chrono::steady_clock::now();\n    auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    total_time += time;\n  }\n\n  printf(\"Average kernel execution time %f (s)\\n\", (total_time * 1e-9f) / numIterations);\n\n  cudaMemcpy(pathDistanceMatrix, d_pathDistanceMatrix, matrixSizeBytes, cudaMemcpyDeviceToHost);\n\n  floydWarshallCPUReference(verificationPathDistanceMatrix,\n      verificationPathMatrix, numNodes);\n  if(memcmp(pathDistanceMatrix, verificationPathDistanceMatrix,\n        numNodes*numNodes*sizeof(unsigned int)) == 0)\n  {\n    printf(\"PASS\\n\");\n  }\n  else\n  {\n    printf(\"FAIL\\n\");\n    if (numNodes <= 8) \n    {\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"host: %u \", verificationPathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"device: %u \", pathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n    }\n  }\n\n  cudaFree(d_pathDistanceMatrix);\n  cudaFree(d_pathMatrix);\n  free(pathDistanceMatrix);\n  free(pathMatrix);\n  free(verificationPathDistanceMatrix);\n  free(verificationPathMatrix);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cu"
+      ],
+      "target_files_extracted": [
+        "main.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 19.399,
+          "prompt_tokens": 1805,
+          "completion_tokens": 1740,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-iso2dfd-omp",
+      "target_spec": "hecbench-iso2dfd-cuda",
+      "kernel": "iso2dfd",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "2048",
+        "2048",
+        "10"
+      ],
+      "timestamp": "2026-04-01T02:23:27Z",
+      "prompt_tokens": 2827,
+      "completion_tokens": 2644,
+      "llm_response_time_seconds": 33.962,
+      "build_status": "pass",
+      "build_time_seconds": 1.102,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.207,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nTotal kernel execution time 1.50753 (ms)\nAverage kernel execution time 150.753 (us)\nComputing wavefield in CPU ..\nInitializing ... \nCPU time: 19 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "total_kernel_time": {
+          "value": 1.50753,
+          "unit": "ms"
+        },
+        "avg_kernel_time": {
+          "value": 150.753,
+          "unit": "us"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.207,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "iso2dfd.cu": "#include <fstream>\n#include <iostream>\n#include <cuda_runtime.h>\n#include <chrono>\n#include <cmath>\n#include <cstring>\n\n#define DT 0.002f\n#define DXY 20.0f\n#define HALF_LENGTH 1\n\n#define MIN(a, b) (a) < (b) ? (a) : (b)\n\nvoid usage(std::string programName) {\n  std::cout << \" Incorrect parameters \" << std::endl;\n  std::cout << \" Usage: \";\n  std::cout << programName << \" n1 n2 Iterations \" << std::endl\n            << std::endl;\n  std::cout << \" n1 n2      : Grid sizes for the stencil \" << std::endl;\n  std::cout << \" Iterations : No. of timesteps. \" << std::endl;\n}\n\nvoid initialize(float* ptr_prev, float* ptr_next, float* ptr_vel, size_t nRows,\n                size_t nCols) {\n  std::cout << \"Initializing ... \" << std::endl;\n\n  float wavelet[12] = {0.016387336, -0.041464937, -0.067372555, 0.386110067,\n                       0.812723635, 0.416998396,  0.076488599,  -0.059434419,\n                       0.023680172, 0.005611435,  0.001823209,  -0.000720549};\n\n  for (size_t i = 0; i < nRows; i++) {\n    size_t offset = i * nCols;\n\n    for (int k = 0; k < nCols; k++) {\n      ptr_prev[offset + k] = 0.0f;\n      ptr_next[offset + k] = 0.0f;\n      \n      ptr_vel[offset + k] = 2250000.0f;\n    }\n  }\n  \n  for (int s = 11; s >= 0; s--) {\n    for (size_t i = nRows / 2 - s; i < nRows / 2 + s; i++) {\n      size_t offset = i * nCols;\n      for (size_t k = nCols / 2 - s; k < nCols / 2 + s; k++) {\n        ptr_prev[offset + k] = wavelet[s];\n      }\n    }\n  }\n}\n\nbool within_epsilon(float* output, float* reference, const size_t dimx,\n                    const size_t dimy, const unsigned int radius,\n                    const float delta = 0.01f) {\n  FILE* fp = fopen(\"./error_diff.txt\", \"w\");\n  if (!fp) fp = stderr;\n\n  bool error = false;\n  \n  double norm2 = 0;\n\n  for (size_t iy = 0; iy < dimy; iy++) {\n    for (size_t ix = 0; ix < dimx; ix++) {\n      if (ix >= radius && ix < (dimx - radius) && iy >= radius &&\n          iy < (dimy - radius)) {\n        float difference = fabsf(*reference - *output);\n        norm2 += difference * difference;\n        if (difference > delta) {\n          error = true;\n          fprintf(fp, \" ERROR: (%zu,%zu)\\t%e instead of %e (|e|=%e)\\n\", ix, iy,\n                  *output, *reference, difference);\n        }\n      }\n\n      ++output;\n      ++reference;\n    }\n  }\n\n  if (fp != stderr) fclose(fp);\n  norm2 = sqrt(norm2);\n  if (error) printf(\"error (Euclidean norm): %.9e\\n\", norm2);\n  return error;\n}\n\nvoid iso_2dfd_iteration_cpu(float* next, float* prev, float* vel,\n                            const float dtDIVdxy, int nRows, int nCols,\n                            int nIterations) {\n  for (unsigned int k = 0; k < nIterations; k += 1) {\n    for (size_t i = 1; i < nRows - HALF_LENGTH; i += 1) {\n      for (size_t j = 1; j < nCols - HALF_LENGTH; j += 1) {\n        \n        size_t gid = j + (i * nCols);\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n\n    \n    float* swap = next;\n    next = prev;\n    prev = swap;\n  }\n}\n\n__global__ void iso_2dfd_kernel(float* next, const float* prev, const float* vel, \n                     const float dtDIVdxy, const size_t nRows, const size_t nCols) {\n  size_t gidRow = blockIdx.y * blockDim.y + threadIdx.y;\n  size_t gidCol = blockIdx.x * blockDim.x + threadIdx.x;\n  \n  if (gidRow < nRows && gidCol < nCols) {\n    size_t gid = gidRow * nCols + gidCol;\n    \n    if ((gidCol >= HALF_LENGTH && gidCol < nCols - HALF_LENGTH) &&\n        (gidRow >= HALF_LENGTH && gidRow < nRows - HALF_LENGTH)) {\n      \n      float value = 0.f;\n      value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n      value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n      value *= dtDIVdxy * vel[gid];\n      next[gid] = 2.f * prev[gid] - next[gid] + value;\n    }\n  }\n}\n\nint main(int argc, char* argv[]) {\n  \n  float* prev_base_host;\n  float* next_base_host;\n  float* next_cpu;\n  float* vel_base_host;\n\n  float* prev_base_dev;\n  float* next_base_dev;\n  float* vel_base_dev;\n\n  bool error = false;\n\n  size_t nRows, nCols;\n  unsigned int nIterations;\n\n  \n  try {\n    nRows = std::stoi(argv[1]);\n    nCols = std::stoi(argv[2]);\n    nIterations = std::stoi(argv[3]);\n  }\n\n  catch (...) {\n    usage(argv[0]);\n    return 1;\n  }\n\n  \n  size_t nsize = nRows * nCols;\n  size_t nbytes = nsize * sizeof(float);\n\n  \n  prev_base_host = new float[nsize];\n  next_base_host = new float[nsize];\n  next_cpu = new float[nsize];\n  vel_base_host = new float[nsize];\n\n  \n  \n  float dtDIVdxy = (DT * DT) / (DXY * DXY);\n\n  \n  initialize(prev_base_host, next_base_host, vel_base_host, nRows, nCols);\n\n  std::cout << \"Grid Sizes: \" << nRows << \" \" << nCols << std::endl;\n  std::cout << \"Iterations: \" << nIterations << std::endl;\n  std::cout << std::endl;\n\n  cudaMalloc(&prev_base_dev, nbytes);\n  cudaMalloc(&next_base_dev, nbytes);\n  cudaMalloc(&vel_base_dev, nbytes);\n\n  cudaMemcpy(prev_base_dev, prev_base_host, nbytes, cudaMemcpyHostToDevice);\n  cudaMemcpy(next_base_dev, next_base_host, nbytes, cudaMemcpyHostToDevice);\n  cudaMemcpy(vel_base_dev, vel_base_host, nbytes, cudaMemcpyHostToDevice);\n\n  std::cout << \"Computing wavefield in device ..\" << std::endl;\n\n  dim3 blockDim(16, 16);\n  dim3 gridDim((nCols + blockDim.x - 1) / blockDim.x, (nRows + blockDim.y - 1) / blockDim.y);\n\n  auto kstart = std::chrono::steady_clock::now();\n  \n  for (unsigned int k = 0; k < nIterations; k += 1) {\n    float* next_ptr = (k % 2) ? prev_base_dev : next_base_dev;\n    const float* prev_ptr = (k % 2) ? next_base_dev : prev_base_dev;\n    \n    iso_2dfd_kernel<<<gridDim, blockDim>>>(next_ptr, prev_ptr, vel_base_dev, dtDIVdxy, nRows, nCols);\n    \n    cudaDeviceSynchronize();\n  }  \n  \n  auto kend = std::chrono::steady_clock::now();\n  auto ktime = std::chrono::duration_cast<std::chrono::nanoseconds>(kend - kstart).count();\n  std::cout << \"Total kernel execution time \" << ktime * 1e-6f << \" (ms)\\n\";\n  std::cout << \"Average kernel execution time \" << (ktime * 1e-3f) / nIterations << \" (us)\\n\";\n\n  cudaMemcpy(next_base_host, next_base_dev, nbytes, cudaMemcpyDeviceToHost);\n\n  \n  std::ofstream outFile;\n  outFile.open(\"wavefield_snapshot.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_base_host), nbytes);\n  outFile.close();\n\n  \n  \n  std::cout << \"Computing wavefield in CPU ..\" << std::endl;\n  \n  initialize(prev_base_host, next_cpu, vel_base_host, nRows, nCols);\n\n  \n  \n  auto start = std::chrono::steady_clock::now();\n  iso_2dfd_iteration_cpu(next_cpu, prev_base_host, vel_base_host, dtDIVdxy, nRows, nCols,\n                         nIterations);\n\n  \n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start)\n                  .count();\n  std::cout << \"CPU time: \" << time << \" ms\" << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Check difference between final wavefields computed in device and host\"\n            << std::endl;\n  error = within_epsilon(next_base_host, next_cpu, nRows, nCols, HALF_LENGTH, 0.1f);\n  std::cout << (error ? \"FAIL\" : \"PASS\") << std::endl;\n\n  \n  outFile.open(\"wavefield_snapshot_cpu.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_cpu), nbytes);\n  outFile.close();\n\n  std::cout << \"Final wavefields (from device and CPU) written to disk\"\n            << std::endl;\n  std::cout << \"Finished.  \" << std::endl;\n\n  \n  delete[] prev_base_host;\n  delete[] next_base_host;\n  delete[] vel_base_host;\n  delete[] next_cpu;\n\n  cudaFree(prev_base_dev);\n  cudaFree(next_base_dev);\n  cudaFree(vel_base_dev);\n\n  return error ? 1 : 0;\n}\n"
+      },
+      "target_files_expected": [
+        "iso2dfd.cu"
+      ],
+      "target_files_extracted": [
+        "iso2dfd.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 33.962,
+          "prompt_tokens": 2827,
+          "completion_tokens": 2644,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-iso2dfd-omp",
+      "target_spec": "hecbench-iso2dfd-cuda",
+      "kernel": "iso2dfd",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-01T02:24:02Z",
+      "prompt_tokens": 2827,
+      "completion_tokens": 2630,
+      "llm_response_time_seconds": 43.3,
+      "build_status": "fail",
+      "build_time_seconds": 0.339,
+      "build_error_snippet": "iso2dfd.cu(188): error: \"blockDim\" has already been declared in the current scope\n    dim3 blockDim((nCols + blockDim.x - 1) / blockDim.x, (nRows + blockDim.y - 1) / blockDim.y);\n         ^\n\niso2dfd.cu(188): warning #549-D: variable \"blockDim\" is used before its value is set\n    dim3 blockDim((nCols + blockDim.x - 1) / blockDim.x, (nRows + blockDim.y - 1) / blockDim.y);\n                           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n1 error detected in the compilation of \"iso2dfd.cu\".\nmake: *** [Makefile:52: iso2dfd.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n1 error detected in the compilation of \"iso2dfd.cu\".\nmake: *** [Makefile:52: iso2dfd.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "iso2dfd.cu": "#include <fstream>\n#include <iostream>\n#include <cuda_runtime.h>\n#include <chrono>\n#include <cmath>\n#include <cstring>\n\n#define DT 0.002f\n#define DXY 20.0f\n#define HALF_LENGTH 1\n\n#define MIN(a, b) (a) < (b) ? (a) : (b)\n\nvoid usage(std::string programName) {\n  std::cout << \" Incorrect parameters \" << std::endl;\n  std::cout << \" Usage: \";\n  std::cout << programName << \" n1 n2 Iterations \" << std::endl\n            << std::endl;\n  std::cout << \" n1 n2      : Grid sizes for the stencil \" << std::endl;\n  std::cout << \" Iterations : No. of timesteps. \" << std::endl;\n}\n\nvoid initialize(float* ptr_prev, float* ptr_next, float* ptr_vel, size_t nRows,\n                size_t nCols) {\n  std::cout << \"Initializing ... \" << std::endl;\n\n  float wavelet[12] = {0.016387336, -0.041464937, -0.067372555, 0.386110067,\n                       0.812723635, 0.416998396,  0.076488599,  -0.059434419,\n                       0.023680172, 0.005611435,  0.001823209,  -0.000720549};\n\n  for (size_t i = 0; i < nRows; i++) {\n    size_t offset = i * nCols;\n\n    for (int k = 0; k < nCols; k++) {\n      ptr_prev[offset + k] = 0.0f;\n      ptr_next[offset + k] = 0.0f;\n      \n      ptr_vel[offset + k] = 2250000.0f;\n    }\n  }\n  \n  for (int s = 11; s >= 0; s--) {\n    for (size_t i = nRows / 2 - s; i < nRows / 2 + s; i++) {\n      size_t offset = i * nCols;\n      for (size_t k = nCols / 2 - s; k < nCols / 2 + s; k++) {\n        ptr_prev[offset + k] = wavelet[s];\n      }\n    }\n  }\n}\n\nbool within_epsilon(float* output, float* reference, const size_t dimx,\n                    const size_t dimy, const unsigned int radius,\n                    const float delta = 0.01f) {\n  FILE* fp = fopen(\"./error_diff.txt\", \"w\");\n  if (!fp) fp = stderr;\n\n  bool error = false;\n  \n  double norm2 = 0;\n\n  for (size_t iy = 0; iy < dimy; iy++) {\n    for (size_t ix = 0; ix < dimx; ix++) {\n      if (ix >= radius && ix < (dimx - radius) && iy >= radius &&\n          iy < (dimy - radius)) {\n        float difference = fabsf(*reference - *output);\n        norm2 += difference * difference;\n        if (difference > delta) {\n          error = true;\n          fprintf(fp, \" ERROR: (%zu,%zu)\\t%e instead of %e (|e|=%e)\\n\", ix, iy,\n                  *output, *reference, difference);\n        }\n      }\n\n      ++output;\n      ++reference;\n    }\n  }\n\n  if (fp != stderr) fclose(fp);\n  norm2 = sqrt(norm2);\n  if (error) printf(\"error (Euclidean norm): %.9e\\n\", norm2);\n  return error;\n}\n\nvoid iso_2dfd_iteration_cpu(float* next, float* prev, float* vel,\n                            const float dtDIVdxy, int nRows, int nCols,\n                            int nIterations) {\n  for (unsigned int k = 0; k < nIterations; k += 1) {\n    for (size_t i = 1; i < nRows - HALF_LENGTH; i += 1) {\n      for (size_t j = 1; j < nCols - HALF_LENGTH; j += 1) {\n        \n        size_t gid = j + (i * nCols);\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n\n    \n    float* swap = next;\n    next = prev;\n    prev = swap;\n  }\n}\n\n__global__ void iso_2dfd_kernel(float* next, const float* prev, const float* vel, \n                     const float dtDIVdxy, const size_t nRows, const size_t nCols) {\n  size_t gidRow = blockIdx.y * blockDim.y + threadIdx.y;\n  size_t gidCol = blockIdx.x * blockDim.x + threadIdx.x;\n\n  if (gidRow < nRows && gidCol < nCols) {\n    size_t gid = gidRow * nCols + gidCol;\n    \n    if ((gidCol >= HALF_LENGTH && gidCol < nCols - HALF_LENGTH) &&\n        (gidRow >= HALF_LENGTH && gidRow < nRows - HALF_LENGTH)) {\n      \n      float value = 0.f;\n      value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n      value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n      value *= dtDIVdxy * vel[gid];\n      next[gid] = 2.f * prev[gid] - next[gid] + value;\n    }\n  }\n}\n\nint main(int argc, char* argv[]) {\n  \n  float* prev_base;\n  float* next_base;\n  float* next_cpu;\n  \n  float* vel_base;\n  float* d_prev;\n  float* d_next;\n  float* d_vel;\n\n  bool error = false;\n\n  size_t nRows, nCols;\n  unsigned int nIterations;\n\n  \n  try {\n    nRows = std::stoi(argv[1]);\n    nCols = std::stoi(argv[2]);\n    nIterations = std::stoi(argv[3]);\n  }\n\n  catch (...) {\n    usage(argv[0]);\n    return 1;\n  }\n\n  \n  size_t nsize = nRows * nCols;\n\n  \n  prev_base = new float[nsize];\n  next_base = new float[nsize];\n  next_cpu = new float[nsize];\n  vel_base = new float[nsize];\n\n  \n  \n  float dtDIVdxy = (DT * DT) / (DXY * DXY);\n\n  \n  initialize(prev_base, next_base, vel_base, nRows, nCols);\n\n  std::cout << \"Grid Sizes: \" << nRows << \" \" << nCols << std::endl;\n  std::cout << \"Iterations: \" << nIterations << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Computing wavefield in device ..\" << std::endl;\n\n  cudaMalloc(&d_prev, nsize * sizeof(float));\n  cudaMalloc(&d_next, nsize * sizeof(float));\n  cudaMalloc(&d_vel, nsize * sizeof(float));\n\n  cudaMemcpy(d_prev, prev_base, nsize * sizeof(float), cudaMemcpyHostToDevice);\n  cudaMemcpy(d_next, next_base, nsize * sizeof(float), cudaMemcpyHostToDevice);\n  cudaMemcpy(d_vel, vel_base, nsize * sizeof(float), cudaMemcpyHostToDevice);\n\n  dim3 blockDim(16, 16);\n  dim3 blockDim((nCols + blockDim.x - 1) / blockDim.x, (nRows + blockDim.y - 1) / blockDim.y);\n\n  auto kstart = std::chrono::steady_clock::now();\n  \n  for (unsigned int k = 0; k < nIterations; k += 1) {\n    float* d_curr = (k % 2) ? d_prev : d_next;\n    float* d_prev_iter = (k % 2) ? d_next : d_prev;\n    \n    iso_2dfd_kernel<<<blockDim, blockDim>>>(d_curr, d_prev_iter, d_vel, dtDIVdxy, nRows, nCols);\n  }  \n  \n  cudaDeviceSynchronize();\n\n  auto kend = std::chrono::steady_clock::now();\n  auto ktime = std::chrono::duration_cast<std::chrono::nanoseconds>(kend - kstart).count();\n  std::cout << \"Total kernel execution time \" << ktime * 1e-6f << \" (ms)\\n\";\n  std::cout << \"Average kernel execution time \" << (ktime * 1e-3f) / nIterations << \" (us)\\n\";\n\n  cudaMemcpy(next_base, (nIterations % 2) ? d_prev : d_next, nsize * sizeof(float), cudaMemcpyDeviceToHost);\n\n  \n  std::ofstream outFile;\n  outFile.open(\"wavefield_snapshot.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_base), nsize * sizeof(float));\n  outFile.close();\n\n  \n  \n  std::cout << \"Computing wavefield in CPU ..\" << std::endl;\n  \n  initialize(prev_base, next_cpu, vel_base, nRows, nCols);\n\n  \n  \n  auto start = std::chrono::steady_clock::now();\n  iso_2dfd_iteration_cpu(next_cpu, prev_base, vel_base, dtDIVdxy, nRows, nCols,\n                         nIterations);\n\n  \n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start)\n                  .count();\n  std::cout << \"CPU time: \" << time << \" ms\" << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Check difference between final wavefields computed in device and host\"\n            << std::endl;\n  error = within_epsilon(next_base, next_cpu, nRows, nCols, HALF_LENGTH, 0.1f);\n  std::cout << (error ? \"FAIL\" : \"PASS\") << std::endl;\n\n  \n  outFile.open(\"wavefield_snapshot_cpu.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_cpu), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Final wavefields (from device and CPU) written to disk\"\n            << std::endl;\n  std::cout << \"Finished.  \" << std::endl;\n\n  \n  delete[] prev_base;\n  delete[] next_base;\n  delete[] vel_base;\n  cudaFree(d_prev);\n  cudaFree(d_next);\n  cudaFree(d_vel);\n\n  return error ? 1 : 0;\n}\n"
+      },
+      "target_files_expected": [
+        "iso2dfd.cu"
+      ],
+      "target_files_extracted": [
+        "iso2dfd.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 43.3,
+          "prompt_tokens": 2827,
+          "completion_tokens": 2630,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "iso2dfd.cu(188): error: \"blockDim\" has already been declared in the current scope\n    dim3 blockDim((nCols + blockDim.x - 1) / blockDim.x, (nRows + blockDim.y - 1) / blockDim.y);\n         ^\n\niso2dfd.cu(188): warning #549-D: variable \"blockDim\" is used before its value is set\n    dim3 blockDim((nCols + blockDim.x - 1) / blockDim.x, (nRows + blockDim.y - 1) / blockDim.y);\n                           ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\n1 error detected in the compilation of \"iso2dfd.cu\".\nmake: *** [Makefile:52: iso2dfd.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-iso2dfd-omp",
+      "target_spec": "hecbench-iso2dfd-cuda",
+      "kernel": "iso2dfd",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "2048",
+        "2048",
+        "10"
+      ],
+      "timestamp": "2026-04-01T02:24:46Z",
+      "prompt_tokens": 2827,
+      "completion_tokens": 2610,
+      "llm_response_time_seconds": 30.459,
+      "build_status": "pass",
+      "build_time_seconds": 1.098,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.207,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nTotal kernel execution time 1.48065 (ms)\nAverage kernel execution time 148.065 (us)\nComputing wavefield in CPU ..\nInitializing ... \nCPU time: 19 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "total_kernel_time": {
+          "value": 1.48065,
+          "unit": "ms"
+        },
+        "avg_kernel_time": {
+          "value": 148.065,
+          "unit": "us"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.207,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "iso2dfd.cu": "#include <fstream>\n#include <iostream>\n#include <cuda_runtime.h>\n#include <chrono>\n#include <cmath>\n#include <cstring>\n\n#define DT 0.002f\n#define DXY 20.0f\n#define HALF_LENGTH 1\n\n#define MIN(a, b) (a) < (b) ? (a) : (b)\n\nvoid usage(std::string programName) {\n  std::cout << \" Incorrect parameters \" << std::endl;\n  std::cout << \" Usage: \";\n  std::cout << programName << \" n1 n2 Iterations \" << std::endl\n            << std::endl;\n  std::cout << \" n1 n2      : Grid sizes for the stencil \" << std::endl;\n  std::cout << \" Iterations : No. of timesteps. \" << std::endl;\n}\n\nvoid initialize(float* ptr_prev, float* ptr_next, float* ptr_vel, size_t nRows,\n                size_t nCols) {\n  std::cout << \"Initializing ... \" << std::endl;\n\n  float wavelet[12] = {0.016387336, -0.041464937, -0.067372555, 0.386110067,\n                       0.812723635, 0.416998396,  0.076488599,  -0.059434419,\n                       0.023680172, 0.005611435,  0.001823209,  -0.000720549};\n\n  for (size_t i = 0; i < nRows; i++) {\n    size_t offset = i * nCols;\n\n    for (int k = 0; k < nCols; k++) {\n      ptr_prev[offset + k] = 0.0f;\n      ptr_next[offset + k] = 0.0f;\n      \n      ptr_vel[offset + k] = 2250000.0f;\n    }\n  }\n  \n  for (int s = 11; s >= 0; s--) {\n    for (size_t i = nRows / 2 - s; i < nRows / 2 + s; i++) {\n      size_t offset = i * nCols;\n      for (size_t k = nCols / 2 - s; k < nCols / 2 + s; k++) {\n        ptr_prev[offset + k] = wavelet[s];\n      }\n    }\n  }\n}\n\nbool within_epsilon(float* output, float* reference, const size_t dimx,\n                    const size_t dimy, const unsigned int radius,\n                    const float delta = 0.01f) {\n  FILE* fp = fopen(\"./error_diff.txt\", \"w\");\n  if (!fp) fp = stderr;\n\n  bool error = false;\n  double norm2 = 0;\n\n  for (size_t iy = 0; iy < dimy; iy++) {\n    for (size_t ix = 0; ix < dimx; ix++) {\n      if (ix >= radius && ix < (dimx - radius) && iy >= radius &&\n          iy < (dimy - radius)) {\n        float difference = fabsf(*reference - *output);\n        norm2 += difference * difference;\n        if (difference > delta) {\n          error = true;\n          fprintf(fp, \" ERROR: (%zu,%zu)\\t%e instead of %e (|e|=%e)\\n\", ix, iy,\n                  *output, *reference, difference);\n        }\n      }\n\n      ++output;\n      ++reference;\n    }\n  }\n\n  if (fp != stderr) fclose(fp);\n  norm2 = sqrt(norm2);\n  if (error) printf(\"error (Euclidean norm): %.9e\\n\", norm2);\n  return error;\n}\n\nvoid iso_2dfd_iteration_cpu(float* next, float* prev, float* vel,\n                            const float dtDIVdxy, int nRows, int nCols,\n                            int nIterations) {\n  for (unsigned int k = 0; k < nIterations; k += 1) {\n    for (size_t i = 1; i < nRows - HALF_LENGTH; i += 1) {\n      for (size_t j = 1; j < nCols - HALF_LENGTH; j += 1) {\n        size_t gid = j + (i * nCols);\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n\n    float* swap = next;\n    next = prev;\n    prev = swap;\n  }\n}\n\n__global__ void iso_2dfd_kernel(float* next, const float* prev, const float* vel, \n                     const float dtDIVdxy, const size_t nRows, const size_t nCols) {\n  size_t gidRow = blockIdx.y * blockDim.y + threadIdx.y;\n  size_t gidCol = blockIdx.x * blockDim.x + threadIdx.x;\n  \n  if (gidRow < nRows && gidCol < nCols) {\n    size_t gid = gidRow * nCols + gidCol;\n    \n    if ((gidCol >= HALF_LENGTH && gidCol < nCols - HALF_LENGTH) &&\n        (gidRow >= HALF_LENGTH && gidRow < nRows - HALF_LENGTH)) {\n      float value = 0.f;\n      value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n      value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n      value *= dtDIVdxy * vel[gid];\n      next[gid] = 2.f * prev[gid] - next[gid] + value;\n    }\n  }\n}\n\nint main(int argc, char* argv[]) {\n  float* prev_base;\n  float* next_base;\n  float* next_cpu;\n  float* vel_base;\n  \n  float* d_prev;\n  float* d_next;\n  float* d_vel;\n\n  bool error = false;\n\n  size_t nRows, nCols;\n  unsigned int nIterations;\n\n  try {\n    nRows = std::stoi(argv[1]);\n    nCols = std::stoi(argv[2]);\n    nIterations = std::stoi(argv[3]);\n  }\n  catch (...) {\n    usage(argv[0]);\n    return 1;\n  }\n\n  size_t nsize = nRows * nCols;\n\n  prev_base = new float[nsize];\n  next_base = new float[nsize];\n  next_cpu = new float[nsize];\n  vel_base = new float[nsize];\n\n  float dtDIVdxy = (DT * DT) / (DXY * DXY);\n\n  initialize(prev_base, next_base, vel_base, nRows, nCols);\n\n  std::cout << \"Grid Sizes: \" << nRows << \" \" << nCols << std::endl;\n  std::cout << \"Iterations: \" << nIterations << std::endl;\n  std::cout << std::endl;\n\n  cudaMalloc(&d_prev, nsize * sizeof(float));\n  cudaMalloc(&d_next, nsize * sizeof(float));\n  cudaMalloc(&d_vel, nsize * sizeof(float));\n\n  cudaMemcpy(d_prev, prev_base, nsize * sizeof(float), cudaMemcpyHostToDevice);\n  cudaMemcpy(d_next, next_base, nsize * sizeof(float), cudaMemcpyHostToDevice);\n  cudaMemcpy(d_vel, vel_base, nsize * sizeof(float), cudaMemcpyHostToDevice);\n\n  std::cout << \"Computing wavefield in device ..\" << std::endl;\n\n  dim3 block(16, 16);\n  dim3 grid((nCols + block.x - 1) / block.x, (nRows + block.y - 1) / block.y);\n\n  auto kstart = std::chrono::steady_clock::now();\n  \n  for (unsigned int k = 0; k < nIterations; k += 1) {\n    float* d_curr = (k % 2) ? d_prev : d_next;\n    float* d_prev_iter = (k % 2) ? d_next : d_prev;\n    \n    iso_2dfd_kernel<<<grid, block>>>(d_curr, d_prev_iter, d_vel, dtDIVdxy, nRows, nCols);\n  }  \n  \n  cudaDeviceSynchronize();\n\n  auto kend = std::chrono::steady_clock::now();\n  auto ktime = std::chrono::duration_cast<std::chrono::nanoseconds>(kend - kstart).count();\n  std::cout << \"Total kernel execution time \" << ktime * 1e-6f << \" (ms)\\n\";\n  std::cout << \"Average kernel execution time \" << (ktime * 1e-3f) / nIterations << \" (us)\\n\";\n\n  cudaMemcpy(next_base, (nIterations % 2) ? d_prev : d_next, nsize * sizeof(float), cudaMemcpyDeviceToHost);\n\n  std::ofstream outFile;\n  outFile.open(\"wavefield_snapshot.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_base), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Computing wavefield in CPU ..\" << std::endl;\n  \n  initialize(prev_base, next_cpu, vel_base, nRows, nCols);\n\n  auto start = std::chrono::steady_clock::now();\n  iso_2dfd_iteration_cpu(next_cpu, prev_base, vel_base, dtDIVdxy, nRows, nCols,\n                         nIterations);\n\n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();\n  std::cout << \"CPU time: \" << time << \" ms\" << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Check difference between final wavefields computed in device and host\"\n            << std::endl;\n  error = within_epsilon(next_base, next_cpu, nRows, nCols, HALF_LENGTH, 0.1f);\n  std::cout << (error ? \"FAIL\" : \"PASS\") << std::endl;\n\n  outFile.open(\"wavefield_snapshot_cpu.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_cpu), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Final wavefields (from device and CPU) written to disk\"\n            << std::endl;\n  std::cout << \"Finished.  \" << std::endl;\n\n  cudaFree(d_prev);\n  cudaFree(d_next);\n  cudaFree(d_vel);\n\n  delete[] prev_base;\n  delete[] next_base;\n  delete[] vel_base;\n\n  return error ? 1 : 0;\n}\n"
+      },
+      "target_files_expected": [
+        "iso2dfd.cu"
+      ],
+      "target_files_extracted": [
+        "iso2dfd.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 30.459,
+          "prompt_tokens": 2827,
+          "completion_tokens": 2610,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-heat2d-omp",
+      "target_spec": "hecbench-heat2d-cuda",
+      "kernel": "heat2d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "4096",
+        "4096",
+        "10"
+      ],
+      "timestamp": "2026-04-01T02:25:17Z",
+      "prompt_tokens": 1740,
+      "completion_tokens": 1693,
+      "llm_response_time_seconds": 18.062,
+      "build_status": "pass",
+      "build_time_seconds": 0.625,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.656,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    314.0 usec/iter, BW = 427.445 GB/s, P = 320.584 Gflop/s\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "throughput": {
+          "value": 427.445,
+          "unit": "GB/s"
+        }
+      },
+      "baseline_wall_time_seconds": 0.231,
+      "translated_wall_time_seconds": 0.656,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.3521,
+      "translated_files": {
+        "main.cu": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <assert.h>\n#include <sys/time.h>\n#include <math.h>\n#include <utility>\n\n#define NTX 16\n#define NTY 16\n\ndouble stop_watch(double t0)\n{\n  double time;\n  struct timeval t;\n  gettimeofday(&t, NULL);\n  time = t.tv_sec * 1e6 + t.tv_usec;\n  return time-t0;\n}\n\nvoid usage(char *argv[]) {\n  fprintf(stderr, \" Usage: %s LX LY NITER\\n\", argv[0]);\n  return;\n}\n\nvoid reference(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y*Lx + x;\n      int v0p = y*Lx + (x + 1)%Lx;\n      int v0m = y*Lx + (Lx + x - 1)%Lx;\n      int vp0 = ((y+1)%Ly)*Lx + x;\n      int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n      out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\n__global__ void dev_lapl_iter_kernel(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  int x = blockIdx.x * blockDim.x + threadIdx.x;\n  int y = blockIdx.y * blockDim.y + threadIdx.y;\n\n  if (x < Lx && y < Ly) {\n    int v00 = y*Lx + x;\n    int v0p = y*Lx + (x + 1)%Lx;\n    int v0m = y*Lx + (Lx + x - 1)%Lx;\n    int vp0 = ((y+1)%Ly)*Lx + x;\n    int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n    out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n  }\n}\n\nvoid dev_lapl_iter(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  dim3 block(NTX, NTY);\n  dim3 grid(Lx / NTX, Ly / NTY);\n  dev_lapl_iter_kernel<<<grid, block>>>(out, in, delta, norm, Lx, Ly);\n  cudaDeviceSynchronize();\n}\n\nint main(int argc, char *argv[]) {\n  \n  if(argc != 4) {\n    usage(argv);\n    exit(1);\n  }\n  \n\n  int Lx = atoi(argv[1]);\n  int Ly = atoi(argv[2]);\n  if (Lx % NTX != 0 ||  Ly % NTY != 0) {\n    printf(\"Array length LX and LY must be a multiple of block size %d and %d, respectively\\n\",\n          NTX, NTY);\n    exit(1);\n  }\n  \n  int niter = atoi(argv[3]);\n  assert(niter >= 1);\n\n  \n  const float sigma = 0.01;\n  const float xdelta = sigma / (1.0+4.0*sigma);\n  const float xnorm = 1.0/(1.0+4.0*sigma);\n\n  printf(\" Ly,Lx = %d,%d\\n\", Ly, Lx);\n  printf(\" niter = %d\\n\", niter);\n\n  \n  srand(123);\n  float *buffer = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_out = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_in  = (float*) malloc(sizeof(float)*Lx*Ly);\n\n  int i, j, x, y;\n  for (i = 0; i < Lx; i += 16) {\n    x = rand() % Lx;\n    for (j = 0; j < Ly; j++)\n       buffer[x + j*Lx] = 1.f;\n  }\n  for (i = 0; i < Ly; i += 16) {\n    y = rand() % Ly;\n    for (j = 0; j < Lx; j++)\n       buffer[j + y*Lx] = 1.f;\n  }\n  memcpy(h_in, buffer, sizeof(float)*Lx*Ly);\n\n  for(i=0; i<niter; i++) {\n    reference (h_out, h_in, xdelta, xnorm, Lx, Ly);\n    std::swap(h_out, h_in);\n  }\n\n  float *d_in_device = NULL;\n  float *d_out_device = NULL;\n  \n  cudaMalloc(&d_in_device, sizeof(float)*Lx*Ly);\n  cudaMalloc(&d_out_device, sizeof(float)*Lx*Ly);\n  \n  float *d_in = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *d_out = (float*) malloc(sizeof(float)*Lx*Ly);\n  \n  memcpy(d_in, buffer, sizeof(float)*Lx*Ly);\n  cudaMemcpy(d_in_device, d_in, sizeof(float)*Lx*Ly, cudaMemcpyHostToDevice);\n\n  double t0;\n  \n  t0 = stop_watch(0);\n  for(i=0; i<niter; i++) {\n    dev_lapl_iter(d_out_device, d_in_device, xdelta, xnorm, Lx, Ly);\n    std::swap(d_out_device, d_in_device);\n  }\n  t0 = stop_watch(t0)/(double)niter;\n\n  cudaMemcpy(d_out, d_in_device, sizeof(float)*Lx*Ly, cudaMemcpyDeviceToHost);\n\n  printf(\"Device: iters = %8d, (Lx,Ly) = %6d, %6d, t = %8.1f usec/iter, BW = %6.3f GB/s, P = %6.3f Gflop/s\\n\",\n  \t niter, Lx, Ly, t0,\n  \t Lx*Ly*sizeof(float)*2.0/(t0*1.0e3),\n  \t (Lx*Ly*6.0)/(t0*1.0e3));\n\n  \n  bool ok = true;\n  for (i = 0; i < Lx*Ly; i++) {\n    \n    if ( fabs(h_in[i] - d_out[i]) > 1e-2 ) {\n      printf(\"Mismatch at %d cpu=%f gpu=%f\\n\", i, h_in[i], d_out[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(buffer);\n  free(h_out);\n  free(h_in);\n  free(d_in);\n  free(d_out);\n  cudaFree(d_in_device);\n  cudaFree(d_out_device);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cu"
+      ],
+      "target_files_extracted": [
+        "main.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 18.062,
+          "prompt_tokens": 1740,
+          "completion_tokens": 1693,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-heat2d-omp",
+      "target_spec": "hecbench-heat2d-cuda",
+      "kernel": "heat2d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "4096",
+        "4096",
+        "10"
+      ],
+      "timestamp": "2026-04-01T02:25:37Z",
+      "prompt_tokens": 1740,
+      "completion_tokens": 1735,
+      "llm_response_time_seconds": 19.113,
+      "build_status": "pass",
+      "build_time_seconds": 0.612,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.632,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    308.7 usec/iter, BW = 434.724 GB/s, P = 326.043 Gflop/s\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "throughput": {
+          "value": 434.724,
+          "unit": "GB/s"
+        }
+      },
+      "baseline_wall_time_seconds": 0.231,
+      "translated_wall_time_seconds": 0.632,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.3655,
+      "translated_files": {
+        "main.cu": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <assert.h>\n#include <sys/time.h>\n#include <math.h>\n#include <utility>\n#include <cuda_runtime.h>\n\n#define NTX 16\n#define NTY 16\n\ndouble stop_watch(double t0)\n{\n  double time;\n  struct timeval t;\n  gettimeofday(&t, NULL);\n  time = t.tv_sec * 1e6 + t.tv_usec;\n  return time-t0;\n}\n\nvoid usage(char *argv[]) {\n  fprintf(stderr, \" Usage: %s LX LY NITER\\n\", argv[0]);\n  return;\n}\n\nvoid reference(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y*Lx + x;\n      int v0p = y*Lx + (x + 1)%Lx;\n      int v0m = y*Lx + (Lx + x - 1)%Lx;\n      int vp0 = ((y+1)%Ly)*Lx + x;\n      int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n      out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\n__global__ void dev_lapl_iter_kernel(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  int x = blockIdx.x * blockDim.x + threadIdx.x;\n  int y = blockIdx.y * blockDim.y + threadIdx.y;\n\n  if (x < Lx && y < Ly) {\n    int v00 = y*Lx + x;\n    int v0p = y*Lx + (x + 1)%Lx;\n    int v0m = y*Lx + (Lx + x - 1)%Lx;\n    int vp0 = ((y+1)%Ly)*Lx + x;\n    int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n    out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n  }\n}\n\nvoid dev_lapl_iter(float *d_out, const float *d_in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  dim3 block(NTX, NTY);\n  dim3 grid(Lx / NTX, Ly / NTY);\n  dev_lapl_iter_kernel<<<grid, block>>>(d_out, d_in, delta, norm, Lx, Ly);\n  cudaDeviceSynchronize();\n}\n\nint main(int argc, char *argv[]) {\n  \n  if(argc != 4) {\n    usage(argv);\n    exit(1);\n  }\n  \n\n  int Lx = atoi(argv[1]);\n  int Ly = atoi(argv[2]);\n  if (Lx % NTX != 0 ||  Ly % NTY != 0) {\n    printf(\"Array length LX and LY must be a multiple of block size %d and %d, respectively\\n\",\n          NTX, NTY);\n    exit(1);\n  }\n  \n  int niter = atoi(argv[3]);\n  assert(niter >= 1);\n\n  \n  const float sigma = 0.01;\n  const float xdelta = sigma / (1.0+4.0*sigma);\n  const float xnorm = 1.0/(1.0+4.0*sigma);\n\n  printf(\" Ly,Lx = %d,%d\\n\", Ly, Lx);\n  printf(\" niter = %d\\n\", niter);\n\n  \n  srand(123);\n  float *buffer = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_out = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_in  = (float*) malloc(sizeof(float)*Lx*Ly);\n\n  int i, j, x, y;\n  for (i = 0; i < Lx; i += 16) {\n    x = rand() % Lx;\n    for (j = 0; j < Ly; j++)\n       buffer[x + j*Lx] = 1.f;\n  }\n  for (i = 0; i < Ly; i += 16) {\n    y = rand() % Ly;\n    for (j = 0; j < Lx; j++)\n       buffer[j + y*Lx] = 1.f;\n  }\n  memcpy(h_in, buffer, sizeof(float)*Lx*Ly);\n\n  for(i=0; i<niter; i++) {\n    reference (h_out, h_in, xdelta, xnorm, Lx, Ly);\n    std::swap(h_out, h_in);\n  }\n\n  float *d_out;\n  float *d_in;\n  cudaMalloc(&d_in, sizeof(float)*Lx*Ly);\n  cudaMalloc(&d_out, sizeof(float)*Lx*Ly);\n  cudaMemcpy(d_in, buffer, sizeof(float)*Lx*Ly, cudaMemcpyHostToDevice);\n\n  double t0;\n  \n  cudaEvent_t start, stop;\n  cudaEventCreate(&start);\n  cudaEventCreate(&stop);\n\n  cudaEventRecord(start);\n  for(i=0; i<niter; i++) {\n    dev_lapl_iter(d_out, d_in, xdelta, xnorm, Lx, Ly);\n    std::swap(d_out, d_in);\n  }\n  cudaEventRecord(stop);\n  cudaEventSynchronize(stop);\n  \n  float elapsed_ms;\n  cudaEventElapsedTime(&elapsed_ms, start, stop);\n  t0 = (elapsed_ms * 1000.0) / (double)niter;\n\n  printf(\"Device: iters = %8d, (Lx,Ly) = %6d, %6d, t = %8.1f usec/iter, BW = %6.3f GB/s, P = %6.3f Gflop/s\\n\",\n  \t niter, Lx, Ly, t0,\n  \t Lx*Ly*sizeof(float)*2.0/(t0*1.0e3),\n  \t (Lx*Ly*6.0)/(t0*1.0e3));\n\n  \n  float *h_d_in = (float*) malloc(sizeof(float)*Lx*Ly);\n  cudaMemcpy(h_d_in, d_in, sizeof(float)*Lx*Ly, cudaMemcpyDeviceToHost);\n\n  bool ok = true;\n  for (i = 0; i < Lx*Ly; i++) {\n    \n    if ( fabs(h_in[i] - h_d_in[i]) > 1e-2 ) {\n      printf(\"Mismatch at %d cpu=%f gpu=%f\\n\", i, h_in[i], h_d_in[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(buffer);\n  free(h_out);\n  free(h_in);\n  free(h_d_in);\n  cudaFree(d_in);\n  cudaFree(d_out);\n  cudaEventDestroy(start);\n  cudaEventDestroy(stop);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cu"
+      ],
+      "target_files_extracted": [
+        "main.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 19.113,
+          "prompt_tokens": 1740,
+          "completion_tokens": 1735,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-heat2d-omp",
+      "target_spec": "hecbench-heat2d-cuda",
+      "kernel": "heat2d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "4096",
+        "4096",
+        "10"
+      ],
+      "timestamp": "2026-04-01T02:25:57Z",
+      "prompt_tokens": 1740,
+      "completion_tokens": 1668,
+      "llm_response_time_seconds": 24.41,
+      "build_status": "pass",
+      "build_time_seconds": 0.628,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.637,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    313.2 usec/iter, BW = 428.537 GB/s, P = 321.403 Gflop/s\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "throughput": {
+          "value": 428.537,
+          "unit": "GB/s"
+        }
+      },
+      "baseline_wall_time_seconds": 0.231,
+      "translated_wall_time_seconds": 0.637,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.3626,
+      "translated_files": {
+        "main.cu": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <assert.h>\n#include <sys/time.h>\n#include <math.h>\n#include <utility>\n#include <cuda_runtime.h>\n\n#define NTX 16\n#define NTY 16\n\ndouble stop_watch(double t0)\n{\n  double time;\n  struct timeval t;\n  gettimeofday(&t, NULL);\n  time = t.tv_sec * 1e6 + t.tv_usec;\n  return time-t0;\n}\n\nvoid usage(char *argv[]) {\n  fprintf(stderr, \" Usage: %s LX LY NITER\\n\", argv[0]);\n  return;\n}\n\nvoid reference(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y*Lx + x;\n      int v0p = y*Lx + (x + 1)%Lx;\n      int v0m = y*Lx + (Lx + x - 1)%Lx;\n      int vp0 = ((y+1)%Ly)*Lx + x;\n      int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n      out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\n__global__ void dev_lapl_iter_kernel(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  int x = blockIdx.x * blockDim.x + threadIdx.x;\n  int y = blockIdx.y * blockDim.y + threadIdx.y;\n\n  if (x < Lx && y < Ly) {\n    int v00 = y*Lx + x;\n    int v0p = y*Lx + (x + 1)%Lx;\n    int v0m = y*Lx + (Lx + x - 1)%Lx;\n    int vp0 = ((y+1)%Ly)*Lx + x;\n    int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n    out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n  }\n}\n\nvoid dev_lapl_iter(float *d_out, const float *d_in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  dim3 block(NTX, NTY);\n  dim3 grid(Lx / NTX, Ly / NTY);\n  dev_lapl_iter_kernel<<<grid, block>>>(d_out, d_in, delta, norm, Lx, Ly);\n  cudaDeviceSynchronize();\n}\n\nint main(int argc, char *argv[]) {\n  \n  if(argc != 4) {\n    usage(argv);\n    exit(1);\n  }\n  \n\n  int Lx = atoi(argv[1]);\n  int Ly = atoi(argv[2]);\n  if (Lx % NTX != 0 ||  Ly % NTY != 0) {\n    printf(\"Array length LX and LY must be a multiple of block size %d and %d, respectively\\n\",\n          NTX, NTY);\n    exit(1);\n  }\n  \n  int niter = atoi(argv[3]);\n  assert(niter >= 1);\n\n  \n  const float sigma = 0.01;\n  const float xdelta = sigma / (1.0+4.0*sigma);\n  const float xnorm = 1.0/(1.0+4.0*sigma);\n\n  printf(\" Ly,Lx = %d,%d\\n\", Ly, Lx);\n  printf(\" niter = %d\\n\", niter);\n\n  \n  srand(123);\n  float *buffer = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_out = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_in  = (float*) malloc(sizeof(float)*Lx*Ly);\n\n  int i, j, x, y;\n  for (i = 0; i < Lx; i += 16) {\n    x = rand() % Lx;\n    for (j = 0; j < Ly; j++)\n       buffer[x + j*Lx] = 1.f;\n  }\n  for (i = 0; i < Ly; i += 16) {\n    y = rand() % Ly;\n    for (j = 0; j < Lx; j++)\n       buffer[j + y*Lx] = 1.f;\n  }\n  memcpy(h_in, buffer, sizeof(float)*Lx*Ly);\n\n  for(i=0; i<niter; i++) {\n    reference (h_out, h_in, xdelta, xnorm, Lx, Ly);\n    std::swap(h_out, h_in);\n  }\n\n  float *d_out = NULL;\n  float *d_in  = NULL;\n  \n  cudaMalloc(&d_in, sizeof(float)*Lx*Ly);\n  cudaMalloc(&d_out, sizeof(float)*Lx*Ly);\n  cudaMemcpy(d_in, buffer, sizeof(float)*Lx*Ly, cudaMemcpyHostToDevice);\n\n  double t0;\n  \n  cudaDeviceSynchronize();\n  t0 = stop_watch(0);\n  for(i=0; i<niter; i++) {\n    dev_lapl_iter(d_out, d_in, xdelta, xnorm, Lx, Ly);\n    std::swap(d_out, d_in);\n  }\n  t0 = stop_watch(t0)/(double)niter;\n\n  printf(\"Device: iters = %8d, (Lx,Ly) = %6d, %6d, t = %8.1f usec/iter, BW = %6.3f GB/s, P = %6.3f Gflop/s\\n\",\n  \t niter, Lx, Ly, t0,\n  \t Lx*Ly*sizeof(float)*2.0/(t0*1.0e3),\n  \t (Lx*Ly*6.0)/(t0*1.0e3));\n\n  \n  float *d_in_host = (float*) malloc(sizeof(float)*Lx*Ly);\n  cudaMemcpy(d_in_host, d_in, sizeof(float)*Lx*Ly, cudaMemcpyDeviceToHost);\n\n  bool ok = true;\n  for (i = 0; i < Lx*Ly; i++) {\n    \n    if ( fabs(h_in[i] - d_in_host[i]) > 1e-2 ) {\n      printf(\"Mismatch at %d cpu=%f gpu=%f\\n\", i, h_in[i], d_in_host[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(buffer);\n  free(h_out);\n  free(h_in);\n  free(d_in_host);\n  cudaFree(d_in);\n  cudaFree(d_out);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cu"
+      ],
+      "target_files_extracted": [
+        "main.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 24.41,
+          "prompt_tokens": 1740,
+          "completion_tokens": 1668,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-stencil1d-omp",
+      "target_spec": "hecbench-stencil1d-cuda",
+      "kernel": "stencil1d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "134217728",
+        "1"
+      ],
+      "timestamp": "2026-04-01T02:26:23Z",
+      "prompt_tokens": 1027,
+      "completion_tokens": 964,
+      "llm_response_time_seconds": 10.964,
+      "build_status": "pass",
+      "build_time_seconds": 0.675,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 1.332,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time: 0.001323 (s)\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 0.001323,
+          "unit": "s"
+        }
+      },
+      "baseline_wall_time_seconds": 0.619,
+      "translated_wall_time_seconds": 1.332,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.4647,
+      "translated_files": {
+        "stencil_1d.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <chrono>\n\n#define RADIUS 7\n#define BLOCK_SIZE 256\n\n__global__ void sliding_window_kernel(int* a, int* b, int length) {\n    int i = blockIdx.x * BLOCK_SIZE;\n    if (i >= length) return;\n\n    int temp[BLOCK_SIZE + 2 * RADIUS];\n\n    // Load data into temp buffer\n    for (int j = 0; j < BLOCK_SIZE; j++) {\n        int gindex = i + j;\n        temp[j + RADIUS] = a[gindex];\n        if (j < RADIUS) {\n            temp[j] = (gindex < RADIUS) ? 0 : a[gindex - RADIUS];\n            temp[j + RADIUS + BLOCK_SIZE] = a[gindex + BLOCK_SIZE];\n        }\n    }\n\n    // Compute sliding window sum\n    for (int j = 0; j < BLOCK_SIZE; j++) {\n        int result = 0;\n        for (int offset = -RADIUS; offset <= RADIUS; offset++) {\n            result += temp[j + RADIUS + offset];\n        }\n        b[i + j] = result;\n    }\n}\n\nint main(int argc, char* argv[]) {\n    if (argc != 3) {\n        printf(\"Usage: %s <length> <repeat>\\n\", argv[0]);\n        printf(\"length is a multiple of %d\\n\", BLOCK_SIZE);\n        return 1;\n    }\n    const int length = atoi(argv[1]);\n    const int repeat = atoi(argv[2]);\n\n    int size = length;\n    int pad_size = (length + RADIUS);\n\n    int* a_host = (int *)malloc(pad_size * sizeof(int));\n    int* b_host = (int *)malloc(size * sizeof(int));\n\n    for (int i = 0; i < length + RADIUS; i++) a_host[i] = i;\n\n    int* a_dev;\n    int* b_dev;\n    cudaMalloc(&a_dev, pad_size * sizeof(int));\n    cudaMalloc(&b_dev, size * sizeof(int));\n\n    cudaMemcpy(a_dev, a_host, pad_size * sizeof(int), cudaMemcpyHostToDevice);\n\n    int num_blocks = length / BLOCK_SIZE;\n\n    auto start = std::chrono::steady_clock::now();\n\n    for (int i = 0; i < repeat; i++) {\n        sliding_window_kernel<<<num_blocks, BLOCK_SIZE>>>(a_dev, b_dev, length);\n    }\n\n    auto end = std::chrono::steady_clock::now();\n    auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    printf(\"Average kernel execution time: %f (s)\\n\", (time * 1e-9f) / repeat);\n\n    cudaMemcpy(b_host, b_dev, size * sizeof(int), cudaMemcpyDeviceToHost);\n\n    bool ok = true;\n    for (int i = 0; i < 2 * RADIUS; i++) {\n        int s = 0;\n        for (int j = i; j <= i + 2 * RADIUS; j++)\n            s += j < RADIUS ? 0 : (a_host[j] - RADIUS);\n        if (s != b_host[i]) {\n            printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b_host[i]);\n            ok = false;\n            break;\n        }\n    }\n\n    for (int i = 2 * RADIUS; i < length; i++) {\n        int s = 0;\n        for (int j = i - RADIUS; j <= i + RADIUS; j++)\n            s += a_host[j];\n        if (s != b_host[i]) {\n            printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b_host[i]);\n            ok = false;\n            break;\n        }\n    }\n    printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n    cudaFree(a_dev);\n    cudaFree(b_dev);\n    free(a_host);\n    free(b_host);\n    return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "stencil_1d.cu"
+      ],
+      "target_files_extracted": [
+        "stencil_1d.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 10.964,
+          "prompt_tokens": 1027,
+          "completion_tokens": 964,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-stencil1d-omp",
+      "target_spec": "hecbench-stencil1d-cuda",
+      "kernel": "stencil1d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "134217728",
+        "1"
+      ],
+      "timestamp": "2026-04-01T02:26:36Z",
+      "prompt_tokens": 1027,
+      "completion_tokens": 979,
+      "llm_response_time_seconds": 10.114,
+      "build_status": "pass",
+      "build_time_seconds": 0.673,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 1.343,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time: 0.001332 (s)\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 0.001332,
+          "unit": "s"
+        }
+      },
+      "baseline_wall_time_seconds": 0.619,
+      "translated_wall_time_seconds": 1.343,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.4609,
+      "translated_files": {
+        "stencil_1d.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <chrono>\n\n#define RADIUS 7\n#define BLOCK_SIZE 256\n\n__global__ void sliding_window_kernel(int* a, int* b, int length, int pad_size) {\n  int i = blockIdx.x * BLOCK_SIZE;\n  if (i >= length) return;\n\n  int temp[BLOCK_SIZE + 2 * RADIUS];\n\n  // Load data into temp buffer\n  for (int j = 0; j < BLOCK_SIZE; j++) {\n    int gindex = i + j;\n    temp[j + RADIUS] = a[gindex];\n    if (j < RADIUS) {\n      temp[j] = (gindex < RADIUS) ? 0 : a[gindex - RADIUS];\n      temp[j + RADIUS + BLOCK_SIZE] = a[gindex + BLOCK_SIZE];\n    }\n  }\n\n  // Compute sliding window sum\n  for (int j = 0; j < BLOCK_SIZE; j++) {\n    int result = 0;\n    for (int offset = -RADIUS; offset <= RADIUS; offset++) {\n      result += temp[j + RADIUS + offset];\n    }\n    b[i + j] = result;\n  }\n}\n\nint main(int argc, char* argv[]) {\n  if (argc != 3) {\n    printf(\"Usage: %s <length> <repeat>\\n\", argv[0]);\n    printf(\"length is a multiple of %d\\n\", BLOCK_SIZE);\n    return 1;\n  }\n  const int length = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  int size = length;\n  int pad_size = (length + RADIUS);\n\n  int* a_host = (int *)malloc(pad_size * sizeof(int));\n  int* b_host = (int *)malloc(size * sizeof(int));\n\n  for (int i = 0; i < length + RADIUS; i++) a_host[i] = i;\n\n  int* a_dev;\n  int* b_dev;\n  cudaMalloc(&a_dev, pad_size * sizeof(int));\n  cudaMalloc(&b_dev, size * sizeof(int));\n\n  cudaMemcpy(a_dev, a_host, pad_size * sizeof(int), cudaMemcpyHostToDevice);\n\n  int num_blocks = (length + BLOCK_SIZE - 1) / BLOCK_SIZE;\n\n  auto start = std::chrono::steady_clock::now();\n\n  for (int i = 0; i < repeat; i++) {\n    sliding_window_kernel<<<num_blocks, BLOCK_SIZE>>>(a_dev, b_dev, length, pad_size);\n  }\n\n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  printf(\"Average kernel execution time: %f (s)\\n\", (time * 1e-9f) / repeat);\n\n  cudaMemcpy(b_host, b_dev, size * sizeof(int), cudaMemcpyDeviceToHost);\n\n  bool ok = true;\n  for (int i = 0; i < 2 * RADIUS; i++) {\n    int s = 0;\n    for (int j = i; j <= i + 2 * RADIUS; j++)\n      s += j < RADIUS ? 0 : (a_host[j] - RADIUS);\n    if (s != b_host[i]) {\n      printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b_host[i]);\n      ok = false;\n      break;\n    }\n  }\n\n  for (int i = 2 * RADIUS; i < length; i++) {\n    int s = 0;\n    for (int j = i - RADIUS; j <= i + RADIUS; j++)\n      s += a_host[j];\n    if (s != b_host[i]) {\n      printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b_host[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(a_host);\n  free(b_host);\n  cudaFree(a_dev);\n  cudaFree(b_dev);\n\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "stencil_1d.cu"
+      ],
+      "target_files_extracted": [
+        "stencil_1d.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 10.114,
+          "prompt_tokens": 1027,
+          "completion_tokens": 979,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-stencil1d-omp",
+      "target_spec": "hecbench-stencil1d-cuda",
+      "kernel": "stencil1d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "134217728",
+        "1"
+      ],
+      "timestamp": "2026-04-01T02:26:48Z",
+      "prompt_tokens": 1027,
+      "completion_tokens": 1141,
+      "llm_response_time_seconds": 15.318,
+      "build_status": "pass",
+      "build_time_seconds": 0.69,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.826,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time: 0.160708 (s)\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 0.160708,
+          "unit": "s"
+        }
+      },
+      "baseline_wall_time_seconds": 0.619,
+      "translated_wall_time_seconds": 0.826,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 0.7494,
+      "translated_files": {
+        "stencil_1d.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <chrono>\n\n#define RADIUS 7\n#define BLOCK_SIZE 256\n\n__global__ void sliding_window_kernel(int* a, int* b, int length, int pad_size) {\n    int i = blockIdx.x * BLOCK_SIZE;\n    if (i >= length) return;\n\n    extern __shared__ int temp[BLOCK_SIZE + 2 * RADIUS];\n\n    int gindex_base = i;\n\n    // Load data into shared memory with padding\n    for (int j = 0; j < BLOCK_SIZE; j++) {\n        int gindex = gindex_base + j;\n        if (gindex < pad_size) {\n            temp[j + RADIUS] = a[gindex];\n        } else {\n            temp[j + RADIUS] = 0;\n        }\n\n        if (j < RADIUS) {\n            if (gindex < RADIUS) {\n                temp[j] = 0;\n            } else {\n                temp[j] = a[gindex - RADIUS];\n            }\n            \n            int right_index = gindex + BLOCK_SIZE;\n            if (right_index < pad_size) {\n                temp[j + RADIUS + BLOCK_SIZE] = a[right_index];\n            } else {\n                temp[j + RADIUS + BLOCK_SIZE] = 0;\n            }\n        }\n    }\n\n    __syncthreads();\n\n    // Compute sliding window sum\n    for (int j = 0; j < BLOCK_SIZE; j++) {\n        int gindex = gindex_base + j;\n        if (gindex >= length) break;\n\n        int result = 0;\n        for (int offset = -RADIUS; offset <= RADIUS; offset++) {\n            result += temp[j + RADIUS + offset];\n        }\n        b[gindex] = result;\n    }\n}\n\nint main(int argc, char* argv[]) {\n    if (argc != 3) {\n        printf(\"Usage: %s <length> <repeat>\\n\", argv[0]);\n        printf(\"length is a multiple of %d\\n\", BLOCK_SIZE);\n        return 1;\n    }\n    const int length = atoi(argv[1]);\n    const int repeat = atoi(argv[2]);\n\n    int size = length;\n    int pad_size = (length + RADIUS);\n\n    int* a_host = (int *)malloc(pad_size * sizeof(int));\n    int* b_host = (int *)malloc(size * sizeof(int));\n\n    for (int i = 0; i < length + RADIUS; i++) a_host[i] = i;\n\n    int* a_dev;\n    int* b_dev;\n    cudaMalloc(&a_dev, pad_size * sizeof(int));\n    cudaMalloc(&b_dev, size * sizeof(int));\n\n    cudaMemcpy(a_dev, a_host, pad_size * sizeof(int), cudaMemcpyHostToDevice);\n\n    int num_blocks = (length + BLOCK_SIZE - 1) / BLOCK_SIZE;\n\n    auto start = std::chrono::steady_clock::now();\n\n    for (int i = 0; i < repeat; i++) {\n        sliding_window_kernel<<<num_blocks, BLOCK_SIZE, (BLOCK_SIZE + 2 * RADIUS) * sizeof(int)>>>(\n            a_dev, b_dev, length, pad_size);\n        cudaDeviceSynchronize();\n    }\n\n    auto end = std::chrono::steady_clock::now();\n    auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    printf(\"Average kernel execution time: %f (s)\\n\", (time * 1e-9f) / repeat);\n\n    cudaMemcpy(b_host, b_dev, size * sizeof(int), cudaMemcpyDeviceToHost);\n\n    bool ok = true;\n    for (int i = 0; i < 2 * RADIUS; i++) {\n        int s = 0;\n        for (int j = i; j <= i + 2 * RADIUS; j++)\n            s += j < RADIUS ? 0 : (a_host[j] - RADIUS);\n        if (s != b_host[i]) {\n            printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b_host[i]);\n            ok = false;\n            break;\n        }\n    }\n\n    for (int i = 2 * RADIUS; i < length; i++) {\n        int s = 0;\n        for (int j = i - RADIUS; j <= i + RADIUS; j++)\n            s += a_host[j];\n        if (s != b_host[i]) {\n            printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b_host[i]);\n            ok = false;\n            break;\n        }\n    }\n    printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n    free(a_host);\n    free(b_host);\n    cudaFree(a_dev);\n    cudaFree(b_dev);\n\n    return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "stencil_1d.cu"
+      ],
+      "target_files_extracted": [
+        "stencil_1d.cu"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 15.318,
+          "prompt_tokens": 1027,
+          "completion_tokens": 1141,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    }
+  ]
+}

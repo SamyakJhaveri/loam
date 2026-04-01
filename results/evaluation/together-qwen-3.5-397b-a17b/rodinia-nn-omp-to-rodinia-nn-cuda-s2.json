@@ -1,0 +1,65 @@
+{
+  "source_spec": "rodinia-nn-omp",
+  "target_spec": "rodinia-nn-cuda",
+  "kernel": "nn",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-03-31T20:48:52Z",
+  "prompt_tokens": 1976,
+  "completion_tokens": 1271,
+  "llm_response_time_seconds": 9.701,
+  "build_status": "fail",
+  "build_time_seconds": 0.345,
+  "build_error_snippet": "nn_cuda.cu(34): warning #177-D: variable \"rec_iter\" was declared but never referenced\n      char sandbox[49 * 10], *rec_iter, dbname[64];\n                              ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nnn_cuda.cu(36): warning #177-D: variable \"tmp_lat\" was declared but never referenced\n      float target_lat, target_long, tmp_lat=0, tmp_long=0;\n                                     ^\n\nnn_cuda.cu(36): warning #177-D: variable \"tmp_long\" was declared but never referenced\n      float target_lat, target_long, tmp_lat=0, tmp_long=0;\n                                                ^\n\nnn_cuda.cu(24): error: calling a __host__ function(\"atof\") from a __global__ function(\"compute_distances\") is not allowed\n\nnn_cuda.cu(24): error: identifier \"atof\" is undefined in device code\n\nnn_cuda.cu(25): error: calling a __host__ function(\"atof\") from a __global__ function(\"compute_distances\") is not allowed\n\nnn_cuda.cu(25): error: identifier \"atof\" is undefined in device code\n\n4 errors detected in the compilation of \"nn_cuda.cu\".\nmake: *** [Makefile:12: nn] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: on(\"compute_distances\") is not allowed\n\nnn_cuda.cu(25): error: identifier \"atof\" is undefined in device code\n\n4 errors detected in the compilation of \"nn_cuda.cu\".\nmake: *** [Makefile:12: nn] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.078,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nn_cuda.cu": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n#include <cuda_runtime.h>\n\n#define MAX_ARGS 10\n#define REC_LENGTH 49\t\n#define REC_WINDOW 10\t\n#define LATITUDE_POS 28\t\n#define OPEN 10000.0f\n#define MAX_K 10000\n\nstruct neighbor {\n\tchar entry[REC_LENGTH];\n\tdouble dist;\n};\n\n__global__ void compute_distances(float *z, const char *sandbox, int rec_count, float target_lat, float target_long) {\n    int i = blockIdx.x * blockDim.x + threadIdx.x;\n    if (i < rec_count) {\n        const char *rec_iter = sandbox + (i * REC_LENGTH + LATITUDE_POS - 1);\n        float tmp_lat = atof(rec_iter);\n        float tmp_long = atof(rec_iter + 5);\n        z[i] = sqrtf((tmp_lat - target_lat) * (tmp_lat - target_lat) + (tmp_long - target_long) * (tmp_long - target_long));\n    }\n}\n\nint main(int argc, char* argv[]) {\n    long long time0 = clock();\n    FILE   *flist, *fp;\n    int    i=0, j=0, k=0, rec_count=0, done=0;\n    char   sandbox[REC_LENGTH * REC_WINDOW], *rec_iter, dbname[64];\n    struct neighbor *neighbors = NULL;\n    float target_lat, target_long, tmp_lat=0, tmp_long=0;\n\n    if(argc < 5) {\n        fprintf(stderr, \"Invalid set of arguments\\n\");\n        exit(-1);\n    }\n\n    flist = fopen(argv[1], \"r\");\n    if(!flist) {\n        printf(\"error opening flist\\n\");\n        exit(1);\n    }\n\n    k = atoi(argv[2]);\n    target_lat = atof(argv[3]);\n    target_long = atof(argv[4]);\n\n    neighbors = (struct neighbor *)malloc(k * sizeof(struct neighbor));\n\n    if(neighbors == NULL) {\n        fprintf(stderr, \"no room for neighbors\\n\");\n        exit(0);\n    }\n\n    for(j = 0; j < k; j++) { \n        neighbors[j].dist = OPEN;\n    }\n\n    if(fscanf(flist, \"%s\\n\", dbname) != 1) {\n        fprintf(stderr, \"error reading filelist\\n\");\n        exit(0);\n    }\n\n    fp = fopen(dbname, \"r\");\n    if(!fp) {\n        printf(\"error opening flist\\n\");\n        exit(1);\n    }\n\n    float *z_host = (float *)malloc(REC_WINDOW * sizeof(float));\n    float *z_dev = NULL;\n    char *sandbox_dev = NULL;\n\n    cudaMalloc(&z_dev, REC_WINDOW * sizeof(float));\n    cudaMalloc(&sandbox_dev, REC_LENGTH * REC_WINDOW);\n\n    int blockSize = 256;\n    int numBlocks = (REC_WINDOW + blockSize - 1) / blockSize;\n\n    while(!done) {\n        rec_count = fread(sandbox, REC_LENGTH, REC_WINDOW, fp);\n        if(rec_count != REC_WINDOW) {\n            if(!ferror(flist)) {\n                fclose(fp);\n\n                if(feof(flist))\n                    done = 1;\n                else {\n                    if(fscanf(flist, \"%s\\n\", dbname) != 1) {\n                        fprintf(stderr, \"error reading filelist\\n\");\n                        exit(0);\n                    }\n\n                    fp = fopen(dbname, \"r\");\n\n                    if(!fp) {\n                        printf(\"error opening a db\\n\");\n                        exit(1);\n                    }\n                }\n            } else {\n                perror(\"Error\");\n                exit(0);\n            }\n        }\n\n        if (rec_count > 0) {\n            cudaMemcpy(sandbox_dev, sandbox, rec_count * REC_LENGTH, cudaMemcpyHostToDevice);\n\n            compute_distances<<<numBlocks, blockSize>>>(z_dev, sandbox_dev, rec_count, target_lat, target_long);\n            cudaDeviceSynchronize();\n\n            cudaMemcpy(z_host, z_dev, rec_count * sizeof(float), cudaMemcpyDeviceToHost);\n\n            for(i = 0; i < rec_count; i++) {\n                float max_dist = -1;\n                int max_idx = 0;\n\n                for(j = 0; j < k; j++) {\n                    if(neighbors[j].dist > max_dist) {\n                        max_dist = neighbors[j].dist;\n                        max_idx = j;\n                    }\n                }\n\n                if(z_host[i] < neighbors[max_idx].dist) {\n                    sandbox[(i+1)*REC_LENGTH-1] = '\\0';\n                    strcpy(neighbors[max_idx].entry, sandbox + i*REC_LENGTH);\n                    neighbors[max_idx].dist = z_host[i];\n                }\n            }\n        }\n    }\n\n    fprintf(stderr, \"The %d nearest neighbors are:\\n\", k);\n    for(j = 0; j < k; j++) {\n        if(neighbors[j].dist != OPEN)\n            fprintf(stderr, \"%s --> %f\\n\", neighbors[j].entry, neighbors[j].dist);\n    }\n\n    fclose(flist);\n    \n    cudaFree(z_dev);\n    cudaFree(sandbox_dev);\n    free(z_host);\n    free(neighbors);\n\n    long long time1 = clock();\n    printf(\"total time : %15.12f s\", (float)(time1 - time0) / 1000000);\n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "nn_cuda.cu"
+  ],
+  "target_files_extracted": [
+    "nn_cuda.cu"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 9.701,
+      "prompt_tokens": 1976,
+      "completion_tokens": 1271,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "nn_cuda.cu(34): warning #177-D: variable \"rec_iter\" was declared but never referenced\n      char sandbox[49 * 10], *rec_iter, dbname[64];\n                              ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nnn_cuda.cu(36): warning #177-D: variable \"tmp_lat\" was declared but never referenced\n      float target_lat, target_long, tmp_lat=0, tmp_long=0;\n                                     ^\n\nnn_cuda.cu(36): warning #177-D: variable \"tmp_long\" was declared but never referenced\n      float target_lat, target_long, tmp_lat=0, tmp_long=0;\n                                                ^\n\nnn_cuda.cu(24): error: calling a __host__ function(\"atof\") from a __global__ function(\"compute_distances\") is not allowed\n\nnn_cuda.cu(24): error: identifier \"atof\" is undefined in device code\n\nnn_cuda.cu(25): error: calling a __host__ function(\"atof\") from a __global__ function(\"compute_distances\") is not allowed\n\nnn_cuda.cu(25): error: identifier \"atof\" is undefined in device code\n\n4 errors detected in the compilation of \"nn_cuda.cu\".\nmake: *** [Makefile:12: nn] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

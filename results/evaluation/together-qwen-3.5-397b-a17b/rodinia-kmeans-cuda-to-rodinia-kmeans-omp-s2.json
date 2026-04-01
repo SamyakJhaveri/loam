@@ -1,0 +1,65 @@
+{
+  "source_spec": "rodinia-kmeans-cuda",
+  "target_spec": "rodinia-kmeans-omp",
+  "kernel": "kmeans",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-03-31T19:18:46Z",
+  "prompt_tokens": 25558,
+  "completion_tokens": 1977,
+  "llm_response_time_seconds": 34.813,
+  "build_status": "fail",
+  "build_time_seconds": 0.103,
+  "build_error_snippet": "kmeans.c: In function \u2018main\u2019:\nkmeans.c:152:9: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  152 |         read(infile, &numObjects,    sizeof(int));\n      |         ^~~~\n      |         fread\nkmeans.c:165:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  165 |         close(infile);\n      |         ^~~~~\n      |         pclose\nkmeans_clustering.c:26:28: error: initializer element is not constant\n   26 | unsigned int num_threads = num_threads_perdim*num_threads_perdim;\n      |                            ^~~~~~~~~~~~~~~~~~\nkmeans_clustering.c:27:27: error: initializer element is not constant\n   27 | unsigned int num_blocks = num_blocks_perdim*num_blocks_perdim;\n      |                           ^~~~~~~~~~~~~~~~~\nmake[1]: *** [Makefile:21: kmeans_clustering.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: blocks = num_blocks_perdim*num_blocks_perdim;\n      |                           ^~~~~~~~~~~~~~~~~\nmake[1]: *** [Makefile:21: kmeans_clustering.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.859,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kmeans_openmp/kmeans_clustering.c": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <assert.h>\n\n#include <omp.h>\n\n#define THREADS_PER_DIM 16\n#define BLOCKS_PER_DIM 16\n#define THREADS_PER_BLOCK THREADS_PER_DIM*THREADS_PER_DIM\n\n#include \"kmeans.h\"\n\n#ifndef FLT_MAX\n#define FLT_MAX 3.40282347e+38\n#endif\n\n#define CPU_DELTA_REDUCE\n#define CPU_CENTER_REDUCE\n\nextern int setup(int argc, char** argv);\n\nunsigned int num_threads_perdim = THREADS_PER_DIM;\nunsigned int num_blocks_perdim = BLOCKS_PER_DIM;\nunsigned int num_threads = num_threads_perdim*num_threads_perdim;\nunsigned int num_blocks = num_blocks_perdim*num_blocks_perdim;\n\nint    *membership_new;\nfloat  *feature_d;\nfloat  *feature_flipped_d;\nint    *membership_d;\nfloat  *block_new_centers;\nfloat  *clusters_d;\nfloat  *block_clusters_d;\nint    *block_deltas_d;\n\nextern void allocateMemory(int npoints, int nfeatures, int nclusters, float **features)\n{\n    num_blocks = npoints / num_threads;\n    if (npoints % num_threads > 0)\n        num_blocks++;\n\n    num_blocks_perdim = sqrt((double) num_blocks);\n    while (num_blocks_perdim * num_blocks_perdim < num_blocks)\n        num_blocks_perdim++;\n\n    num_blocks = num_blocks_perdim*num_blocks_perdim;\n\n    membership_new = (int*) malloc(npoints * sizeof(int));\n    for(int i=0;i<npoints;i++) {\n        membership_new[i] = -1;\n    }\n\n    block_new_centers = (float *) malloc(nclusters*nfeatures*sizeof(float));\n\n    feature_flipped_d = (float *) malloc(npoints*nfeatures*sizeof(float));\n    memcpy(feature_flipped_d, features[0], npoints*nfeatures*sizeof(float));\n    feature_d = (float *) malloc(npoints*nfeatures*sizeof(float));\n\n    int total_points = npoints * nfeatures;\n    #pragma omp parallel for\n    for(int idx = 0; idx < total_points; idx++) {\n        int point_id = idx / nfeatures;\n        int feat_id = idx % nfeatures;\n        feature_d[point_id + npoints*feat_id] = feature_flipped_d[point_id*nfeatures + feat_id];\n    }\n\n    membership_d = (int*) malloc(npoints*sizeof(int));\n    clusters_d = (float*) malloc(nclusters*nfeatures*sizeof(float));\n\n#ifdef BLOCK_DELTA_REDUCE\n    block_deltas_d = (int *) malloc(num_blocks_perdim * num_blocks_perdim * sizeof(int));\n#endif\n\n#ifdef BLOCK_CENTER_REDUCE\n    block_clusters_d = (float *) malloc(\n        num_blocks_perdim * num_blocks_perdim *\n        nclusters * nfeatures * sizeof(float));\n#endif\n}\n\nextern void deallocateMemory()\n{\n    free(membership_new);\n    free(block_new_centers);\n    free(feature_d);\n    free(feature_flipped_d);\n    free(membership_d);\n    free(clusters_d);\n#ifdef BLOCK_CENTER_REDUCE\n    free(block_clusters_d);\n#endif\n#ifdef BLOCK_DELTA_REDUCE\n    free(block_deltas_d);\n#endif\n}\n\nint main(int argc, char** argv)\n{\n    setup(argc, argv);\n    return 0;\n}\n\nextern int kmeansCuda(float  **feature,\n           int      nfeatures,\n           int      npoints,\n           int      nclusters,\n           int     *membership,\n           float  **clusters,\n           int     *new_centers_len,\n           float  **new_centers)\n{\n    int delta = 0;\n    int i,j;\n\n    memcpy(membership_d, membership_new, npoints*sizeof(int));\n    memcpy(clusters_d, clusters[0], nclusters*nfeatures*sizeof(float));\n\n    int grid_size = num_blocks_perdim * num_blocks_perdim;\n    int threads_per_block = num_threads_perdim * num_threads_perdim;\n\n    #pragma omp parallel num_threads(grid_size)\n    {\n        int block_id = omp_get_thread_num();\n        int start_point = block_id * threads_per_block;\n        int end_point = start_point + threads_per_block;\n        if (end_point > npoints) end_point = npoints;\n\n#ifdef BLOCK_DELTA_REDUCE\n        int local_delta = 0;\n#endif\n#ifdef BLOCK_CENTER_REDUCE\n        float *local_block_centers = &block_clusters_d[block_id * nclusters * nfeatures];\n        for(int k=0; k<nclusters*nfeatures; k++) local_block_centers[k] = 0.0f;\n#endif\n\n        for (int point_id = start_point; point_id < end_point; point_id++) {\n            int index = -1;\n            float min_dist = FLT_MAX;\n\n            for (int i=0; i<nclusters; i++) {\n                float ans = 0.0;\n                int cluster_base_index = i*nfeatures;\n                for (int j=0; j < nfeatures; j++) {\n                    int addr = point_id + j*npoints;\n                    float diff = feature_d[addr] - clusters_d[cluster_base_index + j];\n                    ans += diff*diff;\n                }\n                float dist = ans;\n                if (dist < min_dist) {\n                    min_dist = dist;\n                    index = i;\n                }\n            }\n\n#ifdef BLOCK_DELTA_REDUCTION\n            if (membership_d[point_id] != index) {\n                local_delta++;\n            }\n#endif\n            membership_d[point_id] = index;\n\n#ifdef BLOCK_CENTER_REDUCTION\n            for(int j=0; j<nfeatures; j++) {\n                int feat_idx = index * nfeatures + j;\n                int addr = point_id + j * npoints;\n                local_block_centers[feat_idx] += feature_d[addr];\n            }\n#endif\n        }\n\n#ifdef BLOCK_DELTA_REDUCTION\n        block_deltas_d[block_id] = local_delta;\n#endif\n    }\n\n    memcpy(membership_new, membership_d, npoints*sizeof(int));\n\n#ifdef BLOCK_CENTER_REDUCE\n    float * block_clusters_h = (float *) malloc(\n        num_blocks_perdim * num_blocks_perdim *\n        nclusters * nfeatures * sizeof(float));\n    memcpy(block_clusters_h, block_clusters_d,\n        num_blocks_perdim * num_blocks_perdim *\n        nclusters * nfeatures * sizeof(float));\n#endif\n#ifdef BLOCK_DELTA_REDUCE\n    int * block_deltas_h = (int *) malloc(\n        num_blocks_perdim * num_blocks_perdim * sizeof(int));\n    memcpy(block_deltas_h, block_deltas_d,\n        num_blocks_perdim * num_blocks_perdim * sizeof(int));\n#endif\n\n    delta = 0;\n    for (i = 0; i < npoints; i++)\n    {\n        int cluster_id = membership_new[i];\n        new_centers_len[cluster_id]++;\n        if (membership_new[i] != membership[i])\n        {\n#ifdef CPU_DELTA_REDUCE\n            delta++;\n#endif\n            membership[i] = membership_new[i];\n        }\n#ifdef CPU_CENTER_REDUCE\n        for (j = 0; j < nfeatures; j++)\n        {\n            new_centers[cluster_id][j] += feature[i][j];\n        }\n#endif\n    }\n\n#ifdef BLOCK_DELTA_REDUCE\n    for(i = 0; i < num_blocks_perdim * num_blocks_perdim; i++) {\n        delta += block_deltas_h[i];\n    }\n#endif\n#ifdef BLOCK_CENTER_REDUCE\n    for(int j = 0; j < nclusters;j++) {\n        for(int k = 0; k < nfeatures;k++) {\n            block_new_centers[j*nfeatures + k] = 0.f;\n        }\n    }\n\n    for(i = 0; i < num_blocks_perdim * num_blocks_perdim; i++) {\n        for(int j = 0; j < nclusters;j++) {\n            for(int k = 0; k < nfeatures;k++) {\n                block_new_centers[j*nfeatures + k] += block_clusters_h[i * nclusters*nfeatures + j * nfeatures + k];\n            }\n        }\n    }\n\n#ifdef BLOCK_CENTER_REDUCE\n    for(int j = 0; j < nclusters;j++) {\n        for(int k = 0; k < nfeatures;k)\n            new_centers[j][k]= block_new_centers[j*nfeatures + k];\n    }\n#endif\n#endif\n\n#ifdef BLOCK_CENTER_REDUCE\n    free(block_clusters_h);\n#endif\n#ifdef BLOCK_DELTA_REDUCE\n    free(block_deltas_h);\n#endif\n\n    return delta;\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "target_files_extracted": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 34.813,
+      "prompt_tokens": 25558,
+      "completion_tokens": 1977,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "kmeans.c: In function \u2018main\u2019:\nkmeans.c:152:9: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n  152 |         read(infile, &numObjects,    sizeof(int));\n      |         ^~~~\n      |         fread\nkmeans.c:165:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n  165 |         close(infile);\n      |         ^~~~~\n      |         pclose\nkmeans_clustering.c:26:28: error: initializer element is not constant\n   26 | unsigned int num_threads = num_threads_perdim*num_threads_perdim;\n      |                            ^~~~~~~~~~~~~~~~~~\nkmeans_clustering.c:27:27: error: initializer element is not constant\n   27 | unsigned int num_blocks = num_blocks_perdim*num_blocks_perdim;\n      |                           ^~~~~~~~~~~~~~~~~\nmake[1]: *** [Makefile:21: kmeans_clustering.o] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-pathfinder-omp",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-c",
+    "100000",
+    "-r",
+    "100",
+    "-h",
+    "20"
+  ],
+  "timestamp": "2026-04-01T00:23:46Z",
+  "prompt_tokens": 4332,
+  "completion_tokens": 415,
+  "llm_response_time_seconds": 4.288,
+  "build_status": "pass",
+  "build_time_seconds": 0.476,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.216,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "7 errors generated.\n",
+  "run_stdout_snippet": "ess space\n    int* local_min_right,\n         ^\n<kernel>:13:10: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    int* d_outputBuffer)\n         ^\n<kernel>:48:34: error: read-only variable is not assignable\n            d_gpuResult_src[gid] = val;\n            ~~~~~~~~~~~~~~~~~~~~ ^\n\n\n*************************************************\n*** END OUTPUT FROM COMPILING THE KERNEL FILE ***\n*************************************************\n\n\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "kernel void dynproc_kernel(\n    int arg0,\n    const int* d_gpuWall,\n    const int* d_gpuResult_src,\n    int* d_gpuResult_dst,\n    int cols,\n    int rows,\n    int t_start,\n    int borderCols,\n    int theHalo,\n    int* local_min_left,\n    int* local_min_right,\n    int* d_outputBuffer)\n{\n    int gid = get_global_id(0);\n    int lid = get_local_id(0);\n    int lsize = get_local_size(0);\n\n    if (gid >= cols) return;\n\n    int current_row = t_start;\n    int height = arg0;\n\n    int val = d_gpuResult_src[gid];\n\n    for (int h = 0; h < height; h++) {\n        int left_min = val;\n        int right_min = val;\n\n        if (gid > 0) {\n            int left_val = d_gpuResult_src[gid - 1];\n            if (left_val < left_min) left_min = left_val;\n        }\n        if (gid < cols - 1) {\n            int right_val = d_gpuResult_src[gid + 1];\n            if (right_val < right_min) right_min = right_val;\n        }\n\n        int min_val = left_min;\n        if (right_min < min_val) min_val = right_min;\n\n        int wall_idx = (current_row + 1) * cols + gid;\n        val = d_gpuWall[wall_idx - cols] + min_val;\n\n        current_row++;\n        \n        if (h < height - 1) {\n            d_gpuResult_src[gid] = val;\n        }\n    }\n\n    d_gpuResult_dst[gid] = val;\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.288,
+      "prompt_tokens": 4332,
+      "completion_tokens": 415,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "7 errors generated.\n",
+      "run_stdout_snippet": "ess space\n    int* local_min_right,\n         ^\n<kernel>:13:10: error: pointer arguments to kernel functions must reside in '__global', '__constant' or '__local' address space\n    int* d_outputBuffer)\n         ^\n<kernel>:48:34: error: read-only variable is not assignable\n            d_gpuResult_src[gid] = val;\n            ~~~~~~~~~~~~~~~~~~~~ ^\n\n\n*************************************************\n*** END OUTPUT FROM COMPILING THE KERNEL FILE ***\n*************************************************\n\n\n",
+      "extraction_fail": null
+    }
+  ]
+}

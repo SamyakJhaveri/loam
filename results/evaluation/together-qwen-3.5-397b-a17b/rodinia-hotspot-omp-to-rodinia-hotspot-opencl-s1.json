@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-hotspot-omp",
+  "target_spec": "rodinia-hotspot-opencl",
+  "kernel": "hotspot",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "512",
+    "2",
+    "4",
+    "../../data/hotspot/temp_512",
+    "../../data/hotspot/power_512",
+    "output.out"
+  ],
+  "timestamp": "2026-03-31T23:42:33Z",
+  "prompt_tokens": 7800,
+  "completion_tokens": 1357,
+  "llm_response_time_seconds": 20.208,
+  "build_status": "pass",
+  "build_time_seconds": 0.178,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.232,
+  "run_exit_code": 245,
+  "run_stderr_snippet": "1 warning generated.\n",
+  "run_stdout_snippet": " X 16\nPlatform: NVIDIA Corporation\nnum_devices = 1\nDevice: NVIDIA GeForce RTX 4070\nUse GPU device\n<<<<\n<kernel>:34:19: warning: implicit declaration of function '__get_global_id' is invalid in OpenCL\n    int c_start = __get_global_id(0) * BLOCK_SIZE;\n                  ^\n(): Warning: Function hotspot is a kernel, so overriding noinline attribute. The function may be inlined when called.\nptxas fatal   : Unresolved extern function '__get_global_id'\n\n>>>>\nError at line 306: CL_BUILD_PROGRAM_FAILURE\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 245)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.159,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "hotspot_kernel.cl": "#define BLOCK_SIZE 16\n\n#define MAX_PD\t(3.0e6)\n#define PRECISION\t0.001\n#define SPEC_HEAT_SI 1.75e6\n#define K_SI 100\n#define FACTOR_CHIP\t0.5\n\nconst float t_chip = 0.0005f;\nconst float chip_height = 0.016f;\nconst float chip_width = 0.016f;\nconst float amb_temp = 80.0f;\n\n__kernel void hotspot(\n    int num_iterations,\n    __global const float *power,\n    __global const float *temp,\n    __global float *result,\n    int col,\n    int row,\n    int borderCols,\n    int borderRows,\n    float Cap,\n    float Rx,\n    float Ry,\n    float Rz,\n    float step)\n{\n    float Cap_1 = step / Cap;\n    float Rx_1 = 1.0f / Rx;\n    float Ry_1 = 1.0f / Ry;\n    float Rz_1 = 1.0f / Rz;\n\n    int c_start = __get_global_id(0) * BLOCK_SIZE;\n    int r_start = __get_global_id(1) * BLOCK_SIZE;\n    \n    int c_end = c_start + BLOCK_SIZE > col ? col : c_start + BLOCK_SIZE;\n    int r_end = r_start + BLOCK_SIZE > row ? row : r_start + BLOCK_SIZE;\n\n    for (int iter = 0; iter < num_iterations; iter++) {\n        for (int r = r_start; r < r_end; ++r) {\n            for (int c = c_start; c < c_end; ++c) {\n                float delta;\n                int idx = r * col + c;\n\n                bool is_boundary = (r == 0) || (c == 0) || (r == row - 1) || (c == col - 1);\n\n                if (is_boundary) {\n                    if ((r == 0) && (c == 0)) {\n                        delta = Cap_1 * (power[0] +\n                            (temp[1] - temp[0]) * Rx_1 +\n                            (temp[col] - temp[0]) * Ry_1 +\n                            (amb_temp - temp[0]) * Rz_1);\n                    }\n                    else if ((r == 0) && (c == col - 1)) {\n                        delta = Cap_1 * (power[c] +\n                            (temp[c - 1] - temp[c]) * Rx_1 +\n                            (temp[c + col] - temp[c]) * Ry_1 +\n                            (amb_temp - temp[c]) * Rz_1);\n                    }\n                    else if ((r == row - 1) && (c == col - 1)) {\n                        delta = Cap_1 * (power[idx] +\n                            (temp[idx - 1] - temp[idx]) * Rx_1 +\n                            (temp[(r - 1) * col + c] - temp[idx]) * Ry_1 +\n                            (amb_temp - temp[idx]) * Rz_1);\n                    }\n                    else if ((r == row - 1) && (c == 0)) {\n                        delta = Cap_1 * (power[r * col] +\n                            (temp[r * col + 1] - temp[r * col]) * Rx_1 +\n                            (temp[(r - 1) * col] - temp[r * col]) * Ry_1 +\n                            (amb_temp - temp[r * col]) * Rz_1);\n                    }\n                    else if (r == 0) {\n                        delta = Cap_1 * (power[c] +\n                            (temp[c + 1] + temp[c - 1] - 2.0f * temp[c]) * Rx_1 +\n                            (temp[col + c] - temp[c]) * Ry_1 +\n                            (amb_temp - temp[c]) * Rz_1);\n                    }\n                    else if (c == col - 1) {\n                        delta = Cap_1 * (power[idx] +\n                            (temp[(r + 1) * col + c] + temp[(r - 1) * col + c] - 2.0f * temp[idx]) * Ry_1 +\n                            (temp[idx - 1] - temp[idx]) * Rx_1 +\n                            (amb_temp - temp[idx]) * Rz_1);\n                    }\n                    else if (r == row - 1) {\n                        delta = Cap_1 * (power[idx] +\n                            (temp[idx + 1] + temp[idx - 1] - 2.0f * temp[idx]) * Rx_1 +\n                            (temp[(r - 1) * col + c] - temp[idx]) * Ry_1 +\n                            (amb_temp - temp[idx]) * Rz_1);\n                    }\n                    else if (c == 0) {\n                        delta = Cap_1 * (power[r * col] +\n                            (temp[(r + 1) * col] + temp[(r - 1) * col] - 2.0f * temp[r * col]) * Ry_1 +\n                            (temp[r * col + 1] - temp[r * col]) * Rx_1 +\n                            (amb_temp - temp[r * col]) * Rz_1);\n                    }\n                } else {\n                    delta = Cap_1 * (power[idx] +\n                        (temp[(r + 1) * col + c] + temp[(r - 1) * col + c] - 2.0f * temp[idx]) * Ry_1 +\n                        (temp[idx + 1] + temp[idx - 1] - 2.0f * temp[idx]) * Rx_1 +\n                        (amb_temp - temp[idx]) * Rz_1);\n                }\n\n                result[idx] = temp[idx] + delta;\n            }\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "hotspot_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "hotspot_kernel.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 20.208,
+      "prompt_tokens": 7800,
+      "completion_tokens": 1357,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 warning generated.\n",
+      "run_stdout_snippet": " X 16\nPlatform: NVIDIA Corporation\nnum_devices = 1\nDevice: NVIDIA GeForce RTX 4070\nUse GPU device\n<<<<\n<kernel>:34:19: warning: implicit declaration of function '__get_global_id' is invalid in OpenCL\n    int c_start = __get_global_id(0) * BLOCK_SIZE;\n                  ^\n(): Warning: Function hotspot is a kernel, so overriding noinline attribute. The function may be inlined when called.\nptxas fatal   : Unresolved extern function '__get_global_id'\n\n>>>>\nError at line 306: CL_BUILD_PROGRAM_FAILURE\n",
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "source_spec": "rodinia-hotspot3d-omp",
+  "target_spec": "rodinia-hotspot3d-cuda",
+  "kernel": "hotspot3d",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-03-31T20:29:36Z",
+  "prompt_tokens": 2733,
+  "completion_tokens": 2475,
+  "llm_response_time_seconds": 21.656,
+  "build_status": null,
+  "build_time_seconds": null,
+  "build_error_snippet": null,
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "EXTRACTION_FAIL",
+  "error_message": "Partial extraction on attempt 1: missing 1 file(s), 0 empty file(s). Missing: ['opt1.cu']. Empty: [].",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.869,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "3D.cu": "#include <stdio.h>\n#include <time.h>\n#include <assert.h>\n#include <stdlib.h> \n#include <math.h> \n#include <sys/time.h>\n#include <string.h>\n\n#define STR_SIZE (256)\n#define MAX_PD\t(3.0e6)\n\n#define PRECISION\t0.001\n#define SPEC_HEAT_SI 1.75e6\n#define K_SI 100\n\n#define FACTOR_CHIP\t0.5\n\nfloat t_chip = 0.0005;\nfloat chip_height = 0.016; \nfloat chip_width = 0.016; \nfloat amb_temp = 80.0;\n\nvoid fatal(char *s)\n{\n    fprintf(stderr, \"Error: %s\\n\", s);\n}\n\nvoid readinput(float *vect, int grid_rows, int grid_cols, int layers, char *file) {\n    int i,j,k;\n    FILE *fp;\n    char str[STR_SIZE];\n    float val;\n\n    if( (fp  = fopen(file, \"r\" )) ==0 )\n      fatal( \"The file was not opened\" );\n\n    for (i=0; i <= grid_rows-1; i++) \n      for (j=0; j <= grid_cols-1; j++)\n        for (k=0; k <= layers-1; k++)\n          {\n            if (fgets(str, STR_SIZE, fp) == NULL) fatal(\"Error reading file\\n\");\n            if (feof(fp))\n              fatal(\"not enough lines in file\");\n            if ((sscanf(str, \"%f\", &val) != 1))\n              fatal(\"invalid file format\");\n            vect[i*grid_cols+j+k*grid_rows*grid_cols] = val;\n          }\n\n    fclose(fp);\t\n}\n\nvoid writeoutput(float *vect, int grid_rows, int grid_cols, int layers, char *file) {\n\n    int i,j,k, index=0;\n    FILE *fp;\n    char str[STR_SIZE];\n\n    if( (fp = fopen(file, \"w\" )) == 0 )\n      printf( \"The file was not opened\\n\" );\n\n    for (i=0; i < grid_rows; i++) \n      for (j=0; j < grid_cols; j++)\n        for (k=0; k < layers; k++)\n          {\n            sprintf(str, \"%d\\t%g\\n\", index, vect[i*grid_cols+j+k*grid_rows*grid_cols]);\n            fputs(str,fp);\n            index++;\n          }\n\n    fclose(fp);\t\n}\n\n__global__ void computeTempKernel(float *pIn, float *tIn, float *tOut, \n        int nx, int ny, int nz, float Cap, \n        float Rx, float Ry, float Rz, \n        float dt, float ce, float cw, float cn, float cs, float ct, float cb, float cc) \n{\n    int x = blockIdx.x * blockDim.x + threadIdx.x;\n    int y = blockIdx.y * blockDim.y + threadIdx.y;\n    int z = blockIdx.z * blockDim.z + threadIdx.z;\n\n    if (x >= nx || y >= ny || z >= nz) return;\n\n    int c = x + y * nx + z * nx * ny;\n    int w = (x == 0) ? c : c - 1;\n    int e = (x == nx - 1) ? c : c + 1;\n    int n = (y == 0) ? c : c - nx;\n    int s = (y == ny - 1) ? c : c + nx;\n    int b = (z == 0) ? c : c - nx * ny;\n    int t = (z == nz - 1) ? c : c + nx * ny;\n\n    tOut[c] = tIn[c]*cc + tIn[n]*cn + tIn[s]*cs + tIn[e]*ce + tIn[w]*cw + tIn[t]*ct + tIn[b]*cb + (dt/Cap) * pIn[c] + ct*amb_temp;\n}\n\nvoid computeTempCUDA(float *pIn, float* tIn, float *tOut, \n        int nx, int ny, int nz, float Cap, \n        float Rx, float Ry, float Rz, \n        float dt, int numiter) \n{   \n    float ce, cw, cn, cs, ct, cb, cc;\n    float stepDivCap = dt / Cap;\n    ce = cw = stepDivCap / Rx;\n    cn = cs = stepDivCap / Ry;\n    ct = cb = stepDivCap / Rz;\n    cc = 1.0 - (2.0*ce + 2.0*cn + 3.0*ct);\n\n    float *d_pIn, *d_tIn, *d_tOut, *d_temp;\n    int size = nx * ny * nz;\n    size_t bytes = size * sizeof(float);\n\n    cudaMalloc(&d_pIn, bytes);\n    cudaMalloc(&d_tIn, bytes);\n    cudaMalloc(&d_tOut, bytes);\n    cudaMalloc(&d_temp, bytes);\n\n    cudaMemcpy(d_pIn, pIn, bytes, cudaMemcpyHostToDevice);\n    cudaMemcpy(d_tIn, tIn, bytes, cudaMemcpyHostToDevice);\n\n    dim3 blockDim(16, 16, 4);\n    dim3 gridDim((nx + blockDim.x - 1) / blockDim.x,\n                 (ny + blockDim.y - 1) / blockDim.y,\n                 (nz + blockDim.z - 1) / blockDim.z);\n\n    for (int i = 0; i < numiter; i++) {\n        computeTempKernel<<<gridDim, blockDim>>>(d_pIn, d_tIn, d_tOut, nx, ny, nz, Cap, Rx, Ry, Rz, dt, ce, cw, cn, cs, ct, cb, cc);\n        cudaDeviceSynchronize();\n\n        // Swap pointers\n        float *tmp = d_tIn;\n        d_tIn = d_tOut;\n        d_tOut = tmp;\n    }\n\n    cudaMemcpy(tOut, d_tIn, bytes, cudaMemcpyDeviceToHost);\n\n    cudaFree(d_pIn);\n    cudaFree(d_tIn);\n    cudaFree(d_tOut);\n    cudaFree(d_temp);\n}\n\nfloat accuracy(float *arr1, float *arr2, int len)\n{\n    float err = 0.0; \n    int i;\n    for(i = 0; i < len; i++)\n    {\n        err += (arr1[i]-arr2[i]) * (arr1[i]-arr2[i]);\n    }\n\n    return (float)sqrt(err/len);\n}\n\nvoid computeTempOMP(float *pIn, float* tIn, float *tOut, \n        int nx, int ny, int nz, float Cap, \n        float Rx, float Ry, float Rz, \n        float dt, int numiter) \n{  \n    // This function is replaced by CUDA implementation in main logic flow\n    // Keeping signature for compatibility but logic is handled by computeTempCUDA\n    computeTempCUDA(pIn, tIn, tOut, nx, ny, nz, Cap, Rx, Ry, Rz, dt, numiter);\n} \n\nvoid usage(int argc, char **argv)\n{\n    fprintf(stderr, \"Usage: %s <rows/cols> <layers> <iterations> <powerFile> <tempFile> <outputFile>\\n\", argv[0]);\n    fprintf(stderr, \"\\t<rows/cols>  - number of rows/cols in the grid (positive integer)\\n\");\n    fprintf(stderr, \"\\t<layers>  - number of layers in the grid (positive integer)\\n\");\n\n    fprintf(stderr, \"\\t<iteration> - number of iterations\\n\");\n    fprintf(stderr, \"\\t<powerFile>  - name of the file containing the initial power values of each cell\\n\");\n    fprintf(stderr, \"\\t<tempFile>  - name of the file containing the initial temperature values of each cell\\n\");\n    fprintf(stderr, \"\\t<outputFile - output file\\n\");\n    exit(1);\n}\n\nint main(int argc, char** argv)\n{\n    if (argc != 7)\n    {\n        usage(argc,argv);\n    }\n\n    char *pfile, *tfile, *ofile;\n    int iterations = atoi(argv[3]);\n\n    pfile = argv[4];\n    tfile = argv[5];\n    ofile = argv[6];\n    \n    int numCols = atoi(argv[1]);\n    int numRows = atoi(argv[1]);\n    int layers = atoi(argv[2]);\n\n    float dx = chip_height/numRows;\n    float dy = chip_width/numCols;\n    float dz = t_chip/layers;\n\n    float Cap = FACTOR_CHIP * SPEC_HEAT_SI * t_chip * dx * dy;\n    float Rx = dy / (2.0 * K_SI * t_chip * dx);\n    float Ry = dx / (2.0 * K_SI * t_chip * dy);\n    float Rz = dz / (K_SI * dx * dy);\n\n    float max_slope = MAX_PD / (FACTOR_CHIP * t_chip * SPEC_HEAT_SI);\n    float dt = PRECISION / max_slope;\n\n    float *powerIn, *tempOut, *tempIn, *tempCopy;\n    \n    int size = numCols * numRows * layers;\n\n    powerIn = (float*)calloc(size, sizeof(float));\n    tempCopy = (float*)malloc(size * sizeof(float));\n    tempIn = (float*)calloc(size,sizeof(float));\n    tempOut = (float*)calloc(size, sizeof(float));\n    \n    float* answer = (float*)calloc(size, sizeof(float));\n\n    readinput(powerIn,numRows, numCols, layers,pfile);\n    readinput(tempIn, numRows, numCols, layers, tfile);\n\n    memcpy(tempCopy,tempIn, size * sizeof(float));\n\n    struct timeval start, stop;\n    float time;\n    \n    // CUDA Execution\n    gettimeofday(&start,NULL);\n    computeTempCUDA(powerIn, tempIn, tempOut, numCols, numRows, layers, Cap, Rx, Ry, Rz, dt, iterations);\n    gettimeofday(&stop,NULL);\n    \n    time = (stop.tv_usec-start.tv_usec)*1.0e-6 + stop.tv_sec - start.tv_sec;\n    \n    // CPU Verification\n    computeTempCPU(powerIn, tempCopy, answer, numCols, numRows, layers, Cap, Rx, Ry, Rz, dt, iterations);\n\n    float acc = accuracy(tempOut, answer, numRows*numCols*layers);\n    printf(\"Time: %.3f (s)\\n\", time);\n    printf(\"Accuracy: %e\\n\", acc);\n    writeoutput(tempOut, numRows, numCols, layers, ofile);\n    \n    free(tempIn);\n    free(tempOut); \n    free(powerIn);\n    free(tempCopy);\n    free(answer);\n    \n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "3D.cu",
+    "opt1.cu"
+  ],
+  "target_files_extracted": [
+    "3D.cu"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 21.656,
+      "prompt_tokens": 2733,
+      "completion_tokens": 2475,
+      "finish_reason": "stop",
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": true,
+      "partial_extraction": true
+    }
+  ]
+}

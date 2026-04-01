@@ -1,79 +1,90 @@
 # ParBench Evaluation Summary
-**Generated:** 2026-03-30 05:06  |  **Total tasks:** 188
-
-> **CAVEAT (2026-03-30):** These numbers were generated from the pre-fix pipeline. A
-> source-args bug caused cross-API translations to run with the *target* spec's arguments
-> instead of the *source* spec's, producing systematic false negatives (43 Qwen tasks,
-> 8 Gemini tasks). Pass rates below are UNDERESTIMATES. Campaigns must be re-run with
-> the fixed pipeline before these numbers can be used in the paper. See
-> `docs/plans/paper_update_summary.md` for full details.
+**Generated:** 2026-03-31 19:45  |  **Total tasks:** 906
 
 ## Pass Rates by Model
 
 | Model | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL | EXTRACTION_FAIL |
 |-------|-----:|------:|-----:|----------:|--------:|------------:|---------------:|
-| together-qwen-3.5-397b-a17b | 45 | 188 | 23.9% | 61 | 51 | 31 | 0 |
+| together-qwen-3.5-397b-a17b | 251 | 906 | 27.7% | 366 | 199 | 69 | 21 |
 
 ## Pass Rates by Translation Direction
 
 | Direction | PASS | Total | Rate |
 |-----------|-----:|------:|-----:|
-| cuda-to-omp | 31 | 80 | 38.8% |
-| cuda-to-opencl | 0 | 28 | 0.0% |
-| omp-to-cuda | 14 | 80 | 17.5% |
+| cuda-to-omp | 76 | 152 | 50.0% |
+| cuda-to-omp_target | 0 | 24 | 0.0% |
+| cuda-to-opencl | 20 | 145 | 13.8% |
+| omp-to-cuda | 56 | 152 | 36.8% |
+| omp-to-opencl | 33 | 129 | 25.6% |
+| omp_target-to-cuda | 18 | 30 | 60.0% |
+| opencl-to-cuda | 6 | 145 | 4.1% |
+| opencl-to-omp | 42 | 129 | 32.6% |
 
 ## Pass Rates by Augmentation Level
 
 | Level | PASS | Total | Rate |
 |-------|-----:|------:|-----:|
-| L0 | 10 | 38 | 26.3% |
-| L1 | 7 | 38 | 18.4% |
-| L2 | 11 | 38 | 28.9% |
-| L3 | 10 | 37 | 27.0% |
-| L4 | 7 | 37 | 18.9% |
+| L0 | 118 | 522 | 22.6% |
+| L1 | 33 | 96 | 34.4% |
+| L2 | 35 | 96 | 36.5% |
+| L3 | 36 | 96 | 37.5% |
+| L4 | 29 | 96 | 30.2% |
 
 ## Pass Rates by Translation Complexity
 
 | Complexity Class | PASS | Total | Rate | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL |
 |-----------------|-----:|------:|-----:|----------:|--------:|------------:|
-| multi_to_multi | 1 | 25 | 4.0% | 15 | 7 | 2 |
-| multi_to_single | 18 | 60 | 30.0% | 14 | 17 | 11 |
-| single_file | 20 | 58 | 34.5% | 5 | 18 | 15 |
-| single_to_multi | 6 | 45 | 13.3% | 27 | 9 | 3 |
+| multi_to_multi | 6 | 70 | 8.6% | 47 | 13 | 3 |
+| multi_to_single | 59 | 196 | 30.1% | 41 | 87 | 8 |
+| single_file | 168 | 444 | 37.8% | 131 | 98 | 46 |
+| single_to_multi | 18 | 196 | 9.2% | 147 | 1 | 12 |
 
 ## Kernel × Model Matrix (cuda→omp, L0)
 
 | Kernel | together-qwen-3.5-397b-a17b |
 |--------|---|
 | backprop | ✓ PASS |
-| bfs | ✗ VERIFY_FAIL |
+| bfs | ✓ PASS |
 | bptree | ✗ BUILD_FAIL |
 | cfd | ✓ PASS |
+| convolution1d | ✗ BUILD_FAIL |
+| floydwarshall | ✗ RUN_FAIL |
 | heartwall | ✗ BUILD_FAIL |
-| hotspot | ✗ RUN_FAIL |
+| heat2d | ✗ BUILD_FAIL |
+| hotspot | ✓ PASS |
 | hotspot3d | ✓ PASS |
+| iso2dfd | ✗ BUILD_FAIL |
+| jacobi | ✗ BUILD_FAIL |
 | lavamd | ✓ PASS |
 | lud | ✓ PASS |
+| md | ✗ BUILD_FAIL |
+| mixbench | ✗ BUILD_FAIL |
 | myocyte | ✗ BUILD_FAIL |
-| nn | ✓ PASS |
-| nw | ✗ RUN_FAIL |
+| nn | ✗ BUILD_FAIL |
+| nqueen | ✗ BUILD_FAIL |
+| nw | ✓ PASS |
+| page-rank | ✗ RUN_FAIL |
 | particlefilter | ✓ PASS |
-| pathfinder | ✗ VERIFY_FAIL |
-| srad | ✗ RUN_FAIL |
+| pathfinder | ✓ PASS |
+| rsbench | ✗ BUILD_FAIL |
+| scan | ✗ BUILD_FAIL |
+| srad | ✓ PASS |
+| stencil1d | ✗ BUILD_FAIL |
 | streamcluster | ✗ BUILD_FAIL |
+| xsbench | ✗ BUILD_FAIL |
 
 ## Failure Taxonomy
 
 | Status | Count |
 |--------|------:|
-| BUILD_FAIL | 61 |
-| RUN_FAIL | 51 |
-| VERIFY_FAIL | 31 |
-| EXTRACTION_FAIL | 0 |
+| BUILD_FAIL | 366 |
+| RUN_FAIL | 199 |
+| VERIFY_FAIL | 69 |
+| EXTRACTION_FAIL | 21 |
 
 ## Self-Repair (Iterative Retry) Effectiveness
 
-- Tasks with recorded attempts: **188**
-- Passed on first attempt: **14**
-- Repaired by retry: **31**
+- Tasks with recorded attempts: **906**
+- Passed on first attempt: **160**
+- Repaired by retry: **91**
 

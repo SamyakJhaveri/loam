@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-streamcluster-cuda",
+  "target_spec": "rodinia-streamcluster-opencl",
+  "kernel": "streamcluster",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "10",
+    "20",
+    "256",
+    "65536",
+    "65536",
+    "1000",
+    "none",
+    "output.txt",
+    "1",
+    "-p",
+    "0"
+  ],
+  "timestamp": "2026-03-31T22:12:19Z",
+  "prompt_tokens": 21514,
+  "completion_tokens": 313,
+  "llm_response_time_seconds": 4.491,
+  "build_status": "pass",
+  "build_time_seconds": 0.736,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.149,
+  "run_exit_code": 255,
+  "run_stderr_snippet": "1 error generated.\nInitCL()::Error: In clBuildProgram\n<kernel>:5:20: error: unknown type name 'Point_Struct'\n    __global const Point_Struct *p,\n                   ^\n\n",
+  "run_stdout_snippet": "PARSEC Benchmark Suite\n--cambine: device name=NVIDIA GeForce RTX 4070\nexception caught in main function->InitCL()::Error: Building Program (clBuildProgram)\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 255)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.092,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Kernels.cl": "#define THREADS_PER_BLOCK 256\n#define MAXBLOCKS 65536\n\n__kernel void kernel_compute_cost(\n    __global const Point_Struct *p,\n    __global const float *coord,\n    __global float *work_mem,\n    __global const int *center_table,\n    __global char *switch_membership,\n    int num,\n    int dim,\n    long x,\n    int K,\n    int stride)\n{\n    int tid = get_global_id(0);\n\n    if (tid < num) {\n        float *lower = &work_mem[tid * stride];\n        \n        float retval = 0.0f;\n        for (int i = 0; i < dim; i++) {\n            float tmp = coord[i * num + tid] - coord[i * num + x];\n            retval += tmp * tmp;\n        }\n        \n        float x_cost = retval * p[tid].weight;\n        \n        if (x_cost < p[tid].cost) {\n            switch_membership[tid] = 1;\n            lower[K] += x_cost - p[tid].cost;\n        } else {\n            int assign_idx = (int)p[tid].assign;\n            int center_idx = center_table[assign_idx];\n            lower[center_idx] += p[tid].cost - x_cost;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.491,
+      "prompt_tokens": 21514,
+      "completion_tokens": 313,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\nInitCL()::Error: In clBuildProgram\n<kernel>:5:20: error: unknown type name 'Point_Struct'\n    __global const Point_Struct *p,\n                   ^\n\n",
+      "run_stdout_snippet": "PARSEC Benchmark Suite\n--cambine: device name=NVIDIA GeForce RTX 4070\nexception caught in main function->InitCL()::Error: Building Program (clBuildProgram)\n",
+      "extraction_fail": null
+    }
+  ]
+}

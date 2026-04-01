@@ -1,0 +1,65 @@
+{
+  "source_spec": "mixbench-mixbench-cuda",
+  "target_spec": "mixbench-mixbench-opencl",
+  "kernel": "mixbench",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-01T02:07:59Z",
+  "prompt_tokens": 12133,
+  "completion_tokens": 74,
+  "llm_response_time_seconds": 3.017,
+  "build_status": "pass",
+  "build_time_seconds": 0.466,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.32,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-b08728.d\n1 warning and 1 error generated.\nProgram built error code: -11\n------------------------------------ Kernel compilation log ----------------------------------\n<kernel>:1:9: warning: #pragma once in main file\n#pragma once\n        ^\n<kernel>:6:11: fatal error: 'CL/opencl.h' file not found\n#       include <CL/opencl.h>\n                ^~~~~~~~~~~~~\n----------------------------------------------------------------------------------------------\n",
+  "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 30.0,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "mix_kernels.cl": "#pragma once\n\n#ifdef __APPLE__\n#\tinclude <OpenCL/OpenCL.h>\n#else\n#\tinclude <CL/opencl.h>\n#endif\n\nextern \"C\" void mixbenchGPU(cl_device_id, double*, long, bool, bool, bool, size_t, unsigned int, unsigned int);\n\n"
+  },
+  "target_files_expected": [
+    "mix_kernels.cl"
+  ],
+  "target_files_extracted": [
+    "mix_kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.017,
+      "prompt_tokens": 12133,
+      "completion_tokens": 74,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-b08728.d\n1 warning and 1 error generated.\nProgram built error code: -11\n------------------------------------ Kernel compilation log ----------------------------------\n<kernel>:1:9: warning: #pragma once in main file\n#pragma once\n        ^\n<kernel>:6:11: fatal error: 'CL/opencl.h' file not found\n#       include <CL/opencl.h>\n                ^~~~~~~~~~~~~\n----------------------------------------------------------------------------------------------\n",
+      "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+      "extraction_fail": null
+    }
+  ]
+}

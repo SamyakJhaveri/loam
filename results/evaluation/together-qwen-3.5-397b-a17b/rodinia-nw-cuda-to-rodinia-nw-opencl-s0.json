@@ -1,0 +1,69 @@
+{
+  "source_spec": "rodinia-nw-cuda",
+  "target_spec": "rodinia-nw-opencl",
+  "kernel": "nw",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "2048",
+    "10",
+    "./nw.cl"
+  ],
+  "timestamp": "2026-03-31T22:08:08Z",
+  "prompt_tokens": 12551,
+  "completion_tokens": 1887,
+  "llm_response_time_seconds": 17.21,
+  "build_status": "pass",
+  "build_time_seconds": 0.354,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.19,
+  "run_exit_code": 255,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "WG size of kernel = 16 \nnum_devices = 1\nERROR: clCreateKernel() 0 => -46\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 255)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.09,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nw.cl": "#define LIMIT -999\n\n#ifdef RD_WG_SIZE_0_0\n\t#define BLOCK_SIZE RD_WG_SIZE_0_0\n#elif defined(RD_WG_SIZE_0)\n\t#define BLOCK_SIZE RD_WG_SIZE_0\n#elif defined(RD_WG_SIZE)\n\t#define BLOCK_SIZE RD_WG_SIZE\n#else\n\t#define BLOCK_SIZE 16\n#endif\n\nint maximum(int a, int b, int c) {\n    int k;\n    if (a <= b)\n        k = b;\n    else\n        k = a;\n\n    if (k <= c)\n        return c;\n    else\n        return k;\n}\n\nvoid nw_kernel1(const int* referrence,\n                const int* matrix_cuda,\n                int* output_matrix,\n                int cols,\n                int penalty,\n                int i,\n                int block_width,\n                int worksize,\n                int offset_r,\n                int offset_c,\n                volatile int* temp,\n                volatile int* ref)\n{\n    int bx = get_global_id(0) / BLOCK_SIZE;\n    int tx = get_global_id(0) % BLOCK_SIZE;\n\n    int b_index_x = bx;\n    int b_index_y = i - 1 - bx;\n\n    int base_index = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x;\n    int index   = base_index + tx + (cols + 1);\n    int index_n   = base_index + tx + 1;\n    int index_w   = base_index + cols;\n    int index_nw =  base_index;\n\n    int local_idx = tx;\n\n    if (tx == 0)\n        temp[0] = matrix_cuda[index_nw];\n\n    for (int ty = 0; ty < BLOCK_SIZE; ty++)\n        ref[ty * BLOCK_SIZE + tx] = referrence[index + cols * ty];\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    temp[(tx + 1) * (BLOCK_SIZE + 1)] = matrix_cuda[index_w + cols * tx];\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    temp[tx + 1] = matrix_cuda[index_n];\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    for (int m = 0; m < BLOCK_SIZE; m++) {\n        if (tx <= m) {\n            int t_index_x = tx + 1;\n            int t_index_y = m - tx + 1;\n\n            int val_diag = temp[(t_index_y - 1) * (BLOCK_SIZE + 1) + (t_index_x - 1)];\n            int val_left = temp[(t_index_y) * (BLOCK_SIZE + 1) + (t_index_x - 1)];\n            int val_up   = temp[(t_index_y - 1) * (BLOCK_SIZE + 1) + (t_index_x)];\n            int ref_val  = ref[(t_index_y - 1) * BLOCK_SIZE + (t_index_x - 1)];\n\n            temp[t_index_y * (BLOCK_SIZE + 1) + t_index_x] = maximum(val_diag + ref_val,\n                                                                     val_left - penalty,\n                                                                     val_up - penalty);\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    for (int m = BLOCK_SIZE - 2; m >= 0; m--) {\n        if (tx <= m) {\n            int t_index_x = tx + BLOCK_SIZE - m;\n            int t_index_y = BLOCK_SIZE - tx;\n\n            int val_diag = temp[(t_index_y - 1) * (BLOCK_SIZE + 1) + (t_index_x - 1)];\n            int val_left = temp[(t_index_y) * (BLOCK_SIZE + 1) + (t_index_x - 1)];\n            int val_up   = temp[(t_index_y - 1) * (BLOCK_SIZE + 1) + (t_index_x)];\n            int ref_val  = ref[(t_index_y - 1) * BLOCK_SIZE + (t_index_x - 1)];\n\n            temp[t_index_y * (BLOCK_SIZE + 1) + t_index_x] = maximum(val_diag + ref_val,\n                                                                     val_left - penalty,\n                                                                     val_up - penalty);\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    for (int ty = 0; ty < BLOCK_SIZE; ty++)\n        output_matrix[index + ty * cols] = temp[(ty + 1) * (BLOCK_SIZE + 1) + tx + 1];\n}\n\nvoid nw_kernel2(const int* referrence,\n                const int* matrix_cuda,\n                int* output_matrix,\n                int cols,\n                int penalty,\n                int i,\n                int block_width,\n                int worksize,\n                int offset_r,\n                int offset_c,\n                volatile int* temp,\n                volatile int* ref)\n{\n    int bx = get_global_id(0) / BLOCK_SIZE;\n    int tx = get_global_id(0) % BLOCK_SIZE;\n\n    int b_index_x = bx + block_width - i;\n    int b_index_y = block_width - bx - 1;\n\n    int base_index = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x;\n    int index   = base_index + tx + (cols + 1);\n    int index_n   = base_index + tx + 1;\n    int index_w   = base_index + cols;\n    int index_nw =  base_index;\n\n    int local_idx = tx;\n\n    for (int ty = 0; ty < BLOCK_SIZE; ty++)\n        ref[ty * BLOCK_SIZE + tx] = referrence[index + cols * ty];\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    if (tx == 0)\n        temp[0] = matrix_cuda[index_nw];\n\n    temp[(tx + 1) * (BLOCK_SIZE + 1)] = matrix_cuda[index_w + cols * tx];\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    temp[tx + 1] = matrix_cuda[index_n];\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    for (int m = 0; m < BLOCK_SIZE; m++) {\n        if (tx <= m) {\n            int t_index_x = tx + 1;\n            int t_index_y = m - tx + 1;\n\n            int val_diag = temp[(t_index_y - 1) * (BLOCK_SIZE + 1) + (t_index_x - 1)];\n            int val_left = temp[(t_index_y) * (BLOCK_SIZE + 1) + (t_index_x - 1)];\n            int val_up   = temp[(t_index_y - 1) * (BLOCK_SIZE + 1) + (t_index_x)];\n            int ref_val  = ref[(t_index_y - 1) * BLOCK_SIZE + (t_index_x - 1)];\n\n            temp[t_index_y * (BLOCK_SIZE + 1) + t_index_x] = maximum(val_diag + ref_val,\n                                                                     val_left - penalty,\n                                                                     val_up - penalty);\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    for (int m = BLOCK_SIZE - 2; m >= 0; m--) {\n        if (tx <= m) {\n            int t_index_x = tx + BLOCK_SIZE - m;\n            int t_index_y = BLOCK_SIZE - tx;\n\n            int val_diag = temp[(t_index_y - 1) * (BLOCK_SIZE + 1) + (t_index_x - 1)];\n            int val_left = temp[(t_index_y) * (BLOCK_SIZE + 1) + (t_index_x - 1)];\n            int val_up   = temp[(t_index_y - 1) * (BLOCK_SIZE + 1) + (t_index_x)];\n            int ref_val  = ref[(t_index_y - 1) * BLOCK_SIZE + (t_index_x - 1)];\n\n            temp[t_index_y * (BLOCK_SIZE + 1) + t_index_x] = maximum(val_diag + ref_val,\n                                                                     val_left - penalty,\n                                                                     val_up - penalty);\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    for (int ty = 0; ty < BLOCK_SIZE; ty++)\n        output_matrix[index + ty * cols] = temp[(ty + 1) * (BLOCK_SIZE + 1) + tx + 1];\n}\n"
+  },
+  "target_files_expected": [
+    "nw.cl"
+  ],
+  "target_files_extracted": [
+    "nw.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 17.21,
+      "prompt_tokens": 12551,
+      "completion_tokens": 1887,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "WG size of kernel = 16 \nnum_devices = 1\nERROR: clCreateKernel() 0 => -46\n",
+      "extraction_fail": null
+    }
+  ]
+}
