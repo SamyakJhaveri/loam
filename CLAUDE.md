@@ -39,6 +39,7 @@ ParBench: benchmark for LLM-based parallel code translation (CUDA ↔ OpenMP ↔
 - `ultrathink` for: architecture, eval pipeline, spec correctness, augmentation, published results.
 - If unsure, say so explicitly — never guess silently.
 - `/validate` before every commit. Pre-commit hook enforces `.validation_passed` sentinel.
+- **Model selection:** Use Opus for main work. Before commit/push: manually run `/model haiku` (faster, cheaper for transactional git ops).
 
 ## Conditional Rules (`.claude/rules/`, auto-loaded by file path)
 
