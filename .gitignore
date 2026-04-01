@@ -4,36 +4,26 @@ ParBench/downloads/
 
 # Personal/temporary documents (not project deliverables)
 *.docx
-
 # PDFs are tracked — meeting transcripts & reference papers are project assets
 # (conversation transcripts with research team are essential for progress tracking)
-
 # HeCBench downloads (1.4 GB source tree — re-download via wget script)
 parbench_sam/downloads/
-
 # XSBench source (regular clone, not submodule — commit pinned in spec provenance)
 xsbench/xsbench-src/
-
 # RSBench source (regular clone — commit pinned in spec provenance)
 rsbench/rsbench-src/
-
 # mixbench source (regular clone — commit pinned in spec provenance)
 mixbench/mixbench-src/
-
 # HeCBench source tree (1.4 GB — re-download via wget)
 HeCBench-master/
-
 # Evaluation result backups (large, not tracked)
 results/evaluation_backup*/
-
 # Local machine-specific config (absolute paths)
 parbench_sam/config/paths.json
-
 # macOS
 .DS_Store
 .AppleDouble
 .LSOverride
-
 # Python
 __pycache__/
 *.py[cod]
@@ -46,26 +36,20 @@ build/
 venv/
 env/
 env_parbench/
-
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-
 # Byte-compiled / temp
 *.log
 *.tmp
-
 # Claude Code agent worktrees (temporary, auto-cleaned)
 .claude/worktrees/
-
 # Post-session validation sentinel (written by /validate, never committed)
 .validation_passed
-
 # Bash audit log (written by bash-audit-log.sh hook, grows unbounded)
 .claude/audit.log
-
 # Build artifacts
 *.o
 *.out

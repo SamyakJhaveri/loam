@@ -120,18 +120,12 @@ STATUS_ABBREV: dict[str, str] = {
 
 MODEL_DISPLAY: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "Qwen 3.5\n397B",
-    "claude-sonnet-4-6": "Claude\nSonnet 4",
-    "azure-gpt-4.1": "GPT-4.1",
-    "groq-llama-3.3-70b-versatile": "Llama 3.3\n70B",
-    "gemini-2.5-flash-lite": "Gemini\nFlash-Lite",
+    "gemini-2.5-flash": "Gemini 2.5\nFlash",
 }
 
 MODEL_DISPLAY_SHORT: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "Qwen 3.5 397B-A17B",
-    "claude-sonnet-4-6": "Claude Sonnet 4",
-    "azure-gpt-4.1": "GPT-4.1",
-    "groq-llama-3.3-70b-versatile": "Llama 3.3 70B",
-    "gemini-2.5-flash-lite": "Gemini Flash-Lite",
+    "gemini-2.5-flash": "Gemini 2.5 Flash",
 }
 
 # Canonical stacking order (bottom to top in bar charts)

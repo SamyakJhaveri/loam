@@ -1,338 +1,406 @@
 {
   "analysis": "self_repair_breakdown",
-  "total_results": 500,
-  "single_attempt_count": 135,
-  "total_multi_attempt": 365,
-  "full_repair_count": 35,
-  "partial_repair_count": 56,
-  "no_repair_count": 242,
-  "regression_count": 32,
-  "overall_repair_rate": 0.0959,
-  "overall_any_improvement_rate": 0.2493,
+  "total_results": 1018,
+  "single_attempt_count": 547,
+  "total_multi_attempt": 471,
+  "full_repair_count": 91,
+  "partial_repair_count": 53,
+  "no_repair_count": 321,
+  "regression_count": 6,
+  "overall_repair_rate": 0.1932,
+  "overall_any_improvement_rate": 0.3057,
   "by_model": {
-    "azure-gpt-4.1": {
-      "display_name": "Azure GPT-4.1",
-      "total_multi_attempt": 10,
-      "full_repair": 2,
-      "partial_repair": 3,
-      "no_repair": 5,
-      "regression": 0,
-      "repair_rate": 0.2,
-      "any_improvement_rate": 0.5,
+    "together-qwen-3.5-397b-a17b": {
+      "display_name": "Qwen 3.5 397B (Together)",
+      "total_multi_attempt": 471,
+      "full_repair": 91,
+      "partial_repair": 53,
+      "no_repair": 321,
+      "regression": 6,
+      "repair_rate": 0.1932,
+      "any_improvement_rate": 0.3057,
       "by_initial_failure": {
         "BUILD_FAIL": {
-          "no_repair": 4,
-          "partial_repair": 3,
-          "full_repair": 1
+          "full_repair": 55,
+          "no_repair": 179,
+          "partial_repair": 39,
+          "regression": 1
         },
-        "RUN_FAIL": {
-          "full_repair": 1,
-          "no_repair": 1
-        }
-      }
-    },
-    "claude-sonnet-4-6": {
-      "display_name": "Claude Sonnet 4",
-      "total_multi_attempt": 65,
-      "full_repair": 17,
-      "partial_repair": 1,
-      "no_repair": 47,
-      "regression": 0,
-      "repair_rate": 0.2615,
-      "any_improvement_rate": 0.2769,
-      "by_initial_failure": {
-        "BUILD_FAIL": {
-          "no_repair": 16,
-          "full_repair": 12,
+        "EXTRACTION_FAIL": {
+          "full_repair": 15,
+          "partial_repair": 12
+        },
+        "OTHER": {
           "partial_repair": 1
         },
-        "RUN_FAIL": {
-          "no_repair": 31,
-          "full_repair": 5
-        }
-      }
-    },
-    "gemini-2.5-flash-lite": {
-      "display_name": "Gemini 2.5 Flash-Lite",
-      "total_multi_attempt": 148,
-      "full_repair": 4,
-      "partial_repair": 44,
-      "no_repair": 92,
-      "regression": 8,
-      "repair_rate": 0.027,
-      "any_improvement_rate": 0.3243,
-      "by_initial_failure": {
-        "BUILD_FAIL": {
-          "no_repair": 69,
-          "partial_repair": 6,
-          "regression": 2,
-          "full_repair": 4
-        },
-        "EXTRACTION_FAIL": {
-          "partial_repair": 38,
-          "no_repair": 8
+        "PASS": {
+          "full_repair": 1,
+          "regression": 4
         },
         "RUN_FAIL": {
-          "regression": 6,
-          "no_repair": 15
-        }
-      }
-    },
-    "groq-llama-3.3-70b-versatile": {
-      "display_name": "Groq Llama 3.3 70B",
-      "total_multi_attempt": 142,
-      "full_repair": 12,
-      "partial_repair": 8,
-      "no_repair": 98,
-      "regression": 24,
-      "repair_rate": 0.0845,
-      "any_improvement_rate": 0.1408,
-      "by_initial_failure": {
-        "BUILD_FAIL": {
-          "no_repair": 75,
-          "full_repair": 9,
-          "regression": 7,
-          "partial_repair": 6
+          "full_repair": 14,
+          "no_repair": 112,
+          "partial_repair": 1,
+          "regression": 1
         },
-        "EXTRACTION_FAIL": {
-          "no_repair": 9,
-          "partial_repair": 2
-        },
-        "RUN_FAIL": {
-          "regression": 17,
-          "full_repair": 3,
-          "no_repair": 14
+        "VERIFY_FAIL": {
+          "no_repair": 30,
+          "full_repair": 6
         }
       }
     }
   },
   "by_initial_failure": {
     "BUILD_FAIL": {
-      "total": 215,
-      "full_repair": 26,
-      "partial_repair": 16,
-      "no_repair": 164,
-      "regression": 9,
-      "repair_rate": 0.1209
+      "total": 274,
+      "full_repair": 55,
+      "partial_repair": 39,
+      "no_repair": 179,
+      "regression": 1,
+      "repair_rate": 0.2007
     },
     "EXTRACTION_FAIL": {
-      "total": 57,
+      "total": 27,
+      "full_repair": 15,
+      "partial_repair": 12,
+      "no_repair": 0,
+      "regression": 0,
+      "repair_rate": 0.5556
+    },
+    "OTHER": {
+      "total": 1,
       "full_repair": 0,
-      "partial_repair": 40,
-      "no_repair": 17,
+      "partial_repair": 1,
+      "no_repair": 0,
       "regression": 0,
       "repair_rate": 0.0
     },
-    "RUN_FAIL": {
-      "total": 93,
-      "full_repair": 9,
+    "PASS": {
+      "total": 5,
+      "full_repair": 1,
       "partial_repair": 0,
-      "no_repair": 61,
-      "regression": 23,
-      "repair_rate": 0.0968
+      "no_repair": 0,
+      "regression": 4,
+      "repair_rate": 0.2
+    },
+    "RUN_FAIL": {
+      "total": 128,
+      "full_repair": 14,
+      "partial_repair": 1,
+      "no_repair": 112,
+      "regression": 1,
+      "repair_rate": 0.1094
+    },
+    "VERIFY_FAIL": {
+      "total": 36,
+      "full_repair": 6,
+      "partial_repair": 0,
+      "no_repair": 30,
+      "regression": 0,
+      "repair_rate": 0.1667
     }
   },
   "by_kernel": {
     "backprop": {
-      "total_multi_attempt": 8,
-      "full_repair": 0,
-      "partial_repair": 0,
-      "no_repair": 8,
-      "regression": 0,
-      "repair_rate": 0.0
+      "total_multi_attempt": 25,
+      "full_repair": 4,
+      "partial_repair": 1,
+      "no_repair": 16,
+      "regression": 4,
+      "repair_rate": 0.16
     },
     "bfs": {
-      "total_multi_attempt": 8,
-      "full_repair": 1,
-      "partial_repair": 0,
-      "no_repair": 6,
-      "regression": 1,
-      "repair_rate": 0.125
+      "total_multi_attempt": 20,
+      "full_repair": 6,
+      "partial_repair": 2,
+      "no_repair": 12,
+      "regression": 0,
+      "repair_rate": 0.3
     },
     "bptree": {
-      "total_multi_attempt": 14,
+      "total_multi_attempt": 28,
       "full_repair": 2,
       "partial_repair": 4,
-      "no_repair": 8,
+      "no_repair": 22,
       "regression": 0,
-      "repair_rate": 0.1429
+      "repair_rate": 0.0714
     },
     "cfd": {
-      "total_multi_attempt": 12,
+      "total_multi_attempt": 24,
+      "full_repair": 10,
+      "partial_repair": 2,
+      "no_repair": 12,
+      "regression": 0,
+      "repair_rate": 0.4167
+    },
+    "dwt2d": {
+      "total_multi_attempt": 10,
       "full_repair": 0,
       "partial_repair": 0,
-      "no_repair": 12,
+      "no_repair": 9,
+      "regression": 1,
+      "repair_rate": 0.0
+    },
+    "gaussian": {
+      "total_multi_attempt": 10,
+      "full_repair": 0,
+      "partial_repair": 3,
+      "no_repair": 7,
       "regression": 0,
       "repair_rate": 0.0
     },
     "heartwall": {
-      "total_multi_attempt": 19,
+      "total_multi_attempt": 30,
       "full_repair": 0,
-      "partial_repair": 6,
-      "no_repair": 12,
-      "regression": 1,
+      "partial_repair": 1,
+      "no_repair": 29,
+      "regression": 0,
       "repair_rate": 0.0
     },
     "hotspot": {
-      "total_multi_attempt": 19,
-      "full_repair": 0,
+      "total_multi_attempt": 23,
+      "full_repair": 14,
       "partial_repair": 5,
-      "no_repair": 12,
-      "regression": 2,
-      "repair_rate": 0.0
+      "no_repair": 4,
+      "regression": 0,
+      "repair_rate": 0.6087
     },
     "hotspot3d": {
-      "total_multi_attempt": 7,
-      "full_repair": 1,
-      "partial_repair": 0,
-      "no_repair": 5,
-      "regression": 1,
-      "repair_rate": 0.1429
+      "total_multi_attempt": 21,
+      "full_repair": 10,
+      "partial_repair": 2,
+      "no_repair": 9,
+      "regression": 0,
+      "repair_rate": 0.4762
+    },
+    "hybridsort": {
+      "total_multi_attempt": 10,
+      "full_repair": 0,
+      "partial_repair": 1,
+      "no_repair": 9,
+      "regression": 0,
+      "repair_rate": 0.0
     },
     "kmeans": {
-      "total_multi_attempt": 10,
-      "full_repair": 1,
+      "total_multi_attempt": 30,
+      "full_repair": 0,
       "partial_repair": 0,
-      "no_repair": 6,
-      "regression": 3,
-      "repair_rate": 0.1
+      "no_repair": 30,
+      "regression": 0,
+      "repair_rate": 0.0
     },
     "lavamd": {
-      "total_multi_attempt": 9,
-      "full_repair": 2,
-      "partial_repair": 0,
-      "no_repair": 5,
-      "regression": 2,
-      "repair_rate": 0.2222
+      "total_multi_attempt": 29,
+      "full_repair": 1,
+      "partial_repair": 3,
+      "no_repair": 25,
+      "regression": 0,
+      "repair_rate": 0.0345
     },
     "lud": {
-      "total_multi_attempt": 9,
-      "full_repair": 0,
+      "total_multi_attempt": 21,
+      "full_repair": 6,
       "partial_repair": 2,
-      "no_repair": 6,
-      "regression": 1,
+      "no_repair": 13,
+      "regression": 0,
+      "repair_rate": 0.2857
+    },
+    "mummergpu": {
+      "total_multi_attempt": 10,
+      "full_repair": 0,
+      "partial_repair": 0,
+      "no_repair": 10,
+      "regression": 0,
       "repair_rate": 0.0
     },
     "myocyte": {
-      "total_multi_attempt": 18,
-      "full_repair": 1,
-      "partial_repair": 4,
-      "no_repair": 13,
+      "total_multi_attempt": 30,
+      "full_repair": 0,
+      "partial_repair": 2,
+      "no_repair": 28,
       "regression": 0,
-      "repair_rate": 0.0556
+      "repair_rate": 0.0
     },
     "nn": {
-      "total_multi_attempt": 14,
-      "full_repair": 8,
-      "partial_repair": 2,
-      "no_repair": 4,
-      "regression": 0,
-      "repair_rate": 0.5714
+      "total_multi_attempt": 30,
+      "full_repair": 7,
+      "partial_repair": 10,
+      "no_repair": 12,
+      "regression": 1,
+      "repair_rate": 0.2333
     },
     "nw": {
-      "total_multi_attempt": 19,
-      "full_repair": 0,
-      "partial_repair": 4,
+      "total_multi_attempt": 22,
+      "full_repair": 7,
+      "partial_repair": 0,
       "no_repair": 15,
       "regression": 0,
-      "repair_rate": 0.0
+      "repair_rate": 0.3182
     },
     "particlefilter": {
-      "total_multi_attempt": 12,
-      "full_repair": 1,
-      "partial_repair": 0,
-      "no_repair": 11,
+      "total_multi_attempt": 21,
+      "full_repair": 8,
+      "partial_repair": 7,
+      "no_repair": 6,
       "regression": 0,
-      "repair_rate": 0.0833
+      "repair_rate": 0.381
     },
     "pathfinder": {
-      "total_multi_attempt": 9,
-      "full_repair": 4,
-      "partial_repair": 0,
-      "no_repair": 2,
-      "regression": 3,
-      "repair_rate": 0.4444
+      "total_multi_attempt": 24,
+      "full_repair": 9,
+      "partial_repair": 4,
+      "no_repair": 11,
+      "regression": 0,
+      "repair_rate": 0.375
     },
     "srad": {
-      "total_multi_attempt": 19,
-      "full_repair": 0,
-      "partial_repair": 1,
-      "no_repair": 13,
-      "regression": 5,
-      "repair_rate": 0.0
+      "total_multi_attempt": 24,
+      "full_repair": 6,
+      "partial_repair": 2,
+      "no_repair": 16,
+      "regression": 0,
+      "repair_rate": 0.25
     },
     "streamcluster": {
-      "total_multi_attempt": 16,
-      "full_repair": 2,
-      "partial_repair": 0,
-      "no_repair": 14,
+      "total_multi_attempt": 29,
+      "full_repair": 1,
+      "partial_repair": 2,
+      "no_repair": 26,
       "regression": 0,
-      "repair_rate": 0.125
-    },
-    "xsbench": {
-      "total_multi_attempt": 143,
-      "full_repair": 12,
-      "partial_repair": 28,
-      "no_repair": 90,
-      "regression": 13,
-      "repair_rate": 0.0839
+      "repair_rate": 0.0345
     }
   },
   "token_overhead": {
-    "total_extra_prompt_tokens": 11194810,
-    "total_extra_completion_tokens": 2297938,
-    "total_extra_tokens": 13492748,
-    "full_repair_extra_prompt_tokens": 833667,
-    "full_repair_extra_completion_tokens": 185539,
-    "mean_extra_tokens_per_retry": 36966.4
+    "total_extra_prompt_tokens": 27024023,
+    "total_extra_completion_tokens": 5696653,
+    "total_extra_tokens": 32720676,
+    "full_repair_extra_prompt_tokens": 1891091,
+    "full_repair_extra_completion_tokens": 436157,
+    "mean_extra_tokens_per_retry": 69470.6
   },
   "repair_trajectories": [
     {
-      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL",
-      "count": 163
+      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 BUILD_FAIL",
+      "count": 177
     },
     {
-      "trajectory": "RUN_FAIL \u2192 RUN_FAIL",
-      "count": 61
-    },
-    {
-      "trajectory": "EXTRACTION_FAIL \u2192 BUILD_FAIL",
-      "count": 28
+      "trajectory": "RUN_FAIL \u2192 RUN_FAIL \u2192 RUN_FAIL",
+      "count": 112
     },
     {
       "trajectory": "BUILD_FAIL \u2192 PASS",
-      "count": 26
+      "count": 39
     },
     {
-      "trajectory": "EXTRACTION_FAIL \u2192 EXTRACTION_FAIL",
-      "count": 17
+      "trajectory": "VERIFY_FAIL \u2192 VERIFY_FAIL \u2192 VERIFY_FAIL",
+      "count": 30
     },
     {
-      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL",
-      "count": 16
+      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 PASS",
+      "count": 14
     },
     {
-      "trajectory": "RUN_FAIL \u2192 EXTRACTION_FAIL",
-      "count": 13
-    },
-    {
-      "trajectory": "EXTRACTION_FAIL \u2192 RUN_FAIL",
+      "trajectory": "BUILD_FAIL \u2192 VERIFY_FAIL \u2192 VERIFY_FAIL",
       "count": 12
     },
     {
-      "trajectory": "RUN_FAIL \u2192 BUILD_FAIL",
+      "trajectory": "RUN_FAIL \u2192 PASS",
       "count": 10
     },
     {
-      "trajectory": "RUN_FAIL \u2192 PASS",
-      "count": 9
+      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 VERIFY_FAIL",
+      "count": 8
     },
     {
-      "trajectory": "BUILD_FAIL \u2192 EXTRACTION_FAIL",
-      "count": 9
+      "trajectory": "EXTRACTION_FAIL \u2192 BUILD_FAIL \u2192 PASS",
+      "count": 8
     },
     {
-      "trajectory": "BUILD_FAIL \u2192 OTHER",
+      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 RUN_FAIL",
+      "count": 6
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 EXTRACTION_FAIL \u2192 VERIFY_FAIL",
+      "count": 6
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL \u2192 RUN_FAIL",
+      "count": 5
+    },
+    {
+      "trajectory": "VERIFY_FAIL \u2192 PASS",
+      "count": 5
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 OTHER \u2192 OTHER",
+      "count": 5
+    },
+    {
+      "trajectory": "PASS \u2192 PASS \u2192 PASS",
+      "count": 4
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 RUN_FAIL \u2192 PASS",
+      "count": 4
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 PASS",
+      "count": 4
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 EXTRACTION_FAIL \u2192 PASS",
+      "count": 3
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 BUILD_FAIL \u2192 BUILD_FAIL",
+      "count": 3
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL \u2192 OTHER",
+      "count": 3
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 EXTRACTION_FAIL \u2192 BUILD_FAIL",
+      "count": 2
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL \u2192 PASS",
+      "count": 2
+    },
+    {
+      "trajectory": "PASS \u2192 PASS",
+      "count": 1
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL \u2192 BUILD_FAIL",
+      "count": 1
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 VERIFY_FAIL \u2192 BUILD_FAIL",
+      "count": 1
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 EXTRACTION_FAIL",
+      "count": 1
+    },
+    {
+      "trajectory": "EXTRACTION_FAIL \u2192 RUN_FAIL \u2192 RUN_FAIL",
+      "count": 1
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 VERIFY_FAIL \u2192 VERIFY_FAIL",
+      "count": 1
+    },
+    {
+      "trajectory": "OTHER \u2192 OTHER \u2192 RUN_FAIL",
+      "count": 1
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 RUN_FAIL \u2192 EXTRACTION_FAIL",
+      "count": 1
+    },
+    {
+      "trajectory": "VERIFY_FAIL \u2192 BUILD_FAIL \u2192 PASS",
       "count": 1
     }
   ]

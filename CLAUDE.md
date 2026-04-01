@@ -109,8 +109,6 @@ analysis/           data/ (CSV, JSON surveys), reports/ (markdown)
 
 > Full details in `.claude/rules/known-issues.md`
 
-- **HeCBench missing:** ~135 validation errors — pre-existing, ignore
-- **8 KNOWN_FAIL specs:** Exclude from eval batches (see known-issues.md)
 - **Git worktrees + submodules:** Never run evaluations in worktrees
 
 ## GitHub Pages
