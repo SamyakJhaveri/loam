@@ -293,6 +293,33 @@ EXTRACTION_FAIL_CATEGORIES = [
     ),
 ]
 
+# ============================================================
+# VERIFY_FAIL categories — checked by verify_status + heuristics
+# ============================================================
+
+VERIFY_FAIL_CATEGORIES = [
+    (
+        "wrong_numerical_output",
+        "Program produced output that did not match the expected stdout pattern",
+    ),
+    (
+        "missing_output",
+        "Program produced no stdout output (empty or whitespace-only)",
+    ),
+    (
+        "verification_error",
+        "Verification process itself errored (regex failure, harness issue)",
+    ),
+    (
+        "pass_overall_mislabel",
+        "Verify passed but overall_status is VERIFY_FAIL (pipeline labeling bug)",
+    ),
+    (
+        "other_verify",
+        "Verification failure not matching any specific pattern",
+    ),
+]
+
 
 def extract_direction(data):
     """Infer translation direction from source_spec and target_spec."""
@@ -388,6 +415,32 @@ def classify_extraction_fail(data):
     return "malformed_output", []
 
 
+def classify_verify_fail(data):
+    """Classify a VERIFY_FAIL result. Returns (primary, [secondaries])."""
+    verify_status = data.get("verify_status") or ""
+    stdout = data.get("run_stdout_snippet") or ""
+
+    secondaries = []
+
+    # Check for data file errors in stdout (secondary signal)
+    if re.search(r"error opening|file not found|cannot open", stdout, re.IGNORECASE):
+        secondaries.append("data_file_error")
+
+    if verify_status == "pass":
+        # verify_status says pass but overall_status is VERIFY_FAIL — pipeline labeling bug
+        return "pass_overall_mislabel", secondaries
+    elif verify_status == "error":
+        # Verification process itself failed (harness/regex issue)
+        return "verification_error", secondaries
+    elif verify_status == "fail":
+        # Pattern didn't match — distinguish empty vs wrong output
+        if not stdout.strip():
+            return "missing_output", secondaries
+        return "wrong_numerical_output", secondaries
+    else:
+        return "other_verify", secondaries
+
+
 def load_results(project_root):
     """Load all result JSONs from results/evaluation/{model}/."""
     eval_dir = Path(project_root) / "results" / "evaluation"
@@ -422,11 +475,12 @@ def build_taxonomy(results):
         "build_fail_categories": defaultdict(lambda: {"count": 0, "examples": [], "by_model": Counter(), "by_direction": Counter(), "by_kernel": Counter()}),
         "run_fail_categories": defaultdict(lambda: {"count": 0, "examples": [], "by_model": Counter(), "by_direction": Counter(), "by_kernel": Counter()}),
         "extraction_fail_categories": defaultdict(lambda: {"count": 0, "examples": [], "by_model": Counter(), "by_direction": Counter(), "by_kernel": Counter()}),
+        "verify_fail_categories": defaultdict(lambda: {"count": 0, "examples": [], "by_model": Counter(), "by_direction": Counter(), "by_kernel": Counter()}),
         "error_count": 0,
         "error_examples": [],
-        "per_kernel": defaultdict(lambda: {"total": 0, "pass": 0, "build_fail": Counter(), "run_fail": Counter(), "extraction_fail": Counter(), "error": 0}),
-        "per_model": defaultdict(lambda: {"total": 0, "pass": 0, "build_fail": Counter(), "run_fail": Counter(), "extraction_fail": Counter(), "error": 0}),
-        "per_direction": defaultdict(lambda: {"total": 0, "pass": 0, "build_fail": Counter(), "run_fail": Counter(), "extraction_fail": Counter(), "error": 0}),
+        "per_kernel": defaultdict(lambda: {"total": 0, "pass": 0, "build_fail": Counter(), "run_fail": Counter(), "extraction_fail": Counter(), "verify_fail": Counter(), "error": 0}),
+        "per_model": defaultdict(lambda: {"total": 0, "pass": 0, "build_fail": Counter(), "run_fail": Counter(), "extraction_fail": Counter(), "verify_fail": Counter(), "error": 0}),
+        "per_direction": defaultdict(lambda: {"total": 0, "pass": 0, "build_fail": Counter(), "run_fail": Counter(), "extraction_fail": Counter(), "verify_fail": Counter(), "error": 0}),
         "classified_results": [],
     }
 
@@ -536,6 +590,32 @@ def build_taxonomy(results):
             taxonomy["per_model"][model]["extraction_fail"][primary] += 1
             taxonomy["per_direction"][direction]["extraction_fail"][primary] += 1
 
+        elif status == "VERIFY_FAIL":
+            primary, secondaries = classify_verify_fail(data)
+            record["primary_category"] = primary
+            record["secondary_categories"] = secondaries
+
+            cat_data = taxonomy["verify_fail_categories"][primary]
+            cat_data["count"] += 1
+            cat_data["by_model"][model] += 1
+            cat_data["by_direction"][direction] += 1
+            cat_data["by_kernel"][kernel] += 1
+            if len(cat_data["examples"]) < 3:
+                stdout = data.get("run_stdout_snippet") or ""
+                cat_data["examples"].append({
+                    "file": os.path.basename(data.get("_file_path", "")),
+                    "model": model,
+                    "kernel": kernel,
+                    "direction": direction,
+                    "verify_status": data.get("verify_status", ""),
+                    "stdout_preview": stdout[:200] if stdout else "(empty)",
+                    "exit_code": data.get("run_exit_code"),
+                })
+
+            taxonomy["per_kernel"][kernel]["verify_fail"][primary] += 1
+            taxonomy["per_model"][model]["verify_fail"][primary] += 1
+            taxonomy["per_direction"][direction]["verify_fail"][primary] += 1
+
         elif status == "ERROR":
             record["primary_category"] = "api_error"
             record["secondary_categories"] = []
@@ -566,6 +646,7 @@ def serialize_taxonomy(taxonomy):
         "build_fail_categories": {},
         "run_fail_categories": {},
         "extraction_fail_categories": {},
+        "verify_fail_categories": {},
         "error_count": taxonomy["error_count"],
         "error_examples": taxonomy["error_examples"],
         "per_kernel": {},
@@ -575,7 +656,7 @@ def serialize_taxonomy(taxonomy):
     }
 
     # Convert category dicts
-    for cat_type in ("build_fail_categories", "run_fail_categories", "extraction_fail_categories"):
+    for cat_type in ("build_fail_categories", "run_fail_categories", "extraction_fail_categories", "verify_fail_categories"):
         for cat_name, cat_data in taxonomy[cat_type].items():
             out[cat_type][cat_name] = {
                 "count": cat_data["count"],
@@ -594,6 +675,7 @@ def serialize_taxonomy(taxonomy):
                 "build_fail": dict(val["build_fail"]),
                 "run_fail": dict(val["run_fail"]),
                 "extraction_fail": dict(val["extraction_fail"]),
+                "verify_fail": dict(val["verify_fail"]),
                 "error": val["error"],
             }
 
@@ -615,7 +697,7 @@ def generate_markdown(taxonomy, output_path):
     lines.append("")
     lines.append("| Status | Count | % of Total |")
     lines.append("|--------|------:|----------:|")
-    for status in ["PASS", "BUILD_FAIL", "RUN_FAIL", "EXTRACTION_FAIL", "ERROR"]:
+    for status in ["PASS", "BUILD_FAIL", "RUN_FAIL", "VERIFY_FAIL", "EXTRACTION_FAIL", "ERROR"]:
         count = taxonomy["status_counts"].get(status, 0)
         pct = count / taxonomy["total_results"] * 100 if taxonomy["total_results"] > 0 else 0
         lines.append(f"| {status} | {count} | {pct:.1f}% |")
@@ -678,6 +760,27 @@ def generate_markdown(taxonomy, output_path):
         desc = cat_descs_ef.get(cat_name, "")
         lines.append(f"| {i} | `{cat_name}` | {count} | {pct:.1f}% | {desc} |")
     lines.append(f"| | **Total** | **{total_ef}** | **100.0%** | |")
+    lines.append("")
+
+    # Table 4b: VERIFY_FAIL categories
+    lines.append("## Table 4b: VERIFY_FAIL Root Cause Categories")
+    lines.append("")
+    total_vf = sum(c["count"] for c in taxonomy.get("verify_fail_categories", {}).values())
+    vf_cats_data = taxonomy.get("verify_fail_categories", {})
+    n_vf_cats = len(vf_cats_data)
+    lines.append(f"*{total_vf} total VERIFY_FAIL results classified into {n_vf_cats} {'category' if n_vf_cats == 1 else 'categories'}.*")
+    lines.append("")
+    if total_vf > 0:
+        lines.append("| # | Category | Count | % of VERIFY_FAIL | Description |")
+        lines.append("|--:|----------|------:|----------------:|-------------|")
+        cat_descs_vf = {name: desc for name, desc in VERIFY_FAIL_CATEGORIES}
+        sorted_vf = sorted(vf_cats_data.items(), key=lambda x: -x[1]["count"])
+        for i, (cat_name, cat_data) in enumerate(sorted_vf, 1):
+            count = cat_data["count"]
+            pct = count / total_vf * 100 if total_vf > 0 else 0
+            desc = cat_descs_vf.get(cat_name, "")
+            lines.append(f"| {i} | `{cat_name}` | {count} | {pct:.1f}% | {desc} |")
+        lines.append(f"| | **Total** | **{total_vf}** | **100.0%** | |")
     lines.append("")
 
     # Table 5: BUILD_FAIL by model
@@ -759,8 +862,8 @@ def generate_markdown(taxonomy, output_path):
     # Table 8: Per-model summary (all statuses)
     lines.append("## Table 8: Complete Status Distribution by Model")
     lines.append("")
-    header = "| Model | Total | PASS | BUILD_FAIL | RUN_FAIL | EXTRACTION_FAIL | ERROR | Pass Rate |"
-    sep = "|-------|------:|-----:|----------:|--------:|--------------:|------:|----------:|"
+    header = "| Model | Total | PASS | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL | EXTRACTION_FAIL | ERROR | Pass Rate |"
+    sep = "|-------|------:|-----:|----------:|--------:|----------:|--------------:|------:|----------:|"
     lines.append(header)
     lines.append(sep)
     for m in models:
@@ -769,18 +872,19 @@ def generate_markdown(taxonomy, output_path):
         p = md["pass"]
         bf = sum(md["build_fail"].values())
         rf = sum(md["run_fail"].values())
+        vf = sum(md["verify_fail"].values())
         ef = sum(md["extraction_fail"].values())
         er = md["error"]
         rate = p / total * 100 if total > 0 else 0
-        lines.append(f"| {m} | {total} | {p} | {bf} | {rf} | {ef} | {er} | {rate:.1f}% |")
+        lines.append(f"| {m} | {total} | {p} | {bf} | {rf} | {vf} | {ef} | {er} | {rate:.1f}% |")
     lines.append("")
 
     # Table 9: Per-direction summary
     lines.append("## Table 9: Complete Status Distribution by Direction")
     lines.append("")
     all_dirs = sorted(taxonomy["per_direction"].keys())
-    header = "| Direction | Total | PASS | BUILD_FAIL | RUN_FAIL | EXTRACTION_FAIL | ERROR | Pass Rate |"
-    sep = "|-----------|------:|-----:|----------:|--------:|--------------:|------:|----------:|"
+    header = "| Direction | Total | PASS | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL | EXTRACTION_FAIL | ERROR | Pass Rate |"
+    sep = "|-----------|------:|-----:|----------:|--------:|----------:|--------------:|------:|----------:|"
     lines.append(header)
     lines.append(sep)
     for d in all_dirs:
@@ -789,10 +893,11 @@ def generate_markdown(taxonomy, output_path):
         p = dd["pass"]
         bf = sum(dd["build_fail"].values())
         rf = sum(dd["run_fail"].values())
+        vf = sum(dd["verify_fail"].values())
         ef = sum(dd["extraction_fail"].values())
         er = dd["error"]
         rate = p / total * 100 if total > 0 else 0
-        lines.append(f"| {d.replace('-to-', '→')} | {total} | {p} | {bf} | {rf} | {ef} | {er} | {rate:.1f}% |")
+        lines.append(f"| {d.replace('-to-', '→')} | {total} | {p} | {bf} | {rf} | {vf} | {ef} | {er} | {rate:.1f}% |")
     lines.append("")
 
     # Table 10: Per-kernel summary (top-level)
@@ -811,6 +916,7 @@ def generate_markdown(taxonomy, output_path):
         all_fails = Counter()
         all_fails.update(kd["build_fail"])
         all_fails.update(kd["run_fail"])
+        all_fails.update(kd["verify_fail"])
         all_fails.update(kd["extraction_fail"])
         if kd["error"] > 0:
             all_fails["api_error"] = kd["error"]
@@ -840,6 +946,15 @@ def generate_markdown(taxonomy, output_path):
         pct = cat_data["count"] / total_rf * 100 if total_rf > 0 else 0
         lines.append(f"{i}. **`{cat_name}`** — {cat_data['count']} ({pct:.1f}% of RUN_FAIL)")
     lines.append("")
+
+    # Top VERIFY_FAIL
+    if total_vf > 0:
+        lines.append("### Top VERIFY_FAIL Root Causes")
+        lines.append("")
+        for i, (cat_name, cat_data) in enumerate(sorted_vf[:3], 1):
+            pct = cat_data["count"] / total_vf * 100 if total_vf > 0 else 0
+            lines.append(f"{i}. **`{cat_name}`** — {cat_data['count']} ({pct:.1f}% of VERIFY_FAIL)")
+        lines.append("")
 
     # Direction asymmetry
     lines.append("### Direction Asymmetry")
@@ -936,6 +1051,15 @@ def main():
         pct = cat_data["count"] / total_ef * 100 if total_ef > 0 else 0
         print(f"  {cat_name:30s} {cat_data['count']:4d} ({pct:5.1f}%)")
 
+    # VERIFY_FAIL
+    total_vf = sum(c["count"] for c in taxonomy["verify_fail_categories"].values())
+    if total_vf > 0:
+        print(f"\nVERIFY_FAIL ({total_vf}):")
+        sorted_vf = sorted(taxonomy["verify_fail_categories"].items(), key=lambda x: -x[1]["count"])
+        for cat_name, cat_data in sorted_vf:
+            pct = cat_data["count"] / total_vf * 100 if total_vf > 0 else 0
+            print(f"  {cat_name:30s} {cat_data['count']:4d} ({pct:5.1f}%)")
+
     if taxonomy["error_count"] > 0:
         print(f"\nERROR: {taxonomy['error_count']} (API/infrastructure errors)")
 
@@ -943,6 +1067,7 @@ def main():
     total_classified = sum(c["count"] for c in taxonomy["build_fail_categories"].values())
     total_classified += sum(c["count"] for c in taxonomy["run_fail_categories"].values())
     total_classified += sum(c["count"] for c in taxonomy["extraction_fail_categories"].values())
+    total_classified += sum(c["count"] for c in taxonomy["verify_fail_categories"].values())
     total_classified += taxonomy["error_count"]
 
     print(f"\nVALIDATION: {total_classified} classified vs {taxonomy['total_failures']} failures", end="")
@@ -971,6 +1096,16 @@ def main():
         print(" ⚠ NEEDS REFINEMENT (>20%)")
     else:
         print(" ✓ OK")
+
+    other_vf = taxonomy["verify_fail_categories"].get("other_verify", {})
+    other_vf_count = other_vf.get("count", 0) if isinstance(other_vf, dict) else other_vf["count"]
+    other_vf_pct = other_vf_count / total_vf * 100 if total_vf > 0 else 0
+    if total_vf > 0:
+        print(f"'other_verify' bucket: {other_vf_count}/{total_vf} ({other_vf_pct:.1f}%)", end="")
+        if other_vf_pct > 20:
+            print(" ⚠ NEEDS REFINEMENT (>20%)")
+        else:
+            print(" ✓ OK")
 
     return 0
 

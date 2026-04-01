@@ -41,9 +41,24 @@ MODEL_PRICING = {
     "azure-gpt-4.1": {"input": 2.00, "output": 8.00, "display": "Azure GPT-4.1"},
 }
 
+# Canonical source: scripts/evaluation/analyze_eval.py line 47
+# Keep in sync — if EXCLUDED_SPECS changes there, update here too.
+EXCLUDED_SPECS: frozenset[str] = frozenset({
+    "rodinia-kmeans-cuda",
+    "rodinia-mummergpu-cuda",
+    "rodinia-mummergpu-omp",
+    "rodinia-hybridsort-cuda",
+    "rodinia-nn-opencl",
+    "rodinia-kmeans-opencl",
+})
+
 
 def load_all_results(project_root: Path) -> list[dict]:
-    """Load all result JSONs from results/evaluation/{model}/ directories."""
+    """Load all result JSONs from results/evaluation/{model}/ directories.
+
+    Results involving any spec in EXCLUDED_SPECS (as source or target)
+    are filtered out to match the canonical denominator used by analyze_eval.py.
+    """
     results = []
     eval_dir = project_root / "results" / "evaluation"
     for model_dir in sorted(eval_dir.iterdir()):
@@ -53,6 +68,11 @@ def load_all_results(project_root: Path) -> list[dict]:
             try:
                 data = json.loads(json_file.read_text(encoding="utf-8"))
                 if "overall_status" not in data:
+                    continue
+                # Filter out results involving excluded (KNOWN_FAIL) specs
+                if data.get("source_spec", "") in EXCLUDED_SPECS:
+                    continue
+                if data.get("target_spec", "") in EXCLUDED_SPECS:
                     continue
                 data["_file"] = str(json_file.relative_to(project_root))
                 results.append(data)

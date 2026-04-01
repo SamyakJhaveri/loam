@@ -338,13 +338,48 @@ def cochran_armitage_trend(
 def compute_augmentation_trends(records: list[dict], alpha: float = 0.05) -> dict:
     """Run Cochran-Armitage trend tests per model and overall (cuda-to-omp only).
 
-    Restricts to cuda-to-omp for balanced design (same kernels at every level).
+    Restricts to cuda-to-omp, deterministic runs only (temp=0.0), and balanced
+    subset (tasks present at ALL augmentation levels). This ensures the trend
+    test compares equal-sized groups of identical tasks across levels.
     Bonferroni correction: N per-model + 1 overall tests.
     """
     # Filter to cuda-to-omp only
     filtered = [r for r in records if r.get("direction") == "cuda-to-omp"]
     if not filtered:
         return {"error": "No cuda-to-omp records found"}
+
+    # Step 1: Filter to deterministic only (temp=0.0).
+    # Stochastic samples (temp>0) inflate L0 counts relative to L1-L4,
+    # creating an artificial imbalance that produces spurious trends.
+    filtered = [r for r in filtered if (r.get("temperature") or 0) == 0.0]
+    if not filtered:
+        return {"error": "No deterministic cuda-to-omp records found"}
+
+    # Step 2: Find balanced subset — tasks present at ALL levels.
+    # A task is identified by (kernel, model). Only tasks that appear at every
+    # observed augmentation level are included, ensuring equal group sizes.
+    task_levels: dict[tuple[str, str], set[int]] = defaultdict(set)
+    for r in filtered:
+        k = _kernel_from_spec(r.get("source_spec", "?"))
+        m = r.get("model", "unknown")
+        lv = r.get("augment_level", 0)
+        task_levels[(k, m)].add(lv)
+
+    all_levels = set()
+    for r in filtered:
+        all_levels.add(r.get("augment_level", 0))
+
+    balanced_tasks = {task for task, levels in task_levels.items()
+                      if levels == all_levels}
+
+    # Step 3: Restrict to balanced tasks only
+    filtered = [
+        r for r in filtered
+        if (_kernel_from_spec(r.get("source_spec", "?")),
+            r.get("model", "unknown")) in balanced_tasks
+    ]
+    if not filtered:
+        return {"error": "No balanced cuda-to-omp tasks found across all levels"}
 
     # Group by (model, level)
     by_model_level: dict[str, dict[int, dict[str, int]]] = defaultdict(
@@ -623,13 +658,20 @@ def compute_pass_at_k_table(
 
     Groups results by task identity (excluding sample_id). For each group,
     counts n (total samples) and c (PASS samples), then computes pass@k.
-    Only meaningful when multi-sample results exist (sample_id != None).
+
+    Only stochastic samples (temperature > 0) are used. Deterministic runs
+    (temperature == 0) violate the i.i.d. assumption underlying pass@k and
+    are excluded.
     """
     if k_values is None:
         k_values = [1, 5, 10]
 
+    # Filter to stochastic samples only (temp > 0) — deterministic runs
+    # violate the i.i.d. assumption required by the pass@k estimator.
+    sample_records = [r for r in records if (r.get("temperature") or 0) > 0]
+
     groups: dict[tuple, dict[str, int]] = defaultdict(lambda: {"n": 0, "c": 0})
-    for r in records:
+    for r in sample_records:
         key = (
             _kernel_from_spec(r.get("source_spec", "?")),
             r.get("model", "?"),
@@ -1060,7 +1102,7 @@ def main():
     size_flags = sample_size_adequacy(records)
 
     # 8. Pass@k (only if multi-sample data exists)
-    has_samples = any(r.get("sample_id") is not None for r in records)
+    has_samples = any((r.get("temperature") or 0) > 0 for r in records)
     pass_k_table = {}
     if has_samples:
         if args.verbose:
