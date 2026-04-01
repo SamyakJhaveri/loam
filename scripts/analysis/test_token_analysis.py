@@ -1,8 +1,9 @@
 """
-Tests for token_analysis.py — EXCLUDED_SPECS filtering.
+Tests for token_analysis.py — EXCLUDED_SPECS filtering and utility functions.
 
 Verifies that load_all_results() correctly filters out results
-involving specs listed in EXCLUDED_SPECS.
+involving specs listed in EXCLUDED_SPECS, and that utility functions
+and constants are correctly defined.
 """
 
 import json
@@ -12,6 +13,10 @@ from pathlib import Path
 import pytest
 
 from token_analysis import EXCLUDED_SPECS, load_all_results
+
+# Test fixture constants — single source of truth for default token values
+DEFAULT_TEST_PROMPT_TOKENS = 1000
+DEFAULT_TEST_COMPLETION_TOKENS = 500
 
 
 def _make_result(source_spec: str, target_spec: str, status: str = "PASS",
@@ -23,8 +28,8 @@ def _make_result(source_spec: str, target_spec: str, status: str = "PASS",
         "target_spec": target_spec,
         "model": model,
         "kernel": source_spec.rsplit("-", 1)[0],
-        "prompt_tokens": 1000,
-        "completion_tokens": 500,
+        "prompt_tokens": DEFAULT_TEST_PROMPT_TOKENS,
+        "completion_tokens": DEFAULT_TEST_COMPLETION_TOKENS,
         "llm_response_time_seconds": 2.5,
         "augment_level": 0,
     }
@@ -156,3 +161,43 @@ class TestPassRateUsesFilteredTotal:
             pass_count = sum(1 for r in loaded if r["overall_status"] == "PASS")
             pass_rate = pass_count / len(loaded)
             assert pass_rate == pytest.approx(0.5)
+
+
+# --- new tests: utility extraction ---
+
+
+def test_extract_token_lists_basic():
+    from token_analysis import extract_token_lists
+    results = [
+        {"prompt_tokens": 100, "completion_tokens": 50},
+        {"prompt_tokens": 200, "completion_tokens": 80},
+    ]
+    prompt, completion = extract_token_lists(results)
+    assert prompt == [100, 200]
+    assert completion == [50, 80]
+
+
+def test_extract_token_lists_missing_keys_default_zero():
+    from token_analysis import extract_token_lists
+    results = [{"prompt_tokens": 100}]
+    prompt, completion = extract_token_lists(results)
+    assert prompt == [100]
+    assert completion == [0]
+
+
+def test_extract_token_lists_empty():
+    from token_analysis import extract_token_lists
+    assert extract_token_lists([]) == ([], [])
+
+
+def test_precision_constants_exist():
+    import token_analysis as ta
+    assert ta.PRECISION_TOKENS == 1
+    assert ta.PRECISION_RATE == 4
+    assert ta.PRECISION_COST_DETAIL == 6
+
+
+def test_field_constants_exist():
+    import token_analysis as ta
+    assert ta.FIELD_PROMPT_TOKENS == "prompt_tokens"
+    assert ta.FIELD_OVERALL_STATUS == "overall_status"

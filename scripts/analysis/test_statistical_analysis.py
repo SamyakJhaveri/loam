@@ -203,3 +203,39 @@ class TestAugmentationTrendsBalanced:
             assert tc == 3, (
                 f"Level {overall['levels'][lv_idx]}: expected total=3, got {tc}"
             )
+
+
+# --- new tests: predicate extraction ---
+
+def test_is_deterministic_zero():
+    from scripts.analysis.statistical_analysis import is_deterministic
+    assert is_deterministic({"temperature": 0.0}) is True
+
+def test_is_deterministic_missing_key():
+    from scripts.analysis.statistical_analysis import is_deterministic
+    assert is_deterministic({}) is True  # missing key defaults to 0.0
+
+def test_is_stochastic_nonzero():
+    from scripts.analysis.statistical_analysis import is_stochastic
+    assert is_stochastic({"temperature": 0.7}) is True
+
+def test_is_stochastic_zero():
+    from scripts.analysis.statistical_analysis import is_stochastic
+    assert is_stochastic({"temperature": 0.0}) is False
+
+def test_constants_exist():
+    import scripts.analysis.statistical_analysis as sa
+    assert sa.MIN_EXPECTED_CELL_COUNT == 5
+    assert sa.MCNEMAR_EXACT_THRESHOLD == 25
+    assert sa.SAMPLE_SIZE_ADEQUACY_THRESHOLD == 10
+
+def test_get_direction_pairs_valid():
+    from scripts.analysis.statistical_analysis import _get_direction_pairs
+    directions = {"cuda-to-omp", "omp-to-cuda", "cuda-to-opencl"}
+    pair = _get_direction_pairs("cuda-to-omp", directions)
+    assert pair == ("cuda-to-omp", "omp-to-cuda")
+
+def test_get_direction_pairs_no_reverse():
+    from scripts.analysis.statistical_analysis import _get_direction_pairs
+    directions = {"cuda-to-omp"}
+    assert _get_direction_pairs("cuda-to-omp", directions) is None

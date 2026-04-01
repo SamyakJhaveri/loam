@@ -31,7 +31,6 @@ matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt  # noqa: E402
 import matplotlib.colors as mcolors  # noqa: E402
-import matplotlib.patches as mpatches  # noqa: E402
 from matplotlib.patches import Patch, FancyBboxPatch, FancyArrowPatch  # noqa: E402
 import numpy as np  # noqa: E402
 import scienceplots  # noqa: E402, F401
@@ -137,8 +136,81 @@ STATUS_ORDER: list[str] = [
 NA_COLOR = "#E0E0E0"
 
 # ---------------------------------------------------------------------------
+# Module-level constants (formerly magic numbers / inline data)
+# ---------------------------------------------------------------------------
+
+FIGURE_DPI: int = 600
+FONT_SIZE_DEFAULT: int = 10
+PDF_FONTTYPE: int = 42
+
+# F3: Repository-level vs kernel-level API pair counts
+# (label, repo_count, kernel_count)
+# Data sources: analysis/data/API_pairwise_coverage_matrix__counts_.csv (repo counts)
+#               analysis/reports/kernel_level_analysis.md (kernel counts)
+REPO_KERNEL_PAIRS: list[tuple[str, int, int]] = [
+    ("CUDA\u2013OpenMP", 6, 472),
+    ("CUDA\u2013HIP", 3, 633),
+    ("CUDA\u2013SYCL", 2, 616),
+]
+
+# F4: HeCBench kernel selection pipeline funnel stages
+# (label, count, exclusion_reason)
+# Data source: analysis/reports/kernel_selection_candidates.md and
+#              analysis/reports/kernel_level_analysis.md
+HECBENCH_FUNNEL_STAGES: list[tuple[str, int, str | None]] = [
+    ("HeCBench kernels total", 506, None),
+    ("All 4 API variants\n(CUDA, HIP, SYCL, OMP)", 327, "\u2212179: missing API variants"),
+    ("With Makefiles", 325, "\u22122: no Makefile"),
+    ("With self-checking\n(PASS/FAIL/verify patterns)", 242, "\u221283: no verification"),
+    ("Final selected\n(complexity, deps, diversity)", 60, "\u2212182: complexity/deps/diversity"),
+]
+
+# ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
+
+def aggregate_status_counts(
+    records: list[dict], group_key: str,
+) -> dict[str, dict[str, int]]:
+    """Aggregate overall_status counts grouped by a record key.
+
+    Returns a dict mapping group values to defaultdict(int) of status counts.
+    Records with None/missing status are counted as "UNKNOWN".
+    """
+    result: dict[str, dict[str, int]] = {}
+    for r in records:
+        key = r.get(group_key, "UNKNOWN")
+        if key not in result:
+            result[key] = defaultdict(int)
+        status = r.get("overall_status") or "UNKNOWN"
+        result[key][status] += 1
+    return result
+
+
+def create_status_legend(
+    statuses: list[str], *, include_hatch: bool = False,
+) -> list[Patch]:
+    """Create a list of matplotlib Patch handles for a status legend.
+
+    Args:
+        statuses: status strings to include (e.g. STATUS_ORDER subset).
+        include_hatch: if True, apply STATUS_HATCH patterns to patches.
+    """
+    patches = []
+    for s in statuses:
+        if s not in STATUS_COLORS:
+            continue
+        kwargs: dict = {
+            "facecolor": STATUS_COLORS[s],
+            "edgecolor": "black",
+            "linewidth": 0.5,
+            "label": s.replace("_", " "),
+        }
+        if include_hatch:
+            kwargs["hatch"] = STATUS_HATCH[s]
+        patches.append(Patch(**kwargs))
+    return patches
 
 
 def _text_color_for_bg(hex_color: str) -> str:
@@ -167,18 +239,18 @@ def setup_rcparams() -> None:
     for IEEE camera-ready) and enforce minimum 8pt fonts throughout.
     """
     plt.rcParams.update({
-        "font.size": 10,
+        "font.size": FONT_SIZE_DEFAULT,
         "axes.titlesize": 11,
-        "axes.labelsize": 10,
+        "axes.labelsize": FONT_SIZE_DEFAULT,
         "xtick.labelsize": 9,
         "ytick.labelsize": 9,
         "legend.fontsize": 9,
-        "figure.dpi": 600,
-        "savefig.dpi": 600,
+        "figure.dpi": FIGURE_DPI,
+        "savefig.dpi": FIGURE_DPI,
         "savefig.bbox": "tight",
         "savefig.pad_inches": 0.1,
-        "pdf.fonttype": 42,  # TrueType (required by ACM/IEEE venues)
-        "ps.fonttype": 42,
+        "pdf.fonttype": PDF_FONTTYPE,  # TrueType (required by ACM/IEEE venues)
+        "ps.fonttype": PDF_FONTTYPE,
     })
 
 
@@ -614,13 +686,7 @@ def generate_f3_repo_vs_kernel(
     Pairs: CUDA-OpenMP (6 repos, 472 kernels), CUDA-HIP (3 repos, 633 kernels),
            CUDA-SYCL (2 repos, 616 kernels).
     """
-    # Repo counts from API_pairwise_coverage_matrix__counts_.csv (authoritative)
-    # Kernel counts from kernel_level_analysis.md (verified)
-    pairs = [
-        ("CUDA\u2013OpenMP",  6, 472),
-        ("CUDA\u2013HIP",     3, 633),
-        ("CUDA\u2013SYCL",    2, 616),
-    ]
+    pairs = REPO_KERNEL_PAIRS
     labels = [p[0] for p in pairs]
     repo_counts = np.array([p[1] for p in pairs], dtype=float)
     kernel_counts = np.array([p[2] for p in pairs], dtype=float)
@@ -704,14 +770,7 @@ def generate_f4_selection_funnel(
     Stages: 506 total -> 327 (4-API) -> 325 (Makefiles) -> 242 (self-checking)
             -> 60 final (complexity, deps, diversity filters).
     """
-    # Data verified against source files
-    stages = [
-        ("HeCBench kernels total",                           506, None),
-        ("All 4 API variants\n(CUDA, HIP, SYCL, OMP)",      327, "\u2212179: missing API variants"),
-        ("With Makefiles",                                   325, "\u22122: no Makefile"),
-        ("With self-checking\n(PASS/FAIL/verify patterns)",  242, "\u221283: no verification"),
-        ("Final selected\n(complexity, deps, diversity)",      60, "\u2212182: complexity/deps/diversity"),
-    ]
+    stages = HECBENCH_FUNNEL_STAGES
 
     labels = [s[0] for s in stages]
     values = [s[1] for s in stages]
@@ -947,13 +1006,7 @@ def generate_f5_heatmap(
         present1 | present2 | present3,
         key=lambda s: STATUS_ORDER.index(s),
     )
-    legend_handles = [
-        Patch(
-            facecolor=STATUS_COLORS[s], edgecolor="black", linewidth=0.5,
-            label=s.replace("_", " "),
-        )
-        for s in all_present
-    ]
+    legend_handles = create_status_legend(all_present)
     fig.legend(
         handles=legend_handles,
         loc="lower center", bbox_to_anchor=(0.5, -0.02),
@@ -981,15 +1034,8 @@ def _draw_taxonomy_panel(
     bar_width = 0.6
 
     # Build per-model status counts
-    model_status: dict[str, dict[str, int]] = {}
-    for r in records:
-        m = r["model"]
-        if m not in models:
-            continue
-        if m not in model_status:
-            model_status[m] = defaultdict(int)
-        status = r.get("overall_status", "UNKNOWN")
-        model_status[m][status] += 1
+    filtered = [r for r in records if r["model"] in models]
+    model_status = aggregate_status_counts(filtered, "model")
 
     bottoms = np.zeros(n_models)
     for status in STATUS_ORDER:
@@ -1066,15 +1112,8 @@ def generate_f6_taxonomy(
         s = r.get("overall_status", "UNKNOWN")
         if s in STATUS_COLORS:
             all_statuses.add(s)
-    handles = [
-        Patch(
-            facecolor=STATUS_COLORS[s], hatch=STATUS_HATCH[s],
-            edgecolor="black", linewidth=0.5,
-            label=s.replace("_", " "),
-        )
-        for s in STATUS_ORDER
-        if s in all_statuses
-    ]
+    present_ordered = [s for s in STATUS_ORDER if s in all_statuses]
+    handles = create_status_legend(present_ordered, include_hatch=True)
     fig.legend(
         handles=handles,
         loc="upper center", bbox_to_anchor=(0.5, 1.04),
@@ -1241,15 +1280,11 @@ def generate_f8_cross_direction(
     ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
     ax.grid(axis="y", linestyle="--", alpha=0.3, linewidth=0.6)
 
-    handles = [
-        Patch(
-            facecolor=STATUS_COLORS[s], hatch=STATUS_HATCH[s],
-            edgecolor="black", linewidth=0.5,
-            label=s.replace("_", " "),
-        )
-        for s in STATUS_ORDER
+    present_ordered = [
+        s for s in STATUS_ORDER
         if any(dir_status[d].get(s, 0) > 0 for d in directions)
     ]
+    handles = create_status_legend(present_ordered, include_hatch=True)
     ax.legend(handles=handles, loc="upper right", frameon=True, framealpha=0.9, fontsize=9)
 
     n_kernels_c2o = dir_totals.get("cuda-to-omp", 0)
@@ -1335,13 +1370,7 @@ def generate_f9_xsbench(
         },
         key=lambda s: STATUS_ORDER.index(s),
     )
-    legend_handles = [
-        Patch(
-            facecolor=STATUS_COLORS[s], edgecolor="black", linewidth=0.5,
-            label=s.replace("_", " "),
-        )
-        for s in present_statuses
-    ]
+    legend_handles = create_status_legend(present_statuses)
     ax.legend(
         handles=legend_handles,
         loc="lower center", bbox_to_anchor=(0.5, -0.08),
@@ -1380,16 +1409,12 @@ def generate_t2_latex(
         ("cuda-to-opencl", r"CUDA$\to$OCL"),
     ]:
         filtered = filter_records(records, level=0, suite="rodinia", direction=direction)
+        by_model = aggregate_status_counts(filtered, "model")
         model_stats: dict[str, dict] = {}
-        for r in filtered:
-            m = r["model"]
-            if m not in model_stats:
-                model_stats[m] = {"pass": 0, "total": 0, "by_status": defaultdict(int)}
-            status = r.get("overall_status", "UNKNOWN")
-            model_stats[m]["by_status"][status] += 1
-            model_stats[m]["total"] += 1
-            if status == "PASS":
-                model_stats[m]["pass"] += 1
+        for m, status_counts in by_model.items():
+            total = sum(status_counts.values())
+            pass_count = status_counts.get("PASS", 0)
+            model_stats[m] = {"pass": pass_count, "total": total, "by_status": status_counts}
 
         models_sorted = sorted(
             model_stats.keys(),

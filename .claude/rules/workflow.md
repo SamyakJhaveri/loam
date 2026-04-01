@@ -74,6 +74,7 @@ Use these at the right phase — don't skip them, don't over-invoke them.
 | When | Skill / Agent | Command | What it does |
 |------|--------------|---------|-------------|
 | After any code/spec change | `/validate` | `/validate` (full) or `/validate quick` | 4-wave validation; writes sentinel; required before commit |
+| Full post-session validation (context-clean) | `verification-lead` agent | Invoke via Agent tool | Runs all 4 waves internally; returns single report |
 | Before merging or after multiple file changes | `/review` | `/review` | 4-agent parallel code review (style, correctness, security, perf) |
 | Launching an eval batch | `/eval-run` | `/eval-run rodinia cuda-to-omp` | Param collection → pre-flight → execute → analyze |
 | After eval completes OR spec count changes | `dashboard-refresher` agent | Invoke via Agent tool | Fixes hardcoded numbers in all 12 viz files |
@@ -83,6 +84,7 @@ Use these at the right phase — don't skip them, don't over-invoke them.
 | New feature | `/feature-dev` | `/feature-dev "name"` | Explore → plan → implement → verify |
 | Stress-test research claims | `/grill-research` | `/grill-research` | Adversarial interrogation of paper claims |
 | Simulate peer review | `/paper-review-sim` | `/paper-review-sim` | Multi-reviewer simulation (SC/ICSE style) |
+| Draft SC26 paper sections | `paper-assembly-team` agent | Invoke via Agent tool | 3 parallel sub-agents gather eval data, related work, methodology; lead synthesizes |
 | Overnight LLM eval | `/overnight-eval` | `/overnight-eval rodinia` | tmux-based long-running eval batch |
 | Explore failure hypotheses | `/hypothesis-tree` | `/hypothesis-tree "why X fails"` | Structured hypothesis tree with evidence |
 | Verify citations | `/cite-check` | `/cite-check` | Check paper citations against source data |

@@ -51,6 +51,7 @@ ParBench: benchmark for LLM-based parallel code translation (CUDA ↔ OpenMP ↔
 | `spec-conventions.md` | `specs/`, `manifest.jsonl` | Naming, categories, run arg verification protocol |
 | `evaluation.md` | `scripts/evaluation/` | `--suite` required, `--project-root` required, result schema |
 | `augmentation.md` | `c_augmentation/`, `scripts/augmentation/` | `--project-root` required, transform bugs |
+| `known-issues-archive.md` | `c_augmentation/`, `harness/` | Historical fix details for augmentation/harness bugs |
 | `python.md` | `*.py` | `python3`, harness CLI flag ordering (`-v` before subcommand) |
 | `validation-loop.md` | hooks, validation agents | 4-wave protocol, sentinel, fix loop |
 | `github-pages.md` | `visualizations/` | URL, staticrypt, data refresh |

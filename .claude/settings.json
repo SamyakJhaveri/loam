@@ -51,6 +51,11 @@
                         "type": "command",
                         "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/result-immutability.sh",
                         "timeout": 10
+                    },
+                    {
+                        "type": "command",
+                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/file-ownership.sh",
+                        "timeout": 10
                     }
                 ]
             }
@@ -75,7 +80,22 @@
                     },
                     {
                         "type": "command",
+                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/post-edit-test.sh",
+                        "timeout": 35
+                    },
+                    {
+                        "type": "command",
                         "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/sentinel-cleanup.sh",
+                        "timeout": 5
+                    }
+                ]
+            },
+            {
+                "matcher": "Bash",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/context-budget.sh",
                         "timeout": 5
                     }
                 ]

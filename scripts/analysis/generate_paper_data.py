@@ -28,6 +28,15 @@ from pathlib import Path
 # Constants                                                                    #
 # --------------------------------------------------------------------------- #
 
+# Sample-size and statistical thresholds
+MIN_L0_SAMPLE_SIZE: int = 10
+MIN_PASSK_TASK_SAMPLES: int = 3
+MIN_BALANCED_KERNELS: int = 20
+ALPHA_SIGNIFICANCE: float = 0.05
+COHEN_H_SMALL_THRESHOLD: float = 0.20
+COHEN_H_MEDIUM_THRESHOLD: float = 0.80
+PASSK_K_VALUES: list[int] = [1, 3]
+
 # KNOWN_FAIL specs — exclude from all aggregation.
 # Source: analyze_eval.py, cross-referenced with known-issues.md
 EXCLUDED_SPECS: frozenset[str] = frozenset({
@@ -86,7 +95,7 @@ def _direction_from_data(data: dict) -> str:
 # Wilson score CI (copied from statistical_analysis.py)                        #
 # --------------------------------------------------------------------------- #
 
-def wilson_ci(passes: int, total: int, alpha: float = 0.05) -> dict:
+def wilson_ci(passes: int, total: int, alpha: float = ALPHA_SIGNIFICANCE) -> dict:
     """Wilson score confidence interval for a binomial proportion."""
     if total == 0:
         return {"rate": 0.0, "ci_lower": 0.0, "ci_upper": 0.0, "n": 0}
@@ -191,7 +200,7 @@ def mcnemar_exact(pairs: list[tuple[bool, bool]]) -> dict:
     h = 2 * math.asin(math.sqrt(max(0.0, min(1.0, fwd_rate)))) - \
         2 * math.asin(math.sqrt(max(0.0, min(1.0, rev_rate))))
     abs_h = abs(h)
-    effect = "small" if abs_h < 0.20 else "medium" if abs_h < 0.80 else "large"
+    effect = "small" if abs_h < COHEN_H_SMALL_THRESHOLD else "medium" if abs_h < COHEN_H_MEDIUM_THRESHOLD else "large"
 
     return {
         "n_paired": n_p,
@@ -702,7 +711,7 @@ def _analyze_augmentation(records: list[dict], verbose: bool = False) -> dict:
         total_counts = [len(bal_by_level[lv]) for lv in levels_sorted]
 
         ca = cochran_armitage_trend(pass_counts, total_counts)
-        ca["significant"] = ca["p_value"] < 0.05
+        ca["significant"] = ca["p_value"] < ALPHA_SIGNIFICANCE
         ca["levels"] = levels_sorted
         ca["pass_counts"] = pass_counts
         ca["total_counts"] = total_counts
@@ -766,7 +775,7 @@ def _analyze_direction_asymmetry(records: list[dict]) -> dict:
                     pair_map[key] = (d, reverse)
 
     n_tests = max(len(pair_map), 1)
-    alpha_corrected = 0.05 / n_tests
+    alpha_corrected = ALPHA_SIGNIFICANCE / n_tests
 
     results = {}
     for (d_fwd, d_rev) in pair_map.values():
@@ -793,6 +802,29 @@ def _analyze_direction_asymmetry(records: list[dict]) -> dict:
 # --------------------------------------------------------------------------- #
 # Self-repair analysis                                                         #
 # --------------------------------------------------------------------------- #
+
+def _determine_first_attempt_status(attempt: dict) -> str:
+    """Determine the effective status of a single attempt record.
+
+    Maps the per-field build_status / run_status / verify_status / extraction_fail
+    fields to a single overall status string matching STATUS_VALUES.
+    """
+    build = attempt.get("build_status", "")
+    run = attempt.get("run_status")
+    verify = attempt.get("verify_status")
+
+    if build == "fail":
+        return "BUILD_FAIL"
+    if attempt.get("extraction_fail"):
+        return "EXTRACTION_FAIL"
+    if run == "fail" or (run is not None and run != "pass"):
+        return "RUN_FAIL"
+    if verify == "fail":
+        return "VERIFY_FAIL"
+    if build == "pass" and verify == "pass":
+        return "PASS"
+    return "UNKNOWN"
+
 
 def _analyze_self_repair(records: list[dict]) -> dict:
     """Analyze self-repair from attempts[] arrays."""
@@ -826,23 +858,7 @@ def _analyze_self_repair(records: list[dict]) -> dict:
 
         # First attempt status
         first_att = attempts[0]
-        first_build = first_att.get("build_status", "")
-        first_run = first_att.get("run_status")
-        first_verify = first_att.get("verify_status")
-
-        # Determine first attempt's effective status
-        if first_build == "fail":
-            first_status = "BUILD_FAIL"
-        elif first_att.get("extraction_fail"):
-            first_status = "EXTRACTION_FAIL"
-        elif first_run == "fail" or (first_run is not None and first_run != "pass"):
-            first_status = "RUN_FAIL"
-        elif first_verify == "fail":
-            first_status = "VERIFY_FAIL"
-        elif first_build == "pass" and first_verify == "pass":
-            first_status = "PASS"
-        else:
-            first_status = "UNKNOWN"
+        first_status = _determine_first_attempt_status(first_att)
 
         if first_status == "PASS":
             first_attempt_pass += 1
@@ -881,7 +897,6 @@ def _analyze_self_repair(records: list[dict]) -> dict:
             repair_attempt_count += 1
 
     total = len(records)
-    multi_attempt = total - first_attempt_pass - single_attempt_fail
 
     # Per-initial-failure repair rates with Wilson CIs
     per_failure_repair: dict[str, dict] = {}
@@ -1020,21 +1035,13 @@ def analyze_passk(records: list[dict], verbose: bool = False) -> dict:
 
         # pass@k formula: pass@k = 1 - C(n-c, k) / C(n, k)
         estimates = {}
-        for k_val in [1, 3]:
+        for k_val in PASSK_K_VALUES:
             if k_val > n:
                 estimates[f"pass@{k_val}"] = None
                 continue
-            if c >= k_val:
-                # When c >= k, pass@k can be computed directly
-                # pass@k = 1 - C(n-c, k) / C(n, k)
-                numerator = math.comb(n - c, k_val)
-                denominator = math.comb(n, k_val)
-                passk_val = 1.0 - (numerator / denominator) if denominator > 0 else 0.0
-            else:
-                # Not enough correct samples
-                numerator = math.comb(n - c, k_val)
-                denominator = math.comb(n, k_val)
-                passk_val = 1.0 - (numerator / denominator) if denominator > 0 else 0.0
+            numerator = math.comb(n - c, k_val)
+            denominator = math.comb(n, k_val)
+            passk_val = 1.0 - (numerator / denominator) if denominator > 0 else 0.0
             estimates[f"pass@{k_val}"] = round(passk_val, 4)
 
         passk_estimates[f"{kernel}:{direction}"] = {
@@ -1090,8 +1097,8 @@ def compute_sample_size_flags(primary: list[dict], passk: list[dict]) -> list[st
         dir_counts[r.get("direction", "unknown")] += 1
 
     for d, n in dir_counts.items():
-        if n < 10:
-            flags.append(f"L0 {d}: n={n} (< 10 — wide CIs, interpret with caution)")
+        if n < MIN_L0_SAMPLE_SIZE:
+            flags.append(f"L0 {d}: n={n} (< {MIN_L0_SAMPLE_SIZE} — wide CIs, interpret with caution)")
 
     # pass@k sample size per task
     task_counts: dict[str, int] = defaultdict(int)
@@ -1099,9 +1106,9 @@ def compute_sample_size_flags(primary: list[dict], passk: list[dict]) -> list[st
         key = f"{r.get('kernel', '?')}:{r.get('direction', '?')}"
         task_counts[key] += 1
 
-    low_sample_tasks = [(t, n) for t, n in task_counts.items() if n < 3]
+    low_sample_tasks = [(t, n) for t, n in task_counts.items() if n < MIN_PASSK_TASK_SAMPLES]
     if low_sample_tasks:
-        flags.append(f"pass@k: {len(low_sample_tasks)} tasks with n < 3 samples")
+        flags.append(f"pass@k: {len(low_sample_tasks)} tasks with n < {MIN_PASSK_TASK_SAMPLES} samples")
 
     # Augmentation balanced subset size
     c2o = [r for r in primary if r.get("direction") == "cuda-to-omp"]
@@ -1112,10 +1119,10 @@ def compute_sample_size_flags(primary: list[dict], passk: list[dict]) -> list[st
     for r in c2o:
         all_levels.add(r.get("augment_level", 0))
     balanced = {k for k, levels in kernel_levels.items() if levels == all_levels}
-    if len(balanced) < 20:
+    if len(balanced) < MIN_BALANCED_KERNELS:
         flags.append(
             f"Cochran-Armitage balanced subset: n={len(balanced)} kernels "
-            f"(< 20 — limited statistical power)"
+            f"(< {MIN_BALANCED_KERNELS} — limited statistical power)"
         )
 
     # Single model flag

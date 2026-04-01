@@ -7,9 +7,6 @@ from pathlib import Path
 # Ensure the scripts/analysis directory is importable
 sys.path.insert(0, str(Path(__file__).parent))
 
-import pytest
-from collections import Counter, defaultdict
-
 from build_error_taxonomy import (
     classify_verify_fail,
     build_taxonomy,
@@ -244,3 +241,21 @@ def test_build_taxonomy_mixed_statuses():
     # Both failure types should have categories
     assert sum(c["count"] for c in taxonomy["build_fail_categories"].values()) == 1
     assert sum(c["count"] for c in taxonomy["verify_fail_categories"].values()) == 1
+
+
+# --- new tests: safe_percentage ---
+
+
+def test_safe_percentage_normal():
+    from build_error_taxonomy import safe_percentage
+    assert safe_percentage(10, 20) == 50.0
+
+
+def test_safe_percentage_zero_denominator():
+    from build_error_taxonomy import safe_percentage
+    assert safe_percentage(5, 0) == 0.0
+
+
+def test_safe_percentage_full():
+    from build_error_taxonomy import safe_percentage
+    assert safe_percentage(20, 20) == 100.0

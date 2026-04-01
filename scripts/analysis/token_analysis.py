@@ -52,6 +52,29 @@ EXCLUDED_SPECS: frozenset[str] = frozenset({
     "rodinia-kmeans-opencl",
 })
 
+# Field-name constants — single source of truth for JSON key names
+FIELD_PROMPT_TOKENS = "prompt_tokens"
+FIELD_COMPLETION_TOKENS = "completion_tokens"
+FIELD_OVERALL_STATUS = "overall_status"
+FIELD_SOURCE_SPEC = "source_spec"
+FIELD_TARGET_SPEC = "target_spec"
+
+# Precision constants — controls rounding across the module
+PRECISION_TOKENS = 1
+PRECISION_RATE = 4
+PRECISION_COST_DETAIL = 6
+PRECISION_CORRELATION = 4
+
+
+def extract_token_lists(results: list[dict]) -> tuple[list[int], list[int]]:
+    """Extract parallel prompt and completion token lists from result dicts.
+
+    Missing keys default to 0.  Returns (prompt_list, completion_list).
+    """
+    prompt_list = [r.get(FIELD_PROMPT_TOKENS, 0) for r in results]
+    completion_list = [r.get(FIELD_COMPLETION_TOKENS, 0) for r in results]
+    return prompt_list, completion_list
+
 
 def load_all_results(project_root: Path) -> list[dict]:
     """Load all result JSONs from results/evaluation/{model}/ directories.
@@ -67,12 +90,12 @@ def load_all_results(project_root: Path) -> list[dict]:
         for json_file in sorted(model_dir.glob("*.json")):
             try:
                 data = json.loads(json_file.read_text(encoding="utf-8"))
-                if "overall_status" not in data:
+                if FIELD_OVERALL_STATUS not in data:
                     continue
                 # Filter out results involving excluded (KNOWN_FAIL) specs
-                if data.get("source_spec", "") in EXCLUDED_SPECS:
+                if data.get(FIELD_SOURCE_SPEC, "") in EXCLUDED_SPECS:
                     continue
-                if data.get("target_spec", "") in EXCLUDED_SPECS:
+                if data.get(FIELD_TARGET_SPEC, "") in EXCLUDED_SPECS:
                     continue
                 data["_file"] = str(json_file.relative_to(project_root))
                 results.append(data)
@@ -116,12 +139,12 @@ def compute_stats(values: list[float]) -> dict:
         return {"count": 0, "mean": 0, "median": 0, "std": 0, "min": 0, "max": 0, "total": 0}
     return {
         "count": len(values),
-        "mean": round(mean(values), 1),
-        "median": round(median(values), 1),
-        "std": round(std(values), 1),
-        "min": round(min(values), 1),
-        "max": round(max(values), 1),
-        "total": round(sum(values), 1),
+        "mean": round(mean(values), PRECISION_TOKENS),
+        "median": round(median(values), PRECISION_TOKENS),
+        "std": round(std(values), PRECISION_TOKENS),
+        "min": round(min(values), PRECISION_TOKENS),
+        "max": round(max(values), PRECISION_TOKENS),
+        "total": round(sum(values), PRECISION_TOKENS),
     }
 
 
@@ -141,13 +164,13 @@ def spearman_correlation(xs: list[float], ys: list[float]) -> float | None:
     rx = rank(xs)
     ry = rank(ys)
     d_sq_sum = sum((rx[i] - ry[i]) ** 2 for i in range(n))
-    return round(1 - (6 * d_sq_sum) / (n * (n * n - 1)), 4)
+    return round(1 - (6 * d_sq_sum) / (n * (n * n - 1)), PRECISION_CORRELATION)
 
 
 def get_direction(result: dict) -> str:
     """Extract translation direction from a result."""
-    src_api = result.get("source_spec", "").split("-")[-1]
-    tgt_api = result.get("target_spec", "").split("-")[-1]
+    src_api = result.get(FIELD_SOURCE_SPEC, "").split("-")[-1]
+    tgt_api = result.get(FIELD_TARGET_SPEC, "").split("-")[-1]
     return f"{src_api}-to-{tgt_api}"
 
 
@@ -175,54 +198,56 @@ def main() -> int:
         if not model_results:
             continue
 
-        prompt_tokens = [r.get("prompt_tokens", 0) for r in model_results]
-        completion_tokens = [r.get("completion_tokens", 0) for r in model_results]
+        prompt_tokens, completion_tokens = extract_token_lists(model_results)
         response_times = [
             r.get("llm_response_time_seconds", 0)
             for r in model_results
             if r.get("llm_response_time_seconds")
         ]
         costs = [
-            compute_cost(r.get("prompt_tokens", 0), r.get("completion_tokens", 0), model_id)
+            compute_cost(r.get(FIELD_PROMPT_TOKENS, 0), r.get(FIELD_COMPLETION_TOKENS, 0), model_id)
             for r in model_results
         ]
 
         # Tokens per second (completion tokens / response time)
         tps = [
-            r.get("completion_tokens", 0) / r["llm_response_time_seconds"]
+            r.get(FIELD_COMPLETION_TOKENS, 0) / r["llm_response_time_seconds"]
             for r in model_results
             if r.get("llm_response_time_seconds") and r["llm_response_time_seconds"] > 0
         ]
 
-        pass_results = [r for r in model_results if r["overall_status"] == "PASS"]
-        fail_results = [r for r in model_results if r["overall_status"] != "PASS"]
+        pass_results = [r for r in model_results if r[FIELD_OVERALL_STATUS] == "PASS"]
+        fail_results = [r for r in model_results if r[FIELD_OVERALL_STATUS] != "PASS"]
 
         pass_cost = sum(
-            compute_cost(r.get("prompt_tokens", 0), r.get("completion_tokens", 0), model_id)
+            compute_cost(r.get(FIELD_PROMPT_TOKENS, 0), r.get(FIELD_COMPLETION_TOKENS, 0), model_id)
             for r in pass_results
         )
+
+        pass_prompt, pass_completion = extract_token_lists(pass_results)
+        fail_prompt, fail_completion = extract_token_lists(fail_results)
 
         by_model[model_id] = {
             "display_name": pricing["display"],
             "total_results": len(model_results),
             "pass_count": len(pass_results),
-            "pass_rate": round(len(pass_results) / len(model_results), 4),
+            "pass_rate": round(len(pass_results) / len(model_results), PRECISION_RATE),
             "prompt_tokens": compute_stats(prompt_tokens),
             "completion_tokens": compute_stats(completion_tokens),
             "response_time_seconds": compute_stats(response_times),
             "tokens_per_second": compute_stats(tps),
             "cost_usd": {
-                "total": round(sum(costs), 4),
-                "mean_per_task": round(mean(costs), 6),
-                "cost_per_pass": round(pass_cost / len(pass_results), 6) if pass_results else None,
-                "total_pass_cost": round(pass_cost, 4),
-                "total_fail_cost": round(sum(costs) - pass_cost, 4),
+                "total": round(sum(costs), PRECISION_RATE),
+                "mean_per_task": round(mean(costs), PRECISION_COST_DETAIL),
+                "cost_per_pass": round(pass_cost / len(pass_results), PRECISION_COST_DETAIL) if pass_results else None,
+                "total_pass_cost": round(pass_cost, PRECISION_RATE),
+                "total_fail_cost": round(sum(costs) - pass_cost, PRECISION_RATE),
             },
             # Pass vs fail token comparison
-            "pass_prompt_tokens_mean": round(mean([r.get("prompt_tokens", 0) for r in pass_results]), 1) if pass_results else None,
-            "fail_prompt_tokens_mean": round(mean([r.get("prompt_tokens", 0) for r in fail_results]), 1) if fail_results else None,
-            "pass_completion_tokens_mean": round(mean([r.get("completion_tokens", 0) for r in pass_results]), 1) if pass_results else None,
-            "fail_completion_tokens_mean": round(mean([r.get("completion_tokens", 0) for r in fail_results]), 1) if fail_results else None,
+            "pass_prompt_tokens_mean": round(mean(pass_prompt), PRECISION_TOKENS) if pass_results else None,
+            "fail_prompt_tokens_mean": round(mean(fail_prompt), PRECISION_TOKENS) if fail_results else None,
+            "pass_completion_tokens_mean": round(mean(pass_completion), PRECISION_TOKENS) if pass_results else None,
+            "fail_completion_tokens_mean": round(mean(fail_completion), PRECISION_TOKENS) if fail_results else None,
         }
 
     # ── Per-kernel statistics ─────────────────────────────────────────
@@ -232,13 +257,12 @@ def main() -> int:
         kernel_groups[r.get("kernel", "unknown")].append(r)
 
     for kernel, kresults in sorted(kernel_groups.items()):
-        prompt_tokens = [r.get("prompt_tokens", 0) for r in kresults]
-        completion_tokens = [r.get("completion_tokens", 0) for r in kresults]
-        pass_count = sum(1 for r in kresults if r["overall_status"] == "PASS")
+        prompt_tokens, completion_tokens = extract_token_lists(kresults)
+        pass_count = sum(1 for r in kresults if r[FIELD_OVERALL_STATUS] == "PASS")
         by_kernel[kernel] = {
             "total_results": len(kresults),
             "pass_count": pass_count,
-            "pass_rate": round(pass_count / len(kresults), 4),
+            "pass_rate": round(pass_count / len(kresults), PRECISION_RATE),
             "prompt_tokens": compute_stats(prompt_tokens),
             "completion_tokens": compute_stats(completion_tokens),
         }
@@ -250,13 +274,12 @@ def main() -> int:
         direction_groups[get_direction(r)].append(r)
 
     for direction, dresults in sorted(direction_groups.items()):
-        prompt_tokens = [r.get("prompt_tokens", 0) for r in dresults]
-        completion_tokens = [r.get("completion_tokens", 0) for r in dresults]
-        pass_count = sum(1 for r in dresults if r["overall_status"] == "PASS")
+        prompt_tokens, completion_tokens = extract_token_lists(dresults)
+        pass_count = sum(1 for r in dresults if r[FIELD_OVERALL_STATUS] == "PASS")
         by_direction[direction] = {
             "total_results": len(dresults),
             "pass_count": pass_count,
-            "pass_rate": round(pass_count / len(dresults), 4),
+            "pass_rate": round(pass_count / len(dresults), PRECISION_RATE),
             "prompt_tokens": compute_stats(prompt_tokens),
             "completion_tokens": compute_stats(completion_tokens),
         }
@@ -269,13 +292,12 @@ def main() -> int:
         level_groups[level].append(r)
 
     for level, lresults in sorted(level_groups.items()):
-        prompt_tokens = [r.get("prompt_tokens", 0) for r in lresults]
-        completion_tokens = [r.get("completion_tokens", 0) for r in lresults]
-        pass_count = sum(1 for r in lresults if r["overall_status"] == "PASS")
+        prompt_tokens, completion_tokens = extract_token_lists(lresults)
+        pass_count = sum(1 for r in lresults if r[FIELD_OVERALL_STATUS] == "PASS")
         by_level[level] = {
             "total_results": len(lresults),
             "pass_count": pass_count,
-            "pass_rate": round(pass_count / len(lresults), 4),
+            "pass_rate": round(pass_count / len(lresults), PRECISION_RATE),
             "prompt_tokens": compute_stats(prompt_tokens),
             "completion_tokens": compute_stats(completion_tokens),
         }
@@ -287,13 +309,13 @@ def main() -> int:
     corr_prompt_vs_pass = spearman_correlation(kernel_prompt_means, kernel_pass_rates)
 
     # Individual result: prompt_tokens → pass (1) / fail (0) — point-biserial proxy
-    all_prompt = [r.get("prompt_tokens", 0) for r in results]
-    all_pass = [1.0 if r["overall_status"] == "PASS" else 0.0 for r in results]
+    all_prompt = [r.get(FIELD_PROMPT_TOKENS, 0) for r in results]
+    all_pass = [1.0 if r[FIELD_OVERALL_STATUS] == "PASS" else 0.0 for r in results]
     pass_prompts = [p for p, s in zip(all_prompt, all_pass) if s == 1.0]
     fail_prompts = [p for p, s in zip(all_prompt, all_pass) if s == 0.0]
 
     # Completion tokens vs pass/fail correlation
-    all_completion = [r.get("completion_tokens", 0) for r in results]
+    all_completion = [r.get(FIELD_COMPLETION_TOKENS, 0) for r in results]
     corr_completion_vs_pass = spearman_correlation(all_completion, all_pass)
     pass_completions = [c for c, s in zip(all_completion, all_pass) if s == 1.0]
     fail_completions = [c for c, s in zip(all_completion, all_pass) if s == 0.0]
@@ -301,7 +323,7 @@ def main() -> int:
     # ── Grand totals ──────────────────────────────────────────────────
     grand_total_cost = sum(m["cost_usd"]["total"] for m in by_model.values())
     grand_total_tokens = sum(
-        r.get("prompt_tokens", 0) + r.get("completion_tokens", 0)
+        r.get(FIELD_PROMPT_TOKENS, 0) + r.get(FIELD_COMPLETION_TOKENS, 0)
         for r in results
     )
 
@@ -309,18 +331,18 @@ def main() -> int:
         "analysis": "token_usage",
         "total_results": len(results),
         "grand_total_tokens": grand_total_tokens,
-        "grand_total_cost_usd": round(grand_total_cost, 4),
+        "grand_total_cost_usd": round(grand_total_cost, PRECISION_RATE),
         "by_model": by_model,
         "by_kernel": by_kernel,
         "by_direction": by_direction,
         "by_augment_level": by_level,
         "correlations": {
             "kernel_mean_prompt_vs_pass_rate_spearman": corr_prompt_vs_pass,
-            "pass_mean_prompt_tokens": round(mean(pass_prompts), 1),
-            "fail_mean_prompt_tokens": round(mean(fail_prompts), 1),
+            "pass_mean_prompt_tokens": round(mean(pass_prompts), PRECISION_TOKENS),
+            "fail_mean_prompt_tokens": round(mean(fail_prompts), PRECISION_TOKENS),
             "completion_tokens_vs_pass_spearman": corr_completion_vs_pass,
-            "pass_mean_completion_tokens": round(mean(pass_completions), 1),
-            "fail_mean_completion_tokens": round(mean(fail_completions), 1),
+            "pass_mean_completion_tokens": round(mean(pass_completions), PRECISION_TOKENS),
+            "fail_mean_completion_tokens": round(mean(fail_completions), PRECISION_TOKENS),
             "note": (
                 "Negative prompt correlation: larger kernels (more prompt tokens) "
                 "are harder to translate. Completion correlation shows whether "

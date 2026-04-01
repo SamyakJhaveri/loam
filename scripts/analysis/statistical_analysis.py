@@ -50,6 +50,62 @@ from scripts.evaluation.analyze_eval import (
 
 
 # --------------------------------------------------------------------------- #
+# Predicates: deterministic vs stochastic records                              #
+# --------------------------------------------------------------------------- #
+
+
+def is_deterministic(record: dict) -> bool:
+    """Return True if the record is from a deterministic run (temperature == 0)."""
+    return (record.get("temperature") or 0) == 0.0
+
+
+def is_stochastic(record: dict) -> bool:
+    """Return True if the record is from a stochastic run (temperature > 0)."""
+    return (record.get("temperature") or 0) > 0
+
+
+# --------------------------------------------------------------------------- #
+# Constants: magic-number replacements                                         #
+# --------------------------------------------------------------------------- #
+
+MIN_EXPECTED_CELL_COUNT: int = 5
+"""Minimum expected cell count for chi-squared validity."""
+
+MCNEMAR_EXACT_THRESHOLD: int = 25
+"""Below this number of discordant pairs, use exact McNemar (binomial)."""
+
+SAMPLE_SIZE_ADEQUACY_THRESHOLD: int = 10
+"""Minimum n for a reliable CI; cells below this are flagged."""
+
+# --------------------------------------------------------------------------- #
+# Effect-size interpretation tables                                            #
+# --------------------------------------------------------------------------- #
+
+# Cohen's h: list of (threshold, label) tuples, checked in order.
+# If |h| is below the threshold, that label is returned.
+COHENS_H_INTERPRETATION: list[tuple[float, str]] = [
+    (0.20, "small"),
+    (0.80, "medium"),
+]
+"""Thresholds for Cohen's h.  Fall-through → 'large'."""
+
+# Cramer's V: keyed by df* (min(rows, cols) - 1).
+# Each value is a list of (threshold, label) tuples, checked in order.
+CRAMERS_V_INTERPRETATIONS: dict[int, list[tuple[float, str]]] = {
+    1: [(0.10, "negligible"), (0.30, "small"), (0.50, "medium")],
+    2: [(0.07, "negligible"), (0.21, "small"), (0.35, "medium")],
+}
+"""Thresholds for Cramer's V by df*.  Fall-through → 'large'.
+   df* not in the dict uses the default (df* >= 3) entry."""
+
+_CRAMERS_V_DEFAULT: list[tuple[float, str]] = [
+    (0.06, "negligible"),
+    (0.17, "small"),
+    (0.29, "medium"),
+]
+
+
+# --------------------------------------------------------------------------- #
 # Wilson Score CI                                                              #
 # --------------------------------------------------------------------------- #
 
@@ -162,7 +218,7 @@ def test_model_comparison(
         "cramers_v": round(cramers_v, 4),
         "cramers_v_interpretation": _interpret_v(cramers_v, df_star),
         "min_expected_count": round(min_expected, 1),
-        "low_expected_counts": min_expected < 5,
+        "low_expected_counts": min_expected < MIN_EXPECTED_CELL_COUNT,
         "n_total": n_total,
         "alpha_pairwise": round(alpha_pair, 6),
         "pairwise": pairwise,
@@ -220,7 +276,7 @@ def test_augmentation_independence(
         if grand_total == 0:
             continue
         expected = row_totals * col_totals / grand_total
-        low_expected = bool((expected < 5).any())
+        low_expected = bool((expected < MIN_EXPECTED_CELL_COUNT).any())
 
         # Skip if any row or column sums to zero (chi2_contingency would error)
         if (table.sum(axis=0) == 0).any() or (table.sum(axis=1) == 0).any():
@@ -351,7 +407,7 @@ def compute_augmentation_trends(records: list[dict], alpha: float = 0.05) -> dic
     # Step 1: Filter to deterministic only (temp=0.0).
     # Stochastic samples (temp>0) inflate L0 counts relative to L1-L4,
     # creating an artificial imbalance that produces spurious trends.
-    filtered = [r for r in filtered if (r.get("temperature") or 0) == 0.0]
+    filtered = [r for r in filtered if is_deterministic(r)]
     if not filtered:
         return {"error": "No deterministic cuda-to-omp records found"}
 
@@ -435,6 +491,24 @@ def compute_augmentation_trends(records: list[dict], alpha: float = 0.05) -> dic
 # Direction asymmetry: McNemar's exact                                         #
 # --------------------------------------------------------------------------- #
 
+def _get_direction_pairs(
+    d: str, directions: set[str]
+) -> tuple[str, str] | None:
+    """Return (forward, reverse) direction pair if the reverse exists in *directions*.
+
+    Given direction ``'cuda-to-omp'`` and a set containing ``'omp-to-cuda'``,
+    returns ``('cuda-to-omp', 'omp-to-cuda')``.  Returns ``None`` when the
+    reverse direction is absent.
+    """
+    parts = d.split("-to-")
+    if len(parts) != 2:
+        return None
+    reverse = f"{parts[1]}-to-{parts[0]}"
+    if reverse not in directions:
+        return None
+    return (d, reverse)
+
+
 def test_direction_asymmetry(records: list[dict], alpha: float = 0.05) -> list[dict]:
     """Test directional asymmetry using McNemar's exact test.
 
@@ -466,13 +540,11 @@ def test_direction_asymmetry(records: list[dict], alpha: float = 0.05) -> list[d
 
     pair_map: dict[tuple[str, str], tuple[str, str]] = {}
     for d in directions:
-        parts = d.split("-to-")
-        if len(parts) == 2:
-            reverse = f"{parts[1]}-to-{parts[0]}"
-            if reverse in directions:
-                key = tuple(sorted([d, reverse]))
-                if key not in pair_map:
-                    pair_map[key] = (d, reverse)
+        pair = _get_direction_pairs(d, directions)
+        if pair is not None:
+            key = tuple(sorted(pair))
+            if key not in pair_map:
+                pair_map[key] = pair
 
     n_tests = len(pair_map) if pair_map else 1
     alpha_corrected = alpha / n_tests
@@ -505,7 +577,7 @@ def test_direction_asymmetry(records: list[dict], alpha: float = 0.05) -> list[d
         if discordant == 0:
             p_value = 1.0
             method = "exact"
-        elif discordant < 25:
+        elif discordant < MCNEMAR_EXACT_THRESHOLD:
             # Exact McNemar's test (binomial)
             binom_result = sp_stats.binomtest(b, discordant, 0.5, alternative="two-sided")
             p_value = float(binom_result.pvalue)
@@ -561,23 +633,17 @@ def cohens_h(p1: float, p2: float) -> float:
 
 
 def _interpret_h(h: float) -> str:
-    """Interpret Cohen's h magnitude."""
+    """Interpret Cohen's h magnitude using COHENS_H_INTERPRETATION table."""
     abs_h = abs(h)
-    if abs_h < 0.20:
-        return "small"
-    elif abs_h < 0.80:
-        return "medium"
+    for thresh, label in COHENS_H_INTERPRETATION:
+        if abs_h < thresh:
+            return label
     return "large"
 
 
 def _interpret_v(v: float, df_star: int) -> str:
-    """Interpret Cramer's V by df*."""
-    if df_star == 1:
-        thresholds = [(0.10, "negligible"), (0.30, "small"), (0.50, "medium")]
-    elif df_star == 2:
-        thresholds = [(0.07, "negligible"), (0.21, "small"), (0.35, "medium")]
-    else:
-        thresholds = [(0.06, "negligible"), (0.17, "small"), (0.29, "medium")]
+    """Interpret Cramer's V by df* using CRAMERS_V_INTERPRETATIONS table."""
+    thresholds = CRAMERS_V_INTERPRETATIONS.get(df_star, _CRAMERS_V_DEFAULT)
     for thresh, label in thresholds:
         if v < thresh:
             return label
@@ -668,7 +734,7 @@ def compute_pass_at_k_table(
 
     # Filter to stochastic samples only (temp > 0) — deterministic runs
     # violate the i.i.d. assumption required by the pass@k estimator.
-    sample_records = [r for r in records if (r.get("temperature") or 0) > 0]
+    sample_records = [r for r in records if is_stochastic(r)]
 
     groups: dict[tuple, dict[str, int]] = defaultdict(lambda: {"n": 0, "c": 0})
     for r in sample_records:
@@ -699,14 +765,14 @@ def compute_pass_at_k_table(
 # --------------------------------------------------------------------------- #
 
 def sample_size_adequacy(records: list[dict]) -> list[dict]:
-    """Flag cells where n < 10 as insufficient for reliable CI.
+    """Flag cells where n < SAMPLE_SIZE_ADEQUACY_THRESHOLD as insufficient for reliable CI.
 
     Checks per-model, per-direction, per-kernel, and per-(model x direction) cells.
     """
     flags = []
 
     def _check(label: str, n: int):
-        if n < 10:
+        if n < SAMPLE_SIZE_ADEQUACY_THRESHOLD:
             flags.append({"cell": label, "n": n, "adequate": False,
                           "note": "n < 10; CI width exceeds 30pp"})
 
@@ -823,7 +889,7 @@ def _build_markdown(data: dict) -> str:
         "|--------|-----:|-------:|--:|",
     ]
     for kernel, ci in sorted(data["wilson_cis"]["by_kernel"].items()):
-        flag = " *" if ci["n"] < 10 else ""
+        flag = " *" if ci["n"] < SAMPLE_SIZE_ADEQUACY_THRESHOLD else ""
         lines.append(
             f"| {kernel} | {ci['rate']*100:.1f}% "
             f"| [{ci['ci_lower']*100:.1f}%, {ci['ci_upper']*100:.1f}%] "
@@ -1102,7 +1168,7 @@ def main():
     size_flags = sample_size_adequacy(records)
 
     # 8. Pass@k (only if multi-sample data exists)
-    has_samples = any((r.get("temperature") or 0) > 0 for r in records)
+    has_samples = any(is_stochastic(r) for r in records)
     pass_k_table = {}
     if has_samples:
         if args.verbose:

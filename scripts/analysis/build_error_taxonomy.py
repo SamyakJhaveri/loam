@@ -22,6 +22,15 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 
+def safe_percentage(numerator: int | float, denominator: int | float) -> float:
+    """Return numerator/denominator * 100, or 0.0 if denominator is zero."""
+    return numerator / denominator * 100 if denominator else 0.0
+
+
+MAX_EXAMPLES_PER_CATEGORY: int = 3
+OTHER_BUCKET_REFINEMENT_THRESHOLD: float = 20.0
+
+
 # ============================================================
 # BUILD_FAIL categories — checked in priority order on FULL snippet
 # First match wins as primary category.
@@ -526,7 +535,7 @@ def build_taxonomy(results):
             cat_data["by_model"][model] += 1
             cat_data["by_direction"][direction] += 1
             cat_data["by_kernel"][kernel] += 1
-            if len(cat_data["examples"]) < 3:
+            if len(cat_data["examples"]) < MAX_EXAMPLES_PER_CATEGORY:
                 snippet = data.get("build_error_snippet") or ""
                 cat_data["examples"].append({
                     "file": os.path.basename(data.get("_file_path", "")),
@@ -550,7 +559,7 @@ def build_taxonomy(results):
             cat_data["by_model"][model] += 1
             cat_data["by_direction"][direction] += 1
             cat_data["by_kernel"][kernel] += 1
-            if len(cat_data["examples"]) < 3:
+            if len(cat_data["examples"]) < MAX_EXAMPLES_PER_CATEGORY:
                 stderr = data.get("run_stderr_snippet") or ""
                 stdout = data.get("run_stdout_snippet") or ""
                 cat_data["examples"].append({
@@ -577,7 +586,7 @@ def build_taxonomy(results):
             cat_data["by_model"][model] += 1
             cat_data["by_direction"][direction] += 1
             cat_data["by_kernel"][kernel] += 1
-            if len(cat_data["examples"]) < 3:
+            if len(cat_data["examples"]) < MAX_EXAMPLES_PER_CATEGORY:
                 cat_data["examples"].append({
                     "file": os.path.basename(data.get("_file_path", "")),
                     "model": model,
@@ -600,7 +609,7 @@ def build_taxonomy(results):
             cat_data["by_model"][model] += 1
             cat_data["by_direction"][direction] += 1
             cat_data["by_kernel"][kernel] += 1
-            if len(cat_data["examples"]) < 3:
+            if len(cat_data["examples"]) < MAX_EXAMPLES_PER_CATEGORY:
                 stdout = data.get("run_stdout_snippet") or ""
                 cat_data["examples"].append({
                     "file": os.path.basename(data.get("_file_path", "")),
@@ -688,8 +697,8 @@ def generate_markdown(taxonomy, output_path):
     lines.append("# Error Taxonomy — ParBench LLM Evaluation Results")
     lines.append("")
     lines.append(f"**Total results:** {taxonomy['total_results']}  ")
-    lines.append(f"**PASS:** {taxonomy['total_pass']} ({taxonomy['total_pass']/taxonomy['total_results']*100:.1f}%)  ")
-    lines.append(f"**Failures:** {taxonomy['total_failures']} ({taxonomy['total_failures']/taxonomy['total_results']*100:.1f}%)")
+    lines.append(f"**PASS:** {taxonomy['total_pass']} ({safe_percentage(taxonomy['total_pass'], taxonomy['total_results']):.1f}%)  ")
+    lines.append(f"**Failures:** {taxonomy['total_failures']} ({safe_percentage(taxonomy['total_failures'], taxonomy['total_results']):.1f}%)")
     lines.append("")
 
     # Table 1: Overall status distribution
@@ -699,7 +708,7 @@ def generate_markdown(taxonomy, output_path):
     lines.append("|--------|------:|----------:|")
     for status in ["PASS", "BUILD_FAIL", "RUN_FAIL", "VERIFY_FAIL", "EXTRACTION_FAIL", "ERROR"]:
         count = taxonomy["status_counts"].get(status, 0)
-        pct = count / taxonomy["total_results"] * 100 if taxonomy["total_results"] > 0 else 0
+        pct = safe_percentage(count, taxonomy["total_results"])
         lines.append(f"| {status} | {count} | {pct:.1f}% |")
     lines.append(f"| **Total** | **{taxonomy['total_results']}** | **100.0%** |")
     lines.append("")
@@ -718,7 +727,7 @@ def generate_markdown(taxonomy, output_path):
     sorted_bf = sorted(taxonomy["build_fail_categories"].items(), key=lambda x: -x[1]["count"])
     for i, (cat_name, cat_data) in enumerate(sorted_bf, 1):
         count = cat_data["count"]
-        pct = count / total_bf * 100 if total_bf > 0 else 0
+        pct = safe_percentage(count, total_bf)
         desc = cat_descs.get(cat_name, "")
         lines.append(f"| {i} | `{cat_name}` | {count} | {pct:.1f}% | {desc} |")
     lines.append(f"| | **Total** | **{total_bf}** | **100.0%** | |")
@@ -737,7 +746,7 @@ def generate_markdown(taxonomy, output_path):
     sorted_rf = sorted(taxonomy["run_fail_categories"].items(), key=lambda x: -x[1]["count"])
     for i, (cat_name, cat_data) in enumerate(sorted_rf, 1):
         count = cat_data["count"]
-        pct = count / total_rf * 100 if total_rf > 0 else 0
+        pct = safe_percentage(count, total_rf)
         desc = cat_descs_rf.get(cat_name, "")
         lines.append(f"| {i} | `{cat_name}` | {count} | {pct:.1f}% | {desc} |")
     lines.append(f"| | **Total** | **{total_rf}** | **100.0%** | |")
@@ -756,7 +765,7 @@ def generate_markdown(taxonomy, output_path):
     sorted_ef = sorted(taxonomy["extraction_fail_categories"].items(), key=lambda x: -x[1]["count"])
     for i, (cat_name, cat_data) in enumerate(sorted_ef, 1):
         count = cat_data["count"]
-        pct = count / total_ef * 100 if total_ef > 0 else 0
+        pct = safe_percentage(count, total_ef)
         desc = cat_descs_ef.get(cat_name, "")
         lines.append(f"| {i} | `{cat_name}` | {count} | {pct:.1f}% | {desc} |")
     lines.append(f"| | **Total** | **{total_ef}** | **100.0%** | |")
@@ -777,7 +786,7 @@ def generate_markdown(taxonomy, output_path):
         sorted_vf = sorted(vf_cats_data.items(), key=lambda x: -x[1]["count"])
         for i, (cat_name, cat_data) in enumerate(sorted_vf, 1):
             count = cat_data["count"]
-            pct = count / total_vf * 100 if total_vf > 0 else 0
+            pct = safe_percentage(count, total_vf)
             desc = cat_descs_vf.get(cat_name, "")
             lines.append(f"| {i} | `{cat_name}` | {count} | {pct:.1f}% | {desc} |")
         lines.append(f"| | **Total** | **{total_vf}** | **100.0%** | |")
@@ -875,7 +884,7 @@ def generate_markdown(taxonomy, output_path):
         vf = sum(md["verify_fail"].values())
         ef = sum(md["extraction_fail"].values())
         er = md["error"]
-        rate = p / total * 100 if total > 0 else 0
+        rate = safe_percentage(p, total)
         lines.append(f"| {m} | {total} | {p} | {bf} | {rf} | {vf} | {ef} | {er} | {rate:.1f}% |")
     lines.append("")
 
@@ -896,7 +905,7 @@ def generate_markdown(taxonomy, output_path):
         vf = sum(dd["verify_fail"].values())
         ef = sum(dd["extraction_fail"].values())
         er = dd["error"]
-        rate = p / total * 100 if total > 0 else 0
+        rate = safe_percentage(p, total)
         lines.append(f"| {d.replace('-to-', '→')} | {total} | {p} | {bf} | {rf} | {vf} | {ef} | {er} | {rate:.1f}% |")
     lines.append("")
 
@@ -911,7 +920,7 @@ def generate_markdown(taxonomy, output_path):
         kd = taxonomy["per_kernel"][k]
         total = kd["total"]
         p = kd["pass"]
-        rate = p / total * 100 if total > 0 else 0
+        rate = safe_percentage(p, total)
         # Find primary failure mode across all failure types
         all_fails = Counter()
         all_fails.update(kd["build_fail"])
@@ -935,7 +944,7 @@ def generate_markdown(taxonomy, output_path):
     lines.append("### Top BUILD_FAIL Root Causes")
     lines.append("")
     for i, (cat_name, cat_data) in enumerate(sorted_bf[:3], 1):
-        pct = cat_data["count"] / total_bf * 100 if total_bf > 0 else 0
+        pct = safe_percentage(cat_data["count"], total_bf)
         lines.append(f"{i}. **`{cat_name}`** — {cat_data['count']} ({pct:.1f}% of BUILD_FAIL)")
     lines.append("")
 
@@ -943,7 +952,7 @@ def generate_markdown(taxonomy, output_path):
     lines.append("### Top RUN_FAIL Root Causes")
     lines.append("")
     for i, (cat_name, cat_data) in enumerate(sorted_rf[:3], 1):
-        pct = cat_data["count"] / total_rf * 100 if total_rf > 0 else 0
+        pct = safe_percentage(cat_data["count"], total_rf)
         lines.append(f"{i}. **`{cat_name}`** — {cat_data['count']} ({pct:.1f}% of RUN_FAIL)")
     lines.append("")
 
@@ -952,7 +961,7 @@ def generate_markdown(taxonomy, output_path):
         lines.append("### Top VERIFY_FAIL Root Causes")
         lines.append("")
         for i, (cat_name, cat_data) in enumerate(sorted_vf[:3], 1):
-            pct = cat_data["count"] / total_vf * 100 if total_vf > 0 else 0
+            pct = safe_percentage(cat_data["count"], total_vf)
             lines.append(f"{i}. **`{cat_name}`** — {cat_data['count']} ({pct:.1f}% of VERIFY_FAIL)")
         lines.append("")
 
@@ -961,7 +970,7 @@ def generate_markdown(taxonomy, output_path):
     lines.append("")
     for d in all_dirs:
         dd = taxonomy["per_direction"][d]
-        rate = dd["pass"] / dd["total"] * 100 if dd["total"] > 0 else 0
+        rate = safe_percentage(dd["pass"], dd["total"])
         lines.append(f"- {d.replace('-to-', '→')}: {dd['pass']}/{dd['total']} PASS ({rate:.1f}%)")
     lines.append("")
 
@@ -969,7 +978,7 @@ def generate_markdown(taxonomy, output_path):
     lines.append("### Compound Failures (Multiple Root Causes)")
     lines.append("")
     compound = [r for r in taxonomy["classified_results"] if r["secondary_categories"]]
-    lines.append(f"**{len(compound)}** results ({len(compound)/taxonomy['total_failures']*100:.1f}% of failures) have secondary error categories.")
+    lines.append(f"**{len(compound)}** results ({safe_percentage(len(compound), taxonomy['total_failures']):.1f}% of failures) have secondary error categories.")
     lines.append("")
     if compound:
         # Count secondary category co-occurrences
@@ -1024,8 +1033,8 @@ def main():
     print("SUMMARY")
     print("=" * 60)
     print(f"Total results:  {taxonomy['total_results']}")
-    print(f"PASS:           {taxonomy['total_pass']} ({taxonomy['total_pass']/taxonomy['total_results']*100:.1f}%)")
-    print(f"Failures:       {taxonomy['total_failures']} ({taxonomy['total_failures']/taxonomy['total_results']*100:.1f}%)")
+    print(f"PASS:           {taxonomy['total_pass']} ({safe_percentage(taxonomy['total_pass'], taxonomy['total_results']):.1f}%)")
+    print(f"Failures:       {taxonomy['total_failures']} ({safe_percentage(taxonomy['total_failures'], taxonomy['total_results']):.1f}%)")
     print()
 
     # BUILD_FAIL
@@ -1033,7 +1042,7 @@ def main():
     print(f"BUILD_FAIL ({total_bf}):")
     sorted_bf = sorted(taxonomy["build_fail_categories"].items(), key=lambda x: -x[1]["count"])
     for cat_name, cat_data in sorted_bf:
-        pct = cat_data["count"] / total_bf * 100 if total_bf > 0 else 0
+        pct = safe_percentage(cat_data["count"], total_bf)
         print(f"  {cat_name:30s} {cat_data['count']:4d} ({pct:5.1f}%)")
 
     # RUN_FAIL
@@ -1041,14 +1050,14 @@ def main():
     print(f"\nRUN_FAIL ({total_rf}):")
     sorted_rf = sorted(taxonomy["run_fail_categories"].items(), key=lambda x: -x[1]["count"])
     for cat_name, cat_data in sorted_rf:
-        pct = cat_data["count"] / total_rf * 100 if total_rf > 0 else 0
+        pct = safe_percentage(cat_data["count"], total_rf)
         print(f"  {cat_name:30s} {cat_data['count']:4d} ({pct:5.1f}%)")
 
     # EXTRACTION_FAIL
     total_ef = sum(c["count"] for c in taxonomy["extraction_fail_categories"].values())
     print(f"\nEXTRACTION_FAIL ({total_ef}):")
     for cat_name, cat_data in taxonomy["extraction_fail_categories"].items():
-        pct = cat_data["count"] / total_ef * 100 if total_ef > 0 else 0
+        pct = safe_percentage(cat_data["count"], total_ef)
         print(f"  {cat_name:30s} {cat_data['count']:4d} ({pct:5.1f}%)")
 
     # VERIFY_FAIL
@@ -1057,7 +1066,7 @@ def main():
         print(f"\nVERIFY_FAIL ({total_vf}):")
         sorted_vf = sorted(taxonomy["verify_fail_categories"].items(), key=lambda x: -x[1]["count"])
         for cat_name, cat_data in sorted_vf:
-            pct = cat_data["count"] / total_vf * 100 if total_vf > 0 else 0
+            pct = safe_percentage(cat_data["count"], total_vf)
             print(f"  {cat_name:30s} {cat_data['count']:4d} ({pct:5.1f}%)")
 
     if taxonomy["error_count"] > 0:
@@ -1080,29 +1089,29 @@ def main():
     # Check 'other' buckets
     other_bf = taxonomy["build_fail_categories"].get("other_build", {})
     other_bf_count = other_bf.get("count", 0) if isinstance(other_bf, dict) else other_bf["count"]
-    other_bf_pct = other_bf_count / total_bf * 100 if total_bf > 0 else 0
+    other_bf_pct = safe_percentage(other_bf_count, total_bf)
     other_rf = taxonomy["run_fail_categories"].get("other_runtime", {})
     other_rf_count = other_rf.get("count", 0) if isinstance(other_rf, dict) else other_rf["count"]
-    other_rf_pct = other_rf_count / total_rf * 100 if total_rf > 0 else 0
+    other_rf_pct = safe_percentage(other_rf_count, total_rf)
 
     print(f"\n'other_build' bucket: {other_bf_count}/{total_bf} ({other_bf_pct:.1f}%)", end="")
-    if other_bf_pct > 20:
+    if other_bf_pct > OTHER_BUCKET_REFINEMENT_THRESHOLD:
         print(" ⚠ NEEDS REFINEMENT (>20%)")
     else:
         print(" ✓ OK")
 
     print(f"'other_runtime' bucket: {other_rf_count}/{total_rf} ({other_rf_pct:.1f}%)", end="")
-    if other_rf_pct > 20:
+    if other_rf_pct > OTHER_BUCKET_REFINEMENT_THRESHOLD:
         print(" ⚠ NEEDS REFINEMENT (>20%)")
     else:
         print(" ✓ OK")
 
     other_vf = taxonomy["verify_fail_categories"].get("other_verify", {})
     other_vf_count = other_vf.get("count", 0) if isinstance(other_vf, dict) else other_vf["count"]
-    other_vf_pct = other_vf_count / total_vf * 100 if total_vf > 0 else 0
+    other_vf_pct = safe_percentage(other_vf_count, total_vf)
     if total_vf > 0:
         print(f"'other_verify' bucket: {other_vf_count}/{total_vf} ({other_vf_pct:.1f}%)", end="")
-        if other_vf_pct > 20:
+        if other_vf_pct > OTHER_BUCKET_REFINEMENT_THRESHOLD:
             print(" ⚠ NEEDS REFINEMENT (>20%)")
         else:
             print(" ✓ OK")

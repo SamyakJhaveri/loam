@@ -448,3 +448,46 @@ def test_passk_total_samples(paper_data):
     agg = paper_data["passk_campaign"]["aggregate_passk"]
     assert agg["total_samples"] == 426
     assert agg["n_tasks"] > 0
+
+
+# ---------------------------------------------------------------------------
+# Test 26–29: Helper extraction & module constants (tech-debt refactoring)
+# ---------------------------------------------------------------------------
+
+def _import_gpd():
+    """Import generate_paper_data as a module (scripts/ has no __init__.py)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "generate_paper_data", SCRIPT_PATH,
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_determine_first_attempt_status_pass():
+    """Extracted helper returns PASS for a passing first attempt."""
+    gpd = _import_gpd()
+    att = {"build_status": "pass", "run_status": "pass", "verify_status": "pass"}
+    assert gpd._determine_first_attempt_status(att) == "PASS"
+
+
+def test_determine_first_attempt_status_build_fail():
+    """Extracted helper returns BUILD_FAIL when build_status is 'fail'."""
+    gpd = _import_gpd()
+    att = {"build_status": "fail", "run_status": None, "verify_status": None}
+    assert gpd._determine_first_attempt_status(att) == "BUILD_FAIL"
+
+
+def test_constants_exist():
+    """Module-level constants exist with correct values."""
+    gpd = _import_gpd()
+    assert gpd.MIN_L0_SAMPLE_SIZE == 10
+    assert gpd.ALPHA_SIGNIFICANCE == 0.05
+    assert gpd.COHEN_H_SMALL_THRESHOLD == 0.20
+
+
+def test_passk_k_values():
+    """PASSK_K_VALUES constant is [1, 3]."""
+    gpd = _import_gpd()
+    assert set(gpd.PASSK_K_VALUES) == {1, 3}

@@ -50,6 +50,8 @@ env_parbench/
 .validation_passed
 # Bash audit log (written by bash-audit-log.sh hook, grows unbounded)
 .claude/audit.log
+# File ownership tracking (session-ephemeral, written by file-ownership.sh hook)
+.file-owners.json
 # Build artifacts
 *.o
 *.out
