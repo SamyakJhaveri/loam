@@ -9,17 +9,35 @@
 - Check context and set model appropriately
 - Review relevant `.claude/rules/` files for the task area
 
-### 2. Explore (scale to task scope — don't front-load)
-- **Skip entirely** when all target files are already known (single-file edit, doc update,
-  running a known command, spec field change)
-- **1 agent** for targeted tasks touching 1–3 known files where you need surrounding
-  context (callers, tests, imports)
-- **2–3 agents** for cross-cutting tasks where scope is uncertain or multiple subsystems
-  are involved (pipeline changes, new feature, architecture decisions)
-- Do NOT read files directly in main context — delegate to subagents; only summaries return
-- Summarize findings before proceeding
-- **Just-in-time, not just-in-case:** if a problem surfaces during implementation that
-  needs broader understanding, launch an explorer agent then — not upfront "just in case"
+### 2. Explore (surgical, ask-first — NO upfront sweeps)
+
+> **The problem is not exploration itself — it's unsolicited broad sweeps.**
+> Surgical exploration (Glob, Grep, targeted Read) is always fine.
+> Deep exploration is fine too — but ASK the user before launching it.
+> Agent teams explore freely (that's their purpose).
+> NEVER frontload a plan-mode conversation with 2–3 Explore agents burning 50k tokens.
+
+#### What's always allowed (no permission needed)
+- **Direct reads**: `Read`, `Glob`, `Grep` on files named or implied by the task
+- **Targeted single-file agents**: 1 agent with a specific question about a specific directory
+- **Agent team exploration**: Teams are designed for deep exploration — use them freely
+
+#### What requires asking the user first
+- **Any Explore agent at plan-mode conversation start** — don't frontload; ask which files matter
+- **2+ Explore agents in a single turn** — ask first, explain what you need to find and why
+- **Broad "understand the codebase" sweeps** — never. Ask the user instead.
+
+#### Decision Flowchart (run this before launching Explore agents)
+
+1. Did the user name specific files? → **Read those directly. No agent.**
+2. Can a single Glob or Grep find what you need? → **Do that directly. No agent.**
+3. Do you need deeper context on 1 specific area? → **1 surgical agent** with a focused query (not "explore the codebase" but "find the function that handles X in directory Y").
+4. Do you need broad cross-cutting exploration? → **Ask the user first.** Say what you need to find and why. They'll either point you to the right files or approve the exploration.
+
+#### Why This Rule Exists
+Broad upfront exploration burns ~50k tokens before any real work begins. That context is
+then NOT available for implementation quality. The user reviews all output line-by-line.
+**Surgical exploration is productive. Speculative sweeps are wasteful. When in doubt, ask.**
 
 ### 3. Plan
 - Enter plan mode for non-trivial changes
@@ -123,7 +141,7 @@ Use `/dream` to consolidate periodically.
 
 | Phase | Pattern |
 |-------|---------|
-| Exploration | 0–3 subagents, scaled to task uncertainty (see §2 above) |
+| Exploration | Surgical (Glob/Grep/Read) by default; agents only with user permission (see §2) |
 | Planning | plan-reviewer agent for adversarial review |
 | Implementation | Subagents for independent subtasks, worktree isolation |
 | Verification | 2-4 subagents: correctness, edge cases, quality, integration |
@@ -374,6 +392,11 @@ Teammates inherit every safety mechanism from project settings.json:
 11. **Don't rationalize incomplete work as complete** — the self-critic agent (Opus) will
     catch it. If something isn't done, say so explicitly: "X is not yet done because Y."
     Never frame partial work as sufficient to avoid running the full validation loop.
+12. **Don't frontload plan-mode with broad exploration sweeps.** Surgical exploration
+    (Glob, Grep, targeted Read, single focused agent) is fine. Deep exploration is fine
+    when the task warrants it — but ASK the user before launching 2+ Explore agents.
+    Never open a plan-mode conversation by silently burning 50k tokens on "understand
+    the codebase." The decision flowchart in §2 is a HARD gate — run it every time.
 
 ## Atomic Task Decomposition (for multi-step plans)
 
