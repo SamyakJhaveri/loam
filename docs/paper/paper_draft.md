@@ -274,6 +274,8 @@ The benchmark corpus was assembled through a four-stage systematic process: surv
 | HIP -- OpenMP | 2 | 453 | HeCBench (324), RAJAPerf (106), CloverLeaf (16) |
 | CUDA -- OpenCL | 6 | ~200 | Rodinia (19), Parboil, SHOC |
 
+*The CUDA--OpenCL kernel count is approximate because OpenCL variants in HeCBench and RAJAPerf are not organized as separate directories with consistent naming conventions, preventing automated kernel-level enumeration. The count reflects Rodinia's 19 verified pairs plus manual spot-checks of Parboil and SHOC.*
+
 **Selection criteria.** Five criteria guided suite selection from the surveyed repositories:
 
 1. **Multi-API kernel equivalence.** The repository must provide implementations of the *same* kernel in multiple parallel APIs within the same source tree, ensuring that translation pairs have authoritative reference implementations rather than independently developed programs.
@@ -321,9 +323,21 @@ However, Rodinia's age and wide availability raise a legitimate concern: its sou
 
 The survey data directly inform ParBench's API selection. CUDA serves as the primary source language, reflecting its dominant position in GPU programming: it appears in more surveyed repositories than any other GPU-native API and contributes the largest kernel count in the survey. OpenMP is the primary translation target: the kernel-level survey identified CUDA-to-OpenMP as the largest translation opportunity among CPU-targeting APIs, with 472 kernel pairs across 6 repositories (Table 3). This is not coincidental --- OpenMP's pragma-based parallelism model makes it the natural CPU-parallel counterpart to CUDA's GPU-native model, and benchmark developers routinely provide both implementations.
 
+Although CUDA--HIP and CUDA--SYCL yield higher raw kernel-pair counts (633 and 616 respectively; Table 3), these pairs represent a qualitatively different --- and substantially easier --- translation challenge. HIP is designed as a near-syntactic mirror of CUDA: `cudaMalloc` maps to `hipMalloc`, kernel launch syntax is preserved verbatim, and thread-index arithmetic (`threadIdx.x`, `blockIdx.x`) transfers unchanged. SYCL similarly retains the single-source GPU execution model, substituting CUDA runtime calls with C++ accessor patterns. In contrast, CUDA-to-OpenMP translation requires structural program transformation: SPMD thread-index arithmetic must be refactored into fork-join loop parallelism, explicit GPU memory management (`cudaMalloc`/`cudaMemcpy`/`cudaFree`) must be eliminated entirely, and synchronization primitives (`__syncthreads()`) must be replaced with implicit OpenMP barrier semantics or explicit `critical`/`atomic` sections. This paradigm gap makes CUDA--OpenMP the most scientifically informative translation direction for evaluating whether LLMs reason about parallel structure rather than performing surface-level API renaming.
+
 OpenCL provides a secondary translation target that exercises a qualitatively different programming model from both CUDA and OpenMP. Where CUDA uses unified host-device source files and implicit memory management (in modern CUDA), and OpenMP uses compiler directives over sequential code, OpenCL requires explicit kernel compilation from string sources, manual buffer management, and strict host-device code separation. Rodinia's particular strength lies in its OpenCL coverage: 20 of 22 Rodinia kernels have OpenCL implementations, compared to only sparse OpenCL coverage in HeCBench and RAJAPerf. This makes Rodinia the primary source for OpenCL translation pairs.
 
-OpenMP target offload (OMP-target) provides a fourth API that uses compiler-directed GPU offloading via `#pragma omp target`. It is available for XSBench, RSBench, and the HeCBench curated kernels, and requires the NVIDIA HPC compiler (`nvc`) rather than standard GCC. Because `nvc` is not universally available and OMP-target's compilation model differs substantially from CPU OpenMP, OMP-target directions are evaluated as case studies rather than as part of the standard evaluation.
+[TABLE: Programming model characteristics of the three primary translation APIs. These differences define the structural transformation challenges that LLM-based translation must address.]
+
+| Property | CUDA | OpenMP | OpenCL |
+|:---------|:-----|:-------|:-------|
+| Execution model | SPMD (warps of 32 threads) | Fork-join thread teams | NDRange work-groups |
+| Memory management | Explicit device allocation (`cudaMalloc`/`cudaMemcpy`) | Implicit shared CPU memory | Explicit buffer objects (`clCreateBuffer`/`clEnqueueReadBuffer`) |
+| Kernel specification | Compiled with host code (`__global__` functions) | Pragma directives (`#pragma omp parallel for`) | Runtime string compilation (`clCreateProgramWithSource`) |
+| Source structure | Single file (host + device code interleaved) | Single file (directives annotate sequential code) | Separate host program + `.cl` kernel files |
+| Thread indexing | `threadIdx.x + blockIdx.x * blockDim.x` | Loop iteration variable or `omp_get_thread_num()` | `get_global_id(0)` |
+
+OpenMP target offload (OMP-target) provides a fourth API that uses compiler-directed GPU offloading via `#pragma omp target`. It is available for XSBench, RSBench, and the HeCBench curated kernels, and requires the NVIDIA HPC compiler (`nvc`) rather than standard GCC. Because `nvc` is not universally available and OMP-target's compilation model differs substantially from CPU OpenMP, OMP-target directions are evaluated as case studies rather than as part of the standard evaluation. OpenACC was considered but excluded: it co-occurs with CUDA in only 3 of the 35 surveyed repositories (Figure 2), providing insufficient evaluation material. Moreover, OpenACC's directive-based model (`#pragma acc parallel`) occupies the same paradigm niche as OpenMP, offering less programming-model diversity than OpenCL as a secondary target.
 
 Together, these four APIs cover the principal parallel programming paradigms in HPC: GPU-native (CUDA), directive-based CPU parallelism (OpenMP), portable heterogeneous compute (OpenCL), and directive-based GPU offload (OMP-target). The API pairwise coverage matrix from the survey (Table 3) confirms that CUDA--OpenMP is the highest-volume translation direction, justifying its selection as the primary evaluation axis.
 
