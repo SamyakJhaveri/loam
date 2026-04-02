@@ -198,8 +198,9 @@ python3 scripts/augmentation/run_augment_batch.py \
 
 ```bash
 # Generate all figures from evaluation results
-python3 scripts/evaluation/generate_paper_figures.py \
-    --results-dir results/evaluation \
+python3 scripts/generate_paper_figures.py \
+    --project-root . \
+    --figure all \
     --output-dir docs/paper/figures
 
 # Generate visualization data for the dashboard

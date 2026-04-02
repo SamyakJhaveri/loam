@@ -6,7 +6,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 
 def test_aggregate_status_counts_by_model():
-    from scripts.evaluation.generate_paper_figures import aggregate_status_counts
+    from scripts.generate_paper_figures import aggregate_status_counts
     records = [
         {"model": "claude", "overall_status": "PASS"},
         {"model": "claude", "overall_status": "FAIL"},
@@ -19,14 +19,14 @@ def test_aggregate_status_counts_by_model():
 
 
 def test_aggregate_status_counts_missing_status_defaults_unknown():
-    from scripts.evaluation.generate_paper_figures import aggregate_status_counts
+    from scripts.generate_paper_figures import aggregate_status_counts
     records = [{"model": "m", "overall_status": None}]
     result = aggregate_status_counts(records, "model")
     assert result["m"]["UNKNOWN"] == 1
 
 
 def test_constants_exist():
-    import scripts.evaluation.generate_paper_figures as gpf
+    import scripts.generate_paper_figures as gpf
     assert gpf.FIGURE_DPI == 600
     assert gpf.PDF_FONTTYPE == 42
     assert isinstance(gpf.REPO_KERNEL_PAIRS, list)
@@ -35,7 +35,7 @@ def test_constants_exist():
 
 
 def test_create_status_legend_returns_patches():
-    from scripts.evaluation.generate_paper_figures import create_status_legend
+    from scripts.generate_paper_figures import create_status_legend
     from matplotlib.patches import Patch
     statuses = ["PASS", "BUILD_FAIL"]
     patches = create_status_legend(statuses)
