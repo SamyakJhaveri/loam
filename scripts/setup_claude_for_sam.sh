@@ -49,13 +49,50 @@ else
     echo "$STEP_OK Claude Code installed."
 fi
 
-# ── Step 2: Superpowers plugin ───────────────────────────────────────────────
-if claude plugins list 2>/dev/null | grep -q superpowers; then
-    echo "$STEP_SKIP Superpowers plugin already installed."
+# ── Step 2: Claude Code plugins ─────────────────────────────────────────────
+# Helper: install a plugin if not already present
+_install_plugin() {
+    local plugin="$1" marketplace="$2" label="$3"
+    if claude plugins list 2>/dev/null | grep -q "^  ❯ ${plugin}@"; then
+        echo "$STEP_SKIP Plugin already installed: $label"
+    else
+        if claude plugins install "${plugin}@${marketplace}" --scope user 2>&1; then
+            echo "$STEP_OK Installed: $label"
+        else
+            echo "$STEP_FAIL Could not install $label. Run manually:"
+            echo "  claude plugins install ${plugin}@${marketplace} --scope user"
+        fi
+    fi
+}
+
+# Register superpowers-dev marketplace (obra/superpowers — direct source)
+if claude plugins marketplace list 2>/dev/null | grep -q superpowers-dev; then
+    echo "$STEP_SKIP Marketplace already registered: superpowers-dev"
 else
-    echo "$STEP_FAIL Superpowers plugin not found — install manually."
-    echo "  Run: claude plugins install superpowers@superpowers-dev"
+    echo "Registering marketplace: obra/superpowers (superpowers-dev)..."
+    claude plugins marketplace add obra/superpowers 2>&1 \
+        && echo "$STEP_OK Marketplace registered: superpowers-dev." \
+        || echo "$STEP_SKIP Marketplace registration failed — continuing."
 fi
+
+# Register official Anthropic marketplace (anthropics/claude-plugins-official)
+if claude plugins marketplace list 2>/dev/null | grep -q claude-plugins-official; then
+    echo "$STEP_SKIP Marketplace already registered: claude-plugins-official"
+else
+    echo "Registering marketplace: anthropics/claude-plugins-official..."
+    claude plugins marketplace add anthropics/claude-plugins-official 2>&1 \
+        && echo "$STEP_OK Marketplace registered: claude-plugins-official." \
+        || echo "$STEP_SKIP Marketplace registration failed — continuing."
+fi
+
+# Install all plugins
+_install_plugin superpowers       superpowers-dev          "superpowers (TDD, debugging, collaboration skills)"
+_install_plugin code-review       claude-plugins-official  "code-review (5-agent parallel PR reviewer)"
+_install_plugin code-simplifier   claude-plugins-official  "code-simplifier (autonomous clarity/naming refactor)"
+_install_plugin ralph-loop        claude-plugins-official  "ralph-loop (iterative self-referential sessions)"
+_install_plugin skill-creator     claude-plugins-official  "skill-creator (create/eval/improve skills)"
+
+echo "Restart Claude Code to activate newly installed plugins."
 
 # ── Step 3: Substitute placeholder → actual project root ─────────────────────
 echo "Substituting $PLACEHOLDER → $PROJECT_ROOT ..."
