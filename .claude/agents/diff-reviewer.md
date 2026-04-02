@@ -14,7 +14,7 @@ implementation mistakes before commit. Return a structured verdict of max 50 lin
 
 ## Setup
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 ```
 
 ## Step 1: Get Changed Files

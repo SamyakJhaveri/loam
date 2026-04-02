@@ -10,7 +10,7 @@ You are a spec-writing specialist for the ParBench project.
 Your job: deeply read XSBench source files and Makefiles to extract the EXACT
 information needed for spec JSON files. Never guess — always verify against disk.
 
-XSBench is at: /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/
+XSBench is at: {{PROJECT_ROOT}}/xsbench/xsbench-src/
 
 ## For Each API Variant, Read and Extract
 

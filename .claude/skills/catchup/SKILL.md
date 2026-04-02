@@ -38,8 +38,8 @@ the normal status report.
 
 ## Project Context
 
-- **Project root:** `/home/samyak/Desktop/parbench_sam`
-- **Venv:** `source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate`
+- **Project root:** `{{PROJECT_ROOT}}`
+- **Venv:** `source {{PROJECT_ROOT}}/env_parbench/bin/activate`
 - **Memory directory:** `/home/samyak/.claude/projects/-home-samyak-Desktop-parbench-sam/memory/`
 - **Results directory:** `results/evaluation/` — eval campaign results by model
 - **Spec counts:** 60 Rodinia (54 PASS, 6 KNOWN_FAIL), 4 XSBench (4 PASS)
@@ -53,7 +53,7 @@ Run these commands and capture output — do NOT guess or use cached data:
 
 ```bash
 # Current branch and dirty state
-cd /home/samyak/Desktop/parbench_sam && git status
+cd {{PROJECT_ROOT}} && git status
 
 # Recent commits (default 10, or user-specified count)
 git log --oneline -<N>

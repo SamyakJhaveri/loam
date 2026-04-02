@@ -14,8 +14,8 @@ stage validates the previous stage's output before proceeding.
 
 ## Prerequisites
 
-- Project root: `/home/samyak/Desktop/parbench_sam`
-- Venv: `source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate`
+- Project root: `{{PROJECT_ROOT}}`
+- Venv: `source {{PROJECT_ROOT}}/env_parbench/bin/activate`
 - An eval batch must have completed (result JSONs exist in `results/evaluation/`)
 
 ## Workflow
@@ -23,8 +23,8 @@ stage validates the previous stage's output before proceeding.
 ### Step 1: Verify Results Exist
 
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 
 echo "=== RESULT FILES ==="
 for dir in results/evaluation/*/; do
@@ -45,11 +45,11 @@ ls results/evaluation/$ARGUMENTS/ 2>/dev/null | head -5 || echo "ERROR: No resul
 ### Step 2: Run analyze_eval.py
 
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 
 python3 scripts/evaluation/analyze_eval.py \
-  --project-root /home/samyak/Desktop/parbench_sam \
+  --project-root {{PROJECT_ROOT}} \
   --write-dashboard \
   --show-gaps
 ```
@@ -66,11 +66,11 @@ If either file is missing or empty, report the error and skip downstream steps.
 ### Step 3: Run classify_translation_pairs.py
 
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 
 python3 scripts/analysis/classify_translation_pairs.py \
-  --project-root /home/samyak/Desktop/parbench_sam
+  --project-root {{PROJECT_ROOT}}
 ```
 
 **Gate:** Verify output:
@@ -85,7 +85,7 @@ If the CSV is missing or has 0 rows, report and continue (complexity data is opt
 
 Invoke the `dashboard-refresher` agent with this prompt:
 
-> "Refresh the ParBench dashboard at /home/samyak/Desktop/parbench_sam.
+> "Refresh the ParBench dashboard at {{PROJECT_ROOT}}.
 > New eval data just completed post-processing. Run generate_viz_data.py if it exists,
 > then fix all hardcoded counts in visualizations/*.html.
 > Canonical correct values: 60 Rodinia specs, 54/60 PASS, 6 KNOWN_FAIL.
@@ -103,8 +103,8 @@ If no viz files changed, note it (may be fine if counts didn't change).
 Read the eval summary and create a one-page report:
 
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 
 # Read the summary
 cat results/evaluation/eval_summary.md
@@ -113,7 +113,7 @@ cat results/evaluation/eval_summary.md
 Create the output directory and write a summary:
 
 ```bash
-mkdir -p /home/samyak/Desktop/parbench_sam/docs/eval-summaries
+mkdir -p {{PROJECT_ROOT}}/docs/eval-summaries
 ```
 
 Write the summary to `docs/eval-summaries/YYYY-MM-DD-<model-or-all>.md` with this structure:

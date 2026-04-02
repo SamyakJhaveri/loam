@@ -3,7 +3,7 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
+PROJECT_ROOT="{{PROJECT_ROOT}}"
 LOG_DIR="$PROJECT_ROOT/results/rodinia/logs"
 SUMMARY="$LOG_DIR/_summary.tsv"
 

@@ -49,8 +49,8 @@ See `.claude/rules/known-issues.md` §"KNOWN_FAIL Specs (6)".
 Activate venv and verify API keys for the selected models only:
 
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 
 # Claude (if running claude-sonnet-4-6):
 python3 -c "import os; assert os.environ.get('ANTHROPIC_API_KEY'), 'ANTHROPIC_API_KEY not set'"
@@ -96,7 +96,7 @@ python3 scripts/evaluation/run_eval_batch.py \
   [--kernels <k1> <k2> ...] \
   [--no-resume] \
   --max-retries <N> \
-  --project-root /home/samyak/Desktop/parbench_sam \
+  --project-root {{PROJECT_ROOT}} \
   -v
 ```
 
@@ -110,7 +110,7 @@ After batch completes, regenerate analysis and dashboard:
 
 ```bash
 python3 scripts/evaluation/analyze_eval.py \
-  --project-root /home/samyak/Desktop/parbench_sam \
+  --project-root {{PROJECT_ROOT}} \
   --write-dashboard \
   --show-gaps \
   --expected-models <model1> <model2> ... \
@@ -144,7 +144,7 @@ After any eval batch that adds new result files, the dashboard hardcoded numbers
 
 ```
 Invoke the dashboard-refresher agent with prompt:
-"Refresh the ParBench dashboard at /home/samyak/Desktop/parbench_sam.
+"Refresh the ParBench dashboard at {{PROJECT_ROOT}}.
 New eval data: <suite> <direction> L<levels> just completed.
 Run generate_viz_data.py, then fix all hardcoded counts in visualizations/*.html.
 Canonical correct values: 60 Rodinia specs, 54/60 PASS, 6 KNOWN_FAIL.

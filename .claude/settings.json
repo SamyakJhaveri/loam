@@ -24,17 +24,17 @@
                     },
                     {
                         "type": "command",
-                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/pre-commit-gate.sh",
+                        "command": ".claude/hooks/pre-commit-gate.sh",
                         "timeout": 10
                     },
                     {
                         "type": "command",
-                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/bash-audit-log.sh",
+                        "command": ".claude/hooks/bash-audit-log.sh",
                         "timeout": 5
                     },
                     {
                         "type": "command",
-                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/protect-cuda-omp-results.sh",
+                        "command": ".claude/hooks/protect-cuda-omp-results.sh",
                         "timeout": 10
                     }
                 ]
@@ -44,12 +44,12 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/protect-benchmark-sources.sh",
+                        "command": ".claude/hooks/protect-benchmark-sources.sh",
                         "timeout": 10
                     },
                     {
                         "type": "command",
-                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/result-immutability.sh",
+                        "command": ".claude/hooks/result-immutability.sh",
                         "timeout": 10
                     }
                 ]
@@ -61,7 +61,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/post-compact-recovery.sh",
+                        "command": ".claude/hooks/post-compact-recovery.sh",
                         "timeout": 10
                     }
                 ]
@@ -75,12 +75,12 @@
                     },
                     {
                         "type": "command",
-                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/post-edit-test.sh",
+                        "command": ".claude/hooks/post-edit-test.sh",
                         "timeout": 35
                     },
                     {
                         "type": "command",
-                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/sentinel-cleanup.sh",
+                        "command": ".claude/hooks/sentinel-cleanup.sh",
                         "timeout": 5
                     }
                 ]
@@ -90,7 +90,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/context-budget.sh",
+                        "command": ".claude/hooks/context-budget.sh",
                         "timeout": 5
                     }
                 ]
@@ -101,7 +101,7 @@
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/dream-hook.sh",
+                        "command": ".claude/hooks/dream-hook.sh",
                         "timeout": 5
                     },
                     {

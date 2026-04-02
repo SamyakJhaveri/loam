@@ -41,8 +41,8 @@ Launch a single subagent to gather orientation data (keeps main context clean):
 
 ```bash
 # In the subagent:
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 
 # Git state
 git branch --show-current

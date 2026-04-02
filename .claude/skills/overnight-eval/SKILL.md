@@ -55,7 +55,7 @@ Run ALL checks. Every check must pass before proceeding.
 
 ```bash
 # Activate venv
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
 
 # Verify Python
 python3 --version  # Must be 3.12.x
@@ -66,7 +66,7 @@ python3 -c "import google.generativeai; print('google-genai OK')"
 python3 -c "import groq; print('groq OK')"
 
 # Verify NOT in a worktree
-cd /home/samyak/Desktop/parbench_sam && git rev-parse --is-inside-work-tree
+cd {{PROJECT_ROOT}} && git rev-parse --is-inside-work-tree
 # Must NOT see ".git file" (that indicates worktree)
 ```
 
@@ -100,11 +100,11 @@ python3 -c "import os; k=os.environ.get('TOGETHER_API_KEY',''); print(f'TOGETHER
 
 ```bash
 # Check Rodinia submodule is populated
-ls /home/samyak/Desktop/parbench_sam/rodinia/rodinia-src/cuda/ | head -5
+ls {{PROJECT_ROOT}}/rodinia/rodinia-src/cuda/ | head -5
 # Must show directories (bfs, backprop, etc.), not empty
 
 # Check XSBench if needed
-ls /home/samyak/Desktop/parbench_sam/xsbench/xsbench-src/ | head -3
+ls {{PROJECT_ROOT}}/xsbench/xsbench-src/ | head -3
 ```
 
 #### 1e. Spec Eligibility
@@ -169,7 +169,7 @@ Create a tmux session and launch the eval batch:
 
 ```bash
 # Create tmux session
-tmux new-session -d -s <session-name> -c /home/samyak/Desktop/parbench_sam
+tmux new-session -d -s <session-name> -c {{PROJECT_ROOT}}
 
 # Send the eval command
 tmux send-keys -t <session-name> "source env_parbench/bin/activate && python3 scripts/evaluation/run_eval_batch.py \
@@ -179,7 +179,7 @@ tmux send-keys -t <session-name> "source env_parbench/bin/activate && python3 sc
   --augment-levels <levels> \
   --max-retries 2 \
   --resume \
-  --project-root /home/samyak/Desktop/parbench_sam \
+  --project-root {{PROJECT_ROOT}} \
   -v 2>&1 | tee results/evaluation/campaign_$(date +%Y%m%d_%H%M%S).log" Enter
 ```
 
@@ -200,7 +200,7 @@ Set up monitoring. The user can check progress at any time:
 tmux has-session -t <session-name> 2>/dev/null && echo "RUNNING" || echo "FINISHED"
 
 # Count completed results
-find /home/samyak/Desktop/parbench_sam/results/evaluation/ -name "*.json" \
+find {{PROJECT_ROOT}}/results/evaluation/ -name "*.json" \
   -newer /tmp/eval_start_marker 2>/dev/null | wc -l
 
 # Check for recent errors (last 20 lines of log)
@@ -209,7 +209,7 @@ tmux capture-pane -t <session-name> -p | tail -20
 # Running pass rate
 python3 -c "
 import json, glob, os
-files = glob.glob('/home/samyak/Desktop/parbench_sam/results/evaluation/*/*.json')
+files = glob.glob('{{PROJECT_ROOT}}/results/evaluation/*/*.json')
 statuses = {}
 for f in files:
     try:
@@ -245,10 +245,10 @@ After the batch completes (tmux session ends or manual check confirms completion
 #### 4a. Generate Analysis
 
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
 
 python3 scripts/evaluation/analyze_eval.py \
-  --project-root /home/samyak/Desktop/parbench_sam \
+  --project-root {{PROJECT_ROOT}} \
   --write-dashboard \
   --show-gaps \
   --expected-models <model1> <model2> ... \
@@ -312,7 +312,7 @@ Present results summary to user and recommend next steps:
 
 ## Project Context (Self-Contained)
 
-- **Project root:** `/home/samyak/Desktop/parbench_sam`
+- **Project root:** `{{PROJECT_ROOT}}`
 - **Venv:** `source env_parbench/bin/activate`
 - **GPU:** NVIDIA GeForce RTX 4070 (12GB)
 - **nvcc:** `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc`

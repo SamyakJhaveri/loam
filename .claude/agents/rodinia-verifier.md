@@ -11,8 +11,8 @@ You are a ParBench verification specialist for the Rodinia benchmark suite.
 
 ## Setup (ALWAYS run first)
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 ```
 
 ## CRITICAL: Harness CLI Flag Order

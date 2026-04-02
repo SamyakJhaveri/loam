@@ -30,7 +30,7 @@ python3 scripts/generators/generate_<suite>_specs.py
 Run the standardizer to set kernel-centric translation fields:
 ```bash
 python3 scripts/generators/standardize_specs.py --suite <suite> \
-    --project-root /home/samyak/Desktop/parbench_sam
+    --project-root {{PROJECT_ROOT}}
 ```
 
 Or manually set per-API family rules:

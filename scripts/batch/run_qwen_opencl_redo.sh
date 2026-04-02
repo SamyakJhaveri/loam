@@ -9,10 +9,10 @@
 
 set -euo pipefail
 
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 source env_parbench/bin/activate
 
-PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
+PROJECT_ROOT="{{PROJECT_ROOT}}"
 MODEL="together-qwen-3.5-397b-a17b"
 COMMON_ARGS="--suite rodinia --models ${MODEL} --augment-levels 0 1 2 3 4 --max-retries 3 --temperature 0.0 --resume -v --project-root ${PROJECT_ROOT}"
 

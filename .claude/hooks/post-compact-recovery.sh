@@ -17,10 +17,12 @@ echo "=== CONTEXT RECOVERY ===" >&2
 echo "KNOWN_FAIL: kmeans-cuda, mummergpu-cuda, mummergpu-omp, hybridsort-cuda, nn-opencl, kmeans-opencl, hecbench-stencil1d-omp_target, hecbench-scan-omp_target" >&2
 echo "Rodinia: 60 specs (54 PASS + 6 KNOWN_FAIL)" >&2
 echo "XSBench: 4 specs (4 PASS)" >&2
-echo "CUDA: /opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc" >&2
-echo "Project: /home/samyak/Desktop/parbench_sam" >&2
+NVCC_PATH="$(which nvcc 2>/dev/null || echo 'nvcc not found')"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+echo "CUDA: $NVCC_PATH" >&2
+echo "Project: $PROJECT_ROOT" >&2
 # Dynamic: count result files for active campaigns
-for model_dir in /home/samyak/Desktop/parbench_sam/results/evaluation/*/; do
+for model_dir in "$PROJECT_ROOT"/results/evaluation/*/; do
   if [ -d "$model_dir" ]; then
     model=$(basename "$model_dir")
     count=$(find "$model_dir" -name "*.json" -type f 2>/dev/null | wc -l)

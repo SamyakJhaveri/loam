@@ -22,8 +22,8 @@ inside your context window.
 ## Setup (ALWAYS run first)
 
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 ```
 
 ## Step 0: Pre-Validation Snapshot
@@ -32,7 +32,7 @@ Capture baseline metrics before any wave runs. These are passed as context to
 regression-checker and used in the final report.
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 echo "=== PRE-VALIDATION SNAPSHOT ==="
 echo "Changed files: $(git diff --name-only HEAD | wc -l)"
 git diff --name-only HEAD
@@ -58,7 +58,7 @@ own context.
 **Sub-agent prompt prefix:** Every sub-agent prompt must begin with:
 ```
 You are running as part of the ParBench post-session validation loop.
-Project root: /home/samyak/Desktop/parbench_sam
+Project root: {{PROJECT_ROOT}}
 Return a structured verdict in max 50 lines.
 ```
 
@@ -177,7 +177,7 @@ include an ESCALATION section in your report.
 After ALL 4 waves pass, write the validation sentinel:
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 
 cat > .validation_passed << EOF
 timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)

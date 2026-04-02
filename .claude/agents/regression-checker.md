@@ -21,8 +21,8 @@ Baselines are canonical values from known-issues.md and the verification history
 
 ## Setup
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 ```
 
 ## Metric 1: Spec Counts

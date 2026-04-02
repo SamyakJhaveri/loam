@@ -17,7 +17,7 @@ set -euo pipefail
 # Consume stdin (PostToolUse hooks receive JSON on stdin; prevent SIGPIPE)
 cat > /dev/null
 
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo /home/samyak/Desktop/parbench_sam)"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 SENTINEL="$PROJECT_ROOT/.validation_passed"
 
 # Only delete if it exists (silent no-op otherwise)

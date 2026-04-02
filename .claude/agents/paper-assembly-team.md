@@ -21,7 +21,7 @@ source files — you work exclusively from sub-agent summaries.
 ## Setup
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 ```
 
 ## Phase 1: Launch 3 Sub-Agents in Parallel
@@ -38,7 +38,7 @@ Each returns structured markdown findings. Max 80 lines per sub-agent.
 **Prompt:**
 ```
 You are the Data Processor for the ParBench SC26 paper assembly.
-Project root: /home/samyak/Desktop/parbench_sam
+Project root: {{PROJECT_ROOT}}
 
 Your job: read evaluation result JSONs and build structured data tables.
 
@@ -139,7 +139,7 @@ pipeline for the paper's Framework and Methodology sections.
 **Prompt:**
 ```
 You are the Methodology Expert for the ParBench SC26 paper assembly.
-Project root: /home/samyak/Desktop/parbench_sam
+Project root: {{PROJECT_ROOT}}
 
 Your job: document the augmentation methodology and harness pipeline.
 

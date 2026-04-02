@@ -34,8 +34,8 @@ For each spec file:
 
 ### 5. Schema Compliance
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 python3 scripts/validate_schema.py --spec specs/<name>.json
 ```
 

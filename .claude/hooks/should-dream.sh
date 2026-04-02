@@ -4,7 +4,16 @@
 #
 # Used by dream-hook.sh (Stop hook) to decide whether to notify the user.
 
-MEMORY_DIR="$HOME/.claude/projects/-home-samyak-Desktop-parbench-sam/memory"
+# Memory dir is machine-specific (derived from project path).
+# Read from .local-paths (written by setup script) or derive dynamically.
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || exit 1)"
+LOCAL_PATHS="$PROJECT_ROOT/.claude/.local-paths"
+MEMORY_DIR="$(grep '^MEMORY_DIR=' "$LOCAL_PATHS" 2>/dev/null | cut -d= -f2)"
+if [ -z "$MEMORY_DIR" ]; then
+    # Derive from project root: Claude Code converts / and _ to - in project keys
+    PROJ_KEY="$(echo "$PROJECT_ROOT" | tr '/_' '--')"
+    MEMORY_DIR="$HOME/.claude/projects/$PROJ_KEY/memory"
+fi
 LAST_DREAM="$MEMORY_DIR/.last-dream"
 
 # Never dreamed before — should run

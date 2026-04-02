@@ -14,8 +14,8 @@ after implementation changes.
 
 ## Setup (ALWAYS run first)
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 ```
 
 ## Verification Steps

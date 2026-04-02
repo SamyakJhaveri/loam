@@ -13,6 +13,7 @@ set -euo pipefail
 # Consume stdin (PreToolUse hooks receive JSON on stdin; prevent SIGPIPE)
 cat > /dev/null
 
-LOG="/home/samyak/Desktop/parbench_sam/.claude/audit.log"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+LOG="$PROJECT_ROOT/.claude/audit.log"
 echo "$(date -Iseconds) | ${CLAUDE_TOOL_INPUT:-unknown}" >> "$LOG"
 exit 0

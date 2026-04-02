@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # CUDA stream: Phase 3 smoke → Phase 4 Rodinia → Phase 5 all CUDA
 set -e
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 source env_parbench/bin/activate
 
 echo "========================================================"

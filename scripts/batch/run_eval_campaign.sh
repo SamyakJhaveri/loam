@@ -41,7 +41,7 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
+PROJECT_ROOT="{{PROJECT_ROOT}}"
 
 # ── Usage ────────────────────────────────────────────────────────────────────
 usage() {
@@ -474,7 +474,7 @@ python3 - "$MODEL" << 'PYEOF'
 import json, glob, os, sys
 
 MODEL = sys.argv[1]
-BASE = "/home/samyak/Desktop/parbench_sam"
+BASE = "{{PROJECT_ROOT}}"
 MODEL_DIR = f"{BASE}/results/evaluation/{MODEL}"
 
 if not os.path.isdir(MODEL_DIR):

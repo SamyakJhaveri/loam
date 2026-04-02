@@ -15,8 +15,8 @@ If no argument is provided, prompt the user for a spec name.
 
 ## Prerequisites
 
-- Project root: `/home/samyak/Desktop/parbench_sam`
-- Venv: `source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate`
+- Project root: `{{PROJECT_ROOT}}`
+- Venv: `source {{PROJECT_ROOT}}/env_parbench/bin/activate`
 - Rodinia submodule must be initialized (not in a worktree)
 
 ## KNOWN_FAIL Specs (8 — early exit)
@@ -48,7 +48,7 @@ No further checks performed.
 ### Step 1: Locate and Read the Spec
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 SPEC_FILE="specs/$ARGUMENTS.json"
 
 if [ ! -f "$SPEC_FILE" ]; then
@@ -74,7 +74,7 @@ Read the spec JSON. Extract and note:
 ### Step 2: Verify Source Directory Exists
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 SOURCE_DIR=$(python3 -c "import json; print(json.load(open('specs/$ARGUMENTS.json'))['source']['directory'])")
 echo "Source directory: $SOURCE_DIR"
 ls "$SOURCE_DIR" 2>/dev/null | head -5 || echo "ERROR: Source directory not found"
@@ -88,7 +88,7 @@ If the source directory does not exist, report BUILD_FAIL prediction and stop.
 must match what the source code actually expects.
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 SOURCE_DIR=$(python3 -c "import json; print(json.load(open('specs/$ARGUMENTS.json'))['source']['directory'])")
 
 # Find main source files and grep for argc parsing
@@ -106,8 +106,8 @@ report it as a finding but note: "Verify against baseline stdout before changing
 ### Step 4: Run the Harness
 
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 
 python3 -m harness -v verify "specs/$ARGUMENTS.json" 2>&1
 ```

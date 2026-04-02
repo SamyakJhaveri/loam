@@ -16,7 +16,7 @@ Enforces the project's quality bar (CLAUDE.md Quality Standards).
 Before running `/validate`:
 1. All implementation work for the session is complete (files saved)
 2. Files are NOT yet committed (git diff HEAD shows your changes)
-3. Activate venv: `source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate`
+3. Activate venv: `source {{PROJECT_ROOT}}/env_parbench/bin/activate`
 
 ## Workflow
 
@@ -24,8 +24,8 @@ Before running `/validate`:
 
 Capture baseline metrics for regression-checker context:
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 echo "=== PRE-VALIDATION SNAPSHOT ==="
 echo "Changed files: $(git diff --name-only HEAD | wc -l)"
 git diff --name-only HEAD
@@ -154,7 +154,7 @@ After ALL waves pass (or after Wave 1 for `/validate quick`):
 - `/validate fix` → `WAVES_RUN=4` (all remaining waves re-ran)
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 
 # Set this based on which command variant was run (see note above):
 if [ "${VALIDATE_MODE:-full}" = "quick" ]; then

@@ -17,8 +17,8 @@ All temp files go in `/tmp/parbench_validate_XXXXXX/` and are cleaned up uncondi
 
 ## Setup
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 TMPDIR=$(mktemp -d /tmp/parbench_validate_XXXXXX)
 trap "rm -rf $TMPDIR" EXIT  # Always clean up
 
@@ -40,7 +40,7 @@ Skip `test_*.py` files (those are run by pytest directly).
 ```python
 # Written to $TMPDIR/test_imports.py
 import sys, importlib, traceback
-sys.path.insert(0, '/home/samyak/Desktop/parbench_sam')
+sys.path.insert(0, '{{PROJECT_ROOT}}')
 
 results = []
 # For each changed .py file (not test files):

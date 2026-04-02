@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo /home/samyak/Desktop/parbench_sam)"
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 SENTINEL="$PROJECT_ROOT/.validation_passed"
 
 # Detect OS once — reused in steps 4 and 5

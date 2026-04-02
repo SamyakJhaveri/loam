@@ -93,7 +93,7 @@ When the user cites a number (e.g., "pass rate is 34%", "54 specs pass"), verify
 
 ```bash
 # Count actual result files and statuses
-find /home/samyak/Desktop/parbench_sam/results/evaluation/ -name "*.json" | head -5
+find {{PROJECT_ROOT}}/results/evaluation/ -name "*.json" | head -5
 # Then read specific files to verify claimed numbers
 ```
 
@@ -157,7 +157,7 @@ Do not allow the user to launch an eval batch or make a paper claim until READY.
 
 ## Project Context (Self-Contained)
 
-- **Project root:** `/home/samyak/Desktop/parbench_sam`
+- **Project root:** `{{PROJECT_ROOT}}`
 - **Eval results:** `results/evaluation/{model}/` directories
 - **Models:** claude-sonnet, gemini-2.5-flash-lite, groq-llama-3.3-70b, together-qwen-3.5
 - **Suites:** rodinia (54 TRUE PASS, 6 KNOWN_FAIL), xsbench (4 PASS)

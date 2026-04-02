@@ -14,7 +14,7 @@ REFLECTION.md pattern — turning tacit knowledge into durable project memory.
 ## Prerequisites
 
 - Work must be done in the current session (git diff or recent commits to reflect on)
-- Project root: `/home/samyak/Desktop/parbench_sam`
+- Project root: `{{PROJECT_ROOT}}`
 
 ## Workflow
 
@@ -23,7 +23,7 @@ REFLECTION.md pattern — turning tacit knowledge into durable project memory.
 Read the current session's work to understand what was done:
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 
 # What changed in this session?
 echo "=== UNCOMMITTED CHANGES ==="
@@ -86,7 +86,7 @@ Write a structured reflection with exactly these four sections:
 Create the output directory if it doesn't exist, then write the reflection:
 
 ```bash
-mkdir -p /home/samyak/Desktop/parbench_sam/docs/reflections
+mkdir -p {{PROJECT_ROOT}}/docs/reflections
 ```
 
 Write the reflection to `docs/reflections/YYYY-MM-DD-<topic>.md` using today's date

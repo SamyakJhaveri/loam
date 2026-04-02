@@ -16,7 +16,7 @@ Return a structured verdict of max 50 lines.
 
 ## Setup
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 CHANGED=$(git diff --name-only HEAD; git diff --cached --name-only)
 if [ -z "$CHANGED" ]; then
     echo "SECURITY SCAN: PASS (no changes)"; exit 0

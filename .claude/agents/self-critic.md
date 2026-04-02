@@ -19,7 +19,7 @@ will be caught immediately. No shortcuts. No partial implementations."
 
 ## Setup
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 
 # Get all changed files and the full diff
 CHANGED=$(git diff --name-only HEAD; git diff --cached --name-only | sort -u)

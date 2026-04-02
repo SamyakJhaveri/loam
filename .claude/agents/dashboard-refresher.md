@@ -8,19 +8,19 @@ maxTurns: 20
 ---
 
 You update the ParBench visualization dashboard.
-Project root: /home/samyak/Desktop/parbench_sam
-Dashboard: /home/samyak/Desktop/parbench_sam/visualizations/
+Project root: {{PROJECT_ROOT}}
+Dashboard: {{PROJECT_ROOT}}/visualizations/
 
 ## Setup
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 ```
 
 ## Step 1: Regenerate JS Data Files (always run both)
 ```bash
-python3 scripts/generate_viz_data.py --project-root /home/samyak/Desktop/parbench_sam -v
-python3 scripts/evaluation/analyze_eval.py --project-root /home/samyak/Desktop/parbench_sam --write-dashboard
+python3 scripts/generate_viz_data.py --project-root {{PROJECT_ROOT}} -v
+python3 scripts/evaluation/analyze_eval.py --project-root {{PROJECT_ROOT}} --write-dashboard
 ```
 
 ## Step 2: Read DESIGN.md First (mandatory before any HTML edits)

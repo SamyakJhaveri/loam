@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 source env_parbench/bin/activate
 
 SPECS=(

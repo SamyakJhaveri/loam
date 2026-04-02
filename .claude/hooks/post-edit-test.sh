@@ -15,7 +15,7 @@ set -euo pipefail
 # Consume stdin to prevent SIGPIPE
 cat > /dev/null
 
-PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 VENV="$PROJECT_ROOT/env_parbench/bin/activate"
 
 # Extract file_path from tool input

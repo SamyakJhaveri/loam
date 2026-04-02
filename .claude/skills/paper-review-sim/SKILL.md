@@ -57,7 +57,7 @@ Before spawning reviewers, verify every number in the paper against actual data:
 
 ```bash
 # Count result files per model
-for model_dir in /home/samyak/Desktop/parbench_sam/results/evaluation/*/; do
+for model_dir in {{PROJECT_ROOT}}/results/evaluation/*/; do
   echo "$(basename $model_dir): $(find "$model_dir" -name '*.json' | wc -l) files"
 done
 ```
@@ -235,7 +235,7 @@ numbers from `speedup_ratio` in result JSONs. Valid performance measurement requ
 
 ## Project Context (Self-Contained)
 
-- **Project root:** `/home/samyak/Desktop/parbench_sam`
+- **Project root:** `{{PROJECT_ROOT}}`
 - **Paper draft:** `docs/paper_draft.md` (or as specified in arguments)
 - **Eval results:** `results/evaluation/{model}/` directories
 - **Augmentation results:** `results/augmentation/`

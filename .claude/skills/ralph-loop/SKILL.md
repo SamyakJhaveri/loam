@@ -14,8 +14,8 @@ for overnight or long-running autonomous work on a feature branch.
 
 ## Prerequisites
 
-- Project root: `/home/samyak/Desktop/parbench_sam`
-- Venv: `source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate`
+- Project root: `{{PROJECT_ROOT}}`
+- Venv: `source {{PROJECT_ROOT}}/env_parbench/bin/activate`
 - Must be on a **feature branch** — NEVER run on `main`
 - Tasks file must exist and be valid JSON
 
@@ -24,7 +24,7 @@ for overnight or long-running autonomous work on a feature branch.
 ```
 MAX_ITERATIONS = 8        # Max retry attempts per task
 REFLECT_EVERY  = 3        # Force reflection every N iterations on same task
-PROJECT_ROOT   = /home/samyak/Desktop/parbench_sam
+PROJECT_ROOT   = {{PROJECT_ROOT}}
 PROGRESS_LOG   = docs/ralph-progress.md
 ```
 
@@ -70,7 +70,7 @@ Field definitions:
 Before entering the loop, verify safety invariants:
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 
 # SAFETY: Must be on a feature branch, not main
 BRANCH=$(git branch --show-current)
@@ -110,7 +110,7 @@ for t in tasks:
 At the start of each loop iteration, read all four memory channels:
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 
 echo "=== MEMORY CHANNEL 1: Git History ==="
 git log --oneline -5
@@ -189,7 +189,7 @@ Track the iteration count for this task. Initialize to 1 on first attempt.
 2. Write tasks file back to disk
 3. Commit the change (feature branch only!):
    ```bash
-   cd /home/samyak/Desktop/parbench_sam
+   cd {{PROJECT_ROOT}}
    git add -A
    git commit -m "$(cat <<'EOF'
    ralph-loop: <task description> (task #<id>)
@@ -246,7 +246,7 @@ after compaction.
 When all tasks are done, failed, or blocked:
 
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 
 echo "=== RALPH LOOP COMPLETE ==="
 python3 -c "

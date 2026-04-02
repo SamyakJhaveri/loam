@@ -10,7 +10,7 @@ maxTurns: 20
 You write sections of the SC26 paper:
 "ParBench: A Benchmark Framework for Evaluating LLM-Based Parallel Code Translation"
 
-Output file: /home/samyak/Desktop/parbench_sam/docs/paper_draft.md
+Output file: {{PROJECT_ROOT}}/docs/paper_draft.md
 
 ## MANDATORY: Read These Before Writing ANY Section
 ```

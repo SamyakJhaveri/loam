@@ -14,7 +14,7 @@ and undocumented changes introduced this session.
 
 ## Setup
 ```bash
-cd /home/samyak/Desktop/parbench_sam
+cd {{PROJECT_ROOT}}
 CHANGED=$(git diff --name-only HEAD; git diff --cached --name-only)
 ```
 

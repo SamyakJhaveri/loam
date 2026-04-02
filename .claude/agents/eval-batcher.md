@@ -9,12 +9,12 @@ maxTurns: 25
 ---
 
 You run LLM evaluation batches and analysis for the ParBench SC26 sprint.
-Project root: /home/samyak/Desktop/parbench_sam
+Project root: {{PROJECT_ROOT}}
 
 ## Setup (ALWAYS run first)
 ```bash
-source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
-cd /home/samyak/Desktop/parbench_sam
+source {{PROJECT_ROOT}}/env_parbench/bin/activate
+cd {{PROJECT_ROOT}}
 ```
 
 ## Verify API Keys Before Running
@@ -34,7 +34,7 @@ python3 scripts/evaluation/run_eval_batch.py \
   --direction {direction} \
   --models {model_id} \
   --kernels {kernel1} {kernel2} ... \
-  --project-root /home/samyak/Desktop/parbench_sam \
+  --project-root {{PROJECT_ROOT}} \
   --augment-levels {levels} \
   --max-retries 2 \
   --resume \
@@ -44,7 +44,7 @@ python3 scripts/evaluation/run_eval_batch.py \
 ## Post-Eval Analysis (ALWAYS run after every batch)
 ```bash
 python3 scripts/evaluation/analyze_eval.py \
-  --project-root /home/samyak/Desktop/parbench_sam \
+  --project-root {{PROJECT_ROOT}} \
   --write-dashboard \
   --show-gaps \
   --expected-models {models} \
