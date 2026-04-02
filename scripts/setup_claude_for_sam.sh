@@ -10,6 +10,13 @@
 
 set -euo pipefail
 
+# BSD sed (macOS) needs -i '' ; GNU sed (Linux) needs just -i
+if [[ "$(uname)" == "Darwin" ]]; then
+    SED_I=(-i '')
+else
+    SED_I=(-i)
+fi
+
 STEP_OK="[OK]"
 STEP_SKIP="[SKIP]"
 STEP_FAIL="[FAIL]"
@@ -57,7 +64,7 @@ SUBST_FILES=()
 # Process .claude/ markdown files
 while IFS= read -r -d '' f; do
     if grep -q "$PLACEHOLDER" "$f" 2>/dev/null; then
-        sed -i "s|$PLACEHOLDER|$PROJECT_ROOT|g" "$f"
+        sed "${SED_I[@]}" "s|$PLACEHOLDER|$PROJECT_ROOT|g" "$f"
         SUBST_FILES+=("$f")
     fi
 done < <(find "$PROJECT_ROOT/.claude" -name "*.md" -print0 2>/dev/null)
@@ -65,7 +72,7 @@ done < <(find "$PROJECT_ROOT/.claude" -name "*.md" -print0 2>/dev/null)
 # Process batch scripts (exclude this setup script)
 while IFS= read -r -d '' f; do
     if grep -q "$PLACEHOLDER" "$f" 2>/dev/null; then
-        sed -i "s|$PLACEHOLDER|$PROJECT_ROOT|g" "$f"
+        sed "${SED_I[@]}" "s|$PLACEHOLDER|$PROJECT_ROOT|g" "$f"
         SUBST_FILES+=("$f")
     fi
 done < <(find "$PROJECT_ROOT/scripts" -name "*.sh" ! -name "setup_claude_for_sam.sh" -print0 2>/dev/null)
