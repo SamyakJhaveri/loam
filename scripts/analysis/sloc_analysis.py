@@ -95,10 +95,7 @@ def count_physical_sloc(code: str) -> int:
                     count += 1 if not before else 0
             else:
                 in_block_comment = True
-            if not before:
-                continue
-            else:
-                continue  # already counted
+            continue  # already counted if `before` had code
 
         if stripped.startswith("//"):
             continue  # line comment
