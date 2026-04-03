@@ -11,7 +11,7 @@ Requirements for paper submission (deadline: April 8, 2026). Each maps to roadma
 
 - [x] **VERIFY-01**: Every numerical claim in Sections 1-5 cross-checked against ground truth JSON files (paper_data.json, statistical_analysis.json, selfrepair_analysis.json)
 - [ ] **VERIFY-02**: Suite-summary table (tab:suite-summary) verified: kernel count, spec count, API counts match manifest.jsonl + specs/ on disk
-- [ ] **VERIFY-03**: Augmentation level definitions table (tab:augmentation-levels) verified against LEVEL_FRACTIONS in c_augmentation/augment_dataset.py
+- [x] **VERIFY-03**: Augmentation level definitions table (tab:augmentation-levels) verified against LEVEL_FRACTIONS in c_augmentation/augment_dataset.py
 - [ ] **VERIFY-04**: Model config table (tab:model-config) coherent post-C1 swap: Qwen + GPT-4.1 mini descriptions accurate, no Gemini remnants
 - [ ] **VERIFY-05**: Hardware/software table (tab:hardware) verified against actual system (nvcc --version, gcc --version, GPU model)
 - [ ] **VERIFY-06**: Analysis files freshness assessed: paper_data.json (April 1) checked for coverage of all current Rodinia results; re-run if stale
@@ -85,7 +85,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 |-------------|-------|--------|
 | VERIFY-01 | Phase 1 | Complete |
 | VERIFY-02 | Phase 1 | Pending |
-| VERIFY-03 | Phase 1 | Pending |
+| VERIFY-03 | Phase 1 | Complete |
 | VERIFY-04 | Phase 1 | Pending |
 | VERIFY-05 | Phase 1 | Pending |
 | VERIFY-06 | Phase 1 | Pending |
