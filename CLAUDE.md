@@ -22,7 +22,7 @@ ParBench: benchmark for LLM-based parallel code translation (CUDA ↔ OpenMP ↔
 | `scripts/evaluation/` | LLM eval pipeline (`run_eval_batch.py`, `llm_evaluate.py`) |
 | `results/` | Immutable eval + augmentation result JSONs |
 | `rodinia/rodinia-src/` | Git submodule (commit `9c10d3ea`) — **empty in worktrees** |
-| `HeCBench-master/` | Gitignored, not cloned locally — causes ~135 expected validation errors |
+| `HeCBench-master/` | Gitignored but **cloned locally** (1874 benchmark dirs) — specs in `specs/hecbench-*.json` |
 
 ## Invariants
 
@@ -30,7 +30,7 @@ ParBench: benchmark for LLM-based parallel code translation (CUDA ↔ OpenMP ↔
 2. **Result JSONs are immutable** — use `--resume` to skip existing
 3. **Never run evaluations in worktrees** — submodules are empty there
 4. **Never change spec run args** without reading the source's `argc` check first
-5. **~135 `validate_schema.py --all` errors are expected** (HeCBench + phantoms) — do not fix
+5. **~15 `validate_schema.py --all` errors are expected** (phantom specs only — HeCBench **is** cloned locally) — do not fix
 6. **8 KNOWN_FAIL specs** — exclude from eval batches (list in `known-issues.md`)
 
 ## Quality

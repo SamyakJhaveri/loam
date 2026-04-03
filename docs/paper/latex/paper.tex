@@ -488,6 +488,30 @@ The selected kernels span computational domains including graph traversal (bfs, 
 
 At L0 (unaugmented), the corpus yields 142 unique translation pairs per model across six standard translation directions, with two additional OMP-target directions evaluated as case studies.
 
+Table~\ref{tab:benchmark-characterization} provides a quantitative characterization of the corpus. Source Lines of Code (SLoC) are counted as physical lines (non-blank, non-comment) in each kernel's CUDA implementation---the code provided to the LLM as translation input. Kernel complexity spans two orders of magnitude: from 80~SLoC (stencil1d) to 3{,}304~SLoC (myocyte), with a corpus median of 271 and mean of 598. All 35~kernels exceed the single-function granularity typical of code-generation benchmarks: 31 of 35 (89\%) surpass ParEval-Repo's average of 133~SLoC per translation unit~\cite{ParEvalRepo2025}. Multi-file translations---where the LLM must coordinate changes across two or more source files---account for 25\% of specs (24/96), with the highest multi-file rate in CUDA specs (51\%) due to the separation of kernel and host code.
+
+\begin{table}[t]
+\centering
+\caption{Quantitative characterization of the evaluation corpus. SLoC counts physical source lines in the CUDA prompt payload. Multi-File gives specs requiring translation of $>$1 source file. Std.\ shows the dominant language standard per suite.}
+\label{tab:benchmark-characterization}
+\small
+\begin{tabular}{@{}lrcrcl@{}}
+\toprule
+Suite & Kernels & SLoC Range & Med. & Multi-File & Std. \\
+\midrule
+Rodinia         & 22 & 195--3{,}304 & 334 & 21/60 (35\%) & C++14 \\
+HeCBench (curated) & 10 &    80--235    & 180 &  0/25 ~(0\%) & C++17 \\
+XSBench         &  1 &    1{,}390    &  -- &  2/4~~(50\%) & C11   \\
+RSBench         &  1 &    1{,}016    &  -- &  1/4~~(25\%) & C11   \\
+mixbench        &  1 &       312     &  -- &  0/3~~~(0\%) & C++11 \\
+\midrule
+\textbf{Total}  & \textbf{35} & \textbf{80--3{,}304} & \textbf{271} & \textbf{24/96 (25\%)} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The corpus exercises API features spanning multiple specification versions. OpenMP usage ranges from v1.0 basic parallel regions (28 of 38~OMP specs) through v3.0 tasks (4 specs), v4.0 SIMD directives and team queries (5 and 3 specs respectively), to v4.5 target offload (22 specs). CUDA kernels employ features from basic synchronization primitives (\texttt{\_\_syncthreads}, 18 of 35~specs) through Unified Memory (1 spec) and warp shuffle intrinsics (1 spec). Three kernels retain deprecated texture references, contributing to their KNOWN\_FAIL status. All 23~OpenCL implementations use the v1.x command queue API; two additionally employ v2.0 queue properties.
+
 \subsection{Selection Funnel}
 \label{sec:selection-funnel}
 

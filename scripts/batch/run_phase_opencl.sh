@@ -2,7 +2,8 @@
 # OpenCL stream: Phase 3 smoke → Phase 4 Rodinia → Phase 5 all OpenCL
 # Note: All OpenCL specs are Rodinia (no HeCBench OpenCL)
 set -e
-cd {{PROJECT_ROOT}}
+PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
+cd "$PROJECT_ROOT"
 source env_parbench/bin/activate
 
 echo "========================================================"

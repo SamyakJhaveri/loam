@@ -95,26 +95,6 @@
                     }
                 ]
             }
-        ],
-        "Stop": [
-            {
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": ".claude/hooks/dream-hook.sh",
-                        "timeout": 5
-                    },
-                    {
-                        "type": "command",
-                        "command": "echo '\\n=== PRE-STOP CHECKLIST ===' >&2; echo '(1) /validate run (waves_passed=4)?' >&2; echo '(2) /review run on diff?' >&2; echo '(3) eval batch → analyze_eval.py complete?' >&2; echo '(4) dashboard-refresher after eval/spec changes?' >&2; echo '(5) .validation_passed sentinel before commit?' >&2; echo '(6) All tasks complete — no partial work?' >&2; echo '(7) Evidence for every claim — actual output?' >&2; echo '(8) known-issues.md / CLAUDE.md updated?' >&2; echo '=========================' >&2; exit 0",
-                        "timeout": 5
-                    },
-                    {
-                        "type": "command",
-                        "command": "notify-send 'Claude Code' 'Task completed' 2>/dev/null || true"
-                    }
-                ]
-            }
         ]
     },
     "enabledPlugins": {

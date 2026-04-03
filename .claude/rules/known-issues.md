@@ -3,10 +3,10 @@
 > Always loaded. Contains active guardrails that prevent recurring mistakes.
 > Historical fix details are in `known-issues-archive.md` (conditional, loads on augmentation/harness files).
 
-## HeCBench Missing (pre-existing — ignore)
+## Schema Validation Errors (pre-existing — ignore)
 
-~135 errors from `validate_schema.py --all` are expected (as of 2026-03-20):
-- ~120 HeCBench `source_dir` disk-not-found errors — HeCBench is not cloned locally.
+~15 errors from `validate_schema.py --all` are expected (updated 2026-04-03):
+- HeCBench-master/ IS cloned locally (1874 benchmark dirs) — source_dir errors no longer fire.
 - 15 errors from the 5 deleted phantom Rodinia specs still referenced in manifest.jsonl
   (each generates 2 manifest errors + 1 "spec file not found" = 3 × 5 = 15).
   This is correct behavior — manifest.jsonl is append-only; spec files were deleted.

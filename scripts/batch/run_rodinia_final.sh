@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -uo pipefail
-PROJECT_ROOT="{{PROJECT_ROOT}}"
+PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
 LOG_DIR="$PROJECT_ROOT/results/rodinia/logs"
 cd "$PROJECT_ROOT"
 source env_parbench/bin/activate

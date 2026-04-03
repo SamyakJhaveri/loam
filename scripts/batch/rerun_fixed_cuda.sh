@@ -2,7 +2,7 @@
 # Re-run the 7 fixed CUDA kernels through the full harness pipeline
 set -euo pipefail
 
-PROJECT_ROOT="{{PROJECT_ROOT}}"
+PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
 LOG_DIR="$PROJECT_ROOT/results/phase3/cuda_batch3_logs"
 
 cd "$PROJECT_ROOT"

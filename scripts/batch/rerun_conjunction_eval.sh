@@ -19,7 +19,7 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="{{PROJECT_ROOT}}"
+PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
 cd "$PROJECT_ROOT"
 
 # --- Pre-flight checks -------------------------------------------------------
@@ -127,8 +127,8 @@ tmux send-keys -t eval-rerun:cuda-to-omp \
     --kernels backprop bfs bptree cfd heartwall hotspot hotspot3d kmeans lavamd lud mummergpu myocyte nn nw particlefilter pathfinder srad streamcluster \
     --augment-levels 0 1 2 3 4 \
     --max-retries 2 --resume \
-    --project-root {{PROJECT_ROOT}} -v \
-    2>&1 | tee {{PROJECT_ROOT}}/results/evaluation/rerun_${model}_cuda-to-omp.log
+    --project-root /home/samyak/Desktop/parbench_sam -v \
+    2>&1 | tee /home/samyak/Desktop/parbench_sam/results/evaluation/rerun_${model}_cuda-to-omp.log
   echo "=== Finished $model cuda-to-omp at $(date) ==="
 done
 echo "=== ALL cuda-to-omp COMPLETE at $(date) ==="' C-m
@@ -148,8 +148,8 @@ tmux send-keys -t eval-rerun:omp-and-xsbench \
     --kernels backprop bfs bptree cfd heartwall hotspot hotspot3d kmeans lavamd lud mummergpu myocyte nn nw particlefilter pathfinder srad streamcluster \
     --augment-levels 0 \
     --max-retries 2 --resume \
-    --project-root {{PROJECT_ROOT}} -v \
-    2>&1 | tee {{PROJECT_ROOT}}/results/evaluation/rerun_${model}_omp-to-cuda.log
+    --project-root /home/samyak/Desktop/parbench_sam -v \
+    2>&1 | tee /home/samyak/Desktop/parbench_sam/results/evaluation/rerun_${model}_omp-to-cuda.log
   echo "=== Finished $model omp-to-cuda at $(date) ==="
 done
 
@@ -161,8 +161,8 @@ for direction in cuda-to-omp omp-to-cuda cuda-to-opencl opencl-to-cuda omp-to-op
       --models $model \
       --augment-levels 0 1 2 3 4 \
       --max-retries 2 --resume \
-      --project-root {{PROJECT_ROOT}} -v \
-      2>&1 | tee -a {{PROJECT_ROOT}}/results/evaluation/rerun_${model}_xsbench.log
+      --project-root /home/samyak/Desktop/parbench_sam -v \
+      2>&1 | tee -a /home/samyak/Desktop/parbench_sam/results/evaluation/rerun_${model}_xsbench.log
     echo "=== Finished $model xsbench $direction at $(date) ==="
   done
 done

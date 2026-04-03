@@ -685,20 +685,3 @@ Per Gal's instructions:
 | `docs/paper/drafts/eval_findings_log.md` | Findings | READ: for Appendix C |
 
 ---
-
-## Session 6 (Conditional): Final Review & Submission Prep
-
-**Owner:** Samyak + Erel (joint)
-**Objective:** End-to-end review per Gal's instruction #4. Final consistency. Submission prep.
-
-**Dependency:** Session 5 complete. Gemini integrated.
-**Only if timeline permits.** May merge into Session 5.
-
-### Tasks
-- [ ] Full end-to-end paper read (both authors)
-- [ ] Verify all [PENDING] markers eliminated
-- [ ] Verify teaser figure cross-references in every section
-- [ ] Check 10-page limit compliance
-- [ ] Anonymous GitHub repo created with code + specs
-- [ ] Supplementary material packaged
-- [ ] Final LaTeX compile + PDF review

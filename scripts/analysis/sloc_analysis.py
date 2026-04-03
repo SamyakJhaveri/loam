@@ -2,14 +2,19 @@
 """
 scripts/analysis/sloc_analysis.py
 
-SLoC (Source Lines of Code) characterization of ParBench evaluated kernels.
+SLoC (Source Lines of Code) characterization of ParBench benchmark kernels.
 
 Counts PHYSICAL lines (non-blank, non-comment) in the source files listed in
 each kernel's CUDA spec prompt_payload. This is SOURCE SLoC — the code that
 the LLM receives as input for translation.
 
+Covers all 35 kernels in the evaluation corpus across 5 suites:
+  - Rodinia (22 kernels)
+  - HeCBench curated (10 kernels)
+  - XSBench, RSBench, mixbench (1 each)
+
 Note: translated_files in result JSONs are truncated to ~200 chars per file,
-so we read the actual source files from the Rodinia/XSBench repositories.
+so we read the actual source files from the benchmark repositories.
 If running in a worktree where the submodule is empty, pass --project-root
 pointing to the main repository.
 
@@ -31,14 +36,28 @@ import argparse
 import json
 import math
 import sys
-from pathlib import Path
 from collections import defaultdict
+from pathlib import Path
 
-# The 18 kernels that were actually evaluated (from result JSONs)
-EVALUATED_KERNELS = [
-    "backprop", "bfs", "bptree", "cfd", "heartwall", "hotspot", "hotspot3d",
-    "kmeans", "lavamd", "lud", "myocyte", "nn", "nw", "particlefilter",
-    "pathfinder", "srad", "streamcluster", "xsbench",
+# All 35 corpus kernels: (suite, kernel_name) pairs
+# These match the evaluation corpus in paper.tex tab:suite-summary.
+CORPUS_KERNELS: list[tuple[str, str]] = [
+    # Rodinia — 22 kernels
+    ("rodinia", "backprop"), ("rodinia", "bfs"), ("rodinia", "bptree"),
+    ("rodinia", "cfd"), ("rodinia", "dwt2d"), ("rodinia", "gaussian"),
+    ("rodinia", "heartwall"), ("rodinia", "hotspot"), ("rodinia", "hotspot3d"),
+    ("rodinia", "huffman"), ("rodinia", "hybridsort"), ("rodinia", "kmeans"),
+    ("rodinia", "lavamd"), ("rodinia", "lud"), ("rodinia", "mummergpu"),
+    ("rodinia", "myocyte"), ("rodinia", "nn"), ("rodinia", "nw"),
+    ("rodinia", "particlefilter"), ("rodinia", "pathfinder"),
+    ("rodinia", "srad"), ("rodinia", "streamcluster"),
+    # HeCBench curated — 10 kernels
+    ("hecbench", "convolution1d"), ("hecbench", "floydwarshall"),
+    ("hecbench", "heat2d"), ("hecbench", "iso2dfd"), ("hecbench", "jacobi"),
+    ("hecbench", "md"), ("hecbench", "nqueen"), ("hecbench", "page-rank"),
+    ("hecbench", "scan"), ("hecbench", "stencil1d"),
+    # Single-kernel suites
+    ("xsbench", "xsbench"), ("rsbench", "rsbench"), ("mixbench", "mixbench"),
 ]
 
 
@@ -151,16 +170,14 @@ def get_spec_source_info(spec: dict) -> tuple[str, list[str]]:
 
 
 def analyze_kernel(
+    suite: str,
     kernel: str,
     project_root: Path,
     specs_dir: Path,
 ) -> dict | None:
     """Analyze SLoC for a single kernel using its CUDA spec source files."""
-    # Find the CUDA spec
-    if kernel == "xsbench":
-        spec_path = specs_dir / "xsbench-xsbench-cuda.json"
-    else:
-        spec_path = specs_dir / f"rodinia-{kernel}-cuda.json"
+    # Find the CUDA spec: {suite}-{kernel}-cuda.json
+    spec_path = specs_dir / f"{suite}-{kernel}-cuda.json"
 
     if not spec_path.exists():
         print(f"  WARNING: spec not found: {spec_path}", file=sys.stderr)
@@ -204,10 +221,7 @@ def analyze_kernel(
         )
 
     # Also get OMP spec info for comparison
-    if kernel == "xsbench":
-        omp_spec_path = specs_dir / "xsbench-xsbench-omp.json"
-    else:
-        omp_spec_path = specs_dir / f"rodinia-{kernel}-omp.json"
+    omp_spec_path = specs_dir / f"{suite}-{kernel}-omp.json"
 
     omp_sloc = None
     omp_file_count = None
@@ -229,7 +243,7 @@ def analyze_kernel(
 
     return {
         "kernel": kernel,
-        "suite": "xsbench" if kernel == "xsbench" else "rodinia",
+        "suite": suite,
         "source_api": "cuda",
         "source_dir": source_dir_rel,
         "num_source_files": len(payload_files),
@@ -291,12 +305,13 @@ def main() -> int:
     pass_rate_map = load_pass_rates(project_root)
 
     print(f"Project root: {project_root}")
-    print(f"Analyzing {len(EVALUATED_KERNELS)} evaluated kernels...\n")
+    n_suites = len(set(s for s, _ in CORPUS_KERNELS))
+    print(f"Analyzing {len(CORPUS_KERNELS)} corpus kernels ({n_suites} suites)...\n")
 
     # Analyze each kernel
     kernels = []
-    for kernel in EVALUATED_KERNELS:
-        info = analyze_kernel(kernel, project_root, specs_dir)
+    for suite, kernel in CORPUS_KERNELS:
+        info = analyze_kernel(suite, kernel, project_root, specs_dir)
         if info is None:
             continue
         # Enrich with metadata
@@ -307,7 +322,7 @@ def main() -> int:
         sloc = info["physical_sloc"]
         omp = info.get("omp_physical_sloc")
         omp_str = f", OMP={omp}" if omp else ""
-        print(f"  {kernel:20s} CUDA={sloc:5d} SLoC ({info['num_source_files']} files){omp_str}")
+        print(f"  {suite:10s} {kernel:20s} CUDA={sloc:5d} SLoC ({info['num_source_files']} files){omp_str}")
 
     # Summary statistics
     slocs = [k["physical_sloc"] for k in kernels]
@@ -328,6 +343,11 @@ def main() -> int:
     }
 
     # Correlation: SLoC vs pass rate
+    # KNOWN_FAIL kernels (kmeans, mummergpu, hybridsort) are deliberately included at
+    # pass_rate=0.0. Rationale: their failures are platform constraints (missing GL/glew.h,
+    # deprecated CUDA 12 texture<>), not SLoC complexity — so including them does not
+    # bias the correlation toward complexity. Excluding them would be cherry-picking.
+    # Paper methodology should state: "all corpus kernels included, KNOWN_FAIL at pass_rate=0."
     sloc_values = [k["physical_sloc"] for k in kernels if k.get("pass_rate") is not None]
     rate_values = [k["pass_rate"] for k in kernels if k.get("pass_rate") is not None]
     correlation = compute_correlation(sloc_values, rate_values)
@@ -336,13 +356,14 @@ def main() -> int:
     pareval_threshold = 133
     above_threshold = sum(1 for s in slocs if s > pareval_threshold)
 
+    mean_sloc = sum(slocs) / n
     summary = {
         "total_kernels": n,
         "min_sloc": min(slocs),
         "max_sloc": max(slocs),
-        "mean_sloc": round(sum(slocs) / n, 1),
+        "mean_sloc": round(mean_sloc, 1),
         "median_sloc": median,
-        "std_sloc": round(math.sqrt(sum((s - sum(slocs) / n) ** 2 for s in slocs) / n), 1),
+        "std_sloc": round(math.sqrt(sum((s - mean_sloc) ** 2 for s in slocs) / n), 1),
         "total_sloc_all_kernels": sum(slocs),
         "distribution": buckets,
         "pareval_repo_threshold": pareval_threshold,
@@ -371,10 +392,16 @@ def main() -> int:
 
     # Write markdown report
     md_path = output_dir / "sloc_analysis.md"
+    # Count per suite for the report
+    suite_counts = defaultdict(int)
+    for k in kernels:
+        suite_counts[k["suite"]] += 1
+    suite_str = ", ".join(f"{s} ({c})" for s, c in sorted(suite_counts.items()))
+
     md_lines = [
-        "# SLoC Characterization of ParBench Evaluated Kernels",
+        "# SLoC Characterization of ParBench Corpus Kernels",
         "",
-        f"**{n} kernels** analyzed from Rodinia ({n-1}) + XSBench (1).",
+        f"**{n} kernels** analyzed across 5 suites: {suite_str}.",
         f"Physical SLoC = non-blank, non-comment lines (matches cloc methodology).",
         f"Source: actual CUDA source files from the benchmark repositories.",
         "",

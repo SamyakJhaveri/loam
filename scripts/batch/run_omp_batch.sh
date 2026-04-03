@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-PROJECT_ROOT="{{PROJECT_ROOT}}"
+PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
 LOG_DIR="$PROJECT_ROOT/results/phase3/omp_batch_logs"
 SUMMARY="$LOG_DIR/_summary.tsv"
 

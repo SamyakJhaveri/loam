@@ -23,7 +23,7 @@
 set -euo pipefail
 
 SESSION="xsbench_eval"
-PROJECT_ROOT="{{PROJECT_ROOT}}"
+PROJECT_ROOT="/home/samyak/Desktop/parbench_sam"
 LOGFILE="$PROJECT_ROOT/results/evaluation/xsbench_eval.log"
 
 # ── If called with --attach, just attach to existing session ─────────────────
@@ -252,7 +252,7 @@ echo ""
 python3 << 'PYEOF'
 import json, glob, os, sys
 
-BASE = "{{PROJECT_ROOT}}"
+BASE = "/home/samyak/Desktop/parbench_sam"
 models = ['claude-sonnet-4-6', 'gemini-2.5-flash-lite', 'groq-llama-3.3-70b-versatile']
 short  = ['claude', 'gemini', 'groq']
 directions = [
