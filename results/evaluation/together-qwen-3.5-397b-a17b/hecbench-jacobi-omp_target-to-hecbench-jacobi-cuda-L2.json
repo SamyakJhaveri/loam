@@ -1,0 +1,100 @@
+{
+  "source_spec": "hecbench-jacobi-omp_target",
+  "target_spec": "hecbench-jacobi-cuda",
+  "kernel": "jacobi",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 2,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-03T08:53:19Z",
+  "prompt_tokens": 8202,
+  "completion_tokens": 3922,
+  "llm_response_time_seconds": 64.091,
+  "build_status": "pass",
+  "build_time_seconds": 1.083,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 34.455,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Error after iteration 0 = 0.00781058\nError after iteration 1000 = 3.91045e-05\nError after iteration 2000 = 2.32019e-05\nError after iteration 3000 = 1.70788e-05\nError after iteration 4000 = 1.37311e-05\nError after iteration 5000 = 1.15878e-05\nError after iteration 6000 = 1.00829e-05\nAverage execution time per iteration: 0.00565572 (s)\nPASS\nTotal elapsed time: 34.41 seconds\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "kernel_time": {
+      "value": 0.00565572,
+      "unit": "s"
+    }
+  },
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": 34.455,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": null,
+  "translated_files": {
+    "main.cu": "#include <cstdio>\n#include <iostream>\n#include <iomanip>\n#include <cmath>\n#include <limits>\n#include <ctime>\n#include <chrono>\n#include <cuda_runtime.h>\n\n#define N 2048\n\n#define IDX(i, j) ((i) + (j) * N)\n\n__global__ void initialize_data_kernel(float* f) {\n    int i = blockIdx.x * blockDim.x + threadIdx.x;\n    int j = blockIdx.y * blockDim.y + threadIdx.y;\n\n    if (i < N && j < N) {\n        if (i == 0 || i == N-1) {\n            f[IDX(i,j)] = sinf(j * 2 * M_PI / (N - 1));\n        }\n        else if (j == 0 || j == N-1) {\n            f[IDX(i,j)] = sinf(i * 2 * M_PI / (N - 1));\n        }\n        else {\n            f[IDX(i,j)] = 0.0f;\n        }\n    }\n}\n\n__global__ void compute_step_kernel(float* f, float* f_old, float* error_ptr, int n_val) {\n    int i = blockIdx.x * blockDim.x + threadIdx.x;\n    int j = blockIdx.y * blockDim.y + threadIdx.y;\n\n    if (i >= 1 && i <= n_val-2 && j >= 1 && j <= n_val-2) {\n        float t = 0.25f * (f_old[IDX(i-1,j)] +\n                           f_old[IDX(i+1,j)] +\n                           f_old[IDX(i,j-1)] +\n                           f_old[IDX(i,j+1)]);\n        float df = t - f_old[IDX(i, j)];\n        f[IDX(i,j)] = t;\n        \n        atomicAdd(error_ptr, df * df);\n    }\n}\n\n__global__ void copy_back_kernel(float* f, float* f_old, int n_val) {\n    int i = blockIdx.x * blockDim.x + threadIdx.x;\n    int j = blockIdx.y * blockDim.y + threadIdx.y;\n\n    if (i >= 1 && i <= n_val-2 && j >= 1 && j <= n_val-2) {\n        f_old[IDX(i,j)] = f[IDX(i,j)];\n    }\n}\n\nvoid initialize_data(float* f_dev) {\n    dim3 block(32, 32);\n    dim3 grid((N + block.x - 1) / block.x, (N + block.y - 1) / block.y);\n    initialize_data_kernel<<<grid, block>>>(f_dev);\n    cudaDeviceSynchronize();\n}\n\nint main () {\n  \n  auto start_time = std::chrono::steady_clock::now();\n\n  float* f_dev;\n  float* f_old_dev;\n  float* error_dev;\n\n  cudaMalloc(&f_dev, N * N * sizeof(float));\n  cudaMalloc(&f_old_dev, N * N * sizeof(float));\n  cudaMalloc(&error_dev, sizeof(float));\n\n  float error = std::numeric_limits<float>::max();\n  const float tolerance = 1.e-5f;\n\n  // Initialize data on device\n  initialize_data(f_dev);\n  initialize_data(f_old_dev);\n\n  const int max_iters = 10000;\n  int num_iters = 0;\n\n  dim3 block(16, 16); // 256 threads per block\n  dim3 grid((N + block.x - 1) / block.x, (N + block.y - 1) / block.y);\n\n  auto start = std::chrono::steady_clock::now();\n\n  while (error > tolerance && num_iters < max_iters) {\n    \n    error = 0.f;\n    cudaMemcpy(error_dev, &error, sizeof(float), cudaMemcpyHostToDevice);\n\n    compute_step_kernel<<<grid, block>>>(f_dev, f_old_dev, error_dev, N);\n    \n    copy_back_kernel<<<grid, block>>>(f_dev, f_old_dev, N);\n\n    cudaMemcpy(&error, error_dev, sizeof(float), cudaMemcpyDeviceToHost);\n    \n    error = sqrtf(error / (N * N));\n\n    if (num_iters % 1000 == 0) {\n      std::cout << \"Error after iteration \" << num_iters << \" = \" << error << std::endl;\n    }\n\n    ++num_iters;\n  }\n\n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  std::cout << \"Average execution time per iteration: \" << (time * 1e-9f) / num_iters << \" (s)\\n\";\n\n  if (error <= tolerance && num_iters < max_iters) {\n    std::cout << \"PASS\" << std::endl;\n  }\n  else {\n    std::cout << \"FAIL\" << std::endl;\n    cudaFree(f_dev);\n    cudaFree(f_old_dev);\n    cudaFree(error_dev);\n    return -1;\n  }\n\n  cudaFree(f_dev);\n  cudaFree(f_old_dev);\n  cudaFree(error_dev);\n\n  auto end_time = std::chrono::steady_clock::now();\n  auto total_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();\n  double duration = total_time * 1e-9;\n  std::cout << \"Total elapsed time: \" << std::setprecision(4) << duration << \" seconds\" << std::endl;\n\n  return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "main.cu"
+  ],
+  "target_files_extracted": [
+    "main.cu"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 32.706,
+      "prompt_tokens": 1231,
+      "completion_tokens": 1381,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n* 2048));\n                                              ^\n\nmain.cu(39): error: expected a \";\"\n                             f_old[((i) + (j+1]) * ",
+      "build_error_snippet": "main.cu(31): error: expected a \")\"\n  __attribute__((global)) void compute_step_kernel(float* f, float* f_old, float* error_ptr, int 2048) {\n                                                                                                 ^\n\nmain.cu(39): error: expected a \")\"\n                             f_old[((i) + (j+1]) * 2048));\n                                              ^\n\nmain.cu(39): error: expected a \")\"\n                             f_old[((i) + (j+1]) * 2048));\n                                              ^\n\nmain.cu(39): error: expected a \";\"\n                             f_old[((i) + (j+1]) * 2048));\n                                                       ^\n\nmain.cu(54): error: expected a \")\"\n  __attribute__((global)) void copy_back_kernel(float* f, float* f_old, int 2048) {\n                                                                            ^\n\n5 errors detected in the compilation of \"main.cu\".\nmake: *** [Makefile:52: main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 14.429,
+      "prompt_tokens": 2768,
+      "completion_tokens": 1270,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\ned a \")\"\n                             f_old[((i) + (j+1]) * 2048);\n                                              ^\n\nmain.cu(39): error: expected ",
+      "build_error_snippet": "main.cu(39): error: expected a \")\"\n                             f_old[((i) + (j+1]) * 2048);\n                                              ^\n\nmain.cu(39): error: expected a \")\"\n                             f_old[((i) + (j+1]) * 2048);\n                                              ^\n\nmain.cu(39): error: expected a \";\"\n                             f_old[((i) + (j+1]) * 2048);\n                                                       ^\n\n3 errors detected in the compilation of \"main.cu\".\nmake: *** [Makefile:52: main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 16.956,
+      "prompt_tokens": 4203,
+      "completion_tokens": 1271,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

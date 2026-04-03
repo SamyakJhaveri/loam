@@ -1,0 +1,133 @@
+#!/bin/bash -l
+#PBS -N parbench_eval
+#PBS -A argonne_tpc
+#PBS -q debug
+#PBS -l select=1
+#PBS -l walltime=10:00:00
+#PBS -l filesystems=home:eagle
+#PBS -j oe
+
+set -euo pipefail
+
+echo "Job started on $(date)"
+echo "Running on host: $(hostname)"
+
+# Go to repo
+cd /lus/eagle/projects/argonne_tpc/chen/repo/pb2/
+
+# Activate env
+source env_parbench/bin/activate
+
+# Azure / proxy envs
+export AZURE_OPENAI_ENDPOINT="https://galor-m8yvytc2-swedencentral.cognitiveservices.azure.com/"
+export AZURE_OPENAI_API_KEY="A8jWpYHpq2oPsnajJin0znkpG3xIH9kpDUlrt7kRHGCDb0nTDo7YJQQJ99BDACfhMk5XJ3w3AAAAACOGSzlo"
+
+export HTTP_PROXY="http://proxy.alcf.anl.gov:3128"
+export HTTPS_PROXY="http://proxy.alcf.anl.gov:3128"
+export http_proxy="$HTTP_PROXY"
+export https_proxy="$HTTPS_PROXY"
+export ftp_proxy="$HTTP_PROXY"
+export no_proxy="admin,polaris-adminvm-01,localhost,*.cm.polaris.alcf.anl.gov,polaris-*,*.polaris.alcf.anl.gov,*.alcf.anl.gov"
+
+MODEL="azure-gpt-4.1-mini"
+PROJECT_ROOT="$(pwd)"
+
+run_primary() {
+  local suite="$1"
+  for direction in cuda-to-omp cuda-to-opencl omp-to-opencl opencl-to-omp; do
+    python3 scripts/evaluation/run_eval_batch.py \
+      --suite "$suite" \
+      --direction "$direction" \
+      --models "$MODEL" \
+      --augment-levels 0 1 2 3 4 \
+      --max-retries 3 \
+      --temperature 0.0 \
+      --num-samples 1 \
+      --resume -v \
+      --project-root "$PROJECT_ROOT"
+  done
+}
+
+run_passk() {
+  local suite="$1"
+  for direction in cuda-to-omp cuda-to-opencl omp-to-opencl opencl-to-omp; do
+    python3 scripts/evaluation/run_eval_batch.py \
+      --suite "$suite" \
+      --direction "$direction" \
+      --models "$MODEL" \
+      --augment-levels 0 \
+      --max-retries 1 \
+      --temperature 0.7 \
+      --num-samples 3 \
+      --resume -v \
+      --project-root "$PROJECT_ROOT"
+  done
+}
+
+echo "=== Campaign 1 — Primary ==="
+for suite in rodinia xsbench rsbench mixbench; do
+  run_primary "$suite"
+done
+
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite hecbench \
+  --direction cuda-to-omp \
+  --models "$MODEL" \
+  --kernels stencil1d heat2d floydwarshall scan iso2dfd \
+  --augment-levels 0 1 2 3 4 \
+  --max-retries 3 \
+  --temperature 0.0 \
+  --num-samples 1 \
+  --resume -v \
+  --project-root "$PROJECT_ROOT"
+
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite hecbench \
+  --direction cuda-to-omp_target \
+  --models "$MODEL" \
+  --kernels heat2d floydwarshall page-rank jacobi nqueen md convolution1d iso2dfd \
+  --augment-levels 0 1 2 3 4 \
+  --max-retries 3 \
+  --temperature 0.0 \
+  --num-samples 1 \
+  --resume -v \
+  --project-root "$PROJECT_ROOT"
+
+python3 scripts/evaluation/analyze_eval.py \
+  --project-root "$PROJECT_ROOT" \
+  --write-dashboard
+
+echo "=== Campaign 2 — Pass@k ==="
+for suite in rodinia xsbench rsbench mixbench; do
+  run_passk "$suite"
+done
+
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite hecbench \
+  --direction cuda-to-omp \
+  --models "$MODEL" \
+  --kernels stencil1d heat2d floydwarshall scan iso2dfd \
+  --augment-levels 0 \
+  --max-retries 1 \
+  --temperature 0.7 \
+  --num-samples 3 \
+  --resume -v \
+  --project-root "$PROJECT_ROOT"
+
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite hecbench \
+  --direction cuda-to-omp_target \
+  --models "$MODEL" \
+  --kernels heat2d floydwarshall page-rank jacobi nqueen md convolution1d iso2dfd \
+  --augment-levels 0 \
+  --max-retries 1 \
+  --temperature 0.7 \
+  --num-samples 3 \
+  --resume -v \
+  --project-root "$PROJECT_ROOT"
+
+python3 scripts/evaluation/analyze_eval.py \
+  --project-root "$PROJECT_ROOT" \
+  --write-dashboard
+
+echo "Job finished on $(date)"

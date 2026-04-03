@@ -1,0 +1,100 @@
+{
+  "source_spec": "hecbench-jacobi-cuda",
+  "target_spec": "hecbench-jacobi-omp_target",
+  "kernel": "jacobi",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-03T08:19:27Z",
+  "prompt_tokens": 10933,
+  "completion_tokens": 3888,
+  "llm_response_time_seconds": 50.998,
+  "build_status": "pass",
+  "build_time_seconds": 0.7,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.554,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Error after iteration 0 = 0.00781059\nError after iteration 1000 = 3.91151e-05\nError after iteration 2000 = 2.32109e-05\nError after iteration 3000 = 1.70863e-05\nError after iteration 4000 = 1.37387e-05\nError after iteration 5000 = 1.15945e-05\nError after iteration 6000 = 1.00891e-05\nAverage execution time per iteration: 8.06943e-05 (s)\nPASS\nTotal elapsed time: 0.5045 seconds\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "kernel_time": {
+      "value": 8.06943e-05,
+      "unit": "s"
+    }
+  },
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": 0.554,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": null,
+  "translated_files": {
+    "main.cpp": "#include <chrono>\n#include <cmath>\n#include <cstdio>\n#include <iostream>\n#include <iomanip>\n#include <limits>\n#include <utility>\n#include <omp.h>\n\n#define N 2048\n\n#define IDX(i, j) ((i) + (j) * N)\n\nvoid initialize_data(float* f) {\n  for (int j = 0; j < N; ++j) {\n    for (int i = 0; i < N; ++i) {\n      if (0 == i || N-1 == i) {\n        f[IDX(i,j)] = sinf(j * 2 * M_PI / (N - 1));\n      }\n      else if (0 == j || N-1 == j) {\n        f[IDX(i,j)] = sinf(i * 2 * M_PI / (N - 1));\n      }\n      else {\n        f[IDX(i,j)] = 0.0f;\n      }\n    }\n  }\n}\n\nint main() {\n  auto start_time = std::chrono::steady_clock::now();\n\n  float* f = (float*) aligned_alloc(64, N * N * sizeof(float));\n  float* f_old = (float*) aligned_alloc(64, N * N * sizeof(float));\n\n  initialize_data(f);\n  initialize_data(f_old);\n\n  float error = std::numeric_limits<float>::max();\n  const float tolerance = 1.e-5f;\n  const int max_iters = 10000;\n  int num_iters = 0;\n\n  auto start = std::chrono::steady_clock::now();\n\n  #pragma omp target data map(to: f[0:N*N], f_old[0:N*N])\n  {\n    while (tolerance < error && max_iters > num_iters) {\n      float local_err = 0.0f;\n\n      #pragma omp target teams distribute parallel for collapse(2) reduction(+:local_err)\n      for (int j = 1; j < N-1; ++j) {\n        for (int i = 1; i < N-1; ++i) {\n          float val_up = f_old[IDX(i, j+1)];\n          float val_down = f_old[IDX(i, j-1)];\n          float val_right = f_old[IDX(i+1, j)];\n          float val_left = f_old[IDX(i-1, j)];\n          \n          float new_val = 0.25f * (val_up + val_down + val_right + val_left);\n          f[IDX(i, j)] = new_val;\n          \n          float df = new_val - f_old[IDX(i, j)];\n          local_err += df * df;\n        }\n      }\n\n      #pragma omp target update to(local_err)\n      \n      error = sqrtf(local_err / (N * N));\n\n      if (num_iters % 1000 == 0) {\n        std::cout << \"Error after iteration \" << num_iters << \" = \" << error << std::endl;\n      }\n\n      std::swap(f, f_old);\n\n      ++num_iters;\n    }\n  }\n\n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  std::cout << \"Average execution time per iteration: \" << (time * 1e-9f) / num_iters << \" (s)\\n\";\n\n  if (error <= tolerance && max_iters > num_iters) {\n    std::cout << \"PASS\" << std::endl;\n  }\n  else {\n    std::cout << \"FAIL\" << std::endl;\n    free(f);\n    free(f_old);\n    return -1;\n  }\n\n  free(f);\n  free(f_old);\n\n  auto end_time = std::chrono::steady_clock::now();\n  auto total_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end_time - start_time).count();\n  double duration = total_time * 1e-9;\n  std::cout << \"Total elapsed time: \" << std::setprecision(4) << duration << \" seconds\" << std::endl;\n\n  return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "main.cpp"
+  ],
+  "target_files_extracted": [
+    "main.cpp"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 20.733,
+      "prompt_tokens": 1856,
+      "completion_tokens": 1975,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nf_old[IDX(i, j+1)] + f_old[IDX(i, j-1]));\n                                                           ^\n\n\"main.cpp\", line 109: error: expected a \"",
+      "build_error_snippet": "\"main.cpp\", line 37: error: too many arguments in function call\n    int team_num = omp_get_team_num(2);\n                                    ^\n\n\"main.cpp\", line 38: error: too many arguments in function call\n    int thread_in_team = omp_get_thread_num(2);\n                                            ^\n\n\"main.cpp\", line 57: error: invalid text in pragma\n    #pragma omp target parallel num_teams(N/16 * N/16) thread_limit(256)\n                                ^\n\n\"main.cpp\", line 57: error: invalid text in pragma\n    #pragma omp target parallel num_teams(N/16 * N/16) thread_limit(256)\n                                         ^\n\n\"main.cpp\", line 57: error: extra text after expected end of preprocessing directive\n    #pragma omp target parallel num_\n...[truncated]...\n  ^\n\n\"main.cpp\", line 109: error: expected a \")\"\n                                f_old[IDX(i, j+1)] + f_old[IDX(i, j-1]));\n                                                           ^\n\n\"main.cpp\", line 109: error: expected a \")\"\n                                f_old[IDX(i, j+1)] + f_old[IDX(i, j-1]));\n                                                           ^\n\n\"main.cpp\", line 109: error: expected a \";\"\n                                f_old[IDX(i, j+1)] + f_old[IDX(i, j-1]));\n                                                           ^\n\n\"main.cpp\", line 116: error: invalid text in pragma\n    #pragma omp target atomic\n                       ^\n\n13 errors detected in the compilation of \"main.cpp\".\nmake: *** [Makefile.nvc:57: main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 10.372,
+      "prompt_tokens": 3993,
+      "completion_tokens": 940,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n^\n\n\"main.cpp\", line 55: error: expected a \")\"\n                                    f_old[IDX(i, j+1)] + f_old[IDX(i, j-1]));\n                     ",
+      "build_error_snippet": "\"main.cpp\", line 55: error: expected a \")\"\n                                    f_old[IDX(i, j+1)] + f_old[IDX(i, j-1]));\n                                                               ^\n\n\"main.cpp\", line 55: error: expected a \")\"\n                                    f_old[IDX(i, j+1)] + f_old[IDX(i, j-1]));\n                                                               ^\n\n\"main.cpp\", line 55: error: expected a \";\"\n                                    f_old[IDX(i, j+1)] + f_old[IDX(i, j-1]));\n                                                               ^\n\n3 errors detected in the compilation of \"main.cpp\".\nmake: *** [Makefile.nvc:57: main.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 19.893,
+      "prompt_tokens": 5084,
+      "completion_tokens": 973,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

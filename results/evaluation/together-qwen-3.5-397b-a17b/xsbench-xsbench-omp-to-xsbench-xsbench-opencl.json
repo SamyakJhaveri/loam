@@ -1,0 +1,102 @@
+{
+  "source_spec": "xsbench-xsbench-omp",
+  "target_spec": "xsbench-xsbench-opencl",
+  "kernel": "xsbench",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-m",
+    "event",
+    "-s",
+    "small",
+    "-G",
+    "nuclide"
+  ],
+  "timestamp": "2026-04-03T08:35:46Z",
+  "prompt_tokens": 96679,
+  "completion_tokens": 11923,
+  "llm_response_time_seconds": 182.694,
+  "build_status": "pass",
+  "build_time_seconds": 0.462,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.26,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-3128d9.d\n1 error generated.\n",
+  "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.123 seconds\nLookups:     17,000,000\nLookups/s:   138,211,487\nSimulation Kernel Only Statistics\nRuntime:     0.023 seconds\nLookups/s:   739,130,373\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.44,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel.cl": "#include \"XSbench_header.h\"\n\n#define MAX_SOURCE_SIZE 100000\n\ntypedef struct {\n    cl_platform_id platform_id;\n    cl_device_id device_id;\n    cl_context context;\n    cl_command_queue command_queue;\n} OpenCLInfo;\n\nconst char *getErrorString(cl_int error);\nvoid check(cl_int error);\nvoid printCompilerError(cl_program program, cl_device_id device);\nvoid print_single_info(cl_platform_id platform, cl_device_id device);\nvoid print_opencl_info(void);\nOpenCLInfo initialize_device(int user_platform_id, int user_device_id);\n\n__kernel void macro_xs_lookup_kernel(\n    Inputs in,\n    int max_num_nucs,\n    __global const int *num_nucs,\n    __global const double *concs,\n    __global const double *unionized_energy_array,\n    __global const int *index_grid,\n    __global const NuclideGridPoint *nuclide_grid,\n    __global const int *mats,\n    __global int *verification_array)\n{\n    int i = get_global_id(0);\n    if (i >= in.lookups) return;\n\n    uint64_t seed = 1070ULL;\n    // Fast forward LCG for 2*i steps manually to avoid loop overhead in kernel if possible, \n    // but keeping logic identical to source for correctness.\n    // Source: seed = fast_forward_LCG(seed, 2*i);\n    // We implement a simple loop here as fast_forward is complex to inline perfectly without helper functions.\n    // However, for exact reproduction of the random sequence, we must mimic the LCG steps.\n    // The source uses fast_forward_LCG which is O(log n). A loop is O(n). \n    // Given i can be large, a loop might be slow, but correct. \n    // To match the source exactly without implementing the full matrix math of fast_forward in OpenCL C:\n    // We will use the iterative approach for simplicity and correctness of sequence, \n    // assuming the test cases don't have astronomically large 'i' causing timeout.\n    // Actually, let's implement the fast_forward logic inline or just iterate if i is small.\n    // The source code uses: seed = fast_forward_LCG(seed, 2*i);\n    // Let's implement the iterative version for 2*i steps as it's safer for portability if 2*i isn't huge.\n    // If 2*i is huge, this kernel will be slow. But the original OpenMP code did this too.\n    \n    uint64_t steps = 2 * (uint64_t)i;\n    const uint64_t m = 9223372036854775808ULL;\n    const uint64_t a = 2806196910506780709ULL;\n    const uint64_t c = 1ULL;\n\n    // Optimized fast forward for small steps or just iterate if steps are manageable\n    // Implementing the binary exponentiation method for LCG fast forward\n    uint64_t a_new = 1;\n    uint64_t c_new = 0;\n    uint64_t a_curr = a;\n    uint64_t c_curr = c;\n    uint64_t n = steps;\n\n    while (n > 0) {\n        if (n & 1) {\n            a_new = (a_new * a_curr) % m;\n            c_new = (c_new * a_curr + c_curr) % m;\n        }\n        c_curr = (c_curr * (a_curr + 1)) % m;\n        a_curr = (a_curr * a_curr) % m;\n        n >>= 1;\n    }\n    seed = (a_new * seed + c_new) % m;\n\n    double p_energy = (double)seed / (double)m;\n    \n    // Next step for mat selection\n    seed = (a * seed + c) % m;\n\n    double dist[12];\n    dist[0]  = 0.140; dist[1]  = 0.052; dist[2]  = 0.275; dist[3]  = 0.134;\n    dist[4]  = 0.154; dist[5]  = 0.064; dist[6]  = 0.066; dist[7]  = 0.055;\n    dist[8]  = 0.008; dist[9]  = 0.015; dist[10] = 0.025; dist[11] = 0.013;\n\n    double roll = (double)seed / (double)m;\n    int mat = 0;\n    for (int m_idx = 0; m_idx < 12; m_idx++) {\n        double running = 0.0;\n        for (int j = m_idx; j > 0; j--) running += dist[j];\n        if (roll < running) { mat = m_idx; break; }\n    }\n\n    double macro_xs_vector[5] = {0.0, 0.0, 0.0, 0.0, 0.0};\n    long idx = -1;\n\n    if (in.grid_type == 0) { // UNIONIZED\n        long lowerLimit = 0;\n        long upperLimit = in.n_isotopes * in.n_gridpoints - 1;\n        while (upperLimit - lowerLimit > 1) {\n            long mid = lowerLimit + (upperLimit - lowerLimit) / 2;\n            if (unionized_energy_array[mid] > p_energy) upperLimit = mid;\n            else lowerLimit = mid;\n        }\n        idx = lowerLimit;\n    } else if (in.grid_type == 2) { // HASH\n        double du = 1.0 / in.hash_bins;\n        idx = (long)(p_energy / du);\n    }\n\n    int num_nucs_mat = num_nucs[mat];\n    for (int j = 0; j < num_nucs_mat; j++) {\n        int p_nuc = mats[mat * max_num_nucs + j];\n        double conc = concs[mat * max_num_nucs + j];\n\n        long nuc_idx = -1;\n        if (in.grid_type == 1) { // NUCLIDE\n            long lowerLimit = 0;\n            long upperLimit = in.n_gridpoints - 1;\n            while (upperLimit - lowerLimit > 1) {\n                long mid = lowerLimit + (upperLimit - lowerLimit) / 2;\n                if (nuclide_grid[p_nuc * in.n_gridpoints + mid].energy > p_energy) upperLimit = mid;\n                else lowerLimit = mid;\n            }\n            nuc_idx = lowerLimit;\n        } else if (in.grid_type == 0) { // UNIONIZED\n            nuc_idx = index_grid[idx * in.n_isotopes + p_nuc];\n        } else { // HASH\n            int u_low = index_grid[idx * in.n_isotopes + p_nuc];\n            int u_high;\n            if (idx == in.hash_bins - 1) u_high = in.n_gridpoints - 1;\n            else u_high = index_grid[(idx + 1) * in.n_isotopes + p_nuc] + 1;\n\n            double e_low = nuclide_grid[p_nuc * in.n_gridpoints + u_low].energy;\n            double e_high = nuclide_grid[p_nuc * in.n_gridpoints + u_high].energy;\n            int lower = 0;\n            if (p_energy <= e_low) lower = 0;\n            else if (p_energy >= e_high) lower = in.n_gridpoints - 1;\n            else {\n                long l_limit = u_low;\n                long u_limit = u_high;\n                while (u_limit - l_limit > 1) {\n                    long mid = l_limit + (u_limit - l_limit) / 2;\n                    if (nuclide_grid[p_nuc * in.n_gridpoints + mid].energy > p_energy) u_limit = mid;\n                    else l_limit = mid;\n                }\n                lower = l_limit;\n            }\n            nuc_idx = lower;\n        }\n\n        NuclideGridPoint low, high;\n        if (nuc_idx == in.n_gridpoints - 1) {\n            low = nuclide_grid[p_nuc * in.n_gridpoints + nuc_idx - 1];\n            high = nuclide_grid[p_nuc * in.n_gridpoints + nuc_idx];\n        } else {\n            low = nuclide_grid[p_nuc * in.n_gridpoints + nuc_idx];\n            high = nuclide_grid[p_nuc * in.n_gridpoints + nuc_idx + 1];\n        }\n\n        double f = (high.energy - p_energy) / (high.energy - low.energy);\n        double xs[5];\n        xs[0] = high.total_xs - f * (high.total_xs - low.total_xs);\n        xs[1] = high.elastic_xs - f * (high.elastic_xs - low.elastic_xs);\n        xs[2] = high.absorbtion_xs - f * (high.absorbtion_xs - low.absorbtion_xs);\n        xs[3] = high.fission_xs - f * (high.fission_xs - low.fission_xs);\n        xs[4] = high.nu_fission_xs - f * (high.nu_fission_xs - low.nu_fission_xs);\n\n        for (int k = 0; k < 5; k++) macro_xs_vector[k] += xs[k] * conc;\n    }\n\n    double max = -1.0;\n    int max_idx = 0;\n    for (int k = 0; k < 5; k++) {\n        if (macro_xs_vector[k] > max) {\n            max = macro_xs_vector[k];\n            max_idx = k;\n        }\n    }\n    verification_array[i] = max_idx + 1;\n}\n\nunsigned long long run_event_based_simulation(Inputs in, SimulationData SD, int mype, double *sim_runtime) {\n    double start = get_time();\n    int *verification_array_host = (int *)malloc(in.lookups * sizeof(int));\n    if (!verification_array_host) {\n        fprintf(stderr, \"Failed to allocate host verification array\\n\");\n        exit(1);\n    }\n    \n    FILE *fp;\n    char *source_str;\n    size_t source_size;\n\n    fp = fopen(\"translated_0.cl\", \"r\");\n    if (!fp) {\n        fprintf(stderr, \"Failed to load kernel file 'translated_0.cl'. Ensure it is in the current directory.\\n\");\n        free(verification_array_host);\n        exit(1);\n    }\n    source_str = (char*)malloc(MAX_SOURCE_SIZE);\n    if (!source_str) {\n        fprintf(stderr, \"Failed to allocate source string\\n\");\n        fclose(fp);\n        free(verification_array_host);\n        exit(1);\n    }\n    source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp);\n    fclose(fp);\n\n    OpenCLInfo CL = initialize_device(in.platform_id, in.device_id);\n    cl_device_id device_id = CL.device_id;\n    cl_context context = CL.context;\n    cl_command_queue command_queue = CL.command_queue;\n\n    cl_int ret;\n    size_t sz;\n\n    sz = SD.length_num_nucs * sizeof(int);\n    cl_mem num_nucs_d = clCreateBuffer(context, CL_MEM_READ_ONLY, sz, NULL, &ret);\n    check(ret);\n    ret = clEnqueueWriteBuffer(command_queue, num_nucs_d, CL_TRUE, 0, sz, SD.num_nucs, 0, NULL, NULL);\n    check(ret);\n\n    sz = SD.length_concs * sizeof(double);\n    cl_mem concs_d = clCreateBuffer(context, CL_MEM_READ_ONLY, sz, NULL, &ret);\n    check(ret);\n    ret = clEnqueueWriteBuffer(command_queue, concs_d, CL_TRUE, 0, sz, SD.concs, 0, NULL, NULL);\n    check(ret);\n\n    sz = SD.length_mats * sizeof(int);\n    cl_mem mats_d = clCreateBuffer(context, CL_MEM_READ_ONLY, sz, NULL, &ret);\n    check(ret);\n    ret = clEnqueueWriteBuffer(command_queue, mats_d, CL_TRUE, 0, sz, SD.mats, 0, NULL, NULL);\n    check(ret);\n\n    cl_mem unionized_energy_array_d = NULL;\n    if (SD.length_unionized_energy_array > 0) {\n        sz = SD.length_unionized_energy_array * sizeof(double);\n        unionized_energy_array_d = clCreateBuffer(context, CL_MEM_READ_ONLY, sz, NULL, &ret);\n        check(ret);\n        ret = clEnqueueWriteBuffer(command_queue, unionized_energy_array_d, CL_TRUE, 0, sz, SD.unionized_energy_array, 0, NULL, NULL);\n        check(ret);\n    }\n\n    cl_mem index_grid_d = NULL;\n    if (SD.length_index_grid > 0) {\n        sz = SD.length_index_grid * sizeof(int);\n        index_grid_d = clCreateBuffer(context, CL_MEM_READ_ONLY, sz, NULL, &ret);\n        check(ret);\n        ret = clEnqueueWriteBuffer(command_queue, index_grid_d, CL_TRUE, 0, sz, SD.index_grid, 0, NULL, NULL);\n        check(ret);\n    }\n\n    sz = SD.length_nuclide_grid * sizeof(NuclideGridPoint);\n    cl_mem nuclide_grid_d = clCreateBuffer(context, CL_MEM_READ_ONLY, sz, NULL, &ret);\n    check(ret);\n    ret = clEnqueueWriteBuffer(command_queue, nuclide_grid_d, CL_TRUE, 0, sz, SD.nuclide_grid, 0, NULL, NULL);\n    check(ret);\n\n    sz = in.lookups * sizeof(int);\n    cl_mem verification_array = clCreateBuffer(context, CL_MEM_READ_WRITE, sz, NULL, &ret);\n    check(ret);\n\n    cl_program program = clCreateProgramWithSource(context, 1, (const char **)&source_str, (const size_t *)&source_size, &ret);\n    check(ret);\n\n    // Add build options to disable dependency file generation which causes the error in restricted environments\n    const char *build_options = \"-no-dependency-file\";\n    ret = clBuildProgram(program, 1, &device_id, build_options, NULL, NULL);\n    \n    // If -no-dependency-file fails (older drivers), try without it but ignore specific dep errors if possible, \n    // or just standard build. The error specifically mentions .d file, so the flag is the primary fix.\n    if (ret != CL_SUCCESS) {\n        // Fallback to no options if the flag is unsupported\n        ret = clBuildProgram(program, 1, &device_id, NULL, NULL, NULL);\n    }\n    check(ret);\n    printCompilerError(program, device_id);\n\n    cl_kernel kernel = clCreateKernel(program, \"macro_xs_lookup_kernel\", &ret);\n    check(ret);\n\n    ret = clSetKernelArg(kernel, 0, sizeof(Inputs), (void *)&in);\n    check(ret);\n    ret = clSetKernelArg(kernel, 1, sizeof(int), (void *)&SD.max_num_nucs);\n    check(ret);\n    ret = clSetKernelArg(kernel, 2, sizeof(cl_mem), (void *)&num_nucs_d);\n    check(ret);\n    ret = clSetKernelArg(kernel, 3, sizeof(cl_mem), (void *)&concs_d);\n    check(ret);\n    ret = clSetKernelArg(kernel, 4, sizeof(cl_mem), (void *)&unionized_energy_array_d);\n    check(ret);\n    ret = clSetKernelArg(kernel, 5, sizeof(cl_mem), (void *)&index_grid_d);\n    check(ret);\n    ret = clSetKernelArg(kernel, 6, sizeof(cl_mem), (void *)&nuclide_grid_d);\n    check(ret);\n    ret = clSetKernelArg(kernel, 7, sizeof(cl_mem), (void *)&mats_d);\n    check(ret);\n    ret = clSetKernelArg(kernel, 8, sizeof(cl_mem), (void *)&verification_array);\n    check(ret);\n\n    double stop = get_time();\n    if (mype == 0) printf(\"OpenCL initialization time: %.3lf seconds\\n\", stop - start);\n    start = stop;\n\n    if (mype == 0) {\n        border_print();\n        center_print(\"SIMULATION\", 79);\n        border_print();\n    }\n    if (mype == 0) printf(\"Running event based simulation...\\n\");\n\n    size_t local_item_size = 256;\n    size_t global_item_size = in.lookups;\n    if (in.lookups % local_item_size != 0 && in.lookups > local_item_size)\n        global_item_size = ((in.lookups / local_item_size) + 1) * local_item_size;\n\n    ret = clEnqueueNDRangeKernel(command_queue, kernel, 1, NULL, &global_item_size, &local_item_size, 0, NULL, NULL);\n    check(ret);\n\n    ret = clEnqueueReadBuffer(command_queue, verification_array, CL_TRUE, 0, in.lookups * sizeof(int), verification_array_host, 0, NULL, NULL);\n    check(ret);\n\n    stop = get_time();\n    if (mype == 0) printf(\"Reducing verification value...\\n\");\n\n    unsigned long long verification = 0;\n    for (int l = 0; l < in.lookups; l++)\n        verification += verification_array_host[l];\n\n    *sim_runtime = stop - start;\n    if (mype == 0) printf(\"Simulation + Verification Reduction Runtime: %.3lf seconds\\n\", *sim_runtime);\n\n    ret = clFlush(command_queue);\n    check(ret);\n    ret = clFinish(command_queue);\n    check(ret);\n    ret = clReleaseKernel(kernel);\n    check(ret);\n    ret = clReleaseProgram(program);\n    check(ret);\n    ret = clReleaseMemObject(num_nucs_d);\n    check(ret);\n    if (SD.length_unionized_energy_array > 0) {\n        ret = clReleaseMemObject(unionized_energy_array_d);\n        check(ret);\n    }\n    if (SD.length_index_grid > 0) {\n        ret = clReleaseMemObject(index_grid_d);\n        check(ret);\n    }\n    ret = clReleaseMemObject(nuclide_grid_d);\n    check(ret);\n    ret = clReleaseMemObject(mats_d);\n    check(ret);\n    ret = clReleaseMemObject(verification_array);\n    check(ret);\n    ret = clReleaseCommandQueue(command_queue);\n    check(ret);\n    ret = clReleaseContext(context);\n    check(ret);\n\n    free(source_str);\n    free(verification_array_host);\n\n    return verification;\n}\n"
+  },
+  "target_files_expected": [
+    "kernel.cl"
+  ],
+  "target_files_extracted": [
+    "kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 42.83,
+      "prompt_tokens": 28436,
+      "completion_tokens": 3732,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n1 error generated.\nCould not open file: /tmp/dep-3c1c55.d\n1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-3c1c55.d\n1 error generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.135 seconds\nLookups:     17,000,000\nLookups/s:   125,925,934\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 91.028,
+      "prompt_tokens": 32227,
+      "completion_tokens": 3732,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n1 error generated.\nCould not open file: /tmp/dep-fbb6a0.d\n1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-fbb6a0.d\n1 error generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.137 seconds\nLookups:     17,000,000\nLookups/s:   124,087,731\nSimulation Kernel Only Statistics\nRuntime:     0.026 seconds\nLookups/s:   653,845,578\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 48.836,
+      "prompt_tokens": 36016,
+      "completion_tokens": 4459,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-3128d9.d\n1 error generated.\n",
+      "run_stdout_snippet": "=============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.123 seconds\nLookups:     17,000,000\nLookups/s:   138,211,487\nSimulation Kernel Only Statistics\nRuntime:     0.023 seconds\nLookups/s:   739,130,373\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "extraction_fail": null
+    }
+  ]
+}
