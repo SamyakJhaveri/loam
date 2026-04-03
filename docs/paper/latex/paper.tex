@@ -23,9 +23,9 @@
 % For Overleaf, copy all needed PNGs into figures/ and use only {figures/}.
 \graphicspath{{figures/}{../../analysis/visualizations/}}
 
-%%% Draft-mode macros for pending Gemini data
+%%% Draft-mode macros for pending GPT data
 % Red placeholders visible in PDF
-\newcommand{\pending}[1]{\textcolor{red}{\textbf{[PENDING-GEMINI: #1]}}}
+\newcommand{\pending}[1]{\textcolor{red}{\textbf{[PENDING-GPT: #1]}}}
 % For numeric placeholders in tables
 \newcommand{\tbd}{\textcolor{red}{\textbf{--}}}
 
@@ -57,7 +57,7 @@
 %% ABSTRACT
 %% =============================================================
 \begin{abstract}
-Large language models (LLMs) are increasingly applied to parallel code generation, yet no benchmark framework systematically evaluates their ability to \emph{translate} parallel code across GPU programming APIs---and prior approaches share a critical blind spot: benchmark codes widely known in the HPC community are also present in LLM training data, making it impossible to distinguish genuine parallel reasoning from memorized translations. We present \textbf{ParBench}, a build-run-verify benchmark framework for evaluating LLM-based parallel code translation at the kernel level, with an integrated augmentation engine that systematically tests reliance on training-data pattern-matching. ParBench curates 96 benchmark specifications across five HPC benchmark suites (Rodinia, XSBench, RSBench, mixbench, HeCBench), six translation directions across three API pairs (CUDA, OpenMP, OpenCL), with two additional OpenMP-target directions evaluated as case studies. Evaluating Qwen~3.5 397B-A17B (a 397-billion-parameter Mixture-of-Experts model) across 480 primary campaign tasks spanning 18 kernels, six directions, and five augmentation levels, we observe an overall pass rate of 36.2\% [32.1\%, 40.6\%]. \pending{Gemini 2.5 Flash comparative results and statistical comparison.} On the primary CUDA-to-OpenMP direction, Qwen~3.5 achieves 65.0\% [54.1\%, 74.6\%] (68.8\% at L0)---compared to 0\% in repository-level approaches~\cite{ParEvalRepo2025}. BUILD\_FAIL accounts for 30.8\% of all tasks; VERIFY\_FAIL accounts for 9.8\%, indicating that API-specific syntax is the primary bottleneck while a meaningful minority of compilable translations contain genuine parallel logic errors. An AST-driven augmentation engine applies six semantics-preserving transforms at five levels (L0--L4); 68 of 88 non-KNOWN\_FAIL specs across all five suites (54 Rodinia, 4 XSBench, 3 RSBench, 3 mixbench, and 4 spot-checked HeCBench) PASS at every level L1--L4 with zero correctness regressions, confirming level-invariant semantics preservation. LLM augmentation robustness evaluation yields a null result (Cochran-Armitage $z = -0.17$, $p = 0.87$), providing evidence that model failures are structural rather than surface-dependent, confirming benchmark validity against training-data memorization concerns. ParBench is publicly available as an extensible framework for the HPC community.
+Large language models (LLMs) are increasingly applied to parallel code generation, yet no benchmark framework systematically evaluates their ability to \emph{translate} parallel code across GPU programming APIs---and prior approaches share a critical blind spot: benchmark codes widely known in the HPC community are also present in LLM training data, making it impossible to distinguish genuine parallel reasoning from memorized translations. We present \textbf{ParBench}, a build-run-verify benchmark framework for evaluating LLM-based parallel code translation at the kernel level, with an integrated augmentation engine that systematically tests reliance on training-data pattern-matching. ParBench curates 96 benchmark specifications across five HPC benchmark suites (Rodinia, XSBench, RSBench, mixbench, HeCBench), six translation directions across three API pairs (CUDA, OpenMP, OpenCL), with two additional OpenMP-target directions evaluated as case studies. Evaluating Qwen~3.5 397B-A17B (a 397-billion-parameter Mixture-of-Experts model) across 480 primary campaign tasks spanning 18 kernels, six directions, and five augmentation levels, we observe an overall pass rate of 36.2\% [32.1\%, 40.6\%]. \pending{GPT-4.1~mini comparative results and statistical comparison.} On the primary CUDA-to-OpenMP direction, Qwen~3.5 achieves 65.0\% [54.1\%, 74.6\%] (68.8\% at L0)---compared to 0\% in repository-level approaches~\cite{ParEvalRepo2025}. BUILD\_FAIL accounts for 30.8\% of all tasks; VERIFY\_FAIL accounts for 9.8\%, indicating that API-specific syntax is the primary bottleneck while a meaningful minority of compilable translations contain genuine parallel logic errors. An AST-driven augmentation engine applies six semantics-preserving transforms at five levels (L0--L4); 68 of 88 non-KNOWN\_FAIL specs across all five suites (54 Rodinia, 4 XSBench, 3 RSBench, 3 mixbench, and 4 spot-checked HeCBench) PASS at every level L1--L4 with zero correctness regressions, confirming level-invariant semantics preservation. LLM augmentation robustness evaluation yields a null result (Cochran-Armitage $z = -0.17$, $p = 0.87$), providing evidence that model failures are structural rather than surface-dependent, confirming benchmark validity against training-data memorization concerns. ParBench is publicly available as an extensible framework for the HPC community.
 \end{abstract}
 
 %% =============================================================
@@ -100,7 +100,7 @@ This paper presents ParBench and makes the following contributions:
 
 \item \textbf{AST-driven augmentation engine}---Six semantics-preserving source-level transforms at five augmentation levels (L0--L4) that systematically test whether LLMs reason about parallel structure or pattern-match from training data. Level-invariant: 68 of 88 non-KNOWN\_FAIL specs across five suites PASS at all levels L1--L4 with zero correctness regressions. LLM evaluation at L0--L4 measures augmentation robustness as a discriminator of genuine parallel reasoning versus surface pattern-matching.
 
-\item \textbf{Empirical evaluation}---Analysis of Qwen~3.5 397B-A17B across 480 primary campaign tasks and 426 pass@$k$ tasks spanning six directions and five augmentation levels, producing a failure taxonomy (30.8\% BUILD\_FAIL, 9.8\% VERIFY\_FAIL), per-kernel difficulty tiers, self-repair effectiveness measurement, augmentation robustness characterization with statistical independence testing, and a pass@$k$ analysis at temperature 0.7 to separate deterministic failures from sampling-sensitive cases. \pending{Gemini 2.5 Flash comparative evaluation will expand the dataset to approximately 1,420 primary tasks across two architecture families (MoE vs.\ dense).}
+\item \textbf{Empirical evaluation}---Analysis of Qwen~3.5 397B-A17B across 480 primary campaign tasks and 426 pass@$k$ tasks spanning six directions and five augmentation levels, producing a failure taxonomy (30.8\% BUILD\_FAIL, 9.8\% VERIFY\_FAIL), per-kernel difficulty tiers, self-repair effectiveness measurement, augmentation robustness characterization with statistical independence testing, and a pass@$k$ analysis at temperature 0.7 to separate deterministic failures from sampling-sensitive cases. \pending{GPT-4.1~mini comparative evaluation will expand the dataset to approximately 1,420 primary tasks across two providers (Alibaba via Together AI, OpenAI via Azure).}
 \end{enumerate}
 
 \subsection{Key Findings Preview}
@@ -110,7 +110,7 @@ ParBench produces several findings with immediate relevance for the HPC and LLM 
 
 \textbf{Kernel-centric isolation unlocks success.} Qwen~3.5 397B-A17B achieves 68.8\% PASS on CUDA-to-OpenMP translation at L0 (16 kernels), demonstrating that kernel-level evaluation reveals capability that repository-level approaches obscure. The gap quantifies the orthogonality of translation skill and build-system-generation skill.
 
-\textbf{Failure taxonomy reveals API syntax as the bottleneck.} Qwen~3.5 achieves 36.2\% [32.1\%, 40.6\%] overall across 480 tasks. \pending{Cross-model comparison awaiting Gemini data.} BUILD\_FAIL accounts for 30.8\% of all tasks, making it the dominant failure mode. VERIFY\_FAIL accounts for 9.8\%, indicating that a meaningful minority of compilable translations contain genuine parallel logic errors. The primary bottleneck remains API-specific syntax---missing \texttt{\#pragma omp} directives, retained CUDA memory management calls, wrong type annotations---rather than an inability to reason about parallel computation.
+\textbf{Failure taxonomy reveals API syntax as the bottleneck.} Qwen~3.5 achieves 36.2\% [32.1\%, 40.6\%] overall across 480 tasks. \pending{Cross-model comparison awaiting GPT-4.1~mini data.} BUILD\_FAIL accounts for 30.8\% of all tasks, making it the dominant failure mode. VERIFY\_FAIL accounts for 9.8\%, indicating that a meaningful minority of compilable translations contain genuine parallel logic errors. The primary bottleneck remains API-specific syntax---missing \texttt{\#pragma omp} directives, retained CUDA memory management calls, wrong type annotations---rather than an inability to reason about parallel computation.
 
 \textbf{Augmentation robustness confirms structural rather than surface-dependent failures.} The Cochran-Armitage trend test yields a null result ($z = -0.17$, $p = 0.87$): pass rates are stable across augmentation levels L0--L4, with no evidence that surface-level code transformations affect translation capability. This provides evidence against the memorization hypothesis and confirms that model failures reflect structural API knowledge gaps rather than training-data pattern-matching.
 
@@ -504,17 +504,17 @@ This section describes the models, translation directions, augmentation protocol
 \subsection{Models}
 \label{sec:models}
 
-Two large language models are evaluated, selected to maximize architectural diversity across independent providers:
+Two large language models are evaluated, selected to maximize provider diversity across independent inference endpoints:
 
 \begin{itemize}
 \item \textbf{Qwen~3.5 397B-A17B} (Alibaba, accessed via Together AI): A Mixture-of-Experts (MoE) model with 397 billion total parameters and 17 billion active per forward pass. The MoE architecture tests whether massive parameter count with sparse activation---where only a fraction of parameters are activated per token---benefits HPC translation, a domain where relevant knowledge may be distributed across specialized expert subnetworks.
 
-\item \textbf{Gemini~2.5 Flash} (Google, accessed via Google AI): A dense-architecture model where all parameters are active for every token. Flash represents Google's latest generation of fast inference models, optimized for throughput while retaining strong code generation capabilities.
+\item \textbf{GPT-4.1~mini} (OpenAI, accessed via Azure OpenAI): A compact model from the GPT-4.1 family, accessed through Microsoft Azure's OpenAI endpoint. Architecture details (parameter count, MoE vs.\ dense) are not publicly disclosed by OpenAI as of April 2025; GPT-4.1~mini was selected for provider diversity and its position as a cost-optimized inference tier within OpenAI's latest model generation, enabling cross-provider comparison under identical evaluation conditions.
 \end{itemize}
 
 Both models are queried at temperature~0 (greedy decoding) for the primary campaign to ensure deterministic outputs and reproducibility across runs. Reasoning and chain-of-thought modes are explicitly disabled for all models. This is a deliberate design choice: the evaluation targets raw translation competence rather than the capacity of a multi-step reasoning scaffold to search for solutions.
 
-The two models were chosen to maximize architectural diversity (MoE vs.\ dense) across different providers, rather than brand recognition, avoiding potential conflicts of interest. The ParBench framework is model-agnostic: adding a model requires only an API key and a single command via the parameterized campaign script. Pilot data from three additional models are available as supplementary material. Table~\ref{tab:model-config} summarizes the model configurations.
+The two models were chosen to maximize provider diversity (Alibaba via Together AI vs.\ OpenAI via Azure), enabling cross-provider comparison under identical evaluation conditions and avoiding potential conflicts of interest. The ParBench framework is model-agnostic: adding a model requires only an API key and a single command via the parameterized campaign script. Pilot data from three additional models are available as supplementary material. Table~\ref{tab:model-config} summarizes the model configurations.
 
 \begin{table}[t]
 \centering
@@ -526,7 +526,7 @@ The two models were chosen to maximize architectural diversity (MoE vs.\ dense) 
 Model & Provider & Arch. & Parameters & Temp. \\
 \midrule
 Qwen 3.5 397B-A17B & Together AI & MoE & 397B / 17B active & 0 \\
-Gemini 2.5 Flash & Google AI & Dense & \pending{size} & 0 \\
+GPT-4.1 mini & Azure OpenAI & N/D & \pending{size} & 0 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -573,7 +573,7 @@ All Qwen~3.5 evaluations are conducted on a single workstation to eliminate cros
 
 CUDA compilation uses \texttt{nvcc} from the NVIDIA HPC SDK~24.3 (CUDA~12.3). C/C++ compilation uses GCC~12.4 with the \texttt{-fopenmp} flag for OpenMP targets. OpenCL programs link against the NVIDIA runtime from the HPC SDK. The evaluation harness and all scripting infrastructure run on Python~3.12.3. LLM API calls are issued from the evaluation machine; network latency does not affect correctness evaluation.
 
-Gemini~2.5 Flash evaluations are conducted by a collaborator on a separate machine with identical software configuration. \pending{GPU model, CPU model, and OS for the collaborator's evaluation machine.} Table~\ref{tab:hardware} lists the complete hardware and software configuration.
+GPT-4.1~mini evaluations are conducted by a collaborator on a separate machine with identical software configuration. \pending{GPU model, CPU model, and OS for the collaborator's evaluation machine.} Table~\ref{tab:hardware} lists the complete hardware and software configuration.
 
 \begin{table}[t]
 \centering
@@ -582,7 +582,7 @@ Gemini~2.5 Flash evaluations are conducted by a collaborator on a separate machi
 \small
 \begin{tabular}{@{}lll@{}}
 \toprule
-Component & Qwen (primary) & Gemini (collaborator) \\
+Component & Qwen (primary) & GPT-4.1 mini (collaborator) \\
 \midrule
 GPU & RTX 4070 (12 GB) & \pending{GPU} \\
 CPU & Ryzen 9 7900X & \pending{CPU} \\
@@ -601,7 +601,7 @@ Python & 3.12.3 & \pending{Python} \\
 \section{Results}
 \label{sec:results}
 
-This section presents the empirical output of the ParBench pipeline---the Result component (Figure~\ref{fig:architecture}, yellow, far-right)---across 906 total evaluated tasks: 480 in the primary campaign (Qwen~3.5 397B-A17B across six directions and five augmentation levels) and 426 in the pass@$k$ sweep. \pending{Gemini 2.5 Flash campaign results will expand the primary campaign to 960 tasks total.} All primary campaign evaluations use temperature=0, up to three self-repair retry attempts (four total attempts per task), and the build/run/verify pipeline described in Section~\ref{sec:harness}. A separate pass@$k$ sweep (Section~\ref{sec:pass-at-k}) evaluates sampling variance at temperature=0.7.
+This section presents the empirical output of the ParBench pipeline---the Result component (Figure~\ref{fig:architecture}, yellow, far-right)---across 906 total evaluated tasks: 480 in the primary campaign (Qwen~3.5 397B-A17B across six directions and five augmentation levels) and 426 in the pass@$k$ sweep. \pending{GPT-4.1~mini campaign results will expand the primary campaign to 960 tasks total.} All primary campaign evaluations use temperature=0, up to three self-repair retry attempts (four total attempts per task), and the build/run/verify pipeline described in Section~\ref{sec:harness}. A separate pass@$k$ sweep (Section~\ref{sec:pass-at-k}) evaluates sampling variance at temperature=0.7.
 
 \subsection{Overall Pass Rates}
 \label{sec:overall-pass}
@@ -610,7 +610,7 @@ Table~\ref{tab:overall-pass} summarizes aggregate pass rates for the two evaluat
 
 \begin{table*}[t]
 \centering
-\caption{Overall pass rates across all tasks (2 models, 5 suites, 6 directions, L0--L4). KNOWN\_FAIL source specs (8 total: 6 Rodinia + 2 HeCBench) are excluded from evaluation.}
+\caption{Overall pass rates across all tasks (Qwen~3.5; GPT-4.1~mini pending; 5 suites, 6 directions, L0--L4). KNOWN\_FAIL source specs (8 total: 6 Rodinia + 2 HeCBench) are excluded from evaluation.}
 \label{tab:overall-pass}
 \small
 \begin{tabular}{@{}lrrrrrrrl@{}}
@@ -618,17 +618,17 @@ Table~\ref{tab:overall-pass} summarizes aggregate pass rates for the two evaluat
 Model & PASS & BUILD\_FAIL & RUN\_FAIL & VERIFY\_FAIL & EXTR\_FAIL & Total & Rate & 95\% Wilson CI \\
 \midrule
 Qwen 3.5 397B-A17B & 174 & 148 & 110 & 47 & 1 & 480 & 36.2\% & [32.1\%, 40.6\%] \\
-Gemini 2.5 Flash & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+GPT-4.1 mini & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \textbf{Aggregate} & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-Qwen~3.5 397B-A17B achieves an overall pass rate of 36.2\% [32.1\%, 40.6\%] across 480 translation tasks spanning six directions and five augmentation levels. The failure distribution reveals that BUILD\_FAIL is the dominant failure mode at 30.8\% (148/480), followed by RUN\_FAIL at 22.9\% (110/480), VERIFY\_FAIL at 9.8\% (47/480), and EXTRACTION\_FAIL at 0.2\% (1/480). The preponderance of BUILD\_FAIL indicates that API-specific syntax---rather than parallel reasoning---is the primary bottleneck: the model frequently retains CUDA memory management calls in otherwise-OpenMP code or omits required OpenCL address-space qualifiers. \pending{Cross-model comparison and chi-squared test awaiting Gemini campaign completion.}
+Qwen~3.5 397B-A17B achieves an overall pass rate of 36.2\% [32.1\%, 40.6\%] across 480 translation tasks spanning six directions and five augmentation levels. The failure distribution reveals that BUILD\_FAIL is the dominant failure mode at 30.8\% (148/480), followed by RUN\_FAIL at 22.9\% (110/480), VERIFY\_FAIL at 9.8\% (47/480), and EXTRACTION\_FAIL at 0.2\% (1/480). The preponderance of BUILD\_FAIL indicates that API-specific syntax---rather than parallel reasoning---is the primary bottleneck: the model frequently retains CUDA memory management calls in otherwise-OpenMP code or omits required OpenCL address-space qualifiers. \pending{Cross-model comparison and chi-squared test awaiting GPT-4.1~mini campaign completion.}
 
 These results contrast sharply with repository-level evaluation. ParEval-Repo~\cite{ParEvalRepo2025} reports 0\% pass@1 for all models on applications larger than 133~SLoC, including XSBench. ParBench's kernel-centric approach---isolating the translation task from build-system generation---achieves 36.2\% overall and 65.0\% [54.1\%, 74.6\%] on the primary CUDA-to-OpenMP direction for Qwen~3.5, on the same class of HPC kernels. The gap quantifies the degree to which build-system generation, rather than parallel logic translation, is the binding constraint in repository-level approaches.
 
-\pending{Chi-squared test of independence between model identity and pass/fail outcome awaiting Gemini campaign completion.}
+\pending{Chi-squared test of independence between model identity and pass/fail outcome awaiting GPT-4.1~mini campaign completion.}
 
 \subsection{Failure Taxonomy}
 \label{sec:failure-taxonomy}
@@ -654,7 +654,7 @@ Of the 306 total failures in the Qwen~3.5 campaign, the distribution is: BUILD\_
 
 \begin{table}[t]
 \centering
-\caption{Self-repair failure mode transitions (all tasks, both models). Rows: initial failure mode. Columns: final outcome after up to 3 retries.}
+\caption{Self-repair failure mode transitions (all tasks, Qwen~3.5; GPT-4.1~mini pending). Rows: initial failure mode. Columns: final outcome after up to 3 retries.}
 \label{tab:repair-transitions}
 \small
 \begin{tabular}{@{}lrrrrl@{}}
@@ -674,7 +674,7 @@ BUILD\_FAIL is the most recoverable failure mode by volume (55 repaired tasks), 
 \subsection{Per-Kernel Analysis}
 \label{sec:per-kernel}
 
-Table~\ref{tab:per-kernel} presents per-kernel results for Qwen~3.5 aggregated across all six translation directions and five augmentation levels (480 primary campaign tasks, 18 Rodinia kernels). \pending{Expand to multi-model comparison when Gemini data is available.}
+Table~\ref{tab:per-kernel} presents per-kernel results for Qwen~3.5 aggregated across all six translation directions and five augmentation levels (480 primary campaign tasks, 18 Rodinia kernels). \pending{Expand to multi-model comparison when GPT-4.1~mini data is available.}
 
 \begin{table*}[t]
 \centering
@@ -731,12 +731,12 @@ ParBench's evaluation pipeline permits up to three retry attempts with failure-s
 
 \begin{table}[t]
 \centering
-\caption{Self-repair effectiveness (all directions, all levels, 2 models).}
+\caption{Self-repair effectiveness (all directions, all levels, Qwen~3.5; GPT-4.1~mini pending).}
 \label{tab:self-repair}
 \small
 \begin{tabular}{@{}lrrl@{}}
 \toprule
-Metric & Qwen 3.5 & Gemini Flash & Combined \\
+Metric & Qwen 3.5 & GPT-4.1 mini & Combined \\
 \midrule
 Total tasks & 480 & \tbd & \tbd \\
 First-attempt PASS & 84 (17.5\%) & \tbd & \tbd \\
@@ -767,7 +767,7 @@ Table~\ref{tab:augmentation-rates} presents per-model pass rates across augmenta
 \small
 \begin{tabular}{@{}cccc@{}}
 \toprule
-Level & \makecell{Qwen 3.5\\(all dirs, $n$=96)} & \makecell{Qwen 3.5\\(C$\to$OMP, $n$=16)} & \makecell{Gemini\\Flash} \\
+Level & \makecell{Qwen 3.5\\(all dirs, $n$=96)} & \makecell{Qwen 3.5\\(C$\to$OMP, $n$=16)} & \makecell{GPT-4.1\\mini} \\
 \midrule
 L0 & 39.6\% [30.4\%, 49.6\%] & 68.8\% [44.4\%, 85.8\%] & \tbd \\
 L1 & 34.4\% [25.6\%, 44.3\%] & 62.5\% [38.6\%, 81.5\%] & \tbd \\
@@ -787,7 +787,7 @@ L4 & 31.3\% [22.9\%, 41.1\%] & 68.8\% [44.4\%, 85.8\%] & \tbd \\
 
 The Cochran-Armitage trend test on the balanced CUDA-to-OpenMP subset ($n=16$ kernels per level) yields $z = -0.17$, $p = 0.87$, providing no evidence for a monotonic trend in pass rate across augmentation levels (Table~\ref{tab:stats-summary}). Pass counts are remarkably stable: 11, 10, 11, 9, and 11 at L0 through L4 respectively. This is a null result: surface-level code transformations do not systematically degrade Qwen~3.5's translation performance.
 
-The null result has a specific interpretation: it provides evidence \emph{against} the hypothesis that the model relies on memorized surface patterns from training data. If the model were pattern-matching against memorized variable names or code formatting from Rodinia's widely-reproduced source code, augmentation at L3--L4 would degrade performance. The observed stability suggests that the model's translation capability---and its failures---are driven by structural understanding (or lack thereof) of parallel API semantics, not by surface-level pattern recognition. \pending{Cross-model augmentation comparison awaiting Gemini campaign completion.}
+The null result has a specific interpretation: it provides evidence \emph{against} the hypothesis that the model relies on memorized surface patterns from training data. If the model were pattern-matching against memorized variable names or code formatting from Rodinia's widely-reproduced source code, augmentation at L3--L4 would degrade performance. The observed stability suggests that the model's translation capability---and its failures---are driven by structural understanding (or lack thereof) of parallel API semantics, not by surface-level pattern recognition. \pending{Cross-model augmentation comparison awaiting GPT-4.1~mini campaign completion.}
 
 \subsection{Cross-Direction Analysis}
 \label{sec:direction-analysis}
@@ -796,12 +796,12 @@ Table~\ref{tab:direction-rates} presents pass rates broken down by translation d
 
 \begin{table*}[t]
 \centering
-\caption{Pass rates by translation direction (L0, all suites, 2 models). Directions with fewer than 10 kernel-model pairs are marked as exploratory.}
+\caption{Pass rates by translation direction (L0, all suites, Qwen~3.5; GPT-4.1~mini pending). Directions with fewer than 10 kernel-model pairs are marked as exploratory.}
 \label{tab:direction-rates}
 \small
 \begin{tabular}{@{}lccccc@{}}
 \toprule
-Direction & Qwen 3.5 (L0) & Qwen 3.5 (all levels) & Gemini Flash & $N$ (L0) & Note \\
+Direction & Qwen 3.5 (L0) & Qwen 3.5 (all levels) & GPT-4.1 mini & $N$ (L0) & Note \\
 \midrule
 cuda-to-omp & 68.8\% (11/16) & 65.0\% (52/80) [54.1\%, 74.6\%] & \tbd & 16 & Primary \\
 omp-to-cuda & 56.2\% (9/16) & 50.0\% (40/80) [39.3\%, 60.7\%] & \tbd & 16 & \\
@@ -821,16 +821,16 @@ McNemar's test for paired direction comparison (using kernel pairs evaluated in 
 
 \textbf{OpenCL-target translation: kernel-only failure modes.} Translations targeting OpenCL exercise a qualitatively different failure mode from CUDA and OpenMP targets. Because OpenCL translations are kernel-only (Section~\ref{sec:eval-pipeline})---the LLM translates only \texttt{.cl} kernel files while the host program remains unchanged---build failures are replaced by \emph{kernel compilation failures} at runtime, when the host invokes \texttt{clBuildProgram()} on the LLM-generated kernel source. Two recurring error patterns emerge: missing \texttt{\_\_global} address space qualifiers on kernel pointer arguments, and API name hallucination (e.g., \texttt{get\_block\_id()} instead of the correct \texttt{get\_group\_id()}).
 
-\textbf{OpenCL direction asymmetry.} CUDA-to-OpenCL achieves 22.4\% [14.8\%, 32.3\%] across all levels, while OpenCL-to-CUDA achieves 7.1\% [3.3\%, 14.6\%], with BUILD\_FAIL accounting for 66/85 tasks (77.6\%) in the reverse direction. This 15.3 percentage-point asymmetry quantifies the difficulty premium of full-program translation over kernel-only translation. \pending{Per-suite cross-model direction comparison awaiting Gemini data.}
+\textbf{OpenCL direction asymmetry.} CUDA-to-OpenCL achieves 22.4\% [14.8\%, 32.3\%] across all levels, while OpenCL-to-CUDA achieves 7.1\% [3.3\%, 14.6\%], with BUILD\_FAIL accounting for 66/85 tasks (77.6\%) in the reverse direction. This 15.3 percentage-point asymmetry quantifies the difficulty premium of full-program translation over kernel-only translation. \pending{Per-suite cross-model direction comparison awaiting GPT-4.1~mini data.}
 
 \subsection{pass@\texorpdfstring{$k$}{k} Analysis}
 \label{sec:pass-at-k}
 
-To characterize sampling variance independent of self-repair, a separate pass@$k$ sweep evaluates both models at L0 with temperature=0.7 and 3 independent samples per task (max\_retries=1 per sample, i.e., zero-shot per sample). The pass@$k$ estimator follows Chen et al.~\cite{HumanEval2021}: $\text{pass@}k = 1 - \binom{n-c}{k} / \binom{n}{k}$, where $n$ is the number of samples and $c$ is the number that pass.
+To characterize sampling variance independent of self-repair, a separate pass@$k$ sweep evaluates Qwen~3.5 at L0 with temperature=0.7 and 3 independent samples per task (max\_retries=1 per sample, i.e., zero-shot per sample). The pass@$k$ estimator follows Chen et al.~\cite{HumanEval2021}: $\text{pass@}k = 1 - \binom{n-c}{k} / \binom{n}{k}$, where $n$ is the number of samples and $c$ is the number that pass.
 
 \begin{table*}[t]
 \centering
-\caption{pass@$k$ results (L0, temperature=0.7, 3 samples, 2 models).}
+\caption{pass@$k$ results (L0, temperature=0.7, 3 samples, Qwen~3.5; GPT-4.1~mini pending).}
 \label{tab:pass-at-k}
 \small
 \begin{tabular}{@{}lrrrccc@{}}
@@ -838,7 +838,7 @@ To characterize sampling variance independent of self-repair, a separate pass@$k
 Model & pass@1 (greedy, T=0) & pass@1 (T=0.7) & pass@3 (T=0.7) & Hard Fail & Noisy Fail & Always Pass \\
 \midrule
 Qwen 3.5 397B-A17B & 36.2\% (primary) & 19.7\% (macro) & 27.5\% (macro) & 103/142 (72.5\%) & 0/142 (0.0\%) & 17/142 (12.0\%) \\
-Gemini 2.5 Flash & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+GPT-4.1 mini & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -857,7 +857,7 @@ Gemini 2.5 Flash & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \label{fig:xsbench}
 \end{figure}
 
-The pass@$k$ sweep (426 tasks, L0, temperature=0.7, 3 samples, zero-shot per sample) reveals a stark bimodal distribution for Qwen~3.5. Of 142 direction-kernel pairs, 103 (72.5\%) are hard failures where no sample succeeds, 22 (15.5\%) are partial successes with pass@1 between 0.33 and 0.67, 17 (12.0\%) succeed on all samples, and zero are noisy failures (pass@1 = 0 but pass@3 $> 0$). The absence of noisy failures indicates that Qwen~3.5's translation capability is deterministic at the kernel-direction level: if the model can translate a kernel in a given direction, it does so reliably across samples; if it cannot, no amount of sampling rescues the task. \pending{Cross-model pass@k comparison awaiting Gemini data.}
+The pass@$k$ sweep (426 tasks, L0, temperature=0.7, 3 samples, zero-shot per sample) reveals a stark bimodal distribution for Qwen~3.5. Of 142 direction-kernel pairs, 103 (72.5\%) are hard failures where no sample succeeds, 22 (15.5\%) are partial successes with pass@1 between 0.33 and 0.67, 17 (12.0\%) succeed on all samples, and zero are noisy failures (pass@1 = 0 but pass@3 $> 0$). The absence of noisy failures indicates that Qwen~3.5's translation capability is deterministic at the kernel-direction level: if the model can translate a kernel in a given direction, it does so reliably across samples; if it cannot, no amount of sampling rescues the task. \pending{Cross-model pass@k comparison awaiting GPT-4.1~mini data.}
 
 \subsection{Statistical Summary}
 \label{sec:stats-summary}
@@ -875,7 +875,7 @@ Test & Statistic & $p$-value & Effect Size & Interpretation \\
 \midrule
 Model comparison (chi-squared) & \tbd & \tbd & Cramer's V = \tbd & \tbd \\
 Qwen augmentation (Cochran-Armitage) & $z = -0.17$ & $p = 0.87$ & -- & No monotonic trend; null supports robustness \\
-Gemini augmentation (Cochran-Armitage) & \tbd & \tbd & -- & \tbd \\
+GPT-4.1~mini augmentation (Cochran-Armitage) & \tbd & \tbd & -- & \tbd \\
 Direction: cuda-omp (McNemar) & $n=16$, exact & $p = 0.625$ & Cohen's $h = 0.26$ & No significant asymmetry ($\alpha=0.0167$) \\
 Direction: cuda-opencl (McNemar) & $n=17$, exact & $p = 0.688$ & Cohen's $h = 0.31$ & No significant asymmetry ($\alpha=0.0167$) \\
 Direction: omp-opencl (McNemar) & $n=15$, exact & $p = 0.727$ & Cohen's $h = 0.27$ & No significant asymmetry ($\alpha=0.0167$) \\
@@ -908,7 +908,7 @@ VERIFY\_FAIL accounts for 15.4\% of all failures (47/306 failed tasks), providin
 \subsection{Model Capability Analysis}
 \label{sec:model-capability}
 
-Qwen~3.5 397B-A17B (MoE, 397B total / 17B active) achieves 36.2\% [32.1\%, 40.6\%] across 480 tasks. As a Mixture-of-Experts model, Qwen~3.5 activates only 17B of its 397B parameters per forward pass, yet demonstrates substantial parallel code translation capability---65.0\% on the primary CUDA-to-OpenMP direction. \pending{Cross-model comparison of MoE vs.\ dense architecture implications awaiting Gemini campaign completion.}
+Qwen~3.5 397B-A17B (MoE, 397B total / 17B active) achieves 36.2\% [32.1\%, 40.6\%] across 480 tasks. As a Mixture-of-Experts model, Qwen~3.5 activates only 17B of its 397B parameters per forward pass, yet demonstrates substantial parallel code translation capability---65.0\% on the primary CUDA-to-OpenMP direction. \pending{Cross-model comparison across providers awaiting GPT-4.1~mini campaign completion.}
 
 The comparison with LASSI~\cite{LASSI2024} frames these results on a capability spectrum:
 
@@ -925,14 +925,14 @@ CUDA-to-OpenMP achieves the highest pass rate (65.0\%) among all directions, whi
 
 \textbf{OpenCL as a structurally distinct translation target.} Translations targeting OpenCL exhibit qualitatively different failure profiles from those targeting CUDA or OpenMP, reflecting the OpenCL programming model's unique architectural characteristics. OpenCL translations are \emph{kernel-only}: only \texttt{.cl} kernel files are translated, while host code remains unchanged. Two systematic error patterns illuminate the nature of the challenge: missing \texttt{\_\_global} address space qualifiers and API name hallucination. These patterns suggest that LLM knowledge of OpenCL's API surface is shallower than for CUDA or OpenMP, consistent with the relative scarcity of OpenCL code in public training corpora.
 
-Beyond API surface depth, OpenCL-target translations expose a \emph{translatability ceiling}: the \texttt{dwt2d} kernel's CUDA source uses C++ language features (templates, operator overloads) that have no equivalent in OpenCL~C. Future evaluation frameworks should distinguish \emph{model failures} (where a more capable LLM might succeed) from \emph{task impossibilities} (where the source--target language gap precludes any correct translation without host-code modification). \pending{Cross-model consistency of direction asymmetry awaiting Gemini data.}
+Beyond API surface depth, OpenCL-target translations expose a \emph{translatability ceiling}: the \texttt{dwt2d} kernel's CUDA source uses C++ language features (templates, operator overloads) that have no equivalent in OpenCL~C. Future evaluation frameworks should distinguish \emph{model failures} (where a more capable LLM might succeed) from \emph{task impossibilities} (where the source--target language gap precludes any correct translation without host-code modification). \pending{Cross-model consistency of direction asymmetry awaiting GPT-4.1~mini data.}
 
 \subsection{Augmentation Robustness Interpretation}
 \label{sec:augmentation-interpretation}
 
 The Cochran-Armitage null result ($z = -0.17$, $p = 0.87$) is the central augmentation finding: there is no evidence that surface-level code transformations affect Qwen~3.5's translation capability. Pass rates across L0--L4 on the balanced CUDA-to-OpenMP subset are remarkably stable (68.8\%, 62.5\%, 68.8\%, 56.3\%, 68.8\%), with overlapping confidence intervals at every level (Table~\ref{tab:augmentation-rates}).
 
-This null result has three implications. First, it provides evidence \emph{against} the memorization hypothesis. Second, the null result validates ParBench's augmentation methodology as a useful diagnostic: augmentation confirms that the benchmark measures genuine translation capability rather than training-data recall. Third, the connection to pass@$k$ reinforces this interpretation: the bimodal distribution of pass@$k$ results (72.5\% hard failures, 0\% noisy failures) indicates that the model either can or cannot translate a given kernel-direction pair, regardless of surface syntax. \pending{MoE vs.\ dense augmentation sensitivity comparison and Simpson's Paradox check awaiting Gemini data.}
+This null result has three implications. First, it provides evidence \emph{against} the memorization hypothesis. Second, the null result validates ParBench's augmentation methodology as a useful diagnostic: augmentation confirms that the benchmark measures genuine translation capability rather than training-data recall. Third, the connection to pass@$k$ reinforces this interpretation: the bimodal distribution of pass@$k$ results (72.5\% hard failures, 0\% noisy failures) indicates that the model either can or cannot translate a given kernel-direction pair, regardless of surface syntax. \pending{Cross-provider augmentation sensitivity comparison and Simpson's Paradox check awaiting GPT-4.1~mini data.}
 
 \subsection{Threats to Validity}
 \label{sec:threats}
@@ -947,7 +947,7 @@ Several threats to the validity of these findings must be acknowledged.
 
 \textbf{Temperature and sampling methodology.} The primary campaign uses temperature=0 (greedy decoding) for deterministic reproducibility. The interaction between sampling variance and augmentation level is not characterized.
 
-\textbf{Two-model evaluation.} Two models are evaluated, representing distinct architecture families (MoE and dense). Results may not generalize to models from other providers.
+\textbf{Two-model evaluation.} Two models are evaluated from distinct providers (Alibaba via Together AI, OpenAI via Azure). Results may not generalize to models from other providers or architecture families.
 
 \textbf{Reference implementation as ground truth.} Floating-point non-associativity between GPU and CPU computation could in principle cause false VERIFY\_FAIL results. Manual inspection of a sample of VERIFY\_FAIL cases confirms genuine translation errors.
 
@@ -960,7 +960,7 @@ Several threats to the validity of these findings must be acknowledged.
 
 \textbf{BUILD\_FAIL dominance suggests targeted solutions.} With 30.8\% of all tasks and 48.4\% of failures occurring at the compilation stage, the highest-ROI intervention is improving LLM coverage of API-specific syntax.
 
-\textbf{Augmentation should be standard practice for LLM-on-code evaluation.} The Cochran-Armitage null result demonstrates that augmentation serves as a valuable validation tool even when it does not discriminate between augmentation levels. \pending{Whether augmentation discriminates between models of different capability levels awaiting Gemini data.}
+\textbf{Augmentation should be standard practice for LLM-on-code evaluation.} The Cochran-Armitage null result demonstrates that augmentation serves as a valuable validation tool even when it does not discriminate between augmentation levels. \pending{Whether augmentation discriminates between models of different capability levels awaiting GPT-4.1~mini data.}
 
 \textbf{Framework extensibility enables community adoption.} ParBench's spec schema is the extension point: adding a new kernel requires one JSON file with no modification to the harness or evaluation pipeline.
 
@@ -980,13 +980,13 @@ First, ParBench provides the first systematic framework for evaluating kernel-le
 
 Second, an AST-driven augmentation engine applies six semantics-preserving transforms at five augmentation levels (L0--L4). The engine is level-invariant: 68 of 88 non-KNOWN\_FAIL specs across all five suites achieve PASS at every level L1--L4 with zero correctness regressions.
 
-Third, empirical evaluation of Qwen~3.5 397B-A17B across 480 primary campaign tasks and 426 pass@$k$ tasks reveals that kernel-level parallel code translation is tractable for current LLMs, with an overall pass rate of 36.2\% [32.1\%, 40.6\%] and 65.0\% [54.1\%, 74.6\%] on the primary CUDA-to-OpenMP direction. \pending{Gemini 2.5 Flash comparative results.} A failure taxonomy reveals that BUILD\_FAIL accounts for 48.4\% of all failures while VERIFY\_FAIL accounts for 15.4\%---establishing that API syntax is the primary bottleneck. Augmentation robustness evaluation at L0--L4 yields a null result (Cochran-Armitage $z = -0.17$, $p = 0.87$), providing evidence that model failures are structural rather than surface-dependent.
+Third, empirical evaluation of Qwen~3.5 397B-A17B across 480 primary campaign tasks and 426 pass@$k$ tasks reveals that kernel-level parallel code translation is tractable for current LLMs, with an overall pass rate of 36.2\% [32.1\%, 40.6\%] and 65.0\% [54.1\%, 74.6\%] on the primary CUDA-to-OpenMP direction. \pending{GPT-4.1~mini comparative results.} A failure taxonomy reveals that BUILD\_FAIL accounts for 48.4\% of all failures while VERIFY\_FAIL accounts for 15.4\%---establishing that API syntax is the primary bottleneck. Augmentation robustness evaluation at L0--L4 yields a null result (Cochran-Armitage $z = -0.17$, $p = 0.87$), providing evidence that model failures are structural rather than surface-dependent.
 
 \subsection{Future Work}
 
 Five directions for future work are prioritized.
 
-\textbf{Additional models.} ParBench is model-agnostic: adding a new model requires only an API key and a single command to the parameterized campaign script. Evaluation of frontier models (GPT-4.1, Claude Opus), open-weight models at different scales, and code-specialized models would characterize how model architecture, scale, and training data composition affect parallel code translation capability.
+\textbf{Additional models.} ParBench is model-agnostic: adding a new model requires only an API key and a single command to the parameterized campaign script. Evaluation of frontier models (Claude Opus, Gemma), open-weight models at different scales, and code-specialized models would characterize how model architecture, scale, and training data composition affect parallel code translation capability.
 
 \textbf{Performance and efficiency analysis.} The current study is correctness-only. Reliable performance comparison requires profiler-based kernel timing (Nsight Compute for CUDA, \texttt{omp\_get\_wtime()} for OpenMP), which would characterize whether LLM-translated code preserves not only correctness but also the performance characteristics of the original implementation.
 

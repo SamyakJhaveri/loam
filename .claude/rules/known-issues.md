@@ -16,12 +16,11 @@ Do NOT try to fix any of these errors.
 
 **Rodinia:** 60 specs total, 54 TRUE PASS, 0 FALSE_PASS, 6 KNOWN_FAIL.
 **XSBench:** 4 specs total, 4 PASS, 0 KNOWN_FAIL.
-**RSBench:** 4 specs (cuda, omp, opencl, omp_target), untested — newly added 2026-03-28.
-**mixbench:** 3 specs (cuda, omp, opencl), untested — newly added 2026-03-28.
+**RSBench:** 4 specs (cuda, omp, opencl, omp_target), all 4 PASS — verified 2026-04-03.
+**mixbench:** 3 specs (cuda, omp, opencl), all 3 PASS — verified 2026-04-03.
 **HeCBench (curated):** 10 kernels, 25 specs (cuda + omp/omp_target), 23 PASS, 2 KNOWN_FAIL.
-**All 58 Rodinia+XSBench non-KNOWN_FAIL specs verified PASS with stdout_pattern+exit_code conjunction.**
-**Use 54 Rodinia TRUE PASS + 3 standard XSBench specs (cuda, omp, opencl) for eval batches.**
-**RSBench/mixbench/HeCBench curated specs need baseline verification before eval batches.**
+**All 65 Rodinia+XSBench+RSBench+mixbench non-KNOWN_FAIL specs verified PASS.**
+**Use 54 Rodinia TRUE PASS + 3 XSBench + 4 RSBench + 3 mixbench specs for eval batches.**
 
 ## KNOWN_FAIL Specs (8 — exclude from eval batches)
 
@@ -204,8 +203,10 @@ current 3-model data.
 involves `__syncthreads()` and shared memory accumulation idioms that may appear heavily
 in Gemini's training data relative to its overall OpenMP coverage.
 
-**Paper treatment:** Backprop is in its own tier "Claude+Gemini only" in S6.3. The anomaly
-is discussed as evidence that per-kernel difficulty is not fully predicted by aggregate pass rate.
+**Paper treatment:** The anomaly is discussed as evidence that per-kernel difficulty is not
+fully predicted by aggregate pass rate. *Note (2026-04-03):* Paper model lineup changed from
+Qwen+Gemini to Qwen+GPT-4.1 mini. The "Claude+Gemini only" tier name is historical; per-kernel
+tiers will be re-derived when GPT-4.1 mini data arrives.
 
 **Rule:** When writing per-kernel tier descriptions from tabular data, verify EVERY cell in
 the table against the prose claim. Do not assume rank-ordering is monotonic per kernel.
