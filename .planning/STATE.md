@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-04-03T22:26:17.237Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-04-03T22:39:15.634Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 5
-  completed_plans: 2
+  total_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -21,12 +21,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-03)
 
 **Core value:** Every data claim in the paper must be verifiable against actual result files on disk, and every methodology description must be precise enough to withstand SC-level peer review.
-**Current focus:** Phase 01 — data-verification-ground-truth
+**Current focus:** Phase 1: Data Verification & Ground Truth
 
 ## Current Position
 
-Phase: 01 (data-verification-ground-truth) — EXECUTING
-Plan: 3 of 5
+Phase: 1 of 5 (Data Verification & Ground Truth)
+Plan: 1 of 3 in current phase
 Status: Ready to execute
 Last activity: 2026-04-03
 
@@ -52,8 +52,7 @@ Progress: [..........] 0%
 - Trend: -
 
 *Updated after each plan completion*
-| Phase 01 P04 | 3min | 1 tasks | 1 files |
-| Phase 01 P01 | 6min | 1 tasks | 1 files |
+| Phase 01 P02 | 10min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -64,9 +63,8 @@ Recent decisions affecting current work:
 
 - Roadmap: Phases 2, 3, 4 can run in parallel after Phase 1 (data verification gates all downstream work)
 - Roadmap: CHAR-07 (LaTeX table assembly) deferred to Phase 5 because it consumes data from Phase 2
-- [Phase 01]: Fixed OpenCL/OMP gap 17.4->17.3 pp (exact rounding correction)
-- [Phase 01]: Bonferroni alpha=0.0167 (3 tests) is correct for paper scope despite statistical_analysis.json using 0.0125 (4 tests)
-- [Phase 01]: 36.2% uses truncation convention (174/480=36.25%), consistent throughout paper, within CI
+- [Phase 01]: L0 pair count fixed to 96 (from stale 142) based on paper_data.json: 480/5
+- [Phase 01]: OMP-target spec count fixed from 22 to 12 (verified: ls specs/*-omp_target.json)
 
 ### Pending Todos
 
@@ -81,6 +79,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T22:26:17.235Z
-Stopped at: Completed 01-01-PLAN.md
+Last session: 2026-04-03T22:39:15.632Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
