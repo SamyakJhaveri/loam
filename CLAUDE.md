@@ -74,61 +74,37 @@ A focused sprint to complete and strengthen the SC26 ParBench paper (`docs/paper
 - **Result immutability**: Never modify existing result JSONs
 - **Page limit**: ~10 pages IEEE double-column format
 - **Framing**: Benchmark paper, not model evaluation paper
-- **HeCBench source**: NOT cloned locally (gitignored) -- feature grep limited to Rodinia + XSBench
+- **HeCBench source**: Cloned locally (gitignored, 1874 dirs) — not a git submodule, so no version pinning
 <!-- GSD:project-end -->
 
 <!-- GSD:stack-start source:codebase/STACK.md -->
 ## Technology Stack
 
 ## Languages
-- Python 3.12 — All pipeline code: harness, evaluation, augmentation, analysis, scripts
-- C/C++ (C++14/17) — Benchmark kernel sources (CUDA, OpenMP, OpenCL implementations)
-- CUDA C++ — GPU kernel sources in Rodinia, HeCBench, XSBench, RSBench, mixbench suites
-- OpenCL C — Kernel files (`.cl`) used in OpenCL variants
-- Bash — Batch runner scripts in `scripts/batch/`, PBS job script `run_eval_campaign.pbs`
-- JavaScript — Visualization data blobs in `visualizations/eval_results_data.js`, `visualizations/results_data.js`
-- HTML/CSS — Dashboard and result visualization pages in `visualizations/`
-- JSON/JSONL — Spec files (`specs/*.json`), manifest (`manifest.jsonl`), result files (`results/evaluation/**/*.json`)
+- Python 3.12 — All pipeline code (harness, eval, augmentation, analysis, scripts)
+- C/C++14/17, CUDA C++, OpenCL C — Benchmark kernel sources across all suites
+- Bash — Batch runners (`scripts/batch/`), PBS job script
+- JS/HTML/CSS — Visualization dashboards (`visualizations/`)
 ## Runtime
-- Python 3.12.3 (Ubuntu 24.04 LTS)
-- Virtual environment: `env_parbench/` (created with `python3 -m venv`)
-- Activation: `source env_parbench/bin/activate`
-- pip (via venv)
-- Lockfile: `requirements-lock.txt` (present, pinned to Ubuntu 24.04 / Python 3.12.3, dated 2026-03-27)
+- Lockfile: `requirements-lock.txt` (pinned to Ubuntu 24.04 / Python 3.12.3, 2026-03-27)
 - Loose deps: `requirements.txt`
 ## Frameworks
 - pydantic 2.12.5 — Spec data validation and model definitions
 - jsonschema 4.26.0 — JSON Schema validation (`schema/spec_schema.json`, `schema/manifest_schema.json`)
-- libclang 18.1.1 — AST parsing for C/CUDA/OpenCL augmentation transforms in `c_augmentation/`
-- pytest 9.0.2 — Unit tests for augmentation transforms (`c_augmentation/test_transforms.py`) and analysis scripts
-- ruff 0.11.13 — Python linting and formatting
-- setuptools 68+ — Package build backend (`pyproject.toml`)
+- libclang 18.1.1 — AST parsing for C/CUDA/OpenCL augmentation transforms in `c_augmentation/`; without it, `c_augmentation/` is non-functional
+- pytest 9.0.2 — 15 augmentation unit tests must all pass before commit
+- ruff 0.11.13 — Python linting/formatting; PostToolUse hook enforces on all `.py` edits
 - Docker — CPU-only validation image (`Dockerfile`) using `python:3.12-slim`
 - anthropic 0.85.0 — Anthropic API client (Claude models)
-- openai 2.28.0 — OpenAI API client (also used as OpenAI-compatible adapter for Groq, Google Gemini, Together AI, and Azure OpenAI)
+- openai 2.28.0 — OpenAI API client (also OpenAI-compatible adapter for Groq, Gemini, Together AI, Azure)
 - matplotlib 3.10.8 — Figure generation for paper (`scripts/generate_paper_figures.py`)
 - numpy 2.4.3 — Numerical analysis support
-- tqdm 4.67.3 — Progress bars in batch scripts
-- PyYAML 6.0.3 — YAML parsing (indirect dependency)
-- httpx 0.28.1 — Async HTTP client (anthropic SDK dependency)
-## Key Dependencies
-- `anthropic==0.85.0` — Primary LLM API calls to Claude models; used in `scripts/evaluation/llm_evaluate.py`
-- `openai==2.28.0` — OpenAI, Azure, Groq, Gemini, Together AI calls (all via OpenAI-compatible interface)
-- `libclang==18.1.1` — Required for all AST-based augmentation transforms; without it, `c_augmentation/` is non-functional
-- `pydantic==2.12.5` — Spec and result data validation throughout harness and evaluation pipeline
-- `jsonschema==4.26.0` — Schema validation via `scripts/validate_schema.py --all`
-- `pytest==9.0.2` — 15 augmentation unit tests must all pass before commit
-- `ruff==0.11.13` — PostToolUse hook enforces Python style on all `.py` edits
 ## Configuration
-- `config/paths.json` — Project root, downloads root, HeCBench root paths (runtime-resolved)
-- `config/paths.json.template` — Template for path config on new machines
 - `config/compiler_inventory.txt` — Captured compiler versions (nvcc 12.3, nvc++ 24.3, gcc 12.4.0)
 - API keys configured as environment variables (not in files — see INTEGRATIONS.md)
 - `pyproject.toml` — PEP 517 build config, declares `harness` and `c_augmentation` as installable packages
 - `Dockerfile` — CPU-only validation container; uses `requirements-lock.txt`
 ## Compiler Toolchain (HPC-specific)
-- nvcc 12.3 — at `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc`
-- CUDA include/lib at `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/{include,lib64}`
 - Target GPU: NVIDIA GeForce RTX 4070, compute capability sm_89
 - g++ 12.4.0 with `-fopenmp` flag
 - gcc 12.4.0 (Ubuntu 12.4.0-2ubuntu1~24.04)
@@ -139,10 +115,6 @@ A focused sprint to complete and strengthen the SC26 ParBench paper (`docs/paper
 - Intel oneAPI DPC++ 2025.3.2 at `/opt/intel/oneapi/compiler/2025.3/bin/compiler`
 - CPU-only (no GPU SYCL backend on this machine)
 ## Platform Requirements
-- Linux x86_64 (Ubuntu 22.04 or 24.04)
-- Python 3.12+
-- NVIDIA GPU (sm_60 minimum, sm_89 tested on RTX 4070)
-- NVIDIA HPC SDK 24.3
 - ALCF Polaris cluster (`run_eval_campaign.pbs`) — PBS job scheduler, `/lus/eagle` filesystem
 - HTTP proxy required at ALCF: `proxy.alcf.anl.gov:3128`
 <!-- GSD:stack-end -->
@@ -159,51 +131,31 @@ A focused sprint to complete and strengthen the SC26 ParBench paper (`docs/paper
 - Private/internal functions: leading underscore `_snake_case` (e.g., `_check_exit_code`, `_build_tasks`, `_project_root`)
 - CLI entry points named `cmd_{subcommand}` (e.g., `cmd_build`, `cmd_verify`, `cmd_pairs`)
 - Test functions: `test_{description}` — explicit about what is being tested and expected behavior
-- `snake_case` throughout
-- Boolean keyword-only args use `*` separator in signatures: `def build_spec(spec, project_root, *, verbose: bool = False)`
 - Logging instances: `log = logging.getLogger(__name__)` at module level (root logger named `"harness"` in `cli.py`, `__name__` elsewhere)
 - Pydantic `BaseModel` subclasses for structured config (e.g., `AugmentationConfig` in `augment_dataset.py`)
 - `dataclass` for result containers (e.g., `BuildResult`, `RunResult`, `VerificationResult`, `SpecResult` in `harness/models.py`)
 - `Enum` for status values: `Status(Enum)` with lowercase string values (`"pass"`, `"fail"`, `"error"`, `"timeout"`, `"skip"`)
-- `UPPER_SNAKE_CASE` at module level (e.g., `BUILD_TIMEOUT_SECONDS`, `BASELINE_ERROR_THRESHOLD`, `EXCLUDED_SPECS`)
-- Multi-word constants prefer descriptive names: `AUGMENTABLE_SUFFIXES`, `COMPARISON_OPERATORS`, `MODEL_REGISTRY`
 ## Code Style
 - Ruff is the linter/formatter: version `>=0.6.0` (declared in `pyproject.toml` dev dependencies)
 - Ruff runs automatically via PostToolUse hook on every Edit/Write to any `.py` file with `ruff check --fix`
 - No custom ruff config exists — uses ruff defaults
 - Ruff fixes are applied as `# noqa: E402` inline suppression when late imports after `sys.path.insert()` are unavoidable
-- Ruff (replaces flake8, isort, pyupgrade)
-- `# noqa: E402` used for intentional late imports (sys.path manipulation before harness imports)
 - `# type: ignore[assignment]` used for deliberate monkey-patching in tests (e.g., `random.random = always_zero`)
-- No mypy or pyright configured
 ## Import Organization
 - Scripts use `sys.path.insert(0, str(PROJECT_ROOT))` before local imports
 - `PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent` pattern for scripts nested 2-3 levels deep
-- Example from `run_eval_batch.py`:
 - None — no `__init__.py` barrel files in `scripts/`; `harness/` and `c_augmentation/` are proper packages with `__init__.py`
 ## Error Handling
 - Harness pipeline uses `Status` enum; never raises exceptions across pipeline stages — returns structured result objects instead
-- CLI layer catches top-level exceptions and prints to stderr with `log.error(..., exc_info=args.verbose)`
 - Validation scripts use `sys.exit(1)` on error, `sys.exit(0)` on success
 - `or {}` guard for JSON fields that can be null: `(spec.get("baseline_results") or {}).get("configurations", {})` — not `dict.get("key", {})` which returns `None` when key exists with null value
-- Try/except used narrowly around specific operations (JSON decode, float conversion, regex), not broadly
 - Functions returning error lists use `list[str]` (empty = no errors), not exceptions
 - Pipeline stages return `Status.PASS` / `Status.FAIL` / `Status.ERROR` / `Status.SKIP` — never `True`/`False`
 ## Logging
-- `log.debug()`: internal state, metric extraction misses, skipped strategies
-- `log.warning()`: unknown strategy types, failed metric extraction, unexpected conditions
-- `log.error()`: unhandled exceptions at CLI boundary
 - `print()`: user-facing output from CLI commands (not logging)
 ## Comments
-- Module-level docstrings on all public modules — includes usage examples (CLI commands copy-pasteable)
-- Function docstrings use NumPy/Google hybrid style with `Parameters`, `Returns` sections for public functions
-- Inline comments for non-obvious logic, especially AST transform decisions
 - Section separators use dashed lines with label: `# ---------------------------------------------------------------------------\n# Section Name\n# ---------------------------------------------------------------------------`
 - Bug/fix references in test docstrings: "Bug A: nested subscripts..." with explicit description of what was wrong
-## Function Design
-- Harness functions return structured dataclass instances (`BuildResult`, `RunResult`, `VerificationResult`)
-- Validation functions return `list[str]` (errors) — empty list means valid
-- Analysis functions return `dict` with named keys
 ## Module Design
 - `harness/` and `c_augmentation/` are proper packages (have `__init__.py`)
 - `scripts/` subdirectories do NOT have `__init__.py` — imported via `sys.path` manipulation
@@ -211,19 +163,10 @@ A focused sprint to complete and strengthen the SC26 ParBench paper (`docs/paper
 - Global flags (`-v`, `--json`, `--project-root`) MUST come BEFORE the subcommand
 - Correct: `python3 -m harness -v verify specs/foo.json`
 - Wrong: `python3 -m harness verify -v specs/foo.json`
-- All CLI scripts use `if __name__ == "__main__": main()` or `raise SystemExit(main())`
 - `argparse` for all CLI argument parsing (no click, typer, etc.)
 ## Spec JSON Conventions
-- `manifest.jsonl` is append-only — never modify or delete existing entries
-- Result JSONs in `results/` are immutable — use `--resume` flag to skip re-running
-- Spec `run.arguments` must never change without reading the source binary's `argc` check first
 - Always use `or {}` guard for nullable spec fields: `(spec.get("performance") or {}).get("metrics", [])`
 - `overall_status` is authoritative for result verdicts — never `run_status` or `error_message`
-## Python Version and Interpreter
-- **Always `python3`** — never bare `python`
-- Requires Python `>=3.12` (declared in `pyproject.toml`)
-- Venv: `source env_parbench/bin/activate` before running any project code
-- Install packages: `python3 -m pip install <pkg>` inside activated venv
 <!-- GSD:conventions-end -->
 
 <!-- GSD:architecture-start source:ARCHITECTURE.md -->
@@ -231,8 +174,6 @@ A focused sprint to complete and strengthen the SC26 ParBench paper (`docs/paper
 
 ## Pattern Overview
 - Spec-as-contract: each kernel variant is fully described by a JSON spec that drives build, run, verify, and LLM evaluation
-- Pipeline pattern: Build → Run → Verify is a linear, short-circuiting pipeline with independent restartability via `--resume`
-- Append-only event log: `manifest.jsonl` is an immutable registry; result JSONs are immutable once written
 - Kernel-centric translation: LLMs only produce kernel files; host infrastructure is untouched
 ## Layers
 - Purpose: Declare what every kernel variant IS and how to verify it
@@ -260,7 +201,6 @@ A focused sprint to complete and strengthen the SC26 ParBench paper (`docs/paper
 - Contains: Per-task JSONs (`{src_id}-to-{tgt_id}.json`), batch summary JSONs/MDs, eval_summary.json
 - Depends on: Nothing (append-only outputs)
 - Used by: `analyze_eval.py`, `scripts/analysis/*.py`, paper figures
-## Data Flow
 ## Key Abstractions
 - Purpose: Declarative contract defining a kernel variant's identity, source, build, run, and verification
 - Examples: `specs/rodinia-bfs-cuda.json`, `specs/xsbench-xsbench-omp.json`
@@ -271,7 +211,6 @@ A focused sprint to complete and strengthen the SC26 ParBench paper (`docs/paper
 - `translation_targets`: subset of `prompt_payload`; which files the LLM must PRODUCE (kernel-centric)
 - Purpose: Append-only registry linking kernel names to spec files; enables translation pair discovery
 - Format: one JSON object per line: `{kernel_name, parallel_api, source_suite, category, spec_file, source_dir}`
-- Invariant: never modify existing entries; phantom specs remain as tombstones
 - Purpose: Each subclass represents one semantics-preserving code rewrite
 - Interface: `is_applicable(code, index, filename)` → bool; `apply(code, index, filename)` → `TransformResult`
 - Concrete transforms: `ArithmeticTransform` (compound operators), `SwapCondition` (flip comparisons), `PointerArithmeticToArrayIndex` (ptr+i → arr[i]), `TypedefExpansion`, `ChangeNames` (variable renames), `ChangeFunctionNames`
@@ -300,10 +239,8 @@ A focused sprint to complete and strengthen the SC26 ParBench paper (`docs/paper
 ## Error Handling
 - Harness stages return typed result objects (`BuildResult`, `RunResult`, `VerificationResult`) with `Status` enum; never raise on build/run/verify failure
 - `evaluate_translation()` uses `try/finally` to guarantee `restore_files()` and `_unstage_support_headers()` always execute
-- `overall_status` field is authoritative (not `run_status` top-level field which can contain stale data from multi-attempt regressions)
 - EXTRACTION_FAIL is a distinct status: LLM response had no parseable code for expected target files
 - Iterative repair: on BUILD_FAIL/RUN_FAIL/VERIFY_FAIL, `_build_retry_message()` generates targeted feedback; `analyze_build_failure()` parses linker errors and maps missing symbols to source file locations
-## Cross-Cutting Concerns
 <!-- GSD:architecture-end -->
 
 <!-- GSD:workflow-start source:GSD defaults -->

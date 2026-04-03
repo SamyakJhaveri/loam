@@ -85,7 +85,7 @@ Every data claim in the paper must be verifiable against actual result files on 
 - **Result immutability**: Never modify existing result JSONs
 - **Page limit**: ~10 pages IEEE double-column format
 - **Framing**: Benchmark paper, not model evaluation paper
-- **HeCBench source**: NOT cloned locally (gitignored) -- feature grep limited to Rodinia + XSBench
+- **HeCBench source**: Cloned locally (gitignored, 1874 dirs) — not a git submodule, so no version pinning
 
 ## Key Decisions
 
