@@ -55,6 +55,17 @@
 
 %% =============================================================
 %% ABSTRACT
+% DATA FREEZE (2026-04-03): 1248 Qwen result JSONs on disk (ls results/evaluation/together-qwen-3.5-397b-a17b/*.json | wc -l).
+% Independent raw-JSON spot-check (01-01 verified 2026-04-03): 480 primary, 174 PASS, 148 BUILD_FAIL, 110 RUN_FAIL, 47 VERIFY_FAIL, 1 EXTRACTION_FAIL.
+% src: "96 specs" = 60 Rodinia + 25 HeCBench (curated) + 4 XSBench + 4 RSBench + 3 mixbench (disk-verified via ls specs/{rodinia,hecbench,xsbench,rsbench,mixbench}-*.json)
+% src: "480 tasks" = 80+85+80+75+85+75 per-direction (paper_data.json > primary_campaign > by_direction > {dir} > total) = 96 L0-pairs * 5 levels
+% src: "18 kernels" = len(paper_data.json > primary_campaign > by_kernel) = 18 keys
+% src: "36.2% [32.1%, 40.6%]" = paper_data.json > primary_campaign > overall (pass_rate=0.3625, ci=0.3207-0.4064; 174/480=36.25%, displayed as 36.2% per truncation convention)
+% src: "65.0% [54.1%, 74.6%]" = paper_data.json > by_direction > cuda-to-omp (pass_rate=0.65, ci=0.5408-0.7455)
+% src: "68.8% at L0" = 11/16 = 0.6875 (paper_data.json > augmentation > cuda_to_omp_balanced > L0 > rate)
+% src: "30.8%" = 148/480 = 0.30833 BUILD_FAIL; "9.8%" = 47/480 = 0.09792 VERIFY_FAIL
+% src: "68 of 88" = 54+4+3+3+4=68 pass all levels; 96-8=88 non-KNOWN_FAIL (8 KNOWN_FAIL per known-issues.md)
+% src: "z=-0.17, p=0.87" = paper_data.json > augmentation > cochran_armitage (z=-0.1657 rounds to -0.17, p=0.868355 rounds to 0.87)
 %% =============================================================
 \begin{abstract}
 Large language models (LLMs) are increasingly applied to parallel code generation, yet no benchmark framework systematically evaluates their ability to \emph{translate} parallel code across GPU programming APIs---and prior approaches share a critical blind spot: benchmark codes widely known in the HPC community are also present in LLM training data, making it impossible to distinguish genuine parallel reasoning from memorized translations. We present \textbf{ParBench}, a build-run-verify benchmark framework for evaluating LLM-based parallel code translation at the kernel level, with an integrated augmentation engine that systematically tests reliance on training-data pattern-matching. ParBench curates 96 benchmark specifications across five HPC benchmark suites (Rodinia, XSBench, RSBench, mixbench, HeCBench), six translation directions across three API pairs (CUDA, OpenMP, OpenCL), with two additional OpenMP-target directions evaluated as case studies. Evaluating Qwen~3.5 397B-A17B (a 397-billion-parameter Mixture-of-Experts model) across 480 primary campaign tasks spanning 18 kernels, six directions, and five augmentation levels, we observe an overall pass rate of 36.2\% [32.1\%, 40.6\%]. \pending{GPT-4.1~mini comparative results and statistical comparison.} On the primary CUDA-to-OpenMP direction, Qwen~3.5 achieves 65.0\% [54.1\%, 74.6\%] (68.8\% at L0)---compared to 0\% in repository-level approaches~\cite{ParEvalRepo2025}. BUILD\_FAIL accounts for 30.8\% of all tasks; VERIFY\_FAIL accounts for 9.8\%, indicating that API-specific syntax is the primary bottleneck while a meaningful minority of compilable translations contain genuine parallel logic errors. An AST-driven augmentation engine applies six semantics-preserving transforms at five levels (L0--L4); 68 of 88 non-KNOWN\_FAIL specs across all five suites (54 Rodinia, 4 XSBench, 3 RSBench, 3 mixbench, and 4 spot-checked HeCBench) PASS at every level L1--L4 with zero correctness regressions, confirming level-invariant semantics preservation. LLM augmentation robustness evaluation yields a null result (Cochran-Armitage $z = -0.17$, $p = 0.87$), providing evidence that model failures are structural rather than surface-dependent, confirming benchmark validity against training-data memorization concerns. ParBench is publicly available as an extensible framework for the HPC community.
@@ -90,6 +101,10 @@ The existing landscape of code benchmarks does not address kernel-level parallel
 
 Together, these four gaps define the problem that ParBench is designed to solve: kernel-level evaluation granularity, build-infrastructure isolation, training-data robustness through augmentation, and survey-grounded benchmark selection. Figure~\ref{fig:architecture} provides an end-to-end overview of the ParBench pipeline, showing how source code flows through augmentation, LLM-based translation, and automated build-run-verify evaluation to produce a correctness verdict for each benchmark task.
 
+% src: S1 Contributions numbers verified against paper_data.json (01-01 verified 2026-04-03)
+% src: "96 specs" = same decomposition as Abstract (60+25+4+4+3, disk-verified)
+% src: "480 tasks" = paper_data.json > primary_campaign > total; "426 pass@k" = paper_data.json > file_counts > passk_campaign
+% src: "30.8% BUILD_FAIL" = 148/480; "9.8% VERIFY_FAIL" = 47/480 (paper_data.json > primary_campaign > overall > by_status)
 \subsection{Contributions}
 \label{sec:contributions}
 
@@ -103,6 +118,15 @@ This paper presents ParBench and makes the following contributions:
 \item \textbf{Empirical evaluation}---Analysis of Qwen~3.5 397B-A17B across 480 primary campaign tasks and 426 pass@$k$ tasks spanning six directions and five augmentation levels, producing a failure taxonomy (30.8\% BUILD\_FAIL, 9.8\% VERIFY\_FAIL), per-kernel difficulty tiers, self-repair effectiveness measurement, augmentation robustness characterization with statistical independence testing, and a pass@$k$ analysis at temperature 0.7 to separate deterministic failures from sampling-sensitive cases. \pending{GPT-4.1~mini comparative evaluation will expand the dataset to approximately 1,420 primary tasks across two providers (Alibaba via Together AI, OpenAI via Azure).}
 \end{enumerate}
 
+% src: S1 Key Findings numbers verified against paper_data.json (01-01 verified 2026-04-03)
+% src: "68.8%" = 11/16 = 0.6875 CUDA-to-OMP L0 (paper_data.json > augmentation > cuda_to_omp_balanced > L0 > rate)
+% src: "36.2% [32.1%, 40.6%]" = 174/480 = 0.3625 (paper_data.json > primary_campaign > overall, truncation convention)
+% src: "65.0%" CUDA-to-OMP = 52/80 = 0.65 (paper_data.json > by_direction > cuda-to-omp > pass_rate)
+% src: "7.1%" OpenCL-to-CUDA = 6/85 = 0.0706 (paper_data.json > by_direction > opencl-to-cuda > pass_rate)
+% src: "Cohen h 0.26-0.31" = paper_data.json > direction_asymmetry: cuda-omp=0.2591, opencl-omp=0.2731, cuda-opencl=0.3127
+% src: "17.5%" first-attempt = 84/480 (paper_data.json > self_repair > first_attempt_pass); "36.2%" final = 174/480
+% src: "90 of 396" = paper_data.json > self_repair > repaired=90, total_tasks-first_attempt_pass=480-84=396
+% src: "22.7%" repair rate = 90/396 = 0.2273; "5 regressions" = paper_data.json > self_repair > regression=5
 \subsection{Key Findings Preview}
 \label{sec:findings-preview}
 
@@ -200,6 +224,7 @@ ParBench is, to our knowledge, the only framework that combines all of the follo
 
 %% =============================================================
 %% S3 PARBENCH FRAMEWORK
+% src: S3 framework section verified against code and spec files (01-01 verified 2026-04-03)
 %% =============================================================
 \section{ParBench Framework}
 \label{sec:framework}
@@ -268,6 +293,7 @@ The following condensed listing illustrates the essential structure using the BF
 }
 \end{lstlisting}
 
+% src: "96 specs = 60+4+4+3+25" verified via ls specs/{suite}-*.json: rodinia=60, xsbench=4, rsbench=4, mixbench=3, hecbench=135 (25 curated) (01-01 verified 2026-04-03)
 This design separates the definition of correctness from the mechanism of verification: the harness can evolve independently of what ``correct'' means for each kernel. Across the current benchmark collection, 96 specs are defined spanning five benchmark suites: 60 from Rodinia~\cite{Rodinia2009}, 4 from XSBench~\cite{XSBench2014}, 4 from RSBench, 3 from mixbench, and 25 from a curated subset of HeCBench~\cite{HeCBench2023}.
 
 \subsection{Harness Pipeline: Build, Run, Verify}
@@ -300,6 +326,10 @@ The engine implements six transforms, each backed by the libclang API for AST an
 \end{enumerate}
 
 All transforms operate on the parsed AST rather than on raw text, which avoids the fragility of regex-based rewriting. Each candidate rewrite is validated by re-parsing the transformed code and confirming that no new diagnostic errors are introduced. Overlapping candidates are resolved by a greedy subset-selection algorithm that maximizes the number of applied transforms without introducing conflicts.
+% src: tab:augmentation-levels verified against LEVEL_FRACTIONS = {1: 0.0, 2: 0.33, 3: 0.66, 4: 1.0} (01-01 verified 2026-04-03)
+% src: in c_augmentation/augment_dataset.py line 111 (LEVEL_FRACTIONS dict)
+% src: Transform selection (L1: 1 of 6, L2: max(1,int(6*0.33))=1, L3: max(1,int(6*0.66))=3, L4: all 6) verified against augment_code() lines 1796-1803
+% src: Candidate fraction within each transform verified against _select_fraction() lines 152-167: max(1, floor(n*fraction))
 
 \begin{table}[t]
 \centering
@@ -462,6 +492,8 @@ OpenMP target offload (OMP-target) provides a fourth API that uses compiler-dire
 \subsection{Evaluation Corpus}
 \label{sec:eval-corpus}
 
+% src: ls specs/{rodinia,hecbench,xsbench,rsbench,mixbench}-*.json | wc -l => 60+25(curated)+4+4+3=96
+% src: PASS=54+23+4+4+3=88, KF=6+2+0+0+0=8 (known-issues.md KNOWN_FAIL list)
 The five suites contribute a total of 96 benchmark specifications, of which 88 achieve PASS through the complete build/run/verify pipeline and 8 are KNOWN\_FAIL (Table~\ref{tab:suite-summary}). The 88 verified-PASS specs constitute the evaluation corpus.
 
 \begin{table}[t]
@@ -469,6 +501,11 @@ The five suites contribute a total of 96 benchmark specifications, of which 88 a
 \caption{Suite summary showing total specs, verified PASS, KNOWN\_FAIL, and API coverage for each of the five benchmark suites.}
 \label{tab:suite-summary}
 \small
+% src: Verified 2026-04-03 against specs/ on disk:
+% src: Rodinia: ls specs/rodinia-*.json | wc -l => 60; unique kernels => 22; KF=6 (known-issues.md)
+% src: HeCBench: 10 curated kernels x {cuda,omp,omp_target} = 25 specs (from 135 total); KF=2
+% src: XSBench: 4; RSBench: 4; mixbench: 3 (all verified via ls specs/{suite}-*.json)
+% src: Sums: 22+10+1+1+1=35 kernels, 60+25+4+4+3=96 specs, 54+23+4+4+3=88 PASS, 6+2+0+0+0=8 KF
 \begin{tabular}{@{}lccccc@{}}
 \toprule
 Suite & Kernels & Total & PASS & KF & APIs \\
@@ -486,8 +523,12 @@ mixbench & 1 & 3 & 3 & 0 & CUDA, OMP, OCL \\
 
 The selected kernels span computational domains including graph traversal (bfs, floydwarshall, page-rank), physics simulation (hotspot, hotspot3d, cfd, srad, iso2dfd), machine learning (backprop, nn), linear algebra (lud, nw), molecular dynamics (lavamd, md), nuclear physics (xsbench, rsbench), stencil computation (stencil1d, heat2d, jacobi), signal processing (convolution1d, scan), biophysical simulation (myocyte, heartwall), particle methods (particlefilter, streamcluster), dynamic programming (pathfinder), combinatorial search (nqueen), and GPU micro-benchmarking (mixbench).
 
-At L0 (unaugmented), the corpus yields 142 unique translation pairs per model across six standard translation directions, with two additional OMP-target directions evaluated as case studies.
+% src: L0 pairs (88 PASS specs): 6 standard dirs => 24+20+24+18+20+18=124; 2 OMP-tgt dirs => 10+10=20; total=144
+At L0 (unaugmented), the corpus yields 144 unique translation pairs per model: 124 across six standard translation directions, with 20 additional pairs from two OMP-target directions evaluated as case studies.
 
+% src: results/analysis/sloc_analysis.json: min=80 (stencil1d), max=3304 (myocyte), median=271, mean=598.4
+% src: kernels_above_pareval_threshold=31 (88.6%, rounds to 89%)
+% src: Multi-file: 24/96 eval corpus (25%); CUDA: 18/35 (51%) -- verified via spec translation_targets
 Table~\ref{tab:benchmark-characterization} provides a quantitative characterization of the corpus. Source Lines of Code (SLoC) are counted as physical lines (non-blank, non-comment) in each kernel's CUDA implementation---the code provided to the LLM as translation input. Kernel complexity spans two orders of magnitude: from 80~SLoC (stencil1d) to 3{,}304~SLoC (myocyte), with a corpus median of 271 and mean of 598. All 35~kernels exceed the single-function granularity typical of code-generation benchmarks: 31 of 35 (89\%) surpass ParEval-Repo's average of 133~SLoC per translation unit~\cite{ParEvalRepo2025}. Multi-file translations---where the LLM must coordinate changes across two or more source files---account for 25\% of specs (24/96), with the highest multi-file rate in CUDA specs (51\%) due to the separation of kernel and host code.
 
 \begin{table}[t]
@@ -495,6 +536,8 @@ Table~\ref{tab:benchmark-characterization} provides a quantitative characterizat
 \caption{Quantitative characterization of the evaluation corpus. SLoC counts physical source lines in the CUDA prompt payload. Multi-File gives specs requiring translation of $>$1 source file. Std.\ shows the dominant language standard per suite.}
 \label{tab:benchmark-characterization}
 \small
+% src: results/analysis/sloc_analysis.json -- verified 2026-04-03:
+% src: Rodinia 195-3304 med=334; HeCBench 80-235 med=180; multi-file verified via translation_targets
 \begin{tabular}{@{}lrcrcl@{}}
 \toprule
 Suite & Kernels & SLoC Range & Med. & Multi-File & Std. \\
@@ -673,14 +716,18 @@ Of the 306 total failures in the Qwen~3.5 campaign, the distribution is: BUILD\_
 % src: paper_data.json > build_fail_subcategories: missing_header=55 (37.2%), undeclared_identifier=47 (31.8%), linker_error=30 (20.3%); 55+47+30=132 of 148
 \textbf{BUILD\_FAIL dominance.} BUILD\_FAIL accounts for 148/480 tasks (30.8\%) and 48.4\% of all failures, confirming it as the dominant failure mode (Table~\ref{tab:overall-pass}). Subcategory analysis reveals three primary error classes: missing headers (55 tasks, 37.2\% of BUILD\_FAIL), where the translated code references API-specific headers absent in the target environment; undeclared identifiers (47 tasks, 31.8\%), typically retained CUDA intrinsics (\texttt{threadIdx}, \texttt{blockIdx}, \texttt{cudaMalloc}) in otherwise-OpenMP code; and linker errors (30 tasks, 20.3\%), where function signatures or library dependencies are incompatible with the target API. These are predominantly syntactic failures: the model demonstrates understanding of the parallel computation structure but fails to fully translate the API surface.
 
+% src: paper_data.json > verify_fail_subcategories: wrong_numerical_output=42 (89.4%), missing_output=5 (10.6%); 42+5=47
 \textbf{VERIFY\_FAIL analysis.} VERIFY\_FAIL accounts for 47/480 tasks (9.8\%) and 15.4\% of all failures. Of these, 42 (89.4\%) produce wrong numerical output while 5 (10.6\%) produce missing output entirely. VERIFY\_FAIL indicates translations that compile and execute successfully but produce incorrect results, identifying subtle parallel logic errors: wrong thread-index mappings, incorrect reduction scoping, or missed data dependencies. The conjunctive verification (exit\_code AND stdout\_pattern) is essential for catching these cases---translations that exit cleanly but produce wrong output would appear correct under exit-code-only checking.
 
+% src: paper_data.json > run_fail_subcategories: opencl_jit_error=50 (45.5% of 110)
 \textbf{RUN\_FAIL analysis.} RUN\_FAIL accounts for 110/480 tasks (22.9\%) and 35.9\% of all failures. The dominant subcategory is OpenCL JIT compilation errors (50 tasks, 45.5\% of RUN\_FAIL), which arise exclusively in OpenCL-target kernel-only translations where the host binary compiles successfully but \texttt{clBuildProgram()} fails at runtime on the LLM-generated kernel source.
 
 \textbf{Failure mode shift in kernel-only translations.} The aggregate failure taxonomy is dominated by full-program translation directions (CUDA-to-OpenMP, OpenMP-to-CUDA), where BUILD\_FAIL is the majority failure mode. OpenCL-target translations exhibit a structurally different distribution: zero tasks are classified as BUILD\_FAIL, because the host binary is never modified and always compiles successfully. Failures shift entirely to runtime categories---RUN\_FAIL and VERIFY\_FAIL. This structural difference has methodological implications: failure taxonomies aggregated across all directions may understate the diversity of failure modes.
 
 \textbf{Self-repair by failure mode transition.} Table~\ref{tab:repair-transitions} breaks down the transitions from initial failure to final outcome across all attempts.
 
+% src: paper_data.json > self_repair > per_initial_failure (all rows verified 2026-04-03)
+% src: total repaired 55+14+6+15=90; total initial failures 229+114+26+27=396; 396=480-84 verified
 \begin{table}[t]
 \centering
 \caption{Self-repair failure mode transitions (all tasks, Qwen~3.5; GPT-4.1~mini pending). Rows: initial failure mode. Columns: final outcome after up to 3 retries.}
@@ -690,14 +737,15 @@ Of the 306 total failures in the Qwen~3.5 campaign, the distribution is: BUILD\_
 \toprule
 Initial Failure & $\to$PASS & Persist. & Regr. & Total & Repair Rate \\
 \midrule
-BUILD\_FAIL & 55 & 174 & -- & 229 & 24.0\% [18.9\%, 30.0\%] \\
-RUN\_FAIL & 14 & 100 & -- & 114 & 12.3\% [7.5\%, 19.6\%] \\
-VERIFY\_FAIL & 6 & 20 & -- & 26 & 23.1\% [11.0\%, 42.1\%] \\
-EXTR\_FAIL & 15 & 12 & -- & 27 & 55.6\% [37.3\%, 72.4\%] \\
+BUILD\_FAIL & 55 & 174 & -- & 229 & 24.0\% [18.9\%, 30.0\%] \\ % src: 55/229=0.2402; CI [0.1894,0.2995]
+RUN\_FAIL & 14 & 100 & -- & 114 & 12.3\% [7.5\%, 19.6\%] \\ % src: 14/114=0.1228; CI [0.0746,0.1956]
+VERIFY\_FAIL & 6 & 20 & -- & 26 & 23.1\% [11.0\%, 42.1\%] \\ % src: 6/26=0.2308; CI [0.1103,0.4205]
+EXTR\_FAIL & 15 & 12 & -- & 27 & 55.6\% [37.3\%, 72.4\%] \\ % src: 15/27=0.5556; CI [0.3731,0.7241]
 \bottomrule
 \end{tabular}
 \end{table}
 
+% src: paper_data.json > self_repair: repaired=90, first_attempt_pass=84, regression=5
 BUILD\_FAIL is the most recoverable failure mode by volume (55 repaired tasks), consistent with the hypothesis that compiler error messages provide actionable feedback that guides the model toward a fix. The BUILD\_FAIL repair rate of 24.0\% [18.9\%, 30.0\%] exceeds the RUN\_FAIL rate of 12.3\% [7.5\%, 19.6\%], reflecting the weaker diagnostic signal available for runtime failures. EXTRACTION\_FAIL has the highest repair rate (55.6\%), suggesting that malformed LLM response formatting is readily corrected on retry. Across all initial failure modes, the self-repair protocol recovers 90 tasks total, improving the overall pass rate from 17.5\% (first-attempt) to 36.2\% (final). Five regressions occur across all tasks, where an initially passing translation fails on a subsequent attempt.
 
 \subsection{Per-Kernel Analysis}
@@ -705,6 +753,9 @@ BUILD\_FAIL is the most recoverable failure mode by volume (55 repaired tasks), 
 
 Table~\ref{tab:per-kernel} presents per-kernel results for Qwen~3.5 aggregated across all six translation directions and five augmentation levels (480 primary campaign tasks, 18 Rodinia kernels). \pending{Expand to multi-model comparison when GPT-4.1~mini data is available.}
 
+% src: paper_data.json > primary_campaign > by_kernel (all 18 rows verified 2026-04-03)
+% src: row sums all match Total; total PASS across kernels = 174; total tasks = 480
+% src: 3 kernels spot-checked vs raw JSONs: hotspot(21P/4R/5V=30), backprop(13P/16B/1V=30), heartwall(19B/11R=30)
 \begin{table*}[t]
 \centering
 \caption{Per-kernel results across all directions and augmentation levels (Qwen~3.5 397B-A17B, 480 primary campaign tasks). KNOWN\_FAIL source specs excluded.}
@@ -745,10 +796,13 @@ Rodinia & myocyte & physics & 30 & 0 & 19 & 10 & 1 & 0 & 0.0\% & [0.0\%, 11.4\%]
 
 Kernels partition into three difficulty tiers based on Qwen~3.5 pass rates across all directions and augmentation levels (Table~\ref{tab:per-kernel}). \pending{Tier boundaries may shift with two-model consensus data.}
 
-\textbf{Easy tier (pass rate $\geq$ 50\%).} Nine kernels: hotspot (70.0\%), nn (70.0\%), hotspot3d (63.3\%), particlefilter (56.7\%), bfs (53.3\%), cfd (53.3\%), lud (50.0\%), nw (50.0\%), and pathfinder (50.0\%). These kernels share characteristics that facilitate translation: relatively compact kernel bodies, straightforward thread-index-to-data mappings, and limited cross-thread communication. Notably, cfd and particlefilter achieve high pass rates despite significant VERIFY\_FAIL counts (10 each), indicating that the model frequently produces compilable but numerically incorrect translations for these kernels.
+% src: paper_data.json > by_kernel: 9 easy (>=50%) + 5 medium (1-49%) + 4 hard (0%) = 18 verified
+\textbf{Easy tier (pass rate $\geq$ 50\%).} Nine kernels: hotspot (70.0\%), nn (70.0\%), hotspot3d (63.3\%), particlefilter (56.7\%), bfs (53.3\%), cfd (53.3\%), lud (50.0\%), nw (50.0\%), and pathfinder (50.0\%). These kernels share characteristics that facilitate translation: relatively compact kernel bodies, straightforward thread-index-to-data mappings, and limited cross-thread communication. Notably, cfd and particlefilter achieve high pass rates despite significant VERIFY\_FAIL counts (10 each), indicating that the model frequently produces compilable but numerically incorrect translations for these kernels. % src: cfd VER_F=10, particlefilter VER_F=10 (paper_data.json by_kernel)
 
+% src: paper_data.json > by_kernel: backprop BLD_F=16/30 verified
 \textbf{Medium tier (pass rate 1--49\%).} Five kernels: backprop (43.3\%), srad (40.0\%), bptree (13.3\%), lavamd (6.7\%), and streamcluster (6.7\%). These exhibit heterogeneous failure modes across directions. Backprop's failures concentrate in BUILD\_FAIL (16/30), reflecting difficulty translating CUDA shared-memory reduction idioms to OpenMP.
 
+% src: paper_data.json > by_kernel: heartwall BLD_F=19/30, myocyte BLD_F=19/30, gaussian BLD_F=0 verified
 \textbf{Hard tier (pass rate 0\%).} Four kernels: dwt2d (0.0\%), gaussian (0.0\%), heartwall (0.0\%), and myocyte (0.0\%). These kernels share structural complexity that defeats translation across all directions. Heartwall and myocyte are dominated by BUILD\_FAIL (19/30 each). Gaussian's failures split between RUN\_FAIL and VERIFY\_FAIL with zero BUILD\_FAIL, suggesting the model produces syntactically valid but semantically incorrect translations.
 
 \textbf{Sample size note.} Per-kernel totals in Table~\ref{tab:per-kernel} aggregate across 6 directions and 5 augmentation levels per kernel. Common kernels appear in 30 tasks ($6 \times 5$); kernels present in fewer direction pairs (e.g., dwt2d, nn) have 10 tasks. Per-direction sample sizes vary (see Section~\ref{sec:direction-analysis}); findings from low-$n$ directions should be considered exploratory.
@@ -758,6 +812,9 @@ Kernels partition into three difficulty tiers based on Qwen~3.5 pass rates acros
 
 ParBench's evaluation pipeline permits up to three retry attempts with failure-specific diagnostics injected into subsequent prompts (four total attempts per task). Table~\ref{tab:self-repair} summarizes self-repair effectiveness.
 
+% src: paper_data.json > self_repair (all values verified 2026-04-03)
+% src: accounting: 84+90+271+5+30(partial_repair)=480; 84+90=174=Total PASS; 271+5+30=306=non-PASS
+% src: 84/480=17.5%; 90/480=18.8%; 174/480=36.2%; (174-84)/84=107.1%; 5/480=1.0%
 \begin{table}[t]
 \centering
 \caption{Self-repair effectiveness (all directions, all levels, Qwen~3.5; GPT-4.1~mini pending).}
@@ -768,16 +825,17 @@ ParBench's evaluation pipeline permits up to three retry attempts with failure-s
 Metric & Qwen 3.5 & GPT-4.1 mini & Combined \\
 \midrule
 Total tasks & 480 & \tbd & \tbd \\
-First-attempt PASS & 84 (17.5\%) & \tbd & \tbd \\
-Repaired (attempt 2--4) & 90 (18.8\%) & \tbd & \tbd \\
-Total PASS & 174 (36.2\%) & \tbd & \tbd \\
-Relative improvement & +107.1\% & \tbd & \tbd \\
-Persistent fail & 271 & \tbd & \tbd \\
-Regression & 5 (1.0\%) & \tbd & \tbd \\
+First-attempt PASS & 84 (17.5\%) & \tbd & \tbd \\ % src: first_attempt_pass=84, 84/480=0.175
+Repaired (attempt 2--4) & 90 (18.8\%) & \tbd & \tbd \\ % src: repaired=90, 90/480=0.1875
+Total PASS & 174 (36.2\%) & \tbd & \tbd \\ % src: 84+90=174, 174/480=0.3625
+Relative improvement & +107.1\% & \tbd & \tbd \\ % src: (174-84)/84=90/84=1.07143
+Persistent fail & 271 & \tbd & \tbd \\ % src: persistent_fail=271 (excludes 30 partial_repair and 5 regression)
+Regression & 5 (1.0\%) & \tbd & \tbd \\ % src: regression=5, 5/480=0.0104
 \bottomrule
 \end{tabular}
 \end{table}
 
+% src: paper_data.json > self_repair > first_attempt_pass_rate: CI [0.1436,0.2115]; repair_rate: 90/396=0.2273 CI [0.1887,0.2711]
 Self-repair doubles Qwen~3.5's effective pass rate from 17.5\% [14.4\%, 21.2\%] (first-attempt) to 36.2\% [32.1\%, 40.6\%] (final), a relative improvement of 107.1\% (Table~\ref{tab:self-repair}). Of the 396 initially-failing tasks, 90 are repaired through the 3-retry protocol (repair rate: 22.7\% [18.9\%, 27.1\%]). Five regressions occur where an initially passing translation fails after retry, representing a 1.0\% regression rate.
 
 The self-repair data positions ParBench's 3-retry protocol as a controlled middle ground on the agentic spectrum. LASSI~\cite{LASSI2024} reports 80--85\% pass rates with a complete agentic self-correction pipeline (compilation feedback, execution analysis, profiling). ParBench's self-repair protocol provides only error feedback (compiler output or output mismatch) without retrieval augmentation or tool access. The gap between ParBench's repair rate (36.2\%) and LASSI's agentic rate (80--85\%) quantifies the value of agentic infrastructure beyond simple error feedback.
@@ -789,6 +847,7 @@ The augmentation engine's six AST-driven transforms were validated on 68 of 88 n
 
 Table~\ref{tab:augmentation-rates} presents per-model pass rates across augmentation levels L0--L4 for CUDA-to-OpenMP translation.
 
+% src: paper_data.json > augmentation > all_directions + cuda_to_omp_balanced (all 10 cells verified 2026-04-03)
 \begin{table}[t]
 \centering
 \caption{LLM pass rates across augmentation levels. All directions ($n=96$ per level) and balanced CUDA-to-OpenMP subset ($n=16$ per level).}
@@ -798,11 +857,11 @@ Table~\ref{tab:augmentation-rates} presents per-model pass rates across augmenta
 \toprule
 Level & \makecell{Qwen 3.5\\(all dirs, $n$=96)} & \makecell{Qwen 3.5\\(C$\to$OMP, $n$=16)} & \makecell{GPT-4.1\\mini} \\
 \midrule
-L0 & 39.6\% [30.4\%, 49.6\%] & 68.8\% [44.4\%, 85.8\%] & \tbd \\
-L1 & 34.4\% [25.6\%, 44.3\%] & 62.5\% [38.6\%, 81.5\%] & \tbd \\
-L2 & 37.5\% [28.5\%, 47.5\%] & 68.8\% [44.4\%, 85.8\%] & \tbd \\
-L3 & 38.5\% [29.4\%, 48.5\%] & 56.3\% [33.2\%, 76.9\%] & \tbd \\
-L4 & 31.3\% [22.9\%, 41.1\%] & 68.8\% [44.4\%, 85.8\%] & \tbd \\
+L0 & 39.6\% [30.4\%, 49.6\%] & 68.8\% [44.4\%, 85.8\%] & \tbd \\ % src: 38/96, 11/16
+L1 & 34.4\% [25.6\%, 44.3\%] & 62.5\% [38.6\%, 81.5\%] & \tbd \\ % src: 33/96, 10/16
+L2 & 37.5\% [28.5\%, 47.5\%] & 68.8\% [44.4\%, 85.8\%] & \tbd \\ % src: 36/96, 11/16
+L3 & 38.5\% [29.4\%, 48.5\%] & 56.3\% [33.2\%, 76.9\%] & \tbd \\ % src: 37/96, 9/16
+L4 & 31.3\% [22.9\%, 41.1\%] & 68.8\% [44.4\%, 85.8\%] & \tbd \\ % src: 30/96, 11/16
 \bottomrule
 \end{tabular}
 \end{table}
@@ -814,6 +873,7 @@ L4 & 31.3\% [22.9\%, 41.1\%] & 68.8\% [44.4\%, 85.8\%] & \tbd \\
 \label{fig:augmentation}
 \end{figure}
 
+% src: paper_data.json > cochran_armitage: z=-0.1657->-0.17, p=0.868355->0.87, pass_counts=[11,10,11,9,11]
 The Cochran-Armitage trend test on the balanced CUDA-to-OpenMP subset ($n=16$ kernels per level) yields $z = -0.17$, $p = 0.87$, providing no evidence for a monotonic trend in pass rate across augmentation levels (Table~\ref{tab:stats-summary}). Pass counts are remarkably stable: 11, 10, 11, 9, and 11 at L0 through L4 respectively. This is a null result: surface-level code transformations do not systematically degrade Qwen~3.5's translation performance.
 
 The null result has a specific interpretation: it provides evidence \emph{against} the hypothesis that the model relies on memorized surface patterns from training data. If the model were pattern-matching against memorized variable names or code formatting from Rodinia's widely-reproduced source code, augmentation at L3--L4 would degrade performance. The observed stability suggests that the model's translation capability---and its failures---are driven by structural understanding (or lack thereof) of parallel API semantics, not by surface-level pattern recognition. \pending{Cross-model augmentation comparison awaiting GPT-4.1~mini campaign completion.}
