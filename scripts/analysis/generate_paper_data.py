@@ -1152,6 +1152,13 @@ def main() -> None:
         help="Output JSON path",
     )
     parser.add_argument(
+        "--suite",
+        type=str,
+        default=None,
+        help="Filter to a specific suite (e.g. 'rodinia'). "
+             "Only results whose source_spec starts with this prefix are included.",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Print progress information",
@@ -1175,6 +1182,18 @@ def main() -> None:
     # Step 1: Load and filter
     all_records = load_results(results_dir, args.verbose)
     filtered = exclude_known_fail(all_records)
+
+    # Suite filter: limit to a specific suite prefix (e.g. "rodinia")
+    if args.suite:
+        suite_prefix = args.suite + "-"
+        before = len(filtered)
+        filtered = [
+            r for r in filtered
+            if r.get("source_spec", "").startswith(suite_prefix)
+        ]
+        if args.verbose:
+            print(f"  Suite filter '{args.suite}': {before} -> {len(filtered)} records")
+
     primary, passk = split_campaigns(filtered)
 
     if args.verbose:
@@ -1200,6 +1219,7 @@ def main() -> None:
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "model": "together-qwen-3.5-397b-a17b",
         "results_dir": str(results_dir),
+        "suite_filter": args.suite,
         "excluded_specs": sorted(EXCLUDED_SPECS),
         "file_counts": {
             "total_on_disk": len(all_records),

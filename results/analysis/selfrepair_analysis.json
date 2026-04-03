@@ -1,29 +1,29 @@
 {
   "analysis": "self_repair_breakdown",
-  "total_results": 1018,
-  "single_attempt_count": 547,
-  "total_multi_attempt": 471,
-  "full_repair_count": 91,
-  "partial_repair_count": 53,
-  "no_repair_count": 321,
-  "regression_count": 6,
-  "overall_repair_rate": 0.1932,
-  "overall_any_improvement_rate": 0.3057,
+  "total_results": 1248,
+  "single_attempt_count": 624,
+  "total_multi_attempt": 624,
+  "full_repair_count": 117,
+  "partial_repair_count": 63,
+  "no_repair_count": 440,
+  "regression_count": 4,
+  "overall_repair_rate": 0.1875,
+  "overall_any_improvement_rate": 0.2885,
   "by_model": {
     "together-qwen-3.5-397b-a17b": {
       "display_name": "Qwen 3.5 397B (Together)",
-      "total_multi_attempt": 471,
-      "full_repair": 91,
-      "partial_repair": 53,
-      "no_repair": 321,
-      "regression": 6,
-      "repair_rate": 0.1932,
-      "any_improvement_rate": 0.3057,
+      "total_multi_attempt": 624,
+      "full_repair": 117,
+      "partial_repair": 63,
+      "no_repair": 440,
+      "regression": 4,
+      "repair_rate": 0.1875,
+      "any_improvement_rate": 0.2885,
       "by_initial_failure": {
         "BUILD_FAIL": {
-          "full_repair": 55,
-          "no_repair": 179,
-          "partial_repair": 39,
+          "no_repair": 270,
+          "partial_repair": 48,
+          "full_repair": 72,
           "regression": 1
         },
         "EXTRACTION_FAIL": {
@@ -34,30 +34,29 @@
           "partial_repair": 1
         },
         "PASS": {
-          "full_repair": 1,
-          "regression": 4
+          "full_repair": 5
         },
         "RUN_FAIL": {
-          "full_repair": 14,
-          "no_repair": 112,
-          "partial_repair": 1,
-          "regression": 1
+          "no_repair": 140,
+          "partial_repair": 2,
+          "regression": 3,
+          "full_repair": 17
         },
         "VERIFY_FAIL": {
-          "no_repair": 30,
-          "full_repair": 6
+          "full_repair": 8,
+          "no_repair": 30
         }
       }
     }
   },
   "by_initial_failure": {
     "BUILD_FAIL": {
-      "total": 274,
-      "full_repair": 55,
-      "partial_repair": 39,
-      "no_repair": 179,
+      "total": 391,
+      "full_repair": 72,
+      "partial_repair": 48,
+      "no_repair": 270,
       "regression": 1,
-      "repair_rate": 0.2007
+      "repair_rate": 0.1841
     },
     "EXTRACTION_FAIL": {
       "total": 27,
@@ -77,37 +76,37 @@
     },
     "PASS": {
       "total": 5,
-      "full_repair": 1,
+      "full_repair": 5,
       "partial_repair": 0,
       "no_repair": 0,
-      "regression": 4,
-      "repair_rate": 0.2
+      "regression": 0,
+      "repair_rate": 1.0
     },
     "RUN_FAIL": {
-      "total": 128,
-      "full_repair": 14,
-      "partial_repair": 1,
-      "no_repair": 112,
-      "regression": 1,
-      "repair_rate": 0.1094
+      "total": 162,
+      "full_repair": 17,
+      "partial_repair": 2,
+      "no_repair": 140,
+      "regression": 3,
+      "repair_rate": 0.1049
     },
     "VERIFY_FAIL": {
-      "total": 36,
-      "full_repair": 6,
+      "total": 38,
+      "full_repair": 8,
       "partial_repair": 0,
       "no_repair": 30,
       "regression": 0,
-      "repair_rate": 0.1667
+      "repair_rate": 0.2105
     }
   },
   "by_kernel": {
     "backprop": {
       "total_multi_attempt": 25,
-      "full_repair": 4,
+      "full_repair": 8,
       "partial_repair": 1,
       "no_repair": 16,
-      "regression": 4,
-      "repair_rate": 0.16
+      "regression": 0,
+      "repair_rate": 0.32
     },
     "bfs": {
       "total_multi_attempt": 20,
@@ -133,12 +132,28 @@
       "regression": 0,
       "repair_rate": 0.4167
     },
+    "convolution1d": {
+      "total_multi_attempt": 10,
+      "full_repair": 0,
+      "partial_repair": 1,
+      "no_repair": 9,
+      "regression": 0,
+      "repair_rate": 0.0
+    },
     "dwt2d": {
       "total_multi_attempt": 10,
       "full_repair": 0,
       "partial_repair": 0,
       "no_repair": 9,
       "regression": 1,
+      "repair_rate": 0.0
+    },
+    "floydwarshall": {
+      "total_multi_attempt": 4,
+      "full_repair": 0,
+      "partial_repair": 2,
+      "no_repair": 2,
+      "regression": 0,
       "repair_rate": 0.0
     },
     "gaussian": {
@@ -154,6 +169,14 @@
       "full_repair": 0,
       "partial_repair": 1,
       "no_repair": 29,
+      "regression": 0,
+      "repair_rate": 0.0
+    },
+    "heat2d": {
+      "total_multi_attempt": 5,
+      "full_repair": 0,
+      "partial_repair": 0,
+      "no_repair": 5,
       "regression": 0,
       "repair_rate": 0.0
     },
@@ -181,6 +204,22 @@
       "regression": 0,
       "repair_rate": 0.0
     },
+    "iso2dfd": {
+      "total_multi_attempt": 10,
+      "full_repair": 5,
+      "partial_repair": 1,
+      "no_repair": 4,
+      "regression": 0,
+      "repair_rate": 0.5
+    },
+    "jacobi": {
+      "total_multi_attempt": 7,
+      "full_repair": 3,
+      "partial_repair": 1,
+      "no_repair": 3,
+      "regression": 0,
+      "repair_rate": 0.4286
+    },
     "kmeans": {
       "total_multi_attempt": 30,
       "full_repair": 0,
@@ -204,6 +243,22 @@
       "no_repair": 13,
       "regression": 0,
       "repair_rate": 0.2857
+    },
+    "md": {
+      "total_multi_attempt": 6,
+      "full_repair": 2,
+      "partial_repair": 0,
+      "no_repair": 4,
+      "regression": 0,
+      "repair_rate": 0.3333
+    },
+    "mixbench": {
+      "total_multi_attempt": 28,
+      "full_repair": 6,
+      "partial_repair": 0,
+      "no_repair": 22,
+      "regression": 0,
+      "repair_rate": 0.2143
     },
     "mummergpu": {
       "total_multi_attempt": 10,
@@ -229,6 +284,14 @@
       "regression": 1,
       "repair_rate": 0.2333
     },
+    "nqueen": {
+      "total_multi_attempt": 7,
+      "full_repair": 3,
+      "partial_repair": 3,
+      "no_repair": 1,
+      "regression": 0,
+      "repair_rate": 0.4286
+    },
     "nw": {
       "total_multi_attempt": 22,
       "full_repair": 7,
@@ -236,6 +299,14 @@
       "no_repair": 15,
       "regression": 0,
       "repair_rate": 0.3182
+    },
+    "page-rank": {
+      "total_multi_attempt": 5,
+      "full_repair": 1,
+      "partial_repair": 0,
+      "no_repair": 2,
+      "regression": 2,
+      "repair_rate": 0.2
     },
     "particlefilter": {
       "total_multi_attempt": 21,
@@ -253,6 +324,22 @@
       "regression": 0,
       "repair_rate": 0.375
     },
+    "rsbench": {
+      "total_multi_attempt": 29,
+      "full_repair": 0,
+      "partial_repair": 0,
+      "no_repair": 29,
+      "regression": 0,
+      "repair_rate": 0.0
+    },
+    "scan": {
+      "total_multi_attempt": 11,
+      "full_repair": 1,
+      "partial_repair": 2,
+      "no_repair": 8,
+      "regression": 0,
+      "repair_rate": 0.0909
+    },
     "srad": {
       "total_multi_attempt": 24,
       "full_repair": 6,
@@ -261,6 +348,14 @@
       "regression": 0,
       "repair_rate": 0.25
     },
+    "stencil1d": {
+      "total_multi_attempt": 1,
+      "full_repair": 1,
+      "partial_repair": 0,
+      "no_repair": 0,
+      "regression": 0,
+      "repair_rate": 1.0
+    },
     "streamcluster": {
       "total_multi_attempt": 29,
       "full_repair": 1,
@@ -268,28 +363,36 @@
       "no_repair": 26,
       "regression": 0,
       "repair_rate": 0.0345
+    },
+    "xsbench": {
+      "total_multi_attempt": 30,
+      "full_repair": 0,
+      "partial_repair": 0,
+      "no_repair": 30,
+      "regression": 0,
+      "repair_rate": 0.0
     }
   },
   "token_overhead": {
-    "total_extra_prompt_tokens": 27024023,
-    "total_extra_completion_tokens": 5696653,
-    "total_extra_tokens": 32720676,
-    "full_repair_extra_prompt_tokens": 1891091,
-    "full_repair_extra_completion_tokens": 436157,
-    "mean_extra_tokens_per_retry": 69470.6
+    "total_extra_prompt_tokens": 32383944,
+    "total_extra_completion_tokens": 6722576,
+    "total_extra_tokens": 39106520,
+    "full_repair_extra_prompt_tokens": 2286403,
+    "full_repair_extra_completion_tokens": 514646,
+    "mean_extra_tokens_per_retry": 62670.7
   },
   "repair_trajectories": [
     {
       "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 BUILD_FAIL",
-      "count": 177
+      "count": 264
     },
     {
       "trajectory": "RUN_FAIL \u2192 RUN_FAIL \u2192 RUN_FAIL",
-      "count": 112
+      "count": 140
     },
     {
       "trajectory": "BUILD_FAIL \u2192 PASS",
-      "count": 39
+      "count": 47
     },
     {
       "trajectory": "VERIFY_FAIL \u2192 VERIFY_FAIL \u2192 VERIFY_FAIL",
@@ -297,39 +400,43 @@
     },
     {
       "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 PASS",
-      "count": 14
+      "count": 23
     },
     {
       "trajectory": "BUILD_FAIL \u2192 VERIFY_FAIL \u2192 VERIFY_FAIL",
-      "count": 12
+      "count": 13
     },
     {
       "trajectory": "RUN_FAIL \u2192 PASS",
+      "count": 11
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 RUN_FAIL",
       "count": 10
     },
     {
       "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 VERIFY_FAIL",
-      "count": 8
+      "count": 10
     },
     {
       "trajectory": "EXTRACTION_FAIL \u2192 BUILD_FAIL \u2192 PASS",
       "count": 8
     },
     {
-      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 RUN_FAIL",
+      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL \u2192 RUN_FAIL",
+      "count": 7
+    },
+    {
+      "trajectory": "VERIFY_FAIL \u2192 PASS",
+      "count": 6
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 RUN_FAIL \u2192 PASS",
       "count": 6
     },
     {
       "trajectory": "EXTRACTION_FAIL \u2192 EXTRACTION_FAIL \u2192 VERIFY_FAIL",
       "count": 6
-    },
-    {
-      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL \u2192 RUN_FAIL",
-      "count": 5
-    },
-    {
-      "trajectory": "VERIFY_FAIL \u2192 PASS",
-      "count": 5
     },
     {
       "trajectory": "BUILD_FAIL \u2192 OTHER \u2192 OTHER",
@@ -340,12 +447,12 @@
       "count": 4
     },
     {
-      "trajectory": "RUN_FAIL \u2192 RUN_FAIL \u2192 PASS",
+      "trajectory": "EXTRACTION_FAIL \u2192 PASS",
       "count": 4
     },
     {
-      "trajectory": "EXTRACTION_FAIL \u2192 PASS",
-      "count": 4
+      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL \u2192 BUILD_FAIL",
+      "count": 3
     },
     {
       "trajectory": "EXTRACTION_FAIL \u2192 EXTRACTION_FAIL \u2192 PASS",
@@ -360,6 +467,10 @@
       "count": 3
     },
     {
+      "trajectory": "BUILD_FAIL \u2192 VERIFY_FAIL \u2192 BUILD_FAIL",
+      "count": 2
+    },
+    {
       "trajectory": "EXTRACTION_FAIL \u2192 EXTRACTION_FAIL \u2192 BUILD_FAIL",
       "count": 2
     },
@@ -368,15 +479,23 @@
       "count": 2
     },
     {
+      "trajectory": "RUN_FAIL \u2192 RUN_FAIL \u2192 VERIFY_FAIL",
+      "count": 1
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 BUILD_FAIL \u2192 BUILD_FAIL",
+      "count": 1
+    },
+    {
+      "trajectory": "RUN_FAIL \u2192 RUN_FAIL \u2192 BUILD_FAIL",
+      "count": 1
+    },
+    {
+      "trajectory": "VERIFY_FAIL \u2192 VERIFY_FAIL \u2192 PASS",
+      "count": 1
+    },
+    {
       "trajectory": "PASS \u2192 PASS",
-      "count": 1
-    },
-    {
-      "trajectory": "BUILD_FAIL \u2192 RUN_FAIL \u2192 BUILD_FAIL",
-      "count": 1
-    },
-    {
-      "trajectory": "BUILD_FAIL \u2192 VERIFY_FAIL \u2192 BUILD_FAIL",
       "count": 1
     },
     {
@@ -401,6 +520,10 @@
     },
     {
       "trajectory": "VERIFY_FAIL \u2192 BUILD_FAIL \u2192 PASS",
+      "count": 1
+    },
+    {
+      "trajectory": "BUILD_FAIL \u2192 BUILD_FAIL \u2192 OTHER",
       "count": 1
     }
   ]

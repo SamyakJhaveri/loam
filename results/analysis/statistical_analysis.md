@@ -1,69 +1,69 @@
 # ParBench Statistical Analysis
 
-**Generated:** 2026-03-31T23:50:25.237985  |  **Records:** 906  |  **Alpha:** 0.05
+**Generated:** 2026-04-03T15:57:39.360393  |  **Records:** 1136  |  **Alpha:** 0.05
 
 ## 1. Pass Rates with 95% Wilson Score CIs
 
 ### By Model
 | Model | Rate | 95% CI | n |
 |-------|-----:|-------:|--:|
-| together-qwen-3.5-397b-a17b | 27.7% | [24.9%, 30.7%] | 906 |
+| together-qwen-3.5-397b-a17b | 31.3% | [28.7%, 34.1%] | 1136 |
 
 ### By Direction
 | Direction | Rate | 95% CI | n |
 |-----------|-----:|-------:|--:|
-| cuda-to-omp | 50.0% | [42.1%, 57.9%] | 152 |
-| cuda-to-omp_target | 0.0% | [0.0%, 13.8%] | 24 |
-| cuda-to-opencl | 13.8% | [9.1%, 20.3%] | 145 |
-| omp-to-cuda | 36.8% | [29.6%, 44.8%] | 152 |
-| omp-to-opencl | 25.6% | [18.8%, 33.7%] | 129 |
-| omp_target-to-cuda | 60.0% | [42.3%, 75.4%] | 30 |
-| opencl-to-cuda | 4.1% | [1.9%, 8.7%] | 145 |
-| opencl-to-omp | 32.6% | [25.1%, 41.0%] | 129 |
+| cuda-to-omp | 52.6% | [45.6%, 59.6%] | 192 |
+| cuda-to-omp_target | 10.9% | [5.4%, 20.9%] | 64 |
+| cuda-to-opencl | 17.5% | [12.4%, 24.1%] | 160 |
+| omp-to-cuda | 41.1% | [34.4%, 48.2%] | 192 |
+| omp-to-opencl | 25.0% | [18.6%, 32.7%] | 144 |
+| omp_target-to-cuda | 71.2% | [60.5%, 80.0%] | 80 |
+| opencl-to-cuda | 3.8% | [1.7%, 7.9%] | 160 |
+| opencl-to-omp | 29.2% | [22.4%, 37.0%] | 144 |
 
 ### By Kernel
 | Kernel | Rate | 95% CI | n |
 |--------|-----:|-------:|--:|
-| backprop | 25.0% | [14.9%, 38.8%] | 48 |
+| backprop | 39.6% | [27.0%, 53.7%] | 48 |
 | bfs | 41.7% | [28.8%, 55.7%] | 48 |
 | bptree | 12.5% | [5.9%, 24.7%] | 48 |
 | cfd | 37.5% | [25.2%, 51.6%] | 48 |
-| convolution1d | 0.0% | [0.0%, 39.0%] | 6 * |
+| convolution1d | 0.0% | [0.0%, 19.4%] | 16 |
 | dwt2d | 0.0% | [0.0%, 19.4%] | 16 |
-| floydwarshall | 75.0% | [46.8%, 91.1%] | 12 |
+| floydwarshall | 78.1% | [61.3%, 89.0%] | 32 |
 | gaussian | 0.0% | [0.0%, 19.4%] | 16 |
 | heartwall | 0.0% | [0.0%, 7.4%] | 48 |
-| heat2d | 75.0% | [46.8%, 91.1%] | 12 |
+| heat2d | 75.0% | [57.9%, 86.8%] | 32 |
 | hotspot | 50.0% | [36.4%, 63.6%] | 48 |
 | hotspot3d | 52.1% | [38.3%, 65.5%] | 48 |
-| iso2dfd | 58.3% | [31.9%, 80.7%] | 12 |
-| jacobi | 0.0% | [0.0%, 39.0%] | 6 * |
+| iso2dfd | 68.8% | [51.4%, 82.0%] | 32 |
+| jacobi | 37.5% | [18.5%, 61.4%] | 16 |
 | lavamd | 4.2% | [1.1%, 14.0%] | 48 |
 | lud | 39.6% | [27.0%, 53.7%] | 48 |
-| md | 16.7% | [3.0%, 56.4%] | 6 * |
-| mixbench | 11.1% | [3.1%, 32.8%] | 18 |
+| md | 43.8% | [23.1%, 66.8%] | 16 |
+| mixbench | 20.8% | [11.7%, 34.3%] | 48 |
 | myocyte | 0.0% | [0.0%, 7.4%] | 48 |
 | nn | 50.0% | [28.0%, 72.0%] | 16 |
-| nqueen | 33.3% | [9.7%, 70.0%] | 6 * |
+| nqueen | 50.0% | [28.0%, 72.0%] | 16 |
 | nw | 41.7% | [28.8%, 55.7%] | 48 |
-| page-rank | 50.0% | [18.8%, 81.2%] | 6 * |
+| page-rank | 56.2% | [33.2%, 76.9%] | 16 |
 | particlefilter | 47.9% | [34.5%, 61.7%] | 48 |
 | pathfinder | 35.4% | [23.4%, 49.6%] | 48 |
-| rsbench | 0.0% | [0.0%, 17.6%] | 18 |
-| scan | 0.0% | [0.0%, 29.9%] | 9 * |
+| rsbench | 0.0% | [0.0%, 7.4%] | 48 |
+| scan | 20.8% | [9.2%, 40.5%] | 24 |
 | srad | 31.2% | [20.0%, 45.3%] | 48 |
-| stencil1d | 77.8% | [45.3%, 93.7%] | 9 * |
+| stencil1d | 91.7% | [74.2%, 97.7%] | 24 |
 | streamcluster | 4.2% | [1.1%, 14.0%] | 48 |
-| xsbench | 0.0% | [0.0%, 17.6%] | 18 |
+| xsbench | 0.0% | [0.0%, 7.4%] | 48 |
 
 ### By Augmentation Level
 | Level | Rate | 95% CI | n |
 |-------|-----:|-------:|--:|
-| L0 | 22.6% | [19.2%, 26.4%] | 522 |
-| L1 | 34.4% | [25.6%, 44.3%] | 96 |
-| L2 | 36.5% | [27.5%, 46.4%] | 96 |
-| L3 | 37.5% | [28.5%, 47.5%] | 96 |
-| L4 | 30.2% | [21.9%, 40.0%] | 96 |
+| L0 | 24.8% | [21.4%, 28.5%] | 568 |
+| L1 | 37.3% | [29.8%, 45.5%] | 142 |
+| L2 | 40.1% | [32.4%, 48.4%] | 142 |
+| L3 | 39.4% | [31.8%, 47.6%] | 142 |
+| L4 | 34.5% | [27.2%, 42.6%] | 142 |
 
 ## 3. Augmentation Level Independence (Chi-Squared)
 
@@ -73,7 +73,7 @@
 ### By Model
 | Model | chi2 | p (corrected) | Cramer's V | Significant? | Low expected? |
 |-------|-----:|-------------:|----------:|:------------:|:-------------:|
-| together-qwen-3.5-397b-a17b | 9.43 | 0.1023 | 0.249 (small) | No | No |
+| together-qwen-3.5-397b-a17b | 10.34 | 0.0701 | 0.232 (small) | No | No |
 
 ## 4. Augmentation Trend (Cochran-Armitage, cuda-to-omp)
 
@@ -81,49 +81,35 @@
 
 | Group | z | p-value | Trend | Significant? |
 |-------|--:|--------:|:------|:------------:|
-| overall | -0.166 | 0.8684 | decreasing | No |
-| together-qwen-3.5-397b-a17b | -0.166 | 0.8684 | decreasing | No |
+| overall | -0.000 | 1.0000 | decreasing | No |
+| together-qwen-3.5-397b-a17b | -0.000 | 1.0000 | decreasing | No |
 
 ## 5. Direction Asymmetry (McNemar's Test, L0 only)
 
 | Direction Pair | n paired | Fwd Rate | Rev Rate | Cohen's h | p-value | Significant? |
 |----------------|--------:|--------:|--------:|----------:|--------:|:------------:|
-| opencl-to-omp vs omp-to-opencl | 18 | 38.9% | 27.8% | 0.236 | 0.7266 | No |
-| cuda-to-omp_target vs omp_target-to-cuda | 8 | 0.0% | 62.5% | -1.823 | 0.0625 | No |
-| cuda-to-omp vs omp-to-cuda | 24 | 58.3% | 54.2% | 0.084 | 1.0000 | No |
-| cuda-to-opencl vs opencl-to-cuda | 20 | 15.0% | 10.0% | 0.152 | 1.0000 | No |
+| cuda-to-omp_target vs omp_target-to-cuda | 8 | 12.5% | 75.0% | -1.372 | 0.0625 | No |
+| opencl-to-cuda vs cuda-to-opencl | 20 | 10.0% | 20.0% | -0.284 | 0.6875 | No |
+| opencl-to-omp vs omp-to-opencl | 18 | 38.9% | 33.3% | 0.116 | 1.0000 | No |
+| cuda-to-omp vs omp-to-cuda | 24 | 66.7% | 58.3% | 0.172 | 0.6875 | No |
 
 ## 6. Augmentation Curves with CIs
 
 ### together-qwen-3.5-397b-a17b
 | Level | Rate | 95% CI | Pass/Total |
 |-------|-----:|-------:|----------:|
-| L0 | 22.6% | [19.2%, 26.4%] | 118/522 |
-| L1 | 34.4% | [25.6%, 44.3%] | 33/96 |
-| L2 | 36.5% | [27.5%, 46.4%] | 35/96 |
-| L3 | 37.5% | [28.5%, 47.5%] | 36/96 |
-| L4 | 30.2% | [21.9%, 40.0%] | 29/96 |
-
-## 7. Sample Size Adequacy Flags
-
-**7 cells with n < 10** (insufficient for reliable CI):
-
-| Cell | n | Note |
-|------|--:|:-----|
-| kernel:convolution1d | 6 | n < 10; CI width exceeds 30pp |
-| kernel:jacobi | 6 | n < 10; CI width exceeds 30pp |
-| kernel:md | 6 | n < 10; CI width exceeds 30pp |
-| kernel:nqueen | 6 | n < 10; CI width exceeds 30pp |
-| kernel:page-rank | 6 | n < 10; CI width exceeds 30pp |
-| kernel:scan | 9 | n < 10; CI width exceeds 30pp |
-| kernel:stencil1d | 9 | n < 10; CI width exceeds 30pp |
+| L0 | 24.8% | [21.4%, 28.5%] | 141/568 |
+| L1 | 37.3% | [29.8%, 45.5%] | 53/142 |
+| L2 | 40.1% | [32.4%, 48.4%] | 57/142 |
+| L3 | 39.4% | [31.8%, 47.6%] | 56/142 |
+| L4 | 34.5% | [27.2%, 42.6%] | 49/142 |
 
 ## 8. Pass@k Estimates
 
 | Task | n | c | pass@1 | pass@3 | pass@10 |
 |------|--:|--:|-------:|-------:|--------:|
 | ('backprop', 'together-qwen-3.5-397b-a17b', 'cuda-to-omp', 0) | 3 | 0 | 0.0 | --- | --- |
-| ('backprop', 'together-qwen-3.5-397b-a17b', 'cuda-to-opencl', 0) | 3 | 0 | 0.0 | --- | --- |
+| ('backprop', 'together-qwen-3.5-397b-a17b', 'cuda-to-opencl', 0) | 3 | 3 | 1.0 | --- | --- |
 | ('backprop', 'together-qwen-3.5-397b-a17b', 'omp-to-cuda', 0) | 3 | 0 | 0.0 | --- | --- |
 | ('backprop', 'together-qwen-3.5-397b-a17b', 'omp-to-opencl', 0) | 3 | 3 | 1.0 | --- | --- |
 | ('backprop', 'together-qwen-3.5-397b-a17b', 'opencl-to-cuda', 0) | 3 | 0 | 0.0 | --- | --- |

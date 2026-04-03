@@ -74,11 +74,11 @@ def test_script_runs_and_produces_json():
 # ---------------------------------------------------------------------------
 
 def test_campaign_totals(paper_data):
-    """Primary campaign = 480 tasks, pass@k campaign = 426 tasks."""
+    """Primary campaign = 480 tasks, pass@k campaign = 288 tasks (Rodinia suite filter)."""
     assert paper_data["file_counts"]["primary_campaign"] == 480
-    assert paper_data["file_counts"]["passk_campaign"] == 426
+    assert paper_data["file_counts"]["passk_campaign"] == 288
     assert paper_data["primary_campaign"]["total"] == 480
-    assert paper_data["passk_campaign"]["total"] == 426
+    assert paper_data["passk_campaign"]["total"] == 288
 
 
 # ---------------------------------------------------------------------------
@@ -191,10 +191,10 @@ def test_cochran_armitage(paper_data):
 # ---------------------------------------------------------------------------
 
 def test_passk_estimates(paper_data):
-    """pass@1 macro avg ~ 0.197, pass@3 macro avg ~ 0.275."""
+    """pass@1 macro avg ~ 0.153, pass@3 macro avg ~ 0.229 (Rodinia suite filter)."""
     agg = paper_data["passk_campaign"]["aggregate_passk"]
-    assert agg["pass@1_macro_avg"] == pytest.approx(0.197, abs=0.01)
-    assert agg["pass@3_macro_avg"] == pytest.approx(0.275, abs=0.01)
+    assert agg["pass@1_macro_avg"] == pytest.approx(0.153, abs=0.01)
+    assert agg["pass@3_macro_avg"] == pytest.approx(0.229, abs=0.01)
 
 
 # ---------------------------------------------------------------------------
@@ -444,9 +444,9 @@ def test_kernel_totals_sum(paper_data):
 # ---------------------------------------------------------------------------
 
 def test_passk_total_samples(paper_data):
-    """pass@k aggregate total_samples matches passk campaign total."""
+    """pass@k aggregate total_samples matches passk campaign total (Rodinia suite filter)."""
     agg = paper_data["passk_campaign"]["aggregate_passk"]
-    assert agg["total_samples"] == 426
+    assert agg["total_samples"] == 288
     assert agg["n_tasks"] > 0
 
 
