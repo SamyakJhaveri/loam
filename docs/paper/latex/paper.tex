@@ -686,6 +686,7 @@ Python & 3.12.3 & \pending{Python} \\
 \section{Results}
 \label{sec:results}
 
+% src: paper_data.json > file_counts: primary_campaign=480, passk_campaign=426, 480+426=906; verified 2026-04-03
 This section presents the empirical output of the ParBench pipeline---the Result component (Figure~\ref{fig:architecture}, yellow, far-right)---across 906 total evaluated tasks: 480 in the primary campaign (Qwen~3.5 397B-A17B across six directions and five augmentation levels) and 426 in the pass@$k$ sweep. \pending{GPT-4.1~mini campaign results will expand the primary campaign to 960 tasks total.} All primary campaign evaluations use temperature=0, up to three self-repair retry attempts (four total attempts per task), and the build/run/verify pipeline described in Section~\ref{sec:harness}. A separate pass@$k$ sweep (Section~\ref{sec:pass-at-k}) evaluates sampling variance at temperature=0.7.
 
 \subsection{Overall Pass Rates}
@@ -823,6 +824,7 @@ Kernels partition into three difficulty tiers based on Qwen~3.5 pass rates acros
 % src: paper_data.json > by_kernel: heartwall BLD_F=19/30, myocyte BLD_F=19/30, gaussian BLD_F=0 verified
 \textbf{Hard tier (pass rate 0\%).} Four kernels: dwt2d (0.0\%), gaussian (0.0\%), heartwall (0.0\%), and myocyte (0.0\%). These kernels share structural complexity that defeats translation across all directions. Heartwall and myocyte are dominated by BUILD\_FAIL (19/30 each). Gaussian's failures split between RUN\_FAIL and VERIFY\_FAIL with zero BUILD\_FAIL, suggesting the model produces syntactically valid but semantically incorrect translations.
 
+% src: paper_data.json > by_kernel: dwt2d=10, gaussian=10, nn=10 (2 dir pairs x 5 levels); all others=30 (6 x 5); verified 2026-04-03
 \textbf{Sample size note.} Per-kernel totals in Table~\ref{tab:per-kernel} aggregate across 6 directions and 5 augmentation levels per kernel. Common kernels appear in 30 tasks ($6 \times 5$); kernels present in fewer direction pairs (e.g., dwt2d, nn) have 10 tasks. Per-direction sample sizes vary (see Section~\ref{sec:direction-analysis}); findings from low-$n$ directions should be considered exploratory.
 
 \subsection{Self-Repair Effectiveness}
@@ -856,11 +858,13 @@ Regression & 5 (1.0\%) & \tbd & \tbd \\ % src: regression=5, 5/480=0.0104
 % src: paper_data.json > self_repair > first_attempt_pass_rate: CI [0.1436,0.2115]; repair_rate: 90/396=0.2273 CI [0.1887,0.2711]
 Self-repair doubles Qwen~3.5's effective pass rate from 17.5\% [14.4\%, 21.2\%] (first-attempt) to 36.2\% [32.1\%, 40.6\%] (final), a relative improvement of 107.1\% (Table~\ref{tab:self-repair}). Of the 396 initially-failing tasks, 90 are repaired through the 3-retry protocol (repair rate: 22.7\% [18.9\%, 27.1\%]). Five regressions occur where an initially passing translation fails after retry, representing a 1.0\% regression rate.
 
+% src: LASSI paper Table 2: 80-85% pass rates; ParBench repair rate = paper_data.json > self_repair > repair_rate = 22.7%
 The self-repair data positions ParBench's 3-retry protocol as a controlled middle ground on the agentic spectrum. LASSI~\cite{LASSI2024} reports 80--85\% pass rates with a complete agentic self-correction pipeline (compilation feedback, execution analysis, profiling). ParBench's self-repair protocol provides only error feedback (compiler output or output mismatch) without retrieval augmentation or tool access. The gap between ParBench's repair rate (36.2\%) and LASSI's agentic rate (80--85\%) quantifies the value of agentic infrastructure beyond simple error feedback.
 
 \subsection{Augmentation Robustness}
 \label{sec:augmentation-robustness}
 
+% src: 88 non-KNOWN_FAIL = 96 total - 8 KNOWN_FAIL; 68 validated = 88 - 20 (OpenCL-only specs w/o all directions); verified 2026-04-03
 The augmentation engine's six AST-driven transforms were validated on 68 of 88 non-KNOWN\_FAIL specs across five suites at augmentation levels L1 through L4, confirming level-invariant semantics preservation with zero correctness regressions (Section~\ref{sec:augmentation-engine}).
 
 Table~\ref{tab:augmentation-rates} presents per-model pass rates across augmentation levels L0--L4 for CUDA-to-OpenMP translation.
