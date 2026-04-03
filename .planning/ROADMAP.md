@@ -21,21 +21,24 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Data Verification & Ground Truth
-**Goal**: Every numerical claim and table in Sections 1-5 is verified against actual data files on disk, with no stale or incorrect values remaining
+**Goal**: Every numerical claim and table in Sections 1-7 is verified against actual data files on disk, with no stale or incorrect values remaining, and all analysis files regenerated fresh
 **Depends on**: Nothing (first phase)
 **Requirements**: VERIFY-01, VERIFY-02, VERIFY-03, VERIFY-04, VERIFY-05, VERIFY-06
 **Success Criteria** (what must be TRUE):
-  1. Running a cross-check of every number in Sections 1-5 against paper_data.json, statistical_analysis.json, and selfrepair_analysis.json produces zero discrepancies
+  1. Running a cross-check of every number in Sections 1-7 against paper_data.json, statistical_analysis.json, and selfrepair_analysis.json produces zero discrepancies
   2. Suite-summary table (tab:suite-summary) kernel count, spec count, and API counts match manifest.jsonl entry count and specs/ file count on disk
   3. Augmentation level definitions table matches LEVEL_FRACTIONS dictionary values in c_augmentation/augment_dataset.py
   4. Model config table contains only Qwen 3.5 397B and GPT-4.1 mini with accurate descriptions, zero Gemini references
   5. Hardware/software table matches actual nvcc --version, gcc --version, and nvidia-smi output on the Linux machine
-**Plans**: TBD
+  6. All analysis files and figures regenerated fresh at end of phase
+**Plans**: 5 plans in 2 waves
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
-- [ ] 01-03: TBD
+- [ ] 01-01-PLAN.md -- Verify Abstract + S1 + S3 (data freeze, augmentation levels, headline numbers)
+- [ ] 01-02-PLAN.md -- Verify S4 + S5 (suite-summary, hardware, model config, Gemini sweep)
+- [ ] 01-03-PLAN.md -- Verify S6.1-S6.5 (aggregate results, failure taxonomy, self-repair, augmentation rates)
+- [ ] 01-04-PLAN.md -- Verify S6.6-S6.8 + S7 (per-kernel, directions, pass@k, stats, discussion)
+- [ ] 01-05-PLAN.md -- Regenerate all analysis files + figures (depends on 01-01 through 01-04)
 
 ### Phase 2: Benchmark Characterization Data
 **Goal**: All quantitative benchmark characterization metrics are computed, saved to analysis files, and ready for the paper table and introduction
@@ -104,7 +107,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Verification & Ground Truth | 0/3 | Not started | - |
+| 1. Data Verification & Ground Truth | 0/5 | Not started | - |
 | 2. Benchmark Characterization Data | 0/3 | Not started | - |
 | 3. Augmentation Analysis & Story | 0/3 | Not started | - |
 | 4. Methodology & Reviewer Defense | 0/2 | Not started | - |
