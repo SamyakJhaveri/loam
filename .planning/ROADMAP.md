@@ -35,8 +35,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 01-01-PLAN.md -- Verify Abstract + S1 + S3 (data freeze, augmentation levels, headline numbers)
-- [ ] 01-02-PLAN.md -- Verify S4 + S5 (suite-summary, hardware, model config, Gemini sweep)
-- [ ] 01-03-PLAN.md -- Verify S6.1-S6.5 (aggregate results, failure taxonomy, self-repair, augmentation rates)
+- [x] 01-02-PLAN.md -- Verify S4 + S5 (suite-summary, hardware, model config, Gemini sweep)
+- [x] 01-03-PLAN.md -- Verify S6.1-S6.5 (aggregate results, failure taxonomy, self-repair, augmentation rates)
 - [x] 01-04-PLAN.md -- Verify S6.6-S6.8 + S7 (per-kernel, directions, pass@k, stats, discussion)
 - [ ] 01-05-PLAN.md -- Regenerate all analysis files + figures (depends on 01-01 through 01-04)
 
