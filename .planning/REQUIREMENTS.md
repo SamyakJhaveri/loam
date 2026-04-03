@@ -83,37 +83,37 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VERIFY-01 | TBD | Pending |
-| VERIFY-02 | TBD | Pending |
-| VERIFY-03 | TBD | Pending |
-| VERIFY-04 | TBD | Pending |
-| VERIFY-05 | TBD | Pending |
-| VERIFY-06 | TBD | Pending |
-| CHAR-01 | TBD | Pending |
-| CHAR-02 | TBD | Pending |
-| CHAR-03 | TBD | Pending |
-| CHAR-04 | TBD | Pending |
-| CHAR-05 | TBD | Pending |
-| CHAR-06 | TBD | Pending |
-| CHAR-07 | TBD | Pending |
-| INTRO-01 | TBD | Pending |
-| INTRO-02 | TBD | Pending |
-| INTRO-03 | TBD | Pending |
-| INTRO-04 | TBD | Pending |
-| AUG-01 | TBD | Pending |
-| AUG-02 | TBD | Pending |
-| AUG-03 | TBD | Pending |
-| AUG-04 | TBD | Pending |
-| METHOD-01 | TBD | Pending |
-| METHOD-02 | TBD | Pending |
-| METHOD-03 | TBD | Pending |
-| METHOD-04 | TBD | Pending |
+| VERIFY-01 | Phase 1 | Pending |
+| VERIFY-02 | Phase 1 | Pending |
+| VERIFY-03 | Phase 1 | Pending |
+| VERIFY-04 | Phase 1 | Pending |
+| VERIFY-05 | Phase 1 | Pending |
+| VERIFY-06 | Phase 1 | Pending |
+| CHAR-01 | Phase 2 | Pending |
+| CHAR-02 | Phase 2 | Pending |
+| CHAR-03 | Phase 2 | Pending |
+| CHAR-04 | Phase 2 | Pending |
+| CHAR-05 | Phase 2 | Pending |
+| CHAR-06 | Phase 2 | Pending |
+| CHAR-07 | Phase 5 | Pending |
+| INTRO-01 | Phase 5 | Pending |
+| INTRO-02 | Phase 5 | Pending |
+| INTRO-03 | Phase 5 | Pending |
+| INTRO-04 | Phase 5 | Pending |
+| AUG-01 | Phase 3 | Pending |
+| AUG-02 | Phase 3 | Pending |
+| AUG-03 | Phase 3 | Pending |
+| AUG-04 | Phase 3 | Pending |
+| METHOD-01 | Phase 4 | Pending |
+| METHOD-02 | Phase 4 | Pending |
+| METHOD-03 | Phase 4 | Pending |
+| METHOD-04 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 25 total
-- Mapped to phases: 0 (pending roadmap creation)
-- Unmapped: 25
+- Mapped to phases: 25
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-03*
-*Last updated: 2026-04-03 after initial definition*
+*Last updated: 2026-04-03 after roadmap creation -- traceability complete*
