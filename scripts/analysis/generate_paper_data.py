@@ -1183,24 +1183,26 @@ def main() -> None:
     all_records = load_results(results_dir, args.verbose)
     filtered = exclude_known_fail(all_records)
 
-    # Suite filter: limit to a specific suite prefix (e.g. "rodinia")
+    primary, passk = split_campaigns(filtered)
+
+    # Suite filter: limit PRIMARY campaign to a specific suite prefix (e.g. "rodinia").
+    # Pass@k campaign is intentionally NOT filtered — it covers all suites for broader
+    # coverage (426 tasks vs 288 if restricted to Rodinia).
     if args.suite:
         suite_prefix = args.suite + "-"
-        before = len(filtered)
-        filtered = [
-            r for r in filtered
+        before = len(primary)
+        primary = [
+            r for r in primary
             if r.get("source_spec", "").startswith(suite_prefix)
         ]
         if args.verbose:
-            print(f"  Suite filter '{args.suite}': {before} -> {len(filtered)} records")
-
-    primary, passk = split_campaigns(filtered)
+            print(f"  Suite filter '{args.suite}' (primary only): {before} -> {len(primary)} records")
 
     if args.verbose:
         print(f"  Total loaded: {len(all_records)}")
         print(f"  After KNOWN_FAIL exclusion: {len(filtered)}")
         print(f"  Primary campaign (temp=0.0): {len(primary)}")
-        print(f"  Pass@k campaign (temp=0.7): {len(passk)}")
+        print(f"  Pass@k campaign (temp=0.7, all suites): {len(passk)}")
 
     # Step 2: Analyze
     if args.verbose:
