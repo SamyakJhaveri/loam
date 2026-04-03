@@ -632,6 +632,7 @@ This section presents the empirical output of the ParBench pipeline---the Result
 
 Table~\ref{tab:overall-pass} summarizes aggregate pass rates for the two evaluated models across all directions and augmentation levels.
 
+% src: paper_data.json > primary_campaign > overall (all cells verified 2026-04-03; raw-JSON confirmed)
 \begin{table*}[t]
 \centering
 \caption{Overall pass rates across all tasks (Qwen~3.5; GPT-4.1~mini pending; 5 suites, 6 directions, L0--L4). KNOWN\_FAIL source specs (8 total: 6 Rodinia + 2 HeCBench) are excluded from evaluation.}
@@ -641,15 +642,17 @@ Table~\ref{tab:overall-pass} summarizes aggregate pass rates for the two evaluat
 \toprule
 Model & PASS & BUILD\_FAIL & RUN\_FAIL & VERIFY\_FAIL & EXTR\_FAIL & Total & Rate & 95\% Wilson CI \\
 \midrule
-Qwen 3.5 397B-A17B & 174 & 148 & 110 & 47 & 1 & 480 & 36.2\% & [32.1\%, 40.6\%] \\
+Qwen 3.5 397B-A17B & 174 & 148 & 110 & 47 & 1 & 480 & 36.2\% & [32.1\%, 40.6\%] \\ % src: row sum 174+148+110+47+1=480; 174/480=36.2%; CI [0.3207,0.4064]
 GPT-4.1 mini & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \textbf{Aggregate} & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
+% src: paper_data.json > primary_campaign > overall: 148/480=30.8%, 110/480=22.9%, 47/480=9.8%, 1/480=0.2% (all verified)
 Qwen~3.5 397B-A17B achieves an overall pass rate of 36.2\% [32.1\%, 40.6\%] across 480 translation tasks spanning six directions and five augmentation levels. The failure distribution reveals that BUILD\_FAIL is the dominant failure mode at 30.8\% (148/480), followed by RUN\_FAIL at 22.9\% (110/480), VERIFY\_FAIL at 9.8\% (47/480), and EXTRACTION\_FAIL at 0.2\% (1/480). The preponderance of BUILD\_FAIL indicates that API-specific syntax---rather than parallel reasoning---is the primary bottleneck: the model frequently retains CUDA memory management calls in otherwise-OpenMP code or omits required OpenCL address-space qualifiers. \pending{Cross-model comparison and chi-squared test awaiting GPT-4.1~mini campaign completion.}
 
+% src: paper_data.json > primary_campaign > by_direction > cuda-to-omp: 65.0% [54.1%, 74.6%] verified
 These results contrast sharply with repository-level evaluation. ParEval-Repo~\cite{ParEvalRepo2025} reports 0\% pass@1 for all models on applications larger than 133~SLoC, including XSBench. ParBench's kernel-centric approach---isolating the translation task from build-system generation---achieves 36.2\% overall and 65.0\% [54.1\%, 74.6\%] on the primary CUDA-to-OpenMP direction for Qwen~3.5, on the same class of HPC kernels. The gap quantifies the degree to which build-system generation, rather than parallel logic translation, is the binding constraint in repository-level approaches.
 
 \pending{Chi-squared test of independence between model identity and pass/fail outcome awaiting GPT-4.1~mini campaign completion.}
@@ -657,6 +660,7 @@ These results contrast sharply with repository-level evaluation. ParEval-Repo~\c
 \subsection{Failure Taxonomy}
 \label{sec:failure-taxonomy}
 
+% src: 480-174=306 failures; 148/306=48.4%, 110/306=35.9%, 47/306=15.4%, 1/306=0.3% (all verified)
 Of the 306 total failures in the Qwen~3.5 campaign, the distribution is: BUILD\_FAIL: 148/306 (48.4\%); RUN\_FAIL: 110/306 (35.9\%); VERIFY\_FAIL: 47/306 (15.4\%); EXTRACTION\_FAIL: 1/306 (0.3\%).
 
 \begin{figure}[t]
@@ -666,6 +670,7 @@ Of the 306 total failures in the Qwen~3.5 campaign, the distribution is: BUILD\_
 \label{fig:failure-taxonomy}
 \end{figure}
 
+% src: paper_data.json > build_fail_subcategories: missing_header=55 (37.2%), undeclared_identifier=47 (31.8%), linker_error=30 (20.3%); 55+47+30=132 of 148
 \textbf{BUILD\_FAIL dominance.} BUILD\_FAIL accounts for 148/480 tasks (30.8\%) and 48.4\% of all failures, confirming it as the dominant failure mode (Table~\ref{tab:overall-pass}). Subcategory analysis reveals three primary error classes: missing headers (55 tasks, 37.2\% of BUILD\_FAIL), where the translated code references API-specific headers absent in the target environment; undeclared identifiers (47 tasks, 31.8\%), typically retained CUDA intrinsics (\texttt{threadIdx}, \texttt{blockIdx}, \texttt{cudaMalloc}) in otherwise-OpenMP code; and linker errors (30 tasks, 20.3\%), where function signatures or library dependencies are incompatible with the target API. These are predominantly syntactic failures: the model demonstrates understanding of the parallel computation structure but fails to fully translate the API surface.
 
 \textbf{VERIFY\_FAIL analysis.} VERIFY\_FAIL accounts for 47/480 tasks (9.8\%) and 15.4\% of all failures. Of these, 42 (89.4\%) produce wrong numerical output while 5 (10.6\%) produce missing output entirely. VERIFY\_FAIL indicates translations that compile and execute successfully but produce incorrect results, identifying subtle parallel logic errors: wrong thread-index mappings, incorrect reduction scoping, or missed data dependencies. The conjunctive verification (exit\_code AND stdout\_pattern) is essential for catching these cases---translations that exit cleanly but produce wrong output would appear correct under exit-code-only checking.
@@ -818,6 +823,8 @@ The null result has a specific interpretation: it provides evidence \emph{agains
 
 Table~\ref{tab:direction-rates} presents pass rates broken down by translation direction for each model at L0.
 
+% src: paper_data.json > primary_campaign > by_direction (all 6 rows verified 2026-04-03)
+% src: task sum 80+80+75+75+85+85=480 verified
 \begin{table*}[t]
 \centering
 \caption{Pass rates by translation direction (L0, all suites, Qwen~3.5; GPT-4.1~mini pending). Directions with fewer than 10 kernel-model pairs are marked as exploratory.}
@@ -827,24 +834,29 @@ Table~\ref{tab:direction-rates} presents pass rates broken down by translation d
 \toprule
 Direction & Qwen 3.5 (L0) & Qwen 3.5 (all levels) & GPT-4.1 mini & $N$ (L0) & Note \\
 \midrule
-cuda-to-omp & 68.8\% (11/16) & 65.0\% (52/80) [54.1\%, 74.6\%] & \tbd & 16 & Primary \\
-omp-to-cuda & 56.2\% (9/16) & 50.0\% (40/80) [39.3\%, 60.7\%] & \tbd & 16 & \\
-opencl-to-omp & 46.7\% (7/15) & 46.7\% (35/75) [35.8\%, 57.8\%] & \tbd & 15 & \\
-omp-to-opencl & 33.3\% (5/15) & 29.3\% (22/75) [20.2\%, 40.4\%] & \tbd & 15 & \\
-cuda-to-opencl & 23.5\% (4/17) & 22.4\% (19/85) [14.8\%, 32.3\%] & \tbd & 17 & \\
-opencl-to-cuda & 11.8\% (2/17) & 7.1\% (6/85) [3.3\%, 14.6\%] & \tbd & 17 & \\
+cuda-to-omp & 68.8\% (11/16) & 65.0\% (52/80) [54.1\%, 74.6\%] & \tbd & 16 & Primary \\ % src: paper_data.json by_direction.cuda-to-omp: 52/80=0.65, CI [0.5408,0.7455], L0: 11/16=0.6875
+omp-to-cuda & 56.2\% (9/16) & 50.0\% (40/80) [39.3\%, 60.7\%] & \tbd & 16 & \\ % src: paper_data.json by_direction.omp-to-cuda: 40/80=0.50, CI [0.393,0.607], L0: 9/16=0.5625
+opencl-to-omp & 46.7\% (7/15) & 46.7\% (35/75) [35.8\%, 57.8\%] & \tbd & 15 & \\ % src: paper_data.json by_direction.opencl-to-omp: 35/75=0.4667, CI [0.3582,0.5784], L0: 7/15=0.4667
+omp-to-opencl & 33.3\% (5/15) & 29.3\% (22/75) [20.2\%, 40.4\%] & \tbd & 15 & \\ % src: paper_data.json by_direction.omp-to-opencl: 22/75=0.2933, CI [0.2024,0.4044], L0: 5/15=0.3333
+cuda-to-opencl & 23.5\% (4/17) & 22.4\% (19/85) [14.8\%, 32.3\%] & \tbd & 17 & \\ % src: paper_data.json by_direction.cuda-to-opencl: 19/85=0.2235, CI [0.148,0.3229], L0: 4/17=0.2353
+opencl-to-cuda & 11.8\% (2/17) & 7.1\% (6/85) [3.3\%, 14.6\%] & \tbd & 17 & \\ % src: paper_data.json by_direction.opencl-to-cuda: 6/85=0.0706, CI [0.0328,0.1456], L0: 2/17=0.1176
 cuda-to-omp\_target & -- & -- & -- & 8 & Case study \\
 omp\_target-to-cuda & -- & -- & -- & 10 & Case study \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
+% src: 65.0%-50.0%=15.0pp verified; paper_data.json by_direction cuda-to-omp/omp-to-cuda
 \textbf{Direction asymmetry.} For each bidirectional pair, the data indicate absolute pass-rate gaps but no statistically significant asymmetry. CUDA-to-OpenMP (65.0\%) outperforms OpenMP-to-CUDA (50.0\%) by 15.0 percentage points (Table~\ref{tab:direction-rates}). This is consistent with the hypothesis that CUDA-to-OpenMP is a reductive task---removing explicit thread indexing and device memory management in favor of directive-based parallelism---while the reverse direction is generative, requiring the model to introduce CUDA-specific constructs from OpenMP's more abstract specification.
 
+% src: paper_data.json > direction_asymmetry; Bonferroni alpha=0.05/3=0.0167 (3 tests)
+% src: cuda-omp: n=16,p=0.625,h=0.2591->0.26; cuda-opencl: n=17,p=0.6875->0.688,h=0.3127->0.31; omp-opencl: n=15,p=0.7266->0.727,h=0.2731->0.27
 McNemar's test for paired direction comparison (using kernel pairs evaluated in both directions, Bonferroni-corrected $\alpha = 0.0167$): CUDA-to-OMP vs.\ OMP-to-CUDA ($n=16$ paired, $p = 0.625$, Cohen's $h = 0.26$); CUDA-to-OpenCL vs.\ OpenCL-to-CUDA ($n=17$ paired, $p = 0.688$, Cohen's $h = 0.31$); OpenCL-to-OMP vs.\ OMP-to-OpenCL ($n=15$ paired, $p = 0.727$, Cohen's $h = 0.27$). All three tests fail to reject the null hypothesis of symmetry at the corrected significance level. The effect sizes (Cohen's $h = 0.26$--$0.31$, medium) suggest that meaningful asymmetry may exist but the current single-model sample size lacks power to detect it.
 
 \textbf{OpenCL-target translation: kernel-only failure modes.} Translations targeting OpenCL exercise a qualitatively different failure mode from CUDA and OpenMP targets. Because OpenCL translations are kernel-only (Section~\ref{sec:eval-pipeline})---the LLM translates only \texttt{.cl} kernel files while the host program remains unchanged---build failures are replaced by \emph{kernel compilation failures} at runtime, when the host invokes \texttt{clBuildProgram()} on the LLM-generated kernel source. Two recurring error patterns emerge: missing \texttt{\_\_global} address space qualifiers on kernel pointer arguments, and API name hallucination (e.g., \texttt{get\_block\_id()} instead of the correct \texttt{get\_group\_id()}).
 
+% src: paper_data.json by_direction: cuda-to-opencl 19/85=22.4% CI[14.8,32.3], opencl-to-cuda 6/85=7.1% CI[3.3,14.6]
+% src: opencl-to-cuda BUILD_FAIL=66/85=77.6%; gap=22.4%-7.1%=15.3pp verified
 \textbf{OpenCL direction asymmetry.} CUDA-to-OpenCL achieves 22.4\% [14.8\%, 32.3\%] across all levels, while OpenCL-to-CUDA achieves 7.1\% [3.3\%, 14.6\%], with BUILD\_FAIL accounting for 66/85 tasks (77.6\%) in the reverse direction. This 15.3 percentage-point asymmetry quantifies the difficulty premium of full-program translation over kernel-only translation. \pending{Per-suite cross-model direction comparison awaiting GPT-4.1~mini data.}
 
 \subsection{pass@\texorpdfstring{$k$}{k} Analysis}
@@ -852,6 +864,10 @@ McNemar's test for paired direction comparison (using kernel pairs evaluated in 
 
 To characterize sampling variance independent of self-repair, a separate pass@$k$ sweep evaluates Qwen~3.5 at L0 with temperature=0.7 and 3 independent samples per task (max\_retries=1 per sample, i.e., zero-shot per sample). The pass@$k$ estimator follows Chen et al.~\cite{HumanEval2021}: $\text{pass@}k = 1 - \binom{n-c}{k} / \binom{n}{k}$, where $n$ is the number of samples and $c$ is the number that pass.
 
+% src: paper_data.json > passk_campaign > passk_estimates (142 direction-kernel pairs, 3 samples each = 426 tasks)
+% src: 103 hard_fail + 0 noisy + 17 always_pass + 22 partial = 142 verified
+% src: 103/142=72.5%, 22/142=15.5%, 17/142=12.0% verified
+% src: macro pass@1=19.7%, macro pass@3=27.5% verified; greedy pass@1=36.2% = primary campaign rate
 \begin{table*}[t]
 \centering
 \caption{pass@$k$ results (L0, temperature=0.7, 3 samples, Qwen~3.5; GPT-4.1~mini pending).}
@@ -881,6 +897,7 @@ GPT-4.1 mini & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \label{fig:xsbench}
 \end{figure}
 
+% src: paper_data.json passk_campaign: 426 tasks = 142 pairs * 3 samples; categories verified above
 The pass@$k$ sweep (426 tasks, L0, temperature=0.7, 3 samples, zero-shot per sample) reveals a stark bimodal distribution for Qwen~3.5. Of 142 direction-kernel pairs, 103 (72.5\%) are hard failures where no sample succeeds, 22 (15.5\%) are partial successes with pass@1 between 0.33 and 0.67, 17 (12.0\%) succeed on all samples, and zero are noisy failures (pass@1 = 0 but pass@3 $> 0$). The absence of noisy failures indicates that Qwen~3.5's translation capability is deterministic at the kernel-direction level: if the model can translate a kernel in a given direction, it does so reliably across samples; if it cannot, no amount of sampling rescues the task. \pending{Cross-model pass@k comparison awaiting GPT-4.1~mini data.}
 
 \subsection{Statistical Summary}
@@ -888,6 +905,9 @@ The pass@$k$ sweep (426 tasks, L0, temperature=0.7, 3 samples, zero-shot per sam
 
 Table~\ref{tab:stats-summary} consolidates the statistical tests applied throughout Section~\ref{sec:results}.
 
+% src: paper_data.json > augmentation > cochran_armitage: z=-0.1657->-0.17, p=0.868355->0.87
+% src: paper_data.json > direction_asymmetry: McNemar values cross-checked with S6.6 tab:direction-rates
+% src: Bonferroni alpha = 0.05/3 = 0.0167 (3 McNemar tests); statistical_analysis.json uses 0.0125 (4 tests incl. omp_target) -- paper is correct for primary 3-direction scope
 \begin{table*}[t]
 \centering
 \caption{Statistical summary. All confidence intervals are Wilson 95\% CIs.}
@@ -898,11 +918,11 @@ Table~\ref{tab:stats-summary} consolidates the statistical tests applied through
 Test & Statistic & $p$-value & Effect Size & Interpretation \\
 \midrule
 Model comparison (chi-squared) & \tbd & \tbd & Cramer's V = \tbd & \tbd \\
-Qwen augmentation (Cochran-Armitage) & $z = -0.17$ & $p = 0.87$ & -- & No monotonic trend; null supports robustness \\
+Qwen augmentation (Cochran-Armitage) & $z = -0.17$ & $p = 0.87$ & -- & No monotonic trend; null supports robustness \\ % src: z=-0.1657, p=0.868355
 GPT-4.1~mini augmentation (Cochran-Armitage) & \tbd & \tbd & -- & \tbd \\
-Direction: cuda-omp (McNemar) & $n=16$, exact & $p = 0.625$ & Cohen's $h = 0.26$ & No significant asymmetry ($\alpha=0.0167$) \\
-Direction: cuda-opencl (McNemar) & $n=17$, exact & $p = 0.688$ & Cohen's $h = 0.31$ & No significant asymmetry ($\alpha=0.0167$) \\
-Direction: omp-opencl (McNemar) & $n=15$, exact & $p = 0.727$ & Cohen's $h = 0.27$ & No significant asymmetry ($\alpha=0.0167$) \\
+Direction: cuda-omp (McNemar) & $n=16$, exact & $p = 0.625$ & Cohen's $h = 0.26$ & No significant asymmetry ($\alpha=0.0167$) \\ % src: p=0.625, h=0.2591
+Direction: cuda-opencl (McNemar) & $n=17$, exact & $p = 0.688$ & Cohen's $h = 0.31$ & No significant asymmetry ($\alpha=0.0167$) \\ % src: p=0.6875, h=0.3127
+Direction: omp-opencl (McNemar) & $n=15$, exact & $p = 0.727$ & Cohen's $h = 0.27$ & No significant asymmetry ($\alpha=0.0167$) \\ % src: p=0.726562, h=0.2731
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -918,6 +938,8 @@ Methodological notes: Wilson confidence intervals are preferred over Wald interv
 \subsection{The Kernel-Centric Advantage}
 \label{sec:kernel-advantage}
 
+% src: 65.0% [54.1%, 74.6%] from paper_data.json by_direction.cuda-to-omp (same as S6.6)
+% src: 0% pass@1 is ParEval-Repo cited claim, not our data
 The results reported in Section~\ref{sec:results} trace specific failure paths through the pipeline architecture shown in Figure~\ref{fig:architecture}. ParBench's central design decision---isolating kernel-level translation from build-system generation---produces a qualitatively different evaluation outcome than repository-level approaches. Qwen~3.5 achieves 65.0\% [54.1\%, 74.6\%] PASS on CUDA-to-OpenMP translation of the same class of HPC kernels for which ParEval-Repo~\cite{ParEvalRepo2025} reports 0\% pass@1 at the repository level. This is not a comparison of different benchmarks or different models; it is a comparison of evaluation granularity applied to overlapping computational domains.
 
 The implication is that LLMs possess substantial internalized knowledge of parallel programming patterns---thread decomposition, reduction operations, stencil computation, synchronization---that is masked when evaluation conflates translation skill with build-system generation. ParBench's kernel-centric design separates these orthogonal capabilities, enabling measurement of each in isolation.
@@ -925,18 +947,22 @@ The implication is that LLMs possess substantial internalized knowledge of paral
 \subsection{BUILD\_FAIL as the Actionable Bottleneck}
 \label{sec:buildfail-bottleneck}
 
+% src: paper_data.json: 480 total, 174 pass, 306 fail; BUILD_FAIL=148, 148/306=48.4%
 BUILD\_FAIL accounts for 48.4\% of all failures (148/306 failed tasks) across 480 tasks, establishing that the primary bottleneck is API-specific syntax rather than parallel reasoning capability. The recurring error patterns---retained \texttt{cudaMalloc}/\texttt{cudaFree} calls, missing OpenMP pragma directives, incorrect type coercions---are syntactic, not algorithmic. This finding has a direct practical implication: targeted fine-tuning on OpenMP idioms, or few-shot prompting with canonical CUDA-to-OpenMP translation examples, would likely close a substantial portion of the BUILD\_FAIL gap.
 
+% src: paper_data.json: VERIFY_FAIL=47, 47/306=15.4%
 VERIFY\_FAIL accounts for 15.4\% of all failures (47/306 failed tasks), providing a more nuanced picture. These are translations that compile, run to completion, and produce output---but incorrect output. The conjunctive verification upgrade (exit\_code AND stdout\_pattern) catches these cases, which weaker verification would miss.
 
 \subsection{Model Capability Analysis}
 \label{sec:model-capability}
 
+% src: paper_data.json overall: 174/480=36.2% [32.1%, 40.6%]; cuda-to-omp: 65.0% (same as S6.1, S6.6)
 Qwen~3.5 397B-A17B (MoE, 397B total / 17B active) achieves 36.2\% [32.1\%, 40.6\%] across 480 tasks. As a Mixture-of-Experts model, Qwen~3.5 activates only 17B of its 397B parameters per forward pass, yet demonstrates substantial parallel code translation capability---65.0\% on the primary CUDA-to-OpenMP direction. \pending{Cross-model comparison across providers awaiting GPT-4.1~mini campaign completion.}
 
 The comparison with LASSI~\cite{LASSI2024} frames these results on a capability spectrum:
 
 \begin{enumerate}
+% src: 19.7% = macro pass@1 from passk_estimates; 36.2% = primary campaign overall (same as S6.1)
 \item \textbf{Raw model capability} (pass@$k$ floor): 19.7\% macro-averaged pass@1 at T=0.7---what the model achieves zero-shot without any feedback.
 \item \textbf{Controlled self-repair} (primary campaign): 36.2\%---error feedback without tools.
 \item \textbf{Agentic system} (LASSI): 80--85\%---full tooling including profiling and RAG.
@@ -945,7 +971,9 @@ The comparison with LASSI~\cite{LASSI2024} frames these results on a capability 
 \subsection{Direction Asymmetry}
 \label{sec:direction-asymmetry}
 
-CUDA-to-OpenMP achieves the highest pass rate (65.0\%) among all directions, while OpenCL-to-CUDA achieves the lowest (7.1\%), a 57.9 percentage-point gap (Table~\ref{tab:direction-rates}). However, McNemar's tests reveal no statistically significant asymmetry for any bidirectional pair after Bonferroni correction (all $p > 0.05$, Table~\ref{tab:stats-summary}). The absolute gaps---15.0 points for CUDA/OpenMP, 17.4 points for OpenCL/OpenMP, 15.3 points for CUDA/OpenCL---are consistent with the structural hypothesis: translating from an explicit programming model (CUDA, OpenCL) to a directive-based model (OpenMP) is a reductive task that removes API-specific constructs, while the reverse is generative.
+% src: 65.0%-7.1%=57.9pp; 65.0%-50.0%=15.0pp; 46.7%-29.3%=17.3pp; 22.4%-7.1%=15.3pp (all from tab:direction-rates)
+% src: FIX 17.4->17.3: (35/75-22/75)*100=17.333...->17.3 at 1dp
+CUDA-to-OpenMP achieves the highest pass rate (65.0\%) among all directions, while OpenCL-to-CUDA achieves the lowest (7.1\%), a 57.9 percentage-point gap (Table~\ref{tab:direction-rates}). However, McNemar's tests reveal no statistically significant asymmetry for any bidirectional pair after Bonferroni correction (all $p > 0.05$, Table~\ref{tab:stats-summary}). The absolute gaps---15.0 points for CUDA/OpenMP, 17.3 points for OpenCL/OpenMP, 15.3 points for CUDA/OpenCL---are consistent with the structural hypothesis: translating from an explicit programming model (CUDA, OpenCL) to a directive-based model (OpenMP) is a reductive task that removes API-specific constructs, while the reverse is generative.
 
 \textbf{OpenCL as a structurally distinct translation target.} Translations targeting OpenCL exhibit qualitatively different failure profiles from those targeting CUDA or OpenMP, reflecting the OpenCL programming model's unique architectural characteristics. OpenCL translations are \emph{kernel-only}: only \texttt{.cl} kernel files are translated, while host code remains unchanged. Two systematic error patterns illuminate the nature of the challenge: missing \texttt{\_\_global} address space qualifiers and API name hallucination. These patterns suggest that LLM knowledge of OpenCL's API surface is shallower than for CUDA or OpenMP, consistent with the relative scarcity of OpenCL code in public training corpora.
 
@@ -954,8 +982,11 @@ Beyond API surface depth, OpenCL-target translations expose a \emph{translatabil
 \subsection{Augmentation Robustness Interpretation}
 \label{sec:augmentation-interpretation}
 
+% src: paper_data.json augmentation.cochran_armitage: z=-0.1657->-0.17, p=0.868->0.87 (same as S6.5, S6.8)
+% src: L0-L4 pass rates: 11/16=68.8%, 10/16=62.5%, 11/16=68.8%, 9/16=56.2%, 11/16=68.8% (paper rounds 56.25% to 56.3%)
 The Cochran-Armitage null result ($z = -0.17$, $p = 0.87$) is the central augmentation finding: there is no evidence that surface-level code transformations affect Qwen~3.5's translation capability. Pass rates across L0--L4 on the balanced CUDA-to-OpenMP subset are remarkably stable (68.8\%, 62.5\%, 68.8\%, 56.3\%, 68.8\%), with overlapping confidence intervals at every level (Table~\ref{tab:augmentation-rates}).
 
+% src: 72.5% hard failures = 103/142 from passk_estimates (same as S6.7); 0% noisy = 0/142
 This null result has three implications. First, it provides evidence \emph{against} the memorization hypothesis. Second, the null result validates ParBench's augmentation methodology as a useful diagnostic: augmentation confirms that the benchmark measures genuine translation capability rather than training-data recall. Third, the connection to pass@$k$ reinforces this interpretation: the bimodal distribution of pass@$k$ results (72.5\% hard failures, 0\% noisy failures) indicates that the model either can or cannot translate a given kernel-direction pair, regardless of surface syntax. \pending{Cross-provider augmentation sensitivity comparison and Simpson's Paradox check awaiting GPT-4.1~mini data.}
 
 \subsection{Threats to Validity}
@@ -980,8 +1011,10 @@ Several threats to the validity of these findings must be acknowledged.
 \subsection{Implications for the HPC Community}
 \label{sec:implications}
 
+% src: 65.0% from tab:direction-rates cuda-to-omp; 0% is ParEval-Repo cited claim
 \textbf{LLMs can translate kernel-level parallel code with meaningful success rates.} The 65.0\% pass rate for Qwen~3.5 on CUDA-to-OpenMP translation---compared to 0\% for repository-level approaches on the same kernels---demonstrates that kernel-level translation is a tractable task for current LLMs.
 
+% src: 148/480=30.8% all tasks; 148/306=48.4% of failures (same as S7.2)
 \textbf{BUILD\_FAIL dominance suggests targeted solutions.} With 30.8\% of all tasks and 48.4\% of failures occurring at the compilation stage, the highest-ROI intervention is improving LLM coverage of API-specific syntax.
 
 \textbf{Augmentation should be standard practice for LLM-on-code evaluation.} The Cochran-Armitage null result demonstrates that augmentation serves as a valuable validation tool even when it does not discriminate between augmentation levels. \pending{Whether augmentation discriminates between models of different capability levels awaiting GPT-4.1~mini data.}
