@@ -12,7 +12,7 @@ This roadmap delivers a submission-ready SC26 paper by April 8, 2026. The work f
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Data Verification & Ground Truth** - Cross-check every existing numerical claim and table against on-disk data files
+- [x] **Phase 1: Data Verification & Ground Truth** - Cross-check every existing numerical claim and table against on-disk data files
 - [ ] **Phase 2: Benchmark Characterization Data** - Produce all quantitative characterization metrics (SLoC, categories, API coverage, language features, multi-file breakdown)
 - [ ] **Phase 3: Augmentation Analysis & Story** - Build per-kernel augmentation matrix, identify motivating examples, produce trend graphs, write LASSI positioning
 - [ ] **Phase 4: Methodology & Reviewer Defense** - Write methodology justifications for kernel isolation, statistical tests, reproducibility, and verification approach
@@ -50,12 +50,12 @@ Plans:
   3. API coverage cross-tab (suite rows x API columns) exists as a saved artifact and matches spec file counts on disk
   4. Single-file vs multi-file translation breakdown exists per suite and per API with exact counts
   5. Language feature grep results and language standard distribution are saved, covering Rodinia + XSBench source directories
-**Plans**: TBD
+**Plans**: 3 plans in 1 wave
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
-- [ ] 02-03: TBD
+- [ ] 02-01-PLAN.md -- Complete characterization script (all 6 metrics: SLoC, categories, API coverage, multi-file, language features, language standards)
+- [ ] 02-02-PLAN.md -- Comprehensive unit tests for characterization script (20+ tests, ground-truth validation)
+- [ ] 02-03-PLAN.md -- Independent validation/cross-check script (8 check functions, different code path)
 
 ### Phase 3: Augmentation Analysis & Story
 **Goal**: The augmentation section has concrete per-kernel evidence (matrix, examples or strengthened null-result), publication-quality graphs, and clear LASSI positioning
@@ -107,7 +107,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Verification & Ground Truth | 0/5 | Not started | - |
+| 1. Data Verification & Ground Truth | 5/5 | Complete | 2026-04-03 |
 | 2. Benchmark Characterization Data | 0/3 | Not started | - |
 | 3. Augmentation Analysis & Story | 0/3 | Not started | - |
 | 4. Methodology & Reviewer Defense | 0/2 | Not started | - |
