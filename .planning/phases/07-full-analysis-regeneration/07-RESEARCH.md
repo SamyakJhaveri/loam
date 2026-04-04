@@ -285,17 +285,17 @@ assert len(suites) == 5, f'Expected 5 suites, got {len(suites)}'
 
 All A1-A3 are LOW risk -- source code inspection confirms the behavior, and verification scripts will catch any discrepancies.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **REGEN-01 interpretation: 1,248 or 1,136?**
    - What we know: 1,248 files on disk; 1,136 after KNOWN_FAIL exclusion; `eval_summary.json` reports post-exclusion count.
    - What's unclear: The requirement says "reflects all 1,248 Qwen result files." Does this mean the JSON should report 1,248 or 1,136?
-   - Recommendation: Verify BOTH (files on disk = 1,248; `total_tasks` in summary = 1,136). Document the 112-file exclusion in the verification output.
+   - RESOLVED: Verify BOTH (files on disk = 1,248; `total_tasks` in summary = 1,136). Document the 112-file exclusion in the verification output.
 
 2. **REGEN-10: Augmentation matrix regeneration**
    - What we know: Phase 3 plan 03-01 is NOT completed. But `augmentation_per_kernel_matrix.json` EXISTS (created Apr 4).
    - What's unclear: Whether a standalone regeneration script exists (none found in `scripts/`).
-   - Recommendation: Skip regeneration; validate existing file. If Phase 3 produces a script later, Phase 7 can re-run it.
+   - RESOLVED: Skip regeneration; validate existing file. If Phase 3 produces a script later, Phase 7 can re-run it.
 
 ## Validation Architecture
 
