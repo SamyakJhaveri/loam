@@ -308,10 +308,8 @@ def classify_patterns(per_kernel: dict) -> dict:
         elif all(s != "PASS" for s in statuses) and len(set(statuses)) == 1:
             # All same non-PASS status
             result["stable_fail"].append(kernel)
-        elif all(s != "PASS" for s in statuses):
-            # Mixed non-PASS statuses
-            result["other"].append(kernel)
         else:
+            # Mixed non-PASS statuses (all non-PASS, not all same)
             result["other"].append(kernel)
 
     # Sort each category for deterministic output
@@ -720,7 +718,7 @@ def generate_markdown(data: dict) -> str:
     agg = pm["aggregate"]
     for level in LEVELS:
         a = agg[level]
-        passes = int(a["rate"] * a["n"])
+        passes = round(a["rate"] * a["n"])
         lines.append(
             f"| {level} | {passes} | {a['n']} | "
             f"{a['rate']:.1%} | [{a['ci_lower']:.1%}, {a['ci_upper']:.1%}] |"
@@ -734,7 +732,7 @@ def generate_markdown(data: dict) -> str:
     agg_excl = pm["aggregate_excluding_known_fail"]
     for level in LEVELS:
         a = agg_excl[level]
-        passes = int(a["rate"] * a["n"])
+        passes = round(a["rate"] * a["n"])
         lines.append(
             f"| {level} | {passes} | {a['n']} | "
             f"{a['rate']:.1%} | [{a['ci_lower']:.1%}, {a['ci_upper']:.1%}] |"
@@ -748,7 +746,7 @@ def generate_markdown(data: dict) -> str:
         lines.append(f"### {exc['kernel']} ({exc['suite']}) -- {exc['pattern']}")
         lines.append(f"- L0: {exc['L0_status']}")
         lines.append(
-            f"- Affected: "
+            "- Affected: "
             + ", ".join(f"{k}={v}" for k, v in exc["affected_levels"].items())
         )
         lines.append(f"- Root cause: {exc['root_cause']}")

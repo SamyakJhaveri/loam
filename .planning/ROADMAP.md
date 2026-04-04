@@ -69,9 +69,9 @@ Plans:
 **Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 03-01-PLAN.md -- [Wave 1] Augmentation matrix analysis script + tests (AUG-01, AUG-02: per-kernel matrix, pattern classification, aggregates, JSON+MD output)
-- [ ] 03-02-PLAN.md -- [Wave 2, depends on 03-01] Publication-quality augmentation figures (AUG-04: heatmap + aggregate trend with Wilson CIs)
-- [ ] 03-03-PLAN.md -- [Wave 1] LASSI positioning paragraphs in paper.tex Section 7.4 (AUG-03: complementary framing)
+- [x] 03-01-PLAN.md -- [Wave 1] Augmentation matrix analysis script + tests (AUG-01, AUG-02: per-kernel matrix, pattern classification, aggregates, JSON+MD output)
+- [x] 03-02-PLAN.md -- [Wave 2, depends on 03-01] Publication-quality augmentation figures (AUG-04: heatmap + aggregate trend with Wilson CIs)
+- [x] 03-03-PLAN.md -- [Wave 1] LASSI positioning paragraphs in paper.tex Section 7.4 (AUG-03: complementary framing)
 
 ### Phase 4: Methodology & Reviewer Defense
 **Goal**: Section 4 methodology descriptions are precise enough to withstand SC-level reviewer scrutiny, with explicit justifications for every methodological choice
@@ -102,18 +102,34 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
-(Phases 2, 3, 4 can execute in parallel after Phase 1 completes)
-Phase 6 is independent — can run any time after Phase 1.
+
+```
+Phase 1 (DONE) ──► Phase 2 (DONE) ──► Phase 7 ──► Phase 8 ──► Phase 11
+                                  └──► Phase 9 ──► Phase 10 ──┘
+Phase 3 (augmentation) ─────────────────────────────────────────┘
+Phase 4 (methodology) ──────────────────────────────────────────┘
+Phase 5 (intro/positioning) ────────────────────────────────────┘
+Phase 6 (RSBench experiment — independent, optional) ───────────┘
+```
+
+**Critical path:** 1 → 2 → 7 → 9 → 10 → 11 (analysis → findings → narrative → paper)
+**Parallel track A:** Phase 8 (figures) runs in parallel with Phase 9 after Phase 7 completes
+**Parallel track B:** Phases 3, 4, 5 can execute in parallel at any time; their outputs feed into Phase 11
+**Independent:** Phase 6 (RSBench experiment) can run anytime; feeds into Phase 11 if complete
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Verification & Ground Truth | 5/5 | Complete | 2026-04-03 |
-| 2. Benchmark Characterization Data | 0/3 | Not started | - |
-| 3. Augmentation Analysis & Story | 0/3 | Not started | - |
+| 2. Benchmark Characterization Data | 3/3 | Complete | 2026-04-03 |
+| 3. Augmentation Analysis & Story | 0/3 | Context gathered | - |
 | 4. Methodology & Reviewer Defense | 0/2 | Not started | - |
 | 5. Introduction, Positioning & Characterization Table | 0/3 | Not started | - |
 | 6. RSBench Single-File Re-spec Experiment | 0/0 | Not started | - |
+| 7. Full Analysis Regeneration | 0/2 | Not started | - |
+| 8. Figure Regeneration | 0/2 | Not started | - |
+| 9. Objective Quantitative Analysis | 0/3 | Not started | - |
+| 10. Qualitative Analysis & Research Narrative | 0/3 | Not started | - |
+| 11. Paper TeX Integration | 0/4 | Not started | - |
 
 ### Phase 6: RSBench Single-File Re-spec Controlled Experiment
 
@@ -125,3 +141,181 @@ Phase 6 is independent — can run any time after Phase 1.
 
 Plans:
 - [ ] TBD (run /gsd:plan-phase 6 to break down)
+
+### Phase 7: Full Analysis Regeneration
+
+**Goal:** Re-run every analysis script against the complete 1,248-file Qwen 3.5 397B evaluation dataset (Rodinia 880 + HeCBench 224 + XSBench 48 + RSBench 48 + mixbench 48) to produce fresh JSON and Markdown outputs. This is the data foundation — every number in the paper traces back to these files. Scripts must process ALL suites (not just Rodinia's 480-task subset).
+**Depends on:** Phase 1 (verified ground truth), Phase 2 (characterization data)
+**Requirements**: REGEN-01 through REGEN-10
+**Success Criteria** (what must be TRUE):
+  1. `eval_summary.json` reflects all 1,248 Qwen result files across 5 suites (not just Rodinia 480) — verify `total_tasks` field
+  2. `paper_data.json` regenerated TWICE: once with `--suite rodinia` (preserves 480-task primary campaign data for Sections 6.1-6.5), once WITHOUT `--suite` (full 1,248-task aggregate for cross-suite comparison)
+  3. `error_taxonomy.json` covers failure modes across ALL suites — verify HeCBench, XSBench, RSBench, mixbench failures appear
+  4. `selfrepair_analysis.json` includes cross-suite self-repair rates — verify non-Rodinia entries exist
+  5. `statistical_analysis.json` includes cross-suite statistical tests — verify per-suite breakdowns present
+  6. `sloc_analysis.json` unchanged from Phase 2 (all 35 kernels already covered) — re-validate, don't recompute
+  7. `token_analysis.json` includes cost estimates for all 1,248 tasks — verify total_tasks matches
+  8. `benchmark_characterization.json` unchanged — validate_characterization.py passes with zero errors
+  9. `translation_complexity.csv` covers all suites (currently Rodinia+XSBench only — may need script update)
+  10. If Phase 3 plan 03-01 completed: `augmentation_per_kernel_matrix.json` also regenerated
+  11. No script errors, exceptions, or warnings during execution
+  12. All Markdown (.md) companion files regenerated alongside their JSON counterparts
+
+**Exact commands (run in order):**
+```
+cd /home/samyak/Desktop/parbench_sam
+source env_parbench/bin/activate
+
+# 1. Aggregate eval summary (reads ALL model dirs)
+python3 scripts/evaluation/analyze_eval.py --project-root . --model together-qwen-3.5-397b-a17b
+
+# 2a. Paper data — Rodinia primary campaign (480 tasks, preserves existing Section 6 scope)
+python3 scripts/analysis/generate_paper_data.py --suite rodinia --output results/analysis/paper_data_rodinia.json -v
+
+# 2b. Paper data — ALL suites (1,248 tasks, cross-suite comparison)
+python3 scripts/analysis/generate_paper_data.py --output results/analysis/paper_data.json -v
+
+# 3. Error taxonomy
+python3 scripts/analysis/build_error_taxonomy.py --project-root .
+
+# 4. Self-repair analysis
+python3 scripts/analysis/selfrepair_analysis.py --project-root .
+
+# 5. Statistical analysis
+python3 scripts/analysis/statistical_analysis.py --project-root . -v
+
+# 6. Token analysis
+python3 scripts/analysis/token_analysis.py --project-root .
+
+# 7. Translation complexity (check if needs --suite update)
+python3 scripts/analysis/classify_translation_pairs.py --project-root .
+
+# 8. Validate characterization (no recompute — Phase 2 output is canonical)
+python3 scripts/analysis/validate_characterization.py --project-root .
+```
+
+**Plans**: 2 plans in 1 wave
+
+Plans:
+- [ ] 07-01-PLAN.md -- [Wave 1] Run analysis scripts 1-5 (eval summary, paper data ×2, error taxonomy, self-repair, statistical) — these are the core paper data sources
+- [ ] 07-02-PLAN.md -- [Wave 1] Run analysis scripts 6-8 (token, complexity, validation) + verify all outputs — these are supporting data and quality checks
+
+### Phase 8: Figure Regeneration
+
+**Goal:** Re-run `scripts/generate_paper_figures.py` against the refreshed Phase 7 analysis outputs to produce fresh publication-quality figures (PDF + PNG) for the SC26 paper. All 7 main-body figures (F2-F7 + architecture) and 4 appendix figures (C.1-C.4) plus the T2 LaTeX table must reflect the complete 1,248-task dataset. The script may need updates if it currently only processes Rodinia data or if new suites introduce new kernels/directions not yet in the figure logic.
+**Depends on:** Phase 7 (needs fresh analysis JSON/CSV outputs)
+**Requirements**: FIG-01 through FIG-07
+**Success Criteria** (what must be TRUE):
+  1. All existing figures regenerated: f2_repo_vs_kernel.pdf, f3_kernel_model_heatmap.pdf, f4_failure_taxonomy.pdf, f5_pass_at_k_by_direction.pdf, f6_xsbench_comparison.pdf, f7_augmentation_robustness.pdf
+  2. All appendix figures regenerated: c1_repair_transition_matrix.pdf, c2_repair_rate_by_direction.pdf, c3_transform_frequency.pdf, c4_selection_funnel.pdf
+  3. LaTeX table t2_model_comparison.tex regenerated
+  4. PNG versions alongside every PDF for web/review use
+  5. F3 (kernel×model heatmap) includes ALL suites' kernels — not just Rodinia 18
+  6. F4 (failure taxonomy) covers failure modes across ALL suites
+  7. F7 (augmentation robustness) uses fresh L0-L4 data from paper_data.json
+  8. If generate_paper_figures.py needed updates (new suites, new kernels), the changes are minimal and tested
+  9. No matplotlib warnings, missing data placeholders, or empty subplots
+  10. parbench_architecture.drawio exported to PDF (manual or script)
+
+**Exact commands:**
+```
+cd /home/samyak/Desktop/parbench_sam
+source env_parbench/bin/activate
+
+# Regenerate all figures
+python3 scripts/generate_paper_figures.py --project-root .
+
+# Verify outputs exist
+ls -la docs/paper/figures/*.pdf docs/paper/figures/*.png
+```
+
+**Risk:** `generate_paper_figures.py` may hardcode Rodinia kernel names or 480-task counts. Audit the script's data loading before running. If it reads from `paper_data.json`, check whether it uses the Rodinia-only or full-dataset version.
+
+**Plans**: 2 plans in 1 wave
+
+Plans:
+- [ ] 08-01-PLAN.md -- [Wave 1] Audit generate_paper_figures.py for hardcoded Rodinia assumptions; update data loading if needed to handle all 5 suites
+- [ ] 08-02-PLAN.md -- [Wave 1, after 08-01] Run figure generation, verify all outputs, fix any rendering issues
+
+### Phase 9: Objective Quantitative Analysis
+
+**Goal:** Produce a comprehensive, structured quantitative findings document (`results/analysis/quantitative_findings.json` + `.md`) that extracts every publishable number from the Phase 7 analysis outputs. This document becomes the single source of truth for paper claims — every number in paper.tex must trace to a specific field in this file. The analysis must cover all dimensions: per-suite, per-direction, per-level, per-kernel, per-complexity-class, and cross-cutting comparisons.
+**Depends on:** Phase 7 (fresh analysis JSONs required)
+**Requirements**: QUANT-01 through QUANT-14
+**Success Criteria** (what must be TRUE):
+  1. **Aggregate pass rates** by suite (Rodinia, XSBench, RSBench, mixbench, HeCBench) with Wilson 95% CIs and sample sizes
+  2. **Per-direction pass rates** for all 6 standard directions (cuda-to-omp, omp-to-cuda, cuda-to-opencl, opencl-to-cuda, omp-to-opencl, opencl-to-omp) + omp_target case-study directions, with CIs
+  3. **Direction asymmetry analysis**: cuda→omp vs omp→cuda, cuda→opencl vs opencl→cuda — McNemar's test p-values, paired differences, which direction is "easier" and by how much
+  4. **Per-augmentation-level pass rates** (L0-L4) with Cochran-Armitage trend test p-value and Cohen's h effect sizes between adjacent levels
+  5. **Failure taxonomy distribution**: BUILD_FAIL / RUN_FAIL / VERIFY_FAIL / EXTRACTION_FAIL counts and percentages, per-suite and aggregate, with the most common build error categories from error_taxonomy.json
+  6. **Self-repair effectiveness**: overall repair rate, per-failure-type repair rates, regression rate, mean attempts to success, per-suite breakdown
+  7. **Pass@k estimates** for k=1,3,5,10 from the s0/s1/s2 seed variants, per-direction and aggregate
+  8. **Per-kernel difficulty tiers**: rank all 33+ kernels by L0 pass rate across directions, identify top-5 easiest and top-5 hardest, note any anomalous per-direction patterns (e.g., backprop asymmetry)
+  9. **Translation complexity correlation**: pass rate by complexity class (single_file, multi_to_single, single_to_multi, multi_to_multi) — is multi-file significantly harder? Chi-squared test
+  10. **Cross-suite comparison**: Rodinia aggregate vs XSBench vs RSBench vs mixbench — are newer/smaller suites easier or harder? Why? (SLoC correlation, multi-file fraction)
+  11. **Token cost analysis**: total input/output tokens, estimated cost per task, cost per PASS, cost per suite
+  12. **SLoC correlation**: Spearman/Pearson correlation between kernel SLoC and pass rate — is larger code harder to translate?
+  13. **OpenCL kernel-only effect**: compare pass rates for X-to-OpenCL (kernel-only translation) vs X-to-OMP (full program translation) — does kernel-only translation have higher pass rates?
+  14. **Every number has a provenance trail**: each finding includes the source file path, field name, and exact value so paper.tex claims are auditable
+
+**Output format:** JSON with sections matching the 14 criteria above, plus a Markdown companion with tables ready to copy-paste into paper sections.
+
+**Plans**: 3 plans in 2 waves
+
+Plans:
+- [ ] 09-01-PLAN.md -- [Wave 1] Create quantitative_findings.py script: aggregate, per-direction, direction asymmetry, augmentation, failure taxonomy (criteria 1-5)
+- [ ] 09-02-PLAN.md -- [Wave 1] Extend script: self-repair, pass@k, per-kernel tiers, complexity correlation, cross-suite, token cost, SLoC correlation, OpenCL effect (criteria 6-13)
+- [ ] 09-03-PLAN.md -- [Wave 2, depends on 09-01+02] Validate all findings against raw result JSONs — spot-check 10+ numbers by manually counting files with jq
+
+### Phase 10: Qualitative Analysis and Research Narrative
+
+**Goal:** Generate a structured research narrative document (`docs/paper/analysis/qualitative_narrative.md`) containing grounded observations, trends, discoveries, and inferences that support ParBench's seven contribution dimensions. Every claim must cite specific quantitative findings from Phase 9 with exact numbers. This document is the "story bible" for paper.tex — it tells the writer what to say and why, with evidence pre-attached.
+**Depends on:** Phase 9 (quantitative findings provide the evidence base)
+**Requirements**: QUAL-01 through QUAL-07
+**Success Criteria** (what must be TRUE):
+  1. **Motivation narrative** (QUAL-01): Why build-run-verify matters. Grounded in: (a) BLEU/CodeBLEU cannot detect semantic correctness — cite specific VERIFY_FAIL examples where syntactically-similar code produces wrong output, (b) compilation-only misses runtime failures — cite BUILD_PASS but RUN_FAIL/VERIFY_FAIL rate from error_taxonomy, (c) real HPC code exposes failures that synthetic benchmarks miss — cite multi-file failure rate vs single-file
+  2. **Design validation narrative** (QUAL-02): Spec-as-contract works. Grounded in: (a) spec-driven verification catches real bugs — cite self-repair examples where build feedback enabled recovery, (b) kernel-centric translation isolates the hard problem — cite XSBench 0% (repository-level) vs ParBench pass rate (kernel-level), (c) multi-file handling reveals a new failure mode — cite multi_to_multi vs single_file pass rate difference
+  3. **Comprehensiveness narrative** (QUAL-03): ParBench covers the space. Grounded in: (a) 5 suites span HPC domains (12 categories) — cite category distribution, (b) 4 APIs test real parallelism idioms — cite API coverage cross-tab, (c) SLoC range 80-3304 covers trivial to complex — cite SLoC distribution and correlation with pass rate, (d) 96+ specs with augmentation = thousands of test instances
+  4. **Rigor narrative** (QUAL-04): Results are trustworthy. Grounded in: (a) conjunction verification (exit_code AND stdout_pattern) prevents false positives — cite the 9 FALSE_PASS specs that were caught and fixed, (b) augmentation robustness testing shows results aren't fragile to surface-level rewrites — cite Cochran-Armitage p-value and Cohen's h, (c) statistical framework (Wilson CIs, McNemar, Chi-squared) quantifies uncertainty — cite specific CI widths
+  5. **Novelty narrative** (QUAL-05): What's new here. Grounded in: (a) first benchmark with build-run-verify on real HPC codes — differentiate from HumanEval (synthetic), SWE-bench (software engineering, not HPC), TransCoder (trained model, not evaluation), OMPify (OpenMP-only, no verification), LASSI (agentic, not benchmark), (b) augmentation as robustness probe is novel — no prior work systematically tests surface-level sensitivity, (c) multi-file translation evaluation is new — cite that prior benchmarks use single-file only
+  6. **Effectiveness narrative** (QUAL-06): What LLMs can and cannot do. Grounded in: (a) aggregate pass rate reveals capability ceiling — cite overall pass rate with CI, (b) failure mode taxonomy reveals WHERE LLMs fail — BUILD_FAIL (missing headers, wrong API calls) vs VERIFY_FAIL (wrong output, numerical drift) vs RUN_FAIL (segfault, timeout), (c) direction asymmetry reveals API-specific difficulty — cite which directions are harder and hypothesize why (e.g., CUDA→OMP requires mapping thread index arithmetic to loop indices), (d) per-kernel difficulty reveals problem structure effects — cite easiest/hardest kernels and correlate with SLoC, domain, multi-file status
+  7. **Research significance narrative** (QUAL-07): What the community learns. Grounded in: (a) pass rates set baselines for future work — "Qwen 3.5 397B achieves X% on CUDA→OMP; future models should beat this", (b) failure taxonomy guides LLM training — "BUILD_FAIL from missing headers suggests training data lacks HPC build system context", (c) augmentation null result is informative — "LLMs are robust to surface-level rewrites, suggesting they learn deeper code semantics, not surface patterns", (d) multi-file gap identifies a concrete research challenge — "closing the single-file→multi-file gap is the highest-leverage improvement"
+
+**Structure:** Each narrative section (QUAL-01 through QUAL-07) must include:
+- **Headline claim** (1 sentence, suitable for paper prose)
+- **Evidence** (3-5 bullet points, each citing a specific number from Phase 9 with file:field provenance)
+- **Counter-argument** (what a reviewer might object, and how the data addresses it)
+- **Paper placement** (which Section/paragraph this narrative feeds into)
+
+**Plans**: 3 plans in 2 waves
+
+Plans:
+- [ ] 10-01-PLAN.md -- [Wave 1] Write QUAL-01 (motivation), QUAL-02 (design), QUAL-03 (comprehensiveness) — these are the "what and why" narratives
+- [ ] 10-02-PLAN.md -- [Wave 1] Write QUAL-04 (rigor), QUAL-05 (novelty) — these are the "how it's different" narratives
+- [ ] 10-03-PLAN.md -- [Wave 2, depends on 10-01+02] Write QUAL-06 (effectiveness), QUAL-07 (significance) + cross-reference check — these interpret the results and require the other narratives as context
+
+### Phase 11: Paper TeX Integration
+
+**Goal:** Update `docs/paper/latex/paper.tex` so that every hardcoded number, table, figure reference, and narrative claim reflects the complete 1,248-task Qwen 3.5 397B dataset. The paper must be internally consistent: Abstract numbers match Section 6 numbers match figure captions match table footnotes. Every data claim must be traceable to a specific field in `results/analysis/quantitative_findings.json` or `paper_data.json`. Qualitative claims must be grounded in Phase 10 narratives. The goal is a submission-ready draft where no reviewer can find a stale or unsubstantiated number.
+**Depends on:** Phase 8 (fresh figures), Phase 9 (quantitative findings), Phase 10 (qualitative narratives)
+**Requirements**: TEX-01 through TEX-09
+**Success Criteria** (what must be TRUE):
+  1. **Abstract** (TEX-01): Headline numbers updated — kernel count, spec count, suite count, API count, aggregate pass rate with CI, augmentation verdict, key finding. Every number matches Section 6.
+  2. **Section 1 Introduction** (TEX-02): Quantitative highlights woven into prose (35 kernels, 96+ specs, 4 APIs, SLoC range 80-3304, multi-file %, augmentation levels). LASSI differentiation with ≥4 concrete dimensions. "Gap in existing evaluation" paragraph with comparative data.
+  3. **Section 3 Design** (TEX-03): Architecture description verified against actual codebase. Spec-as-contract example uses a real spec. Kernel-centric translation explained with XSBench comparison. File role taxonomy (prompt_payload, support_files, verification_only, translation_targets) accurate.
+  4. **Section 4 Augmentation** (TEX-04): Level definitions match `LEVEL_FRACTIONS` in `augment_dataset.py`. Effect sizes (Cohen's h) from Phase 9. Cochran-Armitage p-value. Per-kernel evidence or strengthened null-result narrative from Phase 3/10. LASSI positioning from Phase 10 QUAL-05.
+  5. **Section 5 Methodology** (TEX-05): Suite-summary table (tab:suite-summary) matches manifest.jsonl counts. Hardware/software table matches actual system. Model config table accurate for Qwen 3.5 397B. Conjunction verification justified. Reproducibility pins: CUDA 12.3, nvcc 12.3, gcc 12.4.0, Ubuntu 24.04, RTX 4070, model version, ParBench commit hash.
+  6. **Section 6 Results** (TEX-06 — largest section): ALL aggregate pass rates, per-direction rates, failure taxonomy percentages, self-repair rates, pass@k values, per-kernel tier descriptions, augmentation rates, cross-suite comparisons updated. Every number has CI. Direction asymmetry analysis with McNemar p-values. Translation complexity correlation. Token cost data. OpenCL kernel-only effect.
+  7. **Section 7 Discussion** (TEX-07): Grounded interpretation using Phase 10 narratives. Threats to validity updated (single model, augmentation null result, wall-clock timing caveat). Future work grounded in actual findings (multi-file gap, cross-model comparison, performance measurement).
+  8. **Section 8 Related Work** (TEX-08): ParBench positioned against LASSI, TransCoder, OMPify, HPC-Coder-v2, CodeRosetta, SWE-bench, HumanEval with concrete differentiators from Phase 10 QUAL-05. Missing papers from reference_sc26_related_work.md integrated.
+  9. **Cross-consistency check** (TEX-09): Run a final grep-based audit: extract every `\num{}`, `\SI{}`, percentage, and count from paper.tex and verify each against quantitative_findings.json or paper_data.json. Zero unverified numbers remain.
+
+**Key constraint:** The paper is ~10 pages IEEE double-column. Every added sentence must earn its space. Prefer precise numbers over vague claims. Prefer one well-evidenced finding over three hand-wavy observations.
+
+**Plans**: 4 plans in 3 waves
+
+Plans:
+- [ ] 11-01-PLAN.md -- [Wave 1] Update Sections 1 (intro) + 3 (design) + 5 (methodology) — these are pre-results sections with stable structure
+- [ ] 11-02-PLAN.md -- [Wave 1] Update Section 4 (augmentation) + 8 (related work) — these require Phase 3/10 narrative integration
+- [ ] 11-03-PLAN.md -- [Wave 2, depends on 11-01+02] Update Section 6 (results) — the largest section, requires all prior sections' framing to be set
+- [ ] 11-04-PLAN.md -- [Wave 3, depends on 11-03] Update Abstract + Section 7 (discussion) + cross-consistency audit — these synthesize everything and must be last
