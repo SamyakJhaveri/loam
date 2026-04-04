@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-03T15:57:39.360393",
+  "generated_at": "2026-04-04T13:35:14.047922",
   "alpha": 0.05,
   "total_records": 1136,
   "wilson_cis": {
@@ -509,27 +509,6 @@
       "effect_size": "medium"
     },
     {
-      "pair": "opencl-to-omp vs omp-to-opencl",
-      "forward_direction": "opencl-to-omp",
-      "reverse_direction": "omp-to-opencl",
-      "n_paired": 18,
-      "forward_pass_rate": 0.3889,
-      "reverse_pass_rate": 0.3333,
-      "table": {
-        "both_pass": 2,
-        "reverse_only": 4,
-        "forward_only": 5,
-        "both_fail": 7
-      },
-      "discordant": 9,
-      "method": "exact",
-      "p_value": 1.0,
-      "alpha_corrected": 0.0125,
-      "significant": false,
-      "cohens_h": 0.1157,
-      "effect_size": "small"
-    },
-    {
       "pair": "cuda-to-omp vs omp-to-cuda",
       "forward_direction": "cuda-to-omp",
       "reverse_direction": "omp-to-cuda",
@@ -548,6 +527,27 @@
       "alpha_corrected": 0.0125,
       "significant": false,
       "cohens_h": 0.1724,
+      "effect_size": "small"
+    },
+    {
+      "pair": "opencl-to-omp vs omp-to-opencl",
+      "forward_direction": "opencl-to-omp",
+      "reverse_direction": "omp-to-opencl",
+      "n_paired": 18,
+      "forward_pass_rate": 0.3889,
+      "reverse_pass_rate": 0.3333,
+      "table": {
+        "both_pass": 2,
+        "reverse_only": 4,
+        "forward_only": 5,
+        "both_fail": 7
+      },
+      "discordant": 9,
+      "method": "exact",
+      "p_value": 1.0,
+      "alpha_corrected": 0.0125,
+      "significant": false,
+      "cohens_h": 0.1157,
       "effect_size": "small"
     }
   ],

@@ -1,6 +1,6 @@
 # ParBench Statistical Analysis
 
-**Generated:** 2026-04-03T15:57:39.360393  |  **Records:** 1136  |  **Alpha:** 0.05
+**Generated:** 2026-04-04T13:35:14.047922  |  **Records:** 1136  |  **Alpha:** 0.05
 
 ## 1. Pass Rates with 95% Wilson Score CIs
 
@@ -90,8 +90,8 @@
 |----------------|--------:|--------:|--------:|----------:|--------:|:------------:|
 | cuda-to-omp_target vs omp_target-to-cuda | 8 | 12.5% | 75.0% | -1.372 | 0.0625 | No |
 | opencl-to-cuda vs cuda-to-opencl | 20 | 10.0% | 20.0% | -0.284 | 0.6875 | No |
-| opencl-to-omp vs omp-to-opencl | 18 | 38.9% | 33.3% | 0.116 | 1.0000 | No |
 | cuda-to-omp vs omp-to-cuda | 24 | 66.7% | 58.3% | 0.172 | 0.6875 | No |
+| opencl-to-omp vs omp-to-opencl | 18 | 38.9% | 33.3% | 0.116 | 1.0000 | No |
 
 ## 6. Augmentation Curves with CIs
 

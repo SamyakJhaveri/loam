@@ -1,59 +1,63 @@
 {
-  "total_results": 1018,
-  "total_pass": 251,
-  "total_failures": 767,
+  "total_results": 1248,
+  "total_pass": 356,
+  "total_failures": 892,
   "status_counts": {
-    "BUILD_FAIL": 427,
-    "PASS": 251,
-    "RUN_FAIL": 224,
-    "VERIFY_FAIL": 94,
-    "EXTRACTION_FAIL": 22
+    "BUILD_FAIL": 520,
+    "VERIFY_FAIL": 91,
+    "PASS": 356,
+    "RUN_FAIL": 258,
+    "EXTRACTION_FAIL": 22,
+    "ERROR": 1
   },
   "build_fail_categories": {
     "other_build": {
-      "count": 49,
+      "count": 86,
       "examples": [
+        {
+          "file": "hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-L1.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "convolution1d",
+          "direction": "cuda-to-omp_target",
+          "snippet_preview": "\"main.cpp\", line 179: error: this kind of pragma may not be used here\n      #pragma omp target update map(to:a[0:input_width]) use_device_ptr(d_a)\n                                                         ^\n          detected during instantiation of \"void conv1D<T>(int, int, int) [with T=double]\" at "
+        },
+        {
+          "file": "hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-L2.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "convolution1d",
+          "direction": "cuda-to-omp_target",
+          "snippet_preview": "\"main.cpp\", line 62: warning: variable \"base_idx\" was declared but never referenced [declared_but_not_referenced]\n          int base_idx = block_idx * block_size;\n              ^\n          detected during instantiation of \"void conv1D<T>(int, int, int) [with T=double]\" at line 279\n\nRemark: individua"
+        },
         {
           "file": "hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-s0.json",
           "model": "together-qwen-3.5-397b-a17b",
           "kernel": "convolution1d",
           "direction": "cuda-to-omp_target",
           "snippet_preview": "\"main.cpp\", line 22: error: invalid text in pragma\n    #pragma omp target parallel for device_type(gpu)\n                                    ^\n          detected during:\n            instantiation of \"void conv1d(const T *, T *, int, int, int, int) [with T=double]\" at line 206\n            instantiatio"
-        },
-        {
-          "file": "hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-s2.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "convolution1d",
-          "direction": "cuda-to-omp_target",
-          "snippet_preview": "\"main.cpp\", line 176: error: invalid text in pragma\n      #pragma omp target update from(a[0:input_width]) device_addr(d_a)\n                                                       ^\n          detected during instantiation of \"void conv1D<T>(int, int, int) [with T=double]\" at line 250\n\n\"main.cpp\", lin"
-        },
-        {
-          "file": "hecbench-convolution1d-omp_target-to-hecbench-convolution1d-cuda-s2.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "convolution1d",
-          "direction": "omp_target-to-cuda",
-          "snippet_preview": "main.cu(199): error: expected an expression\n          case 64: {conv1d_kernel<T, 64><<<<num_blocks, bs>>>(d_mask, a, b, input_width, mask_width); break;}\n                                           ^\n\nmain.cu(200): error: expected an expression\n          case 128: {conv1d_kernel<T, 128><<<<num_blocks"
         }
       ],
       "by_model": {
-        "together-qwen-3.5-397b-a17b": 49
+        "together-qwen-3.5-397b-a17b": 86
       },
       "by_direction": {
-        "cuda-to-omp_target": 10,
-        "omp_target-to-cuda": 4,
-        "omp-to-cuda": 19,
+        "cuda-to-omp_target": 27,
+        "omp_target-to-cuda": 13,
+        "omp-to-cuda": 25,
+        "cuda-to-omp": 10,
         "opencl-to-cuda": 7,
-        "cuda-to-omp": 6,
-        "opencl-to-omp": 3
+        "opencl-to-omp": 4
       },
       "by_kernel": {
-        "convolution1d": 3,
-        "floydwarshall": 2,
-        "heat2d": 1,
-        "iso2dfd": 2,
-        "md": 3,
-        "nqueen": 2,
-        "scan": 4,
+        "convolution1d": 11,
+        "floydwarshall": 3,
+        "heat2d": 5,
+        "iso2dfd": 3,
+        "jacobi": 2,
+        "md": 6,
+        "nqueen": 3,
+        "page-rank": 2,
+        "scan": 11,
+        "mixbench": 4,
         "backprop": 5,
         "bfs": 1,
         "gaussian": 1,
@@ -64,60 +68,21 @@
         "particlefilter": 2,
         "pathfinder": 1,
         "srad": 1,
-        "streamcluster": 3
-      }
-    },
-    "missing_target_api": {
-      "count": 52,
-      "examples": [
-        {
-          "file": "hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-s1.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "convolution1d",
-          "direction": "cuda-to-omp_target",
-          "snippet_preview": "\"main.cpp\", line 199: error: identifier \"memcpy\" is undefined\n    memcpy(d_a, a, size_bytes);\n    ^\n          detected during instantiation of \"void conv1D<T>(int, int, int) [with T=double]\" at line 269\n\n\"main.cpp\", line 56: warning: variable \"halo_left_end\" was declared but never referenced [declar"
-        },
-        {
-          "file": "mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-s0.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "mixbench",
-          "direction": "opencl-to-cuda",
-          "snippet_preview": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu(115): error: too many arguments in function call\n   mixbenchGPU(c, VEC_WIDTH, args.block_strided, args.host_allocated, args.use_os_timer, args.wg_size, args.elements_per_wi, args.fusion_degree);\n               "
-        },
-        {
-          "file": "mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-s1.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "mixbench",
-          "direction": "opencl-to-cuda",
-          "snippet_preview": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu(113): error: too many arguments in function call\n   mixbenchGPU(c, VEC_WIDTH, args.block_strided, args.host_allocated, args.use_os_timer, args.wg_size, args.elements_per_wi, args.fusion_degree);\n               "
-        }
-      ],
-      "by_model": {
-        "together-qwen-3.5-397b-a17b": 52
-      },
-      "by_direction": {
-        "cuda-to-omp_target": 1,
-        "opencl-to-cuda": 10,
-        "opencl-to-omp": 9,
-        "cuda-to-omp": 20,
-        "omp-to-cuda": 12
-      },
-      "by_kernel": {
-        "convolution1d": 1,
-        "mixbench": 4,
-        "heartwall": 3,
-        "hotspot3d": 2,
-        "lud": 4,
-        "mummergpu": 6,
-        "myocyte": 9,
         "streamcluster": 3,
-        "rsbench": 8,
-        "xsbench": 12
+        "rsbench": 1,
+        "xsbench": 3
       }
     },
     "undeclared_identifier": {
-      "count": 105,
+      "count": 114,
       "examples": [
+        {
+          "file": "hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-L4.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "convolution1d",
+          "direction": "cuda-to-omp_target",
+          "snippet_preview": "\"main.cpp\", line 206: error: identifier \"omp_alloc_mem_default\" is undefined\n    d_a = (T *)omp_alloc(size_bytes, omp_alloc_mem_default);\n                                     ^\n\n\"main.cpp\", line 214: error: invalid text in pragma\n    #pragma omp target data use_device(a) copyto(d_a)\n                "
+        },
         {
           "file": "hecbench-convolution1d-omp_target-to-hecbench-convolution1d-cuda-s0.json",
           "model": "together-qwen-3.5-397b-a17b",
@@ -131,35 +96,29 @@
           "kernel": "convolution1d",
           "direction": "omp_target-to-cuda",
           "snippet_preview": "main.cu(190): error: identifier \"BLOCK_SIZE\" is undefined\n      size_t shared_mem_size = (BLOCK_SIZE + 10 - 1) * sizeof(T);\n                                ^\n\nmain.cu(214): error: identifier \"BLOCK_SIZE\" is undefined\n      size_t shared_mem_size = BLOCK_SIZE * sizeof(T);\n                            "
-        },
-        {
-          "file": "hecbench-heat2d-cuda-to-hecbench-heat2d-omp_target-s0.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "heat2d",
-          "direction": "cuda-to-omp_target",
-          "snippet_preview": "\"main.cpp\", line 118: error: identifier \"omp_target_barrier\" is undefined\n    omp_target_barrier();\n    ^\n\n1 error detected in the compilation of \"main.cpp\".\nmake: *** [Makefile.nvc:57: main.o] Error 2\n"
         }
       ],
       "by_model": {
-        "together-qwen-3.5-397b-a17b": 105
+        "together-qwen-3.5-397b-a17b": 114
       },
       "by_direction": {
+        "cuda-to-omp_target": 11,
         "omp_target-to-cuda": 4,
-        "cuda-to-omp_target": 6,
-        "cuda-to-omp": 22,
+        "cuda-to-omp": 25,
         "opencl-to-cuda": 27,
         "opencl-to-omp": 22,
-        "omp-to-cuda": 24
+        "omp-to-cuda": 25
       },
       "by_kernel": {
-        "convolution1d": 2,
-        "heat2d": 2,
-        "iso2dfd": 1,
+        "convolution1d": 3,
+        "heat2d": 3,
+        "iso2dfd": 3,
         "jacobi": 2,
         "md": 2,
         "nqueen": 1,
+        "page-rank": 1,
         "scan": 3,
-        "mixbench": 2,
+        "mixbench": 3,
         "backprop": 11,
         "bfs": 5,
         "cfd": 3,
@@ -173,11 +132,60 @@
         "particlefilter": 2,
         "pathfinder": 11,
         "srad": 1,
-        "streamcluster": 19
+        "streamcluster": 19,
+        "xsbench": 3
+      }
+    },
+    "missing_target_api": {
+      "count": 79,
+      "examples": [
+        {
+          "file": "hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-s1.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "convolution1d",
+          "direction": "cuda-to-omp_target",
+          "snippet_preview": "\"main.cpp\", line 199: error: identifier \"memcpy\" is undefined\n    memcpy(d_a, a, size_bytes);\n    ^\n          detected during instantiation of \"void conv1D<T>(int, int, int) [with T=double]\" at line 269\n\n\"main.cpp\", line 56: warning: variable \"halo_left_end\" was declared but never referenced [declar"
+        },
+        {
+          "file": "mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-L1.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "mixbench",
+          "direction": "opencl-to-cuda",
+          "snippet_preview": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu(92): error: too few arguments in function call\n   cudaError_t err = cudaGetDevice();\n                                   ^\n\n/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda."
+        },
+        {
+          "file": "mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-L2.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "mixbench",
+          "direction": "opencl-to-cuda",
+          "snippet_preview": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu(118): error: too many arguments in function call\n   mixbenchGPU(c, VEC_WIDTH, args.block_strided, args.host_allocated, args.use_os_timer, args.wg_size, args.elements_per_wi, args.fusion_degree);\n               "
+        }
+      ],
+      "by_model": {
+        "together-qwen-3.5-397b-a17b": 79
+      },
+      "by_direction": {
+        "cuda-to-omp_target": 1,
+        "opencl-to-cuda": 22,
+        "opencl-to-omp": 23,
+        "cuda-to-omp": 20,
+        "omp-to-cuda": 13
+      },
+      "by_kernel": {
+        "convolution1d": 1,
+        "mixbench": 14,
+        "heartwall": 3,
+        "hotspot3d": 2,
+        "lud": 4,
+        "mummergpu": 6,
+        "myocyte": 9,
+        "streamcluster": 3,
+        "rsbench": 17,
+        "xsbench": 20
       }
     },
     "retained_cuda_api": {
-      "count": 2,
+      "count": 4,
       "examples": [
         {
           "file": "hecbench-iso2dfd-cuda-to-hecbench-iso2dfd-omp-s0.json",
@@ -185,6 +193,13 @@
           "kernel": "iso2dfd",
           "direction": "cuda-to-omp",
           "snippet_preview": "iso2dfd.cpp: In function \u2018int main(int, char**)\u2019:\niso2dfd.cpp:163:3: error: \u2018cudaDeviceSynchronize\u2019 was not declared in this scope\n  163 |   cudaDeviceSynchronize(); // Placeholder to match structure, no effect in OpenMP\n      |   ^~~~~~~~~~~~~~~~~~~~~\nmake: *** [Makefile.aomp:61: iso2dfd.o] Error 1"
+        },
+        {
+          "file": "hecbench-scan-cuda-to-hecbench-scan-omp-L1.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "scan",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "main.cpp: In function \u2018void runTest(int64_t, int, bool)\u2019:\nmain.cpp:184:39: error: \u2018cudaMemcpyHostToHost\u2019 was not declared in this scope\n  184 |   cudaMemcpy(gpu_out, gpu_out, bytes, cudaMemcpyHostToHost); // Dummy to match structure if needed, but actually just verify\n      |                        "
         },
         {
           "file": "rodinia-srad-opencl-to-rodinia-srad-omp-s0.json",
@@ -195,20 +210,29 @@
         }
       ],
       "by_model": {
-        "together-qwen-3.5-397b-a17b": 2
+        "together-qwen-3.5-397b-a17b": 4
       },
       "by_direction": {
-        "cuda-to-omp": 1,
+        "cuda-to-omp": 3,
         "opencl-to-omp": 1
       },
       "by_kernel": {
         "iso2dfd": 1,
-        "srad": 1
+        "scan": 1,
+        "srad": 1,
+        "xsbench": 1
       }
     },
     "syntax_error": {
-      "count": 15,
+      "count": 20,
       "examples": [
+        {
+          "file": "hecbench-jacobi-cuda-to-hecbench-jacobi-omp_target-L2.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "jacobi",
+          "direction": "cuda-to-omp_target",
+          "snippet_preview": "\"main.cpp\", line 39: error: expected a \"]\"\n                             f_old[IDX(i, j-1));\n                                              ^\n\n1 error detected in the compilation of \"main.cpp\".\nmake: *** [Makefile.nvc:57: main.o] Error 2\n"
+        },
         {
           "file": "hecbench-jacobi-cuda-to-hecbench-jacobi-omp_target-s1.json",
           "model": "together-qwen-3.5-397b-a17b",
@@ -222,28 +246,22 @@
           "kernel": "jacobi",
           "direction": "cuda-to-omp_target",
           "snippet_preview": "\"main.cpp\", line 15: error: invalid text in pragma\n    #pragma omp target data use_device(f)\n                            ^\n\n\"main.cpp\", line 15: error: extra text after expected end of preprocessing directive\n    #pragma omp target data use_device(f)\n                                      ^\n\n\"main.cp"
-        },
-        {
-          "file": "hecbench-jacobi-omp_target-to-hecbench-jacobi-cuda-s0.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "jacobi",
-          "direction": "omp_target-to-cuda",
-          "snippet_preview": "main.cu(47): error: expected a \")\"\n                             f_old[((i) + (j+1]) * 2048);\n                                              ^\n\nmain.cu(47): error: expected a \")\"\n                             f_old[((i) + (j+1]) * 2048);\n                                              ^\n\nmain.cu(47): err"
         }
       ],
       "by_model": {
-        "together-qwen-3.5-397b-a17b": 15
+        "together-qwen-3.5-397b-a17b": 20
       },
       "by_direction": {
-        "cuda-to-omp_target": 2,
+        "cuda-to-omp_target": 4,
         "omp_target-to-cuda": 3,
         "omp-to-cuda": 1,
         "opencl-to-omp": 3,
-        "cuda-to-omp": 2,
+        "cuda-to-omp": 5,
         "opencl-to-cuda": 4
       },
       "by_kernel": {
-        "jacobi": 4,
+        "jacobi": 5,
+        "md": 1,
         "nqueen": 1,
         "bfs": 1,
         "bptree": 2,
@@ -252,7 +270,7 @@
         "nn": 1,
         "nw": 1,
         "pathfinder": 2,
-        "rsbench": 1
+        "rsbench": 4
       }
     },
     "retained_cuda_types": {
@@ -290,6 +308,54 @@
       "by_kernel": {
         "stencil1d": 2,
         "cfd": 3
+      }
+    },
+    "linker_error": {
+      "count": 62,
+      "examples": [
+        {
+          "file": "mixbench-mixbench-cuda-to-mixbench-mixbench-omp-L3.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "mixbench",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "/usr/bin/ld: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o: in function `main':\n/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:199: multiple definition of `main'; CMakeFiles/mixbench-cpu.dir/main.cpp.o:/home/samyak/Desktop/parbench_sam/mixbench/mixbench-"
+        },
+        {
+          "file": "rodinia-backprop-cuda-to-rodinia-backprop-omp-L3.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "backprop",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "backprop.c: In function \u2018main\u2019:\nbackprop.c:265:3: warning: implicit declaration of function \u2018setup\u2019; did you mean \u2018setbuf\u2019? [-Wimplicit-function-declaration]\n  265 |   setup(argc, argv);\n      |   ^~~~~\n      |   setbuf\nfacetrain.c:12:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   12 "
+        },
+        {
+          "file": "rodinia-backprop-cuda-to-rodinia-backprop-omp-L4.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "backprop",
+          "direction": "cuda-to-omp",
+          "snippet_preview": "facetrain.c:12:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   12 | backprop_face()\n      | ^~~~~~~~~~~~~\nfacetrain.c: In function \u2018backprop_face\u2019:\nfacetrain.c:19:3: warning: implicit declaration of function \u2018load\u2019 [-Wimplicit-function-declaration]\n   19 |   load(net);\n      |   ^~~~\nf"
+        }
+      ],
+      "by_model": {
+        "together-qwen-3.5-397b-a17b": 62
+      },
+      "by_direction": {
+        "cuda-to-omp": 9,
+        "opencl-to-cuda": 37,
+        "opencl-to-omp": 10,
+        "omp-to-cuda": 6
+      },
+      "by_kernel": {
+        "mixbench": 1,
+        "backprop": 12,
+        "bfs": 6,
+        "heartwall": 4,
+        "hotspot3d": 8,
+        "kmeans": 6,
+        "lud": 5,
+        "nw": 6,
+        "srad": 9,
+        "rsbench": 3,
+        "xsbench": 2
       }
     },
     "missing_header": {
@@ -341,51 +407,6 @@
         "pathfinder": 1
       }
     },
-    "linker_error": {
-      "count": 56,
-      "examples": [
-        {
-          "file": "rodinia-backprop-cuda-to-rodinia-backprop-omp-L3.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "backprop",
-          "direction": "cuda-to-omp",
-          "snippet_preview": "backprop.c: In function \u2018main\u2019:\nbackprop.c:265:3: warning: implicit declaration of function \u2018setup\u2019; did you mean \u2018setbuf\u2019? [-Wimplicit-function-declaration]\n  265 |   setup(argc, argv);\n      |   ^~~~~\n      |   setbuf\nfacetrain.c:12:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   12 "
-        },
-        {
-          "file": "rodinia-backprop-cuda-to-rodinia-backprop-omp-L4.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "backprop",
-          "direction": "cuda-to-omp",
-          "snippet_preview": "facetrain.c:12:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   12 | backprop_face()\n      | ^~~~~~~~~~~~~\nfacetrain.c: In function \u2018backprop_face\u2019:\nfacetrain.c:19:3: warning: implicit declaration of function \u2018load\u2019 [-Wimplicit-function-declaration]\n   19 |   load(net);\n      |   ^~~~\nf"
-        },
-        {
-          "file": "rodinia-backprop-cuda-to-rodinia-backprop-omp-s1.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "backprop",
-          "direction": "cuda-to-omp",
-          "snippet_preview": "facetrain.c:12:1: warning: return type defaults to \u2018int\u2019 [-Wimplicit-int]\n   12 | backprop_face()\n      | ^~~~~~~~~~~~~\nfacetrain.c: In function \u2018backprop_face\u2019:\nfacetrain.c:19:3: warning: implicit declaration of function \u2018load\u2019 [-Wimplicit-function-declaration]\n   19 |   load(net);\n      |   ^~~~\nf"
-        }
-      ],
-      "by_model": {
-        "together-qwen-3.5-397b-a17b": 56
-      },
-      "by_direction": {
-        "cuda-to-omp": 6,
-        "opencl-to-cuda": 37,
-        "opencl-to-omp": 10,
-        "omp-to-cuda": 3
-      },
-      "by_kernel": {
-        "backprop": 12,
-        "bfs": 6,
-        "heartwall": 4,
-        "hotspot3d": 8,
-        "kmeans": 6,
-        "lud": 5,
-        "nw": 6,
-        "srad": 9
-      }
-    },
     "redefinition": {
       "count": 7,
       "examples": [
@@ -425,7 +446,7 @@
       }
     },
     "type_mismatch": {
-      "count": 10,
+      "count": 14,
       "examples": [
         {
           "file": "rodinia-heartwall-opencl-to-rodinia-heartwall-omp-L1.json",
@@ -450,18 +471,18 @@
         }
       ],
       "by_model": {
-        "together-qwen-3.5-397b-a17b": 10
+        "together-qwen-3.5-397b-a17b": 14
       },
       "by_direction": {
         "opencl-to-omp": 7,
         "cuda-to-omp": 1,
-        "omp-to-cuda": 2
+        "omp-to-cuda": 6
       },
       "by_kernel": {
         "heartwall": 1,
         "hotspot3d": 1,
         "kmeans": 5,
-        "rsbench": 3
+        "rsbench": 7
       }
     },
     "implicit_declaration": {
@@ -499,12 +520,56 @@
       "by_kernel": {
         "kmeans": 6
       }
+    },
+    "retained_opencl_api": {
+      "count": 3,
+      "examples": [
+        {
+          "file": "xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L2.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "xsbench",
+          "direction": "opencl-to-cuda",
+          "snippet_preview": "io.cu(474): warning #1650-D: result of call is not used\n   fread(&SD, sizeof(SimulationData), 1, fp);\n   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nio.cu(485): warning #1650-D: result of call is not used\n   fread(SD.num_nucs, sizeof(int), SD.length_num_nucs, fp"
+        },
+        {
+          "file": "xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L4.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "xsbench",
+          "direction": "opencl-to-cuda",
+          "snippet_preview": "io.cu(474): warning #1650-D: result of call is not used\n   fread(&SD, sizeof(SimulationData), 1, fp);\n   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nio.cu(485): warning #1650-D: result of call is not used\n   fread(SD.num_nucs, sizeof(int), SD.length_num_nucs, fp"
+        },
+        {
+          "file": "xsbench-xsbench-opencl-to-xsbench-xsbench-cuda.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "xsbench",
+          "direction": "opencl-to-cuda",
+          "snippet_preview": "io.cu(474): warning #1650-D: result of call is not used\n   fread(&SD, sizeof(SimulationData), 1, fp);\n   ^\n\nRemark: The warnings can be suppressed with \"-diag-suppress <warning-number>\"\n\nio.cu(485): warning #1650-D: result of call is not used\n   fread(SD.num_nucs, sizeof(int), SD.length_num_nucs, fp"
+        }
+      ],
+      "by_model": {
+        "together-qwen-3.5-397b-a17b": 3
+      },
+      "by_direction": {
+        "opencl-to-cuda": 3
+      },
+      "by_kernel": {
+        "xsbench": 3
+      }
     }
   },
   "run_fail_categories": {
     "abort": {
-      "count": 3,
+      "count": 6,
       "examples": [
+        {
+          "file": "hecbench-floydwarshall-cuda-to-hecbench-floydwarshall-omp_target-L2.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "floydwarshall",
+          "direction": "cuda-to-omp_target",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "(empty)",
+          "exit_code": -6
+        },
         {
           "file": "hecbench-floydwarshall-cuda-to-hecbench-floydwarshall-omp_target-s2.json",
           "model": "together-qwen-3.5-397b-a17b",
@@ -515,40 +580,41 @@
           "exit_code": -6
         },
         {
-          "file": "hecbench-page-rank-cuda-to-hecbench-page-rank-omp_target-s0.json",
+          "file": "hecbench-floydwarshall-cuda-to-hecbench-floydwarshall-omp_target.json",
           "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "page-rank",
+          "kernel": "floydwarshall",
           "direction": "cuda-to-omp_target",
           "stderr_preview": "(empty)",
-          "stdout_preview": "(empty)",
-          "exit_code": -6
-        },
-        {
-          "file": "rodinia-nn-omp-to-rodinia-nn-cuda-L2.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "nn",
-          "direction": "omp-to-cuda",
-          "stderr_preview": "The 5 nearest neighbors are:\n1992  3 22  0  7 ALBERTO    66.5  79.2  129  899 --> 0.000000\n1961  4  8 12 12 LESLIE     26.5  34.3  143  792 --> 0.000000\n1962  2  2  0  8 ERNESTO    35.9  33.6   93  33",
           "stdout_preview": "(empty)",
           "exit_code": -6
         }
       ],
       "by_model": {
-        "together-qwen-3.5-397b-a17b": 3
+        "together-qwen-3.5-397b-a17b": 6
       },
       "by_direction": {
-        "cuda-to-omp_target": 2,
+        "cuda-to-omp_target": 5,
         "omp-to-cuda": 1
       },
       "by_kernel": {
-        "floydwarshall": 1,
+        "floydwarshall": 3,
+        "iso2dfd": 1,
         "page-rank": 1,
         "nn": 1
       }
     },
     "wrong_exit_code": {
-      "count": 80,
+      "count": 90,
       "examples": [
+        {
+          "file": "hecbench-floydwarshall-cuda-to-hecbench-floydwarshall-omp_target-L3.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "floydwarshall",
+          "direction": "cuda-to-omp_target",
+          "stderr_preview": "Accelerator Fatal Error: Failed to find device function 'nvkernel_main_F1L159_8'! File was compiled with: -gpu=cc89\nRebuild this file with -gpu=cc89 to use NVIDIA Tesla GPU 0\n\n",
+          "stdout_preview": "(empty)",
+          "exit_code": 1
+        },
         {
           "file": "hecbench-iso2dfd-cuda-to-hecbench-iso2dfd-omp_target-s0.json",
           "model": "together-qwen-3.5-397b-a17b",
@@ -559,37 +625,33 @@
           "exit_code": 1
         },
         {
-          "file": "mixbench-mixbench-cuda-to-mixbench-mixbench-opencl-s2.json",
+          "file": "hecbench-iso2dfd-omp_target-to-hecbench-iso2dfd-cuda-L1.json",
           "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "mixbench",
-          "direction": "cuda-to-opencl",
-          "stderr_preview": "s here\ninline int equal(class_T a, class_T b) {\n           ^\n<kernel>:643:53: error: invalid address space for pointee of pointer argument to __kernel function\n__kernel void benchmark_func(class_T see",
-          "stdout_preview": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:      ",
-          "exit_code": 1
-        },
-        {
-          "file": "mixbench-mixbench-omp-to-mixbench-mixbench-opencl-s0.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "mixbench",
-          "direction": "omp-to-opencl",
-          "stderr_preview": " requires a name\ntypedef float class_T;\n^~~~~~~~~~~~~~~~~~~~~\n<kernel>:90:27: warning: use of logical '||' with constant operand\n    if (FUSION_DEGREE > 1 || ELEMENTS_PER_THREAD > 1) {\n               ",
-          "stdout_preview": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:      ",
+          "kernel": "iso2dfd",
+          "direction": "omp_target-to-cuda",
+          "stderr_preview": "(empty)",
+          "stdout_preview": "Initializing ... \nGrid Sizes: 1000 1000\nIterations: 100\n\nComputing wavefield in device ..\nTotal kernel execution time 1.30497 (ms)\nAverage kernel execution time 13.0497 (us)\nComputing wavefield in CPU",
           "exit_code": 1
         }
       ],
       "by_model": {
-        "together-qwen-3.5-397b-a17b": 80
+        "together-qwen-3.5-397b-a17b": 90
       },
       "by_direction": {
-        "cuda-to-omp_target": 1,
-        "cuda-to-opencl": 44,
-        "omp-to-opencl": 33,
+        "cuda-to-omp_target": 5,
+        "omp_target-to-cuda": 2,
+        "cuda-to-opencl": 47,
+        "omp-to-opencl": 34,
         "opencl-to-cuda": 1,
         "opencl-to-omp": 1
       },
       "by_kernel": {
-        "iso2dfd": 1,
-        "mixbench": 3,
+        "floydwarshall": 1,
+        "iso2dfd": 2,
+        "jacobi": 1,
+        "nqueen": 2,
+        "page-rank": 1,
+        "mixbench": 7,
         "bptree": 1,
         "gaussian": 8,
         "hotspot": 8,
@@ -662,7 +724,7 @@
       }
     },
     "opencl_jit_error": {
-      "count": 98,
+      "count": 100,
       "examples": [
         {
           "file": "mixbench-mixbench-cuda-to-mixbench-mixbench-opencl-s1.json",
@@ -674,33 +736,33 @@
           "exit_code": 1
         },
         {
-          "file": "rodinia-bfs-cuda-to-rodinia-bfs-opencl-s0.json",
+          "file": "mixbench-mixbench-cuda-to-mixbench-mixbench-opencl.json",
           "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "bfs",
+          "kernel": "mixbench",
           "direction": "cuda-to-opencl",
-          "stderr_preview": "2 errors generated.\nInitCL()::Error: In clBuildProgram\n<kernel>:4:1: error: unknown type name '__kernel__'\n__kernel__ void\n^\n<kernel>:4:12: error: expected identifier or '('\n__kernel__ void\n          ",
-          "stdout_preview": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
-          "exit_code": -11
+          "stderr_preview": "1 error generated.\nCould not open file: /tmp/dep-a799a1.d\n1 error generated.\nProgram built error code: -11\n------------------------------------ Kernel compilation log ---------------------------------",
+          "stdout_preview": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:      ",
+          "exit_code": 1
         },
         {
-          "file": "rodinia-bfs-cuda-to-rodinia-bfs-opencl-s1.json",
+          "file": "mixbench-mixbench-omp-to-mixbench-mixbench-opencl-L4.json",
           "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "bfs",
-          "direction": "cuda-to-opencl",
-          "stderr_preview": "4 errors generated.\nInitCL()::Error: In clBuildProgram\n<kernel>:4:1: error: unknown type name '__global__'\n__global__ void\n^\n<kernel>:4:12: error: expected identifier or '('\n__global__ void\n          ",
-          "stdout_preview": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
-          "exit_code": -11
+          "kernel": "mixbench",
+          "direction": "omp-to-opencl",
+          "stderr_preview": "1 error generated.\nProgram built error code: -11\n------------------------------------ Kernel compilation log ----------------------------------\n<kernel>:5:9: error: unknown type name 'cl_short2'\ntyped",
+          "stdout_preview": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:      ",
+          "exit_code": 1
         }
       ],
       "by_model": {
-        "together-qwen-3.5-397b-a17b": 98
+        "together-qwen-3.5-397b-a17b": 100
       },
       "by_direction": {
-        "cuda-to-opencl": 58,
-        "omp-to-opencl": 40
+        "cuda-to-opencl": 59,
+        "omp-to-opencl": 41
       },
       "by_kernel": {
-        "mixbench": 1,
+        "mixbench": 3,
         "bfs": 3,
         "bptree": 10,
         "heartwall": 16,
@@ -782,46 +844,46 @@
       }
     },
     "wrong_checksum": {
-      "count": 12,
+      "count": 31,
       "examples": [
         {
-          "file": "rsbench-rsbench-cuda-to-rsbench-rsbench-opencl-s0.json",
+          "file": "rsbench-rsbench-cuda-to-rsbench-rsbench-opencl-L1.json",
           "model": "together-qwen-3.5-397b-a17b",
           "kernel": "rsbench",
           "direction": "cuda-to-opencl",
-          "stderr_preview": "1 error generated.\nCould not open file: /tmp/dep-7cd33f.d\n1 error generated.\n",
+          "stderr_preview": "43 errors generated.\n",
           "stdout_preview": "==============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel",
           "exit_code": 1
         },
         {
-          "file": "rsbench-rsbench-cuda-to-rsbench-rsbench-opencl-s1.json",
+          "file": "rsbench-rsbench-cuda-to-rsbench-rsbench-opencl-L2.json",
           "model": "together-qwen-3.5-397b-a17b",
           "kernel": "rsbench",
           "direction": "cuda-to-opencl",
-          "stderr_preview": "1 error generated.\nCould not open file: /tmp/dep-402419.d\n1 error generated.\n",
+          "stderr_preview": "36 errors generated.\n",
           "stdout_preview": "==============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel",
           "exit_code": 1
         },
         {
-          "file": "rsbench-rsbench-cuda-to-rsbench-rsbench-opencl-s2.json",
+          "file": "rsbench-rsbench-cuda-to-rsbench-rsbench-opencl-L3.json",
           "model": "together-qwen-3.5-397b-a17b",
           "kernel": "rsbench",
           "direction": "cuda-to-opencl",
-          "stderr_preview": "1 error generated.\nCould not open file: /tmp/dep-a476e6.d\n1 error generated.\n",
+          "stderr_preview": "1 error generated.\nCould not open file: /tmp/dep-f77d72.d\n1 error generated.\n",
           "stdout_preview": "==============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel",
           "exit_code": 1
         }
       ],
       "by_model": {
-        "together-qwen-3.5-397b-a17b": 12
+        "together-qwen-3.5-397b-a17b": 31
       },
       "by_direction": {
-        "cuda-to-opencl": 6,
-        "omp-to-opencl": 6
+        "cuda-to-opencl": 15,
+        "omp-to-opencl": 16
       },
       "by_kernel": {
-        "rsbench": 6,
-        "xsbench": 6
+        "rsbench": 15,
+        "xsbench": 16
       }
     }
   },
@@ -913,41 +975,42 @@
   },
   "verify_fail_categories": {
     "wrong_numerical_output": {
-      "count": 73,
+      "count": 77,
       "examples": [
         {
-          "file": "hecbench-scan-omp-to-hecbench-scan-cuda-s2.json",
+          "file": "hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-L3.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "convolution1d",
+          "direction": "cuda-to-omp_target",
+          "verify_status": "fail",
+          "stdout_preview": "FAIL\nAverage kernel execution time of conv1d-tiled-caching kernel (block size 64): 59.416550 (us)\nFAIL\nAverage kernel execution time of conv1d-tiled-caching kernel (block size 128): 60.434551 (us)\nFAI",
+          "exit_code": 0
+        },
+        {
+          "file": "hecbench-nqueen-cuda-to-hecbench-nqueen-omp_target-L4.json",
+          "model": "together-qwen-3.5-397b-a17b",
+          "kernel": "nqueen",
+          "direction": "cuda-to-omp_target",
+          "verify_status": "fail",
+          "stdout_preview": "\n### Initial depth: 7 - Size: 15:\n### Regular BP-DFS search. ###\nAverage kernel execution time: 0.280922 (s)\n\nTree size: 2466109\nNumber of solutions found: 6820 \nTree size: 3707942\nFAIL\n",
+          "exit_code": 0
+        },
+        {
+          "file": "hecbench-scan-omp-to-hecbench-scan-cuda-L2.json",
           "model": "together-qwen-3.5-397b-a17b",
           "kernel": "scan",
           "direction": "omp-to-cuda",
           "verify_status": "fail",
-          "stdout_preview": " scan (w/o bank conflicts): 1.343000 (us). Reduce the time by 48.8%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 2.655000 (us)\nElement size in bytes is 4. Average e",
-          "exit_code": 0
-        },
-        {
-          "file": "hecbench-scan-omp_target-to-hecbench-scan-cuda-s0.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "scan",
-          "direction": "omp_target-to-cuda",
-          "verify_status": "fail",
-          "stdout_preview": " scan (w/o bank conflicts): 1.158200 (us). Reduce the time by 28.2%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 1.329500 (us)\nElement size in bytes is 4. Average e",
-          "exit_code": 0
-        },
-        {
-          "file": "rodinia-bptree-opencl-to-rodinia-bptree-omp-L2.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "bptree",
-          "direction": "opencl-to-omp",
-          "verify_status": "fail",
-          "stdout_preview": "mil.txt \nCommand File: ../../data/b+tree/command.txt \nCommand Buffer: \nj 6000 3000\nk 10000\n\n\nGetting input from file file...\nTransforming data to a GPU suitable structure...\nTree transformation took 0",
+          "stdout_preview": " scan (w/o bank conflicts): 1.523000 (us). Reduce the time by 38.0%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 2.445000 (us)\nElement size in bytes is 4. Average e",
           "exit_code": 0
         }
       ],
       "by_model": {
-        "together-qwen-3.5-397b-a17b": 73
+        "together-qwen-3.5-397b-a17b": 77
       },
       "by_direction": {
-        "omp-to-cuda": 1,
+        "cuda-to-omp_target": 2,
+        "omp-to-cuda": 3,
         "omp_target-to-cuda": 1,
         "opencl-to-omp": 14,
         "cuda-to-opencl": 22,
@@ -956,7 +1019,9 @@
         "cuda-to-omp": 2
       },
       "by_kernel": {
-        "scan": 2,
+        "convolution1d": 1,
+        "nqueen": 1,
+        "scan": 4,
         "bptree": 2,
         "cfd": 16,
         "gaussian": 6,
@@ -967,47 +1032,6 @@
         "particlefilter": 12,
         "srad": 1,
         "streamcluster": 4
-      }
-    },
-    "pass_overall_mislabel": {
-      "count": 7,
-      "examples": [
-        {
-          "file": "rodinia-backprop-cuda-to-rodinia-backprop-opencl-L2.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "backprop",
-          "direction": "cuda-to-opencl",
-          "verify_status": "pass",
-          "stdout_preview": "Random number generator seed: 7\nInput layer size : 65536\nStarting training kernel\nnum_devices = 1\nERROR: clBuildProgram() => -11\n\nFinish the training for one iteration\n",
-          "exit_code": 0
-        },
-        {
-          "file": "rodinia-backprop-cuda-to-rodinia-backprop-opencl-L3.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "backprop",
-          "direction": "cuda-to-opencl",
-          "verify_status": "pass",
-          "stdout_preview": "Random number generator seed: 7\nInput layer size : 65536\nStarting training kernel\nnum_devices = 1\nERROR: clBuildProgram() => -11\n\nFinish the training for one iteration\n",
-          "exit_code": 0
-        },
-        {
-          "file": "rodinia-backprop-cuda-to-rodinia-backprop-opencl-L4.json",
-          "model": "together-qwen-3.5-397b-a17b",
-          "kernel": "backprop",
-          "direction": "cuda-to-opencl",
-          "verify_status": "pass",
-          "stdout_preview": "Random number generator seed: 7\nInput layer size : 65536\nStarting training kernel\nnum_devices = 1\nERROR: clBuildProgram() => -11\n\nFinish the training for one iteration\n",
-          "exit_code": 0
-        }
-      ],
-      "by_model": {
-        "together-qwen-3.5-397b-a17b": 7
-      },
-      "by_direction": {
-        "cuda-to-opencl": 7
-      },
-      "by_kernel": {
-        "backprop": 7
       }
     },
     "missing_output": {
@@ -1096,41 +1120,52 @@
       }
     }
   },
-  "error_count": 0,
-  "error_examples": [],
+  "error_count": 1,
+  "error_examples": [
+    {
+      "file": "rsbench-rsbench-cuda-to-rsbench-rsbench-opencl.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-opencl",
+      "error_message": "LLM call failed: Error code: 500 - {'error': {'message': 'Internal Server Error'}}"
+    }
+  ],
   "per_kernel": {
     "convolution1d": {
-      "total": 6,
+      "total": 16,
       "pass": 0,
       "build_fail": {
-        "other_build": 3,
-        "missing_target_api": 1,
-        "undeclared_identifier": 2
+        "other_build": 11,
+        "undeclared_identifier": 3,
+        "missing_target_api": 1
       },
       "run_fail": {},
       "extraction_fail": {},
-      "verify_fail": {},
+      "verify_fail": {
+        "wrong_numerical_output": 1
+      },
       "error": 0
     },
     "floydwarshall": {
-      "total": 12,
-      "pass": 9,
+      "total": 32,
+      "pass": 25,
       "build_fail": {
-        "other_build": 2
+        "other_build": 3
       },
       "run_fail": {
-        "abort": 1
+        "abort": 3,
+        "wrong_exit_code": 1
       },
       "extraction_fail": {},
       "verify_fail": {},
       "error": 0
     },
     "heat2d": {
-      "total": 12,
-      "pass": 9,
+      "total": 32,
+      "pass": 24,
       "build_fail": {
-        "undeclared_identifier": 2,
-        "other_build": 1
+        "undeclared_identifier": 3,
+        "other_build": 5
       },
       "run_fail": {},
       "extraction_fail": {},
@@ -1138,12 +1173,28 @@
       "error": 0
     },
     "iso2dfd": {
-      "total": 12,
-      "pass": 7,
+      "total": 32,
+      "pass": 22,
       "build_fail": {
         "retained_cuda_api": 1,
-        "undeclared_identifier": 1,
-        "other_build": 2
+        "undeclared_identifier": 3,
+        "other_build": 3
+      },
+      "run_fail": {
+        "abort": 1,
+        "wrong_exit_code": 2
+      },
+      "extraction_fail": {},
+      "verify_fail": {},
+      "error": 0
+    },
+    "jacobi": {
+      "total": 16,
+      "pass": 6,
+      "build_fail": {
+        "syntax_error": 5,
+        "other_build": 2,
+        "undeclared_identifier": 2
       },
       "run_fail": {
         "wrong_exit_code": 1
@@ -1152,36 +1203,12 @@
       "verify_fail": {},
       "error": 0
     },
-    "jacobi": {
-      "total": 6,
-      "pass": 0,
-      "build_fail": {
-        "undeclared_identifier": 2,
-        "syntax_error": 4
-      },
-      "run_fail": {},
-      "extraction_fail": {},
-      "verify_fail": {},
-      "error": 0
-    },
     "md": {
-      "total": 6,
-      "pass": 1,
+      "total": 16,
+      "pass": 7,
       "build_fail": {
+        "other_build": 6,
         "undeclared_identifier": 2,
-        "other_build": 3
-      },
-      "run_fail": {},
-      "extraction_fail": {},
-      "verify_fail": {},
-      "error": 0
-    },
-    "nqueen": {
-      "total": 6,
-      "pass": 2,
-      "build_fail": {
-        "undeclared_identifier": 1,
-        "other_build": 2,
         "syntax_error": 1
       },
       "run_fail": {},
@@ -1189,11 +1216,32 @@
       "verify_fail": {},
       "error": 0
     },
-    "page-rank": {
-      "total": 6,
-      "pass": 3,
-      "build_fail": {},
+    "nqueen": {
+      "total": 16,
+      "pass": 8,
+      "build_fail": {
+        "undeclared_identifier": 1,
+        "other_build": 3,
+        "syntax_error": 1
+      },
       "run_fail": {
+        "wrong_exit_code": 2
+      },
+      "extraction_fail": {},
+      "verify_fail": {
+        "wrong_numerical_output": 1
+      },
+      "error": 0
+    },
+    "page-rank": {
+      "total": 16,
+      "pass": 9,
+      "build_fail": {
+        "other_build": 2,
+        "undeclared_identifier": 1
+      },
+      "run_fail": {
+        "wrong_exit_code": 1,
         "abort": 1,
         "segfault": 2
       },
@@ -1202,22 +1250,23 @@
       "error": 0
     },
     "scan": {
-      "total": 9,
-      "pass": 0,
+      "total": 24,
+      "pass": 5,
       "build_fail": {
+        "retained_cuda_api": 1,
         "undeclared_identifier": 3,
-        "other_build": 4
+        "other_build": 11
       },
       "run_fail": {},
       "extraction_fail": {},
       "verify_fail": {
-        "wrong_numerical_output": 2
+        "wrong_numerical_output": 4
       },
       "error": 0
     },
     "stencil1d": {
-      "total": 9,
-      "pass": 7,
+      "total": 24,
+      "pass": 22,
       "build_fail": {
         "retained_cuda_types": 2
       },
@@ -1227,16 +1276,18 @@
       "error": 0
     },
     "mixbench": {
-      "total": 18,
-      "pass": 2,
+      "total": 48,
+      "pass": 10,
       "build_fail": {
+        "undeclared_identifier": 3,
+        "linker_error": 1,
+        "other_build": 4,
         "missing_header": 6,
-        "missing_target_api": 4,
-        "undeclared_identifier": 2
+        "missing_target_api": 14
       },
       "run_fail": {
-        "opencl_jit_error": 1,
-        "wrong_exit_code": 3
+        "wrong_exit_code": 7,
+        "opencl_jit_error": 3
       },
       "extraction_fail": {},
       "verify_fail": {},
@@ -1244,7 +1295,7 @@
     },
     "backprop": {
       "total": 48,
-      "pass": 12,
+      "pass": 19,
       "build_fail": {
         "linker_error": 12,
         "undeclared_identifier": 11,
@@ -1253,7 +1304,6 @@
       "run_fail": {},
       "extraction_fail": {},
       "verify_fail": {
-        "pass_overall_mislabel": 7,
         "missing_output": 1
       },
       "error": 0
@@ -1623,28 +1673,35 @@
       "error": 0
     },
     "rsbench": {
-      "total": 18,
+      "total": 48,
       "pass": 0,
       "build_fail": {
-        "missing_target_api": 8,
-        "type_mismatch": 3,
-        "syntax_error": 1
+        "syntax_error": 4,
+        "linker_error": 3,
+        "missing_target_api": 17,
+        "type_mismatch": 7,
+        "other_build": 1
       },
       "run_fail": {
-        "wrong_checksum": 6
+        "wrong_checksum": 15
       },
       "extraction_fail": {},
       "verify_fail": {},
-      "error": 0
+      "error": 1
     },
     "xsbench": {
-      "total": 18,
+      "total": 48,
       "pass": 0,
       "build_fail": {
-        "missing_target_api": 12
+        "other_build": 3,
+        "undeclared_identifier": 3,
+        "missing_target_api": 20,
+        "retained_cuda_api": 1,
+        "linker_error": 2,
+        "retained_opencl_api": 3
       },
       "run_fail": {
-        "wrong_checksum": 6
+        "wrong_checksum": 16
       },
       "extraction_fail": {},
       "verify_fail": {},
@@ -1653,71 +1710,75 @@
   },
   "per_model": {
     "together-qwen-3.5-397b-a17b": {
-      "total": 1018,
-      "pass": 251,
+      "total": 1248,
+      "pass": 356,
       "build_fail": {
-        "other_build": 49,
-        "missing_target_api": 52,
-        "undeclared_identifier": 105,
-        "retained_cuda_api": 2,
-        "syntax_error": 15,
+        "other_build": 86,
+        "undeclared_identifier": 114,
+        "missing_target_api": 79,
+        "retained_cuda_api": 4,
+        "syntax_error": 20,
         "retained_cuda_types": 5,
+        "linker_error": 62,
         "missing_header": 120,
-        "linker_error": 56,
         "redefinition": 7,
-        "type_mismatch": 10,
-        "implicit_declaration": 6
+        "type_mismatch": 14,
+        "implicit_declaration": 6,
+        "retained_opencl_api": 3
       },
       "run_fail": {
-        "abort": 3,
-        "wrong_exit_code": 80,
+        "abort": 6,
+        "wrong_exit_code": 90,
         "segfault": 27,
-        "opencl_jit_error": 98,
+        "opencl_jit_error": 100,
         "gpu_memory_error": 2,
         "data_file_missing": 2,
-        "wrong_checksum": 12
+        "wrong_checksum": 31
       },
       "extraction_fail": {
         "missing_files": 18,
         "no_code_blocks": 4
       },
       "verify_fail": {
-        "wrong_numerical_output": 73,
-        "pass_overall_mislabel": 7,
+        "wrong_numerical_output": 77,
         "missing_output": 5,
         "verification_error": 9
       },
-      "error": 0
+      "error": 1
     }
   },
   "per_direction": {
     "cuda-to-omp_target": {
-      "total": 24,
-      "pass": 0,
+      "total": 64,
+      "pass": 7,
       "build_fail": {
-        "other_build": 10,
+        "other_build": 27,
+        "undeclared_identifier": 11,
         "missing_target_api": 1,
-        "undeclared_identifier": 6,
-        "syntax_error": 2
+        "syntax_error": 4
       },
       "run_fail": {
-        "abort": 2,
-        "wrong_exit_code": 1,
+        "abort": 5,
+        "wrong_exit_code": 5,
         "segfault": 2
       },
       "extraction_fail": {},
-      "verify_fail": {},
+      "verify_fail": {
+        "wrong_numerical_output": 2
+      },
       "error": 0
     },
     "omp_target-to-cuda": {
-      "total": 30,
-      "pass": 18,
+      "total": 80,
+      "pass": 57,
       "build_fail": {
+        "other_build": 13,
         "undeclared_identifier": 4,
-        "other_build": 4,
         "syntax_error": 3
       },
-      "run_fail": {},
+      "run_fail": {
+        "wrong_exit_code": 2
+      },
       "extraction_fail": {},
       "verify_fail": {
         "wrong_numerical_output": 1
@@ -1725,19 +1786,19 @@
       "error": 0
     },
     "cuda-to-omp": {
-      "total": 168,
-      "pass": 76,
+      "total": 208,
+      "pass": 101,
       "build_fail": {
-        "retained_cuda_api": 1,
-        "undeclared_identifier": 22,
+        "retained_cuda_api": 3,
+        "undeclared_identifier": 25,
         "retained_cuda_types": 2,
+        "linker_error": 9,
+        "other_build": 10,
         "missing_header": 21,
-        "linker_error": 6,
         "type_mismatch": 1,
         "missing_target_api": 20,
         "implicit_declaration": 4,
-        "syntax_error": 2,
-        "other_build": 6,
+        "syntax_error": 5,
         "redefinition": 1
       },
       "run_fail": {
@@ -1752,18 +1813,18 @@
       "error": 0
     },
     "omp-to-cuda": {
-      "total": 168,
-      "pass": 56,
+      "total": 208,
+      "pass": 79,
       "build_fail": {
-        "other_build": 19,
+        "other_build": 25,
         "missing_header": 29,
-        "undeclared_identifier": 24,
+        "undeclared_identifier": 25,
         "syntax_error": 1,
         "redefinition": 3,
         "implicit_declaration": 2,
-        "linker_error": 3,
-        "missing_target_api": 12,
-        "type_mismatch": 2
+        "linker_error": 6,
+        "missing_target_api": 13,
+        "type_mismatch": 6
       },
       "run_fail": {
         "gpu_memory_error": 2,
@@ -1774,38 +1835,37 @@
         "missing_files": 12
       },
       "verify_fail": {
-        "wrong_numerical_output": 1
+        "wrong_numerical_output": 3
       },
       "error": 0
     },
     "cuda-to-opencl": {
-      "total": 169,
-      "pass": 20,
+      "total": 184,
+      "pass": 28,
       "build_fail": {},
       "run_fail": {
-        "opencl_jit_error": 58,
-        "wrong_exit_code": 44,
+        "wrong_exit_code": 47,
+        "opencl_jit_error": 59,
         "segfault": 10,
-        "wrong_checksum": 6
+        "wrong_checksum": 15
       },
       "extraction_fail": {
         "missing_files": 2
       },
       "verify_fail": {
-        "pass_overall_mislabel": 7,
         "wrong_numerical_output": 22
       },
-      "error": 0
+      "error": 1
     },
     "omp-to-opencl": {
-      "total": 145,
-      "pass": 33,
+      "total": 160,
+      "pass": 36,
       "build_fail": {},
       "run_fail": {
-        "wrong_exit_code": 33,
+        "wrong_exit_code": 34,
+        "opencl_jit_error": 41,
         "segfault": 7,
-        "opencl_jit_error": 40,
-        "wrong_checksum": 6
+        "wrong_checksum": 16
       },
       "extraction_fail": {
         "no_code_blocks": 2,
@@ -1817,16 +1877,17 @@
       "error": 0
     },
     "opencl-to-cuda": {
-      "total": 169,
+      "total": 184,
       "pass": 6,
       "build_fail": {
-        "missing_target_api": 10,
+        "missing_target_api": 22,
         "undeclared_identifier": 27,
         "linker_error": 37,
         "missing_header": 53,
         "redefinition": 3,
         "other_build": 7,
-        "syntax_error": 4
+        "syntax_error": 4,
+        "retained_opencl_api": 3
       },
       "run_fail": {
         "data_file_missing": 2,
@@ -1845,17 +1906,17 @@
       "error": 0
     },
     "opencl-to-omp": {
-      "total": 145,
+      "total": 160,
       "pass": 42,
       "build_fail": {
+        "missing_target_api": 23,
         "undeclared_identifier": 22,
-        "missing_target_api": 9,
         "linker_error": 10,
         "syntax_error": 3,
         "missing_header": 17,
         "retained_cuda_types": 3,
         "type_mismatch": 7,
-        "other_build": 3,
+        "other_build": 4,
         "retained_cuda_api": 1
       },
       "run_fail": {
@@ -1872,6 +1933,46 @@
     }
   },
   "classified_results": [
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "convolution1d",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "convolution1d",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "convolution1d",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "VERIFY_FAIL",
+      "primary_category": "wrong_numerical_output",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "convolution1d",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "undeclared_identifier",
+      "secondary_categories": []
+    },
     {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
@@ -1900,6 +2001,56 @@
       "kernel": "convolution1d",
       "direction": "cuda-to-omp_target",
       "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-cuda-to-hecbench-convolution1d-omp_target.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "convolution1d",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-omp_target-to-hecbench-convolution1d-cuda-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "convolution1d",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-omp_target-to-hecbench-convolution1d-cuda-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "convolution1d",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-omp_target-to-hecbench-convolution1d-cuda-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "convolution1d",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-omp_target-to-hecbench-convolution1d-cuda-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "convolution1d",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 4,
       "overall_status": "BUILD_FAIL",
       "primary_category": "other_build",
       "secondary_categories": []
@@ -1935,6 +2086,46 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-convolution1d-omp_target-to-hecbench-convolution1d-cuda.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "convolution1d",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-floydwarshall-cuda-to-hecbench-floydwarshall-omp_target-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "floydwarshall",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "abort",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-floydwarshall-cuda-to-hecbench-floydwarshall-omp_target-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "floydwarshall",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-floydwarshall-cuda-to-hecbench-floydwarshall-omp_target-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "floydwarshall",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-floydwarshall-cuda-to-hecbench-floydwarshall-omp_target-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "floydwarshall",
@@ -1962,6 +2153,58 @@
       "augment_level": 0,
       "overall_status": "RUN_FAIL",
       "primary_category": "abort",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-floydwarshall-cuda-to-hecbench-floydwarshall-omp_target.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "floydwarshall",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "abort",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-heat2d-cuda-to-hecbench-heat2d-omp_target-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "heat2d",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "undeclared_identifier",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-heat2d-cuda-to-hecbench-heat2d-omp_target-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "heat2d",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-heat2d-cuda-to-hecbench-heat2d-omp_target-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "heat2d",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-heat2d-cuda-to-hecbench-heat2d-omp_target-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "heat2d",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
       "secondary_categories": []
     },
     {
@@ -1995,6 +2238,16 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-heat2d-cuda-to-hecbench-heat2d-omp_target.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "heat2d",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-iso2dfd-cuda-to-hecbench-iso2dfd-omp-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "iso2dfd",
@@ -2005,6 +2258,36 @@
       "secondary_categories": [
         "undeclared_identifier"
       ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-iso2dfd-cuda-to-hecbench-iso2dfd-omp_target-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "iso2dfd",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "undeclared_identifier",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-iso2dfd-cuda-to-hecbench-iso2dfd-omp_target-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "iso2dfd",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "undeclared_identifier",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-iso2dfd-cuda-to-hecbench-iso2dfd-omp_target-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "iso2dfd",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "abort",
+      "secondary_categories": []
     },
     {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-iso2dfd-cuda-to-hecbench-iso2dfd-omp_target-s0.json",
@@ -2037,11 +2320,51 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-iso2dfd-cuda-to-hecbench-iso2dfd-omp_target.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "iso2dfd",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-iso2dfd-omp-to-hecbench-iso2dfd-cuda-s1.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "iso2dfd",
       "direction": "omp-to-cuda",
       "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-iso2dfd-omp_target-to-hecbench-iso2dfd-cuda-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "iso2dfd",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-jacobi-cuda-to-hecbench-jacobi-omp_target-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "jacobi",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "syntax_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-jacobi-cuda-to-hecbench-jacobi-omp_target-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "jacobi",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 4,
       "overall_status": "BUILD_FAIL",
       "primary_category": "other_build",
       "secondary_categories": []
@@ -2079,6 +2402,16 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-jacobi-cuda-to-hecbench-jacobi-omp_target.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "jacobi",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-jacobi-omp_target-to-hecbench-jacobi-cuda-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "jacobi",
@@ -2106,6 +2439,46 @@
       "augment_level": 0,
       "overall_status": "BUILD_FAIL",
       "primary_category": "undeclared_identifier",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-jacobi-omp_target-to-hecbench-jacobi-cuda.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "jacobi",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-md-cuda-to-hecbench-md-omp_target-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "md",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-md-cuda-to-hecbench-md-omp_target-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "md",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-md-cuda-to-hecbench-md-omp_target-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "md",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
       "secondary_categories": []
     },
     {
@@ -2139,6 +2512,16 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-md-cuda-to-hecbench-md-omp_target.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "md",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "syntax_error",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-md-omp_target-to-hecbench-md-cuda-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "md",
@@ -2156,6 +2539,36 @@
       "augment_level": 0,
       "overall_status": "BUILD_FAIL",
       "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-nqueen-cuda-to-hecbench-nqueen-omp_target-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "nqueen",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-nqueen-cuda-to-hecbench-nqueen-omp_target-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "nqueen",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-nqueen-cuda-to-hecbench-nqueen-omp_target-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "nqueen",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "VERIFY_FAIL",
+      "primary_category": "wrong_numerical_output",
       "secondary_categories": []
     },
     {
@@ -2189,6 +2602,16 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-nqueen-cuda-to-hecbench-nqueen-omp_target.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "nqueen",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-nqueen-omp_target-to-hecbench-nqueen-cuda-s1.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "nqueen",
@@ -2196,6 +2619,46 @@
       "augment_level": 0,
       "overall_status": "BUILD_FAIL",
       "primary_category": "syntax_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-page-rank-cuda-to-hecbench-page-rank-omp_target-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "page-rank",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-page-rank-cuda-to-hecbench-page-rank-omp_target-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "page-rank",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-page-rank-cuda-to-hecbench-page-rank-omp_target-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "page-rank",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-page-rank-cuda-to-hecbench-page-rank-omp_target-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "page-rank",
+      "direction": "cuda-to-omp_target",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "undeclared_identifier",
       "secondary_categories": []
     },
     {
@@ -2227,6 +2690,18 @@
       "overall_status": "RUN_FAIL",
       "primary_category": "segfault",
       "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-cuda-to-hecbench-scan-omp-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "scan",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
     },
     {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-cuda-to-hecbench-scan-omp-s0.json",
@@ -2265,6 +2740,46 @@
       ]
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp-to-hecbench-scan-cuda-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "scan",
+      "direction": "omp-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp-to-hecbench-scan-cuda-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "scan",
+      "direction": "omp-to-cuda",
+      "augment_level": 2,
+      "overall_status": "VERIFY_FAIL",
+      "primary_category": "wrong_numerical_output",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp-to-hecbench-scan-cuda-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "scan",
+      "direction": "omp-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp-to-hecbench-scan-cuda-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "scan",
+      "direction": "omp-to-cuda",
+      "augment_level": 4,
+      "overall_status": "VERIFY_FAIL",
+      "primary_category": "wrong_numerical_output",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp-to-hecbench-scan-cuda-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "scan",
@@ -2295,6 +2810,46 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp-to-hecbench-scan-cuda.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "scan",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp_target-to-hecbench-scan-cuda-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "scan",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp_target-to-hecbench-scan-cuda-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "scan",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp_target-to-hecbench-scan-cuda-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "scan",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp_target-to-hecbench-scan-cuda-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "scan",
@@ -2316,6 +2871,16 @@
     },
     {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp_target-to-hecbench-scan-cuda-s2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "scan",
+      "direction": "omp_target-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/hecbench-scan-omp_target-to-hecbench-scan-cuda.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "scan",
       "direction": "omp_target-to-cuda",
@@ -2351,6 +2916,36 @@
       ]
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-cuda-to-mixbench-mixbench-omp-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "undeclared_identifier",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-cuda-to-mixbench-mixbench-omp-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "linker_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-cuda-to-mixbench-mixbench-omp-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-cuda-to-mixbench-mixbench-omp-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "mixbench",
@@ -2381,6 +2976,46 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-cuda-to-mixbench-mixbench-omp.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-cuda-to-mixbench-mixbench-opencl-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-cuda-to-mixbench-mixbench-opencl-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-cuda-to-mixbench-mixbench-opencl-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-cuda-to-mixbench-mixbench-opencl-s1.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "mixbench",
@@ -2400,6 +3035,38 @@
       "augment_level": 0,
       "overall_status": "RUN_FAIL",
       "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-cuda-to-mixbench-mixbench-opencl.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "opencl_jit_error",
+      "secondary_categories": [
+        "data_file_missing"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-omp-to-mixbench-mixbench-cuda-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-omp-to-mixbench-mixbench-cuda-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
       "secondary_categories": []
     },
     {
@@ -2433,6 +3100,26 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-omp-to-mixbench-mixbench-opencl-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_exit_code",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-omp-to-mixbench-mixbench-opencl-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "opencl_jit_error",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-omp-to-mixbench-mixbench-opencl-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "mixbench",
@@ -2451,6 +3138,54 @@
       "overall_status": "RUN_FAIL",
       "primary_category": "wrong_exit_code",
       "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
     },
     {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-s0.json",
@@ -2487,6 +3222,66 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-cuda.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-omp-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-omp-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-omp-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-omp-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-omp-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "mixbench",
@@ -2512,6 +3307,18 @@
     },
     {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-omp-s2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "mixbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/mixbench-mixbench-opencl-to-mixbench-mixbench-omp.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "mixbench",
       "direction": "opencl-to-omp",
@@ -2576,76 +3383,6 @@
       "augment_level": 0,
       "overall_status": "BUILD_FAIL",
       "primary_category": "undeclared_identifier",
-      "secondary_categories": []
-    },
-    {
-      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rodinia-backprop-cuda-to-rodinia-backprop-opencl-L2.json",
-      "model": "together-qwen-3.5-397b-a17b",
-      "kernel": "backprop",
-      "direction": "cuda-to-opencl",
-      "augment_level": 2,
-      "overall_status": "VERIFY_FAIL",
-      "primary_category": "pass_overall_mislabel",
-      "secondary_categories": []
-    },
-    {
-      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rodinia-backprop-cuda-to-rodinia-backprop-opencl-L3.json",
-      "model": "together-qwen-3.5-397b-a17b",
-      "kernel": "backprop",
-      "direction": "cuda-to-opencl",
-      "augment_level": 3,
-      "overall_status": "VERIFY_FAIL",
-      "primary_category": "pass_overall_mislabel",
-      "secondary_categories": []
-    },
-    {
-      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rodinia-backprop-cuda-to-rodinia-backprop-opencl-L4.json",
-      "model": "together-qwen-3.5-397b-a17b",
-      "kernel": "backprop",
-      "direction": "cuda-to-opencl",
-      "augment_level": 4,
-      "overall_status": "VERIFY_FAIL",
-      "primary_category": "pass_overall_mislabel",
-      "secondary_categories": []
-    },
-    {
-      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rodinia-backprop-cuda-to-rodinia-backprop-opencl-s0.json",
-      "model": "together-qwen-3.5-397b-a17b",
-      "kernel": "backprop",
-      "direction": "cuda-to-opencl",
-      "augment_level": 0,
-      "overall_status": "VERIFY_FAIL",
-      "primary_category": "pass_overall_mislabel",
-      "secondary_categories": []
-    },
-    {
-      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rodinia-backprop-cuda-to-rodinia-backprop-opencl-s1.json",
-      "model": "together-qwen-3.5-397b-a17b",
-      "kernel": "backprop",
-      "direction": "cuda-to-opencl",
-      "augment_level": 0,
-      "overall_status": "VERIFY_FAIL",
-      "primary_category": "pass_overall_mislabel",
-      "secondary_categories": []
-    },
-    {
-      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rodinia-backprop-cuda-to-rodinia-backprop-opencl-s2.json",
-      "model": "together-qwen-3.5-397b-a17b",
-      "kernel": "backprop",
-      "direction": "cuda-to-opencl",
-      "augment_level": 0,
-      "overall_status": "VERIFY_FAIL",
-      "primary_category": "pass_overall_mislabel",
-      "secondary_categories": []
-    },
-    {
-      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rodinia-backprop-cuda-to-rodinia-backprop-opencl.json",
-      "model": "together-qwen-3.5-397b-a17b",
-      "kernel": "backprop",
-      "direction": "cuda-to-opencl",
-      "augment_level": 0,
-      "overall_status": "VERIFY_FAIL",
-      "primary_category": "pass_overall_mislabel",
       "secondary_categories": []
     },
     {
@@ -9658,6 +10395,46 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-omp-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "syntax_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-omp-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "linker_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-omp-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "syntax_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-omp-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "syntax_error",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-omp-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "rsbench",
@@ -9691,6 +10468,64 @@
       "primary_category": "missing_target_api",
       "secondary_categories": [
         "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-omp.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "linker_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-opencl-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-opencl-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-opencl-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-opencl-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
       ]
     },
     {
@@ -9730,6 +10565,56 @@
       ]
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-cuda-to-rsbench-rsbench-opencl.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 0,
+      "overall_status": "ERROR",
+      "primary_category": "api_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-cuda-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "type_mismatch",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-cuda-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "type_mismatch",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-cuda-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "type_mismatch",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-cuda-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "linker_error",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-cuda-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "rsbench",
@@ -9760,6 +10645,64 @@
       "overall_status": "BUILD_FAIL",
       "primary_category": "type_mismatch",
       "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-cuda.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "type_mismatch",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-opencl-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-opencl-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-opencl-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-opencl-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
     },
     {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-opencl-s0.json",
@@ -9798,6 +10741,60 @@
       ]
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-omp-to-rsbench-rsbench-opencl.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-cuda-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-cuda-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-cuda-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-cuda-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-cuda-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "rsbench",
@@ -9830,6 +10827,62 @@
       "secondary_categories": [
         "syntax_error"
       ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-cuda.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-omp-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-omp-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-omp-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-omp-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
     },
     {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-omp-s0.json",
@@ -9866,6 +10919,58 @@
       ]
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/rsbench-rsbench-opencl-to-rsbench-rsbench-omp.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "rsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "undeclared_identifier",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "undeclared_identifier",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "xsbench",
@@ -9899,6 +11004,67 @@
       "primary_category": "missing_target_api",
       "secondary_categories": [
         "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-omp.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_cuda_api",
+      "secondary_categories": [
+        "missing_target_api",
+        "syntax_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
       ]
     },
     {
@@ -9938,6 +11104,58 @@
       ]
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "undeclared_identifier",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "linker_error",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "linker_error",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "xsbench",
@@ -9971,6 +11189,66 @@
       "primary_category": "missing_target_api",
       "secondary_categories": [
         "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-cuda.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "omp-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 1,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 2,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 3,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 4,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
       ]
     },
     {
@@ -10010,6 +11288,66 @@
       ]
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-omp-to-xsbench-xsbench-opencl.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 0,
+      "overall_status": "RUN_FAIL",
+      "primary_category": "wrong_checksum",
+      "secondary_categories": [
+        "opencl_jit_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_opencl_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": [
+        "linker_error"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_opencl_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "xsbench",
@@ -10046,6 +11384,58 @@
       ]
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "opencl-to-cuda",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "retained_opencl_api",
+      "secondary_categories": [
+        "undeclared_identifier"
+      ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L1.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L2.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L3.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L4.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-s0.json",
       "model": "together-qwen-3.5-397b-a17b",
       "kernel": "xsbench",
@@ -10080,6 +11470,16 @@
       "secondary_categories": [
         "syntax_error"
       ]
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b/xsbench-xsbench-opencl-to-xsbench-xsbench-omp.json",
+      "model": "together-qwen-3.5-397b-a17b",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
     }
   ]
 }
