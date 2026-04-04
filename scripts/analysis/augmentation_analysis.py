@@ -30,6 +30,20 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+import matplotlib
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.colors import ListedColormap, BoundaryNorm  # noqa: E402
+from matplotlib.patches import Patch  # noqa: E402
+import numpy as np  # noqa: E402
+
+try:
+    import scienceplots  # noqa: F401
+    plt.style.use(["science", "ieee", "no-latex"])
+except ImportError:
+    pass  # graceful fallback — use default matplotlib style
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # ---------------------------------------------------------------------------
@@ -45,6 +59,31 @@ KNOWN_FAIL_SOURCES = frozenset({
 EVAL_DIR_NAME = "together-qwen-3.5-397b-a17b"
 
 LEVELS = ["L0", "L1", "L2", "L3", "L4"]
+
+# ---------------------------------------------------------------------------
+# Okabe-Ito Colorblind-Safe Palette (Okabe & Ito, 2008)
+# ---------------------------------------------------------------------------
+
+STATUS_COLORS: dict[str, str] = {
+    "PASS":            "#009E73",   # green
+    "BUILD_FAIL":      "#D55E00",   # vermillion
+    "RUN_FAIL":        "#E69F00",   # orange
+    "VERIFY_FAIL":     "#0072B2",   # blue
+    "EXTRACTION_FAIL": "#CC79A7",   # purple
+}
+
+STATUS_ORDER = ["PASS", "BUILD_FAIL", "RUN_FAIL", "VERIFY_FAIL", "EXTRACTION_FAIL"]
+
+STATUS_ABBREV = {
+    "PASS": "P",
+    "BUILD_FAIL": "BF",
+    "RUN_FAIL": "RF",
+    "VERIFY_FAIL": "VF",
+    "EXTRACTION_FAIL": "EF",
+}
+
+# Pattern group ordering for heatmap rows
+PATTERN_ORDER = ["stable_pass", "degradation", "improvement", "other", "stable_fail"]
 
 
 # ---------------------------------------------------------------------------
@@ -452,6 +491,170 @@ def build_secondary_matrix(results_dir: Path, verbose: bool = False) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Figure Utilities
+# ---------------------------------------------------------------------------
+
+
+def _save_figure(fig: plt.Figure, output_dir: Path, stem: str) -> None:
+    """Save figure as both PDF and PNG (300 dpi for PNG)."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for fmt in ("png", "pdf"):
+        path = output_dir / f"{stem}.{fmt}"
+        fig.savefig(path, format=fmt, dpi=300 if fmt == "png" else None,
+                    bbox_inches="tight")
+    plt.close(fig)
+
+
+def _text_color_for_bg(hex_color: str) -> str:
+    """Return 'white' for dark backgrounds, 'black' for light ones.
+
+    Uses ITU-R BT.601 luminance: 0.299*R + 0.587*G + 0.114*B.
+    """
+    hex_color = hex_color.lstrip("#")
+    r, g, b = int(hex_color[:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+    luminance = 0.299 * r + 0.587 * g + 0.114 * b
+    return "white" if luminance < 128 else "black"
+
+
+# ---------------------------------------------------------------------------
+# Figure: Per-Kernel x Per-Level Heatmap
+# ---------------------------------------------------------------------------
+
+
+def generate_heatmap(matrix_data: dict, output_dir: Path) -> None:
+    """Generate per-kernel x per-level status heatmap (cuda-to-omp).
+
+    Rows = kernels ordered by pattern group, columns = L0-L4,
+    cells colored by status using Okabe-Ito palette.
+    """
+    pm = matrix_data["primary_matrix"]
+    per_kernel = pm["per_kernel"]
+    pattern_summary = pm["pattern_summary"]
+
+    # Order kernels by pattern group then alphabetically within group
+    ordered_kernels: list[str] = []
+    group_boundaries: list[int] = []  # row index where each group starts
+    group_labels: list[str] = []
+
+    for pattern in PATTERN_ORDER:
+        kernels_in_group = sorted(pattern_summary.get(pattern, []))
+        if kernels_in_group:
+            group_boundaries.append(len(ordered_kernels))
+            group_labels.append(pattern)
+            ordered_kernels.extend(kernels_in_group)
+
+    n_kernels = len(ordered_kernels)
+    n_levels = len(LEVELS)
+
+    # Build 2D integer array: status -> index via STATUS_ORDER
+    status_to_idx = {s: i for i, s in enumerate(STATUS_ORDER)}
+    data_array = np.zeros((n_kernels, n_levels), dtype=int)
+
+    for row_idx, kernel in enumerate(ordered_kernels):
+        entry = per_kernel[kernel]
+        for col_idx, level in enumerate(LEVELS):
+            status = entry.get(level, "BUILD_FAIL")
+            data_array[row_idx, col_idx] = status_to_idx.get(status, 1)
+
+    # Build colormap
+    colors = [STATUS_COLORS[s] for s in STATUS_ORDER]
+    cmap = ListedColormap(colors)
+    boundaries = [-0.5 + i for i in range(len(STATUS_ORDER) + 1)]
+    norm = BoundaryNorm(boundaries, cmap.N)
+
+    # Create figure
+    fig, ax = plt.subplots(figsize=(3.5, 6))
+    ax.imshow(data_array, cmap=cmap, norm=norm, aspect="auto")
+
+    # Axis labels
+    ax.set_xticks(range(n_levels))
+    ax.set_xticklabels(LEVELS)
+    ax.set_yticks(range(n_kernels))
+    ax.set_yticklabels(ordered_kernels, fontsize=7)
+
+    # Cell annotations (abbreviated status with appropriate text color)
+    for row_idx in range(n_kernels):
+        for col_idx in range(n_levels):
+            status_idx = data_array[row_idx, col_idx]
+            status_name = STATUS_ORDER[status_idx]
+            abbrev = STATUS_ABBREV[status_name]
+            bg_color = colors[status_idx]
+            txt_color = _text_color_for_bg(bg_color)
+            ax.text(col_idx, row_idx, abbrev, ha="center", va="center",
+                    fontsize=6, color=txt_color, fontweight="bold")
+
+    # Pattern group separators (horizontal lines between groups)
+    for boundary_idx in group_boundaries[1:]:
+        ax.axhline(y=boundary_idx - 0.5, color="black", linewidth=0.8)
+
+    # Legend
+    legend_patches = [
+        Patch(facecolor=STATUS_COLORS[s], label=s.replace("_", " "))
+        for s in STATUS_ORDER
+        if any(
+            per_kernel[k].get(level, "") == s
+            for k in ordered_kernels
+            for level in LEVELS
+        )
+    ]
+    ax.legend(handles=legend_patches, loc="upper center",
+              bbox_to_anchor=(0.5, -0.04), ncol=2, fontsize=6,
+              frameon=True)
+
+    ax.set_title("Per-Kernel Augmentation Status\n(CUDA-to-OMP)", fontsize=9)
+    fig.tight_layout()
+    _save_figure(fig, output_dir, "aug_heatmap")
+
+
+# ---------------------------------------------------------------------------
+# Figure: Aggregate Trend Line with Wilson CIs
+# ---------------------------------------------------------------------------
+
+
+def generate_trend_line(matrix_data: dict, output_dir: Path) -> None:
+    """Generate aggregate pass rate trend line (L0-L4) with Wilson 95% CI error bars."""
+    agg = matrix_data["primary_matrix"]["aggregate"]
+
+    levels_x = [0, 1, 2, 3, 4]
+    labels = ["L0", "L1", "L2", "L3", "L4"]
+
+    rates = []
+    lower_errs = []
+    upper_errs = []
+
+    for level in LEVELS:
+        a = agg[level]
+        rate_pct = a["rate"] * 100
+        rates.append(rate_pct)
+        lower_errs.append((a["rate"] - a["ci_lower"]) * 100)
+        upper_errs.append((a["ci_upper"] - a["rate"]) * 100)
+
+    fig, ax = plt.subplots(figsize=(3.5, 2.5))
+    ax.errorbar(
+        levels_x, rates,
+        yerr=[lower_errs, upper_errs],
+        fmt="o-",
+        color="#0072B2",
+        capsize=4,
+        linewidth=1.8,
+        markersize=7,
+        label="Pass Rate (Wilson 95% CI)",
+    )
+
+    ax.set_xlabel("Augmentation Level")
+    ax.set_ylabel("Pass Rate (%)")
+    ax.set_xticks(levels_x)
+    ax.set_xticklabels(labels)
+    ax.set_ylim(0, 100)
+    ax.grid(axis="y", linestyle="--", alpha=0.4)
+    ax.legend(loc="upper right", fontsize=8)
+    ax.set_title("Aggregate Pass Rate by Augmentation Level", fontsize=9)
+
+    fig.tight_layout()
+    _save_figure(fig, output_dir, "aug_trend")
+
+
+# ---------------------------------------------------------------------------
 # Markdown Generation
 # ---------------------------------------------------------------------------
 
@@ -600,6 +803,17 @@ def main() -> int:
         action="store_true",
         help="Verbose output",
     )
+    parser.add_argument(
+        "--figures",
+        action="store_true",
+        help="Generate publication-quality figures (aug_heatmap, aug_trend)",
+    )
+    parser.add_argument(
+        "--figures-dir",
+        type=Path,
+        default=None,
+        help="Output directory for figures (default: docs/paper/figures/)",
+    )
     args = parser.parse_args()
 
     project_root = args.project_root.resolve()
@@ -649,6 +863,20 @@ def main() -> int:
     md_path = output_dir / "augmentation_per_kernel_matrix.md"
     md_path.write_text(md_content, encoding="utf-8")
     print(f"  Wrote: {md_path}")
+
+    # Generate figures if requested
+    if args.figures:
+        figures_dir = (
+            args.figures_dir or project_root / "docs" / "paper" / "figures"
+        ).resolve()
+        figures_dir.mkdir(parents=True, exist_ok=True)
+
+        print("Generating figures...")
+        generate_heatmap(combined, figures_dir)
+        print(f"  Wrote: {figures_dir}/aug_heatmap.{{pdf,png}}")
+
+        generate_trend_line(combined, figures_dir)
+        print(f"  Wrote: {figures_dir}/aug_trend.{{pdf,png}}")
 
     print("Done.")
     return 0
