@@ -54,7 +54,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| All 5 suites (35 kernels) | F3 heatmap shows 35 kernels grouped by suite. F4 covers all suites. Matches paper claims. | ✓ |
+| All 5 suites (34 kernels) | F3 heatmap shows 34 kernels grouped by suite. F4 covers all suites. Matches paper claims. | ✓ |
 | Rodinia primary + supplement | Keep F3/F4 Rodinia-focused. Add separate supplementary cross-suite figure. | |
 | Rodinia only | Keep all figures Rodinia-scoped (18 kernels, 480 tasks). | |
 
@@ -74,8 +74,8 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| 35 kernels × 6 directions | Full grid. Each cell colored by status. | ✓ |
-| 35 × 6 × augmentation | Add L0-L4 sub-columns. Very dense. | |
+| 34 kernels × 6 directions | Full grid. Each cell colored by status. | ✓ |
+| 34 × 6 × augmentation | Add L0-L4 sub-columns. Very dense. | |
 | Split into two figures | F3a: Rodinia (main body). F3b: non-Rodinia (appendix). | |
 
 **User's choice:** 35 kernels × 6 directions
@@ -155,7 +155,7 @@
 
 ## Claude's Discretion
 
-- Heatmap cell sizing and font scaling for 35-kernel layout
+- Heatmap cell sizing and font scaling for 34-kernel layout
 - Gray/hatch styling for GPT-4.1 mini N/A cells
 - Suite divider line styling
 - F6 cross-suite bar chart layout details
