@@ -40,13 +40,13 @@ Every data claim in the paper must be verifiable against actual result files on 
 - [ ] LASSI differentiation beyond build-run-verify (augmentation, multi-suite, survey-grounded curation)
 - [ ] Augmentation motivating examples (per-kernel x per-level matrix, 2-3 degradation examples or strengthened null-result interpretation)
 - [ ] Strengthen "reviewer defense" for kernel isolation methodology
-- [ ] Re-run analysis scripts if stale (paper_data.json from April 1 -- check if it covers all current results)
+- [x] Re-run analysis scripts against complete 1,248-file dataset (all 10 REGEN requirements verified) -- Validated in Phase 7
 - [ ] Augmentation trend graphs (per-kernel + aggregate, publication quality)
 
 ### Out of Scope
 
 - GPT-4.1 mini data integration -- blocked on Le's eval runs completing
-- Non-Rodinia Qwen eval data analysis -- blocked on tmux runs completing (qwen_hecbench, qwen_small)
+- Non-Rodinia Qwen eval data analysis -- UNBLOCKED: 1,248 results across 5 suites, analyzed in Phase 7
 - Results section (Section 6+) data updates -- depends on completed campaigns
 - Performance/timing analysis -- wall-clock times unreliable per known-issues.md
 - New eval runs or re-runs -- DO NOT TOUCH running tmux sessions
@@ -62,11 +62,11 @@ Every data claim in the paper must be verifiable against actual result files on 
 - Le Chen (ANL collaborator): running GPT-4.1 mini evals on separate infrastructure
 - Niranjan Hasabnis: advisor, provided direction at April 2 meeting
 
-**Current eval state (as of 2026-04-03):**
-- 1,146 Qwen result files on disk (Rodinia primary + augmented + pass@k + some non-Rodinia)
-- tmux `qwen_hecbench` and `qwen_small` running non-Rodinia Campaign 1 + 2
+**Current eval state (as of 2026-04-04):**
+- 1,248 Qwen result files on disk across 5 suites (Rodinia, HeCBench, XSBench, RSBench, mixbench)
+- tmux sessions COMPLETE (qwen_hecbench, qwen_small) -- safe to close
 - Le running GPT-4.1 mini campaigns in parallel
-- Analysis files generated April 1 (may need refresh after tmux runs complete)
+- All analysis files regenerated in Phase 7 (eval_summary, paper_data, error_taxonomy, selfrepair, statistical, token)
 
 **Key meeting directives (Niranjan, 2026-04-02):**
 - FRAMING RULE: This is a BENCHMARK paper, not an LLM evaluation paper
