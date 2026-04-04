@@ -1,93 +1,97 @@
 {
-  "generated_at": "2026-04-01T03:20:45.169528",
-  "total_tasks": 907,
+  "generated_at": "2026-04-04T13:34:13.617593",
+  "total_tasks": 1136,
   "by_model": {
     "together-qwen-3.5-397b-a17b": {
-      "pass": 258,
-      "total": 907,
-      "rate": 0.2845,
+      "pass": 356,
+      "total": 1136,
+      "rate": 0.3134,
       "by_status": {
-        "UNKNOWN": 1,
-        "BUILD_FAIL": 366,
-        "PASS": 258,
-        "RUN_FAIL": 199,
-        "VERIFY_FAIL": 62,
-        "EXTRACTION_FAIL": 21
+        "BUILD_FAIL": 459,
+        "VERIFY_FAIL": 66,
+        "PASS": 356,
+        "RUN_FAIL": 233,
+        "EXTRACTION_FAIL": 21,
+        "ERROR": 1
       }
     }
   },
   "by_direction": {
     "cuda-to-omp": {
-      "pass": 76,
-      "total": 152,
-      "rate": 0.5,
+      "pass": 101,
+      "total": 192,
+      "rate": 0.526,
       "by_status": {
-        "PASS": 76,
-        "BUILD_FAIL": 70,
+        "PASS": 101,
+        "BUILD_FAIL": 85,
         "RUN_FAIL": 3,
         "VERIFY_FAIL": 2,
         "EXTRACTION_FAIL": 1
       }
     },
     "cuda-to-omp_target": {
-      "pass": 0,
-      "total": 24,
-      "rate": 0.0,
+      "pass": 7,
+      "total": 64,
+      "rate": 0.1094,
       "by_status": {
-        "BUILD_FAIL": 19,
-        "RUN_FAIL": 5
+        "BUILD_FAIL": 43,
+        "VERIFY_FAIL": 2,
+        "PASS": 7,
+        "RUN_FAIL": 12
       }
     },
     "cuda-to-opencl": {
-      "pass": 27,
-      "total": 145,
-      "rate": 0.1862,
+      "pass": 28,
+      "total": 160,
+      "rate": 0.175,
       "by_status": {
-        "PASS": 27,
-        "RUN_FAIL": 102,
+        "PASS": 28,
+        "RUN_FAIL": 115,
         "VERIFY_FAIL": 14,
-        "EXTRACTION_FAIL": 2
+        "EXTRACTION_FAIL": 2,
+        "ERROR": 1
       }
     },
     "omp-to-cuda": {
-      "pass": 56,
-      "total": 152,
-      "rate": 0.3684,
+      "pass": 79,
+      "total": 192,
+      "rate": 0.4115,
       "by_status": {
-        "PASS": 56,
-        "BUILD_FAIL": 79,
-        "VERIFY_FAIL": 1,
+        "PASS": 79,
+        "BUILD_FAIL": 94,
+        "VERIFY_FAIL": 3,
         "EXTRACTION_FAIL": 12,
         "RUN_FAIL": 4
       }
     },
     "omp-to-opencl": {
-      "pass": 33,
-      "total": 129,
-      "rate": 0.2558,
+      "pass": 36,
+      "total": 144,
+      "rate": 0.25,
       "by_status": {
-        "RUN_FAIL": 79,
-        "PASS": 33,
+        "PASS": 36,
+        "RUN_FAIL": 91,
         "VERIFY_FAIL": 14,
         "EXTRACTION_FAIL": 3
       }
     },
     "omp_target-to-cuda": {
-      "pass": 18,
-      "total": 30,
-      "rate": 0.6,
+      "pass": 57,
+      "total": 80,
+      "rate": 0.7125,
       "by_status": {
-        "BUILD_FAIL": 11,
-        "PASS": 18,
+        "BUILD_FAIL": 20,
+        "PASS": 57,
+        "RUN_FAIL": 2,
         "VERIFY_FAIL": 1
       }
     },
     "opencl-to-cuda": {
       "pass": 6,
-      "total": 145,
-      "rate": 0.0414,
+      "total": 160,
+      "rate": 0.0375,
       "by_status": {
-        "BUILD_FAIL": 122,
+        "BUILD_FAIL": 137,
         "PASS": 6,
         "EXTRACTION_FAIL": 3,
         "VERIFY_FAIL": 12,
@@ -96,33 +100,17 @@
     },
     "opencl-to-omp": {
       "pass": 42,
-      "total": 129,
-      "rate": 0.3256,
+      "total": 144,
+      "rate": 0.2917,
       "by_status": {
-        "BUILD_FAIL": 65,
+        "BUILD_FAIL": 80,
         "VERIFY_FAIL": 18,
         "PASS": 42,
         "RUN_FAIL": 4
       }
-    },
-    "unknown": {
-      "pass": 0,
-      "total": 1,
-      "rate": 0.0,
-      "by_status": {
-        "UNKNOWN": 1
-      }
     }
   },
   "by_kernel": {
-    "?": {
-      "pass": 0,
-      "total": 1,
-      "rate": 0.0,
-      "by_status": {
-        "UNKNOWN": 1
-      }
-    },
     "backprop": {
       "pass": 19,
       "total": 48,
@@ -168,10 +156,11 @@
     },
     "convolution1d": {
       "pass": 0,
-      "total": 6,
+      "total": 16,
       "rate": 0.0,
       "by_status": {
-        "BUILD_FAIL": 6
+        "BUILD_FAIL": 15,
+        "VERIFY_FAIL": 1
       }
     },
     "dwt2d": {
@@ -185,13 +174,13 @@
       }
     },
     "floydwarshall": {
-      "pass": 9,
-      "total": 12,
-      "rate": 0.75,
+      "pass": 25,
+      "total": 32,
+      "rate": 0.7812,
       "by_status": {
-        "PASS": 9,
-        "BUILD_FAIL": 2,
-        "RUN_FAIL": 1
+        "PASS": 25,
+        "RUN_FAIL": 4,
+        "BUILD_FAIL": 3
       }
     },
     "gaussian": {
@@ -215,12 +204,12 @@
       }
     },
     "heat2d": {
-      "pass": 9,
-      "total": 12,
+      "pass": 24,
+      "total": 32,
       "rate": 0.75,
       "by_status": {
-        "PASS": 9,
-        "BUILD_FAIL": 3
+        "PASS": 24,
+        "BUILD_FAIL": 8
       }
     },
     "hotspot": {
@@ -247,21 +236,23 @@
       }
     },
     "iso2dfd": {
-      "pass": 7,
-      "total": 12,
-      "rate": 0.5833,
+      "pass": 22,
+      "total": 32,
+      "rate": 0.6875,
       "by_status": {
-        "BUILD_FAIL": 4,
-        "PASS": 7,
-        "RUN_FAIL": 1
+        "PASS": 22,
+        "BUILD_FAIL": 7,
+        "RUN_FAIL": 3
       }
     },
     "jacobi": {
-      "pass": 0,
-      "total": 6,
-      "rate": 0.0,
+      "pass": 6,
+      "total": 16,
+      "rate": 0.375,
       "by_status": {
-        "BUILD_FAIL": 6
+        "PASS": 6,
+        "BUILD_FAIL": 9,
+        "RUN_FAIL": 1
       }
     },
     "lavamd": {
@@ -286,22 +277,22 @@
       }
     },
     "md": {
-      "pass": 1,
-      "total": 6,
-      "rate": 0.1667,
+      "pass": 7,
+      "total": 16,
+      "rate": 0.4375,
       "by_status": {
-        "BUILD_FAIL": 5,
-        "PASS": 1
+        "PASS": 7,
+        "BUILD_FAIL": 9
       }
     },
     "mixbench": {
-      "pass": 2,
-      "total": 18,
-      "rate": 0.1111,
+      "pass": 10,
+      "total": 48,
+      "rate": 0.2083,
       "by_status": {
-        "BUILD_FAIL": 12,
-        "PASS": 2,
-        "RUN_FAIL": 4
+        "BUILD_FAIL": 28,
+        "PASS": 10,
+        "RUN_FAIL": 10
       }
     },
     "myocyte": {
@@ -326,12 +317,14 @@
       }
     },
     "nqueen": {
-      "pass": 2,
-      "total": 6,
-      "rate": 0.3333,
+      "pass": 8,
+      "total": 16,
+      "rate": 0.5,
       "by_status": {
-        "BUILD_FAIL": 4,
-        "PASS": 2
+        "RUN_FAIL": 2,
+        "PASS": 8,
+        "VERIFY_FAIL": 1,
+        "BUILD_FAIL": 5
       }
     },
     "nw": {
@@ -346,12 +339,13 @@
       }
     },
     "page-rank": {
-      "pass": 3,
-      "total": 6,
-      "rate": 0.5,
+      "pass": 9,
+      "total": 16,
+      "rate": 0.5625,
       "by_status": {
-        "RUN_FAIL": 3,
-        "PASS": 3
+        "BUILD_FAIL": 3,
+        "RUN_FAIL": 4,
+        "PASS": 9
       }
     },
     "particlefilter": {
@@ -379,20 +373,22 @@
     },
     "rsbench": {
       "pass": 0,
-      "total": 18,
+      "total": 48,
       "rate": 0.0,
       "by_status": {
-        "BUILD_FAIL": 12,
-        "RUN_FAIL": 6
+        "BUILD_FAIL": 32,
+        "RUN_FAIL": 15,
+        "ERROR": 1
       }
     },
     "scan": {
-      "pass": 0,
-      "total": 9,
-      "rate": 0.0,
+      "pass": 5,
+      "total": 24,
+      "rate": 0.2083,
       "by_status": {
-        "BUILD_FAIL": 7,
-        "VERIFY_FAIL": 2
+        "BUILD_FAIL": 15,
+        "PASS": 5,
+        "VERIFY_FAIL": 4
       }
     },
     "srad": {
@@ -408,12 +404,12 @@
       }
     },
     "stencil1d": {
-      "pass": 7,
-      "total": 9,
-      "rate": 0.7778,
+      "pass": 22,
+      "total": 24,
+      "rate": 0.9167,
       "by_status": {
-        "BUILD_FAIL": 2,
-        "PASS": 7
+        "PASS": 22,
+        "BUILD_FAIL": 2
       }
     },
     "streamcluster": {
@@ -429,141 +425,133 @@
     },
     "xsbench": {
       "pass": 0,
-      "total": 18,
+      "total": 48,
       "rate": 0.0,
       "by_status": {
-        "BUILD_FAIL": 12,
-        "RUN_FAIL": 6
+        "BUILD_FAIL": 32,
+        "RUN_FAIL": 16
       }
     }
   },
   "by_augment_level": {
     "L0": {
-      "pass": 122,
-      "total": 523,
-      "rate": 0.2333,
+      "pass": 141,
+      "total": 568,
+      "rate": 0.2482,
       "by_status": {
-        "UNKNOWN": 1,
-        "BUILD_FAIL": 247,
-        "PASS": 122,
-        "RUN_FAIL": 109,
+        "BUILD_FAIL": 267,
+        "PASS": 141,
+        "RUN_FAIL": 115,
         "VERIFY_FAIL": 24,
-        "EXTRACTION_FAIL": 20
+        "EXTRACTION_FAIL": 20,
+        "ERROR": 1
       }
     },
     "L1": {
-      "pass": 33,
-      "total": 96,
-      "rate": 0.3438,
+      "pass": 53,
+      "total": 142,
+      "rate": 0.3732,
       "by_status": {
-        "PASS": 33,
-        "BUILD_FAIL": 30,
+        "BUILD_FAIL": 50,
+        "PASS": 53,
+        "RUN_FAIL": 30,
         "VERIFY_FAIL": 8,
-        "RUN_FAIL": 24,
         "EXTRACTION_FAIL": 1
       }
     },
     "L2": {
-      "pass": 36,
-      "total": 96,
-      "rate": 0.375,
+      "pass": 57,
+      "total": 142,
+      "rate": 0.4014,
       "by_status": {
-        "PASS": 36,
-        "BUILD_FAIL": 30,
-        "RUN_FAIL": 21,
-        "VERIFY_FAIL": 9
+        "BUILD_FAIL": 47,
+        "PASS": 57,
+        "RUN_FAIL": 28,
+        "VERIFY_FAIL": 10
       }
     },
     "L3": {
-      "pass": 37,
-      "total": 96,
-      "rate": 0.3854,
+      "pass": 56,
+      "total": 142,
+      "rate": 0.3944,
       "by_status": {
-        "BUILD_FAIL": 28,
-        "PASS": 37,
-        "RUN_FAIL": 20,
-        "VERIFY_FAIL": 11
+        "VERIFY_FAIL": 12,
+        "BUILD_FAIL": 45,
+        "PASS": 56,
+        "RUN_FAIL": 29
       }
     },
     "L4": {
-      "pass": 30,
-      "total": 96,
-      "rate": 0.3125,
+      "pass": 49,
+      "total": 142,
+      "rate": 0.3451,
       "by_status": {
-        "BUILD_FAIL": 31,
-        "PASS": 30,
-        "RUN_FAIL": 25,
-        "VERIFY_FAIL": 10
+        "BUILD_FAIL": 50,
+        "PASS": 49,
+        "VERIFY_FAIL": 12,
+        "RUN_FAIL": 31
       }
     }
   },
   "failure_taxonomy": {
-    "BUILD_FAIL": 366,
-    "RUN_FAIL": 199,
-    "VERIFY_FAIL": 62,
-    "EXTRACTION_FAIL": 21,
-    "UNKNOWN": 1
+    "BUILD_FAIL": 459,
+    "RUN_FAIL": 233,
+    "VERIFY_FAIL": 66,
+    "EXTRACTION_FAIL": 21
   },
   "self_repair": {
-    "attempt_1_pass": 163,
-    "total_repaired_by_retry": 95,
-    "total_with_attempts": 906
+    "attempt_1_pass": 239,
+    "total_repaired_by_retry": 117,
+    "total_with_attempts": 1136
   },
   "by_complexity": {
     "multi_to_multi": {
       "pass": 6,
-      "total": 70,
-      "rate": 0.0857,
+      "total": 80,
+      "rate": 0.075,
       "by_status": {
         "RUN_FAIL": 13,
         "PASS": 6,
-        "BUILD_FAIL": 47,
+        "BUILD_FAIL": 57,
         "VERIFY_FAIL": 3,
         "EXTRACTION_FAIL": 1
       }
     },
     "multi_to_single": {
       "pass": 66,
-      "total": 196,
-      "rate": 0.3367,
+      "total": 216,
+      "rate": 0.3056,
       "by_status": {
         "PASS": 66,
-        "BUILD_FAIL": 41,
-        "RUN_FAIL": 87,
+        "BUILD_FAIL": 46,
+        "RUN_FAIL": 101,
         "VERIFY_FAIL": 1,
-        "EXTRACTION_FAIL": 1
+        "EXTRACTION_FAIL": 1,
+        "ERROR": 1
       }
     },
     "single_file": {
-      "pass": 168,
-      "total": 444,
-      "rate": 0.3784,
+      "pass": 266,
+      "total": 624,
+      "rate": 0.4263,
       "by_status": {
-        "BUILD_FAIL": 131,
-        "PASS": 168,
-        "RUN_FAIL": 98,
-        "VERIFY_FAIL": 46,
+        "BUILD_FAIL": 189,
+        "VERIFY_FAIL": 50,
+        "PASS": 266,
+        "RUN_FAIL": 118,
         "EXTRACTION_FAIL": 1
       }
     },
     "single_to_multi": {
       "pass": 18,
-      "total": 196,
-      "rate": 0.0918,
+      "total": 216,
+      "rate": 0.0833,
       "by_status": {
-        "BUILD_FAIL": 147,
+        "BUILD_FAIL": 167,
         "PASS": 18,
         "EXTRACTION_FAIL": 18,
         "RUN_FAIL": 1,
         "VERIFY_FAIL": 12
-      }
-    },
-    "unknown": {
-      "pass": 0,
-      "total": 1,
-      "rate": 0.0,
-      "by_status": {
-        "UNKNOWN": 1
       }
     }
   }
