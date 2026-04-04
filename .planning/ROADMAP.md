@@ -50,12 +50,12 @@ Plans:
   3. API coverage cross-tab (suite rows x API columns) exists as a saved artifact and matches spec file counts on disk
   4. Single-file vs multi-file translation breakdown exists per suite and per API with exact counts
   5. Language feature grep results and language standard distribution are saved, covering Rodinia + XSBench source directories
-**Plans**: 3 plans in 1 wave
+**Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 02-01-PLAN.md -- Complete characterization script (all 6 metrics: SLoC, categories, API coverage, multi-file, language features, language standards)
-- [ ] 02-02-PLAN.md -- Comprehensive unit tests for characterization script (20+ tests, ground-truth validation)
-- [ ] 02-03-PLAN.md -- Independent validation/cross-check script (8 check functions, different code path)
+- [ ] 02-01-PLAN.md -- [Wave 1] Complete characterization script (all 6 metrics: SLoC, categories, API coverage, multi-file, language features, language standards)
+- [ ] 02-02-PLAN.md -- [Wave 1] Comprehensive unit tests for characterization script (20+ tests, ground-truth validation)
+- [ ] 02-03-PLAN.md -- [Wave 2, depends on 02-01] Independent validation/cross-check script (8 check functions, different code path)
 
 ### Phase 3: Augmentation Analysis & Story
 **Goal**: The augmentation section has concrete per-kernel evidence (matrix, examples or strengthened null-result), publication-quality graphs, and clear LASSI positioning
