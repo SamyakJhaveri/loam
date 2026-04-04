@@ -53,7 +53,7 @@ Plans:
 **Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 02-01-PLAN.md -- [Wave 1] Complete characterization script (all 6 metrics: SLoC, categories, API coverage, multi-file, language features, language standards)
+- [x] 02-01-PLAN.md -- [Wave 1] Complete characterization script (all 6 metrics: SLoC, categories, API coverage, multi-file, language features, language standards)
 - [x] 02-02-PLAN.md -- [Wave 1] Comprehensive unit tests for characterization script (20+ tests, ground-truth validation)
 - [ ] 02-03-PLAN.md -- [Wave 2, depends on 02-01] Independent validation/cross-check script (8 check functions, different code path)
 
