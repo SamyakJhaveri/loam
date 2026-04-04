@@ -1,0 +1,48 @@
+Phase 7 Plan 02 Verification Report
+Generated: 2026-04-04T20:34Z
+
+============================================================
+REGEN REQUIREMENTS (07-02 scope: REGEN-06 through REGEN-10)
+============================================================
+
+REGEN-06: [PASS] sloc_analysis.json md5=c47aed4c259cf2dedfc638bd9eded286 (unchanged from Phase 2)
+  - 35 kernels verified
+  - File NOT re-run (validated only, per plan)
+
+REGEN-07: [PASS] token_analysis.json total_results=1136 (up from 906)
+  - Loaded 1,136 result files (post-KNOWN_FAIL exclusion)
+  - Total tokens: 55,241,141
+  - Total cost: $39.03 (Qwen 3.5 397B via Together AI)
+
+REGEN-08: [PASS] benchmark_characterization.json validation 8/8 checks
+  - Schema check: PASS
+  - SLoC (CHAR-01): PASS
+  - Categories (CHAR-02): PASS
+  - API coverage (CHAR-03): PASS
+  - Multi-file (CHAR-04): PASS
+  - Language features (CHAR-05): PASS
+  - Language standards (CHAR-06): PASS
+  - Cross-metric consistency: PASS
+
+REGEN-09: [PASS] translation_complexity.csv 290 pairs across 5 suites
+  - hecbench: 150, rodinia: 110, xsbench: 12, rsbench: 12, mixbench: 6
+
+REGEN-10: [PASS] augmentation_per_kernel_matrix.json validated
+  - 4 top-level keys: generated_at, data_source, primary_matrix, secondary_matrix
+  - primary_matrix: cuda-to-omp, 26 kernels, levels L0-L4
+  - Pattern distribution: stable_pass=11, degradation=5, improvement=4, stable_fail=5, other=1
+  - Suite distribution: rodinia=18, hecbench=5, mixbench=1, rsbench=1, xsbench=1
+
+============================================================
+CROSS-PLAN REGEN CHECKS (07-01 scope, validated from committed state)
+============================================================
+
+REGEN-01: [PENDING] eval_summary total_tasks=907 (pre-07-01 merge; 07-01 regenerated to 1136+)
+REGEN-02: [PENDING] paper_data_rodinia.json created by 07-01 (not yet merged into this worktree)
+REGEN-03: [PASS] error_taxonomy 7 non-Rodinia kernels found
+REGEN-04: [PASS] selfrepair 7 non-Rodinia kernels found
+REGEN-05: [PASS] statistical 7 non-Rodinia kernels found
+
+============================================================
+OVERALL: 07-02 scope items 5/5 PASS
+============================================================
