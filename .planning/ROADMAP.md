@@ -197,8 +197,8 @@ python3 scripts/analysis/validate_characterization.py --project-root .
 **Plans**: 2 plans in 1 wave
 
 Plans:
-- [ ] 07-01-PLAN.md -- [Wave 1] Run analysis scripts 1-5 (eval summary, paper data ×2, error taxonomy, self-repair, statistical) — these are the core paper data sources
-- [ ] 07-02-PLAN.md -- [Wave 1] Run analysis scripts 6-8 (token, complexity, validation) + verify all outputs — these are supporting data and quality checks
+- [x] 07-01-PLAN.md -- [Wave 1] Run analysis scripts 1-5 (eval summary, paper data ×2, error taxonomy, self-repair, statistical) — these are the core paper data sources
+- [x] 07-02-PLAN.md -- [Wave 1] Run analysis scripts 6-8 (token, complexity, validation) + verify all outputs — these are supporting data and quality checks
 
 ### Phase 8: Figure Regeneration
 
