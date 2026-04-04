@@ -8,11 +8,10 @@ Computes per-model, per-kernel, per-direction, and per-augmentation-level
 token statistics including cost estimates, efficiency metrics, and
 correlations between prompt size and translation success.
 
-Pricing (per million tokens, as of 2026-03):
-  Claude Sonnet 4:       $3.00 input, $15.00 output
-  Gemini 2.5 Flash-Lite: $0.075 input, $0.30 output
-  Groq Llama 3.3 70B:    $0.59 input, $0.79 output
-  Azure GPT-4.1:         $2.00 input, $8.00 output
+Pricing (per million tokens, as of 2026-04):
+  Qwen 3.5 397B (Together): $0.60 input, $3.60 output
+  Gemini 2.5 Flash:         $0.15 input, $0.60 output
+  (Legacy models also defined in MODEL_PRICING for historical analysis)
 
 Output: results/analysis/token_analysis.json + .md (5 tables)
 
@@ -32,7 +31,7 @@ from collections import defaultdict
 
 # Per-million-token pricing
 MODEL_PRICING = {
-    "together-qwen-3.5-397b-a17b": {"input": 0.50, "output": 1.50, "display": "Qwen 3.5 397B (Together)"},
+    "together-qwen-3.5-397b-a17b": {"input": 0.60, "output": 3.60, "display": "Qwen 3.5 397B (Together)"},
     "gemini-2.5-flash": {"input": 0.15, "output": 0.60, "display": "Gemini 2.5 Flash"},
     # Legacy models (kept for historical result analysis)
     "claude-sonnet-4-6": {"input": 3.00, "output": 15.00, "display": "Claude Sonnet 4"},
@@ -322,16 +321,39 @@ def main() -> int:
 
     # ── Grand totals ──────────────────────────────────────────────────
     grand_total_cost = sum(m["cost_usd"]["total"] for m in by_model.values())
-    grand_total_tokens = sum(
-        r.get(FIELD_PROMPT_TOKENS, 0) + r.get(FIELD_COMPLETION_TOKENS, 0)
-        for r in results
-    )
+    grand_prompt_tokens = sum(r.get(FIELD_PROMPT_TOKENS, 0) for r in results)
+    grand_completion_tokens = sum(r.get(FIELD_COMPLETION_TOKENS, 0) for r in results)
+    grand_total_tokens = grand_prompt_tokens + grand_completion_tokens
+
+    # ── Actual billing from Together AI CSV ──────────────────────────
+    # Ground truth from provider billing (Mar 27 – Apr 2, 2026).
+    # Result JSONs under-report tokens (~1.8x gap) because they omit
+    # system prompt overhead, HTTP-level retries, and JSON-mode
+    # formatting tokens that the provider bills.
+    actual_billing = {
+        "source": "Together AI billing CSV (Mar 27 – Apr 2, 2026)",
+        "input_tokens": 96_241_738,
+        "output_tokens": 24_324_474,
+        "total_tokens": 120_566_212,
+        "total_cost_usd": 145.37,
+        "requests": 4600,
+        "note": (
+            "Result JSONs capture per-task cumulative tokens across attempts "
+            "but undercount vs. billing due to system prompt overhead, "
+            "HTTP-level retries, and JSON-mode formatting tokens. "
+            "Use actual_billing for paper cost reporting; use per-result "
+            "tokens for correlation analysis."
+        ),
+    }
 
     output = {
         "analysis": "token_usage",
         "total_results": len(results),
         "grand_total_tokens": grand_total_tokens,
+        "grand_prompt_tokens": grand_prompt_tokens,
+        "grand_completion_tokens": grand_completion_tokens,
         "grand_total_cost_usd": round(grand_total_cost, PRECISION_RATE),
+        "actual_billing": actual_billing,
         "by_model": by_model,
         "by_kernel": by_kernel,
         "by_direction": by_direction,
@@ -362,8 +384,20 @@ def main() -> int:
         "",
         f"**{len(results)} results** across {len(by_model)} models, "
         f"{len(by_kernel)} kernels, {len(by_direction)} directions.",
-        f"Grand total: **{grand_total_tokens:,} tokens**, "
+        f"Grand total (from result JSONs): **{grand_total_tokens:,} tokens** "
+        f"({grand_prompt_tokens:,} input + {grand_completion_tokens:,} output), "
         f"estimated cost: **${grand_total_cost:.2f}**.",
+        "",
+        "### Actual Billing (Together AI, Mar 27 – Apr 2 2026)",
+        "",
+        f"- **Input tokens:** {actual_billing['input_tokens']:,} ({actual_billing['input_tokens']/1e6:.1f}M)",
+        f"- **Output tokens:** {actual_billing['output_tokens']:,} ({actual_billing['output_tokens']/1e6:.1f}M)",
+        f"- **Total tokens:** {actual_billing['total_tokens']:,} ({actual_billing['total_tokens']/1e6:.1f}M)",
+        f"- **Total cost:** ${actual_billing['total_cost_usd']:.2f}",
+        f"- **Requests:** ~{actual_billing['requests']:,}",
+        "",
+        "Result JSONs capture ~46% of billed tokens. The gap reflects system prompt overhead, "
+        "HTTP-level retries, and JSON-mode formatting tokens billed by the provider.",
         "",
         "## Table 1: Per-Model Token Statistics",
         "",
@@ -425,10 +459,10 @@ def main() -> int:
     ])
 
     for level in sorted(by_level):
-        l = by_level[level]
+        lv = by_level[level]
         md_lines.append(
-            f"| {level} | {l['total_results']} | {l['pass_rate']:.1%} | "
-            f"{l['prompt_tokens']['mean']:,.0f} | {l['completion_tokens']['mean']:,.0f} |"
+            f"| {level} | {lv['total_results']} | {lv['pass_rate']:.1%} | "
+            f"{lv['prompt_tokens']['mean']:,.0f} | {lv['completion_tokens']['mean']:,.0f} |"
         )
 
     md_lines.extend([

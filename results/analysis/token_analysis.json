@@ -2,7 +2,18 @@
   "analysis": "token_usage",
   "total_results": 1136,
   "grand_total_tokens": 55241141,
-  "grand_total_cost_usd": 39.0332,
+  "grand_prompt_tokens": 43828465,
+  "grand_completion_tokens": 11412676,
+  "grand_total_cost_usd": 67.3827,
+  "actual_billing": {
+    "source": "Together AI billing CSV (Mar 27 \u2013 Apr 2, 2026)",
+    "input_tokens": 96241738,
+    "output_tokens": 24324474,
+    "total_tokens": 120566212,
+    "total_cost_usd": 145.37,
+    "requests": 4600,
+    "note": "Result JSONs capture per-task cumulative tokens across attempts but undercount vs. billing due to system prompt overhead, HTTP-level retries, and JSON-mode formatting tokens. Use actual_billing for paper cost reporting; use per-result tokens for correlation analysis."
+  },
   "by_model": {
     "together-qwen-3.5-397b-a17b": {
       "display_name": "Qwen 3.5 397B (Together)",
@@ -46,11 +57,11 @@
         "total": 125864.2
       },
       "cost_usd": {
-        "total": 39.0332,
-        "mean_per_task": 0.03436,
-        "cost_per_pass": 0.013278,
-        "total_pass_cost": 4.7271,
-        "total_fail_cost": 34.3061
+        "total": 67.3827,
+        "mean_per_task": 0.059316,
+        "cost_per_pass": 0.023369,
+        "total_pass_cost": 8.3193,
+        "total_fail_cost": 59.0634
       },
       "pass_prompt_tokens_mean": 14165.8,
       "fail_prompt_tokens_mean": 49724.9,

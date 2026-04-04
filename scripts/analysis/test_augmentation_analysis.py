@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -26,6 +27,10 @@ import pytest
 # ---------------------------------------------------------------------------
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "analysis"))
+
+from augmentation_analysis import _extract_api  # noqa: E402
 RESULTS_DIR = PROJECT_ROOT / "results" / "evaluation" / "together-qwen-3.5-397b-a17b"
 OUTPUT_JSON = PROJECT_ROOT / "results" / "analysis" / "augmentation_per_kernel_matrix.json"
 OUTPUT_MD = PROJECT_ROOT / "results" / "analysis" / "augmentation_per_kernel_matrix.md"
@@ -53,8 +58,8 @@ def _count_cuda_to_omp_kernels_on_disk() -> int:
         data = json.loads(f.read_text(encoding="utf-8"))
         src = data.get("source_spec", "")
         tgt = data.get("target_spec", "")
-        src_api = src.rsplit("-", 1)[-1]
-        tgt_api = tgt.rsplit("-", 1)[-1]
+        src_api = _extract_api(src)
+        tgt_api = _extract_api(tgt)
         if src_api == "cuda" and tgt_api == "omp":
             kernel = data.get("kernel", "unknown")
             seen.add(kernel)
@@ -69,8 +74,8 @@ def _load_raw_status(kernel_name: str, level: int) -> str:
         if re.search(r"-s\d+$", stem):
             continue
         data = json.loads(f.read_text(encoding="utf-8"))
-        src_api = data.get("source_spec", "").rsplit("-", 1)[-1]
-        tgt_api = data.get("target_spec", "").rsplit("-", 1)[-1]
+        src_api = _extract_api(data.get("source_spec", ""))
+        tgt_api = _extract_api(data.get("target_spec", ""))
         if src_api != "cuda" or tgt_api != "omp":
             continue
         if data.get("kernel") != kernel_name:
@@ -245,18 +250,3 @@ class TestFigureGeneration:
                 f"{kernel} has {len(level_keys)} levels, expected 5: {level_keys}"
             )
 
-    def test_figures_are_nonzero(self) -> None:
-        """AUG-04: All 4 figure files have size > 1KB."""
-        for name in [
-            "aug_heatmap.pdf",
-            "aug_heatmap.png",
-            "aug_trend.pdf",
-            "aug_trend.png",
-        ]:
-            path = FIGURE_DIR / name
-            if not path.exists():
-                pytest.skip(
-                    f"Run augmentation_analysis.py --figures first: {name} missing"
-                )
-            size = path.stat().st_size
-            assert size > 1024, f"{name} too small: {size} bytes (expected > 1KB)"

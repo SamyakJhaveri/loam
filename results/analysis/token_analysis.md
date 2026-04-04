@@ -1,13 +1,23 @@
 # Token Usage Analysis — ParBench Evaluation
 
 **1136 results** across 1 models, 31 kernels, 8 directions.
-Grand total: **55,241,141 tokens**, estimated cost: **$39.03**.
+Grand total (from result JSONs): **55,241,141 tokens** (43,828,465 input + 11,412,676 output), estimated cost: **$67.38**.
+
+### Actual Billing (Together AI, Mar 27 – Apr 2 2026)
+
+- **Input tokens:** 96,241,738 (96.2M)
+- **Output tokens:** 24,324,474 (24.3M)
+- **Total tokens:** 120,566,212 (120.6M)
+- **Total cost:** $145.37
+- **Requests:** ~4,600
+
+Result JSONs capture ~46% of billed tokens. The gap reflects system prompt overhead, HTTP-level retries, and JSON-mode formatting tokens billed by the provider.
 
 ## Table 1: Per-Model Token Statistics
 
 | Model | N | Pass% | Prompt (mean) | Completion (mean) | tok/s (mean) | Total Cost | Cost/PASS |
 |-------|--:|------:|--------------:|------------------:|-------------:|-----------:|----------:|
-| Qwen 3.5 397B (Together) | 1136 | 31.3% | 38,581 | 10,046 | 111 | $39.03 | $0.0133 |
+| Qwen 3.5 397B (Together) | 1136 | 31.3% | 38,581 | 10,046 | 111 | $67.38 | $0.0234 |
 
 ## Table 2: Per-Kernel Token Statistics (sorted by prompt size)
 
@@ -72,8 +82,8 @@ Grand total: **55,241,141 tokens**, estimated cost: **$39.03**.
 
 | Model | Total Cost | Cost on PASS | Cost on FAIL | Cost/PASS | Cost/Task |
 |-------|----------:|-----------:|-----------:|----------:|----------:|
-| Qwen 3.5 397B (Together) | $39.03 | $4.73 | $34.31 | $0.0133 | $0.0344 |
-| **TOTAL** | **$39.03** | | | | |
+| Qwen 3.5 397B (Together) | $67.38 | $8.32 | $59.06 | $0.0234 | $0.0593 |
+| **TOTAL** | **$67.38** | | | | |
 
 ## Correlations
 
