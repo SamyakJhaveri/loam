@@ -16,11 +16,11 @@ Make Section 3-5 methodology descriptions precise enough to withstand SC-level r
 ### Kernel Isolation Defense (METHOD-01)
 - **D-01:** Consolidate into ONE authoritative paragraph at the TOP of Section 3.4 (Evaluation Pipeline: Kernel-Centric Translation). Reviewer reads WHY first (rationale), then HOW (existing technical description at line 361 becomes second paragraph).
 - **D-02:** Include preemptive defense against the "making it too easy" reviewer objection. Use analytical framing: "We isolate translation skill from build-system generation because they are orthogonal competencies. Conflating them produces artificially low pass rates that obscure translation capability."
-- **D-03:** Three-layer evidence structure: (1) Lead with XSBench same-kernel comparison — ParEval-Repo 0% vs ParBench 68.8%, using the published 68.8% figure from paper_data.json. (2) Add 31/35 kernels exceeding ParEval-Repo's 133 SLoC threshold — kernel-level evaluation is not limited to trivial programs. (3) Add 30.8% BUILD_FAIL rate — even with build infrastructure provided, kernel-level translation remains challenging.
+- **D-03:** Three-layer evidence structure: (1) Lead with XSBench same-kernel comparison — ParEval-Repo 0% vs ParBench 65.0% CUDA-to-OMP overall (68.8% at L0 on the 16-kernel balanced Rodinia subset). Use 65.0% for the primary comparison to match the existing Discussion section (line 1025); the 68.8% L0 figure can be mentioned parenthetically as the abstract does (line 71). (2) Add 31/35 kernels exceeding ParEval-Repo's 133 SLoC threshold — kernel-level evaluation is not limited to trivial programs. (3) Add 30.8% BUILD_FAIL rate — even with build infrastructure provided, kernel-level translation remains challenging.
 - **D-04:** Keep existing XSBench mentions in abstract (line 71), related work (line 198), and results (line 718) as-is. The new consolidated paragraph is the authoritative version; other mentions reinforce it. SC reviewers read sections independently — repetition is expected.
 
 ### Statistical Test Justification (METHOD-02)
-- **D-05:** Expand inline in the Metrics subsection (Section 5.4, currently line 644). Add 1-2 sentences per test right after the current one-liner. Keeps all methodology in one place.
+- **D-05:** Expand inline in the Metrics subsection (Section 5.4, currently line 644). Add 1-2 sentences per test right after the current one-liner. Keeps all methodology in one place. **CAUTION:** Line 644 currently says "Fisher's exact test for pairwise model comparison" but the actual statistical analysis uses McNemar for direction asymmetry (Table 6, line 1005-1007; methodological notes at line 1012). The implementer must correct "Fisher's exact" → "McNemar's test" at line 644 as part of this edit — this is a factual correction, not just adding justification.
 - **D-06:** Justify all three tests used: Wilson CI, Cochran-Armitage, and McNemar.
 - **D-07:** Briefly name the rejected alternative for each test: Wilson over Wald (better coverage near 0 and 1), Cochran-Armitage over chi-squared (exploits ordinal structure of L0-L4 levels), McNemar over unpaired chi-squared (paired design — same kernel in both directions). Shows deliberate choice without over-explaining.
 
@@ -50,7 +50,8 @@ Make Section 3-5 methodology descriptions precise enough to withstand SC-level r
   - Section 5.4 (Metrics, ~line 635): statistical test justifications go here
 
 ### Data sources for numbers cited
-- `results/analysis/paper_data.json` — Source for 68.8% (L0 CUDA-to-OMP), 30.8% BUILD_FAIL rate, 9.8% VERIFY_FAIL rate
+- `results/analysis/paper_data.json` — Source for overall CUDA-to-OMP rates: by_direction.cuda-to-omp shows pass_rate=0.6417 across all 120 tasks (24 kernels * 5 levels); the paper's published 65.0% (52/80) is the balanced 16-kernel subset (see paper table source comment at line 919). Also 30.8% BUILD_FAIL (148/480) and 9.8% VERIFY_FAIL (47/480) — these are derived from the 480-task 6-standard-direction subset, not the 710-task full campaign total.
+- `results/analysis/paper_data_rodinia.json` — Source for 68.8% L0 balanced CUDA-to-OMP (11/16 = 0.6875, Rodinia-only 16-kernel balanced subset). This is the authoritative source for the "68.8% at L0" figure used in the abstract and augmentation tables.
 - `results/analysis/statistical_analysis.json` — Source for Cochran-Armitage z=-0.17, p=0.87; Wilson CIs; McNemar results
 - `results/evaluation/together-qwen-3.5-397b-a17b/` — Raw result JSONs for finding a specific VERIFY_FAIL kernel example
 
