@@ -1,0 +1,658 @@
+#!/usr/bin/env python3
+"""
+scripts/analysis/augmentation_analysis.py
+
+Complete augmentation analysis for the SC26 ParBench paper.
+Builds per-kernel x per-level status matrices from raw Qwen eval result JSONs,
+classifies kernel patterns, computes aggregate statistics with Wilson CIs,
+and writes JSON + MD output artifacts.
+
+Metrics:
+  AUG-01: Per-kernel x per-level status matrix (cuda-to-omp, L0-L4)
+  AUG-02: Pattern classification (stable_pass, stable_fail, degradation,
+           improvement, other)
+
+Output: results/analysis/augmentation_per_kernel_matrix.json + .md
+
+Usage:
+    python3 scripts/analysis/augmentation_analysis.py \\
+        --project-root /home/samyak/Desktop/parbench_sam
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import re
+import sys
+from collections import defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+KNOWN_FAIL_SOURCES = frozenset({
+    "rodinia-kmeans-cuda",
+    "rodinia-mummergpu-cuda",
+})
+"""Source specs whose CUDA source is KNOWN_FAIL (cannot build on this hardware)."""
+
+EVAL_DIR_NAME = "together-qwen-3.5-397b-a17b"
+
+LEVELS = ["L0", "L1", "L2", "L3", "L4"]
+
+
+# ---------------------------------------------------------------------------
+# Wilson CI (re-implemented to avoid import complexity)
+# ---------------------------------------------------------------------------
+
+def wilson_ci(passes: int, total: int, alpha: float = 0.05) -> dict:
+    """Wilson score confidence interval for a binomial proportion.
+
+    Wilson score is preferred over normal approximation because it:
+    - Never produces intervals outside [0, 1]
+    - Is accurate even for small n and extreme p
+
+    Returns:
+        {"rate": float, "ci_lower": float, "ci_upper": float, "n": int}
+    """
+    if total == 0:
+        return {"rate": 0.0, "ci_lower": 0.0, "ci_upper": 0.0, "n": 0}
+
+    # z-score for the given alpha (1.96 for 95% CI)
+    # Use the inverse CDF of the standard normal distribution
+    # For alpha=0.05: z = 1.959964 (approx 1.96)
+    z = _norm_ppf(1 - alpha / 2)
+    p_hat = passes / total
+    denom = 1 + z**2 / total
+    center = (p_hat + z**2 / (2 * total)) / denom
+    spread = z * math.sqrt(
+        (p_hat * (1 - p_hat) + z**2 / (4 * total)) / total
+    ) / denom
+
+    return {
+        "rate": round(p_hat, 4),
+        "ci_lower": round(max(0.0, center - spread), 4),
+        "ci_upper": round(min(1.0, center + spread), 4),
+        "n": total,
+    }
+
+
+def _norm_ppf(p: float) -> float:
+    """Approximate inverse normal CDF (percent point function).
+
+    Uses the rational approximation from Abramowitz and Stegun (26.2.23)
+    for 0.5 < p < 1.0. Accurate to ~4.5e-4.
+    """
+    if p <= 0.5:
+        return -_norm_ppf(1 - p)
+
+    # Rational approximation constants
+    t = math.sqrt(-2 * math.log(1 - p))
+    c0 = 2.515517
+    c1 = 0.802853
+    c2 = 0.010328
+    d1 = 1.432788
+    d2 = 0.189269
+    d3 = 0.001308
+
+    return t - (c0 + c1 * t + c2 * t**2) / (1 + d1 * t + d2 * t**2 + d3 * t**3)
+
+
+# ---------------------------------------------------------------------------
+# Filename Parsing
+# ---------------------------------------------------------------------------
+
+def _augment_level_from_filename(stem: str) -> int:
+    """Extract augmentation level from result file stem.
+
+    Convention: {src_id}-to-{tgt_id}-L{N}.json -> N
+                {src_id}-to-{tgt_id}.json      -> 0  (L0)
+    """
+    m = re.search(r"-L(\d+)(?:-s\d+)?$", stem)
+    return int(m.group(1)) if m else 0
+
+
+def _is_stochastic(stem: str) -> bool:
+    """Return True if filename is a stochastic sample (temperature > 0)."""
+    return bool(re.search(r"-s\d+$", stem))
+
+
+def _extract_api(spec_name: str) -> str:
+    """Extract the API from a spec name like 'rodinia-backprop-cuda'.
+
+    CRITICAL: Check for 'omp_target' FIRST since 'omp' is a substring.
+    """
+    if spec_name.endswith("-omp_target"):
+        return "omp_target"
+    if spec_name.endswith("-opencl"):
+        return "opencl"
+    if spec_name.endswith("-omp"):
+        return "omp"
+    if spec_name.endswith("-cuda"):
+        return "cuda"
+    # Fallback: last segment
+    return spec_name.rsplit("-", 1)[-1] if spec_name else "unknown"
+
+
+# ---------------------------------------------------------------------------
+# Primary Matrix: cuda-to-omp
+# ---------------------------------------------------------------------------
+
+def build_primary_matrix(results_dir: Path, verbose: bool = False) -> dict:
+    """Build per-kernel x per-level status matrix for cuda-to-omp direction.
+
+    Reads all result JSON files, filters to cuda-to-omp direction (excluding
+    omp_target), skips stochastic samples, and builds a status matrix.
+
+    Returns:
+        dict with keys: direction, levels, kernel_count, per_kernel, aggregate,
+        pattern_summary, exceptions
+    """
+    per_kernel: dict[str, dict] = {}
+
+    for f in sorted(results_dir.glob("*.json")):
+        stem = f.stem
+
+        # Skip stochastic samples
+        if _is_stochastic(stem):
+            continue
+
+        # Load JSON to get authoritative source/target spec names
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            if verbose:
+                print(f"  WARNING: Could not parse {f.name}", file=sys.stderr)
+            continue
+
+        source_spec = data.get("source_spec", "")
+        target_spec = data.get("target_spec", "")
+
+        # Extract APIs from spec names (JSON fields are authoritative)
+        src_api = _extract_api(source_spec)
+        tgt_api = _extract_api(target_spec)
+
+        # Filter: cuda-to-omp only (not omp_target)
+        if src_api != "cuda" or tgt_api != "omp":
+            continue
+
+        # CRITICAL: use overall_status, never run_status
+        status = data.get("overall_status", "UNKNOWN")
+        kernel = data.get("kernel", "unknown")
+        level = data.get("augment_level")
+        if level is None:
+            level = _augment_level_from_filename(stem)
+
+        # Only include L0-L4
+        if level < 0 or level > 4:
+            continue
+
+        suite = source_spec.split("-")[0] if source_spec else "unknown"
+
+        if kernel not in per_kernel:
+            per_kernel[kernel] = {
+                "suite": suite,
+                "source_spec": source_spec,
+                "target_spec": target_spec,
+                "known_fail": source_spec in KNOWN_FAIL_SOURCES,
+            }
+
+        per_kernel[kernel][f"L{level}"] = status
+
+    # Classify patterns
+    pattern_summary = classify_patterns(per_kernel)
+
+    # Set pattern on each kernel entry
+    for pattern_type, kernels in pattern_summary.items():
+        for k in kernels:
+            if k in per_kernel:
+                per_kernel[k]["pattern"] = pattern_type
+
+    # Compute aggregates
+    aggregate = compute_aggregates(per_kernel)
+    aggregate_excl_kf = compute_aggregates(per_kernel, exclude_known_fail=True)
+
+    # Identify exceptions
+    exceptions = identify_exceptions(per_kernel, pattern_summary)
+
+    return {
+        "direction": "cuda-to-omp",
+        "levels": LEVELS,
+        "kernel_count": len(per_kernel),
+        "per_kernel": per_kernel,
+        "aggregate": aggregate,
+        "aggregate_excluding_known_fail": aggregate_excl_kf,
+        "pattern_summary": pattern_summary,
+        "exceptions": exceptions,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Pattern Classification
+# ---------------------------------------------------------------------------
+
+def classify_patterns(per_kernel: dict) -> dict:
+    """Classify each kernel into a pattern category based on L0-L4 statuses.
+
+    Categories:
+      - stable_pass: all L0-L4 are PASS
+      - stable_fail: all L0-L4 are non-PASS AND all are the same status
+      - degradation: L0 is PASS and any L1-L4 is non-PASS
+      - improvement: L0 is non-PASS and any L1-L4 is PASS
+      - other: everything else (e.g., mixed non-PASS statuses with no improvement)
+    """
+    result: dict[str, list[str]] = {
+        "stable_pass": [],
+        "stable_fail": [],
+        "degradation": [],
+        "improvement": [],
+        "other": [],
+    }
+
+    for kernel, entry in per_kernel.items():
+        statuses = [entry.get(f"L{i}", "UNKNOWN") for i in range(5)]
+        l0 = statuses[0]
+        l1_l4 = statuses[1:]
+
+        if all(s == "PASS" for s in statuses):
+            result["stable_pass"].append(kernel)
+        elif l0 == "PASS" and any(s != "PASS" for s in l1_l4):
+            result["degradation"].append(kernel)
+        elif l0 != "PASS" and any(s == "PASS" for s in l1_l4):
+            result["improvement"].append(kernel)
+        elif all(s != "PASS" for s in statuses) and len(set(statuses)) == 1:
+            # All same non-PASS status
+            result["stable_fail"].append(kernel)
+        elif all(s != "PASS" for s in statuses):
+            # Mixed non-PASS statuses
+            result["other"].append(kernel)
+        else:
+            result["other"].append(kernel)
+
+    # Sort each category for deterministic output
+    for key in result:
+        result[key].sort()
+
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Aggregate Statistics
+# ---------------------------------------------------------------------------
+
+def compute_aggregates(
+    per_kernel: dict, exclude_known_fail: bool = False
+) -> dict:
+    """Compute aggregate pass rates with Wilson 95% CIs for each level.
+
+    Args:
+        per_kernel: The per-kernel matrix entries.
+        exclude_known_fail: If True, exclude kernels with known_fail=True.
+
+    Returns:
+        Dict with L0-L4 keys, each containing rate, ci_lower, ci_upper, n.
+    """
+    agg: dict[str, dict] = {}
+
+    for level in LEVELS:
+        passes = 0
+        total = 0
+        for _kernel, entry in per_kernel.items():
+            if exclude_known_fail and entry.get("known_fail"):
+                continue
+            status = entry.get(level, "UNKNOWN")
+            if status != "UNKNOWN":
+                total += 1
+                if status == "PASS":
+                    passes += 1
+
+        agg[level] = wilson_ci(passes, total)
+
+    return agg
+
+
+# ---------------------------------------------------------------------------
+# Exception Identification
+# ---------------------------------------------------------------------------
+
+def identify_exceptions(per_kernel: dict, pattern_summary: dict) -> list:
+    """Identify and document exception kernels (degradation + improvement).
+
+    For each non-stable kernel, build an exception entry with:
+    - kernel name, suite, pattern type
+    - L0 status and affected levels with statuses
+    - Root cause note where available
+    """
+    exceptions: list[dict] = []
+
+    # Root cause notes for known exceptions
+    root_causes = {
+        "backprop": (
+            "Linker error: multiple definition of 'gettime' and 'main' -- "
+            "LLM duplicated functions across files when given augmented source. "
+            "Augmentation engine validated separately (backprop-cuda PASSES at "
+            "all harness levels). This is genuine model brittleness, not a "
+            "transform artifact."
+        ),
+    }
+
+    exception_kernels = (
+        pattern_summary.get("degradation", [])
+        + pattern_summary.get("improvement", [])
+    )
+
+    for kernel in sorted(exception_kernels):
+        entry = per_kernel.get(kernel, {})
+        statuses = {f"L{i}": entry.get(f"L{i}", "UNKNOWN") for i in range(5)}
+
+        # Determine pattern type
+        pattern = entry.get("pattern", "unknown")
+
+        # Find affected levels (non-PASS for degradation, PASS for improvement)
+        if pattern == "degradation":
+            affected = {
+                k: v for k, v in statuses.items() if k != "L0" and v != "PASS"
+            }
+        else:  # improvement
+            affected = {
+                k: v for k, v in statuses.items() if k != "L0" and v == "PASS"
+            }
+
+        exceptions.append({
+            "kernel": kernel,
+            "suite": entry.get("suite", "unknown"),
+            "pattern": pattern,
+            "L0_status": statuses["L0"],
+            "all_statuses": statuses,
+            "affected_levels": affected,
+            "root_cause": root_causes.get(kernel, "Not yet investigated"),
+        })
+
+    return exceptions
+
+
+# ---------------------------------------------------------------------------
+# Secondary Matrix: All Directions
+# ---------------------------------------------------------------------------
+
+def build_secondary_matrix(results_dir: Path, verbose: bool = False) -> dict:
+    """Build aggregate pass rates for ALL directions (not just cuda-to-omp).
+
+    For each direction found in the data, computes per-level aggregates
+    with Wilson CIs.
+    """
+    # direction -> kernel -> level -> status
+    dir_data: dict[str, dict[str, dict[str, str]]] = defaultdict(
+        lambda: defaultdict(dict)
+    )
+
+    for f in sorted(results_dir.glob("*.json")):
+        stem = f.stem
+
+        # Skip stochastic samples
+        if _is_stochastic(stem):
+            continue
+
+        try:
+            data = json.loads(f.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            continue
+
+        source_spec = data.get("source_spec", "")
+        target_spec = data.get("target_spec", "")
+
+        src_api = _extract_api(source_spec)
+        tgt_api = _extract_api(target_spec)
+        direction = f"{src_api}-to-{tgt_api}"
+
+        status = data.get("overall_status", "UNKNOWN")
+        kernel = data.get("kernel", "unknown")
+        level = data.get("augment_level")
+        if level is None:
+            level = _augment_level_from_filename(stem)
+
+        if level < 0 or level > 4:
+            continue
+
+        dir_data[direction][kernel][f"L{level}"] = status
+
+    # Compute per-direction aggregates
+    per_direction_aggregate: dict[str, dict] = {}
+
+    for direction in sorted(dir_data.keys()):
+        kernels = dir_data[direction]
+        agg: dict[str, dict] = {}
+
+        for level in LEVELS:
+            passes = 0
+            total = 0
+            for _kernel, levels_map in kernels.items():
+                status = levels_map.get(level, "UNKNOWN")
+                if status != "UNKNOWN":
+                    total += 1
+                    if status == "PASS":
+                        passes += 1
+            agg[level] = wilson_ci(passes, total)
+
+        per_direction_aggregate[direction] = {
+            "kernel_count": len(kernels),
+            "levels": agg,
+        }
+
+    return {
+        "direction_count": len(per_direction_aggregate),
+        "per_direction_aggregate": per_direction_aggregate,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Markdown Generation
+# ---------------------------------------------------------------------------
+
+def generate_markdown(data: dict) -> str:
+    """Produce a markdown summary of the augmentation analysis."""
+    lines: list[str] = []
+
+    pm = data["primary_matrix"]
+    sm = data["secondary_matrix"]
+
+    # Header
+    lines.append("# Per-Kernel Augmentation Matrix")
+    lines.append("")
+    lines.append(f"Generated: {data['generated_at']}")
+    lines.append(f"Data source: `{data['data_source']}`")
+    lines.append(f"Direction: {pm['direction']}")
+    lines.append(f"Kernel count: {pm['kernel_count']}")
+    lines.append("")
+
+    # Per-kernel table
+    lines.append("## Per-Kernel Status Table")
+    lines.append("")
+    lines.append(
+        "| Kernel | Suite | L0 | L1 | L2 | L3 | L4 | Pattern | Known Fail |"
+    )
+    lines.append(
+        "|--------|-------|----|----|----|----|----|---------|-----------:|"
+    )
+
+    for kernel in sorted(pm["per_kernel"].keys()):
+        entry = pm["per_kernel"][kernel]
+        row = [
+            kernel,
+            entry.get("suite", "?"),
+            entry.get("L0", "?"),
+            entry.get("L1", "?"),
+            entry.get("L2", "?"),
+            entry.get("L3", "?"),
+            entry.get("L4", "?"),
+            entry.get("pattern", "?"),
+            "Yes" if entry.get("known_fail") else "",
+        ]
+        lines.append("| " + " | ".join(row) + " |")
+
+    lines.append("")
+
+    # Pattern Summary
+    lines.append("## Pattern Summary")
+    lines.append("")
+    ps = pm["pattern_summary"]
+    for pattern in ["stable_pass", "stable_fail", "degradation", "improvement", "other"]:
+        kernels = ps.get(pattern, [])
+        lines.append(f"- **{pattern}** ({len(kernels)}): {', '.join(kernels) if kernels else 'none'}")
+    lines.append("")
+
+    # Aggregate Pass Rates
+    lines.append("## Aggregate Pass Rates")
+    lines.append("")
+    lines.append("### All Kernels")
+    lines.append("")
+    lines.append("| Level | Pass | Total | Rate | 95% CI |")
+    lines.append("|-------|------|-------|------|--------|")
+    agg = pm["aggregate"]
+    for level in LEVELS:
+        a = agg[level]
+        passes = int(a["rate"] * a["n"])
+        lines.append(
+            f"| {level} | {passes} | {a['n']} | "
+            f"{a['rate']:.1%} | [{a['ci_lower']:.1%}, {a['ci_upper']:.1%}] |"
+        )
+    lines.append("")
+
+    lines.append("### Excluding KNOWN_FAIL")
+    lines.append("")
+    lines.append("| Level | Pass | Total | Rate | 95% CI |")
+    lines.append("|-------|------|-------|------|--------|")
+    agg_excl = pm["aggregate_excluding_known_fail"]
+    for level in LEVELS:
+        a = agg_excl[level]
+        passes = int(a["rate"] * a["n"])
+        lines.append(
+            f"| {level} | {passes} | {a['n']} | "
+            f"{a['rate']:.1%} | [{a['ci_lower']:.1%}, {a['ci_upper']:.1%}] |"
+        )
+    lines.append("")
+
+    # Exceptions
+    lines.append("## Exceptions")
+    lines.append("")
+    for exc in pm["exceptions"]:
+        lines.append(f"### {exc['kernel']} ({exc['suite']}) -- {exc['pattern']}")
+        lines.append(f"- L0: {exc['L0_status']}")
+        lines.append(
+            f"- Affected: "
+            + ", ".join(f"{k}={v}" for k, v in exc["affected_levels"].items())
+        )
+        lines.append(f"- Root cause: {exc['root_cause']}")
+        lines.append("")
+
+    # Secondary Directions
+    lines.append("## Secondary Directions")
+    lines.append("")
+    lines.append(
+        "| Direction | Kernels | L0 Rate | L1 Rate | L2 Rate | L3 Rate | L4 Rate |"
+    )
+    lines.append(
+        "|-----------|---------|---------|---------|---------|---------|---------|"
+    )
+    for direction, ddata in sorted(sm["per_direction_aggregate"].items()):
+        rates = []
+        for level in LEVELS:
+            r = ddata["levels"][level]["rate"]
+            rates.append(f"{r:.1%}")
+        lines.append(
+            f"| {direction} | {ddata['kernel_count']} | "
+            + " | ".join(rates) + " |"
+        )
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main() -> int:
+    """Orchestrate augmentation analysis: build matrices, classify, write output."""
+    parser = argparse.ArgumentParser(
+        description="Augmentation analysis for SC26 ParBench paper"
+    )
+    parser.add_argument(
+        "--project-root",
+        type=Path,
+        required=True,
+        help="Path to project root directory",
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="Output directory (default: results/analysis/)",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Verbose output",
+    )
+    args = parser.parse_args()
+
+    project_root = args.project_root.resolve()
+    results_dir = project_root / "results" / "evaluation" / EVAL_DIR_NAME
+    output_dir = (args.output_dir or project_root / "results" / "analysis").resolve()
+
+    if not results_dir.exists():
+        print(f"ERROR: Results directory not found: {results_dir}", file=sys.stderr)
+        return 1
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.verbose:
+        print(f"Project root: {project_root}")
+        print(f"Results dir:  {results_dir}")
+        print(f"Output dir:   {output_dir}")
+
+    # Build primary matrix (cuda-to-omp)
+    print("Building primary matrix (cuda-to-omp)...")
+    primary = build_primary_matrix(results_dir, verbose=args.verbose)
+    print(f"  Found {primary['kernel_count']} kernels")
+    print(f"  Patterns: {', '.join(f'{k}={len(v)}' for k, v in primary['pattern_summary'].items())}")
+
+    # Build secondary matrix (all directions)
+    print("Building secondary matrix (all directions)...")
+    secondary = build_secondary_matrix(results_dir, verbose=args.verbose)
+    print(f"  Found {secondary['direction_count']} directions")
+
+    # Assemble combined JSON
+    combined = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "data_source": f"results/evaluation/{EVAL_DIR_NAME}",
+        "primary_matrix": primary,
+        "secondary_matrix": secondary,
+    }
+
+    # Write JSON
+    json_path = output_dir / "augmentation_per_kernel_matrix.json"
+    json_path.write_text(
+        json.dumps(combined, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    print(f"  Wrote: {json_path}")
+
+    # Generate and write markdown
+    md_content = generate_markdown(combined)
+    md_path = output_dir / "augmentation_per_kernel_matrix.md"
+    md_path.write_text(md_content, encoding="utf-8")
+    print(f"  Wrote: {md_path}")
+
+    print("Done.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

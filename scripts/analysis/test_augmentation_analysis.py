@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+"""Tests for augmentation_analysis.py -- validates AUG-01 and AUG-02.
+
+Tests verify the per-kernel x per-level augmentation matrix by independently
+loading raw result JSONs and comparing against the script's output.
+
+Test organization by requirement:
+  - AUG-01 structure:  test_matrix_structure, test_kernel_count_matches_disk,
+                       test_status_values_match_raw, test_stochastic_excluded,
+                       test_omp_target_excluded_from_cuda_to_omp,
+                       test_known_fail_flagged, test_aggregate_has_wilson_ci,
+                       test_secondary_matrix_directions
+  - AUG-02 patterns:   test_pattern_classification, test_md_summary_contains_sections
+"""
+
+from __future__ import annotations
+
+import json
+import re
+import sys
+from pathlib import Path
+
+import pytest
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+RESULTS_DIR = PROJECT_ROOT / "results" / "evaluation" / "together-qwen-3.5-397b-a17b"
+OUTPUT_JSON = PROJECT_ROOT / "results" / "analysis" / "augmentation_per_kernel_matrix.json"
+OUTPUT_MD = PROJECT_ROOT / "results" / "analysis" / "augmentation_per_kernel_matrix.md"
+
+
+# ---------------------------------------------------------------------------
+# Helpers -- independent ground truth from raw data
+# ---------------------------------------------------------------------------
+
+def _load_output() -> dict:
+    """Load the output JSON, skipping if it does not exist."""
+    if not OUTPUT_JSON.exists():
+        pytest.skip("Run augmentation_analysis.py first")
+    return json.loads(OUTPUT_JSON.read_text(encoding="utf-8"))
+
+
+def _count_cuda_to_omp_kernels_on_disk() -> int:
+    """Independently count unique cuda-to-omp kernel pairs from raw files."""
+    seen = set()
+    for f in RESULTS_DIR.glob("*.json"):
+        stem = f.stem
+        # Skip stochastic samples
+        if re.search(r"-s\d+$", stem):
+            continue
+        data = json.loads(f.read_text(encoding="utf-8"))
+        src = data.get("source_spec", "")
+        tgt = data.get("target_spec", "")
+        src_api = src.rsplit("-", 1)[-1]
+        tgt_api = tgt.rsplit("-", 1)[-1]
+        if src_api == "cuda" and tgt_api == "omp":
+            kernel = data.get("kernel", "unknown")
+            seen.add(kernel)
+    return len(seen)
+
+
+def _load_raw_status(kernel_name: str, level: int) -> str:
+    """Load overall_status for a specific kernel + level from raw JSON."""
+    # Find the matching file
+    for f in RESULTS_DIR.glob("*.json"):
+        stem = f.stem
+        if re.search(r"-s\d+$", stem):
+            continue
+        data = json.loads(f.read_text(encoding="utf-8"))
+        src_api = data.get("source_spec", "").rsplit("-", 1)[-1]
+        tgt_api = data.get("target_spec", "").rsplit("-", 1)[-1]
+        if src_api != "cuda" or tgt_api != "omp":
+            continue
+        if data.get("kernel") != kernel_name:
+            continue
+        aug = data.get("augment_level", 0)
+        if aug == level:
+            return data.get("overall_status", "UNKNOWN")
+    return "NOT_FOUND"
+
+
+# ---------------------------------------------------------------------------
+# AUG-01 Structure Tests
+# ---------------------------------------------------------------------------
+
+
+class TestMatrixStructure:
+    """Verify the JSON output has the required top-level and nested structure."""
+
+    def test_matrix_structure(self) -> None:
+        data = _load_output()
+        # Top-level keys
+        assert "generated_at" in data
+        assert "data_source" in data
+        assert "primary_matrix" in data
+        assert "secondary_matrix" in data
+
+        pm = data["primary_matrix"]
+        assert pm["direction"] == "cuda-to-omp"
+        assert pm["levels"] == ["L0", "L1", "L2", "L3", "L4"]
+        assert pm["kernel_count"] == 26
+        assert isinstance(pm["per_kernel"], dict)
+        assert isinstance(pm["aggregate"], dict)
+        assert isinstance(pm["pattern_summary"], dict)
+        assert isinstance(pm["exceptions"], list)
+
+    def test_kernel_count_matches_disk(self) -> None:
+        data = _load_output()
+        disk_count = _count_cuda_to_omp_kernels_on_disk()
+        assert data["primary_matrix"]["kernel_count"] == disk_count
+
+    def test_status_values_match_raw(self) -> None:
+        """Spot-check 3 kernels x 2 levels against independently loaded raw data."""
+        data = _load_output()
+        pm = data["primary_matrix"]["per_kernel"]
+
+        for kernel in ["backprop", "bfs", "hotspot"]:
+            for level in [0, 2]:
+                raw = _load_raw_status(kernel, level)
+                matrix_val = pm[kernel][f"L{level}"]
+                assert matrix_val == raw, (
+                    f"{kernel} L{level}: matrix={matrix_val}, raw={raw}"
+                )
+
+    def test_stochastic_excluded(self) -> None:
+        """No kernel should have more than 5 level entries (L0-L4 only)."""
+        data = _load_output()
+        pm = data["primary_matrix"]["per_kernel"]
+        for kernel, entry in pm.items():
+            level_keys = [k for k in entry if k.startswith("L") and k[1:].isdigit()]
+            assert len(level_keys) <= 5, (
+                f"{kernel} has {len(level_keys)} level entries: {level_keys}"
+            )
+
+    def test_omp_target_excluded_from_cuda_to_omp(self) -> None:
+        """No kernel in primary_matrix has omp_target in its target spec name."""
+        data = _load_output()
+        pm = data["primary_matrix"]["per_kernel"]
+        for kernel, entry in pm.items():
+            tgt = entry.get("target_spec", "")
+            assert "omp_target" not in tgt, (
+                f"{kernel} target_spec contains omp_target: {tgt}"
+            )
+
+    def test_known_fail_flagged(self) -> None:
+        """kmeans and mummergpu should have known_fail=True."""
+        data = _load_output()
+        pm = data["primary_matrix"]["per_kernel"]
+        assert pm["kmeans"]["known_fail"] is True
+        assert pm["mummergpu"]["known_fail"] is True
+
+    def test_aggregate_has_wilson_ci(self) -> None:
+        """Each level in aggregate has rate, ci_lower, ci_upper, n keys."""
+        data = _load_output()
+        agg = data["primary_matrix"]["aggregate"]
+        for level in ["L0", "L1", "L2", "L3", "L4"]:
+            entry = agg[level]
+            for key in ["rate", "ci_lower", "ci_upper", "n"]:
+                assert key in entry, f"aggregate[{level}] missing key '{key}'"
+
+    def test_secondary_matrix_directions(self) -> None:
+        """secondary_matrix contains per_direction_aggregate with at least 7 directions."""
+        data = _load_output()
+        sm = data["secondary_matrix"]
+        directions = sm["per_direction_aggregate"]
+        assert len(directions) >= 7, (
+            f"Expected >= 7 directions, got {len(directions)}: {list(directions.keys())}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# AUG-02 Pattern Tests
+# ---------------------------------------------------------------------------
+
+
+class TestPatternClassification:
+    """Verify pattern classification matches independently observed patterns."""
+
+    def test_pattern_classification(self) -> None:
+        data = _load_output()
+        ps = data["primary_matrix"]["pattern_summary"]
+        assert "backprop" in ps["degradation"]
+        assert "bfs" in ps["stable_pass"]
+        assert "kmeans" in ps["stable_fail"]
+        assert "nn" in ps["improvement"]
+
+    def test_md_summary_contains_sections(self) -> None:
+        if not OUTPUT_MD.exists():
+            pytest.skip("Run augmentation_analysis.py first")
+        md = OUTPUT_MD.read_text(encoding="utf-8")
+        assert "Per-Kernel Augmentation Matrix" in md
+        assert "Pattern Summary" in md
+        assert "Aggregate Pass Rates" in md
