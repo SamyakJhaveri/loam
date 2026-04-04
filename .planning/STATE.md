@@ -77,6 +77,10 @@ Recent decisions affecting current work:
 - [Phase 02-benchmark-characterization-data]: Category data from manifest.jsonl (not spec JSONs) because category field only exists in manifest
 - [Phase 02]: Characterization validation covers all 83 manifest kernels for categories, not just 35 corpus; multi-file validated via headline fields and per-API CUDA data
 
+### Roadmap Evolution
+
+- Phase 6 added (2026-04-04): RSBench Single-File Re-spec Controlled Experiment — confirm multi-file translation hypothesis by merging simulation.cu+init.cu into one CUDA target, running Qwen eval, comparing pass rate vs. current multi-file spec
+
 ### Pending Todos
 
 None yet.
@@ -84,7 +88,7 @@ None yet.
 ### Blockers/Concerns
 
 - GPT-4.1 mini data not yet available (Le's runs) -- out of scope for this sprint
-- tmux sessions (qwen_hecbench, qwen_small) running -- DO NOT TOUCH
+- tmux sessions (qwen_hecbench, qwen_small) COMPLETE (2026-04-04) -- safe to close
 - April 8 hard deadline -- 5 days remaining
 - Analysis files (paper_data.json) from April 1 may be stale -- Phase 1 VERIFY-06 will assess
 
