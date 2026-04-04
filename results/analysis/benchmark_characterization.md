@@ -1,6 +1,6 @@
 # ParBench Benchmark Characterization
 
-Generated: 2026-04-04T02:42:27.309198+00:00
+Generated: 2026-04-04T04:17:14.585798+00:00
 
 ## 1. Source Lines of Code (SLoC)
 
@@ -172,13 +172,13 @@ Features detected via regex grep of source directories.
 |--------|-------|-----------|----------|-------------|
 | backprop | rodinia | cuda_basic | omp_basic | opencl_1x |
 | bfs | rodinia | cuda_basic | omp_target | opencl_1x |
-| bptree | rodinia | undetected | undetected | undetected |
+| bptree | rodinia | cuda_basic | omp_basic | opencl_1x |
 | cfd | rodinia | cuda_basic | omp_target | opencl_1x |
 | convolution1d | hecbench | cuda_basic | omp_target | N/A |
 | dwt2d | rodinia | cuda_basic | N/A | opencl_1x |
 | floydwarshall | hecbench | cuda_basic | omp_target | N/A |
 | gaussian | rodinia | cuda_basic | N/A | opencl_1x |
-| heartwall | rodinia | cuda_basic | omp_basic | undetected |
+| heartwall | rodinia | cuda_basic | omp_basic | opencl_1x |
 | heat2d | hecbench | cuda_basic | omp_target | N/A |
 | hotspot | rodinia | cuda_basic | omp_target | opencl_1x |
 | hotspot3d | rodinia | cuda_basic | omp_basic | opencl_1x |
@@ -186,13 +186,13 @@ Features detected via regex grep of source directories.
 | hybridsort | rodinia | cuda_basic | N/A | opencl_1x |
 | iso2dfd | hecbench | cuda_basic | omp_target | N/A |
 | jacobi | hecbench | cuda_basic | omp_target | N/A |
-| kmeans | rodinia | cuda_basic | undetected | opencl_1x |
-| lavamd | rodinia | undetected | undetected | undetected |
-| lud | rodinia | undetected | undetected | undetected |
+| kmeans | rodinia | cuda_basic | omp_basic | opencl_1x |
+| lavamd | rodinia | cuda_basic | omp_basic | opencl_1x |
+| lud | rodinia | cuda_basic | omp_target | opencl_1x |
 | md | hecbench | cuda_basic | omp_target | N/A |
 | mixbench | mixbench | cuda_basic | omp_4.5 | opencl_1x |
-| mummergpu | rodinia | undetected | undetected | N/A |
-| myocyte | rodinia | cuda_basic | omp_basic | undetected |
+| mummergpu | rodinia | cuda_basic | omp_basic | N/A |
+| myocyte | rodinia | cuda_basic | omp_basic | opencl_1x |
 | nn | rodinia | cuda_basic | omp_basic | opencl_1x |
 | nqueen | hecbench | cuda_basic | omp_target | N/A |
 | nw | rodinia | cuda_basic | omp_target | opencl_1x |
@@ -201,7 +201,7 @@ Features detected via regex grep of source directories.
 | pathfinder | rodinia | cuda_basic | omp_basic | opencl_1x |
 | rsbench | rsbench | cuda_library | omp_basic | opencl_1x |
 | scan | hecbench | cuda_basic | omp_target | N/A |
-| srad | rodinia | cuda_basic | omp_basic | undetected |
+| srad | rodinia | cuda_basic | omp_basic | opencl_1x |
 | stencil1d | hecbench | cuda_basic | omp_target | N/A |
 | streamcluster | rodinia | cuda_basic | omp_basic | opencl_1x |
 | xsbench | xsbench | cuda_library | omp_basic | opencl_1x |
@@ -210,13 +210,12 @@ Features detected via regex grep of source directories.
 
 | Tier | Count |
 |------|------:|
-| cuda_basic | 29 |
+| cuda_basic | 33 |
 | cuda_library | 2 |
 | omp_4.5 | 1 |
-| omp_basic | 11 |
-| omp_target | 21 |
-| opencl_1x | 17 |
-| undetected | 15 |
+| omp_basic | 15 |
+| omp_target | 22 |
+| opencl_1x | 23 |
 
 ## 6. Language Standard Distribution
 

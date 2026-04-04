@@ -257,14 +257,6 @@ def compute_api_coverage(project_root: Path) -> dict:
         totals[api] = sum(len(matrix[suite][api]) for suite in suite_order)
     totals["total"] = sum(totals[api] for api in apis)
 
-    # Total specs (not distinct kernels — raw count of spec files per cell)
-    spec_counts = {}
-    for suite in suite_order:
-        row = {}
-        for api in apis:
-            row[api] = len(matrix[suite][api])
-        spec_counts[suite] = row
-
     return {
         "suites": suites_result,
         "totals": totals,
@@ -408,7 +400,7 @@ def compute_language_features(project_root: Path) -> dict:
     omp_tier_order = ["omp_basic", "omp_4.5", "omp_target"]
     opencl_tier_order = ["opencl_1x", "opencl_2x"]
 
-    source_extensions = {"*.cu", "*.c", "*.cpp", "*.h", "*.hpp", "*.cl"}
+    source_extensions = ("*.cu", "*.c", "*.cpp", "*.h", "*.hpp", "*.cl")
 
     def grep_dir(directory: Path, patterns: dict[str, list[str]]) -> dict[str, list[str]]:
         """Grep all source files in a directory for patterns."""
@@ -417,7 +409,7 @@ def compute_language_features(project_root: Path) -> dict:
             return dict(found)
 
         for ext in source_extensions:
-            for fpath in directory.glob(ext):
+            for fpath in directory.rglob(ext):
                 try:
                     content = fpath.read_text(encoding="utf-8", errors="replace")
                 except OSError:
@@ -495,16 +487,31 @@ def compute_language_features(project_root: Path) -> dict:
                 file=sys.stderr,
             )
 
-        # Overall tier: highest across all APIs (excluding "undetected")
-        all_tiers = []
-        for api_data in entry["apis"].values():
+        # Per-API max tiers (independent per API family — no cross-family comparison)
+        per_api_max = {}
+        for api_name, api_data in entry["apis"].items():
             t = api_data.get("tier")
             if t and t != "undetected":
-                all_tiers.append(t)
-        combined_order = cuda_tier_order + omp_tier_order + opencl_tier_order
-        entry["overall_tier"] = all_tiers[0] if len(all_tiers) == 1 else (
-            max(all_tiers, key=lambda t: combined_order.index(t)) if all_tiers else "undetected"
-        )
+                per_api_max[api_name] = t
+        entry["per_api_max_tiers"] = per_api_max if per_api_max else {"note": "no features detected"}
+        # Overall tier: highest within each API family, reported as the most complex single tier found
+        # Uses per-family ordering to avoid arbitrary cross-family comparisons
+        best_tier = "undetected"
+        best_rank = -1
+        for api_name, tier_val in per_api_max.items():
+            if "cuda" in api_name:
+                order = cuda_tier_order
+            elif "omp" in api_name:
+                order = omp_tier_order
+            elif "opencl" in api_name:
+                order = opencl_tier_order
+            else:
+                continue
+            rank = order.index(tier_val) if tier_val in order else -1
+            if rank > best_rank:
+                best_rank = rank
+                best_tier = tier_val
+        entry["overall_tier"] = best_tier
 
         per_kernel[kernel] = entry
 

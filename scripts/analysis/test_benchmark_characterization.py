@@ -84,8 +84,8 @@ def char_data() -> dict:
 # Section 1: End-to-end script execution
 # ---------------------------------------------------------------------------
 
-def test_script_runs_successfully():
-    """Run benchmark_characterization.py via subprocess; assert exit 0 and valid JSON output."""
+def test_script_runs_successfully(tmp_path):
+    """Run benchmark_characterization.py via subprocess to a temp dir; assert exit 0 and valid JSON."""
     if not SCRIPT_PATH.exists():
         pytest.skip("benchmark_characterization.py not yet created -- plan 02-01 pending")
 
@@ -95,6 +95,8 @@ def test_script_runs_successfully():
             str(SCRIPT_PATH),
             "--project-root",
             str(PROJECT_ROOT),
+            "--output-dir",
+            str(tmp_path),
         ],
         capture_output=True,
         text=True,
@@ -105,9 +107,10 @@ def test_script_runs_successfully():
         f"Script exited with code {result.returncode}.\n"
         f"stderr: {result.stderr[:2000]}"
     )
-    assert OUTPUT_JSON.exists(), "Output JSON not written after successful script run"
+    tmp_json = tmp_path / "benchmark_characterization.json"
+    assert tmp_json.exists(), "Output JSON not written after successful script run"
     # Verify valid JSON
-    data = json.loads(OUTPUT_JSON.read_text())
+    data = json.loads(tmp_json.read_text())
     assert isinstance(data, dict), "Output is not a JSON object"
 
 
