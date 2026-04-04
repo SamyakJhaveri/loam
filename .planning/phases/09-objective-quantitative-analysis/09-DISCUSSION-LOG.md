@@ -269,6 +269,39 @@
 - Specific spot-check targets within "critical paper claims"
 - Complexity classification edge cases
 
+## Post-Creation Validation (2026-04-04)
+
+Automated validation of 09-CONTEXT.md factual accuracy and consistency.
+
+### Check Results
+
+| # | Check | Result | Detail |
+|---|-------|--------|--------|
+| 1 | KNOWN_FAIL counts (8 = 6 Rodinia + 2 HeCBench) | PASS | Matches known-issues.md exactly: kmeans-cuda, mummergpu-cuda, mummergpu-omp, hybridsort-cuda, nn-opencl, kmeans-opencl (6 Rodinia) + stencil1d-omp_target, scan-omp_target (2 HeCBench) |
+| 2 | Canonical ref paths exist on disk | PASS | All 8 analysis JSONs (paper_data, statistical_analysis, error_taxonomy, selfrepair_analysis, token_analysis, augmentation_per_kernel_matrix, benchmark_characterization, sloc_analysis), 4 scripts (generate_paper_data, statistical_analysis, selfrepair_analysis, build_error_taxonomy), specs/, manifest.jsonl, paper.tex — all verified present |
+| 3 | Campaign file patterns (-s{N}, -L{N}) | PASS | -s0/-s1/-s2 (Campaign 2): 156 files each. -L1/-L2/-L3/-L4 (Campaign 1): 156 files each. L0 (no suffix): 156 files. Pattern matches CONTEXT.md D-06 description. |
+| 4 | "1,248 files" claim | PASS | Actual count: 1,248 JSON files. Math: 156 base tasks x 8 variants (L0 + L1-L4 + s0-s2) = 1,248. Matches D-09. |
+| 5 | Requirement traceability (QUANT-01 to QUANT-14) | ISSUE | ROADMAP.md line 244 references "QUANT-01 through QUANT-14" but REQUIREMENTS.md does NOT define any QUANT-* requirements. The traceability table (REQUIREMENTS.md lines 84-110) covers 25 requirements (VERIFY, CHAR, INTRO, AUG, METHOD) but has no Phase 9 entries. CONTEXT.md references "14 dimensions" which align with ROADMAP.md success criteria 1-14, but uses no QUANT-* IDs. This is a gap in REQUIREMENTS.md, not in CONTEXT.md — the 14 dimensions are well-defined in ROADMAP.md success criteria. |
+| 6 | STATE.md reflects Phase 9 context | ISSUE | STATE.md shows `stopped_at: Phase 8 context gathered` and `Phase: 08`. Not updated for Phase 9. This is expected if the context-gather process updates STATE.md after all context files are finalized, but should be updated before Phase 9 planning begins. |
+
+### Issues Requiring Attention
+
+**ISSUE-1: Missing QUANT-* requirements in REQUIREMENTS.md**
+- ROADMAP.md references QUANT-01 through QUANT-14 for Phase 9
+- REQUIREMENTS.md has no QUANT-* entries and no Phase 9 row in traceability table
+- The 14 dimensions ARE well-specified in ROADMAP.md success criteria (lines 246-259)
+- Severity: Medium — does not block Phase 9 work since ROADMAP has the details, but breaks the requirement traceability chain that all other phases (1-5) maintain
+- Recommendation: Add QUANT-01 through QUANT-14 to REQUIREMENTS.md and extend traceability table (this is a REQUIREMENTS.md fix, out of validator scope)
+
+**ISSUE-2: STATE.md not updated for Phase 9 context**
+- STATE.md `stopped_at` still says "Phase 8 context gathered"
+- Should reflect Phase 9 context gathered before planning begins
+- Severity: Low — cosmetic/process issue, does not affect CONTEXT.md accuracy
+
+### Conclusion
+
+CONTEXT.md is **factually accurate**. All data claims verified against disk. The two issues found are in upstream planning files (REQUIREMENTS.md, STATE.md), not in the context document itself.
+
 ## Deferred Ideas
 
 None — discussion stayed within phase scope.

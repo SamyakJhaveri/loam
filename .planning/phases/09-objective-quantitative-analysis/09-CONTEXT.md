@@ -17,7 +17,7 @@ Produce a comprehensive, structured quantitative findings document (`results/ana
 - **D-01:** Single monolithic script `scripts/analysis/quantitative_findings.py` — consistent with Phase 2 (benchmark_characterization.py) and Phase 3 (augmentation_analysis.py) patterns.
 - **D-02:** Compute directly from raw result JSONs in `results/evaluation/together-qwen-3.5-397b-a17b/`. Do NOT depend on intermediate analysis files (paper_data.json, etc.) as primary data source — raw files are ground truth per Phase 1 D-07.
 - **D-03:** After computing from raw, cross-check against existing analysis JSONs (paper_data.json, statistical_analysis.json, etc.) and warn on discrepancies >0.1%. This catches stale derived files.
-- **D-04:** Claude decides which metrics to compute fresh from raw vs. pull from existing verified analysis to avoid duplicating work. Exception: SLoC data reads from existing `benchmark_characterization.json` / `sloc_analysis.json` (verified in Phase 2 — SLoC is a static source property, not an eval result).
+- **D-04:** In practice, compute ALL eval-derived metrics fresh from raw result JSONs (per D-02). The only planned exception: SLoC data reads from existing `benchmark_characterization.json` / `sloc_analysis.json` (verified in Phase 2 — SLoC is a static source property, not an eval result). Claude may pull additional static metadata from existing analysis if justified, but eval pass rates, failure counts, and statistical tests must come from raw.
 
 ### Two-Campaign Separation (CRITICAL)
 - **D-05:** Two evaluation campaigns must be analyzed SEPARATELY, never pooled:
@@ -35,10 +35,10 @@ Produce a comprehensive, structured quantitative findings document (`results/ana
 
 ### File Discovery & Classification
 - **D-13:** Glob `results/evaluation/together-qwen-3.5-397b-a17b/*.json`, parse each filename to extract source spec, target spec, augmentation level, seed number. Same approach as existing `generate_paper_data.py`.
-- **D-14:** Complexity classes derived from spec JSON fields (`translation_targets`, `prompt_payload`): single_file, multi_to_single, single_to_multi, multi_to_multi.
+- **D-14:** Complexity classes derived from spec JSON fields (`translation_targets`, `prompt_payload`): single_file, multi_to_single, single_to_multi, multi_to_multi. Chi-squared test (or Fisher's exact for small cell counts) for pass rate differences across complexity classes (per ROADMAP SC-9).
 
 ### pass@k Method
-- **D-15:** Simple fraction per task: count passing seeds / total seeds (0/3, 1/3, 2/3, 3/3), then aggregate. No extrapolation beyond k=3.
+- **D-15:** Simple fraction per task: count passing seeds / total seeds (0/3, 1/3, 2/3, 3/3), then aggregate. No extrapolation beyond k=3. Note: ROADMAP SC-7 mentions k=1,3,5,10 but only k=3 is computable from 3 seeds without extrapolation — report pass@1 (any seed passes) and pass@3 (all seeds pass) as the two extremes.
 - **D-16:** Campaign 2 gets full per-direction + per-suite pass@k breakdowns (not just aggregate).
 
 ### Output & Diagnostics
@@ -62,9 +62,9 @@ Produce a comprehensive, structured quantitative findings document (`results/ana
 
 ### Statistical Methods
 - **D-30:** McNemar's test for direction asymmetry computed from raw paired data (same kernel, opposite directions). Not read from existing analysis.
-- **D-31:** Cochran-Armitage trend test computed for ALL directions separately AND aggregate. Tests whether augmentation null result holds across all directions.
+- **D-31:** Cochran-Armitage trend test computed for ALL directions separately AND aggregate. Tests whether augmentation null result holds across all directions. Cohen's h effect sizes between adjacent augmentation levels (per ROADMAP SC-4).
 - **D-32:** Per-kernel difficulty tiers: quartile-based by L0 pass rate, plus explicit top-5 easiest and top-5 hardest kernel lists.
-- **D-33:** OpenCL kernel-only effect: compare all X-to-OpenCL (kernel-only) pass rates vs all X-to-OMP (full program) pass rates with appropriate statistical test.
+- **D-33:** OpenCL kernel-only effect: compare all X-to-OpenCL (kernel-only) pass rates vs all X-to-OMP (full program) pass rates. Statistical test: Claude's discretion (Fisher's exact test or Chi-squared, whichever is appropriate for the sample sizes).
 - **D-34:** SLoC correlation method: Claude's discretion (Spearman and/or Pearson with p-values).
 - **D-35:** Token cost: Together AI pricing for Qwen 3.5 397B, stored as constants in script.
 - **D-36:** Exactly the 14 roadmap dimensions — no extras. 95% Wilson CIs matching existing conventions.
@@ -84,6 +84,8 @@ Produce a comprehensive, structured quantitative findings document (`results/ana
 - Exact kernel ordering direction (ascending vs descending pass rate)
 - Spot-check target selection (critical paper claims, Claude picks the specific numbers)
 - How to handle edge cases in complexity classification (e.g., multi-file specs with only one translation target)
+- Statistical test selection for OpenCL kernel-only effect (Fisher's exact vs Chi-squared — see D-33)
+- Statistical test selection for complexity correlation (Chi-squared vs Fisher's exact for small cells — see D-14)
 
 </decisions>
 

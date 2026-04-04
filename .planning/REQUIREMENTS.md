@@ -47,6 +47,23 @@ Requirements for paper submission (deadline: April 8, 2026). Each maps to roadma
 - [ ] **METHOD-03**: Reproducibility claims backed by specific version pins: CUDA version, compiler versions, OS, GPU model, model API version, ParBench commit hash
 - [ ] **METHOD-04**: Conjunction verification (exit_code AND stdout_pattern) methodology justified vs alternatives (BLEU, compilation-only)
 
+### Quantitative Analysis
+
+- [ ] **QUANT-01**: Aggregate pass rates by suite (Rodinia, XSBench, RSBench, mixbench, HeCBench) with Wilson 95% CIs and sample sizes
+- [ ] **QUANT-02**: Per-direction pass rates for all 6 standard directions + omp_target case-study directions, with CIs
+- [ ] **QUANT-03**: Direction asymmetry analysis: McNemar's test p-values, paired differences, which direction is "easier" and by how much
+- [ ] **QUANT-04**: Per-augmentation-level pass rates (L0-L4) with Cochran-Armitage trend test p-value and Cohen's h effect sizes between adjacent levels
+- [ ] **QUANT-05**: Failure taxonomy distribution: BUILD_FAIL / RUN_FAIL / VERIFY_FAIL / EXTRACTION_FAIL counts and percentages, per-suite and aggregate, with top build error subcategories
+- [ ] **QUANT-06**: Self-repair effectiveness: overall repair rate, per-failure-type repair rates, regression rate, mean attempts to success, per-suite breakdown
+- [ ] **QUANT-07**: Pass@k estimates for k=1,3 from the s0/s1/s2 seed variants, per-direction and aggregate
+- [ ] **QUANT-08**: Per-kernel difficulty tiers: rank kernels by L0 pass rate, identify top-5 easiest and top-5 hardest, note anomalous per-direction patterns
+- [ ] **QUANT-09**: Translation complexity correlation: pass rate by complexity class (single_file, multi_to_single, single_to_multi, multi_to_multi) with Chi-squared test
+- [ ] **QUANT-10**: Cross-suite comparison: Rodinia aggregate vs XSBench vs RSBench vs mixbench (SLoC correlation, multi-file fraction)
+- [ ] **QUANT-11**: Token cost analysis: total input/output tokens, estimated cost per task, cost per PASS, cost per suite
+- [ ] **QUANT-12**: SLoC correlation: Spearman/Pearson correlation between kernel SLoC and pass rate
+- [ ] **QUANT-13**: OpenCL kernel-only effect: compare pass rates for X-to-OpenCL (kernel-only) vs X-to-OMP (full program)
+- [ ] **QUANT-14**: Every number has a provenance trail: source file path, field name, and exact value so paper.tex claims are auditable
+
 ## v2 Requirements
 
 Deferred to post-submission or camera-ready revision.
@@ -108,10 +125,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 | METHOD-02 | Phase 4 | Pending |
 | METHOD-03 | Phase 4 | Pending |
 | METHOD-04 | Phase 4 | Pending |
+| QUANT-01 | Phase 9 | Pending |
+| QUANT-02 | Phase 9 | Pending |
+| QUANT-03 | Phase 9 | Pending |
+| QUANT-04 | Phase 9 | Pending |
+| QUANT-05 | Phase 9 | Pending |
+| QUANT-06 | Phase 9 | Pending |
+| QUANT-07 | Phase 9 | Pending |
+| QUANT-08 | Phase 9 | Pending |
+| QUANT-09 | Phase 9 | Pending |
+| QUANT-10 | Phase 9 | Pending |
+| QUANT-11 | Phase 9 | Pending |
+| QUANT-12 | Phase 9 | Pending |
+| QUANT-13 | Phase 9 | Pending |
+| QUANT-14 | Phase 9 | Pending |
 
 **Coverage:**
-- v1 requirements: 25 total
-- Mapped to phases: 25
+- v1 requirements: 39 total
+- Mapped to phases: 39
 - Unmapped: 0
 
 ---
