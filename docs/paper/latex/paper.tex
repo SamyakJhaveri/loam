@@ -1071,6 +1071,21 @@ The Cochran-Armitage null result ($z = -0.17$, $p = 0.87$) is the central augmen
 % src: 72.5% hard failures = 103/142 from passk_estimates (same as S6.7); 0% noisy = 0/142
 This null result has three implications. First, it provides evidence \emph{against} the memorization hypothesis. Second, the null result validates ParBench's augmentation methodology as a useful diagnostic: augmentation confirms that the benchmark measures genuine translation capability rather than training-data recall. Third, the connection to pass@$k$ reinforces this interpretation: the bimodal distribution of pass@$k$ results (72.5\% hard failures, 0\% noisy failures) indicates that the model either can or cannot translate a given kernel-direction pair, regardless of surface syntax. \pending{Cross-provider augmentation sensitivity comparison and Simpson's Paradox check awaiting GPT-4.1~mini data.}
 
+% AUG-03: LASSI positioning (complementary framing per D-07, D-08)
+% src: LASSI paper Table 2 (80-85%); paper_data.json augmentation.cochran_armitage
+ParBench's augmentation and LASSI's self-correction pipeline~\cite{LASSI2024} address
+complementary research questions. LASSI measures the effectiveness of an agentic
+correction loop---iterative error feedback improves translation success to
+80--85\% on 10 HeCBench kernels. ParBench's augmentation measures
+\emph{robustness}---whether surface-level code variation affects translation
+capability. The Cochran-Armitage null result demonstrates that augmentation is a
+diagnostic tool: it confirms that ParBench measures genuine translation capability
+rather than training-data recall, but it does not discriminate between augmentation
+levels. LASSI's self-correction, by contrast, produces a measurable lift by
+addressing the structural errors that dominate ParBench's failure taxonomy.
+The two capabilities are complementary: augmentation validates the benchmark
+instrument, while agentic correction improves the translation output.
+
 \subsection{Threats to Validity}
 \label{sec:threats}
 
