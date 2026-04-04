@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generated": "2026-04-04T02:36:27.285704+00:00",
+    "generated": "2026-04-04T02:42:27.309198+00:00",
     "project_root": "/home/samyak/Desktop/parbench_sam",
     "script": "benchmark_characterization.py",
     "corpus_size": 35
@@ -2018,18 +2018,18 @@
         "apis": {
           "cuda": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           },
           "omp": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           },
           "opencl": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           }
         },
-        "overall_tier": null
+        "overall_tier": "undetected"
       },
       "cfd": {
         "kernel": "cfd",
@@ -2145,7 +2145,7 @@
           },
           "opencl": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           }
         },
         "overall_tier": "omp_basic"
@@ -2280,7 +2280,7 @@
           },
           "omp": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           },
           "opencl": {
             "features_found": {
@@ -2300,18 +2300,18 @@
         "apis": {
           "cuda": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           },
           "omp": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           },
           "opencl": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           }
         },
-        "overall_tier": null
+        "overall_tier": "undetected"
       },
       "lud": {
         "kernel": "lud",
@@ -2319,18 +2319,18 @@
         "apis": {
           "cuda": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           },
           "omp": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           },
           "opencl": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           }
         },
-        "overall_tier": null
+        "overall_tier": "undetected"
       },
       "mummergpu": {
         "kernel": "mummergpu",
@@ -2338,14 +2338,14 @@
         "apis": {
           "cuda": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           },
           "omp": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           }
         },
-        "overall_tier": null
+        "overall_tier": "undetected"
       },
       "myocyte": {
         "kernel": "myocyte",
@@ -2371,7 +2371,7 @@
           },
           "opencl": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           }
         },
         "overall_tier": "omp_basic"
@@ -2543,7 +2543,7 @@
           },
           "opencl": {
             "features_found": {},
-            "tier": null
+            "tier": "undetected"
           }
         },
         "overall_tier": "omp_basic"
@@ -3019,6 +3019,7 @@
       "omp_basic": 11,
       "opencl_1x": 17,
       "omp_target": 21,
+      "undetected": 15,
       "cuda_library": 2,
       "omp_4.5": 1
     }

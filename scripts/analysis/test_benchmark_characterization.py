@@ -197,11 +197,11 @@ def test_sloc_covers_all_35_kernels(char_data):
 
 def test_sloc_has_required_fields(char_data):
     """Each kernel in sloc.per_kernel has required keys and positive SLoC."""
-    required_keys = {"kernel", "suite", "physical_sloc", "num_source_files", "num_target_files"}
+    required_keys = {"kernel", "suite", "cuda_sloc", "num_source_files", "num_target_files"}
     for name, info in char_data["sloc"]["per_kernel"].items():
         missing = required_keys - set(info.keys())
         assert not missing, f"Kernel '{name}' missing keys: {missing}"
-        assert info["physical_sloc"] > 0, f"Kernel '{name}' has zero SLoC"
+        assert info["cuda_sloc"] > 0, f"Kernel '{name}' has zero SLoC"
 
 
 def test_sloc_summary_statistics(char_data):
@@ -217,8 +217,8 @@ def test_sloc_summary_statistics(char_data):
 
 def test_sloc_omp_ratio_present(char_data):
     """Kernels with OMP specs have positive omp_cuda_ratio; those without have null."""
-    # 5 HeCBench kernels lack OMP specs
-    no_omp = {"convolution1d", "jacobi", "md", "nqueen", "page-rank"}
+    # 9 kernels lack OMP specs: 5 HeCBench (omp_target only) + 3 Rodinia phantoms + dwt2d (no omp variant)
+    no_omp = {"convolution1d", "jacobi", "md", "nqueen", "page-rank", "dwt2d", "gaussian", "huffman", "hybridsort"}
     for name, info in char_data["sloc"]["per_kernel"].items():
         if name in no_omp:
             assert info.get("omp_cuda_ratio") is None, (
@@ -281,14 +281,11 @@ def test_category_counts_match_manifest(char_data):
     per category, deduplicating entries where the same kernel has multiple APIs.
     """
     valid = _load_valid_manifest_entries()
-    # Build category -> set of (suite, kernel) using first-seen category for each
-    kernel_to_cat: dict[tuple[str, str], str] = {}
+    # Build category -> set of distinct kernel_names (deduplicate across APIs and suites)
+    cat_kernels: dict[str, set[str]] = defaultdict(set)
     for e in valid:
-        key = (e["source_suite"], e["kernel_name"])
-        if key not in kernel_to_cat:
-            kernel_to_cat[key] = e["category"]
-    # Count per category
-    expected_counts: dict[str, int] = Counter(kernel_to_cat.values())
+        cat_kernels[e["category"]].add(e["kernel_name"])
+    expected_counts = {cat: len(kernels) for cat, kernels in cat_kernels.items()}
 
     for cat_name, cat_data in char_data["categories"].items():
         expected = expected_counts.get(cat_name, 0)
@@ -363,24 +360,24 @@ def test_multi_file_covers_all_kernels(char_data):
 
 
 def test_multi_file_has_both_counts(char_data):
-    """Each kernel entry has prompt_payload_count and translation_targets_count."""
+    """Each kernel entry has headline payload and target counts."""
     for name, info in char_data["multi_file"]["by_kernel"].items():
-        assert "prompt_payload_count" in info, (
-            f"Kernel '{name}' missing prompt_payload_count"
+        assert "headline_payload_count" in info, (
+            f"Kernel '{name}' missing headline_payload_count"
         )
-        assert "translation_targets_count" in info, (
-            f"Kernel '{name}' missing translation_targets_count"
+        assert "headline_target_count" in info, (
+            f"Kernel '{name}' missing headline_target_count"
         )
 
 
 def test_multi_file_classification_uses_targets(char_data):
-    """is_multi_file flag equals (translation_targets_count > 1) per D-02."""
+    """headline_multi_file flag equals (headline_target_count > 1) per D-02."""
     for name, info in char_data["multi_file"]["by_kernel"].items():
-        expected = info["translation_targets_count"] > 1
-        actual = info["is_multi_file"]
+        expected = info["headline_target_count"] > 1
+        actual = info["headline_multi_file"]
         assert actual == expected, (
-            f"Kernel '{name}': is_multi_file={actual} but "
-            f"translation_targets_count={info['translation_targets_count']}"
+            f"Kernel '{name}': headline_multi_file={actual} but "
+            f"headline_target_count={info['headline_target_count']}"
         )
 
 
@@ -428,11 +425,11 @@ VALID_TIERS = {
 
 
 def test_language_feature_tiers_valid(char_data):
-    """Every kernel with features has a tier from the expected set."""
+    """Every kernel with features has an overall_tier from the expected set."""
     for name, info in char_data["language_features"]["per_kernel"].items():
-        tier = info.get("tier")
+        tier = info.get("overall_tier")
         assert tier in VALID_TIERS, (
-            f"Kernel '{name}' has invalid tier '{tier}'. "
+            f"Kernel '{name}' has invalid overall_tier '{tier}'. "
             f"Expected one of: {sorted(VALID_TIERS)}"
         )
 
@@ -443,18 +440,22 @@ def test_bfs_has_cuda_basic_features(char_data):
     if bfs is None:
         pytest.skip("bfs not in language_features per_kernel")
     cuda_tiers = {"cuda_basic", "cuda_library", "cuda_9plus"}
-    assert bfs["tier"] in cuda_tiers, (
-        f"Expected bfs tier in {cuda_tiers}, got '{bfs['tier']}'"
+    bfs_cuda_tier = bfs.get("apis", {}).get("cuda", {}).get("tier")
+    assert bfs_cuda_tier in cuda_tiers, (
+        f"Expected bfs CUDA tier in {cuda_tiers}, got '{bfs_cuda_tier}'"
     )
 
 
 def test_language_features_skip_missing_dirs(char_data):
     """Kernels with missing source dirs should not crash; check total count is reasonable."""
     per_kernel = char_data["language_features"]["per_kernel"]
-    # At least some kernels should have features detected
+    # At least some kernels should have features detected (features are under apis.{api}.features_found)
     with_features = [
         k for k, v in per_kernel.items()
-        if v.get("features_found") and len(v["features_found"]) > 0
+        if any(
+            api_data.get("features_found")
+            for api_data in v.get("apis", {}).values()
+        )
     ]
     assert len(with_features) > 0, "No kernels have detected features"
 

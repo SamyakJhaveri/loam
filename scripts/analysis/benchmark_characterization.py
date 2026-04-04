@@ -429,13 +429,13 @@ def compute_language_features(project_root: Path) -> dict:
                                 found[tier].append(pat)
         return dict(found)
 
-    def highest_tier(found: dict[str, list[str]], tier_order: list[str]) -> str | None:
-        """Return the highest tier that has matches."""
+    def highest_tier(found: dict[str, list[str]], tier_order: list[str]) -> str:
+        """Return the highest tier that has matches, or 'undetected'."""
         best = None
         for tier in tier_order:
             if tier in found and found[tier]:
                 best = tier
-        return best
+        return best if best is not None else "undetected"
 
     per_kernel: dict[str, dict] = {}
 
@@ -495,16 +495,15 @@ def compute_language_features(project_root: Path) -> dict:
                 file=sys.stderr,
             )
 
-        # Overall tier: highest across all APIs
+        # Overall tier: highest across all APIs (excluding "undetected")
         all_tiers = []
         for api_data in entry["apis"].values():
             t = api_data.get("tier")
-            if t:
+            if t and t != "undetected":
                 all_tiers.append(t)
+        combined_order = cuda_tier_order + omp_tier_order + opencl_tier_order
         entry["overall_tier"] = all_tiers[0] if len(all_tiers) == 1 else (
-            max(all_tiers, key=lambda t: (
-                cuda_tier_order + omp_tier_order + opencl_tier_order
-            ).index(t)) if all_tiers else None
+            max(all_tiers, key=lambda t: combined_order.index(t)) if all_tiers else "undetected"
         )
 
         per_kernel[kernel] = entry
