@@ -18,12 +18,12 @@ Requirements for paper submission (deadline: April 8, 2026). Each maps to roadma
 
 ### Benchmark Characterization
 
-- [ ] **CHAR-01**: SLoC analysis extended from 18 to all 35 kernels using scripts/analysis/sloc_analysis.py
-- [ ] **CHAR-02**: Domain category distribution computed from manifest.jsonl (12 categories)
-- [ ] **CHAR-03**: API coverage cross-tab produced (suite rows x API columns) and verified against spec files on disk
-- [ ] **CHAR-04**: Single-file vs multi-file translation breakdown computed per suite and per API
-- [ ] **CHAR-05**: Language feature grep completed on available source dirs (Rodinia + XSBench) for OpenMP 1.0-4.5, CUDA basic-9.0+, OpenCL 1.x-2.0 version indicators
-- [ ] **CHAR-06**: Language standard distribution extracted from spec JSONs (implementation.language_standard field)
+- [x] **CHAR-01**: SLoC analysis extended from 18 to all 35 kernels using scripts/analysis/sloc_analysis.py
+- [x] **CHAR-02**: Domain category distribution computed from manifest.jsonl (12 categories)
+- [x] **CHAR-03**: API coverage cross-tab produced (suite rows x API columns) and verified against spec files on disk
+- [x] **CHAR-04**: Single-file vs multi-file translation breakdown computed per suite and per API
+- [x] **CHAR-05**: Language feature grep completed on available source dirs (Rodinia + XSBench) for OpenMP 1.0-4.5, CUDA basic-9.0+, OpenCL 1.x-2.0 version indicators
+- [x] **CHAR-06**: Language standard distribution extracted from spec JSONs (implementation.language_standard field)
 - [ ] **CHAR-07**: LaTeX characterization table (tab:benchmark-characterization) added to Section 4 of paper.tex with clear caption
 
 ### Introduction & Positioning
@@ -89,12 +89,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VERIFY-04 | Phase 1 | Complete |
 | VERIFY-05 | Phase 1 | Complete |
 | VERIFY-06 | Phase 1 | Complete |
-| CHAR-01 | Phase 2 | Pending |
-| CHAR-02 | Phase 2 | Pending |
-| CHAR-03 | Phase 2 | Pending |
-| CHAR-04 | Phase 2 | Pending |
-| CHAR-05 | Phase 2 | Pending |
-| CHAR-06 | Phase 2 | Pending |
+| CHAR-01 | Phase 2 | Complete |
+| CHAR-02 | Phase 2 | Complete |
+| CHAR-03 | Phase 2 | Complete |
+| CHAR-04 | Phase 2 | Complete |
+| CHAR-05 | Phase 2 | Complete |
+| CHAR-06 | Phase 2 | Complete |
 | CHAR-07 | Phase 5 | Pending |
 | INTRO-01 | Phase 5 | Pending |
 | INTRO-02 | Phase 5 | Pending |
