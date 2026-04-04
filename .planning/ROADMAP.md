@@ -66,12 +66,12 @@ Plans:
   2. Either 2-3 specific kernels showing PASS-to-FAIL degradation are identified with exact level/direction, OR the null-result interpretation includes per-kernel evidence showing uniform PASS across levels
   3. Augmentation trend graphs (per-kernel + aggregate) exist as publication-quality PDF and PNG files using Okabe-Ito color palette
   4. LASSI augmentation positioning paragraphs exist in paper.tex framing ParBench augmentation as complementary (robustness probing vs. agentic correction)
-**Plans**: TBD
+**Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
-- [ ] 03-03: TBD
+- [ ] 03-01-PLAN.md -- [Wave 1] Augmentation matrix analysis script + tests (AUG-01, AUG-02: per-kernel matrix, pattern classification, aggregates, JSON+MD output)
+- [ ] 03-02-PLAN.md -- [Wave 2, depends on 03-01] Publication-quality augmentation figures (AUG-04: heatmap + aggregate trend with Wilson CIs)
+- [ ] 03-03-PLAN.md -- [Wave 1] LASSI positioning paragraphs in paper.tex Section 7.4 (AUG-03: complementary framing)
 
 ### Phase 4: Methodology & Reviewer Defense
 **Goal**: Section 4 methodology descriptions are precise enough to withstand SC-level reviewer scrutiny, with explicit justifications for every methodological choice
@@ -104,6 +104,7 @@ Plans:
 **Execution Order:**
 Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 (Phases 2, 3, 4 can execute in parallel after Phase 1 completes)
+Phase 6 is independent — can run any time after Phase 1.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -112,3 +113,15 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 3. Augmentation Analysis & Story | 0/3 | Not started | - |
 | 4. Methodology & Reviewer Defense | 0/2 | Not started | - |
 | 5. Introduction, Positioning & Characterization Table | 0/3 | Not started | - |
+| 6. RSBench Single-File Re-spec Experiment | 0/0 | Not started | - |
+
+### Phase 6: RSBench Single-File Re-spec Controlled Experiment
+
+**Goal:** Confirm the multi-file translation hypothesis: create a merged single-file CUDA target for RSBench (collapsing simulation.cu+init.cu into one file), run Qwen 3.5 397B eval on it, and compare pass rate against the current multi-file spec. A jump to ~48% (matching Rodinia single-file baseline) would prove multi-file decomposition — not kernel complexity — is the root cause of 0% failure, and provides a clean controlled experiment for the SC26 paper.
+**Directory:** `.planning/phases/06-rsbench-singlefile-respec-experiment/`
+**Requirements**: TBD
+**Depends on:** Phase 1 (pipeline confirmed working, baseline data available)
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 6 to break down)
