@@ -194,3 +194,70 @@ class TestPatternClassification:
         assert "Per-Kernel Augmentation Matrix" in md
         assert "Pattern Summary" in md
         assert "Aggregate Pass Rates" in md
+
+
+# ---------------------------------------------------------------------------
+# AUG-04 Figure Tests
+# ---------------------------------------------------------------------------
+
+FIGURE_DIR = PROJECT_ROOT / "docs" / "paper" / "figures"
+
+
+class TestFigureGeneration:
+    """Verify augmentation figures exist and meet quality criteria."""
+
+    def test_figures_exist(self) -> None:
+        """AUG-04: All 4 figure files exist after generation."""
+        for name in [
+            "aug_heatmap.pdf",
+            "aug_heatmap.png",
+            "aug_trend.pdf",
+            "aug_trend.png",
+        ]:
+            path = FIGURE_DIR / name
+            if not path.exists():
+                pytest.skip(
+                    f"Run augmentation_analysis.py --figures first: {name} missing"
+                )
+            assert path.stat().st_size > 1024, (
+                f"{name} is too small ({path.stat().st_size} bytes)"
+            )
+
+    def test_okabe_ito_palette(self) -> None:
+        """AUG-04: Script defines correct Okabe-Ito STATUS_COLORS."""
+        src = (
+            PROJECT_ROOT / "scripts" / "analysis" / "augmentation_analysis.py"
+        ).read_text(encoding="utf-8")
+        assert '"#009E73"' in src, "Missing PASS green"
+        assert '"#D55E00"' in src, "Missing BUILD_FAIL vermillion"
+        assert '"#E69F00"' in src, "Missing RUN_FAIL orange"
+        assert '"#0072B2"' in src, "Missing VERIFY_FAIL blue"
+
+    def test_heatmap_dimensions(self) -> None:
+        """AUG-04: Heatmap data has 26 rows (kernels) and 5 columns (L0-L4)."""
+        data = _load_output()
+        pm = data["primary_matrix"]
+        assert pm["kernel_count"] == 26, f"Expected 26 kernels, got {pm['kernel_count']}"
+        assert len(pm["levels"]) == 5, f"Expected 5 levels, got {len(pm['levels'])}"
+        # Verify each kernel has L0-L4 entries
+        for kernel, entry in pm["per_kernel"].items():
+            level_keys = [k for k in entry if k.startswith("L") and k[1:].isdigit()]
+            assert len(level_keys) == 5, (
+                f"{kernel} has {len(level_keys)} levels, expected 5: {level_keys}"
+            )
+
+    def test_figures_are_nonzero(self) -> None:
+        """AUG-04: All 4 figure files have size > 1KB."""
+        for name in [
+            "aug_heatmap.pdf",
+            "aug_heatmap.png",
+            "aug_trend.pdf",
+            "aug_trend.png",
+        ]:
+            path = FIGURE_DIR / name
+            if not path.exists():
+                pytest.skip(
+                    f"Run augmentation_analysis.py --figures first: {name} missing"
+                )
+            size = path.stat().st_size
+            assert size > 1024, f"{name} too small: {size} bytes (expected > 1KB)"
