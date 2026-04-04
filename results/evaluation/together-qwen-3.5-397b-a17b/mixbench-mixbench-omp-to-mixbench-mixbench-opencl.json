@@ -1,0 +1,70 @@
+{
+  "source_spec": "mixbench-mixbench-omp",
+  "target_spec": "mixbench-mixbench-opencl",
+  "kernel": "mixbench",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 0,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-03T11:12:57Z",
+  "prompt_tokens": 11193,
+  "completion_tokens": 1467,
+  "llm_response_time_seconds": 19.857,
+  "build_status": "pass",
+  "build_time_seconds": 0.467,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 6.414,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "9.72\n          192,     96.250,    0.82,15719.25, 163.32,     48.125,   30.33,  425.98,   8.85,    192.500,    0.00,     inf,    inf,    96.250,    0.82,15828.34, 164.45\n          256,    128.250,    0.67,25639.63, 199.92,     64.125,   40.38,  426.29,   6.65,    256.500,    0.00,     inf,    inf,   128.250,    1.08,15888.45, 123.89\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "single_precision_gflops": {
+      "value": 106.05,
+      "unit": "GFLOPS"
+    }
+  },
+  "baseline_wall_time_seconds": 30.0,
+  "translated_wall_time_seconds": 6.414,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 4.6773,
+  "translated_files": {
+    "mix_kernels.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n\n#ifndef class_T\n#define class_T float\n#endif\n\n#ifndef COMPUTE_ITERATIONS\n#define COMPUTE_ITERATIONS 1\n#endif\n\n#ifndef ELEMENTS_PER_THREAD\n#define ELEMENTS_PER_THREAD 1\n#endif\n\n#ifndef FUSION_DEGREE\n#define FUSION_DEGREE 1\n#endif\n\n#ifndef blockdim\n#define blockdim 256\n#endif\n\n#ifdef ENABLE_HP\ntypedef short cl_half2[2];\n#endif\n\n#ifdef BLOCK_STRIDED\n#define GET_INDEX(i) ((i) * blockdim + get_local_id(0))\n#else\n#define GET_INDEX(i) ((i) * blockdim * ELEMENTS_PER_THREAD * FUSION_DEGREE + get_local_id(0) * ELEMENTS_PER_THREAD * FUSION_DEGREE + get_global_id(0) % (ELEMENTS_PER_THREAD * FUSION_DEGREE))\n#endif\n\n__attribute__((noinline))\nclass_T bench_block(class_T* data, class_T f) {\n    class_T sum = 0;\n    \n    #ifdef BASELINE_IMPL\n    class_T t = data[0];\n    for (size_t j = 0; j < COMPUTE_ITERATIONS; j++) {\n        t = t * t + f;\n    }\n    sum += t;\n    #else\n    class_T t_vec[8];\n    class_T f_vec[8];\n    \n    for(int k=0; k<8; k++) {\n        f_vec[k] = data[k];\n        t_vec[k] = data[0]; \n    }\n    \n    size_t iter_count = COMPUTE_ITERATIONS / 8;\n    for (size_t j = 0; j < iter_count; j++) {\n        t_vec[0] = t_vec[0] * t_vec[0] + f_vec[0];\n        t_vec[1] = t_vec[1] * t_vec[1] + f_vec[1];\n        t_vec[2] = t_vec[2] * t_vec[2] + f_vec[2];\n        t_vec[3] = t_vec[3] * t_vec[3] + f_vec[3];\n        t_vec[4] = t_vec[4] * t_vec[4] + f_vec[4];\n        t_vec[5] = t_vec[5] * t_vec[5] + f_vec[5];\n        t_vec[6] = t_vec[6] * t_vec[6] + f_vec[6];\n        t_vec[7] = t_vec[7] * t_vec[7] + f_vec[7];\n    }\n    \n    size_t remainder = COMPUTE_ITERATIONS % 8;\n    if (remainder > 0) t_vec[0] = t_vec[0] * t_vec[0] + f_vec[0];\n    if (remainder > 1) t_vec[1] = t_vec[1] * t_vec[1] + f_vec[1];\n    if (remainder > 2) t_vec[2] = t_vec[2] * t_vec[2] + f_vec[2];\n    if (remainder > 3) t_vec[3] = t_vec[3] * t_vec[3] + f_vec[3];\n    if (remainder > 4) t_vec[4] = t_vec[4] * t_vec[4] + f_vec[4];\n    if (remainder > 5) t_vec[5] = t_vec[5] * t_vec[5] + f_vec[5];\n    if (remainder > 6) t_vec[6] = t_vec[6] * t_vec[6] + f_vec[6];\n    \n    sum = t_vec[0] + t_vec[1] + t_vec[2] + t_vec[3] + t_vec[4] + t_vec[5] + t_vec[6] + t_vec[7];\n    #endif\n    \n    return sum;\n}\n\n__kernel void benchmark_func(class_T seed, __global class_T* src) {\n    class_T local_sum = 0;\n    \n    size_t global_idx = get_global_id(0);\n    size_t total_elements = get_global_size(0) * ELEMENTS_PER_THREAD * FUSION_DEGREE;\n    \n    for (size_t fusion = 0; fusion < FUSION_DEGREE; fusion++) {\n        for (size_t epw = 0; epw < ELEMENTS_PER_THREAD; epw++) {\n            size_t idx = global_idx * ELEMENTS_PER_THREAD * FUSION_DEGREE + fusion * ELEMENTS_PER_THREAD + epw;\n            \n            if (idx < total_elements / (sizeof(class_T) == 2 ? 2 : 1)) { \n                class_T f = seed;\n                class_T t = src[idx];\n                \n                for (size_t j = 0; j < COMPUTE_ITERATIONS; j++) {\n                    t = t * t + f;\n                }\n                local_sum += t;\n            }\n        }\n    }\n    \n    src[global_idx] = local_sum;\n}\n\n__kernel void benchmark_func_vec(class_T seed, __global class_T* src) {\n    class_T local_sum = 0;\n    \n    size_t base_idx = get_global_id(0) * ELEMENTS_PER_THREAD * FUSION_DEGREE;\n    size_t total_elements = get_global_size(0) * ELEMENTS_PER_THREAD * FUSION_DEGREE;\n    \n    for (size_t fusion = 0; fusion < FUSION_DEGREE; fusion++) {\n        for (size_t epw = 0; epw < ELEMENTS_PER_THREAD; epw++) {\n            size_t idx = base_idx + fusion * ELEMENTS_PER_THREAD + epw;\n            \n            if (idx < total_elements) {\n                class_T data_block[8];\n                for(int k=0; k<8; k++) {\n                    if (idx + k < total_elements) {\n                        data_block[k] = src[idx + k];\n                    } else {\n                        data_block[k] = 0;\n                    }\n                }\n                \n                local_sum += bench_block(data_block, seed);\n            }\n        }\n    }\n    \n    src[get_global_id(0)] = local_sum;\n}\n\n__kernel void warmup_func(short seed, __global int* src) {\n    size_t idx = get_global_id(0);\n    src[idx] = seed;\n}\n"
+  },
+  "target_files_expected": [
+    "mix_kernels.cl"
+  ],
+  "target_files_extracted": [
+    "mix_kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 19.857,
+      "prompt_tokens": 11193,
+      "completion_tokens": 1467,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

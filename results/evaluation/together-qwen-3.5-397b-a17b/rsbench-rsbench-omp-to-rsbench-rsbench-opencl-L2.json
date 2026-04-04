@@ -1,0 +1,100 @@
+{
+  "source_spec": "rsbench-rsbench-omp",
+  "target_spec": "rsbench-rsbench-opencl",
+  "kernel": "rsbench",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 2,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-m",
+    "event",
+    "-s",
+    "small"
+  ],
+  "timestamp": "2026-04-03T10:20:23Z",
+  "prompt_tokens": 98687,
+  "completion_tokens": 24213,
+  "llm_response_time_seconds": 342.972,
+  "build_status": "pass",
+  "build_time_seconds": 0.434,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.181,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-05b26e.d\n1 error generated.\n",
+  "run_stdout_snippet": "==============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.124 seconds\nLookups:     10,200,000\nLookups/s:   82,258,016\nSimulation Kernel Only Statistics\nRuntime:     0.017 seconds\nLookups/s:   599,992,998\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.7,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel.cl": "#include <stdio.h>\n#include <stdlib.h>\n\nconst char* kernel_source = \n\"__kernel void macro_xs_lookup_kernel(...)\" // Full kernel code as a string\n;\n\n__attribute__((constructor))\nvoid create_kernel_file() {\n    FILE *fp = fopen(\"kernel.cl\", \"w\");\n    if (fp) {\n        fprintf(fp, \"%s\", kernel_source);\n        fclose(fp);\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel.cl"
+  ],
+  "target_files_extracted": [
+    "kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 58.965,
+      "prompt_tokens": 28673,
+      "completion_tokens": 4160,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n1 error generated.\nCould not open file: /tmp/dep-ce8998.d\n1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-ce8998.d\n1 error generated.\n",
+      "run_stdout_snippet": "==============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.124 seconds\nLookups:     10,200,000\nLookups/s:   82,258,016\nSimulation Kernel Only Statistics\nRuntime:     0.018 seconds\nLookups/s:   566,662,703\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 39.905,
+      "prompt_tokens": 32890,
+      "completion_tokens": 4176,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code 1):\n```\n1 error generated.\nCould not open file: /tmp/dep-d58040.d\n1 error generated.\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-d58040.d\n1 error generated.\n",
+      "run_stdout_snippet": "==============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.123 seconds\nLookups:     10,200,000\nLookups/s:   82,926,892\nSimulation Kernel Only Statistics\nRuntime:     0.017 seconds\nLookups/s:   600,001,413\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 244.102,
+      "prompt_tokens": 37124,
+      "completion_tokens": 15877,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\nCould not open file: /tmp/dep-05b26e.d\n1 error generated.\n",
+      "run_stdout_snippet": "==============================================\nNOTE: Timings are estimated -- use nvprof/nsys/iprof/rocprof for formal analysis\nTotal Time Statistics (OpenCL Init / JIT Compilation + Simulation Kernel)\nRuntime:     0.124 seconds\nLookups:     10,200,000\nLookups/s:   82,258,016\nSimulation Kernel Only Statistics\nRuntime:     0.017 seconds\nLookups/s:   599,992,998\nVerification checksum: 0 (WARNING - INAVALID CHECKSUM!)\n================================================================================\n",
+      "extraction_fail": null
+    }
+  ]
+}

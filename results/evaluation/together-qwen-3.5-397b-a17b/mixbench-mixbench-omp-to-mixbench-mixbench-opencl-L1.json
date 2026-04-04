@@ -1,0 +1,70 @@
+{
+  "source_spec": "mixbench-mixbench-omp",
+  "target_spec": "mixbench-mixbench-opencl",
+  "kernel": "mixbench",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-03T11:13:26Z",
+  "prompt_tokens": 11195,
+  "completion_tokens": 739,
+  "llm_response_time_seconds": 14.89,
+  "build_status": "pass",
+  "build_time_seconds": 0.467,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 3.755,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "8.15\n          192,     96.250,    0.45,29001.56, 301.31,     48.125,   30.35,  425.61,   8.84,    192.500,    0.00,     inf,    inf,    96.250,    0.80,16050.48, 166.76\n          256,    128.250,    0.58,29857.88, 232.81,     64.125,   40.40,  426.04,   6.64,    256.500,    0.00,     inf,    inf,   128.250,    1.07,16071.69, 125.32\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {
+    "single_precision_gflops": {
+      "value": 108.86,
+      "unit": "GFLOPS"
+    }
+  },
+  "baseline_wall_time_seconds": 30.0,
+  "translated_wall_time_seconds": 3.755,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 7.9893,
+  "translated_files": {
+    "mix_kernels.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n\n#ifndef class_T\n#define class_T float\n#endif\n\n#ifndef BLOCK_STRIDED\n#define BLOCK_STRIDED 0\n#endif\n\n#ifndef ENABLE_DP\n#define ENABLE_DP 0\n#endif\n\n#ifndef ENABLE_HP\n#define ENABLE_HP 0\n#endif\n\n#ifndef blockdim\n#define blockdim 256\n#endif\n\n#ifndef COMPUTE_ITERATIONS\n#define COMPUTE_ITERATIONS 0\n#endif\n\n#ifndef ELEMENTS_PER_THREAD\n#define ELEMENTS_PER_THREAD 1\n#endif\n\n#ifndef FUSION_DEGREE\n#define FUSION_DEGREE 1\n#endif\n\n#if ENABLE_HP\ntypedef struct {\n    half x;\n    half y;\n} half2;\n#endif\n\n__attribute__((noinline))\nclass_T bench_block(class_T* data, class_T f) {\n    class_T sum = 0;\n    \n    #if COMPUTE_ITERATIONS == 0\n        sum = data[0];\n    #else\n        class_T t = data[0];\n        for (int j = 0; j < COMPUTE_ITERATIONS; j++) {\n            t = t * t + f;\n        }\n        sum = t;\n        \n        for (int i = 1; i < ELEMENTS_PER_THREAD; i++) {\n            t = data[i];\n            for (int j = 0; j < COMPUTE_ITERATIONS; j++) {\n                t = t * t + f;\n            }\n            sum += t;\n        }\n    #endif\n    \n    return sum;\n}\n\n__kernel void benchmark_func(class_T seed, __global class_T* src) {\n    size_t idx = get_global_id(0);\n    size_t stride = get_global_size(0);\n    \n    #if BLOCK_STRIDED\n        stride = get_local_size(0) * get_num_groups(0);\n    #endif\n    \n    size_t global_offset = idx * ELEMENTS_PER_THREAD * FUSION_DEGREE;\n    \n    class_T local_sum = 0;\n    \n    for (int f = 0; f < FUSION_DEGREE; f++) {\n        size_t base_idx = global_offset + f * ELEMENTS_PER_THREAD;\n        class_T f_val = seed;\n        \n        class_T block_sum = 0;\n        class_T t[ELEMENTS_PER_THREAD];\n        \n        #pragma clang loop vectorize(enable)\n        for (int i = 0; i < ELEMENTS_PER_THREAD; i++) {\n            t[i] = src[base_idx + i];\n        }\n        \n        #if COMPUTE_ITERATIONS > 0\n            for (int j = 0; j < COMPUTE_ITERATIONS; j++) {\n                #pragma clang loop vectorize(enable)\n                for (int i = 0; i < ELEMENTS_PER_THREAD; i++) {\n                    t[i] = t[i] * t[i] + f_val;\n                }\n            }\n        #endif\n        \n        #pragma clang loop vectorize(enable)\n        for (int i = 0; i < ELEMENTS_PER_THREAD; i++) {\n            block_sum += t[i];\n        }\n        \n        local_sum += block_sum;\n    }\n    \n    src[idx] = local_sum;\n}\n"
+  },
+  "target_files_expected": [
+    "mix_kernels.cl"
+  ],
+  "target_files_extracted": [
+    "mix_kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 14.89,
+      "prompt_tokens": 11195,
+      "completion_tokens": 739,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}
