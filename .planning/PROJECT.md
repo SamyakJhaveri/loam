@@ -22,23 +22,23 @@ Every data claim in the paper must be verifiable against actual result files on 
 - [x] Session C1 (Gemini -> GPT-4.1 mini text replacement) -- commit 28b510a
 - [x] Analysis pipeline: paper_data.json, statistical_analysis.json, selfrepair_analysis.json, error_taxonomy.json -- existing
 - [x] Related work section with 10-paper comparison table -- existing
+- [x] Cross-check all numerical claims in Sections 1-5 against ground truth data files -- Validated in Phase 1
+- [x] Verify/update augmentation level definitions table against actual LEVEL_FRACTIONS in code -- Validated in Phase 1
+- [x] Verify suite-summary table (35 kernels, 96 specs) against manifest.jsonl + specs/ count -- Validated in Phase 1
+- [x] Verify model config table post-C1 (Qwen + GPT-4.1 mini descriptions coherent) -- Validated in Phase 1
+- [x] Verify hardware/software table against actual system (nvcc, gcc versions) -- Validated in Phase 1
+- [x] Benchmark characterization table (SLoC, categories, multi-file, API coverage, language features) -- Validated in Phase 2
+- [x] Extend SLoC analysis from 18 to all 35 kernels -- Validated in Phase 2 (35 kernels, range 80-3304)
+- [x] Language feature grep (OpenMP 1.0-4.5, CUDA basic-9.0+, OpenCL 1.x-2.0) in source dirs -- Validated in Phase 2
+- [x] Language standard distribution from spec JSONs -- Validated in Phase 2 (206 specs)
+- [x] Domain category distribution from manifest.jsonl -- Validated in Phase 2 (12 categories)
 
 ### Active
 
-- [ ] Cross-check all numerical claims in Sections 1-5 against ground truth data files
-- [ ] Benchmark characterization table (SLoC, categories, multi-file, API coverage, language features)
-- [ ] Extend SLoC analysis from 18 to all 35 kernels
 - [ ] Quantitative highlights woven into Introduction (not bullet lists)
 - [ ] Multi-file translation emphasis (36.9% of specs) in intro + Section 4
 - [ ] LASSI differentiation beyond build-run-verify (augmentation, multi-suite, survey-grounded curation)
 - [ ] Augmentation motivating examples (per-kernel x per-level matrix, 2-3 degradation examples or strengthened null-result interpretation)
-- [ ] Verify/update augmentation level definitions table against actual LEVEL_FRACTIONS in code
-- [ ] Verify suite-summary table (35 kernels, 96 specs) against manifest.jsonl + specs/ count
-- [ ] Verify model config table post-C1 (Qwen + GPT-4.1 mini descriptions coherent)
-- [ ] Verify hardware/software table against actual system (nvcc, gcc versions)
-- [ ] Language feature grep (OpenMP 1.0-4.5, CUDA basic-9.0+, OpenCL 1.x-2.0) in source dirs
-- [ ] Language standard distribution from spec JSONs
-- [ ] Domain category distribution from manifest.jsonl
 - [ ] Strengthen "reviewer defense" for kernel isolation methodology
 - [ ] Re-run analysis scripts if stale (paper_data.json from April 1 -- check if it covers all current results)
 - [ ] Augmentation trend graphs (per-kernel + aggregate, publication quality)
