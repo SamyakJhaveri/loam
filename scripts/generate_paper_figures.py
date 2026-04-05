@@ -19,7 +19,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 import sys
@@ -95,11 +94,6 @@ MODEL_DISPLAY: dict[str, str] = {
 MODEL_DISPLAY_SHORT: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "Qwen 3.5 397B-A17B",
     "azure-gpt-4.1-mini":          "GPT-4.1 mini",
-}
-
-MODEL_LINESTYLE: dict[str, tuple[str, str]] = {
-    "together-qwen-3.5-397b-a17b": ("D-.", "dashdot"),
-    "azure-gpt-4.1-mini":          ("v-", "solid"),
 }
 
 # Legacy palette references for survey figures (F2, C.4)
@@ -523,8 +517,6 @@ def generate_f3_kernel_heatmap(
     6 directions.  Kernels are grouped by suite (SUITE_ORDER) with horizontal
     divider lines and suite labels on the left margin.
     """
-    from matplotlib.patches import Rectangle
-
     # ------------------------------------------------------------------
     # 1. Filter to base L0 records in standard 6 directions
     # ------------------------------------------------------------------
@@ -542,6 +534,17 @@ def generate_f3_kernel_heatmap(
     lookup: dict[tuple[str, str], str] = {}
     kernel_suite: dict[str, str] = {}
     kernel_pass_count: dict[str, int] = defaultdict(int)
+
+    kernel_apis: dict[str, set[str]] = defaultdict(set)
+    # Also scan ALL records (not just std) to detect omp_target-only kernels
+    for r in [r for r in records if not r.get("is_sample", False)]:
+        rk = r.get("kernel", "")
+        src_spec = r.get("source_spec", "")
+        tgt_spec = r.get("target_spec", "")
+        if src_spec:
+            kernel_apis[rk].add(_extract_api(src_spec))
+        if tgt_spec:
+            kernel_apis[rk].add(_extract_api(tgt_spec))
 
     for r in std_records:
         k = r["kernel"]
@@ -613,7 +616,10 @@ def generate_f3_kernel_heatmap(
 
     ax.imshow(matrix, cmap=cmap, norm=norm, aspect="auto")
 
-    # Cell text: status abbreviation or em-dash for missing
+    # API display names for missing-data labels
+    _api_full = {"omp": "OpenMP", "cuda": "CUDA", "opencl": "OpenCL"}
+
+    # Cell text: status abbreviation or specific missing-API reason
     for i, kernel in enumerate(kernels_ordered):
         for j, direction in enumerate(DIRECTIONS):
             status = lookup.get((kernel, direction))
@@ -626,10 +632,26 @@ def generate_f3_kernel_heatmap(
                     color=_text_color_for_bg(bg),
                 )
             else:
+                # Determine which API is missing for this kernel+direction
+                src_api, tgt_api = direction.split("-to-")
+                apis = kernel_apis.get(kernel, set())
+                src_missing = src_api not in apis
+                tgt_missing = tgt_api not in apis
+                if src_missing and tgt_missing:
+                    reason = "No src\nor tgt\nimpl."
+                elif src_missing:
+                    api_name = _api_full.get(src_api, src_api)
+                    reason = f"No {api_name}\nsrc impl."
+                elif tgt_missing:
+                    api_name = _api_full.get(tgt_api, tgt_api)
+                    reason = f"No {api_name}\ntgt impl."
+                else:
+                    reason = "\u2014"
                 ax.text(
-                    j, i, "\u2014",
+                    j, i, reason,
                     ha="center", va="center",
-                    fontsize=7, color="#999999",
+                    fontsize=4.5, fontstyle="italic", color="#777777",
+                    linespacing=0.85,
                 )
 
     # ------------------------------------------------------------------
@@ -661,12 +683,19 @@ def generate_f3_kernel_heatmap(
         ax.axhline(boundary_y - 0.5, color="black", linewidth=2.0, linestyle="-")
 
     for suite_name, y_mid in suite_midpoints:
+        display = SUITE_DISPLAY.get(suite_name, suite_name)
         ax.text(
-            -1.5, y_mid, SUITE_DISPLAY.get(suite_name, suite_name),
-            ha="center", va="center",
-            fontsize=9, fontweight="bold",
-            rotation=90,
+            -1.0, y_mid, display,
+            ha="right", va="center",
+            fontsize=8, fontweight="bold",
+            rotation=0,
             clip_on=False,
+            bbox=dict(
+                boxstyle="round,pad=0.2",
+                facecolor="#f0f0f0",
+                edgecolor="#cccccc",
+                linewidth=0.5,
+            ),
         )
 
     # ------------------------------------------------------------------
@@ -694,15 +723,23 @@ def generate_f3_kernel_heatmap(
         ncol=len(legend_handles), frameon=False, fontsize=8,
     )
 
-    # GPT-4.1 mini annotation below legend
+    # Explanatory annotations below legend
     fig.text(
         0.5, -0.04,
-        "GPT-4.1 mini: data pending (all directions N/A)",
-        ha="center", va="top", fontsize=8, fontstyle="italic", color="#666666",
+        '"No [API] src/tgt impl." = the benchmark suite has no implementation '
+        "in that API for this kernel,\n"
+        "so the translation task does not exist "
+        "(e.g., dwt2d has no OpenMP code; gaussian has no OpenMP code).",
+        ha="center", va="top", fontsize=6.5, fontstyle="italic", color="#555555",
+    )
+    fig.text(
+        0.5, -0.08,
+        "GPT-4.1 mini: data pending (all directions N/A).",
+        ha="center", va="top", fontsize=6.5, fontstyle="italic", color="#666666",
     )
 
     fig.tight_layout()
-    fig.subplots_adjust(left=0.22)
+    fig.subplots_adjust(left=0.28, bottom=0.08)
     _save_figure(fig, output_dir, "f3_kernel_model_heatmap")
     plt.close(fig)
 
@@ -735,7 +772,7 @@ def generate_f4_failure_taxonomy(
             total = sum(counts.values())
             print(f"  {d}: {total} tasks")
 
-    fig, ax = plt.subplots(figsize=(3.5, 3.0))
+    fig, ax = plt.subplots(figsize=(4.5, 3.0))
 
     active_dirs = [d for d in DIRECTIONS if d in dir_status]
     x = np.arange(len(active_dirs))
@@ -762,7 +799,7 @@ def generate_f4_failure_taxonomy(
                 ax.text(
                     x[i], bottom + count / 2, str(int(count)),
                     ha="center", va="center",
-                    fontsize=7, fontweight="bold",
+                    fontsize=9, fontweight="bold",
                     color=_text_color_for_bg(STATUS_COLORS[status]),
                 )
         bottoms += counts
@@ -772,11 +809,12 @@ def generate_f4_failure_taxonomy(
         [DIRECTION_LABELS.get(d, d) for d in active_dirs],
         fontsize=8, rotation=30, ha="right",
     )
+    ax.tick_params(axis="x", length=0)  # remove x-axis tick marks
     ax.set_ylabel("Number of Tasks")
     ax.set_ylim(0, max(bottoms) * 1.08 if max(bottoms) > 0 else 1)
     ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
     ax.set_title(
-        "Failure Taxonomy: Status Distribution by Direction\n(L0, All Suites)",
+        "Failure Taxonomy: Status Distribution by Direction\n(L0, All Suites, Qwen 3.5 397B)",
         fontsize=9, fontweight="bold",
     )
 
@@ -784,7 +822,9 @@ def generate_f4_failure_taxonomy(
     handles = create_status_legend(present_ordered, include_hatch=True)
     ax.legend(
         handles=handles,
-        loc="upper right", frameon=True, framealpha=0.9, fontsize=7,
+        loc="upper left", bbox_to_anchor=(1.02, 1.0),
+        frameon=True, framealpha=0.9, fontsize=7,
+        borderaxespad=0,
     )
     ax.grid(axis="y", alpha=0.3)
 
@@ -968,14 +1008,48 @@ def generate_f6_cross_suite_comparison(
         capsize=3, error_kw={"linewidth": 1.0, "color": "black"},
     )
 
-    # Annotate each bar with "pass/total"
+    # Compute per-suite failure breakdowns for annotation
+    suite_failures: dict[str, dict[str, int]] = {}
+    for suite in SUITE_ORDER:
+        suite_recs = [r for r in std_records if r.get("suite") == suite]
+        fails: dict[str, int] = defaultdict(int)
+        for r in suite_recs:
+            st = r.get("overall_status", "UNKNOWN")
+            if st != "PASS":
+                fails[st] += 1
+        suite_failures[suite] = dict(fails)
+
+    # Annotate each bar with "pass/total" and failure breakdown for 0% suites
     for i, (bar, s) in enumerate(zip(bars, suite_stats)):
         h = bar.get_height()
+        x_center = bar.get_x() + bar.get_width() / 2
+        # pass/total label above bar
         ax.text(
-            bar.get_x() + bar.get_width() / 2, h + max(yerr_high[i], 0.02) + 0.02,
+            x_center, h + max(yerr_high[i], 0.02) + 0.02,
             f"{s['pass']}/{s['total']}", ha="center", va="bottom",
             fontsize=8, color=PALETTE["charcoal"],
         )
+        # For 0% suites, show failure breakdown inside the bar area
+        if s["pass"] == 0 and s["total"] > 0:
+            fails = suite_failures.get(s["suite"], {})
+            parts = []
+            for ftype in ["BUILD_FAIL", "RUN_FAIL", "VERIFY_FAIL", "EXTRACTION_FAIL", "ERROR"]:
+                cnt = fails.get(ftype, 0)
+                if cnt > 0:
+                    label = {"BUILD_FAIL": "build fail",
+                             "RUN_FAIL": "run fail",
+                             "VERIFY_FAIL": "verify fail",
+                             "EXTRACTION_FAIL": "extract fail",
+                             "ERROR": "API error"}[ftype]
+                    parts.append(f"{cnt} {label}")
+            if parts:
+                ax.text(
+                    x_center, 0.06,
+                    "\n".join(parts),
+                    ha="center", va="bottom",
+                    fontsize=5.5, fontstyle="italic", color="#444444",
+                    linespacing=1.2,
+                )
 
     ax.set_xticks(x_pos)
     ax.set_xticklabels(
@@ -985,12 +1059,22 @@ def generate_f6_cross_suite_comparison(
     ax.set_ylabel("Pass Rate")
     ax.set_ylim(0, 1.15)
     ax.set_title(
-        "L0 Pass Rate by Suite (Standard Directions)",
-        fontsize=10, fontweight="bold", pad=8,
+        "L0 Pass Rate by Suite (Standard Directions, Qwen 3.5 397B)",
+        fontsize=9, fontweight="bold", pad=8,
     )
     ax.grid(axis="y", alpha=0.3)
 
+    # Explanatory footnote
+    fig.text(
+        0.5, -0.02,
+        "XSBench/RSBench 0%: complex multi-file programs with inter-module\n"
+        "dependencies — all 6 translations failed (mostly linker errors from\n"
+        "incorrect atomics/symbol resolution). HeCBench 90%: single-file kernels.",
+        ha="center", va="top", fontsize=6.5, fontstyle="italic", color="#555555",
+    )
+
     fig.tight_layout()
+    fig.subplots_adjust(bottom=0.25)
     _save_figure(fig, output_dir, "f6_cross_suite_comparison")
     plt.close(fig)
 

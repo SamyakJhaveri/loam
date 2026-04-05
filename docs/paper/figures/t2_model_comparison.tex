@@ -1,11 +1,8 @@
-\begin{tabular}{llrrrrrrr}
+\begin{tabular}{lrrrrrrr}
 \toprule
-Direction & Model & PASS & Total & Rate (\%) & BUILD\_FAIL & RUN\_FAIL & VERIFY\_FAIL & EXTR\_FAIL \\
+Model & Overall & CUDA$\to$OMP & OMP$\to$CUDA & CUDA$\to$OCL & OCL$\to$CUDA & OMP$\to$OCL & OCL$\to$OMP \\
 \midrule
-CUDA$\to$OMP & Qwen 3.5 397B-A17B & 11 & 18 & 61.1 & 7 & 0 & 0 & 0 \\
-\midrule
-OMP$\to$CUDA & Qwen 3.5 397B-A17B & 9 & 18 & 50.0 & 9 & 0 & 0 & 0 \\
-\midrule
-CUDA$\to$OCL & Qwen 3.5 397B-A17B & 4 & 20 & 20.0 & 0 & 13 & 3 & 0 \\
+Qwen 3.5 397B & 49/138 (35.5\%) & 16/26 (61.5\%) & 14/26 (53.8\%) & 4/23 (17.4\%) & 2/23 (8.7\%) & 6/20 (30.0\%) & 7/20 (35.0\%) \\
+GPT-4.1 mini & pending & pending & pending & pending & pending & pending & pending \\
 \bottomrule
 \end{tabular}
