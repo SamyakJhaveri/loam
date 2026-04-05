@@ -117,10 +117,9 @@ LASSI~\cite{LASSI2024} addresses the same kernel-level granularity but differs i
 
 Together, these gaps define the problem that ParBench is designed to solve: kernel-level evaluation granularity, build-infrastructure isolation, multi-file coordination assessment, training-data robustness through augmentation, and survey-grounded benchmark selection. Figure~\ref{fig:architecture} provides an end-to-end overview of the ParBench pipeline, showing how source code flows through augmentation, LLM-based translation, and automated build-run-verify evaluation to produce a correctness verdict for each benchmark task.
 
-% src: S1 Contributions numbers verified against paper_data.json (01-01 verified 2026-04-03)
-% src: "96 specs" = same decomposition as Abstract (60+25+4+4+3, disk-verified)
-% src: "480 tasks" = paper_data.json > primary_campaign > total; "426 pass@k" = paper_data.json > file_counts > passk_campaign
-% src: "30.8% BUILD_FAIL" = 148/480; "9.8% VERIFY_FAIL" = 47/480 (paper_data.json > primary_campaign > overall > by_status)
+% src: quantitative_findings.json > campaign_1 (all-suite scope)
+% src: "96 specs" = 60+25+4+4+3 (disk-verified); "700 tasks" = campaign_1_valid
+% src: "33.9% BUILD_FAIL" = 237/700; "7.3% VERIFY_FAIL" = 51/700
 \subsection{Contributions}
 \label{sec:contributions}
 
@@ -131,32 +130,32 @@ This paper presents ParBench and makes the following contributions:
 
 \item \textbf{AST-driven augmentation engine}---Six semantics-preserving source-level transforms at five augmentation levels (L0--L4) that systematically test whether LLMs reason about parallel structure or pattern-match from training data. Level-invariant: 68 of 88 non-KNOWN\_FAIL specs across five suites PASS at all levels L1--L4 with zero correctness regressions. LLM evaluation at L0--L4 measures augmentation robustness as a discriminator of genuine parallel reasoning versus surface pattern-matching.
 
-\item \textbf{Empirical evaluation}---Analysis of Qwen~3.5 397B-A17B across 480 primary campaign tasks and 426 pass@$k$ tasks spanning six directions and five augmentation levels, producing a failure taxonomy (30.8\% BUILD\_FAIL, 9.8\% VERIFY\_FAIL), per-kernel difficulty tiers, self-repair effectiveness measurement, augmentation robustness characterization with statistical independence testing, and a pass@$k$ analysis at temperature 0.7 to separate deterministic failures from sampling-sensitive cases. \pending{GPT-4.1~mini comparative evaluation will expand the dataset to approximately 1,420 primary tasks across two providers (Alibaba via Together AI, OpenAI via Azure).}
+\item \textbf{Empirical evaluation}---Analysis of Qwen~3.5 397B-A17B across 700 primary campaign tasks and 420 pass@$k$ tasks spanning six directions and five augmentation levels, producing a failure taxonomy (33.9\% BUILD\_FAIL, 7.3\% VERIFY\_FAIL), per-kernel difficulty tiers, self-repair effectiveness measurement, augmentation robustness characterization with statistical independence testing, and a pass@$k$ analysis at temperature 0.7 to separate deterministic failures from sampling-sensitive cases. \pending{GPT-4.1~mini comparative evaluation will expand the dataset to approximately 1,420 primary tasks across two providers (Alibaba via Together AI, OpenAI via Azure).}
 \end{enumerate}
 
-% src: S1 Key Findings numbers verified against paper_data.json (01-01 verified 2026-04-03)
-% src: "68.8%" = 11/16 = 0.6875 CUDA-to-OMP L0 (paper_data.json > augmentation > cuda_to_omp_balanced > L0 > rate)
-% src: "36.2% [32.1%, 40.6%]" = 174/480 = 0.3625 (paper_data.json > primary_campaign > overall, truncation convention)
-% src: "65.0%" CUDA-to-OMP = 52/80 = 0.65 (paper_data.json > by_direction > cuda-to-omp > pass_rate)
-% src: "7.1%" OpenCL-to-CUDA = 6/85 = 0.0706 (paper_data.json > by_direction > opencl-to-cuda > pass_rate)
-% src: "Cohen h 0.26-0.31" = paper_data.json > direction_asymmetry: cuda-omp=0.2591, opencl-omp=0.2731, cuda-opencl=0.3127
-% src: "17.5%" first-attempt = 84/480 (paper_data.json > self_repair > first_attempt_pass); "36.2%" final = 174/480
-% src: "90 of 396" = paper_data.json > self_repair > repaired=90, total_tasks-first_attempt_pass=480-84=396
-% src: "22.7%" repair rate = 90/396 = 0.2273; "5 regressions" = paper_data.json > self_repair > regression=5
+% src: quantitative_findings.json > campaign_1 (all-suite scope, n=700)
+% src: 66.7% L0 CUDA-to-OMP = 16/24 (campaign_1.direction_pass_rates.standard.cuda-to-omp)
+% src: 38.0% [34.5%, 41.6%] = 266/700 (campaign_1.aggregate_pass_rates.overall)
+% src: 64.2% CUDA-to-OMP all-level = campaign_1.augmentation_trends (aggregated)
+% src: 10.0% OpenCL-to-CUDA = 2/20 (campaign_1.direction_pass_rates.standard.opencl-to-cuda)
+% src: 22.1% first-attempt = 155/700 (campaign_1.self_repair.first_attempt_pass)
+% src: 111 of 544 repaired = 20.4% repair rate (campaign_1.self_repair)
+% src: 4 regressions = 0.7% (campaign_1.self_repair.regressions)
+% src: z=-0.77, p=0.44 (campaign_1.augmentation_trends.aggregate.cochran_armitage)
 \subsection{Key Findings Preview}
 \label{sec:findings-preview}
 
 ParBench produces several findings with immediate relevance for the HPC and LLM research communities:
 
-\textbf{Kernel-centric isolation unlocks success.} Qwen~3.5 397B-A17B achieves 68.8\% PASS on CUDA-to-OpenMP translation at L0 (16 kernels), demonstrating that kernel-level evaluation reveals capability that repository-level approaches obscure. The gap quantifies the orthogonality of translation skill and build-system-generation skill.
+\textbf{Kernel-centric isolation unlocks success.} Qwen~3.5 397B-A17B achieves 66.7\% PASS on CUDA-to-OpenMP translation at L0 (24 kernels across 5 suites), demonstrating that kernel-level evaluation reveals capability that repository-level approaches obscure. The gap quantifies the orthogonality of translation skill and build-system-generation skill.
 
-\textbf{Failure taxonomy reveals API syntax as the bottleneck.} Qwen~3.5 achieves 36.2\% [32.1\%, 40.6\%] overall across 480 tasks. \pending{Cross-model comparison awaiting GPT-4.1~mini data.} BUILD\_FAIL accounts for 30.8\% of all tasks, making it the dominant failure mode. VERIFY\_FAIL accounts for 9.8\%, indicating that a meaningful minority of compilable translations contain genuine parallel logic errors. The primary bottleneck remains API-specific syntax---missing \texttt{\#pragma omp} directives, retained CUDA memory management calls, wrong type annotations---rather than an inability to reason about parallel computation.
+\textbf{Failure taxonomy reveals API syntax as the bottleneck.} Qwen~3.5 achieves 38.0\% [34.5\%, 41.6\%] overall across 700 tasks. \pending{Cross-model comparison awaiting GPT-4.1~mini data.} BUILD\_FAIL accounts for 33.9\% of all tasks, making it the dominant failure mode. VERIFY\_FAIL accounts for 7.3\%, indicating that a meaningful minority of compilable translations contain genuine parallel logic errors. The primary bottleneck remains API-specific syntax---missing \texttt{\#pragma omp} directives, retained CUDA memory management calls, wrong type annotations---rather than an inability to reason about parallel computation.
 
-\textbf{Augmentation robustness confirms structural rather than surface-dependent failures.} The Cochran-Armitage trend test yields a null result ($z = -0.17$, $p = 0.87$): pass rates are stable across augmentation levels L0--L4, with no evidence that surface-level code transformations affect translation capability. This provides evidence against the memorization hypothesis and confirms that model failures reflect structural API knowledge gaps rather than training-data pattern-matching.
+\textbf{Augmentation robustness confirms structural rather than surface-dependent failures.} The Cochran-Armitage trend test yields a null result ($z = -0.77$, $p = 0.44$): pass rates are stable across augmentation levels L0--L4, with no evidence that surface-level code transformations affect translation capability. This provides evidence against the memorization hypothesis and confirms that model failures reflect structural API knowledge gaps rather than training-data pattern-matching.
 
-\textbf{Direction asymmetry.} CUDA-to-OpenMP (65.0\%) substantially outperforms OpenCL-to-CUDA (7.1\%), with intermediate directions spanning the range. McNemar's tests find no statistically significant asymmetry after Bonferroni correction, but medium effect sizes (Cohen's $h = 0.26$--$0.31$) suggest meaningful directional differences that the current sample size lacks power to confirm. The trend suggests that removing CUDA-specific constructs (explicit thread indexing, device memory management) is generally easier for LLMs than introducing them from directive-based OpenMP source, reflecting the structural advantage of translating from a more explicit to a more abstract programming model.
+\textbf{Direction asymmetry.} CUDA-to-OpenMP (64.2\%) substantially outperforms OpenCL-to-CUDA (10.0\%), with intermediate directions spanning the range. McNemar's tests find no statistically significant asymmetry after Bonferroni correction, but medium effect sizes (Cohen's $h = 0.12$--$0.28$) suggest meaningful directional differences that the current sample size lacks power to confirm. The trend suggests that removing CUDA-specific constructs (explicit thread indexing, device memory management) is generally easier for LLMs than introducing them from directive-based OpenMP source, reflecting the structural advantage of translating from a more explicit to a more abstract programming model.
 
-\textbf{Self-repair effectiveness.} Self-repair doubles the effective pass rate from 17.5\% (first-attempt) to 36.2\% (final), recovering 90 of 396 initially-failing tasks (22.7\% repair rate) with only 5 regressions (1.0\%). The gap between first-attempt pass rate and final pass rate quantifies the value of lightweight agentic error correction, directly comparable to the full agentic approaches evaluated by LASSI~\cite{LASSI2024}.
+\textbf{Self-repair effectiveness.} Self-repair raises the effective pass rate from 22.1\% (first-attempt) to 38.0\% (final), a 72\% relative increase, recovering 111 of 544 initially-failing tasks (20.4\% repair rate) with only 4 regressions (0.7\%). The gap between first-attempt pass rate and final pass rate quantifies the value of lightweight agentic error correction, directly comparable to the full agentic approaches evaluated by LASSI~\cite{LASSI2024}.
 
 %% =============================================================
 %% S2 RELATED WORK
