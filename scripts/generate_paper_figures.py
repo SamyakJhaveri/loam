@@ -888,76 +888,110 @@ def generate_f5_pass_at_k(
 
 
 # ===================================================================
-# F6: XSBench Cross-Granularity Comparison
+# F6: Cross-Suite Pass Rate Comparison
 # ===================================================================
 
 
-def generate_f6_xsbench_comparison(
+def _wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score 95% confidence interval for a binomial proportion."""
+    if total == 0:
+        return (0.0, 0.0)
+    p_hat = successes / total
+    denom = 1 + z**2 / total
+    center = (p_hat + z**2 / (2 * total)) / denom
+    spread = z * ((p_hat * (1 - p_hat) / total + z**2 / (4 * total**2)) ** 0.5) / denom
+    return (max(0.0, center - spread), min(1.0, center + spread))
+
+
+# Suite bar colors (Okabe-Ito based)
+SUITE_COLORS: dict[str, str] = {
+    "rodinia":  OKABE_ITO["blue"],
+    "xsbench":  OKABE_ITO["orange"],
+    "rsbench":  OKABE_ITO["green"],
+    "mixbench": OKABE_ITO["vermillion"],
+    "hecbench": OKABE_ITO["purple"],
+}
+
+
+def generate_f6_cross_suite_comparison(
     records: list[dict],
     output_dir: Path,
     verbose: bool,
 ) -> None:
-    """F6: XSBench ParBench vs ParEval-Repo pass rate comparison."""
-    # Filter to xsbench results in standard directions
-    xsbench = [r for r in records
-                if r["suite"] == "xsbench"
-                and r["direction"] in DIRECTIONS]
+    """F6: Cross-suite aggregate pass rate comparison bar chart."""
+    base_records = [r for r in records if not r.get("is_sample", False)]
+    l0_records = filter_records(base_records, level=0)
+    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
 
-    if not xsbench:
-        print("  WARNING: No XSBench eval results found -- skipping F6.")
+    if not std_records:
+        print("  WARNING: No L0 standard-direction records -- skipping F6.")
         return
 
-    dir_results: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "pass": 0})
-    for r in xsbench:
-        d = r["direction"]
-        dir_results[d]["total"] += 1
-        if r["overall_status"] == "PASS":
-            dir_results[d]["pass"] += 1
-
-    active_dirs = [d for d in DIRECTIONS if dir_results[d]["total"] > 0]
+    # Compute per-suite stats
+    suite_stats: list[dict] = []
+    for suite in SUITE_ORDER:
+        suite_recs = [r for r in std_records if r.get("suite") == suite]
+        total = len(suite_recs)
+        passed = sum(1 for r in suite_recs if r["overall_status"] == "PASS")
+        rate = passed / total if total > 0 else 0
+        ci_low, ci_high = _wilson_ci(passed, total)
+        suite_stats.append({
+            "suite": suite,
+            "total": total,
+            "pass": passed,
+            "rate": rate,
+            "ci_low": ci_low,
+            "ci_high": ci_high,
+        })
 
     if verbose:
-        for d in active_dirs:
-            s = dir_results[d]
-            print(f"  {d}: {s['pass']}/{s['total']}")
+        for s in suite_stats:
+            print(
+                f"  {s['suite']}: {s['pass']}/{s['total']} = {s['rate']:.1%} "
+                f"[{s['ci_low']:.1%}, {s['ci_high']:.1%}]"
+            )
 
     fig, ax = plt.subplots(figsize=(3.5, 2.5))
 
-    x_pos = np.arange(len(active_dirs))
-    width = 0.35
+    x_pos = np.arange(len(SUITE_ORDER))
+    rates = [s["rate"] for s in suite_stats]
+    bar_colors = [SUITE_COLORS.get(s["suite"], "#999999") for s in suite_stats]
 
-    pareval_rates = [0.0] * len(active_dirs)
-    parbench_rates = [
-        dir_results[d]["pass"] / dir_results[d]["total"]
-        if dir_results[d]["total"] > 0 else 0
-        for d in active_dirs
-    ]
+    # Asymmetric error bars for Wilson CI
+    yerr_low = [s["rate"] - s["ci_low"] for s in suite_stats]
+    yerr_high = [s["ci_high"] - s["rate"] for s in suite_stats]
 
-    ax.bar(x_pos - width / 2, pareval_rates, width,
-           label="ParEval-Repo (0%)", color="#b2bec3", edgecolor="white")
-    bars_bench = ax.bar(x_pos + width / 2, parbench_rates, width,
-                        label="ParBench (kernel-level)", color=STATUS_COLORS["PASS"],
-                        edgecolor="white")
+    bars = ax.bar(
+        x_pos, rates, width=0.6,
+        color=bar_colors, edgecolor="black", linewidth=0.5,
+        yerr=[yerr_low, yerr_high],
+        capsize=3, error_kw={"linewidth": 1.0, "color": "black"},
+    )
 
-    for bar, d in zip(bars_bench, active_dirs):
+    # Annotate each bar with "pass/total"
+    for i, (bar, s) in enumerate(zip(bars, suite_stats)):
         h = bar.get_height()
-        s = dir_results[d]
-        ax.text(bar.get_x() + bar.get_width() / 2, h + 0.02,
-                f"{s['pass']}/{s['total']}", ha="center", va="bottom",
-                fontsize=8, color=PALETTE["charcoal"])
+        ax.text(
+            bar.get_x() + bar.get_width() / 2, h + max(yerr_high[i], 0.02) + 0.02,
+            f"{s['pass']}/{s['total']}", ha="center", va="bottom",
+            fontsize=8, color=PALETTE["charcoal"],
+        )
 
     ax.set_xticks(x_pos)
-    ax.set_xticklabels([DIRECTION_LABELS.get(d, d) for d in active_dirs],
-                       fontsize=8, rotation=30, ha="right")
+    ax.set_xticklabels(
+        [SUITE_DISPLAY.get(s, s) for s in SUITE_ORDER],
+        fontsize=8,
+    )
     ax.set_ylabel("Pass Rate")
-    ax.set_ylim(0, 1.2)
-    ax.set_title("XSBench: Kernel-Level vs Repository-Level",
-                 fontsize=10, fontweight="bold", pad=8)
-    ax.legend(fontsize=8, frameon=False, loc="upper right")
+    ax.set_ylim(0, 1.15)
+    ax.set_title(
+        "L0 Pass Rate by Suite (Standard Directions)",
+        fontsize=10, fontweight="bold", pad=8,
+    )
     ax.grid(axis="y", alpha=0.3)
 
     fig.tight_layout()
-    _save_figure(fig, output_dir, "f6_xsbench_comparison")
+    _save_figure(fig, output_dir, "f6_cross_suite_comparison")
     plt.close(fig)
 
 
@@ -1449,7 +1483,7 @@ FIGURE_REGISTRY: dict[str, str] = {
     "F3":  "f3_kernel_heatmap",
     "F4":  "f4_failure_taxonomy",
     "F5":  "f5_pass_at_k",
-    "F6":  "f6_xsbench_comparison",
+    "F6":  "f6_cross_suite_comparison",
     "F7":  "f7_augmentation",
     "C.1": "c1_repair_transitions",
     "C.2": "c2_repair_rate",
@@ -1569,8 +1603,8 @@ def main() -> None:
         print()
 
     if "F6" in requested:
-        print("Generating F6: XSBench Cross-Granularity Comparison...")
-        generate_f6_xsbench_comparison(records, output_dir, v)
+        print("Generating F6: Cross-Suite Comparison...")
+        generate_f6_cross_suite_comparison(records, output_dir, v)
         print()
 
     if "F7" in requested:
