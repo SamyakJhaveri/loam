@@ -182,7 +182,8 @@ There is no CI workflow that runs the test suite automatically. Tests are enforc
 
 1. **Post-edit hook** (`.claude/hooks/post-edit-test.sh`) -- Automatically runs relevant tests after file edits as advisory feedback. Triggered for `c_augmentation/`, `harness/`, `scripts/evaluation/`, and `specs/` files.
 2. **Pre-commit gate** (`.claude/hooks/pre-commit-gate.sh`) -- Blocks `git commit` unless a `.validation_passed` sentinel file exists and is less than 30 minutes old. The sentinel is written by the `/validate` workflow after all 4 validation waves pass.
-3. **Validation loop** -- A 4-wave validation protocol that must pass before committing:
+3. **Sentinel cleanup** (`.claude/hooks/sentinel-cleanup.sh`) -- Deletes the `.validation_passed` sentinel whenever any file is edited or written, forcing re-validation before the next commit.
+4. **Validation loop** -- A 4-wave validation protocol that must pass before committing:
    - Wave 1: Schema verification, diff review, security scan
    - Wave 2: Test synthesis, regression checks, spec audits
    - Wave 3: Consistency checks, code simplification review

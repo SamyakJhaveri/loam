@@ -22,6 +22,7 @@ The harness compiles and runs HPC benchmark kernels. You need the compilers for 
 | OpenMP | `g++` with `-fopenmp` | GCC 12.4.0 (Ubuntu) |
 | OpenCL | `gcc`/`g++` with OpenCL headers and runtime libraries | GCC 12.4.0, OpenCL headers from NVIDIA HPC SDK 24.3 |
 | OMP target offload | `nvc++` | 24.3 (NVIDIA HPC SDK) |
+| SYCL | `icpx -fsycl` (Intel oneAPI DPC++) | 2025.3.2 (CPU-only, no GPU SYCL backend) |
 
 - **NVIDIA GPU** -- tested with GeForce RTX 4070 (compute capability sm_89)
 - CUDA toolkit or NVIDIA HPC SDK providing `nvcc`, OpenCL headers, and `libOpenCL.so`
@@ -46,7 +47,7 @@ cd parbench_sam
 
 ### 2. Initialize the Rodinia submodule
 
-The Rodinia benchmark source is included as a git submodule. You must initialize it for the harness to locate kernel source files.
+The Rodinia benchmark source is included as a git submodule (pinned to commit `9c10d3ea`). You must initialize it for the harness to locate kernel source files.
 
 ```bash
 git submodule update --init --recursive
@@ -116,6 +117,20 @@ Edit `config/paths.json` so that all three keys point to the absolute path of yo
 
 On the reference Linux machine, all three paths are `/home/samyak/Desktop/parbench_sam`. If you skip this step, the harness falls back to resolving paths relative to the `--project-root` CLI argument.
 
+## Benchmark Suites
+
+ParBench includes 206 kernel spec files across five benchmark suites:
+
+| Suite | Specs | APIs | Notes |
+|-------|-------|------|-------|
+| Rodinia | 60 | CUDA, OpenMP, OpenCL, OMP target | 54 TRUE PASS, 6 KNOWN_FAIL |
+| XSBench | 4 | CUDA, OpenMP, OpenCL, OMP target | All 4 PASS |
+| RSBench | 4 | CUDA, OpenMP, OpenCL, OMP target | All 4 PASS |
+| mixbench | 3 | CUDA, OpenMP, OpenCL | All 3 PASS |
+| HeCBench | 135 | CUDA, OpenMP, OMP target | 65 unique kernels |
+
+Each spec file is a JSON contract in `specs/` that fully describes a kernel variant -- its identity, source files, build commands, run arguments, and verification strategy. The harness uses these specs to drive the build-run-verify pipeline.
+
 ## First Run
 
 After installation, verify everything works by running three commands in sequence.
@@ -149,6 +164,53 @@ For verbose output, place the `-v` flag **before** the subcommand:
 ```bash
 python3 -m harness -v verify specs/rodinia-bfs-cuda.json
 ```
+
+### Harness subcommands
+
+The harness supports several subcommands beyond `verify`:
+
+| Subcommand | Description |
+|------------|-------------|
+| `build` | Compile a kernel only (no run or verify) |
+| `run` | Run a previously built kernel (no build or verify) |
+| `verify` | Full pipeline: build, run, and verify output |
+| `prompt` | Print the LLM prompt that would be sent for translation |
+| `info` | Display spec metadata summary |
+| `pairs` | List all available translation pairs from the manifest |
+
+Global flags (`-v`, `--json`, `--project-root`, `--manifest`) must appear **before** the subcommand.
+
+## Running an LLM Evaluation
+
+Once the harness is verified, you can run LLM-based kernel translation evaluations. This requires API keys for at least one supported provider (see [CONFIGURATION.md](CONFIGURATION.md)).
+
+### Single translation (dry run)
+
+Preview the prompt without calling the LLM:
+
+```bash
+python3 scripts/evaluation/llm_evaluate.py \
+  --source specs/rodinia-bfs-cuda.json \
+  --target specs/rodinia-bfs-omp.json \
+  --model azure-gpt-4.1 \
+  --project-root /path/to/parbench_sam \
+  --dry-run
+```
+
+### Batch evaluation
+
+Run a batch of kernel translations across a suite:
+
+```bash
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia \
+  --direction cuda-to-omp \
+  --models azure-gpt-4.1 \
+  --project-root /path/to/parbench_sam \
+  --resume -v
+```
+
+The `--suite` flag is **required** to avoid cross-suite kernel name collisions (e.g., `nw` exists in both Rodinia and HeCBench). The `--resume` flag skips translations whose result files already exist. Results are written as per-task JSON files to `results/evaluation/{model_name}/`.
 
 ## Common Setup Issues
 
@@ -218,6 +280,19 @@ git submodule update --init --recursive
 ```
 
 Note: Git worktrees do **not** initialize submodules automatically. If you are working in a worktree, the Rodinia sources will not be available. Only run evaluations from the main checkout.
+
+### HeCBench source not cloned
+
+**Symptom:** HeCBench specs fail with `FileNotFoundError` when the harness tries to locate source files.
+
+**Solution:** HeCBench is not a git submodule -- it must be cloned separately into the project root:
+
+```bash
+cd /path/to/parbench_sam
+git clone https://github.com/zjin-lcf/HeCBench.git HeCBench-master
+```
+
+The `HeCBench-master/` directory is gitignored but required on disk for any HeCBench spec to build and run.
 
 ## Alternative: Docker (CPU-Only)
 

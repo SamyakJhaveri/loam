@@ -250,3 +250,76 @@ python3 scripts/evaluation/analyze_eval.py \
   --project-root /path/to/parbench_sam \
   --results-dir results/evaluation
 ```
+
+## Benchmark Suites
+
+ParBench aggregates kernels from five HPC benchmark suites, covering 90 unique kernels
+across 206 spec files and four parallel APIs (CUDA, OpenMP, OpenCL, OpenMP target offload).
+
+| Suite | Kernels | Spec Files | APIs | Source |
+|-------|---------|------------|------|--------|
+| [Rodinia](https://rodinia.cs.virginia.edu/) | 22 | 60 | CUDA, OpenMP, OpenCL | Git submodule (`rodinia/rodinia-src/`, commit `9c10d3ea`) |
+| [HeCBench](https://github.com/zjin-lcf/HeCBench) | 65 | 135 | CUDA, OpenMP, OpenMP target | Cloned locally (`HeCBench-master/`, gitignored) |
+| [XSBench](https://github.com/ANL-CESAR/XSBench) | 1 | 4 | CUDA, OpenMP, OpenCL, OpenMP target | Git submodule (`xsbench-src/`) |
+| [RSBench](https://github.com/ANL-CESAR/RSBench) | 1 | 4 | CUDA, OpenMP, OpenCL, OpenMP target | Git submodule (`rsbench-src/`) |
+| [mixbench](https://github.com/ekondis/mixbench) | 1 | 3 | CUDA, OpenMP, OpenCL | Git submodule (`mixbench-src/`) |
+
+Each kernel variant is fully described by a JSON spec file in `specs/` that drives the
+build-run-verify pipeline. The append-only manifest (`manifest.jsonl`, 211 entries) indexes
+all spec files and enables automatic discovery of translation pairs across APIs.
+
+## Code Augmentation
+
+The `c_augmentation/` package provides AST-driven, semantics-preserving code transforms
+powered by libclang. These transforms create diverse LLM input variants to evaluate
+translation robustness -- the transformed code compiles and runs identically to the original.
+
+**Transforms available:**
+
+| Transform | Description |
+|-----------|-------------|
+| `ArithmeticTransform` | Expands compound operators (e.g., `x += 1` to `x = x + 1`) |
+| `SwapCondition` | Flips comparison operands (e.g., `x < y` to `y > x`) |
+| `PointerArithmeticToArrayIndex` | Converts pointer arithmetic to array indexing (e.g., `*(arr + i)` to `arr[i]`) |
+| `TypedefExpansion` | Inlines typedef aliases with their underlying types |
+| `ChangeNames` | Renames local variables to neutral identifiers |
+| `ChangeFunctionNames` | Renames non-entry-point functions |
+
+**Augmentation levels (L1--L4)** control the fraction of eligible candidates each transform
+modifies, from a single candidate (L1) to all candidates (L4). Level L0 is the unaugmented
+original source.
+
+**Run augmentation on a single spec:**
+
+```bash
+python3 scripts/augmentation/augment_verify.py specs/rodinia-bfs-cuda.json \
+  --augment_level 2 --seed 42 --project-root /path/to/parbench_sam
+```
+
+**Run augmentation unit tests (15 tests, all must pass before commit):**
+
+```bash
+python3 -m pytest c_augmentation/test_transforms.py -v
+```
+
+## Testing
+
+ParBench uses pytest for its test suite. The primary tests cover the code augmentation
+transforms:
+
+```bash
+# Run all augmentation transform tests
+python3 -m pytest c_augmentation/test_transforms.py -v
+
+# Run schema validation across all specs and the manifest
+python3 scripts/validate_schema.py --all
+```
+
+Approximately 15 schema validation errors are expected from phantom spec entries in the
+append-only manifest -- these are not bugs. See `GUIDE.md` for details.
+
+## Citation
+
+ParBench is being prepared for submission to SC26 (International Conference for High
+Performance Computing, Networking, Storage, and Analysis). Citation guidance will be
+added once the paper is published. <!-- VERIFY: SC26 submission status and citation details -->

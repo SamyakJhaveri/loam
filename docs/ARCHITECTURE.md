@@ -8,7 +8,7 @@ ParBench is a benchmark framework for evaluating LLM-based parallel code transla
 ```mermaid
 graph TD
     subgraph Spec Layer
-        SPECS["specs/*.json<br>(206 spec files)"]
+        SPECS["specs/*.json<br>(206 spec files across 5 suites)"]
         MANIFEST["manifest.jsonl<br>(211 entries, append-only)"]
         SCHEMA["schema/spec_schema.json<br>schema/manifest_schema.json"]
     end
@@ -125,9 +125,17 @@ sequenceDiagram
 
 The spec layer is the foundation of ParBench. It depends on nothing else and is consumed by every other layer.
 
-**Spec files** (`specs/*.json`, 206 files): Each JSON file is a declarative contract that fully describes a single kernel variant. Specs follow the naming pattern `{suite}-{kernel}-{api}.json` (e.g., `rodinia-bfs-cuda.json`). The schema (`schema/spec_schema.json`) enforces required top-level sections:
+**Spec files** (`specs/*.json`, 206 files across 5 suites): Each JSON file is a declarative contract that fully describes a single kernel variant. Specs follow the naming pattern `{suite}-{kernel}-{api}.json` (e.g., `rodinia-bfs-cuda.json`). The schema (`schema/spec_schema.json`) enforces required top-level sections:
 
-| Section | Purpose |
+| Suite | Spec Count | Kernel Count | Source |
+|-------|-----------|--------------|--------|
+| Rodinia | 60 | 20 | Git submodule (`rodinia/`, commit `9c10d3ea`) |
+| HeCBench | 135 | 65 | Cloned locally (`HeCBench-master/`, gitignored) |
+| XSBench | 4 | 1 | Local source (`xsbench/xsbench-src/`) |
+| RSBench | 4 | 1 | Local source (`rsbench/rsbench-src/`) |
+| mixbench | 3 | 1 | Local source (`mixbench/mixbench-src/`) |
+
+| Spec Section | Purpose |
 |---------|---------|
 | `identity` | `kernel_name`, `parallel_api`, `unique_id`, `source_suite` |
 | `provenance` | Repository URL, commit hash, source path for reproducibility |
@@ -212,9 +220,11 @@ The evaluation pipeline orchestrates LLM-based code translation and measures cor
 - `_is_kernel_only_translation()`: Detects OpenCL kernel-only translations (all `translation_targets` end with `.cl`) where host code is untouched.
 - `_build_cross_api_run_spec()` / `_build_cross_api_verify_spec()`: Constructs run/verify specs for cross-API translations, handling the distinction between kernel-only and full-program translations.
 - `analyze_build_failure()`: Parses linker errors and maps missing symbols to source file locations, enabling targeted retry feedback.
+- `_build_retry_message()`: Generates targeted feedback for the LLM based on the failure type (build error, run error, verification failure) to guide iterative repair attempts.
 - `strip_think_tags()`: Removes `<think>...</think>` tags from model responses (used for models with chain-of-thought output like Qwen).
 - `extract_code_blocks()`: Extracts fenced code blocks from LLM responses and maps them to expected target filenames.
 - `backup_files()` / `restore_files()`: Manages file backup and restoration in the target working directory during evaluation, ensuring the original source is always recoverable.
+- `_stage_support_headers()` / `_unstage_support_headers()`: Copies `.h/.hpp/.cuh` files from the source spec's `support_files` into the target working directory during build (and removes them afterward), so cross-API translations can resolve header includes.
 
 **`run_eval_batch.py`** -- Batch orchestration:
 
@@ -225,8 +235,10 @@ The evaluation pipeline orchestrates LLM-based code translation and measures cor
 **`analyze_eval.py`** -- Results aggregation:
 
 - Reads all per-task result JSONs under `results/evaluation/{model}/`.
-- Produces `eval_summary.json` (machine-readable), `eval_summary.md` (publication-ready tables), and optionally `eval_results_data.js` (dashboard data).
-- Supports complexity-aware reporting using `results/evaluation/translation_complexity.csv`.
+- `build_summary()`: Produces aggregated statistics with optional complexity-aware breakdown (using `results/evaluation/translation_complexity.csv`).
+- `build_markdown()`: Generates publication-ready Markdown tables including per-complexity-class pass rates and model-by-complexity cross-tabs.
+- `write_dashboard_js()`: Writes JS data blob to `visualizations/eval_results_data.js` for GitHub Pages dashboards.
+- Outputs `eval_summary.json` (machine-readable), `eval_summary.md` (publication-ready tables).
 - Excludes known-fail specs from aggregation.
 
 **`reverify_pass_results.py`** -- Result re-verification:
@@ -252,8 +264,11 @@ The analysis pipeline generates paper-ready data artifacts and statistical analy
 | `generate_results_matrix.py` | Generates combined results matrices across batches |
 | `generate_report.py` | Produces pilot summary reports from spec data |
 | `validate_characterization.py` | Validates benchmark characterization data |
+| `analyze_rodinia_batch.py` | Rodinia-specific batch analysis |
+| `analyze_cuda_batch.py` | CUDA-specific batch analysis |
+| `analyze_omp_batch.py` | OMP-specific batch analysis |
 
-Each analysis script has a corresponding test file (`test_*.py`) in the same directory for validation.
+Each analysis script has a corresponding test file (`test_*.py`) in the same directory for validation (7 test files total).
 
 **Figure generation** (`scripts/generate_paper_figures.py`):
 
@@ -303,6 +318,8 @@ results/
 | `prompt_tokens` / `completion_tokens` | Token usage |
 | `translation_mode` | Always `"kernel_centric"` |
 | `translation_type` | `"kernel_only"` or `"full_program"` |
+| `run_args_mode` | `"kernel_only_target_args"` / `"cross_api_source_args"` / `"same_api_target_args"` |
+| `verification_mode` | `"kernel_only_target_pattern"` / `"cross_api_combined_pattern"` / `"same_api_target_pattern"` |
 
 ## Key Abstractions
 
@@ -346,6 +363,17 @@ Translation pairs are derived from the manifest. For each kernel with *n* API va
 
 Translation directions are specified as `{src_api}-to-{tgt_api}` strings (e.g., `cuda-to-omp`, `omp-to-opencl`). The batch runner filters pairs by direction, suite, and optionally by kernel name.
 
+### Kernel-Only vs Full-Program Translation
+
+Cross-API translations fall into two categories based on target architecture:
+
+| Translation Type | Condition | Behavior |
+|-----------------|-----------|----------|
+| `kernel_only` | All `translation_targets` end with `.cl` | Host code untouched; target spec's args and patterns used as-is |
+| `full_program` | Any target file is not `.cl` | Host code rewritten by LLM; source spec's args adapted for target |
+
+The `_is_kernel_only_translation()` predicate in `llm_evaluate.py` detects this. For kernel-only translations (X-to-OpenCL), only the `.cl` kernel files are translated while the host driver code remains unchanged, so the target spec's run arguments and verification patterns apply directly. For full-program translations (CUDA-to-OMP, OMP-to-CUDA), the entire program structure changes and source-spec arguments must be adapted.
+
 ## Directory Map
 
 ```
@@ -366,7 +394,7 @@ parbench_sam/
     test_transforms.py              # 15 unit tests for all transforms
     validate_augmentation.py        # Augmentation output validation
     generate_single_aug.py          # Single-file augmentation utility
-  specs/                            # 206 kernel spec JSON files
+  specs/                            # 206 kernel spec JSON files (5 suites)
   manifest.jsonl                    # Append-only kernel registry (211 entries)
   schema/                           # JSON Schema validation files
     spec_schema.json
@@ -438,10 +466,10 @@ parbench_sam/
     paths.json                      # Platform-specific path configuration
     paths.json.template             # Template for paths.json
     compiler_inventory.txt          # Recorded compiler versions
-  rodinia/                          # Git submodule: Rodinia benchmark source
-  xsbench/                          # XSBench benchmark source
-  rsbench/                          # RSBench benchmark source
-  mixbench/                         # mixbench benchmark source
+  rodinia/                          # Git submodule: Rodinia benchmark source (commit 9c10d3ea)
+  xsbench/                          # XSBench benchmark source (xsbench-src/)
+  rsbench/                          # RSBench benchmark source (rsbench-src/)
+  mixbench/                         # mixbench benchmark source (mixbench-src/)
   HeCBench-master/                  # HeCBench benchmark source (gitignored, cloned locally)
   docs/
     paper/                          # SC26 paper LaTeX and figures
@@ -456,7 +484,7 @@ parbench_sam/
       kernel_centric_translation.md
       json_schema_design.md
       integrate_augmentation_into_harness.md
-  visualizations/                   # Interactive HTML dashboards
+  visualizations/                   # Interactive HTML dashboards (GitHub Pages)
     index.html                      # Dashboard landing page
     overview.html                   # Project overview
     pipeline.html                   # Pipeline visualization
@@ -472,7 +500,11 @@ parbench_sam/
     eval_results_data.js            # Evaluation results data for dashboards
     results_data.js                 # General results data for dashboards
     build_results_data.js           # Build results data for dashboards
-    assets/                         # Static assets (logos, icons)
+    logo-parbench.svg               # Project logo (main)
+    parbench-icon.svg               # Project icon
+    parbench-logo.svg               # Project logo (alternate)
+    parbench-logo-preview.html      # Logo preview page
+    assets/                         # Static assets (favicon, animated logo)
   tests/                            # Additional test files
     test_campaign_results.py
   templates/                        # Spec templates

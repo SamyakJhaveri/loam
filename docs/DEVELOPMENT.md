@@ -143,7 +143,7 @@ Note: approximately 15 validation errors from `--all` are expected (phantom spec
 |---------|-------------|
 | `python3 -m pytest c_augmentation/test_transforms.py -v` | Run all 15 augmentation unit tests |
 | `python3 -m pytest scripts/analysis/ -v` | Run all 148 analysis module tests |
-| `python3 -m pytest scripts/evaluation/test_generate_paper_figures.py -v` | Run figure generation tests |
+| `python3 -m pytest scripts/evaluation/test_generate_paper_figures.py -v` | Run 9 figure generation tests |
 
 See [TESTING.md](TESTING.md) for detailed test framework documentation.
 

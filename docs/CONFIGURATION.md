@@ -23,11 +23,12 @@ All API key variables are **required** only when running evaluations with that s
 
 ### Runtime Environment Variables (Spec-Level)
 
-Individual kernel specs can declare runtime environment variables in their `run.environment_variables` field. The harness runner (`harness/runner.py`) copies the current `os.environ`, overlays any spec-declared variables, and passes the result to the subprocess. Common examples found in specs:
+Individual kernel specs can declare runtime environment variables in their `run.environment_variables` field. The harness runner (`harness/runner.py`) copies the current `os.environ`, overlays any spec-declared variables, and passes the result to the subprocess. Variables found in specs:
 
 | Variable | Used By | Description |
 |----------|---------|-------------|
-| `LD_LIBRARY_PATH` | Several CUDA specs (e.g., `rodinia-backprop-cuda`, `rodinia-dwt2d-cuda`, `rodinia-lavamd-cuda`) | Ensures `libcudart.so.12` is found at runtime; typically set to `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64` |
+| `LD_LIBRARY_PATH` | Several CUDA specs (e.g., `rodinia-backprop-cuda`, `rodinia-dwt2d-cuda`, `rodinia-lavamd-cuda`, `rodinia-bptree-cuda`, `rodinia-huffman-cuda`) | Ensures `libcudart.so.12` is found at runtime; typically set to `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/lib64` |
+| `OMP_NUM_THREADS` | HeCBench OMP specs (e.g., `hecbench-chacha20-omp`, `hecbench-scan-omp`) | Controls the number of OpenMP threads; values vary per spec (e.g., `1` for chacha20, `1024` for scan) |
 
 Most specs set `environment_variables` to `null`, meaning they inherit the shell environment as-is.
 
@@ -116,7 +117,7 @@ Located in `schema/`, these define the structure of specs and manifest entries. 
 
 - **`config/compiler_inventory.txt`** -- Informational only; not read by any pipeline code.
 - **`schema/reference_platform.json`** -- Referenced by specs but not loaded at runtime by the harness.
-- **Spec `run.timeout_seconds`** -- Defaults to `300` seconds if not specified in a spec file.
+- **Spec `run.timeout_seconds`** -- Defaults to `300` seconds if not specified in a spec file (see `harness/runner.py`).
 - **Spec `run.environment_variables`** -- Defaults to `null` (inherits shell environment).
 - **`--project-root` CLI flag** -- Defaults to auto-detected project root in harness CLI and batch runner.
 - **`--resume` flag** -- Defaults to `True` in `run_eval_batch.py` (skips existing result files). Use `--no-resume` to force re-runs.
@@ -147,7 +148,7 @@ ParBench does not use environment-file-based overrides (no `.env.development`, `
 
 2. **Spec build variables** -- CUDA and OpenCL paths in spec JSON files are hardcoded to the NVIDIA HPC SDK paths on the reference Linux machine (`/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/...`). On a system with a standard CUDA install, these would typically be `/usr/local/cuda`.
 
-3. **Docker** -- The `Dockerfile` builds a CPU-only validation image. It auto-generates `config/paths.json` with `/app` paths and installs pinned dependencies from `requirements-lock.txt`. GPU-dependent operations (CUDA builds, OpenCL kernel execution) are not available in the container.
+3. **Docker** -- The `Dockerfile` builds a CPU-only validation image using `python:3.12-slim`. It auto-generates `config/paths.json` with `/app` paths and installs pinned dependencies from `requirements-lock.txt`. GPU-dependent operations (CUDA builds, OpenCL kernel execution) are not available in the container.
 
 ## Model Registry
 
@@ -169,13 +170,13 @@ The evaluation pipeline maintains a `MODEL_REGISTRY` dictionary in `scripts/eval
 | `gemini-2.5-flash` | Google | Gemini 2.5 Flash (thinking disabled) |
 | `together-qwen-3.5-397b-a17b` | Together AI | Qwen 3.5 397B MoE (thinking disabled) |
 
-New models can be added by inserting an entry in `MODEL_REGISTRY` and ensuring the model ID prefix matches an existing provider branch in the `call_llm()` function.
+New models can be added by inserting an entry in `MODEL_REGISTRY` and ensuring the model ID prefix matches an existing provider branch in the `call_llm()` function. The prefix-to-provider routing is: `claude-*` to Anthropic, `gpt-*/o1-*/o3-*/o4-*` to OpenAI, `azure-*` to Azure OpenAI, `groq-*` to Groq, `gemini-*` to Google AI, and `together-*` to Together AI.
 
 ## Dependency Configuration
 
 ### `pyproject.toml`
 
-PEP 517 build configuration. Declares `parbench` as an installable package with optional dependency groups:
+PEP 517 build configuration using setuptools. Declares `parbench` as an installable package with optional dependency groups:
 
 | Group | Packages | Purpose |
 |-------|----------|---------|
@@ -184,6 +185,8 @@ PEP 517 build configuration. Declares `parbench` as an installable package with 
 | `analysis` | `matplotlib>=3.9`, `numpy>=1.26` | Results analysis and figure generation |
 | `dev` | `pytest>=8.0`, `ruff>=0.6.0` | Testing and linting |
 | `all` | All of the above | Full install |
+
+The `[tool.setuptools.packages.find]` section registers `harness` and `c_augmentation` as discoverable packages.
 
 ### `requirements.txt`
 
@@ -196,3 +199,20 @@ Exact pinned versions from the working environment (Ubuntu 24.04, Python 3.12.3,
 ### Python Version
 
 Requires Python >= 3.12, as declared in `pyproject.toml` (`requires-python = ">=3.12"`).
+
+## Defaults
+
+The following default values are defined in source code:
+
+| Setting | Default Value | Source Location |
+|---------|---------------|-----------------|
+| `run.timeout_seconds` | `300` (5 minutes) | `harness/runner.py` line 90 |
+| `--resume` | `True` | `scripts/evaluation/run_eval_batch.py` |
+| `--temperature` | `0.0` (greedy decoding) | `scripts/evaluation/run_eval_batch.py` |
+| `--max-retries` | `1` (zero-shot) | `scripts/evaluation/run_eval_batch.py` |
+| `--augment-levels` | `[0]` (no augmentation) | `scripts/evaluation/run_eval_batch.py` |
+| `--num-samples` | `1` | `scripts/evaluation/run_eval_batch.py` |
+| `--max-failures` | `0` (never stop early) | `scripts/evaluation/run_eval_batch.py` |
+| `--use-cpu-timing` | `False` | `scripts/evaluation/run_eval_batch.py` |
+| Anthropic `max_tokens` | `32768` | `scripts/evaluation/llm_evaluate.py` |
+| Together AI `max_tokens` | `81920` | `scripts/evaluation/llm_evaluate.py` |
