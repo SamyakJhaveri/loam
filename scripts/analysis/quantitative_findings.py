@@ -225,7 +225,12 @@ def mcnemar_exact(pairs: list[tuple[bool, bool]]) -> dict:
 
     h = cohens_h(fwd_rate, rev_rate)
     abs_h = abs(h)
-    effect = "small" if abs_h < 0.20 else "medium" if abs_h < 0.80 else "large"
+    effect = (
+        "negligible" if abs_h < 0.20
+        else "small" if abs_h < 0.50
+        else "medium" if abs_h < 0.80
+        else "large"
+    )
 
     return {
         "n_paired": n_p,
@@ -1101,8 +1106,8 @@ def compute_self_repair(records: list[dict]) -> dict:
         if total_initially_failing > 0 else 0.0
     )
     regression_rate = (
-        regressions / len(multi_attempt)
-        if len(multi_attempt) > 0 else 0.0
+        regressions / total_initially_failing
+        if total_initially_failing > 0 else 0.0
     )
     mean_attempts = (
         sum(attempts_to_success) / len(attempts_to_success)
@@ -1165,9 +1170,9 @@ def compute_self_repair(records: list[dict]) -> dict:
         "regression_rate": make_finding(
             round(regression_rate, 4),
             "computed",
-            len(multi_attempt),
-            "regressions / multi_attempt_count",
-            n=len(multi_attempt),
+            total_initially_failing,
+            "regressions / total_initially_failing",
+            n=total_initially_failing,
         ),
         "mean_attempts_to_success": round(mean_attempts, 2),
         "per_failure_type": per_failure_type,
@@ -1633,7 +1638,6 @@ def compute_cross_suite(records: list[dict], project_root: Path) -> dict:
     for spec_file in sorted(specs_dir.glob("*.json")):
         try:
             spec = json.loads(spec_file.read_text(encoding="utf-8"))
-            spec_id = (spec.get("identity") or {}).get("unique_id", "")
             suite = (spec.get("identity") or {}).get("source_suite", "unknown")
             files = spec.get("files") or {}
             tt = files.get("translation_targets")
@@ -2405,6 +2409,24 @@ def cross_check(
                         f"ours={our_input} (ratio={ratio:.2f}). "
                         f"Expected due to different KNOWN_FAIL exclusion scope."
                     )
+            if ta_completion > 0 and our_output > 0:
+                checks_run += 1
+                ratio_out = our_output / ta_completion
+                if abs(ratio_out - 1.0) > 0.1:
+                    warnings.append(
+                        f"INFO: Output token minor diff: token_analysis completion={ta_completion}, "
+                        f"ours={our_output} (ratio={ratio_out:.2f}). "
+                        f"Expected due to different KNOWN_FAIL exclusion scope."
+                    )
+            if ta_cost > 0 and our_cost > 0:
+                checks_run += 1
+                ratio_cost = our_cost / ta_cost
+                if abs(ratio_cost - 1.0) > 0.1:
+                    warnings.append(
+                        f"INFO: Cost minor diff: token_analysis cost=${ta_cost:.2f}, "
+                        f"ours=${our_cost:.2f} (ratio={ratio_cost:.2f}). "
+                        f"Expected due to different KNOWN_FAIL exclusion scope."
+                    )
 
             if verbose:
                 print(
@@ -2621,14 +2643,11 @@ def write_markdown(output: dict, path: Path) -> None:
             )
         lines.append("")
 
-    *_observation_sr, = []
     if isinstance(sr_rate, dict) and sr_rate.get("value") is not None:
-        _observation_sr.append(
+        lines.append(
             f"*Observation: {_pct(sr_rate['value'])} of initially-failing tasks "
             f"are fully repaired through the retry loop.*"
         )
-    for obs in _observation_sr:
-        lines.append(obs)
     lines.append("")
 
     # Dimension 7 is in Campaign 2 section below

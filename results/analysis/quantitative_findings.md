@@ -1,7 +1,7 @@
 # Quantitative Findings — SC26 ParBench
 
-Generated: 2026-04-05T03:42:36.361196+00:00
-Git hash: 4519914
+Generated: 2026-04-05T04:06:26.011212+00:00
+Git hash: 03f5c6a
 
 ## File Counts
 
@@ -53,10 +53,10 @@ Git hash: 4519914
 
 | Pair | Fwd Rate | Rev Rate | p-value | Cohen's h | Effect | Sig? |
 |------|----------|----------|---------|-----------|--------|------|
-| cuda-to-opencl vs opencl-to-cuda | 20.0% | 10.0% | 0.6875 | 0.2838 | medium | No |
-| omp-to-cuda vs cuda-to-omp | 58.3% | 66.7% | 0.6875 | -0.1724 | small | No |
-| omp-to-opencl vs opencl-to-omp | 33.3% | 38.9% | 1.0 | -0.1157 | small | No |
-| omp_target-to-cuda vs cuda-to-omp_target | 75.0% | 12.5% | 0.0625 | 1.3717 | large | No |
+| cuda-to-omp_target vs omp_target-to-cuda | 12.5% | 75.0% | 0.0625 | -1.3717 | large | No |
+| omp-to-cuda vs cuda-to-omp | 58.3% | 66.7% | 0.6875 | -0.1724 | negligible | No |
+| opencl-to-cuda vs cuda-to-opencl | 10.0% | 20.0% | 0.6875 | -0.2838 | small | No |
+| opencl-to-omp vs omp-to-opencl | 38.9% | 33.3% | 1.0 | 0.1157 | negligible | No |
 
 ### Dimension 4: Augmentation Trends
 
