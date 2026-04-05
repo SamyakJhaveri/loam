@@ -50,8 +50,8 @@ parbench_sam/
 │
 ├── scripts/                        # Utility scripts
 │   ├── validate_schema.py          #   Schema + cross-cutting validator
-│   ├── generate_pilot_specs.py     #   Generate pilot spec files
-│   └── generate_report.py          #   Generate summary reports
+│   ├── generate_paper_figures.py   #   Generate publication figures
+│   └── generate_viz_data.py        #   Generate visualization data
 │
 ├── examples/                       # Reference data
 │   └── example_178_kernels.json    #   178 kernels in single-file format

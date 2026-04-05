@@ -20,7 +20,7 @@ The Rodinia benchmark suite has been successfully integrated into ParBench. All 
 | b+tree → bptree naming | ✅ Fixed | `kernel_name: "bptree"`, `unique_id: "rodinia-bptree-*"` |
 | srad uses v2 only | ✅ Fixed | `source_path: "cuda/srad/srad_v2"`, only v2 files in prompt_payload |
 | OpenCL vendor neutral | ✅ Fixed | `hardware.requirements.gpu` has no `vendor` or `min_compute_capability` for OpenCL specs |
-| API gaps JSON created | ✅ Present | `analysis/rodinia_api_gaps.json` with structured per-kernel data |
+| API gaps JSON created | ✅ Present | `analysis/data/rodinia_api_gaps.json` with structured per-kernel data |
 | Phase 2b testing done | ✅ Complete | `results/rodinia/results_matrix_rodinia.md` and `rodinia_results.json` |
 | baseline_results populated | ✅ In specs | Passing specs have `baseline_results` with timestamps, stdout, wall times |
 | Manifest appended | ✅ Correct | 180 total entries (120 HeCBench + 60 Rodinia) |
@@ -225,7 +225,7 @@ Survey existing benchmark suites, select kernels, create spec files, and test on
 ### Pillar 2: CREATION (Samyak — next task)
 Use AI coding agents (Paracodex, etc.) to **generate missing API variants**. For example, if a kernel has CUDA and OpenMP but not OpenCL, use an LLM to create the OpenCL version.
 
-**Input**: `analysis/rodinia_api_gaps.json` — lists 6 missing API variants across 5 kernels:
+**Input**: `analysis/data/rodinia_api_gaps.json` — lists 6 missing API variants across 5 kernels:
 - dwt2d: missing OMP
 - gaussian: missing OMP
 - huffman: missing OpenCL and OMP
@@ -333,7 +333,7 @@ Some transforms incorrectly expand typedef struct names, causing type mismatch e
 
 ### 5.6 Next Steps for Augmentation
 
-1. Fix Bugs A, B, C, D in `c_augmentation/transforms.py` and `augment_dataset.py`
+1. Fix Bugs A, B, C, D in `c_augmentation/augment_dataset.py`
 2. Add `.cl` to `harness/spec_loader.py` suffix list
 3. Re-run `scripts/augmentation/run_augment_batch.py` after bug fixes to measure improvement
 4. Clone HeCBench locally for full 180-spec coverage (currently only 60 Rodinia specs tested)
@@ -344,7 +344,7 @@ Some transforms incorrectly expand typedef struct names, causing type mismatch e
 | Path | Purpose |
 |---|---|
 | `c_augmentation/augment_dataset.py` | Core augmentation engine (libclang AST traversal) |
-| `c_augmentation/transforms.py` | 5 transform implementations |
+| `c_augmentation/augment_dataset.py` | 6 transform implementations |
 | `c_augmentation/test_transforms.py` | Unit tests: `python -m pytest c_augmentation/test_transforms.py -v` |
 | `scripts/augmentation/augment_verify.py` | Standalone augment→build→verify pipeline |
 | `scripts/augmentation/run_augment_batch.py` | Batch runner for multiple specs × levels |

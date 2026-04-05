@@ -67,7 +67,7 @@ parbench_sam/
 │
 ├── c_augmentation/             # AST-driven augmentation transforms (libclang)
 │   ├── augment_dataset.py      #   Core augmentation engine
-│   ├── transforms.py           #   5 transform types (PointerArith, SwapCond, etc.)
+│   ├── augment_dataset.py      #   6 transform types (PointerArith, SwapCond, etc.)
 │   └── test_transforms.py      #   Unit tests: python -m pytest c_augmentation/test_transforms.py
 │
 ├── scripts/                    # Utility scripts (organized by purpose)
@@ -81,7 +81,7 @@ parbench_sam/
 │   └── archive/                #   One-time fix scripts
 │
 ├── docs/                       # Design documents and planning
-│   ├── design/                 #   json_schema_design.md, integrate_augmentation.md
+│   ├── design/                 #   json_schema_design.md, integrate_augmentation_into_harness.md
 │   └── plans/                  #   hecbench pilot plan, phase5 plan, workflow docs
 │
 ├── presentations/              # Team deliverables (pptx, xlsx, speaking notes)
@@ -405,7 +405,7 @@ Generate a markdown summary of all kernels and their status:
 python scripts/analysis/generate_report.py
 ```
 
-This reads `manifest.jsonl` and all spec files, collects statistics (kernels per API, domains, verification methods), and writes `analysis/reports/pilot_report.md`.
+This reads `manifest.jsonl` and all spec files, collects statistics (kernels per API, domains, verification methods), and writes a summary report.
 
 ### Pilot Spec Generation
 

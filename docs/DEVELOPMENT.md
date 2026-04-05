@@ -101,7 +101,7 @@ python3 -m harness --json verify specs/rodinia-hotspot-omp.json
 |---------|-------------|
 | `python3 scripts/evaluation/run_eval_batch.py --suite <suite> --direction <dir> --models <model> --project-root <root> --resume -v` | Batch LLM evaluation with resume support |
 | `python3 scripts/evaluation/llm_evaluate.py --source <src.json> --target <tgt.json> --model <model> --project-root <root>` | Single translation task |
-| `python3 scripts/evaluation/analyze_eval.py --project-root <root> --output-dir results/evaluation` | Aggregate results into summary JSON and Markdown |
+| `python3 scripts/evaluation/analyze_eval.py --project-root <root> --results-dir results/evaluation` | Aggregate results into summary JSON and Markdown |
 
 **Critical:** Always pass `--suite` to `run_eval_batch.py` to avoid cross-suite kernel name collisions.
 

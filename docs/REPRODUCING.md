@@ -132,7 +132,7 @@ python3 -m harness -v verify specs/rodinia-bfs-cuda.json
 # Expected: PASS
 
 # Test multiple specs
-for spec in specs/rodinia-bfs-cuda.json specs/rodinia-hotspot-cuda.json specs/rodinia-srad-v2-cuda.json; do
+for spec in specs/rodinia-bfs-cuda.json specs/rodinia-hotspot-cuda.json specs/rodinia-srad-cuda.json; do
     python3 -m harness -v verify "$spec"
 done
 ```
@@ -191,7 +191,7 @@ done
 
 # Batch augmentation across all specs
 python3 scripts/augmentation/run_augment_batch.py \
-    --suite rodinia --project-root $(pwd) -v
+    specs/rodinia-*.json --out results/augmentation -v
 ```
 
 ### 7. Generate Paper Figures

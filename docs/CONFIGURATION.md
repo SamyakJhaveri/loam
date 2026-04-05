@@ -178,7 +178,7 @@ Loose dependency pins matching the `pyproject.toml` groups, suitable for `pip in
 
 ### `requirements-lock.txt`
 
-Exact pinned versions from the working environment (Ubuntu 24.04, Python 3.12.3, generated 2026-03-27). Used by the `Dockerfile` for reproducible builds. Contains 49 packages with exact version pins.
+Exact pinned versions from the working environment (Ubuntu 24.04, Python 3.12.3, generated 2026-03-27). Used by the `Dockerfile` for reproducible builds. Contains 41 packages with exact version pins.
 
 ### Python Version
 
