@@ -1420,51 +1420,53 @@ def generate_t2_model_table(
     output_dir: Path,
     verbose: bool,
 ) -> None:
-    """T2: Model comparison LaTeX table -- both directions."""
+    """T2: Model comparison LaTeX table -- 2-model layout, all suites."""
     base_records = [r for r in records if not r.get("is_sample", False)]
+    l0_records = filter_records(base_records, level=0)
+    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
+
+    # Compute Qwen overall stats
+    qwen_records = [r for r in std_records if "qwen" in r["model"].lower()]
+    qwen_total = len(qwen_records)
+    qwen_pass = sum(1 for r in qwen_records if r["overall_status"] == "PASS")
+    qwen_rate = qwen_pass / qwen_total * 100 if qwen_total > 0 else 0
+
+    # Per-direction for Qwen
+    dir_stats: dict[str, tuple[int, int]] = {}
+    for d in DIRECTIONS:
+        d_recs = [r for r in qwen_records if r["direction"] == d]
+        d_total = len(d_recs)
+        d_pass = sum(1 for r in d_recs if r["overall_status"] == "PASS")
+        dir_stats[d] = (d_pass, d_total)
+
+    # Build LaTeX table
+    dir_headers = [
+        DIRECTION_LABELS.get(d, d).replace("\u2192", r"$\to$")
+        for d in DIRECTIONS
+    ]
 
     lines = [
-        r"\begin{tabular}{llrrrrrrr}",
+        r"\begin{tabular}{l" + "r" * (1 + len(DIRECTIONS)) + "}",
         r"\toprule",
-        r"Direction & Model & PASS & Total & Rate (\%) & BUILD\_FAIL & RUN\_FAIL & VERIFY\_FAIL & EXTR\_FAIL \\",
+        r"Model & Overall & " + " & ".join(dir_headers) + r" \\",
         r"\midrule",
     ]
 
-    direction_specs = [
-        ("cuda-to-omp", r"CUDA$\to$OMP"),
-        ("omp-to-cuda", r"OMP$\to$CUDA"),
-        ("cuda-to-opencl", r"CUDA$\to$OCL"),
-    ]
+    # Qwen row (fully populated)
+    qwen_cells = [f"{qwen_pass}/{qwen_total} ({qwen_rate:.1f}\\%)"]
+    for d in DIRECTIONS:
+        p, t = dir_stats[d]
+        rate = p / t * 100 if t > 0 else 0
+        qwen_cells.append(f"{p}/{t} ({rate:.1f}\\%)")
+    lines.append(
+        "Qwen 3.5 397B & " + " & ".join(qwen_cells) + r" \\"
+    )
 
-    for idx, (direction, dir_label) in enumerate(direction_specs):
-        filtered = filter_records(base_records, level=0, suite="rodinia", direction=direction)
-        by_model = aggregate_status_counts(filtered, "model")
-        model_stats: dict[str, dict] = {}
-        for m, status_counts in by_model.items():
-            total = sum(status_counts.values())
-            pass_count = status_counts.get("PASS", 0)
-            model_stats[m] = {"pass": pass_count, "total": total, "by_status": status_counts}
-
-        models_sorted = sorted(
-            model_stats.keys(),
-            key=lambda m: -model_stats[m]["pass"] / max(model_stats[m]["total"], 1),
-        )
-        for i, m in enumerate(models_sorted):
-            info = model_stats[m]
-            display = MODEL_DISPLAY_SHORT.get(m, m)
-            p = info["pass"]
-            t = info["total"]
-            rate = p / t * 100 if t else 0
-            bf = info["by_status"].get("BUILD_FAIL", 0)
-            rf = info["by_status"].get("RUN_FAIL", 0)
-            vf = info["by_status"].get("VERIFY_FAIL", 0)
-            ef = info["by_status"].get("EXTRACTION_FAIL", 0)
-            d_label = dir_label if i == 0 else ""
-            lines.append(
-                f"{d_label} & {display} & {p} & {t} & {rate:.1f} & {bf} & {rf} & {vf} & {ef} \\\\"
-            )
-        if idx < len(direction_specs) - 1:
-            lines.append(r"\midrule")
+    # GPT row (all pending)
+    pending_cells = ["pending"] * (1 + len(DIRECTIONS))
+    lines.append(
+        "GPT-4.1 mini & " + " & ".join(pending_cells) + r" \\"
+    )
 
     lines.append(r"\bottomrule")
     lines.append(r"\end{tabular}")
@@ -1472,6 +1474,13 @@ def generate_t2_model_table(
     path = output_dir / "t2_model_comparison.tex"
     path.write_text("\n".join(lines) + "\n")
     print(f"  Saved: {path}")
+
+    if verbose:
+        print(f"  Qwen overall: {qwen_pass}/{qwen_total} ({qwen_rate:.1f}%)")
+        for d in DIRECTIONS:
+            p, t = dir_stats[d]
+            rate = p / t * 100 if t > 0 else 0
+            print(f"  {d}: {p}/{t} ({rate:.1f}%)")
 
 
 # ===================================================================
