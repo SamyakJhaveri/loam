@@ -59,6 +59,7 @@ All line numbers verified by grep against current `paper.tex` (1178 lines total)
 
 | Boundary | Line | Content |
 |----------|------|---------|
+| Abstract | 58-71 | `\begin{abstract}` block with Rodinia-scope numbers |
 | Section 1 start | 77 | `\section{Introduction}` |
 | 1.1 Motivation | 80 | `\subsection{Motivation}` |
 | 1.1 content | 83-85 | Two paragraphs, no quantitative scope numbers |
@@ -78,6 +79,7 @@ All line numbers verified by grep against current `paper.tex` (1178 lines total)
 | S4 Selection Funnel | 575 | `\subsection{Selection Funnel}` |
 
 **Insertion points for Phase 5 edits:**
+- Abstract number updates: Lines 58-71 (mechanical replacement, same mapping as Sections 1.3-1.4)
 - Section 1.1 scope teaser: After line 83 (end of first paragraph), before line 85
 - Section 1.2 ParEval-Repo contrast: After line 96 (end of Repository paragraph)
 - Section 1.2 LASSI paragraph: After the new ParEval-Repo contrast paragraph
@@ -282,6 +284,7 @@ The paper edits should be done in reverse line-number order (bottom-up) to avoid
 4. **Section 1.2: Insert new paragraphs** (after line 96) -- new text (ParEval-Repo contrast, LASSI, multi-file)
 5. **Section 1.2: Update summary sentence** (line 102) -- include new gap dimensions
 6. **Section 1.1: Insert scope teaser** (after line 83) -- one sentence
+7. **Abstract: Update numbers** (lines 58-71) -- mechanical replacement using same mapping as Sections 1.3-1.4
 
 ### Provenance Comment Pattern
 
@@ -334,9 +337,9 @@ Phase 1 established the pattern. Phase 4 continued it. All new numbers should in
 **Warning signs:** Edits appearing inside wrong subsection.
 
 ### Pitfall 6: Inconsistent Cochran-Armitage Stats
-**What goes wrong:** Updating the Cochran-Armitage stats in Section 1.4 but not in the Abstract (line 68) or Section 6.
+**What goes wrong:** Updating the Cochran-Armitage stats in Section 1.4 but not in the Abstract or Section 6.
 **Why it happens:** The same stat appears in 3+ locations.
-**How to avoid:** Phase 5 ONLY updates Sections 1 and 4. Abstract and Section 6 updates belong to Phase 11 (Paper TeX Integration). But provenance comments should flag the discrepancy for Phase 11.
+**How to avoid:** Phase 5 updates Abstract, Section 1, and Section 4. Section 6 updates belong to Phase 11 (Paper TeX Integration). The abstract IS in scope per D-11 -- Plan 01 Task 3 handles it.
 **Warning signs:** Different z/p values in different sections.
 
 ## Code Examples
@@ -410,7 +413,7 @@ a substantial challenge distinct from within-file API mapping.
 |---|-------|---------|---------------|
 | A1 | CONTEXT.md D-02 says "12 categories across 35 kernels" but actual data shows 10 categories for the 35-kernel corpus. The table should show 10. | Category Distribution | LOW -- data is clear; CONTEXT.md number was from manifest scope (83 kernels). Planner should use 10. |
 | A2 | The second characterization table focuses on category distribution only (not a duplicate API cross-tab) since tab:suite-summary already shows API coverage per suite | CHAR-07 | MEDIUM -- user may want a differently shaped API table. But the data is the same. |
-| A3 | Phase 5 only updates Sections 1 and 4. Abstract and Section 6+ number updates deferred to Phase 11 | Scope | LOW -- CONTEXT.md does not mention abstract updates in Phase 5 scope |
+| A3 | ~~Phase 5 only updates Sections 1 and 4. Abstract and Section 6+ number updates deferred to Phase 11.~~ **CORRECTED:** Phase 5 updates Abstract, Section 1, and Section 4 per D-11 ("Abstract, Contributions (1.3), Key Findings (1.4)"). Section 6 updates still deferred to Phase 11. | Scope | LOW -- D-11 explicitly includes Abstract. Plan 01 Task 3 covers it. |
 | A4 | HeCBench curated subset has 10 CUDA, 5 OMP (not 10 OMP) based on existing tab:suite-summary | API Coverage | LOW -- verified against paper.tex line 526; HeCBench curated has CUDA+OMP+OMP-target, not 10 of each |
 
 **Wait -- A4 needs re-verification.** Let me check.
@@ -458,20 +461,17 @@ Security enforcement is not applicable to this phase (LaTeX text editing only, n
 
 ## Open Questions
 
-1. **HeCBench OMP count in curated subset**
+1. **HeCBench OMP count in curated subset** (RESOLVED)
    - What we know: 25 specs total, 10 CUDA, some OMP, some OMP-target. `tab:suite-summary` shows the verified breakdown.
-   - What's unclear: Exact split is in the existing table but I did not independently verify via `ls specs/hecbench-*-omp.json | wc -l`.
-   - Recommendation: Planner should verify with `ls` before creating the second table. Or simply reference `tab:suite-summary` for API coverage (since it already shows this data).
+   - Resolution: Plan 02 uses only the category distribution table (no duplicate API cross-tab). The existing `tab:suite-summary` (lines 511-534) already shows the verified API coverage per suite, satisfying D-03 per research finding A2. The exact HeCBench OMP/OMP-target split is already in that table and does not need independent re-verification for this phase.
 
-2. **Abstract update scope**
+2. **Abstract update scope** (RESOLVED)
    - What we know: The abstract (lines 58-71) contains Rodinia-scope numbers that should also update to all-suite.
-   - What's unclear: Whether Phase 5 should update the abstract or defer to Phase 11.
-   - Recommendation: CONTEXT.md D-11 says "Abstract, Contributions (1.3), Key Findings (1.4)". This suggests Phase 5 SHOULD update the abstract. The planner must include abstract updates in the plan.
+   - Resolution: CONTEXT.md D-11 explicitly says "Abstract, Contributions (1.3), Key Findings (1.4)". Plan 01 Task 3 added to update Abstract numbers from Rodinia 480-task scope to all-suite 700-task scope. Uses the same Rodinia-to-all-suite number mapping table verified in this RESEARCH.md (lines 94-109).
 
-3. **iso2dfd dual-category edge case**
+3. **iso2dfd dual-category edge case** (RESOLVED)
    - What we know: `iso2dfd` appears in both "physics" (full manifest) and "stencil" (corpus categories via sloc_analysis.json).
-   - What's unclear: Whether this creates confusion in the category table.
-   - Recommendation: Use sloc_analysis.json canonical assignment. Document the dual classification in a footnote if needed.
+   - Resolution: Use `sloc_analysis.json` canonical assignment (stencil). The category distribution table in Plan 02 counts iso2dfd under "stencil" only. The provenance comment in the LaTeX source documents this canonical assignment. No footnote needed -- the dual classification is a manifest-level artifact that does not surface in the 35-kernel corpus analysis.
 
 ## Environment Availability
 
