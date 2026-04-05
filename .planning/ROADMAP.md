@@ -150,7 +150,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 9. Objective Quantitative Analysis | 3/3 | Complete | 2026-04-05 |
 | 10. Qualitative Analysis & Research Narrative | — | **Dropped** (merged into Phase 11) | - |
 | 11. Paper TeX Integration | 0/4 | Not started | - |
-| 12. Fix Stale Pass@k Values | 0/2 | Not started | - |
+| 12. Fix Stale Pass@k Values | 1/2 | In Progress|  |
 | 13. Paper.tex Figure & Table Wiring | 0/1 | Not started | - |
 | 14. Verification Backfill & Housekeeping | 0/1 | Not started | - |
 
@@ -333,7 +333,7 @@ Plans:
 **Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 12-01-PLAN.md -- [Wave 1] Update Abstract, S1, S5.2-5.3, S6.1-6.2, S6.4-6.5 (aggregate stats, failure taxonomy, self-repair, augmentation)
+- [x] 12-01-PLAN.md -- [Wave 1] Update Abstract, S1, S5.2-5.3, S6.1-6.2, S6.4-6.5 (aggregate stats, failure taxonomy, self-repair, augmentation)
 - [ ] 12-02-PLAN.md -- [Wave 2, depends on 12-01] Expand S6.3 per-kernel table, update S6.6-6.8, S7, S8, final stale-value sweep
 
 ### Phase 13: Paper.tex Figure & Table Wiring
