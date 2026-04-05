@@ -309,6 +309,10 @@ The harness pipeline is a three-stage evaluation engine invoked via a command-li
 
 Each harness invocation produces one of four failure classifications---BUILD\_FAIL, RUN\_FAIL, VERIFY\_FAIL, or TIMEOUT---providing diagnostic granularity that enables systematic failure-mode analysis. The evaluation pipeline (Section~\ref{sec:eval-pipeline}) adds a fifth classification, EXTRACTION\_FAIL, when the LLM response does not contain parseable target files. A \texttt{--resume} flag allows batch evaluations to skip previously completed tasks, supporting append-only result accumulation without re-executing passing benchmarks.
 
+% src: quantitative_findings.json > campaign_1.failure_taxonomy.status_counts.VERIFY_FAIL = 51/700 = 7.3%
+% src: results/evaluation/together-qwen-3.5-397b-a17b/rodinia-gaussian-opencl-to-rodinia-gaussian-cuda.json: overall_status=VERIFY_FAIL, all 3 attempts build=pass, run=pass, verify=fail
+\textbf{Verification methodology.} The conjunction of exit-code and stdout-pattern verification is essential for accurate measurement. Across all five benchmark suites, 51~of~700 translation tasks (7.3\%) compile and run successfully with exit\_code~$= 0$ yet produce incorrect output, receiving a VERIFY\_FAIL classification. For example, the Gaussian elimination kernel (\texttt{gaussian}, OpenCL to CUDA at augmentation level~L0) compiles without error, runs to completion with exit code zero, and produces partial stdout output---matrix creation messages appear normally---but fails to print the expected \texttt{Total:} timing summary that the reference implementation produces. All three self-repair attempts reproduce the same incorrect output, indicating a systematic translation defect rather than a transient failure. Compilation-only verification~\cite{CodeRosetta2024} would misclassify all~51 such tasks as successful translations; exit-code-only verification would similarly fail, since these translations terminate normally without signaling an error.
+
 \subsection{Augmentation Engine: Probing Robustness via Code Surface Variation}
 \label{sec:augmentation-engine}
 
