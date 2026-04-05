@@ -234,8 +234,8 @@ ls -la docs/paper/figures/*.pdf docs/paper/figures/*.png
 **Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 08-01-PLAN.md -- [Wave 1] Update script constants (2-model layout, 5-suite coverage), redesign F3 heatmap (29 kernels x 6 directions with suite grouping), F4 taxonomy (all suites), F6 (cross-suite bar chart), F7 (Qwen-only)
-- [ ] 08-02-PLAN.md -- [Wave 2, depends on 08-01] Restructure T2 table (2-model layout), run full figure generation, verify all 10 figures + T2 table output
+- [x] 08-01-PLAN.md -- [Wave 1] Update script constants (2-model layout, 5-suite coverage), redesign F3 heatmap (29 kernels x 6 directions with suite grouping), F4 taxonomy (all suites), F6 (cross-suite bar chart), F7 (Qwen-only)
+- [x] 08-02-PLAN.md -- [Wave 2, depends on 08-01] Restructure T2 table (2-model layout), run full figure generation, verify all 10 figures + T2 table output
 
 ### Phase 9: Objective Quantitative Analysis
 
@@ -263,9 +263,9 @@ Plans:
 **Plans**: 3 plans in 3 waves
 
 Plans:
-- [ ] 09-01-PLAN.md -- [Wave 1] Create quantitative_findings.py with data pipeline, campaign separation, and dimensions 1-5 (aggregate, direction, asymmetry, augmentation, failure taxonomy) + provenance framework
-- [ ] 09-02-PLAN.md -- [Wave 2, depends on 09-01] Extend script with dimensions 6-13 (self-repair, pass@k, per-kernel tiers, complexity, cross-suite, token cost, SLoC correlation, OpenCL effect) + paper_claims mapping
-- [ ] 09-03-PLAN.md -- [Wave 3, depends on 09-01+02] Implement --validate: 10+ spot-checks, cross-checks, consistency checks, paper claims pre-audit
+- [x] 09-01-PLAN.md -- [Wave 1] Create quantitative_findings.py with data pipeline, campaign separation, and dimensions 1-5 (aggregate, direction, asymmetry, augmentation, failure taxonomy) + provenance framework
+- [x] 09-02-PLAN.md -- [Wave 2, depends on 09-01] Extend script with dimensions 6-13 (self-repair, pass@k, per-kernel tiers, complexity, cross-suite, token cost, SLoC correlation, OpenCL effect) + paper_claims mapping
+- [x] 09-03-PLAN.md -- [Wave 3, depends on 09-01+02] Implement --validate: 10+ spot-checks, cross-checks, consistency checks, paper claims pre-audit
 
 ### Phase 10: Qualitative Analysis and Research Narrative
 
