@@ -691,6 +691,9 @@ Python & 3.12.3 & \pending{Python} \\
 \end{tabular}
 \end{table}
 
+% src: git rev-parse HEAD (at paper-writing time); git submodule status -> 9c10d3ea (Rodinia)
+To support exact reproduction, all artifacts are version-pinned: ParBench at commit \texttt{c1d8c7b}\footnote{Repository URL withheld for double-blind review.}, Rodinia at submodule commit \texttt{9c10d3ea}~\cite{Rodinia2009}, and evaluation scripts at the same ParBench revision. Qwen~3.5 397B-A17B was accessed via the Together AI API during March--April 2026; model weights are publicly available. All 1,248 per-task result JSONs, analysis scripts, and spec files are included in the repository to enable independent verification of every reported number.
+
 %% =============================================================
 %% S6 RESULTS
 %% =============================================================
