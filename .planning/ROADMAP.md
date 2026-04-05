@@ -111,6 +111,11 @@ Plans:
   3. Multi-file translation emphasis appears in both intro and Section 4 with the exact multi-file percentage and a kernel isolation "reviewer defense" callback
   4. "Gap in Existing Evaluation" paragraph uses concrete comparative data from the characterization table (e.g., SLoC range, category coverage) to quantify ParBench's contribution
   5. LaTeX characterization table (tab:benchmark-characterization) is present in paper.tex Section 4 with SLoC, categories, multi-file status, API coverage, and language features
+**Plans**: 2 plans in 2 waves
+
+Plans:
+- [ ] 05-01-PLAN.md -- [Wave 1] Update Section 1: scope teaser (1.1), ParEval-Repo contrast + LASSI differentiation + multi-file emphasis (1.2), all-suite number updates (1.3, 1.4)
+- [ ] 05-02-PLAN.md -- [Wave 2, depends on 05-01] Insert category distribution table (tab:category-distribution) in Section 4 with 10 categories and suite annotations
 
 ## Progress
 
@@ -121,7 +126,7 @@ Phase 1 (DONE) ──► Phase 2 (DONE) ──► Phase 7 (DONE) ──► Phase
                                                       └──► Phase 9 (DONE) ──────────────┘
 Phase 3 (DONE) ──► Phase 13 ────────────────────────────────────────────────────────────┘
 Phase 4 (PLANNED) ──────────────────────────────────────────────────────────────────────┘
-Phase 5 (not started) ─────────────────────────────────────────────────────────────────┘
+Phase 5 (PLANNED) ─────────────────────────────────────────────────────────────────────┘
 Phase 14 (verification & housekeeping — independent) ──────────────────────────────────
 ```
 
@@ -138,7 +143,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 2. Benchmark Characterization Data | 3/3 | Complete | 2026-04-03 |
 | 3. Augmentation Analysis & Story | 3/3 | Complete | 2026-04-04 |
 | 4. Methodology & Reviewer Defense | 0/2 | Planned (ready to execute) | - |
-| 5. Introduction, Positioning & Characterization Table | 0/3 | Not started | - |
+| 5. Introduction, Positioning & Characterization Table | 0/2 | Planned (ready to execute) | - |
 | 6. RSBench Single-File Re-spec Experiment | — | **Dropped** | - |
 | 7. Full Analysis Regeneration | 2/2 | Complete | 2026-04-04 |
 | 8. Figure Regeneration | 2/2 | Complete | 2026-04-04 |
