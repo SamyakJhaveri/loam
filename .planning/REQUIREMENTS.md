@@ -24,7 +24,7 @@ Requirements for paper submission (deadline: April 8, 2026). Each maps to roadma
 - [x] **CHAR-04**: Single-file vs multi-file translation breakdown computed per suite and per API
 - [x] **CHAR-05**: Language feature grep completed on available source dirs (Rodinia + XSBench) for OpenMP 1.0-4.5, CUDA basic-9.0+, OpenCL 1.x-2.0 version indicators
 - [x] **CHAR-06**: Language standard distribution extracted from spec JSONs (implementation.language_standard field)
-- [ ] **CHAR-07**: LaTeX characterization table (tab:benchmark-characterization) added to Section 4 of paper.tex with clear caption
+- [x] **CHAR-07**: LaTeX characterization table (tab:benchmark-characterization) added to Section 4 of paper.tex with clear caption
 
 ### Introduction & Positioning
 
@@ -112,7 +112,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHAR-04 | Phase 2 | Complete |
 | CHAR-05 | Phase 2 | Complete |
 | CHAR-06 | Phase 2 | Complete |
-| CHAR-07 | Phase 5 | Pending |
+| CHAR-07 | Phase 5 | Complete |
 | INTRO-01 | Phase 5 | Complete |
 | INTRO-02 | Phase 5 | Complete |
 | INTRO-03 | Phase 5 | Complete |

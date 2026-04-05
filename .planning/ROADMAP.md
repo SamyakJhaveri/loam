@@ -115,7 +115,7 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md -- [Wave 1] Update Section 1: scope teaser (1.1), ParEval-Repo contrast + LASSI differentiation + multi-file emphasis (1.2), all-suite number updates (1.3, 1.4)
-- [ ] 05-02-PLAN.md -- [Wave 2, depends on 05-01] Insert category distribution table (tab:category-distribution) in Section 4 with 10 categories and suite annotations
+- [x] 05-02-PLAN.md -- [Wave 2, depends on 05-01] Insert category distribution table (tab:category-distribution) in Section 4 with 10 categories and suite annotations
 
 ## Progress
 
