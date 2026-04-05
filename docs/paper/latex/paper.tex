@@ -650,7 +650,9 @@ Each failure is classified into a diagnostic category---BUILD\_FAIL (compilation
 
 A separate \textbf{pass@$k$ experiment} measures sampling variance: 3 independent samples per task at temperature~0.7, L0 only, with no self-repair (max\_retries=1). This isolates output-side stochasticity from input-side variation (augmentation) and self-repair effects. The gap between greedy-decode pass@1 and pass@3 reveals whether failures are ``hard'' (the model fundamentally cannot translate the kernel) or ``noisy'' (the model sometimes succeeds but not reliably). This design keeps the three evaluation axes orthogonal: self-repair (retries), sampling variance (pass@$k$), and augmentation robustness (L0--L4).
 
-Secondary metrics include \textbf{augmentation robustness}, defined as the stability of pass@1 across augmentation levels L0 through L4, and \textbf{self-repair rate}, the fraction of initially failing tasks recovered by the error-feedback retry loop. Statistical analysis uses Wilson score 95\% confidence intervals for proportions, Fisher's exact test for pairwise model comparison, and the Cochran-Armitage trend test for augmentation-level effects.
+Secondary metrics include \textbf{augmentation robustness}, defined as the stability of pass@1 across augmentation levels L0 through L4, and \textbf{self-repair rate}, the fraction of initially failing tasks recovered by the error-feedback retry loop.
+% src: quantitative_findings.json > campaign_1.direction_asymmetry (McNemar), campaign_1.augmentation_trends (Cochran-Armitage)
+Statistical analysis uses Wilson score 95\% confidence intervals for proportions (preferred over Wald intervals for better coverage near boundary proportions), McNemar's exact test for direction asymmetry (exploiting the paired design---each kernel is evaluated in both directions---preferred over unpaired chi-squared which ignores the pairing), and the Cochran-Armitage trend test for augmentation-level effects (exploiting the ordinal structure of L0--L4 levels, preferred over chi-squared which treats levels as unordered categories). All McNemar tests use Bonferroni-corrected $\alpha = 0.0125$ (four direction pairs).
 
 Execution timing and speedup metrics are excluded from this study. The current verification pipeline measures wall-clock time, which conflates kernel execution with I/O, memory allocation, and OS scheduling noise. Reliable performance comparison requires profiler-based kernel timing (e.g., Nsight Compute for CUDA, \texttt{omp\_get\_wtime()} for OpenMP), which is deferred to future work.
 
@@ -940,9 +942,9 @@ omp\_target-to-cuda & -- & -- & -- & 10 & Case study \\
 % src: 65.0%-50.0%=15.0pp verified; paper_data.json by_direction cuda-to-omp/omp-to-cuda
 \textbf{Direction asymmetry.} For each bidirectional pair, the data indicate absolute pass-rate gaps but no statistically significant asymmetry. CUDA-to-OpenMP (65.0\%) outperforms OpenMP-to-CUDA (50.0\%) by 15.0 percentage points (Table~\ref{tab:direction-rates}). This is consistent with the hypothesis that CUDA-to-OpenMP is a reductive task---removing explicit thread indexing and device memory management in favor of directive-based parallelism---while the reverse direction is generative, requiring the model to introduce CUDA-specific constructs from OpenMP's more abstract specification.
 
-% src: paper_data.json > direction_asymmetry; Bonferroni alpha=0.05/3=0.0167 (3 tests)
+% src: paper_data.json > direction_asymmetry; Bonferroni alpha=0.05/4=0.0125 (4 tests incl. omp\_target pair)
 % src: cuda-omp: n=16,p=0.625,h=0.2591->0.26; cuda-opencl: n=17,p=0.6875->0.688,h=0.3127->0.31; omp-opencl: n=15,p=0.7266->0.727,h=0.2731->0.27
-McNemar's test for paired direction comparison (using kernel pairs evaluated in both directions, Bonferroni-corrected $\alpha = 0.0167$): CUDA-to-OMP vs.\ OMP-to-CUDA ($n=16$ paired, $p = 0.625$, Cohen's $h = 0.26$); CUDA-to-OpenCL vs.\ OpenCL-to-CUDA ($n=17$ paired, $p = 0.688$, Cohen's $h = 0.31$); OpenCL-to-OMP vs.\ OMP-to-OpenCL ($n=15$ paired, $p = 0.727$, Cohen's $h = 0.27$). All three tests fail to reject the null hypothesis of symmetry at the corrected significance level. The effect sizes (Cohen's $h = 0.26$--$0.31$, medium) suggest that meaningful asymmetry may exist but the current single-model sample size lacks power to detect it.
+McNemar's test for paired direction comparison (using kernel pairs evaluated in both directions, Bonferroni-corrected $\alpha = 0.0125$): CUDA-to-OMP vs.\ OMP-to-CUDA ($n=16$ paired, $p = 0.625$, Cohen's $h = 0.26$); CUDA-to-OpenCL vs.\ OpenCL-to-CUDA ($n=17$ paired, $p = 0.688$, Cohen's $h = 0.31$); OpenCL-to-OMP vs.\ OMP-to-OpenCL ($n=15$ paired, $p = 0.727$, Cohen's $h = 0.27$). All three tests fail to reject the null hypothesis of symmetry at the corrected significance level. The effect sizes (Cohen's $h = 0.26$--$0.31$, medium) suggest that meaningful asymmetry may exist but the current single-model sample size lacks power to detect it.
 
 \textbf{OpenCL-target translation: kernel-only failure modes.} Translations targeting OpenCL exercise a qualitatively different failure mode from CUDA and OpenMP targets. Because OpenCL translations are kernel-only (Section~\ref{sec:eval-pipeline})---the LLM translates only \texttt{.cl} kernel files while the host program remains unchanged---build failures are replaced by \emph{kernel compilation failures} at runtime, when the host invokes \texttt{clBuildProgram()} on the LLM-generated kernel source. Two recurring error patterns emerge: missing \texttt{\_\_global} address space qualifiers on kernel pointer arguments, and API name hallucination (e.g., \texttt{get\_block\_id()} instead of the correct \texttt{get\_group\_id()}).
 
@@ -998,7 +1000,7 @@ Table~\ref{tab:stats-summary} consolidates the statistical tests applied through
 
 % src: paper_data.json > augmentation > cochran_armitage: z=-0.1657->-0.17, p=0.868355->0.87
 % src: paper_data.json > direction_asymmetry: McNemar values cross-checked with S6.6 tab:direction-rates
-% src: Bonferroni alpha = 0.05/3 = 0.0167 (3 McNemar tests); statistical_analysis.json uses 0.0125 (4 tests incl. omp_target) -- paper is correct for primary 3-direction scope
+% src: Bonferroni alpha = 0.05/4 = 0.0125 (4 McNemar tests incl. omp\_target)
 \begin{table*}[t]
 \centering
 \caption{Statistical summary. All confidence intervals are Wilson 95\% CIs.}
@@ -1011,14 +1013,14 @@ Test & Statistic & $p$-value & Effect Size & Interpretation \\
 Model comparison (chi-squared) & \tbd & \tbd & Cramer's V = \tbd & \tbd \\
 Qwen augmentation (Cochran-Armitage) & $z = -0.17$ & $p = 0.87$ & -- & No monotonic trend; null supports robustness \\ % src: z=-0.1657, p=0.868355
 GPT-4.1~mini augmentation (Cochran-Armitage) & \tbd & \tbd & -- & \tbd \\
-Direction: cuda-omp (McNemar) & $n=16$, exact & $p = 0.625$ & Cohen's $h = 0.26$ & No significant asymmetry ($\alpha=0.0167$) \\ % src: p=0.625, h=0.2591
-Direction: cuda-opencl (McNemar) & $n=17$, exact & $p = 0.688$ & Cohen's $h = 0.31$ & No significant asymmetry ($\alpha=0.0167$) \\ % src: p=0.6875, h=0.3127
-Direction: omp-opencl (McNemar) & $n=15$, exact & $p = 0.727$ & Cohen's $h = 0.27$ & No significant asymmetry ($\alpha=0.0167$) \\ % src: p=0.726562, h=0.2731
+Direction: cuda-omp (McNemar) & $n=16$, exact & $p = 0.625$ & Cohen's $h = 0.26$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: p=0.625, h=0.2591
+Direction: cuda-opencl (McNemar) & $n=17$, exact & $p = 0.688$ & Cohen's $h = 0.31$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: p=0.6875, h=0.3127
+Direction: omp-opencl (McNemar) & $n=15$, exact & $p = 0.727$ & Cohen's $h = 0.27$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: p=0.726562, h=0.2731
 \bottomrule
 \end{tabular}
 \end{table*}
 
-Methodological notes: Wilson confidence intervals are preferred over Wald intervals because they provide better coverage near boundary proportions (0\% or 100\%). Cochran-Armitage tests model a linear trend in pass rate across ordered augmentation levels (L0 $<$ L1 $<$ L2 $<$ L3 $<$ L4). McNemar's test is used for direction asymmetry because each kernel-model pair is evaluated in both directions, creating natural pairing.
+Methodological notes: Wilson confidence intervals are preferred over Wald intervals because they provide better coverage near boundary proportions (0\% or 100\%). Cochran-Armitage tests model a linear trend in pass rate across ordered augmentation levels (L0 $<$ L1 $<$ L2 $<$ L3 $<$ L4). McNemar's test is used for direction asymmetry because each kernel-model pair is evaluated in both directions, creating natural pairing. Bonferroni correction divides $\alpha = 0.05$ across four direction pairs (including the omp\_target case-study pair) to control family-wise error rate.
 
 %% =============================================================
 %% S7 DISCUSSION
