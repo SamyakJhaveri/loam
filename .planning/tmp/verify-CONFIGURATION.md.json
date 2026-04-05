@@ -1,0 +1,14 @@
+{
+  "doc_path": "docs/CONFIGURATION.md",
+  "claims_checked": 42,
+  "claims_passed": 41,
+  "claims_failed": 1,
+  "failures": [
+    {
+      "line": 181,
+      "claim": "requirements-lock.txt contains 49 packages with exact version pins",
+      "expected": "49 packages in requirements-lock.txt",
+      "actual": "41 packages found in requirements-lock.txt (counted non-comment, non-blank lines with == pins)"
+    }
+  ]
+}

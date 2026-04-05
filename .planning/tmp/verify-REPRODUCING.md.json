@@ -1,0 +1,20 @@
+{
+  "doc_path": "docs/REPRODUCING.md",
+  "claims_checked": 18,
+  "claims_passed": 16,
+  "claims_failed": 2,
+  "failures": [
+    {
+      "line": 135,
+      "claim": "specs/rodinia-srad-v2-cuda.json",
+      "expected": "file exists",
+      "actual": "file not found at specs/rodinia-srad-v2-cuda.json; actual spec is specs/rodinia-srad-cuda.json (no -v2 suffix)"
+    },
+    {
+      "line": 194,
+      "claim": "python3 scripts/augmentation/run_augment_batch.py --suite rodinia --project-root $(pwd) -v",
+      "expected": "script accepts --suite and --project-root flags",
+      "actual": "run_augment_batch.py takes positional spec paths (not --suite) and has no --project-root flag; accepted flags are: specs (positional), --levels, --seed, --config, --out (required), --title, -v"
+    }
+  ]
+}

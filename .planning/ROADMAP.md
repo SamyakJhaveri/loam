@@ -4,6 +4,19 @@
 
 This roadmap delivers a submission-ready SC26 paper by April 8, 2026. The work flows from verifying existing data claims (ground truth), through producing new quantitative characterization and augmentation analysis, to writing methodology defense and assembling polished introduction text with the characterization table. Every phase produces artifacts that downstream phases consume -- verification feeds characterization, characterization feeds the introduction, and augmentation analysis feeds both the augmentation story and motivating examples.
 
+## Contingency: GPT-4.1 Mini Data
+
+If Le's GPT-4.1 mini data has not arrived by **April 7, 2026 EOD**:
+1. Remove all `\tbd` and `\pending{}` macros from paper.tex
+2. Remove GPT-4.1 mini row from T2 table
+3. Frame as "single-model evaluation with framework designed for multi-model extension"
+4. Move GPT-4.1 mini to Future Work paragraph
+5. This is a ~30-minute mechanical task, not a paper restructure
+
+## Scope Decision: Section 6 Data Scope
+
+**Decision (2026-04-05):** Section 6 primary analysis uses **Rodinia 480-task scope** (preserving existing Section 6 structure). A new **Cross-Suite Comparison subsection** uses the 700-task all-suite scope from `quantitative_findings.json`. Abstract headline uses all-suite figures. Methodology defense (Phase 4) uses all-suite Campaign 1 numbers (700 tasks).
+
 ## Phases
 
 **Phase Numbering:**
@@ -85,8 +98,8 @@ Plans:
 **Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 04-01-PLAN.md -- [Wave 1] Kernel isolation defense paragraph (Section 3.4) + conjunction verification defense paragraph (Section 3.2) with provenance-tracked numbers
-- [ ] 04-02-PLAN.md -- [Wave 2, depends on 04-01] Statistical test justification rewrite (Section 5.4) + Bonferroni alpha update (Sections 6.6, 6.8) + reproducibility version pins (Section 5.5)
+- [x] 04-01-PLAN.md -- [Wave 1] Kernel isolation defense paragraph (Section 3.4) + conjunction verification defense paragraph (Section 3.2) with provenance-tracked numbers
+- [x] 04-02-PLAN.md -- [Wave 2, depends on 04-01] Statistical test justification rewrite (Section 5.4) + Bonferroni alpha update (Sections 6.6, 6.8) + reproducibility version pins (Section 5.5)
 
 ### Phase 5: Introduction, Positioning & Characterization Table
 **Goal**: The introduction reads as a compelling benchmark paper with quantitative substance, and the characterization table is the anchor of Section 4
@@ -105,47 +118,41 @@ Plans:
 
 ```
 Phase 1 (DONE) ──► Phase 2 (DONE) ──► Phase 7 (DONE) ──► Phase 8 (DONE) ──► Phase 12 ──► Phase 11
-                                                      └──► Phase 9 (DONE) ──► Phase 10 ──┘
-Phase 3 (DONE) ──► Phase 13 ────────────────────────────────────────────────────────────────┘
-Phase 4 (methodology) ──────────────────────────────────────────────────────────────────────┘
-Phase 5 (intro/positioning) ────────────────────────────────────────────────────────────────┘
-Phase 6 (RSBench experiment — independent, optional) ───────────────────────────────────────┘
-Phase 14 (verification & housekeeping — independent) ───────────────────────────────────────
+                                                      └──► Phase 9 (DONE) ──────────────┘
+Phase 3 (DONE) ──► Phase 13 ────────────────────────────────────────────────────────────┘
+Phase 4 (PLANNED) ──────────────────────────────────────────────────────────────────────┘
+Phase 5 (not started) ─────────────────────────────────────────────────────────────────┘
+Phase 14 (verification & housekeeping — independent) ──────────────────────────────────
 ```
 
-**Critical path:** 1 → 2 → 7 → 9 → 10 → 11 (analysis → findings → narrative → paper)
+**Critical path:** 1 → 2 → 7 → 9 → 11 (analysis → findings → paper)
 **Gap closure path:** 7 → 12 → 11 (fix stale pass@k before integration)
 **Parallel track A:** Phase 8 (figures) → Phase 13 (wiring) → Phase 11
 **Parallel track B:** Phases 4, 5 can execute in parallel at any time; their outputs feed into Phase 11
-**Independent:** Phase 6 (RSBench experiment), Phase 14 (verification backfill) can run anytime
+**Dropped:** Phase 6 (evidence already in existing data), Phase 10 (write directly from quantitative_findings.json)
+**Independent:** Phase 14 (verification backfill) can run anytime
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Verification & Ground Truth | 5/5 | Complete | 2026-04-03 |
 | 2. Benchmark Characterization Data | 3/3 | Complete | 2026-04-03 |
-| 3. Augmentation Analysis & Story | 0/3 | Context gathered | - |
-| 4. Methodology & Reviewer Defense | 0/2 | Planned | - |
+| 3. Augmentation Analysis & Story | 3/3 | Complete | 2026-04-04 |
+| 4. Methodology & Reviewer Defense | 0/2 | Planned (ready to execute) | - |
 | 5. Introduction, Positioning & Characterization Table | 0/3 | Not started | - |
-| 6. RSBench Single-File Re-spec Experiment | 0/0 | Not started | - |
-| 7. Full Analysis Regeneration | 0/2 | Not started | - |
-| 8. Figure Regeneration | 0/2 | Planned | - |
-| 9. Objective Quantitative Analysis | 0/3 | Not started | - |
-| 10. Qualitative Analysis & Research Narrative | 0/3 | Not started | - |
+| 6. RSBench Single-File Re-spec Experiment | — | **Dropped** | - |
+| 7. Full Analysis Regeneration | 2/2 | Complete | 2026-04-04 |
+| 8. Figure Regeneration | 2/2 | Complete | 2026-04-04 |
+| 9. Objective Quantitative Analysis | 3/3 | Complete | 2026-04-05 |
+| 10. Qualitative Analysis & Research Narrative | — | **Dropped** (merged into Phase 11) | - |
 | 11. Paper TeX Integration | 0/4 | Not started | - |
 | 12. Fix Stale Pass@k Values | 0/1 | Not started | - |
 | 13. Paper.tex Figure & Table Wiring | 0/1 | Not started | - |
 | 14. Verification Backfill & Housekeeping | 0/1 | Not started | - |
 
-### Phase 6: RSBench Single-File Re-spec Controlled Experiment
+### Phase 6: RSBench Single-File Re-spec Controlled Experiment — **DROPPED**
 
-**Goal:** Confirm the multi-file translation hypothesis: create a merged single-file CUDA target for RSBench (collapsing simulation.cu+init.cu into one file), run Qwen 3.5 397B eval on it, and compare pass rate against the current multi-file spec. A jump to ~48% (matching Rodinia single-file baseline) would prove multi-file decomposition — not kernel complexity — is the root cause of 0% failure, and provides a clean controlled experiment for the SC26 paper.
+**Status:** Dropped (2026-04-05). The multi-file translation hypothesis is already confirmed by existing data: 48.5% single-file vs 12.5% multi-file pass rate (from `quantitative_findings.json`). No controlled experiment needed — the existing observational comparison is sufficient for the SC26 paper. Use the controlled comparison in paper prose instead.
 **Directory:** `.planning/phases/06-rsbench-singlefile-respec-experiment/`
-**Requirements**: TBD
-**Depends on:** Phase 1 (pipeline confirmed working, baseline data available)
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 6 to break down)
 
 ### Phase 7: Full Analysis Regeneration
 
@@ -272,47 +279,26 @@ Plans:
 - [x] 09-02-PLAN.md -- [Wave 2, depends on 09-01] Extend script with dimensions 6-13 (self-repair, pass@k, per-kernel tiers, complexity, cross-suite, token cost, SLoC correlation, OpenCL effect) + paper_claims mapping
 - [x] 09-03-PLAN.md -- [Wave 3, depends on 09-01+02] Implement --validate: 10+ spot-checks, cross-checks, consistency checks, paper claims pre-audit
 
-### Phase 10: Qualitative Analysis and Research Narrative
+### Phase 10: Qualitative Analysis and Research Narrative — **DROPPED**
 
-**Goal:** Generate a structured research narrative document (`docs/paper/analysis/qualitative_narrative.md`) containing grounded observations, trends, discoveries, and inferences that support ParBench's seven contribution dimensions. Every claim must cite specific quantitative findings from Phase 9 with exact numbers. This document is the "story bible" for paper.tex — it tells the writer what to say and why, with evidence pre-attached.
-**Depends on:** Phase 9 (quantitative findings provide the evidence base)
-**Requirements**: QUAL-01 through QUAL-07
-**Success Criteria** (what must be TRUE):
-  1. **Motivation narrative** (QUAL-01): Why build-run-verify matters. Grounded in: (a) BLEU/CodeBLEU cannot detect semantic correctness — cite specific VERIFY_FAIL examples where syntactically-similar code produces wrong output, (b) compilation-only misses runtime failures — cite BUILD_PASS but RUN_FAIL/VERIFY_FAIL rate from error_taxonomy, (c) real HPC code exposes failures that synthetic benchmarks miss — cite multi-file failure rate vs single-file
-  2. **Design validation narrative** (QUAL-02): Spec-as-contract works. Grounded in: (a) spec-driven verification catches real bugs — cite self-repair examples where build feedback enabled recovery, (b) kernel-centric translation isolates the hard problem — cite XSBench 0% (repository-level) vs ParBench pass rate (kernel-level), (c) multi-file handling reveals a new failure mode — cite multi_to_multi vs single_file pass rate difference
-  3. **Comprehensiveness narrative** (QUAL-03): ParBench covers the space. Grounded in: (a) 5 suites span HPC domains (12 categories) — cite category distribution, (b) 4 APIs test real parallelism idioms — cite API coverage cross-tab, (c) SLoC range 80-3304 covers trivial to complex — cite SLoC distribution and correlation with pass rate, (d) 96+ specs with augmentation = thousands of test instances
-  4. **Rigor narrative** (QUAL-04): Results are trustworthy. Grounded in: (a) conjunction verification (exit_code AND stdout_pattern) prevents false positives — cite the 9 FALSE_PASS specs that were caught and fixed, (b) augmentation robustness testing shows results aren't fragile to surface-level rewrites — cite Cochran-Armitage p-value and Cohen's h, (c) statistical framework (Wilson CIs, McNemar, Chi-squared) quantifies uncertainty — cite specific CI widths
-  5. **Novelty narrative** (QUAL-05): What's new here. Grounded in: (a) first benchmark with build-run-verify on real HPC codes — differentiate from HumanEval (synthetic), SWE-bench (software engineering, not HPC), TransCoder (trained model, not evaluation), OMPify (OpenMP-only, no verification), LASSI (agentic, not benchmark), (b) augmentation as robustness probe is novel — no prior work systematically tests surface-level sensitivity, (c) multi-file translation evaluation is new — cite that prior benchmarks use single-file only
-  6. **Effectiveness narrative** (QUAL-06): What LLMs can and cannot do. Grounded in: (a) aggregate pass rate reveals capability ceiling — cite overall pass rate with CI, (b) failure mode taxonomy reveals WHERE LLMs fail — BUILD_FAIL (missing headers, wrong API calls) vs VERIFY_FAIL (wrong output, numerical drift) vs RUN_FAIL (segfault, timeout), (c) direction asymmetry reveals API-specific difficulty — cite which directions are harder and hypothesize why (e.g., CUDA→OMP requires mapping thread index arithmetic to loop indices), (d) per-kernel difficulty reveals problem structure effects — cite easiest/hardest kernels and correlate with SLoC, domain, multi-file status
-  7. **Research significance narrative** (QUAL-07): What the community learns. Grounded in: (a) pass rates set baselines for future work — "Qwen 3.5 397B achieves X% on CUDA→OMP; future models should beat this", (b) failure taxonomy guides LLM training — "BUILD_FAIL from missing headers suggests training data lacks HPC build system context", (c) augmentation null result is informative — "LLMs are robust to surface-level rewrites, suggesting they learn deeper code semantics, not surface patterns", (d) multi-file gap identifies a concrete research challenge — "closing the single-file→multi-file gap is the highest-leverage improvement"
-
-**Structure:** Each narrative section (QUAL-01 through QUAL-07) must include:
-- **Headline claim** (1 sentence, suitable for paper prose)
-- **Evidence** (3-5 bullet points, each citing a specific number from Phase 9 with file:field provenance)
-- **Counter-argument** (what a reviewer might object, and how the data addresses it)
-- **Paper placement** (which Section/paragraph this narrative feeds into)
-
-**Plans**: 3 plans in 2 waves
-
-Plans:
-- [ ] 10-01-PLAN.md -- [Wave 1] Write QUAL-01 (motivation), QUAL-02 (design), QUAL-03 (comprehensiveness) — these are the "what and why" narratives
-- [ ] 10-02-PLAN.md -- [Wave 1] Write QUAL-04 (rigor), QUAL-05 (novelty) — these are the "how it's different" narratives
-- [ ] 10-03-PLAN.md -- [Wave 2, depends on 10-01+02] Write QUAL-06 (effectiveness), QUAL-07 (significance) + cross-reference check — these interpret the results and require the other narratives as context
+**Status:** Dropped (2026-04-05). The intermediate qualitative_narrative.md document was an over-engineered artifact that would not appear in the paper. Phase 11 will write qualitative claims directly from `quantitative_findings.json` + Phase 3/9 outputs. QUAL-01 through QUAL-07 narrative goals are absorbed into Phase 11's section-by-section writing tasks.
+**Original depends on:** Phase 9
+**Original requirements**: QUAL-01 through QUAL-07 (now addressed inline during Phase 11)
 
 ### Phase 11: Paper TeX Integration
 
-**Goal:** Update `docs/paper/latex/paper.tex` so that every hardcoded number, table, figure reference, and narrative claim reflects the complete 1,248-task Qwen 3.5 397B dataset. The paper must be internally consistent: Abstract numbers match Section 6 numbers match figure captions match table footnotes. Every data claim must be traceable to a specific field in `results/analysis/quantitative_findings.json` or `paper_data.json`. Qualitative claims must be grounded in Phase 10 narratives. The goal is a submission-ready draft where no reviewer can find a stale or unsubstantiated number.
-**Depends on:** Phase 8 (fresh figures), Phase 9 (quantitative findings), Phase 10 (qualitative narratives)
+**Goal:** Update `docs/paper/latex/paper.tex` so that every hardcoded number, table, figure reference, and narrative claim reflects the complete 1,248-task Qwen 3.5 397B dataset. The paper must be internally consistent: Abstract numbers match Section 6 numbers match figure captions match table footnotes. Every data claim must be traceable to a specific field in `results/analysis/quantitative_findings.json` or `paper_data.json`. Qualitative claims must be grounded directly in Phase 9 quantitative findings and Phase 3 augmentation outputs (Phase 10 narrative document was dropped — write directly from data). The goal is a submission-ready draft where no reviewer can find a stale or unsubstantiated number.
+**Depends on:** Phase 8 (fresh figures), Phase 9 (quantitative findings), Phase 4 (methodology defense text)
 **Requirements**: TEX-01 through TEX-09
 **Success Criteria** (what must be TRUE):
   1. **Abstract** (TEX-01): Headline numbers updated — kernel count, spec count, suite count, API count, aggregate pass rate with CI, augmentation verdict, key finding. Every number matches Section 6.
   2. **Section 1 Introduction** (TEX-02): Quantitative highlights woven into prose (35 kernels, 96+ specs, 4 APIs, SLoC range 80-3304, multi-file %, augmentation levels). LASSI differentiation with ≥4 concrete dimensions. "Gap in existing evaluation" paragraph with comparative data.
   3. **Section 3 Design** (TEX-03): Architecture description verified against actual codebase. Spec-as-contract example uses a real spec. Kernel-centric translation explained with XSBench comparison. File role taxonomy (prompt_payload, support_files, verification_only, translation_targets) accurate.
-  4. **Section 4 Augmentation** (TEX-04): Level definitions match `LEVEL_FRACTIONS` in `augment_dataset.py`. Effect sizes (Cohen's h) from Phase 9. Cochran-Armitage p-value. Per-kernel evidence or strengthened null-result narrative from Phase 3/10. LASSI positioning from Phase 10 QUAL-05.
+  4. **Section 4 Augmentation** (TEX-04): Level definitions match `LEVEL_FRACTIONS` in `augment_dataset.py`. Effect sizes (Cohen's h) from Phase 9. Cochran-Armitage p-value. Per-kernel evidence or strengthened null-result narrative from Phase 3. LASSI positioning from Phase 3 LASSI paragraphs.
   5. **Section 5 Methodology** (TEX-05): Suite-summary table (tab:suite-summary) matches manifest.jsonl counts. Hardware/software table matches actual system. Model config table accurate for Qwen 3.5 397B. Conjunction verification justified. Reproducibility pins: CUDA 12.3, nvcc 12.3, gcc 12.4.0, Ubuntu 24.04, RTX 4070, model version, ParBench commit hash.
   6. **Section 6 Results** (TEX-06 — largest section): ALL aggregate pass rates, per-direction rates, failure taxonomy percentages, self-repair rates, pass@k values, per-kernel tier descriptions, augmentation rates, cross-suite comparisons updated. Every number has CI. Direction asymmetry analysis with McNemar p-values. Translation complexity correlation. Token cost data. OpenCL kernel-only effect.
-  7. **Section 7 Discussion** (TEX-07): Grounded interpretation using Phase 10 narratives. Threats to validity updated (single model, augmentation null result, wall-clock timing caveat). Future work grounded in actual findings (multi-file gap, cross-model comparison, performance measurement).
-  8. **Section 8 Related Work** (TEX-08): ParBench positioned against LASSI, TransCoder, OMPify, HPC-Coder-v2, CodeRosetta, SWE-bench, HumanEval with concrete differentiators from Phase 10 QUAL-05. Missing papers from reference_sc26_related_work.md integrated.
+  7. **Section 7 Discussion** (TEX-07): Grounded interpretation using Phase 9 quantitative findings. Threats to validity updated (single model, augmentation null result, wall-clock timing caveat). Future work grounded in actual findings (multi-file gap, cross-model comparison, performance measurement).
+  8. **Section 8 Related Work** (TEX-08): ParBench positioned against LASSI, TransCoder, OMPify, HPC-Coder-v2, CodeRosetta, SWE-bench, HumanEval with concrete differentiators from Phase 3 LASSI paragraphs. Missing papers from reference_sc26_related_work.md integrated.
   9. **Cross-consistency check** (TEX-09): Run a final grep-based audit: extract every `\num{}`, `\SI{}`, percentage, and count from paper.tex and verify each against quantitative_findings.json or paper_data.json. Zero unverified numbers remain.
 
 **Key constraint:** The paper is ~10 pages IEEE double-column. Every added sentence must earn its space. Prefer precise numbers over vague claims. Prefer one well-evidenced finding over three hand-wavy observations.

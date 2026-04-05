@@ -1,0 +1,14 @@
+{
+  "doc_path": "docs/DEVELOPMENT.md",
+  "claims_checked": 31,
+  "claims_passed": 30,
+  "claims_failed": 1,
+  "failures": [
+    {
+      "line": 104,
+      "claim": "python3 scripts/evaluation/analyze_eval.py --project-root <root> --output-dir results/evaluation",
+      "expected": "flag '--output-dir' accepted by analyze_eval.py",
+      "actual": "no '--output-dir' or 'output_dir' argument found in scripts/evaluation/analyze_eval.py"
+    }
+  ]
+}

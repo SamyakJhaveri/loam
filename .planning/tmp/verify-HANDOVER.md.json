@@ -1,0 +1,32 @@
+{
+  "doc_path": "HANDOVER.md",
+  "claims_checked": 32,
+  "claims_passed": 28,
+  "claims_failed": 4,
+  "failures": [
+    {
+      "line": 23,
+      "claim": "analysis/rodinia_api_gaps.json",
+      "expected": "file exists",
+      "actual": "file not found at analysis/rodinia_api_gaps.json (actual location: analysis/data/rodinia_api_gaps.json)"
+    },
+    {
+      "line": 228,
+      "claim": "analysis/rodinia_api_gaps.json",
+      "expected": "file exists",
+      "actual": "file not found at analysis/rodinia_api_gaps.json (actual location: analysis/data/rodinia_api_gaps.json)"
+    },
+    {
+      "line": 336,
+      "claim": "c_augmentation/transforms.py",
+      "expected": "file exists",
+      "actual": "file not found at c_augmentation/transforms.py (transforms are defined in c_augmentation/augment_dataset.py)"
+    },
+    {
+      "line": 347,
+      "claim": "c_augmentation/transforms.py",
+      "expected": "file exists",
+      "actual": "file not found at c_augmentation/transforms.py (transforms are defined in c_augmentation/augment_dataset.py)"
+    }
+  ]
+}

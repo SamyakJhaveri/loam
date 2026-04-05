@@ -1,0 +1,26 @@
+{
+  "doc_path": "GUIDE.md",
+  "claims_checked": 33,
+  "claims_passed": 30,
+  "claims_failed": 3,
+  "failures": [
+    {
+      "line": 70,
+      "claim": "c_augmentation/transforms.py",
+      "expected": "file exists",
+      "actual": "file not found at c_augmentation/transforms.py — transforms are defined inside c_augmentation/augment_dataset.py (6 transform classes, not a separate file)"
+    },
+    {
+      "line": 84,
+      "claim": "docs/design/integrate_augmentation.md",
+      "expected": "file exists",
+      "actual": "file not found at docs/design/integrate_augmentation.md — actual file is docs/design/integrate_augmentation_into_harness.md"
+    },
+    {
+      "line": 408,
+      "claim": "analysis/reports/pilot_report.md",
+      "expected": "file exists",
+      "actual": "file not found at analysis/reports/pilot_report.md — no pilot_report.md exists in analysis/reports/"
+    }
+  ]
+}
