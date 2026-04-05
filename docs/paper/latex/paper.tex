@@ -838,38 +838,85 @@ BUILD\_FAIL is the most recoverable failure mode by volume (72 repaired tasks), 
 \subsection{Per-Kernel Analysis}
 \label{sec:per-kernel}
 
-Table~\ref{tab:per-kernel} presents per-kernel results for Qwen~3.5 aggregated across all six translation directions and five augmentation levels (480 primary campaign tasks, 18 Rodinia kernels). \pending{Expand to multi-model comparison when GPT-4.1~mini data is available.}
+Table~\ref{tab:per-kernel} presents per-kernel results for Qwen~3.5 aggregated across all translation directions and five augmentation levels (710 primary campaign tasks, 31 evaluated kernels across 5 suites). \pending{Expand to multi-model comparison when GPT-4.1~mini data is available.}
 
-% src: paper_data.json > primary_campaign > by_kernel (all 18 rows verified 2026-04-03)
-% src: row sums all match Total; total PASS across kernels = 174; total tasks = 480
-% src: 3 kernels spot-checked vs raw JSONs: hotspot(21P/4R/5V=30), backprop(13P/16B/1V=30), heartwall(19B/11R=30)
+% src: paper_data.json > primary_campaign > by_kernel (all 31 rows verified 2026-04-05)
+% src: row sums all match Total; total PASS across kernels = 272; total tasks = 710
+% src: 31 evaluated kernels = 35 corpus kernels - 4 with all specs KNOWN_FAIL/phantom (kmeans, mummergpu, hybridsort, huffman)
+% src: spot-checked vs raw JSONs: hotspot(21P/4R/5V=30), stencil1d(15P=15), xsbench(20B/10R=30)
 \begin{table*}[t]
 \centering
-\caption{Per-kernel results across all directions and augmentation levels (Qwen~3.5 397B-A17B, 480 primary campaign tasks). KNOWN\_FAIL source specs excluded.}
+\caption{Per-kernel results across all directions and augmentation levels (Qwen~3.5 397B-A17B, 710 primary campaign tasks, 31~kernels across 5 suites). KNOWN\_FAIL source specs excluded.}
 \label{tab:per-kernel}
 \footnotesize
-\begin{tabular}{@{}lllrrrrrrrl@{}}
+\begin{tabular}{@{}llrrrrl@{}}
 \toprule
-Suite & Kernel & Category & Total & PASS & BLD\_F & RUN\_F & VER\_F & EXT\_F & Rate & 95\% Wilson CI \\
+Suite & Kernel & Total & PASS & Fail & Rate & 95\% Wilson CI \\
 \midrule
-Rodinia & hotspot & stencil & 30 & 21 & 0 & 4 & 5 & 0 & 70.0\% & [52.1\%, 83.3\%] \\
-Rodinia & nn & other & 10 & 7 & 2 & 1 & 0 & 0 & 70.0\% & [39.7\%, 89.2\%] \\
-Rodinia & hotspot3d & stencil & 30 & 19 & 10 & 1 & 0 & 0 & 63.3\% & [45.5\%, 78.1\%] \\
-Rodinia & particlefilter & other & 30 & 17 & 1 & 2 & 10 & 0 & 56.7\% & [39.2\%, 72.6\%] \\
-Rodinia & bfs & graph & 30 & 16 & 8 & 6 & 0 & 0 & 53.3\% & [36.1\%, 69.8\%] \\
-Rodinia & cfd & physics & 30 & 16 & 2 & 2 & 10 & 0 & 53.3\% & [36.1\%, 69.8\%] \\
-Rodinia & lud & linear\_algebra & 30 & 15 & 7 & 8 & 0 & 0 & 50.0\% & [33.2\%, 66.9\%] \\
-Rodinia & nw & other & 30 & 15 & 5 & 10 & 0 & 0 & 50.0\% & [33.2\%, 66.9\%] \\
-Rodinia & pathfinder & other & 30 & 15 & 6 & 5 & 4 & 0 & 50.0\% & [33.2\%, 66.9\%] \\
-Rodinia & backprop & ml & 30 & 13 & 16 & 0 & 1 & 0 & 43.3\% & [27.4\%, 60.8\%] \\
-Rodinia & srad & stencil & 30 & 12 & 6 & 11 & 1 & 0 & 40.0\% & [24.6\%, 57.7\%] \\
-Rodinia & bptree & other & 30 & 4 & 15 & 9 & 2 & 0 & 13.3\% & [5.3\%, 29.7\%] \\
-Rodinia & lavamd & mol.~dynamics & 30 & 2 & 14 & 10 & 4 & 0 & 6.7\% & [1.9\%, 21.3\%] \\
-Rodinia & streamcluster & other & 30 & 2 & 14 & 10 & 4 & 0 & 6.7\% & [1.9\%, 21.3\%] \\
-Rodinia & dwt2d & image & 10 & 0 & 4 & 5 & 0 & 1 & 0.0\% & [0.0\%, 27.8\%] \\
-Rodinia & gaussian & lin.~algebra & 10 & 0 & 0 & 5 & 5 & 0 & 0.0\% & [0.0\%, 27.8\%] \\
-Rodinia & heartwall & image & 30 & 0 & 19 & 11 & 0 & 0 & 0.0\% & [0.0\%, 11.4\%] \\
-Rodinia & myocyte & physics & 30 & 0 & 19 & 10 & 1 & 0 & 0.0\% & [0.0\%, 11.4\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > stencil1d: pass=15, total=15, rate=1.0
+HeCBench & stencil1d & 15 & 15 & 0 & 100.0\% & [79.6\%, 100.0\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > floydwarshall: pass=16, total=20, rate=0.8
+HeCBench & floydwarshall & 20 & 16 & 4 & 80.0\% & [58.4\%, 91.9\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > heat2d: pass=15, total=20, rate=0.75
+HeCBench & heat2d & 20 & 15 & 5 & 75.0\% & [53.1\%, 88.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > iso2dfd: pass=15, total=20, rate=0.75
+HeCBench & iso2dfd & 20 & 15 & 5 & 75.0\% & [53.1\%, 88.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > hotspot: pass=21, total=30, rate=0.7
+Rodinia & hotspot & 30 & 21 & 9 & 70.0\% & [52.1\%, 83.3\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > nn: pass=7, total=10, rate=0.7
+Rodinia & nn & 10 & 7 & 3 & 70.0\% & [39.7\%, 89.2\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > hotspot3d: pass=19, total=30, rate=0.6333
+Rodinia & hotspot3d & 30 & 19 & 11 & 63.3\% & [45.5\%, 78.1\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > jacobi: pass=6, total=10, rate=0.6
+HeCBench & jacobi & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > md: pass=6, total=10, rate=0.6
+HeCBench & md & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > nqueen: pass=6, total=10, rate=0.6
+HeCBench & nqueen & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > page-rank: pass=6, total=10, rate=0.6
+HeCBench & page-rank & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > particlefilter: pass=17, total=30, rate=0.5667
+Rodinia & particlefilter & 30 & 17 & 13 & 56.7\% & [39.2\%, 72.6\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > bfs: pass=16, total=30, rate=0.5333
+Rodinia & bfs & 30 & 16 & 14 & 53.3\% & [36.1\%, 69.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > cfd: pass=16, total=30, rate=0.5333
+Rodinia & cfd & 30 & 16 & 14 & 53.3\% & [36.1\%, 69.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > lud: pass=15, total=30, rate=0.5
+Rodinia & lud & 30 & 15 & 15 & 50.0\% & [33.1\%, 66.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > nw: pass=15, total=30, rate=0.5
+Rodinia & nw & 30 & 15 & 15 & 50.0\% & [33.1\%, 66.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > pathfinder: pass=15, total=30, rate=0.5
+Rodinia & pathfinder & 30 & 15 & 15 & 50.0\% & [33.1\%, 66.8\%] \\
+\midrule
+% src: paper_data.json > primary_campaign > by_kernel > backprop: pass=13, total=30, rate=0.4333
+Rodinia & backprop & 30 & 13 & 17 & 43.3\% & [27.4\%, 60.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > srad: pass=12, total=30, rate=0.4
+Rodinia & srad & 30 & 12 & 18 & 40.0\% & [24.6\%, 57.7\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > scan: pass=5, total=15, rate=0.3333
+HeCBench & scan & 15 & 5 & 10 & 33.3\% & [15.2\%, 58.3\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > mixbench: pass=8, total=30, rate=0.2667
+mixbench & mixbench & 30 & 8 & 22 & 26.7\% & [14.2\%, 44.5\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > bptree: pass=4, total=30, rate=0.1333
+Rodinia & bptree & 30 & 4 & 26 & 13.3\% & [5.3\%, 29.7\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > lavamd: pass=2, total=30, rate=0.0667
+Rodinia & lavamd & 30 & 2 & 28 & 6.7\% & [1.8\%, 21.3\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > streamcluster: pass=2, total=30, rate=0.0667
+Rodinia & streamcluster & 30 & 2 & 28 & 6.7\% & [1.8\%, 21.3\%] \\
+\midrule
+% src: paper_data.json > primary_campaign > by_kernel > convolution1d: pass=0, total=10, rate=0.0
+HeCBench & convolution1d & 10 & 0 & 10 & 0.0\% & [0.0\%, 27.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > dwt2d: pass=0, total=10, rate=0.0
+Rodinia & dwt2d & 10 & 0 & 10 & 0.0\% & [0.0\%, 27.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > gaussian: pass=0, total=10, rate=0.0
+Rodinia & gaussian & 10 & 0 & 10 & 0.0\% & [0.0\%, 27.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > heartwall: pass=0, total=30, rate=0.0
+Rodinia & heartwall & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.3\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > myocyte: pass=0, total=30, rate=0.0
+Rodinia & myocyte & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.3\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > rsbench: pass=0, total=30, rate=0.0
+RSBench & rsbench & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.3\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > xsbench: pass=0, total=30, rate=0.0
+XSBench & xsbench & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.3\%] \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -883,17 +930,17 @@ Rodinia & myocyte & physics & 30 & 0 & 19 & 10 & 1 & 0 & 0.0\% & [0.0\%, 11.4\%]
 
 Kernels partition into three difficulty tiers based on Qwen~3.5 pass rates across all directions and augmentation levels (Table~\ref{tab:per-kernel}). \pending{Tier boundaries may shift with two-model consensus data.}
 
-% src: paper_data.json > by_kernel: 9 easy (>=50%) + 5 medium (1-49%) + 4 hard (0%) = 18 verified
-\textbf{Easy tier (pass rate $\geq$ 50\%).} Nine kernels: hotspot (70.0\%), nn (70.0\%), hotspot3d (63.3\%), particlefilter (56.7\%), bfs (53.3\%), cfd (53.3\%), lud (50.0\%), nw (50.0\%), and pathfinder (50.0\%). These kernels share characteristics that facilitate translation: relatively compact kernel bodies, straightforward thread-index-to-data mappings, and limited cross-thread communication. Notably, cfd and particlefilter achieve high pass rates despite significant VERIFY\_FAIL counts (10 each), indicating that the model frequently produces compilable but numerically incorrect translations for these kernels. % src: cfd VER_F=10, particlefilter VER_F=10 (paper_data.json by_kernel)
+% src: paper_data.json > by_kernel: 17 easy (>=50%) + 6 medium (1-49%) + 8 hard (0%) = 31 evaluated kernels verified 2026-04-05
+\textbf{Easy tier (pass rate $\geq$ 50\%).} Seventeen kernels, from stencil1d (100.0\%) through pathfinder (50.0\%). HeCBench kernels dominate the top of this tier: stencil1d achieves 100\% (15/15), and four HeCBench kernels (floydwarshall, heat2d, iso2dfd, jacobi) appear in the top half, suggesting that compact, self-contained stencil and iterative solver kernels are the most amenable to LLM translation. Rodinia kernels cfd and particlefilter achieve high pass rates despite significant VERIFY\_FAIL counts (10 each), indicating that the model frequently produces compilable but numerically incorrect translations for these kernels. % src: cfd VER_F=10, particlefilter VER_F=10 (paper_data.json by_kernel)
 
-% src: paper_data.json > by_kernel: backprop BLD_F=16/30 verified
-\textbf{Medium tier (pass rate 1--49\%).} Five kernels: backprop (43.3\%), srad (40.0\%), bptree (13.3\%), lavamd (6.7\%), and streamcluster (6.7\%). These exhibit heterogeneous failure modes across directions. Backprop's failures concentrate in BUILD\_FAIL (16/30), reflecting difficulty translating CUDA shared-memory reduction idioms to OpenMP.
+% src: paper_data.json > by_kernel: backprop=43.3%, srad=40.0%, scan=33.3%, mixbench=26.7%, bptree=13.3%, lavamd=6.7%, streamcluster=6.7%
+\textbf{Medium tier (pass rate 1--49\%).} Six kernels: backprop (43.3\%), srad (40.0\%), scan (33.3\%), mixbench (26.7\%), bptree (13.3\%), lavamd (6.7\%), and streamcluster (6.7\%). These exhibit heterogeneous failure modes across directions. Backprop's failures concentrate in BUILD\_FAIL (16/30), reflecting difficulty translating CUDA shared-memory reduction idioms to OpenMP. The mixbench kernel's low rate (26.7\%) reflects its benchmark-specific microkernels that combine arithmetic intensity measurement with memory access patterns.
 
-% src: paper_data.json > by_kernel: heartwall BLD_F=19/30, myocyte BLD_F=19/30, gaussian BLD_F=0 verified
-\textbf{Hard tier (pass rate 0\%).} Four kernels: dwt2d (0.0\%), gaussian (0.0\%), heartwall (0.0\%), and myocyte (0.0\%). These kernels share structural complexity that defeats translation across all directions. Heartwall and myocyte are dominated by BUILD\_FAIL (19/30 each). Gaussian's failures split between RUN\_FAIL and VERIFY\_FAIL with zero BUILD\_FAIL, suggesting the model produces syntactically valid but semantically incorrect translations.
+% src: paper_data.json > by_kernel: convolution1d=0/10, dwt2d=0/10, gaussian=0/10, heartwall=0/30, myocyte=0/30, rsbench=0/30, xsbench=0/30
+\textbf{Hard tier (pass rate 0\%).} Eight kernels: convolution1d, dwt2d, gaussian, heartwall, myocyte, rsbench, and xsbench. These kernels share structural complexity that defeats translation across all directions. Heartwall and myocyte are dominated by BUILD\_FAIL (19/30 each). XSBench and RSBench---multi-file Monte Carlo transport benchmarks---achieve 0\% despite being well-documented HPC kernels, suggesting that multi-file kernel complexity and domain-specific data structures (e.g., nuclide grids, unionized energy grids) create a translation barrier independent of LLM familiarity with the source code. Gaussian's failures split between RUN\_FAIL and VERIFY\_FAIL with zero BUILD\_FAIL, suggesting the model produces syntactically valid but semantically incorrect translations.
 
-% src: paper_data.json > by_kernel: dwt2d=10, gaussian=10, nn=10 (2 dir pairs x 5 levels); all others=30 (6 x 5); verified 2026-04-03
-\textbf{Sample size note.} Per-kernel totals in Table~\ref{tab:per-kernel} aggregate across 6 directions and 5 augmentation levels per kernel. Common kernels appear in 30 tasks ($6 \times 5$); kernels present in fewer direction pairs (e.g., dwt2d, nn) have 10 tasks. Per-direction sample sizes vary (see Section~\ref{sec:direction-analysis}); findings from low-$n$ directions should be considered exploratory.
+% src: paper_data.json > by_kernel: task totals vary by number of direction pairs per kernel; HeCBench kernels=10-20, Rodinia/XSBench/RSBench/mixbench=10-30; verified 2026-04-05
+\textbf{Sample size note.} Per-kernel totals in Table~\ref{tab:per-kernel} aggregate across available directions and 5 augmentation levels per kernel. Task counts vary by kernel: Rodinia kernels with all 6 standard directions have 30 tasks ($6 \times 5$); HeCBench kernels evaluated in 2--4 directions have 10--20 tasks; kernels present in fewer direction pairs (e.g., dwt2d, nn) have 10 tasks. Per-direction sample sizes vary (see Section~\ref{sec:direction-analysis}); findings from low-$n$ directions should be considered exploratory.
 
 \subsection{Self-Repair Effectiveness}
 \label{sec:self-repair}
@@ -973,8 +1020,8 @@ The null result has a specific interpretation: it provides evidence \emph{agains
 
 Table~\ref{tab:direction-rates} presents pass rates broken down by translation direction for each model at L0.
 
-% src: paper_data.json > primary_campaign > by_direction (all 6 rows verified 2026-04-03)
-% src: task sum 80+80+75+75+85+85=480 verified
+% src: paper_data.json > primary_campaign > by_direction (all 6 standard rows verified 2026-04-05)
+% src: task sum 120+120+90+90+100+100=620 (standard) + 40+50=90 (case study) = 710 verified
 \begin{table*}[t]
 \centering
 \caption{Pass rates by translation direction (L0, all suites, Qwen~3.5; GPT-4.1~mini pending). Directions with fewer than 10 kernel-model pairs are marked as exploratory.}
@@ -984,30 +1031,30 @@ Table~\ref{tab:direction-rates} presents pass rates broken down by translation d
 \toprule
 Direction & Qwen 3.5 (L0) & Qwen 3.5 (all levels) & GPT-4.1 mini & $N$ (L0) & Note \\
 \midrule
-cuda-to-omp & 68.8\% (11/16) & 65.0\% (52/80) [54.1\%, 74.6\%] & \tbd & 16 & Primary \\ % src: paper_data.json by_direction.cuda-to-omp: 52/80=0.65, CI [0.5408,0.7455], L0: 11/16=0.6875
-omp-to-cuda & 56.2\% (9/16) & 50.0\% (40/80) [39.3\%, 60.7\%] & \tbd & 16 & \\ % src: paper_data.json by_direction.omp-to-cuda: 40/80=0.50, CI [0.393,0.607], L0: 9/16=0.5625
-opencl-to-omp & 46.7\% (7/15) & 46.7\% (35/75) [35.8\%, 57.8\%] & \tbd & 15 & \\ % src: paper_data.json by_direction.opencl-to-omp: 35/75=0.4667, CI [0.3582,0.5784], L0: 7/15=0.4667
-omp-to-opencl & 33.3\% (5/15) & 29.3\% (22/75) [20.2\%, 40.4\%] & \tbd & 15 & \\ % src: paper_data.json by_direction.omp-to-opencl: 22/75=0.2933, CI [0.2024,0.4044], L0: 5/15=0.3333
-cuda-to-opencl & 23.5\% (4/17) & 22.4\% (19/85) [14.8\%, 32.3\%] & \tbd & 17 & \\ % src: paper_data.json by_direction.cuda-to-opencl: 19/85=0.2235, CI [0.148,0.3229], L0: 4/17=0.2353
-opencl-to-cuda & 11.8\% (2/17) & 7.1\% (6/85) [3.3\%, 14.6\%] & \tbd & 17 & \\ % src: paper_data.json by_direction.opencl-to-cuda: 6/85=0.0706, CI [0.0328,0.1456], L0: 2/17=0.1176
+cuda-to-omp & 66.7\% (16/24) & 64.2\% (77/120) [55.3\%, 72.2\%] & \tbd & 24 & Primary \\ % src: paper_data.json > primary_campaign > by_direction > cuda-to-omp: 77/120=0.6417, CI [0.5527,0.7218]; augmentation > per_direction_by_level > cuda-to-omp > L0: 16/24=0.6667
+omp-to-cuda & 58.3\% (14/24) & 52.5\% (63/120) [43.6\%, 61.2\%] & \tbd & 24 & \\ % src: paper_data.json > primary_campaign > by_direction > omp-to-cuda: 63/120=0.525, CI [0.4363,0.6122]; L0: 14/24=0.5833
+opencl-to-omp & 38.9\% (7/18) & 38.9\% (35/90) [29.5\%, 49.2\%] & \tbd & 18 & \\ % src: paper_data.json > primary_campaign > by_direction > opencl-to-omp: 35/90=0.3889, CI [0.2947,0.4922]; L0: 7/18=0.3889
+omp-to-opencl & 33.3\% (6/18) & 27.8\% (25/90) [19.6\%, 37.8\%] & \tbd & 18 & \\ % src: paper_data.json > primary_campaign > by_direction > omp-to-opencl: 25/90=0.2778, CI [0.1958,0.378]; L0: 6/18=0.3333
+cuda-to-opencl & 20.0\% (4/20) & 20.0\% (20/100) [13.3\%, 28.9\%] & \tbd & 20 & \\ % src: paper_data.json > primary_campaign > by_direction > cuda-to-opencl: 20/100=0.2, CI [0.1334,0.2888]; L0: 4/20=0.2
+opencl-to-cuda & 10.0\% (2/20) & 6.0\% (6/100) [2.8\%, 12.5\%] & \tbd & 20 & \\ % src: paper_data.json > primary_campaign > by_direction > opencl-to-cuda: 6/100=0.06, CI [0.0278,0.1248]; L0: 2/20=0.1
 cuda-to-omp\_target & -- & -- & -- & 8 & Case study \\
 omp\_target-to-cuda & -- & -- & -- & 10 & Case study \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-% src: 65.0%-50.0%=15.0pp verified; paper_data.json by_direction cuda-to-omp/omp-to-cuda
-\textbf{Direction asymmetry.} For each bidirectional pair, the data indicate absolute pass-rate gaps but no statistically significant asymmetry. CUDA-to-OpenMP (65.0\%) outperforms OpenMP-to-CUDA (50.0\%) by 15.0 percentage points (Table~\ref{tab:direction-rates}). This is consistent with the hypothesis that CUDA-to-OpenMP is a reductive task---removing explicit thread indexing and device memory management in favor of directive-based parallelism---while the reverse direction is generative, requiring the model to introduce CUDA-specific constructs from OpenMP's more abstract specification.
+% src: paper_data.json > primary_campaign > by_direction: cuda-to-omp 64.2%, omp-to-cuda 52.5%; 64.2%-52.5%=11.7pp verified
+\textbf{Direction asymmetry.} For each bidirectional pair, the data indicate absolute pass-rate gaps but no statistically significant asymmetry. CUDA-to-OpenMP (64.2\%) outperforms OpenMP-to-CUDA (52.5\%) by 11.7 percentage points (Table~\ref{tab:direction-rates}). This is consistent with the hypothesis that CUDA-to-OpenMP is a reductive task---removing explicit thread indexing and device memory management in favor of directive-based parallelism---while the reverse direction is generative, requiring the model to introduce CUDA-specific constructs from OpenMP's more abstract specification.
 
-% src: paper_data.json > direction_asymmetry; Bonferroni alpha=0.05/4=0.0125 (4 tests incl. omp\_target pair)
-% src: cuda-omp: n=16,p=0.625,h=0.2591->0.26; cuda-opencl: n=17,p=0.6875->0.688,h=0.3127->0.31; omp-opencl: n=15,p=0.7266->0.727,h=0.2731->0.27
-McNemar's test for paired direction comparison (using kernel pairs evaluated in both directions, Bonferroni-corrected $\alpha = 0.0125$): CUDA-to-OMP vs.\ OMP-to-CUDA ($n=16$ paired, $p = 0.625$, Cohen's $h = 0.26$); CUDA-to-OpenCL vs.\ OpenCL-to-CUDA ($n=17$ paired, $p = 0.688$, Cohen's $h = 0.31$); OpenCL-to-OMP vs.\ OMP-to-OpenCL ($n=15$ paired, $p = 0.727$, Cohen's $h = 0.27$). All three tests fail to reject the null hypothesis of symmetry at the corrected significance level. The effect sizes (Cohen's $h = 0.26$--$0.31$, medium) suggest that meaningful asymmetry may exist but the current single-model sample size lacks power to detect it.
+% src: paper_data.json > primary_campaign > direction_asymmetry; Bonferroni alpha=0.05/4=0.0125 (4 tests incl. omp\_target pair)
+% src: omp-to-cuda vs cuda-to-omp: n=24, p=0.6875, h=-0.1724->-0.17; cuda-to-opencl vs opencl-to-cuda: n=20, p=0.6875, h=0.2838->0.28; opencl-to-omp vs omp-to-opencl: n=18, p=1.0, h=0.1157->0.12
+McNemar's test for paired direction comparison (using kernel pairs evaluated in both directions, Bonferroni-corrected $\alpha = 0.0125$): CUDA-to-OMP vs.\ OMP-to-CUDA ($n=24$ paired, $p = 0.6875$, Cohen's $h = -0.17$); CUDA-to-OpenCL vs.\ OpenCL-to-CUDA ($n=20$ paired, $p = 0.6875$, Cohen's $h = 0.28$); OpenCL-to-OMP vs.\ OMP-to-OpenCL ($n=18$ paired, $p = 1.0$, Cohen's $h = 0.12$). All three tests fail to reject the null hypothesis of symmetry at the corrected significance level. The effect sizes (Cohen's $h = 0.12$--$0.28$, small to medium) suggest that meaningful asymmetry may exist but the current single-model sample size lacks power to detect it.
 
 \textbf{OpenCL-target translation: kernel-only failure modes.} Translations targeting OpenCL exercise a qualitatively different failure mode from CUDA and OpenMP targets. Because OpenCL translations are kernel-only (Section~\ref{sec:eval-pipeline})---the LLM translates only \texttt{.cl} kernel files while the host program remains unchanged---build failures are replaced by \emph{kernel compilation failures} at runtime, when the host invokes \texttt{clBuildProgram()} on the LLM-generated kernel source. Two recurring error patterns emerge: missing \texttt{\_\_global} address space qualifiers on kernel pointer arguments, and API name hallucination (e.g., \texttt{get\_block\_id()} instead of the correct \texttt{get\_group\_id()}).
 
-% src: paper_data.json by_direction: cuda-to-opencl 19/85=22.4% CI[14.8,32.3], opencl-to-cuda 6/85=7.1% CI[3.3,14.6]
-% src: opencl-to-cuda BUILD_FAIL=66/85=77.6%; gap=22.4%-7.1%=15.3pp verified
-\textbf{OpenCL direction asymmetry.} CUDA-to-OpenCL achieves 22.4\% [14.8\%, 32.3\%] across all levels, while OpenCL-to-CUDA achieves 7.1\% [3.3\%, 14.6\%], with BUILD\_FAIL accounting for 66/85 tasks (77.6\%) in the reverse direction. This 15.3 percentage-point asymmetry quantifies the difficulty premium of full-program translation over kernel-only translation. \pending{Per-suite cross-model direction comparison awaiting GPT-4.1~mini data.}
+% src: paper_data.json > primary_campaign > by_direction: cuda-to-opencl 20/100=20.0% CI[13.3,28.9], opencl-to-cuda 6/100=6.0% CI[2.8,12.5]
+% src: opencl-to-cuda BUILD_FAIL=81/100=81.0%; gap=20.0%-6.0%=14.0pp verified
+\textbf{OpenCL direction asymmetry.} CUDA-to-OpenCL achieves 20.0\% [13.3\%, 28.9\%] across all levels, while OpenCL-to-CUDA achieves 6.0\% [2.8\%, 12.5\%], with BUILD\_FAIL accounting for 81/100 tasks (81.0\%) in the reverse direction. This 14.0 percentage-point asymmetry quantifies the difficulty premium of full-program translation over kernel-only translation. \pending{Per-suite cross-model direction comparison awaiting GPT-4.1~mini data.}
 
 \subsection{pass@\texorpdfstring{$k$}{k} Analysis}
 \label{sec:pass-at-k}
@@ -1017,7 +1064,7 @@ To characterize sampling variance independent of self-repair, a separate pass@$k
 % src: paper_data.json > passk_campaign > passk_estimates (142 direction-kernel pairs, 3 samples each = 426 tasks)
 % src: 103 hard_fail + 0 noisy + 17 always_pass + 22 partial = 142 verified
 % src: 103/142=72.5%, 22/142=15.5%, 17/142=12.0% verified
-% src: macro pass@1=19.7%, macro pass@3=27.5% verified; greedy pass@1=36.2% = primary campaign rate
+% src: macro pass@1=19.7%, macro pass@3=27.5% verified; greedy pass@1=38.3% = primary campaign rate (paper_data.json > primary_campaign > overall > pass_rate=0.3831)
 \begin{table*}[t]
 \centering
 \caption{pass@$k$ results (L0, temperature=0.7, 3 samples, Qwen~3.5; GPT-4.1~mini pending).}
@@ -1027,7 +1074,7 @@ To characterize sampling variance independent of self-repair, a separate pass@$k
 \toprule
 Model & pass@1 (greedy, T=0) & pass@1 (T=0.7) & pass@3 (T=0.7) & Hard Fail & Noisy Fail & Always Pass \\
 \midrule
-Qwen 3.5 397B-A17B & 36.2\% (primary) & 19.7\% (macro) & 27.5\% (macro) & 103/142 (72.5\%) & 0/142 (0.0\%) & 17/142 (12.0\%) \\
+Qwen 3.5 397B-A17B & 38.3\% (primary) & 19.7\% (macro) & 27.5\% (macro) & 103/142 (72.5\%) & 0/142 (0.0\%) & 17/142 (12.0\%) \\ % src: paper_data.json > primary_campaign > overall > pass_rate=0.3831 -> 38.3% greedy; passk unchanged
 GPT-4.1 mini & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \bottomrule
 \end{tabular}
@@ -1055,8 +1102,8 @@ The pass@$k$ sweep (426 tasks, L0, temperature=0.7, 3 samples, zero-shot per sam
 
 Table~\ref{tab:stats-summary} consolidates the statistical tests applied throughout Section~\ref{sec:results}.
 
-% src: paper_data.json > augmentation > cochran_armitage: z=-0.1657->-0.17, p=0.868355->0.87
-% src: paper_data.json > direction_asymmetry: McNemar values cross-checked with S6.6 tab:direction-rates
+% src: paper_data.json > primary_campaign > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0
+% src: paper_data.json > primary_campaign > direction_asymmetry: McNemar values cross-checked with S6.6 tab:direction-rates
 % src: Bonferroni alpha = 0.05/4 = 0.0125 (4 McNemar tests incl. omp\_target)
 \begin{table*}[t]
 \centering
@@ -1068,11 +1115,11 @@ Table~\ref{tab:stats-summary} consolidates the statistical tests applied through
 Test & Statistic & $p$-value & Effect Size & Interpretation \\
 \midrule
 Model comparison (chi-squared) & \tbd & \tbd & Cramer's V = \tbd & \tbd \\
-Qwen augmentation (Cochran-Armitage) & $z = -0.17$ & $p = 0.87$ & -- & No monotonic trend; null supports robustness \\ % src: z=-0.1657, p=0.868355
+Qwen augmentation (Cochran-Armitage) & $z = 0.0$ & $p = 1.0$ & -- & No monotonic trend; null supports robustness \\ % src: paper_data.json > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0, n_kernels=24
 GPT-4.1~mini augmentation (Cochran-Armitage) & \tbd & \tbd & -- & \tbd \\
-Direction: cuda-omp (McNemar) & $n=16$, exact & $p = 0.625$ & Cohen's $h = 0.26$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: p=0.625, h=0.2591
-Direction: cuda-opencl (McNemar) & $n=17$, exact & $p = 0.688$ & Cohen's $h = 0.31$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: p=0.6875, h=0.3127
-Direction: omp-opencl (McNemar) & $n=15$, exact & $p = 0.727$ & Cohen's $h = 0.27$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: p=0.726562, h=0.2731
+Direction: cuda-omp (McNemar) & $n=24$, exact & $p = 0.6875$ & Cohen's $h = -0.17$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > omp-to-cuda vs cuda-to-omp: n=24, p=0.6875, h=-0.1724
+Direction: cuda-opencl (McNemar) & $n=20$, exact & $p = 0.6875$ & Cohen's $h = 0.28$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > cuda-to-opencl vs opencl-to-cuda: n=20, p=0.6875, h=0.2838
+Direction: omp-opencl (McNemar) & $n=18$, exact & $p = 1.0$ & Cohen's $h = 0.12$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > opencl-to-omp vs omp-to-opencl: n=18, p=1.0, h=0.1157
 \bottomrule
 \end{tabular}
 \end{table*}
