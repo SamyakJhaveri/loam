@@ -19,8 +19,8 @@ Re-run figure generation against refreshed Phase 7 analysis outputs to produce f
 - **D-03:** T2 model comparison LaTeX table: 2-row table with Qwen row fully populated and GPT-4.1 mini row showing model name with "pending" for numeric fields.
 
 ### Suite Coverage
-- **D-04:** All 5 suites (Rodinia, XSBench, RSBench, mixbench, HeCBench) included in figures. SUITE_ORDER updated to include RSBench and mixbench. Figures show all 34 kernels (Rodinia 21 + HeCBench 10 + XSBench 1 + RSBench 1 + mixbench 1), not just Rodinia's 18. **Note:** Rodinia 21 includes KNOWN_FAIL kernels that have eval results; the planning agent should decide whether to include or exclude them from figures.
-- **D-05:** F3 kernel×model heatmap: 34 kernels × 6 directions grid. Kernels grouped by suite with horizontal divider lines and suite labels on the left margin.
+- **D-04:** All 5 suites (Rodinia, XSBench, RSBench, mixbench, HeCBench) included in figures. SUITE_ORDER updated to include RSBench and mixbench. Figures show all 34 kernels (Rodinia 21 + HeCBench 10 + XSBench 1 + RSBench 1 + mixbench 1), not just Rodinia's 18. **Note:** Rodinia 21 includes KNOWN_FAIL kernels that have eval results; the planning agent should decide whether to include or exclude them from figures. **Clarification (per D-10):** Since omp_target directions are excluded, only 29 kernels have data in the standard 6 directions. 5 HeCBench kernels (convolution1d, jacobi, md, nqueen, page-rank) only have omp_target results and will show as all-empty rows. Planning resolved this to use 29 kernels in standard-direction figures.
+- **D-05:** F3 kernel×model heatmap: 29 kernels × 6 directions grid (34 total minus 5 omp_target-only HeCBench kernels per D-10). Kernels grouped by suite with horizontal divider lines and suite labels on the left margin.
 - **D-06:** F6 redesigned from XSBench-specific comparison to cross-suite aggregate comparison bar chart showing per-suite pass rates for all 5 suites.
 
 ### Data Source Routing
