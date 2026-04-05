@@ -80,32 +80,26 @@ STATUS_ORDER: list[str] = [
     "PASS", "BUILD_FAIL", "RUN_FAIL", "EXTRACTION_FAIL", "VERIFY_FAIL",
 ]
 
+NA_COLOR = "#E0E0E0"
+
 MODEL_COLORS: dict[str, str] = {
-    "together-qwen-3.5-397b-a17b":  OKABE_ITO["orange"],
-    "claude-sonnet-4-6":            OKABE_ITO["blue"],
-    "groq-llama-3.3-70b-versatile": OKABE_ITO["vermillion"],
-    "gemini-2.5-flash-lite":        OKABE_ITO["purple"],
+    "together-qwen-3.5-397b-a17b": OKABE_ITO["orange"],
+    "azure-gpt-4.1-mini":          NA_COLOR,
 }
 
 MODEL_DISPLAY: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "Qwen 3.5\n397B",
-    "claude-sonnet-4-6":            "Claude\nSonnet 4",
-    "groq-llama-3.3-70b-versatile": "Llama 3.3\n70B",
-    "gemini-2.5-flash-lite":        "Gemini 2.5\nFlash-Lite",
+    "azure-gpt-4.1-mini":          "GPT-4.1\nmini",
 }
 
 MODEL_DISPLAY_SHORT: dict[str, str] = {
-    "together-qwen-3.5-397b-a17b":  "Qwen 3.5 397B-A17B",
-    "claude-sonnet-4-6":            "Claude Sonnet 4",
-    "groq-llama-3.3-70b-versatile": "Llama 3.3 70B",
-    "gemini-2.5-flash-lite":        "Gemini 2.5 Flash-Lite",
+    "together-qwen-3.5-397b-a17b": "Qwen 3.5 397B-A17B",
+    "azure-gpt-4.1-mini":          "GPT-4.1 mini",
 }
 
 MODEL_LINESTYLE: dict[str, tuple[str, str]] = {
-    "together-qwen-3.5-397b-a17b":  ("D-.", "dashdot"),
-    "claude-sonnet-4-6":            ("o-", "solid"),
-    "gemini-2.5-flash-lite":        ("s--", "dashed"),
-    "groq-llama-3.3-70b-versatile": ("^:", "dotted"),
+    "together-qwen-3.5-397b-a17b": ("D-.", "dashdot"),
+    "azure-gpt-4.1-mini":          ("v-", "solid"),
 }
 
 # Legacy palette references for survey figures (F2, C.4)
@@ -127,7 +121,6 @@ PALETTE = {
     "linen":        "#F5F0EB",
 }
 
-NA_COLOR = "#E0E0E0"
 FIGURE_DPI: int = 600
 FONT_SIZE_DEFAULT: int = 10
 PDF_FONTTYPE: int = 42
@@ -148,7 +141,15 @@ DIRECTION_LABELS = {
     "opencl-to-omp": "OCL\u2192OMP",
 }
 
-SUITE_ORDER = ["rodinia", "xsbench", "hecbench"]
+SUITE_ORDER = ["rodinia", "xsbench", "rsbench", "mixbench", "hecbench"]
+
+SUITE_DISPLAY = {
+    "rodinia": "Rodinia",
+    "xsbench": "XSBench",
+    "rsbench": "RSBench",
+    "mixbench": "mixbench",
+    "hecbench": "HeCBench",
+}
 
 # F2: Repository-level vs kernel-level API pair counts (survey data)
 REPO_KERNEL_PAIRS: list[tuple[str, int, int]] = [
@@ -166,35 +167,6 @@ HECBENCH_FUNNEL_STAGES: list[tuple[str, int, str | None]] = [
     ("Final selected\n(complexity, deps, diversity)", 60, "\u2212182: complexity/deps/diversity"),
 ]
 
-# Verified augmentation robustness data (fallback when no result files)
-AUG_ROBUSTNESS: dict[str, list[int]] = {
-    "claude-sonnet-4-6":              [12, 12, 12, 12, 12],
-    "gemini-2.5-flash-lite":          [4,  4,  4,  3,  1],
-    "groq-llama-3.3-70b-versatile":   [5,  6,  6,  4,  4],
-}
-AUG_TOTAL = 17
-
-# Verified XSBench L0 cross-direction data (fallback)
-XSBENCH_L0: dict[str, dict[str, str]] = {
-    "cuda-to-omp":          {"claude": "RUN_FAIL",    "gemini": "BUILD_FAIL",   "groq": "EXTRACTION_FAIL"},
-    "cuda-to-opencl":       {"claude": "PASS",        "gemini": "RUN_FAIL",     "groq": "RUN_FAIL"},
-    "cuda-to-omp_target":   {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "BUILD_FAIL"},
-    "omp-to-cuda":          {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "PASS"},
-    "omp-to-opencl":        {"claude": "PASS",        "gemini": "RUN_FAIL",     "groq": "EXTRACTION_FAIL"},
-    "omp-to-omp_target":    {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "BUILD_FAIL"},
-    "omp_target-to-cuda":   {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "BUILD_FAIL"},
-    "omp_target-to-omp":    {"claude": "PASS",        "gemini": "RUN_FAIL",     "groq": "BUILD_FAIL"},
-    "omp_target-to-opencl": {"claude": "PASS",        "gemini": "RUN_FAIL",     "groq": "RUN_FAIL"},
-    "opencl-to-cuda":       {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "RUN_FAIL"},
-    "opencl-to-omp":        {"claude": "RUN_FAIL",    "gemini": "BUILD_FAIL",   "groq": "BUILD_FAIL"},
-    "opencl-to-omp_target": {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "BUILD_FAIL"},
-}
-_XS_MODELS = ["claude", "gemini", "groq"]
-_XS_MODEL_DISPLAY = {
-    "claude": "Claude Sonnet 4",
-    "gemini": "Gemini Flash-Lite",
-    "groq":   "Llama 3.3 70B",
-}
 
 
 # ---------------------------------------------------------------------------
@@ -424,7 +396,7 @@ def filter_records(
 def build_kernel_model_matrix(
     records: list[dict],
     level: int = 0,
-    suite: str | None = "rodinia",
+    suite: str | None = None,
     direction: str | None = "cuda-to-omp",
 ) -> tuple[list[str], list[str], dict[tuple[str, str], str]]:
     """Build (kernel, model) -> overall_status lookup.
@@ -536,33 +508,103 @@ def generate_f2_repo_vs_kernel(
 
 
 # ===================================================================
-# F3: Kernel x Model Heatmap (triple-panel)
+# F3: Per-Kernel Translation Outcomes Heatmap (all suites, 6 directions)
 # ===================================================================
 
 
-def _draw_heatmap_panel(
-    ax: plt.Axes,
-    kernels: list[str],
-    models: list[str],
-    lookup: dict[tuple[str, str], str],
-    title: str,
-    show_y_labels: bool = True,
-) -> set[str]:
-    """Draw a single heatmap panel. Returns set of statuses present."""
-    n_k = len(kernels)
-    n_m = len(models)
+def generate_f3_kernel_heatmap(
+    records: list[dict],
+    output_dir: Path,
+    verbose: bool,
+) -> None:
+    """F3: Single-panel heatmap of 29 kernels x 6 directions, grouped by suite.
+
+    Uses only non-sample, non-augmented (L0 base) records in the standard
+    6 directions.  Kernels are grouped by suite (SUITE_ORDER) with horizontal
+    divider lines and suite labels on the left margin.
+    """
+    from matplotlib.patches import Rectangle
+
+    # ------------------------------------------------------------------
+    # 1. Filter to base L0 records in standard 6 directions
+    # ------------------------------------------------------------------
+    base_records = [r for r in records if not r.get("is_sample", False)]
+    l0_records = filter_records(base_records, level=0)
+    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
+
+    if not std_records:
+        print("  WARNING: No L0 standard-direction records -- skipping F3.")
+        return
+
+    # ------------------------------------------------------------------
+    # 2. Build (kernel, direction) -> status lookup and kernel->suite map
+    # ------------------------------------------------------------------
+    lookup: dict[tuple[str, str], str] = {}
+    kernel_suite: dict[str, str] = {}
+    kernel_pass_count: dict[str, int] = defaultdict(int)
+
+    for r in std_records:
+        k = r["kernel"]
+        d = r["direction"]
+        status = r.get("overall_status", "UNKNOWN")
+        lookup[(k, d)] = status
+        kernel_suite[k] = r.get("suite", "other")
+        if status == "PASS":
+            kernel_pass_count[k] += 1
+
+    # ------------------------------------------------------------------
+    # 3. Group kernels by suite, sort within group by PASS count desc
+    # ------------------------------------------------------------------
+    suite_groups: list[tuple[str, list[str]]] = []
+    for suite in SUITE_ORDER:
+        suite_kernels = sorted(
+            [k for k, s in kernel_suite.items() if s == suite],
+            key=lambda k: (-kernel_pass_count.get(k, 0), k),
+        )
+        if suite_kernels:
+            suite_groups.append((suite, suite_kernels))
+
+    # Flatten to ordered kernel list and track suite boundaries
+    kernels_ordered: list[str] = []
+    suite_boundaries: list[int] = []  # row indices where dividers go
+    suite_midpoints: list[tuple[str, float]] = []  # (suite_name, y_midpoint)
+    for suite_name, suite_kernels in suite_groups:
+        start = len(kernels_ordered)
+        if kernels_ordered:
+            suite_boundaries.append(start)
+        kernels_ordered.extend(suite_kernels)
+        mid = start + len(suite_kernels) / 2 - 0.5
+        suite_midpoints.append((suite_name, mid))
+
+    n_kernels = len(kernels_ordered)
+    n_dirs = len(DIRECTIONS)
+
+    if verbose:
+        print(f"  Total kernels in standard directions: {n_kernels}")
+        for suite_name, suite_kernels in suite_groups:
+            print(f"    {suite_name}: {len(suite_kernels)} kernels")
+
+    # ------------------------------------------------------------------
+    # 4. Build numeric matrix for colormap
+    # ------------------------------------------------------------------
     status_to_idx = {s: i for i, s in enumerate(STATUS_ORDER)}
     na_idx = len(STATUS_ORDER)
 
-    matrix = np.full((n_k, n_m), na_idx, dtype=int)
+    matrix = np.full((n_kernels, n_dirs), na_idx, dtype=int)
     present: set[str] = set()
 
-    for i, kernel in enumerate(kernels):
-        for j, model in enumerate(models):
-            status = lookup.get((kernel, model))
+    for i, kernel in enumerate(kernels_ordered):
+        for j, direction in enumerate(DIRECTIONS):
+            status = lookup.get((kernel, direction))
             if status and status in status_to_idx:
                 matrix[i, j] = status_to_idx[status]
                 present.add(status)
+
+    # ------------------------------------------------------------------
+    # 5. Render heatmap
+    # ------------------------------------------------------------------
+    fig_height = max(6, n_kernels * 0.28 + 2)
+    fig, ax = plt.subplots(figsize=(7.16, fig_height))
 
     colors = [STATUS_COLORS[s] for s in STATUS_ORDER] + [NA_COLOR]
     cmap = mcolors.ListedColormap(colors)
@@ -571,155 +613,142 @@ def _draw_heatmap_panel(
 
     ax.imshow(matrix, cmap=cmap, norm=norm, aspect="auto")
 
-    for i, kernel in enumerate(kernels):
-        for j, model in enumerate(models):
-            status = lookup.get((kernel, model))
+    # Cell text: status abbreviation or em-dash for missing
+    for i, kernel in enumerate(kernels_ordered):
+        for j, direction in enumerate(DIRECTIONS):
+            status = lookup.get((kernel, direction))
             if status and status in STATUS_ABBREV:
                 bg = STATUS_COLORS.get(status, "#FFFFFF")
                 ax.text(
                     j, i, STATUS_ABBREV[status],
                     ha="center", va="center",
-                    fontsize=8, fontweight="bold",
+                    fontsize=7, fontweight="bold",
                     color=_text_color_for_bg(bg),
                 )
-            elif not status:
+            else:
                 ax.text(
                     j, i, "\u2014",
                     ha="center", va="center",
-                    fontsize=8, color="#999999",
+                    fontsize=7, color="#999999",
                 )
 
-    ax.set_xticks(range(n_m))
+    # ------------------------------------------------------------------
+    # 6. Axis labels
+    # ------------------------------------------------------------------
+    ax.set_xticks(range(n_dirs))
     ax.set_xticklabels(
-        [MODEL_DISPLAY.get(m, m) for m in models],
-        rotation=0, ha="center", fontsize=8,
+        [DIRECTION_LABELS[d] for d in DIRECTIONS],
+        fontsize=8, rotation=0, ha="center",
     )
     ax.xaxis.set_ticks_position("top")
     ax.xaxis.set_label_position("top")
 
-    if show_y_labels:
-        ax.set_yticks(range(n_k))
-        ax.set_yticklabels(kernels, fontsize=9)
-    else:
-        ax.set_yticks(range(n_k))
-        ax.set_yticklabels([""] * n_k)
+    ax.set_yticks(range(n_kernels))
+    ax.set_yticklabels(kernels_ordered, fontsize=7)
 
-    for i in range(n_k + 1):
-        ax.axhline(i - 0.5, color="white", linewidth=1)
-    for j in range(n_m + 1):
-        ax.axvline(j - 0.5, color="white", linewidth=1)
+    # ------------------------------------------------------------------
+    # 7. Grid lines (white cell borders)
+    # ------------------------------------------------------------------
+    for i in range(n_kernels + 1):
+        ax.axhline(i - 0.5, color="white", linewidth=0.5)
+    for j in range(n_dirs + 1):
+        ax.axvline(j - 0.5, color="white", linewidth=0.5)
 
-    ax.set_title(title, fontsize=11, pad=45, fontweight="bold")
-    return present
+    # ------------------------------------------------------------------
+    # 8. Suite grouping: thicker divider lines + suite labels
+    # ------------------------------------------------------------------
+    for boundary_y in suite_boundaries:
+        ax.axhline(boundary_y - 0.5, color="black", linewidth=2.0, linestyle="-")
 
+    for suite_name, y_mid in suite_midpoints:
+        ax.text(
+            -1.5, y_mid, SUITE_DISPLAY.get(suite_name, suite_name),
+            ha="center", va="center",
+            fontsize=9, fontweight="bold",
+            rotation=90,
+            clip_on=False,
+        )
 
-def generate_f3_kernel_heatmap(
-    records: list[dict],
-    output_dir: Path,
-    verbose: bool,
-) -> None:
-    """F3: Triple-panel kernel x model heatmap (cuda-to-omp + omp-to-cuda + cuda-to-opencl).
-
-    IMPORTANT: Uses only non-sample, non-augmented (L0 base) records.
-    """
-    # Filter to base records only (not samples)
-    base_records = [r for r in records if not r.get("is_sample", False)]
-
-    c2o_kernels, c2o_models, c2o_lookup = build_kernel_model_matrix(
-        base_records, level=0, suite="rodinia", direction="cuda-to-omp",
-    )
-    o2c_kernels, o2c_models, o2c_lookup = build_kernel_model_matrix(
-        base_records, level=0, suite="rodinia", direction="omp-to-cuda",
-    )
-    c2ocl_kernels, c2ocl_models, c2ocl_lookup = build_kernel_model_matrix(
-        base_records, level=0, suite="rodinia", direction="cuda-to-opencl",
+    # ------------------------------------------------------------------
+    # 9. Title and annotation for GPT-4.1 mini
+    # ------------------------------------------------------------------
+    ax.set_title(
+        f"Per-Kernel Translation Outcomes (L0, All Suites, Qwen 3.5 397B)\n"
+        f"{n_kernels} kernels \u00d7 {n_dirs} directions",
+        fontsize=10, fontweight="bold", pad=12,
     )
 
-    if verbose:
-        print(f"  cuda-to-omp: {len(c2o_kernels)} kernels x {len(c2o_models)} models")
-        print(f"  omp-to-cuda: {len(o2c_kernels)} kernels x {len(o2c_models)} models")
-        print(f"  cuda-to-opencl: {len(c2ocl_kernels)} kernels x {len(c2ocl_models)} models")
-
-    # Unified kernel list for c2o + o2c
-    all_kernels_main = sorted(set(c2o_kernels) | set(o2c_kernels))
-    kernel_pass = defaultdict(int)
-    for k in all_kernels_main:
-        for m in c2o_models:
-            if c2o_lookup.get((k, m)) == "PASS":
-                kernel_pass[k] += 1
-        for m in o2c_models:
-            if o2c_lookup.get((k, m)) == "PASS":
-                kernel_pass[k] += 1
-    kernels_main = sorted(all_kernels_main, key=lambda k: (-kernel_pass[k], k))
-
-    c2ocl_pass = defaultdict(int)
-    for k in c2ocl_kernels:
-        for m in c2ocl_models:
-            if c2ocl_lookup.get((k, m)) == "PASS":
-                c2ocl_pass[k] += 1
-    kernels_ocl = sorted(c2ocl_kernels, key=lambda k: (-c2ocl_pass[k], k))
-
-    n_c2o = max(len(c2o_models), 1)
-    n_o2c = max(len(o2c_models), 1)
-    n_c2ocl = max(len(c2ocl_models), 1)
-
-    fig, (ax1, ax2, ax3) = plt.subplots(
-        1, 3, figsize=(7.16, 3.5),
-        gridspec_kw={"width_ratios": [n_c2o, n_o2c, n_c2ocl], "wspace": 0.4},
-    )
-
-    present1 = _draw_heatmap_panel(
-        ax1, kernels_main, c2o_models, c2o_lookup,
-        f"CUDA \u2192 OMP (L0)\n{len(c2o_kernels)} kernels", show_y_labels=True,
-    )
-    present2 = _draw_heatmap_panel(
-        ax2, kernels_main, o2c_models, o2c_lookup,
-        f"OMP \u2192 CUDA (L0)\n{len(o2c_kernels)} kernels", show_y_labels=False,
-    )
-    present3 = _draw_heatmap_panel(
-        ax3, kernels_ocl, c2ocl_models, c2ocl_lookup,
-        f"CUDA \u2192 OpenCL (L0)\n{len(c2ocl_kernels)} kernels", show_y_labels=True,
-    )
-
-    all_present = sorted(
-        present1 | present2 | present3,
-        key=lambda s: STATUS_ORDER.index(s),
-    )
-    legend_handles = create_status_legend(all_present)
+    # ------------------------------------------------------------------
+    # 10. Legend
+    # ------------------------------------------------------------------
+    present_ordered = sorted(present, key=lambda s: STATUS_ORDER.index(s))
+    legend_handles = create_status_legend(present_ordered)
+    # Add N/A legend entry for missing data
+    legend_handles.append(Patch(
+        facecolor=NA_COLOR, edgecolor="black", linewidth=0.5,
+        label="No data",
+    ))
     fig.legend(
         handles=legend_handles,
-        loc="lower center", bbox_to_anchor=(0.5, -0.02),
-        ncol=len(legend_handles), frameon=False, fontsize=9,
+        loc="lower center", bbox_to_anchor=(0.5, -0.01),
+        ncol=len(legend_handles), frameon=False, fontsize=8,
     )
 
+    # GPT-4.1 mini annotation below legend
+    fig.text(
+        0.5, -0.04,
+        "GPT-4.1 mini: data pending (all directions N/A)",
+        ha="center", va="top", fontsize=8, fontstyle="italic", color="#666666",
+    )
+
+    fig.tight_layout()
+    fig.subplots_adjust(left=0.22)
     _save_figure(fig, output_dir, "f3_kernel_model_heatmap")
     plt.close(fig)
 
 
 # ===================================================================
-# F4: Failure Taxonomy (dual-direction stacked bar)
+# F4: Failure Taxonomy (status distribution by direction, all suites)
 # ===================================================================
 
 
-def _draw_taxonomy_panel(
-    ax: plt.Axes,
+def generate_f4_failure_taxonomy(
     records: list[dict],
-    models: list[str],
-    title: str,
+    output_dir: Path,
+    verbose: bool,
 ) -> None:
-    """Draw a stacked bar panel for failure taxonomy."""
-    n_models = len(models)
-    x = np.arange(n_models)
+    """F4: Failure taxonomy -- status distribution by direction (all suites)."""
+    base_records = [r for r in records if not r.get("is_sample", False)]
+    l0_records = filter_records(base_records, level=0)
+    # Filter to standard 6 directions only
+    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
+
+    if not std_records:
+        print("  WARNING: No L0 standard-direction records -- skipping F4.")
+        return
+
+    dir_status = aggregate_status_counts(std_records, "direction")
+
+    if verbose:
+        for d in DIRECTIONS:
+            counts = dir_status.get(d, {})
+            total = sum(counts.values())
+            print(f"  {d}: {total} tasks")
+
+    fig, ax = plt.subplots(figsize=(3.5, 3.0))
+
+    active_dirs = [d for d in DIRECTIONS if d in dir_status]
+    x = np.arange(len(active_dirs))
     bar_width = 0.6
 
-    filtered = [r for r in records if r["model"] in models]
-    model_status = aggregate_status_counts(filtered, "model")
-
-    bottoms = np.zeros(n_models)
+    bottoms = np.zeros(len(active_dirs))
+    all_statuses: set[str] = set()
     for status in STATUS_ORDER:
         counts = np.array([
-            model_status.get(m, {}).get(status, 0) for m in models
+            dir_status.get(d, {}).get(status, 0) for d in active_dirs
         ], dtype=float)
+        if counts.sum() > 0:
+            all_statuses.add(status)
         ax.bar(
             x, counts, bar_width,
             bottom=bottoms,
@@ -733,66 +762,33 @@ def _draw_taxonomy_panel(
                 ax.text(
                     x[i], bottom + count / 2, str(int(count)),
                     ha="center", va="center",
-                    fontsize=8, fontweight="bold",
+                    fontsize=7, fontweight="bold",
                     color=_text_color_for_bg(STATUS_COLORS[status]),
                 )
         bottoms += counts
 
     ax.set_xticks(x)
-    ax.set_xticklabels([MODEL_DISPLAY.get(m, m) for m in models], fontsize=8)
+    ax.set_xticklabels(
+        [DIRECTION_LABELS.get(d, d) for d in active_dirs],
+        fontsize=8, rotation=30, ha="right",
+    )
     ax.set_ylabel("Number of Tasks")
     ax.set_ylim(0, max(bottoms) * 1.08 if max(bottoms) > 0 else 1)
     ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
-    ax.set_title(title, fontsize=10, fontweight="bold")
-
-
-def generate_f4_failure_taxonomy(
-    records: list[dict],
-    output_dir: Path,
-    verbose: bool,
-) -> None:
-    """F4: Failure taxonomy -- dual-direction stacked bar chart."""
-    base_records = [r for r in records if not r.get("is_sample", False)]
-
-    c2o_records = filter_records(base_records, level=0, suite="rodinia", direction="cuda-to-omp")
-    o2c_records = filter_records(base_records, level=0, suite="rodinia", direction="omp-to-cuda")
-
-    c2o_models = sorted(
-        {r["model"] for r in c2o_records},
-        key=lambda m: -sum(1 for r in c2o_records if r["model"] == m and r.get("overall_status") == "PASS"),
-    )
-    o2c_models = sorted(
-        {r["model"] for r in o2c_records},
-        key=lambda m: -sum(1 for r in o2c_records if r["model"] == m and r.get("overall_status") == "PASS"),
+    ax.set_title(
+        "Failure Taxonomy: Status Distribution by Direction\n(L0, All Suites)",
+        fontsize=9, fontweight="bold",
     )
 
-    if verbose:
-        print(f"  cuda-to-omp: {len(c2o_records)} tasks, {len(c2o_models)} models")
-        print(f"  omp-to-cuda: {len(o2c_records)} tasks, {len(o2c_models)} models")
-
-    fig, (ax1, ax2) = plt.subplots(
-        1, 2, figsize=(7.16, 3.0),
-        gridspec_kw={"width_ratios": [max(len(c2o_models), 1), max(len(o2c_models), 1)], "wspace": 0.3},
-    )
-
-    n_c2o = len(set(r["kernel"] for r in c2o_records))
-    n_o2c = len(set(r["kernel"] for r in o2c_records))
-    _draw_taxonomy_panel(ax1, c2o_records, c2o_models, f"CUDA \u2192 OpenMP (L0, {n_c2o} kernels)")
-    _draw_taxonomy_panel(ax2, o2c_records, o2c_models, f"OpenMP \u2192 CUDA (L0, {n_o2c} kernels)")
-
-    all_statuses = set()
-    for r in c2o_records + o2c_records:
-        s = r.get("overall_status", "UNKNOWN")
-        if s in STATUS_COLORS:
-            all_statuses.add(s)
     present_ordered = [s for s in STATUS_ORDER if s in all_statuses]
     handles = create_status_legend(present_ordered, include_hatch=True)
-    fig.legend(
+    ax.legend(
         handles=handles,
-        loc="upper center", bbox_to_anchor=(0.5, 1.04),
-        ncol=len(handles), frameon=False, fontsize=9,
+        loc="upper right", frameon=True, framealpha=0.9, fontsize=7,
     )
+    ax.grid(axis="y", alpha=0.3)
 
+    fig.tight_layout()
     _save_figure(fig, output_dir, "f4_failure_taxonomy")
     plt.close(fig)
 
@@ -892,76 +888,110 @@ def generate_f5_pass_at_k(
 
 
 # ===================================================================
-# F6: XSBench Cross-Granularity Comparison
+# F6: Cross-Suite Pass Rate Comparison
 # ===================================================================
 
 
-def generate_f6_xsbench_comparison(
+def _wilson_ci(successes: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score 95% confidence interval for a binomial proportion."""
+    if total == 0:
+        return (0.0, 0.0)
+    p_hat = successes / total
+    denom = 1 + z**2 / total
+    center = (p_hat + z**2 / (2 * total)) / denom
+    spread = z * ((p_hat * (1 - p_hat) / total + z**2 / (4 * total**2)) ** 0.5) / denom
+    return (max(0.0, center - spread), min(1.0, center + spread))
+
+
+# Suite bar colors (Okabe-Ito based)
+SUITE_COLORS: dict[str, str] = {
+    "rodinia":  OKABE_ITO["blue"],
+    "xsbench":  OKABE_ITO["orange"],
+    "rsbench":  OKABE_ITO["green"],
+    "mixbench": OKABE_ITO["vermillion"],
+    "hecbench": OKABE_ITO["purple"],
+}
+
+
+def generate_f6_cross_suite_comparison(
     records: list[dict],
     output_dir: Path,
     verbose: bool,
 ) -> None:
-    """F6: XSBench ParBench vs ParEval-Repo pass rate comparison."""
-    # Filter to xsbench results in standard directions
-    xsbench = [r for r in records
-                if r["suite"] == "xsbench"
-                and r["direction"] in DIRECTIONS]
+    """F6: Cross-suite aggregate pass rate comparison bar chart."""
+    base_records = [r for r in records if not r.get("is_sample", False)]
+    l0_records = filter_records(base_records, level=0)
+    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
 
-    if not xsbench:
-        print("  WARNING: No XSBench eval results found -- skipping F6.")
+    if not std_records:
+        print("  WARNING: No L0 standard-direction records -- skipping F6.")
         return
 
-    dir_results: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "pass": 0})
-    for r in xsbench:
-        d = r["direction"]
-        dir_results[d]["total"] += 1
-        if r["overall_status"] == "PASS":
-            dir_results[d]["pass"] += 1
-
-    active_dirs = [d for d in DIRECTIONS if dir_results[d]["total"] > 0]
+    # Compute per-suite stats
+    suite_stats: list[dict] = []
+    for suite in SUITE_ORDER:
+        suite_recs = [r for r in std_records if r.get("suite") == suite]
+        total = len(suite_recs)
+        passed = sum(1 for r in suite_recs if r["overall_status"] == "PASS")
+        rate = passed / total if total > 0 else 0
+        ci_low, ci_high = _wilson_ci(passed, total)
+        suite_stats.append({
+            "suite": suite,
+            "total": total,
+            "pass": passed,
+            "rate": rate,
+            "ci_low": ci_low,
+            "ci_high": ci_high,
+        })
 
     if verbose:
-        for d in active_dirs:
-            s = dir_results[d]
-            print(f"  {d}: {s['pass']}/{s['total']}")
+        for s in suite_stats:
+            print(
+                f"  {s['suite']}: {s['pass']}/{s['total']} = {s['rate']:.1%} "
+                f"[{s['ci_low']:.1%}, {s['ci_high']:.1%}]"
+            )
 
     fig, ax = plt.subplots(figsize=(3.5, 2.5))
 
-    x_pos = np.arange(len(active_dirs))
-    width = 0.35
+    x_pos = np.arange(len(SUITE_ORDER))
+    rates = [s["rate"] for s in suite_stats]
+    bar_colors = [SUITE_COLORS.get(s["suite"], "#999999") for s in suite_stats]
 
-    pareval_rates = [0.0] * len(active_dirs)
-    parbench_rates = [
-        dir_results[d]["pass"] / dir_results[d]["total"]
-        if dir_results[d]["total"] > 0 else 0
-        for d in active_dirs
-    ]
+    # Asymmetric error bars for Wilson CI
+    yerr_low = [s["rate"] - s["ci_low"] for s in suite_stats]
+    yerr_high = [s["ci_high"] - s["rate"] for s in suite_stats]
 
-    ax.bar(x_pos - width / 2, pareval_rates, width,
-           label="ParEval-Repo (0%)", color="#b2bec3", edgecolor="white")
-    bars_bench = ax.bar(x_pos + width / 2, parbench_rates, width,
-                        label="ParBench (kernel-level)", color=STATUS_COLORS["PASS"],
-                        edgecolor="white")
+    bars = ax.bar(
+        x_pos, rates, width=0.6,
+        color=bar_colors, edgecolor="black", linewidth=0.5,
+        yerr=[yerr_low, yerr_high],
+        capsize=3, error_kw={"linewidth": 1.0, "color": "black"},
+    )
 
-    for bar, d in zip(bars_bench, active_dirs):
+    # Annotate each bar with "pass/total"
+    for i, (bar, s) in enumerate(zip(bars, suite_stats)):
         h = bar.get_height()
-        s = dir_results[d]
-        ax.text(bar.get_x() + bar.get_width() / 2, h + 0.02,
-                f"{s['pass']}/{s['total']}", ha="center", va="bottom",
-                fontsize=8, color=PALETTE["charcoal"])
+        ax.text(
+            bar.get_x() + bar.get_width() / 2, h + max(yerr_high[i], 0.02) + 0.02,
+            f"{s['pass']}/{s['total']}", ha="center", va="bottom",
+            fontsize=8, color=PALETTE["charcoal"],
+        )
 
     ax.set_xticks(x_pos)
-    ax.set_xticklabels([DIRECTION_LABELS.get(d, d) for d in active_dirs],
-                       fontsize=8, rotation=30, ha="right")
+    ax.set_xticklabels(
+        [SUITE_DISPLAY.get(s, s) for s in SUITE_ORDER],
+        fontsize=8,
+    )
     ax.set_ylabel("Pass Rate")
-    ax.set_ylim(0, 1.2)
-    ax.set_title("XSBench: Kernel-Level vs Repository-Level",
-                 fontsize=10, fontweight="bold", pad=8)
-    ax.legend(fontsize=8, frameon=False, loc="upper right")
+    ax.set_ylim(0, 1.15)
+    ax.set_title(
+        "L0 Pass Rate by Suite (Standard Directions)",
+        fontsize=10, fontweight="bold", pad=8,
+    )
     ax.grid(axis="y", alpha=0.3)
 
     fig.tight_layout()
-    _save_figure(fig, output_dir, "f6_xsbench_comparison")
+    _save_figure(fig, output_dir, "f6_cross_suite_comparison")
     plt.close(fig)
 
 
@@ -975,56 +1005,55 @@ def generate_f7_augmentation(
     output_dir: Path,
     verbose: bool,
 ) -> None:
-    """F7: Augmentation robustness -- pass rate vs. augmentation level."""
+    """F7: Augmentation robustness -- pass rate vs. augmentation level (Qwen only)."""
     levels = [0, 1, 2, 3, 4]
     level_labels = ["L0\n(original)", "L1", "L2", "L3", "L4\n(max)"]
 
-    # Compute from records if available
+    # Compute from records -- all suites, cuda-to-omp direction only
     base_records = [r for r in records if not r.get("is_sample", False)]
     c2o_all = [r for r in base_records
-               if r.get("suite") == "rodinia" and r.get("direction") == "cuda-to-omp"]
+               if r.get("direction") == "cuda-to-omp"]
 
-    if c2o_all:
-        model_level_pass: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
-        model_level_total: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
-        for r in c2o_all:
-            m = r["model"]
-            lvl = r.get("augment_level", 0)
-            model_level_total[m][lvl] += 1
-            if r.get("overall_status") == "PASS":
-                model_level_pass[m][lvl] += 1
-        aug_data = {}
-        for m in model_level_pass:
-            aug_data[m] = [model_level_pass[m].get(lvl, 0) for lvl in levels]
-        aug_total = max(
-            (model_level_total[m].get(0, 0) for m in model_level_total),
-            default=AUG_TOTAL,
-        )
-    else:
-        aug_data = AUG_ROBUSTNESS
-        aug_total = AUG_TOTAL
+    if not c2o_all:
+        print("  WARNING: No CUDA-to-OMP augmentation records -- skipping F7.")
+        return
+
+    # Aggregate pass counts and totals per level (single model: Qwen)
+    level_pass: dict[int, int] = defaultdict(int)
+    level_total: dict[int, int] = defaultdict(int)
+    for r in c2o_all:
+        lvl = r.get("augment_level", 0)
+        level_total[lvl] += 1
+        if r.get("overall_status") == "PASS":
+            level_pass[lvl] += 1
+
+    aug_total = level_total.get(0, 1)
+    pass_counts = [level_pass.get(lvl, 0) for lvl in levels]
+    rates = [c / max(level_total.get(lvl, 1), 1) * 100 for lvl, c in zip(levels, pass_counts)]
+
+    if verbose:
+        for lvl, pc, tot, rate in zip(levels, pass_counts, [level_total.get(l, 0) for l in levels], rates):
+            print(f"  L{lvl}: {pc}/{tot} = {rate:.1f}%")
 
     fig, ax = plt.subplots(figsize=(3.5, 2.5))
 
-    for model, pass_counts in aug_data.items():
-        if model not in MODEL_LINESTYLE:
-            continue
-        rates = [c / aug_total * 100 for c in pass_counts]
-        marker_ls, ls = MODEL_LINESTYLE[model]
-        color = MODEL_COLORS[model]
-        label = MODEL_DISPLAY_SHORT.get(model, model)
-        ax.plot(
-            levels, rates,
-            marker_ls,
-            color=color,
-            linewidth=1.8,
-            markersize=7,
-            label=label,
-        )
+    color = MODEL_COLORS["together-qwen-3.5-397b-a17b"]
+    label = MODEL_DISPLAY_SHORT["together-qwen-3.5-397b-a17b"]
+    ax.plot(
+        levels, rates,
+        "D-.",
+        color=color,
+        linewidth=1.8,
+        markersize=7,
+        label=label,
+    )
+
+    # Annotate each point with its rate
+    for lvl, rate in zip(levels, rates):
         ax.annotate(
-            f"{rates[-1]:.0f}%",
-            xy=(4, rates[-1]),
-            xytext=(4.15, rates[-1]),
+            f"{rate:.0f}%",
+            xy=(lvl, rate),
+            xytext=(lvl + 0.15, rate + 2),
             fontsize=8, va="center", color=color,
         )
 
@@ -1039,8 +1068,8 @@ def generate_f7_augmentation(
     ax.axvline(0, color="grey", linewidth=0.8, linestyle="--", alpha=0.5)
     ax.legend(loc="upper right", frameon=True, framealpha=0.9, fontsize=9)
     ax.set_title(
-        f"Augmentation Robustness: Pass Rate across L0\u2013L4\n"
-        f"(Rodinia CUDA\u2192OpenMP, {aug_total} kernels, seed=42)",
+        "Augmentation Robustness: Pass Rate across L0\u2013L4\n"
+        f"(CUDA\u2192OpenMP, all suites, {aug_total} kernels)",
         fontsize=10,
     )
 
@@ -1454,7 +1483,7 @@ FIGURE_REGISTRY: dict[str, str] = {
     "F3":  "f3_kernel_heatmap",
     "F4":  "f4_failure_taxonomy",
     "F5":  "f5_pass_at_k",
-    "F6":  "f6_xsbench_comparison",
+    "F6":  "f6_cross_suite_comparison",
     "F7":  "f7_augmentation",
     "C.1": "c1_repair_transitions",
     "C.2": "c2_repair_rate",
@@ -1559,12 +1588,12 @@ def main() -> None:
         print()
 
     if "F3" in requested:
-        print("Generating F3: Kernel x Model Heatmap (triple-panel)...")
+        print("Generating F3: Per-Kernel Translation Outcomes (all suites)...")
         generate_f3_kernel_heatmap(records, output_dir, v)
         print()
 
     if "F4" in requested:
-        print("Generating F4: Failure Taxonomy (dual-direction)...")
+        print("Generating F4: Failure Taxonomy (all suites, all directions)...")
         generate_f4_failure_taxonomy(records, output_dir, v)
         print()
 
@@ -1574,8 +1603,8 @@ def main() -> None:
         print()
 
     if "F6" in requested:
-        print("Generating F6: XSBench Cross-Granularity Comparison...")
-        generate_f6_xsbench_comparison(records, output_dir, v)
+        print("Generating F6: Cross-Suite Comparison...")
+        generate_f6_cross_suite_comparison(records, output_dir, v)
         print()
 
     if "F7" in requested:
