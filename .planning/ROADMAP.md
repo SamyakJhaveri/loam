@@ -150,7 +150,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 9. Objective Quantitative Analysis | 3/3 | Complete | 2026-04-05 |
 | 10. Qualitative Analysis & Research Narrative | — | **Dropped** (merged into Phase 11) | - |
 | 11. Paper TeX Integration | 0/4 | Not started | - |
-| 12. Fix Stale Pass@k Values | 0/1 | Not started | - |
+| 12. Fix Stale Pass@k Values | 0/2 | Not started | - |
 | 13. Paper.tex Figure & Table Wiring | 0/1 | Not started | - |
 | 14. Verification Backfill & Housekeeping | 0/1 | Not started | - |
 
@@ -318,20 +318,23 @@ Plans:
 
 ### Phase 12: Fix Stale Pass@k Values in Paper.tex
 
-**Goal:** Fix the 8+ stale pass@k values in paper.tex Sections 6.7-6.8 that became inconsistent after Phase 1 Plan 05 regenerated paper_data.json with `--suite rodinia`, creating a mismatch between older data-verified sections and the regenerated analysis files.
-**Depends on:** Phase 7 (needs fresh paper_data_rodinia.json as ground truth)
+**Goal:** Update every numerical claim in paper.tex (Abstract, Sections 1, 5, 6.1-6.8, 7, and 8) from stale Rodinia-only 480-task scope to the all-suite 710-task scope using paper_data.json as the single ground truth, closing the VERIFY-01 regression.
+**Depends on:** Phase 7 (needs fresh paper_data.json as ground truth)
 **Requirements**: VERIFY-01
 **Gap Closure:** Closes VERIFY-01 regression from v1.0 milestone audit (BLOCKER)
 **Success Criteria** (what must be TRUE):
-  1. All pass@k values in paper.tex Sections 6.7-6.8 match paper_data_rodinia.json
-  2. Task/pair counts (288 tasks, 96 pairs) consistent across all paper.tex references
-  3. Macro pass@1 and other aggregate rates updated to match regenerated data
-  4. No other stale numbers remain in Sections 6.6-6.8
+  1. All pass@k values in paper.tex Sections 6.7-6.8 match paper_data.json
+  2. All numerical claims across Abstract, S1, S5, S6.1-S6.8, S7, S8 reflect 710-task all-suite scope
+  3. Per-kernel table expanded from 18 Rodinia rows to 31 all-suite rows
+  4. Cochran-Armitage updated to z=0.0, p=1.0 (from paper_data.json)
+  5. Self-repair narrative uses 70% relative increase (not "doubles")
+  6. Zero stale values remain (no 480, no 36.2%, no 65.0%, no z=-0.17)
 
-**Plans**: 1 plan
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 12-01-PLAN.md -- Identify and fix all stale pass@k values, task/pair counts, and aggregate rates in paper.tex against paper_data_rodinia.json
+- [ ] 12-01-PLAN.md -- [Wave 1] Update Abstract, S1, S5.2-5.3, S6.1-6.2, S6.4-6.5 (aggregate stats, failure taxonomy, self-repair, augmentation)
+- [ ] 12-02-PLAN.md -- [Wave 2, depends on 12-01] Expand S6.3 per-kernel table, update S6.6-6.8, S7, S8, final stale-value sweep
 
 ### Phase 13: Paper.tex Figure & Table Wiring
 
