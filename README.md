@@ -149,3 +149,104 @@ The validator checks:
 
 - Python 3.10+
 - `jsonschema` (`python3 -m pip install jsonschema`)
+
+## Installation
+
+Python 3.12 or later is required. Clone the repository, create a virtual environment, and install dependencies:
+
+```bash
+git clone <repository-url>
+cd parbench_sam
+
+python3 -m venv env_parbench
+source env_parbench/bin/activate
+
+# Core dependencies (harness, schema validation, augmentation)
+python3 -m pip install -r requirements.txt
+
+# Or for exact pinned versions (reproducible environment)
+python3 -m pip install -r requirements-lock.txt
+```
+
+Optional dependency groups can be installed via `pyproject.toml`:
+
+```bash
+# LLM evaluation pipeline (anthropic, openai clients)
+python3 -m pip install ".[eval]"
+
+# Analysis and figure generation (matplotlib, numpy)
+python3 -m pip install ".[analysis]"
+
+# Development tools (pytest, ruff)
+python3 -m pip install ".[dev]"
+
+# Everything
+python3 -m pip install ".[all]"
+```
+
+The build-run-verify harness also requires compilers for the target parallel APIs (e.g., `nvcc` for CUDA, `g++` with `-fopenmp` for OpenMP, OpenCL headers and runtime libraries for OpenCL). See `config/compiler_inventory.txt` for the tested compiler versions.
+
+## Quick start
+
+1. Activate the virtual environment:
+
+   ```bash
+   source env_parbench/bin/activate
+   ```
+
+2. Validate the spec and manifest schemas:
+
+   ```bash
+   python3 scripts/validate_schema.py --all
+   ```
+
+3. Run the full build-run-verify pipeline on a single kernel spec:
+
+   ```bash
+   python3 -m harness verify specs/rodinia-bfs-cuda.json
+   ```
+
+4. List all available translation pairs (e.g., CUDA to OpenMP):
+
+   ```bash
+   python3 -m harness pairs
+   ```
+
+## Usage examples
+
+**Inspect a spec without building or running:**
+
+```bash
+python3 -m harness info specs/rodinia-hotspot-omp.json
+```
+
+**View the LLM prompt payload (the source files an LLM would receive for translation):**
+
+```bash
+python3 -m harness prompt specs/rodinia-nw-cuda.json
+```
+
+**Build and run a kernel with verbose output:**
+
+```bash
+python3 -m harness -v verify specs/rodinia-bfs-cuda.json
+```
+
+**Run an LLM evaluation batch (CUDA to OpenMP, with resume support):**
+
+```bash
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia \
+  --direction cuda-to-omp \
+  --models <model-name> \
+  --project-root /path/to/parbench_sam \
+  --resume -v
+```
+
+**Analyze evaluation results and generate a summary:**
+
+```bash
+python3 scripts/evaluation/analyze_eval.py \
+  --project-root /path/to/parbench_sam \
+  --output-dir results/evaluation
+```
