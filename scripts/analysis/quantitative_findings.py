@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Quantitative Findings — SC26 ParBench paper.
 
-Computes 14 quantitative dimensions from the full 1,248-file Qwen evaluation
-dataset. This plan covers dimensions 1-5 (aggregate pass rates, per-direction
-rates, direction asymmetry, augmentation trends, failure taxonomy) plus the
-provenance framework (dimension 14).
+Computes all 14 quantitative dimensions from the full 1,248-file Qwen evaluation
+dataset:
+  D1: Aggregate pass rates          D8: Per-kernel difficulty tiers
+  D2: Per-direction rates            D9: Translation complexity correlation
+  D3: Direction asymmetry           D10: Cross-suite comparison
+  D4: Augmentation trends           D11: Token cost analysis
+  D5: Failure taxonomy              D12: SLoC correlation
+  D6: Self-repair effectiveness     D13: OpenCL kernel-only effect
+  D7: pass@k estimates (C2 only)   D14: Provenance + paper claims mapping
 
 Produces:
   results/analysis/quantitative_findings.json
@@ -968,6 +973,958 @@ def compute_failure_taxonomy(records: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Self-repair status helpers (Dimension 6)
+# ---------------------------------------------------------------------------
+
+STATUS_ORDER = {
+    "EXTRACTION_FAIL": 0,
+    "BUILD_FAIL": 1,
+    "RUN_FAIL": 2,
+    "VERIFY_FAIL": 3,
+    "PASS": 4,
+    "ERROR": -1,
+    "OTHER": -1,
+}
+
+
+def _classify_attempt_status(attempt: dict) -> str:
+    """Determine the status of a single attempt (mirrors selfrepair_analysis.py)."""
+    if attempt.get("extraction_fail"):
+        return "EXTRACTION_FAIL"
+    bs = attempt.get("build_status")
+    rs = attempt.get("run_status")
+    vs = attempt.get("verify_status")
+    if bs == "fail":
+        return "BUILD_FAIL"
+    if bs is None and rs is None and vs is None and not attempt.get("extraction_fail"):
+        return "OTHER"
+    if rs in ("fail", "timeout"):
+        return "RUN_FAIL"
+    if vs == "fail":
+        return "VERIFY_FAIL"
+    if vs == "pass":
+        return "PASS"
+    return "OTHER"
+
+
+def _classify_repair(first_status: str, final_status: str) -> str:
+    """Classify repair outcome (mirrors selfrepair_analysis.py)."""
+    if final_status == "PASS":
+        return "full_repair"
+    first_ord = STATUS_ORDER.get(first_status, -1)
+    final_ord = STATUS_ORDER.get(final_status, -1)
+    if final_ord > first_ord:
+        return "partial_repair"
+    if final_ord < first_ord:
+        return "regression"
+    return "no_repair"
+
+
+# ---------------------------------------------------------------------------
+# Dimension 6: Self-repair effectiveness (Campaign 1 only)
+# ---------------------------------------------------------------------------
+
+def compute_self_repair(records: list[dict]) -> dict:
+    """Compute self-repair effectiveness from attempts[] arrays.
+
+    Campaign 1 ONLY (max_retries=3). Campaign 2 has max_retries=1 = no self-repair.
+    """
+    # Only records with multiple attempts and initial != PASS
+    multi_attempt = [
+        r for r in records
+        if (r.get("total_attempts") or 1) > 1
+    ]
+
+    total_initially_failing = 0
+    full_repairs = 0
+    partial_repairs = 0
+    no_changes = 0
+    regressions = 0
+    attempts_to_success: list[int] = []
+
+    # Per initial failure type
+    by_initial_failure: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+    # Per suite
+    by_suite: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
+    for r in multi_attempt:
+        attempts = r.get("attempts") or []
+        if len(attempts) < 2:
+            continue
+
+        first_status = _classify_attempt_status(attempts[0])
+        final_status = _classify_attempt_status(attempts[-1])
+
+        if first_status == "PASS":
+            # Initially passing -- skip for repair analysis
+            continue
+
+        total_initially_failing += 1
+        outcome = _classify_repair(first_status, final_status)
+
+        if outcome == "full_repair":
+            full_repairs += 1
+            # Find which attempt passed
+            for idx, att in enumerate(attempts[1:], start=2):
+                if _classify_attempt_status(att) == "PASS":
+                    attempts_to_success.append(idx)
+                    break
+        elif outcome == "partial_repair":
+            partial_repairs += 1
+        elif outcome == "regression":
+            regressions += 1
+        else:
+            no_changes += 1
+
+        by_initial_failure[first_status][outcome] += 1
+
+        suite = r.get("_suite", "unknown")
+        by_suite[suite][outcome] += 1
+
+    # Compute rates
+    total_records = len(records)
+    single_attempt = total_records - len(multi_attempt)
+    first_attempt_pass = sum(
+        1 for r in records
+        if (r.get("total_attempts") or 1) == 1
+        and r.get("overall_status") == "PASS"
+    )
+    # Also count multi-attempt records where first attempt was PASS
+    first_attempt_pass += sum(
+        1 for r in multi_attempt
+        if (r.get("attempts") or [{}]) and _classify_attempt_status((r.get("attempts") or [{}])[0]) == "PASS"
+    )
+
+    overall_repair_rate = (
+        full_repairs / total_initially_failing
+        if total_initially_failing > 0 else 0.0
+    )
+    regression_rate = (
+        regressions / len(multi_attempt)
+        if len(multi_attempt) > 0 else 0.0
+    )
+    mean_attempts = (
+        sum(attempts_to_success) / len(attempts_to_success)
+        if attempts_to_success else 0.0
+    )
+
+    # Per-failure-type repair rates
+    per_failure_type = {}
+    for fail_type in sorted(by_initial_failure.keys()):
+        type_data = by_initial_failure[fail_type]
+        type_total = sum(type_data.values())
+        type_full = type_data.get("full_repair", 0)
+        per_failure_type[fail_type] = {
+            "total": type_total,
+            "full_repair": type_full,
+            "partial_repair": type_data.get("partial_repair", 0),
+            "no_repair": type_data.get("no_repair", 0),
+            "regression": type_data.get("regression", 0),
+            "repair_rate": round(type_full / type_total, 4) if type_total > 0 else 0.0,
+        }
+
+    # Per-suite breakdown
+    per_suite_repair = {}
+    for suite_name in sorted(by_suite.keys()):
+        sd = by_suite[suite_name]
+        s_total = sum(sd.values())
+        s_full = sd.get("full_repair", 0)
+        per_suite_repair[suite_name] = {
+            "total_initially_failing": s_total,
+            "full_repair": s_full,
+            "partial_repair": sd.get("partial_repair", 0),
+            "no_repair": sd.get("no_repair", 0),
+            "regression": sd.get("regression", 0),
+            "repair_rate": round(s_full / s_total, 4) if s_total > 0 else 0.0,
+        }
+
+    return {
+        "total_records": make_finding(
+            total_records, "computed", total_records,
+            "len(Campaign 1 records)",
+        ),
+        "single_attempt_count": single_attempt,
+        "multi_attempt_count": len(multi_attempt),
+        "total_initially_failing": total_initially_failing,
+        "first_attempt_pass": make_finding(
+            first_attempt_pass, "computed", total_records,
+            "count of records where first attempt PASS",
+        ),
+        "overall_repair_rate": make_finding(
+            round(overall_repair_rate, 4),
+            "computed",
+            total_initially_failing,
+            "full_repairs / total_initially_failing",
+            n=total_initially_failing,
+        ),
+        "full_repairs": full_repairs,
+        "partial_repairs": partial_repairs,
+        "no_repairs": no_changes,
+        "regressions": regressions,
+        "regression_rate": make_finding(
+            round(regression_rate, 4),
+            "computed",
+            len(multi_attempt),
+            "regressions / multi_attempt_count",
+            n=len(multi_attempt),
+        ),
+        "mean_attempts_to_success": round(mean_attempts, 2),
+        "per_failure_type": per_failure_type,
+        "per_suite": per_suite_repair,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Dimension 7: pass@k estimates (Campaign 2 only)
+# ---------------------------------------------------------------------------
+
+def compute_pass_at_k(records: list[dict]) -> dict:
+    """Compute pass@k from Campaign 2 seed variants.
+
+    Campaign 2 ONLY. Groups by task = (source_spec, target_spec).
+    pass@1 = fraction of tasks where at least 1 of 3 seeds passes.
+    pass@3 = fraction of tasks where all 3 seeds pass.
+    """
+    # Group by task
+    by_task: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for r in records:
+        key = (r.get("source_spec", ""), r.get("target_spec", ""))
+        by_task[key].append(r)
+
+    total_tasks = len(by_task)
+    warnings: list[str] = []
+
+    # Check seed counts
+    for task_key, recs in by_task.items():
+        if len(recs) != 3:
+            warnings.append(
+                f"Task {task_key[0]}-to-{task_key[1]} has {len(recs)} seeds (expected 3)"
+            )
+
+    # Compute pass@1 and pass@3
+    pass_at_1_count = 0
+    pass_at_3_count = 0
+
+    # Per-direction and per-suite
+    dir_pass1: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "total": 0})
+    dir_pass3: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "total": 0})
+    suite_pass1: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "total": 0})
+    suite_pass3: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "total": 0})
+
+    # Classify tasks: always_pass, hard_fail, noisy_fail
+    always_pass = 0
+    hard_fail = 0
+    noisy_fail = 0
+
+    for task_key, recs in sorted(by_task.items()):
+        passes = sum(1 for r in recs if r.get("overall_status") == "PASS")
+        n_seeds = len(recs)
+
+        any_pass = passes > 0
+        all_pass = passes == n_seeds
+
+        if any_pass:
+            pass_at_1_count += 1
+        if all_pass:
+            pass_at_3_count += 1
+
+        # Classify
+        if all_pass:
+            always_pass += 1
+        elif passes == 0:
+            hard_fail += 1
+        else:
+            noisy_fail += 1
+
+        # Direction and suite breakdown
+        direction = recs[0].get("direction") or _direction_from_data(recs[0])
+        suite = _suite_from_spec(recs[0].get("source_spec", ""))
+
+        dir_pass1[direction]["total"] += 1
+        dir_pass3[direction]["total"] += 1
+        suite_pass1[suite]["total"] += 1
+        suite_pass3[suite]["total"] += 1
+
+        if any_pass:
+            dir_pass1[direction]["pass"] += 1
+            suite_pass1[suite]["pass"] += 1
+        if all_pass:
+            dir_pass3[direction]["pass"] += 1
+            suite_pass3[suite]["pass"] += 1
+
+    # Aggregate rates
+    p1_ci = wilson_ci(pass_at_1_count, total_tasks)
+    p3_ci = wilson_ci(pass_at_3_count, total_tasks)
+
+    # Per-direction rates
+    per_direction_pass1 = {}
+    per_direction_pass3 = {}
+    for d in sorted(set(list(dir_pass1.keys()) + list(dir_pass3.keys()))):
+        d1 = dir_pass1[d]
+        d3 = dir_pass3[d]
+        per_direction_pass1[d] = wilson_ci(d1["pass"], d1["total"])
+        per_direction_pass3[d] = wilson_ci(d3["pass"], d3["total"])
+
+    # Per-suite rates
+    per_suite_pass1 = {}
+    per_suite_pass3 = {}
+    for s in sorted(set(list(suite_pass1.keys()) + list(suite_pass3.keys()))):
+        s1 = suite_pass1[s]
+        s3 = suite_pass3[s]
+        per_suite_pass1[s] = wilson_ci(s1["pass"], s1["total"])
+        per_suite_pass3[s] = wilson_ci(s3["pass"], s3["total"])
+
+    return {
+        "total_tasks": make_finding(
+            total_tasks, "computed", total_tasks * 3,
+            "count of unique (source_spec, target_spec) tasks in Campaign 2",
+        ),
+        "pass_at_1": make_finding(
+            p1_ci["value"], "computed", total_tasks,
+            "fraction of tasks where at least 1 of 3 seeds passes",
+            ci_lower=p1_ci["ci_lower"], ci_upper=p1_ci["ci_upper"],
+            n=total_tasks,
+        ),
+        "pass_at_3": make_finding(
+            p3_ci["value"], "computed", total_tasks,
+            "fraction of tasks where all 3 seeds pass",
+            ci_lower=p3_ci["ci_lower"], ci_upper=p3_ci["ci_upper"],
+            n=total_tasks,
+        ),
+        "task_classification": {
+            "always_pass": always_pass,
+            "hard_fail": hard_fail,
+            "noisy_fail": noisy_fail,
+        },
+        "per_direction": {
+            "pass_at_1": per_direction_pass1,
+            "pass_at_3": per_direction_pass3,
+        },
+        "per_suite": {
+            "pass_at_1": per_suite_pass1,
+            "pass_at_3": per_suite_pass3,
+        },
+        "warnings": warnings,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Dimension 8: Per-kernel difficulty tiers (L0 Campaign 1)
+# ---------------------------------------------------------------------------
+
+def compute_per_kernel_tiers(records: list[dict]) -> dict:
+    """Per-kernel difficulty tiers from L0 Campaign 1 records.
+
+    Ranks kernels by pass rate, assigns quartile tiers, identifies
+    top-5 easiest and top-5 hardest kernels.
+    """
+    # L0 only
+    l0 = [r for r in records if r.get("augment_level", 0) == 0]
+
+    # Group by kernel
+    by_kernel: dict[str, list[dict]] = defaultdict(list)
+    for r in l0:
+        kernel = r.get("kernel", "unknown")
+        by_kernel[kernel].append(r)
+
+    # Compute per-kernel pass rates
+    kernel_stats: list[dict] = []
+    for kernel_name, recs in sorted(by_kernel.items()):
+        k_total = len(recs)
+        k_passes = sum(1 for r in recs if r.get("overall_status") == "PASS")
+        k_ci = wilson_ci(k_passes, k_total)
+
+        # Per-direction breakdown
+        dir_breakdown: dict[str, dict] = {}
+        by_dir: dict[str, list[dict]] = defaultdict(list)
+        for r in recs:
+            by_dir[r.get("direction", "unknown")].append(r)
+        for d, d_recs in sorted(by_dir.items()):
+            d_passes = sum(1 for r in d_recs if r.get("overall_status") == "PASS")
+            dir_breakdown[d] = {
+                "passes": d_passes,
+                "total": len(d_recs),
+                "rate": round(d_passes / len(d_recs), 4) if d_recs else 0.0,
+            }
+
+        suite = recs[0].get("_suite", "unknown") if recs else "unknown"
+
+        kernel_stats.append({
+            "kernel": kernel_name,
+            "suite": suite,
+            "pass_rate": k_ci["value"],
+            "ci_lower": k_ci["ci_lower"],
+            "ci_upper": k_ci["ci_upper"],
+            "passes": k_passes,
+            "total": k_total,
+            "per_direction": dir_breakdown,
+        })
+
+    # Sort by pass rate descending (easiest first)
+    kernel_stats.sort(key=lambda x: x["pass_rate"], reverse=True)
+
+    # Quartile boundaries
+    n_kernels = len(kernel_stats)
+    q1_boundary = n_kernels // 4
+    q2_boundary = n_kernels // 2
+    q3_boundary = (3 * n_kernels) // 4
+
+    for i, ks in enumerate(kernel_stats):
+        if i < q1_boundary:
+            ks["tier"] = "Q1_easiest"
+        elif i < q2_boundary:
+            ks["tier"] = "Q2"
+        elif i < q3_boundary:
+            ks["tier"] = "Q3"
+        else:
+            ks["tier"] = "Q4_hardest"
+
+    # Top-5 / bottom-5
+    top_5 = kernel_stats[:5] if len(kernel_stats) >= 5 else kernel_stats
+    bottom_5 = kernel_stats[-5:] if len(kernel_stats) >= 5 else kernel_stats
+
+    # Flag anomalous per-direction patterns (>50pp difference between directions)
+    anomalies: list[dict] = []
+    for ks in kernel_stats:
+        dir_rates = [
+            (d, info["rate"])
+            for d, info in ks["per_direction"].items()
+            if info["total"] > 0
+        ]
+        if len(dir_rates) >= 2:
+            rates = [r for _, r in dir_rates]
+            max_rate = max(rates)
+            min_rate = min(rates)
+            if max_rate - min_rate > 0.50:
+                best_dir = max(dir_rates, key=lambda x: x[1])
+                worst_dir = min(dir_rates, key=lambda x: x[1])
+                anomalies.append({
+                    "kernel": ks["kernel"],
+                    "best_direction": best_dir[0],
+                    "best_rate": best_dir[1],
+                    "worst_direction": worst_dir[0],
+                    "worst_rate": worst_dir[1],
+                    "gap_pp": round((best_dir[1] - worst_dir[1]) * 100, 1),
+                })
+
+    return {
+        "n_kernels": n_kernels,
+        "kernels": kernel_stats,
+        "top_5_easiest": [
+            {"kernel": k["kernel"], "pass_rate": k["pass_rate"], "suite": k["suite"]}
+            for k in top_5
+        ],
+        "top_5_hardest": [
+            {"kernel": k["kernel"], "pass_rate": k["pass_rate"], "suite": k["suite"]}
+            for k in bottom_5
+        ],
+        "quartile_boundaries": {
+            "Q1_threshold": kernel_stats[q1_boundary]["pass_rate"] if q1_boundary < n_kernels else None,
+            "Q2_threshold": kernel_stats[q2_boundary]["pass_rate"] if q2_boundary < n_kernels else None,
+            "Q3_threshold": kernel_stats[q3_boundary]["pass_rate"] if q3_boundary < n_kernels else None,
+        },
+        "direction_anomalies": anomalies,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Dimension 9: Translation complexity correlation
+# ---------------------------------------------------------------------------
+
+def compute_complexity_correlation(records: list[dict], project_root: Path) -> dict:
+    """Compute correlation between translation complexity and pass rate.
+
+    Complexity classes: single_file, multi_to_single, single_to_multi, multi_to_multi.
+    Uses Chi-squared or Fisher's exact test.
+    """
+    specs_dir = project_root / "specs"
+
+    # Cache spec file data
+    spec_cache: dict[str, dict] = {}
+
+    def _load_spec(spec_id: str) -> dict | None:
+        if spec_id in spec_cache:
+            return spec_cache[spec_id]
+        path = specs_dir / f"{spec_id}.json"
+        if not path.exists():
+            spec_cache[spec_id] = None  # type: ignore[assignment]
+            return None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            spec_cache[spec_id] = data
+            return data
+        except (json.JSONDecodeError, OSError):
+            spec_cache[spec_id] = None  # type: ignore[assignment]
+            return None
+
+    def _tt_count(spec: dict) -> int:
+        """Count translation target files."""
+        files = spec.get("files") or {}
+        tt = files.get("translation_targets")
+        if tt is not None:
+            return len(tt)
+        return len(files.get("prompt_payload", []))
+
+    def _classify_pair(src_count: int, tgt_count: int) -> str:
+        if src_count <= 1 and tgt_count <= 1:
+            return "single_file"
+        elif src_count > 1 and tgt_count <= 1:
+            return "multi_to_single"
+        elif src_count <= 1 and tgt_count > 1:
+            return "single_to_multi"
+        else:
+            return "multi_to_multi"
+
+    # Classify each record
+    class_counts: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "fail": 0})
+    classified = 0
+    unclassified = 0
+
+    for r in records:
+        src_spec = _load_spec(r.get("source_spec", ""))
+        tgt_spec = _load_spec(r.get("target_spec", ""))
+        if src_spec is None or tgt_spec is None:
+            unclassified += 1
+            continue
+
+        src_count = _tt_count(src_spec)
+        tgt_count = _tt_count(tgt_spec)
+        complexity = _classify_pair(src_count, tgt_count)
+
+        passed = r.get("overall_status") == "PASS"
+        if passed:
+            class_counts[complexity]["pass"] += 1
+        else:
+            class_counts[complexity]["fail"] += 1
+        classified += 1
+
+    # Per-class pass rates
+    per_class: dict[str, dict] = {}
+    for cls_name in ["single_file", "multi_to_single", "single_to_multi", "multi_to_multi"]:
+        data = class_counts[cls_name]
+        total = data["pass"] + data["fail"]
+        ci = wilson_ci(data["pass"], total)
+        per_class[cls_name] = {
+            **ci,
+            "passes": data["pass"],
+            "fails": data["fail"],
+            "total": total,
+        }
+
+    # Contingency table for statistical test
+    # Rows: complexity classes that exist (have > 0 observations)
+    # Columns: [pass, fail]
+    active_classes = [c for c in ["single_file", "multi_to_single", "single_to_multi", "multi_to_multi"]
+                      if class_counts[c]["pass"] + class_counts[c]["fail"] > 0]
+
+    contingency = np.array([
+        [class_counts[c]["pass"], class_counts[c]["fail"]]
+        for c in active_classes
+    ])
+
+    # Check expected cell counts for Chi-squared validity
+    test_result: dict = {}
+    if contingency.shape[0] >= 2 and contingency.sum() > 0:
+        row_sums = contingency.sum(axis=1, keepdims=True)
+        col_sums = contingency.sum(axis=0, keepdims=True)
+        grand_total = contingency.sum()
+        expected = row_sums * col_sums / grand_total
+
+        min_expected = float(expected.min()) if expected.size > 0 else 0
+
+        if min_expected < 5:
+            # Fisher's exact test (for 2x2) or simulated p-value
+            if contingency.shape[0] == 2 and contingency.shape[1] == 2:
+                odds_ratio, p_val = sp_stats.fisher_exact(contingency)
+                test_result = {
+                    "method": "fisher_exact",
+                    "p_value": round(float(p_val), 6),
+                    "odds_ratio": round(float(odds_ratio), 4),
+                    "min_expected_cell": round(min_expected, 2),
+                }
+            else:
+                # Use Chi-squared anyway but flag it
+                chi2_val, p_val, dof, _ = sp_stats.chi2_contingency(contingency)
+                test_result = {
+                    "method": "chi_squared_warning_small_cells",
+                    "chi2": round(float(chi2_val), 4),
+                    "p_value": round(float(p_val), 6),
+                    "dof": int(dof),
+                    "min_expected_cell": round(min_expected, 2),
+                }
+        else:
+            chi2_val, p_val, dof, _ = sp_stats.chi2_contingency(contingency)
+            test_result = {
+                "method": "chi_squared",
+                "chi2": round(float(chi2_val), 4),
+                "p_value": round(float(p_val), 6),
+                "dof": int(dof),
+                "min_expected_cell": round(min_expected, 2),
+            }
+        test_result["significant"] = test_result["p_value"] < ALPHA
+    else:
+        test_result = {"method": "insufficient_data", "p_value": None, "significant": False}
+
+    return {
+        "classified": classified,
+        "unclassified": unclassified,
+        "per_class": per_class,
+        "contingency_table": {
+            "classes": active_classes,
+            "data": contingency.tolist() if contingency.size > 0 else [],
+        },
+        "test_result": test_result,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Dimension 10: Cross-suite comparison
+# ---------------------------------------------------------------------------
+
+def compute_cross_suite(records: list[dict], project_root: Path) -> dict:
+    """Cross-suite aggregate comparison with SLoC and multi-file characteristics."""
+    # Per-suite pass rates (L0 only for fair comparison)
+    l0 = [r for r in records if r.get("augment_level", 0) == 0]
+
+    by_suite: dict[str, list[dict]] = defaultdict(list)
+    for r in l0:
+        by_suite[r.get("_suite", "unknown")].append(r)
+
+    per_suite_rates: dict[str, dict] = {}
+    for suite_name, recs in sorted(by_suite.items()):
+        s_passes = sum(1 for r in recs if r.get("overall_status") == "PASS")
+        ci = wilson_ci(s_passes, len(recs))
+        per_suite_rates[suite_name] = make_finding(
+            ci["value"], "computed", len(recs),
+            f"wilson_ci(PASS, total) for suite={suite_name}, L0 only",
+            ci_lower=ci["ci_lower"], ci_upper=ci["ci_upper"], n=len(recs),
+        )
+
+    # SLoC characteristics per suite from sloc_analysis.json
+    sloc_path = project_root / "results" / "analysis" / "sloc_analysis.json"
+    suite_sloc: dict[str, dict] = {}
+    if sloc_path.exists():
+        try:
+            sloc_data = json.loads(sloc_path.read_text(encoding="utf-8"))
+            kernels = sloc_data.get("kernels", {})
+            # Group SLoC by suite
+            suite_slocs: dict[str, list[int]] = defaultdict(list)
+            for kname, kdata in kernels.items():
+                s = kdata.get("suite", "unknown")
+                sloc_val = kdata.get("physical_sloc", 0)
+                if sloc_val > 0:
+                    suite_slocs[s].append(sloc_val)
+            for s, vals in sorted(suite_slocs.items()):
+                vals_sorted = sorted(vals)
+                suite_sloc[s] = {
+                    "n_kernels": len(vals),
+                    "mean_sloc": round(sum(vals) / len(vals), 1) if vals else 0,
+                    "median_sloc": float(vals_sorted[len(vals) // 2]) if vals else 0,
+                    "min_sloc": min(vals) if vals else 0,
+                    "max_sloc": max(vals) if vals else 0,
+                }
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    # Multi-file fraction per suite from spec files
+    specs_dir = project_root / "specs"
+    suite_multifile: dict[str, dict[str, int]] = defaultdict(lambda: {"multi": 0, "total": 0})
+    for spec_file in sorted(specs_dir.glob("*.json")):
+        try:
+            spec = json.loads(spec_file.read_text(encoding="utf-8"))
+            spec_id = (spec.get("identity") or {}).get("unique_id", "")
+            suite = (spec.get("identity") or {}).get("source_suite", "unknown")
+            files = spec.get("files") or {}
+            tt = files.get("translation_targets")
+            if tt is None:
+                tt = files.get("prompt_payload", [])
+            suite_multifile[suite]["total"] += 1
+            if len(tt) > 1:
+                suite_multifile[suite]["multi"] += 1
+        except (json.JSONDecodeError, OSError):
+            continue
+
+    multifile_fractions: dict[str, dict] = {}
+    for suite_name in sorted(suite_multifile.keys()):
+        md = suite_multifile[suite_name]
+        frac = md["multi"] / md["total"] if md["total"] > 0 else 0.0
+        multifile_fractions[suite_name] = {
+            "multi_file_specs": md["multi"],
+            "total_specs": md["total"],
+            "fraction": round(frac, 4),
+        }
+
+    return {
+        "per_suite_pass_rate_l0": per_suite_rates,
+        "sloc_characteristics": suite_sloc,
+        "multi_file_fraction": multifile_fractions,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Dimension 11: Token cost analysis
+# ---------------------------------------------------------------------------
+
+def compute_token_cost(records: list[dict]) -> dict:
+    """Token cost analysis using Together AI pricing.
+
+    Uses top-level prompt_tokens and completion_tokens fields.
+    """
+    total_input = 0
+    total_output = 0
+    tasks_with_tokens = 0
+    pass_count = 0
+
+    by_suite: dict[str, dict[str, int | float]] = defaultdict(
+        lambda: {"input": 0, "output": 0, "tasks": 0, "passes": 0}
+    )
+
+    for r in records:
+        pt = r.get("prompt_tokens") or 0
+        ct = r.get("completion_tokens") or 0
+
+        if pt > 0 or ct > 0:
+            tasks_with_tokens += 1
+            total_input += pt
+            total_output += ct
+
+            suite = r.get("_suite", "unknown")
+            by_suite[suite]["input"] += pt
+            by_suite[suite]["output"] += ct
+            by_suite[suite]["tasks"] += 1
+
+            if r.get("overall_status") == "PASS":
+                pass_count += 1
+                by_suite[suite]["passes"] += 1
+
+    total_cost = (
+        total_input * TOGETHER_INPUT_PRICE_PER_M / 1_000_000
+        + total_output * TOGETHER_OUTPUT_PRICE_PER_M / 1_000_000
+    )
+    cost_per_task = total_cost / tasks_with_tokens if tasks_with_tokens > 0 else 0.0
+    cost_per_pass = total_cost / pass_count if pass_count > 0 else 0.0
+
+    # Per-suite
+    per_suite: dict[str, dict] = {}
+    for suite_name in sorted(by_suite.keys()):
+        sd = by_suite[suite_name]
+        s_cost = (
+            sd["input"] * TOGETHER_INPUT_PRICE_PER_M / 1_000_000
+            + sd["output"] * TOGETHER_OUTPUT_PRICE_PER_M / 1_000_000
+        )
+        s_tasks = sd["tasks"]
+        s_passes = sd["passes"]
+        per_suite[suite_name] = {
+            "input_tokens": sd["input"],
+            "output_tokens": sd["output"],
+            "total_cost": round(s_cost, 4),
+            "tasks": s_tasks,
+            "passes": s_passes,
+            "cost_per_task": round(s_cost / s_tasks, 4) if s_tasks > 0 else 0.0,
+            "cost_per_pass": round(s_cost / s_passes, 4) if s_passes > 0 else 0.0,
+        }
+
+    return {
+        "total_input_tokens": make_finding(
+            total_input, "computed", tasks_with_tokens,
+            "sum of prompt_tokens across Campaign 1 records",
+        ),
+        "total_output_tokens": make_finding(
+            total_output, "computed", tasks_with_tokens,
+            "sum of completion_tokens across Campaign 1 records",
+        ),
+        "total_cost": make_finding(
+            round(total_cost, 4), "computed", tasks_with_tokens,
+            f"input*${TOGETHER_INPUT_PRICE_PER_M}/1M + output*${TOGETHER_OUTPUT_PRICE_PER_M}/1M",
+        ),
+        "tasks_with_tokens": tasks_with_tokens,
+        "pass_count": pass_count,
+        "cost_per_task": make_finding(
+            round(cost_per_task, 4), "computed", tasks_with_tokens,
+            "total_cost / tasks_with_tokens",
+        ),
+        "cost_per_pass": make_finding(
+            round(cost_per_pass, 4), "computed", pass_count,
+            "total_cost / pass_count",
+        ),
+        "per_suite": per_suite,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Dimension 12: SLoC correlation
+# ---------------------------------------------------------------------------
+
+def compute_sloc_correlation(records: list[dict], project_root: Path) -> dict:
+    """Compute Spearman and Pearson correlation between SLoC and pass rate.
+
+    Uses per-kernel L0 pass rates from Campaign 1 and SLoC from sloc_analysis.json.
+    """
+    sloc_path = project_root / "results" / "analysis" / "sloc_analysis.json"
+    if not sloc_path.exists():
+        return {"error": "sloc_analysis.json not found"}
+
+    try:
+        sloc_data = json.loads(sloc_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as e:
+        return {"error": f"Could not read sloc_analysis.json: {e}"}
+
+    sloc_kernels = sloc_data.get("kernels", {})
+
+    # Build per-kernel pass rates at L0
+    l0 = [r for r in records if r.get("augment_level", 0) == 0]
+    by_kernel: dict[str, list[dict]] = defaultdict(list)
+    for r in l0:
+        by_kernel[r.get("kernel", "unknown")].append(r)
+
+    # Pair SLoC with pass rate
+    paired: list[dict] = []
+    for kernel_name, recs in sorted(by_kernel.items()):
+        if kernel_name not in sloc_kernels:
+            continue
+        sloc_val = sloc_kernels[kernel_name].get("physical_sloc", 0)
+        if sloc_val <= 0:
+            continue
+        k_passes = sum(1 for r in recs if r.get("overall_status") == "PASS")
+        k_rate = k_passes / len(recs) if recs else 0.0
+        paired.append({
+            "kernel": kernel_name,
+            "sloc": sloc_val,
+            "pass_rate": round(k_rate, 4),
+            "n_tasks": len(recs),
+        })
+
+    n_paired = len(paired)
+    if n_paired < 3:
+        return {
+            "n_kernels": n_paired,
+            "error": "Insufficient paired data (need >= 3 kernels)",
+            "paired_data": paired,
+        }
+
+    sloc_values = np.array([p["sloc"] for p in paired], dtype=float)
+    rate_values = np.array([p["pass_rate"] for p in paired], dtype=float)
+
+    # Spearman
+    sp_rho, sp_p = sp_stats.spearmanr(sloc_values, rate_values)
+    # Pearson
+    pe_r, pe_p = sp_stats.pearsonr(sloc_values, rate_values)
+
+    return {
+        "n_kernels": n_paired,
+        "spearman": make_finding(
+            {"rho": round(float(sp_rho), 4), "p_value": round(float(sp_p), 6)},
+            "computed", n_paired,
+            "scipy.stats.spearmanr(sloc, pass_rate) at L0",
+        ),
+        "pearson": make_finding(
+            {"r": round(float(pe_r), 4), "p_value": round(float(pe_p), 6)},
+            "computed", n_paired,
+            "scipy.stats.pearsonr(sloc, pass_rate) at L0",
+        ),
+        "significant_spearman": float(sp_p) < ALPHA,
+        "significant_pearson": float(pe_p) < ALPHA,
+        "interpretation": (
+            "significant_negative" if float(sp_p) < ALPHA and float(sp_rho) < 0
+            else "significant_positive" if float(sp_p) < ALPHA and float(sp_rho) > 0
+            else "not_significant"
+        ),
+        "paired_data": paired,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Dimension 13: OpenCL kernel-only effect
+# ---------------------------------------------------------------------------
+
+def compute_opencl_kernel_only_effect(records: list[dict]) -> dict:
+    """Compare X-to-opencl (kernel-only) vs X-to-omp (full program) pass rates.
+
+    L0 Campaign 1 only. Uses Fisher's exact test on 2x2 contingency table.
+    """
+    l0 = [r for r in records if r.get("augment_level", 0) == 0]
+
+    # Group 1: All X-to-opencl directions (kernel-only translation)
+    opencl_targets = [
+        r for r in l0
+        if (r.get("direction") or "").endswith("-to-opencl")
+    ]
+    # Group 2: All X-to-omp directions (full program translation)
+    omp_targets = [
+        r for r in l0
+        if (r.get("direction") or "").endswith("-to-omp")
+    ]
+
+    ocl_passes = sum(1 for r in opencl_targets if r.get("overall_status") == "PASS")
+    ocl_total = len(opencl_targets)
+    omp_passes = sum(1 for r in omp_targets if r.get("overall_status") == "PASS")
+    omp_total = len(omp_targets)
+
+    ocl_ci = wilson_ci(ocl_passes, ocl_total)
+    omp_ci = wilson_ci(omp_passes, omp_total)
+
+    # Fisher's exact test (2x2)
+    contingency = np.array([
+        [ocl_passes, ocl_total - ocl_passes],
+        [omp_passes, omp_total - omp_passes],
+    ])
+
+    test_result: dict = {}
+    if ocl_total > 0 and omp_total > 0:
+        odds_ratio, p_val = sp_stats.fisher_exact(contingency)
+        h = cohens_h(
+            ocl_passes / ocl_total if ocl_total > 0 else 0,
+            omp_passes / omp_total if omp_total > 0 else 0,
+        )
+        test_result = {
+            "method": "fisher_exact",
+            "odds_ratio": round(float(odds_ratio), 4),
+            "p_value": round(float(p_val), 6),
+            "cohens_h": round(h, 4),
+            "significant": float(p_val) < ALPHA,
+        }
+    else:
+        test_result = {"method": "insufficient_data", "p_value": None, "significant": False}
+
+    return {
+        "x_to_opencl": make_finding(
+            ocl_ci["value"], "computed", ocl_total,
+            "wilson_ci for all X-to-opencl directions, L0 only",
+            ci_lower=ocl_ci["ci_lower"], ci_upper=ocl_ci["ci_upper"], n=ocl_total,
+        ),
+        "x_to_omp": make_finding(
+            omp_ci["value"], "computed", omp_total,
+            "wilson_ci for all X-to-omp directions, L0 only",
+            ci_lower=omp_ci["ci_lower"], ci_upper=omp_ci["ci_upper"], n=omp_total,
+        ),
+        "test_result": test_result,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Rodinia subset helper
+# ---------------------------------------------------------------------------
+
+def compute_rodinia_subset(records: list[dict]) -> dict:
+    """Compute key metrics for Rodinia-only subset (for paper_claims scope matching)."""
+    rodinia = [r for r in records if r.get("_suite") == "rodinia"]
+    total = len(rodinia)
+    passes = sum(1 for r in rodinia if r.get("overall_status") == "PASS")
+    ci = wilson_ci(passes, total)
+
+    return {
+        "total_tasks": total,
+        "passes": passes,
+        "pass_rate": make_finding(
+            ci["value"], "computed", total,
+            "wilson_ci(PASS, total) for suite=rodinia only",
+            ci_lower=ci["ci_lower"], ci_upper=ci["ci_upper"], n=total,
+        ),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Output assembly
 # ---------------------------------------------------------------------------
 
@@ -1009,19 +1966,286 @@ def build_metadata(
 
 
 def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -> list[dict]:
-    """Build stub paper claims list.
+    """Map paper.tex claims to JSON field paths with scope annotations.
 
-    Fully populated in Plan 02 after all 14 dimensions computed.
+    Each claim gets: claim_id, paper_location, json_path, scope, current_value, display_value.
     """
-    return [
-        {
-            "claim_id": "CLAIM-STUB-001",
-            "paper_location": "TBD",
-            "json_path": "TBD",
-            "scope": "dimensions_1_through_5",
-            "note": "Paper claims will be fully populated in Plan 02",
-        }
-    ]
+    claims: list[dict] = []
+
+    def _safe_get(d: dict, path: str, default=None):
+        """Navigate dot-separated path safely."""
+        parts = path.split(".")
+        current = d
+        for p in parts:
+            if isinstance(current, dict):
+                current = current.get(p, default)
+            else:
+                return default
+        return current
+
+    # Helper: extract scalar from provenance-wrapped finding
+    def _val(finding, key="value"):
+        if isinstance(finding, dict):
+            return finding.get(key)
+        return finding
+
+    # --- Claim 1: Overall pass rate (Rodinia only, 480 tasks) ---
+    rod_sub = c1_results.get("rodinia_subset", {})
+    rod_rate = _val(rod_sub.get("pass_rate", {}))
+    rod_ci_lo = _val(rod_sub.get("pass_rate", {}), "ci_lower")
+    rod_ci_hi = _val(rod_sub.get("pass_rate", {}), "ci_upper")
+    claims.append({
+        "claim_id": "overall_pass_rate_rodinia",
+        "paper_location": "abstract/line~71, S6.1/line~707",
+        "json_path": "campaign_1.rodinia_subset.pass_rate.value",
+        "scope": "rodinia_only",
+        "current_value": rod_rate,
+        "display_value": f"{_pct(rod_rate)} [{_pct(rod_ci_lo)}, {_pct(rod_ci_hi)}]" if rod_rate is not None else "N/A",
+    })
+
+    # --- Claim 2: Primary campaign tasks count (480 Rodinia, 700 all-suite) ---
+    rod_total = rod_sub.get("total_tasks", 0)
+    agg = c1_results.get("aggregate_pass_rates", {})
+    overall_n = _val(agg.get("overall", {}), "n")
+    claims.append({
+        "claim_id": "primary_campaign_task_counts",
+        "paper_location": "abstract/line~61, S5.2/line~630",
+        "json_path": "campaign_1.aggregate_pass_rates.overall.n",
+        "scope": "all_suite",
+        "current_value": {"rodinia_tasks": rod_total, "all_suite_tasks": overall_n},
+        "display_value": f"{rod_total} Rodinia, {overall_n} all-suite",
+    })
+
+    # --- Claim 3: pass@k tasks count ---
+    c2_passk = c2_results.get("pass_at_k", {})
+    passk_total = _val(c2_passk.get("total_tasks", {}))
+    claims.append({
+        "claim_id": "passk_task_count",
+        "paper_location": "S1/line~106, S5.5/line~689",
+        "json_path": "campaign_2.pass_at_k.total_tasks.value",
+        "scope": "all_suite",
+        "current_value": passk_total,
+        "display_value": f"{passk_total} pass@k tasks",
+    })
+
+    # --- Claim 4: BUILD_FAIL percentage ---
+    tax = c1_results.get("failure_taxonomy", {})
+    sc = tax.get("status_counts", {})
+    bf_count = sc.get("BUILD_FAIL", 0)
+    total_recs = tax.get("total_records", 1)
+    bf_pct = bf_count / total_recs if total_recs > 0 else 0
+    claims.append({
+        "claim_id": "build_fail_percentage",
+        "paper_location": "abstract/line~66, S1/line~107, S6.2/line~714",
+        "json_path": "campaign_1.failure_taxonomy.status_counts.BUILD_FAIL",
+        "scope": "all_suite",
+        "current_value": {"count": bf_count, "percentage": round(bf_pct, 4)},
+        "display_value": f"{bf_count}/{total_recs} = {bf_pct*100:.1f}%",
+    })
+
+    # --- Claim 5: VERIFY_FAIL percentage ---
+    vf_count = sc.get("VERIFY_FAIL", 0)
+    vf_pct = vf_count / total_recs if total_recs > 0 else 0
+    claims.append({
+        "claim_id": "verify_fail_percentage",
+        "paper_location": "abstract/line~66, S6.2/line~714",
+        "json_path": "campaign_1.failure_taxonomy.status_counts.VERIFY_FAIL",
+        "scope": "all_suite",
+        "current_value": {"count": vf_count, "percentage": round(vf_pct, 4)},
+        "display_value": f"{vf_count}/{total_recs} = {vf_pct*100:.1f}%",
+    })
+
+    # --- Claim 6: CUDA-to-OpenMP pass rate ---
+    dir_rates = c1_results.get("direction_pass_rates", {})
+    std_dirs = dir_rates.get("standard", {})
+    cuda_omp = std_dirs.get("cuda-to-omp", {})
+    claims.append({
+        "claim_id": "cuda_to_omp_pass_rate",
+        "paper_location": "S6.1/line~909, S7.1/line~1041",
+        "json_path": "campaign_1.direction_pass_rates.standard.cuda-to-omp.value",
+        "scope": "all_suite",
+        "current_value": _val(cuda_omp),
+        "display_value": _pct(_val(cuda_omp)),
+    })
+
+    # --- Claim 7: L0 pass rate ---
+    aug = c1_results.get("augmentation_trends", {})
+    agg_trend = aug.get("aggregate", {})
+    per_level = agg_trend.get("per_level", {})
+    l0_data = per_level.get("L0", {})
+    claims.append({
+        "claim_id": "l0_pass_rate",
+        "paper_location": "S6.4/line~899",
+        "json_path": "campaign_1.augmentation_trends.aggregate.per_level.L0.value",
+        "scope": "all_suite",
+        "current_value": l0_data.get("value"),
+        "display_value": _pct(l0_data.get("value")),
+    })
+
+    # --- Claim 8: Cochran-Armitage z and p ---
+    ca = agg_trend.get("cochran_armitage", {})
+    claims.append({
+        "claim_id": "cochran_armitage_trend",
+        "paper_location": "abstract/line~71, S6.4/line~899, S6.8/line~1003",
+        "json_path": "campaign_1.augmentation_trends.aggregate.cochran_armitage",
+        "scope": "all_suite",
+        "current_value": {"z": ca.get("z"), "p_value": ca.get("p_value")},
+        "display_value": f"z={ca.get('z')}, p={ca.get('p_value')}",
+    })
+
+    # --- Claim 9: Self-repair effectiveness ---
+    sr = c1_results.get("self_repair", {})
+    sr_rate = _val(sr.get("overall_repair_rate", {}))
+    claims.append({
+        "claim_id": "self_repair_rate",
+        "paper_location": "S6.3/line~859, S7.1/line~1049",
+        "json_path": "campaign_1.self_repair.overall_repair_rate.value",
+        "scope": "all_suite",
+        "current_value": sr_rate,
+        "display_value": _pct(sr_rate),
+    })
+
+    # --- Claim 10: Repair count and rate ---
+    sr_full = sr.get("full_repairs", 0)
+    sr_initially_failing = sr.get("total_initially_failing", 0)
+    claims.append({
+        "claim_id": "repair_count",
+        "paper_location": "S6.3/line~849, S6.3/line~859",
+        "json_path": "campaign_1.self_repair.full_repairs",
+        "scope": "all_suite",
+        "current_value": {"full_repairs": sr_full, "initially_failing": sr_initially_failing},
+        "display_value": f"{sr_full} of {sr_initially_failing} repaired",
+    })
+
+    # --- Claim 11: Regression count ---
+    sr_reg = sr.get("regressions", 0)
+    claims.append({
+        "claim_id": "regression_count",
+        "paper_location": "S6.3/line~853",
+        "json_path": "campaign_1.self_repair.regressions",
+        "scope": "all_suite",
+        "current_value": sr_reg,
+        "display_value": f"{sr_reg} regressions",
+    })
+
+    # --- Claim 12: Cohen's h range ---
+    cohens_adj = agg_trend.get("cohens_h_adjacent", {})
+    if cohens_adj:
+        h_values = list(cohens_adj.values())
+        h_min = min(h_values) if h_values else 0
+        h_max = max(h_values) if h_values else 0
+    else:
+        h_min = h_max = 0
+    claims.append({
+        "claim_id": "cohens_h_range",
+        "paper_location": "S6.4/implied",
+        "json_path": "campaign_1.augmentation_trends.aggregate.cohens_h_adjacent",
+        "scope": "all_suite",
+        "current_value": {"min": h_min, "max": h_max},
+        "display_value": f"h range [{h_min:.4f}, {h_max:.4f}]",
+    })
+
+    # --- Claim 13: Spec count (96) ---
+    claims.append({
+        "claim_id": "spec_count",
+        "paper_location": "abstract/line~60, S3.2/line~297, S4.3/line~511",
+        "json_path": "metadata.note",
+        "scope": "all_suite",
+        "current_value": 96,
+        "display_value": "96 specs (60+25+4+4+3)",
+    })
+
+    # --- Claim 14: OpenCL-to-CUDA pass rate ---
+    ocl_cuda = std_dirs.get("opencl-to-cuda", {})
+    claims.append({
+        "claim_id": "opencl_to_cuda_pass_rate",
+        "paper_location": "S6.1/line~941",
+        "json_path": "campaign_1.direction_pass_rates.standard.opencl-to-cuda.value",
+        "scope": "all_suite",
+        "current_value": _val(ocl_cuda),
+        "display_value": _pct(_val(ocl_cuda)),
+    })
+
+    # --- Claim 15: Multi-file percentage ---
+    cross = c1_results.get("cross_suite", {})
+    mf = cross.get("multi_file_fraction", {})
+    total_multi = sum(v.get("multi_file_specs", 0) for v in mf.values())
+    total_specs = sum(v.get("total_specs", 0) for v in mf.values())
+    mf_pct = total_multi / total_specs if total_specs > 0 else 0
+    claims.append({
+        "claim_id": "multi_file_percentage",
+        "paper_location": "S1/implied, S4/implied",
+        "json_path": "campaign_1.cross_suite.multi_file_fraction",
+        "scope": "all_suite",
+        "current_value": {"multi_file_specs": total_multi, "total_specs": total_specs, "fraction": round(mf_pct, 4)},
+        "display_value": f"{total_multi}/{total_specs} = {mf_pct*100:.1f}%",
+    })
+
+    # --- Claim 16: Overall pass rate (all-suite) ---
+    all_rate = _val(agg.get("overall", {}))
+    all_ci_lo = _val(agg.get("overall", {}), "ci_lower")
+    all_ci_hi = _val(agg.get("overall", {}), "ci_upper")
+    claims.append({
+        "claim_id": "overall_pass_rate_all_suite",
+        "paper_location": "S6.1 (all-suite scope)",
+        "json_path": "campaign_1.aggregate_pass_rates.overall.value",
+        "scope": "all_suite",
+        "current_value": all_rate,
+        "display_value": f"{_pct(all_rate)} [{_pct(all_ci_lo)}, {_pct(all_ci_hi)}]" if all_rate is not None else "N/A",
+    })
+
+    # --- Claim 17: First-attempt pass rate ---
+    first_pass = _val(sr.get("first_attempt_pass", {}))
+    claims.append({
+        "claim_id": "first_attempt_pass",
+        "paper_location": "S6.3/line~848",
+        "json_path": "campaign_1.self_repair.first_attempt_pass.value",
+        "scope": "all_suite",
+        "current_value": first_pass,
+        "display_value": str(first_pass),
+    })
+
+    # --- Claim 18: pass@1 and pass@3 ---
+    p1 = _val(c2_passk.get("pass_at_1", {}))
+    p3 = _val(c2_passk.get("pass_at_3", {}))
+    claims.append({
+        "claim_id": "pass_at_k_rates",
+        "paper_location": "S6.5/line~955",
+        "json_path": "campaign_2.pass_at_k.pass_at_1.value",
+        "scope": "all_suite",
+        "current_value": {"pass_at_1": p1, "pass_at_3": p3},
+        "display_value": f"pass@1={_pct(p1)}, pass@3={_pct(p3)}",
+    })
+
+    # --- Claim 19: Token cost ---
+    tc = c1_results.get("token_cost", {})
+    total_cost = _val(tc.get("total_cost", {}))
+    claims.append({
+        "claim_id": "token_cost",
+        "paper_location": "S5.2/implied",
+        "json_path": "campaign_1.token_cost.total_cost.value",
+        "scope": "all_suite",
+        "current_value": total_cost,
+        "display_value": f"${total_cost:.2f}" if total_cost is not None else "N/A",
+    })
+
+    # --- Claim 20: SLoC correlation ---
+    sloc_corr = c1_results.get("sloc_correlation", {})
+    sp_finding = sloc_corr.get("spearman", {})
+    sp_val = _val(sp_finding)
+    claims.append({
+        "claim_id": "sloc_correlation",
+        "paper_location": "S7/implied",
+        "json_path": "campaign_1.sloc_correlation.spearman.value",
+        "scope": "all_suite",
+        "current_value": sp_val,
+        "display_value": (
+            f"rho={sp_val.get('rho')}, p={sp_val.get('p_value')}"
+            if isinstance(sp_val, dict) else str(sp_val)
+        ),
+    })
+
+    return claims
 
 
 # ---------------------------------------------------------------------------
@@ -1111,6 +2335,85 @@ def cross_check(
 
         except (json.JSONDecodeError, OSError) as e:
             warnings.append(f"WARNING: Could not read statistical_analysis.json: {e}")
+
+    # --- Check against selfrepair_analysis.json ---
+    selfrepair_path = analysis_dir / "selfrepair_analysis.json"
+    if selfrepair_path.exists():
+        try:
+            sr_data = json.loads(selfrepair_path.read_text())
+            checks_run += 1
+
+            # Compare overall repair rate
+            sr_ref_rate = sr_data.get("overall_repair_rate")
+            our_sr = c1_results.get("self_repair", {})
+            our_sr_rate_finding = our_sr.get("overall_repair_rate", {})
+            our_sr_rate = our_sr_rate_finding.get("value") if isinstance(our_sr_rate_finding, dict) else None
+
+            if sr_ref_rate is not None and our_sr_rate is not None:
+                checks_run += 1
+                diff = abs(sr_ref_rate - our_sr_rate)
+                if diff > 0.05:
+                    warnings.append(
+                        f"WARNING: Self-repair rate mismatch: selfrepair_analysis={sr_ref_rate}, "
+                        f"ours={our_sr_rate} (diff={diff:.4f}). "
+                        f"Note: selfrepair_analysis.json includes ALL records (no KF exclusion), "
+                        f"we exclude 8 KNOWN_FAIL specs."
+                    )
+                elif diff > 0.001:
+                    warnings.append(
+                        f"INFO: Self-repair rate minor diff: selfrepair_analysis={sr_ref_rate}, "
+                        f"ours={our_sr_rate} (diff={diff:.4f}). "
+                        f"Expected due to different KNOWN_FAIL exclusion scope."
+                    )
+
+            if verbose:
+                print(f"  Cross-check: selfrepair_analysis.json repair_rate={sr_ref_rate}")
+
+        except (json.JSONDecodeError, OSError) as e:
+            warnings.append(f"WARNING: Could not read selfrepair_analysis.json: {e}")
+
+    # --- Check against token_analysis.json ---
+    token_path = analysis_dir / "token_analysis.json"
+    if token_path.exists():
+        try:
+            ta = json.loads(token_path.read_text())
+            checks_run += 1
+
+            # Compare total tokens
+            ta_prompt = ta.get("grand_prompt_tokens", 0)
+            ta_completion = ta.get("grand_completion_tokens", 0)
+            ta_cost = ta.get("grand_total_cost_usd", 0)
+
+            our_tc = c1_results.get("token_cost", {})
+            our_input = (our_tc.get("total_input_tokens") or {}).get("value", 0)
+            our_output = (our_tc.get("total_output_tokens") or {}).get("value", 0)
+            our_cost = (our_tc.get("total_cost") or {}).get("value", 0)
+
+            if ta_prompt > 0 and our_input > 0:
+                checks_run += 1
+                # token_analysis.json may have different scope (different exclusion set)
+                ratio = our_input / ta_prompt if ta_prompt > 0 else 0
+                if ratio < 0.5 or ratio > 2.0:
+                    warnings.append(
+                        f"WARNING: Token count large discrepancy: token_analysis prompt={ta_prompt}, "
+                        f"ours={our_input} (ratio={ratio:.2f}). "
+                        f"Note: different KNOWN_FAIL exclusion scope."
+                    )
+                elif abs(ratio - 1.0) > 0.1:
+                    warnings.append(
+                        f"INFO: Token count minor diff: token_analysis prompt={ta_prompt}, "
+                        f"ours={our_input} (ratio={ratio:.2f}). "
+                        f"Expected due to different KNOWN_FAIL exclusion scope."
+                    )
+
+            if verbose:
+                print(
+                    f"  Cross-check: token_analysis.json prompt={ta_prompt}, "
+                    f"completion={ta_completion}, cost=${ta_cost:.2f}"
+                )
+
+        except (json.JSONDecodeError, OSError) as e:
+            warnings.append(f"WARNING: Could not read token_analysis.json: {e}")
 
     return {
         "checks_run": checks_run,
@@ -1289,7 +2592,210 @@ def write_markdown(output: dict, path: Path) -> None:
             lines.append(f"| {entry['subcategory']} | {entry['count']} |")
         lines.append("")
 
-    # Campaign 2 (brief summary)
+    # Dimension 6: Self-repair
+    sr = c1.get("self_repair", {})
+    lines.append("### Dimension 6: Self-Repair Effectiveness (Campaign 1 only)")
+    lines.append("")
+    sr_rate = sr.get("overall_repair_rate", {})
+    lines.append(
+        f"**Overall repair rate:** {_pct(sr_rate.get('value') if isinstance(sr_rate, dict) else sr_rate)} "
+        f"({sr.get('full_repairs', '?')} full repairs / "
+        f"{sr.get('total_initially_failing', '?')} initially failing)"
+    )
+    lines.append(f"- Multi-attempt records: {sr.get('multi_attempt_count', '?')}")
+    lines.append(f"- Regressions: {sr.get('regressions', '?')}")
+    lines.append(f"- Mean attempts to success: {sr.get('mean_attempts_to_success', '?')}")
+    lines.append("")
+
+    pft = sr.get("per_failure_type", {})
+    if pft:
+        lines.append("**Per initial failure type:**")
+        lines.append("")
+        lines.append("| Initial Status | Total | Full Repair | Partial | No Change | Regression | Repair Rate |")
+        lines.append("|----------------|-------|-------------|---------|-----------|------------|-------------|")
+        for ft, data in sorted(pft.items()):
+            lines.append(
+                f"| {ft} | {data.get('total', 0)} | {data.get('full_repair', 0)} | "
+                f"{data.get('partial_repair', 0)} | {data.get('no_repair', 0)} | "
+                f"{data.get('regression', 0)} | {_pct(data.get('repair_rate'))} |"
+            )
+        lines.append("")
+
+    *_observation_sr, = []
+    if isinstance(sr_rate, dict) and sr_rate.get("value") is not None:
+        _observation_sr.append(
+            f"*Observation: {_pct(sr_rate['value'])} of initially-failing tasks "
+            f"are fully repaired through the retry loop.*"
+        )
+    for obs in _observation_sr:
+        lines.append(obs)
+    lines.append("")
+
+    # Dimension 7 is in Campaign 2 section below
+
+    # Dimension 8: Per-kernel difficulty tiers
+    tiers = c1.get("per_kernel_tiers", {})
+    lines.append("### Dimension 8: Per-Kernel Difficulty Tiers (L0)")
+    lines.append("")
+    lines.append(f"**Total kernels:** {tiers.get('n_kernels', '?')}")
+    lines.append("")
+
+    kernel_list = tiers.get("kernels", [])
+    if kernel_list:
+        lines.append("| Rank | Kernel | Suite | Pass Rate | 95% CI | Passes/Total | Tier |")
+        lines.append("|------|--------|-------|-----------|--------|--------------|------|")
+        for i, ks in enumerate(kernel_list, 1):
+            lines.append(
+                f"| {i} | {ks['kernel']} | {ks['suite']} | "
+                f"{_pct(ks.get('pass_rate'))} | "
+                f"[{_pct(ks.get('ci_lower'))}, {_pct(ks.get('ci_upper'))}] | "
+                f"{ks.get('passes', 0)}/{ks.get('total', 0)} | {ks.get('tier', '?')} |"
+            )
+        lines.append("")
+
+    top5 = tiers.get("top_5_easiest", [])
+    bot5 = tiers.get("top_5_hardest", [])
+    if top5:
+        top5_str = ", ".join(f"{k['kernel']} ({_pct(k['pass_rate'])})" for k in top5)
+        lines.append(f"**Top-5 easiest:** {top5_str}")
+    if bot5:
+        bot5_str = ", ".join(f"{k['kernel']} ({_pct(k['pass_rate'])})" for k in bot5)
+        lines.append(f"**Top-5 hardest:** {bot5_str}")
+    lines.append("")
+
+    anomalies = tiers.get("direction_anomalies", [])
+    if anomalies:
+        lines.append("**Direction anomalies (>50pp gap):**")
+        lines.append("")
+        for a in anomalies:
+            lines.append(
+                f"- {a['kernel']}: {a['best_direction']}={_pct(a['best_rate'])} vs "
+                f"{a['worst_direction']}={_pct(a['worst_rate'])} ({a['gap_pp']}pp gap)"
+            )
+        lines.append("")
+
+    # Dimension 9: Complexity correlation
+    cc = c1.get("complexity_correlation", {})
+    lines.append("### Dimension 9: Translation Complexity Correlation")
+    lines.append("")
+    pc = cc.get("per_class", {})
+    if pc:
+        lines.append("| Complexity Class | Pass Rate | 95% CI | Passes/Total |")
+        lines.append("|------------------|-----------|--------|--------------|")
+        for cls_name in ["single_file", "multi_to_single", "single_to_multi", "multi_to_multi"]:
+            data = pc.get(cls_name, {})
+            if data.get("total", 0) > 0:
+                lines.append(
+                    f"| {cls_name} | {_pct(data.get('value'))} | "
+                    f"[{_pct(data.get('ci_lower'))}, {_pct(data.get('ci_upper'))}] | "
+                    f"{data.get('passes', 0)}/{data.get('total', 0)} |"
+                )
+        lines.append("")
+
+    tr = cc.get("test_result", {})
+    if tr:
+        method = tr.get("method", "?")
+        p_val = tr.get("p_value", "?")
+        sig = "Yes" if tr.get("significant") else "No"
+        lines.append(f"**Statistical test:** {method}, p={p_val}, significant={sig}")
+        lines.append("")
+
+    # Dimension 10: Cross-suite comparison
+    cs_data = c1.get("cross_suite", {})
+    lines.append("### Dimension 10: Cross-Suite Comparison (L0)")
+    lines.append("")
+
+    cs_rates = cs_data.get("per_suite_pass_rate_l0", {})
+    cs_sloc = cs_data.get("sloc_characteristics", {})
+    cs_mf = cs_data.get("multi_file_fraction", {})
+    if cs_rates:
+        lines.append("| Suite | Pass Rate (L0) | 95% CI | n | Mean SLoC | Multi-File % |")
+        lines.append("|-------|----------------|--------|---|-----------|-------------|")
+        for suite_name, rate_data in sorted(cs_rates.items()):
+            sloc_info = cs_sloc.get(suite_name, {})
+            mf_info = cs_mf.get(suite_name, {})
+            lines.append(
+                f"| {suite_name} | {_pct(rate_data.get('value'))} | "
+                f"[{_pct(rate_data.get('ci_lower'))}, {_pct(rate_data.get('ci_upper'))}] | "
+                f"{rate_data.get('n', '?')} | "
+                f"{sloc_info.get('mean_sloc', '?')} | "
+                f"{_pct(mf_info.get('fraction'))} |"
+            )
+        lines.append("")
+
+    # Dimension 11: Token cost
+    tc = c1.get("token_cost", {})
+    lines.append("### Dimension 11: Token Cost Analysis")
+    lines.append("")
+    tc_total = tc.get("total_cost", {})
+    tc_per_task = tc.get("cost_per_task", {})
+    tc_per_pass = tc.get("cost_per_pass", {})
+    total_cost_val = tc_total.get("value") if isinstance(tc_total, dict) else tc_total
+    per_task_val = tc_per_task.get("value") if isinstance(tc_per_task, dict) else tc_per_task
+    per_pass_val = tc_per_pass.get("value") if isinstance(tc_per_pass, dict) else tc_per_pass
+    lines.append(f"- **Total cost:** ${total_cost_val:.2f}" if total_cost_val else "- **Total cost:** ?")
+    lines.append(f"- **Cost per task:** ${per_task_val:.4f}" if per_task_val else "- **Cost per task:** ?")
+    lines.append(f"- **Cost per PASS:** ${per_pass_val:.4f}" if per_pass_val else "- **Cost per PASS:** ?")
+    lines.append(f"- **Tasks with tokens:** {tc.get('tasks_with_tokens', '?')}")
+    lines.append("")
+
+    tc_suite = tc.get("per_suite", {})
+    if tc_suite:
+        lines.append("| Suite | Input Tokens | Output Tokens | Cost | Tasks | Cost/Task |")
+        lines.append("|-------|-------------|---------------|------|-------|-----------|")
+        for s, sd in sorted(tc_suite.items()):
+            lines.append(
+                f"| {s} | {sd.get('input_tokens', 0):,} | {sd.get('output_tokens', 0):,} | "
+                f"${sd.get('total_cost', 0):.2f} | {sd.get('tasks', 0)} | "
+                f"${sd.get('cost_per_task', 0):.4f} |"
+            )
+        lines.append("")
+
+    # Dimension 12: SLoC correlation
+    sloc_c = c1.get("sloc_correlation", {})
+    lines.append("### Dimension 12: SLoC Correlation")
+    lines.append("")
+    sp_finding = sloc_c.get("spearman", {})
+    pe_finding = sloc_c.get("pearson", {})
+    sp_val = sp_finding.get("value", {}) if isinstance(sp_finding, dict) else {}
+    pe_val = pe_finding.get("value", {}) if isinstance(pe_finding, dict) else {}
+    if isinstance(sp_val, dict):
+        lines.append(f"- **Spearman:** rho={sp_val.get('rho', '?')}, p={sp_val.get('p_value', '?')} "
+                     f"({'significant' if sloc_c.get('significant_spearman') else 'not significant'})")
+    if isinstance(pe_val, dict):
+        lines.append(f"- **Pearson:** r={pe_val.get('r', '?')}, p={pe_val.get('p_value', '?')} "
+                     f"({'significant' if sloc_c.get('significant_pearson') else 'not significant'})")
+    lines.append(f"- **Interpretation:** {sloc_c.get('interpretation', '?')}")
+    lines.append(f"- **n kernels:** {sloc_c.get('n_kernels', '?')}")
+    lines.append("")
+
+    # Dimension 13: OpenCL kernel-only effect
+    ocl = c1.get("opencl_kernel_only_effect", {})
+    lines.append("### Dimension 13: OpenCL Kernel-Only Effect (L0)")
+    lines.append("")
+    ocl_rate = ocl.get("x_to_opencl", {})
+    omp_rate = ocl.get("x_to_omp", {})
+    lines.append(
+        f"- **X-to-OpenCL (kernel-only):** {_pct(ocl_rate.get('value'))} "
+        f"[{_pct(ocl_rate.get('ci_lower'))}, {_pct(ocl_rate.get('ci_upper'))}] "
+        f"(n={ocl_rate.get('n', '?')})"
+    )
+    lines.append(
+        f"- **X-to-OMP (full program):** {_pct(omp_rate.get('value'))} "
+        f"[{_pct(omp_rate.get('ci_lower'))}, {_pct(omp_rate.get('ci_upper'))}] "
+        f"(n={omp_rate.get('n', '?')})"
+    )
+    ocl_test = ocl.get("test_result", {})
+    if ocl_test:
+        lines.append(
+            f"- **Fisher's exact:** p={ocl_test.get('p_value', '?')}, "
+            f"OR={ocl_test.get('odds_ratio', '?')}, "
+            f"Cohen's h={ocl_test.get('cohens_h', '?')}, "
+            f"significant={'Yes' if ocl_test.get('significant') else 'No'}"
+        )
+    lines.append("")
+
+    # ---- Campaign 2 ----
     c2 = output.get("campaign_2", {})
     lines.append("---")
     lines.append("")
@@ -1302,6 +2808,86 @@ def write_markdown(output: dict, path: Path) -> None:
                  f"(n={c2_overall.get('n', '?')})")
     lines.append("")
 
+    # Dimension 7: pass@k
+    passk = c2.get("pass_at_k", {})
+    lines.append("### Dimension 7: pass@k Estimates")
+    lines.append("")
+    p1_data = passk.get("pass_at_1", {})
+    p3_data = passk.get("pass_at_3", {})
+    total_tasks_finding = passk.get("total_tasks", {})
+    total_tasks_val = total_tasks_finding.get("value") if isinstance(total_tasks_finding, dict) else total_tasks_finding
+    lines.append(f"**Total tasks:** {total_tasks_val}")
+    lines.append(
+        f"- **pass@1** (any seed passes): {_pct(p1_data.get('value'))} "
+        f"[{_pct(p1_data.get('ci_lower'))}, {_pct(p1_data.get('ci_upper'))}]"
+    )
+    lines.append(
+        f"- **pass@3** (all seeds pass): {_pct(p3_data.get('value'))} "
+        f"[{_pct(p3_data.get('ci_lower'))}, {_pct(p3_data.get('ci_upper'))}]"
+    )
+    lines.append("")
+
+    tc_class = passk.get("task_classification", {})
+    if tc_class:
+        lines.append(
+            f"**Task classification:** {tc_class.get('always_pass', 0)} always pass, "
+            f"{tc_class.get('noisy_fail', 0)} noisy fail, "
+            f"{tc_class.get('hard_fail', 0)} hard fail"
+        )
+        lines.append("")
+
+    # Per-direction pass@k
+    pd_passk = passk.get("per_direction", {})
+    pd_p1 = pd_passk.get("pass_at_1", {})
+    pd_p3 = pd_passk.get("pass_at_3", {})
+    if pd_p1:
+        lines.append("**Per-direction pass@k:**")
+        lines.append("")
+        lines.append("| Direction | pass@1 | pass@3 | n |")
+        lines.append("|-----------|--------|--------|---|")
+        for d in sorted(pd_p1.keys()):
+            p1d = pd_p1.get(d, {})
+            p3d = pd_p3.get(d, {})
+            lines.append(
+                f"| {d} | {_pct(p1d.get('value'))} | {_pct(p3d.get('value'))} | "
+                f"{p1d.get('n', '?')} |"
+            )
+        lines.append("")
+
+    # Per-suite pass@k
+    ps_passk = passk.get("per_suite", {})
+    ps_p1 = ps_passk.get("pass_at_1", {})
+    ps_p3 = ps_passk.get("pass_at_3", {})
+    if ps_p1:
+        lines.append("**Per-suite pass@k:**")
+        lines.append("")
+        lines.append("| Suite | pass@1 | pass@3 | n |")
+        lines.append("|-------|--------|--------|---|")
+        for s in sorted(ps_p1.keys()):
+            p1s = ps_p1.get(s, {})
+            p3s = ps_p3.get(s, {})
+            lines.append(
+                f"| {s} | {_pct(p1s.get('value'))} | {_pct(p3s.get('value'))} | "
+                f"{p1s.get('n', '?')} |"
+            )
+        lines.append("")
+
+    # ---- Paper Claims ----
+    pc_list = output.get("paper_claims", [])
+    if pc_list:
+        lines.append("---")
+        lines.append("")
+        lines.append("## Paper Claims Mapping")
+        lines.append("")
+        lines.append("| # | Claim ID | Scope | Display Value | Paper Location |")
+        lines.append("|---|----------|-------|---------------|----------------|")
+        for i, claim in enumerate(pc_list, 1):
+            lines.append(
+                f"| {i} | {claim.get('claim_id', '?')} | {claim.get('scope', '?')} | "
+                f"{claim.get('display_value', '?')} | {claim.get('paper_location', '?')} |"
+            )
+        lines.append("")
+
     # Cross-check summary
     xc = output.get("cross_check", {})
     if xc:
@@ -1311,10 +2897,10 @@ def write_markdown(output: dict, path: Path) -> None:
         lines.append("")
         lines.append(f"Checks run: {xc.get('checks_run', 0)}")
         lines.append(f"Status: {xc.get('status', 'unknown')}")
-        warnings = xc.get("warnings", [])
-        if warnings:
+        xc_warnings = xc.get("warnings", [])
+        if xc_warnings:
             lines.append("")
-            for w in warnings:
+            for w in xc_warnings:
                 lines.append(f"- {w}")
         lines.append("")
 
@@ -1405,6 +2991,43 @@ def main() -> int:
         print("  Dimension 5: Failure taxonomy...")
     c1_results["failure_taxonomy"] = compute_failure_taxonomy(c1)
 
+    # --- Compute dimensions 6-13 for Campaign 1 ---
+    if args.verbose:
+        print("\nComputing dimensions 6-13 for Campaign 1...")
+
+    if args.verbose:
+        print("  Dimension 6: Self-repair effectiveness...")
+    c1_results["self_repair"] = compute_self_repair(c1)
+
+    if args.verbose:
+        print("  Dimension 8: Per-kernel difficulty tiers...")
+    c1_results["per_kernel_tiers"] = compute_per_kernel_tiers(c1)
+
+    if args.verbose:
+        print("  Dimension 9: Translation complexity correlation...")
+    c1_results["complexity_correlation"] = compute_complexity_correlation(c1, project_root)
+
+    if args.verbose:
+        print("  Dimension 10: Cross-suite comparison...")
+    c1_results["cross_suite"] = compute_cross_suite(c1, project_root)
+
+    if args.verbose:
+        print("  Dimension 11: Token cost analysis...")
+    c1_results["token_cost"] = compute_token_cost(c1)
+
+    if args.verbose:
+        print("  Dimension 12: SLoC correlation...")
+    c1_results["sloc_correlation"] = compute_sloc_correlation(c1, project_root)
+
+    if args.verbose:
+        print("  Dimension 13: OpenCL kernel-only effect...")
+    c1_results["opencl_kernel_only_effect"] = compute_opencl_kernel_only_effect(c1)
+
+    # --- Rodinia subset for paper claims scope matching ---
+    if args.verbose:
+        print("  Computing Rodinia subset...")
+    c1_results["rodinia_subset"] = compute_rodinia_subset(c1)
+
     # --- Compute dimensions 1-5 for Campaign 2 ---
     if args.verbose:
         print("\nComputing dimensions 1-5 for Campaign 2...")
@@ -1416,6 +3039,11 @@ def main() -> int:
     c2_results["direction_asymmetry"] = compute_direction_asymmetry(c2)
     c2_results["augmentation_trends"] = compute_augmentation_trends(c2)
     c2_results["failure_taxonomy"] = compute_failure_taxonomy(c2)
+
+    # --- Dimension 7: pass@k (Campaign 2 only) ---
+    if args.verbose:
+        print("\nComputing dimension 7: pass@k for Campaign 2...")
+    c2_results["pass_at_k"] = compute_pass_at_k(c2)
 
     # --- Cross-check ---
     if args.verbose:
