@@ -74,19 +74,19 @@ Plans:
 - [x] 03-03-PLAN.md -- [Wave 1] LASSI positioning paragraphs in paper.tex Section 7.4 (AUG-03: complementary framing)
 
 ### Phase 4: Methodology & Reviewer Defense
-**Goal**: Section 4 methodology descriptions are precise enough to withstand SC-level reviewer scrutiny, with explicit justifications for every methodological choice
+**Goal**: Section 3-5 methodology descriptions are precise enough to withstand SC-level reviewer scrutiny, with explicit justifications for every methodological choice
 **Depends on**: Phase 1 (verified hardware table and version pins feed reproducibility claims)
 **Requirements**: METHOD-01, METHOD-02, METHOD-03, METHOD-04
 **Success Criteria** (what must be TRUE):
-  1. Kernel isolation methodology paragraph cites the ParEval-Repo 0% vs ParBench 68.8% XSBench comparison with exact numbers from result files
+  1. Kernel isolation methodology paragraph cites the ParEval-Repo 0% vs ParBench 64.2% XSBench comparison with exact numbers from quantitative_findings.json
   2. Statistical test choices (Cochran-Armitage, McNemar, Wilson CI) are each justified in 1-2 sentences explaining why that test fits the data structure
   3. Reproducibility paragraph lists exact version pins: CUDA version, nvcc version, gcc version, OS, GPU model, model API versions, and ParBench commit hash
   4. Conjunction verification (exit_code AND stdout_pattern) is justified against alternatives (BLEU, compilation-only) with a concrete example of why weaker verification would misclassify a result
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
+- [ ] 04-01-PLAN.md -- [Wave 1] Kernel isolation defense paragraph (Section 3.4) + conjunction verification defense paragraph (Section 3.2) with provenance-tracked numbers
+- [ ] 04-02-PLAN.md -- [Wave 2, depends on 04-01] Statistical test justification rewrite (Section 5.4) + Bonferroni alpha update (Sections 6.6, 6.8) + reproducibility version pins (Section 5.5)
 
 ### Phase 5: Introduction, Positioning & Characterization Table
 **Goal**: The introduction reads as a compelling benchmark paper with quantitative substance, and the characterization table is the anchor of Section 4
@@ -124,7 +124,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 1. Data Verification & Ground Truth | 5/5 | Complete | 2026-04-03 |
 | 2. Benchmark Characterization Data | 3/3 | Complete | 2026-04-03 |
 | 3. Augmentation Analysis & Story | 0/3 | Context gathered | - |
-| 4. Methodology & Reviewer Defense | 0/2 | Not started | - |
+| 4. Methodology & Reviewer Defense | 0/2 | Planned | - |
 | 5. Introduction, Positioning & Characterization Table | 0/3 | Not started | - |
 | 6. RSBench Single-File Re-spec Experiment | 0/0 | Not started | - |
 | 7. Full Analysis Regeneration | 0/2 | Not started | - |
