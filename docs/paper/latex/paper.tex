@@ -583,6 +583,38 @@ mixbench        &  1 &       312     &  -- &  0/3~~~(0\%) & C++11 \\
 \end{tabular}
 \end{table}
 
+% src: sloc_analysis.json category field per kernel (35 kernels, 10 categories)
+% cross-check: benchmark_characterization.json categories section
+% Note: CONTEXT.md D-02 says "12 categories" but the 35-kernel corpus spans only 10.
+% The 12 count comes from the full 83-kernel manifest (includes crypto, financial from non-curated HeCBench).
+% Canonical source: sloc_analysis.json category assignment per kernel.
+Table~\ref{tab:category-distribution} shows the domain distribution of the evaluation corpus. The 35~kernels span 10~computational categories across all 5~suites. Physics simulation and graph algorithms are the most represented (7 and 5~kernels respectively), reflecting the computational patterns most common in HPC proxy applications. The ``other'' category captures utility benchmarks (memory bandwidth, combinatorial search) that do not fit standard HPC domain labels. Combined with the per-suite API coverage shown in Table~\ref{tab:suite-summary}, these distributions confirm that the corpus covers diverse computational domains and parallel API combinations.
+
+\begin{table}[t]
+\centering
+\caption{Domain category distribution across the 35-kernel evaluation corpus. Categories are assigned from the canonical \texttt{sloc\_analysis.json} classification. Suite annotations show which suites contribute kernels to each category.}
+\label{tab:category-distribution}
+\small
+\begin{tabular}{@{}lrl@{}}
+\toprule
+Category & Kernels & Contributing Suites \\
+\midrule
+Physics simulation     & 7 & Rodinia (5), XSBench, RSBench \\
+Graph algorithms       & 5 & Rodinia (3), HeCBench (2) \\
+Stencil computation    & 5 & HeCBench (5) \\
+Image processing       & 2 & Rodinia (2) \\
+Linear algebra         & 2 & Rodinia (2) \\
+Machine learning       & 2 & Rodinia (2) \\
+Molecular dynamics     & 2 & Rodinia (1), HeCBench (1) \\
+Reduction              & 1 & HeCBench (1) \\
+Sort                   & 1 & Rodinia (1) \\
+Other                  & 8 & Rodinia (6), HeCBench (1), mixbench (1) \\
+\midrule
+\textbf{Total}         & \textbf{35} & \textbf{5 suites} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 % src: 38 OMP specs = 26 omp + 12 omp_target (ls specs/*-omp*.json in curated suites); verified 2026-04-03
 % src: __syncthreads in 18/35 CUDA prompt_payload files (grep __syncthreads via repo_root+source_path); verified 2026-04-03
 % src: 23 OpenCL specs (ls specs/*-opencl.json); 12 omp_target specs (ls specs/*-omp_target.json); verified 2026-04-03
