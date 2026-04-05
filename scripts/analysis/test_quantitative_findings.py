@@ -15,6 +15,7 @@ Covers:
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -311,3 +312,545 @@ def test_augmentation_trends_per_direction_and_aggregate():
     assert "cochran_armitage" in result["per_direction"]["cuda-to-omp"]
     # Should have cohens_h between adjacent levels
     assert "cohens_h_adjacent" in result["aggregate"]
+
+
+# ---------------------------------------------------------------------------
+# QUANT-01: Aggregate pass rates (dimension-level test)
+# ---------------------------------------------------------------------------
+
+def test_aggregate_pass_rates():
+    """compute_aggregate_pass_rates computes overall + per-suite rates with wilson_ci."""
+    records = [
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS"),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="BUILD_FAIL"),
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+                     overall_status="PASS"),
+        _make_record(source_spec="xsbench-xsbench-cuda", target_spec="xsbench-xsbench-omp",
+                     overall_status="BUILD_FAIL"),
+        _make_record(source_spec="xsbench-xsbench-cuda", target_spec="xsbench-xsbench-omp",
+                     overall_status="PASS"),
+    ]
+    result = qf.compute_aggregate_pass_rates(records)
+
+    # Overall: 3 PASS / 5 total = 0.6
+    assert result["overall"]["value"] == 0.6
+    assert result["overall"]["n"] == 5
+    assert result["overall"]["ci_lower"] <= 0.6 <= result["overall"]["ci_upper"]
+
+    # Per-suite: rodinia = 2/3, xsbench = 1/2
+    assert "rodinia" in result["per_suite"]
+    assert "xsbench" in result["per_suite"]
+    rod = result["per_suite"]["rodinia"]
+    assert rod["n"] == 3
+    assert round(rod["value"], 4) == round(2 / 3, 4)
+    xsb = result["per_suite"]["xsbench"]
+    assert xsb["n"] == 2
+    assert xsb["value"] == 0.5
+
+    # Provenance fields present on overall
+    assert "source" in result["overall"]
+    assert "derivation" in result["overall"]
+    assert "files_matched" in result["overall"]
+
+
+# ---------------------------------------------------------------------------
+# QUANT-02: Direction pass rates (dimension-level test)
+# ---------------------------------------------------------------------------
+
+def test_direction_pass_rates():
+    """compute_direction_pass_rates filters L0, separates standard vs case_study."""
+    records = [
+        # L0 standard directions
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", augment_level=0),
+        _make_record(source_spec="rodinia-bfs-omp", target_spec="rodinia-bfs-cuda",
+                     overall_status="BUILD_FAIL", augment_level=0),
+        # L0 case-study direction
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="hecbench-stencil1d-omp_target",
+                     overall_status="PASS", augment_level=0,
+                     direction="cuda-to-omp_target"),
+        # L2 record -- should be EXCLUDED (L0 only)
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", augment_level=2),
+    ]
+    result = qf.compute_direction_pass_rates(records)
+
+    # Standard directions
+    assert "cuda-to-omp" in result["standard"]
+    assert result["standard"]["cuda-to-omp"]["value"] == 1.0
+    assert result["standard"]["cuda-to-omp"]["n"] == 1
+    assert "omp-to-cuda" in result["standard"]
+    assert result["standard"]["omp-to-cuda"]["value"] == 0.0
+
+    # Case-study directions
+    assert "cuda-to-omp_target" in result["case_study"]
+    assert result["case_study"]["cuda-to-omp_target"]["value"] == 1.0
+    assert result["case_study"]["cuda-to-omp_target"]["n"] == 1
+
+    # L2 record should not appear (L0 filtering)
+    total_n = sum(
+        v["n"] for v in result["standard"].values()
+    ) + sum(
+        v["n"] for v in result["case_study"].values()
+    )
+    assert total_n == 3  # Only the 3 L0 records
+
+
+# ---------------------------------------------------------------------------
+# QUANT-06: Self-repair effectiveness
+# ---------------------------------------------------------------------------
+
+def test_self_repair():
+    """compute_self_repair classifies repair outcomes from attempts[] arrays."""
+    records = [
+        # Record 1: BUILD_FAIL -> PASS (full repair on attempt 2)
+        _make_record(
+            source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+            overall_status="PASS",
+            attempts=[
+                {"build_status": "fail"},
+                {"build_status": "pass", "run_status": "pass", "verify_status": "pass"},
+            ],
+        ),
+        # Record 2: BUILD_FAIL -> VERIFY_FAIL (partial repair)
+        _make_record(
+            source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+            overall_status="VERIFY_FAIL",
+            attempts=[
+                {"build_status": "fail"},
+                {"build_status": "pass", "run_status": "pass", "verify_status": "fail"},
+            ],
+        ),
+        # Record 3: RUN_FAIL -> BUILD_FAIL (regression)
+        _make_record(
+            source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-omp",
+            overall_status="BUILD_FAIL",
+            attempts=[
+                {"build_status": "pass", "run_status": "fail"},
+                {"build_status": "fail"},
+            ],
+        ),
+        # Record 4: single attempt PASS (not multi-attempt, should not count)
+        _make_record(
+            source_spec="rodinia-nw-cuda", target_spec="rodinia-nw-omp",
+            overall_status="PASS",
+            attempts=[
+                {"build_status": "pass", "run_status": "pass", "verify_status": "pass"},
+            ],
+        ),
+    ]
+    # Set total_attempts on each record to match attempts length
+    for r in records:
+        r["total_attempts"] = len(r["attempts"])
+
+    result = qf.compute_self_repair(records)
+
+    # 3 initially failing multi-attempt records (records 1, 2, 3)
+    assert result["total_initially_failing"] == 3
+    assert result["full_repairs"] == 1
+    assert result["partial_repairs"] == 1
+    assert result["regressions"] == 1
+
+    # Repair rate = 1/3
+    assert result["overall_repair_rate"]["value"] == round(1 / 3, 4)
+    # Regression rate = 1/3
+    assert result["regression_rate"]["value"] == round(1 / 3, 4)
+
+    # Per-failure-type breakdown
+    assert "BUILD_FAIL" in result["per_failure_type"]
+    bf = result["per_failure_type"]["BUILD_FAIL"]
+    assert bf["total"] == 2  # records 1 and 2 started as BUILD_FAIL
+    assert bf["full_repair"] == 1
+    assert bf["partial_repair"] == 1
+
+
+# ---------------------------------------------------------------------------
+# QUANT-07: pass@k estimates
+# ---------------------------------------------------------------------------
+
+def test_pass_at_k():
+    """compute_pass_at_k computes pass@1 and pass@3 from seed variants."""
+    records = [
+        # Task 1: all 3 seeds pass -> contributes to both pass@1 and pass@3
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", temperature=0.7, sample_id=0),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", temperature=0.7, sample_id=1),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", temperature=0.7, sample_id=2),
+        # Task 2: 1 of 3 passes -> contributes to pass@1 only
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+                     overall_status="PASS", temperature=0.7, sample_id=0),
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+                     overall_status="BUILD_FAIL", temperature=0.7, sample_id=1),
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+                     overall_status="BUILD_FAIL", temperature=0.7, sample_id=2),
+        # Task 3: 0 of 3 pass -> contributes to neither
+        _make_record(source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-omp",
+                     overall_status="BUILD_FAIL", temperature=0.7, sample_id=0),
+        _make_record(source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-omp",
+                     overall_status="BUILD_FAIL", temperature=0.7, sample_id=1),
+        _make_record(source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-omp",
+                     overall_status="BUILD_FAIL", temperature=0.7, sample_id=2),
+    ]
+    result = qf.compute_pass_at_k(records)
+
+    # 3 tasks total
+    assert result["total_tasks"]["value"] == 3
+
+    # pass@1: 2/3 tasks have at least 1 seed passing
+    assert round(result["pass_at_1"]["value"], 4) == round(2 / 3, 4)
+    # pass@3: 1/3 tasks have all 3 seeds passing
+    assert round(result["pass_at_3"]["value"], 4) == round(1 / 3, 4)
+
+    # Invariant: pass@1 >= pass@3
+    assert result["pass_at_1"]["value"] >= result["pass_at_3"]["value"]
+
+    # Task classification
+    assert result["task_classification"]["always_pass"] == 1
+    assert result["task_classification"]["hard_fail"] == 1
+    assert result["task_classification"]["noisy_fail"] == 1
+
+    # Per-direction and per-suite keys present
+    assert "per_direction" in result
+    assert "per_suite" in result
+
+
+# ---------------------------------------------------------------------------
+# QUANT-08: Per-kernel difficulty tiers
+# ---------------------------------------------------------------------------
+
+def test_per_kernel_tiers():
+    """compute_per_kernel_tiers ranks kernels by pass rate with quartile tiers."""
+    records = []
+    # Create 8 kernels with varying pass rates at L0
+    kernel_configs = [
+        ("bfs", 6, 6),       # 100% pass
+        ("hotspot", 5, 6),   # 83%
+        ("srad", 4, 6),      # 67%
+        ("nw", 3, 6),        # 50%
+        ("pathfinder", 2, 6),  # 33%
+        ("backprop", 1, 6),  # 17%
+        ("lud", 0, 6),       # 0%
+        ("cfd", 0, 6),       # 0%
+    ]
+    for kernel_name, passes, total in kernel_configs:
+        for i in range(total):
+            status = "PASS" if i < passes else "BUILD_FAIL"
+            records.append(_make_record(
+                source_spec=f"rodinia-{kernel_name}-cuda",
+                target_spec=f"rodinia-{kernel_name}-omp",
+                overall_status=status,
+                augment_level=0,
+            ))
+
+    result = qf.compute_per_kernel_tiers(records)
+
+    # 8 kernels
+    assert result["n_kernels"] == 8
+
+    # Top-5 easiest: bfs, hotspot, srad, nw, pathfinder (highest pass rates)
+    top5_names = [k["kernel"] for k in result["top_5_easiest"]]
+    assert top5_names[0] == "bfs"  # Highest pass rate
+
+    # Bottom-5 hardest: last 5 in sorted order (lowest pass rates)
+    bot5_names = [k["kernel"] for k in result["top_5_hardest"]]
+    assert "lud" in bot5_names or "cfd" in bot5_names  # 0% kernels should be in bottom
+
+    # Quartile boundaries exist
+    assert "quartile_boundaries" in result
+    assert "Q1_threshold" in result["quartile_boundaries"]
+    assert "Q2_threshold" in result["quartile_boundaries"]
+    assert "Q3_threshold" in result["quartile_boundaries"]
+
+    # Kernels list has tier assignments
+    for ks in result["kernels"]:
+        assert "tier" in ks
+        assert ks["tier"] in ("Q1_easiest", "Q2", "Q3", "Q4_hardest")
+
+
+# ---------------------------------------------------------------------------
+# QUANT-09: Translation complexity correlation
+# ---------------------------------------------------------------------------
+
+def test_complexity_correlation(tmp_path):
+    """compute_complexity_correlation classifies 4 complexity classes from specs."""
+    # Create mock spec files
+    specs_dir = tmp_path / "specs"
+    specs_dir.mkdir()
+
+    # Single-file spec (1 translation target)
+    (specs_dir / "rodinia-bfs-cuda.json").write_text(json.dumps({
+        "files": {"translation_targets": ["bfs.cu"]}
+    }))
+    (specs_dir / "rodinia-bfs-omp.json").write_text(json.dumps({
+        "files": {"translation_targets": ["bfs.cpp"]}
+    }))
+
+    # Multi-file spec (2 translation targets)
+    (specs_dir / "rodinia-srad-cuda.json").write_text(json.dumps({
+        "files": {"translation_targets": ["srad_kernel.cu", "srad_helper.cu"]}
+    }))
+    (specs_dir / "rodinia-srad-omp.json").write_text(json.dumps({
+        "files": {"translation_targets": ["srad.cpp"]}
+    }))
+
+    records = [
+        # single_file: 1->1
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS"),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="BUILD_FAIL"),
+        # multi_to_single: 2->1
+        _make_record(source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-omp",
+                     overall_status="BUILD_FAIL"),
+        _make_record(source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-omp",
+                     overall_status="BUILD_FAIL"),
+    ]
+
+    result = qf.compute_complexity_correlation(records, tmp_path)
+
+    # All 4 records classified
+    assert result["classified"] == 4
+    assert result["unclassified"] == 0
+
+    # Per-class pass rates
+    assert "single_file" in result["per_class"]
+    assert result["per_class"]["single_file"]["total"] == 2
+    assert result["per_class"]["single_file"]["passes"] == 1
+    assert result["per_class"]["single_file"]["value"] == 0.5
+
+    assert "multi_to_single" in result["per_class"]
+    assert result["per_class"]["multi_to_single"]["total"] == 2
+    assert result["per_class"]["multi_to_single"]["passes"] == 0
+    assert result["per_class"]["multi_to_single"]["value"] == 0.0
+
+    # Test result present
+    assert "test_result" in result
+
+
+# ---------------------------------------------------------------------------
+# QUANT-10: Cross-suite comparison
+# ---------------------------------------------------------------------------
+
+def test_cross_suite(tmp_path):
+    """compute_cross_suite aggregates per-suite pass rates at L0."""
+    # Create minimal sloc_analysis.json
+    analysis_dir = tmp_path / "results" / "analysis"
+    analysis_dir.mkdir(parents=True)
+    (analysis_dir / "sloc_analysis.json").write_text(json.dumps({
+        "kernels": {
+            "bfs": {"suite": "rodinia", "physical_sloc": 101},
+            "xsbench": {"suite": "xsbench", "physical_sloc": 450},
+        },
+        "summary": {"total_kernels": 2}
+    }))
+
+    # Create minimal specs dir
+    specs_dir = tmp_path / "specs"
+    specs_dir.mkdir()
+    (specs_dir / "rodinia-bfs-cuda.json").write_text(json.dumps({
+        "identity": {"source_suite": "rodinia"},
+        "files": {"translation_targets": ["bfs.cu"]},
+    }))
+    (specs_dir / "xsbench-xsbench-cuda.json").write_text(json.dumps({
+        "identity": {"source_suite": "xsbench"},
+        "files": {"translation_targets": ["xsbench.cu"]},
+    }))
+
+    records = [
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", augment_level=0),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="BUILD_FAIL", augment_level=0),
+        _make_record(source_spec="xsbench-xsbench-cuda", target_spec="xsbench-xsbench-omp",
+                     overall_status="PASS", augment_level=0),
+        # L2 record -- excluded from L0 comparison
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", augment_level=2),
+    ]
+
+    result = qf.compute_cross_suite(records, tmp_path)
+
+    # Per-suite pass rates at L0
+    assert "rodinia" in result["per_suite_pass_rate_l0"]
+    assert result["per_suite_pass_rate_l0"]["rodinia"]["value"] == 0.5
+    assert result["per_suite_pass_rate_l0"]["rodinia"]["n"] == 2
+
+    assert "xsbench" in result["per_suite_pass_rate_l0"]
+    assert result["per_suite_pass_rate_l0"]["xsbench"]["value"] == 1.0
+    assert result["per_suite_pass_rate_l0"]["xsbench"]["n"] == 1
+
+    # SLoC characteristics loaded
+    assert "sloc_characteristics" in result
+
+
+# ---------------------------------------------------------------------------
+# QUANT-11: Token cost analysis
+# ---------------------------------------------------------------------------
+
+def test_token_cost():
+    """compute_token_cost sums tokens and computes cost with Together AI pricing."""
+    records = [
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS"),
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+                     overall_status="BUILD_FAIL"),
+    ]
+    # Add token fields
+    records[0]["prompt_tokens"] = 1_000_000
+    records[0]["completion_tokens"] = 100_000
+    records[1]["prompt_tokens"] = 500_000
+    records[1]["completion_tokens"] = 50_000
+
+    result = qf.compute_token_cost(records)
+
+    # Total tokens
+    assert result["total_input_tokens"]["value"] == 1_500_000
+    assert result["total_output_tokens"]["value"] == 150_000
+
+    # Total cost = 1.5M * 0.60/1M + 0.15M * 3.60/1M = 0.90 + 0.54 = 1.44
+    expected_input_cost = 1_500_000 * 0.60 / 1_000_000  # 0.90
+    expected_output_cost = 150_000 * 3.60 / 1_000_000    # 0.54
+    expected_total = round(expected_input_cost + expected_output_cost, 4)
+    assert result["total_cost"]["value"] == expected_total
+
+    # Cost per task = 1.44 / 2
+    assert result["cost_per_task"]["value"] == round(expected_total / 2, 4)
+
+    # Cost per PASS = 1.44 / 1 (only 1 PASS record)
+    assert result["cost_per_pass"]["value"] == round(expected_total / 1, 4)
+
+    # 1 PASS total
+    assert result["pass_count"] == 1
+    assert result["tasks_with_tokens"] == 2
+
+    # Per-suite breakdown
+    assert "rodinia" in result["per_suite"]
+
+
+# ---------------------------------------------------------------------------
+# QUANT-12: SLoC correlation
+# ---------------------------------------------------------------------------
+
+def test_sloc_correlation(tmp_path):
+    """compute_sloc_correlation computes Spearman and Pearson with rho/r and p_value."""
+    # Create sloc_analysis.json with 4 kernels
+    analysis_dir = tmp_path / "results" / "analysis"
+    analysis_dir.mkdir(parents=True)
+    (analysis_dir / "sloc_analysis.json").write_text(json.dumps({
+        "kernels": {
+            "bfs": {"physical_sloc": 100},
+            "hotspot": {"physical_sloc": 200},
+            "srad": {"physical_sloc": 300},
+            "nw": {"physical_sloc": 400},
+        }
+    }))
+
+    # Records at L0 with pass rates inversely correlated with SLoC
+    records = [
+        # bfs: 3/3 pass (SLoC 100)
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", augment_level=0),
+        _make_record(source_spec="rodinia-bfs-omp", target_spec="rodinia-bfs-cuda",
+                     overall_status="PASS", augment_level=0),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-opencl",
+                     overall_status="PASS", augment_level=0),
+        # hotspot: 2/3 pass (SLoC 200)
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+                     overall_status="PASS", augment_level=0),
+        _make_record(source_spec="rodinia-hotspot-omp", target_spec="rodinia-hotspot-cuda",
+                     overall_status="PASS", augment_level=0),
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-opencl",
+                     overall_status="BUILD_FAIL", augment_level=0),
+        # srad: 1/3 pass (SLoC 300)
+        _make_record(source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-omp",
+                     overall_status="PASS", augment_level=0),
+        _make_record(source_spec="rodinia-srad-omp", target_spec="rodinia-srad-cuda",
+                     overall_status="BUILD_FAIL", augment_level=0),
+        _make_record(source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-opencl",
+                     overall_status="BUILD_FAIL", augment_level=0),
+        # nw: 0/3 pass (SLoC 400)
+        _make_record(source_spec="rodinia-nw-cuda", target_spec="rodinia-nw-omp",
+                     overall_status="BUILD_FAIL", augment_level=0),
+        _make_record(source_spec="rodinia-nw-omp", target_spec="rodinia-nw-cuda",
+                     overall_status="BUILD_FAIL", augment_level=0),
+        _make_record(source_spec="rodinia-nw-cuda", target_spec="rodinia-nw-opencl",
+                     overall_status="BUILD_FAIL", augment_level=0),
+    ]
+
+    result = qf.compute_sloc_correlation(records, tmp_path)
+
+    # 4 kernels paired
+    assert result["n_kernels"] == 4
+
+    # Spearman result has rho and p_value fields
+    assert "spearman" in result
+    spearman = result["spearman"]["value"]
+    assert "rho" in spearman
+    assert "p_value" in spearman
+
+    # Pearson result has r and p_value fields
+    assert "pearson" in result
+    pearson = result["pearson"]["value"]
+    assert "r" in pearson
+    assert "p_value" in pearson
+
+    # Correlation should be negative (higher SLoC -> lower pass rate)
+    assert spearman["rho"] < 0
+    assert pearson["r"] < 0
+
+
+# ---------------------------------------------------------------------------
+# QUANT-13: OpenCL kernel-only effect
+# ---------------------------------------------------------------------------
+
+def test_opencl_kernel_only_effect():
+    """compute_opencl_kernel_only_effect separates kernel-only vs full-program."""
+    records = [
+        # X-to-opencl (kernel-only): 3 records, 1 pass
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-opencl",
+                     overall_status="PASS", augment_level=0,
+                     direction="cuda-to-opencl"),
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-opencl",
+                     overall_status="BUILD_FAIL", augment_level=0,
+                     direction="cuda-to-opencl"),
+        _make_record(source_spec="rodinia-srad-omp", target_spec="rodinia-srad-opencl",
+                     overall_status="BUILD_FAIL", augment_level=0,
+                     direction="omp-to-opencl"),
+        # X-to-omp (full program): 3 records, 2 pass
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", augment_level=0,
+                     direction="cuda-to-omp"),
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+                     overall_status="PASS", augment_level=0,
+                     direction="cuda-to-omp"),
+        _make_record(source_spec="rodinia-srad-opencl", target_spec="rodinia-srad-omp",
+                     overall_status="BUILD_FAIL", augment_level=0,
+                     direction="opencl-to-omp"),
+        # L2 record -- should be excluded (L0 only)
+        _make_record(source_spec="rodinia-nw-cuda", target_spec="rodinia-nw-opencl",
+                     overall_status="PASS", augment_level=2,
+                     direction="cuda-to-opencl"),
+    ]
+
+    result = qf.compute_opencl_kernel_only_effect(records)
+
+    # X-to-opencl: 1/3 pass
+    assert result["x_to_opencl"]["n"] == 3
+    assert round(result["x_to_opencl"]["value"], 4) == round(1 / 3, 4)
+
+    # X-to-omp: 2/3 pass
+    assert result["x_to_omp"]["n"] == 3
+    assert round(result["x_to_omp"]["value"], 4) == round(2 / 3, 4)
+
+    # Fisher's exact test result
+    assert result["test_result"]["method"] == "fisher_exact"
+    assert "p_value" in result["test_result"]
+    assert "odds_ratio" in result["test_result"]
+
+    # CI bounds valid
+    assert result["x_to_opencl"]["ci_lower"] <= result["x_to_opencl"]["value"]
+    assert result["x_to_opencl"]["value"] <= result["x_to_opencl"]["ci_upper"]
