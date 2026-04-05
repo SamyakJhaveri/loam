@@ -104,18 +104,20 @@ Plans:
 **Execution Order:**
 
 ```
-Phase 1 (DONE) ──► Phase 2 (DONE) ──► Phase 7 ──► Phase 8 ──► Phase 11
-                                  └──► Phase 9 ──► Phase 10 ──┘
-Phase 3 (augmentation) ─────────────────────────────────────────┘
-Phase 4 (methodology) ──────────────────────────────────────────┘
-Phase 5 (intro/positioning) ────────────────────────────────────┘
-Phase 6 (RSBench experiment — independent, optional) ───────────┘
+Phase 1 (DONE) ──► Phase 2 (DONE) ──► Phase 7 (DONE) ──► Phase 8 (DONE) ──► Phase 12 ──► Phase 11
+                                                      └──► Phase 9 (DONE) ──► Phase 10 ──┘
+Phase 3 (DONE) ──► Phase 13 ────────────────────────────────────────────────────────────────┘
+Phase 4 (methodology) ──────────────────────────────────────────────────────────────────────┘
+Phase 5 (intro/positioning) ────────────────────────────────────────────────────────────────┘
+Phase 6 (RSBench experiment — independent, optional) ───────────────────────────────────────┘
+Phase 14 (verification & housekeeping — independent) ───────────────────────────────────────
 ```
 
 **Critical path:** 1 → 2 → 7 → 9 → 10 → 11 (analysis → findings → narrative → paper)
-**Parallel track A:** Phase 8 (figures) runs in parallel with Phase 9 after Phase 7 completes
-**Parallel track B:** Phases 3, 4, 5 can execute in parallel at any time; their outputs feed into Phase 11
-**Independent:** Phase 6 (RSBench experiment) can run anytime; feeds into Phase 11 if complete
+**Gap closure path:** 7 → 12 → 11 (fix stale pass@k before integration)
+**Parallel track A:** Phase 8 (figures) → Phase 13 (wiring) → Phase 11
+**Parallel track B:** Phases 4, 5 can execute in parallel at any time; their outputs feed into Phase 11
+**Independent:** Phase 6 (RSBench experiment), Phase 14 (verification backfill) can run anytime
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -130,6 +132,9 @@ Phase 6 (RSBench experiment — independent, optional) ────────�
 | 9. Objective Quantitative Analysis | 0/3 | Not started | - |
 | 10. Qualitative Analysis & Research Narrative | 0/3 | Not started | - |
 | 11. Paper TeX Integration | 0/4 | Not started | - |
+| 12. Fix Stale Pass@k Values | 0/1 | Not started | - |
+| 13. Paper.tex Figure & Table Wiring | 0/1 | Not started | - |
+| 14. Verification Backfill & Housekeeping | 0/1 | Not started | - |
 
 ### Phase 6: RSBench Single-File Re-spec Controlled Experiment
 
@@ -319,3 +324,56 @@ Plans:
 - [ ] 11-02-PLAN.md -- [Wave 1] Update Section 4 (augmentation) + 8 (related work) — these require Phase 3/10 narrative integration
 - [ ] 11-03-PLAN.md -- [Wave 2, depends on 11-01+02] Update Section 6 (results) — the largest section, requires all prior sections' framing to be set
 - [ ] 11-04-PLAN.md -- [Wave 3, depends on 11-03] Update Abstract + Section 7 (discussion) + cross-consistency audit — these synthesize everything and must be last
+
+### Phase 12: Fix Stale Pass@k Values in Paper.tex
+
+**Goal:** Fix the 8+ stale pass@k values in paper.tex Sections 6.7-6.8 that became inconsistent after Phase 1 Plan 05 regenerated paper_data.json with `--suite rodinia`, creating a mismatch between older data-verified sections and the regenerated analysis files.
+**Depends on:** Phase 7 (needs fresh paper_data_rodinia.json as ground truth)
+**Requirements**: VERIFY-01
+**Gap Closure:** Closes VERIFY-01 regression from v1.0 milestone audit (BLOCKER)
+**Success Criteria** (what must be TRUE):
+  1. All pass@k values in paper.tex Sections 6.7-6.8 match paper_data_rodinia.json
+  2. Task/pair counts (288 tasks, 96 pairs) consistent across all paper.tex references
+  3. Macro pass@1 and other aggregate rates updated to match regenerated data
+  4. No other stale numbers remain in Sections 6.6-6.8
+
+**Plans**: 1 plan
+
+Plans:
+- [ ] 12-01-PLAN.md -- Identify and fix all stale pass@k values, task/pair counts, and aggregate rates in paper.tex against paper_data_rodinia.json
+
+### Phase 13: Paper.tex Figure & Table Wiring
+
+**Goal:** Wire regenerated Phase 8 figures and Phase 3 augmentation figures into paper.tex by fixing stale references, updating captions, and adding missing `\includegraphics` and `\input` commands. This closes 4 integration gaps and 2 E2E flow breaks identified by the milestone audit.
+**Depends on:** Phase 8 (figures on disk), Phase 3 (aug figures on disk)
+**Requirements**: AUG-04
+**Gap Closure:** Closes 4 integration gaps + 2 E2E flow breaks from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. F6 reference updated: `f6_xsbench_comparison.pdf` → `f6_cross_suite_comparison.pdf` at paper.tex line ~977
+  2. F3 caption updated to reflect single-panel 29-kernel x 6-direction design (not "Triple-panel")
+  3. `\includegraphics` added for `aug_heatmap.pdf` and `aug_trend.pdf` in Section 7.4
+  4. `\input{t2_model_comparison.tex}` added in Section 5 (methodology)
+  5. All figure/table references compile without LaTeX warnings
+
+**Plans**: 1 plan
+
+Plans:
+- [ ] 13-01-PLAN.md -- Fix F6 filename, F3 caption, insert aug figure graphics, insert T2 table input in paper.tex
+
+### Phase 14: Verification Backfill & Housekeeping
+
+**Goal:** Create formal VERIFICATION.md for Phases 3 and 8 (which completed work but skipped formal verification), update REQUIREMENTS.md checkboxes for all satisfied requirements, and refresh the ROADMAP.md progress table to reflect actual completion state.
+**Depends on:** Phase 3, Phase 8, Phase 9 (needs satisfaction data for checkbox updates)
+**Requirements**: AUG-01, AUG-03
+**Gap Closure:** Closes verification gaps and tracking staleness from v1.0 milestone audit
+**Success Criteria** (what must be TRUE):
+  1. Phase 3 VERIFICATION.md exists, covering AUG-01 through AUG-04 against success criteria
+  2. Phase 8 VERIFICATION.md exists, covering FIG-01 through FIG-07 against success criteria
+  3. REQUIREMENTS.md checkboxes updated: VERIFY-03 `[x]`, QUANT-01 through QUANT-14 `[x]`
+  4. ROADMAP.md progress table reflects actual state (Phases 3,7,8,9 marked Complete)
+  5. Coverage count in REQUIREMENTS.md accurate
+
+**Plans**: 1 plan
+
+Plans:
+- [ ] 14-01-PLAN.md -- Create Phase 3 + 8 VERIFICATION.md, update checkboxes and progress table

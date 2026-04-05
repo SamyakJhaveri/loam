@@ -9,7 +9,7 @@ Requirements for paper submission (deadline: April 8, 2026). Each maps to roadma
 
 ### Data Verification
 
-- [x] **VERIFY-01**: Every numerical claim in Sections 1-5 cross-checked against ground truth JSON files (paper_data.json, statistical_analysis.json, selfrepair_analysis.json)
+- [ ] **VERIFY-01**: Every numerical claim in Sections 1-5 cross-checked against ground truth JSON files (paper_data.json, statistical_analysis.json, selfrepair_analysis.json)
 - [x] **VERIFY-02**: Suite-summary table (tab:suite-summary) verified: kernel count, spec count, API counts match manifest.jsonl + specs/ on disk
 - [ ] **VERIFY-03**: Augmentation level definitions table (tab:augmentation-levels) verified against LEVEL_FRACTIONS in c_augmentation/augment_dataset.py
 - [x] **VERIFY-04**: Model config table (tab:model-config) coherent post-C1 swap: Qwen + GPT-4.1 mini descriptions accurate, no Gemini remnants
@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VERIFY-01 | Phase 1 | Complete |
+| VERIFY-01 | Phase 12 | Pending |
 | VERIFY-02 | Phase 1 | Complete |
 | VERIFY-03 | Phase 1 | Pending |
 | VERIFY-04 | Phase 1 | Complete |
@@ -117,10 +117,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INTRO-02 | Phase 5 | Pending |
 | INTRO-03 | Phase 5 | Pending |
 | INTRO-04 | Phase 5 | Pending |
-| AUG-01 | Phase 3 | Pending |
+| AUG-01 | Phase 14 | Pending |
 | AUG-02 | Phase 3 | Pending |
-| AUG-03 | Phase 3 | Pending |
-| AUG-04 | Phase 3 | Pending |
+| AUG-03 | Phase 14 | Pending |
+| AUG-04 | Phase 13 | Pending |
 | METHOD-01 | Phase 4 | Pending |
 | METHOD-02 | Phase 4 | Pending |
 | METHOD-03 | Phase 4 | Pending |
@@ -142,9 +142,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 - v1 requirements: 39 total
+- Satisfied (checked): 10/39
 - Mapped to phases: 39
 - Unmapped: 0
+- Gap closure reassignments: VERIFY-01→Phase 12, AUG-04→Phase 13, AUG-01/AUG-03→Phase 14
 
 ---
 *Requirements defined: 2026-04-03*
-*Last updated: 2026-04-03 after roadmap creation -- traceability complete*
+*Last updated: 2026-04-05 after gap closure phase creation (Phases 12-14)*
