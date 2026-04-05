@@ -56,7 +56,7 @@ parbench_sam/
 │
 ├── harness/                    # Python harness for build/run/verify
 │   ├── __init__.py
-│   ├── __main__.py             #   Entry point: python -m harness
+│   ├── __main__.py             #   Entry point: python3 -m harness
 │   ├── cli.py                  #   Command-line interface (--augment_level flag)
 │   ├── builder.py              #   Compilation logic
 │   ├── runner.py               #   Execution logic
@@ -66,9 +66,8 @@ parbench_sam/
 │   └── models.py               #   Data classes for results
 │
 ├── c_augmentation/             # AST-driven augmentation transforms (libclang)
-│   ├── augment_dataset.py      #   Core augmentation engine
-│   ├── augment_dataset.py      #   6 transform types (PointerArith, SwapCond, etc.)
-│   └── test_transforms.py      #   Unit tests: python -m pytest c_augmentation/test_transforms.py
+│   ├── augment_dataset.py      #   Core augmentation engine + 6 transform types
+│   └── test_transforms.py      #   Unit tests: python3 -m pytest c_augmentation/test_transforms.py
 │
 ├── scripts/                    # Utility scripts (organized by purpose)
 │   ├── validate_schema.py      #   JSON schema + cross-cutting validator
@@ -192,8 +191,8 @@ The harness is a Python module (`harness/`) that automates the full evaluation p
 
 **Command:**
 ```bash
-python -m harness build specs/hecbench-nn-cuda.json
-python -m harness build specs/hecbench-nn-cuda.json -v  # verbose
+python3 -m harness build specs/hecbench-nn-cuda.json
+python3 -m harness -v build specs/hecbench-nn-cuda.json  # verbose (-v before subcommand)
 ```
 
 ### 5.2 Run
@@ -209,8 +208,8 @@ python -m harness build specs/hecbench-nn-cuda.json -v  # verbose
 
 **Command:**
 ```bash
-python -m harness run specs/hecbench-nn-cuda.json                    # default: correctness
-python -m harness run specs/hecbench-nn-cuda.json --config performance
+python3 -m harness run specs/hecbench-nn-cuda.json                    # default: correctness
+python3 -m harness run specs/hecbench-nn-cuda.json --config performance
 ```
 
 ### 5.3 Verify
@@ -231,25 +230,25 @@ python -m harness run specs/hecbench-nn-cuda.json --config performance
 
 **Command:**
 ```bash
-python -m harness verify specs/hecbench-nn-cuda.json
-python -m harness verify specs/hecbench-nn-cuda.json --config performance --json
+python3 -m harness verify specs/hecbench-nn-cuda.json
+python3 -m harness verify specs/hecbench-nn-cuda.json --config performance --json
 ```
 
 ### 5.4 Other Commands
 
 **View the prompt payload** (what the LLM would see):
 ```bash
-python -m harness prompt specs/hecbench-nn-cuda.json
+python3 -m harness prompt specs/hecbench-nn-cuda.json
 ```
 
 **Print spec summary** (no build/run):
 ```bash
-python -m harness info specs/hecbench-nn-cuda.json
+python3 -m harness info specs/hecbench-nn-cuda.json
 ```
 
 **List all translation pairs** from the manifest:
 ```bash
-python -m harness pairs
+python3 -m harness pairs
 ```
 
 ---
@@ -338,17 +337,17 @@ Append one line to `manifest.jsonl`:
 
 ```bash
 # Validate just your new spec
-python scripts/validate_schema.py --spec specs/mysuite-my-kernel-cuda.json
+python3 scripts/validate_schema.py --spec specs/mysuite-my-kernel-cuda.json
 
 # Validate everything (manifest + all specs + cross-checks)
-python scripts/validate_schema.py --all
+python3 scripts/validate_schema.py --all
 ```
 
 ### Step 5: Run the Baseline
 
 ```bash
 # Build, run, and verify on your reference hardware
-python -m harness verify specs/mysuite-my-kernel-cuda.json --json
+python3 -m harness verify specs/mysuite-my-kernel-cuda.json --json
 
 # Capture the output and populate baseline_results in your spec
 ```
@@ -384,13 +383,13 @@ The validator (`scripts/validate_schema.py`) performs comprehensive checks:
 **Commands:**
 ```bash
 # Validate manifest only
-python scripts/validate_schema.py --manifest manifest.jsonl
+python3 scripts/validate_schema.py --manifest manifest.jsonl
 
 # Validate a single spec
-python scripts/validate_schema.py --spec specs/hecbench-nn-cuda.json
+python3 scripts/validate_schema.py --spec specs/hecbench-nn-cuda.json
 
 # Validate everything
-python scripts/validate_schema.py --all
+python3 scripts/validate_schema.py --all
 ```
 
 ---
@@ -402,7 +401,7 @@ python scripts/validate_schema.py --all
 Generate a markdown summary of all kernels and their status:
 
 ```bash
-python scripts/analysis/generate_report.py
+python3 scripts/analysis/generate_report.py
 ```
 
 This reads `manifest.jsonl` and all spec files, collects statistics (kernels per API, domains, verification methods), and writes a summary report.
@@ -412,7 +411,7 @@ This reads `manifest.jsonl` and all spec files, collects statistics (kernels per
 To regenerate the 20 pilot spec files (5 HeCBench kernels × 4 APIs):
 
 ```bash
-python scripts/generators/generate_pilot_specs.py
+python3 scripts/generators/generate_pilot_specs.py
 ```
 
 This overwrites files in `specs/` and `manifest.jsonl` with the pilot configuration.
@@ -465,13 +464,13 @@ Here is the complete workflow for evaluating an LLM's ability to translate paral
 
 To see exactly what the LLM would receive:
 ```bash
-python -m harness prompt specs/hecbench-nn-cuda.json
+python3 -m harness prompt specs/hecbench-nn-cuda.json
 ```
 
 ### Listing all translation pairs
 
 ```bash
-python -m harness pairs
+python3 -m harness pairs
 ```
 
 This reads the manifest, groups by kernel name, and lists all source→target API pairs.
@@ -484,12 +483,12 @@ This reads the manifest, groups by kernel name, and lists all source→target AP
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `build` | Compile a kernel from its spec | `python -m harness build specs/hecbench-nn-cuda.json` |
-| `run` | Run a compiled kernel | `python -m harness run specs/hecbench-nn-cuda.json --config correctness` |
-| `verify` | Full pipeline: build → run → verify | `python -m harness verify specs/hecbench-nn-cuda.json --json` |
-| `prompt` | Print what the LLM would see | `python -m harness prompt specs/hecbench-nn-cuda.json` |
-| `info` | Print spec summary (no build/run) | `python -m harness info specs/hecbench-nn-cuda.json` |
-| `pairs` | List all translation pairs | `python -m harness pairs` |
+| `build` | Compile a kernel from its spec | `python3 -m harness build specs/hecbench-nn-cuda.json` |
+| `run` | Run a compiled kernel | `python3 -m harness run specs/hecbench-nn-cuda.json --config correctness` |
+| `verify` | Full pipeline: build → run → verify | `python3 -m harness verify specs/hecbench-nn-cuda.json --json` |
+| `prompt` | Print what the LLM would see | `python3 -m harness prompt specs/hecbench-nn-cuda.json` |
+| `info` | Print spec summary (no build/run) | `python3 -m harness info specs/hecbench-nn-cuda.json` |
+| `pairs` | List all translation pairs | `python3 -m harness pairs` |
 
 ### Global Flags
 
@@ -504,16 +503,16 @@ This reads the manifest, groups by kernel name, and lists all source→target AP
 
 | Command | Description |
 |---------|-------------|
-| `python scripts/validate_schema.py --manifest manifest.jsonl` | Validate manifest entries |
-| `python scripts/validate_schema.py --spec specs/<file>.json` | Validate a single spec |
-| `python scripts/validate_schema.py --all` | Validate everything + cross-checks |
+| `python3 scripts/validate_schema.py --manifest manifest.jsonl` | Validate manifest entries |
+| `python3 scripts/validate_schema.py --spec specs/<file>.json` | Validate a single spec |
+| `python3 scripts/validate_schema.py --all` | Validate everything + cross-checks |
 
 ### Report Generation
 
 | Command | Description |
 |---------|-------------|
-| `python scripts/analysis/generate_report.py` | Generate pilot summary report |
-| `python scripts/generators/generate_pilot_specs.py` | Regenerate all 20 pilot specs |
+| `python3 scripts/analysis/generate_report.py` | Generate pilot summary report |
+| `python3 scripts/generators/generate_pilot_specs.py` | Regenerate all 20 pilot specs |
 
 ---
 
@@ -553,8 +552,8 @@ The file classification system is critical for fair LLM evaluation:
 
 ## Prerequisites
 
-- Python 3.10+
-- `jsonschema` package: `pip install jsonschema`
+- Python 3.12+
+- `jsonschema` package: `python3 -m pip install jsonschema`
 - For building kernels: CUDA Toolkit, ROCm, oneAPI, or GCC (depending on target API)
 - For running kernels: appropriate GPU or multi-core CPU
 
@@ -565,14 +564,14 @@ The file classification system is critical for fair LLM evaluation:
 pip install jsonschema
 
 # 2. Validate all specs
-python scripts/validate_schema.py --all
+python3 scripts/validate_schema.py --all
 
 # 3. List available translation pairs
-python -m harness pairs
+python3 -m harness pairs
 
 # 4. View what the LLM would see for a CUDA kernel
-python -m harness prompt specs/hecbench-nn-cuda.json
+python3 -m harness prompt specs/hecbench-nn-cuda.json
 
 # 5. Build and verify a kernel (requires appropriate hardware)
-python -m harness verify specs/hecbench-nn-cuda.json -v
+python3 -m harness verify specs/hecbench-nn-cuda.json -v
 ```

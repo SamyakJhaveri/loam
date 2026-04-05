@@ -215,7 +215,7 @@ python3 scripts/generate_viz_data.py
 | Unit tests | `python3 -m pytest c_augmentation/test_transforms.py -v` | 15/15 PASS |
 | Rodinia harness (54 specs) | `for f in specs/rodinia-*.json; do python3 -m harness -v verify "$f"; done` | 54 PASS, 6 KNOWN_FAIL |
 | XSBench harness (4 specs) | `for f in specs/xsbench-*.json; do python3 -m harness -v verify "$f"; done` | 4 PASS |
-| Augmentation baseline | `run_augment_batch.py --suite rodinia` | 54/60 PASS at L1-L4 |
+| Augmentation baseline | `run_augment_batch.py specs/rodinia-*.json --out results/augmentation` | 54/60 PASS at L1-L4 |
 | LLM eval (per model/direction) | `run_eval_batch.py --suite rodinia ...` | See paper Table 2 |
 
 ## Environment Used for Paper Results

@@ -122,13 +122,13 @@ No file may appear in both `prompt_payload` and `verification_only`.
 python3 -m pip install jsonschema
 
 # Validate the manifest
-python scripts/validate_schema.py --manifest manifest.jsonl
+python3 scripts/validate_schema.py --manifest manifest.jsonl
 
 # Validate a single spec
-python scripts/validate_schema.py --spec specs/rodinia-bfs-cuda.json
+python3 scripts/validate_schema.py --spec specs/rodinia-bfs-cuda.json
 
 # Validate everything (manifest + all specs)
-python scripts/validate_schema.py --all
+python3 scripts/validate_schema.py --all
 ```
 
 The validator checks:
@@ -147,7 +147,7 @@ The validator checks:
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.12+
 - `jsonschema` (`python3 -m pip install jsonschema`)
 
 ## Installation
@@ -248,5 +248,5 @@ python3 scripts/evaluation/run_eval_batch.py \
 ```bash
 python3 scripts/evaluation/analyze_eval.py \
   --project-root /path/to/parbench_sam \
-  --output-dir results/evaluation
+  --results-dir results/evaluation
 ```

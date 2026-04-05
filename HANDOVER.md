@@ -130,11 +130,11 @@ spec.json  →  BUILD  →  RUN  →  VERIFY  →  METRICS
 ```
 
 **CLI commands**:
-- `python -m harness build specs/rodinia-bfs-cuda.json` — build only
-- `python -m harness run specs/rodinia-bfs-cuda.json --config correctness` — run only
-- `python -m harness verify specs/rodinia-bfs-cuda.json` — full pipeline
-- `python -m harness prompt specs/rodinia-bfs-cuda.json` — extract prompt_payload files (what the LLM would see)
-- `python -m harness pairs` — enumerate all translation pairs from manifest
+- `python3 -m harness build specs/rodinia-bfs-cuda.json` — build only
+- `python3 -m harness run specs/rodinia-bfs-cuda.json --config correctness` — run only
+- `python3 -m harness verify specs/rodinia-bfs-cuda.json` — full pipeline
+- `python3 -m harness prompt specs/rodinia-bfs-cuda.json` — extract prompt_payload files (what the LLM would see)
+- `python3 -m harness pairs` — enumerate all translation pairs from manifest
 
 ### 2.5 How to Use ParBench for LLM Translation Evaluation
 
@@ -147,11 +147,11 @@ grep '"cuda"' manifest.jsonl | jq -r '.kernel_name' | sort > cuda_kernels.txt
 grep '"opencl"' manifest.jsonl | jq -r '.kernel_name' | sort > opencl_kernels.txt
 comm -12 cuda_kernels.txt opencl_kernels.txt
 ```
-Or use: `python -m harness pairs` to enumerate all valid pairs.
+Or use: `python3 -m harness pairs` to enumerate all valid pairs.
 
 **Step 2: Extract the source code (prompt payload)**
 ```
-python -m harness prompt specs/rodinia-bfs-cuda.json
+python3 -m harness prompt specs/rodinia-bfs-cuda.json
 ```
 This outputs ONLY the `prompt_payload` files — the code the LLM is allowed to see. The LLM's task is to translate this code from the source API (CUDA) to the target API (OpenCL).
 
@@ -162,12 +162,12 @@ Feed the extracted source code to the LLM with a prompt like:
 **Step 4: Build the LLM's translation**
 Take the LLM's output, place it in the target kernel's source directory (using the target spec's `build.working_directory`), and build:
 ```
-python -m harness build specs/rodinia-bfs-opencl.json
+python3 -m harness build specs/rodinia-bfs-opencl.json
 ```
 
 **Step 5: Run and verify**
 ```
-python -m harness verify specs/rodinia-bfs-opencl.json
+python3 -m harness verify specs/rodinia-bfs-opencl.json
 ```
 The harness compares the LLM's translated code's output against the `baseline_results` stored in the spec. PASS means the translation produces correct output.
 
@@ -266,12 +266,12 @@ When working in the ParBench repository, follow these rules:
 - Follow the pattern in existing specs (read a few first)
 - `unique_id` format: `{source_suite}-{kernel_name}-{parallel_api}` (all lowercase, no special chars)
 - Filename must match: `{unique_id}.json`
-- Validate against schema: `python scripts/validate_schema.py specs/your-new-spec.json`
-- Validate all: `python scripts/validate_schema.py --all`
+- Validate against schema: `python3 scripts/validate_schema.py specs/your-new-spec.json`
+- Validate all: `python3 scripts/validate_schema.py --all`
 
 ### When testing
-- Build: `python -m harness build specs/{spec}.json`
-- Full pipeline: `python -m harness verify specs/{spec}.json -v`
+- Build: `python3 -m harness build specs/{spec}.json`
+- Full pipeline: `python3 -m harness verify specs/{spec}.json -v`
 - Batch: see `scripts/batch/run_cuda_batch.sh` and `scripts/batch/run_rodinia_batch.sh` for patterns
 
 ### When in doubt
@@ -291,7 +291,7 @@ The `erel/aug` branch was fully merged into `main` (commit `8efe990`, 2026-03-10
 
 | Component | Description |
 |---|---|
-| `c_augmentation/` module | 5 AST transform types (PointerArithmeticToArrayIndex, SwapCondition, RenameVariable, HoistInvariant, SplitDeclaration) backed by libclang |
+| `c_augmentation/` module | 6 AST transform types (ArithmeticTransform, SwapCondition, PointerArithmeticToArrayIndex, TypedefExpansion, ChangeNames, ChangeFunctionNames) backed by libclang |
 | `harness/cli.py --augment_level` | `harness prompt` command now accepts `--augment_level N` (0–4) |
 | `harness/spec_loader.py` | `get_prompt_payload()` applies augmentation to `.cu` and `.c` files (NOT `.cl` — see Known Issues) |
 | `scripts/augmentation/augment_verify.py` | Standalone augment→build→run→verify pipeline for testing augmented code |
@@ -345,7 +345,7 @@ Some transforms incorrectly expand typedef struct names, causing type mismatch e
 |---|---|
 | `c_augmentation/augment_dataset.py` | Core augmentation engine (libclang AST traversal) |
 | `c_augmentation/augment_dataset.py` | 6 transform implementations |
-| `c_augmentation/test_transforms.py` | Unit tests: `python -m pytest c_augmentation/test_transforms.py -v` |
+| `c_augmentation/test_transforms.py` | Unit tests: `python3 -m pytest c_augmentation/test_transforms.py -v` |
 | `scripts/augmentation/augment_verify.py` | Standalone augment→build→verify pipeline |
 | `scripts/augmentation/run_augment_batch.py` | Batch runner for multiple specs × levels |
 | `scripts/augmentation/combine_aug_results.py` | Aggregate 3-stream results |
