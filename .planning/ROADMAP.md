@@ -126,7 +126,7 @@ Phase 6 (RSBench experiment — independent, optional) ────────�
 | 5. Introduction, Positioning & Characterization Table | 0/3 | Not started | - |
 | 6. RSBench Single-File Re-spec Experiment | 0/0 | Not started | - |
 | 7. Full Analysis Regeneration | 0/2 | Not started | - |
-| 8. Figure Regeneration | 0/2 | Not started | - |
+| 8. Figure Regeneration | 0/2 | Planned | - |
 | 9. Objective Quantitative Analysis | 0/3 | Not started | - |
 | 10. Qualitative Analysis & Research Narrative | 0/3 | Not started | - |
 | 11. Paper TeX Integration | 0/4 | Not started | - |
@@ -231,11 +231,11 @@ ls -la docs/paper/figures/*.pdf docs/paper/figures/*.png
 
 **Risk:** `generate_paper_figures.py` may hardcode Rodinia kernel names or 480-task counts. Audit the script's data loading before running. If it reads from `paper_data.json`, check whether it uses the Rodinia-only or full-dataset version.
 
-**Plans**: 2 plans in 1 wave
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 08-01-PLAN.md -- [Wave 1] Audit generate_paper_figures.py for hardcoded Rodinia assumptions; update data loading if needed to handle all 5 suites
-- [ ] 08-02-PLAN.md -- [Wave 1, after 08-01] Run figure generation, verify all outputs, fix any rendering issues
+- [ ] 08-01-PLAN.md -- [Wave 1] Update script constants (2-model layout, 5-suite coverage), redesign F3 heatmap (29 kernels x 6 directions with suite grouping), F4 taxonomy (all suites), F6 (cross-suite bar chart), F7 (Qwen-only)
+- [ ] 08-02-PLAN.md -- [Wave 2, depends on 08-01] Restructure T2 table (2-model layout), run full figure generation, verify all 10 figures + T2 table output
 
 ### Phase 9: Objective Quantitative Analysis
 
