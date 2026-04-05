@@ -80,6 +80,8 @@ STATUS_ORDER: list[str] = [
     "PASS", "BUILD_FAIL", "RUN_FAIL", "EXTRACTION_FAIL", "VERIFY_FAIL",
 ]
 
+NA_COLOR = "#E0E0E0"
+
 MODEL_COLORS: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": OKABE_ITO["orange"],
     "azure-gpt-4.1-mini":          NA_COLOR,
@@ -119,7 +121,6 @@ PALETTE = {
     "linen":        "#F5F0EB",
 }
 
-NA_COLOR = "#E0E0E0"
 FIGURE_DPI: int = 600
 FONT_SIZE_DEFAULT: int = 10
 PDF_FONTTYPE: int = 42
@@ -507,33 +508,103 @@ def generate_f2_repo_vs_kernel(
 
 
 # ===================================================================
-# F3: Kernel x Model Heatmap (triple-panel)
+# F3: Per-Kernel Translation Outcomes Heatmap (all suites, 6 directions)
 # ===================================================================
 
 
-def _draw_heatmap_panel(
-    ax: plt.Axes,
-    kernels: list[str],
-    models: list[str],
-    lookup: dict[tuple[str, str], str],
-    title: str,
-    show_y_labels: bool = True,
-) -> set[str]:
-    """Draw a single heatmap panel. Returns set of statuses present."""
-    n_k = len(kernels)
-    n_m = len(models)
+def generate_f3_kernel_heatmap(
+    records: list[dict],
+    output_dir: Path,
+    verbose: bool,
+) -> None:
+    """F3: Single-panel heatmap of 29 kernels x 6 directions, grouped by suite.
+
+    Uses only non-sample, non-augmented (L0 base) records in the standard
+    6 directions.  Kernels are grouped by suite (SUITE_ORDER) with horizontal
+    divider lines and suite labels on the left margin.
+    """
+    from matplotlib.patches import Rectangle
+
+    # ------------------------------------------------------------------
+    # 1. Filter to base L0 records in standard 6 directions
+    # ------------------------------------------------------------------
+    base_records = [r for r in records if not r.get("is_sample", False)]
+    l0_records = filter_records(base_records, level=0)
+    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
+
+    if not std_records:
+        print("  WARNING: No L0 standard-direction records -- skipping F3.")
+        return
+
+    # ------------------------------------------------------------------
+    # 2. Build (kernel, direction) -> status lookup and kernel->suite map
+    # ------------------------------------------------------------------
+    lookup: dict[tuple[str, str], str] = {}
+    kernel_suite: dict[str, str] = {}
+    kernel_pass_count: dict[str, int] = defaultdict(int)
+
+    for r in std_records:
+        k = r["kernel"]
+        d = r["direction"]
+        status = r.get("overall_status", "UNKNOWN")
+        lookup[(k, d)] = status
+        kernel_suite[k] = r.get("suite", "other")
+        if status == "PASS":
+            kernel_pass_count[k] += 1
+
+    # ------------------------------------------------------------------
+    # 3. Group kernels by suite, sort within group by PASS count desc
+    # ------------------------------------------------------------------
+    suite_groups: list[tuple[str, list[str]]] = []
+    for suite in SUITE_ORDER:
+        suite_kernels = sorted(
+            [k for k, s in kernel_suite.items() if s == suite],
+            key=lambda k: (-kernel_pass_count.get(k, 0), k),
+        )
+        if suite_kernels:
+            suite_groups.append((suite, suite_kernels))
+
+    # Flatten to ordered kernel list and track suite boundaries
+    kernels_ordered: list[str] = []
+    suite_boundaries: list[int] = []  # row indices where dividers go
+    suite_midpoints: list[tuple[str, float]] = []  # (suite_name, y_midpoint)
+    for suite_name, suite_kernels in suite_groups:
+        start = len(kernels_ordered)
+        if kernels_ordered:
+            suite_boundaries.append(start)
+        kernels_ordered.extend(suite_kernels)
+        mid = start + len(suite_kernels) / 2 - 0.5
+        suite_midpoints.append((suite_name, mid))
+
+    n_kernels = len(kernels_ordered)
+    n_dirs = len(DIRECTIONS)
+
+    if verbose:
+        print(f"  Total kernels in standard directions: {n_kernels}")
+        for suite_name, suite_kernels in suite_groups:
+            print(f"    {suite_name}: {len(suite_kernels)} kernels")
+
+    # ------------------------------------------------------------------
+    # 4. Build numeric matrix for colormap
+    # ------------------------------------------------------------------
     status_to_idx = {s: i for i, s in enumerate(STATUS_ORDER)}
     na_idx = len(STATUS_ORDER)
 
-    matrix = np.full((n_k, n_m), na_idx, dtype=int)
+    matrix = np.full((n_kernels, n_dirs), na_idx, dtype=int)
     present: set[str] = set()
 
-    for i, kernel in enumerate(kernels):
-        for j, model in enumerate(models):
-            status = lookup.get((kernel, model))
+    for i, kernel in enumerate(kernels_ordered):
+        for j, direction in enumerate(DIRECTIONS):
+            status = lookup.get((kernel, direction))
             if status and status in status_to_idx:
                 matrix[i, j] = status_to_idx[status]
                 present.add(status)
+
+    # ------------------------------------------------------------------
+    # 5. Render heatmap
+    # ------------------------------------------------------------------
+    fig_height = max(6, n_kernels * 0.28 + 2)
+    fig, ax = plt.subplots(figsize=(7.16, fig_height))
 
     colors = [STATUS_COLORS[s] for s in STATUS_ORDER] + [NA_COLOR]
     cmap = mcolors.ListedColormap(colors)
@@ -542,179 +613,103 @@ def _draw_heatmap_panel(
 
     ax.imshow(matrix, cmap=cmap, norm=norm, aspect="auto")
 
-    for i, kernel in enumerate(kernels):
-        for j, model in enumerate(models):
-            status = lookup.get((kernel, model))
+    # Cell text: status abbreviation or em-dash for missing
+    for i, kernel in enumerate(kernels_ordered):
+        for j, direction in enumerate(DIRECTIONS):
+            status = lookup.get((kernel, direction))
             if status and status in STATUS_ABBREV:
                 bg = STATUS_COLORS.get(status, "#FFFFFF")
                 ax.text(
                     j, i, STATUS_ABBREV[status],
                     ha="center", va="center",
-                    fontsize=8, fontweight="bold",
+                    fontsize=7, fontweight="bold",
                     color=_text_color_for_bg(bg),
                 )
-            elif not status:
+            else:
                 ax.text(
                     j, i, "\u2014",
                     ha="center", va="center",
-                    fontsize=8, color="#999999",
+                    fontsize=7, color="#999999",
                 )
 
-    ax.set_xticks(range(n_m))
+    # ------------------------------------------------------------------
+    # 6. Axis labels
+    # ------------------------------------------------------------------
+    ax.set_xticks(range(n_dirs))
     ax.set_xticklabels(
-        [MODEL_DISPLAY.get(m, m) for m in models],
-        rotation=0, ha="center", fontsize=8,
+        [DIRECTION_LABELS[d] for d in DIRECTIONS],
+        fontsize=8, rotation=0, ha="center",
     )
     ax.xaxis.set_ticks_position("top")
     ax.xaxis.set_label_position("top")
 
-    if show_y_labels:
-        ax.set_yticks(range(n_k))
-        ax.set_yticklabels(kernels, fontsize=9)
-    else:
-        ax.set_yticks(range(n_k))
-        ax.set_yticklabels([""] * n_k)
+    ax.set_yticks(range(n_kernels))
+    ax.set_yticklabels(kernels_ordered, fontsize=7)
 
-    for i in range(n_k + 1):
-        ax.axhline(i - 0.5, color="white", linewidth=1)
-    for j in range(n_m + 1):
-        ax.axvline(j - 0.5, color="white", linewidth=1)
+    # ------------------------------------------------------------------
+    # 7. Grid lines (white cell borders)
+    # ------------------------------------------------------------------
+    for i in range(n_kernels + 1):
+        ax.axhline(i - 0.5, color="white", linewidth=0.5)
+    for j in range(n_dirs + 1):
+        ax.axvline(j - 0.5, color="white", linewidth=0.5)
 
-    ax.set_title(title, fontsize=11, pad=45, fontweight="bold")
-    return present
+    # ------------------------------------------------------------------
+    # 8. Suite grouping: thicker divider lines + suite labels
+    # ------------------------------------------------------------------
+    for boundary_y in suite_boundaries:
+        ax.axhline(boundary_y - 0.5, color="black", linewidth=2.0, linestyle="-")
 
+    for suite_name, y_mid in suite_midpoints:
+        ax.text(
+            -1.5, y_mid, SUITE_DISPLAY.get(suite_name, suite_name),
+            ha="center", va="center",
+            fontsize=9, fontweight="bold",
+            rotation=90,
+            clip_on=False,
+        )
 
-def generate_f3_kernel_heatmap(
-    records: list[dict],
-    output_dir: Path,
-    verbose: bool,
-) -> None:
-    """F3: Triple-panel kernel x model heatmap (cuda-to-omp + omp-to-cuda + cuda-to-opencl).
-
-    IMPORTANT: Uses only non-sample, non-augmented (L0 base) records.
-    """
-    # Filter to base records only (not samples)
-    base_records = [r for r in records if not r.get("is_sample", False)]
-
-    c2o_kernels, c2o_models, c2o_lookup = build_kernel_model_matrix(
-        base_records, level=0, suite="rodinia", direction="cuda-to-omp",
-    )
-    o2c_kernels, o2c_models, o2c_lookup = build_kernel_model_matrix(
-        base_records, level=0, suite="rodinia", direction="omp-to-cuda",
-    )
-    c2ocl_kernels, c2ocl_models, c2ocl_lookup = build_kernel_model_matrix(
-        base_records, level=0, suite="rodinia", direction="cuda-to-opencl",
+    # ------------------------------------------------------------------
+    # 9. Title and annotation for GPT-4.1 mini
+    # ------------------------------------------------------------------
+    ax.set_title(
+        f"Per-Kernel Translation Outcomes (L0, All Suites, Qwen 3.5 397B)\n"
+        f"{n_kernels} kernels \u00d7 {n_dirs} directions",
+        fontsize=10, fontweight="bold", pad=12,
     )
 
-    if verbose:
-        print(f"  cuda-to-omp: {len(c2o_kernels)} kernels x {len(c2o_models)} models")
-        print(f"  omp-to-cuda: {len(o2c_kernels)} kernels x {len(o2c_models)} models")
-        print(f"  cuda-to-opencl: {len(c2ocl_kernels)} kernels x {len(c2ocl_models)} models")
-
-    # Unified kernel list for c2o + o2c
-    all_kernels_main = sorted(set(c2o_kernels) | set(o2c_kernels))
-    kernel_pass = defaultdict(int)
-    for k in all_kernels_main:
-        for m in c2o_models:
-            if c2o_lookup.get((k, m)) == "PASS":
-                kernel_pass[k] += 1
-        for m in o2c_models:
-            if o2c_lookup.get((k, m)) == "PASS":
-                kernel_pass[k] += 1
-    kernels_main = sorted(all_kernels_main, key=lambda k: (-kernel_pass[k], k))
-
-    c2ocl_pass = defaultdict(int)
-    for k in c2ocl_kernels:
-        for m in c2ocl_models:
-            if c2ocl_lookup.get((k, m)) == "PASS":
-                c2ocl_pass[k] += 1
-    kernels_ocl = sorted(c2ocl_kernels, key=lambda k: (-c2ocl_pass[k], k))
-
-    n_c2o = max(len(c2o_models), 1)
-    n_o2c = max(len(o2c_models), 1)
-    n_c2ocl = max(len(c2ocl_models), 1)
-
-    fig, (ax1, ax2, ax3) = plt.subplots(
-        1, 3, figsize=(7.16, 3.5),
-        gridspec_kw={"width_ratios": [n_c2o, n_o2c, n_c2ocl], "wspace": 0.4},
-    )
-
-    present1 = _draw_heatmap_panel(
-        ax1, kernels_main, c2o_models, c2o_lookup,
-        f"CUDA \u2192 OMP (L0)\n{len(c2o_kernels)} kernels", show_y_labels=True,
-    )
-    present2 = _draw_heatmap_panel(
-        ax2, kernels_main, o2c_models, o2c_lookup,
-        f"OMP \u2192 CUDA (L0)\n{len(o2c_kernels)} kernels", show_y_labels=False,
-    )
-    present3 = _draw_heatmap_panel(
-        ax3, kernels_ocl, c2ocl_models, c2ocl_lookup,
-        f"CUDA \u2192 OpenCL (L0)\n{len(c2ocl_kernels)} kernels", show_y_labels=True,
-    )
-
-    all_present = sorted(
-        present1 | present2 | present3,
-        key=lambda s: STATUS_ORDER.index(s),
-    )
-    legend_handles = create_status_legend(all_present)
+    # ------------------------------------------------------------------
+    # 10. Legend
+    # ------------------------------------------------------------------
+    present_ordered = sorted(present, key=lambda s: STATUS_ORDER.index(s))
+    legend_handles = create_status_legend(present_ordered)
+    # Add N/A legend entry for missing data
+    legend_handles.append(Patch(
+        facecolor=NA_COLOR, edgecolor="black", linewidth=0.5,
+        label="No data",
+    ))
     fig.legend(
         handles=legend_handles,
-        loc="lower center", bbox_to_anchor=(0.5, -0.02),
-        ncol=len(legend_handles), frameon=False, fontsize=9,
+        loc="lower center", bbox_to_anchor=(0.5, -0.01),
+        ncol=len(legend_handles), frameon=False, fontsize=8,
     )
 
+    # GPT-4.1 mini annotation below legend
+    fig.text(
+        0.5, -0.04,
+        "GPT-4.1 mini: data pending (all directions N/A)",
+        ha="center", va="top", fontsize=8, fontstyle="italic", color="#666666",
+    )
+
+    fig.tight_layout()
+    fig.subplots_adjust(left=0.22)
     _save_figure(fig, output_dir, "f3_kernel_model_heatmap")
     plt.close(fig)
 
 
 # ===================================================================
-# F4: Failure Taxonomy (dual-direction stacked bar)
+# F4: Failure Taxonomy (status distribution by direction, all suites)
 # ===================================================================
-
-
-def _draw_taxonomy_panel(
-    ax: plt.Axes,
-    records: list[dict],
-    models: list[str],
-    title: str,
-) -> None:
-    """Draw a stacked bar panel for failure taxonomy."""
-    n_models = len(models)
-    x = np.arange(n_models)
-    bar_width = 0.6
-
-    filtered = [r for r in records if r["model"] in models]
-    model_status = aggregate_status_counts(filtered, "model")
-
-    bottoms = np.zeros(n_models)
-    for status in STATUS_ORDER:
-        counts = np.array([
-            model_status.get(m, {}).get(status, 0) for m in models
-        ], dtype=float)
-        ax.bar(
-            x, counts, bar_width,
-            bottom=bottoms,
-            color=STATUS_COLORS[status],
-            hatch=STATUS_HATCH[status],
-            edgecolor="black", linewidth=0.5,
-            label=status.replace("_", " "),
-        )
-        for i, (count, bottom) in enumerate(zip(counts, bottoms)):
-            if count > 0:
-                ax.text(
-                    x[i], bottom + count / 2, str(int(count)),
-                    ha="center", va="center",
-                    fontsize=8, fontweight="bold",
-                    color=_text_color_for_bg(STATUS_COLORS[status]),
-                )
-        bottoms += counts
-
-    ax.set_xticks(x)
-    ax.set_xticklabels([MODEL_DISPLAY.get(m, m) for m in models], fontsize=8)
-    ax.set_ylabel("Number of Tasks")
-    ax.set_ylim(0, max(bottoms) * 1.08 if max(bottoms) > 0 else 1)
-    ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
-    ax.set_title(title, fontsize=10, fontweight="bold")
 
 
 def generate_f4_failure_taxonomy(
@@ -1559,7 +1554,7 @@ def main() -> None:
         print()
 
     if "F3" in requested:
-        print("Generating F3: Kernel x Model Heatmap (triple-panel)...")
+        print("Generating F3: Per-Kernel Translation Outcomes (all suites)...")
         generate_f3_kernel_heatmap(records, output_dir, v)
         print()
 
