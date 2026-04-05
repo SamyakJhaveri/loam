@@ -273,11 +273,15 @@ def test_direction_asymmetry_pairs_on_suite_kernel():
                      overall_status="PASS", augment_level=0),
     ]
     result = qf.compute_direction_asymmetry(records)
-    # Should have a test for "cuda-to-omp vs omp-to-cuda"
-    key = "cuda-to-omp vs omp-to-cuda"
-    assert key in result
+    # Should have a test for the cuda-to-omp / omp-to-cuda pair (key order may vary)
+    matching_keys = [k for k in result if "cuda-to-omp" in k and "omp-to-cuda" in k]
+    assert len(matching_keys) == 1, f"Expected 1 matching key, got {matching_keys}"
+    key = matching_keys[0]
+    # The result is a provenance-wrapped finding; extract test_result from value
+    finding = result[key]
+    test_result = finding["value"]["test_result"]
     # Two paired observations: (rodinia, bfs) and (hecbench, bfs) — separate suites
-    assert result[key]["n_paired"] == 2
+    assert test_result["n_paired"] == 2
 
 
 # ---------------------------------------------------------------------------
