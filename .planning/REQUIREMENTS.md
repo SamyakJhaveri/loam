@@ -28,10 +28,10 @@ Requirements for paper submission (deadline: April 8, 2026). Each maps to roadma
 
 ### Introduction & Positioning
 
-- [ ] **INTRO-01**: Quantitative highlights woven into introduction (35 kernels, 96 specs, 4 APIs, SLoC range, multi-file %, augmentation levels) -- not as bullet list
-- [ ] **INTRO-02**: LASSI differentiation sharpened: augmentation robustness probing (LASSI has none), 5 suites vs 1, 6 directions vs 2, survey-grounded curation, raw model vs agentic pipeline, 96 specs vs 10 kernels
-- [ ] **INTRO-03**: Multi-file translation handling emphasized in intro + Section 4 with quantitative breakdown and kernel isolation "reviewer defense" point
-- [ ] **INTRO-04**: Benchmark differentiation in "Gap in Existing Evaluation" strengthened with concrete comparative data from characterization
+- [x] **INTRO-01**: Quantitative highlights woven into introduction (35 kernels, 96 specs, 4 APIs, SLoC range, multi-file %, augmentation levels) -- not as bullet list
+- [x] **INTRO-02**: LASSI differentiation sharpened: augmentation robustness probing (LASSI has none), 5 suites vs 1, 6 directions vs 2, survey-grounded curation, raw model vs agentic pipeline, 96 specs vs 10 kernels
+- [x] **INTRO-03**: Multi-file translation handling emphasized in intro + Section 4 with quantitative breakdown and kernel isolation "reviewer defense" point
+- [x] **INTRO-04**: Benchmark differentiation in "Gap in Existing Evaluation" strengthened with concrete comparative data from characterization
 
 ### Augmentation Story
 
@@ -113,10 +113,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHAR-05 | Phase 2 | Complete |
 | CHAR-06 | Phase 2 | Complete |
 | CHAR-07 | Phase 5 | Pending |
-| INTRO-01 | Phase 5 | Pending |
-| INTRO-02 | Phase 5 | Pending |
-| INTRO-03 | Phase 5 | Pending |
-| INTRO-04 | Phase 5 | Pending |
+| INTRO-01 | Phase 5 | Complete |
+| INTRO-02 | Phase 5 | Complete |
+| INTRO-03 | Phase 5 | Complete |
+| INTRO-04 | Phase 5 | Complete |
 | AUG-01 | Phase 14 | Pending |
 | AUG-02 | Phase 3 | Pending |
 | AUG-03 | Phase 14 | Pending |

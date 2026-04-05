@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-04-05T11:37:02.063Z"
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-04-05T15:30:55.306Z"
 last_activity: 2026-04-05
 progress:
   total_phases: 14
   completed_phases: 7
-  total_plans: 20
-  completed_plans: 20
-  percent: 100
+  total_plans: 22
+  completed_plans: 21
+  percent: 95
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-03)
 
 **Core value:** Every data claim in the paper must be verifiable against actual result files on disk, and every methodology description must be precise enough to withstand SC-level peer review.
-**Current focus:** Phase 04 — methodology-reviewer-defense
+**Current focus:** Phase 05 — introduction-positioning-characterization-table
 
 ## Current Position
 
-Phase: 04 (methodology-reviewer-defense) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 04
+Phase: 05 (introduction-positioning-characterization-table) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-05
 
 Progress: [..........] 0%
@@ -59,6 +59,7 @@ Progress: [..........] 0%
 | Phase 02 P02 | 4min | 1 tasks | 1 files |
 | Phase 02-benchmark-characterization-data P01 | 5min | 1 tasks | 3 files |
 | Phase 02 P03 | 3min | 1 tasks | 2 files |
+| Phase 05 P01 | 5min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Recent decisions affecting current work:
 - [Phase 02-benchmark-characterization-data]: Monolithic script per D-01: all 6 CHAR metrics in one file (benchmark_characterization.py)
 - [Phase 02-benchmark-characterization-data]: Category data from manifest.jsonl (not spec JSONs) because category field only exists in manifest
 - [Phase 02]: Characterization validation covers all 83 manifest kernels for categories, not just 35 corpus; multi-file validated via headline fields and per-API CUDA data
+- [Phase 05]: All Abstract and Section 1 numbers use all-suite Campaign 1 scope (700 tasks, 38.0%) per D-11
+- [Phase 05]: Self-repair reframed as 72% relative increase (not doubles) due to changed base rates in all-suite scope
 
 ### Roadmap Evolution
 
@@ -102,6 +105,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T11:37:02.060Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-introduction-positioning-characterization-table/05-CONTEXT.md
+Last session: 2026-04-05T15:30:55.304Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
