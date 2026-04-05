@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "generated_at": "2026-04-05T04:06:26.011212+00:00",
-    "git_hash": "03f5c6a",
-    "project_root": ".",
+    "generated_at": "2026-04-05T04:31:28.554679+00:00",
+    "git_hash": "6999ade",
+    "project_root": "/home/samyak/Desktop/parbench_sam",
     "model": "together-qwen-3.5-397b-a17b",
     "excluded_specs": [
       "hecbench-scan-omp_target",
@@ -177,32 +177,59 @@
       }
     },
     "direction_asymmetry": {
-      "cuda-to-omp_target vs omp_target-to-cuda": {
+      "omp-to-opencl vs opencl-to-omp": {
         "value": {
-          "forward": "cuda-to-omp_target",
-          "reverse": "omp_target-to-cuda",
+          "forward": "omp-to-opencl",
+          "reverse": "opencl-to-omp",
           "test_result": {
-            "n_paired": 8,
-            "forward_pass_rate": 0.125,
-            "reverse_pass_rate": 0.75,
+            "n_paired": 18,
+            "forward_pass_rate": 0.3333,
+            "reverse_pass_rate": 0.3889,
             "table": {
-              "both_pass": 1,
+              "both_pass": 2,
               "reverse_only": 5,
-              "forward_only": 0,
-              "both_fail": 2
+              "forward_only": 4,
+              "both_fail": 7
             },
-            "discordant": 5,
+            "discordant": 9,
             "method": "exact",
-            "p_value": 0.0625,
-            "cohens_h": -1.3717,
-            "effect_size": "large",
+            "p_value": 1.0,
+            "cohens_h": -0.1157,
+            "effect_size": "negligible",
             "alpha_corrected": 0.0125,
             "significant": false
           }
         },
         "source": "computed",
-        "files_matched": 16,
-        "derivation": "mcnemar_exact paired on (suite, kernel) for cuda-to-omp_target vs omp_target-to-cuda, L0 only"
+        "files_matched": 36,
+        "derivation": "mcnemar_exact paired on (suite, kernel) for omp-to-opencl vs opencl-to-omp, L0 only"
+      },
+      "opencl-to-cuda vs cuda-to-opencl": {
+        "value": {
+          "forward": "opencl-to-cuda",
+          "reverse": "cuda-to-opencl",
+          "test_result": {
+            "n_paired": 20,
+            "forward_pass_rate": 0.1,
+            "reverse_pass_rate": 0.2,
+            "table": {
+              "both_pass": 0,
+              "reverse_only": 4,
+              "forward_only": 2,
+              "both_fail": 14
+            },
+            "discordant": 6,
+            "method": "exact",
+            "p_value": 0.6875,
+            "cohens_h": -0.2838,
+            "effect_size": "small",
+            "alpha_corrected": 0.0125,
+            "significant": false
+          }
+        },
+        "source": "computed",
+        "files_matched": 40,
+        "derivation": "mcnemar_exact paired on (suite, kernel) for opencl-to-cuda vs cuda-to-opencl, L0 only"
       },
       "omp-to-cuda vs cuda-to-omp": {
         "value": {
@@ -231,59 +258,32 @@
         "files_matched": 48,
         "derivation": "mcnemar_exact paired on (suite, kernel) for omp-to-cuda vs cuda-to-omp, L0 only"
       },
-      "opencl-to-omp vs omp-to-opencl": {
+      "omp_target-to-cuda vs cuda-to-omp_target": {
         "value": {
-          "forward": "opencl-to-omp",
-          "reverse": "omp-to-opencl",
+          "forward": "omp_target-to-cuda",
+          "reverse": "cuda-to-omp_target",
           "test_result": {
-            "n_paired": 18,
-            "forward_pass_rate": 0.3889,
-            "reverse_pass_rate": 0.3333,
+            "n_paired": 8,
+            "forward_pass_rate": 0.75,
+            "reverse_pass_rate": 0.125,
             "table": {
-              "both_pass": 2,
-              "reverse_only": 4,
+              "both_pass": 1,
+              "reverse_only": 0,
               "forward_only": 5,
-              "both_fail": 7
+              "both_fail": 2
             },
-            "discordant": 9,
+            "discordant": 5,
             "method": "exact",
-            "p_value": 1.0,
-            "cohens_h": 0.1157,
-            "effect_size": "negligible",
+            "p_value": 0.0625,
+            "cohens_h": 1.3717,
+            "effect_size": "large",
             "alpha_corrected": 0.0125,
             "significant": false
           }
         },
         "source": "computed",
-        "files_matched": 36,
-        "derivation": "mcnemar_exact paired on (suite, kernel) for opencl-to-omp vs omp-to-opencl, L0 only"
-      },
-      "opencl-to-cuda vs cuda-to-opencl": {
-        "value": {
-          "forward": "opencl-to-cuda",
-          "reverse": "cuda-to-opencl",
-          "test_result": {
-            "n_paired": 20,
-            "forward_pass_rate": 0.1,
-            "reverse_pass_rate": 0.2,
-            "table": {
-              "both_pass": 0,
-              "reverse_only": 4,
-              "forward_only": 2,
-              "both_fail": 14
-            },
-            "discordant": 6,
-            "method": "exact",
-            "p_value": 0.6875,
-            "cohens_h": -0.2838,
-            "effect_size": "small",
-            "alpha_corrected": 0.0125,
-            "significant": false
-          }
-        },
-        "source": "computed",
-        "files_matched": 40,
-        "derivation": "mcnemar_exact paired on (suite, kernel) for opencl-to-cuda vs cuda-to-opencl, L0 only"
+        "files_matched": 16,
+        "derivation": "mcnemar_exact paired on (suite, kernel) for omp_target-to-cuda vs cuda-to-omp_target, L0 only"
       }
     },
     "augmentation_trends": {
@@ -3154,32 +3154,59 @@
       }
     },
     "direction_asymmetry": {
-      "cuda-to-omp_target vs omp_target-to-cuda": {
+      "omp-to-opencl vs opencl-to-omp": {
         "value": {
-          "forward": "cuda-to-omp_target",
-          "reverse": "omp_target-to-cuda",
+          "forward": "omp-to-opencl",
+          "reverse": "opencl-to-omp",
           "test_result": {
-            "n_paired": 8,
-            "forward_pass_rate": 0.0,
-            "reverse_pass_rate": 0.625,
+            "n_paired": 18,
+            "forward_pass_rate": 0.1111,
+            "reverse_pass_rate": 0.2222,
             "table": {
               "both_pass": 0,
-              "reverse_only": 5,
-              "forward_only": 0,
-              "both_fail": 3
+              "reverse_only": 4,
+              "forward_only": 2,
+              "both_fail": 12
             },
-            "discordant": 5,
+            "discordant": 6,
             "method": "exact",
-            "p_value": 0.0625,
-            "cohens_h": -1.8235,
-            "effect_size": "large",
+            "p_value": 0.6875,
+            "cohens_h": -0.3021,
+            "effect_size": "small",
             "alpha_corrected": 0.0125,
             "significant": false
           }
         },
         "source": "computed",
-        "files_matched": 16,
-        "derivation": "mcnemar_exact paired on (suite, kernel) for cuda-to-omp_target vs omp_target-to-cuda, L0 only"
+        "files_matched": 36,
+        "derivation": "mcnemar_exact paired on (suite, kernel) for omp-to-opencl vs opencl-to-omp, L0 only"
+      },
+      "opencl-to-cuda vs cuda-to-opencl": {
+        "value": {
+          "forward": "opencl-to-cuda",
+          "reverse": "cuda-to-opencl",
+          "test_result": {
+            "n_paired": 20,
+            "forward_pass_rate": 0.0,
+            "reverse_pass_rate": 0.15,
+            "table": {
+              "both_pass": 0,
+              "reverse_only": 3,
+              "forward_only": 0,
+              "both_fail": 17
+            },
+            "discordant": 3,
+            "method": "exact",
+            "p_value": 0.25,
+            "cohens_h": -0.7954,
+            "effect_size": "medium",
+            "alpha_corrected": 0.0125,
+            "significant": false
+          }
+        },
+        "source": "computed",
+        "files_matched": 40,
+        "derivation": "mcnemar_exact paired on (suite, kernel) for opencl-to-cuda vs cuda-to-opencl, L0 only"
       },
       "omp-to-cuda vs cuda-to-omp": {
         "value": {
@@ -3208,59 +3235,32 @@
         "files_matched": 48,
         "derivation": "mcnemar_exact paired on (suite, kernel) for omp-to-cuda vs cuda-to-omp, L0 only"
       },
-      "opencl-to-omp vs omp-to-opencl": {
+      "omp_target-to-cuda vs cuda-to-omp_target": {
         "value": {
-          "forward": "opencl-to-omp",
-          "reverse": "omp-to-opencl",
+          "forward": "omp_target-to-cuda",
+          "reverse": "cuda-to-omp_target",
           "test_result": {
-            "n_paired": 18,
-            "forward_pass_rate": 0.2222,
-            "reverse_pass_rate": 0.1111,
+            "n_paired": 8,
+            "forward_pass_rate": 0.625,
+            "reverse_pass_rate": 0.0,
             "table": {
               "both_pass": 0,
-              "reverse_only": 2,
-              "forward_only": 4,
-              "both_fail": 12
+              "reverse_only": 0,
+              "forward_only": 5,
+              "both_fail": 3
             },
-            "discordant": 6,
+            "discordant": 5,
             "method": "exact",
-            "p_value": 0.6875,
-            "cohens_h": 0.3021,
-            "effect_size": "small",
+            "p_value": 0.0625,
+            "cohens_h": 1.8235,
+            "effect_size": "large",
             "alpha_corrected": 0.0125,
             "significant": false
           }
         },
         "source": "computed",
-        "files_matched": 36,
-        "derivation": "mcnemar_exact paired on (suite, kernel) for opencl-to-omp vs omp-to-opencl, L0 only"
-      },
-      "opencl-to-cuda vs cuda-to-opencl": {
-        "value": {
-          "forward": "opencl-to-cuda",
-          "reverse": "cuda-to-opencl",
-          "test_result": {
-            "n_paired": 20,
-            "forward_pass_rate": 0.0,
-            "reverse_pass_rate": 0.15,
-            "table": {
-              "both_pass": 0,
-              "reverse_only": 3,
-              "forward_only": 0,
-              "both_fail": 17
-            },
-            "discordant": 3,
-            "method": "exact",
-            "p_value": 0.25,
-            "cohens_h": -0.7954,
-            "effect_size": "medium",
-            "alpha_corrected": 0.0125,
-            "significant": false
-          }
-        },
-        "source": "computed",
-        "files_matched": 40,
-        "derivation": "mcnemar_exact paired on (suite, kernel) for opencl-to-cuda vs cuda-to-opencl, L0 only"
+        "files_matched": 16,
+        "derivation": "mcnemar_exact paired on (suite, kernel) for omp_target-to-cuda vs cuda-to-omp_target, L0 only"
       }
     },
     "augmentation_trends": {
@@ -3856,11 +3856,13 @@
     }
   },
   "cross_check": {
-    "checks_run": 8,
+    "checks_run": 10,
     "warnings": [
       "INFO: C1 overall pass rate minor diff: paper_data=0.3831, ours=0.38 (diff=0.0031). Expected due to 8 vs 6 KNOWN_FAIL exclusions.",
       "INFO: Self-repair rate minor diff: selfrepair_analysis=0.1875, ours=0.204 (diff=0.0165). Expected due to different KNOWN_FAIL exclusion scope.",
-      "INFO: Token count minor diff: token_analysis prompt=43828465, ours=37469686 (ratio=0.85). Expected due to different KNOWN_FAIL exclusion scope."
+      "INFO: Token count minor diff: token_analysis prompt=43828465, ours=37469686 (ratio=0.85). Expected due to different KNOWN_FAIL exclusion scope.",
+      "INFO: Output token minor diff: token_analysis completion=11412676, ours=9276463 (ratio=0.81). Expected due to different KNOWN_FAIL exclusion scope.",
+      "INFO: Cost minor diff: token_analysis cost=$67.38, ours=$55.88 (ratio=0.83). Expected due to different KNOWN_FAIL exclusion scope."
     ],
     "status": "pass"
   },

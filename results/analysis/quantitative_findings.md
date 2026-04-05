@@ -1,7 +1,7 @@
 # Quantitative Findings — SC26 ParBench
 
-Generated: 2026-04-05T04:06:26.011212+00:00
-Git hash: 03f5c6a
+Generated: 2026-04-05T04:31:28.554679+00:00
+Git hash: 6999ade
 
 ## File Counts
 
@@ -53,10 +53,10 @@ Git hash: 03f5c6a
 
 | Pair | Fwd Rate | Rev Rate | p-value | Cohen's h | Effect | Sig? |
 |------|----------|----------|---------|-----------|--------|------|
-| cuda-to-omp_target vs omp_target-to-cuda | 12.5% | 75.0% | 0.0625 | -1.3717 | large | No |
 | omp-to-cuda vs cuda-to-omp | 58.3% | 66.7% | 0.6875 | -0.1724 | negligible | No |
+| omp-to-opencl vs opencl-to-omp | 33.3% | 38.9% | 1.0 | -0.1157 | negligible | No |
+| omp_target-to-cuda vs cuda-to-omp_target | 75.0% | 12.5% | 0.0625 | 1.3717 | large | No |
 | opencl-to-cuda vs cuda-to-opencl | 10.0% | 20.0% | 0.6875 | -0.2838 | small | No |
-| opencl-to-omp vs omp-to-opencl | 38.9% | 33.3% | 1.0 | 0.1157 | negligible | No |
 
 ### Dimension 4: Augmentation Trends
 
@@ -294,9 +294,11 @@ Git hash: 03f5c6a
 
 ## Cross-Check Results
 
-Checks run: 8
+Checks run: 10
 Status: pass
 
 - INFO: C1 overall pass rate minor diff: paper_data=0.3831, ours=0.38 (diff=0.0031). Expected due to 8 vs 6 KNOWN_FAIL exclusions.
 - INFO: Self-repair rate minor diff: selfrepair_analysis=0.1875, ours=0.204 (diff=0.0165). Expected due to different KNOWN_FAIL exclusion scope.
 - INFO: Token count minor diff: token_analysis prompt=43828465, ours=37469686 (ratio=0.85). Expected due to different KNOWN_FAIL exclusion scope.
+- INFO: Output token minor diff: token_analysis completion=11412676, ours=9276463 (ratio=0.81). Expected due to different KNOWN_FAIL exclusion scope.
+- INFO: Cost minor diff: token_analysis cost=$67.38, ours=$55.88 (ratio=0.83). Expected due to different KNOWN_FAIL exclusion scope.
