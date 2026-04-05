@@ -2915,6 +2915,761 @@ def _pct(val) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Validation (--validate)
+# ---------------------------------------------------------------------------
+
+
+def run_validation(output: dict, project_root: Path, verbose: bool) -> dict:
+    """Validate computed findings via spot-checks, cross-checks, consistency, and paper claims.
+
+    Uses INDEPENDENT code paths (not the main computation functions) to verify
+    that computed values match what raw files on disk actually contain.
+
+    Returns a validation report dict and writes it to
+    results/analysis/quantitative_findings_validation.json.
+    """
+    results: dict = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "spot_checks": [],
+        "cross_checks": [],
+        "consistency_checks": [],
+        "paper_claims_audit": [],
+        "summary": {"total": 0, "passed": 0, "failed": 0, "warnings": 0},
+    }
+
+    results_dir = project_root / "results" / "evaluation" / "together-qwen-3.5-397b-a17b"
+    analysis_dir = project_root / "results" / "analysis"
+    metadata = output.get("metadata", {})
+    file_counts = metadata.get("file_counts", {})
+    c1 = output.get("campaign_1", {})
+    c2 = output.get("campaign_2", {})
+
+    # -----------------------------------------------------------------------
+    # Category 1: Spot-checks (independent file counting)
+    # -----------------------------------------------------------------------
+
+    def _spot(name: str, expected, actual, tolerance: float = 0.0) -> dict:
+        if tolerance > 0 and isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
+            ok = abs(expected - actual) <= tolerance
+        else:
+            ok = expected == actual
+        entry = {
+            "check": name,
+            "expected": expected,
+            "actual": actual,
+            "status": "PASS" if ok else "FAIL",
+        }
+        if tolerance > 0:
+            entry["tolerance"] = tolerance
+        return entry
+
+    # --- Spot-check 1: Total file count ---
+    # Independently count *.json minus non-result files
+    all_jsons = list(results_dir.glob("*.json"))
+    raw_count = 0
+    for jp in all_jsons:
+        bn = jp.name
+        if bn.startswith("batch_") or bn == "eval_summary.json":
+            continue
+        raw_count += 1
+    results["spot_checks"].append(
+        _spot("total_file_count", file_counts.get("total_on_disk"), raw_count)
+    )
+
+    # --- Spot-check 2: Campaign 1 count ---
+    # Independently load each file, check temperature and KNOWN_FAIL exclusion
+    c1_count = 0
+    c2_count = 0
+    kf_excluded_count = 0
+    pass_count_independent = 0
+    rodinia_c1_pass = 0
+    rodinia_c1_total = 0
+    status_counter: dict[str, int] = {}
+    level_counter: dict[str, int] = {}
+    direction_set: set[str] = set()
+    suite_c1_counts: dict[str, int] = defaultdict(int)
+    bf_count_independent = 0
+
+    for jp in sorted(results_dir.glob("*.json")):
+        bn = jp.name
+        if bn.startswith("batch_") or bn == "eval_summary.json":
+            continue
+        try:
+            with open(jp) as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+
+        src_spec = data.get("source_spec", "")
+        tgt_spec = data.get("target_spec", "")
+        if src_spec in EXCLUDED_SPECS or tgt_spec in EXCLUDED_SPECS:
+            kf_excluded_count += 1
+            continue
+
+        temp = data.get("temperature")
+        if temp is None:
+            temp = 0.0
+
+        overall_status = data.get("overall_status", "")
+        stem = jp.stem
+        aug_level = 0
+        m = re.search(r"-L(\d+)(?:-s\d+)?$", stem)
+        if m:
+            aug_level = int(m.group(1))
+
+        # Determine suite independently
+        suite = src_spec.split("-")[0] if src_spec else "unknown"
+
+        # Determine direction independently
+        src_api = src_spec.rsplit("-", 1)[-1] if src_spec else "unknown"
+        tgt_api = tgt_spec.rsplit("-", 1)[-1] if tgt_spec else "unknown"
+        direction = f"{src_api}-to-{tgt_api}"
+
+        if temp == 0.0:
+            c1_count += 1
+            suite_c1_counts[suite] += 1
+            level_key = f"L{aug_level}"
+            level_counter[level_key] = level_counter.get(level_key, 0) + 1
+
+            if aug_level == 0:
+                direction_set.add(direction)
+
+            # Status counting
+            status_counter[overall_status] = status_counter.get(overall_status, 0) + 1
+
+            if overall_status == "PASS":
+                pass_count_independent += 1
+            if overall_status == "BUILD_FAIL":
+                bf_count_independent += 1
+
+            if suite == "rodinia":
+                rodinia_c1_total += 1
+                if overall_status == "PASS":
+                    rodinia_c1_pass += 1
+        else:
+            c2_count += 1
+
+    results["spot_checks"].append(
+        _spot("campaign_1_count", file_counts.get("campaign_1_valid"), c1_count)
+    )
+
+    # --- Spot-check 3: Campaign 2 count ---
+    results["spot_checks"].append(
+        _spot("campaign_2_count", file_counts.get("campaign_2_valid"), c2_count)
+    )
+
+    # --- Spot-check 4: KNOWN_FAIL exclusion count ---
+    results["spot_checks"].append(
+        _spot("known_fail_exclusion_count", file_counts.get("excluded_known_fail"), kf_excluded_count)
+    )
+
+    # --- Spot-check 5: Rodinia C1 pass count ---
+    rod_sub = c1.get("rodinia_subset", {})
+    rod_passes_expected = rod_sub.get("passes", 0)
+    results["spot_checks"].append(
+        _spot("rodinia_c1_pass_count", rod_passes_expected, rodinia_c1_pass)
+    )
+
+    # --- Spot-check 6: Overall C1 pass rate ---
+    agg = c1.get("aggregate_pass_rates", {}).get("overall", {})
+    expected_rate = agg.get("value", 0)
+    actual_rate = pass_count_independent / c1_count if c1_count > 0 else 0
+    results["spot_checks"].append(
+        _spot("overall_c1_pass_rate", expected_rate, round(actual_rate, 4), tolerance=0.001)
+    )
+
+    # --- Spot-check 7: Direction count check ---
+    # L0 standard + case_study directions
+    dp = c1.get("direction_pass_rates", {})
+    std_count = len(dp.get("standard", {}))
+    cs_count = len(dp.get("case_study", {}))
+    expected_dir_count = std_count + cs_count
+    actual_dir_count = len(direction_set)
+    results["spot_checks"].append(
+        _spot("direction_count", expected_dir_count, actual_dir_count)
+    )
+
+    # --- Spot-check 8: Per-suite file count sum ---
+    ps = c1.get("aggregate_pass_rates", {}).get("per_suite", {})
+    expected_suite_sum = sum(v.get("n", 0) for v in ps.values())
+    actual_suite_sum = sum(suite_c1_counts.values())
+    results["spot_checks"].append(
+        _spot("per_suite_count_sum", expected_suite_sum, actual_suite_sum)
+    )
+
+    # --- Spot-check 9: Augmentation level distribution ---
+    expected_level_total = file_counts.get("campaign_1_valid", 0)
+    actual_level_total = sum(level_counter.values())
+    results["spot_checks"].append(
+        _spot("augmentation_level_sum", expected_level_total, actual_level_total)
+    )
+
+    # --- Spot-check 10: Campaign 2 seed count ---
+    # Group C2 files by (source_spec, target_spec) and check each has exactly 3 seeds
+    c2_groups: dict[str, int] = defaultdict(int)
+    for jp in sorted(results_dir.glob("*.json")):
+        bn = jp.name
+        if bn.startswith("batch_") or bn == "eval_summary.json":
+            continue
+        try:
+            with open(jp) as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError):
+            continue
+        src_spec = data.get("source_spec", "")
+        tgt_spec = data.get("target_spec", "")
+        if src_spec in EXCLUDED_SPECS or tgt_spec in EXCLUDED_SPECS:
+            continue
+        temp = data.get("temperature")
+        if temp is None:
+            temp = 0.0
+        if temp > 0:
+            key = f"{src_spec}|{tgt_spec}"
+            c2_groups[key] += 1
+
+    all_have_3 = all(v == 3 for v in c2_groups.values())
+    c2_task_count = len(c2_groups)
+    pk = c2.get("pass_at_k", {})
+    pk_total_tasks = pk.get("total_tasks", {})
+    pk_expected = pk_total_tasks.get("value") if isinstance(pk_total_tasks, dict) else pk_total_tasks
+    results["spot_checks"].append({
+        "check": "campaign_2_seed_count",
+        "expected": f"{pk_expected} tasks, all with 3 seeds",
+        "actual": f"{c2_task_count} tasks, all_have_3={all_have_3}",
+        "status": "PASS" if (c2_task_count == pk_expected and all_have_3) else "FAIL",
+    })
+
+    # --- Spot-check 11: BUILD_FAIL count ---
+    ft = c1.get("failure_taxonomy", {})
+    ft_sc = ft.get("status_counts", {})
+    expected_bf = ft_sc.get("BUILD_FAIL", 0)
+    results["spot_checks"].append(
+        _spot("build_fail_count", expected_bf, bf_count_independent)
+    )
+
+    if verbose:
+        print(f"  {len(results['spot_checks'])} spot-checks completed")
+
+    # -----------------------------------------------------------------------
+    # Category 2: Cross-checks against existing analysis files
+    # -----------------------------------------------------------------------
+
+    def _xcheck(
+        name: str, our_value, their_value, scope_note: str = "", tolerance: float = 0.001,
+    ) -> dict:
+        """Create a cross-check entry. Uses DIFFERENT_SCOPE for expected differences."""
+        if our_value is None or their_value is None:
+            return {
+                "check": name,
+                "our_value": our_value,
+                "their_value": their_value,
+                "discrepancy_pct": None,
+                "status": "WARNING",
+                "note": f"One or both values are None. {scope_note}",
+            }
+        if isinstance(our_value, (int, float)) and isinstance(their_value, (int, float)):
+            base = max(abs(their_value), 1e-9)
+            disc_pct = abs(our_value - their_value) / base * 100
+        else:
+            disc_pct = 0.0 if our_value == their_value else 100.0
+
+        if scope_note:
+            status = "DIFFERENT_SCOPE"
+        elif disc_pct <= tolerance * 100:
+            status = "MATCH"
+        else:
+            status = "WARNING"
+
+        return {
+            "check": name,
+            "our_value": our_value,
+            "their_value": their_value,
+            "discrepancy_pct": round(disc_pct, 4),
+            "status": status,
+            "note": scope_note if scope_note else ("exact match" if disc_pct == 0 else f"diff {disc_pct:.4f}%"),
+        }
+
+    # --- Cross-check vs paper_data.json ---
+    pd_path = analysis_dir / "paper_data.json"
+    if pd_path.exists():
+        try:
+            pd = json.loads(pd_path.read_text())
+            # paper_data.json uses 6 excluded specs, we use 8 -> DIFFERENT_SCOPE
+            pd_rate = (pd.get("primary_campaign") or {}).get("overall", {}).get("pass_rate")
+            our_rate = agg.get("value")
+            results["cross_checks"].append(
+                _xcheck(
+                    "vs_paper_data_overall_rate",
+                    our_rate, pd_rate,
+                    scope_note="paper_data uses 6 KNOWN_FAIL exclusions, we use 8",
+                )
+            )
+
+            # Per-direction comparison
+            pd_dirs = (pd.get("primary_campaign") or {}).get("by_direction", {})
+            for dname, ddata in pd_dirs.items():
+                pd_dir_rate = ddata.get("pass_rate")
+                our_dir_data = dp.get("standard", {}).get(dname) or dp.get("case_study", {}).get(dname)
+                our_dir_rate = our_dir_data.get("value") if isinstance(our_dir_data, dict) else None
+                if pd_dir_rate is not None and our_dir_rate is not None:
+                    results["cross_checks"].append(
+                        _xcheck(
+                            f"vs_paper_data_dir_{dname}",
+                            our_dir_rate, pd_dir_rate,
+                            scope_note="paper_data uses 6 KNOWN_FAIL exclusions, we use 8",
+                        )
+                    )
+        except (json.JSONDecodeError, OSError):
+            results["cross_checks"].append({
+                "check": "vs_paper_data_json",
+                "status": "WARNING",
+                "note": "Could not read paper_data.json",
+            })
+
+    # --- Cross-check vs paper_data_rodinia.json ---
+    pdr_path = analysis_dir / "paper_data_rodinia.json"
+    if pdr_path.exists():
+        try:
+            pdr = json.loads(pdr_path.read_text())
+            pdr_rate = (pdr.get("primary_campaign") or {}).get("overall", {}).get("pass_rate")
+            rod_rate_val = rod_sub.get("pass_rate", {}).get("value") if isinstance(rod_sub.get("pass_rate"), dict) else None
+            results["cross_checks"].append(
+                _xcheck(
+                    "vs_paper_data_rodinia_rate",
+                    rod_rate_val, pdr_rate,
+                    scope_note="paper_data_rodinia uses 6 Rodinia KNOWN_FAIL exclusions, we use 6 Rodinia + 2 HeCBench (Rodinia subset matches)",
+                )
+            )
+        except (json.JSONDecodeError, OSError):
+            results["cross_checks"].append({
+                "check": "vs_paper_data_rodinia_json",
+                "status": "WARNING",
+                "note": "Could not read paper_data_rodinia.json",
+            })
+
+    # --- Cross-check vs statistical_analysis.json ---
+    stat_path = analysis_dir / "statistical_analysis.json"
+    if stat_path.exists():
+        try:
+            sa = json.loads(stat_path.read_text())
+            # Compare Cochran-Armitage z and p values
+            ca_data = c1.get("augmentation_trends", {}).get("aggregate", {}).get("cochran_armitage", {})
+            sa_ca = sa.get("cochran_armitage", {})
+            if ca_data and sa_ca:
+                results["cross_checks"].append(
+                    _xcheck(
+                        "vs_stat_cochran_z",
+                        ca_data.get("z"), sa_ca.get("z"),
+                        scope_note="statistical_analysis uses 6 KNOWN_FAIL exclusions, we use 8",
+                    )
+                )
+                results["cross_checks"].append(
+                    _xcheck(
+                        "vs_stat_cochran_p",
+                        ca_data.get("p_value"), sa_ca.get("p_value"),
+                        scope_note="statistical_analysis uses 6 KNOWN_FAIL exclusions, we use 8",
+                    )
+                )
+
+            # Wilson CIs comparison
+            sa_wc = sa.get("wilson_cis", {}).get("by_model", {})
+            for model_name, wc_data in sa_wc.items():
+                sa_overall_rate = wc_data.get("rate")
+                results["cross_checks"].append(
+                    _xcheck(
+                        "vs_stat_wilson_overall_rate",
+                        agg.get("value"), sa_overall_rate,
+                        scope_note="statistical_analysis uses 6 KNOWN_FAIL exclusions, we use 8",
+                    )
+                )
+                break  # Only one model
+
+        except (json.JSONDecodeError, OSError):
+            results["cross_checks"].append({
+                "check": "vs_statistical_analysis_json",
+                "status": "WARNING",
+                "note": "Could not read statistical_analysis.json",
+            })
+
+    # --- Cross-check vs error_taxonomy.json ---
+    et_path = analysis_dir / "error_taxonomy.json"
+    if et_path.exists():
+        try:
+            et = json.loads(et_path.read_text())
+            # error_taxonomy includes all records (no KF exclusion)
+            et_bf = et.get("status_counts", {}).get("BUILD_FAIL", 0)
+            our_bf = ft_sc.get("BUILD_FAIL", 0)
+            results["cross_checks"].append(
+                _xcheck(
+                    "vs_error_taxonomy_build_fail",
+                    our_bf, et_bf,
+                    scope_note="error_taxonomy includes ALL 1248 records, we use C1-only (700) with 8 KF exclusions",
+                )
+            )
+        except (json.JSONDecodeError, OSError):
+            results["cross_checks"].append({
+                "check": "vs_error_taxonomy_json",
+                "status": "WARNING",
+                "note": "Could not read error_taxonomy.json",
+            })
+
+    # --- Cross-check vs selfrepair_analysis.json ---
+    sr_path = analysis_dir / "selfrepair_analysis.json"
+    if sr_path.exists():
+        try:
+            sr_data = json.loads(sr_path.read_text())
+            sr_ref_rate = sr_data.get("overall_repair_rate")
+            our_sr = c1.get("self_repair", {})
+            our_sr_rate_finding = our_sr.get("overall_repair_rate", {})
+            our_sr_rate = our_sr_rate_finding.get("value") if isinstance(our_sr_rate_finding, dict) else None
+            results["cross_checks"].append(
+                _xcheck(
+                    "vs_selfrepair_rate",
+                    our_sr_rate, sr_ref_rate,
+                    scope_note="selfrepair_analysis includes ALL records (no KF exclusion + both campaigns), we use C1-only with 8 KF exclusions",
+                )
+            )
+        except (json.JSONDecodeError, OSError):
+            results["cross_checks"].append({
+                "check": "vs_selfrepair_analysis_json",
+                "status": "WARNING",
+                "note": "Could not read selfrepair_analysis.json",
+            })
+
+    # --- Cross-check vs token_analysis.json ---
+    tk_path = analysis_dir / "token_analysis.json"
+    if tk_path.exists():
+        try:
+            ta = json.loads(tk_path.read_text())
+            ta_cost = ta.get("grand_total_cost_usd", 0)
+            tc = c1.get("token_cost", {})
+            our_cost = (tc.get("total_cost") or {}).get("value", 0)
+            results["cross_checks"].append(
+                _xcheck(
+                    "vs_token_analysis_cost",
+                    our_cost, ta_cost,
+                    scope_note="token_analysis includes ALL records (no KF exclusion + both campaigns), we use C1-only with 8 KF exclusions",
+                )
+            )
+        except (json.JSONDecodeError, OSError):
+            results["cross_checks"].append({
+                "check": "vs_token_analysis_json",
+                "status": "WARNING",
+                "note": "Could not read token_analysis.json",
+            })
+
+    if verbose:
+        print(f"  {len(results['cross_checks'])} cross-checks completed")
+
+    # -----------------------------------------------------------------------
+    # Category 3: Internal consistency checks
+    # -----------------------------------------------------------------------
+
+    def _consist(name: str, ok: bool, detail: str = "") -> dict:
+        return {"check": name, "status": "PASS" if ok else "FAIL", "detail": detail}
+
+    # 1. Wilson CI bounds: ci_lower <= value <= ci_upper
+    def _check_wilson_bounds(data: dict, path: str = "") -> list[dict]:
+        checks = []
+        if isinstance(data, dict):
+            if "ci_lower" in data and "ci_upper" in data and "value" in data:
+                v = data["value"]
+                lo = data["ci_lower"]
+                hi = data["ci_upper"]
+                if isinstance(v, (int, float)) and isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+                    ok = lo <= v + 1e-9 and v <= hi + 1e-9
+                    checks.append(_consist(
+                        f"wilson_ci_bounds_{path}" if path else "wilson_ci_bounds",
+                        ok,
+                        f"ci_lower={lo} <= value={v} <= ci_upper={hi}" if ok
+                        else f"VIOLATION: ci_lower={lo}, value={v}, ci_upper={hi}",
+                    ))
+            for k, sub in data.items():
+                if isinstance(sub, dict):
+                    checks.extend(_check_wilson_bounds(sub, f"{path}.{k}" if path else k))
+        return checks
+
+    wilson_checks = _check_wilson_bounds(c1)
+    wilson_checks.extend(_check_wilson_bounds(c2))
+    # Only include first few + any failures (avoid excessive entries)
+    wilson_fails = [c for c in wilson_checks if c["status"] == "FAIL"]
+    wilson_passes = [c for c in wilson_checks if c["status"] == "PASS"]
+    results["consistency_checks"].append(
+        _consist(
+            "wilson_ci_bounds_all",
+            len(wilson_fails) == 0,
+            f"{len(wilson_passes)} CIs checked, {len(wilson_fails)} violations"
+            + (f": {wilson_fails[0]['detail']}" if wilson_fails else ""),
+        )
+    )
+
+    # 2. Per-suite counts sum to aggregate total
+    suite_sum = sum(v.get("n", 0) for v in ps.values())
+    overall_n = agg.get("n", 0)
+    results["consistency_checks"].append(
+        _consist(
+            "per_suite_sum_matches_overall",
+            suite_sum == overall_n,
+            f"sum(per_suite.n)={suite_sum}, overall.n={overall_n}",
+        )
+    )
+
+    # 3. No NaN or null in required numeric fields
+    def _check_no_nan(data, path: str = "") -> list[str]:
+        problems = []
+        if isinstance(data, dict):
+            for k, v in data.items():
+                fp = f"{path}.{k}" if path else k
+                if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                    problems.append(fp)
+                elif isinstance(v, dict):
+                    problems.extend(_check_no_nan(v, fp))
+                elif isinstance(v, list):
+                    for i, item in enumerate(v):
+                        problems.extend(_check_no_nan(item, f"{fp}[{i}]"))
+        return problems
+
+    nan_problems = _check_no_nan(output)
+    results["consistency_checks"].append(
+        _consist(
+            "no_nan_or_inf",
+            len(nan_problems) == 0,
+            f"{len(nan_problems)} NaN/Inf fields"
+            + (f": {nan_problems[:3]}" if nan_problems else ""),
+        )
+    )
+
+    # 4. Augmentation level counts: L0+L1+L2+L3+L4 match C1 total
+    at_agg = c1.get("augmentation_trends", {}).get("aggregate", {}).get("per_level", {})
+    level_sum = sum(v.get("n", 0) for v in at_agg.values())
+    c1_total = file_counts.get("campaign_1_valid", 0)
+    results["consistency_checks"].append(
+        _consist(
+            "augmentation_level_counts_sum",
+            level_sum == c1_total,
+            f"sum(per_level.n)={level_sum}, C1_total={c1_total}",
+        )
+    )
+
+    # 5. pass@k: pass_at_1 >= pass_at_3 (any passing >= all passing)
+    p1 = (pk.get("pass_at_1") or {}).get("value")
+    p3 = (pk.get("pass_at_3") or {}).get("value")
+    if p1 is not None and p3 is not None:
+        results["consistency_checks"].append(
+            _consist(
+                "pass_at_1_gte_pass_at_3",
+                p1 >= p3 - 1e-9,
+                f"pass@1={p1}, pass@3={p3}",
+            )
+        )
+
+    # 6. Token cost: total_cost == input_cost + output_cost (within rounding)
+    tc = c1.get("token_cost", {})
+    tc_total = (tc.get("total_cost") or {}).get("value", 0) or 0
+    tc_input_tokens = (tc.get("total_input_tokens") or {}).get("value", 0) or 0
+    tc_output_tokens = (tc.get("total_output_tokens") or {}).get("value", 0) or 0
+    recomputed_cost = round(
+        tc_input_tokens * TOGETHER_INPUT_PRICE_PER_M / 1_000_000
+        + tc_output_tokens * TOGETHER_OUTPUT_PRICE_PER_M / 1_000_000,
+        4,
+    )
+    results["consistency_checks"].append(
+        _consist(
+            "token_cost_sum",
+            abs(tc_total - recomputed_cost) < 0.01,
+            f"total_cost={tc_total}, recomputed={recomputed_cost}",
+        )
+    )
+
+    # 7. Failure taxonomy: sum of failure type counts + PASS count == total C1
+    ft_total = ft.get("total_records", 0)
+    ft_status_sum = sum(ft_sc.values())
+    results["consistency_checks"].append(
+        _consist(
+            "failure_taxonomy_sum",
+            ft_status_sum == ft_total,
+            f"sum(status_counts)={ft_status_sum}, total_records={ft_total}",
+        )
+    )
+
+    if verbose:
+        print(f"  {len(results['consistency_checks'])} consistency checks completed")
+
+    # -----------------------------------------------------------------------
+    # Category 4: Paper claims pre-audit
+    # -----------------------------------------------------------------------
+
+    paper_tex_path = project_root / "docs" / "paper" / "latex" / "paper.tex"
+    paper_text = ""
+    if paper_tex_path.exists():
+        try:
+            paper_text = paper_tex_path.read_text(encoding="utf-8")
+        except OSError:
+            pass
+
+    paper_claims = output.get("paper_claims", [])
+
+    for claim in paper_claims:
+        claim_id = claim.get("claim_id", "unknown")
+        display_value = claim.get("display_value", "")
+        current_value = claim.get("current_value")
+
+        if not paper_text:
+            results["paper_claims_audit"].append({
+                "claim_id": claim_id,
+                "paper_value": None,
+                "findings_value": display_value,
+                "status": "NOT_FOUND",
+                "paper_location": claim.get("paper_location", ""),
+            })
+            continue
+
+        # Build search patterns from the display_value and current_value
+        search_patterns = _build_claim_search_patterns(claim_id, current_value, display_value)
+
+        found = False
+        paper_location = ""
+        paper_value_found = ""
+        for pat in search_patterns:
+            matches = list(re.finditer(pat, paper_text))
+            if matches:
+                found = True
+                # Find line number
+                pos = matches[0].start()
+                line_num = paper_text[:pos].count("\n") + 1
+                paper_value_found = matches[0].group(0)
+                paper_location = f"line ~{line_num}"
+                break
+
+        status = "MATCH" if found else "NOT_FOUND"
+        results["paper_claims_audit"].append({
+            "claim_id": claim_id,
+            "paper_value": paper_value_found if found else None,
+            "findings_value": display_value,
+            "status": status,
+            "paper_location": paper_location if found else claim.get("paper_location", ""),
+        })
+
+    if verbose:
+        print(f"  {len(results['paper_claims_audit'])} paper claims audited")
+
+    # -----------------------------------------------------------------------
+    # Summary
+    # -----------------------------------------------------------------------
+
+    all_checks = (
+        results["spot_checks"]
+        + results["cross_checks"]
+        + results["consistency_checks"]
+        + results["paper_claims_audit"]
+    )
+    results["summary"]["total"] = len(all_checks)
+    results["summary"]["passed"] = sum(
+        1 for c in all_checks if c.get("status") in ("PASS", "MATCH")
+    )
+    results["summary"]["failed"] = sum(
+        1 for c in all_checks if c.get("status") == "FAIL"
+    )
+    results["summary"]["warnings"] = sum(
+        1 for c in all_checks
+        if c.get("status") in ("WARNING", "STALE", "DIFFERENT_SCOPE", "NOT_FOUND")
+    )
+
+    # Print summary
+    s = results["summary"]
+    print(
+        f"Validation: {s['total']} checks, {s['passed']} PASS, "
+        f"{s['failed']} FAIL, {s['warnings']} warnings"
+    )
+
+    # Print any FAILs
+    fails = [c for c in all_checks if c.get("status") == "FAIL"]
+    if fails:
+        print("\nFAILED checks:")
+        for fc in fails:
+            print(f"  - {fc.get('check', 'unknown')}: expected={fc.get('expected')}, actual={fc.get('actual')}")
+
+    # Write validation JSON
+    val_path = analysis_dir / "quantitative_findings_validation.json"
+    val_path.write_text(
+        json.dumps(results, indent=2, default=str) + "\n",
+        encoding="utf-8",
+    )
+    if verbose:
+        print(f"\nWrote: {val_path}")
+
+    return results
+
+
+def _build_claim_search_patterns(claim_id: str, current_value, display_value: str) -> list[str]:
+    """Build regex patterns to search for a claim value in paper.tex.
+
+    Returns a list of patterns to try, from most specific to least.
+    """
+    patterns: list[str] = []
+
+    if current_value is None:
+        return patterns
+
+    # For numeric values, search for the number in common paper formats
+    if isinstance(current_value, (int, float)):
+        if isinstance(current_value, float):
+            # Try percentage format: "36.2%" or "36.2\\%"
+            pct_str = f"{current_value * 100:.1f}"
+            patterns.append(re.escape(pct_str) + r"\\?%")
+            # Also try decimal
+            patterns.append(re.escape(f"{current_value:.4f}"))
+        elif isinstance(current_value, int):
+            patterns.append(r"\b" + re.escape(str(current_value)) + r"\b")
+
+    # For dict values with meaningful fields
+    elif isinstance(current_value, dict):
+        if "count" in current_value:
+            patterns.append(r"\b" + re.escape(str(current_value["count"])) + r"\b")
+        if "percentage" in current_value:
+            pct_str = f"{current_value['percentage'] * 100:.1f}"
+            patterns.append(re.escape(pct_str) + r"\\?%")
+        if "rho" in current_value:
+            # Spearman rho, might appear differently
+            rho_val = current_value["rho"]
+            if isinstance(rho_val, (int, float)):
+                patterns.append(re.escape(f"{rho_val:.3f}"))
+                patterns.append(re.escape(f"{rho_val:.2f}"))
+        if "z" in current_value:
+            z_val = current_value["z"]
+            if isinstance(z_val, (int, float)):
+                patterns.append(re.escape(f"{z_val:.2f}"))
+        if "pass_at_1" in current_value:
+            p1 = current_value["pass_at_1"]
+            if isinstance(p1, (int, float)):
+                pct_str = f"{p1 * 100:.1f}"
+                patterns.append(re.escape(pct_str) + r"\\?%")
+        if "full_repairs" in current_value:
+            patterns.append(r"\b" + re.escape(str(current_value["full_repairs"])) + r"\b")
+        if "rodinia_tasks" in current_value:
+            patterns.append(r"\b" + re.escape(str(current_value["rodinia_tasks"])) + r"\b")
+        if "fraction" in current_value:
+            frac = current_value["fraction"]
+            if isinstance(frac, (int, float)):
+                pct_str = f"{frac * 100:.1f}"
+                patterns.append(re.escape(pct_str) + r"\\?%")
+        if "min" in current_value and "max" in current_value:
+            # Cohen's h range
+            h_min = current_value["min"]
+            if isinstance(h_min, (int, float)):
+                patterns.append(re.escape(f"{h_min:.4f}"))
+
+    # Fallback: extract numbers from display_value
+    if not patterns and display_value:
+        nums = re.findall(r"\d+\.?\d*", display_value)
+        for n in nums[:3]:  # Limit to first 3 numbers
+            if len(n) >= 2:  # Skip single digits
+                patterns.append(re.escape(n))
+
+    return patterns
+
+
+# ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
 
@@ -2936,7 +3691,7 @@ def main() -> int:
     parser.add_argument(
         "--validate",
         action="store_true",
-        help="Run validation checks (deferred to Plan 03)",
+        help="Run validation spot-checks, cross-checks, consistency checks, and paper claims audit",
     )
     args = parser.parse_args()
 
@@ -3067,6 +3822,15 @@ def main() -> int:
 
     # Remove internal metadata from campaign results
     output["campaign_1"].pop("_metadata", None)
+
+    # --- Validate mode ---
+    if args.validate:
+        if args.verbose:
+            print("\n--- Running validation ---")
+        val_results = run_validation(output, project_root, args.verbose)
+        if val_results["summary"]["failed"] > 0:
+            return 1
+        return 0
 
     # --- Write JSON ---
     json_path = output_dir / "quantitative_findings.json"
