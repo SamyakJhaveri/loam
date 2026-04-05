@@ -81,31 +81,23 @@ STATUS_ORDER: list[str] = [
 ]
 
 MODEL_COLORS: dict[str, str] = {
-    "together-qwen-3.5-397b-a17b":  OKABE_ITO["orange"],
-    "claude-sonnet-4-6":            OKABE_ITO["blue"],
-    "groq-llama-3.3-70b-versatile": OKABE_ITO["vermillion"],
-    "gemini-2.5-flash-lite":        OKABE_ITO["purple"],
+    "together-qwen-3.5-397b-a17b": OKABE_ITO["orange"],
+    "azure-gpt-4.1-mini":          NA_COLOR,
 }
 
 MODEL_DISPLAY: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "Qwen 3.5\n397B",
-    "claude-sonnet-4-6":            "Claude\nSonnet 4",
-    "groq-llama-3.3-70b-versatile": "Llama 3.3\n70B",
-    "gemini-2.5-flash-lite":        "Gemini 2.5\nFlash-Lite",
+    "azure-gpt-4.1-mini":          "GPT-4.1\nmini",
 }
 
 MODEL_DISPLAY_SHORT: dict[str, str] = {
-    "together-qwen-3.5-397b-a17b":  "Qwen 3.5 397B-A17B",
-    "claude-sonnet-4-6":            "Claude Sonnet 4",
-    "groq-llama-3.3-70b-versatile": "Llama 3.3 70B",
-    "gemini-2.5-flash-lite":        "Gemini 2.5 Flash-Lite",
+    "together-qwen-3.5-397b-a17b": "Qwen 3.5 397B-A17B",
+    "azure-gpt-4.1-mini":          "GPT-4.1 mini",
 }
 
 MODEL_LINESTYLE: dict[str, tuple[str, str]] = {
-    "together-qwen-3.5-397b-a17b":  ("D-.", "dashdot"),
-    "claude-sonnet-4-6":            ("o-", "solid"),
-    "gemini-2.5-flash-lite":        ("s--", "dashed"),
-    "groq-llama-3.3-70b-versatile": ("^:", "dotted"),
+    "together-qwen-3.5-397b-a17b": ("D-.", "dashdot"),
+    "azure-gpt-4.1-mini":          ("v-", "solid"),
 }
 
 # Legacy palette references for survey figures (F2, C.4)
@@ -148,7 +140,15 @@ DIRECTION_LABELS = {
     "opencl-to-omp": "OCL\u2192OMP",
 }
 
-SUITE_ORDER = ["rodinia", "xsbench", "hecbench"]
+SUITE_ORDER = ["rodinia", "xsbench", "rsbench", "mixbench", "hecbench"]
+
+SUITE_DISPLAY = {
+    "rodinia": "Rodinia",
+    "xsbench": "XSBench",
+    "rsbench": "RSBench",
+    "mixbench": "mixbench",
+    "hecbench": "HeCBench",
+}
 
 # F2: Repository-level vs kernel-level API pair counts (survey data)
 REPO_KERNEL_PAIRS: list[tuple[str, int, int]] = [
@@ -166,35 +166,6 @@ HECBENCH_FUNNEL_STAGES: list[tuple[str, int, str | None]] = [
     ("Final selected\n(complexity, deps, diversity)", 60, "\u2212182: complexity/deps/diversity"),
 ]
 
-# Verified augmentation robustness data (fallback when no result files)
-AUG_ROBUSTNESS: dict[str, list[int]] = {
-    "claude-sonnet-4-6":              [12, 12, 12, 12, 12],
-    "gemini-2.5-flash-lite":          [4,  4,  4,  3,  1],
-    "groq-llama-3.3-70b-versatile":   [5,  6,  6,  4,  4],
-}
-AUG_TOTAL = 17
-
-# Verified XSBench L0 cross-direction data (fallback)
-XSBENCH_L0: dict[str, dict[str, str]] = {
-    "cuda-to-omp":          {"claude": "RUN_FAIL",    "gemini": "BUILD_FAIL",   "groq": "EXTRACTION_FAIL"},
-    "cuda-to-opencl":       {"claude": "PASS",        "gemini": "RUN_FAIL",     "groq": "RUN_FAIL"},
-    "cuda-to-omp_target":   {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "BUILD_FAIL"},
-    "omp-to-cuda":          {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "PASS"},
-    "omp-to-opencl":        {"claude": "PASS",        "gemini": "RUN_FAIL",     "groq": "EXTRACTION_FAIL"},
-    "omp-to-omp_target":    {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "BUILD_FAIL"},
-    "omp_target-to-cuda":   {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "BUILD_FAIL"},
-    "omp_target-to-omp":    {"claude": "PASS",        "gemini": "RUN_FAIL",     "groq": "BUILD_FAIL"},
-    "omp_target-to-opencl": {"claude": "PASS",        "gemini": "RUN_FAIL",     "groq": "RUN_FAIL"},
-    "opencl-to-cuda":       {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "RUN_FAIL"},
-    "opencl-to-omp":        {"claude": "RUN_FAIL",    "gemini": "BUILD_FAIL",   "groq": "BUILD_FAIL"},
-    "opencl-to-omp_target": {"claude": "PASS",        "gemini": "BUILD_FAIL",   "groq": "BUILD_FAIL"},
-}
-_XS_MODELS = ["claude", "gemini", "groq"]
-_XS_MODEL_DISPLAY = {
-    "claude": "Claude Sonnet 4",
-    "gemini": "Gemini Flash-Lite",
-    "groq":   "Llama 3.3 70B",
-}
 
 
 # ---------------------------------------------------------------------------
@@ -424,7 +395,7 @@ def filter_records(
 def build_kernel_model_matrix(
     records: list[dict],
     level: int = 0,
-    suite: str | None = "rodinia",
+    suite: str | None = None,
     direction: str | None = "cuda-to-omp",
 ) -> tuple[list[str], list[str], dict[tuple[str, str], str]]:
     """Build (kernel, model) -> overall_status lookup.
@@ -751,48 +722,78 @@ def generate_f4_failure_taxonomy(
     output_dir: Path,
     verbose: bool,
 ) -> None:
-    """F4: Failure taxonomy -- dual-direction stacked bar chart."""
+    """F4: Failure taxonomy -- status distribution by direction (all suites)."""
     base_records = [r for r in records if not r.get("is_sample", False)]
+    l0_records = filter_records(base_records, level=0)
+    # Filter to standard 6 directions only
+    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
 
-    c2o_records = filter_records(base_records, level=0, suite="rodinia", direction="cuda-to-omp")
-    o2c_records = filter_records(base_records, level=0, suite="rodinia", direction="omp-to-cuda")
+    if not std_records:
+        print("  WARNING: No L0 standard-direction records -- skipping F4.")
+        return
 
-    c2o_models = sorted(
-        {r["model"] for r in c2o_records},
-        key=lambda m: -sum(1 for r in c2o_records if r["model"] == m and r.get("overall_status") == "PASS"),
-    )
-    o2c_models = sorted(
-        {r["model"] for r in o2c_records},
-        key=lambda m: -sum(1 for r in o2c_records if r["model"] == m and r.get("overall_status") == "PASS"),
-    )
+    dir_status = aggregate_status_counts(std_records, "direction")
 
     if verbose:
-        print(f"  cuda-to-omp: {len(c2o_records)} tasks, {len(c2o_models)} models")
-        print(f"  omp-to-cuda: {len(o2c_records)} tasks, {len(o2c_models)} models")
+        for d in DIRECTIONS:
+            counts = dir_status.get(d, {})
+            total = sum(counts.values())
+            print(f"  {d}: {total} tasks")
 
-    fig, (ax1, ax2) = plt.subplots(
-        1, 2, figsize=(7.16, 3.0),
-        gridspec_kw={"width_ratios": [max(len(c2o_models), 1), max(len(o2c_models), 1)], "wspace": 0.3},
+    fig, ax = plt.subplots(figsize=(3.5, 3.0))
+
+    active_dirs = [d for d in DIRECTIONS if d in dir_status]
+    x = np.arange(len(active_dirs))
+    bar_width = 0.6
+
+    bottoms = np.zeros(len(active_dirs))
+    all_statuses: set[str] = set()
+    for status in STATUS_ORDER:
+        counts = np.array([
+            dir_status.get(d, {}).get(status, 0) for d in active_dirs
+        ], dtype=float)
+        if counts.sum() > 0:
+            all_statuses.add(status)
+        ax.bar(
+            x, counts, bar_width,
+            bottom=bottoms,
+            color=STATUS_COLORS[status],
+            hatch=STATUS_HATCH[status],
+            edgecolor="black", linewidth=0.5,
+            label=status.replace("_", " "),
+        )
+        for i, (count, bottom) in enumerate(zip(counts, bottoms)):
+            if count > 0:
+                ax.text(
+                    x[i], bottom + count / 2, str(int(count)),
+                    ha="center", va="center",
+                    fontsize=7, fontweight="bold",
+                    color=_text_color_for_bg(STATUS_COLORS[status]),
+                )
+        bottoms += counts
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(
+        [DIRECTION_LABELS.get(d, d) for d in active_dirs],
+        fontsize=8, rotation=30, ha="right",
+    )
+    ax.set_ylabel("Number of Tasks")
+    ax.set_ylim(0, max(bottoms) * 1.08 if max(bottoms) > 0 else 1)
+    ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.set_title(
+        "Failure Taxonomy: Status Distribution by Direction\n(L0, All Suites)",
+        fontsize=9, fontweight="bold",
     )
 
-    n_c2o = len(set(r["kernel"] for r in c2o_records))
-    n_o2c = len(set(r["kernel"] for r in o2c_records))
-    _draw_taxonomy_panel(ax1, c2o_records, c2o_models, f"CUDA \u2192 OpenMP (L0, {n_c2o} kernels)")
-    _draw_taxonomy_panel(ax2, o2c_records, o2c_models, f"OpenMP \u2192 CUDA (L0, {n_o2c} kernels)")
-
-    all_statuses = set()
-    for r in c2o_records + o2c_records:
-        s = r.get("overall_status", "UNKNOWN")
-        if s in STATUS_COLORS:
-            all_statuses.add(s)
     present_ordered = [s for s in STATUS_ORDER if s in all_statuses]
     handles = create_status_legend(present_ordered, include_hatch=True)
-    fig.legend(
+    ax.legend(
         handles=handles,
-        loc="upper center", bbox_to_anchor=(0.5, 1.04),
-        ncol=len(handles), frameon=False, fontsize=9,
+        loc="upper right", frameon=True, framealpha=0.9, fontsize=7,
     )
+    ax.grid(axis="y", alpha=0.3)
 
+    fig.tight_layout()
     _save_figure(fig, output_dir, "f4_failure_taxonomy")
     plt.close(fig)
 
@@ -975,56 +976,55 @@ def generate_f7_augmentation(
     output_dir: Path,
     verbose: bool,
 ) -> None:
-    """F7: Augmentation robustness -- pass rate vs. augmentation level."""
+    """F7: Augmentation robustness -- pass rate vs. augmentation level (Qwen only)."""
     levels = [0, 1, 2, 3, 4]
     level_labels = ["L0\n(original)", "L1", "L2", "L3", "L4\n(max)"]
 
-    # Compute from records if available
+    # Compute from records -- all suites, cuda-to-omp direction only
     base_records = [r for r in records if not r.get("is_sample", False)]
     c2o_all = [r for r in base_records
-               if r.get("suite") == "rodinia" and r.get("direction") == "cuda-to-omp"]
+               if r.get("direction") == "cuda-to-omp"]
 
-    if c2o_all:
-        model_level_pass: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
-        model_level_total: dict[str, dict[int, int]] = defaultdict(lambda: defaultdict(int))
-        for r in c2o_all:
-            m = r["model"]
-            lvl = r.get("augment_level", 0)
-            model_level_total[m][lvl] += 1
-            if r.get("overall_status") == "PASS":
-                model_level_pass[m][lvl] += 1
-        aug_data = {}
-        for m in model_level_pass:
-            aug_data[m] = [model_level_pass[m].get(lvl, 0) for lvl in levels]
-        aug_total = max(
-            (model_level_total[m].get(0, 0) for m in model_level_total),
-            default=AUG_TOTAL,
-        )
-    else:
-        aug_data = AUG_ROBUSTNESS
-        aug_total = AUG_TOTAL
+    if not c2o_all:
+        print("  WARNING: No CUDA-to-OMP augmentation records -- skipping F7.")
+        return
+
+    # Aggregate pass counts and totals per level (single model: Qwen)
+    level_pass: dict[int, int] = defaultdict(int)
+    level_total: dict[int, int] = defaultdict(int)
+    for r in c2o_all:
+        lvl = r.get("augment_level", 0)
+        level_total[lvl] += 1
+        if r.get("overall_status") == "PASS":
+            level_pass[lvl] += 1
+
+    aug_total = level_total.get(0, 1)
+    pass_counts = [level_pass.get(lvl, 0) for lvl in levels]
+    rates = [c / max(level_total.get(lvl, 1), 1) * 100 for lvl, c in zip(levels, pass_counts)]
+
+    if verbose:
+        for lvl, pc, tot, rate in zip(levels, pass_counts, [level_total.get(l, 0) for l in levels], rates):
+            print(f"  L{lvl}: {pc}/{tot} = {rate:.1f}%")
 
     fig, ax = plt.subplots(figsize=(3.5, 2.5))
 
-    for model, pass_counts in aug_data.items():
-        if model not in MODEL_LINESTYLE:
-            continue
-        rates = [c / aug_total * 100 for c in pass_counts]
-        marker_ls, ls = MODEL_LINESTYLE[model]
-        color = MODEL_COLORS[model]
-        label = MODEL_DISPLAY_SHORT.get(model, model)
-        ax.plot(
-            levels, rates,
-            marker_ls,
-            color=color,
-            linewidth=1.8,
-            markersize=7,
-            label=label,
-        )
+    color = MODEL_COLORS["together-qwen-3.5-397b-a17b"]
+    label = MODEL_DISPLAY_SHORT["together-qwen-3.5-397b-a17b"]
+    ax.plot(
+        levels, rates,
+        "D-.",
+        color=color,
+        linewidth=1.8,
+        markersize=7,
+        label=label,
+    )
+
+    # Annotate each point with its rate
+    for lvl, rate in zip(levels, rates):
         ax.annotate(
-            f"{rates[-1]:.0f}%",
-            xy=(4, rates[-1]),
-            xytext=(4.15, rates[-1]),
+            f"{rate:.0f}%",
+            xy=(lvl, rate),
+            xytext=(lvl + 0.15, rate + 2),
             fontsize=8, va="center", color=color,
         )
 
@@ -1039,8 +1039,8 @@ def generate_f7_augmentation(
     ax.axvline(0, color="grey", linewidth=0.8, linestyle="--", alpha=0.5)
     ax.legend(loc="upper right", frameon=True, framealpha=0.9, fontsize=9)
     ax.set_title(
-        f"Augmentation Robustness: Pass Rate across L0\u2013L4\n"
-        f"(Rodinia CUDA\u2192OpenMP, {aug_total} kernels, seed=42)",
+        "Augmentation Robustness: Pass Rate across L0\u2013L4\n"
+        f"(CUDA\u2192OpenMP, all suites, {aug_total} kernels)",
         fontsize=10,
     )
 
@@ -1564,7 +1564,7 @@ def main() -> None:
         print()
 
     if "F4" in requested:
-        print("Generating F4: Failure Taxonomy (dual-direction)...")
+        print("Generating F4: Failure Taxonomy (all suites, all directions)...")
         generate_f4_failure_taxonomy(records, output_dir, v)
         print()
 
