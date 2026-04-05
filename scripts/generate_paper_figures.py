@@ -19,7 +19,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import csv
 import json
 import re
 import sys
@@ -523,8 +522,6 @@ def generate_f3_kernel_heatmap(
     6 directions.  Kernels are grouped by suite (SUITE_ORDER) with horizontal
     divider lines and suite labels on the left margin.
     """
-    from matplotlib.patches import Rectangle
-
     # ------------------------------------------------------------------
     # 1. Filter to base L0 records in standard 6 directions
     # ------------------------------------------------------------------
@@ -1032,7 +1029,7 @@ def generate_f7_augmentation(
     rates = [c / max(level_total.get(lvl, 1), 1) * 100 for lvl, c in zip(levels, pass_counts)]
 
     if verbose:
-        for lvl, pc, tot, rate in zip(levels, pass_counts, [level_total.get(l, 0) for l in levels], rates):
+        for lvl, pc, tot, rate in zip(levels, pass_counts, [level_total.get(lv, 0) for lv in levels], rates):
             print(f"  L{lvl}: {pc}/{tot} = {rate:.1f}%")
 
     fig, ax = plt.subplots(figsize=(3.5, 2.5))
@@ -1335,9 +1332,7 @@ def generate_c4_selection_funnel(
 ) -> None:
     """C.4: HeCBench kernel selection pipeline funnel diagram."""
     stages = HECBENCH_FUNNEL_STAGES
-    labels = [s[0] for s in stages]
     values = [s[1] for s in stages]
-    exclusions = [s[2] for s in stages]
 
     if verbose:
         for lbl, val, exc in stages:
