@@ -78,11 +78,21 @@ Defines the shared reference hardware and software platform used for all baselin
 |-----|-------|
 | `platform_id` | `rtx4070-r9-7900x` |
 | `gpu.model` | NVIDIA GeForce RTX 4070 |
+| `gpu.architecture` | Ada Lovelace |
 | `gpu.compute_capability` | sm_89 |
 | `gpu.vram_gb` | 12 |
+| `gpu.memory_bandwidth_gbps` | 504 |
+| `gpu.cuda_cores` | 5888 |
 | `cpu.model` | AMD Ryzen 9 7900X |
 | `cpu.cores` | 12 |
 | `cpu.threads` | 24 |
+| `cpu.base_clock_ghz` | 4.7 |
+| `software.os` | Ubuntu 22.04 LTS |
+| `software.cuda_toolkit` | 12.x |
+| `software.gcc` | 11+ |
+| `software.driver` | 525.x+ |
+
+**Note:** The `software` section in `reference_platform.json` describes minimum/baseline platform requirements. The actual development machine runs Ubuntu 24.04 with gcc 12.4.0, as recorded in `config/compiler_inventory.txt`.
 
 ## JSON Schema Files
 
@@ -109,10 +119,13 @@ Located in `schema/`, these define the structure of specs and manifest entries. 
 - **Spec `run.timeout_seconds`** -- Defaults to `300` seconds if not specified in a spec file.
 - **Spec `run.environment_variables`** -- Defaults to `null` (inherits shell environment).
 - **`--project-root` CLI flag** -- Defaults to auto-detected project root in harness CLI and batch runner.
-- **`--resume` flag** -- Defaults to `True` in `run_eval_batch.py` (skips existing result files).
+- **`--resume` flag** -- Defaults to `True` in `run_eval_batch.py` (skips existing result files). Use `--no-resume` to force re-runs.
 - **`--temperature` flag** -- Defaults to `0.0` (greedy decoding) in `run_eval_batch.py`.
 - **`--max-retries` flag** -- Defaults to `1` (zero-shot, no retries) in `run_eval_batch.py`.
 - **`--augment-levels` flag** -- Defaults to `[0]` (no augmentation) in `run_eval_batch.py`.
+- **`--num-samples` flag** -- Defaults to `1` in `run_eval_batch.py`. Number of independent samples per task for pass@k estimation.
+- **`--max-failures` flag** -- Defaults to `0` (never stop) in `run_eval_batch.py`. Stops the batch after N consecutive failures.
+- **`--use-cpu-timing` flag** -- Defaults to `False` in `run_eval_batch.py`. When enabled, wraps runs with `/usr/bin/time -v` for CPU time measurement (requires GNU time on Linux).
 
 ## Spec Build Variables
 

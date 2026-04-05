@@ -80,8 +80,8 @@ parbench_sam/
 │   └── archive/                #   One-time fix scripts
 │
 ├── docs/                       # Design documents and planning
-│   ├── design/                 #   json_schema_design.md, integrate_augmentation_into_harness.md
-│   └── plans/                  #   hecbench pilot plan, phase5 plan, workflow docs
+│   ├── design/                 #   json_schema_design.md, integrate_augmentation_into_harness.md, kernel_centric_translation.md
+│   └── plans/                  #   figure_edit_spec.md, paper_update_summary.md, phase5_testing_verification.md, spec_narrowing_changes.md, translation_targets_audit.md
 │
 ├── presentations/              # Team deliverables (pptx, xlsx, speaking notes)
 │

@@ -231,7 +231,7 @@ With N models, total = 142 × N.
 ## Qwen 3.5 397B-A17B Campaign
 
 **Model:** `together-qwen-3.5-397b-a17b` (Qwen/Qwen3.5-397B-A17B via Together AI)
-**Batch script:** `scripts/batch/run_qwen_campaign.sh`
+**Batch script:** `scripts/batch/run_eval_campaign.sh`
 **API key:** `TOGETHER_API_KEY`
 
 ### Task Breakdown
@@ -276,13 +276,13 @@ Check https://api.together.xyz/models for current rates. Cost estimates assume
 export TOGETHER_API_KEY='your-key-here'
 
 # Launch (runs in detached tmux session)
-bash scripts/batch/run_qwen_campaign.sh
+bash scripts/batch/run_eval_campaign.sh
 
 # Attach to monitor progress
 tmux attach -t qwen_campaign
 
 # Re-run after interruption (--resume skips completed tasks)
-bash scripts/batch/run_qwen_campaign.sh
+bash scripts/batch/run_eval_campaign.sh
 ```
 
 ### Batch Execution Order (28 batches)

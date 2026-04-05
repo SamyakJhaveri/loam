@@ -40,7 +40,7 @@ The harness compiles and runs HPC benchmark kernels. You need the compilers for 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/samyakjhaveri/parbench_sam.git
+git clone https://github.com/SamyakJhaveri/parbench_sam.git
 cd parbench_sam
 ```
 
@@ -240,5 +240,7 @@ The Docker image uses `python:3.12-slim`, installs the pinned dependencies from 
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** -- Understand the system components, data flow, and key abstractions.
 - **[CONFIGURATION.md](CONFIGURATION.md)** -- Full reference for environment variables, config files, and per-environment overrides.
+- **[DEVELOPMENT.md](DEVELOPMENT.md)** -- Local development setup, build commands, code style, and contribution workflow.
+- **[TESTING.md](TESTING.md)** -- Test frameworks, running tests, coverage, and CI integration.
 - **[GUIDE.md](../GUIDE.md)** -- Complete pipeline walkthrough, all commands, and instructions for adding new benchmarks.
 - **[REPRODUCING.md](REPRODUCING.md)** -- Instructions for reproducing the SC26 paper results.

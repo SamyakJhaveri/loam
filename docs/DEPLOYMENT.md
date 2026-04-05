@@ -86,7 +86,7 @@ docker run --rm parbench python3 -m pytest c_augmentation/test_transforms.py -v
 docker run --rm -it parbench bash
 ```
 
-The Dockerfile automatically generates `config/paths.json` with all paths set to `/app` (the container working directory). It installs exact pinned dependencies from `requirements-lock.txt` (generated 2026-03-27 on Ubuntu 24.04 / Python 3.12.3) and registers the `harness` and `c_augmentation` packages via `pip install -e .`.
+The Dockerfile installs system dependencies for libclang (`libclang-dev`, `gcc`, `g++`, `make`), then installs exact pinned Python dependencies from `requirements-lock.txt` (generated 2026-03-27 on Ubuntu 24.04 / Python 3.12.3). It copies the project source (`harness/`, `c_augmentation/`, `scripts/`, `schema/`, `specs/`, `manifest.jsonl`, `config/`), generates `config/paths.json` with all paths set to `/app` (the container working directory), and registers the `harness` and `c_augmentation` packages via `pip install -e .`.
 
 **What works in the container:** Schema validation, augmentation unit tests (15 tests via pytest), analysis scripts, figure generation (matplotlib), spec inspection (`python3 -m harness info`, `python3 -m harness prompt`).
 
@@ -119,9 +119,12 @@ export HTTPS_PROXY="http://proxy.alcf.anl.gov:3128"
 
 <!-- VERIFY: Polaris repository path and ALCF project allocation name may change -->
 
-The PBS script runs two campaign types sequentially:
-1. **Primary campaign** (790 tasks): 158 pairs x 5 augmentation levels (L0-L4), temperature 0.0, max 3 retries
-2. **Pass@k sweep** (474 tasks): 158 pairs x L0 only, temperature 0.7, 3 independent samples
+The PBS script is currently configured for the `azure-gpt-4.1-mini` model and runs two campaign types sequentially:
+
+1. **Primary campaign**: 4 standard suites (rodinia, xsbench, rsbench, mixbench) across 4 translation directions (`cuda-to-omp`, `cuda-to-opencl`, `omp-to-opencl`, `opencl-to-omp`), plus 2 HeCBench-specific runs (`cuda-to-omp` with 5 kernels, `cuda-to-omp_target` with 8 kernels). Each uses 5 augmentation levels (L0-L4), temperature 0.0, max 3 retries.
+2. **Pass@k sweep**: Same suite/direction structure as the primary campaign but with L0 only, temperature 0.7, and 3 independent samples per task.
+
+Note: The PBS script runs a subset of directions (4 per standard suite, not the full 6 bidirectional directions used by the local campaign script). It is designed to be modified per-campaign -- update the `MODEL` variable and API key exports for different model evaluations.
 
 ### GitHub Pages (Visualization Dashboards)
 
@@ -135,7 +138,7 @@ Dashboards are password-protected using staticrypt (AES-256 browser-side encrypt
 - Push to `main` branch when files in `visualizations/` change
 - Manual trigger via `workflow_dispatch` (Actions tab)
 
-**Deployed content:** The entire `visualizations/` directory, including HTML dashboards, CSS, JavaScript data files, and static assets.
+**Deployed content:** The entire `visualizations/` directory, including 11 HTML files (index, overview, architecture, augmentation deep dive, benchmark landscape, build results, LLM evaluation, pipeline, results, sprint dashboard, and a logo preview), 3 JavaScript data files, CSS, and static assets.
 
 ## Build Pipeline
 
@@ -149,7 +152,7 @@ The only CI/CD pipeline is the GitHub Pages deployment workflow (`.github/workfl
 
 1. Check out the repository (`actions/checkout@v4`)
 2. Install staticrypt globally via npm
-3. Encrypt all HTML files in `visualizations/` with the `PAGES_PASSWORD` secret (AES-256)
+3. Encrypt all HTML files in `visualizations/` with the `PAGES_PASSWORD` secret (AES-256, with `--remember 1` for 1-day localStorage auth and `--short` for compact output)
 4. Configure GitHub Pages (`actions/configure-pages@v5`)
 5. Upload the `visualizations/` directory as a Pages artifact (`actions/upload-pages-artifact@v4`)
 6. Deploy to GitHub Pages (`actions/deploy-pages@v4`)
@@ -166,23 +169,32 @@ Evaluation campaigns are not deployed via CI/CD. They are launched manually on t
 
 ```bash
 # Launch a primary campaign (auto-creates tmux session)
-bash scripts/batch/run_eval_campaign.sh together-qwen-3.5-397b-a17b
+bash scripts/batch/run_eval_campaign.sh <MODEL>
 
 # Launch a pass@k sweep
-bash scripts/batch/run_eval_campaign.sh together-qwen-3.5-397b-a17b pass@k
+bash scripts/batch/run_eval_campaign.sh <MODEL> pass@k
 
 # Attach to running session
-bash scripts/batch/run_eval_campaign.sh together-qwen-3.5-397b-a17b --attach
+bash scripts/batch/run_eval_campaign.sh <MODEL> --attach
 ```
 
 The campaign script:
-1. Validates the API key for the chosen model provider
+1. Validates the API key for the chosen model provider (fails fast before tmux launch)
 2. Launches itself inside a detached tmux session (SSH-disconnect safe)
-3. Runs 28 batches across 5 suites (Rodinia, XSBench, RSBench, mixbench, HeCBench) and multiple translation directions
+3. Runs 28 batches across 5 suites: Rodinia (6 bidirectional directions), XSBench (6), RSBench (6), mixbench (6), and HeCBench (4 directions with curated kernel lists)
 4. Retries any failed batches in a second pass
-5. Runs `analyze_eval.py` to regenerate summary data
-6. Writes a completion marker to `results/evaluation/{model}_campaign_done.marker`
-7. Logs all output to `results/evaluation/{model}_campaign.log`
+5. Runs `analyze_eval.py --write-dashboard` to regenerate summary data and dashboard JS
+6. Writes a completion marker to `results/evaluation/{model_short}_{campaign,passk}_done.marker`
+7. Logs all output to `results/evaluation/{model_short}_{campaign,passk}.log`
+
+**Campaign modes:**
+
+| Mode | Pairs | Levels | Retries | Temp | Samples | Total Tasks |
+|------|-------|--------|---------|------|---------|-------------|
+| Primary (default) | 158 | L0-L4 (5) | 3 | 0.0 | 1 | 790 |
+| Pass@k | 158 | L0 only | 1 | 0.7 | 3 | 474 |
+
+**Suite breakdown (158 L0 pairs):** Rodinia 110 (includes KNOWN_FAIL), XSBench 6, RSBench 6, mixbench 6, HeCBench 30.
 
 **Results location:** `results/evaluation/{model-name}/` -- per-task JSON files, immutable once written. The `--resume` flag (enabled by default) skips existing results on re-runs.
 
@@ -195,7 +207,7 @@ LLM API keys must be set in the shell environment before running evaluation camp
 | Variable | Required For | How to Set |
 |----------|-------------|------------|
 | `ANTHROPIC_API_KEY` | `claude-*` models | `export ANTHROPIC_API_KEY='sk-...'` |
-| `OPENAI_API_KEY` | `gpt-*`, `o3-*`, `o4-*` models | `export OPENAI_API_KEY='sk-...'` |
+| `OPENAI_API_KEY` | `gpt-*`, `o1-*`, `o3-*`, `o4-*` models | `export OPENAI_API_KEY='sk-...'` |
 | `AZURE_OPENAI_API_KEY` | `azure-*` models | `export AZURE_OPENAI_API_KEY='...'` |
 | `AZURE_OPENAI_ENDPOINT` | `azure-*` models | `export AZURE_OPENAI_ENDPOINT='https://...'` |
 | `GROQ_API_KEY` | `groq-*` models | `export GROQ_API_KEY='...'` |
@@ -208,7 +220,7 @@ Only the key for the specific model provider being used is required. The campaig
 
 ### Required Configuration Files
 
-- **`config/paths.json`** -- Must exist with correct absolute paths for the current machine. See the `config/paths.json.template` for the format.
+- **`config/paths.json`** -- Must exist with correct absolute paths for the current machine. The template (`config/paths.json.template`) contains three keys: `project_root`, `downloads_root`, and `hecbench_root`, all defaulting to `{{PROJECT_ROOT}}`.
 
 ### Compiler Toolchain
 
@@ -219,6 +231,7 @@ For full pipeline functionality (build/run/verify), the following compilers must
 | nvcc (CUDA) | CUDA spec builds | 12.3 (NVIDIA HPC SDK 24.3) |
 | g++ with `-fopenmp` | OpenMP spec builds | 12.4.0 |
 | OpenCL headers + runtime | OpenCL spec builds | From NVIDIA HPC SDK 24.3 |
+| nvc++ | `omp_target` spec builds (optional) | 24.3 (NVIDIA HPC SDK) |
 
 Compiler paths are hardcoded in individual spec files (e.g., `CUDA_DIR`, `OPENCL_INC`, `OPENCL_LIB` build variables). On a non-reference system, these spec-level paths may need updating. See [CONFIGURATION.md](CONFIGURATION.md) for details on spec build variables.
 
@@ -240,7 +253,7 @@ Evaluation results are immutable -- they are never overwritten. If a campaign pr
 
 1. Fix the underlying issue in the harness or evaluation code
 2. Run a new campaign to a different output directory, or use `--resume` which will skip existing results and only fill in missing ones
-3. Use `reverify_pass_results.py` to re-verify existing PASS results against corrected verification strategies without re-running LLM calls
+3. Use `scripts/evaluation/reverify_pass_results.py` to re-verify existing PASS results against corrected verification strategies without re-running LLM calls
 
 There is no "rollback" for results because they are append-only. Incorrect results are documented and excluded from analysis rather than deleted.
 
@@ -263,13 +276,16 @@ ParBench does not use external monitoring services (no Sentry, Datadog, New Reli
 - **tmux session:** Attach to the running tmux session to see live output:
   ```bash
   tmux attach -t <model_short>_campaign
+  # or for pass@k:
+  tmux attach -t <model_short>_passk
   ```
-- **Log files:** Campaign output is tee'd to `results/evaluation/{model}_campaign.log`
-- **Done markers:** A `{model}_campaign_done.marker` file is written on completion with status, file count, and elapsed time
+- **Log files:** Campaign output is tee'd to `results/evaluation/{model_short}_{campaign,passk}.log`
+- **Done markers:** A `{model_short}_{campaign,passk}_done.marker` file is written on completion with status, file count, and elapsed time
 - **Result file count:** Monitor progress by counting result JSON files:
   ```bash
   ls results/evaluation/<model-name>/*.json | wc -l
   ```
+- **Inline summary:** The campaign script runs an embedded Python summary at completion, reporting per-suite and per-direction pass rates
 
 ### Visualization Dashboard Health
 
@@ -283,7 +299,15 @@ ParBench does not use external monitoring services (no Sentry, Datadog, New Reli
 After an evaluation campaign completes, regenerate the dashboard data files:
 
 ```bash
+# Regenerate augmentation dashboard data (results_data.js and build_results_data.js)
 python3 scripts/generate_viz_data.py
-# Regenerates results_data.js and build_results_data.js
+
+# Regenerate LLM evaluation dashboard data (eval_results_data.js)
+python3 scripts/evaluation/analyze_eval.py \
+    --project-root $(pwd) \
+    --write-dashboard
+
 # Commit and push to main to trigger redeployment
 ```
+
+The campaign script automatically runs `analyze_eval.py --write-dashboard` on completion, so `eval_results_data.js` is refreshed as part of each campaign. The augmentation data files (`results_data.js`, `build_results_data.js`) must be regenerated separately via `generate_viz_data.py` when augmentation results change.

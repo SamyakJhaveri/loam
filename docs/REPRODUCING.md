@@ -162,7 +162,7 @@ export GEMINI_API_KEY="your-key-here"
 # Run a single evaluation (example: Claude Sonnet, CUDA-to-OMP)
 python3 scripts/evaluation/run_eval_batch.py \
     --suite rodinia --direction cuda-to-omp \
-    --models claude-sonnet-4-6 \
+    --models claude-sonnet-4-6-20260218 \
     --project-root $(pwd) \
     --resume -v
 
@@ -170,7 +170,7 @@ python3 scripts/evaluation/run_eval_batch.py \
 for direction in cuda-to-omp omp-to-cuda cuda-to-opencl opencl-to-cuda omp-to-opencl opencl-to-omp; do
     python3 scripts/evaluation/run_eval_batch.py \
         --suite rodinia --direction $direction \
-        --models claude-sonnet-4-6 \
+        --models claude-sonnet-4-6-20260218 \
         --project-root $(pwd) \
         --resume -v
 done
@@ -233,7 +233,7 @@ python3 scripts/generate_viz_data.py
 
 | Model | Provider | API |
 |-------|----------|-----|
-| Claude Sonnet 4 | Anthropic | `claude-sonnet-4-6` |
+| Claude Sonnet 4 | Anthropic | `claude-sonnet-4-6-20260218` |
 | GPT-4.1 | OpenAI (Azure) | `azure-gpt-4.1` |
 | Llama 3.3 70B | Groq | `groq-llama-3.3-70b-versatile` |
 | Gemini 2.5 Flash-Lite | Google AI | `gemini-2.5-flash-lite` |

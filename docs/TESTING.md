@@ -1,7 +1,7 @@
 <!-- generated-by: gsd-doc-writer -->
 # Testing
 
-ParBench uses **pytest 9.0.2** for all Python tests, supplemented by schema validation scripts and a Docker-based CPU-only validation image. There is no centralized test configuration file; tests are co-located with the modules they cover.
+ParBench uses **pytest 9.0.2** for all Python tests, supplemented by schema validation scripts and a Docker-based CPU-only validation image. There is no centralized test configuration file; tests are co-located with the modules they cover. The full suite contains **200 tests** across 4 test areas.
 
 ## Test Framework and Setup
 
@@ -21,6 +21,13 @@ ParBench uses **pytest 9.0.2** for all Python tests, supplemented by schema vali
 
 ## Running Tests
 
+### All Tests
+
+```bash
+# Run every test in the project
+python3 -m pytest c_augmentation/test_transforms.py scripts/analysis/ scripts/evaluation/test_generate_paper_figures.py tests/test_campaign_results.py -v
+```
+
 ### Augmentation Transform Tests (15 tests)
 
 The primary unit test suite covers the AST-driven augmentation transforms in `c_augmentation/`:
@@ -31,7 +38,7 @@ python3 -m pytest c_augmentation/test_transforms.py -v
 
 These 15 tests must all pass before any commit. They are also triggered automatically by the `post-edit-test.sh` hook whenever a file in `c_augmentation/` is edited.
 
-### Analysis Script Tests
+### Analysis Script Tests (148 tests)
 
 Tests for the paper data generation and analysis scripts live in `scripts/analysis/`:
 
@@ -40,21 +47,29 @@ Tests for the paper data generation and analysis scripts live in `scripts/analys
 python3 -m pytest scripts/analysis/ -v
 
 # Individual test files
-python3 -m pytest scripts/analysis/test_generate_paper_data.py -v
-python3 -m pytest scripts/analysis/test_build_error_taxonomy.py -v
-python3 -m pytest scripts/analysis/test_statistical_analysis.py -v
-python3 -m pytest scripts/analysis/test_token_analysis.py -v
-python3 -m pytest scripts/analysis/test_benchmark_characterization.py -v
-python3 -m pytest scripts/analysis/test_augmentation_analysis.py -v
-python3 -m pytest scripts/analysis/test_quantitative_findings.py -v
+python3 -m pytest scripts/analysis/test_benchmark_characterization.py -v   # 39 tests
+python3 -m pytest scripts/analysis/test_generate_paper_data.py -v          # 29 tests
+python3 -m pytest scripts/analysis/test_quantitative_findings.py -v        # 23 tests
+python3 -m pytest scripts/analysis/test_build_error_taxonomy.py -v         # 17 tests
+python3 -m pytest scripts/analysis/test_token_analysis.py -v               # 14 tests
+python3 -m pytest scripts/analysis/test_augmentation_analysis.py -v        # 13 tests
+python3 -m pytest scripts/analysis/test_statistical_analysis.py -v         # 13 tests
 ```
 
-### Figure Generation Tests
+### Figure Generation Tests (9 tests)
 
 Tests validating the paper figure generation pipeline:
 
 ```bash
 python3 -m pytest scripts/evaluation/test_generate_paper_figures.py -v
+```
+
+### Campaign Result Validation Tests (28 tests)
+
+TDD validation tests that verify Qwen primary campaign result JSONs for non-Rodinia suites (XSBench, RSBench, mixbench, HeCBench) have the correct file counts, schema fields, augmentation level coverage, and valid status values:
+
+```bash
+python3 -m pytest tests/test_campaign_results.py -v
 ```
 
 ### Run a Single Test
@@ -69,21 +84,22 @@ python3 -m pytest c_augmentation/test_transforms.py::test_arithmetic_transform -
 
 - Test files are prefixed with `test_` (e.g., `test_transforms.py`, `test_generate_paper_data.py`).
 - Test functions follow the pattern `test_{description}()` with explicit names describing what is being tested.
-- Test classes use `class Test{Feature}:` grouping (e.g., `TestMatrixStructure`, `TestPassAtKStochasticFilter`).
+- Test classes use `class Test{Feature}:` grouping (e.g., `TestMatrixStructure`, `TestPassAtKStochasticFilter`, `TestPrimaryCampaignExists`).
 
 ### Test File Locations
 
-| Module Under Test | Test File Location |
-|---|---|
-| `c_augmentation/augment_dataset.py` | `c_augmentation/test_transforms.py` |
-| `scripts/analysis/build_error_taxonomy.py` | `scripts/analysis/test_build_error_taxonomy.py` |
-| `scripts/analysis/statistical_analysis.py` | `scripts/analysis/test_statistical_analysis.py` |
-| `scripts/analysis/token_analysis.py` | `scripts/analysis/test_token_analysis.py` |
-| `scripts/analysis/generate_paper_data.py` | `scripts/analysis/test_generate_paper_data.py` |
-| `scripts/analysis/benchmark_characterization.py` | `scripts/analysis/test_benchmark_characterization.py` |
-| `scripts/analysis/augmentation_analysis.py` | `scripts/analysis/test_augmentation_analysis.py` |
-| `scripts/analysis/quantitative_findings.py` | `scripts/analysis/test_quantitative_findings.py` |
-| `scripts/generate_paper_figures.py` | `scripts/evaluation/test_generate_paper_figures.py` |
+| Module Under Test | Test File Location | Test Count |
+|---|---|---|
+| `c_augmentation/augment_dataset.py` | `c_augmentation/test_transforms.py` | 15 |
+| `scripts/analysis/benchmark_characterization.py` | `scripts/analysis/test_benchmark_characterization.py` | 39 |
+| `scripts/analysis/generate_paper_data.py` | `scripts/analysis/test_generate_paper_data.py` | 29 |
+| `scripts/analysis/quantitative_findings.py` | `scripts/analysis/test_quantitative_findings.py` | 23 |
+| `scripts/analysis/build_error_taxonomy.py` | `scripts/analysis/test_build_error_taxonomy.py` | 17 |
+| `scripts/analysis/token_analysis.py` | `scripts/analysis/test_token_analysis.py` | 14 |
+| `scripts/analysis/augmentation_analysis.py` | `scripts/analysis/test_augmentation_analysis.py` | 13 |
+| `scripts/analysis/statistical_analysis.py` | `scripts/analysis/test_statistical_analysis.py` | 13 |
+| `scripts/generate_paper_figures.py` | `scripts/evaluation/test_generate_paper_figures.py` | 9 |
+| Qwen campaign result JSONs | `tests/test_campaign_results.py` | 28 |
 
 ### Import Pattern
 
@@ -108,6 +124,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 - `c_augmentation/test_transforms.py` provides `deterministic_random()` (context manager that pins `random.random` to 0.0), `assert_parseable()` (verifies code parses without fatal clang errors), and `apply_deterministically()` (applies a transform with pinned randomness).
 - Analysis test files typically include `_make_record()` or `_make_result()` helper functions that construct minimal synthetic result dicts for testing.
 - `scripts/analysis/test_generate_paper_data.py` uses a `paper_data` module-scoped pytest fixture that loads the real `results/analysis/paper_data.json` file once for all tests.
+- `tests/test_campaign_results.py` uses `_load_primary_results()` to load real result JSONs filtered by suite and temperature, with parametrized test classes across suites.
 
 ### Test Categories
 
@@ -115,6 +132,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 2. **Integration tests** -- Run scripts end-to-end via `subprocess.run()` and verify they produce valid output (e.g., `test_script_runs_and_produces_json`).
 3. **Ground-truth validation tests** -- Load real result JSONs from `results/` and verify computed metrics match independently derived expected values (e.g., `test_campaign_totals`, `test_individual_status_counts`).
 4. **Cross-consistency tests** -- Verify that totals sum correctly, rates are in valid ranges, and different views of the same data agree (e.g., `test_direction_totals_sum`, `test_no_negative_rates`).
+5. **Campaign validation tests** -- Verify that evaluation result files on disk have the expected counts, schema, and augmentation level coverage per suite (e.g., `test_suite_has_primary_results`, `test_all_levels_present`).
 
 ## Schema Validation
 

@@ -1,4 +1,7 @@
+<!-- generated-by: gsd-doc-writer -->
 # Evaluation Pipeline Audit — 2026-03-29
+
+> **Line numbers updated 2026-04-05 to reflect current codebase.**
 
 > **Context:** 4-agent investigation of 207 Qwen 3.5 (397B-A17B, via Together AI) eval
 > results. Triggered by suspiciously low pass rates (14%) and high EXTRACTION_FAIL counts
@@ -45,11 +48,13 @@ completion token budget before producing all expected files.
 **Evidence:** 28 of 39 EXTRACTION_FAIL results had `finish_reason="length"` on at least
 one attempt, indicating the LLM's response was truncated before completion.
 
-**Fix applied:** Raised `max_tokens` from 16384 to 32768 across all 4 providers in
-`scripts/evaluation/llm_evaluate.py` (lines 669, 790, 824, 868). The value 32768 is
-Qwen's official recommended default and is safe for all providers.
+**Fix applied:** Raised `max_tokens` from 16384. Per-provider values in
+`scripts/evaluation/llm_evaluate.py`: Anthropic=32768 (line 794), OpenAI=32768 (line 829),
+Azure=32768 (line 880), Groq=32768 (line 915), Gemini=65536 (line 949),
+Together=81920 (line 993).
 
-**Verification:** All four `max_tokens` occurrences in `llm_evaluate.py` now read `32768`.
+**Verification:** All six `max_tokens` occurrences in `llm_evaluate.py` are confirmed at their
+respective per-provider values.
 
 ---
 
@@ -69,7 +74,7 @@ is the correct approach per Together AI documentation, making this an edge case 
 than a systematic failure. However, the risk is non-zero for any model with thinking
 capability.
 
-**Fix applied:** Added `strip_think_tags()` function at line 908 of `llm_evaluate.py`.
+**Fix applied:** Added `strip_think_tags()` function at line 1033 of `llm_evaluate.py`.
 The function handles three cases:
 1. **Complete blocks:** `<think>...</think>` anywhere in the response (regex with `re.DOTALL`)
 2. **Dangling close tag:** `</think>` at the start with no matching `<think>` (opening tag
@@ -77,7 +82,7 @@ The function handles three cases:
 3. **Unclosed open tag:** `<think>...` at the end with no matching `</think>` (response
    truncated mid-thought)
 
-The function is called on **all** LLM responses at line 1281, before code extraction:
+The function is called on **all** LLM responses at line 1508, before code extraction:
 ```python
 response_text = strip_think_tags(llm_result["response_text"])
 ```
@@ -142,7 +147,7 @@ output comparison. This is explicitly a threat to validity.
 
 #### Fix applied: stdout error detection
 
-Added `_check_stdout_error_indicators()` function at line 1062 of `llm_evaluate.py`. After
+Added `_check_stdout_error_indicators()` function at line 1187 of `llm_evaluate.py`. After
 a result passes `stdout_pattern + exit_code` verification, stdout is scanned for known
 error indicators:
 
@@ -233,11 +238,11 @@ or truncation).
 
 ## 3. Decisions Made (with Rationale)
 
-### D1: Raise `max_tokens` from 16384 to 32768 (all providers)
+### D1: Raise `max_tokens` from 16384 (per-provider values)
 
-**Rationale:** 16384 was insufficient for multi-file kernels. 32768 is Qwen's official
-recommended default and the standard for large code generation tasks. Safe for all four
-providers (Anthropic, Groq, Gemini, Together AI).
+**Rationale:** 16384 was insufficient for multi-file kernels. Values were raised per provider:
+Anthropic/OpenAI/Azure/Groq=32768, Gemini=65536, Together=81920. 32768 is Qwen's official
+recommended default; Gemini and Together AI support higher limits.
 
 **Impact:** Eliminates truncation-caused EXTRACTION_FAILs for most kernels. The exception
 may be `myocyte` with its deep include chain, but the spec narrowing (D6) reduces this
@@ -246,7 +251,7 @@ risk significantly.
 **Trade-off:** Higher token costs per API call (~2x worst case). Acceptable given that the
 alternative is systematically failing on multi-file kernels.
 
-**Implementation:** 4 lines changed in `llm_evaluate.py` (lines 669, 790, 824, 868).
+**Implementation:** 6 lines changed in `llm_evaluate.py` (lines 794, 829, 880, 915, 949, 993).
 
 ---
 
@@ -263,8 +268,8 @@ providers, all models) because any reasoning-capable model could exhibit leakage
 **Trade-off:** Minimal. The regex is fast and only affects responses that actually contain
 think tags. No false positive risk — legitimate code would never contain `<think>` tags.
 
-**Implementation:** `strip_think_tags()` function added at line 908 of `llm_evaluate.py`.
-Called at line 1281, before code extraction.
+**Implementation:** `strip_think_tags()` function added at line 1033 of `llm_evaluate.py`.
+Called at line 1508, before code extraction.
 
 ---
 
@@ -274,7 +279,7 @@ Called at line 1281, before code extraction.
 between "program ran correctly" and "program caught a runtime error but continued
 gracefully." Error strings in stdout indicate runtime failures even when `exit_code=0`.
 
-**Patterns checked** (at line 1053 of `llm_evaluate.py`):
+**Patterns checked** (at line 1178 of `llm_evaluate.py`):
 - `clBuildProgram() => -N` — OpenCL kernel build failure
 - `clCompileProgram() => -N` — OpenCL kernel compile failure
 - `Segmentation fault` — Segfault captured in stdout
@@ -293,8 +298,8 @@ with a negative return code, not just the word "error") to minimize false reject
 - Numerical corruption (particlefilter-omp-L2 case): would require tolerance-based output comparison
 These are documented as future work and threats to validity.
 
-**Implementation:** `_check_stdout_error_indicators()` function at line 1062, called at
-line 1425 after initial PASS determination.
+**Implementation:** `_check_stdout_error_indicators()` function at line 1187, called at
+line 1694 after initial PASS determination.
 
 ---
 
@@ -397,7 +402,8 @@ exit_code` verification passes, stdout is scanned for known runtime error indica
 (OpenCL build failures, CUDA errors, segfaults). This catches cases where the host program
 handles errors gracefully but the translated kernel never actually executed.
 
-**`max_tokens` configuration:** The pipeline uses 32768 max completion tokens. This is
+**`max_tokens` configuration:** The pipeline uses per-provider max completion tokens:
+Anthropic/OpenAI/Azure/Groq=32768, Gemini=65536, Together AI=81920. These values are
 sufficient for single-file and 2-file translations but may be insufficient for kernels
 with deep include chains (e.g., myocyte's full 16-file tree). The kernel-centric
 translation design (narrowing `translation_targets` to kernel files only) mitigates this
@@ -496,11 +502,11 @@ The 7 former PASS results are reclassified as VERIFY_FAIL: 5 backprop-opencl + 1
 
 ### Pipeline code
 - `scripts/evaluation/llm_evaluate.py`
-  - Lines 669, 790, 824, 868: `max_tokens` 16384 -> 32768
-  - Lines 900-925: `strip_think_tags()` function added
-  - Line 1281: `strip_think_tags()` call before code extraction
-  - Lines 1045-1068: `_STDOUT_ERROR_PATTERNS` and `_check_stdout_error_indicators()` added
-  - Lines 1422-1428: Error detection applied after initial PASS determination
+  - Lines 794, 829, 880, 915, 949, 993: `max_tokens` raised (Anthropic/OpenAI/Azure/Groq=32768, Gemini=65536, Together=81920)
+  - Lines 1033-1058: `strip_think_tags()` function added
+  - Line 1508: `strip_think_tags()` call before code extraction
+  - Lines 1178-1193: `_STDOUT_ERROR_PATTERNS` and `_check_stdout_error_indicators()` added
+  - Lines 1688-1702: Error detection applied after initial PASS determination
 
 ### Spec files
 - `specs/rodinia-particlefilter-cuda.json`: `translation_targets` narrowed to 1 file

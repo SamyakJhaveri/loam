@@ -72,7 +72,7 @@
 - `full_repair`: Failed initially, succeeded after retry (model self-corrected)
 - `partial_repair`: Improved category (e.g., BUILD_FAIL -> RUN_FAIL) but still failed
 - `regression`: Got worse after retry (e.g., RUN_FAIL -> BUILD_FAIL)
-- `persistent_fail`: Same error category across all 3 attempts
+- `no_repair`: Same error category across all 3 attempts
 
 **Alternatives considered:**
 - `max_retries=1` (zero-shot only): rejected because self-repair data is scientifically valuable and directly comparable to LASSI's agentic approach. Zero-shot is measured separately via pass@k (D4).

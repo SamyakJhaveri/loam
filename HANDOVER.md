@@ -23,7 +23,7 @@ The Rodinia benchmark suite has been successfully integrated into ParBench. All 
 | API gaps JSON created | ✅ Present | `analysis/data/rodinia_api_gaps.json` with structured per-kernel data |
 | Phase 2b testing done | ✅ Complete | `results/rodinia/results_matrix_rodinia.md` and `rodinia_results.json` |
 | baseline_results populated | ✅ In specs | Passing specs have `baseline_results` with timestamps, stdout, wall times |
-| Manifest appended | ✅ Correct | 180 total entries (120 HeCBench + 60 Rodinia) |
+| Manifest appended | ✅ Correct | 211 total entries (135 HeCBench + 65 Rodinia + 4 XSBench + 4 RSBench + 3 mixbench) |
 | Schema validation | ✅ Clean | All 60 Rodinia specs conform to `spec_schema.json` |
 
 ### 1.2 Test Results Summary (Phase 2b)
@@ -69,7 +69,7 @@ Both suites produce specs that conform to the same `spec_schema.json` (version 1
 | OpenCL `hardware.requirements.gpu.vendor` | N/A | `null` (omitted) | OpenCL is vendor-neutral ✅ |
 | `baseline_results` | Populated (tested Feb 2026) | Populated (tested Mar 2026) | Both tested on same platform |
 
-**Bottom line**: The two suites are interchangeable from the harness perspective. A tool processing `specs/*.json` can treat all 180 specs identically — the schema is the same, only the provenance differs.
+**Bottom line**: All five suites are interchangeable from the harness perspective. A tool processing `specs/*.json` can treat all 206 specs identically — the schema is the same, only the provenance differs.
 
 ---
 
@@ -87,7 +87,8 @@ The core research question ParBench enables: *"Given a kernel written in API X (
 ┌─────────────────────────────────────────────────────────────┐
 │  Level 1: manifest.jsonl                                     │
 │  One JSON line per kernel-variant. Lightweight discovery.    │
-│  180 entries: 120 HeCBench + 60 Rodinia                     │
+│  211 entries: 135 HeCBench + 65 Rodinia + 4 XSBench +       │
+│               4 RSBench + 3 mixbench                         │
 │  Fields: kernel_name, parallel_api, source_suite, spec_file │
 │  Pairing key: same kernel_name = translation pair            │
 └────────────────────────┬────────────────────────────────────┘
@@ -96,7 +97,7 @@ The core research question ParBench enables: *"Given a kernel written in API X (
 ┌─────────────────────────────────────────────────────────────┐
 │  Level 2: specs/*.json                                       │
 │  One JSON file per kernel-API variant. Full specification.   │
-│  180 files total                                             │
+│  206 files total                                             │
 │  Sections: identity, provenance, files, implementation,      │
 │            build, run, verification, hardware,               │
 │            baseline_results, metadata                         │
@@ -181,14 +182,16 @@ The harness compares the LLM's translated code's output against the `baseline_re
 
 | Metric | Value |
 |---|---|
-| Benchmark suites | 2 (HeCBench, Rodinia) |
-| Total kernels | 82 (60 HeCBench + 22 Rodinia) |
-| Total spec files | 180 (120 HeCBench + 60 Rodinia) |
+| Benchmark suites | 5 (HeCBench, Rodinia, XSBench, RSBench, mixbench) |
+| Total kernels | 90 (65 HeCBench + 22 Rodinia + 1 XSBench + 1 RSBench + 1 mixbench) |
+| Total spec files | 206 (135 HeCBench + 60 Rodinia + 4 XSBench + 4 RSBench + 3 mixbench) |
 | APIs covered | CUDA, OpenMP, OpenCL |
-| Manifest entries | 180 |
+| Manifest entries | 211 |
 | HeCBench test results | 60/60 CUDA pass, 41/60 OMP pass |
 | Rodinia test results | 18/22 CUDA pass, 17/18 OMP pass, 16/20 OpenCL pass |
-| Overall pass rate | 152/180 specs passing (84%) |
+| XSBench test results | 4/4 PASS (cuda, omp, opencl, omp_target) |
+| RSBench test results | 4/4 PASS (cuda, omp, opencl, omp_target) |
+| mixbench test results | 3/3 PASS (cuda, omp, opencl) |
 | Translation pairs available | All kernel_name values shared across APIs form pairs |
 | Overlapping kernels (both suites) | 6: backprop, gaussian, lud, nn, nw, pathfinder |
 
@@ -196,8 +199,8 @@ The harness compares the LLM's translated code's output against the `baseline_re
 
 | Path | What It Is |
 |---|---|
-| `manifest.jsonl` | Level 1 master index (180 entries) |
-| `specs/*.json` | Level 2 spec files (180 files) |
+| `manifest.jsonl` | Level 1 master index (211 entries) |
+| `specs/*.json` | Level 2 spec files (206 files) |
 | `schema/spec_schema.json` | JSON Schema (draft-07) — source of truth for spec format |
 | `schema/manifest_schema.json` | JSON Schema for manifest entries |
 | `harness/` | Python harness (cli, builder, runner, verifier, reporter) |
@@ -220,7 +223,7 @@ As clarified in the March 2026 team meeting, the ParBench research involves four
 ### Pillar 1: CURATION (Samyak — largely complete)
 Survey existing benchmark suites, select kernels, create spec files, and test on hardware.
 
-**Status**: HeCBench (60 kernels, 120 specs) and Rodinia (22 kernels, 60 specs) are done. More suites can be added by following the same pattern: survey → generate specs → test → populate baseline_results.
+**Status**: HeCBench (65 kernels, 135 specs), Rodinia (22 kernels, 60 specs), XSBench (1 kernel, 4 specs), RSBench (1 kernel, 4 specs), and mixbench (1 kernel, 3 specs) are done. More suites can be added by following the same pattern: survey → generate specs → test → populate baseline_results.
 
 ### Pillar 2: CREATION (Samyak — next task)
 Use AI coding agents (Paracodex, etc.) to **generate missing API variants**. For example, if a kernel has CUDA and OpenMP but not OpenCL, use an LLM to create the OpenCL version.
@@ -336,7 +339,7 @@ Some transforms incorrectly expand typedef struct names, causing type mismatch e
 1. Fix Bugs A, B, C, D in `c_augmentation/augment_dataset.py`
 2. Add `.cl` to `harness/spec_loader.py` suffix list
 3. Re-run `scripts/augmentation/run_augment_batch.py` after bug fixes to measure improvement
-4. Clone HeCBench locally for full 180-spec coverage (currently only 60 Rodinia specs tested)
+4. Run full 206-spec coverage (currently only 60 Rodinia specs tested)
 5. Integrate augmentation results into the main evaluation pipeline
 
 ### 5.7 Key Files

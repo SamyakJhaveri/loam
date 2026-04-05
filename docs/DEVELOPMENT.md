@@ -40,15 +40,13 @@ python3 -m pip install -e .
 Copy the paths configuration for your machine:
 
 ```bash
-# config/paths.json must point to your project root.
-# On Linux (GPU machine):
-cat > config/paths.json << 'EOF'
-{
-    "project_root": "/home/samyak/Desktop/parbench_sam",
-    "downloads_root": "/home/samyak/Desktop/parbench_sam",
-    "hecbench_root": "/home/samyak/Desktop/parbench_sam"
-}
-EOF
+# Copy the template and replace the placeholder with your project root:
+cp config/paths.json.template config/paths.json
+# Edit config/paths.json — replace {{PROJECT_ROOT}} with the absolute path
+# to your parbench_sam directory. Example for the reference Linux machine:
+#   "project_root": "/home/samyak/Desktop/parbench_sam",
+#   "downloads_root": "/home/samyak/Desktop/parbench_sam",
+#   "hecbench_root": "/home/samyak/Desktop/parbench_sam"
 ```
 
 See [CONFIGURATION.md](CONFIGURATION.md) for the full list of environment variables and config files.
@@ -58,9 +56,11 @@ See [CONFIGURATION.md](CONFIGURATION.md) for the full list of environment variab
 LLM evaluation requires API keys set as environment variables (not stored in files):
 
 - `ANTHROPIC_API_KEY` -- for Claude models
-- `OPENAI_API_KEY` -- for GPT models
+- `OPENAI_API_KEY` -- for GPT models (OpenAI direct)
+- `AZURE_OPENAI_API_KEY` -- for Azure-hosted OpenAI models
+- `AZURE_OPENAI_ENDPOINT` -- Azure OpenAI endpoint URL (required alongside the API key)
 - `GROQ_API_KEY` -- for Groq-hosted Llama models
-- `GOOGLE_API_KEY` -- for Gemini models
+- `GEMINI_API_KEY` or `GOOGLE_API_KEY` -- for Google Gemini models (checked in that order)
 - `TOGETHER_API_KEY` -- for Together AI-hosted models
 
 These are only needed when running the evaluation pipeline. The harness (build/run/verify) and augmentation modules work without them.
@@ -102,6 +102,7 @@ python3 -m harness --json verify specs/rodinia-hotspot-omp.json
 | `python3 scripts/evaluation/run_eval_batch.py --suite <suite> --direction <dir> --models <model> --project-root <root> --resume -v` | Batch LLM evaluation with resume support |
 | `python3 scripts/evaluation/llm_evaluate.py --source <src.json> --target <tgt.json> --model <model> --project-root <root>` | Single translation task |
 | `python3 scripts/evaluation/analyze_eval.py --project-root <root> --results-dir results/evaluation` | Aggregate results into summary JSON and Markdown |
+| `python3 scripts/evaluation/reverify_pass_results.py --project-root <root> -v` | Re-verify existing PASS results with corrected verification strategies |
 
 **Critical:** Always pass `--suite` to `run_eval_batch.py` to avoid cross-suite kernel name collisions.
 
@@ -129,13 +130,20 @@ Note: approximately 15 validation errors from `--all` are expected (phantom spec
 | `python3 scripts/generate_paper_figures.py --project-root <root> --figure all --output-dir docs/paper/figures` | Generate all publication figures |
 | `python3 scripts/generate_paper_figures.py --project-root <root> --figure F3 --output-dir docs/paper/figures` | Generate a single figure |
 | `python3 scripts/generate_viz_data.py` | Regenerate dashboard JS data files from result JSONs |
+| `python3 scripts/analysis/quantitative_findings.py --project-root <root> -v` | Compute all 14 quantitative dimensions from evaluation data |
+| `python3 scripts/analysis/statistical_analysis.py --project-root <root>` | Statistical significance analysis (Wilson CIs, chi-squared, McNemar) |
+| `python3 scripts/analysis/benchmark_characterization.py --project-root <root>` | Characterize benchmark kernels (SLoC, complexity metrics) |
+| `python3 scripts/analysis/build_error_taxonomy.py --project-root <root>` | Classify build failures into taxonomy categories |
+| `python3 scripts/analysis/token_analysis.py --project-root <root>` | Analyze prompt and completion token costs |
+| `python3 scripts/analysis/selfrepair_analysis.py --project-root <root>` | Analyze iterative self-repair effectiveness across attempts |
 
 ### Testing
 
 | Command | Description |
 |---------|-------------|
 | `python3 -m pytest c_augmentation/test_transforms.py -v` | Run all 15 augmentation unit tests |
-| `python3 -m pytest scripts/analysis/test_*.py -v` | Run analysis module tests |
+| `python3 -m pytest scripts/analysis/ -v` | Run all 148 analysis module tests |
+| `python3 -m pytest scripts/evaluation/test_generate_paper_figures.py -v` | Run figure generation tests |
 
 See [TESTING.md](TESTING.md) for detailed test framework documentation.
 
