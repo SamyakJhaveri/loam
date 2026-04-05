@@ -14,8 +14,8 @@ Write/update the Introduction (Section 1) of paper.tex with quantitative highlig
 ## Implementation Decisions
 
 ### Characterization Table Design (CHAR-07)
-- **D-01:** Two separate tables in Section 4. The existing `tab:benchmark-characterization` (SLoC, Multi-File, Std.) stays as-is. A new second table is added with API coverage cross-tab (suite rows x CUDA/OMP/OpenCL/OMP-Target columns showing spec counts) and category distribution (12 categories with kernel counts).
-- **D-02:** Category data comes from `benchmark_characterization.json` — 12 categories across 35 kernels. Present as a compact section within the second table or as a sub-table, whichever fits best in IEEE double-column format.
+- **D-01:** Two separate tables in Section 4. The existing `tab:benchmark-characterization` (SLoC, Multi-File, Std.) stays as-is. A new second table is added with API coverage cross-tab (suite rows x CUDA/OMP/OpenCL/OMP-Target columns showing spec counts) and category distribution (10 categories with kernel counts for the 35-kernel corpus).
+- **D-02:** Category data comes from `sloc_analysis.json` (canonical for 35-kernel corpus) — 10 categories across 35 kernels. (Note: CONTEXT originally said "12 categories from benchmark_characterization.json" but RESEARCH.md verified only 10 categories exist for the 35-kernel corpus; the 12-category count comes from the full 83-kernel manifest which includes crypto and financial from non-curated HeCBench.) Present as a compact section within the second table or as a sub-table, whichever fits best in IEEE double-column format.
 - **D-03:** API coverage cross-tab uses spec counts per cell (e.g., Rodinia: 22 CUDA, 22 OMP, 16 OpenCL, 0 OMP-Target). Data from `benchmark_characterization.json > api_coverage`.
 
 ### Introduction Quantitative Density (INTRO-01)
@@ -84,7 +84,7 @@ Write/update the Introduction (Section 1) of paper.tex with quantitative highlig
 ## Existing Code Insights
 
 ### Reusable Assets
-- `benchmark_characterization.json` has all data needed for the second table: `api_coverage` section (suite x API matrix), `categories` section (12 categories with kernel counts and suite annotations)
+- `benchmark_characterization.json` has all data needed for the second table: `api_coverage` section (suite x API matrix), `categories` section (10 categories for the 35-kernel corpus, with kernel counts and suite annotations; canonical source is `sloc_analysis.json`)
 - `quantitative_findings.json` has `paper_claims` array mapping claim IDs to exact source values — use for provenance comments in LaTeX
 - Existing characterization table LaTeX at lines 547-568 can serve as template for the second table's formatting
 

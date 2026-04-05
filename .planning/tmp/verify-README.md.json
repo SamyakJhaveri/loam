@@ -1,20 +1,7 @@
 {
   "doc_path": "README.md",
-  "claims_checked": 28,
-  "claims_passed": 26,
-  "claims_failed": 2,
-  "failures": [
-    {
-      "line": 53,
-      "claim": "scripts/generate_pilot_specs.py",
-      "expected": "file exists",
-      "actual": "file not found at scripts/generate_pilot_specs.py"
-    },
-    {
-      "line": 54,
-      "claim": "scripts/generate_report.py",
-      "expected": "file exists",
-      "actual": "file not found at scripts/generate_report.py"
-    }
-  ]
+  "claims_checked": 42,
+  "claims_passed": 42,
+  "claims_failed": 0,
+  "failures": []
 }

@@ -1,14 +1,14 @@
 {
   "doc_path": "docs/DEVELOPMENT.md",
-  "claims_checked": 31,
-  "claims_passed": 30,
+  "claims_checked": 35,
+  "claims_passed": 34,
   "claims_failed": 1,
   "failures": [
     {
-      "line": 104,
+      "line": 106,
       "claim": "python3 scripts/evaluation/analyze_eval.py --project-root <root> --output-dir results/evaluation",
       "expected": "flag '--output-dir' accepted by analyze_eval.py",
-      "actual": "no '--output-dir' or 'output_dir' argument found in scripts/evaluation/analyze_eval.py"
+      "actual": "no '--output-dir' flag found in analyze_eval.py argparse; actual flags are '--results-dir', '--out-json', '--out-md', '--write-dashboard'"
     }
   ]
 }

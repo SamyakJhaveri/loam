@@ -1,32 +1,74 @@
 {
   "doc_path": "HANDOVER.md",
-  "claims_checked": 32,
-  "claims_passed": 28,
-  "claims_failed": 4,
+  "claims_checked": 42,
+  "claims_passed": 31,
+  "claims_failed": 11,
   "failures": [
     {
-      "line": 23,
-      "claim": "analysis/rodinia_api_gaps.json",
-      "expected": "file exists",
-      "actual": "file not found at analysis/rodinia_api_gaps.json (actual location: analysis/data/rodinia_api_gaps.json)"
+      "line": 26,
+      "claim": "180 total manifest entries (120 HeCBench + 60 Rodinia)",
+      "expected": "manifest.jsonl has 180 lines with 120 hecbench + 60 rodinia",
+      "actual": "manifest.jsonl has 211 lines: 135 hecbench + 65 rodinia + 4 xsbench + 4 rsbench + 3 mixbench"
     },
     {
-      "line": 228,
-      "claim": "analysis/rodinia_api_gaps.json",
-      "expected": "file exists",
-      "actual": "file not found at analysis/rodinia_api_gaps.json (actual location: analysis/data/rodinia_api_gaps.json)"
+      "line": 72,
+      "claim": "all 180 specs identically",
+      "expected": "180 spec files in specs/",
+      "actual": "206 spec files in specs/"
     },
     {
-      "line": 336,
-      "claim": "c_augmentation/transforms.py",
-      "expected": "file exists",
-      "actual": "file not found at c_augmentation/transforms.py (transforms are defined in c_augmentation/augment_dataset.py)"
+      "line": 90,
+      "claim": "180 entries: 120 HeCBench + 60 Rodinia",
+      "expected": "manifest has 180 entries with stated breakdown",
+      "actual": "manifest has 211 entries: 135 hecbench + 65 rodinia + 4 xsbench + 4 rsbench + 3 mixbench"
     },
     {
-      "line": 347,
-      "claim": "c_augmentation/transforms.py",
-      "expected": "file exists",
-      "actual": "file not found at c_augmentation/transforms.py (transforms are defined in c_augmentation/augment_dataset.py)"
+      "line": 99,
+      "claim": "180 files total",
+      "expected": "180 spec files in specs/",
+      "actual": "206 spec files in specs/"
+    },
+    {
+      "line": 184,
+      "claim": "Total kernels: 82 (60 HeCBench + 22 Rodinia)",
+      "expected": "82 kernels across 2 suites",
+      "actual": "Additional suites added: XSBench (1 kernel, 4 specs), RSBench (1 kernel, 4 specs), mixbench (1 kernel, 3 specs), plus HeCBench expanded to 135 specs"
+    },
+    {
+      "line": 186,
+      "claim": "Total spec files: 180 (120 HeCBench + 60 Rodinia)",
+      "expected": "180 spec files",
+      "actual": "206 spec files total"
+    },
+    {
+      "line": 188,
+      "claim": "Manifest entries: 180",
+      "expected": "180 manifest entries",
+      "actual": "211 manifest entries"
+    },
+    {
+      "line": 189,
+      "claim": "HeCBench test results: 60/60 CUDA pass, 41/60 OMP pass",
+      "expected": "stated HeCBench pass rates",
+      "actual": "HeCBench now has 135 specs (expanded well beyond original 60+60); these counts are outdated"
+    },
+    {
+      "line": 191,
+      "claim": "Overall pass rate: 152/180 specs passing (84%)",
+      "expected": "152/180 pass rate",
+      "actual": "Outdated -- total is now 206 specs with additional suites and different pass counts"
+    },
+    {
+      "line": 198,
+      "claim": "manifest.jsonl Level 1 master index (180 entries)",
+      "expected": "180 entries",
+      "actual": "211 entries"
+    },
+    {
+      "line": 199,
+      "claim": "specs/*.json Level 2 spec files (180 files)",
+      "expected": "180 spec files",
+      "actual": "206 spec files"
     }
   ]
 }

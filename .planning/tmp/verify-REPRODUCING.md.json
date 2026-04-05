@@ -1,20 +1,14 @@
 {
   "doc_path": "docs/REPRODUCING.md",
-  "claims_checked": 18,
-  "claims_passed": 16,
-  "claims_failed": 2,
+  "claims_checked": 32,
+  "claims_passed": 31,
+  "claims_failed": 1,
   "failures": [
     {
-      "line": 135,
-      "claim": "specs/rodinia-srad-v2-cuda.json",
-      "expected": "file exists",
-      "actual": "file not found at specs/rodinia-srad-v2-cuda.json; actual spec is specs/rodinia-srad-cuda.json (no -v2 suffix)"
-    },
-    {
-      "line": 194,
-      "claim": "python3 scripts/augmentation/run_augment_batch.py --suite rodinia --project-root $(pwd) -v",
-      "expected": "script accepts --suite and --project-root flags",
-      "actual": "run_augment_batch.py takes positional spec paths (not --suite) and has no --project-root flag; accepted flags are: specs (positional), --levels, --seed, --config, --out (required), --title, -v"
+      "line": 236,
+      "claim": "Claude Sonnet 4 model ID is claude-sonnet-4-6",
+      "expected": "model ID claude-sonnet-4-6 in MODEL_REGISTRY",
+      "actual": "MODEL_REGISTRY has claude-sonnet-4-6-20260218 (dated version). The short form claude-sonnet-4-6 is not in MODEL_REGISTRY but would route via claude-* prefix. The table mixes short form with other models that use exact IDs (azure-gpt-4.1, groq-llama-3.3-70b-versatile, gemini-2.5-flash-lite)"
     }
   ]
 }

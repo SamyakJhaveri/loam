@@ -162,8 +162,8 @@ Data source: `sloc_analysis.json` category field per kernel [VERIFIED: sloc_anal
 | linear_algebra | 2 | Rodinia (2: gaussian, lud) |
 | ml | 2 | Rodinia (2: backprop, kmeans) |
 | molecular_dynamics | 2 | Rodinia (1: lavamd), HeCBench (1: md) |
-| other | 8 | Rodinia (5: bptree, huffman, mummergpu, myocyte, streamcluster), HeCBench (2: nqueen, scan), mixbench (1) |
-| physics | 7 | Rodinia (4: cfd, hotspot, hotspot3d, particlefilter), HeCBench (1: iso2dfd), XSBench (1), RSBench (1) |
+| other | 8 | Rodinia (6: bptree, huffman, mummergpu, myocyte, nw, streamcluster), HeCBench (1: nqueen), mixbench (1) |
+| physics | 7 | Rodinia (5: cfd, dwt2d, hotspot, hotspot3d, particlefilter), XSBench (1), RSBench (1) |
 | reduction | 1 | HeCBench (1: scan) |
 | sort | 1 | Rodinia (1: hybridsort) |
 | stencil | 5 | HeCBench (5: convolution1d, heat2d, iso2dfd, jacobi, stencil1d) |
@@ -171,24 +171,22 @@ Data source: `sloc_analysis.json` category field per kernel [VERIFIED: sloc_anal
 
 **Note:** Only 10 categories for the 35 corpus kernels, NOT 12 as stated in CONTEXT.md D-02. The 12 categories come from the full 83-kernel manifest (which includes crypto and financial categories from non-curated HeCBench kernels). The paper characterization table should show 10 categories. [VERIFIED: sloc_analysis.json category field, cross-referenced with benchmark_characterization.json]
 
-**Overlap note:** `iso2dfd` appears in both "physics" and "stencil" in the full manifest categories. In sloc_analysis.json it is categorized as "stencil" only. `scan` is listed in both the manifest "reduction" and "other" categories depending on scope. For the characterization table, use the `sloc_analysis.json` category assignment per kernel (canonical for the 35-kernel corpus).
+**Overlap note:** `iso2dfd` appears in both "physics" and "stencil" in the full manifest categories. In sloc_analysis.json it is categorized as "stencil" only. `scan` is listed as "reduction" in sloc_analysis.json. For the characterization table, use the `sloc_analysis.json` category assignment per kernel (canonical for the 35-kernel corpus).
 
-**Wait -- re-check:** Let me re-verify. The count above sums to 35 but there may be double-counting. Let me verify:
+**Verified kernel-to-category assignments (from sloc_analysis.json, adversarial review 2026-04-05):**
 - graph: bfs, nn, pathfinder, floydwarshall, page-rank = 5
 - image: heartwall, srad = 2
 - linear_algebra: gaussian, lud = 2
 - ml: backprop, kmeans = 2
 - molecular_dynamics: lavamd, md = 2
-- other: bptree, huffman, mummergpu, myocyte, streamcluster, nqueen, scan, mixbench = 8
-- physics: cfd, hotspot, hotspot3d, particlefilter, iso2dfd, xsbench, rsbench = 7
-- reduction: scan = 1 **WAIT -- scan is also in "other"**
+- other: bptree, huffman, mummergpu, myocyte, nw, streamcluster, nqueen, mixbench = 8
+- physics: cfd, dwt2d, hotspot, hotspot3d, particlefilter, xsbench, rsbench = 7
+- reduction: scan = 1
+- sort: hybridsort = 1
+- stencil: convolution1d, heat2d, iso2dfd, jacobi, stencil1d = 5
+- **Total: 35 kernels, 10 categories, no double-counting**
 
-The double-counting of `scan` means only 10 distinct categories but the kernel count in the table above double-counts scan. The correct count from sloc_analysis.json assigns each kernel exactly ONE category. Let me re-examine the actual data.
-
-Looking at the sloc_analysis.json data: each kernel has exactly one `category` field. The counts are:
-- graph: 5, image: 2, linear_algebra: 2, ml: 2, molecular_dynamics: 2, other: 8, physics: 7, reduction: 1, sort: 1, stencil: 5 = 35 total
-
-This is correct. The `scan` kernel is in "reduction" (from sloc_analysis.json), while in benchmark_characterization.json (which uses manifest.jsonl categories), some kernels may be categorized differently. The planner should use sloc_analysis.json as the canonical category assignment for the 35-kernel corpus.
+The planner should use sloc_analysis.json as the canonical category assignment for the 35-kernel corpus.
 
 ### Table Design Recommendation
 
@@ -211,7 +209,7 @@ Since `tab:suite-summary` already shows API coverage, the "second table" can be 
 Category & Kernels & Suites \\
 \midrule
 Graph algorithms & 5 & Rodinia (3), HeCBench (2) \\
-Physics simulation & 7 & Rodinia (4), HeCBench (1), XSBench, RSBench \\
+Physics simulation & 7 & Rodinia (5), XSBench, RSBench \\
 Stencil computation & 5 & HeCBench (5) \\
 Machine learning & 2 & Rodinia (2) \\
 Image processing & 2 & Rodinia (2) \\
@@ -219,7 +217,7 @@ Linear algebra & 2 & Rodinia (2) \\
 Molecular dynamics & 2 & Rodinia (1), HeCBench (1) \\
 Reduction & 1 & HeCBench (1) \\
 Sort & 1 & Rodinia (1) \\
-Other & 8 & Rodinia (5), HeCBench (2), mixbench (1) \\
+Other & 8 & Rodinia (6), HeCBench (1), mixbench (1) \\
 \midrule
 \textbf{Total} & \textbf{35} & \textbf{5 suites} \\
 \bottomrule
