@@ -260,12 +260,12 @@ Plans:
 
 **Output format:** JSON with sections matching the 14 criteria above, plus a Markdown companion with tables ready to copy-paste into paper sections.
 
-**Plans**: 3 plans in 2 waves
+**Plans**: 3 plans in 3 waves
 
 Plans:
-- [ ] 09-01-PLAN.md -- [Wave 1] Create quantitative_findings.py script: aggregate, per-direction, direction asymmetry, augmentation, failure taxonomy (criteria 1-5)
-- [ ] 09-02-PLAN.md -- [Wave 1] Extend script: self-repair, pass@k, per-kernel tiers, complexity correlation, cross-suite, token cost, SLoC correlation, OpenCL effect (criteria 6-13)
-- [ ] 09-03-PLAN.md -- [Wave 2, depends on 09-01+02] Validate all findings against raw result JSONs — spot-check 10+ numbers by manually counting files with jq
+- [ ] 09-01-PLAN.md -- [Wave 1] Create quantitative_findings.py with data pipeline, campaign separation, and dimensions 1-5 (aggregate, direction, asymmetry, augmentation, failure taxonomy) + provenance framework
+- [ ] 09-02-PLAN.md -- [Wave 2, depends on 09-01] Extend script with dimensions 6-13 (self-repair, pass@k, per-kernel tiers, complexity, cross-suite, token cost, SLoC correlation, OpenCL effect) + paper_claims mapping
+- [ ] 09-03-PLAN.md -- [Wave 3, depends on 09-01+02] Implement --validate: 10+ spot-checks, cross-checks, consistency checks, paper claims pre-audit
 
 ### Phase 10: Qualitative Analysis and Research Narrative
 
