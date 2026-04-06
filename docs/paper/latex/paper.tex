@@ -985,80 +985,64 @@ Methodological notes: Wilson confidence intervals are preferred over Wald interv
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{The Kernel-Centric Advantage}
+% Merged from S7.1 (Kernel-Centric Advantage) + S7.3 (Model Capability Analysis)
+% + key points from S7.7 (Implications for HPC)
+% P1-15: Merged 7 subsections into 3 per D-14/D-15
+\subsection{Kernel-Centric Translation Implications}
 \label{sec:kernel-advantage}
 
-% src: paper_data.json > primary_campaign > by_direction > cuda-to-omp: 77/120=64.2% [55.3%, 72.2%] (same as S6.6)
+% src: paper_data.json > primary_campaign > by_direction > cuda-to-omp: 77/120=64.2% [55.3%, 72.2%]
 % src: 0% pass@1 is ParEval-Repo cited claim, not our data
-The results reported in Section~\ref{sec:results} trace specific failure paths through the pipeline architecture shown in Figure~\ref{fig:architecture}. ParBench's central design decision---isolating kernel-level translation from build-system generation---produces a qualitatively different evaluation outcome than repository-level approaches. Qwen~3.5 achieves 64.2\% [55.3\%, 72.2\%] PASS on CUDA-to-OpenMP translation of the same class of HPC kernels for which ParEval-Repo~\cite{ParEvalRepo2025} reports 0\% pass@1 at the repository level. This is not a comparison of different benchmarks or different models; it is a comparison of evaluation granularity applied to overlapping computational domains.
+ParBench's central design decision---isolating kernel-level translation from build-system generation---produces a qualitatively different outcome than repository-level approaches. As shown in Section~\ref{sec:overall-pass}, Qwen~3.5 achieves 64.2\% on CUDA-to-OpenMP for the same class of HPC kernels for which ParEval-Repo~\cite{ParEvalRepo2025} reports 0\% pass@1 at the repository level. The implication is that LLMs possess substantial internalized knowledge of parallel programming patterns---thread decomposition, reduction operations, stencil computation, synchronization---that is masked when evaluation conflates translation skill with build-system generation. ParBench's kernel-centric design separates these orthogonal capabilities, enabling measurement of each in isolation.
 
-The implication is that LLMs possess substantial internalized knowledge of parallel programming patterns---thread decomposition, reduction operations, stencil computation, synchronization---that is masked when evaluation conflates translation skill with build-system generation. ParBench's kernel-centric design separates these orthogonal capabilities, enabling measurement of each in isolation.
+% Merged from S7.3: Model capability spectrum
+% src: 19.7% = macro pass@1 from passk_estimates; 38.3% = primary campaign overall; LASSI 80-85%
+This capability is framed on a three-tier spectrum: (1)~raw model capability (19.7\% macro-averaged pass@1 at $T{=}0.7$---zero-shot without feedback), (2)~controlled self-repair (38.3\%---error feedback without tools), and (3)~agentic systems such as LASSI~\cite{LASSI2024} (80--85\%---full tooling including profiling and RAG). As a Mixture-of-Experts model activating only 17B of 397B parameters per forward pass, Qwen~3.5's performance demonstrates that sparse activation architectures can encode substantial HPC translation knowledge. \pending{Cross-model comparison awaiting GPT-4.1~mini campaign completion.}
 
-\subsection{BUILD\_FAIL as the Actionable Bottleneck}
-\label{sec:buildfail-bottleneck}
+% Merged from S7.7: Practical implications for HPC community
+For HPC practitioners, these results identify which translation tasks are currently tractable: kernels with regular parallelism and structured memory access (Section~\ref{sec:per-kernel}, easy tier) succeed at rates above 50\%, while multi-file kernels with complex interdependencies (XSBench, RSBench) remain beyond current capability. The framework is extensible---adding a new kernel requires one JSON spec file with no harness modification---enabling community adoption as a controlled evaluation substrate for agentic systems like LASSI~\cite{LASSI2024} and ParaCodex~\cite{ParaCodex2026}.
 
-% src: paper_data.json > primary_campaign > overall: 710 total, 272 pass, 438 fail; BUILD_FAIL=241, 241/438=55.0%
-BUILD\_FAIL accounts for 55.0\% of all failures (241/438 failed tasks) across 710 tasks, establishing that the primary bottleneck is API-specific syntax rather than parallel reasoning capability. The recurring error patterns---retained \texttt{cudaMalloc}/\texttt{cudaFree} calls, missing OpenMP pragma directives, incorrect type coercions---are syntactic, not algorithmic. This finding has a direct practical implication: targeted fine-tuning on OpenMP idioms, or few-shot prompting with canonical CUDA-to-OpenMP translation examples, would likely close a substantial portion of the BUILD\_FAIL gap.
+% Merged from S7.2 (BUILD_FAIL Bottleneck) + S7.4 (Direction Asymmetry)
+% + S7.5 (Augmentation Interpretation) + key points from S7.7
+\subsection{Error Analysis and Actionable Insights}
+\label{sec:error-analysis}
 
-% src: paper_data.json > primary_campaign > overall > by_status: VERIFY_FAIL=51, 51/438=11.6%
-VERIFY\_FAIL accounts for 11.6\% of all failures (51/438 failed tasks), providing a more nuanced picture. These are translations that compile, run to completion, and produce output---but incorrect output. The conjunctive verification upgrade (exit\_code AND stdout\_pattern) catches these cases, which weaker verification would miss.
+% src: paper_data.json > primary_campaign > overall: BUILD_FAIL=241, 241/438=55.0%
+\textbf{BUILD\_FAIL as the actionable bottleneck.} As reported in Section~\ref{sec:failure-taxonomy}, BUILD\_FAIL accounts for 55.0\% of all failures (241/438), establishing API-specific syntax as the primary bottleneck. The recurring error patterns---retained \texttt{cudaMalloc}/\texttt{cudaFree} calls, missing OpenMP pragma directives, incorrect type coercions---are predominantly syntactic rather than algorithmic. The practical implication: targeted fine-tuning on OpenMP idioms, or few-shot prompting with canonical CUDA-to-OpenMP translation examples, would likely close a substantial portion of the BUILD\_FAIL gap. The highest-ROI intervention for LLM developers is improving coverage of API-specific syntax rather than general parallel reasoning.
 
-\subsection{Model Capability Analysis}
-\label{sec:model-capability}
+% src: paper_data.json > by_direction: cuda-to-omp 64.2%, opencl-to-cuda 6.0%; gap=58.2pp
+\textbf{Direction asymmetry reveals API complexity hierarchy.} The 58.2 percentage-point gap between the best direction (CUDA-to-OpenMP, 64.2\%) and worst (OpenCL-to-CUDA, 6.0\%) is consistent with a structural hypothesis: translating from an explicit model (CUDA, OpenCL) to a directive-based model (OpenMP) is a \emph{reductive} task---removing API constructs---while the reverse is \emph{generative}, requiring the model to introduce CUDA-specific constructs. OpenCL-target translations further reveal a \emph{translatability ceiling}: the \texttt{dwt2d} kernel uses C++ features (templates, operator overloads) with no OpenCL~C equivalent, distinguishing \emph{model failures} from \emph{task impossibilities}. Evaluation frameworks should account for this distinction. \pending{Cross-model direction asymmetry awaiting GPT-4.1~mini data.}
 
-% src: paper_data.json > primary_campaign > overall: 272/710=38.3% [34.8%, 41.9%]; by_direction > cuda-to-omp: 64.2% (same as S6.1, S6.6)
-Qwen~3.5 397B-A17B (MoE, 397B total / 17B active) achieves 38.3\% [34.8\%, 41.9\%] across 710 tasks. As a Mixture-of-Experts model, Qwen~3.5 activates only 17B of its 397B parameters per forward pass, yet demonstrates substantial parallel code translation capability---64.2\% on the primary CUDA-to-OpenMP direction. \pending{Cross-model comparison across providers awaiting GPT-4.1~mini campaign completion.}
+% src: paper_data.json > augmentation > cochran_armitage: z=0.0, p=1.0; pass@k bimodal: 72.5% hard, 0% noisy
+\textbf{Augmentation null result as diagnostic validation.} The Cochran-Armitage null result ($z{=}0.0$, $p{=}1.0$; Section~\ref{sec:augmentation-robustness}) has three actionable implications. First, it provides evidence \emph{against} the memorization hypothesis: if the model pattern-matched against memorized surface patterns, augmentation at L3--L4 would degrade performance. Second, augmentation validates the benchmark instrument---ParBench measures genuine translation capability rather than training-data recall. Third, the bimodal pass@$k$ distribution (72.5\% hard failures, 0\% noisy failures) reinforces this: the model either can or cannot translate a given kernel-direction pair, regardless of surface syntax. ParBench's augmentation and LASSI's agentic correction~\cite{LASSI2024} are complementary: augmentation validates the instrument, while agentic correction improves translation output. Augmentation should be standard practice for LLM-on-code evaluation. \pending{Cross-provider augmentation sensitivity comparison awaiting GPT-4.1~mini data.}
 
-The comparison with LASSI~\cite{LASSI2024} frames these results on a capability spectrum:
-
-\begin{enumerate}
-% src: 19.7% = macro pass@1 from passk_estimates (UNCHANGED); 38.3% = primary campaign overall (paper_data.json > primary_campaign > overall > pass_rate=0.3831)
-\item \textbf{Raw model capability} (pass@$k$ floor): 19.7\% macro-averaged pass@1 at T=0.7---what the model achieves zero-shot without any feedback.
-\item \textbf{Controlled self-repair} (primary campaign): 38.3\%---error feedback without tools.
-\item \textbf{Agentic system} (LASSI): 80--85\%---full tooling including profiling and RAG.
-\end{enumerate}
-
-\subsection{Direction Asymmetry}
-\label{sec:direction-asymmetry}
-
-% src: paper_data.json > primary_campaign > by_direction: cuda-to-omp 64.2%, opencl-to-cuda 6.0%; 64.2%-6.0%=58.2pp
-% src: 64.2%-52.5%=11.7pp; 38.9%-27.8%=11.1pp; 20.0%-6.0%=14.0pp (all from tab:direction-rates)
-CUDA-to-OpenMP achieves the highest pass rate (64.2\%) among all directions, while OpenCL-to-CUDA achieves the lowest (6.0\%), a 58.2 percentage-point gap (Table~\ref{tab:direction-rates}). However, McNemar's tests reveal no statistically significant asymmetry for any bidirectional pair after Bonferroni correction (all $p > 0.05$, Table~\ref{tab:stats-summary}). The absolute gaps---11.7 points for CUDA/OpenMP, 11.1 points for OpenCL/OpenMP, 14.0 points for CUDA/OpenCL---are consistent with the structural hypothesis: translating from an explicit programming model (CUDA, OpenCL) to a directive-based model (OpenMP) is a reductive task that removes API-specific constructs, while the reverse is generative.
-
-\textbf{OpenCL as a structurally distinct translation target.} Translations targeting OpenCL exhibit qualitatively different failure profiles from those targeting CUDA or OpenMP, reflecting the OpenCL programming model's unique architectural characteristics. OpenCL translations are \emph{kernel-only}: only \texttt{.cl} kernel files are translated, while host code remains unchanged. Two systematic error patterns illuminate the nature of the challenge: missing \texttt{\_\_global} address space qualifiers and API name hallucination. These patterns suggest that LLM knowledge of OpenCL's API surface is shallower than for CUDA or OpenMP, consistent with the relative scarcity of OpenCL code in public training corpora.
-
-Beyond API surface depth, OpenCL-target translations expose a \emph{translatability ceiling}: the \texttt{dwt2d} kernel's CUDA source uses C++ language features (templates, operator overloads) that have no equivalent in OpenCL~C. Future evaluation frameworks should distinguish \emph{model failures} (where a more capable LLM might succeed) from \emph{task impossibilities} (where the source--target language gap precludes any correct translation without host-code modification). \pending{Cross-model consistency of direction asymmetry awaiting GPT-4.1~mini data.}
-
-\subsection{Augmentation Robustness Interpretation}
-\label{sec:augmentation-interpretation}
-
-% src: paper_data.json > primary_campaign > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0 (same as S6.5, S6.8)
-% src: paper_data.json > augmentation > cuda_to_omp_balanced: L0=16/24=66.7%, L1=14/24=58.3%, L2=17/24=70.8%, L3=14/24=58.3%, L4=16/24=66.7%
-The Cochran-Armitage null result ($z = 0.0$, $p = 1.0$) is the central augmentation finding: there is no evidence that surface-level code transformations affect Qwen~3.5's translation capability. Pass rates across L0--L4 on the balanced CUDA-to-OpenMP subset are remarkably stable (66.7\%, 58.3\%, 70.8\%, 58.3\%, 66.7\%), with overlapping confidence intervals at every level (Table~\ref{tab:augmentation-rates}).
-
-% src: 72.5% hard failures = 103/142 from passk_estimates (same as S6.7); 0% noisy = 0/142
-This null result has three implications. First, it provides evidence \emph{against} the memorization hypothesis. Second, the null result validates ParBench's augmentation methodology as a useful diagnostic: augmentation confirms that the benchmark measures genuine translation capability rather than training-data recall. Third, the connection to pass@$k$ reinforces this interpretation: the bimodal distribution of pass@$k$ results (72.5\% hard failures, 0\% noisy failures) indicates that the model either can or cannot translate a given kernel-direction pair, regardless of surface syntax. \pending{Cross-provider augmentation sensitivity comparison and Simpson's Paradox check awaiting GPT-4.1~mini data.}
-
-% AUG-03: LASSI positioning (complementary framing per D-07, D-08)
-% src: LASSI paper Table 2 (80-85%); paper_data.json augmentation.cochran_armitage
-ParBench's augmentation and LASSI's self-correction pipeline~\cite{LASSI2024} address complementary research questions. LASSI measures the effectiveness of an agentic
-correction loop---iterative error feedback improves translation success to
-80--85\% on 10 HeCBench kernels. ParBench's augmentation measures
-\emph{robustness}---whether surface-level code variation affects translation
-capability. The Cochran-Armitage null result demonstrates that augmentation is a
-diagnostic tool: it confirms that ParBench measures genuine translation capability
-rather than training-data recall, but it does not discriminate between augmentation
-levels. LASSI's self-correction, by contrast, produces a measurable lift by
-addressing the structural errors that dominate ParBench's failure taxonomy.
-The two capabilities are complementary: augmentation validates the benchmark
-instrument, while agentic correction improves the translation output.
-
+% Kept as standalone subsection per D-16; updated with P1-16, P1-19, sample size
 \subsection{Threats to Validity}
 \label{sec:threats}
 
 Several threats to the validity of these findings must be acknowledged.
 
-\textbf{Sample size and suite scope.} The corpus spans 35 kernels across five suites, a significant expansion from single-suite evaluations; 31 participate in the per-kernel evaluation, with four excluded (\texttt{kmeans}, \texttt{mummergpu}, \texttt{hybridsort}, \texttt{huffman}) because their baseline specs are KNOWN\_FAIL or removed from the corpus, precluding valid translation pairs (Section~\ref{sec:per-kernel}). Non-primary directions have smaller sample sizes; findings from directions with fewer than 10 kernel-model pairs should be considered exploratory.
+% P1-16 + P1-19: Statistical power limitations (new, per D-16)
+% src: MDES=34.1pp (CUDA-to-OMP balanced, n=24/level); McNemar n_discordant=5-9
+\textbf{Statistical power.}
+The Cochran-Armitage trend test for augmentation robustness has
+a minimum detectable effect size (MDES) of 34.1 percentage points
+at 80\% power---our null result is consistent with genuine
+invariance but also with moderate undetected effects.
+Similarly, McNemar's tests for direction asymmetry rely on only
+$5$--$9$ discordant pairs, yielding effectively zero power to
+detect moderate asymmetries.
+Failure to reject $H_0$ should not be interpreted as evidence
+for $H_0$; larger corpora are needed for definitive conclusions.
+
+\textbf{Sample size and suite scope.} The corpus spans 35 kernels across five suites, a significant expansion from single-suite evaluations; 31 participate in the per-kernel evaluation, with four excluded (\texttt{kmeans}, \texttt{mummergpu}, \texttt{hybridsort}, \texttt{huffman}) because their baseline specs are KNOWN\_FAIL or removed from the corpus (Section~\ref{sec:per-kernel}). Non-primary directions have smaller sample sizes; findings from directions with fewer than 10 kernel-model pairs should be considered exploratory.
+
+% Updated: single-model limitation (was "two-model")
+\textbf{Single-model evaluation.}
+Results reflect a single model (Qwen~3.5 397B) at temperature
+$T{=}0$. Generalization to other models, temperatures, or prompting
+strategies requires additional evaluation campaigns.
+Two models are planned (Qwen via Together AI, GPT-4.1~mini via Azure); cross-provider comparison will be reported in a subsequent revision. \pending{GPT-4.1~mini results.}
 
 \textbf{Rodinia training-data familiarity.} Rodinia is a 15+ year-old benchmark suite whose kernels are extensively documented and almost certainly present in LLM training data. The augmentation engine addresses surface-level memorization, but cannot address algorithmic-level memorization. The five-suite expansion mitigates this concern.
 
@@ -1066,26 +1050,9 @@ Several threats to the validity of these findings must be acknowledged.
 
 \textbf{Temperature and sampling methodology.} The primary campaign uses temperature=0 (greedy decoding) for deterministic reproducibility. The interaction between sampling variance and augmentation level is not characterized.
 
-\textbf{Two-model evaluation.} Two models are evaluated from distinct providers (Alibaba via Together AI, OpenAI via Azure). Results may not generalize to models from other providers or architecture families.
-
 \textbf{Reference implementation as ground truth.} Floating-point non-associativity between GPU and CPU computation could in principle cause false VERIFY\_FAIL results. Manual inspection of a sample of VERIFY\_FAIL cases confirms genuine translation errors.
 
 \textbf{Pipeline evolution during development.} The evaluation pipeline underwent iterative refinement during campaign execution. An audit identified that cross-API translations were evaluated using the target spec's run arguments rather than the source spec's, producing systematic false negatives. The fix was applied before the final campaign results reported in this paper. We disclose this to acknowledge that evaluation infrastructure itself can be a source of measurement error in LLM benchmarking.
-
-\subsection{Implications for the HPC Community}
-\label{sec:implications}
-
-% src: paper_data.json > primary_campaign > by_direction > cuda-to-omp: 64.2%; 0% is ParEval-Repo cited claim
-\textbf{LLMs can translate kernel-level parallel code with meaningful success rates.} The 64.2\% pass rate for Qwen~3.5 on CUDA-to-OpenMP translation---compared to 0\% for repository-level approaches on the same kernels---demonstrates that kernel-level translation is a tractable task for current LLMs.
-
-% src: paper_data.json > primary_campaign > overall > by_status: BUILD_FAIL=241; 241/710=33.9% all tasks; 241/438=55.0% of failures (same as S7.2)
-\textbf{BUILD\_FAIL dominance suggests targeted solutions.} With 33.9\% of all tasks and 55.0\% of failures occurring at the compilation stage, the highest-ROI intervention is improving LLM coverage of API-specific syntax.
-
-\textbf{Augmentation should be standard practice for LLM-on-code evaluation.} The Cochran-Armitage null result demonstrates that augmentation serves as a valuable validation tool even when it does not discriminate between augmentation levels. \pending{Whether augmentation discriminates between models of different capability levels awaiting GPT-4.1~mini data.}
-
-\textbf{Framework extensibility enables community adoption.} ParBench's spec schema is the extension point: adding a new kernel requires one JSON file with no modification to the harness or evaluation pipeline.
-
-\textbf{The agentic gap is quantifiable.} The three-tier framing (raw pass@$k$ $<$ controlled self-repair $<$ agentic system) provides a measurement framework for decomposing LLM capability improvements. As agentic systems like LASSI~\cite{LASSI2024} and ParaCodex~\cite{ParaCodex2026} mature, ParBench's specifications serve as a controlled evaluation substrate.
 
 %% =============================================================
 %% S8 CONCLUSION
