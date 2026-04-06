@@ -48,28 +48,16 @@ scales: a dense co-occurrence cluster centered on MPI, OpenMP, CUDA, and HIP,
 with sparser connectivity among directive-based (OpenACC, OpenMP Target),
 portability (Kokkos, RAJA, SYCL), and niche APIs.
 
-The force-directed network visualization makes
-the clustering structure explicit. Node sizes are proportional to the number of
-benchmarks implementing each API, and edges are drawn only for co-occurrence
-counts of 3 or more repositories. The result reveals three natural groupings:
-
-\begin{enumerate}
-  \item \textbf{Core cluster}: MPI (largest node), OpenMP, CUDA, HIP, OpenACC,
-    and OpenCL form a tightly interconnected group. These APIs co-occur
-    frequently because the benchmark suites that provide the richest multi-API
-    material (HeCBench, Rodinia, RAJAPerf, BabelStream) implement most or all of
-    them.
-
-  \item \textbf{Portability periphery}: SYCL, Kokkos, RAJA, and OpenMP Target
-    connect to the core cluster but with weaker edges. These APIs are
-    concentrated in a smaller number of suites (primarily RAJAPerf, BabelStream,
-    and HeCBench).
-
-  \item \textbf{Isolated APIs}: OCCA, Thrust, Chapel, Coarray Fortran, Charm++,
-    C++ AMP, UPC, OpenSHEM, HMPP, Python, HLS, GSParLib, STM/TM, and Serial
-    appear as isolated or weakly connected nodes. Their co-occurrence with any
-    other API falls below the edge threshold of~3.
-\end{enumerate}
+The co-occurrence structure reveals three natural groupings.
+\textbf{Core cluster}: MPI, OpenMP, CUDA, HIP, OpenACC, and OpenCL form a tightly
+interconnected group, co-occurring frequently across the benchmark suites with the
+richest multi-API material (HeCBench, Rodinia, RAJAPerf, BabelStream).
+\textbf{Portability periphery}: SYCL, Kokkos, RAJA, and OpenMP Target connect to the
+core cluster with weaker co-occurrence, concentrated in a smaller number of suites
+(primarily RAJAPerf, BabelStream, and HeCBench).
+\textbf{Isolated APIs}: OCCA, Thrust, Chapel, Coarray Fortran, Charm++, C++ AMP, UPC,
+OpenSHMEM, HMPP, Python, HLS, GSParLib, STM/TM, and Serial have co-occurrence below~3
+with all other APIs.
 
 Figure~\ref{fig:api-coverage} presents the per-API coverage in a ranked bar
 chart, making the quantitative dominance of the top-3 APIs clear.
@@ -335,8 +323,7 @@ across categories.
 The relationship between benchmarks and APIs is not uniform: some repositories
 implement a single API (e.g., SPEC OMP, PARSEC, LonestarGPU), while others
 provide implementations across 10+ APIs (BabelStream with~12, miniBUDE
-with~14). This heterogeneity forms a bipartite network structure linking
-benchmarks to their supported APIs.
+with~14).
 
 Figure~\ref{fig:api-count-hist} quantifies the API breadth distribution across
 the surveyed benchmarks.

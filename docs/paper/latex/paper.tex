@@ -823,7 +823,7 @@ XSBench & xsbench & 30 & 0 & 30 & 0.0 & [0.0, 11.4] \\ % src: paper_data.json > 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{f3_kernel_model_heatmap.pdf}
-\caption{Per-kernel pass/fail heatmap across 6 standard translation directions (29 kernels, L0, Qwen~3.5). Cell color: green (PASS), red (BUILD\_FAIL), orange (RUN\_FAIL), blue (VERIFY\_FAIL), pink (EXTRACTION\_FAIL).}
+\caption{Per-kernel pass/fail heatmap across 6 standard translation directions (31 kernels, L0, Qwen~3.5). Cell color: green (PASS), red (BUILD\_FAIL), orange (RUN\_FAIL), blue (VERIFY\_FAIL), pink (EXTRACTION\_FAIL).}
 \label{fig:kernel-heatmap}
 \end{figure*}
 
@@ -882,7 +882,6 @@ The self-repair data positions ParBench's 3-retry protocol as a controlled middl
 % src: 88 non-KNOWN_FAIL = 96 total - 8 KNOWN_FAIL; 68 validated = 88 - 20 (OpenCL-only specs w/o all directions); verified 2026-04-03
 The augmentation engine's six AST-driven transforms were validated on 68 of 88 non-KNOWN\_FAIL specs across five suites at augmentation levels L1 through L4, confirming level-invariant semantics preservation with zero correctness regressions (Section~\ref{sec:augmentation-engine}).
 
-Table~\ref{tab:augmentation-rates} presents per-model pass rates across augmentation levels L0--L4 for CUDA-to-OpenMP translation.
 % [Float moved to Appendix D]
 Per-level augmentation pass rates are detailed in Appendix Table~\ref{tab:augmentation-rates}.
 
