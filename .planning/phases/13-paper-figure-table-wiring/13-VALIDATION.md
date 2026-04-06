@@ -1,10 +1,11 @@
 ---
 phase: 13
 slug: paper-figure-table-wiring
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-06
+audited: 2026-04-06
 ---
 
 # Phase 13 — Validation Strategy
@@ -40,30 +41,30 @@ created: 2026-04-06
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 13-01-01 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -cP '^\s*\\\\includegraphics.*parbench_architecture' docs/paper/latex/paper.tex` (expect 1; must NOT match commented `% \includegraphics`) | ✅ | ⬜ pending |
-| 13-01-02 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'Triple-panel' docs/paper/latex/paper.tex` (expect 0) | ✅ | ⬜ pending |
-| 13-01-03 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:aug-heatmap' docs/paper/latex/paper.tex` (expect 1) | ✅ | ⬜ pending |
-| 13-01-04 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:cross-suite' docs/paper/latex/paper.tex` (expect 1) | ✅ | ⬜ pending |
-| 13-01-05 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'TODO.*drawio' docs/paper/latex/paper.tex` (expect 0) | ✅ | ⬜ pending |
-| 13-01-06 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fbox.*placeholder' docs/paper/latex/paper.tex` (expect 0) | ✅ | ⬜ pending |
-| 13-01-07 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:xsbench' docs/paper/latex/paper.tex` (expect 0) | ✅ | ⬜ pending |
+| 13-01-01 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -cP '^\s*\\\\includegraphics.*parbench_architecture' docs/paper/latex/paper.tex` (expect 1; must NOT match commented `% \includegraphics`) | ✅ | ✅ green |
+| 13-01-02 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'Triple-panel' docs/paper/latex/paper.tex` (expect 0) | ✅ | ✅ green |
+| 13-01-03 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:aug-heatmap' docs/paper/latex/paper.tex` (expect 1) | ✅ | ✅ green |
+| 13-01-04 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:cross-suite' docs/paper/latex/paper.tex` (expect 1) | ✅ | ✅ green |
+| 13-01-05 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'TODO.*drawio' docs/paper/latex/paper.tex` (expect 0) | ✅ | ✅ green |
+| 13-01-06 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fbox.*placeholder' docs/paper/latex/paper.tex` (expect 0) | ✅ | ✅ green |
+| 13-01-07 | 01 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:xsbench' docs/paper/latex/paper.tex` (expect 0) | ✅ | ✅ green |
 
 ### Plan 02 (appendices.tex edits + file deletions)
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 13-02-01 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'f6_cross_suite_comparison' docs/paper/latex/appendices.tex` (expect 1) | ✅ | ⬜ pending |
-| 13-02-02 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:cross-suite' docs/paper/latex/appendices.tex` (expect 1) | ✅ | ⬜ pending |
-| 13-02-03 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'aug_heatmap' docs/paper/latex/appendices.tex` (expect >= 1) | ✅ | ⬜ pending |
-| 13-02-04 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:aug-heatmap' docs/paper/latex/appendices.tex` (expect 1) | ✅ | ⬜ pending |
-| 13-02-05 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:xsbench' docs/paper/latex/appendices.tex` (expect 0) | ✅ | ⬜ pending |
-| 13-02-06 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:api-network' docs/paper/latex/appendices.tex` (expect 0) | ✅ | ⬜ pending |
-| 13-02-07 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:bipartite' docs/paper/latex/appendices.tex` (expect 0) | ✅ | ⬜ pending |
-| 13-02-08 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:quality-tiers' docs/paper/latex/appendices.tex` (expect 0) | ✅ | ⬜ pending |
-| 13-02-09 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fbox.*Missing' docs/paper/latex/appendices.tex` (expect 0) | ✅ | ⬜ pending |
-| 13-02-10 | 02 | 1 | AUG-04 | — | N/A | file | `test ! -f docs/paper/latex/figures/f6_xsbench_comparison.pdf` | ✅ | ⬜ pending |
-| 13-02-11 | 02 | 1 | AUG-04 | — | N/A | file | `test ! -f docs/paper/latex/figures/f6_xsbench_comparison.png` | ✅ | ⬜ pending |
-| 13-02-12 | 02 | 1 | AUG-04 | — | N/A | file | `test ! -f docs/paper/figures/t2_model_comparison.tex` | ✅ | ⬜ pending |
+| 13-02-01 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'f6_cross_suite_comparison' docs/paper/latex/appendices.tex` (expect 1) | ✅ | ✅ green |
+| 13-02-02 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:cross-suite' docs/paper/latex/appendices.tex` (expect 1) | ✅ | ✅ green |
+| 13-02-03 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'aug_heatmap' docs/paper/latex/appendices.tex` (expect >= 1) | ✅ | ✅ green |
+| 13-02-04 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:aug-heatmap' docs/paper/latex/appendices.tex` (expect 1) | ✅ | ✅ green |
+| 13-02-05 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:xsbench' docs/paper/latex/appendices.tex` (expect 0) | ✅ | ✅ green |
+| 13-02-06 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:api-network' docs/paper/latex/appendices.tex` (expect 0) | ✅ | ✅ green |
+| 13-02-07 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:bipartite' docs/paper/latex/appendices.tex` (expect 0) | ✅ | ✅ green |
+| 13-02-08 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fig:quality-tiers' docs/paper/latex/appendices.tex` (expect 0) | ✅ | ✅ green |
+| 13-02-09 | 02 | 1 | AUG-04 | — | N/A | grep | `grep -c 'fbox.*Missing' docs/paper/latex/appendices.tex` (expect 0) | ✅ | ✅ green |
+| 13-02-10 | 02 | 1 | AUG-04 | — | N/A | file | `test ! -f docs/paper/latex/figures/f6_xsbench_comparison.pdf` | ✅ | ✅ green |
+| 13-02-11 | 02 | 1 | AUG-04 | — | N/A | file | `test ! -f docs/paper/latex/figures/f6_xsbench_comparison.png` | ✅ | ✅ green |
+| 13-02-12 | 02 | 1 | AUG-04 | — | N/A | file | `test ! -f docs/paper/figures/t2_model_comparison.tex` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -91,11 +92,23 @@ created: 2026-04-06
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 2s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have `<automated>` verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 2s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** 2026-04-06 — all 19 tasks ✅ green
+
+---
+
+## Validation Audit 2026-04-06
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 1 |
+| Resolved | 1 |
+| Escalated | 0 |
+
+**Gap resolved:** 13-02-12 — `docs/paper/figures/t2_model_comparison.tex` was git-removed in commit `6d64d68` but still existed on disk as an untracked file. Deleted from disk and committed.
