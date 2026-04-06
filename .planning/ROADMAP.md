@@ -153,7 +153,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 11. Paper TeX Integration | 4/4 | Complete   | 2026-04-06 |
 | 12. Fix Stale Pass@k Values | 3/3 | Complete   | 2026-04-06 |
 | 12.1. SC26 Review P0 Quick Fixes | 1/1 | Complete   | 2026-04-06 |
-| 13. Paper.tex Figure & Table Wiring | 1/2 | In Progress|  |
+| 13. Paper.tex Figure & Table Wiring | 2/2 | Complete   | 2026-04-06 |
 | 14. Verification Backfill & Housekeeping | 0/1 | Not started (scope expanded: +artifact README, +API env docs) | - |
 
 ### Phase 6: RSBench Single-File Re-spec Controlled Experiment — **DROPPED**
@@ -387,7 +387,7 @@ Plans:
 
 Plans:
 - [x] 13-01-PLAN.md -- paper.tex figure wiring: architecture diagram, F3 caption, aug_heatmap ref, F6 cross-reference
-- [ ] 13-02-PLAN.md -- appendices.tex figure wiring: survey figure cleanup, F6 update, aug_heatmap insertion, stale file deletion
+- [x] 13-02-PLAN.md -- appendices.tex figure wiring: survey figure cleanup, F6 update, aug_heatmap insertion, stale file deletion
 
 ### Phase 14: Verification Backfill & Housekeeping
 
