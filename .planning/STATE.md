@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 12-02-PLAN.md
+status: executing
+stopped_at: Phase 12 complete — all paper.tex numbers updated to 710-task scope
 last_updated: "2026-04-05T22:52:55.102Z"
-last_activity: 2026-04-05
+last_activity: 2026-04-05 -- Phase 12 complete, VERIFY-01 satisfied
 progress:
   total_phases: 14
   completed_phases: 9
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-03)
 
 **Core value:** Every data claim in the paper must be verifiable against actual result files on disk, and every methodology description must be precise enough to withstand SC-level peer review.
-**Current focus:** Phase 05 — introduction-positioning-characterization-table
+**Current focus:** Phase 12 — fix-stale-passk-values (COMPLETE)
 
 ## Current Position
 
-Phase: 05 (introduction-positioning-characterization-table) — EXECUTING
+Phase: 12 (fix-stale-passk-values) — COMPLETE
 Plan: 2 of 2
-Status: Phase complete — ready for verification
+Status: All paper.tex numerical claims updated to 710-task all-suite scope
 Last activity: 2026-04-05
 
-Progress: [..........] 0%
+Progress: [######....] 64%
 
 ## Performance Metrics
 
