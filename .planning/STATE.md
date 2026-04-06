@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 11-03-PLAN.md
-last_updated: "2026-04-06T07:40:17.138Z"
+status: verifying
+stopped_at: Completed 11-04-PLAN.md
+last_updated: "2026-04-06T07:53:38.333Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 15
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 30
-  completed_plans: 29
-  percent: 97
+  completed_plans: 30
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 
 Phase: 11 (paper-tex-integration) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-06
 
 Progress: [##########] 100%
@@ -68,6 +68,7 @@ Progress: [##########] 100%
 | Phase 11 P01 | 6min | 3 tasks | 2 files |
 | Phase 11 P02 | 9min | 2 tasks | 1 files |
 | Phase 11 P03 | 6min | 2 tasks | 1 files |
+| Phase 11 P04 | 9min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,7 @@ Recent decisions affecting current work:
 - [Phase 11]: No number changes needed in S1/S2/S3/S8/Abstract — all values correct after Phases 5, 12, 12.1; added VERIFIED audit comments
 - [Phase 11]: Case study mechanisms validated against result JSONs: cfd=type-system mapping (not reduction scope), gaussian=conditional compilation mismatch (not shared memory)
 - [Phase 11]: S7 merged from 7 to 3 subsections (79 lines from 108); S7.7 Implications folded into S7.1 and S7.2
+- [Phase 11]: 95% CI whitelisted as methodological parameter; provenance checker uses lenient first-segment resolution with primary_campaign fallback; 12 unverified integer counts acceptable (external citations)
 
 ### Roadmap Evolution
 
@@ -124,6 +126,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T07:40:17.135Z
-Stopped at: Completed 11-03-PLAN.md
+Last session: 2026-04-06T07:53:38.330Z
+Stopped at: Completed 11-04-PLAN.md
 Resume file: None
