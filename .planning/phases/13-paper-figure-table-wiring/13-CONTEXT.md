@@ -1,23 +1,120 @@
-# Phase 13: Paper.tex Figure & Table Wiring
+# Phase 13: Paper.tex Figure & Table Wiring - Context
 
-**Type:** Gap Closure
-**Created:** 2026-04-05 from v1.0 milestone audit
-**Closes:** 4 integration gaps, 2 E2E flow breaks, AUG-04 partial
+**Gathered:** 2026-04-05
+**Status:** Ready for planning
 
-## Problem
+<domain>
+## Phase Boundary
 
-Phase 8 regenerated all figures and Phase 3 produced augmentation figures, but paper.tex
-was never updated to reference the new outputs:
+Wire regenerated Phase 8 figures and Phase 3 augmentation figures into paper.tex by fixing stale references, updating captions, adding missing `\includegraphics` commands, exporting the architecture diagram, and cleaning up stale files. Closes 4 integration gaps + 2 E2E flow breaks + P0-3 from SC26 review.
 
-1. **F6 filename changed:** `f6_xsbench_comparison.pdf` → `f6_cross_suite_comparison.pdf` (paper.tex line ~977)
-2. **F3 redesigned:** Triple-panel → single-panel 29-kernel x 6-direction heatmap (paper.tex line ~812)
-3. **Aug figures orphaned:** `aug_heatmap.pdf` (37KB) and `aug_trend.pdf` (18KB) exist but no `\includegraphics`
-4. **T2 table orphaned:** `t2_model_comparison.tex` exists but no `\input`
+</domain>
 
-## Files to Modify
+<decisions>
+## Implementation Decisions
 
-- `docs/paper/latex/paper.tex` — all 4 fixes are in this file
+### Aug Figure Placement
+- **D-01:** Add `aug_heatmap.pdf` only — skip `aug_trend.pdf` since F7 (`f7_augmentation_robustness.pdf`) already covers the aggregate trend line.
+- **D-02:** Place aug_heatmap figure AFTER F7 in Section 7.4 (Augmentation Robustness). Reading order: aggregate trend (F7) → per-kernel drill-down (aug_heatmap).
+- **D-03:** Brief caption: "Per-kernel augmentation status across levels L0–L4 (CUDA-to-OMP, Qwen 3.5). Cell color: pass/fail status."
 
-## Verification
+### T2 Table
+- **D-04:** Skip T2 table entirely — `tab:direction-rates` (line 1029) already shows per-direction pass rates with current 5-suite data. T2 content is stale (Rodinia-only, 49/138) and redundant.
+- **D-05:** Delete stale `docs/paper/figures/t2_model_comparison.tex` to avoid confusion.
 
-After edits, `pdflatex paper.tex` should compile without missing figure/table warnings.
+### Architecture Diagram (P0-3)
+- **D-06:** User exports drawio manually (draw.io desktop) → place PDF at `docs/paper/latex/figures/parbench_architecture.pdf`.
+- **D-07:** Phase 13 uncomments `\includegraphics[width=\textwidth]{parbench_architecture.pdf}` at line 261 and removes the `\fbox` placeholder.
+- **D-08:** Figure 1 caption (line 263) is accurate as-is — no changes needed.
+
+### c1-c4 Companion Figures
+- **D-09:** Skip all four companion figures (c1 repair transition matrix, c2 repair rate by direction, c3 transform frequency, c4 selection funnel). Existing tables already convey the information. SC26 page budget is tight.
+
+### F6 Reference & Caption
+- **D-10:** Update filename: `f6_xsbench_comparison.pdf` → `f6_cross_suite_comparison.pdf` at line 1096.
+- **D-11:** New suite-focused caption: "Cross-suite pass rate comparison (L0, Qwen 3.5). Per-suite aggregate pass rates with Wilson 95\% CIs across all 5 benchmark suites."
+- **D-12:** Rename label: `fig:xsbench` → `fig:cross-suite` and update ALL `\ref{fig:xsbench}` references in the paper.
+- **D-13:** Keep F6 in current location (after pass@k section, before Statistical Summary).
+- **D-14:** Delete old `f6_xsbench_comparison.pdf` and `f6_xsbench_comparison.png` from `docs/paper/latex/figures/`.
+
+### F3 Caption
+- **D-15:** Update F3 caption from "Triple-panel" to descriptive single-panel caption: "Per-kernel pass/fail heatmap across 6 standard translation directions (29 kernels, L0, Qwen 3.5). Cell color: green (PASS), red (BUILD\_FAIL), orange (RUN\_FAIL), blue (VERIFY\_FAIL), pink (EXTRACTION\_FAIL)."
+
+### Claude's Discretion
+- Exact `\begin{figure}` environment sizing for aug_heatmap (`figure` vs `figure*`)
+- Whether aug_heatmap needs `\label` for cross-referencing (yes if text references it)
+- Minor prose adjustments around F6 to match the new cross-suite framing
+- TODO comment cleanup (remove drawio TODO at lines 5 and 257 after uncommenting)
+
+</decisions>
+
+<canonical_refs>
+## Canonical References
+
+**Downstream agents MUST read these before planning or implementing.**
+
+### Paper source
+- `docs/paper/latex/paper.tex` — The single file being modified (all wiring changes happen here)
+
+### Figure assets (verified on disk 2026-04-05)
+- `docs/paper/latex/figures/aug_heatmap.pdf` — Per-kernel augmentation heatmap (37KB, generated 2026-04-04)
+- `docs/paper/latex/figures/f6_cross_suite_comparison.pdf` — Cross-suite comparison bar chart (23KB, generated 2026-04-05)
+- `docs/paper/latex/figures/f3_kernel_model_heatmap.pdf` — 29-kernel × 6-direction heatmap (56KB, generated 2026-04-05)
+- `docs/paper/latex/figures/f7_augmentation_robustness.pdf` — Augmentation trend line (15KB, generated 2026-04-05)
+- `docs/paper/figures/parbench_architecture.drawio` — Source for architecture diagram (user exports to PDF)
+
+### Prior phase decisions
+- `.planning/phases/08-figure-regeneration/08-CONTEXT.md` — Figure redesign decisions (D-05 F3 single-panel, D-06 F6 cross-suite, D-09 aug figures untouched, D-11 manual drawio export)
+- `.planning/phases/03-augmentation-analysis-story/03-CONTEXT.md` — Augmentation narrative framing (D-09 two figures: heatmap + trend)
+
+</canonical_refs>
+
+<code_context>
+## Existing Code Insights
+
+### Lines requiring changes (paper.tex)
+- Line 5, 257: TODO comments about drawio export — remove after uncommenting
+- Line 261: Commented-out `\includegraphics{parbench_architecture.pdf}` — uncomment
+- Line 262: `\fbox` placeholder — remove
+- Line 931: F3 caption with "Triple-panel" — update
+- Line 1096: `f6_xsbench_comparison.pdf` reference — update filename
+- Line 1097: F6 caption — rewrite for cross-suite
+- Line 1098: `\label{fig:xsbench}` — rename to `fig:cross-suite`
+- After line 1015: Insert new `\begin{figure}` block for aug_heatmap
+
+### References to update
+- All `\ref{fig:xsbench}` instances → `\ref{fig:cross-suite}`
+
+### Files to delete
+- `docs/paper/latex/figures/f6_xsbench_comparison.pdf` (old F6)
+- `docs/paper/latex/figures/f6_xsbench_comparison.png` (old F6)
+- `docs/paper/figures/t2_model_comparison.tex` (stale T2 table)
+
+### graphicspath
+- `\graphicspath{{figures/}{../../analysis/visualizations/}}` — figures/ relative to `docs/paper/latex/`
+
+</code_context>
+
+<specifics>
+## Specific Ideas
+
+- F6 caption should be suite-focused: "Cross-suite pass rate comparison..."
+- F3 caption should list all 5 status colors explicitly for readers
+- Aug heatmap caption should be brief (2 lines max) — the figure is self-explanatory
+- Architecture diagram export is a manual user step — Phase 13 just handles the LaTeX side
+
+</specifics>
+
+<deferred>
+## Deferred Ideas
+
+- c1-c4 companion figures (repair matrix, repair rate, transform frequency, selection funnel) — could be added to supplementary material in a future revision
+- `aug_trend.pdf` — redundant with F7 for now; could replace F7 if Phase 3's version is preferred later
+- XSBench-specific comparison figure — the argument is well-covered in Section 4.3 text; a dedicated figure could strengthen it if page budget allows in camera-ready
+
+</deferred>
+
+---
+
+*Phase: 13-paper-figure-table-wiring*
+*Context gathered: 2026-04-05*
