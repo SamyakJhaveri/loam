@@ -154,7 +154,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 12. Fix Stale Pass@k Values | 3/3 | Complete   | 2026-04-06 |
 | 12.1. SC26 Review P0 Quick Fixes | 1/1 | Complete   | 2026-04-06 |
 | 13. Paper.tex Figure & Table Wiring | 2/2 | Complete   | 2026-04-06 |
-| 14. Verification Backfill & Housekeeping | 1/1 | Complete | 2026-04-06 |
+| 14. Verification Backfill & Housekeeping | 1/1 | Complete   | 2026-04-06 |
 
 ### Phase 6: RSBench Single-File Re-spec Controlled Experiment — **DROPPED**
 
