@@ -6,8 +6,9 @@ nyquist_compliant: true
 wave_0_complete: true
 created: 2026-04-05
 validated: 2026-04-05
-validator: adversarial-validator
-verdict: FLAG
+revalidated: 2026-04-05
+validator: adversarial-validator + nyquist-auditor
+verdict: PASS
 ---
 
 # Phase 12 Adversarial Validation Report
@@ -130,8 +131,8 @@ verdict: FLAG
 | Wave 1 | **PASS** | Clean diff, no security issues |
 | Wave 2 | **PASS** (fixes applied) | STATE.md + ROADMAP.md fixed |
 | Wave 3 | **PASS** | All numbers verified against paper_data.json |
-| Wave 4 | **FLAG** | 8 Wilson CI rounding values are borderline |
-| **Overall** | **FLAG** | Minor CI rounding regression only |
+| Wave 4 | **PASS** (FLAG resolved) | 8 Wilson CI values corrected in commit d1b1bc5 |
+| **Overall** | **PASS** | All waves pass; Nyquist-compliant |
 
 ## Fixes Applied by Validator
 
@@ -140,4 +141,47 @@ verdict: FLAG
 
 ## Issues for Reviewer Teammate (paper.tex)
 
-1. **FLAG:** 8 Wilson CI cells regressed from correct rounding (see Wave 4 table above)
+1. ~~**FLAG:** 8 Wilson CI cells regressed from correct rounding~~ — **RESOLVED** by commit `d1b1bc5` (all 8 values corrected to match paper_data.json exact Wilson CI bounds)
+
+---
+
+## Nyquist Validation Audit 2026-04-05
+
+### Requirement-to-Verification Map
+
+| Requirement | Task | Verification Method | Status |
+|---|---|---|---|
+| VERIFY-01: Abstract numbers | Plan 01, Task 1 | grep sweep + adversarial Wave 3 | COVERED |
+| VERIFY-01: S1/S5 numbers | Plan 01, Task 1 | grep sweep + 77 provenance comments | COVERED |
+| VERIFY-01: S6.1-6.2 | Plan 01, Task 2 | grep sweep + adversarial Wave 3 | COVERED |
+| VERIFY-01: S6.4-6.5 | Plan 01, Task 3 | grep sweep + adversarial Wave 3 | COVERED |
+| VERIFY-01: S6.3 per-kernel (31 rows) | Plan 02, Task 1 | adversarial Wave 3 (all 31 rows vs paper_data.json) | COVERED |
+| VERIFY-01: S6.6-6.8 direction/stats | Plan 02, Task 1 | grep sweep + adversarial Wave 3 | COVERED |
+| VERIFY-01: S7-S8 consistency | Plan 02, Task 2 | grep sweep + 14-pattern stale-value sweep | COVERED |
+| Wilson CI rounding (8 cells) | FLAG → commit d1b1bc5 | Verified values match paper_data.json exact bounds | COVERED |
+| Cross-section consistency | Plan 02, Task 2 | 5 key values verified across all sections | COVERED |
+
+### Test Infrastructure
+
+| Type | Tool | Scope |
+|---|---|---|
+| Stale-value sweep | grep (14 patterns) | All sections of paper.tex |
+| Per-cell verification | adversarial validator | 31 kernel rows, direction tables, statistical claims |
+| Provenance tracing | grep "src: paper_data.json" | 77 provenance comments linking numbers to JSON field paths |
+| Cross-section consistency | grep (5 key values) | Abstract, S1, S6, S7, S8 |
+
+### Audit Metrics
+
+| Metric | Count |
+|---|---|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+| FLAG items resolved | 1 (Wilson CI rounding — commit d1b1bc5) |
+
+### Sign-Off
+
+Phase 12 is **Nyquist-compliant**. All requirements (VERIFY-01) have automated verification.
+No code was changed — only `docs/paper/latex/paper.tex` was modified. Verification is
+grep-based (14 stale patterns + 5 consistency values + 77 provenance comments) rather than
+pytest/jest, which is appropriate for a paper-editing phase.

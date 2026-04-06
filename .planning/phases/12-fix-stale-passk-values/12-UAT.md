@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 12-fix-stale-passk-values
 source: [12-01-SUMMARY.md, 12-02-SUMMARY.md]
 started: 2026-04-05T23:10:00Z
-updated: 2026-04-05T23:26:00Z
+updated: 2026-04-05T23:32:00Z
 ---
 
 ## Current Test
@@ -60,17 +60,23 @@ blocked: 0
   reason: "User reported: that table should have information on what happened to the 4 kernels (from the 35) that were also included in the eval, but why they are not present in this table."
   severity: major
   test: 2
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "4 Rodinia kernels (kmeans, mummergpu, hybridsort, huffman) excluded because KNOWN_FAIL + phantom-deleted specs leave no valid translation pair. Explanation exists only as LaTeX comment (line 845), not reader-visible text."
+  artifacts:
+    - path: "docs/paper/latex/paper.tex"
+      issue: "S6.3 table intro (~line 841) says '31 evaluated kernels' but never names or explains the 4 excluded ones"
+  missing:
+    - "Add 1-2 sentences in S6.3 naming the 4 excluded kernels and explaining the exclusion criterion (no valid source-target pair)"
+  debug_session: ".planning/debug/missing-4-kernels-table.md"
 
 - truth: "S7 Discussion explains why 31 kernels appear in the per-kernel table instead of 35 eval kernels"
   status: failed
   reason: "User reported: make sure to mention and justify why 31 kernels and not 35 kernels, what happened to the other 4 kernels."
   severity: major
   test: 6
-  root_cause: ""
-  artifacts: []
-  missing: []
-  debug_session: ""
+  root_cause: "S7 Threats to Validity (~line 1208) says '35 kernels across five suites' without acknowledging only 31 participate in per-kernel analysis"
+  artifacts:
+    - path: "docs/paper/latex/paper.tex"
+      issue: "S7 references 35 kernels without clarifying 31 in per-kernel analysis"
+  missing:
+    - "Update S7 threats to clarify: 31 of 35 corpus kernels in per-kernel analysis; 4 excluded due to KNOWN_FAIL baselines"
+  debug_session: ".planning/debug/missing-4-kernels-table.md"
