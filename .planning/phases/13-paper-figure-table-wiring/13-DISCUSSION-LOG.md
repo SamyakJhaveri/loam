@@ -3,213 +3,123 @@
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
 > Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
 
-**Date:** 2026-04-05
+**Date:** 2026-04-06 (context update session — original 2026-04-05)
 **Phase:** 13-paper-figure-table-wiring
-**Areas discussed:** Aug figure placement, T2 table & drawio, c1-c4 companion figs, F6 & F3 captions
+**Areas discussed:** Aug heatmap placement, F6 target file correction, Architecture diagram readiness, Stale line number refresh
+
+**Reason for update:** Phase 11 (paper-tex-integration) completed on 2026-04-06, moving F6 and F7 to appendices.tex, adding a \ref{fig:xsbench} at paper.tex:977, and shifting all line numbers. Original context was stale.
 
 ---
 
-## Aug Figure Placement
+## Session 2 (2026-04-06): Context Update
+
+### Aug Heatmap Placement
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Add heatmap only | Wire aug_heatmap.pdf into Section 7.4. Skip aug_trend.pdf since F7 covers aggregate trend. | ✓ |
-| Add both | Wire both aug_heatmap.pdf and aug_trend.pdf. Two extra figures (tight page budget). | |
-| Replace F7 with both | Remove F7, replace with Phase 3 originals as canonical augmentation figures. | |
-| You decide | Claude chooses most space-efficient approach. | |
+| Appendix near F7 | Insert after F7 in appendices.tex (line 1221). Keeps augmentation figures together. Add reference in paper.tex. | ✓ |
+| Main paper body | Insert in paper.tex near augmentation section (line 884-911). Higher visibility but uses page budget. | |
+| You decide | Claude picks based on page constraints. | |
 
-**User's choice:** Add heatmap only
-**Notes:** F7 and aug_trend show the same aggregate pass-rate-vs-level concept. aug_heatmap provides unique per-kernel granularity.
-
-### Follow-up: Placement within Section 7.4
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Before F7 | Heatmap first (detail), then F7 (aggregate). | |
-| After F7 | F7 (aggregate) first, then heatmap (detail). Summary → drill-down reading order. | ✓ |
-| You decide | Claude picks best reading flow. | |
-
-**User's choice:** After F7
-
-### Follow-up: Caption style
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Detailed caption | Full description with cell color legend and interpretation. | |
-| Brief caption | "Per-kernel augmentation status across levels L0–L4 (CUDA-to-OMP, Qwen 3.5). Cell color: pass/fail status." | ✓ |
-| You decide | Claude writes caption matching paper style. | |
-
-**User's choice:** Brief caption
+**User's choice:** Appendix near F7 (Recommended)
+**Notes:** F7 is now in appendices.tex (moved during Phase 11). Original context assumed F7 was in paper.tex.
 
 ---
 
-## T2 Table & Drawio
-
-### T2 Table
+### F6 Target File Correction
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Skip T2 entirely | tab:direction-rates already shows per-direction rates with current 5-suite data. T2 is redundant and stale. | ✓ |
-| Update & add T2 | Regenerate T2 with current data and wire in as compact model comparison. | |
-| You decide | Claude assesses whether T2 adds value. | |
+| Update all | Update filename, label, caption in appendices.tex AND \ref in paper.tex:977. | ✓ |
+| Minimal: filename + label only | Just fix filename and label references. | |
+| You decide | Claude picks. | |
 
-**User's choice:** Skip T2 entirely
-**Notes:** T2 content (49/138, 35.5%) predates 5-suite expansion. tab:direction-rates has current data.
+**User's choice:** Update all (Recommended)
+**Notes:** Key correction: F6 is in appendices.tex:1252-1257, NOT paper.tex. \ref{fig:xsbench} at paper.tex:977 EXISTS (original context incorrectly said zero refs).
 
-### Architecture Drawio Export
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| I'll export manually | User opens draw.io, exports PDF, places in docs/paper/latex/figures/. Phase 13 uncomments \includegraphics. | ✓ |
-| Try CLI export | Attempt drawio CLI export (may need xvfb on headless Linux). | |
-| Leave as placeholder | Keep \fbox placeholder for now. | |
-
-**User's choice:** I'll export manually
-
-### Follow-up: Figure 1 caption
+#### F6 Cleanup
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Caption is fine | Existing 5-line caption matches diagram. No changes. | ✓ |
-| Needs update | Caption may not match actual drawio content. | |
-| Shorten it | Caption too long for SC26 — trim to 2-3 sentences. | |
+| Delete old files | Remove f6_xsbench_comparison.pdf and .png. | ✓ |
+| Keep both | Leave old files for reference. | |
 
-**User's choice:** Caption is fine
-
-### Follow-up: Stale T2 file cleanup
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Leave it | Don't touch docs/paper/figures/ — outside compilation path. | |
-| Delete it | Remove stale file to avoid confusion. | ✓ |
-
-**User's choice:** Delete it
+**User's choice:** Delete old files
 
 ---
 
-## c1-c4 Companion Figures
+### Architecture Diagram Readiness
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Wire c4 (funnel) only | Selection funnel visual is unique — tables can't replace it. Skip c1-c3. | |
-| Wire all four | All four add visual reinforcement. Accept page cost. | |
-| Skip all | Tables already convey the information. Tight SC26 page budget. | ✓ |
-| You decide | Claude picks based on value beyond existing tables. | |
+| I'll export before execution | User exports drawio to PDF before Phase 13 runs. Unconditional uncomment. | ✓ |
+| Conditional: check if PDF exists | Phase 13 checks, acts accordingly. | |
+| Skip architecture wiring | Don't touch architecture figure. | |
 
-**User's choice:** Skip all
-**Notes:** User confirmed with "K." — tables are sufficient.
+**User's choice:** I'll export before execution
 
 ---
 
-## F6 & F3 Captions
-
-### F6 Caption
+### Stale Line Number Refresh
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Suite-focused | "Cross-suite pass rate comparison (L0, Qwen 3.5). Per-suite aggregate pass rates with Wilson 95% CIs across all 5 benchmark suites." | ✓ |
-| Kernel-context | "Per-suite aggregate pass rates... Suite-level variation reflects differences in kernel complexity and API coverage." | |
-| You decide | Claude writes caption matching paper's terse style. | |
+| Just refresh known items | Update only discussed items. | |
+| Quick scan for others | Grep for other TODO/placeholder/stale references. | ✓ |
 
-**User's choice:** Suite-focused
+**User's choice:** Quick scan for others
+**Notes:** Scan found 3 TODO figure placeholders in appendices.tex for deleted survey images.
 
-### F3 Caption
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Descriptive | "Per-kernel pass/fail heatmap across 6 standard translation directions (29 kernels, L0, Qwen 3.5). Cell color: green (PASS), red (BUILD_FAIL), orange (RUN_FAIL), blue (VERIFY_FAIL), pink (EXTRACTION_FAIL)." | ✓ |
-| Brief + legend | "Kernel × direction heatmap (29 kernels, 6 directions, L0, Qwen 3.5). Color legend as shown." | |
-| You decide | Claude writes caption matching paper style. | |
-
-**User's choice:** Descriptive
-
-### Follow-up: F6 Label Rename
+#### Appendix Survey Figure Handling
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Rename to fig:cross-suite | Update label and all references. Cleaner for maintenance. | ✓ |
-| Keep fig:xsbench | Fewer changes, less risk. Label is internal-only. | |
+| Include in Phase 13 | Investigate and handle in this phase. | ✓ |
+| Defer to Phase 14 | Leave for housekeeping phase. | |
+| Just remove the TODOs | Delete TODO comments only. | |
 
-**User's choice:** Rename to fig:cross-suite
+**User's choice:** Include in Phase 13
 
-### Follow-up: F6 Location
-
-| Option | Description | Selected |
-|--------|-------------|----------|
-| Keep in place | Leave after pass@k section. Cross-suite fits as big-picture summary. | ✓ |
-| Move to Overall | Relocate to Section 7.1 where per-suite breakdown is first discussed. | |
-| You decide | Claude picks best placement. | |
-
-**User's choice:** Keep in place
-
-### Follow-up: Old F6 file cleanup
+#### Survey Figure Resolution
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Delete old file | Remove f6_xsbench_comparison.pdf/.png from docs/paper/latex/figures/. | ✓ |
-| Leave it | Keep both files. Old one is harmless. | |
+| Copy 2, remove quality_tiers block | Copy 2 available images, remove quality_tiers. | |
+| Copy 2, keep quality_tiers placeholder | Copy available, keep placeholder. | |
+| Remove all 3 figure blocks | Remove all three figure blocks entirely. | ✓ |
 
-**User's choice:** Delete old file
+**User's choice:** Remove all 3 figure blocks
+**Notes:** Survey figures are peripheral. Two images exist in analysis/visualizations/take in paper/ but not critical for SC26. quality_tiers.png doesn't exist anywhere. Prose refs (fig:api-network, fig:bipartite) must be updated after removal.
+
+---
+
+## Session 1 (2026-04-05): Original Context (now superseded)
+
+Original decisions carried forward with corrections:
+- Aug heatmap only (not trend) — unchanged
+- T2 table skipped — unchanged
+- Architecture manual export — unchanged
+- c1-c4 skipped — unchanged
+- F6 rename/caption/label — corrected target file (appendices.tex, not paper.tex)
+- F3 caption update — corrected line number (831, not 931)
+
+### ROADMAP SC deviations (from Session 1, still valid)
+
+1. **SC-3:** ROADMAP says add both aug_heatmap and aug_trend → User chose heatmap only (F7 covers trend)
+2. **SC-4:** ROADMAP says add T2 table → User chose skip entirely (tab:direction-rates already covers it)
 
 ---
 
 ## Claude's Discretion
 
-- Exact `\begin{figure}` environment sizing for aug_heatmap
-- Whether aug_heatmap needs `\label` for cross-referencing
-- Minor prose adjustments around F6 for new cross-suite framing
-- TODO comment cleanup after drawio uncommenting
+- Exact figure environment for aug_heatmap (figure vs figure*)
+- aug_heatmap \label (needed — D-02 uses \ref{fig:aug-heatmap})
+- Prose adjustments around F6 reference at paper.tex:977
+- How to rephrase appendix survey prose after figure removal
 
 ## Deferred Ideas
 
-- c1-c4 companion figures — could go to supplementary material in camera-ready
-- aug_trend.pdf — redundant with F7, but could replace it if Phase 3 version preferred
-- XSBench-specific comparison figure — text in Section 4.3 covers the argument; dedicated figure for camera-ready if page allows
-
----
-
-## Validation Notes (2026-04-05, post-context-gather audit)
-
-### ROADMAP Success Criteria Deviations
-
-Two ROADMAP success criteria are intentionally overridden by user decisions made during context gathering. These are deliberate scope reductions, not oversights:
-
-1. **SC-3 (ROADMAP):** "`\includegraphics` added for `aug_heatmap.pdf` and `aug_trend.pdf` in Section 7.4"
-   - **Decision D-01 overrides:** User chose "Add heatmap only" — `aug_trend.pdf` is skipped because F7 (`f7_augmentation_robustness.pdf`) already covers the aggregate trend line. ROADMAP SC-3 needs updating to reflect heatmap-only scope.
-
-2. **SC-4 (ROADMAP):** "`\input{t2_model_comparison.tex}` added in Section 5 (methodology)"
-   - **Decision D-04 overrides:** User chose "Skip T2 entirely" — `tab:direction-rates` (line 1029) already shows per-direction pass rates with current 5-suite data. T2 content is stale (Rodinia-only, 49/138) and redundant. ROADMAP SC-4 needs updating to reflect T2 skip + stale file deletion.
-
-**Action required:** ROADMAP.md Phase 13 success criteria 3 and 4 must be updated before planning begins. This is a cross-file issue — flagged to team lead for coordination.
-
-### \ref{fig:xsbench} Clarification
-
-CONTEXT.md line 86 states: "All `\ref{fig:xsbench}` instances → `\ref{fig:cross-suite}`"
-
-Verification against paper.tex shows **zero** `\ref{fig:xsbench}` instances exist — only the `\label{fig:xsbench}` definition at line 1098. The label rename (D-12) is still correct for consistency, but there are no cross-references to update. Implementation agents should rename the label only, not search for non-existent `\ref` occurrences.
-
-### File Size Verification (all figures confirmed on disk 2026-04-05)
-
-| File | Path | Size | Exists |
-|------|------|------|--------|
-| aug_heatmap.pdf | docs/paper/latex/figures/ | 37KB | Yes |
-| f6_cross_suite_comparison.pdf | docs/paper/latex/figures/ | 23KB | Yes |
-| f3_kernel_model_heatmap.pdf | docs/paper/latex/figures/ | 56KB | Yes |
-| f7_augmentation_robustness.pdf | docs/paper/latex/figures/ | 15KB | Yes |
-| parbench_architecture.drawio | docs/paper/figures/ (note: NOT latex/figures/) | 36KB | Yes |
-| f6_xsbench_comparison.pdf (to delete) | docs/paper/latex/figures/ | 14KB | Yes |
-| f6_xsbench_comparison.png (to delete) | docs/paper/latex/figures/ | 86KB | Yes |
-| t2_model_comparison.tex (to delete) | docs/paper/figures/ (note: NOT latex/figures/) | 0.4KB | Yes |
-
-### Line Number Spot-Checks (all verified against paper.tex)
-
-| CONTEXT.md claim | Actual line | Match? |
-|------------------|-------------|--------|
-| Line 5: TODO drawio | Line 5 | Yes |
-| Line 257: TODO drawio | Line 257 | Yes |
-| Line 261: commented \includegraphics | Line 261 | Yes |
-| Line 262: \fbox placeholder | Line 262 | Yes |
-| Line 931: F3 "Triple-panel" caption | Line 931 | Yes |
-| Line 1096: f6_xsbench_comparison.pdf | Line 1096 | Yes |
-| Line 1098: \label{fig:xsbench} | Line 1098 | Yes |
-| After line 1015: aug_heatmap insertion point | Line 1015 = \end{figure} for F7 | Yes |
+- c1-c4 companion figures — supplementary material in future revision
+- aug_trend.pdf — redundant with F7
+- Survey images in analysis/visualizations/take in paper/ — could restore in camera-ready
+- quality_tiers.png — needs regeneration from scratch
