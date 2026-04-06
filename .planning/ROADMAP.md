@@ -152,7 +152,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 10. Qualitative Analysis & Research Narrative | — | **Dropped** (merged into Phase 11) | - |
 | 11. Paper TeX Integration | 0/4 | Not started (scope expanded with SC26 review items) | - |
 | 12. Fix Stale Pass@k Values | 3/3 | Complete   | 2026-04-06 |
-| 12.1. SC26 Review P0 Quick Fixes | 0/1 | Not planned (INSERTED) | - |
+| 12.1. SC26 Review P0 Quick Fixes | 0/1 | Planned (1 plan, 1 wave) | - |
 | 13. Paper.tex Figure & Table Wiring | 0/1 | Not started (scope expanded: +Figure 1 export) | - |
 | 14. Verification Backfill & Housekeeping | 0/1 | Not started (scope expanded: +artifact README, +API env docs) | - |
 
@@ -359,7 +359,7 @@ Plans:
   1. Table 1 (line ~196): No longer claims "~2,500 eval tasks" or "2 models" — shows accurate current numbers (1,136 tasks, 1 model, with note that GPT-4.1 mini pending)
   2. 700-vs-710 inconsistency resolved: Lines ~333-335 (S3.2) use 710 denominator (not 700 from quantitative_findings.json campaign_1); Lines ~388-389 (S3.4) use 241/710 (not 237/700). Source: paper_data.json primary_campaign total=710
   3. Table 3 (line ~509): CUDA execution model reads "SIMT (warps of 32 threads)" not "SPMD"
-  4. All "greedy-decode pass@1" references renamed to "greedy pass@1 with 3-retry self-repair" (or equivalent precise terminology)
+  4. All ParBench-specific "greedy-decode pass@1" references renamed to "greedy pass rate"; other benchmarks' pass@1 references preserved
   5. Table 3 CUDA "Single file" claim updated to reflect that 51% of CUDA specs are multi-file (per paper's own Section 4 finding)
 **Plans**: 1 plan (single wave — all edits are independent)
 
