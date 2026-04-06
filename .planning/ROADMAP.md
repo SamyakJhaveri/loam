@@ -122,37 +122,39 @@ Plans:
 **Execution Order:**
 
 ```
-Phase 1 (DONE) ──► Phase 2 (DONE) ──► Phase 7 (DONE) ──► Phase 8 (DONE) ──► Phase 12 (DONE) ──► Phase 11
-                                                      └──► Phase 9 (DONE) ──────────────┘
-Phase 3 (DONE) ──► Phase 13 ────────────────────────────────────────────────────────────┘
-Phase 4 (PLANNED) ──────────────────────────────────────────────────────────────────────┘
-Phase 5 (PLANNED) ─────────────────────────────────────────────────────────────────────┘
-Phase 14 (verification & housekeeping — independent) ──────────────────────────────────
+Phase 1 (DONE) ──► Phase 2 (DONE) ──► Phase 7 (DONE) ──► Phase 8 (DONE) ──► Phase 12 (DONE) ──► Phase 12.1 ──► Phase 11
+                                                      └──► Phase 9 (DONE) ──────────────────────────────┘
+Phase 3 (DONE) ──► Phase 13 ─────────────────────────────────────────────────────────────────────────────┘
+Phase 4 (DONE) ──────────────────────────────────────────────────────────────────────────────────────────┘
+Phase 5 (DONE) ─────────────────────────────────────────────────────────────────────────────────────────┘
+Phase 14 (verification & housekeeping — independent) ──────────────────────────────────────────────────
 ```
 
-**Critical path:** 1 → 2 → 7 → 9 → 11 (analysis → findings → paper)
-**Gap closure path:** 7 → 12 → 11 (fix stale pass@k before integration)
+**Critical path:** 1 → 2 → 7 → 9 → 12 → 12.1 → 11 (analysis → findings → fixes → paper)
+**Gap closure path:** 7 → 12 → 12.1 → 11 (fix stale values + P0 fixes before integration)
 **Parallel track A:** Phase 8 (figures) → Phase 13 (wiring) → Phase 11
-**Parallel track B:** Phases 4, 5 can execute in parallel at any time; their outputs feed into Phase 11
+**Parallel track B:** Phases 4, 5 COMPLETE — outputs feed into Phase 11
 **Dropped:** Phase 6 (evidence already in existing data), Phase 10 (write directly from quantitative_findings.json)
 **Independent:** Phase 14 (verification backfill) can run anytime
+**Inserted:** Phase 12.1 (SC26 review P0 quick fixes — urgent factual accuracy)
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Verification & Ground Truth | 5/5 | Complete | 2026-04-03 |
 | 2. Benchmark Characterization Data | 3/3 | Complete | 2026-04-03 |
 | 3. Augmentation Analysis & Story | 3/3 | Complete | 2026-04-04 |
-| 4. Methodology & Reviewer Defense | 0/2 | Planned (ready to execute) | - |
-| 5. Introduction, Positioning & Characterization Table | 0/2 | Planned (ready to execute) | - |
+| 4. Methodology & Reviewer Defense | 2/2 | Complete | 2026-04-05 |
+| 5. Introduction, Positioning & Characterization Table | 2/2 | Complete | 2026-04-05 |
 | 6. RSBench Single-File Re-spec Experiment | — | **Dropped** | - |
 | 7. Full Analysis Regeneration | 2/2 | Complete | 2026-04-04 |
 | 8. Figure Regeneration | 2/2 | Complete | 2026-04-04 |
 | 9. Objective Quantitative Analysis | 3/3 | Complete | 2026-04-05 |
 | 10. Qualitative Analysis & Research Narrative | — | **Dropped** (merged into Phase 11) | - |
-| 11. Paper TeX Integration | 0/4 | Not started | - |
-| 12. Fix Stale Pass@k Values | 2/2 | Complete   | 2026-04-05 |
-| 13. Paper.tex Figure & Table Wiring | 0/1 | Not started | - |
-| 14. Verification Backfill & Housekeeping | 0/1 | Not started | - |
+| 11. Paper TeX Integration | 0/4 | Not started (scope expanded with SC26 review items) | - |
+| 12. Fix Stale Pass@k Values | 2/2 | Complete | 2026-04-05 |
+| 12.1. SC26 Review P0 Quick Fixes | 0/1 | Not planned (INSERTED) | - |
+| 13. Paper.tex Figure & Table Wiring | 0/1 | Not started (scope expanded: +Figure 1 export) | - |
+| 14. Verification Backfill & Housekeeping | 0/1 | Not started (scope expanded: +artifact README, +API env docs) | - |
 
 ### Phase 6: RSBench Single-File Re-spec Controlled Experiment — **DROPPED**
 
@@ -292,29 +294,40 @@ Plans:
 
 ### Phase 11: Paper TeX Integration
 
-**Goal:** Update `docs/paper/latex/paper.tex` so that every hardcoded number, table, figure reference, and narrative claim reflects the complete 1,248-task Qwen 3.5 397B dataset. The paper must be internally consistent: Abstract numbers match Section 6 numbers match figure captions match table footnotes. Every data claim must be traceable to a specific field in `results/analysis/quantitative_findings.json` or `paper_data.json`. Qualitative claims must be grounded directly in Phase 9 quantitative findings and Phase 3 augmentation outputs (Phase 10 narrative document was dropped — write directly from data). The goal is a submission-ready draft where no reviewer can find a stale or unsubstantiated number.
-**Depends on:** Phase 8 (fresh figures), Phase 9 (quantitative findings), Phase 4 (methodology defense text)
+**Goal:** Update `docs/paper/latex/paper.tex` so that every hardcoded number, table, figure reference, and narrative claim reflects the complete 1,248-task Qwen 3.5 397B dataset. The paper must be internally consistent: Abstract numbers match Section 6 numbers match figure captions match table footnotes. Every data claim must be traceable to a specific field in `results/analysis/quantitative_findings.json` or `paper_data.json`. Qualitative claims must be grounded directly in Phase 9 quantitative findings and Phase 3 augmentation outputs (Phase 10 narrative document was dropped — write directly from data). Additionally, this phase absorbs SC26 simulated review P0/P1 items requiring new analysis or substantive narrative changes (items that could not be handled as quick text fixes in Phase 12.1, and could not be added to already-completed Phases 4/5). The goal is a submission-ready draft where no reviewer can find a stale, unsubstantiated, or misleading claim.
+**Depends on:** Phase 8 (fresh figures), Phase 9 (quantitative findings), Phase 4 (methodology defense text), Phase 12.1 (P0 quick fixes)
 **Requirements**: TEX-01 through TEX-09
+**SC26 Review Items (absorbed from Phases 4/5 which are already complete):**
+  - P0-6: Cochran-Armitage power analysis — compute MDES at 80% power for n=24; either run on all 142 L0 pairs or report power limitation honestly (Raised by R2, R3, R5)
+  - P0-7: Document HeCBench version/commit hash in Section 5 reproducibility (Raised by R4)
+  - P1-8: Deepen VERIFY_FAIL analysis — add 5-10 case studies showing actual parallel logic errors: wrong reduction scope, race conditions, incorrect thread mapping (Raised by R1)
+  - P1-9: Nuance "syntax vs reasoning" dichotomy — retained cudaMalloc in OMP = memory model reasoning failure, not just syntax. Reframe as spectrum (Raised by R1, R5)
+  - P1-11: Ground per-kernel difficulty tiers in HPC concepts — Easy = regular parallelism + structured memory. Hard = irregular parallelism + data-dependent control flow (Raised by R1)
+  - P1-14: Address XSBench 0% comparison honestly — ParBench also gets 0% on XSBench; acknowledge rather than implying kernel isolation solves the problem (Raised by R5)
+  - P1-15: Reduce Discussion section redundancy — S7.1-S7.5 restate S6 findings; use page budget for deeper analysis (Raised by R5)
+  - P1-16: Soften Cochran-Armitage interpretation — "failure to reject H0 ≠ evidence for H0"; change to "consistent with structural failures, though sample size limits detectable effect" (Raised by R2, R3)
+  - P1-17: Report exact eval campaign commands with all flags in Section 5 (Raised by R4)
+  - P1-19: McNemar power analysis caveat — n_discordant=6-9 gives effectively zero power; acknowledge this prominently (Raised by R3, R5)
 **Success Criteria** (what must be TRUE):
   1. **Abstract** (TEX-01): Headline numbers updated — kernel count, spec count, suite count, API count, aggregate pass rate with CI, augmentation verdict, key finding. Every number matches Section 6.
   2. **Section 1 Introduction** (TEX-02): Quantitative highlights woven into prose (35 kernels, 96+ specs, 4 APIs, SLoC range 80-3304, multi-file %, augmentation levels). LASSI differentiation with ≥4 concrete dimensions. "Gap in existing evaluation" paragraph with comparative data.
   3. **Section 3 Design** (TEX-03): Architecture description verified against actual codebase. Spec-as-contract example uses a real spec. Kernel-centric translation explained with XSBench comparison. File role taxonomy (prompt_payload, support_files, verification_only, translation_targets) accurate.
-  4. **Section 4 Augmentation** (TEX-04): Level definitions match `LEVEL_FRACTIONS` in `augment_dataset.py`. Effect sizes (Cohen's h) from Phase 9. Cochran-Armitage p-value. Per-kernel evidence or strengthened null-result narrative from Phase 3. LASSI positioning from Phase 3 LASSI paragraphs.
-  5. **Section 5 Methodology** (TEX-05): Suite-summary table (tab:suite-summary) matches manifest.jsonl counts. Hardware/software table matches actual system. Model config table accurate for Qwen 3.5 397B. Conjunction verification justified. Reproducibility pins: CUDA 12.3, nvcc 12.3, gcc 12.4.0, Ubuntu 24.04, RTX 4070, model version, ParBench commit hash.
-  6. **Section 6 Results** (TEX-06 — largest section): ALL aggregate pass rates, per-direction rates, failure taxonomy percentages, self-repair rates, pass@k values, per-kernel tier descriptions, augmentation rates, cross-suite comparisons updated. Every number has CI. Direction asymmetry analysis with McNemar p-values. Translation complexity correlation. Token cost data. OpenCL kernel-only effect.
-  7. **Section 7 Discussion** (TEX-07): Grounded interpretation using Phase 9 quantitative findings. Threats to validity updated (single model, augmentation null result, wall-clock timing caveat). Future work grounded in actual findings (multi-file gap, cross-model comparison, performance measurement).
-  8. **Section 8 Related Work** (TEX-08): ParBench positioned against LASSI, TransCoder, OMPify, HPC-Coder-v2, CodeRosetta, SWE-bench, HumanEval with concrete differentiators from Phase 3 LASSI paragraphs. Missing papers from reference_sc26_related_work.md integrated.
-  9. **Cross-consistency check** (TEX-09): Run a final grep-based audit: extract every `\num{}`, `\SI{}`, percentage, and count from paper.tex and verify each against quantitative_findings.json or paper_data.json. Zero unverified numbers remain.
+  4. **Section 4 Augmentation** (TEX-04): Level definitions match `LEVEL_FRACTIONS` in `augment_dataset.py`. Cochran-Armitage p-value with MDES power analysis (P0-6). Softened interpretation (P1-16). Per-kernel evidence or strengthened null-result narrative from Phase 3. LASSI positioning from Phase 3 LASSI paragraphs. McNemar power caveat (P1-19).
+  5. **Section 5 Methodology** (TEX-05): Suite-summary table matches manifest.jsonl counts. Hardware/software table matches actual system. Model config table accurate for Qwen 3.5 397B. Conjunction verification justified. Reproducibility pins including HeCBench commit hash (P0-7). Exact eval campaign commands with all flags (P1-17).
+  6. **Section 6 Results** (TEX-06 — largest section): ALL aggregate pass rates, per-direction rates, failure taxonomy percentages updated. VERIFY_FAIL deepened with 5-10 case studies (P1-8). "Syntax vs reasoning" reframed as spectrum (P1-9). Per-kernel tiers grounded in HPC concepts (P1-11). XSBench 0% comparison addressed honestly (P1-14). Direction asymmetry with McNemar p-values + power caveat.
+  7. **Section 7 Discussion** (TEX-07): Redundancy reduced (P1-15) — use freed page budget for deeper analysis. Threats to validity updated. Future work grounded in actual findings.
+  8. **Section 8 Related Work** (TEX-08): ParBench positioned against LASSI, TransCoder, OMPify, HPC-Coder-v2, CodeRosetta, SWE-bench, HumanEval with concrete differentiators.
+  9. **Cross-consistency check** (TEX-09): Run a final grep-based audit: extract every percentage and count from paper.tex and verify each against quantitative_findings.json or paper_data.json. Zero unverified numbers remain.
 
 **Key constraint:** The paper is ~10 pages IEEE double-column. Every added sentence must earn its space. Prefer precise numbers over vague claims. Prefer one well-evidenced finding over three hand-wavy observations.
 
 **Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 11-01-PLAN.md -- [Wave 1] Update Sections 1 (intro) + 3 (design) + 5 (methodology) — these are pre-results sections with stable structure
-- [ ] 11-02-PLAN.md -- [Wave 1] Update Section 4 (augmentation) + 8 (related work) — these require Phase 3/10 narrative integration
-- [ ] 11-03-PLAN.md -- [Wave 2, depends on 11-01+02] Update Section 6 (results) — the largest section, requires all prior sections' framing to be set
-- [ ] 11-04-PLAN.md -- [Wave 3, depends on 11-03] Update Abstract + Section 7 (discussion) + cross-consistency audit — these synthesize everything and must be last
+- [ ] 11-01-PLAN.md -- [Wave 1] Update Sections 1 (intro) + 3 (design) + 5 (methodology) — pre-results sections, stable structure + P0-7 HeCBench version + P1-17 eval commands
+- [ ] 11-02-PLAN.md -- [Wave 1] Update Section 4 (augmentation) + 8 (related work) — Phase 3 narrative + P0-6 power analysis + P1-16 softened interpretation + P1-19 McNemar caveat
+- [ ] 11-03-PLAN.md -- [Wave 2, depends on 11-01+02] Update Section 6 (results) — largest section + P1-8 VERIFY_FAIL case studies + P1-9 spectrum reframe + P1-11 HPC tier grounding + P1-14 XSBench honesty
+- [ ] 11-04-PLAN.md -- [Wave 3, depends on 11-03] Update Abstract + Section 7 (discussion, P1-15 reduce redundancy) + cross-consistency audit
 
 ### Phase 12: Fix Stale Pass@k Values in Paper.tex
 
@@ -330,42 +343,67 @@ Plans:
   5. Self-repair narrative uses 70% relative increase (not "doubles")
   6. Zero stale values remain (no 480, no 36.2%, no 65.0%, no z=-0.17)
 
-**Plans**: 2 plans in 2 waves
+**Plans**: 3 plans in 3 waves
 
 Plans:
 - [x] 12-01-PLAN.md -- [Wave 1] Update Abstract, S1, S5.2-5.3, S6.1-6.2, S6.4-6.5 (aggregate stats, failure taxonomy, self-repair, augmentation)
 - [x] 12-02-PLAN.md -- [Wave 2, depends on 12-01] Expand S6.3 per-kernel table, update S6.6-6.8, S7, S8, final stale-value sweep
+- [ ] 12-03-PLAN.md -- [Wave 3, gap closure] Add reader-visible explanation of 4 excluded kernels (kmeans, mummergpu, hybridsort, huffman) in S6.3 and S7
+
+### Phase 12.1: SC26 Review P0 Quick Fixes (INSERTED)
+
+**Goal:** Fix all factual accuracy issues in paper.tex flagged by the SC26 simulated peer review (average score 53.2, Weak Reject). All items are targeted text edits — no new analysis scripts or data regeneration required. These fixes must land BEFORE Phase 11 integration to avoid propagating errors.
+**Depends on:** Phase 12 (stale pass@k values already fixed)
+**Triggered by:** SC26 simulated review panel (2026-04-05), 5 reviewers, P0 items 2-5 + P1 items 10, 18
+**Success Criteria** (what must be TRUE):
+  1. Table 1 (line ~196): No longer claims "~2,500 eval tasks" or "2 models" — shows accurate current numbers (1,136 tasks, 1 model, with note that GPT-4.1 mini pending)
+  2. 700-vs-710 inconsistency resolved: Lines ~333-335 (S3.2) use 710 denominator (not 700 from quantitative_findings.json campaign_1); Lines ~388-389 (S3.4) use 241/710 (not 237/700). Source: paper_data.json primary_campaign total=710
+  3. Table 3 (line ~509): CUDA execution model reads "SIMT (warps of 32 threads)" not "SPMD"
+  4. All "greedy-decode pass@1" references renamed to "greedy pass@1 with 3-retry self-repair" (or equivalent precise terminology)
+  5. Table 3 CUDA "Single file" claim updated to reflect that 51% of CUDA specs are multi-file (per paper's own Section 4 finding)
+**Plans**: 1 plan (single wave — all edits are independent)
+
+Plans:
+- [ ] 12.1-01-PLAN.md -- Fix 5 factual accuracy issues in paper.tex (Table 1, 700/710, SIMT/SPMD, pass@1 terminology, Table 3 single-file)
 
 ### Phase 13: Paper.tex Figure & Table Wiring
 
-**Goal:** Wire regenerated Phase 8 figures and Phase 3 augmentation figures into paper.tex by fixing stale references, updating captions, and adding missing `\includegraphics` and `\input` commands. This closes 4 integration gaps and 2 E2E flow breaks identified by the milestone audit.
+**Goal:** Wire regenerated Phase 8 figures and Phase 3 augmentation figures into paper.tex by fixing stale references, updating captions, and adding missing `\includegraphics` and `\input` commands. Also export the architecture diagram (Figure 1) from .drawio to PDF — currently the most-referenced figure in the paper is a placeholder. This closes 4 integration gaps and 2 E2E flow breaks identified by the milestone audit, plus P0-3 from SC26 review.
 **Depends on:** Phase 8 (figures on disk), Phase 3 (aug figures on disk)
 **Requirements**: AUG-04
-**Gap Closure:** Closes 4 integration gaps + 2 E2E flow breaks from v1.0 milestone audit
+**Gap Closure:** Closes 4 integration gaps + 2 E2E flow breaks from v1.0 milestone audit + P0-3 (Figure 1)
+**SC26 Review Items:**
+  - P0-3: Export `parbench_architecture.drawio` → PDF/PNG for Figure 1 (Raised by R1, R5)
 **Success Criteria** (what must be TRUE):
   1. F6 reference updated: `f6_xsbench_comparison.pdf` → `f6_cross_suite_comparison.pdf` at paper.tex line ~977
   2. F3 caption updated to reflect single-panel 29-kernel x 6-direction design (not "Triple-panel")
   3. `\includegraphics` added for `aug_heatmap.pdf` and `aug_trend.pdf` in Section 7.4
   4. `\input{t2_model_comparison.tex}` added in Section 5 (methodology)
   5. All figure/table references compile without LaTeX warnings
+  6. `parbench_architecture.pdf` exists in `docs/paper/latex/figures/` and is referenced by `\includegraphics` in Figure 1
 
 **Plans**: 1 plan
 
 Plans:
-- [ ] 13-01-PLAN.md -- Fix F6 filename, F3 caption, insert aug figure graphics, insert T2 table input in paper.tex
+- [ ] 13-01-PLAN.md -- Export architecture drawio→PDF, fix F6 filename, F3 caption, insert aug figure graphics, insert T2 table input in paper.tex
 
 ### Phase 14: Verification Backfill & Housekeeping
 
-**Goal:** Create formal VERIFICATION.md for Phases 3 and 8 (which completed work but skipped formal verification), update REQUIREMENTS.md checkboxes for all satisfied requirements, and refresh the ROADMAP.md progress table to reflect actual completion state.
+**Goal:** Create formal VERIFICATION.md for Phases 3 and 8 (which completed work but skipped formal verification), update REQUIREMENTS.md checkboxes for all satisfied requirements, refresh the ROADMAP.md progress table to reflect actual completion state, and add artifact evaluation documentation for SC26 reproducibility badges.
 **Depends on:** Phase 3, Phase 8, Phase 9 (needs satisfaction data for checkbox updates)
 **Requirements**: AUG-01, AUG-03
-**Gap Closure:** Closes verification gaps and tracking staleness from v1.0 milestone audit
+**Gap Closure:** Closes verification gaps and tracking staleness from v1.0 milestone audit + P1-12, P1-13 from SC26 review
+**SC26 Review Items:**
+  - P1-12: Add artifact evaluation README — clone steps, submodule init, dependency install, path config, smoke test commands (Raised by R4)
+  - P1-13: Document required API environment variables — TOGETHER_API_KEY, AZURE_OPENAI_API_KEY, etc. (Raised by R4)
 **Success Criteria** (what must be TRUE):
   1. Phase 3 VERIFICATION.md exists, covering AUG-01 through AUG-04 against success criteria
   2. Phase 8 VERIFICATION.md exists, covering FIG-01 through FIG-07 against success criteria
   3. REQUIREMENTS.md checkboxes updated: VERIFY-03 `[x]`, QUANT-01 through QUANT-14 `[x]`
-  4. ROADMAP.md progress table reflects actual state (Phases 3,7,8,9 marked Complete)
+  4. ROADMAP.md progress table reflects actual state (all completed phases marked)
   5. Coverage count in REQUIREMENTS.md accurate
+  6. Artifact evaluation README exists with: clone instructions, submodule init, `pip install -r requirements-lock.txt`, `config/paths.json` setup, smoke test commands (`python3 -m harness verify specs/rodinia-bfs-cuda.json`)
+  7. Required API environment variables documented (TOGETHER_API_KEY, AZURE_OPENAI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, GOOGLE_API_KEY)
 
 **Plans**: 1 plan
 
