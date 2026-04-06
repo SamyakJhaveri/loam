@@ -1,10 +1,11 @@
 ---
 phase: 3
 slug: augmentation-analysis-story
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-03
+audited: 2026-04-06
 ---
 
 # Phase 3 — Validation Strategy
@@ -38,13 +39,13 @@ created: 2026-04-03
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 03-01-01 | 01 | 1 | AUG-01 | unit | `pytest scripts/analysis/test_augmentation_analysis.py::test_matrix_structure -x` | Wave 0 | pending |
-| 03-01-02 | 01 | 1 | AUG-01 | integration | `pytest scripts/analysis/test_augmentation_analysis.py::test_kernel_count_matches_disk -x` | Wave 0 | pending |
-| 03-01-03 | 01 | 1 | AUG-01 | integration | `pytest scripts/analysis/test_augmentation_analysis.py::test_status_values_match_raw -x` | Wave 0 | pending |
-| 03-01-04 | 01 | 1 | AUG-02 | unit | `pytest scripts/analysis/test_augmentation_analysis.py::test_pattern_classification -x` | Wave 0 | pending |
-| 03-02-01 | 02 | 1 | AUG-04 | smoke | `pytest scripts/analysis/test_augmentation_analysis.py::test_figures_exist -x` | Wave 0 | pending |
-| 03-02-02 | 02 | 1 | AUG-04 | unit | `pytest scripts/analysis/test_augmentation_analysis.py::test_okabe_ito_palette -x` | Wave 0 | pending |
-| 03-03-01 | 03 | 2 | AUG-03 | manual | Manual: verify LASSI paragraphs in paper.tex | N/A | pending |
+| 03-01-01 | 01 | 1 | AUG-01 | unit | `pytest scripts/analysis/test_augmentation_analysis.py::TestMatrixStructure::test_matrix_structure -x` | ✓ exists | green |
+| 03-01-02 | 01 | 1 | AUG-01 | integration | `pytest scripts/analysis/test_augmentation_analysis.py::TestMatrixStructure::test_kernel_count_matches_disk -x` | ✓ exists | green |
+| 03-01-03 | 01 | 1 | AUG-01 | integration | `pytest scripts/analysis/test_augmentation_analysis.py::TestMatrixStructure::test_status_values_match_raw -x` | ✓ exists | green |
+| 03-01-04 | 01 | 1 | AUG-02 | unit | `pytest scripts/analysis/test_augmentation_analysis.py::TestPatternClassification::test_pattern_classification -x` | ✓ exists | green |
+| 03-02-01 | 02 | 1 | AUG-04 | smoke | `pytest scripts/analysis/test_augmentation_analysis.py::TestFigureGeneration::test_figures_exist -x` | ✓ exists | green |
+| 03-02-02 | 02 | 1 | AUG-04 | unit | `pytest scripts/analysis/test_augmentation_analysis.py::TestFigureGeneration::test_okabe_ito_palette -x` | ✓ exists | green |
+| 03-03-01 | 03 | 2 | AUG-03 | manual | Manual: verify LASSI paragraphs in paper.tex | N/A | green (verified 2026-04-06) |
 
 *Status: pending / green / red / flaky*
 
@@ -52,10 +53,10 @@ created: 2026-04-03
 
 ## Wave 0 Requirements
 
-- [ ] `scripts/analysis/test_augmentation_analysis.py` — stubs for AUG-01 through AUG-04
-- [ ] Framework install: None needed — pytest 9.0.2 already available
+- [x] `scripts/analysis/test_augmentation_analysis.py` — 13 tests for AUG-01 through AUG-04 (all PASS)
+- [x] Framework install: None needed — pytest 9.0.2 already available
 
-*Existing infrastructure covers framework requirements.*
+*All Wave 0 requirements satisfied. 13 tests pass in 0.39s.*
 
 ---
 
@@ -69,11 +70,23 @@ created: 2026-04-03
 
 ## Validation Sign-Off
 
-- [ ] All tasks have automated verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have automated verify or Wave 0 dependencies
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s (actual: 0.39s for 13 tests)
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** 2026-04-06
+
+---
+
+## Validation Audit 2026-04-06
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated (manual-only) | 1 (AUG-03 — LASSI paragraph, verified present at paper.tex:1017) |
+| Tests passing | 13/13 |
+| Extra tests beyond plan | 7 (test_stochastic_excluded, test_omp_target_excluded_from_cuda_to_omp, test_known_fail_flagged, test_aggregate_has_wilson_ci, test_secondary_matrix_directions, test_md_summary_contains_sections, test_heatmap_dimensions) |
