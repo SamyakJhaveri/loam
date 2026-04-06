@@ -2,8 +2,6 @@
 % IEEE IEEEtran double-column format
 % Build: pdflatex -> bibtex -> pdflatex x2
 %
-% TODO: Export parbench_architecture.drawio to PDF before compilation
-
 \documentclass[conference]{IEEEtran}
 
 %%% Packages
@@ -281,12 +279,9 @@ ParBench is, to our knowledge, the only framework that combines all of the follo
 
 ParBench is a benchmark framework designed to evaluate LLM-based parallel code translation through automated, end-to-end correctness assessment. The framework comprises four integrated components: (1)~a declarative spec schema that encodes what constitutes correct execution for each benchmark kernel, (2)~a three-stage build/run/verify harness pipeline that evaluates translated code, (3)~an AST-driven augmentation engine that generates semantically equivalent code variants to probe translation robustness, and (4)~an evaluation pipeline that orchestrates LLM-based translation with iterative self-repair. This section describes each component in detail.
 
-% TODO: Export parbench_architecture.drawio to PDF before compilation
-% Once the PDF exists, uncomment the \includegraphics and remove the \fbox placeholder.
 \begin{figure*}[t]
 \centering
-% \includegraphics[width=\textwidth]{parbench_architecture.pdf}
-\fbox{\parbox{0.95\textwidth}{\centering\vspace{2em}\textbf{[Figure placeholder --- export parbench\_architecture.drawio to PDF]}\vspace{2em}}}
+\includegraphics[width=\textwidth]{parbench_architecture.png}
 \caption{ParBench system architecture. Source Code (grey, top-left) contains the original kernel files drawn from five benchmark suites---Rodinia (60 specs), XSBench (4), RSBench (4), mixbench (3), and a curated HeCBench subset (25)---spanning three parallel APIs: CUDA, OpenMP, and OpenCL. The original source feeds into the Augmentation engine (gold, top-center), which applies six AST-driven semantics-preserving transforms at five intensity levels (L0--L4). The augmented source enters the Evaluation Pipeline (orange, center), which constructs a structured prompt, issues it to an LLM, and extracts translated files. The Spec JSON (blue, bottom-left) provides declarative correctness contracts configuring both the Evaluation Pipeline and the Harness Pipeline. The Harness Pipeline (blue, center-right) executes a three-stage Build, Run, Verify sequence with conjunctive correctness verification (exit code AND stdout pattern matching). On failure, a dashed self-repair feedback loop returns failure-specific diagnostics for up to three iterative retry attempts.}
 \label{fig:architecture}
 \end{figure*}
@@ -828,7 +823,7 @@ XSBench & xsbench & 30 & 0 & 30 & 0.0 & [0.0, 11.4] \\ % src: paper_data.json > 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{f3_kernel_model_heatmap.pdf}
-\caption{Kernel $\times$ model heatmap. Triple-panel: CUDA-to-OMP, OMP-to-CUDA, CUDA-to-OpenCL. Cell color: green (PASS), red (BUILD\_FAIL), orange (RUN\_FAIL), blue (VERIFY\_FAIL), pink (EXTRACTION\_FAIL).}
+\caption{Per-kernel pass/fail heatmap across 6 standard translation directions (29 kernels, L0, Qwen~3.5). Cell color: green (PASS), red (BUILD\_FAIL), orange (RUN\_FAIL), blue (VERIFY\_FAIL), pink (EXTRACTION\_FAIL).}
 \label{fig:kernel-heatmap}
 \end{figure*}
 
@@ -893,6 +888,7 @@ Per-level augmentation pass rates are detailed in Appendix Table~\ref{tab:augmen
 
 % [Float moved to Appendix D]
 The augmentation trend visualization is provided in Appendix Figure~\ref{fig:augmentation}.
+The per-kernel augmentation heatmap is provided in Appendix Figure~\ref{fig:aug-heatmap}.
 
 
 % src: paper_data.json > primary_campaign > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0, n_kernels=24, pass_counts=[16,14,17,14,16]
@@ -974,7 +970,7 @@ Full pass@$k$ results are provided in Appendix Table~\ref{tab:pass-at-k}.
 The pass@$k$ curve is shown in Appendix Figure~\ref{fig:pass-at-k}.
 
 % [Float moved to Appendix D]
-Cross-suite comparison is shown in Appendix Figure~\ref{fig:xsbench}.
+Cross-suite comparison is shown in Appendix Figure~\ref{fig:cross-suite}.
 
 
 % src: paper_data.json passk_campaign: 426 tasks = 142 pairs * 3 samples; categories verified above
