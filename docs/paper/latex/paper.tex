@@ -479,7 +479,13 @@ OpenMP target offload (OMP-target) provides a fourth API that uses compiler-dire
 The five suites contribute a total of 96 benchmark specifications, of which 88 achieve PASS through the complete build/run/verify pipeline and 8 are KNOWN\_FAIL (Table~\ref{tab:suite-summary}). The 88 verified-PASS specs constitute the evaluation corpus.
 % [Float moved to Appendix D]
 Suite-level corpus statistics are provided in Appendix Table~\ref{tab:suite-summary}.
-
+% src: specs/ on disk: rodinia=60, hecbench=25(curated), xsbench=4, rsbench=4, mixbench=3 = 96 total
+% src: paper_data.json > primary_campaign > by_kernel: 31 eval kernels; corpus = 35 kernels (incl. 4 KNOWN_FAIL-only)
+The evaluation corpus spans five suites: Rodinia (22 kernels, 60 specs),
+XSBench (1 kernel, 4 specs), RSBench (1 kernel, 4 specs), mixbench
+(1 kernel, 3 specs), and HeCBench (10 kernels, 25 specs), totaling
+96 specs across 35 unique kernels
+(Appendix Table~\ref{tab:suite-summary}).
 
 The selected kernels span computational domains including graph traversal (bfs, floydwarshall, page-rank), physics simulation (hotspot, hotspot3d, cfd, srad, iso2dfd), machine learning (backprop, nn), linear algebra (lud, nw), molecular dynamics (lavamd, md), nuclear physics (xsbench, rsbench), stencil computation (stencil1d, heat2d, jacobi), signal processing (convolution1d, scan), biophysical simulation (myocyte, heartwall), particle methods (particlefilter, streamcluster), dynamic programming (pathfinder), combinatorial search (nqueen), and GPU micro-benchmarking (mixbench).
 
@@ -539,7 +545,11 @@ Both models are queried at temperature~0 (greedy decoding) for the primary campa
 The two models were chosen to maximize provider diversity (Alibaba via Together AI vs.\ OpenAI via Azure), enabling cross-provider comparison under identical evaluation conditions and avoiding potential conflicts of interest. The ParBench framework is model-agnostic: adding a model requires only an API key and a single command via the parameterized campaign script. Pilot data from three additional models are available as supplementary material. Table~\ref{tab:model-config} summarizes the model configurations.
 % [Float moved to Appendix D]
 Model configuration details are provided in Appendix Table~\ref{tab:model-config}.
-
+% src: paper_data.json model = together-qwen-3.5-397b-a17b; config/compiler_inventory.txt
+We evaluate Qwen~3.5 397B-A17B (Together AI inference, temperature $T=0$,
+greedy decoding, max 32{,}768 output tokens) as our primary model
+(Appendix Table~\ref{tab:model-config}).
+GPT-4.1~mini evaluation is pending and marked with \tbd{} throughout.
 
 \subsection{Translation Directions}
 \label{sec:directions}
@@ -596,7 +606,12 @@ CUDA compilation uses \texttt{nvcc} from the NVIDIA HPC SDK~24.3 (CUDA~12.3). C/
 GPT-4.1~mini evaluations are conducted by a collaborator on a separate machine with identical software configuration. \pending{GPU model, CPU model, and OS for the collaborator's evaluation machine.} Table~\ref{tab:hardware} lists the complete hardware and software configuration.
 % [Float moved to Appendix D]
 The full hardware and software configuration is detailed in Appendix Table~\ref{tab:hardware}.
-
+% src: nvidia-smi -> RTX 4070, sm_89; nvcc --version -> 12.3 (HPC SDK 24.3); gcc --version -> 12.4.0; lsb_release -> Ubuntu 24.04
+All experiments run on a single workstation with an NVIDIA GeForce
+RTX~4070 GPU (Ada Lovelace, compute capability sm\_89), CUDA~12.3
+(\texttt{nvcc} from NVIDIA HPC SDK 24.3), GCC~12.4.0 with
+\texttt{-fopenmp}, and Ubuntu~24.04 LTS
+(Appendix Table~\ref{tab:hardware}).
 
 % src: git rev-parse HEAD (at paper-writing time); git submodule status -> 9c10d3ea (Rodinia)
 To support exact reproduction, all artifacts are version-pinned: ParBench at commit \texttt{c1d8c7b}\footnote{Repository URL withheld for double-blind review.}, Rodinia at submodule commit \texttt{9c10d3ea}~\cite{Rodinia2009}, and evaluation scripts at the same ParBench revision. Qwen~3.5 397B-A17B was accessed via the Together AI API during March--April 2026; model weights are publicly available. All 1,248 per-task result JSONs, analysis scripts, and spec files are included in the repository to enable independent verification of every reported number.
