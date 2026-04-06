@@ -699,13 +699,13 @@ The augmentation protocol tests a specific hypothesis: if an LLM genuinely reaso
 \subsection{Metrics}
 \label{sec:metrics}
 
-The primary evaluation metric is \textbf{greedy-decode pass@1}: the fraction of translation tasks that pass the full build, run, and verify pipeline on a single greedy-decoded evaluation (temperature~0), with up to 3 self-repair attempts via iterative error feedback. We use the term ``greedy-decode pass@1'' to distinguish this from the standard pass@$k$ formulation of Chen et al.~\cite{HumanEval2021}, which assumes stochastic sampling. In our primary campaign, temperature~0 eliminates sampling variance entirely: each task receives exactly one deterministic model output, and pass@1 is simply the empirical success rate.
+The primary evaluation metric is the \textbf{greedy pass rate}: the fraction of translation tasks that pass the full build, run, and verify pipeline on a single deterministic evaluation (temperature~0), with up to 3 self-repair attempts via iterative error feedback. We use the term ``greedy pass rate'' rather than ``pass@1'' to distinguish this from the standard pass@$k$ formulation of Chen et al.~\cite{HumanEval2021}, which assumes stochastic sampling without self-repair. In our primary campaign, temperature~0 eliminates sampling variance entirely: each task receives exactly one deterministic model output, and the greedy pass rate is simply the empirical success rate.
 
 Each failure is classified into a diagnostic category---BUILD\_FAIL (compilation error), RUN\_FAIL (runtime crash or nonzero exit code), VERIFY\_FAIL (incorrect output), or EXTRACTION\_FAIL (malformed LLM response)---enabling fine-grained failure-mode analysis beyond a single pass/fail number. Self-repair outcomes are further classified as first\_attempt\_pass (correct on first try), full\_repair (model self-corrected after error feedback), partial\_repair (improved failure category but still failed), regression (worsened after retry), or persistent\_fail (same error across all attempts).
 
-A separate \textbf{pass@$k$ experiment} measures sampling variance: 3 independent samples per task at temperature~0.7, L0 only, with no self-repair (max\_retries=1). This isolates output-side stochasticity from input-side variation (augmentation) and self-repair effects. The gap between greedy-decode pass@1 and pass@3 reveals whether failures are ``hard'' (the model fundamentally cannot translate the kernel) or ``noisy'' (the model sometimes succeeds but not reliably). This design keeps the three evaluation axes orthogonal: self-repair (retries), sampling variance (pass@$k$), and augmentation robustness (L0--L4).
+A separate \textbf{pass@$k$ experiment} measures sampling variance: 3 independent samples per task at temperature~0.7, L0 only, with no self-repair (max\_retries=1). This isolates output-side stochasticity from input-side variation (augmentation) and self-repair effects. The gap between the greedy pass rate and pass@3 reveals whether failures are ``hard'' (the model fundamentally cannot translate the kernel) or ``noisy'' (the model sometimes succeeds but not reliably). This design keeps the three evaluation axes orthogonal: self-repair (retries), sampling variance (pass@$k$), and augmentation robustness (L0--L4).
 
-Secondary metrics include \textbf{augmentation robustness}, defined as the stability of pass@1 across augmentation levels L0 through L4, and \textbf{self-repair rate}, the fraction of initially failing tasks recovered by the error-feedback retry loop.
+Secondary metrics include \textbf{augmentation robustness}, defined as the stability of the greedy pass rate across augmentation levels L0 through L4, and \textbf{self-repair rate}, the fraction of initially failing tasks recovered by the error-feedback retry loop.
 % src: quantitative_findings.json > campaign_1.direction_asymmetry (McNemar), campaign_1.augmentation_trends (Cochran-Armitage)
 Statistical analysis uses Wilson score 95\% confidence intervals for proportions (preferred over Wald intervals for better coverage near boundary proportions), McNemar's exact test for direction asymmetry (exploiting the paired design---each kernel is evaluated in both directions---preferred over unpaired chi-squared which ignores the pairing), and the Cochran-Armitage trend test for augmentation-level effects (exploiting the ordinal structure of L0--L4 levels, preferred over chi-squared which treats levels as unordered categories). All McNemar tests use Bonferroni-corrected $\alpha = 0.0125$ (four direction pairs).
 
@@ -1068,7 +1068,7 @@ To characterize sampling variance independent of self-repair, a separate pass@$k
 % src: paper_data.json > passk_campaign > passk_estimates (142 direction-kernel pairs, 3 samples each = 426 tasks)
 % src: 103 hard_fail + 0 noisy + 17 always_pass + 22 partial = 142 verified
 % src: 103/142=72.5%, 22/142=15.5%, 17/142=12.0% verified
-% src: macro pass@1=19.7%, macro pass@3=27.5% verified; greedy pass@1=38.3% = primary campaign rate (paper_data.json > primary_campaign > overall > pass_rate=0.3831)
+% src: macro pass@1=19.7%, macro pass@3=27.5% verified; greedy pass rate=38.3% = primary campaign rate (paper_data.json > primary_campaign > overall > pass_rate=0.3831)
 \begin{table*}[t]
 \centering
 \caption{pass@$k$ results (L0, temperature=0.7, 3 samples, Qwen~3.5; GPT-4.1~mini pending).}
@@ -1076,9 +1076,9 @@ To characterize sampling variance independent of self-repair, a separate pass@$k
 \small
 \begin{tabular}{@{}lrrrccc@{}}
 \toprule
-Model & pass@1 (greedy, T=0) & pass@1 (T=0.7) & pass@3 (T=0.7) & Hard Fail & Noisy Fail & Always Pass \\
+Model & Greedy rate (T=0) & pass@1 (T=0.7) & pass@3 (T=0.7) & Hard Fail & Noisy Fail & Always Pass \\
 \midrule
-Qwen 3.5 397B-A17B & 38.3\% (primary) & 19.7\% (macro) & 27.5\% (macro) & 103/142 (72.5\%) & 0/142 (0.0\%) & 17/142 (12.0\%) \\ % src: paper_data.json > primary_campaign > overall > pass_rate=0.3831 -> 38.3% greedy; passk unchanged
+Qwen 3.5 397B-A17B & 38.3\% (primary) & 19.7\% (macro) & 27.5\% (macro) & 103/142 (72.5\%) & 0/142 (0.0\%) & 17/142 (12.0\%) \\ % src: paper_data.json > primary_campaign > overall > pass_rate=0.3831 -> 38.3% greedy pass rate; passk unchanged
 GPT-4.1 mini & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 \bottomrule
 \end{tabular}
