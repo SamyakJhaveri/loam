@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 11 context gathered
-last_updated: "2026-04-06T06:21:25.517Z"
-last_activity: 2026-04-06 -- Phase 11 planning complete
+stopped_at: Completed 11-01-PLAN.md
+last_updated: "2026-04-06T07:13:35.906Z"
+last_activity: 2026-04-06
 progress:
   total_phases: 15
   completed_phases: 10
   total_plans: 30
-  completed_plans: 26
-  percent: 87
+  completed_plans: 27
+  percent: 90
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-03)
 
 **Core value:** Every data claim in the paper must be verifiable against actual result files on disk, and every methodology description must be precise enough to withstand SC-level peer review.
-**Current focus:** Phase 12.1 — SC26 Review P0 Quick Fixes (COMPLETE)
+**Current focus:** Phase 11 — paper-tex-integration
 
 ## Current Position
 
-Phase: 12.1 (sc26-review-p0-quick-fixes) — COMPLETE
-Plan: 1 of 1 ✓
+Phase: 11 (paper-tex-integration) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-04-06 -- Phase 11 planning complete
+Last activity: 2026-04-06
 
 Progress: [##########] 100%
 
@@ -65,6 +65,7 @@ Progress: [##########] 100%
 | Phase 12 P02 | 7min | 2 tasks | 1 files |
 | Phase 12 P03 | 1min | 1 tasks | 1 files |
 | Phase 12.1 P01 | 3min | 2 tasks | 1 files |
+| Phase 11 P01 | 6min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -91,6 +92,7 @@ Recent decisions affecting current work:
 - [Phase 12]: VERIFY-01 fully satisfied: all 14 stale patterns return 0 hits, cross-section consistency confirmed
 - [Phase 12]: Kernel exclusion explanation added as standalone sentence in S6.3 and inline modification in S7 for reviewer clarity
 - [Phase 12.1]: All 5 P0 factual accuracy fixes applied: Table 1 scale (D-01/D-02), 700-to-710 (D-08), SIMT (D-09), greedy pass rate rename (D-03/D-04/D-05/D-06), multi-file source (D-07)
+- [Phase 11]: Top-5 hardest kernels: gaussian/heartwall/myocyte/rsbench/xsbench (all 0%); suite-summary inline in S4 where table was located; 35 unique kernels (corpus) not 31 (eval)
 
 ### Roadmap Evolution
 
@@ -117,6 +119,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T05:31:21.278Z
-Stopped at: Phase 11 context gathered
-Resume file: .planning/phases/11-paper-tex-integration/11-CONTEXT.md
+Last session: 2026-04-06T07:13:35.903Z
+Stopped at: Completed 11-01-PLAN.md
+Resume file: None
