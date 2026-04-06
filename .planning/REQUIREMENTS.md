@@ -38,7 +38,7 @@ Requirements for paper submission (deadline: April 8, 2026). Each maps to roadma
 - [ ] **AUG-01**: Per-kernel x per-level status matrix built from raw Qwen result JSONs (cuda-to-omp, L0-L4) and saved to results/analysis/augmentation_per_kernel_matrix.json
 - [ ] **AUG-02**: 2-3 motivating examples identified (kernels showing PASS->FAIL degradation across levels) OR null-result interpretation strengthened with per-kernel evidence
 - [ ] **AUG-03**: LASSI augmentation positioning paragraphs written (complementary, not competing)
-- [ ] **AUG-04**: Augmentation trend graphs produced (per-kernel + aggregate, publication quality PDF+PNG, Okabe-Ito palette)
+- [x] **AUG-04**: Augmentation trend graphs produced (per-kernel + aggregate, publication quality PDF+PNG, Okabe-Ito palette)
 
 ### Methodology & Reviewer Defense
 

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 14 context gathered
-last_updated: "2026-04-06T19:43:57.680Z"
+status: executing
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-04-06T20:28:09.485Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 15
   completed_phases: 11
-  total_plans: 30
-  completed_plans: 30
-  percent: 100
+  total_plans: 33
+  completed_plans: 31
+  percent: 94
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-03)
 
 **Core value:** Every data claim in the paper must be verifiable against actual result files on disk, and every methodology description must be precise enough to withstand SC-level peer review.
-**Current focus:** Phase 11 — paper-tex-integration
+**Current focus:** Phase 13 — paper-figure-table-wiring
 
 ## Current Position
 
-Phase: 11 (paper-tex-integration) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
+Phase: 13 (paper-figure-table-wiring) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-06
 
 Progress: [##########] 100%
@@ -69,6 +69,7 @@ Progress: [##########] 100%
 | Phase 11 P02 | 9min | 2 tasks | 1 files |
 | Phase 11 P03 | 6min | 2 tasks | 1 files |
 | Phase 11 P04 | 9min | 1 tasks | 2 files |
+| Phase 13 P01 | 1min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -100,6 +101,7 @@ Recent decisions affecting current work:
 - [Phase 11]: Case study mechanisms validated against result JSONs: cfd=type-system mapping (not reduction scope), gaussian=conditional compilation mismatch (not shared memory)
 - [Phase 11]: S7 merged from 7 to 3 subsections (79 lines from 108); S7.7 Implications folded into S7.1 and S7.2
 - [Phase 11]: 95% CI whitelisted as methodological parameter; provenance checker uses lenient first-segment resolution with primary_campaign fallback; 12 unverified integer counts acceptable (external citations)
+- [Phase 13]: Used PNG format for architecture diagram instead of PDF (user-approved override)
 
 ### Roadmap Evolution
 
@@ -126,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T19:43:57.678Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-verification-backfill-housekeeping/14-CONTEXT.md
+Last session: 2026-04-06T20:28:09.482Z
+Stopped at: Completed 13-01-PLAN.md
+Resume file: None
