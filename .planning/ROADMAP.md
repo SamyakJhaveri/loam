@@ -321,13 +321,13 @@ Plans:
 
 **Key constraint:** The paper is ~10 pages IEEE double-column. Every added sentence must earn its space. Prefer precise numbers over vague claims. Prefer one well-evidenced finding over three hand-wavy observations.
 
-**Plans**: 4 plans in 3 waves
+**Plans**: 4 plans in 4 waves
 
 Plans:
-- [ ] 11-01-PLAN.md -- [Wave 1] Update Sections 1 (intro) + 3 (design) + 5 (methodology) — pre-results sections, stable structure + P0-7 HeCBench version + P1-17 eval commands
-- [ ] 11-02-PLAN.md -- [Wave 1] Update Section 4 (augmentation) + 8 (related work) — Phase 3 narrative + P0-6 power analysis + P1-16 softened interpretation + P1-19 McNemar caveat
-- [ ] 11-03-PLAN.md -- [Wave 2, depends on 11-01+02] Update Section 6 (results) — largest section + P1-8 VERIFY_FAIL case studies + P1-9 spectrum reframe + P1-11 HPC tier grounding + P1-14 XSBench honesty
-- [ ] 11-04-PLAN.md -- [Wave 3, depends on 11-03] Update Abstract + Section 7 (discussion, P1-15 reduce redundancy) + cross-consistency audit
+- [ ] 11-01-PLAN.md -- [Wave 1] Appendix D structure + float migration: move 17 floats to appendix, condense per-kernel table, inline S5 methodology key facts
+- [ ] 11-02-PLAN.md -- [Wave 2, depends on 11-01] Verify/update Abstract, S1, S2, S3, S8 numbers and related work positioning against paper_data.json
+- [ ] 11-03-PLAN.md -- [Wave 3, depends on 11-01+02] SC26 review items: P0-6 MDES power analysis, P1-8 VERIFY_FAIL case studies, P1-15 S7 Discussion merge (7->3 subsections), P0-7/P1-9/P1-11/P1-14/P1-16/P1-17/P1-19 brief items
+- [ ] 11-04-PLAN.md -- [Wave 4, depends on 11-03] Automated cross-consistency audit script (TEX-09)
 
 ### Phase 12: Fix Stale Pass@k Values in Paper.tex
 
