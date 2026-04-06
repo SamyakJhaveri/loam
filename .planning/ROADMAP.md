@@ -150,7 +150,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 8. Figure Regeneration | 2/2 | Complete | 2026-04-04 |
 | 9. Objective Quantitative Analysis | 3/3 | Complete | 2026-04-05 |
 | 10. Qualitative Analysis & Research Narrative | — | **Dropped** (merged into Phase 11) | - |
-| 11. Paper TeX Integration | 1/4 | In Progress|  |
+| 11. Paper TeX Integration | 2/4 | In Progress|  |
 | 12. Fix Stale Pass@k Values | 3/3 | Complete   | 2026-04-06 |
 | 12.1. SC26 Review P0 Quick Fixes | 1/1 | Complete   | 2026-04-06 |
 | 13. Paper.tex Figure & Table Wiring | 0/1 | Not started (scope expanded: +Figure 1 export) | - |
@@ -325,7 +325,7 @@ Plans:
 
 Plans:
 - [x] 11-01-PLAN.md -- [Wave 1] Appendix D structure + float migration: move 17 floats to appendix, condense per-kernel table, inline S5 methodology key facts
-- [ ] 11-02-PLAN.md -- [Wave 2, depends on 11-01] Verify/update Abstract, S1, S2, S3, S8 numbers and related work positioning against paper_data.json
+- [x] 11-02-PLAN.md -- [Wave 2, depends on 11-01] Verify/update Abstract, S1, S2, S3, S8 numbers and related work positioning against paper_data.json
 - [ ] 11-03-PLAN.md -- [Wave 3, depends on 11-01+02] SC26 review items: P0-6 MDES power analysis, P1-8 VERIFY_FAIL case studies, P1-15 S7 Discussion merge (7->3 subsections), P0-7/P1-9/P1-11/P1-14/P1-16/P1-17/P1-19 brief items
 - [ ] 11-04-PLAN.md -- [Wave 4, depends on 11-03] Automated cross-consistency audit script (TEX-09)
 
