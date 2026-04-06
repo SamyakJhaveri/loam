@@ -151,7 +151,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 9. Objective Quantitative Analysis | 3/3 | Complete | 2026-04-05 |
 | 10. Qualitative Analysis & Research Narrative | — | **Dropped** (merged into Phase 11) | - |
 | 11. Paper TeX Integration | 0/4 | Not started (scope expanded with SC26 review items) | - |
-| 12. Fix Stale Pass@k Values | 2/2 | Complete | 2026-04-05 |
+| 12. Fix Stale Pass@k Values | 3/3 | Complete   | 2026-04-06 |
 | 12.1. SC26 Review P0 Quick Fixes | 0/1 | Not planned (INSERTED) | - |
 | 13. Paper.tex Figure & Table Wiring | 0/1 | Not started (scope expanded: +Figure 1 export) | - |
 | 14. Verification Backfill & Housekeeping | 0/1 | Not started (scope expanded: +artifact README, +API env docs) | - |
@@ -348,7 +348,7 @@ Plans:
 Plans:
 - [x] 12-01-PLAN.md -- [Wave 1] Update Abstract, S1, S5.2-5.3, S6.1-6.2, S6.4-6.5 (aggregate stats, failure taxonomy, self-repair, augmentation)
 - [x] 12-02-PLAN.md -- [Wave 2, depends on 12-01] Expand S6.3 per-kernel table, update S6.6-6.8, S7, S8, final stale-value sweep
-- [ ] 12-03-PLAN.md -- [Wave 3, gap closure] Add reader-visible explanation of 4 excluded kernels (kmeans, mummergpu, hybridsort, huffman) in S6.3 and S7
+- [x] 12-03-PLAN.md -- [Wave 3, gap closure] Add reader-visible explanation of 4 excluded kernels (kmeans, mummergpu, hybridsort, huffman) in S6.3 and S7
 
 ### Phase 12.1: SC26 Review P0 Quick Fixes (INSERTED)
 
@@ -389,23 +389,27 @@ Plans:
 
 ### Phase 14: Verification Backfill & Housekeeping
 
-**Goal:** Create formal VERIFICATION.md for Phases 3 and 8 (which completed work but skipped formal verification), update REQUIREMENTS.md checkboxes for all satisfied requirements, refresh the ROADMAP.md progress table to reflect actual completion state, and add artifact evaluation documentation for SC26 reproducibility badges.
-**Depends on:** Phase 3, Phase 8, Phase 9 (needs satisfaction data for checkbox updates)
-**Requirements**: AUG-01, AUG-03
-**Gap Closure:** Closes verification gaps and tracking staleness from v1.0 milestone audit + P1-12, P1-13 from SC26 review
+**Goal:** Create formal VERIFICATION.md for all completed phases that lack one (Phases 3, 4, 5, 8, and 12), update REQUIREMENTS.md checkboxes and traceability for ALL satisfied and orphaned requirements (not just a subset), refresh the ROADMAP.md progress table to reflect actual completion state, and add artifact evaluation documentation for SC26 reproducibility badges. This phase closes the root cause of 13 orphaned requirements identified by the v1.0 milestone audit.
+**Depends on:** Phase 3, Phase 4, Phase 5, Phase 8, Phase 9, Phase 12 (needs satisfaction data from all completed phases)
+**Requirements**: AUG-01, AUG-02, AUG-03, AUG-04, METHOD-01, METHOD-02, METHOD-03, METHOD-04, INTRO-01, INTRO-02, INTRO-03, INTRO-04, CHAR-07, VERIFY-01
+**Gap Closure:** Closes ALL verification gaps and tracking staleness from v1.0 milestone audit + P1-12, P1-13 from SC26 review
 **SC26 Review Items:**
   - P1-12: Add artifact evaluation README — clone steps, submodule init, dependency install, path config, smoke test commands (Raised by R4)
   - P1-13: Document required API environment variables — TOGETHER_API_KEY, AZURE_OPENAI_API_KEY, etc. (Raised by R4)
 **Success Criteria** (what must be TRUE):
   1. Phase 3 VERIFICATION.md exists, covering AUG-01 through AUG-04 against success criteria
-  2. Phase 8 VERIFICATION.md exists, covering FIG-01 through FIG-07 against success criteria
-  3. REQUIREMENTS.md checkboxes updated: VERIFY-03 `[x]`, QUANT-01 through QUANT-14 `[x]`
-  4. ROADMAP.md progress table reflects actual state (all completed phases marked)
-  5. Coverage count in REQUIREMENTS.md accurate
-  6. Artifact evaluation README exists with: clone instructions, submodule init, `pip install -r requirements-lock.txt`, `config/paths.json` setup, smoke test commands (`python3 -m harness verify specs/rodinia-bfs-cuda.json`)
-  7. Required API environment variables documented (TOGETHER_API_KEY, AZURE_OPENAI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, GOOGLE_API_KEY)
+  2. Phase 4 VERIFICATION.md exists, covering METHOD-01 through METHOD-04 against success criteria
+  3. Phase 5 VERIFICATION.md exists, covering INTRO-01 through INTRO-04 and CHAR-07 against success criteria
+  4. Phase 8 VERIFICATION.md exists, covering FIG-01 through FIG-07 against success criteria
+  5. Phase 12 VERIFICATION.md exists, covering VERIFY-01 against success criteria
+  6. REQUIREMENTS.md checkboxes updated for ALL satisfied requirements: VERIFY-03 `[x]`, AUG-01-04 `[x]`, METHOD-01-04 `[x]`, QUANT-01-14 `[x]` (28 total checkbox updates)
+  7. REQUIREMENTS.md traceability table status column updated: all 25 satisfied → "Complete", all orphaned → "Complete" (after verification backfill)
+  8. Coverage count in REQUIREMENTS.md updated from 10/39 to actual count
+  9. ROADMAP.md progress table reflects actual state (all completed phases marked)
+  10. Artifact evaluation README exists with: clone instructions, submodule init, `pip install -r requirements-lock.txt`, `config/paths.json` setup, smoke test commands (`python3 -m harness verify specs/rodinia-bfs-cuda.json`)
+  11. Required API environment variables documented (TOGETHER_API_KEY, AZURE_OPENAI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, GOOGLE_API_KEY)
 
 **Plans**: 1 plan
 
 Plans:
-- [ ] 14-01-PLAN.md -- Create Phase 3 + 8 VERIFICATION.md, update checkboxes and progress table
+- [ ] 14-01-PLAN.md -- Create Phase 3, 4, 5, 8, 12 VERIFICATION.md files; update ALL checkboxes, traceability, and progress table; add artifact README

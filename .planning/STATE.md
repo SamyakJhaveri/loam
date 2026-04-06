@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 12 complete — all paper.tex numbers updated to 710-task scope
-last_updated: "2026-04-05T22:52:55.102Z"
-last_activity: 2026-04-05 -- Phase 12 complete, VERIFY-01 satisfied
+stopped_at: Completed 12-03-PLAN.md
+last_updated: "2026-04-06T01:26:19.029Z"
+last_activity: 2026-04-06
 progress:
-  total_phases: 14
+  total_phases: 15
   completed_phases: 9
-  total_plans: 24
-  completed_plans: 24
+  total_plans: 25
+  completed_plans: 25
   percent: 100
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-03)
 
 **Core value:** Every data claim in the paper must be verifiable against actual result files on disk, and every methodology description must be precise enough to withstand SC-level peer review.
-**Current focus:** Phase 12 — fix-stale-passk-values (COMPLETE)
+**Current focus:** Phase 12.1 — SC26 Review P0 Quick Fixes (NOT PLANNED)
 
 ## Current Position
 
-Phase: 12 (fix-stale-passk-values) — COMPLETE
-Plan: 2 of 2
-Status: All paper.tex numerical claims updated to 710-task all-suite scope
-Last activity: 2026-04-05
+Phase: 12.1 (sc26-review-p0-quick-fixes) — INSERTED, NOT PLANNED
+Plan: 1 of 1
+Status: Ready to execute
+Last activity: 2026-04-06
 
-Progress: [######....] 64%
+Progress: [########..] 76%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [######....] 64%
 | Phase 05 P02 | 2min | 1 tasks | 1 files |
 | Phase 12 P01 | 7min | 3 tasks | 1 files |
 | Phase 12 P02 | 7min | 2 tasks | 1 files |
+| Phase 12 P03 | 1min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,7 @@ Recent decisions affecting current work:
 - [Phase 12]: Added ERROR column to tab:overall-pass table; reordered BUILD_FAIL subcategories by count; self-repair 'doubles' replaced with '70% relative increase'
 - [Phase 12]: Per-kernel table simplified to 6 columns (Total/PASS/Fail/Rate/CI) with tier midrule separators for 31-row space efficiency
 - [Phase 12]: VERIFY-01 fully satisfied: all 14 stale patterns return 0 hits, cross-section consistency confirmed
+- [Phase 12]: Kernel exclusion explanation added as standalone sentence in S6.3 and inline modification in S7 for reviewer clarity
 
 ### Roadmap Evolution
 
@@ -96,6 +98,7 @@ Recent decisions affecting current work:
 - Phase 9 added (2026-04-03): Objective Quantitative Analysis — comprehensive structured findings document with 14 quantitative dimensions, provenance-tracked
 - Phase 10 added (2026-04-03): Qualitative Analysis and Research Narrative — 7 contribution narratives (motivation, design, comprehensiveness, rigor, novelty, effectiveness, significance) grounded in Phase 9 data
 - Phase 11 added (2026-04-03): Paper TeX Integration — update every number, table, figure, and narrative in paper.tex; cross-consistency audit
+- Phase 12.1 inserted after Phase 12 (2026-04-06): SC26 Review P0 Quick Fixes — targeted paper.tex edits for factual accuracy (Table 1 claims, 700/710 inconsistency, SIMT/SPMD, pass@1 terminology, Table 3 single-file) (URGENT)
 
 ### Pending Todos
 
@@ -112,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-05T22:52:55.100Z
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-04-06T01:26:19.026Z
+Stopped at: Completed 12-03-PLAN.md
 Resume file: None
