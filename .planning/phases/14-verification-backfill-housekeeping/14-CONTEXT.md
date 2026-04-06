@@ -2,8 +2,8 @@
 
 **Type:** Gap Closure
 **Created:** 2026-04-05 from v1.0 milestone audit
-**Updated:** 2026-04-05 — scope expanded per gap closure plan to cover ALL orphaned phases
-**Closes:** All 13 orphaned requirements + VERIFY-01 partial + 17 stale REQUIREMENTS.md entries
+**Updated:** 2026-04-05 — scope expanded per gap closure plan; stale counts corrected by adversarial review
+**Closes:** All 13 orphaned requirements + VERIFY-01 partial + 8 remaining stale REQUIREMENTS.md entries (gap closure commit already fixed 17 of 25)
 
 ## Problem
 
@@ -18,16 +18,19 @@ This is the root cause of 13 orphaned requirements in the milestone audit.
 - **Phase 8:** All 10 figures + T2 table regenerated per SUMMARYs
 - **Phase 12:** VERIFY-01 fix completed (stale pass@k values updated), no formal verification
 
-### Stale REQUIREMENTS.md Checkboxes (17 entries)
+### Stale REQUIREMENTS.md Checkboxes (8 remaining)
 
-- VERIFY-03: satisfied per Phase 1 VERIFICATION.md but checkbox unchecked
-- AUG-01 through AUG-04: work complete per Phase 3 SUMMARYs, status "Pending"
-- METHOD-01 through METHOD-04: work complete per Phase 4 SUMMARYs, status "Pending"
-- QUANT-01 through QUANT-14: all satisfied per Phase 9 VERIFICATION.md, status "Pending"
+Gap closure commit (0f4a289) already fixed 17 of 25 stale entries:
+- VERIFY-03: checkbox checked, traceability updated to "Complete" (DONE)
+- QUANT-01 through QUANT-14: checkboxes checked, traceability updated to "Complete" (DONE)
+
+Still pending (Phase 14 must fix):
+- AUG-01 through AUG-04: work complete per Phase 3 SUMMARYs, checkboxes still unchecked `[ ]`
+- METHOD-01 through METHOD-04: work complete per Phase 4 SUMMARYs, checkboxes still unchecked `[ ]`
 
 ### Stale REQUIREMENTS.md Coverage Count
 
-Reports 10/39 satisfied; actual is 25/39 satisfied + 14 partial/orphaned (which become satisfied after verification backfill = 39/39).
+Currently reports 31/39 checked (after gap closure). After Phase 14 checks AUG-01-04 and METHOD-01-04, will be 39/39.
 
 ### Stale ROADMAP.md Progress Table
 
@@ -36,7 +39,7 @@ Some completed phases show incorrect plan counts or status.
 ## Scope
 
 1. **Create VERIFICATION.md** for Phases 3, 4, 5, 8, 12 — verify SUMMARY claims against on-disk artifacts
-2. **Update REQUIREMENTS.md** — all 28 checkbox updates, traceability status, coverage count
+2. **Update REQUIREMENTS.md** — 8 remaining checkbox updates (AUG-01-04, METHOD-01-04), traceability status, coverage count
 3. **Update ROADMAP.md** progress table to reflect actual state
 4. **Artifact evaluation README** — SC26 reproducibility badge support (P1-12)
 5. **API env var documentation** — TOGETHER_API_KEY, etc. (P1-13)

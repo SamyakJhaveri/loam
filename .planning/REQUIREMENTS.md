@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VERIFY-01 | Phase 12 | Complete |
+| VERIFY-01 | Phase 12 → Phase 14 | Done, pending verification backfill |
 | VERIFY-02 | Phase 1 | Complete |
 | VERIFY-03 | Phase 1 | Complete |
 | VERIFY-04 | Phase 1 | Complete |
@@ -142,12 +142,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 - v1 requirements: 39 total
-- Formally verified (checked): 31/39 (VERIFY-01-06, CHAR-01-07, INTRO-01-04, QUANT-01-14)
-- Done, pending verification backfill (Phase 14): 8/39 (AUG-01-04, METHOD-01-04)
+- Formally verified with VERIFICATION.md evidence: 25/39 (VERIFY-02-06, CHAR-01-06, QUANT-01-14)
+- Checked `[x]` but pending Phase 14 verification backfill: 6/39 (VERIFY-01, CHAR-07, INTRO-01-04 — work done per Phase 5/12 SUMMARYs, no VERIFICATION.md)
+- Unchecked, pending Phase 14 verification backfill: 8/39 (AUG-01-04, METHOD-01-04 — work done per Phase 3/4 SUMMARYs, no VERIFICATION.md)
 - Mapped to phases: 39
 - Unmapped: 0
-- Gap closure reassignments: VERIFY-01→Phase 12, AUG-04→Phase 13/14, AUG-01-03→Phase 14, METHOD-01-04→Phase 14, CHAR-07/INTRO-01-04→Phase 14
+- Gap closure reassignments: VERIFY-01→Phase 12/14, AUG-04→Phase 13/14, AUG-01-03→Phase 14, METHOD-01-04→Phase 14, CHAR-07/INTRO-01-04→Phase 14
 
 ---
 *Requirements defined: 2026-04-03*
-*Last updated: 2026-04-05 after gap closure plan — expanded Phase 14 scope, fixed 17 stale traceability entries*
+*Last updated: 2026-04-05 after gap closure plan + adversarial review — expanded Phase 14 scope, fixed 17 stale traceability entries, corrected coverage categories and VERIFY-01 status*

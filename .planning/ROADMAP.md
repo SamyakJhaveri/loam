@@ -402,9 +402,9 @@ Plans:
   3. Phase 5 VERIFICATION.md exists, covering INTRO-01 through INTRO-04 and CHAR-07 against success criteria
   4. Phase 8 VERIFICATION.md exists, covering FIG-01 through FIG-07 against success criteria
   5. Phase 12 VERIFICATION.md exists, covering VERIFY-01 against success criteria
-  6. REQUIREMENTS.md checkboxes updated for ALL satisfied requirements: VERIFY-03 `[x]`, AUG-01-04 `[x]`, METHOD-01-04 `[x]`, QUANT-01-14 `[x]` (28 total checkbox updates)
-  7. REQUIREMENTS.md traceability table status column updated: all 25 satisfied → "Complete", all orphaned → "Complete" (after verification backfill)
-  8. Coverage count in REQUIREMENTS.md updated from 10/39 to actual count
+  6. REQUIREMENTS.md checkboxes updated for remaining unchecked satisfied requirements: AUG-01-04 `[x]`, METHOD-01-04 `[x]` (8 checkbox updates — VERIFY-03 and QUANT-01-14 already fixed by gap closure commit)
+  7. REQUIREMENTS.md traceability table status column updated: all orphaned → "Complete" (after verification backfill), VERIFY-01 → "Complete" (after Phase 12 verification)
+  8. Coverage count in REQUIREMENTS.md updated to 39/39 (currently 31/39 checked + 8 pending)
   9. ROADMAP.md progress table reflects actual state (all completed phases marked)
   10. Artifact evaluation README exists with: clone instructions, submodule init, `pip install -r requirements-lock.txt`, `config/paths.json` setup, smoke test commands (`python3 -m harness verify specs/rodinia-bfs-cuda.json`)
   11. Required API environment variables documented (TOGETHER_API_KEY, AZURE_OPENAI_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, GOOGLE_API_KEY)
