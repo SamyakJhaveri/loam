@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-04-06T07:29:04.485Z"
+stopped_at: Completed 11-03-PLAN.md
+last_updated: "2026-04-06T07:40:17.138Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 15
   completed_phases: 10
   total_plans: 30
-  completed_plans: 28
-  percent: 93
+  completed_plans: 29
+  percent: 97
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 ## Current Position
 
 Phase: 11 (paper-tex-integration) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-04-06
 
@@ -67,6 +67,7 @@ Progress: [##########] 100%
 | Phase 12.1 P01 | 3min | 2 tasks | 1 files |
 | Phase 11 P01 | 6min | 3 tasks | 2 files |
 | Phase 11 P02 | 9min | 2 tasks | 1 files |
+| Phase 11 P03 | 6min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ Recent decisions affecting current work:
 - [Phase 12.1]: All 5 P0 factual accuracy fixes applied: Table 1 scale (D-01/D-02), 700-to-710 (D-08), SIMT (D-09), greedy pass rate rename (D-03/D-04/D-05/D-06), multi-file source (D-07)
 - [Phase 11]: Top-5 hardest kernels: gaussian/heartwall/myocyte/rsbench/xsbench (all 0%); suite-summary inline in S4 where table was located; 35 unique kernels (corpus) not 31 (eval)
 - [Phase 11]: No number changes needed in S1/S2/S3/S8/Abstract — all values correct after Phases 5, 12, 12.1; added VERIFIED audit comments
+- [Phase 11]: Case study mechanisms validated against result JSONs: cfd=type-system mapping (not reduction scope), gaussian=conditional compilation mismatch (not shared memory)
+- [Phase 11]: S7 merged from 7 to 3 subsections (79 lines from 108); S7.7 Implications folded into S7.1 and S7.2
 
 ### Roadmap Evolution
 
@@ -121,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T07:29:04.482Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-04-06T07:40:17.135Z
+Stopped at: Completed 11-03-PLAN.md
 Resume file: None
