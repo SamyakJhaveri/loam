@@ -1315,12 +1315,13 @@ or memory files (session-to-session persistence).
 |-----------|------------|---------|
 | `known-issues.md` | Always | KNOWN_FAIL specs, build gotchas, spec status |
 | `workflow.md` | Always | 6-stage workflow, agent patterns, anti-patterns |
-| `mentoring.md` | Always | HPC/SE/research teaching framework |
+| `mentoring` skill | On-demand (`/mentoring`) | HPC/SE/research teaching framework |
 | `spec-conventions.md` | `specs/`, `manifest.jsonl` | Naming rules, run arg verification |
 | `evaluation.md` | `scripts/evaluation/` | `--suite` required, result schema |
 | `augmentation.md` | `c_augmentation/` | `--project-root` required, transform bugs |
 | `python.md` | `*.py` | `python3`, CLI flag ordering |
 | `validation-loop.md` | hooks, validation agents | 4-wave protocol, sentinel mechanics |
+| `known-issues-archive.md` | `c_augmentation/`, `harness/`, `scripts/`, `results/`, `specs/`, `visualizations/` | Historical fix details, moved guardrails |
 | `github-pages.md` | `visualizations/` | URL, staticrypt, data refresh |
 | `frontend-design.md` | `visualizations/` | Design system, styling conventions |
 

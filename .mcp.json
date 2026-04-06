@@ -3,12 +3,14 @@
     "playwright": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
+      "args": ["-y", "@playwright/mcp@latest"],
+      "disabled": true
     },
     "chrome-devtools": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "chrome-devtools-mcp@latest"]
+      "args": ["-y", "chrome-devtools-mcp@latest"],
+      "disabled": true
     },
     "css-docs": {
       "type": "stdio",
@@ -17,7 +19,8 @@
         "-y",
         "@stolinski/css-mcp"
       ],
-      "env": {}
+      "env": {},
+      "disabled": true
     }
   }
 }

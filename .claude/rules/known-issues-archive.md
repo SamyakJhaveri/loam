@@ -3,8 +3,11 @@ paths:
   - "c_augmentation/**"
   - "harness/**"
   - "scripts/augmentation/**"
+  - "scripts/evaluation/**"
   - "results/augmentation/**"
+  - "results/evaluation/**"
   - "specs/**"
+  - "visualizations/**"
 ---
 
 # Known Issues — Historical Archive
@@ -226,3 +229,182 @@ Aggregates all result JSONs into `eval_summary.json`, `eval_summary.md`,
 - History/event asymmetry: OMP=941535, CUDA/OpenCL/OMP-target=945990
 - Augmentation L2 (seed=42) PASS on OMP, CUDA, OpenCL
 - `baseline_results` populated in all 4 specs (2026-03-23, platform: rtx4070-linux-x86_64)
+
+---
+
+## Sections moved from known-issues.md (2026-04-06)
+
+> The following sections were moved here to reduce always-loaded token overhead.
+> They are historical reference, not active guardrails.
+
+## FALSE_PASS Baseline Specs — ALL FIXED (S-VERIFY 2026-03-27)
+
+Originally 9 specs discovered with wrong run args (exit_code=0 but wrong/no output).
+All 9 specs now verified TRUE PASS. heartwall-opencl fixed via runner.py argv[0] change (2026-03-27).
+
+| Spec | Fix Applied | Status |
+|------|------------|--------|
+| `rodinia-backprop-opencl` | Args `["-n","65536"]` (flag + divisible by 16) | FIXED — TRUE PASS |
+| `rodinia-heartwall-opencl` | runner.py argv[0] fix (use relative path, not absolute) | FIXED — TRUE PASS |
+| `rodinia-myocyte-omp` | Args `["100","1","1","4"]` (added threads arg) | FIXED — TRUE PASS |
+| `rodinia-myocyte-opencl` | Args `["-time","100","-r","../../data/myocyte"]` (flags not positional) | FIXED — TRUE PASS |
+| `rodinia-pathfinder-omp` | Args `["100000","100"]` (removed extra arg) | FIXED — TRUE PASS |
+| `rodinia-bfs-omp` | Args `["4","../../data/bfs/graph1MW_6.txt"]` (added num_omp_threads) | FIXED — TRUE PASS |
+| `rodinia-lavamd-cuda` | Args `["-boxes1d","10"]` (removed `-cores`, fixed `-boxes1d`) | FIXED — TRUE PASS |
+| `rodinia-lavamd-omp` | Args `["-cores","4","-boxes1d","10"]` (fixed `-boxes1d`) | FIXED — TRUE PASS |
+| `rodinia-lavamd-opencl` | Args `["-boxes1d","10"]` (removed `-cores`, fixed `-boxes1d`) | FIXED — TRUE PASS |
+
+## hotspot3d Double-Include (NOT a bug)
+
+`3D.cu` includes `opt1.cu` via `#include "opt1.cu"`. No double-augmentation occurs
+because `_cursor_in_main_file` in `augment_dataset.py` skips cursors from included files.
+
+## Rodinia Submodule Source Edit Policy (updated 2026-03-22)
+
+**Current state:** 10 files modified from pristine commit `9c10d3ea` (down from 13).
+- 9 Makefile/config patches (toolchain adaptation — safe)
+- 1 documented source exception: `opencl/cfd/euler3d.cpp:276` — `if(file==NULL)` → `if(!file)`
+  (C++11 portability fix, not a benchmark logic change)
+
+**Patch file:** `docs/rodinia_toolchain_patches.diff` — regenerated after each submodule reset.
+
+Build-flag alternative for pathfinder: spec passes `-std=c++14` in `CXXFLAGS` instead of
+editing source. mummergpu `unistd.h` edits reverted — both specs are KNOWN_FAIL regardless.
+
+## XSBench (SESSION 5 — 2026-03-23)
+
+4/4 PASS. No KNOWN_FAIL. Key facts:
+- No OpenACC variant exists (only cuda, omp, opencl, omp_target)
+- OMP target uses `nvc` (NVIDIA HPC SDK 24.3), excluded from standard eval batches
+- History/event checksum asymmetry: OMP=941535 (history), CUDA/OpenCL/OMP-target=945990 (event)
+- Use 3 standard API specs (cuda, omp, opencl) for eval batches (omp_target = case-study only)
+- SESSION 8 ran all 12 directions including omp_target (30 result files exist); those are case-study data, not part of the standard eval batch suite
+
+## Hook Protection (updated 2026-03-30)
+
+Hook regex: `/(rodinia|rodinia-src|HeCBench-master|hecbench|xsbench-src)/` — protects both direct
+and symlink paths to benchmark sources.
+
+**CUDA↔OMP Result Protection Hook** (`protect-cuda-omp-results.sh` — added 2026-03-30):
+- Blocks `rm` commands targeting `results/evaluation/` files matching `*cuda*omp*` or `*omp*cuda*`
+- Blocks wildcard `rm` in `results/evaluation/` that could expand to CUDA↔OMP files
+- Blocks `run_eval_batch.py` with `cuda-to-omp` or `omp-to-cuda` direction without `--resume`
+- ALLOWS all OpenCL-related operations (cuda-to-opencl, opencl-to-cuda, etc.)
+- Registered as PreToolUse hook on Bash in `settings.json`
+
+## Augmentation Baseline (verified 2026-03-20, updated S-VERIFY 2026-03-27)
+
+54/60 Rodinia + 4/4 XSBench PASS at all levels L1–L4 (level-invariant) with
+stdout_pattern+exit_code conjunction verification. 6 Rodinia KNOWN_FAIL excluded (4 BUILD_FAIL + 2 FAIL).
+Augmentation introduces zero new failures beyond the baseline.
+Verify transforms: `python3 -m pytest c_augmentation/test_transforms.py -v` (15 tests, all must pass)
+
+## Eval Result Timing Limitations (SESSION 3b audit — 2026-03-24)
+
+All 30 PASS results use `timing_method: "wall_time"`. Failure results have `timing_method: null`.
+`translated_cpu_time_seconds` and `translated_kernel_time_seconds` are `null` in all 68 files.
+
+**Do NOT use `speedup_ratio` from these results in the SC26 paper.** Sub-millisecond baseline
+wall times (0.001s) produce unreliable ratios (e.g., nn=16.0x, bfs=0.002x). Wall-clock time
+includes OS scheduling noise, I/O, and memory allocation — it is not kernel time.
+
+For valid performance numbers: use `nvprof`/`ncu` for CUDA kernel time, and `perf` or
+`omp_get_wtime()` around the parallel region for OMP. See `feedback_timing_measurement.md`.
+
+## sprint_dashboard.html localStorage Divergence (2026-03-25)
+
+**Problem:** `sprint_dashboard.html` uses browser localStorage as an overlay on top of a
+hardcoded `DEFAULT_TASKS` JS array. A user who edits task statuses via the kanban board
+writes to their *browser's* localStorage — but the **git-tracked HTML file is never updated**.
+
+**Consequence:** A session author sees correct statuses in their browser (via localStorage),
+pushes the branch, and assumes the merge will reflect those updates. It won't — the merged
+HTML still has the old hardcoded values.
+
+**Caught:** During post-merge validation of the W-S11 branch (2026-03-25). M11 showed as
+`blocked` and Rodinia as `51/60` in the merged file despite the author having updated these
+in their browser.
+
+**Rule:** After any worktree dashboard session, **always grep the HTML file directly** for
+the values you changed. Do not trust your browser view:
+```bash
+# Check M11 and Rodinia stat card directly — don't trust browser localStorage view
+grep -n "M11\|Rodinia Specs\|stat-value" visualizations/sprint_dashboard.html | head -20
+grep -n "status: 'blocked'\|status: 'todo'" visualizations/sprint_dashboard.html | grep -v "//\|kh-\|dropdown\|column\|label"
+```
+If the grep shows stale values, edit `DEFAULT_TASKS` in the HTML file before committing.
+
+## Eval Result JSON Schema Quirk (SESSION 3b audit — 2026-03-24)
+
+Top-level `run_status`, `run_time_seconds`, `run_exit_code` fields can contain stale data
+from a non-final attempt when a multi-attempt evaluation regresses to a build failure.
+**Always use `overall_status` (not top-level `run_status`) as the authoritative verdict.**
+The `attempts[]` array is the canonical per-attempt record.
+
+This was a pipeline bug in `llm_evaluate.py` (fixed prospectively — future results are correct).
+The 68 existing L0 result JSONs are not retroactively corrected; only gemini pathfinder is
+affected (attempt 1 SIGSEGV, attempt 2 BUILD_FAIL; `overall_status` is correctly BUILD_FAIL).
+
+## Gemini Flash Lite Thinking Confound — Resolved (2026-03-26)
+
+**Concern:** Gemini API calls initially lacked explicit thinking-disable parameters, raising
+the possibility that Flash Lite used inference-time reasoning while Claude/Llama did not.
+
+**Investigation (Session 9 audit):**
+1. ALL 145 Gemini files were re-run on 2026-03-25 22:52-23:46 (after fix commit `01e1f01`)
+2. Two test API calls (with and without `reasoning_effort="none"`) produced **identical**
+   token counts (500/500) and identical output text
+3. Flash Lite has thinking OFF by default — it is a distilled model without thinking capability
+
+**Conclusion:** The confounding variable never existed. Existing Gemini results are valid.
+The `reasoning_effort="none"` parameter in `llm_evaluate.py` is a belt-and-suspenders
+safety measure, not a fix for an active problem.
+
+## Per-Kernel Capability Anomaly: backprop (discovered 2026-03-25, updated 2026-03-28)
+
+**Observation:** In the 3-model evaluation, `backprop` (9/18 = 50.00% overall) shows an
+anomalous tier pattern: Gemini 2.5 Flash-Lite (weakest overall, 7.05%) passes backprop
+at L0 CUDA-to-OMP, while Groq Llama 3.3 70B (8.33% overall) fails with BUILD_FAIL.
+This violates the naive assumption that stronger models dominate everywhere.
+
+*Historical note:* Originally observed in a 4-model evaluation that included azure-gpt-4.1.
+GPT-4.1 was subsequently dropped (zero result files on disk). The anomaly persists in the
+current 3-model data.
+
+**Interpretation:** Domain-specific model strength. Backprop's reduction-heavy ML kernel
+involves `__syncthreads()` and shared memory accumulation idioms that may appear heavily
+in Gemini's training data relative to its overall OpenMP coverage.
+
+**Paper treatment:** The anomaly is discussed as evidence that per-kernel difficulty is not
+fully predicted by aggregate pass rate. *Note (2026-04-03):* Paper model lineup changed from
+Qwen+Gemini to Qwen+GPT-4.1 mini. The "Claude+Gemini only" tier name is historical; per-kernel
+tiers will be re-derived when GPT-4.1 mini data arrives.
+
+**Rule:** When writing per-kernel tier descriptions from tabular data, verify EVERY cell in
+the table against the prose claim. Do not assume rank-ordering is monotonic per kernel.
+
+## OpenCL Kernel-Only Translation (SESSION S-OCLFIX — 2026-03-30)
+
+**Bug fixed:** `llm_evaluate.py` cross-API run/verify logic assumed all translations rewrite
+the host code (correct for CUDA↔OMP). But X-to-OpenCL is "kernel-only" — only `.cl` kernel
+files are translated, host code is untouched. Three bugs caused 0% pass rate on ALL
+OpenCL-target translations:
+
+1. `_build_cross_api_run_spec()` sent SOURCE args to OpenCL binary (host expects TARGET args)
+2. `_build_cross_api_verify_spec()` used SOURCE stdout patterns (host prints TARGET patterns)
+3. Dead code: pattern extraction used key `"expected_pattern"` but specs use `"pattern"` —
+   combined-pattern logic never fired, fell back to source-only patterns
+
+**Fix:** Added `_is_kernel_only_translation(target_spec)` predicate. Returns `True` when ALL
+`translation_targets` end with `.cl`. When True, both functions return `copy.deepcopy(target_spec)`
+(target args and patterns unchanged). When False (CUDA/OMP targets), existing code path
+is completely unchanged.
+
+**Result JSON fields added:**
+- `translation_type`: `"kernel_only"` or `"full_program"`
+- `run_args_mode`: `"kernel_only_target_args"` / `"cross_api_source_args"` / `"same_api_target_args"`
+- `verification_mode`: `"kernel_only_target_pattern"` / `"cross_api_combined_pattern"` / `"same_api_target_pattern"`
+
+**Rule:** When adding new cross-API translation targets, check if they are kernel-only
+(host code untouched) or full-program (host code rewritten by LLM). The `.cl` heuristic
+works for OpenCL but may need extension for future APIs with separate kernel files.
