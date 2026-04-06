@@ -944,3 +944,422 @@ infrastructure---may outperform end-to-end LLM translation for multi-file
 programs. However, the varying failure modes across augmentation levels indicate
 that a simple post-processing pass (e.g., find-and-replace renaming) would only
 address subcategory~2, leaving subcategories 1, 3, and~4 unresolved.
+
+%% ============================================================================
+%% APPENDIX D: Supplementary Tables and Figures
+%% ============================================================================
+
+\section{Supplementary Tables and Figures}
+\label{sec:appendix-d}
+
+This appendix contains detailed evidence tables and figures referenced from the main text.
+Floats are ordered by their original section appearance.
+
+% --- From Section 3 (ParBench Framework) ---
+
+% src: tab:augmentation-levels verified against LEVEL_FRACTIONS = {1: 0.0, 2: 0.33, 3: 0.66, 4: 1.0} (01-01 verified 2026-04-03)
+% src: in c_augmentation/augment_dataset.py line 111 (LEVEL_FRACTIONS dict)
+% src: Transform selection (L1: 1 of 6, L2: max(1,int(6*0.33))=1, L3: max(1,int(6*0.66))=3, L4: all 6) verified against augment_code() lines 1796-1803
+% src: Candidate fraction within each transform verified against _select_fraction() lines 152-167: max(1, floor(n*fraction))
+
+\begin{table}[htbp]
+\centering
+\caption{Augmentation level definitions.}
+\label{tab:augmentation-levels}
+\small
+\begin{tabular}{@{}cccp{3.8cm}@{}}
+\toprule
+Level & Transform selection & Candidate fraction & Description \\
+\midrule
+L0 & None (original) & 0\% & Unmodified source code (baseline) \\
+L1 & 1 transform & 1 site per transform & Minimal surface perturbation \\
+L2 & 33\% of transforms & 33\% of candidates & Moderate obfuscation \\
+L3 & 66\% of transforms & 66\% of candidates & Heavy obfuscation \\
+L4 & All transforms & 100\% of candidates & Maximum obfuscation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- From Section 4 (Benchmark Curation) ---
+
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{f2_repo_vs_kernel.pdf}
+\caption{Repository-level vs.\ kernel-level translation pair counts. Left bars show the number of repositories containing both APIs; right bars show the number of independent kernel-level translation pairs. The multipliers (79$\times$--308$\times$) demonstrate that repository-level counting substantially underestimates the translation evaluation opportunity.}
+\label{fig:repo-vs-kernel}
+\end{figure}
+
+
+\begin{table}[htbp]
+\centering
+\caption{Survey---kernel-level translation pair counts.}
+\label{tab:kernel-pairs}
+\small
+\begin{tabular}{@{}lccl@{}}
+\toprule
+API Pair & Repos & Kernel Pairs & Primary Sources \\
+\midrule
+CUDA--HIP & 3 & 633 & HeCBench (504), RAJAPerf (106), CloverLeaf (16) \\
+CUDA--SYCL & 2 & 616 & HeCBench (487), RAJAPerf (106), CloverLeaf (16) \\
+CUDA--OpenMP & 6 & 472 & HeCBench (325), RAJAPerf (106), Rodinia (19) \\
+HIP--OpenMP & 2 & 453 & HeCBench (324), RAJAPerf (106), CloverLeaf (16) \\
+CUDA--OpenCL & 6 & ${\sim}$200 & Rodinia (19), Parboil, SHOC \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{table*}[htbp]
+\centering
+\caption{Programming model characteristics of the three primary translation APIs. These differences define the structural transformation challenges that LLM-based translation must address.}
+\label{tab:api-characteristics}
+\small
+\begin{tabular}{@{}lp{4.0cm}p{4.0cm}p{4.0cm}@{}}
+\toprule
+Property & CUDA & OpenMP & OpenCL \\
+\midrule
+Execution model & SIMT (warps of 32 threads) & Fork-join thread teams & NDRange work-groups \\
+Memory management & Explicit device allocation (\texttt{cudaMalloc}/\texttt{cudaMemcpy}) & Implicit shared CPU memory & Explicit buffer objects (\texttt{clCreateBuffer}/\texttt{clEnqueueReadBuffer}) \\
+Kernel specification & Compiled with host code (\texttt{\_\_global\_\_} functions) & Pragma directives (\texttt{\#pragma omp parallel for}) & Runtime string compilation (\texttt{clCreateProgramWithSource}) \\
+Source structure & Single or multi-file (51\% multi-file in corpus) & Single file (directives annotate sequential code) & Separate host program + \texttt{.cl} kernel files \\
+Thread indexing & \texttt{threadIdx.x + blockIdx.x * blockDim.x} & Loop iteration variable or \texttt{omp\_get\_thread\_num()} & \texttt{get\_global\_id(0)} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+
+\begin{table}[htbp]
+\centering
+\caption{Suite summary showing total specs, verified PASS, KNOWN\_FAIL, and API coverage for each of the five benchmark suites.}
+\label{tab:suite-summary}
+\small
+% src: Verified 2026-04-03 against specs/ on disk:
+% src: Rodinia: ls specs/rodinia-*.json | wc -l => 60; unique kernels => 22; KF=6 (known-issues.md)
+% src: HeCBench: 10 curated kernels x {cuda,omp,omp_target} = 25 specs (from 135 total); KF=2
+% src: XSBench: 4; RSBench: 4; mixbench: 3 (all verified via ls specs/{suite}-*.json)
+% src: Sums: 22+10+1+1+1=35 kernels, 60+25+4+4+3=96 specs, 54+23+4+4+3=88 PASS, 6+2+0+0+0=8 KF
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Suite & Kernels & Total & PASS & KF & APIs \\
+\midrule
+Rodinia & 22 & 60 & 54 & 6 & CUDA, OMP, OCL \\
+HeCBench (curated) & 10 & 25 & 23 & 2 & CUDA, OMP, OMP-tgt \\
+XSBench & 1 & 4 & 4 & 0 & CUDA, OMP, OCL, OMP-tgt \\
+RSBench & 1 & 4 & 4 & 0 & CUDA, OMP, OCL, OMP-tgt \\
+mixbench & 1 & 3 & 3 & 0 & CUDA, OMP, OCL \\
+\midrule
+\textbf{Total} & \textbf{35} & \textbf{96} & \textbf{88} & \textbf{8} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{table}[htbp]
+\centering
+\caption{Quantitative characterization of the evaluation corpus. SLoC counts physical source lines in the CUDA prompt payload. Multi-File gives specs requiring translation of $>$1 source file. Std.\ shows the dominant language standard per suite.}
+\label{tab:benchmark-characterization}
+\small
+% src: Rodinia SLoC 195--3304, median 333.5 (rounded to 334), 21/60 multi-file; verified 2026-04-03
+% src: HeCBench SLoC 80--235, median 180, 0/25 multi-file; verified 2026-04-03
+% src: XSBench 1390, RSBench 1016, mixbench 312 SLoC; verified 2026-04-03
+\begin{tabular}{@{}lrcrcl@{}}
+\toprule
+Suite & Kernels & SLoC Range & Med. & Multi-File & Std. \\
+\midrule
+Rodinia         & 22 & 195--3{,}304 & 334 & 21/60 (35\%) & C++14 \\
+HeCBench (curated) & 10 &    80--235    & 180 &  0/25 ~(0\%) & C++17 \\
+XSBench         &  1 &    1{,}390    &  -- &  2/4~~(50\%) & C11   \\
+RSBench         &  1 &    1{,}016    &  -- &  1/4~~(25\%) & C11   \\
+mixbench        &  1 &       312     &  -- &  0/3~~~(0\%) & C++11 \\
+\midrule
+\textbf{Total}  & \textbf{35} & \textbf{80--3{,}304} & \textbf{271} & \textbf{24/96 (25\%)} & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{table}[htbp]
+\centering
+\caption{Domain category distribution across the 35-kernel evaluation corpus. Categories are assigned from the canonical \texttt{sloc\_analysis.json} classification. Suite annotations show which suites contribute kernels to each category.}
+\label{tab:category-distribution}
+\small
+\begin{tabular}{@{}lrl@{}}
+\toprule
+Category & Kernels & Contributing Suites \\
+\midrule
+Physics simulation     & 7 & Rodinia (5), XSBench, RSBench \\
+Graph algorithms       & 5 & Rodinia (3), HeCBench (2) \\
+Stencil computation    & 5 & HeCBench (5) \\
+Image processing       & 2 & Rodinia (2) \\
+Linear algebra         & 2 & Rodinia (2) \\
+Machine learning       & 2 & Rodinia (2) \\
+Molecular dynamics     & 2 & Rodinia (1), HeCBench (1) \\
+Reduction              & 1 & HeCBench (1) \\
+Sort                   & 1 & Rodinia (1) \\
+Other                  & 8 & Rodinia (6), HeCBench (1), mixbench (1) \\
+\midrule
+\textbf{Total}         & \textbf{35} & \textbf{5 suites} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- From Section 5 (Experimental Setup) ---
+
+
+% src: 2 models only: Qwen 3.5 397B-A17B (Together AI) + GPT-4.1 mini (Azure OpenAI); verified 2026-04-03
+% src: GPT-4.1 mini column has \pending markers (Le's data pending); verified 2026-04-03
+\begin{table}[htbp]
+\centering
+\caption{Model configurations.}
+\label{tab:model-config}
+\small
+\begin{tabular}{@{}llllc@{}}
+\toprule
+Model & Provider & Arch. & Parameters & Temp. \\
+\midrule
+Qwen 3.5 397B-A17B & Together AI & MoE & 397B / 17B active & 0 \\
+GPT-4.1 mini & Azure OpenAI & N/D & \pending{size} & 0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{table}[htbp]
+\centering
+\caption{Hardware and software configuration.}
+\label{tab:hardware}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Component & Qwen (primary) & GPT-4.1 mini (collaborator) \\
+\midrule
+GPU & RTX 4070 (12 GB) & \pending{GPU} \\
+CPU & Ryzen 9 7900X & \pending{CPU} \\
+OS & Ubuntu 24.04 LTS & \pending{OS} \\
+CUDA toolkit & HPC SDK 24.3 & \pending{toolkit} \\
+C/C++ compiler & GCC 12.4 & \pending{compiler} \\
+OpenCL runtime & NVIDIA HPC SDK & \pending{OCL runtime} \\
+Python & 3.12.3 & \pending{Python} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- From Section 6 (Results) ---
+
+
+% src: paper_data.json > primary_campaign > self_repair > per_initial_failure (all rows verified 2026-04-05)
+% src: total repaired 72+17+8+15+0=112; total initial failures 346+148+28+27+1=550; 550=710-160 verified
+\begin{table}[htbp]
+\centering
+\caption{Self-repair failure mode transitions (all tasks, Qwen~3.5; GPT-4.1~mini pending). Rows: initial failure mode. Columns: final outcome after up to 3 retries.}
+\label{tab:repair-transitions}
+\small
+\begin{tabular}{@{}lrrrrl@{}}
+\toprule
+Initial Failure & $\to$PASS & Persist. & Regr. & Total & Repair Rate \\
+\midrule
+BUILD\_FAIL & 72 & 274 & -- & 346 & 20.8\% [16.9\%, 25.4\%] \\ % src: paper_data.json > self_repair > per_initial_failure > BUILD_FAIL: 72/346=0.2081; CI [0.1686,0.2540]
+RUN\_FAIL & 17 & 131 & -- & 148 & 11.5\% [7.3\%, 17.6\%] \\ % src: paper_data.json > self_repair > per_initial_failure > RUN_FAIL: 17/148=0.1149; CI [0.0730,0.1763]
+VERIFY\_FAIL & 8 & 20 & -- & 28 & 28.6\% [15.2\%, 47.1\%] \\ % src: paper_data.json > self_repair > per_initial_failure > VERIFY_FAIL: 8/28=0.2857; CI [0.1525,0.4706]
+EXTR\_FAIL & 15 & 12 & -- & 27 & 55.6\% [37.3\%, 72.4\%] \\ % src: paper_data.json > self_repair > per_initial_failure > EXTRACTION_FAIL: 15/27=0.5556; CI [0.3731,0.7241] (UNCHANGED)
+UNKNOWN & 0 & 1 & -- & 1 & 0.0\% \\ % src: paper_data.json > self_repair > per_initial_failure > UNKNOWN: 0/1
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+% src: paper_data.json > primary_campaign > self_repair (all values verified 2026-04-05)
+% src: accounting: 160+112+392+7+39(partial_repair)=710; 160+112=272=Total PASS; 392+7+39=438=non-PASS
+% src: 160/710=22.5%; 112/710=15.8%; 272/710=38.3%; (272-160)/160=70.0%; 7/710=1.0%
+\begin{table}[htbp]
+\centering
+\caption{Self-repair effectiveness (all directions, all levels, Qwen~3.5; GPT-4.1~mini pending).}
+\label{tab:self-repair}
+\small
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+Metric & Qwen 3.5 & GPT-4.1 mini & Combined \\
+\midrule
+Total tasks & 710 & \tbd & \tbd \\
+First-attempt PASS & 160 (22.5\%) & \tbd & \tbd \\ % src: paper_data.json > self_repair > first_attempt_pass=160, 160/710=0.2254
+Repaired (attempt 2--4) & 112 (15.8\%) & \tbd & \tbd \\ % src: paper_data.json > self_repair > repaired=112, 112/710=0.1577
+Total PASS & 272 (38.3\%) & \tbd & \tbd \\ % src: paper_data.json > primary_campaign > overall > pass=272, 272/710=0.3831
+Relative improvement & +70.0\% & \tbd & \tbd \\ % src: (272-160)/160=112/160=0.70
+Persistent fail & 392 & \tbd & \tbd \\ % src: paper_data.json > self_repair > persistent_fail=392
+Regression & 7 (1.0\%) & \tbd & \tbd \\ % src: paper_data.json > self_repair > regression=7, 7/710=0.0099
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+% src: paper_data.json > primary_campaign > augmentation > all_directions + cuda_to_omp_balanced (all 10 cells verified 2026-04-05)
+\begin{table}[htbp]
+\centering
+\caption{LLM pass rates across augmentation levels. All directions ($n=142$ per level) and balanced CUDA-to-OpenMP subset ($n=24$ per level).}
+\label{tab:augmentation-rates}
+\small
+\begin{tabular}{@{}cccc@{}}
+\toprule
+Level & \makecell{Qwen 3.5\\(all dirs, $n$=142)} & \makecell{Qwen 3.5\\(C$\to$OMP, $n$=24)} & \makecell{GPT-4.1\\mini} \\
+\midrule
+L0 & 40.1\% [32.4\%, 48.4\%] & 66.7\% [46.7\%, 82.0\%] & \tbd \\ % src: paper_data.json > augmentation > all_directions.L0: 57/142; cuda_to_omp_balanced.L0: 16/24
+L1 & 37.3\% [29.8\%, 45.5\%] & 58.3\% [38.8\%, 75.5\%] & \tbd \\ % src: paper_data.json > augmentation > all_directions.L1: 53/142; cuda_to_omp_balanced.L1: 14/24
+L2 & 40.1\% [32.4\%, 48.4\%] & 70.8\% [50.8\%, 85.1\%] & \tbd \\ % src: paper_data.json > augmentation > all_directions.L2: 57/142; cuda_to_omp_balanced.L2: 17/24
+L3 & 39.4\% [31.8\%, 47.6\%] & 58.3\% [38.8\%, 75.5\%] & \tbd \\ % src: paper_data.json > augmentation > all_directions.L3: 56/142; cuda_to_omp_balanced.L3: 14/24
+L4 & 34.5\% [27.2\%, 42.6\%] & 66.7\% [46.7\%, 82.0\%] & \tbd \\ % src: paper_data.json > augmentation > all_directions.L4: 49/142; cuda_to_omp_balanced.L4: 16/24
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{f7_augmentation_robustness.pdf}
+\caption{Augmentation robustness. X-axis: augmentation levels L0--L4. Y-axis: pass rate (\%). Lines per model. Rodinia CUDA-to-OpenMP, seed=42.}
+\label{fig:augmentation}
+\end{figure}
+
+
+% src: paper_data.json > passk_campaign > passk_estimates (142 direction-kernel pairs, 3 samples each = 426 tasks)
+% src: 103 hard_fail + 0 noisy + 17 always_pass + 22 partial = 142 verified
+% src: 103/142=72.5%, 22/142=15.5%, 17/142=12.0% verified
+% src: macro pass@1=19.7%, macro pass@3=27.5% verified; greedy pass rate=38.3% = primary campaign rate (paper_data.json > primary_campaign > overall > pass_rate=0.3831)
+\begin{table*}[htbp]
+\centering
+\caption{pass@$k$ results (L0, temperature=0.7, 3 samples, Qwen~3.5; GPT-4.1~mini pending).}
+\label{tab:pass-at-k}
+\small
+\begin{tabular}{@{}lrrrccc@{}}
+\toprule
+Model & Greedy rate (T=0) & pass@1 (T=0.7) & pass@3 (T=0.7) & Hard Fail & Noisy Fail & Always Pass \\
+\midrule
+Qwen 3.5 397B-A17B & 38.3\% (primary) & 19.7\% (macro) & 27.5\% (macro) & 103/142 (72.5\%) & 0/142 (0.0\%) & 17/142 (12.0\%) \\ % src: paper_data.json > primary_campaign > overall > pass_rate=0.3831 -> 38.3% greedy pass rate; passk unchanged
+GPT-4.1 mini & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction.pdf}
+\caption{pass@$k$ by translation direction.}
+\label{fig:pass-at-k}
+\end{figure}
+
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{f6_xsbench_comparison.pdf}
+\caption{XSBench cross-granularity comparison. ParBench kernel-level vs.\ ParEval-Repo repository-level pass rates on the same computational kernel.}
+\label{fig:xsbench}
+\end{figure}
+
+
+% src: paper_data.json > primary_campaign > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0
+% src: paper_data.json > primary_campaign > direction_asymmetry: McNemar values cross-checked with S6.6 tab:direction-rates
+% src: Bonferroni alpha = 0.05/4 = 0.0125 (4 McNemar tests incl. omp\_target)
+\begin{table*}[htbp]
+\centering
+\caption{Statistical summary. All confidence intervals are Wilson 95\% CIs.}
+\label{tab:stats-summary}
+\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Test & Statistic & $p$-value & Effect Size & Interpretation \\
+\midrule
+Model comparison (chi-squared) & \tbd & \tbd & Cramer's V = \tbd & \tbd \\
+Qwen augmentation (Cochran-Armitage) & $z = 0.0$ & $p = 1.0$ & -- & No monotonic trend; null supports robustness \\ % src: paper_data.json > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0, n_kernels=24
+GPT-4.1~mini augmentation (Cochran-Armitage) & \tbd & \tbd & -- & \tbd \\
+Direction: cuda-omp (McNemar) & $n=24$, exact & $p = 0.6875$ & Cohen's $h = -0.17$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > omp-to-cuda vs cuda-to-omp: n=24, p=0.6875, h=-0.1724
+Direction: cuda-opencl (McNemar) & $n=20$, exact & $p = 0.6875$ & Cohen's $h = 0.28$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > cuda-to-opencl vs opencl-to-cuda: n=20, p=0.6875, h=0.2838
+Direction: omp-opencl (McNemar) & $n=18$, exact & $p = 1.0$ & Cohen's $h = 0.12$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > opencl-to-omp vs omp-to-opencl: n=18, p=1.0, h=0.1157
+\bottomrule
+\end{tabular}
+\end{table*}
+
+% --- Full Per-Kernel Table (complete 31-row version of condensed main-text table) ---
+
+
+% src: paper_data.json > primary_campaign > by_kernel (all 31 rows verified 2026-04-05)
+% src: row sums all match Total; total PASS across kernels = 272; total tasks = 710
+% src: 31 evaluated kernels = 35 corpus kernels - 4 with all specs KNOWN_FAIL/phantom (kmeans, mummergpu, hybridsort, huffman)
+% src: spot-checked vs raw JSONs: hotspot(21P/4R/5V=30), stencil1d(15P=15), xsbench(20B/10R=30)
+\begin{table*}[htbp]
+\centering
+\caption{Full per-kernel greedy pass rates across all 31 evaluation kernels (Qwen~3.5 397B-A17B, 710 primary campaign tasks, 31~kernels across 5 suites). KNOWN\_FAIL source specs excluded.}
+\label{tab:per-kernel-full}
+\footnotesize
+\begin{tabular}{@{}llrrrrl@{}}
+\toprule
+Suite & Kernel & Total & PASS & Fail & Rate & 95\% Wilson CI \\
+\midrule
+% src: paper_data.json > primary_campaign > by_kernel > stencil1d: pass=15, total=15, rate=1.0
+HeCBench & stencil1d & 15 & 15 & 0 & 100.0\% & [79.6\%, 100.0\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > floydwarshall: pass=16, total=20, rate=0.8
+HeCBench & floydwarshall & 20 & 16 & 4 & 80.0\% & [58.4\%, 91.9\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > heat2d: pass=15, total=20, rate=0.75
+HeCBench & heat2d & 20 & 15 & 5 & 75.0\% & [53.1\%, 88.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > iso2dfd: pass=15, total=20, rate=0.75
+HeCBench & iso2dfd & 20 & 15 & 5 & 75.0\% & [53.1\%, 88.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > hotspot: pass=21, total=30, rate=0.7
+Rodinia & hotspot & 30 & 21 & 9 & 70.0\% & [52.1\%, 83.3\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > nn: pass=7, total=10, rate=0.7
+Rodinia & nn & 10 & 7 & 3 & 70.0\% & [39.7\%, 89.2\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > hotspot3d: pass=19, total=30, rate=0.6333
+Rodinia & hotspot3d & 30 & 19 & 11 & 63.3\% & [45.5\%, 78.1\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > jacobi: pass=6, total=10, rate=0.6
+HeCBench & jacobi & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > md: pass=6, total=10, rate=0.6
+HeCBench & md & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > nqueen: pass=6, total=10, rate=0.6
+HeCBench & nqueen & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > page-rank: pass=6, total=10, rate=0.6
+HeCBench & page-rank & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > particlefilter: pass=17, total=30, rate=0.5667
+Rodinia & particlefilter & 30 & 17 & 13 & 56.7\% & [39.2\%, 72.6\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > bfs: pass=16, total=30, rate=0.5333
+Rodinia & bfs & 30 & 16 & 14 & 53.3\% & [36.1\%, 69.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > cfd: pass=16, total=30, rate=0.5333
+Rodinia & cfd & 30 & 16 & 14 & 53.3\% & [36.1\%, 69.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > lud: pass=15, total=30, rate=0.5; Wilson CI [33.1539%, 66.8461%]
+Rodinia & lud & 30 & 15 & 15 & 50.0\% & [33.2\%, 66.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > nw: pass=15, total=30, rate=0.5; Wilson CI [33.1539%, 66.8461%]
+Rodinia & nw & 30 & 15 & 15 & 50.0\% & [33.2\%, 66.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > pathfinder: pass=15, total=30, rate=0.5; Wilson CI [33.1539%, 66.8461%]
+Rodinia & pathfinder & 30 & 15 & 15 & 50.0\% & [33.2\%, 66.8\%] \\
+\midrule
+% src: paper_data.json > primary_campaign > by_kernel > backprop: pass=13, total=30, rate=0.4333
+Rodinia & backprop & 30 & 13 & 17 & 43.3\% & [27.4\%, 60.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > srad: pass=12, total=30, rate=0.4
+Rodinia & srad & 30 & 12 & 18 & 40.0\% & [24.6\%, 57.7\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > scan: pass=5, total=15, rate=0.3333
+HeCBench & scan & 15 & 5 & 10 & 33.3\% & [15.2\%, 58.3\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > mixbench: pass=8, total=30, rate=0.2667; Wilson CI [14.1825%, 44.4483%]
+mixbench & mixbench & 30 & 8 & 22 & 26.7\% & [14.2\%, 44.4\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > bptree: pass=4, total=30, rate=0.1333
+Rodinia & bptree & 30 & 4 & 26 & 13.3\% & [5.3\%, 29.7\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > lavamd: pass=2, total=30, rate=0.0667
+Rodinia & lavamd & 30 & 2 & 28 & 6.7\% & [1.8\%, 21.3\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > streamcluster: pass=2, total=30, rate=0.0667
+Rodinia & streamcluster & 30 & 2 & 28 & 6.7\% & [1.8\%, 21.3\%] \\
+\midrule
+% src: paper_data.json > primary_campaign > by_kernel > convolution1d: pass=0, total=10, rate=0.0
+HeCBench & convolution1d & 10 & 0 & 10 & 0.0\% & [0.0\%, 27.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > dwt2d: pass=0, total=10, rate=0.0
+Rodinia & dwt2d & 10 & 0 & 10 & 0.0\% & [0.0\%, 27.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > gaussian: pass=0, total=10, rate=0.0
+Rodinia & gaussian & 10 & 0 & 10 & 0.0\% & [0.0\%, 27.8\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > heartwall: pass=0, total=30, rate=0.0; Wilson CI [0.0%, 11.3517%]
+Rodinia & heartwall & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.4\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > myocyte: pass=0, total=30, rate=0.0; Wilson CI [0.0%, 11.3517%]
+Rodinia & myocyte & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.4\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > rsbench: pass=0, total=30, rate=0.0; Wilson CI [0.0%, 11.3517%]
+RSBench & rsbench & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.4\%] \\
+% src: paper_data.json > primary_campaign > by_kernel > xsbench: pass=0, total=30, rate=0.0; Wilson CI [0.0%, 11.3517%]
+XSBench & xsbench & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.4\%] \\
+\bottomrule
+\end{tabular}
+\end{table*}
+

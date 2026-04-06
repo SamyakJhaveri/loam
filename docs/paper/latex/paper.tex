@@ -353,28 +353,9 @@ The engine implements six transforms, each backed by the libclang API for AST an
 \end{enumerate}
 
 All transforms operate on the parsed AST rather than on raw text, which avoids the fragility of regex-based rewriting. Each candidate rewrite is validated by re-parsing the transformed code and confirming that no new diagnostic errors are introduced. Overlapping candidates are resolved by a greedy subset-selection algorithm that maximizes the number of applied transforms without introducing conflicts.
-% src: tab:augmentation-levels verified against LEVEL_FRACTIONS = {1: 0.0, 2: 0.33, 3: 0.66, 4: 1.0} (01-01 verified 2026-04-03)
-% src: in c_augmentation/augment_dataset.py line 111 (LEVEL_FRACTIONS dict)
-% src: Transform selection (L1: 1 of 6, L2: max(1,int(6*0.33))=1, L3: max(1,int(6*0.66))=3, L4: all 6) verified against augment_code() lines 1796-1803
-% src: Candidate fraction within each transform verified against _select_fraction() lines 152-167: max(1, floor(n*fraction))
+% [Float moved to Appendix D]
+The complete augmentation level definitions are provided in Appendix Table~\ref{tab:augmentation-levels}.
 
-\begin{table}[t]
-\centering
-\caption{Augmentation level definitions.}
-\label{tab:augmentation-levels}
-\small
-\begin{tabular}{@{}cccp{3.8cm}@{}}
-\toprule
-Level & Transform selection & Candidate fraction & Description \\
-\midrule
-L0 & None (original) & 0\% & Unmodified source code (baseline) \\
-L1 & 1 transform & 1 site per transform & Minimal surface perturbation \\
-L2 & 33\% of transforms & 33\% of candidates & Moderate obfuscation \\
-L3 & 66\% of transforms & 66\% of candidates & Heavy obfuscation \\
-L4 & All transforms & 100\% of candidates & Maximum obfuscation \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 Five augmentation levels (L0--L4) control the density of applied transforms (Table~\ref{tab:augmentation-levels}). L0 is the unmodified source. At L1, exactly one transform is selected and applied to a single candidate site. Levels L2--L4 apply both transform selection and candidate-site selection at increasing fractions: the fraction mapping applies to choose how many of the six transforms to run: 33\% at L2, 66\% at L3, and 100\% at L4. Within each selected transform, the same fraction determines how many eligible AST nodes to rewrite, with a minimum of one applied via $\max(1, \lfloor n \cdot f \rfloor)$.
 
@@ -420,31 +401,12 @@ The benchmark corpus was assembled through a four-stage systematic process: surv
 \textbf{Survey methodology.} We conducted a systematic survey of open-source HPC benchmark repositories, beginning with 40 candidate archives identified from the ECP proxy application catalog, published benchmark suites, and HPC conference proceedings. After excluding 5 repositories for download failures or insufficient documentation, 35 repositories were analyzed in detail. These span six benchmark types: suites (e.g., HeCBench~\cite{HeCBench2023}, Rodinia~\cite{Rodinia2009}, RAJAPerf, NAS NPB), mini-applications (e.g., BabelStream, CloverLeaf, LULESH, miniBUDE), proxy applications (e.g., SW4lite, CoMD, Kripke), full applications (e.g., LAMMPS, GROMACS), libraries (e.g., Kokkos Kernels, AMReX, MFEM), and microbenchmarks (e.g., STREAM, OSU OMB). Of the 35, 30 were classified Tier~A (documented build, automated verification, active maintenance) and 5 as Tier~B (partial verification or limited API coverage).
 
 \textbf{Repository-level vs.\ kernel-level counting.} A central finding of the survey is that repository-level counting dramatically understates the available benchmark material for translation evaluation. The API co-occurrence matrix identifies 6 repositories containing both CUDA and OpenMP implementations. However, kernel-level analysis---enumerating individual computational kernels that have verified equivalent implementations across APIs---reveals 472 independent CUDA--OpenMP translation pairs across those same 6 repositories, a 79$\times$ multiplier (Figure~\ref{fig:repo-vs-kernel}). This extreme concentration is driven by large multi-kernel suites: HeCBench alone contributes 325 CUDA--OpenMP kernel pairs, RAJAPerf contributes 106, and Rodinia contributes 19. The same pattern holds across other API pairs: 633 CUDA--HIP kernel pairs (across 3 repositories, a 211$\times$ multiplier) and 616 CUDA--SYCL pairs (across 2 repositories, a 308$\times$ multiplier). This finding motivates a kernel-centric evaluation strategy in which benchmarks are evaluated at the granularity of individual computational kernels rather than entire repositories.
+% [Float moved to Appendix D]
+The repository-to-kernel extraction ratio is shown in Appendix Figure~\ref{fig:repo-vs-kernel}.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{f2_repo_vs_kernel.pdf}
-\caption{Repository-level vs.\ kernel-level translation pair counts. Left bars show the number of repositories containing both APIs; right bars show the number of independent kernel-level translation pairs. The multipliers (79$\times$--308$\times$) demonstrate that repository-level counting substantially underestimates the translation evaluation opportunity.}
-\label{fig:repo-vs-kernel}
-\end{figure}
+% [Float moved to Appendix D]
+Translation pair counts per kernel are detailed in Appendix Table~\ref{tab:kernel-pairs}.
 
-\begin{table}[t]
-\centering
-\caption{Survey---kernel-level translation pair counts.}
-\label{tab:kernel-pairs}
-\small
-\begin{tabular}{@{}lccl@{}}
-\toprule
-API Pair & Repos & Kernel Pairs & Primary Sources \\
-\midrule
-CUDA--HIP & 3 & 633 & HeCBench (504), RAJAPerf (106), CloverLeaf (16) \\
-CUDA--SYCL & 2 & 616 & HeCBench (487), RAJAPerf (106), CloverLeaf (16) \\
-CUDA--OpenMP & 6 & 472 & HeCBench (325), RAJAPerf (106), Rodinia (19) \\
-HIP--OpenMP & 2 & 453 & HeCBench (324), RAJAPerf (106), CloverLeaf (16) \\
-CUDA--OpenCL & 6 & ${\sim}$200 & Rodinia (19), Parboil, SHOC \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \textbf{Selection criteria.} Five criteria guided suite selection from the surveyed repositories:
 
@@ -498,24 +460,9 @@ However, Rodinia's age and wide availability raise a legitimate concern: its sou
 The survey data directly inform ParBench's API selection. CUDA serves as the primary source language, reflecting its dominant position in GPU programming. OpenMP is the primary translation target: the kernel-level survey identified CUDA-to-OpenMP as the largest translation opportunity among CPU-targeting APIs, with 472 kernel pairs across 6 repositories (Table~\ref{tab:kernel-pairs}).
 
 Although CUDA--HIP and CUDA--SYCL yield higher raw kernel-pair counts (633 and 616 respectively; Table~\ref{tab:kernel-pairs}), these pairs represent a qualitatively different---and substantially easier---translation challenge. HIP is designed as a near-syntactic mirror of CUDA: \texttt{cudaMalloc} maps to \texttt{hipMalloc}, kernel launch syntax is preserved verbatim, and thread-index arithmetic transfers unchanged. In contrast, CUDA-to-OpenMP translation requires structural program transformation: SPMD thread-index arithmetic must be refactored into fork-join loop parallelism, explicit GPU memory management must be eliminated entirely, and synchronization primitives (\texttt{\_\_syncthreads()}) must be replaced with implicit OpenMP barrier semantics or explicit \texttt{critical}/\texttt{atomic} sections. This paradigm gap makes CUDA--OpenMP the most scientifically informative translation direction for evaluating whether LLMs reason about parallel structure rather than performing surface-level API renaming.
+% [Float moved to Appendix D]
+API characteristics and execution model comparison are detailed in Appendix Table~\ref{tab:api-characteristics}.
 
-\begin{table*}[t]
-\centering
-\caption{Programming model characteristics of the three primary translation APIs. These differences define the structural transformation challenges that LLM-based translation must address.}
-\label{tab:api-characteristics}
-\small
-\begin{tabular}{@{}lp{4.0cm}p{4.0cm}p{4.0cm}@{}}
-\toprule
-Property & CUDA & OpenMP & OpenCL \\
-\midrule
-Execution model & SIMT (warps of 32 threads) & Fork-join thread teams & NDRange work-groups \\
-Memory management & Explicit device allocation (\texttt{cudaMalloc}/\texttt{cudaMemcpy}) & Implicit shared CPU memory & Explicit buffer objects (\texttt{clCreateBuffer}/\texttt{clEnqueueReadBuffer}) \\
-Kernel specification & Compiled with host code (\texttt{\_\_global\_\_} functions) & Pragma directives (\texttt{\#pragma omp parallel for}) & Runtime string compilation (\texttt{clCreateProgramWithSource}) \\
-Source structure & Single or multi-file (51\% multi-file in corpus) & Single file (directives annotate sequential code) & Separate host program + \texttt{.cl} kernel files \\
-Thread indexing & \texttt{threadIdx.x + blockIdx.x * blockDim.x} & Loop iteration variable or \texttt{omp\_get\_thread\_num()} & \texttt{get\_global\_id(0)} \\
-\bottomrule
-\end{tabular}
-\end{table*}
 
 OpenCL provides a secondary translation target that exercises a qualitatively different programming model from both CUDA and OpenMP. Rodinia's particular strength lies in its OpenCL coverage: 20 of 22 Rodinia kernels have OpenCL implementations, compared to only sparse OpenCL coverage in HeCBench and RAJAPerf. This makes Rodinia the primary source for OpenCL translation pairs.
 
@@ -530,31 +477,9 @@ OpenMP target offload (OMP-target) provides a fourth API that uses compiler-dire
 % src: XSBench 4, RSBench 4, mixbench 3 specs; verified 2026-04-03
 % src: 8 KNOWN_FAIL per known-issues.md: 6 Rodinia + 2 HeCBench omp_target
 The five suites contribute a total of 96 benchmark specifications, of which 88 achieve PASS through the complete build/run/verify pipeline and 8 are KNOWN\_FAIL (Table~\ref{tab:suite-summary}). The 88 verified-PASS specs constitute the evaluation corpus.
+% [Float moved to Appendix D]
+Suite-level corpus statistics are provided in Appendix Table~\ref{tab:suite-summary}.
 
-\begin{table}[t]
-\centering
-\caption{Suite summary showing total specs, verified PASS, KNOWN\_FAIL, and API coverage for each of the five benchmark suites.}
-\label{tab:suite-summary}
-\small
-% src: Verified 2026-04-03 against specs/ on disk:
-% src: Rodinia: ls specs/rodinia-*.json | wc -l => 60; unique kernels => 22; KF=6 (known-issues.md)
-% src: HeCBench: 10 curated kernels x {cuda,omp,omp_target} = 25 specs (from 135 total); KF=2
-% src: XSBench: 4; RSBench: 4; mixbench: 3 (all verified via ls specs/{suite}-*.json)
-% src: Sums: 22+10+1+1+1=35 kernels, 60+25+4+4+3=96 specs, 54+23+4+4+3=88 PASS, 6+2+0+0+0=8 KF
-\begin{tabular}{@{}lccccc@{}}
-\toprule
-Suite & Kernels & Total & PASS & KF & APIs \\
-\midrule
-Rodinia & 22 & 60 & 54 & 6 & CUDA, OMP, OCL \\
-HeCBench (curated) & 10 & 25 & 23 & 2 & CUDA, OMP, OMP-tgt \\
-XSBench & 1 & 4 & 4 & 0 & CUDA, OMP, OCL, OMP-tgt \\
-RSBench & 1 & 4 & 4 & 0 & CUDA, OMP, OCL, OMP-tgt \\
-mixbench & 1 & 3 & 3 & 0 & CUDA, OMP, OCL \\
-\midrule
-\textbf{Total} & \textbf{35} & \textbf{96} & \textbf{88} & \textbf{8} & \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 The selected kernels span computational domains including graph traversal (bfs, floydwarshall, page-rank), physics simulation (hotspot, hotspot3d, cfd, srad, iso2dfd), machine learning (backprop, nn), linear algebra (lud, nw), molecular dynamics (lavamd, md), nuclear physics (xsbench, rsbench), stencil computation (stencil1d, heat2d, jacobi), signal processing (convolution1d, scan), biophysical simulation (myocyte, heartwall), particle methods (particlefilter, streamcluster), dynamic programming (pathfinder), combinatorial search (nqueen), and GPU micro-benchmarking (mixbench).
 
@@ -566,29 +491,9 @@ At L0 (unaugmented), the corpus yields 142 unique translation pairs per model ac
 % src: 31/35 (88.6%~89%) above ParEval-Repo 133 SLoC threshold; verified 2026-04-03
 % src: multi-file 24/96 (25.0%); CUDA 18/35 (51%); verified 2026-04-03
 Table~\ref{tab:benchmark-characterization} provides a quantitative characterization of the corpus. Source Lines of Code (SLoC) are counted as physical lines (non-blank, non-comment) in each kernel's CUDA implementation---the code provided to the LLM as translation input. Kernel complexity spans two orders of magnitude: from 80~SLoC (stencil1d) to 3{,}304~SLoC (myocyte), with a corpus median of 271 and mean of 598. All 35~kernels exceed the single-function granularity typical of code-generation benchmarks: 31 of 35 (89\%) surpass ParEval-Repo's average of 133~SLoC per translation unit~\cite{ParEvalRepo2025}. Multi-file translations---where the LLM must coordinate changes across two or more source files---account for 25\% of specs (24/96), with the highest multi-file rate in CUDA specs (51\%) due to the separation of kernel and host code.
+% [Float moved to Appendix D]
+Benchmark characterization metrics are provided in Appendix Table~\ref{tab:benchmark-characterization}.
 
-\begin{table}[t]
-\centering
-\caption{Quantitative characterization of the evaluation corpus. SLoC counts physical source lines in the CUDA prompt payload. Multi-File gives specs requiring translation of $>$1 source file. Std.\ shows the dominant language standard per suite.}
-\label{tab:benchmark-characterization}
-\small
-% src: Rodinia SLoC 195--3304, median 333.5 (rounded to 334), 21/60 multi-file; verified 2026-04-03
-% src: HeCBench SLoC 80--235, median 180, 0/25 multi-file; verified 2026-04-03
-% src: XSBench 1390, RSBench 1016, mixbench 312 SLoC; verified 2026-04-03
-\begin{tabular}{@{}lrcrcl@{}}
-\toprule
-Suite & Kernels & SLoC Range & Med. & Multi-File & Std. \\
-\midrule
-Rodinia         & 22 & 195--3{,}304 & 334 & 21/60 (35\%) & C++14 \\
-HeCBench (curated) & 10 &    80--235    & 180 &  0/25 ~(0\%) & C++17 \\
-XSBench         &  1 &    1{,}390    &  -- &  2/4~~(50\%) & C11   \\
-RSBench         &  1 &    1{,}016    &  -- &  1/4~~(25\%) & C11   \\
-mixbench        &  1 &       312     &  -- &  0/3~~~(0\%) & C++11 \\
-\midrule
-\textbf{Total}  & \textbf{35} & \textbf{80--3{,}304} & \textbf{271} & \textbf{24/96 (25\%)} & \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 % src: sloc_analysis.json category field per kernel (35 kernels, 10 categories)
 % cross-check: benchmark_characterization.json categories section
@@ -596,31 +501,9 @@ mixbench        &  1 &       312     &  -- &  0/3~~~(0\%) & C++11 \\
 % The 12 count comes from the full 83-kernel manifest (includes crypto, financial from non-curated HeCBench).
 % Canonical source: sloc_analysis.json category assignment per kernel.
 Table~\ref{tab:category-distribution} shows the domain distribution of the evaluation corpus. The 35~kernels span 10~computational categories across all 5~suites. Excluding the catchall ``other'' category (8~kernels covering utility benchmarks such as memory bandwidth and combinatorial search), physics simulation and graph algorithms are the most represented domain-specific categories (7 and 5~kernels respectively), reflecting the computational patterns most common in HPC proxy applications. Combined with the per-suite API coverage shown in Table~\ref{tab:suite-summary}, these distributions confirm that the corpus covers diverse computational domains and parallel API combinations.
+% [Float moved to Appendix D]
+The full category distribution is provided in Appendix Table~\ref{tab:category-distribution}.
 
-\begin{table}[t]
-\centering
-\caption{Domain category distribution across the 35-kernel evaluation corpus. Categories are assigned from the canonical \texttt{sloc\_analysis.json} classification. Suite annotations show which suites contribute kernels to each category.}
-\label{tab:category-distribution}
-\small
-\begin{tabular}{@{}lrl@{}}
-\toprule
-Category & Kernels & Contributing Suites \\
-\midrule
-Physics simulation     & 7 & Rodinia (5), XSBench, RSBench \\
-Graph algorithms       & 5 & Rodinia (3), HeCBench (2) \\
-Stencil computation    & 5 & HeCBench (5) \\
-Image processing       & 2 & Rodinia (2) \\
-Linear algebra         & 2 & Rodinia (2) \\
-Machine learning       & 2 & Rodinia (2) \\
-Molecular dynamics     & 2 & Rodinia (1), HeCBench (1) \\
-Reduction              & 1 & HeCBench (1) \\
-Sort                   & 1 & Rodinia (1) \\
-Other                  & 8 & Rodinia (6), HeCBench (1), mixbench (1) \\
-\midrule
-\textbf{Total}         & \textbf{35} & \textbf{5 suites} \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 % src: 38 OMP specs = 26 omp + 12 omp_target (ls specs/*-omp*.json in curated suites); verified 2026-04-03
 % src: __syncthreads in 18/35 CUDA prompt_payload files (grep __syncthreads via repo_root+source_path); verified 2026-04-03
@@ -654,23 +537,9 @@ Two large language models are evaluated, selected to maximize provider diversity
 Both models are queried at temperature~0 (greedy decoding) for the primary campaign to ensure deterministic outputs and reproducibility across runs. Reasoning and chain-of-thought modes are explicitly disabled for all models. This is a deliberate design choice: the evaluation targets raw translation competence rather than the capacity of a multi-step reasoning scaffold to search for solutions.
 
 The two models were chosen to maximize provider diversity (Alibaba via Together AI vs.\ OpenAI via Azure), enabling cross-provider comparison under identical evaluation conditions and avoiding potential conflicts of interest. The ParBench framework is model-agnostic: adding a model requires only an API key and a single command via the parameterized campaign script. Pilot data from three additional models are available as supplementary material. Table~\ref{tab:model-config} summarizes the model configurations.
+% [Float moved to Appendix D]
+Model configuration details are provided in Appendix Table~\ref{tab:model-config}.
 
-% src: 2 models only: Qwen 3.5 397B-A17B (Together AI) + GPT-4.1 mini (Azure OpenAI); verified 2026-04-03
-% src: GPT-4.1 mini column has \pending markers (Le's data pending); verified 2026-04-03
-\begin{table}[t]
-\centering
-\caption{Model configurations.}
-\label{tab:model-config}
-\small
-\begin{tabular}{@{}llllc@{}}
-\toprule
-Model & Provider & Arch. & Parameters & Temp. \\
-\midrule
-Qwen 3.5 397B-A17B & Together AI & MoE & 397B / 17B active & 0 \\
-GPT-4.1 mini & Azure OpenAI & N/D & \pending{size} & 0 \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \subsection{Translation Directions}
 \label{sec:directions}
@@ -725,26 +594,9 @@ All Qwen~3.5 evaluations are conducted on a single workstation to eliminate cros
 CUDA compilation uses \texttt{nvcc} from the NVIDIA HPC SDK~24.3 (CUDA~12.3). C/C++ compilation uses GCC~12.4 with the \texttt{-fopenmp} flag for OpenMP targets. OpenCL programs link against the NVIDIA runtime from the HPC SDK. The evaluation harness and all scripting infrastructure run on Python~3.12.3. LLM API calls are issued from the evaluation machine; network latency does not affect correctness evaluation.
 
 GPT-4.1~mini evaluations are conducted by a collaborator on a separate machine with identical software configuration. \pending{GPU model, CPU model, and OS for the collaborator's evaluation machine.} Table~\ref{tab:hardware} lists the complete hardware and software configuration.
+% [Float moved to Appendix D]
+The full hardware and software configuration is detailed in Appendix Table~\ref{tab:hardware}.
 
-\begin{table}[t]
-\centering
-\caption{Hardware and software configuration.}
-\label{tab:hardware}
-\small
-\begin{tabular}{@{}lll@{}}
-\toprule
-Component & Qwen (primary) & GPT-4.1 mini (collaborator) \\
-\midrule
-GPU & RTX 4070 (12 GB) & \pending{GPU} \\
-CPU & Ryzen 9 7900X & \pending{CPU} \\
-OS & Ubuntu 24.04 LTS & \pending{OS} \\
-CUDA toolkit & HPC SDK 24.3 & \pending{toolkit} \\
-C/C++ compiler & GCC 12.4 & \pending{compiler} \\
-OpenCL runtime & NVIDIA HPC SDK & \pending{OCL runtime} \\
-Python & 3.12.3 & \pending{Python} \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 % src: git rev-parse HEAD (at paper-writing time); git submodule status -> 9c10d3ea (Rodinia)
 To support exact reproduction, all artifacts are version-pinned: ParBench at commit \texttt{c1d8c7b}\footnote{Repository URL withheld for double-blind review.}, Rodinia at submodule commit \texttt{9c10d3ea}~\cite{Rodinia2009}, and evaluation scripts at the same ParBench revision. Qwen~3.5 397B-A17B was accessed via the Together AI API during March--April 2026; model weights are publicly available. All 1,248 per-task result JSONs, analysis scripts, and spec files are included in the repository to enable independent verification of every reported number.
@@ -813,26 +665,9 @@ Of the 438 total failures in the Qwen~3.5 campaign, the distribution is: BUILD\_
 \textbf{Failure mode shift in kernel-only translations.} The aggregate failure taxonomy is dominated by full-program translation directions (CUDA-to-OpenMP, OpenMP-to-CUDA), where BUILD\_FAIL is the majority failure mode. OpenCL-target translations exhibit a structurally different distribution: zero tasks are classified as BUILD\_FAIL, because the host binary is never modified and always compiles successfully. Failures shift entirely to runtime categories---RUN\_FAIL and VERIFY\_FAIL. This structural difference has methodological implications: failure taxonomies aggregated across all directions may understate the diversity of failure modes.
 
 \textbf{Self-repair by failure mode transition.} Table~\ref{tab:repair-transitions} breaks down the transitions from initial failure to final outcome across all attempts.
+% [Float moved to Appendix D]
+Repair attempt transition counts are provided in Appendix Table~\ref{tab:repair-transitions}.
 
-% src: paper_data.json > primary_campaign > self_repair > per_initial_failure (all rows verified 2026-04-05)
-% src: total repaired 72+17+8+15+0=112; total initial failures 346+148+28+27+1=550; 550=710-160 verified
-\begin{table}[t]
-\centering
-\caption{Self-repair failure mode transitions (all tasks, Qwen~3.5; GPT-4.1~mini pending). Rows: initial failure mode. Columns: final outcome after up to 3 retries.}
-\label{tab:repair-transitions}
-\small
-\begin{tabular}{@{}lrrrrl@{}}
-\toprule
-Initial Failure & $\to$PASS & Persist. & Regr. & Total & Repair Rate \\
-\midrule
-BUILD\_FAIL & 72 & 274 & -- & 346 & 20.8\% [16.9\%, 25.4\%] \\ % src: paper_data.json > self_repair > per_initial_failure > BUILD_FAIL: 72/346=0.2081; CI [0.1686,0.2540]
-RUN\_FAIL & 17 & 131 & -- & 148 & 11.5\% [7.3\%, 17.6\%] \\ % src: paper_data.json > self_repair > per_initial_failure > RUN_FAIL: 17/148=0.1149; CI [0.0730,0.1763]
-VERIFY\_FAIL & 8 & 20 & -- & 28 & 28.6\% [15.2\%, 47.1\%] \\ % src: paper_data.json > self_repair > per_initial_failure > VERIFY_FAIL: 8/28=0.2857; CI [0.1525,0.4706]
-EXTR\_FAIL & 15 & 12 & -- & 27 & 55.6\% [37.3\%, 72.4\%] \\ % src: paper_data.json > self_repair > per_initial_failure > EXTRACTION_FAIL: 15/27=0.5556; CI [0.3731,0.7241] (UNCHANGED)
-UNKNOWN & 0 & 1 & -- & 1 & 0.0\% \\ % src: paper_data.json > self_repair > per_initial_failure > UNKNOWN: 0/1
-\bottomrule
-\end{tabular}
-\end{table}
 
 % src: paper_data.json > primary_campaign > self_repair: repaired=112, first_attempt_pass=160, regression=7
 BUILD\_FAIL is the most recoverable failure mode by volume (72 repaired tasks), consistent with the hypothesis that compiler error messages provide actionable feedback that guides the model toward a fix. The BUILD\_FAIL repair rate of 20.8\% [16.9\%, 25.4\%] exceeds the RUN\_FAIL rate of 11.5\% [7.3\%, 17.6\%], reflecting the weaker diagnostic signal available for runtime failures. EXTRACTION\_FAIL has the highest repair rate (55.6\%), suggesting that malformed LLM response formatting is readily corrected on retry. Across all initial failure modes, the self-repair protocol recovers 112 tasks total, improving the overall pass rate from 22.5\% (first-attempt) to 38.3\% (final). Seven regressions occur across all tasks, where an initially passing translation fails on a subsequent attempt.
@@ -950,29 +785,9 @@ Kernels partition into three difficulty tiers based on Qwen~3.5 pass rates acros
 \label{sec:self-repair}
 
 ParBench's evaluation pipeline permits up to three retry attempts with failure-specific diagnostics injected into subsequent prompts (four total attempts per task). Table~\ref{tab:self-repair} summarizes self-repair effectiveness.
+% [Float moved to Appendix D]
+Detailed self-repair rates by direction are provided in Appendix Table~\ref{tab:self-repair}.
 
-% src: paper_data.json > primary_campaign > self_repair (all values verified 2026-04-05)
-% src: accounting: 160+112+392+7+39(partial_repair)=710; 160+112=272=Total PASS; 392+7+39=438=non-PASS
-% src: 160/710=22.5%; 112/710=15.8%; 272/710=38.3%; (272-160)/160=70.0%; 7/710=1.0%
-\begin{table}[t]
-\centering
-\caption{Self-repair effectiveness (all directions, all levels, Qwen~3.5; GPT-4.1~mini pending).}
-\label{tab:self-repair}
-\small
-\begin{tabular}{@{}lrrl@{}}
-\toprule
-Metric & Qwen 3.5 & GPT-4.1 mini & Combined \\
-\midrule
-Total tasks & 710 & \tbd & \tbd \\
-First-attempt PASS & 160 (22.5\%) & \tbd & \tbd \\ % src: paper_data.json > self_repair > first_attempt_pass=160, 160/710=0.2254
-Repaired (attempt 2--4) & 112 (15.8\%) & \tbd & \tbd \\ % src: paper_data.json > self_repair > repaired=112, 112/710=0.1577
-Total PASS & 272 (38.3\%) & \tbd & \tbd \\ % src: paper_data.json > primary_campaign > overall > pass=272, 272/710=0.3831
-Relative improvement & +70.0\% & \tbd & \tbd \\ % src: (272-160)/160=112/160=0.70
-Persistent fail & 392 & \tbd & \tbd \\ % src: paper_data.json > self_repair > persistent_fail=392
-Regression & 7 (1.0\%) & \tbd & \tbd \\ % src: paper_data.json > self_repair > regression=7, 7/710=0.0099
-\bottomrule
-\end{tabular}
-\end{table}
 
 % src: paper_data.json > primary_campaign > self_repair > first_attempt_pass_rate: rate=0.2254, CI [0.1961,0.2575]; repair_rate: 112/550=0.2036, CI [0.1721,0.2393]
 Self-repair raises Qwen~3.5's effective pass rate from 22.5\% [19.6\%, 25.8\%] (first-attempt) to 38.3\% [34.8\%, 41.9\%] (final), a 70.0\% relative increase (Table~\ref{tab:self-repair}). Of the 550 initially-failing tasks, 112 are repaired through the 3-retry protocol (repair rate: 20.4\% [17.2\%, 23.9\%]). Seven regressions occur where an initially passing translation fails after retry, representing a 1.0\% regression rate.
@@ -987,32 +802,12 @@ The self-repair data positions ParBench's 3-retry protocol as a controlled middl
 The augmentation engine's six AST-driven transforms were validated on 68 of 88 non-KNOWN\_FAIL specs across five suites at augmentation levels L1 through L4, confirming level-invariant semantics preservation with zero correctness regressions (Section~\ref{sec:augmentation-engine}).
 
 Table~\ref{tab:augmentation-rates} presents per-model pass rates across augmentation levels L0--L4 for CUDA-to-OpenMP translation.
+% [Float moved to Appendix D]
+Per-level augmentation pass rates are detailed in Appendix Table~\ref{tab:augmentation-rates}.
 
-% src: paper_data.json > primary_campaign > augmentation > all_directions + cuda_to_omp_balanced (all 10 cells verified 2026-04-05)
-\begin{table}[t]
-\centering
-\caption{LLM pass rates across augmentation levels. All directions ($n=142$ per level) and balanced CUDA-to-OpenMP subset ($n=24$ per level).}
-\label{tab:augmentation-rates}
-\small
-\begin{tabular}{@{}cccc@{}}
-\toprule
-Level & \makecell{Qwen 3.5\\(all dirs, $n$=142)} & \makecell{Qwen 3.5\\(C$\to$OMP, $n$=24)} & \makecell{GPT-4.1\\mini} \\
-\midrule
-L0 & 40.1\% [32.4\%, 48.4\%] & 66.7\% [46.7\%, 82.0\%] & \tbd \\ % src: paper_data.json > augmentation > all_directions.L0: 57/142; cuda_to_omp_balanced.L0: 16/24
-L1 & 37.3\% [29.8\%, 45.5\%] & 58.3\% [38.8\%, 75.5\%] & \tbd \\ % src: paper_data.json > augmentation > all_directions.L1: 53/142; cuda_to_omp_balanced.L1: 14/24
-L2 & 40.1\% [32.4\%, 48.4\%] & 70.8\% [50.8\%, 85.1\%] & \tbd \\ % src: paper_data.json > augmentation > all_directions.L2: 57/142; cuda_to_omp_balanced.L2: 17/24
-L3 & 39.4\% [31.8\%, 47.6\%] & 58.3\% [38.8\%, 75.5\%] & \tbd \\ % src: paper_data.json > augmentation > all_directions.L3: 56/142; cuda_to_omp_balanced.L3: 14/24
-L4 & 34.5\% [27.2\%, 42.6\%] & 66.7\% [46.7\%, 82.0\%] & \tbd \\ % src: paper_data.json > augmentation > all_directions.L4: 49/142; cuda_to_omp_balanced.L4: 16/24
-\bottomrule
-\end{tabular}
-\end{table}
+% [Float moved to Appendix D]
+The augmentation trend visualization is provided in Appendix Figure~\ref{fig:augmentation}.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{f7_augmentation_robustness.pdf}
-\caption{Augmentation robustness. X-axis: augmentation levels L0--L4. Y-axis: pass rate (\%). Lines per model. Rodinia CUDA-to-OpenMP, seed=42.}
-\label{fig:augmentation}
-\end{figure}
 
 % src: paper_data.json > primary_campaign > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0, n_kernels=24, pass_counts=[16,14,17,14,16]
 The Cochran-Armitage trend test on the balanced CUDA-to-OpenMP subset ($n=24$ kernels per level) yields $z = 0.0$, $p = 1.0$, providing no evidence for a monotonic trend in pass rate across augmentation levels (Table~\ref{tab:stats-summary}). Pass counts are remarkably stable: 16, 14, 17, 14, and 16 at L0 through L4 respectively. This is a null result: surface-level code transformations do not systematically degrade Qwen~3.5's translation performance.
@@ -1064,39 +859,15 @@ McNemar's test for paired direction comparison (using kernel pairs evaluated in 
 \label{sec:pass-at-k}
 
 To characterize sampling variance independent of self-repair, a separate pass@$k$ sweep evaluates Qwen~3.5 at L0 with temperature=0.7 and 3 independent samples per task (max\_retries=1 per sample, i.e., zero-shot per sample). The pass@$k$ estimator follows Chen et al.~\cite{HumanEval2021}: $\text{pass@}k = 1 - \binom{n-c}{k} / \binom{n}{k}$, where $n$ is the number of samples and $c$ is the number that pass.
+% [Float moved to Appendix D]
+Full pass@$k$ results are provided in Appendix Table~\ref{tab:pass-at-k}.
 
-% src: paper_data.json > passk_campaign > passk_estimates (142 direction-kernel pairs, 3 samples each = 426 tasks)
-% src: 103 hard_fail + 0 noisy + 17 always_pass + 22 partial = 142 verified
-% src: 103/142=72.5%, 22/142=15.5%, 17/142=12.0% verified
-% src: macro pass@1=19.7%, macro pass@3=27.5% verified; greedy pass rate=38.3% = primary campaign rate (paper_data.json > primary_campaign > overall > pass_rate=0.3831)
-\begin{table*}[t]
-\centering
-\caption{pass@$k$ results (L0, temperature=0.7, 3 samples, Qwen~3.5; GPT-4.1~mini pending).}
-\label{tab:pass-at-k}
-\small
-\begin{tabular}{@{}lrrrccc@{}}
-\toprule
-Model & Greedy rate (T=0) & pass@1 (T=0.7) & pass@3 (T=0.7) & Hard Fail & Noisy Fail & Always Pass \\
-\midrule
-Qwen 3.5 397B-A17B & 38.3\% (primary) & 19.7\% (macro) & 27.5\% (macro) & 103/142 (72.5\%) & 0/142 (0.0\%) & 17/142 (12.0\%) \\ % src: paper_data.json > primary_campaign > overall > pass_rate=0.3831 -> 38.3% greedy pass rate; passk unchanged
-GPT-4.1 mini & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
-\bottomrule
-\end{tabular}
-\end{table*}
+% [Float moved to Appendix D]
+The pass@$k$ curve is shown in Appendix Figure~\ref{fig:pass-at-k}.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction.pdf}
-\caption{pass@$k$ by translation direction.}
-\label{fig:pass-at-k}
-\end{figure}
+% [Float moved to Appendix D]
+Cross-suite comparison is shown in Appendix Figure~\ref{fig:xsbench}.
 
-\begin{figure}[t]
-\centering
-\includegraphics[width=\columnwidth]{f6_xsbench_comparison.pdf}
-\caption{XSBench cross-granularity comparison. ParBench kernel-level vs.\ ParEval-Repo repository-level pass rates on the same computational kernel.}
-\label{fig:xsbench}
-\end{figure}
 
 % src: paper_data.json passk_campaign: 426 tasks = 142 pairs * 3 samples; categories verified above
 The pass@$k$ sweep (426 tasks, L0, temperature=0.7, 3 samples, zero-shot per sample) reveals a stark bimodal distribution for Qwen~3.5. Of 142 direction-kernel pairs, 103 (72.5\%) are hard failures where no sample succeeds, 22 (15.5\%) are partial successes with pass@1 between 0.33 and 0.67, 17 (12.0\%) succeed on all samples, and zero are noisy failures (pass@1 = 0 but pass@3 $> 0$). The absence of noisy failures indicates that Qwen~3.5's translation capability is deterministic at the kernel-direction level: if the model can translate a kernel in a given direction, it does so reliably across samples; if it cannot, no amount of sampling rescues the task. \pending{Cross-model pass@k comparison awaiting GPT-4.1~mini data.}
@@ -1105,28 +876,9 @@ The pass@$k$ sweep (426 tasks, L0, temperature=0.7, 3 samples, zero-shot per sam
 \label{sec:stats-summary}
 
 Table~\ref{tab:stats-summary} consolidates the statistical tests applied throughout Section~\ref{sec:results}.
+% [Float moved to Appendix D]
+The complete statistical summary is provided in Appendix Table~\ref{tab:stats-summary}.
 
-% src: paper_data.json > primary_campaign > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0
-% src: paper_data.json > primary_campaign > direction_asymmetry: McNemar values cross-checked with S6.6 tab:direction-rates
-% src: Bonferroni alpha = 0.05/4 = 0.0125 (4 McNemar tests incl. omp\_target)
-\begin{table*}[t]
-\centering
-\caption{Statistical summary. All confidence intervals are Wilson 95\% CIs.}
-\label{tab:stats-summary}
-\small
-\begin{tabular}{@{}lllll@{}}
-\toprule
-Test & Statistic & $p$-value & Effect Size & Interpretation \\
-\midrule
-Model comparison (chi-squared) & \tbd & \tbd & Cramer's V = \tbd & \tbd \\
-Qwen augmentation (Cochran-Armitage) & $z = 0.0$ & $p = 1.0$ & -- & No monotonic trend; null supports robustness \\ % src: paper_data.json > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0, n_kernels=24
-GPT-4.1~mini augmentation (Cochran-Armitage) & \tbd & \tbd & -- & \tbd \\
-Direction: cuda-omp (McNemar) & $n=24$, exact & $p = 0.6875$ & Cohen's $h = -0.17$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > omp-to-cuda vs cuda-to-omp: n=24, p=0.6875, h=-0.1724
-Direction: cuda-opencl (McNemar) & $n=20$, exact & $p = 0.6875$ & Cohen's $h = 0.28$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > cuda-to-opencl vs opencl-to-cuda: n=20, p=0.6875, h=0.2838
-Direction: omp-opencl (McNemar) & $n=18$, exact & $p = 1.0$ & Cohen's $h = 0.12$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > opencl-to-omp vs omp-to-opencl: n=18, p=1.0, h=0.1157
-\bottomrule
-\end{tabular}
-\end{table*}
 
 Methodological notes: Wilson confidence intervals are preferred over Wald intervals because they provide better coverage near boundary proportions (0\% or 100\%). Cochran-Armitage tests model a linear trend in pass rate across ordered augmentation levels (L0 $<$ L1 $<$ L2 $<$ L3 $<$ L4). McNemar's test is used for direction asymmetry because each kernel-model pair is evaluated in both directions, creating natural pairing. Bonferroni correction divides $\alpha = 0.05$ across four direction pairs (including the omp\_target case-study pair) to control family-wise error rate.
 
