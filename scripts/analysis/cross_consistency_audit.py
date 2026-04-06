@@ -19,6 +19,7 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import json
 import logging
 import re
@@ -80,9 +81,12 @@ def extract_numbers_from_tex(tex_path: Path) -> list[dict]:
         ci_pattern = re.compile(
             r"\[(\d+\.?\d*)\\%,\s*(\d+\.?\d*)\\%\]"
         )
+        # Track character spans consumed by CI patterns to avoid double-counting
+        ci_spans: list[tuple[int, int]] = []
         for m in ci_pattern.finditer(line):
             lo = float(m.group(1))
             hi = float(m.group(2))
+            ci_spans.append((m.start(), m.end()))
             results.append({
                 "line": line_num,
                 "raw": m.group(0),
@@ -102,17 +106,10 @@ def extract_numbers_from_tex(tex_path: Path) -> list[dict]:
         # Match both \d+\.\d+\\% and \d+\\% forms
         pct_pattern = re.compile(r"(\d+\.?\d*)\\%")
         for m in pct_pattern.finditer(line):
+            # Skip if this match falls inside a CI span (already captured above)
+            if any(s <= m.start() < e for s, e in ci_spans):
+                continue
             val = float(m.group(1))
-            # Skip if this is inside a CI bracket (already captured above)
-            start = m.start()
-            # Check if this match is part of a CI pattern already extracted
-            # by checking for surrounding brackets
-            before = line[:start]
-            if before.rstrip().endswith("[") or before.rstrip().endswith(", "):
-                # Might be part of CI, but we still record as percentage too
-                # since the CI check above already captured it as CI type
-                pass
-
             results.append({
                 "line": line_num,
                 "raw": m.group(0),
@@ -406,8 +403,8 @@ def build_known_values(ground_truth: dict) -> dict[str, float]:
     known["passk_full_pct"] = 12.0  # 17/142
 
     # Derived structural percentages
-    n_kernels = len(pd.get("by_kernel", {}))  # 31
-    known["kernels_above_pareval_pct"] = round(31 / 35 * 100, 1)  # 88.6%
+    n_kernels = len(pd.get("by_kernel", {}))
+    known["kernels_above_pareval_pct"] = round(n_kernels / 35 * 100, 1)
     # Rodinia-balanced L0 rate from augmentation data (16-kernel Rodinia subset)
     # This is 16/24 kernels passing at L0 on cuda-to-omp balanced = 68.8% (Rodinia only)
     # Source: paper text cites "68.8% at L0 on the 16-kernel balanced Rodinia subset"
@@ -494,7 +491,7 @@ def build_whitelist() -> set[float]:
 def match_claims(
     extracted: list[dict],
     known: dict[str, float],
-    paper_claims: list,
+    paper_claims: list[dict],
     whitelist: set[float],
 ) -> tuple[list[dict], list[dict]]:
     """Match extracted numbers against known values.
@@ -722,8 +719,6 @@ def check_provenance_comments(
 
 def main():
     """Run cross-consistency audit."""
-    import argparse
-
     parser = argparse.ArgumentParser(
         description="Cross-consistency audit for paper.tex"
     )

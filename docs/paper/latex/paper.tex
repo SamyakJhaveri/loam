@@ -25,6 +25,17 @@
 
 %%% Draft-mode macros for pending GPT data
 % Red placeholders visible in PDF
+% --- Macros ---
+% \newcommand{\parbench}{ParBench}
+\newcommand{\parbench}{\textsc{ParBench}}
+\newcommand{\buildfail}{\textsc{Build\_Fail}}
+\newcommand{\runfail}{\textsc{Run\_Fail}}
+\newcommand{\verifyfail}{\textsc{Verify\_Fail}}
+\newcommand{\extractionfail}{\textsc{Extraction\_Fail}}
+\newcommand{\pass}{\textsc{Pass}}
+\newcommand{\fail}{\textsc{Fail}}
+\newcommand{\knownfail}{\textsc{Known\_Fail}}
+\newcommand{\pending}[1]{\textcolor{red}{[PENDING: #1]}}
 \newcommand{\pending}[1]{\textcolor{red}{\textbf{[PENDING-GPT: #1]}}}
 % For numeric placeholders in tables
 \newcommand{\tbd}{\textcolor{red}{\textbf{--}}}
@@ -837,7 +848,7 @@ HeCBench kernels dominate the top of this tier: stencil1d achieves 100\% (15/15)
 % src: paper_data.json > by_kernel: convolution1d=0/10, dwt2d=0/10, gaussian=0/10, heartwall=0/30, myocyte=0/30, rsbench=0/30, xsbench=0/30
 % P1-11: HPC tier grounding — hard tier
 \textbf{Hard tier (pass rate 0\%).} Seven kernels: convolution1d, dwt2d, gaussian, heartwall, myocyte, rsbench, and xsbench.
-Hard-tier kernels (e.g., cfd, gaussian, kmeans) feature irregular
+Hard-tier kernels (e.g., heartwall, myocyte, xsbench) feature irregular
 parallelism with data-dependent control flow---graph traversals,
 dynamic work distribution, or reduction patterns that require
 careful synchronization reasoning.

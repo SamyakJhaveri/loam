@@ -317,3 +317,177 @@ def test_script_exit_1_when_mismatch(tmp_path, sample_paper_data, sample_qf):
     critical_unverified = [u for u in unverified if u["type"] == "percentage"]
     # 99.9% should be unverified and critical
     assert len(critical_unverified) == 1
+
+
+# ---------------------------------------------------------------------------
+# Test 8: check_provenance_comments detects broken JSON path references
+# ---------------------------------------------------------------------------
+
+
+def test_provenance_detects_broken_path(tmp_path, sample_paper_data, sample_qf):
+    """check_provenance_comments flags a % src: reference to a nonexistent key."""
+    from scripts.analysis.cross_consistency_audit import (
+        check_provenance_comments,
+        load_ground_truth,
+    )
+
+    tex_content = textwrap.dedent(r"""
+    % src: paper_data.json > nonexistent_key > something
+    Some text here 38.3\%.
+    """)
+    tex_file = tmp_path / "paper.tex"
+    tex_file.write_text(tex_content)
+    gt = load_ground_truth(tmp_path)
+    broken = check_provenance_comments(tex_file, gt)
+    assert len(broken) == 1
+    assert broken[0]["target_file"] == "paper_data"
+
+
+# ---------------------------------------------------------------------------
+# Test 9: check_provenance_comments resolves valid paths
+# ---------------------------------------------------------------------------
+
+
+def test_provenance_resolves_valid_path(tmp_path, sample_paper_data, sample_qf):
+    """check_provenance_comments does NOT flag valid JSON path references."""
+    from scripts.analysis.cross_consistency_audit import (
+        check_provenance_comments,
+        load_ground_truth,
+    )
+
+    tex_content = textwrap.dedent(r"""
+    % src: paper_data.json > primary_campaign > overall
+    Some text here 38.3\%.
+    """)
+    tex_file = tmp_path / "paper.tex"
+    tex_file.write_text(tex_content)
+    gt = load_ground_truth(tmp_path)
+    broken = check_provenance_comments(tex_file, gt)
+    assert len(broken) == 0
+
+
+# ---------------------------------------------------------------------------
+# Test 10: check_provenance_comments skips non-JSON references
+# ---------------------------------------------------------------------------
+
+
+def test_provenance_skips_non_json(tmp_path, sample_paper_data, sample_qf):
+    """check_provenance_comments ignores % src: lines without JSON filenames."""
+    from scripts.analysis.cross_consistency_audit import (
+        check_provenance_comments,
+        load_ground_truth,
+    )
+
+    tex_content = textwrap.dedent(r"""
+    % src: computed from 272/710
+    Some text here.
+    """)
+    tex_file = tmp_path / "paper.tex"
+    tex_file.write_text(tex_content)
+    gt = load_ground_truth(tmp_path)
+    broken = check_provenance_comments(tex_file, gt)
+    assert len(broken) == 0
+
+
+# ---------------------------------------------------------------------------
+# Test 11: extract_numbers_from_tex skips verbatim environments
+# ---------------------------------------------------------------------------
+
+
+def test_extract_skips_verbatim(tmp_path):
+    """Numbers inside verbatim/lstlisting environments are not extracted."""
+    from scripts.analysis.cross_consistency_audit import extract_numbers_from_tex
+
+    tex_content = textwrap.dedent(r"""
+    Real claim: 38.3\% pass rate.
+    \begin{verbatim}
+    This 99.9\% should be ignored.
+    \end{verbatim}
+    \begin{lstlisting}
+    Also 77.7\% ignored.
+    \end{lstlisting}
+    Another real claim: 64.2\% direction rate.
+    """)
+    tex_file = tmp_path / "paper.tex"
+    tex_file.write_text(tex_content)
+    results = extract_numbers_from_tex(tex_file)
+    pct_values = [r["value"] for r in results if r["type"] == "percentage"]
+    assert 38.3 in pct_values
+    assert 64.2 in pct_values
+    assert 99.9 not in pct_values
+    assert 77.7 not in pct_values
+
+
+# ---------------------------------------------------------------------------
+# Test 12: extract_numbers_from_tex finds integer counts
+# ---------------------------------------------------------------------------
+
+
+def test_extract_counts(tmp_path):
+    """extract_numbers_from_tex finds integer counts near data keywords."""
+    from scripts.analysis.cross_consistency_audit import extract_numbers_from_tex
+
+    tex_content = textwrap.dedent(r"""
+    The campaign spans 710 tasks across 24 kernels.
+    BUILD\_FAIL accounts for 241 failures.
+    """)
+    tex_file = tmp_path / "paper.tex"
+    tex_file.write_text(tex_content)
+    results = extract_numbers_from_tex(tex_file)
+    count_values = [r["value"] for r in results if r["type"] == "count"]
+    assert 710 in count_values
+    assert 24 in count_values
+    assert 241 in count_values
+
+
+# ---------------------------------------------------------------------------
+# Test 13: CI values are NOT double-counted as percentages
+# ---------------------------------------------------------------------------
+
+
+def test_ci_not_double_counted(tmp_path):
+    """CI bracket values are extracted as ci type only, not also as percentage."""
+    from scripts.analysis.cross_consistency_audit import extract_numbers_from_tex
+
+    tex_content = textwrap.dedent(r"""
+    Overall pass rate is 38.3\% [34.8\%, 41.9\%].
+    """)
+    tex_file = tmp_path / "paper.tex"
+    tex_file.write_text(tex_content)
+    results = extract_numbers_from_tex(tex_file)
+    ci_values = [r for r in results if r["type"] == "ci"]
+    pct_values = [r for r in results if r["type"] == "percentage"]
+    ci_nums = {r["value"] for r in ci_values}
+    pct_nums = {r["value"] for r in pct_values}
+    assert 34.8 in ci_nums
+    assert 41.9 in ci_nums
+    # CI values should NOT also appear as percentages
+    assert 34.8 not in pct_nums
+    assert 41.9 not in pct_nums
+    # But 38.3 (standalone percentage) should still be extracted
+    assert 38.3 in pct_nums
+
+
+# ---------------------------------------------------------------------------
+# Test 14: check_provenance_comments uses primary_campaign fallback
+# ---------------------------------------------------------------------------
+
+
+def test_provenance_primary_campaign_fallback(tmp_path, sample_paper_data, sample_qf):
+    """check_provenance_comments resolves paths via primary_campaign fallback."""
+    from scripts.analysis.cross_consistency_audit import (
+        check_provenance_comments,
+        load_ground_truth,
+    )
+
+    # "overall" is inside primary_campaign, not at top level of paper_data.json
+    # The fallback logic should find it
+    tex_content = textwrap.dedent(r"""
+    % src: paper_data.json > overall > by_status
+    BUILD\_FAIL is 241.
+    """)
+    tex_file = tmp_path / "paper.tex"
+    tex_file.write_text(tex_content)
+    gt = load_ground_truth(tmp_path)
+    broken = check_provenance_comments(tex_file, gt)
+    assert len(broken) == 0

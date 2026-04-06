@@ -1,0 +1,196 @@
+#!/bin/bash -l
+#PBS -N parbench_eval_reverse
+#PBS -A argonne_tpc
+#PBS -q preemptable
+#PBS -l select=1
+#PBS -l walltime=4:00:00
+#PBS -l filesystems=home:eagle
+#PBS -M lechen@anl.gov
+#PBS -m abe
+#PBS -j oe
+
+# ============================================================================
+# GPT-4.1-mini REVERSE DIRECTIONS ONLY (X -> CUDA)
+# Completes the 468 missing result files from the original campaign.
+#
+# Original PBS ran:  cuda-to-omp, cuda-to-opencl, omp-to-opencl, opencl-to-omp,
+#                    cuda-to-omp_target (780 files completed)
+# This PBS runs:     omp-to-cuda, opencl-to-cuda, omp_target-to-cuda (468 files)
+#
+# Safe to re-submit if preempted: --resume skips existing result files.
+# ============================================================================
+
+set -euo pipefail
+
+echo "Job started on $(date)"
+echo "Running on host: $(hostname)"
+
+# Go to repo
+cd /lus/eagle/projects/argonne_tpc/chen/repo/pb2/
+
+# Activate env
+source env_parbench/bin/activate
+
+# Azure / proxy envs
+export AZURE_OPENAI_ENDPOINT="https://galor-m8yvytc2-swedencentral.cognitiveservices.azure.com/"
+export AZURE_OPENAI_API_KEY="A8jWpYHpq2oPsnajJin0znkpG3xIH9kpDUlrt7kRHGCDb0nTDo7YJQQJ99BDACfhMk5XJ3w3AAAAACOGSzlo"
+
+export HTTP_PROXY="http://proxy.alcf.anl.gov:3128"
+export HTTPS_PROXY="http://proxy.alcf.anl.gov:3128"
+export http_proxy="$HTTP_PROXY"
+export https_proxy="$HTTPS_PROXY"
+export ftp_proxy="$HTTP_PROXY"
+export no_proxy="admin,polaris-adminvm-01,localhost,*.cm.polaris.alcf.anl.gov,polaris-*,*.polaris.alcf.anl.gov,*.alcf.anl.gov"
+
+MODEL="azure-gpt-4.1-mini"
+PROJECT_ROOT="$(pwd)"
+
+# ---------------------------------------------------------------------------
+# Helper: Campaign 1 (Primary) — L0-L4, temp=0.0, 3 retries
+# ---------------------------------------------------------------------------
+run_primary() {
+  local suite="$1"
+  local direction="$2"
+  python3 scripts/evaluation/run_eval_batch.py \
+    --suite "$suite" \
+    --direction "$direction" \
+    --models "$MODEL" \
+    --augment-levels 0 1 2 3 4 \
+    --max-retries 3 \
+    --temperature 0.0 \
+    --num-samples 1 \
+    --resume -v \
+    --project-root "$PROJECT_ROOT"
+}
+
+# ---------------------------------------------------------------------------
+# Helper: Campaign 2 (pass@k) — L0 only, temp=0.7, 1 retry, 3 samples
+# ---------------------------------------------------------------------------
+run_passk() {
+  local suite="$1"
+  local direction="$2"
+  python3 scripts/evaluation/run_eval_batch.py \
+    --suite "$suite" \
+    --direction "$direction" \
+    --models "$MODEL" \
+    --augment-levels 0 \
+    --max-retries 1 \
+    --temperature 0.7 \
+    --num-samples 3 \
+    --resume -v \
+    --project-root "$PROJECT_ROOT"
+}
+
+# ===========================
+# Campaign 1 — Primary (295 files)
+# ===========================
+echo "=== Campaign 1 — Primary: Reverse directions ==="
+
+# --- Standard suites: omp-to-cuda and opencl-to-cuda ---
+# rodinia:  18 omp-to-cuda + 20 opencl-to-cuda = 38 L0 tasks x 5 levels = 190 files
+# xsbench:   1 + 1 = 2 L0 tasks x 5 = 10 files
+# rsbench:   1 + 1 = 2 L0 tasks x 5 = 10 files
+# mixbench:  1 + 1 = 2 L0 tasks x 5 = 10 files
+for suite in rodinia xsbench rsbench mixbench; do
+  echo "--- $suite omp-to-cuda (C1) ---"
+  run_primary "$suite" omp-to-cuda
+
+  echo "--- $suite opencl-to-cuda (C1) ---"
+  run_primary "$suite" opencl-to-cuda
+done
+
+# --- HeCBench: omp-to-cuda (5 kernels with omp variant) ---
+# 5 kernels x 5 levels = 25 files (4 existing L0 files will be skipped by --resume)
+echo "--- hecbench omp-to-cuda (C1) ---"
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite hecbench \
+  --direction omp-to-cuda \
+  --models "$MODEL" \
+  --kernels stencil1d heat2d floydwarshall scan iso2dfd \
+  --augment-levels 0 1 2 3 4 \
+  --max-retries 3 \
+  --temperature 0.0 \
+  --num-samples 1 \
+  --resume -v \
+  --project-root "$PROJECT_ROOT"
+
+# --- HeCBench: omp_target-to-cuda (all 10 curated kernels) ---
+# 10 kernels x 5 levels = 50 files
+echo "--- hecbench omp_target-to-cuda (C1) ---"
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite hecbench \
+  --direction omp_target-to-cuda \
+  --models "$MODEL" \
+  --kernels convolution1d floydwarshall heat2d iso2dfd jacobi md nqueen page-rank scan stencil1d \
+  --augment-levels 0 1 2 3 4 \
+  --max-retries 3 \
+  --temperature 0.0 \
+  --num-samples 1 \
+  --resume -v \
+  --project-root "$PROJECT_ROOT"
+
+# Mid-campaign analysis checkpoint
+python3 scripts/evaluation/analyze_eval.py \
+  --project-root "$PROJECT_ROOT" \
+  --write-dashboard
+
+# ===========================
+# Campaign 2 — Pass@k (173 files)
+# ===========================
+echo "=== Campaign 2 — Pass@k: Reverse directions ==="
+
+# --- Standard suites: omp-to-cuda and opencl-to-cuda ---
+# rodinia:  18 omp-to-cuda + 20 opencl-to-cuda = 38 L0 tasks x 3 seeds = 114 files
+# xsbench:  2 x 3 = 6 files
+# rsbench:  2 x 3 = 6 files
+# mixbench: 2 x 3 = 6 files
+for suite in rodinia xsbench rsbench mixbench; do
+  echo "--- $suite omp-to-cuda (pass@k) ---"
+  run_passk "$suite" omp-to-cuda
+
+  echo "--- $suite opencl-to-cuda (pass@k) ---"
+  run_passk "$suite" opencl-to-cuda
+done
+
+# --- HeCBench: omp-to-cuda pass@k ---
+# 5 kernels x 3 seeds = 15 files
+echo "--- hecbench omp-to-cuda (pass@k) ---"
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite hecbench \
+  --direction omp-to-cuda \
+  --models "$MODEL" \
+  --kernels stencil1d heat2d floydwarshall scan iso2dfd \
+  --augment-levels 0 \
+  --max-retries 1 \
+  --temperature 0.7 \
+  --num-samples 3 \
+  --resume -v \
+  --project-root "$PROJECT_ROOT"
+
+# --- HeCBench: omp_target-to-cuda pass@k ---
+# 10 kernels x 3 seeds = 30 files
+echo "--- hecbench omp_target-to-cuda (pass@k) ---"
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite hecbench \
+  --direction omp_target-to-cuda \
+  --models "$MODEL" \
+  --kernels convolution1d floydwarshall heat2d iso2dfd jacobi md nqueen page-rank scan stencil1d \
+  --augment-levels 0 \
+  --max-retries 1 \
+  --temperature 0.7 \
+  --num-samples 3 \
+  --resume -v \
+  --project-root "$PROJECT_ROOT"
+
+# Final analysis with all data
+python3 scripts/evaluation/analyze_eval.py \
+  --project-root "$PROJECT_ROOT" \
+  --write-dashboard
+
+echo "=== Expected totals after completion ==="
+echo "Campaign 1 (primary): 295 new files"
+echo "Campaign 2 (pass@k):  173 new files"
+echo "Grand total new:      468 files"
+echo "Combined with prior:  1248 files (matching Qwen campaign)"
+
+echo "Job finished on $(date)"
