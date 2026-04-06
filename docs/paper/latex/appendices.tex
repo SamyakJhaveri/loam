@@ -48,29 +48,10 @@ scales: a dense co-occurrence cluster centered on MPI, OpenMP, CUDA, and HIP,
 with sparser connectivity among directive-based (OpenACC, OpenMP Target),
 portability (Kokkos, RAJA, SYCL), and niche APIs.
 
-The force-directed network visualization in Figure~\ref{fig:api-network} makes
+The force-directed network visualization makes
 the clustering structure explicit. Node sizes are proportional to the number of
 benchmarks implementing each API, and edges are drawn only for co-occurrence
 counts of 3 or more repositories. The result reveals three natural groupings:
-
-% TODO: Restore or update api_cooccurrence_network_color_v7.png
-% (deleted from analysis/visualizations/; a non-v7 version exists in
-%  analysis/visualizations/take in paper/api_cooccurrence_network_color.png)
-\begin{figure}[htbp]
-  \centering
-  % \includegraphics[width=\columnwidth]{api_cooccurrence_network_color_v7.png}
-  \fbox{\parbox{0.9\columnwidth}{\centering\vspace{1em}\textbf{[Missing: api\_cooccurrence\_network\_color\_v7.png]}\vspace{1em}}}
-  \caption{API co-occurrence network. Node size proportional to the number of
-    benchmarks implementing each API; edges drawn for co-occurrence $\geq 3$.
-    APIs colored by family: vendor GPU (cyan), open standard GPU (red),
-    directives (orange), message passing (green), portability libraries (grey),
-    CPU parallel libraries (blue), single-source C++ (yellow), PGAS/one-sided
-    (pink). The dense central cluster of MPI, OpenMP, CUDA, HIP, OpenACC, and
-    OpenCL is clearly separated from peripheral APIs. Isolated nodes (Chapel,
-    STM/TM, GSParLib, HLS, Python, Serial) have co-occurrence below~3 with all
-    other APIs.}
-  \label{fig:api-network}
-\end{figure}
 
 \begin{enumerate}
   \item \textbf{Core cluster}: MPI (largest node), OpenMP, CUDA, HIP, OpenACC,
@@ -354,28 +335,8 @@ across categories.
 The relationship between benchmarks and APIs is not uniform: some repositories
 implement a single API (e.g., SPEC OMP, PARSEC, LonestarGPU), while others
 provide implementations across 10+ APIs (BabelStream with~12, miniBUDE
-with~14). Figure~\ref{fig:bipartite} visualizes this heterogeneity as a
-bipartite network.
-
-% TODO: Restore or update benchmark_api_bipartite_color_readable_v7.png
-% (deleted from analysis/visualizations/; exists in
-%  analysis/visualizations/take in paper/benchmark_api_bipartite_color_readable_v7.png)
-\begin{figure}[htbp]
-  \centering
-  % \includegraphics[width=\columnwidth]{benchmark_api_bipartite_color_readable_v7.png}
-  \fbox{\parbox{0.9\columnwidth}{\centering\vspace{1em}\textbf{[Missing: benchmark\_api\_bipartite\_color\_readable\_v7.png]}\vspace{1em}}}
-  \caption{Bipartite network linking benchmarks (circles, right) to parallel
-    APIs (squares, left). Benchmark nodes are colored by type and sized
-    proportional to the number of APIs they implement. API nodes are colored by
-    family (vendor GPU, open standard GPU, directives, message passing, CPU
-    parallel libs, portability libs, single-source C++, PGAS/one-sided). Green
-    edges and green node outlines indicate verified download availability; grey
-    indicates unverified. The dense connectivity between CUDA, OpenMP, HIP, and
-    SYCL (left column) and the suite-type benchmarks (center) demonstrates the
-    concentration of multi-API material in a small number of large suites,
-    particularly HeCBench, RAJAPerf, and BabelStream.}
-  \label{fig:bipartite}
-\end{figure}
+with~14). This heterogeneity forms a bipartite network structure linking
+benchmarks to their supported APIs.
 
 Figure~\ref{fig:api-count-hist} quantifies the API breadth distribution across
 the surveyed benchmarks.
@@ -406,19 +367,6 @@ diversity.
 All 35 surveyed repositories were classified into two quality tiers based on
 three criteria: build documentation, verification capability, and maintenance
 status.
-
-% TODO: Restore quality_tiers.png (deleted from analysis/visualizations/)
-\begin{figure}[htbp]
-  \centering
-  % \includegraphics[width=\columnwidth]{quality_tiers.png}
-  \fbox{\parbox{0.9\columnwidth}{\centering\vspace{1em}\textbf{[Missing: quality\_tiers.png]}\vspace{1em}}}
-  \caption{Quality tier distribution across surveyed repositories. 30 of 35
-    repositories (85\%) meet Tier~A criteria (documented build process, automated
-    verification, and active maintenance within 2~years). 5 repositories (14\%)
-    are classified as Tier~B due to partial verification, limited API coverage,
-    or unmaintained status.}
-  \label{fig:quality-tiers}
-\end{figure}
 
 \textbf{Tier~A criteria} (all three required):
 \begin{itemize}
@@ -1220,6 +1168,13 @@ L4 & 34.5\% [27.2\%, 42.6\%] & 66.7\% [46.7\%, 82.0\%] & \tbd \\ % src: paper_da
 \label{fig:augmentation}
 \end{figure}
 
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\columnwidth]{aug_heatmap.pdf}
+\caption{Per-kernel augmentation status across levels L0--L4 (CUDA-to-OMP, Qwen~3.5). Cell color: pass/fail status.}
+\label{fig:aug-heatmap}
+\end{figure}
+
 
 % src: paper_data.json > passk_campaign > passk_estimates (142 direction-kernel pairs, 3 samples each = 426 tasks)
 % src: 103 hard_fail + 0 noisy + 17 always_pass + 22 partial = 142 verified
@@ -1251,9 +1206,9 @@ GPT-4.1 mini & \tbd & \tbd & \tbd & \tbd & \tbd & \tbd \\
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f6_xsbench_comparison.pdf}
-\caption{XSBench cross-granularity comparison. ParBench kernel-level vs.\ ParEval-Repo repository-level pass rates on the same computational kernel.}
-\label{fig:xsbench}
+\includegraphics[width=\columnwidth]{f6_cross_suite_comparison.pdf}
+\caption{Cross-suite pass rate comparison (L0, Qwen~3.5). Per-suite aggregate pass rates with Wilson 95\% CIs across all 5 benchmark suites.}
+\label{fig:cross-suite}
 \end{figure}
 
 
