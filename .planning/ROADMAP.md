@@ -152,7 +152,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 10. Qualitative Analysis & Research Narrative | — | **Dropped** (merged into Phase 11) | - |
 | 11. Paper TeX Integration | 0/4 | Not started (scope expanded with SC26 review items) | - |
 | 12. Fix Stale Pass@k Values | 3/3 | Complete   | 2026-04-06 |
-| 12.1. SC26 Review P0 Quick Fixes | 0/1 | Planned (1 plan, 1 wave) | - |
+| 12.1. SC26 Review P0 Quick Fixes | 1/1 | Complete   | 2026-04-06 |
 | 13. Paper.tex Figure & Table Wiring | 0/1 | Not started (scope expanded: +Figure 1 export) | - |
 | 14. Verification Backfill & Housekeeping | 0/1 | Not started (scope expanded: +artifact README, +API env docs) | - |
 
@@ -364,7 +364,7 @@ Plans:
 **Plans**: 1 plan (single wave — all edits are independent)
 
 Plans:
-- [ ] 12.1-01-PLAN.md -- Fix 5 factual accuracy issues in paper.tex (Table 1, 700/710, SIMT/SPMD, pass@1 terminology, Table 3 single-file)
+- [x] 12.1-01-PLAN.md -- Fix 5 factual accuracy issues in paper.tex (Table 1, 700/710, SIMT/SPMD, pass@1 terminology, Table 3 single-file)
 
 ### Phase 13: Paper.tex Figure & Table Wiring
 

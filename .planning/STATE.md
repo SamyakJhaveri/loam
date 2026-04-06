@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 12.1 context gathered
-last_updated: "2026-04-06T02:13:34.978Z"
+status: verifying
+stopped_at: Completed 12.1-01-PLAN.md
+last_updated: "2026-04-06T02:45:58.452Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 15
-  completed_phases: 9
-  total_plans: 25
-  completed_plans: 25
+  completed_phases: 10
+  total_plans: 26
+  completed_plans: 26
   percent: 100
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-03)
 
 Phase: 12.1 (sc26-review-p0-quick-fixes) — INSERTED, NOT PLANNED
 Plan: 1 of 1
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-06
 
 Progress: [########..] 76%
@@ -64,6 +64,7 @@ Progress: [########..] 76%
 | Phase 12 P01 | 7min | 3 tasks | 1 files |
 | Phase 12 P02 | 7min | 2 tasks | 1 files |
 | Phase 12 P03 | 1min | 1 tasks | 1 files |
+| Phase 12.1 P01 | 3min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,7 @@ Recent decisions affecting current work:
 - [Phase 12]: Per-kernel table simplified to 6 columns (Total/PASS/Fail/Rate/CI) with tier midrule separators for 31-row space efficiency
 - [Phase 12]: VERIFY-01 fully satisfied: all 14 stale patterns return 0 hits, cross-section consistency confirmed
 - [Phase 12]: Kernel exclusion explanation added as standalone sentence in S6.3 and inline modification in S7 for reviewer clarity
+- [Phase 12.1]: All 5 P0 factual accuracy fixes applied: Table 1 scale (D-01/D-02), 700-to-710 (D-08), SIMT (D-09), greedy pass rate rename (D-03/D-04/D-05/D-06), multi-file source (D-07)
 
 ### Roadmap Evolution
 
@@ -115,6 +117,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-06T02:13:34.975Z
-Stopped at: Phase 12.1 context gathered
-Resume file: .planning/phases/12.1-sc26-review-p0-quick-fixes/12.1-CONTEXT.md
+Last session: 2026-04-06T02:45:58.449Z
+Stopped at: Completed 12.1-01-PLAN.md
+Resume file: None
