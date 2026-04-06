@@ -57,6 +57,9 @@
 %% ABSTRACT
 % DATA FREEZE (2026-04-03): 1248 Qwen result JSONs on disk (ls results/evaluation/together-qwen-3.5-397b-a17b/*.json | wc -l).
 % SCOPE UPDATE (Phase 12): Abstract updated to all-suite 710-task scope per paper_data.json (D-01).
+% VERIFIED (11-02 Task 2, 2026-04-06): All abstract numbers cross-checked against S6 and
+% paper_data.json. 38.3% [34.8%,41.9%], 64.2% (66.7% L0), BUILD_FAIL 33.9%, VERIFY_FAIL 7.2%,
+% Cochran-Armitage z=0.0 p=1.0. \pending{} macros preserved for GPT-4.1 mini.
 % src: paper_data.json > file_counts: primary_campaign=710, passk_campaign=426
 % src: "96 specs" = 60+25+4+4+3 (disk-verified via ls specs/{rodinia,hecbench,xsbench,rsbench,mixbench}-*.json)
 % src: "710 tasks" = paper_data.json > file_counts > primary_campaign (31 eval kernels * 142 L0 pairs at 5 levels, 6 Rodinia KNOWN_FAIL excluded)
@@ -169,6 +172,11 @@ ParBench produces several findings with immediate relevance for the HPC and LLM 
 
 %% =============================================================
 %% S2 RELATED WORK
+% VERIFIED (11-02 Task 2, 2026-04-06): All 7 key systems have concrete differentiators:
+% LASSI (agentic vs raw, 10 vs 96, 2 vs 6 dirs, no augmentation), TransCoder (sequential,
+% no execution), OMPify (pragma insertion vs full translation), HPC-Coder-V2 (fine-tuned vs
+% general-purpose), CodeRosetta (BLEU vs functional correctness), SWE-bench/HumanEval
+% (sequential, no parallelism). Positioning ParBench subsection has 6-capability summary.
 %% =============================================================
 \section{Related Work}
 \label{sec:related-work}
@@ -962,6 +970,10 @@ Several threats to the validity of these findings must be acknowledged.
 
 %% =============================================================
 %% S8 CONCLUSION
+% VERIFIED (11-02 Task 2, 2026-04-06): S8 headline numbers match abstract and S6:
+% 38.3% [34.8%,41.9%], 64.2% [55.3%,72.2%], BUILD_FAIL 55.0% of failures, VERIFY_FAIL
+% 11.6%, Cochran-Armitage z=0.0 p=1.0. Future work grounded in actual findings (TRACY,
+% LASSI, CodeRosetta, HPC-Coder-V2). \pending{} macros preserved.
 %% =============================================================
 \section{Conclusion}
 \label{sec:conclusion}
