@@ -383,10 +383,11 @@ Plans:
   6. `parbench_architecture.pdf` exists in `docs/paper/latex/figures/` and is referenced by `\includegraphics` in Figure 1
   7. Old F6 files (`f6_xsbench_comparison.pdf`, `.png`) deleted from `docs/paper/latex/figures/`
 
-**Plans**: 1 plan
+**Plans**: 2 plans
 
 Plans:
-- [ ] 13-01-PLAN.md -- Uncomment architecture figure, fix F6 filename/caption/label, fix F3 caption, insert aug_heatmap figure, delete stale files (old F6, T2)
+- [ ] 13-01-PLAN.md -- paper.tex figure wiring: architecture diagram, F3 caption, aug_heatmap ref, F6 cross-reference
+- [ ] 13-02-PLAN.md -- appendices.tex figure wiring: survey figure cleanup, F6 update, aug_heatmap insertion, stale file deletion
 
 ### Phase 14: Verification Backfill & Housekeeping
 
