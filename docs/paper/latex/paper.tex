@@ -840,7 +840,7 @@ BUILD\_FAIL is the most recoverable failure mode by volume (72 repaired tasks), 
 
 Table~\ref{tab:per-kernel} presents per-kernel results for Qwen~3.5 aggregated across all translation directions and five augmentation levels (710 primary campaign tasks, 31 evaluated kernels across 5 suites). \pending{Expand to multi-model comparison when GPT-4.1~mini data is available.}
 % src: 31 = 35 - 4 (kmeans, mummergpu, hybridsort, huffman); see debug/missing-4-kernels-table.md
-Four corpus kernels---\texttt{kmeans}, \texttt{mummergpu}, \texttt{hybridsort}, and \texttt{huffman}---are excluded from this table because every potential translation direction for these kernels involves at least one KNOWN\_FAIL or phantom-deleted spec (Section~\ref{sec:rodinia}), leaving no valid source--target pair.
+Four corpus kernels---\texttt{kmeans}, \texttt{mummergpu}, \texttt{hybridsort}, and \texttt{huffman}---are excluded from this table because every potential translation direction for these kernels involves at least one KNOWN\_FAIL or removed spec (Section~\ref{sec:kernel-selection}), leaving no valid source--target pair.
 
 % src: paper_data.json > primary_campaign > by_kernel (all 31 rows verified 2026-04-05)
 % src: row sums all match Total; total PASS across kernels = 272; total tasks = 710
@@ -1207,7 +1207,7 @@ instrument, while agentic correction improves the translation output.
 
 Several threats to the validity of these findings must be acknowledged.
 
-\textbf{Sample size and suite scope.} The corpus spans 35 kernels across five suites, a significant expansion from single-suite evaluations; 31 participate in the per-kernel evaluation, with four excluded (\texttt{kmeans}, \texttt{mummergpu}, \texttt{hybridsort}, \texttt{huffman}) because their baseline specs are KNOWN\_FAIL or phantom-deleted, precluding valid translation pairs (Section~\ref{sec:per-kernel}). Non-primary directions have smaller sample sizes; findings from directions with fewer than 10 kernel-model pairs should be considered exploratory.
+\textbf{Sample size and suite scope.} The corpus spans 35 kernels across five suites, a significant expansion from single-suite evaluations; 31 participate in the per-kernel evaluation, with four excluded (\texttt{kmeans}, \texttt{mummergpu}, \texttt{hybridsort}, \texttt{huffman}) because their baseline specs are KNOWN\_FAIL or removed from the corpus, precluding valid translation pairs (Section~\ref{sec:per-kernel}). Non-primary directions have smaller sample sizes; findings from directions with fewer than 10 kernel-model pairs should be considered exploratory.
 
 \textbf{Rodinia training-data familiarity.} Rodinia is a 15+ year-old benchmark suite whose kernels are extensively documented and almost certainly present in LLM training data. The augmentation engine addresses surface-level memorization, but cannot address algorithmic-level memorization. The five-suite expansion mitigates this concern.
 
