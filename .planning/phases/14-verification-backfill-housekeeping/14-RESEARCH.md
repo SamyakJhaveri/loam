@@ -138,7 +138,7 @@ Each Observable Truth MUST be anchored to a requirement ID per D-04. The mapping
 
 **Phase 3 (4 truths):**
 1. AUG-01: augmentation_per_kernel_matrix.json exists with 26 cuda-to-omp kernels across L0-L4
-2. AUG-02: Pattern classification identifies degradation/improvement/stable kernels with per-kernel evidence
+2. AUG-02: Pattern classification identifies 5 categories (stable_pass/stable_fail/degradation/improvement/other) with per-kernel evidence
 3. AUG-03: LASSI positioning paragraph exists in paper.tex Section 7.4
 4. AUG-04: aug_heatmap.pdf, aug_trend.pdf (and PNGs) exist in docs/paper/figures/
 
@@ -156,7 +156,7 @@ Each Observable Truth MUST be anchored to a requirement ID per D-04. The mapping
 5. CHAR-07: tab:category-distribution in Section 4 with 10 categories, kernel counts summing to 35
 
 **Phase 8 (7 truths, mapped to FIG-01 through FIG-07):**
-1. FIG-01: All 6 main-body figure PDFs exist (f2-f7)
+1. FIG-01: All 6 main-body figure PDFs exist (f2-f7; f6_xsbench was renamed to f6_cross_suite_comparison)
 2. FIG-02: All 4 appendix figure PDFs exist (c1-c4)
 3. FIG-03: T2 LaTeX table regenerated
 4. FIG-04: PNG versions alongside every PDF
@@ -261,7 +261,7 @@ python3 scripts/evaluation/run_eval_batch.py --suite rodinia --model together-qw
 ### Pitfall 4: Verifying Phase 8 FIG-01-07 Against Wrong Success Criteria
 **What goes wrong:** FIG-01 through FIG-07 are defined in the ROADMAP.md Phase 8 section, NOT in REQUIREMENTS.md (which has no FIG-* requirements). Using wrong criteria leads to mismatched verification.
 **Why it happens:** FIG requirements are Phase 8 success criteria, not v1 REQUIREMENTS.md entries.
-**How to avoid:** Use ROADMAP.md Phase 8 success criteria (lines 227-237) as the truth table for Phase 8 VERIFICATION.md. Reference FIG-01-07 from the RESEARCH.md, not from REQUIREMENTS.md.
+**How to avoid:** Use ROADMAP.md Phase 8 success criteria (lines 228-237, 10 items) as the truth table for Phase 8 VERIFICATION.md. FIG-01-07 map to criteria 1-7. Criteria 8 (script changes tested) and 10 (drawio export) are not mapped to FIG truths — criterion 8 is implicitly verified by FIG-07 (successful script run), and criterion 10 (parbench_architecture.drawio to PDF) is a Phase 13 responsibility. Criterion 9 (no warnings) is covered by FIG-07. Reference FIG-01-07 from the RESEARCH.md, not from REQUIREMENTS.md.
 **Warning signs:** Looking for FIG-* in REQUIREMENTS.md and not finding them.
 
 ### Pitfall 5: Forgetting D-10 Simplification for API Keys
@@ -280,9 +280,10 @@ python3 scripts/evaluation/run_eval_batch.py --suite rodinia --model together-qw
 python3 -c "
 import json
 d = json.load(open('results/analysis/augmentation_per_kernel_matrix.json'))
-print(f'Kernels: {len(d[\"per_kernel\"])}')
-print(f'Levels: {list(d[\"per_kernel\"][list(d[\"per_kernel\"].keys())[0]].keys())}')
-print(f'Patterns: {d.get(\"summary\", {}).get(\"pattern_counts\", {})}')
+pm = d['primary_matrix']
+print(f'Kernels: {len(pm[\"per_kernel\"])}')
+print(f'Levels: {list(pm[\"per_kernel\"][list(pm[\"per_kernel\"].keys())[0]].keys())}')
+print(f'Patterns: {pm[\"pattern_summary\"]}')
 "
 ```
 
@@ -312,7 +313,7 @@ grep -c "65\.0%" docs/paper/latex/paper.tex     # expect 0
 source env_parbench/bin/activate
 python3 scripts/generate_paper_figures.py --project-root . 2>&1 | tail -5
 # Verify: exit code 0, no warnings, expected file count
-ls docs/paper/figures/f*.pdf docs/paper/figures/c*.pdf | wc -l  # expect 11
+ls docs/paper/figures/f*.pdf docs/paper/figures/c*.pdf | wc -l  # expect 10
 ls docs/paper/figures/*.png | wc -l                              # expect 13
 ```
 
@@ -367,9 +368,9 @@ All artifacts needed for verification exist on disk. Confirmed via direct file c
 ### Phase 8 Artifacts
 | Artifact | Count | Evidence |
 |----------|-------|----------|
-| Main figure PDFs (f2-f7) | 6 (+1 f6_xsbench legacy) | 11 total PDF figures confirmed |
+| Main figure PDFs (f2-f7) | 6 | 10 total PDF figures confirmed (6 main + 4 appendix) |
 | Appendix figure PDFs (c1-c4) | 4 | All present |
-| PNG companions | 13 | All present alongside PDFs |
+| PNG companions | 13 | All present alongside PDFs (includes parbench_architecture.png) |
 | T2 LaTeX table | 1 | `docs/paper/figures/t2_model_comparison.tex` exists |
 
 ### Phase 12 Artifacts
@@ -431,7 +432,7 @@ Wave 5: Create ARTIFACT_EVALUATION.md
 
 **If this table is empty:** All claims except A1 were verified against live data on disk.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **AUG-04 dual dependency with Phase 13**
    - What we know: aug_heatmap.pdf and aug_trend.pdf exist on disk (Phase 3 created them). Phase 13 wires them into paper.tex.
@@ -440,8 +441,8 @@ Wave 5: Create ARTIFACT_EVALUATION.md
 
 2. **ROADMAP.md top-level checkbox staleness scope**
    - What we know: Only Phase 1 is checked at the top-level list. Phases 2-5 are unchecked. The progress table is correct.
-   - What's unclear: Should Phases 7, 8, 9, 11, 12, 12.1 also get checked? They're marked Complete in the progress table.
-   - Recommendation: Check ALL completed phases (1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 12.1) in the top-level list. Leave 6 (Dropped), 10 (Dropped), 13 (Not started), 14 (current) unchecked.
+   - What's unclear: Should Phases 7+ also get checked?
+   - Resolution: The top-level checkbox list only contains Phases 1-5 (lines 28-32). Phases 7, 8, 9, 11, 12, 12.1 do NOT have top-level checkboxes — they are only tracked in the progress table. Fix scope: check Phases 2, 3, 4, 5 (the only unchecked items in the top-level list).
 
 ## Validation Architecture
 
@@ -456,8 +457,8 @@ Wave 5: Create ARTIFACT_EVALUATION.md
 ### Phase Requirements to Test Map
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
-| AUG-01 | Matrix JSON exists with 26 kernels | smoke | `python3 -c "import json; d=json.load(open('results/analysis/augmentation_per_kernel_matrix.json')); print(len(d['per_kernel']))"` | N/A (data check) |
-| AUG-02 | Pattern classification present | smoke | `python3 -c "import json; d=json.load(open('results/analysis/augmentation_per_kernel_matrix.json')); print(d.get('summary',{}).get('pattern_counts',{}))"` | N/A |
+| AUG-01 | Matrix JSON exists with 26 kernels | smoke | `python3 -c "import json; d=json.load(open('results/analysis/augmentation_per_kernel_matrix.json')); print(len(d['primary_matrix']['per_kernel']))"` | N/A (data check) |
+| AUG-02 | Pattern classification present | smoke | `python3 -c "import json; d=json.load(open('results/analysis/augmentation_per_kernel_matrix.json')); print(d['primary_matrix']['pattern_summary'])"` | N/A |
 | AUG-03 | LASSI in paper.tex | smoke | `grep -c 'LASSI' docs/paper/latex/paper.tex` | N/A |
 | AUG-04 | Aug figures exist | smoke | `ls docs/paper/figures/aug_{heatmap,trend}.{pdf,png}` | N/A |
 | METHOD-01 | Kernel isolation defense | smoke | `grep -c 'kernel isolation' docs/paper/latex/paper.tex` | N/A |

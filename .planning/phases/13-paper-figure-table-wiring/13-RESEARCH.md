@@ -8,9 +8,9 @@
 
 Phase 13 is a surgical LaTeX editing phase: update stale filenames, captions, and labels in `paper.tex` and `appendices.tex`, insert one new figure block, uncomment the architecture diagram, remove three placeholder figure blocks from appendices, and delete three obsolete files from disk. No code generation, no analysis scripts, no data pipeline changes.
 
-All target files have been verified on disk. The changes are narrowly scoped: 7 edits to `paper.tex`, 8 edits to `appendices.tex`, 1 new figure block insertion, 3 file deletions. The CONTEXT.md provides exact line numbers and content for every change. Line numbers have been re-verified against the current files (paper.tex = 1117 lines, appendices.tex = 1365 lines) and all match.
+All target files have been verified on disk. The changes are narrowly scoped: 5 edit operations on `paper.tex` (Plan 01), 5 edit groups on `appendices.tex` plus 3 file deletions (Plan 02). The CONTEXT.md provides exact line numbers and content for every change. Line numbers have been re-verified against the current files (paper.tex = 1117 lines, appendices.tex = 1365 lines) and all match.
 
-**Primary recommendation:** Implement as 3-4 small plans: (1) architecture diagram wiring in paper.tex, (2) F3/F6/aug-heatmap figure updates across both files, (3) survey figure cleanup in appendices.tex, (4) stale file deletion. Each plan is independently verifiable via grep for stale references.
+**Primary recommendation:** Implement as 2 plans: Plan 01 handles all paper.tex edits (architecture diagram, F3 caption, aug_heatmap reference, F6 cross-reference, TODO cleanup); Plan 02 handles all appendices.tex edits (F6 update, aug_heatmap insertion, survey figure cleanup) plus stale file deletion. Each plan is independently verifiable via grep for stale references. (Original research suggested 3-4 plans; consolidated to 2 during planning since both files' edits are independently sequenced bottom-to-top.)
 
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
@@ -79,8 +79,8 @@ No supporting libraries needed. All changes are hand-edits to two `.tex` files p
 ### File Layout
 ```
 docs/paper/latex/
-  paper.tex           # Main paper body (1117 lines) -- 7 edits
-  appendices.tex      # Appendix content (1365 lines) -- 8 edits + 1 insertion
+  paper.tex           # Main paper body (1117 lines) -- 5 edit operations (Plan 01)
+  appendices.tex      # Appendix content (1365 lines) -- 5 edit groups + 1 insertion (Plan 02)
   figures/            # All figure PDFs and PNGs
     aug_heatmap.pdf              # EXISTS (37KB) -- to be wired
     f3_kernel_model_heatmap.pdf  # EXISTS (55KB) -- caption update
