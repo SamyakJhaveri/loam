@@ -35,17 +35,17 @@ Requirements for paper submission (deadline: April 8, 2026). Each maps to roadma
 
 ### Augmentation Story
 
-- [ ] **AUG-01**: Per-kernel x per-level status matrix built from raw Qwen result JSONs (cuda-to-omp, L0-L4) and saved to results/analysis/augmentation_per_kernel_matrix.json
-- [ ] **AUG-02**: 2-3 motivating examples identified (kernels showing PASS->FAIL degradation across levels) OR null-result interpretation strengthened with per-kernel evidence
-- [ ] **AUG-03**: LASSI augmentation positioning paragraphs written (complementary, not competing)
+- [x] **AUG-01**: Per-kernel x per-level status matrix built from raw Qwen result JSONs (cuda-to-omp, L0-L4) and saved to results/analysis/augmentation_per_kernel_matrix.json
+- [x] **AUG-02**: 2-3 motivating examples identified (kernels showing PASS->FAIL degradation across levels) OR null-result interpretation strengthened with per-kernel evidence
+- [x] **AUG-03**: LASSI augmentation positioning paragraphs written (complementary, not competing)
 - [x] **AUG-04**: Augmentation trend graphs produced (per-kernel + aggregate, publication quality PDF+PNG, Okabe-Ito palette)
 
 ### Methodology & Reviewer Defense
 
-- [ ] **METHOD-01**: Kernel isolation methodology explicitly justified: ParEval-Repo 0% on XSBench vs ParBench 68.8% on same kernel -- quantifies build-system vs translation skill
-- [ ] **METHOD-02**: Statistical test choices justified in text: why Cochran-Armitage for trend, why McNemar for paired direction comparison, why Wilson CIs
-- [ ] **METHOD-03**: Reproducibility claims backed by specific version pins: CUDA version, compiler versions, OS, GPU model, model API version, ParBench commit hash
-- [ ] **METHOD-04**: Conjunction verification (exit_code AND stdout_pattern) methodology justified vs alternatives (BLEU, compilation-only)
+- [x] **METHOD-01**: Kernel isolation methodology explicitly justified: ParEval-Repo 0% on XSBench vs ParBench 68.8% on same kernel -- quantifies build-system vs translation skill
+- [x] **METHOD-02**: Statistical test choices justified in text: why Cochran-Armitage for trend, why McNemar for paired direction comparison, why Wilson CIs
+- [x] **METHOD-03**: Reproducibility claims backed by specific version pins: CUDA version, compiler versions, OS, GPU model, model API version, ParBench commit hash
+- [x] **METHOD-04**: Conjunction verification (exit_code AND stdout_pattern) methodology justified vs alternatives (BLEU, compilation-only)
 
 ### Quantitative Analysis
 
@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| VERIFY-01 | Phase 12 → Phase 14 | Done, pending verification backfill |
+| VERIFY-01 | Phase 12 | Complete |
 | VERIFY-02 | Phase 1 | Complete |
 | VERIFY-03 | Phase 1 | Complete |
 | VERIFY-04 | Phase 1 | Complete |
@@ -112,19 +112,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHAR-04 | Phase 2 | Complete |
 | CHAR-05 | Phase 2 | Complete |
 | CHAR-06 | Phase 2 | Complete |
-| CHAR-07 | Phase 5 → Phase 14 | Done, pending verification backfill |
-| INTRO-01 | Phase 5 → Phase 14 | Done, pending verification backfill |
-| INTRO-02 | Phase 5 → Phase 14 | Done, pending verification backfill |
-| INTRO-03 | Phase 5 → Phase 14 | Done, pending verification backfill |
-| INTRO-04 | Phase 5 → Phase 14 | Done, pending verification backfill |
-| AUG-01 | Phase 3 → Phase 14 | Done, pending verification backfill |
-| AUG-02 | Phase 3 → Phase 14 | Done, pending verification backfill |
-| AUG-03 | Phase 3 → Phase 14 | Done, pending verification backfill |
-| AUG-04 | Phase 3 → Phase 13/14 | Done, pending wiring (P13) + verification (P14) |
-| METHOD-01 | Phase 4 → Phase 14 | Done, pending verification backfill |
-| METHOD-02 | Phase 4 → Phase 14 | Done, pending verification backfill |
-| METHOD-03 | Phase 4 → Phase 14 | Done, pending verification backfill |
-| METHOD-04 | Phase 4 → Phase 14 | Done, pending verification backfill |
+| CHAR-07 | Phase 5 | Complete |
+| INTRO-01 | Phase 5 | Complete |
+| INTRO-02 | Phase 5 | Complete |
+| INTRO-03 | Phase 5 | Complete |
+| INTRO-04 | Phase 5 | Complete |
+| AUG-01 | Phase 3 | Complete |
+| AUG-02 | Phase 3 | Complete |
+| AUG-03 | Phase 3 | Complete |
+| AUG-04 | Phase 3 | Complete (figures exist on disk; paper.tex wiring pending Phase 13) |
+| METHOD-01 | Phase 4 | Complete |
+| METHOD-02 | Phase 4 | Complete |
+| METHOD-03 | Phase 4 | Complete |
+| METHOD-04 | Phase 4 | Complete |
 | QUANT-01 | Phase 9 | Complete |
 | QUANT-02 | Phase 9 | Complete |
 | QUANT-03 | Phase 9 | Complete |
@@ -142,13 +142,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 **Coverage:**
 - v1 requirements: 39 total
-- Formally verified with VERIFICATION.md evidence: 25/39 (VERIFY-02-06, CHAR-01-06, QUANT-01-14)
-- Checked `[x]` but pending Phase 14 verification backfill: 6/39 (VERIFY-01, CHAR-07, INTRO-01-04 — work done per Phase 5/12 SUMMARYs, no VERIFICATION.md)
-- Unchecked, pending Phase 14 verification backfill: 8/39 (AUG-01-04, METHOD-01-04 — work done per Phase 3/4 SUMMARYs, no VERIFICATION.md)
+- Formally verified: 39/39 (all requirements have VERIFICATION.md evidence)
 - Mapped to phases: 39
 - Unmapped: 0
-- Gap closure reassignments: VERIFY-01→Phase 12/14, AUG-04→Phase 13/14, AUG-01-03→Phase 14, METHOD-01-04→Phase 14, CHAR-07/INTRO-01-04→Phase 14
 
 ---
 *Requirements defined: 2026-04-03*
-*Last updated: 2026-04-05 after gap closure plan + adversarial review — expanded Phase 14 scope, fixed 17 stale traceability entries, corrected coverage categories and VERIFY-01 status*
+*Last updated: 2026-04-06 after Phase 14 verification backfill — all 39 requirements formally verified with VERIFICATION.md evidence, 8 checkboxes flipped, 14 traceability entries updated to Complete*

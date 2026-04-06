@@ -26,10 +26,10 @@ If Le's GPT-4.1 mini data has not arrived by **April 7, 2026 EOD**:
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Data Verification & Ground Truth** - Cross-check every existing numerical claim and table against on-disk data files
-- [ ] **Phase 2: Benchmark Characterization Data** - Produce all quantitative characterization metrics (SLoC, categories, API coverage, language features, multi-file breakdown)
-- [ ] **Phase 3: Augmentation Analysis & Story** - Build per-kernel augmentation matrix, identify motivating examples, produce trend graphs, write LASSI positioning
-- [ ] **Phase 4: Methodology & Reviewer Defense** - Write methodology justifications for kernel isolation, statistical tests, reproducibility, and verification approach
-- [ ] **Phase 5: Introduction, Positioning & Characterization Table** - Weave quantitative highlights into introduction, sharpen differentiation, assemble LaTeX characterization table
+- [x] **Phase 2: Benchmark Characterization Data** - Produce all quantitative characterization metrics (SLoC, categories, API coverage, language features, multi-file breakdown)
+- [x] **Phase 3: Augmentation Analysis & Story** - Build per-kernel augmentation matrix, identify motivating examples, produce trend graphs, write LASSI positioning
+- [x] **Phase 4: Methodology & Reviewer Defense** - Write methodology justifications for kernel isolation, statistical tests, reproducibility, and verification approach
+- [x] **Phase 5: Introduction, Positioning & Characterization Table** - Weave quantitative highlights into introduction, sharpen differentiation, assemble LaTeX characterization table
 
 ## Phase Details
 
@@ -154,7 +154,7 @@ Phase 14 (verification & housekeeping — independent) ────────�
 | 12. Fix Stale Pass@k Values | 3/3 | Complete   | 2026-04-06 |
 | 12.1. SC26 Review P0 Quick Fixes | 1/1 | Complete   | 2026-04-06 |
 | 13. Paper.tex Figure & Table Wiring | 2/2 | Complete   | 2026-04-06 |
-| 14. Verification Backfill & Housekeeping | 0/1 | Not started (scope expanded: +artifact README, +API env docs) | - |
+| 14. Verification Backfill & Housekeeping | 1/1 | Complete | 2026-04-06 |
 
 ### Phase 6: RSBench Single-File Re-spec Controlled Experiment — **DROPPED**
 
@@ -414,4 +414,4 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 14-01-PLAN.md -- Create Phase 3, 4, 5, 8, 12 VERIFICATION.md files; update ALL checkboxes, traceability, and progress table; add artifact README
+- [x] 14-01-PLAN.md -- Create Phase 3, 4, 5, 8, 12 VERIFICATION.md files; update ALL checkboxes, traceability, and progress table; add artifact README
