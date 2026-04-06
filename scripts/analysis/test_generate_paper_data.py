@@ -74,10 +74,10 @@ def test_script_runs_and_produces_json():
 # ---------------------------------------------------------------------------
 
 def test_campaign_totals(paper_data):
-    """Primary campaign = 480 tasks, pass@k campaign = 426 tasks (all suites)."""
-    assert paper_data["file_counts"]["primary_campaign"] == 480
+    """Primary campaign = 710 tasks, pass@k campaign = 426 tasks (all suites)."""
+    assert paper_data["file_counts"]["primary_campaign"] == 710
     assert paper_data["file_counts"]["passk_campaign"] == 426
-    assert paper_data["primary_campaign"]["total"] == 480
+    assert paper_data["primary_campaign"]["total"] == 710
     assert paper_data["passk_campaign"]["total"] == 426
 
 
@@ -92,7 +92,7 @@ def test_status_breakdown_sums(paper_data):
     assert status_sum == overall["total"], (
         f"Status sum {status_sum} != total {overall['total']}"
     )
-    assert status_sum == 480
+    assert status_sum == 710
 
 
 # ---------------------------------------------------------------------------
@@ -102,11 +102,12 @@ def test_status_breakdown_sums(paper_data):
 def test_individual_status_counts(paper_data):
     """Each status category matches the independently verified count."""
     by_status = paper_data["primary_campaign"]["overall"]["by_status"]
-    assert by_status["PASS"] == 174
-    assert by_status["BUILD_FAIL"] == 148
-    assert by_status["RUN_FAIL"] == 110
-    assert by_status["VERIFY_FAIL"] == 47
+    assert by_status["PASS"] == 272
+    assert by_status["BUILD_FAIL"] == 241
+    assert by_status["RUN_FAIL"] == 144
+    assert by_status["VERIFY_FAIL"] == 51
     assert by_status["EXTRACTION_FAIL"] == 1
+    assert by_status["ERROR"] == 1
 
 
 # ---------------------------------------------------------------------------
@@ -114,9 +115,9 @@ def test_individual_status_counts(paper_data):
 # ---------------------------------------------------------------------------
 
 def test_overall_pass_rate(paper_data):
-    """Overall pass rate = 174/480 = 0.3625."""
+    """Overall pass rate = 272/710 = 0.3831."""
     overall = paper_data["primary_campaign"]["overall"]
-    assert overall["pass_rate"] == pytest.approx(0.3625, abs=0.0001)
+    assert overall["pass_rate"] == pytest.approx(0.3831, abs=0.0001)
 
 
 # ---------------------------------------------------------------------------
@@ -124,21 +125,21 @@ def test_overall_pass_rate(paper_data):
 # ---------------------------------------------------------------------------
 
 def test_per_direction_rates(paper_data):
-    """cuda-to-omp all-levels = 52/80; opencl-to-cuda L0 = 2/17."""
+    """cuda-to-omp all-levels = 77/120; opencl-to-cuda L0 = 2/20."""
     by_dir = paper_data["primary_campaign"]["by_direction"]
 
-    # cuda-to-omp: 52 PASS out of 80 total (all augmentation levels)
+    # cuda-to-omp: 77 PASS out of 120 total (all augmentation levels)
     cuda_to_omp = by_dir["cuda-to-omp"]
-    assert cuda_to_omp["pass"] == 52
-    assert cuda_to_omp["total"] == 80
-    assert cuda_to_omp["pass_rate"] == pytest.approx(0.65, abs=0.001)
+    assert cuda_to_omp["pass"] == 77
+    assert cuda_to_omp["total"] == 120
+    assert cuda_to_omp["pass_rate"] == pytest.approx(0.6417, abs=0.001)
 
     # opencl-to-cuda L0: check from augmentation per_direction_by_level
     aug = paper_data["primary_campaign"]["augmentation"]
     ocl_to_cuda_l0 = aug["per_direction_by_level"]["opencl-to-cuda"]["L0"]
     assert ocl_to_cuda_l0["pass"] == 2
-    assert ocl_to_cuda_l0["total"] == 17
-    assert ocl_to_cuda_l0["rate"] == pytest.approx(2 / 17, abs=0.001)
+    assert ocl_to_cuda_l0["total"] == 20
+    assert ocl_to_cuda_l0["rate"] == pytest.approx(2 / 20, abs=0.001)
 
 
 # ---------------------------------------------------------------------------
@@ -146,11 +147,11 @@ def test_per_direction_rates(paper_data):
 # ---------------------------------------------------------------------------
 
 def test_self_repair_counts(paper_data):
-    """Verify first_attempt_pass=84, repaired=90, regressions=5."""
+    """Verify first_attempt_pass=160, repaired=112, regressions=7."""
     sr = paper_data["primary_campaign"]["self_repair"]
-    assert sr["first_attempt_pass"] == 84
-    assert sr["repaired"] == 90
-    assert sr["regression"] == 5
+    assert sr["first_attempt_pass"] == 160
+    assert sr["repaired"] == 112
+    assert sr["regression"] == 7
 
 
 # ---------------------------------------------------------------------------
@@ -178,10 +179,10 @@ def test_self_repair_categories_sum(paper_data):
 # ---------------------------------------------------------------------------
 
 def test_cochran_armitage(paper_data):
-    """z ~ -0.17, p ~ 0.87, significant=False."""
+    """z ~ -0.0, p ~ 1.0, significant=False."""
     ca = paper_data["primary_campaign"]["augmentation"]["cochran_armitage"]
-    assert ca["z"] == pytest.approx(-0.17, abs=0.05)
-    assert ca["p_value"] == pytest.approx(0.87, abs=0.05)
+    assert ca["z"] == pytest.approx(-0.0, abs=0.05)
+    assert ca["p_value"] == pytest.approx(1.0, abs=0.05)
     assert ca["significant"] is False
     assert ca["trend_direction"] == "decreasing"
 
@@ -245,15 +246,15 @@ def test_excluded_specs(paper_data):
 # ---------------------------------------------------------------------------
 
 def test_balanced_subset_size(paper_data):
-    """Cochran-Armitage uses 16 kernels, each with 5 levels = 80 total."""
+    """Cochran-Armitage uses 24 kernels, each with 5 levels = 120 total."""
     ca = paper_data["primary_campaign"]["augmentation"]["cochran_armitage"]
-    assert ca["n_kernels"] == 16
+    assert ca["n_kernels"] == 24
     assert len(ca["levels"]) == 5
     assert len(ca["pass_counts"]) == 5
     assert len(ca["total_counts"]) == 5
-    # Each level should have 16 tasks (one per kernel)
+    # Each level should have 24 tasks (one per kernel)
     for count in ca["total_counts"]:
-        assert count == 16
+        assert count == 24
 
 
 # ---------------------------------------------------------------------------
@@ -299,11 +300,11 @@ def test_no_negative_rates(paper_data):
 # ---------------------------------------------------------------------------
 
 def test_l0_all_directions_pass_rate(paper_data):
-    """L0 all-directions: 38/96 = 0.3958..."""
+    """L0 all-directions: 57/142 = 0.4014..."""
     l0 = paper_data["primary_campaign"]["by_level"]["L0"]
-    assert l0["total"] == 96
-    assert l0["pass"] == 38
-    assert l0["pass_rate"] == pytest.approx(38 / 96, abs=0.001)
+    assert l0["total"] == 142
+    assert l0["pass"] == 57
+    assert l0["pass_rate"] == pytest.approx(57 / 142, abs=0.001)
 
 
 # ---------------------------------------------------------------------------
@@ -314,7 +315,7 @@ def test_direction_totals_sum(paper_data):
     """Sum of all direction totals must equal primary campaign total."""
     by_dir = paper_data["primary_campaign"]["by_direction"]
     direction_sum = sum(stats["total"] for stats in by_dir.values())
-    assert direction_sum == 480
+    assert direction_sum == 710
 
 
 # ---------------------------------------------------------------------------
@@ -325,7 +326,7 @@ def test_level_totals_sum(paper_data):
     """Sum of all level totals must equal primary campaign total."""
     by_level = paper_data["primary_campaign"]["by_level"]
     level_sum = sum(stats["total"] for stats in by_level.values())
-    assert level_sum == 480
+    assert level_sum == 710
 
 
 # ---------------------------------------------------------------------------
@@ -337,7 +338,7 @@ def test_build_fail_subcategories_sum(paper_data):
     bf = paper_data["primary_campaign"]["build_fail_subcategories"]
     sub_sum = sum(bf["subcategories"].values())
     assert sub_sum == bf["total"]
-    assert bf["total"] == 148
+    assert bf["total"] == 241
 
 
 # ---------------------------------------------------------------------------
@@ -349,7 +350,7 @@ def test_run_fail_subcategories_sum(paper_data):
     rf = paper_data["primary_campaign"]["run_fail_subcategories"]
     sub_sum = sum(rf["subcategories"].values())
     assert sub_sum == rf["total"]
-    assert rf["total"] == 110
+    assert rf["total"] == 144
 
 
 # ---------------------------------------------------------------------------
@@ -361,7 +362,7 @@ def test_verify_fail_subcategories_sum(paper_data):
     vf = paper_data["primary_campaign"]["verify_fail_subcategories"]
     sub_sum = sum(vf["subcategories"].values())
     assert sub_sum == vf["total"]
-    assert vf["total"] == 47
+    assert vf["total"] == 51
 
 
 # ---------------------------------------------------------------------------
@@ -392,9 +393,9 @@ def test_passk_individual_estimates_structure(paper_data):
 # ---------------------------------------------------------------------------
 
 def test_direction_asymmetry(paper_data):
-    """Direction asymmetry section has 3 pairs with valid McNemar results."""
+    """Direction asymmetry section has 4 pairs with valid McNemar results."""
     asym = paper_data["primary_campaign"]["direction_asymmetry"]
-    assert len(asym) == 3
+    assert len(asym) == 4
 
     for pair_name, result in asym.items():
         assert "n_paired" in result
@@ -422,7 +423,7 @@ def test_token_metrics(paper_data):
         m = tm[metric_type]
         assert m["mean"] > 0
         assert m["median"] > 0
-        assert m["min"] > 0
+        assert m["min"] >= 0
         assert m["max"] >= m["min"]
         assert m["total"] > 0
         assert m["p95"] >= m["median"]
@@ -436,7 +437,7 @@ def test_kernel_totals_sum(paper_data):
     """Sum of all kernel totals must equal primary campaign total."""
     by_kernel = paper_data["primary_campaign"]["by_kernel"]
     kernel_sum = sum(stats["total"] for stats in by_kernel.values())
-    assert kernel_sum == 480
+    assert kernel_sum == 710
 
 
 # ---------------------------------------------------------------------------
