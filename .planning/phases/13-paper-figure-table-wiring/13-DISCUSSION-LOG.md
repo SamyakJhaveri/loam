@@ -165,3 +165,51 @@
 - c1-c4 companion figures — could go to supplementary material in camera-ready
 - aug_trend.pdf — redundant with F7, but could replace it if Phase 3 version preferred
 - XSBench-specific comparison figure — text in Section 4.3 covers the argument; dedicated figure for camera-ready if page allows
+
+---
+
+## Validation Notes (2026-04-05, post-context-gather audit)
+
+### ROADMAP Success Criteria Deviations
+
+Two ROADMAP success criteria are intentionally overridden by user decisions made during context gathering. These are deliberate scope reductions, not oversights:
+
+1. **SC-3 (ROADMAP):** "`\includegraphics` added for `aug_heatmap.pdf` and `aug_trend.pdf` in Section 7.4"
+   - **Decision D-01 overrides:** User chose "Add heatmap only" — `aug_trend.pdf` is skipped because F7 (`f7_augmentation_robustness.pdf`) already covers the aggregate trend line. ROADMAP SC-3 needs updating to reflect heatmap-only scope.
+
+2. **SC-4 (ROADMAP):** "`\input{t2_model_comparison.tex}` added in Section 5 (methodology)"
+   - **Decision D-04 overrides:** User chose "Skip T2 entirely" — `tab:direction-rates` (line 1029) already shows per-direction pass rates with current 5-suite data. T2 content is stale (Rodinia-only, 49/138) and redundant. ROADMAP SC-4 needs updating to reflect T2 skip + stale file deletion.
+
+**Action required:** ROADMAP.md Phase 13 success criteria 3 and 4 must be updated before planning begins. This is a cross-file issue — flagged to team lead for coordination.
+
+### \ref{fig:xsbench} Clarification
+
+CONTEXT.md line 86 states: "All `\ref{fig:xsbench}` instances → `\ref{fig:cross-suite}`"
+
+Verification against paper.tex shows **zero** `\ref{fig:xsbench}` instances exist — only the `\label{fig:xsbench}` definition at line 1098. The label rename (D-12) is still correct for consistency, but there are no cross-references to update. Implementation agents should rename the label only, not search for non-existent `\ref` occurrences.
+
+### File Size Verification (all figures confirmed on disk 2026-04-05)
+
+| File | Path | Size | Exists |
+|------|------|------|--------|
+| aug_heatmap.pdf | docs/paper/latex/figures/ | 37KB | Yes |
+| f6_cross_suite_comparison.pdf | docs/paper/latex/figures/ | 23KB | Yes |
+| f3_kernel_model_heatmap.pdf | docs/paper/latex/figures/ | 56KB | Yes |
+| f7_augmentation_robustness.pdf | docs/paper/latex/figures/ | 15KB | Yes |
+| parbench_architecture.drawio | docs/paper/figures/ (note: NOT latex/figures/) | 36KB | Yes |
+| f6_xsbench_comparison.pdf (to delete) | docs/paper/latex/figures/ | 14KB | Yes |
+| f6_xsbench_comparison.png (to delete) | docs/paper/latex/figures/ | 86KB | Yes |
+| t2_model_comparison.tex (to delete) | docs/paper/figures/ (note: NOT latex/figures/) | 0.4KB | Yes |
+
+### Line Number Spot-Checks (all verified against paper.tex)
+
+| CONTEXT.md claim | Actual line | Match? |
+|------------------|-------------|--------|
+| Line 5: TODO drawio | Line 5 | Yes |
+| Line 257: TODO drawio | Line 257 | Yes |
+| Line 261: commented \includegraphics | Line 261 | Yes |
+| Line 262: \fbox placeholder | Line 262 | Yes |
+| Line 931: F3 "Triple-panel" caption | Line 931 | Yes |
+| Line 1096: f6_xsbench_comparison.pdf | Line 1096 | Yes |
+| Line 1098: \label{fig:xsbench} | Line 1098 | Yes |
+| After line 1015: aug_heatmap insertion point | Line 1015 = \end{figure} for F7 | Yes |

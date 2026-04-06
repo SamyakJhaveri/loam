@@ -375,17 +375,18 @@ Plans:
 **SC26 Review Items:**
   - P0-3: Export `parbench_architecture.drawio` → PDF/PNG for Figure 1 (Raised by R1, R5)
 **Success Criteria** (what must be TRUE):
-  1. F6 reference updated: `f6_xsbench_comparison.pdf` → `f6_cross_suite_comparison.pdf` at paper.tex line ~977
+  1. F6 reference updated: `f6_xsbench_comparison.pdf` → `f6_cross_suite_comparison.pdf` at paper.tex line ~1096, label renamed `fig:xsbench` → `fig:cross-suite`, caption updated for cross-suite framing
   2. F3 caption updated to reflect single-panel 29-kernel x 6-direction design (not "Triple-panel")
-  3. `\includegraphics` added for `aug_heatmap.pdf` and `aug_trend.pdf` in Section 7.4
-  4. `\input{t2_model_comparison.tex}` added in Section 5 (methodology)
+  3. `\includegraphics` added for `aug_heatmap.pdf` in Section 7.4 (aug_trend.pdf skipped — F7 covers aggregate trend; user decision D-01)
+  4. Stale `t2_model_comparison.tex` deleted (T2 skipped — `tab:direction-rates` already covers per-direction data; user decision D-04)
   5. All figure/table references compile without LaTeX warnings
   6. `parbench_architecture.pdf` exists in `docs/paper/latex/figures/` and is referenced by `\includegraphics` in Figure 1
+  7. Old F6 files (`f6_xsbench_comparison.pdf`, `.png`) deleted from `docs/paper/latex/figures/`
 
 **Plans**: 1 plan
 
 Plans:
-- [ ] 13-01-PLAN.md -- Export architecture drawio→PDF, fix F6 filename, F3 caption, insert aug figure graphics, insert T2 table input in paper.tex
+- [ ] 13-01-PLAN.md -- Uncomment architecture figure, fix F6 filename/caption/label, fix F3 caption, insert aug_heatmap figure, delete stale files (old F6, T2)
 
 ### Phase 14: Verification Backfill & Housekeeping
 
