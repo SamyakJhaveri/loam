@@ -74,6 +74,10 @@ Large language models (LLMs) are increasingly applied to parallel code generatio
 
 %% =============================================================
 %% S1 INTRODUCTION
+% VERIFIED (11-02 Task 1, 2026-04-06): All S1 numbers match paper_data.json (710 tasks, 38.3%
+% [34.8%,41.9%], 96 specs, 35 kernels, 5 suites, BUILD_FAIL 33.9%, VERIFY_FAIL 7.2%,
+% self-repair 70% relative increase, multi-file 51.3% vs 22.2%). LASSI differentiation >=4
+% dimensions (purpose, scale, suite diversity, directions, augmentation). All provenance present.
 %% =============================================================
 \section{Introduction}
 \label{sec:introduction}
@@ -248,6 +252,10 @@ ParBench is, to our knowledge, the only framework that combines all of the follo
 %% =============================================================
 %% S3 PARBENCH FRAMEWORK
 % src: S3 framework section verified against code and spec files (01-01 verified 2026-04-03)
+% VERIFIED (11-02 Task 1, 2026-04-06): S3 file role taxonomy (prompt_payload, support_files,
+% verification_only, translation_targets) present. Build/Run/Verify pipeline accurate.
+% 6 transforms and L0-L4 level system match c_augmentation/augment_dataset.py.
+% Kernel-centric translation description accurate. 96 specs = 60+4+4+3+25 confirmed.
 %% =============================================================
 \section{ParBench Framework}
 \label{sec:framework}
