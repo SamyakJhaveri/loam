@@ -767,8 +767,7 @@ def generate_f3_kernel_heatmap(
         '"No [API] src/tgt impl." = the benchmark suite has no implementation '
         "in that API for this kernel,\n"
         "so the translation task does not exist "
-        "(e.g., dwt2d has no OpenMP code; gaussian has no OpenMP code).\n"
-        "GPT-4.1 mini: data pending (all directions N/A).",
+        "(e.g., dwt2d has no OpenMP code; gaussian has no OpenMP code).",
         ha="center", va="top", fontsize=6, fontstyle="italic", color="#555555",
     )
 
@@ -1609,10 +1608,26 @@ def generate_t2_model_table(
         "Qwen 3.5 397B & " + " & ".join(qwen_cells) + r" \\"
     )
 
-    # GPT row (all pending)
-    pending_cells = ["pending"] * (1 + len(DIRECTIONS))
+    # GPT row (computed from records, like Qwen row above)
+    gpt_records = [r for r in std_records if "gpt" in r["model"].lower()]
+    gpt_total = len(gpt_records)
+    gpt_pass = sum(1 for r in gpt_records if r["overall_status"] == "PASS")
+    gpt_rate = gpt_pass / gpt_total * 100 if gpt_total > 0 else 0
+
+    gpt_dir_stats: dict[str, tuple[int, int]] = {}
+    for d in DIRECTIONS:
+        d_recs = [r for r in gpt_records if r["direction"] == d]
+        d_total = len(d_recs)
+        d_pass = sum(1 for r in d_recs if r["overall_status"] == "PASS")
+        gpt_dir_stats[d] = (d_pass, d_total)
+
+    gpt_cells = [f"{gpt_pass}/{gpt_total} ({gpt_rate:.1f}\\%)"]
+    for d in DIRECTIONS:
+        p, t = gpt_dir_stats[d]
+        rate = p / t * 100 if t > 0 else 0
+        gpt_cells.append(f"{p}/{t} ({rate:.1f}\\%)")
     lines.append(
-        "GPT-4.1 mini & " + " & ".join(pending_cells) + r" \\"
+        "GPT-4.1 mini & " + " & ".join(gpt_cells) + r" \\"
     )
 
     lines.append(r"\bottomrule")
@@ -1627,7 +1642,12 @@ def generate_t2_model_table(
         for d in DIRECTIONS:
             p, t = dir_stats[d]
             rate = p / t * 100 if t > 0 else 0
-            print(f"  {d}: {p}/{t} ({rate:.1f}%)")
+            print(f"  Qwen {d}: {p}/{t} ({rate:.1f}%)")
+        print(f"  GPT overall: {gpt_pass}/{gpt_total} ({gpt_rate:.1f}%)")
+        for d in DIRECTIONS:
+            p, t = gpt_dir_stats[d]
+            rate = p / t * 100 if t > 0 else 0
+            print(f"  GPT {d}: {p}/{t} ({rate:.1f}%)")
 
 
 # ===================================================================
