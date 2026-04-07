@@ -367,27 +367,31 @@ grep -n 'pending{' docs/paper/latex/paper.tex | grep -v 'newcommand'
 | A3 | F6 figure should go near Section 4.4 (Evaluation Corpus, ~line 496) or Section 6.3 | Architecture Patterns | LOW -- executor decides per Claude's Discretion |
 | A4 | Line 577 ("GPT-4.1~mini evaluation is pending and marked with \tbd{} throughout") should be updated/removed | State of the Art | MEDIUM -- if left unchanged, contradicts filled data |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Wilson CI for Aggregate Row**
+1. **Wilson CI for Aggregate Row** (RESOLVED)
    - What we know: 433/1261 = 34.3%. Need Wilson CI.
    - What's unclear: Exact CI bounds (requires scipy computation).
    - Recommendation: Executor runs `python3 -c "from scipy.stats import proportion_confint; print(proportion_confint(433, 1261, method='wilson'))"` to get exact bounds.
+   - **Resolution:** Plan 01 Task 2 action includes the computation. Executor computes at fill time. Approximate CI [31.8%, 37.0%] pre-computed in plan text.
 
-2. **GPT Evaluation Cost (line 663)**
+2. **GPT Evaluation Cost (line 663)** (RESOLVED)
    - What we know: Line 663 has `\pending{GPT-4.1~mini evaluation costs via Azure.}`
    - What's unclear: Whether this cost data is available anywhere on disk.
    - Recommendation: Check for Azure cost data in results/. If not available, leave this pending or add a TODO comment like line 631.
+   - **Resolution:** Plan 01 Task 1 fills line 663 with deferral text and TODO comment (no cost data available on disk).
 
-3. **GPT Augmentation Data Absence**
+3. **GPT Augmentation Data Absence** (RESOLVED)
    - What we know: paper_data_gpt41mini.json has no `augmentation` section. Primary campaign covers L0-L4 implicitly in the direction totals.
    - What's unclear: How to handle pending markers about "cross-model augmentation comparison" (lines 917, 1033).
    - Recommendation: Note that the primary campaign includes augmented levels (L0-L4) for both models, so per-direction pass rates inherently reflect augmentation response. But Cochran-Armitage trend test was only performed for Qwen. State this limitation explicitly.
+   - **Resolution:** Plan 01 Task 1 fills lines 917 and 1033 with text noting primary campaign covers L0-L4 implicitly and Cochran-Armitage was Qwen-only.
 
-4. **Line 577 Stale Text**
+4. **Line 577 Stale Text** (RESOLVED)
    - What we know: "GPT-4.1~mini evaluation is pending and marked with \tbd{} throughout" will be false after fills.
    - What's unclear: Whether to remove it entirely or update it.
    - Recommendation: Remove or replace with "Two models are evaluated: Qwen~3.5 397B-A17B and GPT-4.1~mini."
+   - **Resolution:** Plan 01 Task 1 replaces line 577 with dual-model statement per the recommendation.
 
 ## Environment Availability
 
