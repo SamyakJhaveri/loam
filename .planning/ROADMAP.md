@@ -27,6 +27,15 @@
 
 </details>
 
+### Phase 15: Paper Review Tools & Panel Fixes
+
+**Goal:** Execute 7 SC26 review panel fixes (FIX-2a, FIX-2b, FIX-3, SF-1, SF-3, SF-6, SF-7) and adversarially review the Phases 16-18 GPT integration plan.
+**Plans:** 2 plans
+
+Plans:
+- [ ] 15-01-PLAN.md — Apply 6 LaTeX paper edits (FIX-2a, FIX-2b, FIX-3, SF-1, SF-3, SF-6)
+- [ ] 15-02-PLAN.md — Create MIT LICENSE (SF-7) and adversarial review of GPT integration plan
+
 ## Progress
 
 | Milestone | Phases | Plans | Requirements | Status | Shipped |
