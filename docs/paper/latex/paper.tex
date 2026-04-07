@@ -659,8 +659,8 @@ RTX~4070 GPU (Ada Lovelace, compute capability sm\_89), CUDA~12.3
 % P0-7: HeCBench commit hash added
 To support exact reproduction, all artifacts are version-pinned: ParBench at commit \texttt{c1d8c7b}\footnote{Repository URL withheld for double-blind review.}, Rodinia at submodule commit \texttt{9c10d3ea}~\cite{Rodinia2009}, HeCBench at commit \texttt{22785cd}\footnote{\url{https://github.com/zjin-lcf/HeCBench}} (cloned March 2026), and evaluation scripts at the same ParBench revision. Qwen~3.5 397B-A17B was accessed via the Together AI API during March--April 2026; model weights are publicly available. All 1,248 per-task result JSONs, analysis scripts, and spec files are included in the repository to enable independent verification of every reported number.
 
-% src: token_analysis.json > actual_billing; SF-1: API cost and evaluation time
-\textbf{Evaluation cost and duration.} The Qwen~3.5 primary and pass@$k$ campaigns (1{,}136 tasks, 4{,}600 API requests) were conducted over 7 days (March 27--April 2, 2026) via the Together AI inference API at a total cost of \$145.37 and 120.6M tokens (96.2M input, 24.3M output), yielding an average cost of \$0.13 per task. \pending{GPT-4.1~mini evaluation costs via Azure.}
+% SF-1: API cost data moved to appendix table per D-04
+\textbf{Evaluation cost.} Appendix~\ref{sec:appendix-cost} summarizes the API cost and token usage for the Qwen~3.5 evaluation campaigns. \pending{GPT-4.1~mini evaluation costs via Azure.}
 
 %% =============================================================
 %% S6 RESULTS

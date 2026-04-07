@@ -1379,3 +1379,23 @@ Three anonymization steps are applied before prompt construction:
   stripped from the build command string.
 \end{itemize}
 
+\section{Evaluation Cost Summary}
+\label{sec:appendix-cost}
+
+% src: token_analysis.json > actual_billing; SF-1: API cost and evaluation time
+\begin{table}[h]
+\centering
+\caption{Qwen~3.5 evaluation campaign cost summary (March 27--April 2, 2026).}
+\label{tab:eval-cost}
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Total API cost & \$145.37 \\
+Cost per task & \$0.13 \\
+Total tokens & 120.6M (96.2M in, 24.3M out) \\
+Campaign duration & 7 days (1{,}136 tasks, 4{,}600 requests) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
