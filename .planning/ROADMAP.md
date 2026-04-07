@@ -30,14 +30,43 @@
 ### Phase 15: Paper Review Tools & Panel Fixes
 
 **Goal:** Execute 7 SC26 review panel fixes (FIX-2a, FIX-2b, FIX-3, SF-1, SF-3, SF-6, SF-7) and adversarially review the Phases 16-18 GPT integration plan.
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] 15-01-PLAN.md — Apply 6 LaTeX paper edits (FIX-2a, FIX-2b, FIX-3, SF-1, SF-3, SF-6)
+- [x] 15-01-PLAN.md — Apply 6 LaTeX paper edits (FIX-2a, FIX-2b, FIX-3, SF-1, SF-3, SF-6)
 - [ ] 15-02-PLAN.md — Create MIT LICENSE (SF-7) and adversarial review of GPT integration plan
+
+### Phase 15.5: Pre-Work — Figure Fixes & Dependencies
+
+**Goal:** Fix figure generation scripts (GPT color, F7 dual-model), request hardware specs from Niranjan, verify analyze_eval.py multi-model support. Blockers for Phase 16.
+**Plans:** 1 plan (3 parallel tasks: PW-A, PW-B, PW-C)
+
+- [ ] PLAN.md — Figure color fix, hardware specs request, analyze_eval.py verification
+
+### Phase 16: GPT-4.1 Mini Data Analysis & Summary Generation
+
+**Goal:** Produce machine-readable analysis files for GPT-4.1 mini (eval_summary, paper_data, error_taxonomy), write cross_model_comparison.py (critical path), regenerate all figures with dual-model data.
+**Plans:** 1 plan (6 tasks + schema gate)
+
+- [ ] PLAN.md — T1-T6: analyze_eval, paper_data, error_taxonomy, cross_model_comparison.py, figures, coverage gaps
+
+### Phase 17: Paper Integration — Dual-Model Results & Differentiation
+
+**Goal:** Update paper.tex with GPT-4.1 mini data: fill 19 `\pending{}` markers, 18 `\tbd{}` table cells, write Section 6.9 (cross-model comparison), add augmentation degradation examples, emphasize prompt anonymization.
+**Plans:** 1 plan (5 sub-tasks: 17A-17E + page budget audit)
+
+- [ ] PLAN.md — 17A: fill pending, 17A-tbd: fill tbd, 17B: Section 6.9, 17C: augmentation evidence, 17D: anonymization, 17E: figures
+
+### Phase 18: Cross-Model Verification Sprint
+
+**Goal:** Verify every data claim in the updated paper against on-disk result files. Final quality gate before April 8 submission.
+**Plans:** 1 plan (10 tasks in 3 waves)
+
+- [ ] PLAN.md — Wave 1: cite-check (T1-T3), Wave 2: spot-checks (T4-T6), Wave 3: final checks (T7-T10)
 
 ## Progress
 
 | Milestone | Phases | Plans | Requirements | Status | Shipped |
 |-----------|--------|-------|-------------|--------|---------|
 | v1.0 SC26 Paper Sprint | 13 (2 dropped, 1 research stub) | 33/33 | 39/39 | Complete | 2026-04-06 |
+| GPT Integration & Submission | 5 (15, 15.5, 16, 17, 18) | 0/5 | — | In Progress | — |
