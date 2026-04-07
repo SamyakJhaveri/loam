@@ -1,0 +1,198 @@
+{
+  "generated_at": "2026-04-07T19:48:43.265833+00:00",
+  "models": [
+    "together-qwen-3.5-397b-a17b",
+    "azure-gpt-4.1-mini"
+  ],
+  "common_directions": [
+    "cuda-to-omp",
+    "cuda-to-omp_target",
+    "cuda-to-opencl",
+    "omp-to-cuda",
+    "omp-to-opencl",
+    "opencl-to-cuda",
+    "opencl-to-omp"
+  ],
+  "missing_directions": {
+    "azure-gpt-4.1-mini": [
+      "omp_target-to-cuda"
+    ]
+  },
+  "overall": {
+    "contingency_table": [
+      [
+        272,
+        438
+      ],
+      [
+        161,
+        390
+      ]
+    ],
+    "chi_squared": {
+      "chi2": 10.9704,
+      "p_value": 0.000926,
+      "dof": 1
+    },
+    "qwen": {
+      "pass": 272,
+      "total": 710,
+      "rate": 0.3831
+    },
+    "gpt": {
+      "pass": 161,
+      "total": 551,
+      "rate": 0.2922
+    },
+    "cohens_h": 0.1926,
+    "effect_size": "negligible"
+  },
+  "per_direction": {
+    "cuda-to-omp": {
+      "qwen": {
+        "pass": 77,
+        "total": 120,
+        "rate": 0.6417
+      },
+      "gpt": {
+        "pass": 48,
+        "total": 120,
+        "rate": 0.4
+      },
+      "cohens_h": 0.4887,
+      "effect_size": "small"
+    },
+    "cuda-to-omp_target": {
+      "qwen": {
+        "pass": 7,
+        "total": 40,
+        "rate": 0.175
+      },
+      "gpt": {
+        "pass": 0,
+        "total": 40,
+        "rate": 0.0
+      },
+      "cohens_h": 0.8632,
+      "effect_size": "large"
+    },
+    "cuda-to-opencl": {
+      "qwen": {
+        "pass": 20,
+        "total": 100,
+        "rate": 0.2
+      },
+      "gpt": {
+        "pass": 30,
+        "total": 100,
+        "rate": 0.3
+      },
+      "cohens_h": -0.232,
+      "effect_size": "small"
+    },
+    "omp-to-cuda": {
+      "qwen": {
+        "pass": 63,
+        "total": 120,
+        "rate": 0.525
+      },
+      "gpt": {
+        "pass": 15,
+        "total": 84,
+        "rate": 0.1786
+      },
+      "cohens_h": 0.7482,
+      "effect_size": "medium"
+    },
+    "omp-to-opencl": {
+      "qwen": {
+        "pass": 25,
+        "total": 90,
+        "rate": 0.2778
+      },
+      "gpt": {
+        "pass": 30,
+        "total": 90,
+        "rate": 0.3333
+      },
+      "cohens_h": -0.1206,
+      "effect_size": "negligible"
+    },
+    "opencl-to-cuda": {
+      "qwen": {
+        "pass": 6,
+        "total": 100,
+        "rate": 0.06
+      },
+      "gpt": {
+        "pass": 1,
+        "total": 27,
+        "rate": 0.037
+      },
+      "cohens_h": 0.1078,
+      "effect_size": "negligible"
+    },
+    "opencl-to-omp": {
+      "qwen": {
+        "pass": 35,
+        "total": 90,
+        "rate": 0.3889
+      },
+      "gpt": {
+        "pass": 37,
+        "total": 90,
+        "rate": 0.4111
+      },
+      "cohens_h": -0.0453,
+      "effect_size": "negligible"
+    }
+  },
+  "per_kernel_matrix": {
+    "total_common_kernels": 31,
+    "both_pass": [
+      "backprop",
+      "bfs",
+      "cfd",
+      "hotspot",
+      "hotspot3d",
+      "lavamd",
+      "lud",
+      "nn",
+      "nw",
+      "particlefilter",
+      "pathfinder",
+      "srad",
+      "streamcluster"
+    ],
+    "both_fail": [
+      "convolution1d",
+      "heartwall",
+      "myocyte",
+      "rsbench",
+      "xsbench"
+    ],
+    "qwen_only_pass": [
+      "bptree",
+      "floydwarshall",
+      "heat2d",
+      "iso2dfd",
+      "jacobi",
+      "md",
+      "mixbench",
+      "nqueen",
+      "page-rank",
+      "scan",
+      "stencil1d"
+    ],
+    "gpt_only_pass": [
+      "dwt2d",
+      "gaussian"
+    ],
+    "counts": {
+      "both_pass": 13,
+      "both_fail": 5,
+      "qwen_only_pass": 11,
+      "gpt_only_pass": 2
+    }
+  }
+}
