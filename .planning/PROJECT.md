@@ -19,6 +19,7 @@ The SC26 paper (`docs/paper/latex/paper.tex`) is submission-ready with:
 - 14-dimension quantitative analysis with provenance tracking
 - 10 simulated SC26 reviewer items addressed
 - 9 non-blocking tech debt items documented
+- Phase 15 complete — 7 review panel fixes applied (FIX-2a/2b, FIX-3, SF-1/3/6/7) + GPT integration plan reviewed
 
 **Pending (v2 scope):**
 - GPT-4.1 mini results integration (Le's eval runs)
@@ -85,4 +86,4 @@ The SC26 paper (`docs/paper/latex/paper.tex`) is submission-ready with:
 - **HeCBench source**: Cloned locally (gitignored, 1874 dirs) — no version pinning
 
 ---
-*Last updated: 2026-04-06 after v1.0 milestone*
+*Last updated: 2026-04-07 after Phase 15 completion*
