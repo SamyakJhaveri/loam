@@ -48,10 +48,10 @@ Plans:
 ### Phase 16: GPT-4.1 Mini Data Analysis & Summary Generation
 
 **Goal:** Produce machine-readable analysis files for GPT-4.1 mini (eval_summary, paper_data, error_taxonomy), write cross_model_comparison.py (critical path), regenerate all figures with dual-model data.
-**Plans:** 4 plans
+**Plans:** 1/4 plans executed
 
 Plans:
-- [ ] 16-01-PLAN.md — T1+T2+T3: Refresh eval_summary, generate paper_data_gpt41mini.json, refresh error_taxonomy
+- [x] 16-01-PLAN.md — T1+T2+T3: Refresh eval_summary, generate paper_data_gpt41mini.json, refresh error_taxonomy
 - [ ] 16-02-PLAN.md — Fix T2 table hardcoded GPT "pending" + T3b schema gate validation
 - [ ] 16-03-PLAN.md — T4: Write cross_model_comparison.py from scratch (critical path for Section 6.9)
 - [ ] 16-04-PLAN.md — T5+T6: Regenerate all figures with dual-model data + document coverage gaps
