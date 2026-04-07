@@ -740,7 +740,7 @@ def generate_f3_kernel_heatmap(
     # 9. Title and annotation for GPT-4.1 mini
     # ------------------------------------------------------------------
     ax.set_title(
-        f"Per-Kernel Translation Outcomes (L0, All Suites, Qwen 3.5 397B)\n"
+        f"Per-Kernel Translation Outcomes (L0, All Suites, All Models)\n"
         f"{n_kernels} kernels \u00d7 {n_dirs} directions",
         fontsize=10, fontweight="bold", pad=12,
     )
@@ -847,7 +847,7 @@ def generate_f4_failure_taxonomy(
     ax.set_ylim(0, max(bottoms) * 1.08 if max(bottoms) > 0 else 1)
     ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
     ax.set_title(
-        "Failure Taxonomy: Status Distribution by Direction\n(L0, All Suites, Qwen 3.5 397B)",
+        "Failure Taxonomy: Status Distribution by Direction\n(L0, All Suites, All Models)",
         fontsize=9, fontweight="bold",
     )
 
@@ -1092,7 +1092,7 @@ def generate_f6_cross_suite_comparison(
     ax.set_ylabel("Pass Rate")
     ax.set_ylim(0, 1.15)
     ax.set_title(
-        "L0 Pass Rate by Suite (Standard Directions, Qwen 3.5 397B)",
+        "L0 Pass Rate by Suite (Standard Directions, All Models)",
         fontsize=9, fontweight="bold", pad=8,
     )
     ax.grid(axis="y", alpha=0.3)
