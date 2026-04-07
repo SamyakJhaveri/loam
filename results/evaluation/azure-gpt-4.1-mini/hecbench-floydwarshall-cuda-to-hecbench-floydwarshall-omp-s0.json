@@ -1,0 +1,65 @@
+{
+  "source_spec": "hecbench-floydwarshall-cuda",
+  "target_spec": "hecbench-floydwarshall-omp",
+  "kernel": "floydwarshall",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T22:06:09Z",
+  "prompt_tokens": 227,
+  "completion_tokens": 427,
+  "llm_response_time_seconds": 3.576,
+  "build_status": "fail",
+  "build_time_seconds": 0.013,
+  "build_error_snippet": "make: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n\nmake: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: efile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n\nmake: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.297,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "main.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <omp.h>\n\n#define INF 10000000\n\nvoid floydWarshall(int* dist, int n) {\n    int i, j, k;\n    for (k = 0; k < n; k++) {\n        #pragma omp parallel for private(i,j) schedule(static)\n        for (i = 0; i < n; i++) {\n            for (j = 0; j < n; j++) {\n                int newDist = dist[i * n + k] + dist[k * n + j];\n                if (newDist < dist[i * n + j]) {\n                    dist[i * n + j] = newDist;\n                }\n            }\n        }\n    }\n}\n\nint main(int argc, char* argv[]) {\n    if (argc != 2) {\n        printf(\"Usage: %s <n>\\n\", argv[0]);\n        return 1;\n    }\n\n    int n = atoi(argv[1]);\n    int* dist = (int*)malloc(n * n * sizeof(int));\n\n    // Initialize distance matrix\n    for (int i = 0; i < n; i++) {\n        for (int j = 0; j < n; j++) {\n            if (i == j) {\n                dist[i * n + j] = 0;\n            } else {\n                dist[i * n + j] = (rand() % 100) + 1;\n            }\n        }\n    }\n\n    floydWarshall(dist, n);\n\n    // Print the shortest path matrix\n    for (int i = 0; i < n; i++) {\n        for (int j = 0; j < n; j++) {\n            if (dist[i * n + j] == INF) {\n                printf(\"INF \");\n            } else {\n                printf(\"%d \", dist[i * n + j]);\n            }\n        }\n        printf(\"\\n\");\n    }\n\n    free(dist);\n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "main.cpp"
+  ],
+  "target_files_extracted": [
+    "main.cpp"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.576,
+      "prompt_tokens": 227,
+      "completion_tokens": 427,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "make: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n\nmake: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

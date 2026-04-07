@@ -1,0 +1,84 @@
+{
+  "source_spec": "rodinia-kmeans-cuda",
+  "target_spec": "rodinia-kmeans-opencl",
+  "kernel": "kmeans",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-i",
+    "../../data/kmeans/kdd_cup"
+  ],
+  "timestamp": "2026-04-03T15:34:33Z",
+  "prompt_tokens": 24067,
+  "completion_tokens": 903,
+  "llm_response_time_seconds": 11.888,
+  "build_status": null,
+  "build_time_seconds": null,
+  "build_error_snippet": null,
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "LLM call failed: Error code: 400 - {'error': {'message': \"The response was filtered due to the prompt triggering Azure OpenAI's content management policy. Please modify your prompt and retry. To learn more about our content filtering policies please read our documentation: https://go.microsoft.com/fwlink/?linkid=2198766\", 'type': None, 'param': 'prompt', 'code': 'content_filter', 'status': 400, 'innererror': {'code': 'ResponsibleAIPolicyViolation', 'content_filter_result': {'hate': {'filtered': False, 'severity': 'safe'}, 'jailbreak': {'filtered': True, 'detected': True}, 'self_harm': {'filtered': False, 'severity': 'safe'}, 'sexual': {'filtered': False, 'severity': 'safe'}, 'violence': {'filtered': False, 'severity': 'safe'}}}}}",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.498,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kmeans.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n#define THREADS_PER_DIM 16\n#define BLOCKS_PER_DIM 16\n#define THREADS_PER_BLOCK (THREADS_PER_DIM*THREADS_PER_DIM)\n\n#define ASSUMED_NR_CLUSTERS 32\n\n__constant float c_clusters[ASSUMED_NR_CLUSTERS*34];\n\n__kernel void invert_mapping(__global float *input,\n                             __global float *output,\n                             int npoints,\n                             int nfeatures)\n{\n    int point_id = get_global_id(0);\n    if (point_id < npoints) {\n        for (int i = 0; i < nfeatures; i++) {\n            output[point_id + npoints * i] = input[point_id * nfeatures + i];\n        }\n    }\n}\n\n__kernel void kmeansPoint(__global float *features,\n                          int nfeatures,\n                          int npoints,\n                          int nclusters,\n                          __global int *membership,\n                          __global float *clusters,\n                          __global float *block_clusters,\n                          __global int *block_deltas)\n{\n    const unsigned int block_id = get_group_id(1) * get_num_groups(0) + get_group_id(0);\n    const unsigned int local_thread_id = get_local_id(0);\n    const unsigned int local_size = get_local_size(0);\n    const unsigned int point_id = block_id * local_size + local_thread_id;\n\n    int index = -1;\n\n    if (point_id < npoints) {\n        float min_dist = FLT_MAX;\n        for (int i = 0; i < nclusters; i++) {\n            int cluster_base_index = i * nfeatures;\n            float ans = 0.0f;\n            for (int j = 0; j < nfeatures; j++) {\n                int addr = point_id + j * npoints;\n                float diff = features[addr] - c_clusters[cluster_base_index + j];\n                ans += diff * diff;\n            }\n            float dist = ans;\n            if (min_dist > dist) {\n                min_dist = dist;\n                index = i;\n            }\n        }\n    }\n\n#ifdef GPU_DELTA_REDUCTION\n    __local int deltas[THREADS_PER_BLOCK];\n    if (local_thread_id < THREADS_PER_BLOCK) {\n        deltas[local_thread_id] = 0;\n    }\n    barrier(CLK_LOCAL_MEM_FENCE);\n#endif\n\n    if (point_id < npoints) {\n#ifdef GPU_DELTA_REDUCTION\n        if (membership[point_id] != index) {\n            deltas[local_thread_id] = 1;\n        }\n#endif\n        membership[point_id] = index;\n    }\n\n#ifdef GPU_DELTA_REDUCTION\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    for (unsigned int stride = THREADS_PER_BLOCK / 2; stride > 0; stride >>= 1) {\n        if (local_thread_id < stride) {\n            deltas[local_thread_id] += deltas[local_thread_id + stride];\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n    if (local_thread_id == 0) {\n        block_deltas[get_group_id(1) * get_num_groups(0) + get_group_id(0)] = deltas[0];\n    }\n#endif\n\n#ifdef GPU_NEW_CENTER_REDUCTION\n    int center_id = local_thread_id / nfeatures;\n    int dim_id = local_thread_id % nfeatures;\n\n    __local int new_center_ids[THREADS_PER_BLOCK];\n    new_center_ids[local_thread_id] = index;\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    int new_base_index = (point_id - local_thread_id) * nfeatures + dim_id;\n    float accumulator = 0.f;\n\n    if (local_thread_id < nfeatures * nclusters) {\n        for (int i = 0; i < THREADS_PER_BLOCK; i++) {\n            float val = features[new_base_index + i * nfeatures];\n            if (new_center_ids[i] == center_id)\n                accumulator += val;\n        }\n        block_clusters[(get_group_id(1) * get_num_groups(0) + get_group_id(0)) * nclusters * nfeatures + local_thread_id] = accumulator;\n    }\n#endif\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans.cl"
+  ],
+  "target_files_extracted": [
+    "kmeans.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 11.888,
+      "prompt_tokens": 24067,
+      "completion_tokens": 903,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness\nEnsure the translated code produces the same outpu",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": null,
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null,
+      "error": "LLM call failed: Error code: 400 - {'error': {'message': \"The response was filtered due to the prompt triggering Azure OpenAI's content management policy. Please modify your prompt and retry. To learn more about our content filtering policies please read our documentation: https://go.microsoft.com/fwlink/?linkid=2198766\", 'type': None, 'param': 'prompt', 'code': 'content_filter', 'status': 400, 'innererror': {'code': 'ResponsibleAIPolicyViolation', 'content_filter_result': {'hate': {'filtered': False, 'severity': 'safe'}, 'jailbreak': {'filtered': True, 'detected': True}, 'self_harm': {'filtered': False, 'severity': 'safe'}, 'sexual': {'filtered': False, 'severity': 'safe'}, 'violence': {'filtered': False, 'severity': 'safe'}}}}}"
+    }
+  ]
+}

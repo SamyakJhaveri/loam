@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-pathfinder-omp",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-c",
+    "100000",
+    "-r",
+    "100",
+    "-h",
+    "20"
+  ],
+  "timestamp": "2026-04-04T21:37:35Z",
+  "prompt_tokens": 3947,
+  "completion_tokens": 601,
+  "llm_response_time_seconds": 4.736,
+  "build_status": "pass",
+  "build_time_seconds": 0.76,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 2.41,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "ERROR (-9999) in event start profiling.\nERROR (-9999) in event start profiling.\nERROR (-9999) in event start profiling.\nERROR (-9999) in event start profiling.\nERROR (-9999) in event start profiling.\nERROR (-58) in event start profiling.\nERROR (-58) in event start profiling.\nInit: 904.844971\nMemAlloc: 0.007000\nHtoD: 3.173248\nExec: 0.000000\nDtoH: 0.000000\nClose: 0.256000\nTotal: 1683.390991\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": 2.41,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n__kernel void dynproc_kernel(\n    const int pyramid_height,\n    __global const int* wall,\n    __global int* src,\n    __global int* dst,\n    const int cols,\n    const int rows,\n    const int t_start,\n    const int borderCols,\n    const int theHalo,\n    __local int* localSrc1,\n    __local int* localSrc2,\n    __global int* outputBuffer)\n{\n    int gid = get_global_id(0);\n    int lid = get_local_id(0);\n    int group_size = get_local_size(0);\n\n    // Compute start and end cols for this workgroup\n    int start_col = gid;\n    int row_offset = t_start;\n\n    // Each work item processes one element per time step within the pyramid height\n    for (int i = 0; i < pyramid_height; i++) {\n        int cur_row = row_offset + i + 1;\n        if (cur_row >= rows) break;\n\n        // Load neighbors from src to local memory with halo\n        // We will use local memory to reduce global memory accesses\n\n        // Compute local index with halo offset\n        int local_idx = lid + theHalo;\n\n        // Load central element\n        if (gid < cols)\n            localSrc1[local_idx] = src[gid];\n        else\n            localSrc1[local_idx] = INT_MAX;\n\n        // Load halo elements\n        if (lid < theHalo) {\n            int left_idx = gid - theHalo;\n            int right_idx = gid + group_size;\n\n            localSrc1[local_idx - theHalo] = (left_idx >= 0) ? src[left_idx] : INT_MAX;\n            localSrc1[local_idx + group_size] = (right_idx < cols) ? src[right_idx] : INT_MAX;\n        }\n\n        barrier(CLK_LOCAL_MEM_FENCE);\n\n        if (gid < cols) {\n            int min_val = localSrc1[local_idx];\n            if (local_idx - 1 >= 0)\n                min_val = min(min_val, localSrc1[local_idx - 1]);\n            if (local_idx + 1 < group_size + 2 * theHalo)\n                min_val = min(min_val, localSrc1[local_idx + 1]);\n\n            dst[gid] = wall[cur_row * cols + gid] + min_val;\n        }\n\n        barrier(CLK_LOCAL_MEM_FENCE);\n\n        // Swap localSrc buffers for next iteration, but since we only have one localSrc1, we just overwrite\n        // Swap src and dst pointers for next iteration on host side, so here we just update src accordingly\n        barrier(CLK_GLOBAL_MEM_FENCE);\n        // No swap here in kernel; swapping happens on host side\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.736,
+      "prompt_tokens": 3947,
+      "completion_tokens": 601,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

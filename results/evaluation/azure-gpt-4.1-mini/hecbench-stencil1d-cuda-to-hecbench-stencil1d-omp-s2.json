@@ -1,0 +1,65 @@
+{
+  "source_spec": "hecbench-stencil1d-cuda",
+  "target_spec": "hecbench-stencil1d-omp",
+  "kernel": "stencil1d",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T22:06:48Z",
+  "prompt_tokens": 231,
+  "completion_tokens": 278,
+  "llm_response_time_seconds": 2.483,
+  "build_status": "fail",
+  "build_time_seconds": 0.014,
+  "build_error_snippet": "make: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n\nmake: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: efile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n\nmake: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.",
+  "metrics": {},
+  "baseline_wall_time_seconds": 4.97,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "stencil_1d.cpp": "#include <cstdio>\n#include <omp.h>\n\n#define N 1000000\n#define RADIUS 3\n\nvoid stencil_1d(const float *in, float *out, int n) {\n    #pragma omp parallel for\n    for (int i = RADIUS; i < n - RADIUS; i++) {\n        float result = 0.0f;\n        for (int j = -RADIUS; j <= RADIUS; j++) {\n            result += in[i + j];\n        }\n        out[i] = result / (2 * RADIUS + 1);\n    }\n}\n\nint main() {\n    float *in = new float[N];\n    float *out = new float[N];\n\n    // Initialize input data\n    for (int i = 0; i < N; i++) {\n        in[i] = i * 1.0f;\n        out[i] = 0.0f;\n    }\n\n    stencil_1d(in, out, N);\n\n    // Print some output for verification\n    for (int i = RADIUS; i < RADIUS + 10; i++) {\n        printf(\"out[%d] = %f\\n\", i, out[i]);\n    }\n\n    delete[] in;\n    delete[] out;\n\n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "stencil_1d.cpp"
+  ],
+  "target_files_extracted": [
+    "stencil_1d.cpp"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 2.483,
+      "prompt_tokens": 231,
+      "completion_tokens": 278,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "make: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n\nmake: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

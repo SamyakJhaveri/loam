@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-bptree-cuda",
+  "target_spec": "rodinia-bptree-omp",
+  "kernel": "bptree",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T20:38:41Z",
+  "prompt_tokens": 8087,
+  "completion_tokens": 1339,
+  "llm_response_time_seconds": 12.868,
+  "build_status": "fail",
+  "build_time_seconds": 0.442,
+  "build_error_snippet": "./main.c: In function \u2018transform_to_cuda\u2019:\n./main.c:652:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplicit-function-declaration]\n  gettimeofday (&one, NULL);\n  ^~~~~~~~~~~~\n  get_time\n./main.c: In function \u2018main\u2019:\n./main.c:1948:37: warning: passing argument 2 of \u2018fputs\u2019 from incompatible pointer type [-Wincompatible-pointer-types]\n        fputs (\"Fail to open %s !\\n\",output);\n                                     ^~~~~~\nIn file included from ./main.c:60:0:\n/usr/include/stdio.h:713:12: note: expected \u2018FILE * restrict {aka struct _IO_FILE * restrict}\u2019 but argument is of type \u2018char *\u2019\n extern int fputs (const char *__restrict __s, FILE *__restrict __stream);\n            ^~~~~\n./main.c:2139:48: warn\n...[truncated]...\nrestrict __stream);\n            ^~~~~\n./kernel/kernel_cpu.c:6:7: error: unknown type name \u2018knode\u2019\n       knode *knodesD,\n       ^~~~~\n./kernel/kernel_cpu.c:8:7: error: unknown type name \u2018record\u2019\n       record *recordsD,\n       ^~~~~~\n./kernel/kernel_cpu.c:13:7: error: unknown type name \u2018record\u2019\n       record *ansD,\n       ^~~~~~\n./kernel/kernel_cpu.c:18:22: error: expected end of line before \u2018for\u2019\n #pragma omp parallel for\n                      ^~~\n./kernel/kernel_cpu.c:34:22: error: expected end of line before \u2018for\u2019\n #pragma omp parallel for\n                      ^~~\n./kernel/kernel_cpu.c:55:22: error: expected end of line before \u2018for\u2019\n #pragma omp parallel for\n                      ^~~\nmake: *** [Makefile:45: kernel/kernel_cpu.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ^~~\n./kernel/kernel_cpu.c:55:22: error: expected end of line before \u2018for\u2019\n #pragma omp parallel for\n                      ^~~\nmake: *** [Makefile:45: kernel/kernel_cpu.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.489,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_cpu.c": "#include <stdio.h>\n#include <omp.h>\n\nvoid\nfindK(long height,\n      knode *knodesD,\n      long knodes_elem,\n      record *recordsD,\n\n      long *currKnodeD,\n      long *offsetD,\n      int *keysD,\n      record *ansD,\n      int order,\n      int count)\n{\n    // For each block = count, parallelize over blocks\n#pragma omp parallel for\n    for (int bid = 0; bid < count; bid++) {\n        // For each thread = order, parallelize over keys inside block\n        for (int i = 0; i < height; i++) {\n            long currKnode = currKnodeD[bid];\n            long offset = offsetD[bid];\n            // We do a loop over thid\n            // We must emulate the original kernel where threads within a block cooperate\n            // Here we do it sequentially for correctness\n            // Alternatively, parallelize over thid with synchronization via omp barrier\n\n            // To parallelize over thid safely with synchronization, use omp parallel for with ordered or critical sections\n            // Because we need to update offsetD[bid] only if condition is met and only one thread updates it at a time\n            // We'll do a parallel loop over thid with atomic update of offsetD[bid]\n\n            int updated_offset = offset;\n#pragma omp parallel for\n            for (int thid = 0; thid < order; thid++) {\n                int key_thid = knodesD[currKnode].keys[thid];\n                int key_thid1 = knodesD[currKnode].keys[thid + 1];\n                if ((key_thid <= keysD[bid]) && (key_thid1 > keysD[bid])) {\n                    if (knodesD[offset].indices[thid] < knodes_elem) {\n#pragma omp critical\n                        {\n                            if (knodesD[offset].indices[thid] < updated_offset || updated_offset == offset)\n                                updated_offset = knodesD[offset].indices[thid];\n                        }\n                    }\n                }\n            }\n            offsetD[bid] = updated_offset;\n            currKnodeD[bid] = offsetD[bid];\n        }\n\n        long currKnode = currKnodeD[bid];\n        int key_bid = keysD[bid];\n        // Now assign ansD[bid].value if keys match\n#pragma omp parallel for\n        for (int thid = 0; thid < order; thid++) {\n            if (knodesD[currKnode].keys[thid] == key_bid) {\n                ansD[bid].value = recordsD[knodesD[currKnode].indices[thid]].value;\n            }\n        }\n    }\n}\n",
+    "kernel/kernel_cpu_2.c": "#include <stdio.h>\n#include <omp.h>\n\nvoid\nfindRangeK(long height,\n\n           knode *knodesD,\n           long knodes_elem,\n\n           long *currKnodeD,\n           long *offsetD,\n           long *lastKnodeD,\n           long *offset_2D,\n           int *startD,\n           int *endD,\n           int *RecstartD,\n           int *ReclenD,\n           int order,\n           int count)\n{\n#pragma omp parallel for\n    for (int bid = 0; bid < count; bid++) {\n        for (int i = 0; i < height; i++) {\n            long currKnode = currKnodeD[bid];\n            long lastKnode = lastKnodeD[bid];\n            long offset = offsetD[bid];\n            long offset_2 = offset_2D[bid];\n\n#pragma omp parallel for\n            for (int thid = 0; thid < order; thid++) {\n                int curr_key = knodesD[currKnode].keys[thid];\n                int curr_key1 = knodesD[currKnode].keys[thid + 1];\n                int last_key = knodesD[lastKnode].keys[thid];\n                int last_key1 = knodesD[lastKnode].keys[thid + 1];\n\n                if ((curr_key <= startD[bid]) && (curr_key1 > startD[bid])) {\n                    if (knodesD[currKnode].indices[thid] < knodes_elem) {\n#pragma omp critical\n                        {\n                            if (knodesD[currKnode].indices[thid] < offset || offset == offsetD[bid])\n                                offset = knodesD[currKnode].indices[thid];\n                        }\n                    }\n                }\n                if ((last_key <= endD[bid]) && (last_key1 > endD[bid])) {\n                    if (knodesD[lastKnode].indices[thid] < knodes_elem) {\n#pragma omp critical\n                        {\n                            if (knodesD[lastKnode].indices[thid] < offset_2 || offset_2 == offset_2D[bid])\n                                offset_2 = knodesD[lastKnode].indices[thid];\n                        }\n                    }\n                }\n            }\n            offsetD[bid] = offset;\n            offset_2D[bid] = offset_2;\n            currKnodeD[bid] = offsetD[bid];\n            lastKnodeD[bid] = offset_2D[bid];\n        }\n\n        long currKnode = currKnodeD[bid];\n        long lastKnode = lastKnodeD[bid];\n        int start_key = startD[bid];\n        int end_key = endD[bid];\n\n#pragma omp parallel for\n        for (int thid = 0; thid < order; thid++) {\n            if (knodesD[currKnode].keys[thid] == start_key) {\n                RecstartD[bid] = knodesD[currKnode].indices[thid];\n            }\n        }\n\n#pragma omp parallel for\n        for (int thid = 0; thid < order; thid++) {\n            if (knodesD[lastKnode].keys[thid] == end_key) {\n                ReclenD[bid] = knodesD[lastKnode].indices[thid] - RecstartD[bid] + 1;\n            }\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 12.868,
+      "prompt_tokens": 8087,
+      "completion_tokens": 1339,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "./main.c: In function \u2018transform_to_cuda\u2019:\n./main.c:652:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplicit-function-declaration]\n  gettimeofday (&one, NULL);\n  ^~~~~~~~~~~~\n  get_time\n./main.c: In function \u2018main\u2019:\n./main.c:1948:37: warning: passing argument 2 of \u2018fputs\u2019 from incompatible pointer type [-Wincompatible-pointer-types]\n        fputs (\"Fail to open %s !\\n\",output);\n                                     ^~~~~~\nIn file included from ./main.c:60:0:\n/usr/include/stdio.h:713:12: note: expected \u2018FILE * restrict {aka struct _IO_FILE * restrict}\u2019 but argument is of type \u2018char *\u2019\n extern int fputs (const char *__restrict __s, FILE *__restrict __stream);\n            ^~~~~\n./main.c:2139:48: warn\n...[truncated]...\nrestrict __stream);\n            ^~~~~\n./kernel/kernel_cpu.c:6:7: error: unknown type name \u2018knode\u2019\n       knode *knodesD,\n       ^~~~~\n./kernel/kernel_cpu.c:8:7: error: unknown type name \u2018record\u2019\n       record *recordsD,\n       ^~~~~~\n./kernel/kernel_cpu.c:13:7: error: unknown type name \u2018record\u2019\n       record *ansD,\n       ^~~~~~\n./kernel/kernel_cpu.c:18:22: error: expected end of line before \u2018for\u2019\n #pragma omp parallel for\n                      ^~~\n./kernel/kernel_cpu.c:34:22: error: expected end of line before \u2018for\u2019\n #pragma omp parallel for\n                      ^~~\n./kernel/kernel_cpu.c:55:22: error: expected end of line before \u2018for\u2019\n #pragma omp parallel for\n                      ^~~\nmake: *** [Makefile:45: kernel/kernel_cpu.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

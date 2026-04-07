@@ -1,0 +1,65 @@
+{
+  "source_spec": "rodinia-lud-omp",
+  "target_spec": "rodinia-lud-opencl",
+  "kernel": "lud",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T21:29:44Z",
+  "prompt_tokens": 11429,
+  "completion_tokens": 1122,
+  "llm_response_time_seconds": 7.953,
+  "build_status": "fail",
+  "build_time_seconds": 0.217,
+  "build_error_snippet": "lud.cpp:27:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nIn file included from ../../util/timing.c:3:0:\n../../util/timing.h:5:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nmake[1]: *** [Makefile:25: lud.out] Error 1\nmake: *** [Makefile:4: lud] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: h:5:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nmake[1]: *** [Makefile:25: lud.out] Error 1\nmake: *** [Makefile:4: lud] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.07,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "lud_kernel.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n#define BS 16\n\n__kernel void lud_diagonal(__global float* a, __local float* shared_mem, int size, int offset)\n{\n    int i = get_global_id(0);\n    if (i >= BS) return;\n\n    // Macros from original code adapted\n    #define AA(_i,_j) a[offset*size + _i*size + _j + offset]\n\n    // Diagonal block LU factorization\n    for (int j = i; j < BS; j++) {\n        for (int k = 0; k < i; k++) {\n            AA(i,j) = AA(i,j) - AA(i,k) * AA(k,j);\n        }\n    }\n\n    float temp = 1.f / AA(i,i);\n    for (int j = i + 1; j < BS; j++) {\n        for (int k = 0; k < i; k++) {\n            AA(j,i) = AA(j,i) - AA(j,k) * AA(k,i);\n        }\n        AA(j,i) = AA(j,i) * temp;\n    }\n}\n\n__kernel void lud_perimeter(__global float* a, __local float* temp_lud, __local float* temp_a, __local float* temp_b, int size, int offset)\n{\n    int gid = get_global_id(0);\n\n    int chunks_in_inter_row = (size - offset - BS) / BS;\n    if (gid >= chunks_in_inter_row) return;\n\n    int i, j, k;\n    int i_global = offset;\n    int j_global = offset + BS * (gid + 1);\n\n    // Load diagonal block to temp_lud\n    for (i = 0; i < BS; i++) {\n        for (j = 0; j < BS; j++) {\n            temp_lud[i * BS + j] = a[size * (i + offset) + offset + j];\n        }\n    }\n\n    // Update top perimeter block row\n    for (j = 0; j < BS; j++) {\n        for (i = 0; i < BS; i++) {\n            float sum = 0.f;\n            for (k = 0; k < i; k++) {\n                sum += temp_lud[i * BS + k] * a[(i_global + k) * size + (j_global + j)];\n            }\n            a[(i_global + i) * size + (j_global + j)] = a[(i_global + i) * size + (j_global + j)] - sum;\n        }\n    }\n\n    // Update left perimeter block column\n    j_global = offset;\n    i_global = offset + BS * (gid + 1);\n\n    for (i = 0; i < BS; i++) {\n        for (j = 0; j < BS; j++) {\n            float sum = 0.f;\n            for (k = 0; k < j; k++) {\n                sum += a[(i_global + i) * size + (j_global + k)] * temp_lud[k * BS + j];\n            }\n            a[(i_global + i) * size + (j_global + j)] = (a[(i_global + i) * size + (j_global + j)] - sum) / a[(offset + j) * size + offset + j];\n        }\n    }\n}\n\n__kernel void lud_internal(__global float* a, __local float* temp_top, __local float* temp_left, int size, int offset)\n{\n    int gx = get_global_id(0);\n    int gy = get_global_id(1);\n\n    int chunks_in_inter_row = (size - offset - BS) / BS;\n\n    if (gx >= chunks_in_inter_row || gy >= chunks_in_inter_row) return;\n\n    int chunk_idx = gy * chunks_in_inter_row + gx;\n\n    int i_global = offset + BS * (1 + gy);\n    int j_global = offset + BS * (1 + gx);\n\n    int i, j, k;\n\n    // Load top block into temp_top\n    for (i = 0; i < BS; i++) {\n        for (j = 0; j < BS; j++) {\n            temp_top[i * BS + j] = a[(offset + i) * size + j + j_global];\n            temp_left[i * BS + j] = a[(i + i_global) * size + offset + j];\n        }\n    }\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    float sum[BS];\n    for (j = 0; j < BS; j++) sum[j] = 0.f;\n\n    for (i = 0; i < BS; i++) {\n        for (k = 0; k < BS; k++) {\n            for (j = 0; j < BS; j++) {\n                sum[j] += temp_left[i * BS + k] * temp_top[k * BS + j];\n            }\n        }\n        for (j = 0; j < BS; j++) {\n            a[(i + i_global) * size + j + j_global] -= sum[j];\n            sum[j] = 0.f;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "lud_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "lud_kernel.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.953,
+      "prompt_tokens": 11429,
+      "completion_tokens": 1122,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "lud.cpp:27:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nIn file included from ../../util/timing.c:3:0:\n../../util/timing.h:5:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nmake[1]: *** [Makefile:25: lud.out] Error 1\nmake: *** [Makefile:4: lud] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

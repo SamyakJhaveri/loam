@@ -1,0 +1,73 @@
+{
+  "source_spec": "rodinia-bptree-omp",
+  "target_spec": "rodinia-bptree-opencl",
+  "kernel": "bptree",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-04-04T21:23:47Z",
+  "prompt_tokens": 21141,
+  "completion_tokens": 1088,
+  "llm_response_time_seconds": 8.116,
+  "build_status": "pass",
+  "build_time_seconds": 0.876,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 2.093,
+  "run_exit_code": -6,
+  "run_stderr_snippet": "malloc(): invalid size (unsorted)\n",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -6)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.453,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\ntypedef struct {\n    int value;\n} record;\n\ntypedef struct {\n    int location;\n    int indices[DEFAULT_ORDER + 1];\n    int keys[DEFAULT_ORDER + 1];\n    int is_leaf; // bool as int\n    int num_keys;\n} knode;\n\n__kernel void\nkernel_cpu(  const int cores_arg,\n\n            __global record *records,\n            __global knode *knodes,\n            const long knodes_elem,\n\n            const int order,\n            const long maxheight,\n            const int count,\n\n            __global long *currKnode,\n            __global long *offset,\n            __global int *keys,\n            __global record *ans)\n{\n    // Each work-group handles one bid; each work-item in the group handles thid\n    int bid = get_group_id(0);\n    int thid = get_local_id(0);\n    int threadsPerBlock = order < 1024 ? order : 1024;\n\n    if (bid >= count) return;\n\n    long curr = currKnode[bid];\n    long off = offset[bid];\n    int key = keys[bid];\n\n    for (long i = 0; i < maxheight; i++) {\n        barrier(CLK_LOCAL_MEM_FENCE);\n\n        if (thid < threadsPerBlock) {\n            int keys0 = knodes[curr].keys[thid];\n            int keys1 = knodes[curr].keys[thid + 1];\n            if (keys0 <= key && keys1 > key) {\n                int idx = knodes[off].indices[thid];\n                if (idx < knodes_elem) {\n                    off = idx;\n                }\n            }\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n\n        curr = off;\n    }\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    if (thid < threadsPerBlock) {\n        int k = knodes[curr].keys[thid];\n        if (k == key) {\n            ans[bid].value = records[knodes[curr].indices[thid]].value;\n        }\n    }\n}\n",
+    "kernel/kernel_gpu_opencl_2.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\ntypedef struct {\n    int location;\n    int indices[DEFAULT_ORDER + 1];\n    int keys[DEFAULT_ORDER + 1];\n    int is_leaf; // bool as int\n    int num_keys;\n} knode;\n\n__kernel void\nkernel_cpu_2(    const int cores_arg,\n\n                __global knode *knodes,\n                const long knodes_elem,\n\n                const int order,\n                const long maxheight,\n                const int count,\n\n                __global long *currKnode,\n                __global long *offset,\n                __global long *lastKnode,\n                __global long *offset_2,\n                __global int *start,\n                __global int *end,\n                __global int *recstart,\n                __global int *reclength)\n{\n    int bid = get_group_id(0);\n    int thid = get_local_id(0);\n    int threadsPerBlock = order < 1024 ? order : 1024;\n\n    if (bid >= count) return;\n\n    long curr = currKnode[bid];\n    long off = offset[bid];\n    long last = lastKnode[bid];\n    long off2 = offset_2[bid];\n    int s = start[bid];\n    int e = end[bid];\n\n    for (long i = 0; i < maxheight; i++) {\n        barrier(CLK_LOCAL_MEM_FENCE);\n\n        if (thid < threadsPerBlock) {\n            int ckey0 = knodes[curr].keys[thid];\n            int ckey1 = knodes[curr].keys[thid + 1];\n            if (ckey0 <= s && ckey1 > s) {\n                int idx = knodes[curr].indices[thid];\n                if (idx < knodes_elem) {\n                    off = idx;\n                }\n            }\n\n            int lkey0 = knodes[last].keys[thid];\n            int lkey1 = knodes[last].keys[thid + 1];\n            if (lkey0 <= e && lkey1 > e) {\n                int idx = knodes[last].indices[thid];\n                if (idx < knodes_elem) {\n                    off2 = idx;\n                }\n            }\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n\n        curr = off;\n        last = off2;\n    }\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    if (thid < threadsPerBlock) {\n        if (knodes[curr].keys[thid] == s) {\n            recstart[bid] = knodes[curr].indices[thid];\n        }\n    }\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    if (thid < threadsPerBlock) {\n        if (knodes[last].keys[thid] == e) {\n            reclength[bid] = knodes[last].indices[thid] - recstart[bid] + 1;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 8.116,
+      "prompt_tokens": 21141,
+      "completion_tokens": 1088,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "malloc(): invalid size (unsorted)\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

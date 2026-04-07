@@ -1,0 +1,84 @@
+{
+  "source_spec": "rodinia-kmeans-omp",
+  "target_spec": "rodinia-kmeans-opencl",
+  "kernel": "kmeans",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-i",
+    "../../data/kmeans/kdd_cup"
+  ],
+  "timestamp": "2026-04-03T17:17:02Z",
+  "prompt_tokens": 36801,
+  "completion_tokens": 1007,
+  "llm_response_time_seconds": 11.077,
+  "build_status": null,
+  "build_time_seconds": null,
+  "build_error_snippet": null,
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "LLM call failed: Error code: 400 - {'error': {'message': \"The response was filtered due to the prompt triggering Azure OpenAI's content management policy. Please modify your prompt and retry. To learn more about our content filtering policies please read our documentation: https://go.microsoft.com/fwlink/?linkid=2198766\", 'type': None, 'param': 'prompt', 'code': 'content_filter', 'status': 400, 'innererror': {'code': 'ResponsibleAIPolicyViolation', 'content_filter_result': {'hate': {'filtered': False, 'severity': 'safe'}, 'jailbreak': {'filtered': True, 'detected': True}, 'self_harm': {'filtered': False, 'severity': 'safe'}, 'sexual': {'filtered': False, 'severity': 'safe'}, 'violence': {'filtered': False, 'severity': 'safe'}}}}}",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.498,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kmeans.cl": "// OpenCL kernel for kmeans clustering partial sums and membership assignment\n\n__kernel void kmeans_assign(\n    __global const float* features,       // Flattened features array: npoints * nfeatures\n    __global const float* clusters,       // Flattened clusters array: nclusters * nfeatures\n    __global int* membership,              // Membership array: npoints\n    __global float* partial_new_centers,  // Partial sums: nthreads * nclusters * nfeatures\n    __global int* partial_new_centers_len,// Partial counts: nthreads * nclusters\n    const int npoints,\n    const int nfeatures,\n    const int nclusters,\n    const int nthreads)\n{\n    int gid = get_global_id(0);\n    int tid = get_global_id(1); // thread id in second dimension\n    if (gid >= npoints) return;\n\n    // Find nearest cluster\n    int nearest = 0;\n    float min_dist = FLT_MAX;\n    for (int c = 0; c < nclusters; c++) {\n        float dist = 0.0f;\n        for (int f = 0; f < nfeatures; f++) {\n            float diff = features[gid * nfeatures + f] - clusters[c * nfeatures + f];\n            dist += diff * diff;\n        }\n        if (dist < min_dist) {\n            min_dist = dist;\n            nearest = c;\n        }\n    }\n\n    // Update membership\n    int old_membership = membership[gid];\n    membership[gid] = nearest;\n\n    // Atomically update partial sums and counts for this thread\n    // partial_new_centers_len and partial_new_centers are indexed by tid, cluster, feature\n    // Compute base indices\n    int base_len_idx = tid * nclusters + nearest;\n    atomic_inc(&partial_new_centers_len[base_len_idx]);\n\n    for (int f = 0; f < nfeatures; f++) {\n        int base_center_idx = tid * nclusters * nfeatures + nearest * nfeatures + f;\n        // Atomic add for float is not standard in OpenCL 1.x, but OpenCL 2.0 supports atomic_add on floats\n        // Use atomic_add for float if supported, else use atomic_add on int representation (not done here)\n        atomic_add(&partial_new_centers[base_center_idx], features[gid * nfeatures + f]);\n    }\n}\n\n__kernel void kmeans_reduce(\n    __global float* partial_new_centers,  // nthreads * nclusters * nfeatures\n    __global int* partial_new_centers_len,// nthreads * nclusters\n    __global float* new_centers,           // nclusters * nfeatures\n    __global int* new_centers_len,         // nclusters\n    const int nthreads,\n    const int nclusters,\n    const int nfeatures)\n{\n    int c = get_global_id(0);\n    if (c >= nclusters) return;\n\n    int sum_len = 0;\n    for (int t = 0; t < nthreads; t++) {\n        int idx_len = t * nclusters + c;\n        sum_len += partial_new_centers_len[idx_len];\n        partial_new_centers_len[idx_len] = 0;\n    }\n    new_centers_len[c] = sum_len;\n\n    for (int f = 0; f < nfeatures; f++) {\n        float sum_val = 0.0f;\n        for (int t = 0; t < nthreads; t++) {\n            int idx_center = t * nclusters * nfeatures + c * nfeatures + f;\n            sum_val += partial_new_centers[idx_center];\n            partial_new_centers[idx_center] = 0.0f;\n        }\n        new_centers[c * nfeatures + f] = sum_val;\n    }\n}\n\n__kernel void kmeans_update_clusters(\n    __global float* clusters,           // nclusters * nfeatures\n    __global float* new_centers,        // nclusters * nfeatures\n    __global int* new_centers_len,      // nclusters\n    const int nclusters,\n    const int nfeatures)\n{\n    int c = get_global_id(0);\n    if (c >= nclusters) return;\n\n    int len = new_centers_len[c];\n    if (len > 0) {\n        for (int f = 0; f < nfeatures; f++) {\n            clusters[c * nfeatures + f] = new_centers[c * nfeatures + f] / (float)len;\n            new_centers[c * nfeatures + f] = 0.0f;\n        }\n    }\n    new_centers_len[c] = 0;\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans.cl"
+  ],
+  "target_files_extracted": [
+    "kmeans.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 11.077,
+      "prompt_tokens": 36801,
+      "completion_tokens": 1007,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness\nEnsure the translated code produces the same outpu",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": null,
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "finish_reason": null,
+      "build_status": null,
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null,
+      "error": "LLM call failed: Error code: 400 - {'error': {'message': \"The response was filtered due to the prompt triggering Azure OpenAI's content management policy. Please modify your prompt and retry. To learn more about our content filtering policies please read our documentation: https://go.microsoft.com/fwlink/?linkid=2198766\", 'type': None, 'param': 'prompt', 'code': 'content_filter', 'status': 400, 'innererror': {'code': 'ResponsibleAIPolicyViolation', 'content_filter_result': {'hate': {'filtered': False, 'severity': 'safe'}, 'jailbreak': {'filtered': True, 'detected': True}, 'self_harm': {'filtered': False, 'severity': 'safe'}, 'sexual': {'filtered': False, 'severity': 'safe'}, 'violence': {'filtered': False, 'severity': 'safe'}}}}}"
+    }
+  ]
+}

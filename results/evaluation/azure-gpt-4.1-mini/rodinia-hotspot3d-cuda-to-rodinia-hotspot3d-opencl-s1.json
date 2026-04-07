@@ -1,0 +1,78 @@
+{
+  "source_spec": "rodinia-hotspot3d-cuda",
+  "target_spec": "rodinia-hotspot3d-opencl",
+  "kernel": "hotspot3d",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-n",
+    "512",
+    "-l",
+    "8",
+    "-i",
+    "100",
+    "-f",
+    "../../data/hotspot3D/power_512x8",
+    "../../data/hotspot3D/temp_512x8",
+    "output.out",
+    "-p",
+    "0"
+  ],
+  "timestamp": "2026-04-04T21:11:13Z",
+  "prompt_tokens": 7061,
+  "completion_tokens": 563,
+  "llm_response_time_seconds": 5.651,
+  "build_status": "pass",
+  "build_time_seconds": 0.848,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 3.32,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "num_devices = 4\n \n Device is  NVIDIA A100-SXM4-40GB \n NVIDIA Corporation \nInit: 902.614014\nMemAlloc: 0.006000\nHtoD: 2.190560\nExec: 2.200577\nDtoH: 3.591680\nClose: 120.501999\nTotal: 1034.744995\nAccuracy: 3.436012e-04\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.156,
+  "translated_wall_time_seconds": 3.32,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.3482,
+  "translated_files": {
+    "hotspotKernel.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n__kernel void hotspotOpt1(__global float *p, __global float* tIn, __global float *tOut, float sdc,\n        int nx, int ny, int nz,\n        float ce, float cw, \n        float cn, float cs,\n        float ct, float cb, \n        float cc) \n{\n    float amb_temp = 80.0f;\n\n    int i = get_global_id(0);  \n    int j = get_global_id(1);\n\n    if (i >= nx || j >= ny) return;\n\n    int c = i + j * nx;\n    int xy = nx * ny;\n\n    int W = (i == 0)        ? c : c - 1;\n    int E = (i == nx-1)     ? c : c + 1;\n    int N = (j == 0)        ? c : c - nx;\n    int S = (j == ny-1)     ? c : c + nx;\n\n    float temp1, temp2, temp3;\n    temp1 = temp2 = tIn[c];\n    temp3 = tIn[c+xy];\n    tOut[c] = cc * temp2 + cw * tIn[W] + ce * tIn[E] + cs * tIn[S]\n        + cn * tIn[N] + cb * temp1 + ct * temp3 + sdc * p[c] + ct * amb_temp;\n    c += xy;\n    W += xy;\n    E += xy;\n    N += xy;\n    S += xy;\n\n    for (int k = 1; k < nz-1; ++k) {\n        temp1 = temp2;\n        temp2 = temp3;\n        temp3 = tIn[c+xy];\n        tOut[c] = cc * temp2 + cw * tIn[W] + ce * tIn[E] + cs * tIn[S]\n            + cn * tIn[N] + cb * temp1 + ct * temp3 + sdc * p[c] + ct * amb_temp;\n        c += xy;\n        W += xy;\n        E += xy;\n        N += xy;\n        S += xy;\n    }\n    temp1 = temp2;\n    temp2 = temp3;\n    tOut[c] = cc * temp2 + cw * tIn[W] + ce * tIn[E] + cs * tIn[S]\n        + cn * tIn[N] + cb * temp1 + ct * temp3 + sdc * p[c] + ct * amb_temp;\n}\n"
+  },
+  "target_files_expected": [
+    "hotspotKernel.cl"
+  ],
+  "target_files_extracted": [
+    "hotspotKernel.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.651,
+      "prompt_tokens": 7061,
+      "completion_tokens": 563,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

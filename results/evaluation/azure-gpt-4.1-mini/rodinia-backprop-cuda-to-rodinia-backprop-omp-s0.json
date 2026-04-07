@@ -1,0 +1,65 @@
+{
+  "source_spec": "rodinia-backprop-cuda",
+  "target_spec": "rodinia-backprop-omp",
+  "kernel": "backprop",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T20:39:16Z",
+  "prompt_tokens": 7512,
+  "completion_tokens": 529,
+  "llm_response_time_seconds": 4.384,
+  "build_status": "fail",
+  "build_time_seconds": 0.393,
+  "build_error_snippet": "backprop.c: In function \u2018main\u2019:\nbackprop.c:20:2: warning: implicit declaration of function \u2018setup\u2019; did you mean \u2018setbuf\u2019? [-Wimplicit-function-declaration]\n  setup(argc, argv);\n  ^~~~~\n  setbuf\nbackprop.c: In function \u2018bpnn_train_cuda\u2019:\nbackprop.c:51:3: warning: implicit declaration of function \u2018bpnn_layerforward\u2019; did you mean \u2018bpnn_feedforward\u2019? [-Wimplicit-function-declaration]\n   bpnn_layerforward(net->hidden_units, net->output_units, net->hidden_weights, hid, out);\n   ^~~~~~~~~~~~~~~~~\n   bpnn_feedforward\nbackprop.c:54:3: warning: implicit declaration of function \u2018bpnn_output_error\u2019 [-Wimplicit-function-declaration]\n   bpnn_output_error(net->output_delta, net->target, net->output_units, out, &out_err);\n   ^~~~~~~~~~~~~~~~~\nbackprop.c:\n...[truncated]...\nbench_sam/rodinia/openmp/backprop/backprop_kernel.c:57:(.text+0xfb): undefined reference to `bpnn_adjust_weights'\n/usr/bin/ld: facetrain.o: in function `backprop_face':\n/lus/eagle/projects/argonne_tpc/chen/repo/parbench_sam/rodinia/openmp/backprop/facetrain.c:17:(.text+0x18): undefined reference to `bpnn_create'\n/usr/bin/ld: /lus/eagle/projects/argonne_tpc/chen/repo/parbench_sam/rodinia/openmp/backprop/facetrain.c:23:(.text+0x5f): undefined reference to `bpnn_free'\n/usr/bin/ld: facetrain.o: in function `setup':\n/lus/eagle/projects/argonne_tpc/chen/repo/parbench_sam/rodinia/openmp/backprop/facetrain.c:41:(.text+0xc9): undefined reference to `bpnn_initialize'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: hen/repo/parbench_sam/rodinia/openmp/backprop/facetrain.c:41:(.text+0xc9): undefined reference to `bpnn_initialize'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "backprop.c": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <math.h>\n#include <sys/time.h>\n\n#include \"backprop.h\"\n\ndouble gettime() {\n  struct timeval t;\n  gettimeofday(&t,NULL);\n  return t.tv_sec+t.tv_usec*1e-6;\n}\n\nunsigned int num_threads = 0;\nunsigned int num_blocks = 0;\n\nint main( int argc, char** argv) \n{\n\tsetup(argc, argv);\n}\n\nvoid bpnn_train_cuda(BPNN *net, float *eo, float *eh)\n{\n  int in, hid, out;\n  float out_err, hid_err;\n  \n  in = net->input_n;\n  hid = net->hidden_n;\n  out = net->output_n;   \n\n  // CPU computation replacement for GPU parallelism\n  printf(\"Performing CPU computation\\n\");\n\n  // Layer forward input to hidden\n  {\n    float sum;\n    int j, k;\n    net->input_units[0] = 1.0f;\n#pragma omp parallel for private(j,k,sum) schedule(static) num_threads(NUM_THREAD)\n    for (j = 1; j <= hid; j++) {\n      sum = 0.0f;\n      for (k = 0; k <= in; k++) {\n        sum += net->input_weights[k][j] * net->input_units[k];\n      }\n      net->hidden_units[j] = 1.0f / (1.0f + expf(-sum));\n    }\n  }\n\n  // Layer forward hidden to output\n  bpnn_layerforward(net->hidden_units, net->output_units, net->hidden_weights, hid, out);\n\n  // Calculate output error\n  bpnn_output_error(net->output_delta, net->target, net->output_units, out, &out_err);\n\n  // Calculate hidden error\n  bpnn_hidden_error(net->hidden_delta, hid, net->output_delta, out, net->hidden_weights, net->hidden_units, &hid_err);\n\n  // Adjust weights output layer\n  bpnn_adjust_weights(net->output_delta, out, net->hidden_units, hid, net->hidden_weights, net->hidden_prev_weights);\n\n  // Adjust weights hidden layer\n  bpnn_adjust_weights(net->hidden_delta, hid, net->input_units, in, net->input_weights, net->input_prev_weights);\n\n  if(eo) *eo = out_err;\n  if(eh) *eh = hid_err;\n}\n"
+  },
+  "target_files_expected": [
+    "backprop.c"
+  ],
+  "target_files_extracted": [
+    "backprop.c"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.384,
+      "prompt_tokens": 7512,
+      "completion_tokens": 529,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "backprop.c: In function \u2018main\u2019:\nbackprop.c:20:2: warning: implicit declaration of function \u2018setup\u2019; did you mean \u2018setbuf\u2019? [-Wimplicit-function-declaration]\n  setup(argc, argv);\n  ^~~~~\n  setbuf\nbackprop.c: In function \u2018bpnn_train_cuda\u2019:\nbackprop.c:51:3: warning: implicit declaration of function \u2018bpnn_layerforward\u2019; did you mean \u2018bpnn_feedforward\u2019? [-Wimplicit-function-declaration]\n   bpnn_layerforward(net->hidden_units, net->output_units, net->hidden_weights, hid, out);\n   ^~~~~~~~~~~~~~~~~\n   bpnn_feedforward\nbackprop.c:54:3: warning: implicit declaration of function \u2018bpnn_output_error\u2019 [-Wimplicit-function-declaration]\n   bpnn_output_error(net->output_delta, net->target, net->output_units, out, &out_err);\n   ^~~~~~~~~~~~~~~~~\nbackprop.c:\n...[truncated]...\nbench_sam/rodinia/openmp/backprop/backprop_kernel.c:57:(.text+0xfb): undefined reference to `bpnn_adjust_weights'\n/usr/bin/ld: facetrain.o: in function `backprop_face':\n/lus/eagle/projects/argonne_tpc/chen/repo/parbench_sam/rodinia/openmp/backprop/facetrain.c:17:(.text+0x18): undefined reference to `bpnn_create'\n/usr/bin/ld: /lus/eagle/projects/argonne_tpc/chen/repo/parbench_sam/rodinia/openmp/backprop/facetrain.c:23:(.text+0x5f): undefined reference to `bpnn_free'\n/usr/bin/ld: facetrain.o: in function `setup':\n/lus/eagle/projects/argonne_tpc/chen/repo/parbench_sam/rodinia/openmp/backprop/facetrain.c:41:(.text+0xc9): undefined reference to `bpnn_initialize'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:7: backprop] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

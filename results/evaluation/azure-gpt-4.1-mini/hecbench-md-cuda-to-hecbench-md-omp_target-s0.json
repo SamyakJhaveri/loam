@@ -1,0 +1,65 @@
+{
+  "source_spec": "hecbench-md-cuda",
+  "target_spec": "hecbench-md-omp_target",
+  "kernel": "md",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T22:07:41Z",
+  "prompt_tokens": 263,
+  "completion_tokens": 28,
+  "llm_response_time_seconds": 1.219,
+  "build_status": "fail",
+  "build_time_seconds": 0.012,
+  "build_error_snippet": "make: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n\nmake: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n\nmake: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "main.cpp": "// The source CUDA file was not provided. Please supply the source code to translate.\n"
+  },
+  "target_files_expected": [
+    "main.cpp"
+  ],
+  "target_files_extracted": [
+    "main.cpp"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 1.219,
+      "prompt_tokens": 263,
+      "completion_tokens": 28,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "make: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n\nmake: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

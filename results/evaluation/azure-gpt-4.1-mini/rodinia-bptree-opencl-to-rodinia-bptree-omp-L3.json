@@ -1,0 +1,103 @@
+{
+  "source_spec": "rodinia-bptree-opencl",
+  "target_spec": "rodinia-bptree-omp",
+  "kernel": "bptree",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-04-03T18:33:42Z",
+  "prompt_tokens": 82238,
+  "completion_tokens": 3328,
+  "llm_response_time_seconds": 45.398,
+  "build_status": "pass",
+  "build_time_seconds": 0.657,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.869,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Input File: ../../data/b+tree/mil.txt \nCommand File: ../../data/b+tree/command.txt \nCommand Buffer: \nj 6000 3000\nk 10000\n\n\nGetting input from file file...\nTransforming data to a GPU suitable structure...\nTree transformation took 0.020795\nWaiting for command\n> \n******command: j count=6000, rSize=6000 \n> > > > > > > > > > > > \n ******command: k count=10000 \n> > > > > > > > > > \n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?:Total:)|(?:Total time:)' NOT found in stdout. ",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.489,
+  "translated_wall_time_seconds": 0.869,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.5627,
+  "translated_files": {
+    "kernel/kernel_cpu.c": "#include <stdbool.h>\n\n#ifndef DEFAULT_ORDER\n#define DEFAULT_ORDER 508\n#endif\n\ntypedef struct record {\n\tint value;\n} record;\n\ntypedef struct knode {\n\tint location;\n\tint indices [DEFAULT_ORDER + 1];\n\tint  keys [DEFAULT_ORDER + 1];\n\tbool is_leaf;\n\tint num_keys;\n} knode; \n\nvoid kernel_cpu(\tint cores_arg,\n\n\t\t\t\trecord *records,\n\t\t\t\tknode *knodes,\n\t\t\t\tlong knodes_elem,\n\n\t\t\t\tint order,\n\t\t\t\tlong maxheight,\n\t\t\t\tint count,\n\n\t\t\t\tlong *currKnode,\n\t\t\t\tlong *offset,\n\t\t\t\tint *keys,\n\t\t\t\trecord *ans)\n{\n\t#pragma omp parallel for schedule(static)\n\tfor (int bid = 0; bid < count; bid++) {\n\t\tfor (int i = 0; i < maxheight; i++) {\n\t\t\tlong currKnodeVal = currKnode[bid];\n\t\t\tlong offsetVal = offset[bid];\n\t\t\tint key = keys[bid];\n\t\t\tfor (int thid = 0; thid < order; thid++) {\n\t\t\t\tif ((knodes[currKnodeVal].keys[thid] <= key) && (knodes[currKnodeVal].keys[thid+1] > key)) {\n\t\t\t\t\tif (knodes[offsetVal].indices[thid] < knodes_elem) {\n\t\t\t\t\t\toffsetVal = knodes[offsetVal].indices[thid];\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t\toffset[bid] = offsetVal;\n\t\t\tcurrKnode[bid] = offsetVal;\n\t\t}\n\n\t\tlong currKnodeVal = currKnode[bid];\n\t\tint key = keys[bid];\n\t\tfor (int thid = 0; thid < order; thid++) {\n\t\t\tif (knodes[currKnodeVal].keys[thid] == key) {\n\t\t\t\tans[bid].value = records[knodes[currKnodeVal].indices[thid]].value;\n\t\t\t}\n\t\t}\n\t}\n}\n",
+    "kernel/kernel_cpu_2.c": "#include <stdbool.h>\n\n#ifndef DEFAULT_ORDER_2\n#define DEFAULT_ORDER_2 508\n#endif\n\ntypedef struct knode {\n\tint location;\n\tint indices [DEFAULT_ORDER_2 + 1];\n\tint  keys [DEFAULT_ORDER_2 + 1];\n\tbool is_leaf;\n\tint num_keys;\n} knode; \n\nvoid kernel_cpu_2(\tint cores_arg,\n\n\t\t\t\t\tknode *knodes,\n\t\t\t\t\tlong knodes_elem,\n\n\t\t\t\t\tint order,\n\t\t\t\t\tlong maxheight,\n\t\t\t\t\tint count,\n\n\t\t\t\t\tlong *currKnode,\n\t\t\t\t\tlong *offset,\n\t\t\t\t\tlong *lastKnode,\n\t\t\t\t\tlong *offset_2,\n\t\t\t\t\tint *start,\n\t\t\t\t\tint *end,\n\t\t\t\t\tint *recstart,\n\t\t\t\t\tint *reclength)\n{\n\t#pragma omp parallel for schedule(static)\n\tfor (int bid = 0; bid < count; bid++) {\n\t\tfor (int i = 0; i < maxheight; i++) {\n\t\t\tlong currKnodeVal = currKnode[bid];\n\t\t\tlong lastKnodeVal = lastKnode[bid];\n\t\t\tlong offsetVal = offset[bid];\n\t\t\tlong offset2Val = offset_2[bid];\n\t\t\tint startVal = start[bid];\n\t\t\tint endVal = end[bid];\n\n\t\t\tfor (int thid = 0; thid < order; thid++) {\n\t\t\t\tif ((knodes[currKnodeVal].keys[thid] <= startVal) && (knodes[currKnodeVal].keys[thid+1] > startVal)) {\n\t\t\t\t\tif (knodes[currKnodeVal].indices[thid] < knodes_elem) {\n\t\t\t\t\t\toffsetVal = knodes[currKnodeVal].indices[thid];\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif ((knodes[lastKnodeVal].keys[thid] <= endVal) && (knodes[lastKnodeVal].keys[thid+1] > endVal)) {\n\t\t\t\t\tif (knodes[lastKnodeVal].indices[thid] < knodes_elem) {\n\t\t\t\t\t\toffset2Val = knodes[lastKnodeVal].indices[thid];\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t\toffset[bid] = offsetVal;\n\t\t\toffset_2[bid] = offset2Val;\n\t\t\tcurrKnode[bid] = offsetVal;\n\t\t\tlastKnode[bid] = offset2Val;\n\t\t}\n\n\t\tlong currKnodeVal = currKnode[bid];\n\t\tlong lastKnodeVal = lastKnode[bid];\n\t\tint startVal = start[bid];\n\t\tint endVal = end[bid];\n\n\t\tfor (int thid = 0; thid < order; thid++) {\n\t\t\tif (knodes[currKnodeVal].keys[thid] == startVal) {\n\t\t\t\trecstart[bid] = knodes[currKnodeVal].indices[thid];\n\t\t\t}\n\t\t}\n\n\t\tfor (int thid = 0; thid < order; thid++) {\n\t\t\tif (knodes[lastKnodeVal].keys[thid] == endVal) {\n\t\t\t\treclength[bid] = knodes[lastKnodeVal].indices[thid] - recstart[bid] + 1;\n\t\t\t}\n\t\t}\n\t}\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 15.13,
+      "prompt_tokens": 26099,
+      "completion_tokens": 1090,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nlude/stdio.h:713:12: note: expected \u2018FILE * restrict {aka struct _IO_FILE * restrict}\u2019 but argument is of type \u2018char *\u2019\n extern int fputs (const ",
+      "build_error_snippet": "./main.c: In function \u2018transform_to_cuda\u2019:\n./main.c:652:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplicit-function-declaration]\n  gettimeofday (&one, NULL);\n  ^~~~~~~~~~~~\n  get_time\n./main.c: In function \u2018main\u2019:\n./main.c:1948:37: warning: passing argument 2 of \u2018fputs\u2019 from incompatible pointer type [-Wincompatible-pointer-types]\n        fputs (\"Fail to open %s !\\n\",output);\n                                     ^~~~~~\nIn file included from ./main.c:60:0:\n/usr/include/stdio.h:713:12: note: expected \u2018FILE * restrict {aka struct _IO_FILE * restrict}\u2019 but argument is of type \u2018char *\u2019\n extern int fputs (const char *__restrict __s, FILE *__restrict __stream);\n            ^~~~~\n./main.c:2139:48: warn\n...[truncated]...\n.c:2374:38: warning: passing argument 2 of \u2018fputs\u2019 from incompatible pointer type [-Wincompatible-pointer-types]\n         fputs (\"Fail to open %s !\\n\",output);\n                                      ^~~~~~\nIn file included from ./main.c:60:0:\n/usr/include/stdio.h:713:12: note: expected \u2018FILE * restrict {aka struct _IO_FILE * restrict}\u2019 but argument is of type \u2018char *\u2019\n extern int fputs (const char *__restrict __s, FILE *__restrict __stream);\n            ^~~~~\n./kernel/kernel_cpu.c:9:15: error: \u2018DEFAULT_ORDER\u2019 undeclared here (not in a function)\n  int indices [DEFAULT_ORDER + 1];\n               ^~~~~~~~~~~~~\n./kernel/kernel_cpu.c:11:2: error: unknown type name \u2018bool\u2019\n  bool is_leaf;\n  ^~~~\nmake: *** [Makefile:45: kernel/kernel_cpu.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 15.963,
+      "prompt_tokens": 27364,
+      "completion_tokens": 1124,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n: In function \u2018get_time\u2019:\n./util/timer/timer.c:26:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplic",
+      "build_error_snippet": "rm: cannot remove '*.out': No such file or directory\nrm: cannot remove './kernel/*.o': No such file or directory\nrm: cannot remove './util/timer/*.o': No such file or directory\nrm: cannot remove './util/num/*.o': No such file or directory\nrm: cannot remove 'output.txt': No such file or directory\nmake: *** [Makefile:89: clean] Error 1\n\n./main.c: In function \u2018transform_to_cuda\u2019:\n./main.c:652:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplicit-function-declaration]\n  gettimeofday (&one, NULL);\n  ^~~~~~~~~~~~\n  get_time\n./main.c: In function \u2018main\u2019:\n./main.c:1948:37: warning: passing argument 2 of \u2018fputs\u2019 from incompatible pointer type [-Wincompatible-pointer-types]\n        fputs (\"Fail to open %s !\n...[truncated]...\n.c:60:0:\n/usr/include/stdio.h:713:12: note: expected \u2018FILE * restrict {aka struct _IO_FILE * restrict}\u2019 but argument is of type \u2018char *\u2019\n extern int fputs (const char *__restrict __s, FILE *__restrict __stream);\n            ^~~~~\n./util/timer/timer.c: In function \u2018get_time\u2019:\n./util/timer/timer.c:26:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplicit-function-declaration]\n  gettimeofday(&tv, NULL);\n  ^~~~~~~~~~~~\n  get_time\n/usr/bin/ld: ./main.o: in function `main':\nmain.c:(.text.startup+0x68a): undefined reference to `kernel_cpu'\n/usr/bin/ld: main.c:(.text.startup+0x9e1): undefined reference to `kernel_cpu_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:14: b+tree.out] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 14.305,
+      "prompt_tokens": 28775,
+      "completion_tokens": 1114,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

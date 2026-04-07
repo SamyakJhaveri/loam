@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-kmeans-omp",
+  "target_spec": "rodinia-kmeans-opencl",
+  "kernel": "kmeans",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-i",
+    "../../data/kmeans/kdd_cup"
+  ],
+  "timestamp": "2026-04-04T21:28:32Z",
+  "prompt_tokens": 36780,
+  "completion_tokens": 1055,
+  "llm_response_time_seconds": 7.657,
+  "build_status": "pass",
+  "build_time_seconds": 0.847,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 2.919,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel_swap = 256, WG size of kernel_kmeans = 256 \n\nI/O completed\n\nNumber of objects: 494020\nNumber of features: 34\nnum_devices = 4\nERROR: clBuildProgram() => -11\nERROR: clEnqueueWriteBuffer d_cluster (size:494020) => -38\niterated 1 times\nNumber of Iteration: 1\nInit: 0.000000\nMemAlloc: 0.000000\nHtoD: 0.000000\nExec: 0.000000\nDtoH: 0.000000\nClose: 0.027000\nTotal: 2052.270996\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.498,
+  "translated_wall_time_seconds": 2.919,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.5132,
+  "translated_files": {
+    "kmeans.cl": "// OpenCL translation of the kmeans_clustering function and related helpers.\n// This kernel and helper functions implement the core K-means clustering logic\n// that was originally parallelized with OpenMP. \n\n#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n// Euclidean distance squared between two points\ninline float euclid_dist_2(__global const float *pt1,\n                           __global const float *pt2,\n                           const int numdims)\n{\n    float ans = 0.0f;\n    for (int i = 0; i < numdims; i++) {\n        float diff = pt1[i] - pt2[i];\n        ans += diff * diff;\n    }\n    return ans;\n}\n\n// Find nearest cluster center index for a given point\ninline int find_nearest_point(__global const float *pt,\n                              const int nfeatures,\n                              __global const float *clusters,\n                              const int nclusters)\n{\n    int index = 0;\n    float min_dist = FLT_MAX;\n    for (int i = 0; i < nclusters; i++) {\n        float dist = 0.0f;\n        for (int j = 0; j < nfeatures; j++) {\n            float diff = pt[j] - clusters[i * nfeatures + j];\n            dist += diff * diff;\n        }\n        if (dist < min_dist) {\n            min_dist = dist;\n            index = i;\n        }\n    }\n    return index;\n}\n\n// Kernel to assign each point to nearest cluster and accumulate partial sums\n__kernel void kmeans_assign_points(\n    const int npoints,\n    const int nfeatures,\n    const int nclusters,\n    __global const float *features,       // npoints * nfeatures\n    __global const float *clusters,       // nclusters * nfeatures\n    __global int *membership,             // npoints\n    __global float *partial_new_centers,  // nthreads * nclusters * nfeatures\n    __global int *partial_new_centers_len // nthreads * nclusters\n)\n{\n    int gid = get_global_id(0);\n    int lid = get_local_id(0);\n    int lsize = get_local_size(0);\n    int group_id = get_group_id(0);\n\n    if (gid >= npoints) return;\n\n    // Find nearest cluster\n    __global const float *pt = &features[gid * nfeatures];\n    int nearest = 0;\n    float min_dist = FLT_MAX;\n    for (int c = 0; c < nclusters; c++) {\n        float dist = 0.0f;\n        for (int f = 0; f < nfeatures; f++) {\n            float diff = pt[f] - clusters[c * nfeatures + f];\n            dist += diff * diff;\n        }\n        if (dist < min_dist) {\n            min_dist = dist;\n            nearest = c;\n        }\n    }\n\n    int old_membership = membership[gid];\n    membership[gid] = nearest;\n\n    // Atomic increments and additions to partial sums\n    // Each work-group corresponds to a thread index for partial sums\n    int tid = group_id; // Using group id as thread id\n\n    // Compute offsets\n    int len_offset = tid * nclusters + nearest;\n    int center_offset = (tid * nclusters + nearest) * nfeatures;\n\n    // Atomically increment count\n    atomic_inc((volatile __global int *)&partial_new_centers_len[len_offset]);\n\n    // Atomically accumulate features\n    for (int f = 0; f < nfeatures; f++) {\n        // Use atomic add for floats if available; else use atomic operations on integers\n        // OpenCL 2.0 supports atomic_add on floats in global memory\n#if __OPENCL_VERSION__ >= 200\n        atomic_fetch_add_explicit((volatile __global float *)&partial_new_centers[center_offset + f], pt[f], memory_order_relaxed);\n#else\n        // Fallback: Use atomic operations on integers by bitcasting floats to ints\n        union {\n            unsigned int i;\n            float f;\n        } old_val, new_val;\n        volatile __global unsigned int *addr = (volatile __global unsigned int *)&partial_new_centers[center_offset + f];\n        do {\n            old_val.i = atomic_load(addr);\n            new_val.f = old_val.f + pt[f];\n        } while (atomic_cmpxchg(addr, old_val.i, as_uint(new_val.f)) != old_val.i);\n#endif\n    }\n}\n\n// Host side function prototype for kmeans_clustering to be implemented in host code:\n// This kernel must be launched multiple times from the host to perform iterative clustering,\n// accumulate partial sums, and update cluster centers accordingly.\n\n// The rest of the logic (looping, threshold checking, delta calculation, reduction over partial sums)\n// must be implemented on host side in C, dispatching this kernel and reading back partial sums.\n\n// Note: This file contains only the OpenCL kernel and helper inline functions translated from OpenMP parallel loops.\n\n"
+  },
+  "target_files_expected": [
+    "kmeans.cl"
+  ],
+  "target_files_extracted": [
+    "kmeans.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.657,
+      "prompt_tokens": 36780,
+      "completion_tokens": 1055,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

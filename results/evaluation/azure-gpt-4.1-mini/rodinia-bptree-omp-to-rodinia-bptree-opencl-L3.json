@@ -1,0 +1,103 @@
+{
+  "source_spec": "rodinia-bptree-omp",
+  "target_spec": "rodinia-bptree-opencl",
+  "kernel": "bptree",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-04-03T01:23:46Z",
+  "prompt_tokens": 66978,
+  "completion_tokens": 3424,
+  "llm_response_time_seconds": 39.642,
+  "build_status": "pass",
+  "build_time_seconds": 1.136,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 2.418,
+  "run_exit_code": -6,
+  "run_stderr_snippet": "double free or corruption (out)\n",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -6)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.453,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\ntypedef struct record {\n    int value;\n} record;\n\ntypedef struct knode {\n    int location;\n    int indices[DEFAULT_ORDER + 1];\n    int keys[DEFAULT_ORDER + 1];\n    int is_leaf;\n    int num_keys;\n} knode;\n\n__kernel void findK(\n    const long maxheight,\n    __global knode* knodes,\n    const long knodes_elem,\n    __global record* records,\n    __global long* currKnode,\n    __global long* offset,\n    __global int* keys,\n    __global record* ans,\n    const int count,\n    const int order)\n{\n    int global_id = get_global_id(0);\n    int local_size = get_local_size(0);\n    int bid = global_id / local_size;\n    int thid = global_id % local_size;\n\n    if (bid >= count) return;\n\n    long curr = currKnode[bid];\n    long off = offset[bid];\n    int key = keys[bid];\n\n    for (int i = 0; i < maxheight; i++) {\n        barrier(CLK_LOCAL_MEM_FENCE);\n        if (thid < order - 1) {\n            int key_left = knodes[curr].keys[thid];\n            int key_right = knodes[curr].keys[thid + 1];\n            if (key_left <= key && key < key_right) {\n                if (knodes_elem > knodes[off].indices[thid]) {\n                    off = knodes[off].indices[thid];\n                }\n            }\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n        curr = off;\n    }\n\n    if (thid == 0) {\n        currKnode[bid] = curr;\n        offset[bid] = off;\n    }\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    if (thid < order) {\n        if (keys[bid] == knodes[curr].keys[thid]) {\n            ans[bid].value = records[knodes[curr].indices[thid]].value;\n        }\n    }\n}\n",
+    "kernel/kernel_gpu_opencl_2.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\ntypedef struct knode {\n    int location;\n    int indices[DEFAULT_ORDER + 1];\n    int keys[DEFAULT_ORDER + 1];\n    int is_leaf;\n    int num_keys;\n} knode;\n\n__kernel void findK2(\n    const long maxheight,\n    __global knode* knodes,\n    const long knodes_elem,\n    const int order,\n    __global long* currKnode,\n    __global long* offset,\n    __global long* lastKnode,\n    __global long* offset_2,\n    __global int* start,\n    __global int* end,\n    __global int* recstart,\n    __global int* reclength,\n    const int count)\n{\n    int global_id = get_global_id(0);\n    int local_size = get_local_size(0);\n    int bid = global_id / local_size;\n    int thid = global_id % local_size;\n\n    if (bid >= count) return;\n\n    for (int i = 0; i < maxheight; i++) {\n        barrier(CLK_LOCAL_MEM_FENCE);\n        if (thid < order - 1) {\n            int key_curr_left = knodes[currKnode[bid]].keys[thid];\n            int key_curr_right = knodes[currKnode[bid]].keys[thid + 1];\n            if (key_curr_left <= start[bid] && start[bid] < key_curr_right) {\n                if (knodes_elem > knodes[currKnode[bid]].indices[thid]) {\n                    offset[bid] = knodes[currKnode[bid]].indices[thid];\n                }\n            }\n            int key_last_left = knodes[lastKnode[bid]].keys[thid];\n            int key_last_right = knodes[lastKnode[bid]].keys[thid + 1];\n            if (end[bid] >= key_last_left && end[bid] < key_last_right) {\n                if (knodes_elem > knodes[lastKnode[bid]].indices[thid]) {\n                    offset_2[bid] = knodes[lastKnode[bid]].indices[thid];\n                }\n            }\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n        if (thid == 0) {\n            currKnode[bid] = offset[bid];\n            lastKnode[bid] = offset_2[bid];\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    if (thid < order) {\n        if (knodes[currKnode[bid]].keys[thid] == start[bid]) {\n            recstart[bid] = knodes[currKnode[bid]].indices[thid];\n        }\n        if (knodes[lastKnode[bid]].keys[thid] == end[bid]) {\n            reclength[bid] = knodes[lastKnode[bid]].indices[thid] - recstart[bid] + 1;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 14.826,
+      "prompt_tokens": 21128,
+      "completion_tokens": 1171,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -6):\n```\ndouble free or corruption (out)\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "double free or corruption (out)\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 12.628,
+      "prompt_tokens": 22334,
+      "completion_tokens": 1147,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -6):\n```\ndouble free or corruption (out)\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "double free or corruption (out)\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 12.188,
+      "prompt_tokens": 23516,
+      "completion_tokens": 1106,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "double free or corruption (out)\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

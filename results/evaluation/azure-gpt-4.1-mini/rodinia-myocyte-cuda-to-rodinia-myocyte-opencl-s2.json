@@ -1,0 +1,65 @@
+{
+  "source_spec": "rodinia-myocyte-cuda",
+  "target_spec": "rodinia-myocyte-opencl",
+  "kernel": "myocyte",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T21:18:26Z",
+  "prompt_tokens": 49656,
+  "completion_tokens": 1995,
+  "llm_response_time_seconds": 21.931,
+  "build_status": "fail",
+  "build_time_seconds": 0.49,
+  "build_error_snippet": "rm: cannot remove '*.out': No such file or directory\nrm: cannot remove './output.txt': No such file or directory\nmake: *** [Makefile:131: clean] Error 1\n\nIn file included from ../util/timing.c:3:0:\n../util/timing.h:5:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:87: timing.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ../util/timing.c:3:0:\n../util/timing.h:5:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:87: timing.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#define fp float\n#define NUMBER_THREADS 32\n#define EQUATIONS 91\n#define PARAMETERS 18\n\n__kernel void kernel(\n    int timeinst,\n    __global fp* d_initvalu,\n    __global fp* d_finavalu,\n    __global fp* d_params,\n    __global fp* d_com) {\n\n    int bx = get_group_id(0);\n    int tx = get_local_id(0);\n\n    int valu_offset;\n    int params_offset;\n    int com_offset;\n\n    fp CaDyad;\n    fp CaSL;\n    fp CaCyt;\n\n    if (bx == 0) {\n        if (tx == 0) {\n            valu_offset = 0;\n\n            // Call kernel_ecc (must be implemented as a device function or inline here)\n            // kernel_ecc(timeinst, d_initvalu, d_finavalu, valu_offset, d_params);\n            // Placeholder for kernel_ecc call:\n            // TODO: Implement kernel_ecc as a device function and call here\n        }\n    }\n    else if (bx == 1) {\n        if (tx == 0) {\n            valu_offset = 46;\n            params_offset = 0;\n            com_offset = 0;\n            CaDyad = d_initvalu[35] * 1e3f;\n\n            // Call kernel_cam (device function)\n            // kernel_cam(timeinst, d_initvalu, d_finavalu, valu_offset, d_params, params_offset, d_com, com_offset, CaDyad);\n            // TODO: Implement kernel_cam and call here\n\n            valu_offset = 61;\n            params_offset = 5;\n            com_offset = 1;\n            CaSL = d_initvalu[36] * 1e3f;\n\n            // kernel_cam(timeinst, d_initvalu, d_finavalu, valu_offset, d_params, params_offset, d_com, com_offset, CaSL);\n\n            valu_offset = 76;\n            params_offset = 10;\n            com_offset = 2;\n            CaCyt = d_initvalu[37] * 1e3f;\n\n            // kernel_cam(timeinst, d_initvalu, d_finavalu, valu_offset, d_params, params_offset, d_com, com_offset, CaCyt);\n        }\n    }\n}\n\n__kernel void kernel_2(\n    int timeinst,\n    __global fp* initvalu,\n    __global fp* params,\n    __global fp* finavalu,\n    __global fp* com) {\n\n    int valu_offset_ecc = 0;\n    int valu_offset_Dyad = 46;\n    int valu_offset_SL = 61;\n    int valu_offset_Cyt = 76;\n\n    int params_offset_Dyad = 0;\n    int params_offset_SL = 5;\n    int params_offset_Cyt = 10;\n\n    int com_offset_Dyad = 0;\n    int com_offset_SL = 1;\n    int com_offset_Cyt = 2;\n\n    fp CaDyad = initvalu[35] * 1e3f;\n    fp CaSL = initvalu[36] * 1e3f;\n    fp CaCyt = initvalu[37] * 1e3f;\n\n    // Call kernel_ecc_2 (device function)\n    // kernel_ecc_2(timeinst, initvalu, finavalu, valu_offset_ecc, params);\n    // TODO: implement kernel_ecc_2 and call here\n\n    // Call kernel_cam_2 for Dyad\n    // kernel_cam_2(timeinst, initvalu, finavalu, valu_offset_Dyad, params, params_offset_Dyad, com, com_offset_Dyad, CaDyad);\n    // Call kernel_cam_2 for SL\n    // kernel_cam_2(timeinst, initvalu, finavalu, valu_offset_SL, params, params_offset_SL, com, com_offset_SL, CaSL);\n    // Call kernel_cam_2 for Cyt\n    // kernel_cam_2(timeinst, initvalu, finavalu, valu_offset_Cyt, params, params_offset_Cyt, com, com_offset_Cyt, CaCyt);\n\n    // Call kernel_fin_2\n    // kernel_fin_2(timeinst, initvalu, finavalu, valu_offset_ecc, valu_offset_Dyad, valu_offset_SL, valu_offset_Cyt, params, com);\n    // TODO: Implement kernel_fin_2 and call here\n\n    // Handle NaN and Inf values\n    for (int i = 0; i < EQUATIONS; i++) {\n        if (isnan(finavalu[i]) == 1) {\n            finavalu[i] = 0.0001f;\n        } else if (isinf(finavalu[i]) == 1) {\n            finavalu[i] = 0.0001f;\n        }\n    }\n}\n\n__kernel void solver_2(\n    int workload,\n    int xmax,\n    __global fp* x,\n    __global fp* y,\n    __global fp* params,\n    __global fp* com,\n    __global fp* err,\n    __global fp* scale,\n    __global fp* yy,\n    __global fp* initvalu_temp,\n    __global fp* finavalu_temp) {\n\n    int bx = get_group_id(0);\n    int tx = get_local_id(0);\n    int tid = bx * NUMBER_THREADS + tx;\n\n    if (tid >= workload) return;\n\n    fp err_exponent = 1.0f / 7.0f;\n    fp h_init = 1.0f;\n    fp h = h_init;\n    int xmin = 0;\n    fp tolerance = 10.0f / (fp)(xmax - xmin);\n\n    long y_base = tid * (xmax + 1) * EQUATIONS;\n    long y_prev_offset, y_curr_offset;\n    long x_base = tid * (xmax + 1);\n    int err_base = tid * EQUATIONS;\n    int scale_base = tid * EQUATIONS;\n    int yy_base = tid * EQUATIONS;\n    int params_base = tid * PARAMETERS;\n    int init_temp_base = tid * EQUATIONS;\n    int finavalu_temp_base = tid * 13 * EQUATIONS;\n    int com_base = tid * 3;\n\n    for (int k = 1; k <= xmax; k++) {\n        y_prev_offset = y_base + (k - 1) * EQUATIONS;\n        y_curr_offset = y_base + k * EQUATIONS;\n        long x_curr_offset = x_base + k;\n\n        x[x_curr_offset] = (fp)k;\n        h = h_init;\n\n        fp scale_fina = 1.0f;\n\n        for (int j = 0; j < 12; j++) {\n            int error_flag = 0;\n            int outside = 0;\n            fp scale_min = 4.0f;\n\n            // Call embedded_fehlberg_7_8_2 kernel function (device function)\n            // embedded_fehlberg_7_8_2(h, x[x_curr_offset], &y[y_prev_offset], &y[y_curr_offset], &params[params_base], &err[err_base], &initvalu_temp[init_temp_base], &finavalu_temp[finavalu_temp_base], &com[com_base]);\n            // TODO: implement embedded_fehlberg_7_8_2 and call here\n\n            for (int i = 0; i < EQUATIONS; i++) {\n                if (err[err_base + i] > 0) {\n                    error_flag = 1;\n                }\n            }\n            if (error_flag != 1) {\n                scale_fina = 4.0f;\n                break;\n            }\n\n            for (int i = 0; i < EQUATIONS; i++) {\n                if (y[y_prev_offset + i] == 0.0f) {\n                    yy[yy_base + i] = tolerance;\n                }\n                else {\n                    yy[yy_base + i] = fabs(y[y_prev_offset + i]);\n                }\n                scale[scale_base + i] = 0.8f * pow(tolerance * yy[yy_base + i] / err[err_base + i], err_exponent);\n                if (scale[scale_base + i] < scale_min) {\n                    scale_min = scale[scale_base + i];\n                }\n            }\n            scale_fina = fmin(fmax(scale_min, 0.125f), 4.0f);\n\n            for (int i = 0; i < EQUATIONS; i++) {\n                if (err[err_base + i] > tolerance * yy[yy_base + i]) {\n                    outside = 1;\n                }\n            }\n            if (outside == 0) break;\n\n            h = h * scale_fina;\n\n            if (h >= 0.9f) h = 0.9f;\n\n            if (x[x_curr_offset] + h > (fp)xmax) {\n                h = (fp)xmax - x[x_curr_offset];\n            }\n            else if (x[x_curr_offset] + h + 0.5f * h > (fp)xmax) {\n                h = 0.5f * h;\n            }\n        }\n\n        x[x_curr_offset] = x[x_curr_offset] + h;\n\n        if ( /* j */ 12 >= 12) {\n            // when the loop ends because of attempts exhausted\n            return;\n        }\n    }\n}\n\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 21.931,
+      "prompt_tokens": 49656,
+      "completion_tokens": 1995,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "rm: cannot remove '*.out': No such file or directory\nrm: cannot remove './output.txt': No such file or directory\nmake: *** [Makefile:131: clean] Error 1\n\nIn file included from ../util/timing.c:3:0:\n../util/timing.h:5:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:87: timing.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

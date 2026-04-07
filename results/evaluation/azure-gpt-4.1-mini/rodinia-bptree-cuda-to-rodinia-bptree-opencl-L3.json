@@ -1,0 +1,103 @@
+{
+  "source_spec": "rodinia-bptree-cuda",
+  "target_spec": "rodinia-bptree-opencl",
+  "kernel": "bptree",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "file",
+    "../../data/b+tree/mil.txt",
+    "command",
+    "../../data/b+tree/command.txt"
+  ],
+  "timestamp": "2026-04-03T14:39:57Z",
+  "prompt_tokens": 38328,
+  "completion_tokens": 3036,
+  "llm_response_time_seconds": 33.186,
+  "build_status": "pass",
+  "build_time_seconds": 0.847,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 2.046,
+  "run_exit_code": -6,
+  "run_stderr_snippet": "malloc(): invalid size (unsorted)\n",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -6)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.453,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\ntypedef struct record {\n\tint value;\n} record;\n\ntypedef struct knode {\n\tint location;\n\tint indices [DEFAULT_ORDER + 1];\n\tint  keys [DEFAULT_ORDER + 1];\n\tint is_leaf;\n\tint num_keys;\n} knode;\n\n__kernel void \nfindK(\tlong height,\n\t\t__global knode *knodesD,\n\t\tlong knodes_elem,\n\t\t__global record *recordsD,\n\n\t\t__global long *currKnodeD,\n\t\t__global long *offsetD,\n\t\t__global int *keysD, \n\t\t__global record *ansD)\n{\n\tint thid = get_local_id(0);\n\tint bid = get_group_id(0);\n\n\tint i;\n\tfor(i = 0; i < height; i++){\n\n\t\tif(keysD[bid] >= (knodesD[currKnodeD[bid]].keys[thid]) && (knodesD[currKnodeD[bid]].keys[thid+1] > keysD[bid])){\n\t\t\tif(knodes_elem > knodesD[currKnodeD[bid]].indices[thid]){\n\t\t\t\toffsetD[bid] = knodesD[currKnodeD[bid]].indices[thid];\n\t\t\t}\n\t\t}\n\t\tbarrier(CLK_LOCAL_MEM_FENCE);\n\n\t\tif(0 == thid){\n\t\t\tcurrKnodeD[bid] = offsetD[bid];\n\t\t}\n\t\tbarrier(CLK_LOCAL_MEM_FENCE);\n\t}\n\n\tif(knodesD[currKnodeD[bid]].keys[thid] == keysD[bid]){\n\t\tansD[bid].value = recordsD[knodesD[currKnodeD[bid]].indices[thid]].value;\n\t}\n}\n",
+    "kernel/kernel_gpu_opencl_2.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\ntypedef struct knode {\n\tint location;\n\tint indices [DEFAULT_ORDER_2 + 1];\n\tint  keys [DEFAULT_ORDER_2 + 1];\n\tint is_leaf;\n\tint num_keys;\n} knode;\n\n__kernel void \nfindRangeK(\tlong height,\n\n\t\t\t__global knode *knodesD,\n\t\t\tlong knodes_elem,\n\n\t\t\t__global long *x_2,\n\t\t\t__global long *v_3,\n\t\t\t__global long *data_4,\n\t\t\t__global long *offset_2D,\n\t\t\t__global int *x_0,\n\t\t\t__global int *var_7,\n\t\t\t__global int *RecstartD, \n\t\t\t__global int *elem_1)\n{\n\tint data_5 = get_local_id(0);\n\tint elem_6 = get_group_id(0);\n\n\tint i;\n\tfor(i = 0; i < height; i++){\n\n\t\tif((knodesD[x_2[elem_6]].keys[data_5] <= x_0[elem_6]) && (knodesD[x_2[elem_6]].keys[data_5+1] > x_0[elem_6])){\n\t\t\tif(knodes_elem > knodesD[x_2[elem_6]].indices[data_5]){\n\t\t\t\tv_3[elem_6] = knodesD[x_2[elem_6]].indices[data_5];\n\t\t\t}\n\t\t}\n\t\tif((var_7[elem_6] >= knodesD[offset_2D[elem_6]].keys[data_5]) && (var_7[elem_6] < knodesD[offset_2D[elem_6]].keys[data_5+1])){\n\t\t\tif(knodes_elem > knodesD[offset_2D[elem_6]].indices[data_5]){\n\t\t\t\toffset_2D[elem_6] = knodesD[offset_2D[elem_6]].indices[data_5];\n\t\t\t}\n\t\t}\n\t\tbarrier(CLK_LOCAL_MEM_FENCE);\n\n\t\tif(data_5==0){\n\t\t\tx_2[elem_6] = v_3[elem_6];\n\t\t}\n\t\tbarrier(CLK_LOCAL_MEM_FENCE);\n\t}\n\n\tif(x_0[elem_6] == knodesD[x_2[elem_6]].keys[data_5]){\n\t\tRecstartD[elem_6] = knodesD[x_2[elem_6]].indices[data_5];\n\t}\n\tbarrier(CLK_LOCAL_MEM_FENCE);\n\n\tif(var_7[elem_6] == knodesD[offset_2D[elem_6]].keys[data_5]){\n\t\telem_1[elem_6] = knodesD[offset_2D[elem_6]].indices[data_5] - RecstartD[elem_6]+1;\n\t}\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl",
+    "kernel/kernel_gpu_opencl_2.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 11.347,
+      "prompt_tokens": 11725,
+      "completion_tokens": 1015,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -6):\n```\nmalloc(): invalid size (unsorted)\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "malloc(): invalid size (unsorted)\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 10.247,
+      "prompt_tokens": 12776,
+      "completion_tokens": 1015,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": "The code compiled but execution failed (exit code -6):\n```\nmalloc(): invalid size (unsorted)\n```\nFix the runtime error.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": "malloc(): invalid size (unsorted)\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 11.592,
+      "prompt_tokens": 13827,
+      "completion_tokens": 1006,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "malloc(): invalid size (unsorted)\n",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

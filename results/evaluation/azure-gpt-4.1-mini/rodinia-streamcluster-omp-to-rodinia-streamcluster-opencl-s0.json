@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-streamcluster-omp",
+  "target_spec": "rodinia-streamcluster-opencl",
+  "kernel": "streamcluster",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "10",
+    "20",
+    "256",
+    "65536",
+    "65536",
+    "1000",
+    "none",
+    "output.txt",
+    "1",
+    "-p",
+    "0"
+  ],
+  "timestamp": "2026-04-04T21:38:15Z",
+  "prompt_tokens": 26105,
+  "completion_tokens": 385,
+  "llm_response_time_seconds": 5.588,
+  "build_status": "pass",
+  "build_time_seconds": 0.905,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 2.367,
+  "run_exit_code": 255,
+  "run_stderr_snippet": "_ atom_add(__global volatile int *ptr, int val);\n                     ^\ncl_kernel.h:4192:23: note: candidate function\nuint __OVERLOADABLE__ atom_add(__global volatile uint *ptr, uint val);\n                      ^\ncl_kernel.h:4194:23: note: candidate function\nlong __OVERLOADABLE__ atom_add(__global volatile long *ptr, long val);\n                      ^\ncl_kernel.h:4196:24: note: candidate function\nulong __OVERLOADABLE__ atom_add(__global volatile ulong *ptr, ulong val);\n                       ^\n\n",
+  "run_stdout_snippet": "PARSEC Benchmark Suite\n--cambine: device name=NVIDIA A100-SXM4-40GB\nexception caught in main function->InitCL()::Error: Building Program (clBuildProgram)\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 255)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.092,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Kernels.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n#define CACHE_LINE 512\n\ntypedef struct {\n    float weight;\n    long assign;\n    float cost;\n} Point_Struct;\n\n__kernel void pgain_kernel(\n    __global Point_Struct* p,\n    __global float* coord,\n    __global float* work_mem,\n    __global int* center_table,\n    __global char* switch_membership,\n    __local float* local_coord,\n    int num,\n    int dim,\n    long x,\n    int K\n    )\n{\n    int gid = get_global_id(0);\n    if (gid >= num) return;\n\n    float x_cost = 0.0f;\n    float current_cost = 0.0f;\n    // Compute dist(points[gid], points[x]) * weight\n    for (int i = 0; i < dim; i++) {\n        float diff = coord[gid * dim + i] - coord[x * dim + i];\n        x_cost += diff * diff;\n    }\n    x_cost *= p[gid].weight;\n\n    current_cost = p[gid].cost;\n\n    if (x_cost < current_cost) {\n        switch_membership[gid] = 1;\n        // atomic add to cost_of_opening_x replaced by local accumulation in host\n        // but here we just mark switch_membership\n        // cost_of_opening_x is computed on host\n    }\n    else {\n        int assign = p[gid].assign;\n        // Accumulate difference in work_mem at center_table[assign]\n        // Use atomic add to avoid race conditions\n        atomic_add(&work_mem[gid*(K+1) + center_table[assign]], current_cost - x_cost);\n        switch_membership[gid] = 0;\n    }\n}\n\n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.588,
+      "prompt_tokens": 26105,
+      "completion_tokens": 385,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "_ atom_add(__global volatile int *ptr, int val);\n                     ^\ncl_kernel.h:4192:23: note: candidate function\nuint __OVERLOADABLE__ atom_add(__global volatile uint *ptr, uint val);\n                      ^\ncl_kernel.h:4194:23: note: candidate function\nlong __OVERLOADABLE__ atom_add(__global volatile long *ptr, long val);\n                      ^\ncl_kernel.h:4196:24: note: candidate function\nulong __OVERLOADABLE__ atom_add(__global volatile ulong *ptr, ulong val);\n                       ^\n\n",
+      "run_stdout_snippet": "PARSEC Benchmark Suite\n--cambine: device name=NVIDIA A100-SXM4-40GB\nexception caught in main function->InitCL()::Error: Building Program (clBuildProgram)\n",
+      "extraction_fail": null
+    }
+  ]
+}

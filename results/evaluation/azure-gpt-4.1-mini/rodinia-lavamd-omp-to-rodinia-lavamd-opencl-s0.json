@@ -1,0 +1,65 @@
+{
+  "source_spec": "rodinia-lavamd-omp",
+  "target_spec": "rodinia-lavamd-opencl",
+  "kernel": "lavamd",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T21:29:06Z",
+  "prompt_tokens": 9234,
+  "completion_tokens": 742,
+  "llm_response_time_seconds": 5.792,
+  "build_status": "fail",
+  "build_time_seconds": 0.298,
+  "build_error_snippet": "rm: cannot remove 'lavaMD.out': No such file or directory\nmake: *** [Makefile:106: clean] Error 1\n\nIn file included from ../util/timing.c:3:0:\n../util/timing.h:5:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:77: timing.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ../util/timing.c:3:0:\n../util/timing.h:5:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:77: timing.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_gpu_opencl.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n#define NUMBER_PAR_PER_BOX 100\n\ntypedef struct {\n    double x, y, z;\n} THREE_VECTOR;\n\ntypedef struct {\n    double v, x, y, z;\n} FOUR_VECTOR;\n\ntypedef struct {\n    int x, y, z;\n    int number;\n    long offset;\n} nei_str;\n\ntypedef struct {\n    int x, y, z;\n    int number;\n    long offset;\n    int nn;\n    nei_str nei[26];\n} box_str;\n\ntypedef struct {\n    double alpha;\n} par_str;\n\ntypedef struct {\n    int cur_arg;\n    int arch_arg;\n    int cores_arg;\n    int boxes1d_arg;\n    long number_boxes;\n    long box_mem;\n    long space_elem;\n    long space_mem;\n    long space_mem2;\n} dim_str;\n\n#define DOT(A,B) ((A.x)*(B.x)+(A.y)*(B.y)+(A.z)*(B.z))\n\n__kernel void kernel_gpu_opencl(par_str par,\n                               dim_str dim,\n                               __global box_str* box,\n                               __global FOUR_VECTOR* rv,\n                               __global double* qv,\n                               __global FOUR_VECTOR* fv)\n{\n    size_t l = get_global_id(0);\n    if (l >= dim.number_boxes) return;\n\n    double alpha = par.alpha;\n    double a2 = 2.0 * alpha * alpha;\n\n    long first_i = box[l].offset;\n    __global FOUR_VECTOR* rA = &rv[first_i];\n    __global FOUR_VECTOR* fA = &fv[first_i];\n\n    for (int k = 0; k < 1 + box[l].nn; k++) {\n        int pointer = (k == 0) ? l : box[l].nei[k - 1].number;\n        long first_j = box[pointer].offset;\n        __global FOUR_VECTOR* rB = &rv[first_j];\n        __global double* qB = &qv[first_j];\n\n        for (int i = 0; i < NUMBER_PAR_PER_BOX; i++) {\n            double fv_v = fA[i].v;\n            double fv_x = fA[i].x;\n            double fv_y = fA[i].y;\n            double fv_z = fA[i].z;\n\n            for (int j = 0; j < NUMBER_PAR_PER_BOX; j++) {\n                double r2 = rA[i].v + rB[j].v - DOT(rA[i], rB[j]);\n                double u2 = a2 * r2;\n                double vij = exp(-u2);\n                double fs = 2.0 * vij;\n                THREE_VECTOR d;\n                d.x = rA[i].x - rB[j].x;\n                d.y = rA[i].y - rB[j].y;\n                d.z = rA[i].z - rB[j].z;\n                double fxij = fs * d.x;\n                double fyij = fs * d.y;\n                double fzij = fs * d.z;\n\n                fv_v += qB[j] * vij;\n                fv_x += qB[j] * fxij;\n                fv_y += qB[j] * fyij;\n                fv_z += qB[j] * fzij;\n            }\n\n            fA[i].v = fv_v;\n            fA[i].x = fv_x;\n            fA[i].y = fv_y;\n            fA[i].z = fv_z;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_gpu_opencl.cl"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_gpu_opencl.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.792,
+      "prompt_tokens": 9234,
+      "completion_tokens": 742,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "rm: cannot remove 'lavaMD.out': No such file or directory\nmake: *** [Makefile:106: clean] Error 1\n\nIn file included from ../util/timing.c:3:0:\n../util/timing.h:5:10: fatal error: CL/cl.h: No such file or directory\n #include <CL/cl.h>\n          ^~~~~~~~~\ncompilation terminated.\nmake: *** [Makefile:77: timing.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

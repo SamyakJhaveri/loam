@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-bptree-opencl",
+  "target_spec": "rodinia-bptree-omp",
+  "kernel": "bptree",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T21:39:10Z",
+  "prompt_tokens": 26101,
+  "completion_tokens": 1135,
+  "llm_response_time_seconds": 8.866,
+  "build_status": "fail",
+  "build_time_seconds": 0.69,
+  "build_error_snippet": "rm: cannot remove '*.out': No such file or directory\nrm: cannot remove './kernel/*.o': No such file or directory\nrm: cannot remove './util/timer/*.o': No such file or directory\nrm: cannot remove './util/num/*.o': No such file or directory\nrm: cannot remove 'output.txt': No such file or directory\nmake: *** [Makefile:89: clean] Error 1\n\n./main.c: In function \u2018transform_to_cuda\u2019:\n./main.c:652:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplicit-function-declaration]\n  gettimeofday (&one, NULL);\n  ^~~~~~~~~~~~\n  get_time\n./main.c: In function \u2018main\u2019:\n./main.c:1948:37: warning: passing argument 2 of \u2018fputs\u2019 from incompatible pointer type [-Wincompatible-pointer-types]\n        fputs (\"Fail to open %s !\n...[truncated]...\n.c:60:0:\n/usr/include/stdio.h:713:12: note: expected \u2018FILE * restrict {aka struct _IO_FILE * restrict}\u2019 but argument is of type \u2018char *\u2019\n extern int fputs (const char *__restrict __s, FILE *__restrict __stream);\n            ^~~~~\n./util/timer/timer.c: In function \u2018get_time\u2019:\n./util/timer/timer.c:26:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplicit-function-declaration]\n  gettimeofday(&tv, NULL);\n  ^~~~~~~~~~~~\n  get_time\n/usr/bin/ld: ./main.o: in function `main':\nmain.c:(.text.startup+0x68a): undefined reference to `kernel_cpu'\n/usr/bin/ld: main.c:(.text.startup+0x9e1): undefined reference to `kernel_cpu_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:14: b+tree.out] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: fined reference to `kernel_cpu'\n/usr/bin/ld: main.c:(.text.startup+0x9e1): undefined reference to `kernel_cpu_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:14: b+tree.out] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.489,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernel/kernel_cpu.c": "#include <omp.h>\n#include <stdbool.h>\n\n#define fp float\n#define DEFAULT_ORDER 508\n\ntypedef struct record {\n\tint value;\n} record;\n\ntypedef struct knode {\n\tint location;\n\tint indices [DEFAULT_ORDER + 1];\n\tint  keys [DEFAULT_ORDER + 1];\n\tbool is_leaf;\n\tint num_keys;\n} knode; \n\nvoid findK(\tlong height,\n\t\tknode *knodesD,\n\t\tlong knodes_elem,\n\t\trecord *recordsD,\n\n\t\tlong *currKnodeD,\n\t\tlong *offsetD,\n\t\tint *keysD, \n\t\trecord *ansD,\n\t\tint count,\n\t\tint order)\n{\n\tint bid, thid;\n\n#pragma omp parallel for private(bid, thid)\n\tfor (bid = 0; bid < count; bid++) {\n\t\tlong currKnode = currKnodeD[bid];\n\t\tlong offset = offsetD[bid];\n\t\tint key = keysD[bid];\n\t\tfor (int i = 0; i < height; i++) {\n\t\t\t// Each \"thread\" is thid from 0 to order-1\n\t\t\t// Simulate parallel threads by loop\n\t\t\tfor (thid = 0; thid < order; thid++) {\n\t\t\t\tif ((knodesD[currKnode].keys[thid] <= key) && (knodesD[currKnode].keys[thid+1] > key)) {\n\t\t\t\t\tif (knodesD[offset].indices[thid] < knodes_elem) {\n\t\t\t\t\t\toffset = knodesD[offset].indices[thid];\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t\tcurrKnode = offset;\n\t\t}\n\t\t// Now assign answer for the matching keys\n\t\tfor (thid = 0; thid < order; thid++) {\n\t\t\tif (knodesD[currKnode].keys[thid] == key) {\n\t\t\t\tansD[bid].value = recordsD[knodesD[currKnode].indices[thid]].value;\n\t\t\t}\n\t\t}\n\t\tcurrKnodeD[bid] = currKnode;\n\t\toffsetD[bid] = offset;\n\t}\n}\n",
+    "kernel/kernel_cpu_2.c": "#include <omp.h>\n#include <stdbool.h>\n\n#define fp float\n#define DEFAULT_ORDER_2 508\n\ntypedef struct knode {\n\tint location;\n\tint indices [DEFAULT_ORDER_2 + 1];\n\tint  keys [DEFAULT_ORDER_2 + 1];\n\tbool is_leaf;\n\tint num_keys;\n} knode; \n\nvoid findRangeK(\tlong height,\n\t\t\tknode *knodesD,\n\t\t\tlong knodes_elem,\n\n\t\t\tlong *currKnodeD,\n\t\t\tlong *offsetD,\n\t\t\tlong *lastKnodeD,\n\t\t\tlong *offset_2D,\n\t\t\tint *startD,\n\t\t\tint *endD,\n\t\t\tint *RecstartD, \n\t\t\tint *ReclenD,\n\t\t\tint count,\n\t\t\tint order)\n{\n\tint bid, thid;\n\n#pragma omp parallel for private(bid, thid)\n\tfor (bid = 0; bid < count; bid++) {\n\t\tlong currKnode = currKnodeD[bid];\n\t\tlong offset = offsetD[bid];\n\t\tlong lastKnode = lastKnodeD[bid];\n\t\tlong offset_2 = offset_2D[bid];\n\t\tint start = startD[bid];\n\t\tint end = endD[bid];\n\n\t\tfor (int i = 0; i < height; i++) {\n\t\t\tfor (thid = 0; thid < order; thid++) {\n\t\t\t\tif ((knodesD[currKnode].keys[thid] <= start) && (knodesD[currKnode].keys[thid+1] > start)) {\n\t\t\t\t\tif (knodesD[currKnode].indices[thid] < knodes_elem) {\n\t\t\t\t\t\toffset = knodesD[currKnode].indices[thid];\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tif ((knodesD[lastKnode].keys[thid] <= end) && (knodesD[lastKnode].keys[thid+1] > end)) {\n\t\t\t\t\tif (knodesD[lastKnode].indices[thid] < knodes_elem) {\n\t\t\t\t\t\toffset_2 = knodesD[lastKnode].indices[thid];\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t\tcurrKnode = offset;\n\t\t\tlastKnode = offset_2;\n\t\t}\n\n\t\tfor (thid = 0; thid < order; thid++) {\n\t\t\tif (knodesD[currKnode].keys[thid] == start) {\n\t\t\t\tRecstartD[bid] = knodesD[currKnode].indices[thid];\n\t\t\t}\n\t\t}\n\n\t\tfor (thid = 0; thid < order; thid++) {\n\t\t\tif (knodesD[lastKnode].keys[thid] == end) {\n\t\t\t\tReclenD[bid] = knodesD[lastKnode].indices[thid] - RecstartD[bid] + 1;\n\t\t\t}\n\t\t}\n\n\t\tcurrKnodeD[bid] = currKnode;\n\t\toffsetD[bid] = offset;\n\t\tlastKnodeD[bid] = lastKnode;\n\t\toffset_2D[bid] = offset_2;\n\t}\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_cpu.c",
+    "kernel/kernel_cpu_2.c"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 8.866,
+      "prompt_tokens": 26101,
+      "completion_tokens": 1135,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "rm: cannot remove '*.out': No such file or directory\nrm: cannot remove './kernel/*.o': No such file or directory\nrm: cannot remove './util/timer/*.o': No such file or directory\nrm: cannot remove './util/num/*.o': No such file or directory\nrm: cannot remove 'output.txt': No such file or directory\nmake: *** [Makefile:89: clean] Error 1\n\n./main.c: In function \u2018transform_to_cuda\u2019:\n./main.c:652:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplicit-function-declaration]\n  gettimeofday (&one, NULL);\n  ^~~~~~~~~~~~\n  get_time\n./main.c: In function \u2018main\u2019:\n./main.c:1948:37: warning: passing argument 2 of \u2018fputs\u2019 from incompatible pointer type [-Wincompatible-pointer-types]\n        fputs (\"Fail to open %s !\n...[truncated]...\n.c:60:0:\n/usr/include/stdio.h:713:12: note: expected \u2018FILE * restrict {aka struct _IO_FILE * restrict}\u2019 but argument is of type \u2018char *\u2019\n extern int fputs (const char *__restrict __s, FILE *__restrict __stream);\n            ^~~~~\n./util/timer/timer.c: In function \u2018get_time\u2019:\n./util/timer/timer.c:26:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplicit-function-declaration]\n  gettimeofday(&tv, NULL);\n  ^~~~~~~~~~~~\n  get_time\n/usr/bin/ld: ./main.o: in function `main':\nmain.c:(.text.startup+0x68a): undefined reference to `kernel_cpu'\n/usr/bin/ld: main.c:(.text.startup+0x9e1): undefined reference to `kernel_cpu_2'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:14: b+tree.out] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

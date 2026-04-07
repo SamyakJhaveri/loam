@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-pathfinder-omp",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-c",
+    "100000",
+    "-r",
+    "100",
+    "-h",
+    "20"
+  ],
+  "timestamp": "2026-04-03T18:11:44Z",
+  "prompt_tokens": 3946,
+  "completion_tokens": 358,
+  "llm_response_time_seconds": 6.333,
+  "build_status": "pass",
+  "build_time_seconds": 0.762,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 6.206,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "ERROR (-9999) in event start profiling.\nERROR (-9999) in event start profiling.\nERROR (-9999) in event start profiling.\nERROR (-9999) in event start profiling.\nERROR (-9999) in event start profiling.\nERROR (-58) in event start profiling.\nERROR (-58) in event start profiling.\nInit: 907.033997\nMemAlloc: 0.006000\nHtoD: 3.153024\nExec: 0.000000\nDtoH: 0.000000\nClose: 0.900000\nTotal: 5477.443848\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": 6.206,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "__kernel void dynproc_kernel(\n    const int pyramid_height,\n    __global const int* wall,\n    __global int* src,\n    __global int* dst,\n    const int cols,\n    const int rows,\n    const int t,\n    const int borderCols,\n    const int theHalo,\n    __local int* localSrc1,\n    __local int* localSrc2,\n    __global int* outputBuffer)\n{\n    int n = get_global_id(0);\n    if (n >= cols) return;\n\n    int min_val;\n    int idx = n;\n\n    for (int i = 0; i < pyramid_height && (t + i) < (rows - 1); i++) {\n        barrier(CLK_LOCAL_MEM_FENCE);\n\n        // Load src into local memory\n        localSrc1[n] = src[n];\n        barrier(CLK_LOCAL_MEM_FENCE);\n\n        min_val = localSrc1[n];\n        if (n > 0)\n            min_val = min(min_val, localSrc1[n - 1]);\n        if (n < cols - 1)\n            min_val = min(min_val, localSrc1[n + 1]);\n\n        int wall_val = wall[(t + i + 1) * cols + n];\n        int val = wall_val + min_val;\n\n        dst[n] = val;\n\n        // Swap src and dst pointers for next iteration\n        __global int* tmp = src;\n        src = dst;\n        dst = tmp;\n    }\n\n    // Write final result to outputBuffer for debugging or other use\n    if (n < 16384) {\n        outputBuffer[n] = src[n];\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.333,
+      "prompt_tokens": 3946,
+      "completion_tokens": 358,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

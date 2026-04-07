@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-lavamd-opencl",
+  "target_spec": "rodinia-lavamd-omp",
+  "kernel": "lavamd",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "-boxes1d",
+    "10"
+  ],
+  "timestamp": "2026-04-04T21:48:58Z",
+  "prompt_tokens": 10319,
+  "completion_tokens": 993,
+  "llm_response_time_seconds": 6.191,
+  "build_status": "pass",
+  "build_time_seconds": 0.38,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.089,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Configuration used: cores = 1, boxes1d = 10\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?:Total:)|(?:Total time:)' NOT found in stdout. ",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.089,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0112,
+  "translated_files": {
+    "kernel/kernel_cpu.c": "#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n#include <omp.h>\n#include <math.h>\n\n#define fp float\n\n#define NUMBER_PAR_PER_BOX 100\n#define NUMBER_THREADS 128\n\n#define DOT(A,B) ((A.x)*(B.x)+(A.y)*(B.y)+(A.z)*(B.z))\n\ntypedef struct\n{\n\tfp x, y, z;\n\n} THREE_VECTOR;\n\ntypedef struct\n{\n\tfp v, x, y, z;\n\n} FOUR_VECTOR;\n\ntypedef struct nei_str\n{\n\n\t\n\tint x, y, z;\n\tint number;\n\tlong offset;\n\n} nei_str;\n\ntypedef struct box_str\n{\n\n\t\n\tint x, y, z;\n\tint number;\n\tlong offset;\n\n\t\n\tint nn;\n\tnei_str nei[26];\n\n} box_str;\n\ntypedef struct par_str\n{\n\n\tfp alpha;\n\n} par_str;\n\ntypedef struct dim_str\n{\n\n\t\n\tint cur_arg;\n\tint arch_arg;\n\tint cores_arg;\n\tint boxes1d_arg;\n\n\t\n\tlong number_boxes;\n\tlong box_mem;\n\tlong space_elem;\n\tlong space_mem;\n\tlong space_mem2;\n\n} dim_str;\n\nvoid kernel_cpu(par_str d_par_cpu,\n\t\t\t\tdim_str d_dim_cpu,\n\t\t\t\tbox_str *d_box_cpu,\n\t\t\t\tFOUR_VECTOR *d_rv_cpu,\n\t\t\t\tfp *d_qv_cpu,\n\t\t\t\tFOUR_VECTOR *d_fv_cpu)\n{\n\tint bx;\n\n\tfp a2 = 2.0f * d_par_cpu.alpha * d_par_cpu.alpha;\n\n\t#pragma omp parallel for schedule(static)\n\tfor (bx = 0; bx < d_dim_cpu.number_boxes; bx++) {\n\t\tint first_i = d_box_cpu[bx].offset;\n\n\t\tFOUR_VECTOR rA_shared[NUMBER_PAR_PER_BOX];\n\t\tFOUR_VECTOR rB_shared[NUMBER_PAR_PER_BOX];\n\t\tfp qB_shared[NUMBER_PAR_PER_BOX];\n\n\t\tint wtx;\n\n\t\t// Load rA_shared\n\t\tfor (wtx = 0; wtx < NUMBER_PAR_PER_BOX; wtx++) {\n\t\t\trA_shared[wtx] = d_rv_cpu[first_i + wtx];\n\t\t}\n\n\t\tfor (int k = 0; k < (1 + d_box_cpu[bx].nn); k++) {\n\t\t\tint pointer = (k == 0) ? bx : d_box_cpu[bx].nei[k - 1].number;\n\t\t\tint first_j = d_box_cpu[pointer].offset;\n\n\t\t\t// Load rB_shared and qB_shared\n\t\t\tfor (wtx = 0; wtx < NUMBER_PAR_PER_BOX; wtx++) {\n\t\t\t\trB_shared[wtx] = d_rv_cpu[first_j + wtx];\n\t\t\t\tqB_shared[wtx] = d_qv_cpu[first_j + wtx];\n\t\t\t}\n\n\t\t\t// Compute forces for particles in box bx\n\t\t\t#pragma omp parallel for schedule(static)\n\t\t\tfor (wtx = 0; wtx < NUMBER_PAR_PER_BOX; wtx++) {\n\t\t\t\tfp fv_v = 0.0f;\n\t\t\t\tfp fv_x = 0.0f;\n\t\t\t\tfp fv_y = 0.0f;\n\t\t\t\tfp fv_z = 0.0f;\n\n\t\t\t\tfor (int j = 0; j < NUMBER_PAR_PER_BOX; j++) {\n\t\t\t\t\tfp r2 = rA_shared[wtx].v + rB_shared[j].v - DOT(rA_shared[wtx], rB_shared[j]);\n\t\t\t\t\tfp u2 = a2 * r2;\n\t\t\t\t\tfp vij = expf(-u2);\n\t\t\t\t\tfp fs = 2.0f * vij;\n\t\t\t\t\tfp dx = rA_shared[wtx].x - rB_shared[j].x;\n\t\t\t\t\tfp dy = rA_shared[wtx].y - rB_shared[j].y;\n\t\t\t\t\tfp dz = rA_shared[wtx].z - rB_shared[j].z;\n\t\t\t\t\tfp fxij = fs * dx;\n\t\t\t\t\tfp fyij = fs * dy;\n\t\t\t\t\tfp fzij = fs * dz;\n\t\t\t\t\tfv_v += qB_shared[j] * vij;\n\t\t\t\t\tfv_x += qB_shared[j] * fxij;\n\t\t\t\t\tfv_y += qB_shared[j] * fyij;\n\t\t\t\t\tfv_z += qB_shared[j] * fzij;\n\t\t\t\t}\n\n\t\t\t\t#pragma omp atomic\n\t\t\t\td_fv_cpu[first_i + wtx].v += fv_v;\n\t\t\t\t#pragma omp atomic\n\t\t\t\td_fv_cpu[first_i + wtx].x += fv_x;\n\t\t\t\t#pragma omp atomic\n\t\t\t\td_fv_cpu[first_i + wtx].y += fv_y;\n\t\t\t\t#pragma omp atomic\n\t\t\t\td_fv_cpu[first_i + wtx].z += fv_z;\n\t\t\t}\n\t\t}\n\t}\n}\n\n#ifdef __cplusplus\n}\n#endif\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_cpu.c"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_cpu.c"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 6.191,
+      "prompt_tokens": 10319,
+      "completion_tokens": 993,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

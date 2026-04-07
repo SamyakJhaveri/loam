@@ -1,0 +1,65 @@
+{
+  "source_spec": "hecbench-convolution1d-cuda",
+  "target_spec": "hecbench-convolution1d-omp_target",
+  "kernel": "convolution1d",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T22:07:45Z",
+  "prompt_tokens": 266,
+  "completion_tokens": 553,
+  "llm_response_time_seconds": 5.097,
+  "build_status": "fail",
+  "build_time_seconds": 0.016,
+  "build_error_snippet": "make: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n\nmake: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n\nmake: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "main.cpp": "#include <cstdio>\n#include <cstdlib>\n#include <omp.h>\n\n#define BLOCK_SIZE 512\n\n__attribute__((target(mounted))) void convolution_1D(float *N, float *M, float *P, int Mask_Width, int Width) {\n    int n = omp_get_thread_num() + omp_get_team_num() * omp_get_num_threads();\n    int total_threads = omp_get_num_threads() * omp_get_num_teams();\n    int Mask_radius = Mask_Width / 2;\n\n    for (int i = n; i < Width; i += total_threads) {\n        float Pvalue = 0;\n        for (int j = -Mask_radius; j <= Mask_radius; j++) {\n            int d = i + j;\n            if (d >= 0 && d < Width) {\n                Pvalue += N[d] * M[Mask_radius - j];\n            }\n        }\n        P[i] = Pvalue;\n    }\n}\n\nint main(int argc, char **argv) {\n    int Width = 1 << 20;\n    int Mask_Width = 7;\n    float *N = (float *)malloc(Width * sizeof(float));\n    float *P = (float *)malloc(Width * sizeof(float));\n    float *M = (float *)malloc(Mask_Width * sizeof(float));\n\n    for (int i = 0; i < Mask_Width; i++) {\n        M[i] = 1.0f;\n    }\n    for (int i = 0; i < Width; i++) {\n        N[i] = 1.0f;\n    }\n\n    #pragma omp target data map(to: N[0:Width], M[0:Mask_Width]) map(from: P[0:Width])\n    {\n        #pragma omp target teams distribute parallel for thread_limit(BLOCK_SIZE)\n        for (int i = 0; i < Width; i++) {\n            float Pvalue = 0;\n            int Mask_radius = Mask_Width / 2;\n            for (int j = -Mask_radius; j <= Mask_radius; j++) {\n                int d = i + j;\n                if (d >= 0 && d < Width) {\n                    Pvalue += N[d] * M[Mask_radius - j];\n                }\n            }\n            P[i] = Pvalue;\n        }\n    }\n\n    printf(\"P[0] = %f\\n\", P[0]);\n    printf(\"P[Width-1] = %f\\n\", P[Width-1]);\n\n    free(N);\n    free(P);\n    free(M);\n\n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "main.cpp"
+  ],
+  "target_files_extracted": [
+    "main.cpp"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.097,
+      "prompt_tokens": 266,
+      "completion_tokens": 553,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "make: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n\nmake: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

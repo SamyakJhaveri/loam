@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-hotspot-omp",
+  "target_spec": "rodinia-hotspot-opencl",
+  "kernel": "hotspot",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "512",
+    "2",
+    "4",
+    "../../data/hotspot/temp_512",
+    "../../data/hotspot/power_512",
+    "output.out"
+  ],
+  "timestamp": "2026-04-04T21:27:44Z",
+  "prompt_tokens": 7336,
+  "completion_tokens": 1616,
+  "llm_response_time_seconds": 11.84,
+  "build_status": "pass",
+  "build_time_seconds": 0.364,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 2.605,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel = 16 X 16\nPlatform: NVIDIA Corporation\nnum_devices = 4\nDevice: NVIDIA A100-SXM4-40GB\nUse GPU device\nInit: 1577.717041\nMemAlloc: 0.006000\nHtoD: 2.143000\nExec: 0.027648\nDtoH: 0.052224\nClose: 1.130000\nTotal: 1651.677979\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.159,
+  "translated_wall_time_seconds": 2.605,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.061,
+  "translated_files": {
+    "hotspot_kernel.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n#define BLOCK_SIZE 16\n#define BLOCK_SIZE_C BLOCK_SIZE\n#define BLOCK_SIZE_R BLOCK_SIZE\n\n#define STR_SIZE 256\n\n#define MAX_PD (3.0e6f)\n\n#define PRECISION 0.001f\n#define SPEC_HEAT_SI 1.75e6f\n#define K_SI 100.0f\n\n#define FACTOR_CHIP 0.5f\n\n#define amb_temp 80.0f\n#define t_chip 0.0005f\n#define chip_height 0.016f\n#define chip_width 0.016f\n\n__kernel void hotspot(\n    int num_iterations,\n    __global float* power,\n    __global float* temp_in,\n    __global float* temp_out,\n    int col,\n    int row,\n    int borderCols,\n    int borderRows,\n    float Cap,\n    float Rx,\n    float Ry,\n    float Rz,\n    float step)\n{\n    const float Rx_1 = 1.f / Rx;\n    const float Ry_1 = 1.f / Ry;\n    const float Rz_1 = 1.f / Rz;\n    const float Cap_1 = step / Cap;\n\n    int global_col = get_global_id(0);\n    int global_row = get_global_id(1);\n\n    if (global_col >= col || global_row >= row)\n        return;\n\n    // Calculate block boundaries\n    int blockCol = get_group_id(0);\n    int blockRow = get_group_id(1);\n    int chunks_in_row = col / BLOCK_SIZE_C;\n    int chunks_in_col = row / BLOCK_SIZE_R;\n\n    int r_start = blockRow * BLOCK_SIZE_R;\n    int c_start = blockCol * BLOCK_SIZE_C;\n    int r_end = r_start + BLOCK_SIZE_R > row ? row : r_start + BLOCK_SIZE_R;\n    int c_end = c_start + BLOCK_SIZE_C > col ? col : c_start + BLOCK_SIZE_C;\n\n    float delta = 0.f;\n\n    // Check if on border block\n    int on_border_block = (r_start == 0) || (c_start == 0) || (r_end == row) || (c_end == col);\n\n    int r = global_row;\n    int c = global_col;\n\n    if (on_border_block)\n    {\n        // Handle edges and corners explicitly\n        if ((r == 0) && (c == 0))\n        {\n            delta = (Cap_1) * (power[0] +\n                (temp_in[1] - temp_in[0]) * Rx_1 +\n                (temp_in[col] - temp_in[0]) * Ry_1 +\n                (amb_temp - temp_in[0]) * Rz_1);\n        }\n        else if ((r == 0) && (c == col - 1))\n        {\n            delta = (Cap_1) * (power[c] +\n                (temp_in[c - 1] - temp_in[c]) * Rx_1 +\n                (temp_in[c + col] - temp_in[c]) * Ry_1 +\n                (amb_temp - temp_in[c]) * Rz_1);\n        }\n        else if ((r == row - 1) && (c == col - 1))\n        {\n            delta = (Cap_1) * (power[r * col + c] +\n                (temp_in[r * col + c - 1] - temp_in[r * col + c]) * Rx_1 +\n                (temp_in[(r - 1) * col + c] - temp_in[r * col + c]) * Ry_1 +\n                (amb_temp - temp_in[r * col + c]) * Rz_1);\n        }\n        else if ((r == row - 1) && (c == 0))\n        {\n            delta = (Cap_1) * (power[r * col] +\n                (temp_in[r * col + 1] - temp_in[r * col]) * Rx_1 +\n                (temp_in[(r - 1) * col] - temp_in[r * col]) * Ry_1 +\n                (amb_temp - temp_in[r * col]) * Rz_1);\n        }\n        else if (r == 0)\n        {\n            delta = (Cap_1) * (power[c] +\n                (temp_in[c + 1] + temp_in[c - 1] - 2.0f * temp_in[c]) * Rx_1 +\n                (temp_in[col + c] - temp_in[c]) * Ry_1 +\n                (amb_temp - temp_in[c]) * Rz_1);\n        }\n        else if (c == col - 1)\n        {\n            delta = (Cap_1) * (power[r * col + c] +\n                (temp_in[(r + 1) * col + c] + temp_in[(r - 1) * col + c] - 2.0f * temp_in[r * col + c]) * Ry_1 +\n                (temp_in[r * col + c - 1] - temp_in[r * col + c]) * Rx_1 +\n                (amb_temp - temp_in[r * col + c]) * Rz_1);\n        }\n        else if (r == row - 1)\n        {\n            delta = (Cap_1) * (power[r * col + c] +\n                (temp_in[r * col + c + 1] + temp_in[r * col + c - 1] - 2.0f * temp_in[r * col + c]) * Rx_1 +\n                (temp_in[(r - 1) * col + c] - temp_in[r * col + c]) * Ry_1 +\n                (amb_temp - temp_in[r * col + c]) * Rz_1);\n        }\n        else if (c == 0)\n        {\n            delta = (Cap_1) * (power[r * col] +\n                (temp_in[(r + 1) * col] + temp_in[(r - 1) * col] - 2.0f * temp_in[r * col]) * Ry_1 +\n                (temp_in[r * col + 1] - temp_in[r * col]) * Rx_1 +\n                (amb_temp - temp_in[r * col]) * Rz_1);\n        }\n        temp_out[r * col + c] = temp_in[r * col + c] + delta;\n    }\n    else\n    {\n        // Interior points: apply stencil formula\n        delta = Cap_1 * (power[r * col + c] +\n            (temp_in[(r + 1) * col + c] + temp_in[(r - 1) * col + c] - 2.f * temp_in[r * col + c]) * Ry_1 +\n            (temp_in[r * col + c + 1] + temp_in[r * col + c - 1] - 2.f * temp_in[r * col + c]) * Rx_1 +\n            (amb_temp - temp_in[r * col + c]) * Rz_1);\n\n        temp_out[r * col + c] = temp_in[r * col + c] + delta;\n    }\n\n    // Multiple iterations: loop here\n    for (int iter = 1; iter < num_iterations; iter++)\n    {\n        barrier(CLK_GLOBAL_MEM_FENCE);\n        // Swap buffers pointers: handled outside kernel in host code\n        // This kernel handles one iteration at a time.\n        // So no further action here.\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "hotspot_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "hotspot_kernel.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 11.84,
+      "prompt_tokens": 7336,
+      "completion_tokens": 1616,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

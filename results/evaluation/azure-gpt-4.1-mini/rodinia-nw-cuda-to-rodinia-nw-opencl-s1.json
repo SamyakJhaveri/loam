@@ -1,0 +1,69 @@
+{
+  "source_spec": "rodinia-nw-cuda",
+  "target_spec": "rodinia-nw-opencl",
+  "kernel": "nw",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "2048",
+    "10",
+    "./nw.cl"
+  ],
+  "timestamp": "2026-04-04T21:19:24Z",
+  "prompt_tokens": 11923,
+  "completion_tokens": 1428,
+  "llm_response_time_seconds": 16.318,
+  "build_status": "pass",
+  "build_time_seconds": 0.527,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 2.489,
+  "run_exit_code": 255,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "WG size of kernel = 16 \nnum_devices = 4\nERROR: clCreateKernel() 0 => -46\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 255)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.09,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "nw.cl": "#define LIMIT -999\n#define BLOCK_SIZE 16\n\ninline int maximum(int a, int b, int c) {\n    int k = (a <= b) ? b : a;\n    return (k <= c) ? c : k;\n}\n\n// Kernel equivalent to needle_cuda_shared_1\n__kernel void needle_cuda_shared_1(__global int* referrence,\n                                   __global int* matrix_cuda,\n                                   const int cols,\n                                   const int penalty,\n                                   const int i,\n                                   const int block_width) {\n    const int bx = get_group_id(0);\n    const int tx = get_local_id(0);\n\n    const int b_index_x = bx;\n    const int b_index_y = i - 1 - bx;\n\n    const int index = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + tx + (cols + 1);\n    const int index_n = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + tx + 1;\n    const int index_w = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + cols;\n    const int index_nw = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x;\n\n    __local int temp[BLOCK_SIZE + 1][BLOCK_SIZE + 1];\n    __local int ref[BLOCK_SIZE][BLOCK_SIZE];\n\n    if (tx == 0) {\n        temp[0][0] = matrix_cuda[index_nw];\n    }\n\n    for (int ty = 0; ty < BLOCK_SIZE; ty++) {\n        ref[ty][tx] = referrence[index + cols * ty];\n    }\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    temp[tx + 1][0] = matrix_cuda[index_w + cols * tx];\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    temp[0][tx + 1] = matrix_cuda[index_n];\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    for (int m = 0; m < BLOCK_SIZE; m++) {\n        if (tx <= m) {\n            int t_index_x = tx + 1;\n            int t_index_y = m - tx + 1;\n\n            temp[t_index_y][t_index_x] = maximum(\n                temp[t_index_y - 1][t_index_x - 1] + ref[t_index_y - 1][t_index_x - 1],\n                temp[t_index_y][t_index_x - 1] - penalty,\n                temp[t_index_y - 1][t_index_x] - penalty);\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    for (int m = BLOCK_SIZE - 2; m >= 0; m--) {\n        if (tx <= m) {\n            int t_index_x = tx + BLOCK_SIZE - m;\n            int t_index_y = BLOCK_SIZE - tx;\n\n            temp[t_index_y][t_index_x] = maximum(\n                temp[t_index_y - 1][t_index_x - 1] + ref[t_index_y - 1][t_index_x - 1],\n                temp[t_index_y][t_index_x - 1] - penalty,\n                temp[t_index_y - 1][t_index_x] - penalty);\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    for (int ty = 0; ty < BLOCK_SIZE; ty++) {\n        matrix_cuda[index + ty * cols] = temp[ty + 1][tx + 1];\n    }\n}\n\n// Kernel equivalent to needle_cuda_shared_2\n__kernel void needle_cuda_shared_2(__global int* referrence,\n                                   __global int* matrix_cuda,\n                                   const int cols,\n                                   const int penalty,\n                                   const int i,\n                                   const int block_width) {\n    const int bx = get_group_id(0);\n    const int tx = get_local_id(0);\n\n    const int b_index_x = bx + block_width - i;\n    const int b_index_y = block_width - bx - 1;\n\n    const int index = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + tx + (cols + 1);\n    const int index_n = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + tx + 1;\n    const int index_w = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x + cols;\n    const int index_nw = cols * BLOCK_SIZE * b_index_y + BLOCK_SIZE * b_index_x;\n\n    __local int temp[BLOCK_SIZE + 1][BLOCK_SIZE + 1];\n    __local int ref[BLOCK_SIZE][BLOCK_SIZE];\n\n    for (int ty = 0; ty < BLOCK_SIZE; ty++) {\n        ref[ty][tx] = referrence[index + cols * ty];\n    }\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    if (tx == 0) {\n        temp[0][0] = matrix_cuda[index_nw];\n    }\n\n    temp[tx + 1][0] = matrix_cuda[index_w + cols * tx];\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    temp[0][tx + 1] = matrix_cuda[index_n];\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    for (int m = 0; m < BLOCK_SIZE; m++) {\n        if (tx <= m) {\n            int t_index_x = tx + 1;\n            int t_index_y = m - tx + 1;\n\n            temp[t_index_y][t_index_x] = maximum(\n                temp[t_index_y - 1][t_index_x - 1] + ref[t_index_y - 1][t_index_x - 1],\n                temp[t_index_y][t_index_x - 1] - penalty,\n                temp[t_index_y - 1][t_index_x] - penalty);\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    for (int m = BLOCK_SIZE - 2; m >= 0; m--) {\n        if (tx <= m) {\n            int t_index_x = tx + BLOCK_SIZE - m;\n            int t_index_y = BLOCK_SIZE - tx;\n\n            temp[t_index_y][t_index_x] = maximum(\n                temp[t_index_y - 1][t_index_x - 1] + ref[t_index_y - 1][t_index_x - 1],\n                temp[t_index_y][t_index_x - 1] - penalty,\n                temp[t_index_y - 1][t_index_x] - penalty);\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n\n    for (int ty = 0; ty < BLOCK_SIZE; ty++) {\n        matrix_cuda[index + ty * cols] = temp[ty + 1][tx + 1];\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "nw.cl"
+  ],
+  "target_files_extracted": [
+    "nw.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 16.318,
+      "prompt_tokens": 11923,
+      "completion_tokens": 1428,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "WG size of kernel = 16 \nnum_devices = 4\nERROR: clCreateKernel() 0 => -46\n",
+      "extraction_fail": null
+    }
+  ]
+}

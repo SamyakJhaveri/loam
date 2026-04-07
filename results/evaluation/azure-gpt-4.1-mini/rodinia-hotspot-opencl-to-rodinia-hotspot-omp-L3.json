@@ -1,0 +1,102 @@
+{
+  "source_spec": "rodinia-hotspot-opencl",
+  "target_spec": "rodinia-hotspot-omp",
+  "kernel": "hotspot",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "512",
+    "2",
+    "4",
+    "../../data/hotspot/temp_512",
+    "../../data/hotspot/power_512",
+    "output.out"
+  ],
+  "timestamp": "2026-04-04T19:01:58Z",
+  "prompt_tokens": 28874,
+  "completion_tokens": 9167,
+  "llm_response_time_seconds": 79.697,
+  "build_status": "pass",
+  "build_time_seconds": 0.305,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.211,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel = 16 X 16\nEnding simulation\nTotal: 4 iterations\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.069,
+  "translated_wall_time_seconds": 0.211,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.327,
+  "translated_files": {
+    "hotspot_openmp.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <sys/time.h>\n#include <assert.h>\n#include <omp.h>\n\n#define BLOCK_SIZE 16\n#define STR_SIZE 256\n#define EXPAND_RATE 2\n\n#define MAX_PD\t(3.0e6)\n#define PRECISION\t0.001\n#define SPEC_HEAT_SI 1.75e6\n#define K_SI 100\n#define FACTOR_CHIP\t0.5\n\n#define MIN(a, b) ((a)<=(b) ? (a) : (b))\n\nconst static float t_chip = 0.0005f;\nconst static float chip_height = 0.016f;\nconst static float chip_width = 0.016f;\n\nconst static float amb_temp = 80.0f;\n\nvoid fatal(const char *s) {\n\tfprintf(stderr, \"Error: %s\\n\", s);\n\texit(1);\n}\n\nvoid writeoutput(float *vect, int grid_rows, int grid_cols, char *file) {\n\tint i,j, index=0;\n\tFILE *fp;\n\tchar str[STR_SIZE];\n\n\tif( (fp = fopen(file, \"w\" )) == 0 )\n          printf( \"The file was not opened\\n\" );\n\n\tfor (i=0; grid_rows > i; i++) \n\t for (j=0; grid_cols > j; j++)\n\t {\n\t\t sprintf(str, \"%d\\t%g\\n\", index, vect[i*grid_cols+j]);\n\t\t fputs(str,fp);\n\t\t index++;\n\t }\n\t\t\n    fclose(fp);\t\n}\n\nvoid readinput(float *vect, int grid_rows, int grid_cols, char *file) {\n  \tint i,j;\n\tFILE *fp;\n\tchar str[STR_SIZE];\n\tfloat val;\n\n\tif( (fp  = fopen(file, \"r\" )) ==0 )\n            fatal( \"The file was not opened\" );\n\n\tfor (i=0; i <= grid_rows-1; i++) \n\t for (j=0; grid_cols-1 >= j; j++)\n\t {\n\t\tif (fgets(str, STR_SIZE, fp) == NULL) fatal(\"Error reading file\\n\");\n\t\tif (feof(fp))\n\t\t\tfatal(\"not enough lines in file\");\n\t\t\n\t\tif ((sscanf(str, \"%f\", &val) != 1))\n\t\t\tfatal(\"invalid file format\");\n\t\tvect[i*grid_cols+j] = val;\n\t}\n\n\tfclose(fp);\t\n}\n\nstatic inline int IN_RANGE(int x, int min, int max) {\n\treturn (x >= min && x <= max);\n}\n\nvoid hotspot(int iteration, float *power, float *temp_src, float *temp_dst, int grid_cols, int grid_rows,\n             int border_cols, int border_rows, float Cap, float Rx, float Ry, float Rz, float step) {\n\n\tfloat temp_on_cuda[BLOCK_SIZE][BLOCK_SIZE];\n\tfloat power_on_cuda[BLOCK_SIZE][BLOCK_SIZE];\n\tfloat temp_t[BLOCK_SIZE][BLOCK_SIZE];\n\n\tfloat step_div_Cap = step / Cap;\n\tfloat Rx_1 = 1.0f / Rx;\n\tfloat Ry_1 = 1.0f / Ry;\n\tfloat Rz_1 = 1.0f / Rz;\n\n\tint small_block_rows = BLOCK_SIZE - iteration * 2;\n\tint small_block_cols = BLOCK_SIZE - iteration * 2;\n\n\tint blockRows = (grid_rows + small_block_rows - 1) / small_block_rows;\n\tint blockCols = (grid_cols + small_block_cols - 1) / small_block_cols;\n\n\t// Parallelize over blocks and threads within blocks\n\t#pragma omp parallel for collapse(2) schedule(static)\n\tfor (int by = 0; by < blockRows; by++) {\n\t\tfor (int bx = 0; bx < blockCols; bx++) {\n\t\t\tint blkY = small_block_rows * by - border_rows;\n\t\t\tint blkX = small_block_cols * bx - border_cols;\n\t\t\tint blkYmax = blkY + BLOCK_SIZE - 1;\n\t\t\tint blkXmax = blkX + BLOCK_SIZE - 1;\n\n\t\t\t// Load temp and power into local arrays\n\t\t\t#pragma omp parallel for collapse(2) schedule(static)\n\t\t\tfor (int ty = 0; ty < BLOCK_SIZE; ty++) {\n\t\t\t\tfor (int tx = 0; tx < BLOCK_SIZE; tx++) {\n\t\t\t\t\tint yidx = blkY + ty;\n\t\t\t\t\tint xidx = blkX + tx;\n\t\t\t\t\tint index = grid_cols * yidx + xidx;\n\n\t\t\t\t\tif (IN_RANGE(yidx, 0, grid_rows - 1) && IN_RANGE(xidx, 0, grid_cols - 1)) {\n\t\t\t\t\t\ttemp_on_cuda[ty][tx] = temp_src[index];\n\t\t\t\t\t\tpower_on_cuda[ty][tx] = power[index];\n\t\t\t\t\t} else {\n\t\t\t\t\t\ttemp_on_cuda[ty][tx] = 0.0f;\n\t\t\t\t\t\tpower_on_cuda[ty][tx] = 0.0f;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tint validYmin = (blkY < 0) ? -blkY : 0;\n\t\t\tint validYmax = (blkYmax > grid_rows - 1) ? BLOCK_SIZE - 1 - (blkYmax - grid_rows + 1) : BLOCK_SIZE - 1;\n\t\t\tint validXmin = (0 > blkX) ? -blkX : 0;\n\t\t\tint validXmax = (blkXmax > grid_cols - 1) ? BLOCK_SIZE - 1 - (blkXmax - grid_cols + 1) : BLOCK_SIZE - 1;\n\n\t\t\t// Iterations loop\n\t\t\tfor (int i = 0; i < iteration; i++) {\n\t\t\t\t// Compute updated temperature for valid points\n\t\t\t\t#pragma omp parallel for collapse(2) schedule(static)\n\t\t\t\tfor (int ty = 0; ty < BLOCK_SIZE; ty++) {\n\t\t\t\t\tfor (int tx = 0; tx < BLOCK_SIZE; tx++) {\n\t\t\t\t\t\tint N = ty - 1;\n\t\t\t\t\t\tint S = ty + 1;\n\t\t\t\t\t\tint W = tx - 1;\n\t\t\t\t\t\tint E = tx + 1;\n\n\t\t\t\t\t\tN = (N < validYmin) ? validYmin : N;\n\t\t\t\t\t\tS = (validYmax < S) ? validYmax : S;\n\t\t\t\t\t\tW = (W < validXmin) ? validXmin : W;\n\t\t\t\t\t\tE = (validXmax < E) ? validXmax : E;\n\n\t\t\t\t\t\tif (IN_RANGE(tx, i + 1, BLOCK_SIZE - i - 2) &&\n\t\t\t\t\t\t\tIN_RANGE(ty, i + 1, BLOCK_SIZE - i - 2) &&\n\t\t\t\t\t\t\tIN_RANGE(tx, validXmin, validXmax) &&\n\t\t\t\t\t\t\tIN_RANGE(ty, validYmin, validYmax)) {\n\t\t\t\t\t\t\ttemp_t[ty][tx] = temp_on_cuda[ty][tx] + step_div_Cap * (power_on_cuda[ty][tx] +\n\t\t\t\t\t\t\t\t(temp_on_cuda[S][tx] + temp_on_cuda[N][tx] - 2.0f * temp_on_cuda[ty][tx]) * Ry_1 +\n\t\t\t\t\t\t\t\t(temp_on_cuda[ty][E] + temp_on_cuda[ty][W] - 2.0f * temp_on_cuda[ty][tx]) * Rx_1 +\n\t\t\t\t\t\t\t\t(amb_temp - temp_on_cuda[ty][tx]) * Rz_1);\n\t\t\t\t\t\t} else {\n\t\t\t\t\t\t\ttemp_t[ty][tx] = temp_on_cuda[ty][tx];\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\n\t\t\t\tif (i == iteration - 1)\n\t\t\t\t\tbreak;\n\n\t\t\t\t// Copy temp_t to temp_on_cuda for next iteration\n\t\t\t\t#pragma omp parallel for collapse(2) schedule(static)\n\t\t\t\tfor (int ty = 0; ty < BLOCK_SIZE; ty++) {\n\t\t\t\t\tfor (int tx = 0; tx < BLOCK_SIZE; tx++) {\n\t\t\t\t\t\tif (IN_RANGE(tx, i + 1, BLOCK_SIZE - i - 2) &&\n\t\t\t\t\t\t\tIN_RANGE(ty, i + 1, BLOCK_SIZE - i - 2) &&\n\t\t\t\t\t\t\tIN_RANGE(tx, validXmin, validXmax) &&\n\t\t\t\t\t\t\tIN_RANGE(ty, validYmin, validYmax)) {\n\t\t\t\t\t\t\ttemp_on_cuda[ty][tx] = temp_t[ty][tx];\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\n\t\t\t// Write back results\n\t\t\t#pragma omp parallel for collapse(2) schedule(static)\n\t\t\tfor (int ty = 0; ty < BLOCK_SIZE; ty++) {\n\t\t\t\tfor (int tx = 0; tx < BLOCK_SIZE; tx++) {\n\t\t\t\t\tint yidx = blkY + ty;\n\t\t\t\t\tint xidx = blkX + tx;\n\t\t\t\t\tif (IN_RANGE(yidx, 0, grid_rows - 1) && IN_RANGE(xidx, 0, grid_cols - 1)) {\n\t\t\t\t\t\tif (IN_RANGE(tx, iteration, BLOCK_SIZE - iteration - 1) &&\n\t\t\t\t\t\t\tIN_RANGE(ty, iteration, BLOCK_SIZE - iteration - 1)) {\n\t\t\t\t\t\t\tint index = grid_cols * yidx + xidx;\n\t\t\t\t\t\t\ttemp_dst[index] = temp_t[ty][tx];\n\t\t\t\t\t\t}\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\t}\n}\n\nint compute_tran_temp(float *PowerCPU, float *TempCPU[2], int col, int row,\n\t\tint total_iterations, int num_iterations, int blockCols, int blockRows, int borderCols, int borderRows) \n{ \n\tfloat grid_height = chip_height / row;\n\tfloat grid_width = chip_width / col;\n\n\tfloat Cap = FACTOR_CHIP * SPEC_HEAT_SI * t_chip * grid_width * grid_height;\n\tfloat Rx = grid_width / (2.0f * K_SI * t_chip * grid_height);\n\tfloat Ry = grid_height / (2.0f * K_SI * t_chip * grid_width);\n\tfloat Rz = t_chip / (K_SI * grid_height * grid_width);\n\n\tfloat max_slope = MAX_PD / (FACTOR_CHIP * t_chip * SPEC_HEAT_SI);\n\tfloat step = PRECISION / max_slope;\n\n\tint src = 0, dst = 1;\n\n\tfor (int t = 0; t < total_iterations; t += num_iterations) {\n\t\tint iter = MIN(num_iterations, total_iterations - t);\n\t\thotspot(iter, PowerCPU, TempCPU[src], TempCPU[dst], col, row, borderCols, borderRows, Cap, Rx, Ry, Rz, step);\n\t\tsrc = 1 - src;\n\t\tdst = 1 - dst;\n\t}\n\n\treturn src;\n}\n\nvoid usage(int argc, char **argv) {\n\tfprintf(stderr, \"Usage: %s <grid_rows/grid_cols> <pyramid_height> <sim_time> <temp_file> <power_file> <output_file> [-p platform_id] [-d device_id]\\n\", argv[0]);\n\tfprintf(stderr, \"\\t<grid_rows/grid_cols>  - number of rows/cols in the grid (positive integer)\\n\");\n\tfprintf(stderr, \"\\t<pyramid_height> - pyramid heigh(positive integer)\\n\");\n\tfprintf(stderr, \"\\t<sim_time>   - number of iterations\\n\");\n\tfprintf(stderr, \"\\t<temp_file>  - name of the file containing the initial temperature values of each cell\\n\");\n\tfprintf(stderr, \"\\t<power_file> - name of the file containing the dissipated power values of each cell\\n\");\n\tfprintf(stderr, \"\\t<output_file> - name of the output file\\n\");\n\texit(1);\n}\n\nint main(int argc, char** argv) {\n\n    printf(\"WG size of kernel = %d X %d\\n\", BLOCK_SIZE, BLOCK_SIZE);\n\n    int size;\n    int grid_rows,grid_cols = 0;\n    float *FilesavingTemp,*FilesavingPower; \n    char *tfile, *pfile, *ofile;\n\n    int total_iterations = 60;\n    int pyramid_height = 1; \n\n\tif (7 > argc)\n\t\tusage(argc, argv);\n\tif((grid_rows = atoi(argv[1]))<=0||\n\t   (grid_cols = atoi(argv[1]))<=0||\n       (pyramid_height = atoi(argv[2]))<=0||\n       (total_iterations = atoi(argv[3]))<=0)\n\t\tusage(argc, argv);\n\n\ttfile=argv[4];\n    pfile=argv[5];\n    ofile=argv[6];\n    size=grid_rows*grid_cols;\n\n    int borderCols = (pyramid_height)*EXPAND_RATE/2;\n    int borderRows = (pyramid_height)*EXPAND_RATE/2;\n    int smallBlockCol = BLOCK_SIZE-(pyramid_height)*EXPAND_RATE;\n    int smallBlockRow = BLOCK_SIZE-(pyramid_height)*EXPAND_RATE;\n    int blockCols = grid_cols/smallBlockCol+((0 == grid_cols%smallBlockCol)?0:1);\n    int blockRows = grid_rows/smallBlockRow+((grid_rows%smallBlockRow==0)?0:1);\n\n    FilesavingTemp = (float *) malloc(size*sizeof(float));\n    FilesavingPower = (float *) malloc(size*sizeof(float));\n    \n    if( !FilesavingPower || !FilesavingTemp) \n        fatal(\"unable to allocate memory\");\n\n    readinput(FilesavingTemp, grid_rows, grid_cols, tfile);\n    readinput(FilesavingPower, grid_rows, grid_cols, pfile);\n\n\tfloat *MatrixTemp[2];\n\tMatrixTemp[0] = (float *) malloc(size * sizeof(float));\n\tMatrixTemp[1] = (float *) malloc(size * sizeof(float));\n\tif (!MatrixTemp[0] || !MatrixTemp[1]) fatal(\"unable to allocate memory\");\n\n\tmemcpy(MatrixTemp[0], FilesavingTemp, size * sizeof(float));\n\n\tint ret = compute_tran_temp(FilesavingPower, MatrixTemp, grid_cols, grid_rows, total_iterations, pyramid_height,\n\t\t\t\t\t\t\t\tblockCols, blockRows, borderCols, borderRows);\n\n\twriteoutput(MatrixTemp[ret], grid_rows, grid_cols, ofile);\n\n\tprintf(\"Ending simulation\\n\");\n\tprintf(\"Total: %d iterations\\n\", total_iterations);\n\n\tfree(FilesavingTemp);\n\tfree(FilesavingPower);\n\tfree(MatrixTemp[0]);\n\tfree(MatrixTemp[1]);\n\n\treturn 0;\n}\n"
+  },
+  "target_files_expected": [
+    "hotspot_openmp.cpp"
+  ],
+  "target_files_extracted": [
+    "hotspot_openmp.cpp"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 28.25,
+      "prompt_tokens": 6415,
+      "completion_tokens": 3046,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\n^~~~\nhotspot_openmp.cpp:128:21: error: \u2018blkXmax\u2019 was not declared in this scope\n    int validXmax = (blkXmax > grid_cols - 1) ? BLOCK_SIZE - 1 - ",
+      "build_error_snippet": "hotspot_openmp.cpp: In function \u2018void hotspot(int, float*, float*, float*, int, int, int, int, float, float, float, float, float)\u2019:\nhotspot_openmp.cpp:125:21: error: \u2018blkY\u2019 was not declared in this scope\n    int validYmin = (blkY < 0) ? -blkY : 0;\n                     ^~~~\nhotspot_openmp.cpp:126:21: error: \u2018blkYmax\u2019 was not declared in this scope\n    int validYmax = (blkYmax > grid_rows - 1) ? BLOCK_SIZE - 1 - (blkYmax - grid_rows + 1) : BLOCK_SIZE - 1;\n                     ^~~~~~~\nhotspot_openmp.cpp:126:21: note: suggested alternative: \u2018validYmax\u2019\n    int validYmax = (blkYmax > grid_rows - 1) ? BLOCK_SIZE - 1 - (blkYmax - grid_rows + 1) : BLOCK_SIZE - 1;\n                     ^~~~~~~\n                     validYmax\nhotspot_openmp.cpp:127:25: error: \u2018blkX\u2019 was not declared in this scope\n    int validXmin = (0 > blkX) ? -blkX : 0;\n                         ^~~~\nhotspot_openmp.cpp:128:21: error: \u2018blkXmax\u2019 was not declared in this scope\n    int validXmax = (blkXmax > grid_cols - 1) ? BLOCK_SIZE - 1 - (blkXmax - grid_cols + 1) : BLOCK_SIZE - 1;\n                     ^~~~~~~\nhotspot_openmp.cpp:128:21: note: suggested alternative: \u2018validXmax\u2019\n    int validXmax = (blkXmax > grid_cols - 1) ? BLOCK_SIZE - 1 - (blkXmax - grid_cols + 1) : BLOCK_SIZE - 1;\n                     ^~~~~~~\n                     validXmax\nmake: *** [Makefile:11: hotspot] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 25.99,
+      "prompt_tokens": 9655,
+      "completion_tokens": 3104,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?:Total:)|(?:Ending simulation)' NOT found in stdout. \nEnsure the translated code produces the same output format as the original.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 25.457,
+      "prompt_tokens": 12804,
+      "completion_tokens": 3017,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

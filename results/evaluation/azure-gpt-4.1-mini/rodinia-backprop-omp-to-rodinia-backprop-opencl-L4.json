@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-backprop-omp",
+  "target_spec": "rodinia-backprop-opencl",
+  "kernel": "backprop",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 4,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-n",
+    "65536"
+  ],
+  "timestamp": "2026-04-03T16:48:51Z",
+  "prompt_tokens": 13105,
+  "completion_tokens": 664,
+  "llm_response_time_seconds": 7.51,
+  "build_status": "pass",
+  "build_time_seconds": 0.695,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 2.494,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Random number generator seed: 7\nInput layer size : 65536\nStarting training kernel\nnum_devices = 4\nPerforming GPU computation\nInit: 1604.415039\nMemAlloc: 0.008000\nHtoD: 0.789568\nExec: 0.033792\nDtoH: 0.347904\nClose: 0.217000\nTotal: 1609.473022\n\nFinish the training for one iteration\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 2.494,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0004,
+  "translated_files": {
+    "backprop_kernel.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n#define ETA 0.3f\n#define MOMENTUM 0.3f\n#define BLOCK_SIZE 16\n#define WIDTH 16\n#define HEIGHT 16\n\n__kernel void bpnn_layerforward_ocl(__global float* input_units,\n                                   __global float* hidden_units,\n                                   __global float* input_weights,\n                                   __global float* hidden_partial_sum,\n                                   __local float* lsum,\n                                   __local float* lweights,\n                                   const int input_n,\n                                   const int hidden_n)\n{\n    int tx = get_local_id(0);\n    int ty = get_local_id(1);\n    int bx = get_group_id(0);\n    int by = get_group_id(1);\n\n    int row = bx * BLOCK_SIZE + tx; // input index\n    int col = by * BLOCK_SIZE + ty; // hidden index\n\n    // Each work-group computes a BLOCK_SIZE x BLOCK_SIZE tile of the output matrix\n\n    // Load input units into local memory\n    __local float linput[BLOCK_SIZE+1];\n    if (ty == 0 && (row <= input_n)) {\n        linput[tx] = input_units[row];\n    }\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    // Load weights tile into local memory\n    if ((row <= input_n) && (col <= hidden_n)) {\n        int idx = row * (hidden_n + 1) + col;\n        lweights[tx * BLOCK_SIZE + ty] = input_weights[idx];\n    } else {\n        lweights[tx * BLOCK_SIZE + ty] = 0.0f;\n    }\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    float sum = 0.0f;\n    if (col <= hidden_n) {\n        for (int i = 0; i < BLOCK_SIZE; i++) {\n            int input_idx = bx * BLOCK_SIZE + i;\n            if (input_idx <= input_n) {\n                sum += lweights[i * BLOCK_SIZE + ty] * linput[i];\n            }\n        }\n    }\n\n    // Store partial sums in global memory\n    if ((row <= input_n) && (col <= hidden_n)) {\n        int partial_idx = bx * get_num_groups(1) * BLOCK_SIZE + by * BLOCK_SIZE + ty;\n        hidden_partial_sum[partial_idx] = sum;\n    }\n}\n\n__kernel void bpnn_adjust_weights_ocl(__global float* delta,\n                                     const int ndelta,\n                                     __global float* ly,\n                                     const int nly,\n                                     __global float* w,\n                                     __global float* oldw)\n{\n    int j = get_global_id(0) + 1; // delta index\n    int k = get_global_id(1);     // ly index\n\n    if (j <= ndelta && k <= nly) {\n        int idx = k * (ndelta + 1) + j;\n        float new_dw = ETA * delta[j] * ly[k] + MOMENTUM * oldw[idx];\n        w[idx] += new_dw;\n        oldw[idx] = new_dw;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "backprop_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "backprop_kernel.cl"
+  ],
+  "max_retries": 3,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.51,
+      "prompt_tokens": 13105,
+      "completion_tokens": 664,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

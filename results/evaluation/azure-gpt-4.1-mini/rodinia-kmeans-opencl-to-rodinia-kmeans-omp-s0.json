@@ -1,0 +1,65 @@
+{
+  "source_spec": "rodinia-kmeans-opencl",
+  "target_spec": "rodinia-kmeans-omp",
+  "kernel": "kmeans",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T21:48:24Z",
+  "prompt_tokens": 26937,
+  "completion_tokens": 364,
+  "llm_response_time_seconds": 4.146,
+  "build_status": "fail",
+  "build_time_seconds": 0.456,
+  "build_error_snippet": "kmeans.c: In function \u2018main\u2019:\nkmeans.c:152:9: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n         read(infile, &numObjects,    sizeof(int));\n         ^~~~\n         fread\nkmeans.c:165:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n         close(infile);\n         ^~~~~\n         pclose\n/usr/bin/ld: cluster.o: in function `cluster':\n/lus/eagle/projects/argonne_tpc/chen/repo/parbench_sam/rodinia/openmp/kmeans/kmeans_openmp/cluster.c:94:(.text+0x52): undefined reference to `kmeans_clustering'\ncollect2: error: ld returned 1 exit status\nmake[1]: *** [Makefile:6: kmeans] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: luster.c:94:(.text+0x52): undefined reference to `kmeans_clustering'\ncollect2: error: ld returned 1 exit status\nmake[1]: *** [Makefile:6: kmeans] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.859,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "kmeans_openmp/kmeans_clustering.c": "#ifndef FLT_MAX\n#define FLT_MAX 3.40282347e+38\n#endif\n\n#include <omp.h>\n\nvoid\nkmeans_kernel_c(float  *feature,   \n\t\t\t\tfloat  *clusters,\n\t\t\t\tint    *membership,\n\t\t\t\tint     npoints,\n\t\t\t\tint     nclusters,\n\t\t\t\tint     nfeatures,\n\t\t\t\tint\t\toffset,\n\t\t\t\tint\t\tsize\n\t\t\t  ) \n{\n\tint point_id;\n#pragma omp parallel for private(point_id)\n\tfor (point_id = 0; point_id < npoints; point_id++)\n\t{\n\t\tint index = 0;\n\t\tfloat min_dist=FLT_MAX;\n\t\tint i, l;\n\t\tfor (i=0; i < nclusters; i++) {\n\t\t\tfloat dist = 0;\n\t\t\tfloat ans  = 0;\n\t\t\tfor (l=0; l<nfeatures; l++){\n\t\t\t\tfloat diff = feature[l * npoints + point_id] - clusters[i*nfeatures + l];\n\t\t\t\tans += diff * diff;\n\t\t\t}\n\t\t\tdist = ans;\n\t\t\tif (dist < min_dist) {\n\t\t\t\tmin_dist = dist;\n\t\t\t\tindex    = i;\n\t\t\t}\n\t\t}\n\t\tmembership[point_id] = index;\n\t}\n}\n\nvoid\nkmeans_swap(float  *feature,   \n\t\t\tfloat  *feature_swap,\n\t\t\tint     npoints,\n\t\t\tint     nfeatures\n){\n\tint tid;\n#pragma omp parallel for private(tid)\n\tfor (tid = 0; tid < npoints; tid++) {\n\t\tint i;\n\t\tfor(i = 0; i <  nfeatures; i++)\n\t\t\tfeature_swap[i * npoints + tid] = feature[tid * nfeatures + i];\n\t}\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "target_files_extracted": [
+    "kmeans_openmp/kmeans_clustering.c"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.146,
+      "prompt_tokens": 26937,
+      "completion_tokens": 364,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "kmeans.c: In function \u2018main\u2019:\nkmeans.c:152:9: warning: implicit declaration of function \u2018read\u2019; did you mean \u2018fread\u2019? [-Wimplicit-function-declaration]\n         read(infile, &numObjects,    sizeof(int));\n         ^~~~\n         fread\nkmeans.c:165:9: warning: implicit declaration of function \u2018close\u2019; did you mean \u2018pclose\u2019? [-Wimplicit-function-declaration]\n         close(infile);\n         ^~~~~\n         pclose\n/usr/bin/ld: cluster.o: in function `cluster':\n/lus/eagle/projects/argonne_tpc/chen/repo/parbench_sam/rodinia/openmp/kmeans/kmeans_openmp/cluster.c:94:(.text+0x52): undefined reference to `kmeans_clustering'\ncollect2: error: ld returned 1 exit status\nmake[1]: *** [Makefile:6: kmeans] Error 1\nmake: *** [Makefile:4: OPENMP/kmeans] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

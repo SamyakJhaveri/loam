@@ -1,0 +1,77 @@
+{
+  "source_spec": "rodinia-streamcluster-cuda",
+  "target_spec": "rodinia-streamcluster-opencl",
+  "kernel": "streamcluster",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "10",
+    "20",
+    "256",
+    "65536",
+    "65536",
+    "1000",
+    "none",
+    "output.txt",
+    "1",
+    "-p",
+    "0"
+  ],
+  "timestamp": "2026-04-04T21:23:03Z",
+  "prompt_tokens": 19837,
+  "completion_tokens": 376,
+  "llm_response_time_seconds": 4.409,
+  "build_status": "pass",
+  "build_time_seconds": 0.908,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 2.394,
+  "run_exit_code": 255,
+  "run_stderr_snippet": "",
+  "run_stdout_snippet": "PARSEC Benchmark Suite\n--cambine: device name=NVIDIA A100-SXM4-40GB\nexception caught in main function->InitCL()::Error: Creating Kernel (clCreateKernel) \"memset_kernel\"\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 255)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.092,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Kernels.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\ntypedef struct {\n  float weight;\n  long assign;\n  float cost;\n} Point;\n\ninline float d_dist(int p1, int p2, int num, int dim, __global float *coord_d)\n{\n  float retval = 0.0f;\n  for(int i = 0; i < dim; i++){\n    float tmp = coord_d[(i*num)+p1] - coord_d[(i*num)+p2];\n    retval += tmp * tmp;\n  }\n  return retval;\n}\n\n__kernel void kernel_compute_cost(\n  const int num,\n  const int dim,\n  const long x,\n  __global Point *p,\n  const int K,\n  const int stride,\n  __global float *coord_d,\n  __global float *work_mem_d,\n  __global int *center_table_d,\n  __global char *switch_membership_d)\n{\n  const int bid  = get_group_id(0) + get_num_groups(0) * get_group_id(1);\n  const int tid = get_local_size(0) * bid + get_local_id(0);\n\n  if(tid < num)\n  {\n    __global float *lower = &work_mem_d[tid*stride];\n\n    float x_cost = d_dist(tid, x, num, dim, coord_d) * p[tid].weight;\n\n    if ( x_cost < p[tid].cost )\n    {\n      switch_membership_d[tid] = 1;\n      lower[K] += x_cost - p[tid].cost;\n    }\n    else\n    {\n      lower[center_table_d[p[tid].assign]] += p[tid].cost - x_cost;\n    }\n  }\n}\n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 4.409,
+      "prompt_tokens": 19837,
+      "completion_tokens": 376,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "",
+      "run_stdout_snippet": "PARSEC Benchmark Suite\n--cambine: device name=NVIDIA A100-SXM4-40GB\nexception caught in main function->InitCL()::Error: Creating Kernel (clCreateKernel) \"memset_kernel\"\n",
+      "extraction_fail": null
+    }
+  ]
+}

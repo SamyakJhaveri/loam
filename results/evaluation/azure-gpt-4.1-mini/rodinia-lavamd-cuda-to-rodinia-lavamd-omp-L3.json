@@ -1,0 +1,98 @@
+{
+  "source_spec": "rodinia-lavamd-cuda",
+  "target_spec": "rodinia-lavamd-omp",
+  "kernel": "lavamd",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "-boxes1d",
+    "10"
+  ],
+  "timestamp": "2026-04-03T13:23:34Z",
+  "prompt_tokens": 25651,
+  "completion_tokens": 4515,
+  "llm_response_time_seconds": 58.341,
+  "build_status": "pass",
+  "build_time_seconds": 0.351,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.181,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Configuration used: cores = 1, boxes1d = 10\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?:Total time:)' NOT found in stdout. ",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.001,
+  "translated_wall_time_seconds": 0.181,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.0055,
+  "translated_files": {
+    "kernel/kernel_cpu.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include <omp.h>\n\n#include \"./../main.h\"\n\n#define NUMBER_THREADS 128\n#define NUMBER_PAR_PER_BOX 100\n#define DOT(A,B) ((A.x)*(B.x)+(A.y)*(B.y)+(A.z)*(B.z))\n\nvoid kernel_cpu(par_str d_par_gpu,\n                dim_str d_dim_gpu,\n                box_str* d_box_gpu,\n                FOUR_VECTOR* d_rv_gpu,\n                fp* d_qv_gpu,\n                FOUR_VECTOR* d_fv_gpu)\n{\n    int bx;\n\n    #pragma omp parallel for private(bx) schedule(static)\n    for (bx = 0; bx < d_dim_gpu.number_boxes; bx++) {\n        fp a2 = 2.0 * d_par_gpu.alpha * d_par_gpu.alpha;\n\n        int first_i = d_box_gpu[bx].offset;\n        FOUR_VECTOR* rA = &d_rv_gpu[first_i];\n        FOUR_VECTOR* fA = &d_fv_gpu[first_i];\n\n        FOUR_VECTOR rA_shared[NUMBER_PAR_PER_BOX];\n        for (int wtx = 0; wtx < NUMBER_PAR_PER_BOX; wtx++) {\n            rA_shared[wtx] = rA[wtx];\n        }\n\n        for (int k = 0; k < (1 + d_box_gpu[bx].nn); k++) {\n            int pointer;\n            if (k == 0) {\n                pointer = bx;\n            } else {\n                pointer = d_box_gpu[bx].nei[k - 1].number;\n            }\n\n            int first_j = d_box_gpu[pointer].offset;\n            FOUR_VECTOR* rB = &d_rv_gpu[first_j];\n            fp* qB = &d_qv_gpu[first_j];\n\n            FOUR_VECTOR rB_shared[NUMBER_PAR_PER_BOX];\n            double qB_shared[NUMBER_PAR_PER_BOX];\n            for (int wtx = 0; wtx < NUMBER_PAR_PER_BOX; wtx++) {\n                rB_shared[wtx] = rB[wtx];\n                qB_shared[wtx] = qB[wtx];\n            }\n\n            #pragma omp parallel for schedule(static)\n            for (int wtx = 0; wtx < NUMBER_PAR_PER_BOX; wtx++) {\n                fp r2, u2, vij, fs, fxij, fyij, fzij;\n                THREE_VECTOR d;\n\n                for (int j = 0; j < NUMBER_PAR_PER_BOX; j++) {\n                    r2 = (fp)rA_shared[wtx].v + (fp)rB_shared[j].v - DOT((fp)rA_shared[wtx], (fp)rB_shared[j]);\n                    u2 = a2 * r2;\n                    vij = exp(-u2);\n                    fs = 2 * vij;\n\n                    d.x = (fp)rA_shared[wtx].x - (fp)rB_shared[j].x;\n                    fxij = fs * d.x;\n                    d.y = (fp)rA_shared[wtx].y - (fp)rB_shared[j].y;\n                    fyij = fs * d.y;\n                    d.z = (fp)rA_shared[wtx].z - (fp)rB_shared[j].z;\n                    fzij = fs * d.z;\n\n                    #pragma omp atomic\n                    fA[wtx].v += (double)((fp)qB_shared[j] * vij);\n                    #pragma omp atomic\n                    fA[wtx].x += (double)((fp)qB_shared[j] * fxij);\n                    #pragma omp atomic\n                    fA[wtx].y += (double)((fp)qB_shared[j] * fyij);\n                    #pragma omp atomic\n                    fA[wtx].z += (double)((fp)qB_shared[j] * fzij);\n                }\n            }\n        }\n    }\n}\n\n#include \"./kernel_gpu_cuda_wrapper.h\"\n#include \"./../util/timer/timer.h\"\n\nvoid kernel_gpu_cuda_wrapper(par_str par_cpu,\n                             dim_str dim_cpu,\n                             box_str* box_cpu,\n                             FOUR_VECTOR* rv_cpu,\n                             fp* qv_cpu,\n                             FOUR_VECTOR* fv_cpu)\n{\n    long long time0, time1, time2, time3, time4, time5, time6;\n\n    time0 = get_time();\n\n    // No device setup needed for OpenMP\n\n    time1 = get_time();\n\n    // Allocate memory on host (already allocated by caller)\n\n    time2 = get_time();\n\n    // Copy data to local pointers (no device copy needed)\n\n    time3 = get_time();\n\n    // Run kernel on CPU with OpenMP\n    kernel_cpu(par_cpu,\n               dim_cpu,\n               box_cpu,\n               rv_cpu,\n               qv_cpu,\n               fv_cpu);\n\n    time4 = get_time();\n\n    // No device to host copy needed\n\n    time5 = get_time();\n\n    // No device memory free needed\n\n    time6 = get_time();\n\n    printf(\"Time spent in different stages of GPU_CUDA KERNEL:\\n\");\n    printf(\"%15.12f s, %15.12f % : GPU: SET DEVICE / DRIVER INIT\\n\", (float)(time1 - time0) / 1000000, (float)(time1 - time0) / (float)(time6 - time0) * 100);\n    printf(\"%15.12f s, %15.12f % : GPU MEM: ALO\\n\", (float)(time2 - time1) / 1000000, (float)(time2 - time1) / (float)(time6 - time0) * 100);\n    printf(\"%15.12f s, %15.12f % : GPU MEM: COPY IN\\n\", (float)(time3 - time2) / 1000000, (float)(time3 - time2) / (float)(time6 - time0) * 100);\n    printf(\"%15.12f s, %15.12f % : GPU: KERNEL\\n\", (float)(time4 - time3) / 1000000, (float)(time4 - time3) / (float)(time6 - time0) * 100);\n    printf(\"%15.12f s, %15.12f % : GPU MEM: COPY OUT\\n\", (float)(time5 - time4) / 1000000, (float)(time5 - time4) / (float)(time6 - time0) * 100);\n    printf(\"%15.12f s, %15.12f % : GPU MEM: FRE\\n\", (float)(time6 - time5) / 1000000, (float)(time6 - time5) / (float)(time6 - time0) * 100);\n    printf(\"Total time:\\n\");\n    printf(\"%.12f s\\n\", (float)(time6 - time0) / 1000000);\n}\n\nvoid setdevice(void)\n{\n    // No device to set for OpenMP\n}\n\nvoid checkCUDAError(const char *msg)\n{\n    // No CUDA error checking needed for OpenMP\n    (void)msg;\n}\n"
+  },
+  "target_files_expected": [
+    "kernel/kernel_cpu.c"
+  ],
+  "target_files_extracted": [
+    "kernel/kernel_cpu.c"
+  ],
+  "max_retries": 3,
+  "total_attempts": 3,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 20.55,
+      "prompt_tokens": 6878,
+      "completion_tokens": 1505,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nunction-declaration]\n  srand(time(NULL));\n        ^~~~\n        true\n./util/timer/timer.c: In function \u2018get_time\u2019:\n./util/timer/timer.c:26:2: warn",
+      "build_error_snippet": "rm: cannot remove './util/device/*.o': No such file or directory\nmake: *** [makefile:67: clean] Error 1\n\nmain.c: In function \u2018main\u2019:\nmain.c:95:6: warning: implicit declaration of function \u2018strcmp\u2019 [-Wimplicit-function-declaration]\n   if(strcmp(argv[dim_cpu.cur_arg], \"-cores\")==0){\n      ^~~~~~\nmain.c:253:8: warning: implicit declaration of function \u2018time\u2019; did you mean \u2018true\u2019? [-Wimplicit-function-declaration]\n  srand(time(NULL));\n        ^~~~\n        true\n./util/timer/timer.c: In function \u2018get_time\u2019:\n./util/timer/timer.c:26:2: warning: implicit declaration of function \u2018gettimeofday\u2019; did you mean \u2018get_time\u2019? [-Wimplicit-function-declaration]\n  gettimeofday(&tv, NULL);\n  ^~~~~~~~~~~~\n  get_time\n/usr/bin/ld: main.o: in function `main':\nmain.c:(.text.startup+0x5b3): undefined reference to `kernel_cpu'\ncollect2: error: ld returned 1 exit status\nmake: *** [makefile:22: a.out] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 18.807,
+      "prompt_tokens": 8614,
+      "completion_tokens": 1503,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": "Build and run succeeded but output verification failed: Pattern '(?:Total time:)' NOT found in stdout. \nEnsure the translated code produces the same output format as the original.",
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 3,
+      "llm_response_time_seconds": 18.984,
+      "prompt_tokens": 10159,
+      "completion_tokens": 1507,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "source_spec": "rodinia-hybridsort-cuda",
+  "target_spec": "rodinia-hybridsort-opencl",
+  "kernel": "hybridsort",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "r",
+    "-p",
+    "0"
+  ],
+  "timestamp": "2026-04-04T21:11:33Z",
+  "prompt_tokens": 28394,
+  "completion_tokens": 2519,
+  "llm_response_time_seconds": 18.884,
+  "build_status": "pass",
+  "build_time_seconds": 0.372,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.709,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "1 error generated.\n",
+  "run_stdout_snippet": "Sorting list of 1000000 floats.\nError: Failed to build bucket program executable!\n<kernel>:15:18: error: variable in constant address space must be initialized\n__constant float pivotPoints_const[DIVISIONS];\n                 ^\n\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.272,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "bucketsort_kernels.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n#define LOG_DIVISIONS\t10\n#define DIVISIONS\t\t(1 << LOG_DIVISIONS)\n#define BUCKET_WARP_LOG_SIZE\t5\n#define BUCKET_WARP_N\t\t\t1\n#ifdef BUCKET_WG_SIZE_1\n#define BUCKET_THREAD_N BUCKET_WG_SIZE_1\n#else\n#define BUCKET_THREAD_N\t\t\t(BUCKET_WARP_N << BUCKET_WARP_LOG_SIZE)\n#endif\n#define BUCKET_BLOCK_MEMORY\t\t(DIVISIONS * BUCKET_WARP_N)\n#define BUCKET_BAND\t\t\t\t128\n\n__constant float pivotPoints_const[DIVISIONS];\n\ninline int addOffset(volatile __local unsigned int *s_offset, unsigned int data, unsigned int threadTag){\n    unsigned int count;\n\n    do{\n        count = s_offset[data] & 0x07FFFFFFU;\n        count = threadTag | (count + 1);\n        s_offset[data] = count;\n    }while(s_offset[data] != count);\n\n\treturn (count & 0x07FFFFFFU) - 1;\n}\n\n__kernel void bucketcount(__global float *input, __global int *indice, __global unsigned int *d_prefixoffsets, int size, __global float *pivotPoints)\n{\n\tvolatile __local unsigned int s_offset[BUCKET_BLOCK_MEMORY];\n\n    const unsigned int threadTag = get_local_id(0) << (32 - BUCKET_WARP_LOG_SIZE);\n    const int warpBase = (get_local_id(0) >> BUCKET_WARP_LOG_SIZE) * DIVISIONS;\n    const int numThreads = get_global_size(0);\n\n\tfor (int i = get_local_id(0); i < BUCKET_BLOCK_MEMORY; i += get_local_size(0))\n\t\ts_offset[i] = 0;\n\n\tbarrier(CLK_LOCAL_MEM_FENCE);\n\n\tfor (int tid = get_global_id(0); tid < size; tid += numThreads) {\n\t\tfloat elem = input[tid];\n\n\t\tint idx  = DIVISIONS/2 - 1;\n\t\tint jump = DIVISIONS/4;\n\t\tfloat piv = pivotPoints_const[idx];\n\n\t\twhile(jump >= 1){\n\t\t\tidx = (elem < piv) ? (idx - jump) : (idx + jump);\n\t\t\tpiv = pivotPoints_const[idx];\n\t\t\tjump /= 2;\n\t\t}\n\t\tidx = (elem < piv) ? idx : (idx + 1);\n\n\t\tindice[tid] = (addOffset(s_offset + warpBase, idx, threadTag) << LOG_DIVISIONS) + idx;\n\t}\n\n\tbarrier(CLK_LOCAL_MEM_FENCE);\n\n\tint prefixBase = get_group_id(0) * BUCKET_BLOCK_MEMORY;\n\n\tfor (int i = get_local_id(0); i < BUCKET_BLOCK_MEMORY; i += get_local_size(0))\n\t\td_prefixoffsets[prefixBase + i] = s_offset[i] & 0x07FFFFFFU;\n}\n\n__kernel void bucketprefixoffset(__global unsigned int *d_prefixoffsets, __global unsigned int *d_offsets, int blocks) {\n\tint tid = get_global_id(0);\n\tint size = blocks * BUCKET_BLOCK_MEMORY;\n\tint sum = 0;\n\n\tfor (int i = tid; i < size; i += DIVISIONS) {\n\t\tint x = d_prefixoffsets[i];\n\t\td_prefixoffsets[i] = sum;\n\t\tsum += x;\n\t}\n\n\tif (tid < DIVISIONS)\n\t\td_offsets[tid] = sum;\n}\n\n__kernel void bucketsort(__global float *input, __global int *indice, __global float *output, int size, __global unsigned int *d_prefixoffsets, __global unsigned int *l_offsets)\n{\n\tvolatile __local unsigned int s_offset[BUCKET_BLOCK_MEMORY];\n\n\tint prefixBase = get_group_id(0) * BUCKET_BLOCK_MEMORY;\n    const int warpBase = (get_local_id(0) >> BUCKET_WARP_LOG_SIZE) * DIVISIONS;\n    const int numThreads = get_global_size(0);\n\n\tfor (int i = get_local_id(0); i < BUCKET_BLOCK_MEMORY; i += get_local_size(0))\n\t\ts_offset[i] = l_offsets[i & (DIVISIONS - 1)] + d_prefixoffsets[prefixBase + i];\n\n\tbarrier(CLK_LOCAL_MEM_FENCE);\n\n\tfor (int tid = get_global_id(0); tid < size; tid += numThreads) {\n\n\t\tfloat elem = input[tid];\n\t\tint id = indice[tid];\n\n\t\toutput[s_offset[warpBase + (id & (DIVISIONS - 1))] + (id >> LOG_DIVISIONS)] = elem;\n\t}\n}\n\n",
+    "histogram1024.cl": "#ifndef _BUCKETSORT_KERNEL_H_\n#define _BUCKETSORT_KERNEL_H_\n\n#include <stdio.h>\n\n#define BUCKET_WARP_LOG_SIZE\t5\n#define BUCKET_WARP_N\t\t\t1\n#ifdef BUCKET_WG_SIZE_1\n#define BUCKET_THREAD_N BUCKET_WG_SIZE_1\n#else\n#define BUCKET_THREAD_N\t\t\t(BUCKET_WARP_N << BUCKET_WARP_LOG_SIZE)\n#endif\n#define BUCKET_BLOCK_MEMORY\t\t(DIVISIONS * BUCKET_WARP_N)\n#define BUCKET_BAND\t\t\t\t128\n\n// No textures in OpenCL; replaced by constant memory in translated_0.cl\n\ninline int addOffset(volatile __local unsigned int *s_offset, unsigned int data, unsigned int threadTag){\n    unsigned int count;\n\n    do{\n        count = s_offset[data] & 0x07FFFFFFU;\n        count = threadTag | (count + 1);\n        s_offset[data] = count;\n    }while(s_offset[data] != count);\n\n\treturn (count & 0x07FFFFFFU) - 1;\n}\n\n__kernel void bucketcount( __global float *input, __global int *indice, __global unsigned int *d_prefixoffsets, int size, __global float *pivotPoints)\n{\n\tvolatile __local unsigned int s_offset[BUCKET_BLOCK_MEMORY]; \n\n    const unsigned int threadTag = get_local_id(0) << (32 - BUCKET_WARP_LOG_SIZE);\n    const int warpBase = (get_local_id(0) >> BUCKET_WARP_LOG_SIZE) * DIVISIONS; \n    const int numThreads = get_global_size(0);\n\n\tfor (int i = get_local_id(0); i < BUCKET_BLOCK_MEMORY; i += get_local_size(0))\n\t\ts_offset[i] = 0; \n\n\tbarrier(CLK_LOCAL_MEM_FENCE); \n\n\tfor (int tid = get_global_id(0); tid < size; tid += numThreads) {\n\t\tfloat elem = input[tid]; \n\n\t\tint idx  = DIVISIONS/2 - 1; \n\t\tint jump = DIVISIONS/4; \n\t\tfloat piv = pivotPoints[idx]; \n\n\t\twhile(jump >= 1){\n\t\t\tidx = (elem < piv) ? (idx - jump) : (idx + jump);\n\t\t\tpiv = pivotPoints[idx]; \n\t\t\tjump /= 2; \n\t\t}\n\t\tidx = (elem < piv) ? idx : (idx + 1); \n\n\t\tindice[tid] = (addOffset(s_offset + warpBase, idx, threadTag) << LOG_DIVISIONS) + idx;  \n\t}\n\n\tbarrier(CLK_LOCAL_MEM_FENCE); \n\n\tint prefixBase = get_group_id(0) * BUCKET_BLOCK_MEMORY; \n\n\tfor (int i = get_local_id(0); i < BUCKET_BLOCK_MEMORY; i += get_local_size(0))\n\t\td_prefixoffsets[prefixBase + i] = s_offset[i] & 0x07FFFFFFU; \n}\n\n__kernel void bucketprefixoffset(__global unsigned int *d_prefixoffsets, __global unsigned int *d_offsets, int blocks) {\n\tint tid = get_global_id(0); \n\tint size = blocks * BUCKET_BLOCK_MEMORY; \n\tint sum = 0; \n\n\tfor (int i = tid; i < size; i += DIVISIONS) {\n\t\tint x = d_prefixoffsets[i]; \n\t\td_prefixoffsets[i] = sum; \n\t\tsum += x; \n\t}\n\n\tif(tid < DIVISIONS)\n\t\td_offsets[tid] = sum; \n}\n\n__kernel void bucketsort(__global float *input, __global int *indice, __global float *output, int size, __global unsigned int *d_prefixoffsets, \n\t\t   __global unsigned int *l_offsets)\n{\n\tvolatile __local unsigned int s_offset[BUCKET_BLOCK_MEMORY]; \n\n\tint prefixBase = get_group_id(0) * BUCKET_BLOCK_MEMORY; \n    const int warpBase = (get_local_id(0) >> BUCKET_WARP_LOG_SIZE) * DIVISIONS; \n    const int numThreads = get_global_size(0);\n\n\tfor (int i = get_local_id(0); i < BUCKET_BLOCK_MEMORY; i += get_local_size(0))\n\t\ts_offset[i] = l_offsets[i & (DIVISIONS - 1)] + d_prefixoffsets[prefixBase + i]; \n\n\tbarrier(CLK_LOCAL_MEM_FENCE); \n\n\tfor (int tid = get_global_id(0); tid < size; tid += numThreads) {\n\n\t\tfloat elem = input[tid]; \n\t\tint id = indice[tid]; \n\n\t\toutput[s_offset[warpBase + (id & (DIVISIONS - 1))] + (id >> LOG_DIVISIONS)] = elem;\n\t}\n}\n\n#endif \n\n",
+    "mergesort.cl": "#define BIN_COUNT 1024 \n#define HISTOGRAM_SIZE (BIN_COUNT * sizeof(unsigned int))\n\n#define WARP_LOG_SIZE 5\n#define WARP_N 3\n\n#ifdef HISTO_WG_SIZE_0\n#define THREAD_N HISTO_WG_SIZE_0\n#else\n#define THREAD_N (WARP_N << WARP_LOG_SIZE)\n#endif\n\n#define BLOCK_MEMORY (WARP_N * BIN_COUNT)\n\ninline void addData1024(volatile __local unsigned int *s_WarpHist, unsigned int data, unsigned int threadTag){\n    unsigned int count;\n    do{\n        count = s_WarpHist[data] & 0x07FFFFFFU;\n        count = threadTag | (count + 1);\n        s_WarpHist[data] = count;\n    }while(s_WarpHist[data] != count);\n}\n\n__kernel void histogram1024Kernel(__global unsigned int *d_Result, __global float *d_Data, float minimum, float maximum, int dataN){\n\n    const int globalTid = get_global_id(0);\n    const int numThreads = get_global_size(0);\n\n    const unsigned int threadTag = get_local_id(0) << (32 - WARP_LOG_SIZE);\n\n    volatile __local unsigned int s_Hist[BLOCK_MEMORY];\n\n    const int warpBase = (get_local_id(0) >> WARP_LOG_SIZE) * BIN_COUNT;\n\n    for(int pos = get_local_id(0); pos < BLOCK_MEMORY; pos += get_local_size(0))\n       s_Hist[pos] = 0;\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    for(int pos = globalTid; pos < dataN; pos += numThreads){\n        unsigned int data4 = (unsigned int)(((d_Data[pos] - minimum)/(maximum - minimum)) * BIN_COUNT);\n        addData1024(s_Hist + warpBase, data4 & 0x3FFU, threadTag);\n    }\n\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    for(int pos = get_local_id(0); pos < BIN_COUNT; pos += get_local_size(0)){\n        unsigned int sum = 0;\n\n        for(int base = 0; base < BLOCK_MEMORY; base += BIN_COUNT)\n            sum += s_Hist[base + pos] & 0x07FFFFFFU;\n        atomic_add(&d_Result[pos], sum);\n    }\n}\n\n"
+  },
+  "target_files_expected": [
+    "bucketsort_kernels.cl",
+    "histogram1024.cl",
+    "mergesort.cl"
+  ],
+  "target_files_extracted": [
+    "bucketsort_kernels.cl",
+    "histogram1024.cl",
+    "mergesort.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 18.884,
+      "prompt_tokens": 28394,
+      "completion_tokens": 2519,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\n",
+      "run_stdout_snippet": "Sorting list of 1000000 floats.\nError: Failed to build bucket program executable!\n<kernel>:15:18: error: variable in constant address space must be initialized\n__constant float pivotPoints_const[DIVISIONS];\n                 ^\n\n",
+      "extraction_fail": null
+    }
+  ]
+}

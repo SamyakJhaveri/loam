@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-kmeans-cuda",
+  "target_spec": "rodinia-kmeans-opencl",
+  "kernel": "kmeans",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-i",
+    "../../data/kmeans/kdd_cup"
+  ],
+  "timestamp": "2026-04-04T21:13:21Z",
+  "prompt_tokens": 24062,
+  "completion_tokens": 1026,
+  "llm_response_time_seconds": 9.032,
+  "build_status": "pass",
+  "build_time_seconds": 0.839,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 2.896,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel_swap = 256, WG size of kernel_kmeans = 256 \n\nI/O completed\n\nNumber of objects: 494020\nNumber of features: 34\nnum_devices = 4\nERROR: clBuildProgram() => -11\nERROR: clEnqueueWriteBuffer d_cluster (size:494020) => -38\niterated 1 times\nNumber of Iteration: 1\nInit: 0.000000\nMemAlloc: 0.000000\nHtoD: 0.000000\nExec: 0.000000\nDtoH: 0.000000\nClose: 0.028000\nTotal: 2041.317993\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.498,
+  "translated_wall_time_seconds": 2.896,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.5173,
+  "translated_files": {
+    "kmeans.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n#define THREADS_PER_DIM 16\n#define BLOCKS_PER_DIM 16\n#define THREADS_PER_BLOCK (THREADS_PER_DIM*THREADS_PER_DIM)\n#define ASSUMED_NR_CLUSTERS 32\n\n__constant float c_clusters[ASSUMED_NR_CLUSTERS*34];\n\n__kernel void invert_mapping(__global float *input,\n                             __global float *output,\n                             int npoints,\n                             int nfeatures)\n{\n    int point_id = get_global_id(0);\n    if(point_id < npoints){\n        for(int i=0; i<nfeatures; i++)\n            output[point_id + npoints*i] = input[point_id*nfeatures + i];\n    }\n}\n\ninline float tex1Dfetch(__global const float* arr, int idx)\n{\n    return arr[idx];\n}\n\n// To emulate textures, pass buffers and use tex1Dfetch inline function.\n\n__kernel void kmeansPoint(__global float *features,\n                          int nfeatures,\n                          int npoints,\n                          int nclusters,\n                          __global int *membership,\n                          __global float *clusters,\n                          __global float *block_clusters,\n                          __global int *block_deltas)\n{\n    const int block_dim_x = get_local_size(0);\n    const int block_dim_y = 1;\n    const int block_id_x = get_group_id(0);\n    const int block_id_y = get_group_id(1);\n    const int grid_dim_x = get_num_groups(0);\n\n    const unsigned int block_id = grid_dim_x*block_id_y + block_id_x;\n    const unsigned int point_id = block_id * block_dim_x * block_dim_y + get_local_id(0);\n\n    int index = -1;\n\n    if (point_id < npoints)\n    {\n        float min_dist = FLT_MAX;\n        for (int i=0; i<nclusters; i++) {\n            int cluster_base_index = i*nfeatures;\n            float ans=0.0f;\n\n            for (int j=0; j < nfeatures; j++)\n            {\n                int addr = point_id + j*npoints;\n                float diff = tex1Dfetch(features, addr) - c_clusters[cluster_base_index + j];\n                ans += diff*diff;\n            }\n            float dist = ans;\n\n            if (dist < min_dist) {\n                min_dist = dist;\n                index = i;\n            }\n        }\n    }\n\n#ifdef GPU_DELTA_REDUCTION\n    __local int deltas[THREADS_PER_BLOCK];\n    if(get_local_id(0) < THREADS_PER_BLOCK) {\n        deltas[get_local_id(0)] = 0;\n    }\n    barrier(CLK_LOCAL_MEM_FENCE);\n#endif\n\n    if (point_id < npoints)\n    {\n#ifdef GPU_DELTA_REDUCTION\n        if (membership[point_id] != index) {\n            deltas[get_local_id(0)] = 1;\n        }\n#endif\n        membership[point_id] = index;\n    }\n\n#ifdef GPU_DELTA_REDUCTION\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    unsigned int threadids_participating = THREADS_PER_BLOCK / 2;\n    while(threadids_participating > 1) {\n        if(get_local_id(0) < threadids_participating) {\n            deltas[get_local_id(0)] += deltas[get_local_id(0) + threadids_participating];\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n        threadids_participating /= 2;\n    }\n    if(get_local_id(0) == 0) {\n        deltas[0] += deltas[1];\n    }\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    if(get_local_id(0) == 0) {\n        block_deltas[block_id_y * grid_dim_x + block_id_x] = deltas[0];\n    }\n#endif\n\n#ifdef GPU_NEW_CENTER_REDUCTION\n    int center_id = get_local_id(0) / nfeatures;\n    int dim_id = get_local_id(0) - nfeatures*center_id;\n\n    __local int new_center_ids[THREADS_PER_BLOCK];\n\n    new_center_ids[get_local_id(0)] = index;\n    barrier(CLK_LOCAL_MEM_FENCE);\n\n    int new_base_index = (point_id - get_local_id(0))*nfeatures + dim_id;\n    float accumulator = 0.f;\n\n    if(get_local_id(0) < nfeatures * nclusters) {\n        for(int i = 0; i < THREADS_PER_BLOCK; i++) {\n            float val = tex1Dfetch(features, new_base_index + i*nfeatures);\n            if(new_center_ids[i] == center_id)\n                accumulator += val;\n        }\n        block_clusters[block_id * nclusters * nfeatures + get_local_id(0)] = accumulator;\n    }\n#endif\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans.cl"
+  ],
+  "target_files_extracted": [
+    "kmeans.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 9.032,
+      "prompt_tokens": 24062,
+      "completion_tokens": 1026,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

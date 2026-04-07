@@ -1,7 +1,14 @@
 {
   "doc_path": "docs/ARCHITECTURE.md",
-  "claims_checked": 118,
-  "claims_passed": 118,
-  "claims_failed": 0,
-  "failures": []
+  "claims_checked": 199,
+  "claims_passed": 198,
+  "claims_failed": 1,
+  "failures": [
+    {
+      "line": 132,
+      "claim": "Rodinia | 60 | 20 | Git submodule",
+      "expected": "Rodinia kernel count = 20",
+      "actual": "Rodinia has 22 unique kernel names (backprop, bfs, bptree, cfd, dwt2d, gaussian, heartwall, hotspot, hotspot3d, huffman, hybridsort, kmeans, lavamd, lud, mummergpu, myocyte, nn, nw, particlefilter, pathfinder, srad, streamcluster)"
+    }
+  ]
 }

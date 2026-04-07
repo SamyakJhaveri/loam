@@ -1,0 +1,65 @@
+{
+  "source_spec": "hecbench-page-rank-cuda",
+  "target_spec": "hecbench-page-rank-omp_target",
+  "kernel": "page-rank",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T22:07:59Z",
+  "prompt_tokens": 309,
+  "completion_tokens": 443,
+  "llm_response_time_seconds": 3.902,
+  "build_status": "fail",
+  "build_time_seconds": 0.014,
+  "build_error_snippet": "make: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n\nmake: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n\nmake: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.",
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "main.cpp": "// Note: As the original CUDA source files were not provided, the following is a template example of how a CUDA kernel and host code\n// might be translated to OpenMP Target Offload. Replace kernel and host code with actual logic from original source.\n\n// Example CUDA kernel (to be replaced by actual kernel logic)\n/*\n__global__ void exampleKernel(float *data, int n) {\n    int idx = blockIdx.x * blockDim.x + threadIdx.x;\n    if (idx < n) {\n        data[idx] = data[idx] * 2.0f;\n    }\n}\n*/\n\n// Translated OpenMP Target Offload code example:\n\n#include <cstdio>\n#include <cstdlib>\n\n#define N 1024*1024\n\nint main() {\n    float *data = (float*) malloc(N * sizeof(float));\n    if (!data) {\n        fprintf(stderr, \"Failed to allocate host memory\\n\");\n        return -1;\n    }\n\n    // Initialize data\n    for (int i = 0; i < N; i++) {\n        data[i] = (float)i;\n    }\n\n    // Offload computation to device\n    #pragma omp target data map(tofrom: data[0:N])\n    {\n        #pragma omp target teams distribute parallel for thread_limit(256)\n        for (int i = 0; i < N; i++) {\n            data[i] = data[i] * 2.0f;\n        }\n    }\n\n    // Verify results\n    int errors = 0;\n    for (int i = 0; i < N; i++) {\n        if (data[i] != (float)(i*2)) {\n            errors++;\n            if (errors < 10) {\n                printf(\"Error at index %d: %f != %f\\n\", i, data[i], (float)(i*2));\n            }\n        }\n    }\n    if (errors == 0) {\n        printf(\"Test PASSED\\n\");\n    } else {\n        printf(\"Test FAILED with %d errors\\n\", errors);\n    }\n\n    free(data);\n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "main.cpp"
+  ],
+  "target_files_extracted": [
+    "main.cpp"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.902,
+      "prompt_tokens": 309,
+      "completion_tokens": 443,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "make: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n\nmake: Makefile.nvc: No such file or directory\nmake: *** No rule to make target 'Makefile.nvc'.  Stop.\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

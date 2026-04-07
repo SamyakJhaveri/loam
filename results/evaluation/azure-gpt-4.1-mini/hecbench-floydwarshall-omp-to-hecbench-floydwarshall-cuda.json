@@ -1,0 +1,65 @@
+{
+  "source_spec": "hecbench-floydwarshall-omp",
+  "target_spec": "hecbench-floydwarshall-cuda",
+  "kernel": "floydwarshall",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-03T01:36:48Z",
+  "prompt_tokens": 225,
+  "completion_tokens": 594,
+  "llm_response_time_seconds": 7.704,
+  "build_status": "fail",
+  "build_time_seconds": 0.017,
+  "build_error_snippet": "make: *** No rule to make target 'clean'.  Stop.\n\nmake: *** No targets specified and no makefile found.  Stop.\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: make: *** No rule to make target 'clean'.  Stop.\n\nmake: *** No targets specified and no makefile found.  Stop.",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.74,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "main.cu": "#include <cstdio>\n#include <cstdlib>\n#include <cuda_runtime.h>\n\n#define INF 1000000\n\n__global__ void floydwarshall_kernel(int* dist, int k, int n) {\n    int i = blockIdx.y * blockDim.y + threadIdx.y;\n    int j = blockIdx.x * blockDim.x + threadIdx.x;\n\n    if (i < n && j < n) {\n        int ik = dist[i * n + k];\n        int kj = dist[k * n + j];\n        int ij = dist[i * n + j];\n        if (ik + kj < ij) {\n            dist[i * n + j] = ik + kj;\n        }\n    }\n}\n\nint main(int argc, char* argv[]) {\n    if (argc != 2) {\n        printf(\"Usage: %s <matrix_size>\\n\", argv[0]);\n        return 1;\n    }\n\n    int n = atoi(argv[1]);\n    int size = n * n;\n    int* h_dist = (int*)malloc(size * sizeof(int));\n    if (!h_dist) {\n        fprintf(stderr, \"Host memory allocation failed\\n\");\n        return 1;\n    }\n\n    // Initialize the distance matrix\n    for (int i = 0; i < n; i++) {\n        for (int j = 0; j < n; j++) {\n            if (i == j)\n                h_dist[i * n + j] = 0;\n            else\n                h_dist[i * n + j] = rand() % 20 + 1;\n        }\n    }\n\n    int* d_dist;\n    cudaMalloc(&d_dist, size * sizeof(int));\n    cudaMemcpy(d_dist, h_dist, size * sizeof(int), cudaMemcpyHostToDevice);\n\n    dim3 blockDim(32, 32);\n    dim3 gridDim((n + blockDim.x - 1) / blockDim.x,\n                 (n + blockDim.y - 1) / blockDim.y);\n\n    for (int k = 0; k < n; k++) {\n        floydwarshall_kernel<<<gridDim, blockDim>>>(d_dist, k, n);\n        cudaDeviceSynchronize();\n    }\n\n    cudaMemcpy(h_dist, d_dist, size * sizeof(int), cudaMemcpyDeviceToHost);\n\n    // Print the resulting distance matrix\n    for (int i = 0; i < n; i++) {\n        for (int j = 0; j < n; j++) {\n            if (h_dist[i * n + j] >= INF)\n                printf(\"INF \");\n            else\n                printf(\"%d \", h_dist[i * n + j]);\n        }\n        printf(\"\\n\");\n    }\n\n    cudaFree(d_dist);\n    free(h_dist);\n\n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "main.cu"
+  ],
+  "target_files_extracted": [
+    "main.cu"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.704,
+      "prompt_tokens": 225,
+      "completion_tokens": 594,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "make: *** No rule to make target 'clean'.  Stop.\n\nmake: *** No targets specified and no makefile found.  Stop.\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "source_spec": "rodinia-lud-opencl",
+  "target_spec": "rodinia-lud-omp",
+  "kernel": "lud",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "-s",
+    "256"
+  ],
+  "timestamp": "2026-04-04T19:11:08Z",
+  "prompt_tokens": 25055,
+  "completion_tokens": 4128,
+  "llm_response_time_seconds": 36.63,
+  "build_status": "pass",
+  "build_time_seconds": 0.531,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.029,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Generate input matrix internally, size =256\nCreating matrix internally size=256\nTime consumed(ms): 21.360000\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.004,
+  "translated_wall_time_seconds": 0.029,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.1379,
+  "translated_files": {
+    "omp/lud_omp.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <omp.h>\n\n#ifndef BLOCK_SIZE\n#define BLOCK_SIZE 16\n#endif\n\nvoid lud_omp(float *m, int matrix_dim) {\n    int i, j;\n\n    for (int offset = 0; offset < matrix_dim; offset += BLOCK_SIZE) {\n        // lud_diagonal equivalent\n        {\n            float shadow[BLOCK_SIZE * BLOCK_SIZE];\n            int tx;\n\n            // Load diagonal block into shadow\n            #pragma omp parallel for private(tx, i) shared(m, shadow, matrix_dim, offset)\n            for (tx = 0; tx < BLOCK_SIZE; tx++) {\n                int array_offset = (offset)*matrix_dim + offset + tx;\n                for (i = 0; i < BLOCK_SIZE; i++) {\n                    shadow[i * BLOCK_SIZE + tx] = m[array_offset];\n                    array_offset += matrix_dim;\n                }\n            }\n\n            // Synchronize threads\n            #pragma omp barrier\n\n            for (i = 0; i < BLOCK_SIZE - 1; i++) {\n                #pragma omp parallel for private(tx, j) shared(shadow, i)\n                for (tx = 0; tx < BLOCK_SIZE; tx++) {\n                    if (tx > i) {\n                        for (j = 0; j < i; j++) {\n                            shadow[tx * BLOCK_SIZE + i] -= shadow[tx * BLOCK_SIZE + j] * shadow[j * BLOCK_SIZE + i];\n                        }\n                        shadow[tx * BLOCK_SIZE + i] /= shadow[i * BLOCK_SIZE + i];\n                    }\n                }\n                #pragma omp barrier\n\n                #pragma omp parallel for private(tx, j) shared(shadow, i)\n                for (tx = 0; tx < BLOCK_SIZE; tx++) {\n                    if (tx > i) {\n                        for (j = 0; j < i + 1; j++) {\n                            shadow[(i + 1) * BLOCK_SIZE + tx] -= shadow[(i + 1) * BLOCK_SIZE + j] * shadow[j * BLOCK_SIZE + tx];\n                        }\n                    }\n                }\n                // Removed barrier here to avoid nested barrier error\n            }\n            // Add a barrier after the loop to synchronize threads\n            #pragma omp barrier\n\n            // Write back to m\n            #pragma omp parallel for private(tx, i) shared(m, shadow, matrix_dim, offset)\n            for (tx = 0; tx < BLOCK_SIZE; tx++) {\n                int array_offset = (offset + 1) * matrix_dim + offset + tx;\n                for (i = 1; i < BLOCK_SIZE; i++) {\n                    m[array_offset] = shadow[i * BLOCK_SIZE + tx];\n                    array_offset += matrix_dim;\n                }\n            }\n        }\n\n        // lud_perimeter equivalent\n        {\n            float dia[BLOCK_SIZE * BLOCK_SIZE];\n            float peri_row[BLOCK_SIZE * BLOCK_SIZE];\n            float peri_col[BLOCK_SIZE * BLOCK_SIZE];\n            int bx, tx, idx;\n            int num_blocks = (matrix_dim - offset) / BLOCK_SIZE - 1;\n\n            if (num_blocks > 0) {\n                int total_threads = 2 * BLOCK_SIZE * num_blocks;\n\n                #pragma omp parallel for private(tx, bx, idx) shared(m, dia, peri_row, peri_col, matrix_dim, offset, num_blocks)\n                for (int thread_id = 0; thread_id < total_threads; thread_id++) {\n                    bx = thread_id / (2 * BLOCK_SIZE);\n                    tx = thread_id % (2 * BLOCK_SIZE);\n\n                    if (tx < BLOCK_SIZE) {\n                        idx = tx;\n                        int array_offset = offset * matrix_dim + offset;\n                        for (int i = 0; i < BLOCK_SIZE / 2; i++) {\n                            dia[i * BLOCK_SIZE + idx] = m[array_offset + idx];\n                            array_offset += matrix_dim;\n                        }\n\n                        array_offset = offset * matrix_dim + offset;\n                        for (int i = 0; i < BLOCK_SIZE; i++) {\n                            peri_row[i * BLOCK_SIZE + idx] = m[array_offset + (bx + 1) * BLOCK_SIZE + idx];\n                            array_offset += matrix_dim;\n                        }\n                    } else {\n                        idx = tx - BLOCK_SIZE;\n                        int array_offset = (offset + BLOCK_SIZE / 2) * matrix_dim + offset;\n                        for (int i = BLOCK_SIZE / 2; i < BLOCK_SIZE; i++) {\n                            dia[i * BLOCK_SIZE + idx] = m[array_offset + idx];\n                            array_offset += matrix_dim;\n                        }\n\n                        array_offset = (offset + (bx + 1) * BLOCK_SIZE) * matrix_dim + offset;\n                        for (int i = 0; i < BLOCK_SIZE; i++) {\n                            peri_col[i * BLOCK_SIZE + idx] = m[array_offset + idx];\n                            array_offset += matrix_dim;\n                        }\n                    }\n                }\n\n                #pragma omp barrier\n\n                // Compute peri_row\n                #pragma omp parallel for private(tx, i, j, idx) shared(peri_row, dia)\n                for (tx = 0; tx < BLOCK_SIZE; tx++) {\n                    idx = tx;\n                    for (i = 1; i < BLOCK_SIZE; i++) {\n                        for (j = 0; j < i; j++) {\n                            peri_row[i * BLOCK_SIZE + idx] -= dia[i * BLOCK_SIZE + j] * peri_row[j * BLOCK_SIZE + idx];\n                        }\n                    }\n                }\n\n                // Compute peri_col\n                #pragma omp parallel for private(tx, i, j, idx) shared(peri_col, dia)\n                for (tx = 0; tx < BLOCK_SIZE; tx++) {\n                    idx = tx;\n                    for (int i = 0; i < BLOCK_SIZE; i++) {\n                        for (j = 0; j < i; j++) {\n                            peri_col[idx * BLOCK_SIZE + i] -= peri_col[idx * BLOCK_SIZE + j] * dia[j * BLOCK_SIZE + i];\n                        }\n                        peri_col[idx * BLOCK_SIZE + i] /= dia[i * BLOCK_SIZE + i];\n                    }\n                }\n\n                #pragma omp barrier\n\n                // Write back peri_row and peri_col to m\n                #pragma omp parallel for private(tx, i, idx) shared(m, peri_row, peri_col, matrix_dim, offset, num_blocks)\n                for (int thread_id = 0; thread_id < total_threads; thread_id++) {\n                    bx = thread_id / (2 * BLOCK_SIZE);\n                    tx = thread_id % (2 * BLOCK_SIZE);\n\n                    if (tx < BLOCK_SIZE) {\n                        idx = tx;\n                        int array_offset = (offset + 1) * matrix_dim + offset;\n                        array_offset += (bx + 1) * BLOCK_SIZE;\n                        for (i = 1; i < BLOCK_SIZE; i++) {\n                            m[array_offset + idx] = peri_row[i * BLOCK_SIZE + idx];\n                            array_offset += matrix_dim;\n                        }\n                    } else {\n                        idx = tx - BLOCK_SIZE;\n                        int array_offset = (offset + (bx + 1) * BLOCK_SIZE) * matrix_dim + offset;\n                        for (i = 0; i < BLOCK_SIZE; i++) {\n                            m[array_offset + idx] = peri_col[i * BLOCK_SIZE + idx];\n                            array_offset += matrix_dim;\n                        }\n                    }\n                }\n            }\n        }\n\n        // lud_internal equivalent\n        {\n            int num_blocks = (matrix_dim - offset) / BLOCK_SIZE - 1;\n            if (num_blocks > 0) {\n                float peri_row[BLOCK_SIZE * BLOCK_SIZE];\n                float peri_col[BLOCK_SIZE * BLOCK_SIZE];\n\n                #pragma omp parallel for collapse(2) private(i, j) shared(m, peri_row, peri_col, matrix_dim, offset, num_blocks)\n                for (int by = 0; by < num_blocks; by++) {\n                    for (int bx = 0; bx < num_blocks; bx++) {\n                        int tx, ty;\n                        // Load peri_row and peri_col\n                        #pragma omp parallel for private(tx, ty) shared(m, peri_row, peri_col, matrix_dim, offset, bx, by)\n                        for (ty = 0; ty < BLOCK_SIZE; ty++) {\n                            for (tx = 0; tx < BLOCK_SIZE; tx++) {\n                                int global_row_id = offset + (by + 1) * BLOCK_SIZE;\n                                int global_col_id = offset + (bx + 1) * BLOCK_SIZE;\n                                peri_row[ty * BLOCK_SIZE + tx] = m[(offset + ty) * matrix_dim + global_col_id + tx];\n                                peri_col[ty * BLOCK_SIZE + tx] = m[(global_row_id + ty) * matrix_dim + offset + tx];\n                            }\n                        }\n\n                        // Removed barrier here to avoid nested barrier error\n\n                        // Compute sum and update m\n                        #pragma omp parallel for private(tx, ty, i) shared(m, peri_row, peri_col, matrix_dim, offset, bx, by)\n                        for (ty = 0; ty < BLOCK_SIZE; ty++) {\n                            for (tx = 0; tx < BLOCK_SIZE; tx++) {\n                                float sum = 0.0f;\n                                for (i = 0; i < BLOCK_SIZE; i++) {\n                                    sum += peri_col[ty * BLOCK_SIZE + i] * peri_row[i * BLOCK_SIZE + tx];\n                                }\n                                int global_row_id = offset + (by + 1) * BLOCK_SIZE;\n                                int global_col_id = offset + (bx + 1) * BLOCK_SIZE;\n                                #pragma omp atomic\n                                m[(global_row_id + ty) * matrix_dim + global_col_id + tx] -= sum;\n                            }\n                        }\n                    }\n                }\n            }\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "omp/lud_omp.c"
+  ],
+  "target_files_extracted": [
+    "omp/lud_omp.c"
+  ],
+  "max_retries": 3,
+  "total_attempts": 2,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 17.727,
+      "prompt_tokens": 11411,
+      "completion_tokens": 2063,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": "The translation failed to compile with this error:\n```\nlud_omp.c: In function \u2018lud_omp\u2019:\nlud_omp.c:10:15: warning: unused variable \u2018k\u2019 [-Wunused-variable]\n     int i, j, k;\n               ^\nlud_omp.c:",
+      "build_error_snippet": "lud_omp.c: In function \u2018lud_omp\u2019:\nlud_omp.c:10:15: warning: unused variable \u2018k\u2019 [-Wunused-variable]\n     int i, j, k;\n               ^\nlud_omp.c:186:33: error: barrier region may not be closely nested inside of work-sharing, \u2018critical\u2019, \u2018ordered\u2019, \u2018master\u2019, explicit \u2018task\u2019 or \u2018taskloop\u2019 region\n                         #pragma omp barrier\n                                 ^~~\nmake[1]: *** [Makefile:101: lud_omp.o] Error 1\nmake: *** [Makefile:4: lud_omp] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    },
+    {
+      "attempt": 2,
+      "llm_response_time_seconds": 18.903,
+      "prompt_tokens": 13644,
+      "completion_tokens": 2065,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

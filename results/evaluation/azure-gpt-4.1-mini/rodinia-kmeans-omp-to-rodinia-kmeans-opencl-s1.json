@@ -1,0 +1,68 @@
+{
+  "source_spec": "rodinia-kmeans-omp",
+  "target_spec": "rodinia-kmeans-opencl",
+  "kernel": "kmeans",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-i",
+    "../../data/kmeans/kdd_cup"
+  ],
+  "timestamp": "2026-04-04T21:28:44Z",
+  "prompt_tokens": 36780,
+  "completion_tokens": 667,
+  "llm_response_time_seconds": 5.467,
+  "build_status": "pass",
+  "build_time_seconds": 0.847,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 2.906,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel_swap = 256, WG size of kernel_kmeans = 256 \n\nI/O completed\n\nNumber of objects: 494020\nNumber of features: 34\nnum_devices = 4\nERROR: clBuildProgram() => -11\nERROR: clEnqueueWriteBuffer d_cluster (size:494020) => -38\niterated 1 times\nNumber of Iteration: 1\nInit: 0.000000\nMemAlloc: 0.000000\nHtoD: 0.000000\nExec: 0.000000\nDtoH: 0.000000\nClose: 0.026000\nTotal: 2047.586060\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?i)(PASS|passed|SUCCESS|correct)' NOT found in stdout. Output indicates correctness",
+  "metrics": {},
+  "baseline_wall_time_seconds": 1.498,
+  "translated_wall_time_seconds": 2.906,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.5155,
+  "translated_files": {
+    "kmeans.cl": "// OpenCL kernel code for kmeans clustering adaptation\n// This kernel replaces the OpenMP parallel region in kmeans_clustering function\n\n#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n__kernel void kmeans_assign_clusters(\n    __global const float* features,       // Flattened feature array: npoints * nfeatures\n    __global const float* clusters,       // Flattened clusters array: nclusters * nfeatures\n    __global int* membership,             // Membership array for each point\n    __global float* partial_new_centers,  // Partial sums per thread: nthreads * nclusters * nfeatures\n    __global int* partial_new_centers_len,// Partial counts per thread: nthreads * nclusters\n    const int nfeatures,\n    const int npoints,\n    const int nclusters,\n    const int nthreads)\n{\n    int gid = get_global_id(0);\n    int lid = get_local_id(0);\n    int group_size = get_local_size(0);\n    int group_id = get_group_id(0);\n\n    // Each work-item processes one data point\n    if (gid < npoints) {\n        // Find nearest cluster\n        float min_dist = FLT_MAX;\n        int index = 0;\n        for (int c = 0; c < nclusters; c++) {\n            float dist = 0.0f;\n            for (int f = 0; f < nfeatures; f++) {\n                float diff = features[gid * nfeatures + f] - clusters[c * nfeatures + f];\n                dist += diff * diff;\n            }\n            if (dist < min_dist) {\n                min_dist = dist;\n                index = c;\n            }\n        }\n\n        int old_membership = membership[gid];\n        membership[gid] = index;\n\n        // Note: delta reduction not implemented here; host code can compute delta if needed\n\n        // Accumulate partial sum for new centers\n        int tid = group_id * group_size + lid;  // global thread id\n        // Since OpenCL threads are typically many, we assume nthreads passed corresponds to total global size\n        // Store partial sums in partial_new_centers and counts in partial_new_centers_len\n        // Use atomic operations to avoid race conditions\n\n        // Increment count for this cluster\n        atomic_inc(&partial_new_centers_len[tid * nclusters + index]);\n\n        // Sum features for this cluster\n        for (int f = 0; f < nfeatures; f++) {\n            // Atomic add for float is not available in OpenCL 2.0 on all devices,\n            // so we emulate with atomic_add on int if possible or use local memory reduction.\n            // Here we assume device supports atomic_add on floats (cl_khr_fp64 or cl_khr_fp16)\n            // Otherwise, this must be done on host or with other methods.\n\n            // Note: atomic_add on float requires OpenCL 2.0 or extension\n            atomic_add(&partial_new_centers[(tid * nclusters + index) * nfeatures + f], features[gid * nfeatures + f]);\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "kmeans.cl"
+  ],
+  "target_files_extracted": [
+    "kmeans.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 5.467,
+      "prompt_tokens": 36780,
+      "completion_tokens": 667,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

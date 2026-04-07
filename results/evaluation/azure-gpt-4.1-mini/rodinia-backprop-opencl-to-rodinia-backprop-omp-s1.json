@@ -1,0 +1,65 @@
+{
+  "source_spec": "rodinia-backprop-opencl",
+  "target_spec": "rodinia-backprop-omp",
+  "kernel": "backprop",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T21:39:37Z",
+  "prompt_tokens": 10429,
+  "completion_tokens": 733,
+  "llm_response_time_seconds": 7.465,
+  "build_status": "fail",
+  "build_time_seconds": 0.037,
+  "build_error_snippet": "backprop.c: In function \u2018bpnn_layerforward_omp\u2019:\nbackprop.c:26:31: error: invalid branch to/from OpenMP structured block\n         if (by >= num_blocks) return;\n                               ^~~~~~\nbackprop.c: In function \u2018bpnn_adjust_weights_omp\u2019:\nbackprop.c:74:31: error: invalid branch to/from OpenMP structured block\n         if (by >= num_blocks) return;\n                               ^~~~~~\nmake: *** [Makefile:16: backprop.o] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: _omp\u2019:\nbackprop.c:74:31: error: invalid branch to/from OpenMP structured block\n         if (by >= num_blocks) return;\n                               ^~~~~~\nmake: *** [Makefile:16: backprop.o] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.016,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "backprop.c": "#define THREADS 256\n#define WIDTH 16  \n#define HEIGHT 16 \n#define ETA 0.3f       \n#define MOMENTUM 0.3f  \n\n#include <omp.h>\n\nvoid bpnn_layerforward_omp(float *input_cuda,\n\t                  float *output_hidden_cuda,\n\t\t\t\t\t  float *input_hidden_cuda,\n\t\t\t\t\t  float *hidden_partial_sum,\n\t\t\t\t\t  int in,\n\t\t\t\t\t  int hid)\n{\n    int num_blocks = in / HEIGHT;\n    float weight_matrix[HEIGHT][WIDTH];\n    float input_node[HEIGHT];\n\n    #pragma omp parallel num_threads(THREADS)\n    {\n        int by = omp_get_thread_num() / HEIGHT;\n        int tx = omp_get_thread_num() % WIDTH;\n        int ty = omp_get_thread_num() / WIDTH;\n\n        if (by >= num_blocks) return;\n\n        int index =  ( hid + 1 ) * HEIGHT * by + ( hid + 1 ) * ty + tx + 1 + ( hid + 1 );  \n        int index_in = HEIGHT * by + ty + 1;\n\n        if (tx == 0)\n            input_node[ty] = input_cuda[index_in];\n\n        #pragma omp barrier\n\n        weight_matrix[ty][tx] = input_hidden_cuda[index];\n        #pragma omp barrier\n\n        weight_matrix[ty][tx] = weight_matrix[ty][tx] * input_node[ty];\n        #pragma omp barrier\n\n        for (int i = 1; i <= HEIGHT; i = i*2) {\n            int power_two = i;\n            if (ty % power_two == 0)\n                weight_matrix[ty][tx] = weight_matrix[ty][tx] + weight_matrix[(ty + power_two/2)][tx];\n\n            #pragma omp barrier\n        }\n\n        input_hidden_cuda[index] = weight_matrix[ty][tx];\n        #pragma omp barrier\n\n        if (tx == 0) {\n            hidden_partial_sum[by * hid + ty] = weight_matrix[tx][ty];\n        }\n    }\n}\n\nvoid bpnn_adjust_weights_omp(float * delta,   \n\t\t\t\t\t\t\t\t\t\t int hid,         \n\t\t\t\t\t\t\t\t\t\tfloat * ly,      \n\t\t\t\t\t\t\t\t\t\t int in,          \n\t\t\t\t\t\t\t\t\t\tfloat * w,       \n\t\t\t\t\t\t\t\t\t\tfloat * oldw)  \t\t\t\t\t\t\t\t\t\n{\n    int num_blocks = in / HEIGHT;\n\n    #pragma omp parallel num_threads(THREADS)\n    {\n        int by = omp_get_thread_num() / HEIGHT;\n        int tx = omp_get_thread_num() % WIDTH;\n        int ty = omp_get_thread_num() / WIDTH;\n\n        if (by >= num_blocks) return;\n\n        int index =  ( hid + 1 ) * HEIGHT * by + ( hid + 1 ) * ty + tx + 1 + ( hid + 1 );  \n        int index_y = HEIGHT * by + ty + 1;\n        int index_x = tx + 1;\n\n        w[index] += ((ETA * delta[index_x] * ly[index_y]) + (MOMENTUM * oldw[index]));\n        oldw[index] = ((ETA * delta[index_x] * ly[index_y]) + (MOMENTUM * oldw[index]));\n\n        #pragma omp barrier\n\n        if (ty == 0 && by ==0){\n            w[index_x] += ((ETA * delta[index_x]) + (MOMENTUM * oldw[index_x]));\n            oldw[index_x] = ((ETA * delta[index_x]) + (MOMENTUM * oldw[index_x]));\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "backprop.c"
+  ],
+  "target_files_extracted": [
+    "backprop.c"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 7.465,
+      "prompt_tokens": 10429,
+      "completion_tokens": 733,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "backprop.c: In function \u2018bpnn_layerforward_omp\u2019:\nbackprop.c:26:31: error: invalid branch to/from OpenMP structured block\n         if (by >= num_blocks) return;\n                               ^~~~~~\nbackprop.c: In function \u2018bpnn_adjust_weights_omp\u2019:\nbackprop.c:74:31: error: invalid branch to/from OpenMP structured block\n         if (by >= num_blocks) return;\n                               ^~~~~~\nmake: *** [Makefile:16: backprop.o] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

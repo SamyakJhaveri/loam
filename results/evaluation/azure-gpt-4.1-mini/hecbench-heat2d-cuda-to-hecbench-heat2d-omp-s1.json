@@ -1,0 +1,65 @@
+{
+  "source_spec": "hecbench-heat2d-cuda",
+  "target_spec": "hecbench-heat2d-omp",
+  "kernel": "heat2d",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 1,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-04T22:06:34Z",
+  "prompt_tokens": 227,
+  "completion_tokens": 359,
+  "llm_response_time_seconds": 3.268,
+  "build_status": "fail",
+  "build_time_seconds": 0.014,
+  "build_error_snippet": "make: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n\nmake: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: efile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n\nmake: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.282,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "main.cpp": "#include <iostream>\n#include <omp.h>\n\n#define N 1024\n#define STEPS 1000\n\nint main() {\n    float u[N][N];\n    float u_new[N][N];\n\n    // Initialize u with some values (e.g., 0)\n    #pragma omp parallel for collapse(2)\n    for(int i = 0; i < N; ++i)\n        for(int j = 0; j < N; ++j)\n            u[i][j] = 0.0f;\n\n    // Main time-stepping loop\n    for (int t = 0; t < STEPS; ++t) {\n        #pragma omp parallel for collapse(2)\n        for (int i = 1; i < N - 1; i++) {\n            for (int j = 1; j < N - 1; j++) {\n                u_new[i][j] = 0.25f * (u[i+1][j] + u[i-1][j] + u[i][j+1] + u[i][j-1]);\n            }\n        }\n\n        // Swap pointers or copy new to old\n        #pragma omp parallel for collapse(2)\n        for (int i = 1; i < N - 1; i++) {\n            for (int j = 1; j < N - 1; j++) {\n                u[i][j] = u_new[i][j];\n            }\n        }\n    }\n\n    // Output final value at center\n    std::cout << \"Center value: \" << u[N/2][N/2] << std::endl;\n\n    return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "main.cpp"
+  ],
+  "target_files_extracted": [
+    "main.cpp"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 3.268,
+      "prompt_tokens": 227,
+      "completion_tokens": 359,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "make: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n\nmake: Makefile.aomp: No such file or directory\nmake: *** No rule to make target 'Makefile.aomp'.  Stop.\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}
