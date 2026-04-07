@@ -101,6 +101,11 @@ MODEL_LINESTYLE: dict[str, tuple[str, str]] = {
     "azure-gpt-4.1-mini":          ("v-", "solid"),
 }
 
+MODEL_SLUG: dict[str, str] = {
+    "together-qwen-3.5-397b-a17b": "qwen",
+    "azure-gpt-4.1-mini": "gpt",
+}
+
 # Legacy palette references for survey figures (F2, C.4)
 PALETTE = {
     "rose":         OKABE_ITO["vermillion"],
@@ -131,6 +136,8 @@ DIRECTIONS = [
     "omp-to-opencl", "opencl-to-omp",
 ]
 
+ALL_DIRECTIONS = DIRECTIONS + ["cuda-to-omp_target", "omp_target-to-cuda"]
+
 DIRECTION_LABELS = {
     "cuda-to-omp": "CUDA\u2192OMP",
     "omp-to-cuda": "OMP\u2192CUDA",
@@ -138,6 +145,8 @@ DIRECTION_LABELS = {
     "opencl-to-cuda": "OCL\u2192CUDA",
     "omp-to-opencl": "OMP\u2192OCL",
     "opencl-to-omp": "OCL\u2192OMP",
+    "cuda-to-omp_target": "CUDA\u2192OMP-T",
+    "omp_target-to-cuda": "OMP-T\u2192CUDA",
 }
 
 SUITE_ORDER = ["rodinia", "xsbench", "rsbench", "mixbench", "hecbench"]
@@ -256,6 +265,7 @@ def _extract_suite(spec_name: str) -> str:
         if spec_name.startswith(prefix + "-"):
             return prefix
     return "other"
+
 
 
 def _classify_initial_status(attempt: dict) -> str:
@@ -524,23 +534,28 @@ def generate_f3_kernel_heatmap(
     output_dir: Path,
     verbose: bool,
     project_root: Path | None = None,
+    *,
+    model_id: str,
 ) -> None:
-    """F3: Single-panel heatmap of all benchmark kernels x 6 directions, grouped by suite.
+    """F3: Single-panel heatmap of all benchmark kernels x directions, grouped by suite.
 
-    Uses only non-sample, non-augmented (L0 base) records in the standard
-    6 directions.  Kernels are grouped by suite (SUITE_ORDER) with horizontal
-    divider lines and suite labels on the left margin.
+    Uses only non-sample, non-augmented (L0 base) records for the given model
+    in all directions available for that model.  Kernels are grouped by suite
+    (SUITE_ORDER) with horizontal divider lines and suite labels on the left margin.
     Includes ALL kernels from spec files, not just those with eval results.
     """
+    slug = MODEL_SLUG[model_id]
+
     # ------------------------------------------------------------------
-    # 1. Filter to base L0 records in standard 6 directions
+    # 1. Filter to base L0 records for this model's directions
     # ------------------------------------------------------------------
     base_records = [r for r in records if not r.get("is_sample", False)]
     l0_records = filter_records(base_records, level=0)
-    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
+    directions = list(ALL_DIRECTIONS)  # always 8 directions for consistent layout
+    std_records = [r for r in l0_records if r["direction"] in directions and r.get("model") == model_id]
 
     if not std_records:
-        print("  WARNING: No L0 standard-direction records -- skipping F3.")
+        print("  WARNING: No L0 records for this model -- skipping F3.")
         return
 
     # ------------------------------------------------------------------
@@ -552,7 +567,7 @@ def generate_f3_kernel_heatmap(
 
     kernel_apis: dict[str, set[str]] = defaultdict(set)
     # Also scan ALL records (not just std) to detect omp_target-only kernels
-    for r in [r for r in records if not r.get("is_sample", False)]:
+    for r in [r for r in records if not r.get("is_sample", False) and r.get("model") == model_id]:
         rk = r.get("kernel", "")
         src_spec = r.get("source_spec", "")
         tgt_spec = r.get("target_spec", "")
@@ -600,7 +615,6 @@ def generate_f3_kernel_heatmap(
     for suite in SUITE_ORDER:
         suite_kernels = sorted(
             [k for k, s in kernel_suite.items() if s == suite],
-            key=lambda k: (-kernel_pass_count.get(k, 0), k),
         )
         if suite_kernels:
             suite_groups.append((suite, suite_kernels))
@@ -618,10 +632,10 @@ def generate_f3_kernel_heatmap(
         suite_midpoints.append((suite_name, mid))
 
     n_kernels = len(kernels_ordered)
-    n_dirs = len(DIRECTIONS)
+    n_dirs = len(directions)
 
     if verbose:
-        print(f"  Total kernels in standard directions: {n_kernels}")
+        print(f"  Total kernels for {MODEL_DISPLAY_SHORT[model_id]}: {n_kernels}")
         for suite_name, suite_kernels in suite_groups:
             print(f"    {suite_name}: {len(suite_kernels)} kernels")
 
@@ -635,7 +649,7 @@ def generate_f3_kernel_heatmap(
     present: set[str] = set()
 
     for i, kernel in enumerate(kernels_ordered):
-        for j, direction in enumerate(DIRECTIONS):
+        for j, direction in enumerate(directions):
             status = lookup.get((kernel, direction))
             if status and status in status_to_idx:
                 matrix[i, j] = status_to_idx[status]
@@ -655,11 +669,11 @@ def generate_f3_kernel_heatmap(
     ax.imshow(matrix, cmap=cmap, norm=norm, aspect="auto")
 
     # API display names for missing-data labels
-    _api_full = {"omp": "OpenMP", "cuda": "CUDA", "opencl": "OpenCL"}
+    _api_full = {"omp": "OpenMP", "cuda": "CUDA", "opencl": "OpenCL", "omp_target": "OMP-Target"}
 
     # Cell text: status abbreviation or specific missing-API reason
     for i, kernel in enumerate(kernels_ordered):
-        for j, direction in enumerate(DIRECTIONS):
+        for j, direction in enumerate(directions):
             status = lookup.get((kernel, direction))
             if status and status in STATUS_ABBREV:
                 bg = STATUS_COLORS.get(status, "#FFFFFF")
@@ -697,7 +711,7 @@ def generate_f3_kernel_heatmap(
     # ------------------------------------------------------------------
     ax.set_xticks(range(n_dirs))
     ax.set_xticklabels(
-        [DIRECTION_LABELS[d] for d in DIRECTIONS],
+        [DIRECTION_LABELS[d] for d in directions],
         fontsize=8, rotation=0, ha="center",
     )
     ax.xaxis.set_ticks_position("top")
@@ -737,10 +751,11 @@ def generate_f3_kernel_heatmap(
         )
 
     # ------------------------------------------------------------------
-    # 9. Title and annotation for GPT-4.1 mini
+    # 9. Title
     # ------------------------------------------------------------------
+    model_name = MODEL_DISPLAY_SHORT[model_id]
     ax.set_title(
-        f"Per-Kernel Translation Outcomes (L0, All Suites, All Models)\n"
+        f"Per-Kernel Translation Outcomes (L0, All Suites, {model_name})\n"
         f"{n_kernels} kernels \u00d7 {n_dirs} directions",
         fontsize=10, fontweight="bold", pad=12,
     )
@@ -773,7 +788,7 @@ def generate_f3_kernel_heatmap(
 
     fig.tight_layout()
     fig.subplots_adjust(left=0.28, bottom=0.06)
-    _save_figure(fig, output_dir, "f3_kernel_model_heatmap")
+    _save_figure(fig, output_dir, f"f3_kernel_model_heatmap_{slug}")
     plt.close(fig)
 
 
@@ -786,28 +801,30 @@ def generate_f4_failure_taxonomy(
     records: list[dict],
     output_dir: Path,
     verbose: bool,
+    *,
+    model_id: str,
 ) -> None:
-    """F4: Failure taxonomy -- status distribution by direction (all suites)."""
+    """F4: Failure taxonomy -- status distribution by direction (per model)."""
     base_records = [r for r in records if not r.get("is_sample", False)]
     l0_records = filter_records(base_records, level=0)
-    # Filter to standard 6 directions only
-    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
+    directions = list(ALL_DIRECTIONS)  # always 8 directions for consistent layout
+    std_records = [r for r in l0_records if r["direction"] in directions and r.get("model") == model_id]
 
     if not std_records:
-        print("  WARNING: No L0 standard-direction records -- skipping F4.")
+        print(f"  WARNING: No L0 records for {MODEL_DISPLAY_SHORT[model_id]} -- skipping F4.")
         return
 
     dir_status = aggregate_status_counts(std_records, "direction")
 
     if verbose:
-        for d in DIRECTIONS:
+        for d in directions:
             counts = dir_status.get(d, {})
             total = sum(counts.values())
             print(f"  {d}: {total} tasks")
 
     fig, ax = plt.subplots(figsize=(4.5, 3.0))
 
-    active_dirs = [d for d in DIRECTIONS if d in dir_status]
+    active_dirs = list(ALL_DIRECTIONS)  # show all 8 directions, zero bars for missing
     x = np.arange(len(active_dirs))
     bar_width = 0.6
 
@@ -846,9 +863,10 @@ def generate_f4_failure_taxonomy(
     ax.set_ylabel("Number of Tasks")
     ax.set_ylim(0, max(bottoms) * 1.08 if max(bottoms) > 0 else 1)
     ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    model_name = MODEL_DISPLAY_SHORT[model_id]
     ax.set_title(
-        "Failure Taxonomy: Status Distribution by Direction\n(L0, All Suites, All Models)",
-        fontsize=9, fontweight="bold",
+        f"Failure Taxonomy: Status Distribution by Direction\n(L0, All Suites, {model_name})",
+        fontsize=9, fontweight="bold", pad=8,
     )
 
     present_ordered = [s for s in STATUS_ORDER if s in all_statuses]
@@ -862,7 +880,7 @@ def generate_f4_failure_taxonomy(
     ax.grid(axis="y", alpha=0.3)
 
     fig.tight_layout()
-    _save_figure(fig, output_dir, "f4_failure_taxonomy")
+    _save_figure(fig, output_dir, f"f4_failure_taxonomy_{MODEL_SLUG[model_id]}")
     plt.close(fig)
 
 
@@ -875,24 +893,26 @@ def generate_f5_pass_at_k(
     records: list[dict],
     output_dir: Path,
     verbose: bool,
+    *,
+    model_id: str,
 ) -> None:
-    """F5: pass@k by translation direction.
+    """F5: pass@k by translation direction (per model).
 
     CRITICAL: Filters to true sample files using the ``is_sample`` field
     (determined by filename ``-sN`` pattern), NOT the ``sample_id`` JSON field.
     """
-    # Only true sample files in the 6 standard directions
+    # Only true sample files for this model (all directions)
     sample_records = [
         r for r in records
-        if r.get("is_sample", False) and r["direction"] in DIRECTIONS
+        if r.get("is_sample", False) and r.get("model") == model_id
     ]
 
     if not sample_records:
-        print("  WARNING: No sample records for pass@k -- skipping F5.")
+        print(f"  WARNING: No sample records for {MODEL_DISPLAY_SHORT[model_id]} -- skipping F5.")
         return
 
     if verbose:
-        print(f"  Sample records for pass@k: {len(sample_records)}")
+        print(f"  Sample records for pass@k ({MODEL_DISPLAY_SHORT[model_id]}): {len(sample_records)}")
 
     # Group by (kernel, direction), collect pass/fail per sample
     kernel_dir_samples: dict[tuple[str, str], list[int]] = defaultdict(list)
@@ -923,12 +943,13 @@ def generate_f5_pass_at_k(
 
     fig, ax = plt.subplots(figsize=(3.5, 2.5))
 
-    x_dirs = [d for d in DIRECTIONS if d in dir_pass1]
+    sample_dirs = {r["direction"] for r in sample_records}
+    x_dirs = list(ALL_DIRECTIONS)  # always 8 directions for consistent layout
     x_pos = np.arange(len(x_dirs))
     width = 0.35
 
-    avg_pass1 = [np.mean(dir_pass1[d]) for d in x_dirs]
-    avg_pass3 = [np.mean(dir_pass3[d]) for d in x_dirs]
+    avg_pass1 = [np.mean(dir_pass1[d]) if dir_pass1[d] else 0.0 for d in x_dirs]
+    avg_pass3 = [np.mean(dir_pass3[d]) if dir_pass3[d] else 0.0 for d in x_dirs]
 
     bars1 = ax.bar(x_pos - width / 2, avg_pass1, width,
                    label="pass@1", color=STATUS_COLORS["BUILD_FAIL"],
@@ -950,13 +971,22 @@ def generate_f5_pass_at_k(
                        fontsize=8, rotation=30, ha="right")
     ax.set_ylabel("Average pass@k")
     ax.set_ylim(0, 1.15)
-    ax.set_title("pass@k by Translation Direction",
-                 fontsize=10, fontweight="bold", pad=8)
+
+    # Subtitle noting number of directions with sample data
+    n_sample_dirs = len([d for d in x_dirs if dir_pass1[d]])
+    n_total_dirs = len(ALL_DIRECTIONS)
+    subtitle = f"({n_sample_dirs} of {n_total_dirs} directions with sample data)" if n_sample_dirs < n_total_dirs else ""
+
+    model_name = MODEL_DISPLAY_SHORT[model_id]
+    title = f"pass@k by Translation Direction\n({model_name})"
+    if subtitle:
+        title += f"\n{subtitle}"
+    ax.set_title(title, fontsize=10, fontweight="bold", pad=8)
     ax.legend(fontsize=9, frameon=False)
     ax.grid(axis="y", alpha=0.3)
 
     fig.tight_layout()
-    _save_figure(fig, output_dir, "f5_pass_at_k_by_direction")
+    _save_figure(fig, output_dir, f"f5_pass_at_k_by_direction_{MODEL_SLUG[model_id]}")
     plt.close(fig)
 
 
@@ -990,14 +1020,17 @@ def generate_f6_cross_suite_comparison(
     records: list[dict],
     output_dir: Path,
     verbose: bool,
+    *,
+    model_id: str,
 ) -> None:
-    """F6: Cross-suite aggregate pass rate comparison bar chart."""
+    """F6: Cross-suite aggregate pass rate comparison bar chart (per model)."""
     base_records = [r for r in records if not r.get("is_sample", False)]
     l0_records = filter_records(base_records, level=0)
-    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
+    directions = list(ALL_DIRECTIONS)  # always 8 directions for consistent layout
+    std_records = [r for r in l0_records if r["direction"] in directions and r.get("model") == model_id]
 
     if not std_records:
-        print("  WARNING: No L0 standard-direction records -- skipping F6.")
+        print(f"  WARNING: No L0 records for {MODEL_DISPLAY_SHORT[model_id]} -- skipping F6.")
         return
 
     # Compute per-suite stats
@@ -1091,24 +1124,38 @@ def generate_f6_cross_suite_comparison(
     )
     ax.set_ylabel("Pass Rate")
     ax.set_ylim(0, 1.15)
+    model_name = MODEL_DISPLAY_SHORT[model_id]
     ax.set_title(
-        "L0 Pass Rate by Suite (Standard Directions, All Models)",
+        f"L0 Pass Rate by Suite ({model_name})",
         fontsize=9, fontweight="bold", pad=8,
     )
     ax.grid(axis="y", alpha=0.3)
 
-    # Explanatory footnote
-    fig.text(
-        0.5, 0.02,
-        "XSBench/RSBench 0%: complex multi-file programs with inter-module\n"
-        "dependencies — all translations failed (primarily build/linker errors).\n"
-        "HeCBench 90%: single-file kernels.",
-        ha="center", va="top", fontsize=6.5, fontstyle="italic", color="#555555",
-    )
-
     fig.tight_layout()
-    fig.subplots_adjust(bottom=0.18)
-    _save_figure(fig, output_dir, "f6_cross_suite_comparison")
+
+    # Conditional explanatory footnote: only show if any suite has 0% pass rate
+    zero_suites = [s["suite"] for s in suite_stats if s["pass"] == 0 and s["total"] > 0]
+    if zero_suites:
+        zero_names = "/".join(SUITE_DISPLAY.get(s, s) for s in zero_suites)
+        # Build footnote lines dynamically — avoid hardcoding suite-specific rates
+        footnote_lines = (
+            f"{zero_names} 0%: complex multi-file programs with inter-module\n"
+            "dependencies \u2014 all translations failed (primarily build/linker errors)."
+        )
+        # Only mention HeCBench single-file advantage if HeCBench is NOT among the zero suites
+        if "hecbench" not in zero_suites:
+            hecbench_stat = next((s for s in suite_stats if s["suite"] == "hecbench"), None)
+            if hecbench_stat and hecbench_stat["total"] > 0:
+                footnote_lines += (
+                    f"\nHeCBench {hecbench_stat['rate']:.0%}: single-file kernels."
+                )
+        fig.text(
+            0.5, 0.02,
+            footnote_lines,
+            ha="center", va="top", fontsize=6.5, fontstyle="italic", color="#555555",
+        )
+        fig.subplots_adjust(bottom=0.18)
+    _save_figure(fig, output_dir, f"f6_cross_suite_comparison_{MODEL_SLUG[model_id]}")
     plt.close(fig)
 
 
@@ -1764,24 +1811,28 @@ def main() -> None:
         print()
 
     if "F3" in requested:
-        print("Generating F3: Per-Kernel Translation Outcomes (all suites)...")
-        generate_f3_kernel_heatmap(records, output_dir, v, project_root=project_root)
-        print()
+        for mid in MODEL_SLUG:
+            print(f"Generating F3: Per-Kernel Translation Outcomes ({MODEL_DISPLAY_SHORT[mid]})...")
+            generate_f3_kernel_heatmap(records, output_dir, v, project_root=project_root, model_id=mid)
+            print()
 
     if "F4" in requested:
-        print("Generating F4: Failure Taxonomy (all suites, all directions)...")
-        generate_f4_failure_taxonomy(records, output_dir, v)
-        print()
+        for mid in MODEL_SLUG:
+            print(f"Generating F4: Failure Taxonomy ({MODEL_DISPLAY_SHORT[mid]})...")
+            generate_f4_failure_taxonomy(records, output_dir, v, model_id=mid)
+            print()
 
     if "F5" in requested:
-        print("Generating F5: pass@k by Direction...")
-        generate_f5_pass_at_k(records, output_dir, v)
-        print()
+        for mid in MODEL_SLUG:
+            print(f"Generating F5: pass@k by Direction ({MODEL_DISPLAY_SHORT[mid]})...")
+            generate_f5_pass_at_k(records, output_dir, v, model_id=mid)
+            print()
 
     if "F6" in requested:
-        print("Generating F6: Cross-Suite Comparison...")
-        generate_f6_cross_suite_comparison(records, output_dir, v)
-        print()
+        for mid in MODEL_SLUG:
+            print(f"Generating F6: Cross-Suite Comparison ({MODEL_DISPLAY_SHORT[mid]})...")
+            generate_f6_cross_suite_comparison(records, output_dir, v, model_id=mid)
+            print()
 
     if "F7" in requested:
         print("Generating F7: Augmentation Robustness (L0-L4)...")

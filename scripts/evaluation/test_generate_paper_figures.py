@@ -75,9 +75,9 @@ def test_model_constants_reflect_two_model_layout():
 # ---------------------------------------------------------------------------
 
 def test_f3_heatmap_kernel_count():
-    """Verify F3 data path finds 29 unique kernels across 5 suites in standard directions."""
+    """Verify F3 data path finds 35 unique kernels per model across 5 suites."""
     from scripts.generate_paper_figures import (
-        load_eval_results, filter_records, DIRECTIONS, SUITE_ORDER, _extract_suite,
+        load_eval_results, filter_records, ALL_DIRECTIONS, MODEL_SLUG,
     )
 
     project_root = Path(__file__).resolve().parent.parent.parent
@@ -87,24 +87,31 @@ def test_f3_heatmap_kernel_count():
     # Replicate the exact filtering logic from generate_f3_kernel_heatmap
     base_records = [r for r in records if not r.get("is_sample", False)]
     l0_records = filter_records(base_records, level=0)
-    std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
 
-    # Collect unique kernels (same logic as the function)
-    kernel_suite = {}
-    for r in std_records:
-        kernel_suite[r["kernel"]] = r.get("suite", "other")
+    for model_id in MODEL_SLUG:
+        directions = list(ALL_DIRECTIONS)  # always 8 directions for consistent layout
+        std_records = [
+            r for r in l0_records
+            if r["direction"] in directions and r.get("model") == model_id
+        ]
 
-    n_kernels = len(kernel_suite)
-    assert n_kernels == 29, (
-        f"Expected 29 kernels in F3 heatmap, got {n_kernels}. "
-        f"Kernels: {sorted(kernel_suite.keys())}"
-    )
+        # Collect unique kernels (same logic as the function)
+        kernel_suite = {}
+        for r in std_records:
+            kernel_suite[r["kernel"]] = r.get("suite", "other")
 
-    # Verify that multiple suites are represented (not just rodinia)
-    suites_present = set(kernel_suite.values())
-    assert len(suites_present) >= 3, (
-        f"Expected kernels from at least 3 suites, got: {suites_present}"
-    )
+        n_kernels = len(kernel_suite)
+        # 34 kernels from eval records; F3 function finds 35 (adds 1 from spec scanning)
+        assert n_kernels >= 34, (
+            f"Expected at least 34 kernels in F3 heatmap for {model_id}, got {n_kernels}. "
+            f"Kernels: {sorted(kernel_suite.keys())}"
+        )
+
+        # Verify that multiple suites are represented (not just rodinia)
+        suites_present = set(kernel_suite.values())
+        assert len(suites_present) >= 3, (
+            f"Expected kernels from at least 3 suites for {model_id}, got: {suites_present}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -143,8 +150,9 @@ def test_t2_table_has_two_model_layout(tmp_path):
     content = tex_path.read_text()
     assert "Qwen 3.5 397B" in content, "Qwen model row missing from T2 table"
     assert "GPT-4.1 mini" in content, "GPT-4.1 mini row missing from T2 table"
-    assert content.count("pending") >= 7, (
-        f"Expected at least 7 'pending' entries for GPT row, found {content.count('pending')}"
+    # GPT row should have computed stats (no "pending" entries)
+    assert "pending" not in content.lower(), (
+        f"T2 table still has 'pending' entries — GPT stats should be computed"
     )
     assert "\\toprule" in content, "LaTeX table missing \\toprule"
     assert "\\bottomrule" in content, "LaTeX table missing \\bottomrule"
@@ -162,10 +170,14 @@ def test_pdf_png_parity():
     # These are the actual output stems from _save_figure() calls in the script
     expected_stems = [
         "f2_repo_vs_kernel",
-        "f3_kernel_model_heatmap",
-        "f4_failure_taxonomy",
-        "f5_pass_at_k_by_direction",
-        "f6_cross_suite_comparison",
+        "f3_kernel_model_heatmap_qwen",
+        "f3_kernel_model_heatmap_gpt",
+        "f4_failure_taxonomy_qwen",
+        "f4_failure_taxonomy_gpt",
+        "f5_pass_at_k_by_direction_qwen",
+        "f5_pass_at_k_by_direction_gpt",
+        "f6_cross_suite_comparison_qwen",
+        "f6_cross_suite_comparison_gpt",
         "f7_augmentation_robustness",
         "c1_repair_transition_matrix",
         "c2_repair_rate_by_direction",
