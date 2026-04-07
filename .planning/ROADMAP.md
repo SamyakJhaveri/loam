@@ -39,9 +39,11 @@ Plans:
 ### Phase 15.5: Pre-Work — Figure Fixes & Dependencies
 
 **Goal:** Fix figure generation scripts (GPT color, F7 dual-model), request hardware specs from Niranjan, verify analyze_eval.py multi-model support. Blockers for Phase 16.
-**Plans:** 1 plan (3 parallel tasks: PW-A, PW-B, PW-C)
+**Plans:** 2 plans
 
-- [ ] PLAN.md — Figure color fix, hardware specs request, analyze_eval.py verification
+Plans:
+- [ ] 15.5-01-PLAN.md — GPT color fix in MODEL_COLORS + F7 dual-model refactor with CI bars
+- [ ] 15.5-02-PLAN.md — Hardware specs email draft + analyze_eval.py --expected-models fix
 
 ### Phase 16: GPT-4.1 Mini Data Analysis & Summary Generation
 
