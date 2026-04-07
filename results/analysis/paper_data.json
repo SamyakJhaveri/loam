@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-04T20:34:33.073644+00:00",
+  "generated_at": "2026-04-07T19:40:58.812140+00:00",
   "model": "together-qwen-3.5-397b-a17b",
   "results_dir": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b",
   "suite_filter": null,
@@ -1015,21 +1015,57 @@
       }
     },
     "direction_asymmetry": {
-      "opencl-to-omp vs omp-to-opencl": {
+      "omp-to-opencl vs opencl-to-omp": {
         "n_paired": 18,
-        "forward_pass_rate": 0.3889,
-        "reverse_pass_rate": 0.3333,
+        "forward_pass_rate": 0.3333,
+        "reverse_pass_rate": 0.3889,
         "table": {
           "both_pass": 2,
-          "reverse_only": 4,
-          "forward_only": 5,
+          "reverse_only": 5,
+          "forward_only": 4,
           "both_fail": 7
         },
         "discordant": 9,
         "method": "exact",
         "p_value": 1.0,
-        "cohens_h": 0.1157,
+        "cohens_h": -0.1157,
         "effect_size": "small",
+        "alpha_corrected": 0.0125,
+        "significant": false
+      },
+      "cuda-to-omp vs omp-to-cuda": {
+        "n_paired": 24,
+        "forward_pass_rate": 0.6667,
+        "reverse_pass_rate": 0.5833,
+        "table": {
+          "both_pass": 12,
+          "reverse_only": 2,
+          "forward_only": 4,
+          "both_fail": 6
+        },
+        "discordant": 6,
+        "method": "exact",
+        "p_value": 0.6875,
+        "cohens_h": 0.1724,
+        "effect_size": "small",
+        "alpha_corrected": 0.0125,
+        "significant": false
+      },
+      "omp_target-to-cuda vs cuda-to-omp_target": {
+        "n_paired": 8,
+        "forward_pass_rate": 0.75,
+        "reverse_pass_rate": 0.125,
+        "table": {
+          "both_pass": 1,
+          "reverse_only": 0,
+          "forward_only": 5,
+          "both_fail": 2
+        },
+        "discordant": 5,
+        "method": "exact",
+        "p_value": 0.0625,
+        "cohens_h": 1.3717,
+        "effect_size": "large",
         "alpha_corrected": 0.0125,
         "significant": false
       },
@@ -1048,42 +1084,6 @@
         "p_value": 0.6875,
         "cohens_h": 0.2838,
         "effect_size": "medium",
-        "alpha_corrected": 0.0125,
-        "significant": false
-      },
-      "omp-to-cuda vs cuda-to-omp": {
-        "n_paired": 24,
-        "forward_pass_rate": 0.5833,
-        "reverse_pass_rate": 0.6667,
-        "table": {
-          "both_pass": 12,
-          "reverse_only": 4,
-          "forward_only": 2,
-          "both_fail": 6
-        },
-        "discordant": 6,
-        "method": "exact",
-        "p_value": 0.6875,
-        "cohens_h": -0.1724,
-        "effect_size": "small",
-        "alpha_corrected": 0.0125,
-        "significant": false
-      },
-      "cuda-to-omp_target vs omp_target-to-cuda": {
-        "n_paired": 8,
-        "forward_pass_rate": 0.125,
-        "reverse_pass_rate": 0.75,
-        "table": {
-          "both_pass": 1,
-          "reverse_only": 5,
-          "forward_only": 0,
-          "both_fail": 2
-        },
-        "discordant": 5,
-        "method": "exact",
-        "p_value": 0.0625,
-        "cohens_h": -1.3717,
-        "effect_size": "large",
         "alpha_corrected": 0.0125,
         "significant": false
       }

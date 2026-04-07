@@ -1219,7 +1219,7 @@ def main() -> None:
     # Step 4: Assemble output
     output = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "model": "together-qwen-3.5-397b-a17b",
+        "model": results_dir.name,
         "results_dir": str(results_dir),
         "suite_filter": args.suite,
         "excluded_specs": sorted(EXCLUDED_SPECS),
