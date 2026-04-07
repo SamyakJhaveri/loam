@@ -1305,3 +1305,77 @@ XSBench & xsbench & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.4\%] \\
 \end{tabular}
 \end{table*}
 
+%% ============================================================================
+%% APPENDIX E: Translation Prompt Template
+%% ============================================================================
+
+\section{Translation Prompt Template}
+\label{sec:appendix-prompt}
+
+This appendix reproduces the full translation prompt template used by the
+evaluation pipeline. All prompts follow this structure; only the source code
+content, target API, and file lists vary between tasks. The anonymization
+protocol described in Section~\ref{sec:eval-pipeline} is applied before
+prompt construction.
+
+\subsection{System Message}
+
+The system message is identical for all translation tasks:
+
+\begin{lstlisting}[language={},caption={System message template. \texttt{\{src\_api\}} and \texttt{\{tgt\_api\}} are replaced with API display names (e.g., ``CUDA'', ``OpenMP''). \texttt{\{tgt\_lang\}} is the target language hint (e.g., ``cpp'', ``c'').},label={lst:system-msg}]
+You are a parallel programming expert
+specializing in {src_api} to {tgt_api}
+translation. Translate the provided source
+code to {tgt_api}. Output ONLY the translated
+code, no explanations. For each file, output
+a markdown code fence with the filename on
+the opening line:
+
+```{tgt_lang} filename={filename}
+<code>
+```
+
+Preserve the algorithm, I/O behavior, data
+formats, and output format exactly. The
+translated code must compile with the
+provided build command.
+\end{lstlisting}
+
+\subsection{User Message Structure}
+
+The user message is assembled from the following sections, in order:
+
+\begin{enumerate}
+\item \textbf{Translation Task} --- source API, target API. Kernel name and
+  benchmark description are \emph{not} included (anonymization).
+\item \textbf{Target Files to Produce} --- list of anonymized target filenames
+  (e.g., \texttt{translated\_0.cpp}, \texttt{translated\_1.cl}).
+\item \textbf{Build Command} --- the anonymized compilation command in a code
+  fence, so the LLM can ensure API and flag compatibility.
+\item \textbf{Source Code} --- each source file presented as a numbered
+  subsection (\texttt{Source File 1}, \texttt{Source File 2}, \ldots) with
+  comments stripped.
+\item \textbf{Support / Header Files} (optional) --- genericized header and
+  support files from the source directory, with an instruction to inline
+  definitions rather than emit unresolvable \texttt{\#include} directives.
+\item \textbf{Target Infrastructure Context} (optional) --- non-kernel target
+  files provided as read-only reference so the LLM can match expected function
+  signatures and data structures. Marked ``DO NOT MODIFY.''
+\end{enumerate}
+
+\subsection{Anonymization Details}
+
+Three anonymization steps are applied before prompt construction:
+
+\begin{itemize}
+\item \textbf{Comment stripping.} All C/C++ comments (\texttt{//} and
+  \texttt{/* */}) are removed from source files to prevent benchmark-specific
+  annotations from leaking into the prompt.
+\item \textbf{Filename genericization.} Target filenames are replaced with
+  \texttt{translated\_0.ext}, \texttt{translated\_1.ext}, etc. Source files
+  are labeled \texttt{Source File 1}, \texttt{Source File 2}. An internal
+  mapping restores original filenames when writing LLM output to disk.
+\item \textbf{Build command anonymization.} Kernel-specific identifiers are
+  stripped from the build command string.
+\end{itemize}
+
