@@ -1123,11 +1123,11 @@ def generate_f7_augmentation(
     output_dir: Path,
     verbose: bool,
 ) -> None:
-    """F7: Augmentation robustness -- pass rate vs. augmentation level (Qwen only)."""
+    """F7: Augmentation robustness -- pass rate vs. augmentation level (dual-model)."""
     levels = [0, 1, 2, 3, 4]
     level_labels = ["L0\n(original)", "L1", "L2", "L3", "L4\n(max)"]
 
-    # Compute from records -- all suites, cuda-to-omp direction only
+    # Filter to non-sample, cuda-to-omp direction only
     base_records = [r for r in records if not r.get("is_sample", False)]
     c2o_all = [r for r in base_records
                if r.get("direction") == "cuda-to-omp"]
@@ -1136,45 +1136,75 @@ def generate_f7_augmentation(
         print("  WARNING: No CUDA-to-OMP augmentation records -- skipping F7.")
         return
 
-    # Aggregate pass counts and totals per level (single model: Qwen)
-    level_pass: dict[int, int] = defaultdict(int)
-    level_total: dict[int, int] = defaultdict(int)
-    for r in c2o_all:
-        lvl = r.get("augment_level", 0)
-        level_total[lvl] += 1
-        if r.get("overall_status") == "PASS":
-            level_pass[lvl] += 1
-
-    aug_total = level_total.get(0, 1)
-    pass_counts = [level_pass.get(lvl, 0) for lvl in levels]
-    rates = [c / max(level_total.get(lvl, 1), 1) * 100 for lvl, c in zip(levels, pass_counts)]
-
-    if verbose:
-        for lvl, pc, tot, rate in zip(levels, pass_counts, [level_total.get(lv, 0) for lv in levels], rates):
-            print(f"  L{lvl}: {pc}/{tot} = {rate:.1f}%")
-
     fig, ax = plt.subplots(figsize=(3.5, 2.5))
 
-    color = MODEL_COLORS["together-qwen-3.5-397b-a17b"]
-    label = MODEL_DISPLAY_SHORT["together-qwen-3.5-397b-a17b"]
-    ax.plot(
-        levels, rates,
-        "D-.",
-        color=color,
-        linewidth=1.8,
-        markersize=7,
-        label=label,
-    )
+    # Annotation offsets: first model below line, second above
+    annotation_configs = [(-5, "top"), (3, "bottom")]
+    n_kernels = 34  # default; overwritten by first model's L0 count
+    model_idx = 0
 
-    # Annotate each point with its rate (below the line)
-    for lvl, rate in zip(levels, rates):
-        ax.annotate(
-            f"{rate:.1f}%",
-            xy=(lvl, rate),
-            xytext=(lvl, rate - 5),
-            fontsize=8, ha="center", va="top", color=color,
-            fontweight="bold",
+    for model_id in MODEL_COLORS:
+        model_recs = [r for r in c2o_all if r["model"] == model_id]
+        if not model_recs:
+            continue
+
+        # Aggregate pass counts and totals per level
+        level_pass: dict[int, int] = defaultdict(int)
+        level_total: dict[int, int] = defaultdict(int)
+        for r in model_recs:
+            lvl = r.get("augment_level", 0)
+            level_total[lvl] += 1
+            if r.get("overall_status") == "PASS":
+                level_pass[lvl] += 1
+
+        pass_counts = [level_pass.get(lvl, 0) for lvl in levels]
+        totals_list = [level_total.get(lvl, 0) for lvl in levels]
+        rates = [c / max(t, 1) * 100 for c, t in zip(pass_counts, totals_list)]
+
+        # Use first model's L0 count for N in title
+        if model_idx == 0:
+            n_kernels = level_total.get(0, 34)
+
+        # Wilson CIs for error bars
+        ci_results = [_wilson_ci(level_pass.get(lvl, 0), level_total.get(lvl, 1))
+                      for lvl in levels]
+        ci_low_pct = [ci[0] * 100 for ci in ci_results]
+        ci_high_pct = [ci[1] * 100 for ci in ci_results]
+        yerr_low = [r - lo for r, lo in zip(rates, ci_low_pct)]
+        yerr_high = [hi - r for r, hi in zip(rates, ci_high_pct)]
+
+        if verbose:
+            print(f"  {MODEL_DISPLAY_SHORT[model_id]}:")
+            for lvl, pc, tot, rate in zip(levels, pass_counts, totals_list, rates):
+                print(f"    L{lvl}: {pc}/{tot} = {rate:.1f}%")
+
+        # Draw with errorbar
+        fmt_str, linestyle = MODEL_LINESTYLE[model_id]
+        ax.errorbar(
+            levels, rates,
+            yerr=[yerr_low, yerr_high],
+            fmt=fmt_str,
+            color=MODEL_COLORS[model_id],
+            linewidth=1.8,
+            markersize=7,
+            label=MODEL_DISPLAY_SHORT[model_id],
+            capsize=3,
+            capthick=1.0,
         )
+
+        # Per-point annotations
+        y_offset, va = annotation_configs[min(model_idx, 1)]
+        color = MODEL_COLORS[model_id]
+        for lvl, rate in zip(levels, rates):
+            ax.annotate(
+                f"{rate:.1f}%",
+                xy=(lvl, rate),
+                xytext=(lvl, rate + y_offset),
+                fontsize=7, ha="center", va=va, color=color,
+                fontweight="bold",
+            )
+
+        model_idx += 1
 
     ax.set_xticks(levels)
     ax.set_xticklabels(level_labels)
@@ -1188,7 +1218,7 @@ def generate_f7_augmentation(
     ax.legend(loc="upper right", frameon=True, framealpha=0.9, fontsize=9)
     ax.set_title(
         "Augmentation Robustness: Pass Rate across L0\u2013L4\n"
-        f"(CUDA\u2192OpenMP, all suites, {aug_total} kernels)",
+        f"(CUDA\u2192OpenMP, N={n_kernels} kernels/model, seed=42)",
         fontsize=10,
     )
 
