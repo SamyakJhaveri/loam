@@ -107,8 +107,6 @@ The `run_eval_campaig.pbs` file (note: the filename has a typo -- missing the tr
 | Walltime | 4 hours |
 | Filesystems | `home:eagle` |
 
-<!-- VERIFY: ALCF Polaris cluster access requires an active ALCF allocation and account -->
-
 **Proxy configuration:** The ALCF network requires an HTTP proxy for external API calls. The PBS script sets:
 
 ```bash
@@ -117,8 +115,6 @@ export HTTPS_PROXY="http://proxy.alcf.anl.gov:3128"
 ```
 
 **Repository path on Polaris:** `/lus/eagle/projects/argonne_tpc/chen/repo/pb2/`
-
-<!-- VERIFY: Polaris repository path and ALCF project allocation name may change -->
 
 The PBS script is currently configured for the `azure-gpt-4.1-mini` model and runs **reverse directions only** (X-to-CUDA), completing 468 missing result files from a prior forward-direction campaign. It runs two campaign types sequentially:
 
@@ -218,8 +214,6 @@ LLM API keys must be set in the shell environment before running evaluation camp
 
 Only the key for the specific model provider being used is required. The campaign runner validates the correct key is set before launching.
 
-<!-- VERIFY: API key values and provider dashboard URLs are environment-specific -->
-
 ### Required Configuration Files
 
 - **`config/paths.json`** -- Must exist with correct absolute paths for the current machine. The template (`config/paths.json.template`) contains three keys: `project_root`, `downloads_root`, and `hecbench_root`, all defaulting to `{{PROJECT_ROOT}}`.
@@ -293,8 +287,6 @@ ParBench does not use external monitoring services (no Sentry, Datadog, New Reli
 
 - **GitHub Actions:** Check the "Deploy Visualizations to GitHub Pages" workflow status in the repository's Actions tab
 - **Manual verification:** Visit the deployed URL and verify dashboards load correctly
-
-<!-- VERIFY: https://samyakjhaveri.github.io/parbench_sam/ is the current deployed URL -->
 
 ### Data Refresh for Dashboards
 
