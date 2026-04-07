@@ -490,7 +490,7 @@ def main() -> None:
         nargs="+",
         default=[
             "together-qwen-3.5-397b-a17b",
-            "gemini-2.5-flash",
+            "azure-gpt-4.1-mini",
         ],
         metavar="MODEL",
         help="Models expected in the full matrix (used by --show-gaps).",
