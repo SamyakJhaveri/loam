@@ -1,7 +1,7 @@
 <!-- generated-by: gsd-doc-writer -->
 # Testing
 
-ParBench uses **pytest 9.0.2** for all Python tests, supplemented by schema validation scripts and a Docker-based CPU-only validation image. There is no centralized test configuration file; tests are co-located with the modules they cover. The full suite contains **200 tests** across 4 test areas.
+ParBench uses **pytest 9.0.2** for all Python tests, supplemented by schema validation scripts and a Docker-based CPU-only validation image. There is no centralized test configuration file; tests are co-located with the modules they cover. The full suite contains **215 tests** across 5 test areas.
 
 ## Test Framework and Setup
 
@@ -38,9 +38,9 @@ python3 -m pytest c_augmentation/test_transforms.py -v
 
 These 15 tests must all pass before any commit. They are also triggered automatically by the `post-edit-test.sh` hook whenever a file in `c_augmentation/` is edited.
 
-### Analysis Script Tests (148 tests)
+### Analysis Script Tests (163 tests)
 
-Tests for the paper data generation and analysis scripts live in `scripts/analysis/`:
+Tests for the paper data generation, analysis scripts, and cross-consistency auditing live in `scripts/analysis/`:
 
 ```bash
 # All analysis tests
@@ -51,6 +51,7 @@ python3 -m pytest scripts/analysis/test_benchmark_characterization.py -v   # 39 
 python3 -m pytest scripts/analysis/test_generate_paper_data.py -v          # 29 tests
 python3 -m pytest scripts/analysis/test_quantitative_findings.py -v        # 23 tests
 python3 -m pytest scripts/analysis/test_build_error_taxonomy.py -v         # 17 tests
+python3 -m pytest scripts/analysis/test_cross_consistency_audit.py -v      # 15 tests
 python3 -m pytest scripts/analysis/test_token_analysis.py -v               # 14 tests
 python3 -m pytest scripts/analysis/test_augmentation_analysis.py -v        # 13 tests
 python3 -m pytest scripts/analysis/test_statistical_analysis.py -v         # 13 tests
@@ -95,6 +96,7 @@ python3 -m pytest c_augmentation/test_transforms.py::test_arithmetic_transform -
 | `scripts/analysis/generate_paper_data.py` | `scripts/analysis/test_generate_paper_data.py` | 29 |
 | `scripts/analysis/quantitative_findings.py` | `scripts/analysis/test_quantitative_findings.py` | 23 |
 | `scripts/analysis/build_error_taxonomy.py` | `scripts/analysis/test_build_error_taxonomy.py` | 17 |
+| `scripts/analysis/cross_consistency_audit.py` | `scripts/analysis/test_cross_consistency_audit.py` | 15 |
 | `scripts/analysis/token_analysis.py` | `scripts/analysis/test_token_analysis.py` | 14 |
 | `scripts/analysis/augmentation_analysis.py` | `scripts/analysis/test_augmentation_analysis.py` | 13 |
 | `scripts/analysis/statistical_analysis.py` | `scripts/analysis/test_statistical_analysis.py` | 13 |
@@ -124,6 +126,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 - `c_augmentation/test_transforms.py` provides `deterministic_random()` (context manager that pins `random.random` to 0.0), `assert_parseable()` (verifies code parses without fatal clang errors), and `apply_deterministically()` (applies a transform with pinned randomness).
 - Analysis test files typically include `_make_record()` or `_make_result()` helper functions that construct minimal synthetic result dicts for testing.
 - `scripts/analysis/test_generate_paper_data.py` uses a `paper_data` module-scoped pytest fixture that loads the real `results/analysis/paper_data.json` file once for all tests.
+- `scripts/analysis/test_cross_consistency_audit.py` uses pytest fixtures (`sample_tex_content`, `sample_paper_data`, `sample_qf`) to create temporary LaTeX and JSON files for testing the paper-to-data cross-consistency audit pipeline.
 - `tests/test_campaign_results.py` uses `_load_primary_results()` to load real result JSONs filtered by suite and temperature, with parametrized test classes across suites.
 
 ### Test Categories
@@ -133,6 +136,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 3. **Ground-truth validation tests** -- Load real result JSONs from `results/` and verify computed metrics match independently derived expected values (e.g., `test_campaign_totals`, `test_individual_status_counts`).
 4. **Cross-consistency tests** -- Verify that totals sum correctly, rates are in valid ranges, and different views of the same data agree (e.g., `test_direction_totals_sum`, `test_no_negative_rates`).
 5. **Campaign validation tests** -- Verify that evaluation result files on disk have the expected counts, schema, and augmentation level coverage per suite (e.g., `test_suite_has_primary_results`, `test_all_levels_present`).
+6. **Paper-data audit tests** -- Verify that numerical claims in the LaTeX paper (percentages, counts, confidence intervals) match their ground-truth sources in `paper_data.json` and `quantitative_findings.json` (e.g., `test_extract_percentages`, `test_match_claims_verified`, `test_provenance_detects_broken_path`).
 
 ## Schema Validation
 

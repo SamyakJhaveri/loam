@@ -82,6 +82,13 @@ The harness is invoked as a Python module. **Global flags (`-v`, `--json`, `--pr
 | `python3 -m harness info specs/<name>.json` | Print spec summary (no build/run) |
 | `python3 -m harness pairs` | List all valid translation pairs from manifest |
 
+Subcommand-specific flags:
+
+| Flag | Subcommand | Description |
+|------|------------|-------------|
+| `--config <name>` | `run`, `verify` | Input configuration name (default: `correctness`) |
+| `--augment_level <0-4>` | `prompt` | Apply semantics-preserving C/C++ augmentation (0=none, 1=light, 4=aggressive) |
+
 Examples:
 
 ```bash
@@ -105,6 +112,21 @@ python3 -m harness --json verify specs/rodinia-hotspot-omp.json
 | `python3 scripts/evaluation/reverify_pass_results.py --project-root <root> -v` | Re-verify existing PASS results with corrected verification strategies |
 
 **Critical:** Always pass `--suite` to `run_eval_batch.py` to avoid cross-suite kernel name collisions.
+
+Additional `run_eval_batch.py` flags:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--kernels <names...>` | all | Restrict to specific kernel names (e.g. `bfs hotspot`) |
+| `--augment-levels <0-4...>` | `0` | Augmentation levels to test; each generates separate result files tagged `-L1`, `-L2`, etc. |
+| `--max-retries <N>` | `1` | Max LLM attempts per task with error feedback (1=zero-shot) |
+| `--temperature <float>` | `0.0` | Sampling temperature (0.0=greedy, 0.5+ for pass@k) |
+| `--num-samples <N>` | `1` | Number of independent samples per task for pass@k |
+| `--max-failures <N>` | `0` | Stop after N consecutive failures (0=never stop) |
+| `--no-resume` | off | Re-run all tasks even if result files exist |
+| `--use-cpu-timing` | off | Measure CPU time via `/usr/bin/time -v` (Linux/GNU time required) |
+| `--out <prefix>` | auto | Output prefix for batch summary JSON and Markdown report |
+| `--title <text>` | auto | Title for the Markdown report |
 
 ### Augmentation
 
@@ -142,8 +164,9 @@ Note: approximately 15 validation errors from `--all` are expected (phantom spec
 | Command | Description |
 |---------|-------------|
 | `python3 -m pytest c_augmentation/test_transforms.py -v` | Run all 15 augmentation unit tests |
-| `python3 -m pytest scripts/analysis/ -v` | Run all 148 analysis module tests |
+| `python3 -m pytest scripts/analysis/ -v` | Run all 163 analysis module tests |
 | `python3 -m pytest scripts/evaluation/test_generate_paper_figures.py -v` | Run 9 figure generation tests |
+| `python3 -m pytest tests/ -v` | Run 28 campaign result integration tests |
 
 See [TESTING.md](TESTING.md) for detailed test framework documentation.
 
@@ -166,7 +189,7 @@ The Docker image uses `python:3.12-slim` and installs from `requirements-lock.tx
 
 ### Ruff (linter and formatter)
 
-ParBench uses **Ruff** (`>= 0.6.0`, declared in `pyproject.toml` dev dependencies) as its sole Python linter and formatter. No custom ruff configuration file exists -- the project uses ruff defaults.
+ParBench uses **Ruff** (`>= 0.6.0` declared in `pyproject.toml` dev dependencies; pinned to `0.11.13` in `requirements-lock.txt`) as its sole Python linter and formatter. No custom ruff configuration file exists -- the project uses ruff defaults.
 
 ```bash
 # Check for lint issues
@@ -215,9 +238,10 @@ Examples:
   docs(phase-08): update validation strategy
   fix(08): visual improvements and lint fixes for paper figures
   data(09): regenerate quantitative findings after UAT completion
+  chore(14): re-render figures from FIG-07 verification
 ```
 
-Common types: `feat`, `fix`, `test`, `docs`, `data`, `refactor`.
+Common types: `feat`, `fix`, `test`, `docs`, `data`, `chore`, `refactor`.
 
 ## PR Process
 

@@ -215,4 +215,8 @@ The following default values are defined in source code:
 | `--max-failures` | `0` (never stop early) | `scripts/evaluation/run_eval_batch.py` |
 | `--use-cpu-timing` | `False` | `scripts/evaluation/run_eval_batch.py` |
 | Anthropic `max_tokens` | `32768` | `scripts/evaluation/llm_evaluate.py` |
+| OpenAI `max_completion_tokens` | `32768` | `scripts/evaluation/llm_evaluate.py` |
+| Azure OpenAI `max_completion_tokens` | `32768` | `scripts/evaluation/llm_evaluate.py` |
+| Groq `max_tokens` | `32768` | `scripts/evaluation/llm_evaluate.py` |
+| Gemini `max_tokens` | `65536` | `scripts/evaluation/llm_evaluate.py` |
 | Together AI `max_tokens` | `81920` | `scripts/evaluation/llm_evaluate.py` |

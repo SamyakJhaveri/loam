@@ -9,7 +9,7 @@ ParBench is a research benchmark framework, not a hosted service. "Deployment" m
 |--------|------------|---------|
 | Local GPU workstation | `config/paths.json` | Full pipeline: build, run, verify kernels and run LLM evaluations |
 | Docker container | `Dockerfile` | CPU-only validation: schema checks, unit tests, analysis scripts, figure generation |
-| ALCF Polaris cluster | `run_eval_campaign.pbs` | Large-scale evaluation campaigns via PBS job scheduler |
+| ALCF Polaris cluster | `run_eval_campaig.pbs` | Large-scale evaluation campaigns via PBS job scheduler |
 | GitHub Pages | `.github/workflows/deploy-pages.yml` | Password-protected visualization dashboards |
 
 ### Local GPU Workstation
@@ -94,16 +94,17 @@ The Dockerfile installs system dependencies for libclang (`libclang-dev`, `gcc`,
 
 ### ALCF Polaris Cluster
 
-The `run_eval_campaign.pbs` file is a PBS job script for running large-scale evaluation campaigns on the Argonne Leadership Computing Facility (ALCF) Polaris cluster.
+The `run_eval_campaig.pbs` file (note: the filename has a typo -- missing the trailing "n") is a PBS job script for running large-scale evaluation campaigns on the Argonne Leadership Computing Facility (ALCF) Polaris cluster.
 
 **PBS directives:**
 
 | Directive | Value |
 |-----------|-------|
+| Job name | `parbench_eval_reverse` |
 | Account | `argonne_tpc` |
-| Queue | `debug` |
+| Queue | `preemptable` |
 | Nodes | 1 (`select=1`) |
-| Walltime | 10 hours |
+| Walltime | 4 hours |
 | Filesystems | `home:eagle` |
 
 <!-- VERIFY: ALCF Polaris cluster access requires an active ALCF allocation and account -->
@@ -119,12 +120,12 @@ export HTTPS_PROXY="http://proxy.alcf.anl.gov:3128"
 
 <!-- VERIFY: Polaris repository path and ALCF project allocation name may change -->
 
-The PBS script is currently configured for the `azure-gpt-4.1-mini` model and runs two campaign types sequentially:
+The PBS script is currently configured for the `azure-gpt-4.1-mini` model and runs **reverse directions only** (X-to-CUDA), completing 468 missing result files from a prior forward-direction campaign. It runs two campaign types sequentially:
 
-1. **Primary campaign**: 4 standard suites (rodinia, xsbench, rsbench, mixbench) across 4 translation directions (`cuda-to-omp`, `cuda-to-opencl`, `omp-to-opencl`, `opencl-to-omp`), plus 2 HeCBench-specific runs (`cuda-to-omp` with 5 kernels, `cuda-to-omp_target` with 8 kernels). Each uses 5 augmentation levels (L0-L4), temperature 0.0, max 3 retries.
-2. **Pass@k sweep**: Same suite/direction structure as the primary campaign but with L0 only, temperature 0.7, and 3 independent samples per task.
+1. **Primary campaign (reverse)**: Standard suites (rodinia, xsbench, rsbench, mixbench) run `omp-to-cuda` and `opencl-to-cuda` directions, plus HeCBench `omp-to-cuda` (5 kernels: stencil1d, heat2d, floydwarshall, scan, iso2dfd) and `omp_target-to-cuda` (all 10 curated kernels). Each uses 5 augmentation levels (L0-L4), temperature 0.0, max 3 retries. Expected: 295 new files.
+2. **Pass@k sweep (reverse)**: Same suite/direction structure as the primary reverse campaign but with L0 only, temperature 0.7, and 3 independent samples per task. Expected: 173 new files.
 
-Note: The PBS script runs a subset of directions (4 per standard suite, not the full 6 bidirectional directions used by the local campaign script). It is designed to be modified per-campaign -- update the `MODEL` variable and API key exports for different model evaluations.
+The PBS script is designed to be modified per-campaign -- update the `MODEL` variable and API key exports for different model evaluations. It is safe to re-submit if preempted thanks to the `--resume` flag that skips existing result files.
 
 ### GitHub Pages (Visualization Dashboards)
 
@@ -153,9 +154,10 @@ The only CI/CD pipeline is the GitHub Pages deployment workflow (`.github/workfl
 1. Check out the repository (`actions/checkout@v4`)
 2. Install staticrypt globally via npm
 3. Encrypt all HTML files in `visualizations/` with the `PAGES_PASSWORD` secret (AES-256, with `--remember 1` for 1-day localStorage auth and `--short` for compact output)
-4. Configure GitHub Pages (`actions/configure-pages@v5`)
-5. Upload the `visualizations/` directory as a Pages artifact (`actions/upload-pages-artifact@v4`)
-6. Deploy to GitHub Pages (`actions/deploy-pages@v4`)
+4. Move encrypted files back over originals (`mv encrypted/*.html .`)
+5. Configure GitHub Pages (`actions/configure-pages@v5`)
+6. Upload the `visualizations/` directory as a Pages artifact (`actions/upload-pages-artifact@v4`)
+7. Deploy to GitHub Pages (`actions/deploy-pages@v4`)
 
 **Concurrency:** The workflow uses `group: pages` with `cancel-in-progress: false` to prevent concurrent deployments.
 

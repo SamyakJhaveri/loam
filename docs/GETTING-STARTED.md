@@ -123,7 +123,7 @@ ParBench includes 206 kernel spec files across five benchmark suites:
 
 | Suite | Specs | APIs | Notes |
 |-------|-------|------|-------|
-| Rodinia | 60 | CUDA, OpenMP, OpenCL, OMP target | 54 TRUE PASS, 6 KNOWN_FAIL |
+| Rodinia | 60 | CUDA, OpenMP, OpenCL | 54 TRUE PASS, 6 KNOWN_FAIL |
 | XSBench | 4 | CUDA, OpenMP, OpenCL, OMP target | All 4 PASS |
 | RSBench | 4 | CUDA, OpenMP, OpenCL, OMP target | All 4 PASS |
 | mixbench | 3 | CUDA, OpenMP, OpenCL | All 3 PASS |
