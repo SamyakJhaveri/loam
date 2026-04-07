@@ -83,7 +83,7 @@ NA_COLOR = "#E0E0E0"
 
 MODEL_COLORS: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": OKABE_ITO["orange"],
-    "azure-gpt-4.1-mini":          NA_COLOR,
+    "azure-gpt-4.1-mini":          OKABE_ITO["sky_blue"],
 }
 
 MODEL_DISPLAY: dict[str, str] = {
