@@ -1166,7 +1166,7 @@ def generate_f7_augmentation(
             n_kernels = level_total.get(0, 34)
 
         # Wilson CIs for error bars
-        ci_results = [_wilson_ci(level_pass.get(lvl, 0), level_total.get(lvl, 1))
+        ci_results = [_wilson_ci(level_pass.get(lvl, 0), level_total.get(lvl, 0))
                       for lvl in levels]
         ci_low_pct = [ci[0] * 100 for ci in ci_results]
         ci_high_pct = [ci[1] * 100 for ci in ci_results]
@@ -1179,7 +1179,7 @@ def generate_f7_augmentation(
                 print(f"    L{lvl}: {pc}/{tot} = {rate:.1f}%")
 
         # Draw with errorbar
-        fmt_str, linestyle = MODEL_LINESTYLE[model_id]
+        fmt_str, _ = MODEL_LINESTYLE[model_id]
         ax.errorbar(
             levels, rates,
             yerr=[yerr_low, yerr_high],
@@ -1218,7 +1218,7 @@ def generate_f7_augmentation(
     ax.legend(loc="upper right", frameon=True, framealpha=0.9, fontsize=9)
     ax.set_title(
         "Augmentation Robustness: Pass Rate across L0\u2013L4\n"
-        f"(CUDA\u2192OpenMP, N={n_kernels} kernels/model, seed=42)",
+        f"(CUDA\u2192OpenMP, N={n_kernels} kernels/model, seed=42+L)",
         fontsize=10,
     )
 
