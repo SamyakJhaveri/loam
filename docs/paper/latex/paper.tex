@@ -729,7 +729,7 @@ Of the 438 total failures in the Qwen~3.5 campaign, the distribution is: BUILD\_
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{f4_failure_taxonomy_qwen.pdf}
-\caption{Failure taxonomy stacked bar chart. X-axis: models. Y-axis: task count stacked by outcome (PASS, BUILD\_FAIL, RUN\_FAIL, VERIFY\_FAIL, EXTRACTION\_FAIL).}
+\caption{Failure taxonomy stacked bar chart (Qwen~3.5 397B). X-axis: models. Y-axis: task count stacked by outcome (PASS, BUILD\_FAIL, RUN\_FAIL, VERIFY\_FAIL, EXTRACTION\_FAIL). GPT-4.1~mini results in Appendix Figure~\ref{fig:f4-gpt}.}
 \label{fig:failure-taxonomy}
 \end{figure}
 
@@ -848,7 +848,7 @@ XSBench & xsbench & 30 & 0 & 30 & 0.0 & [0.0, 11.4] \\ % src: paper_data.json > 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{f3_kernel_model_heatmap_qwen.pdf}
-\caption{Per-kernel pass/fail heatmap across 6 standard translation directions (31 kernels, L0, Qwen~3.5). Cell color: green (PASS), red (BUILD\_FAIL), orange (RUN\_FAIL), blue (VERIFY\_FAIL), pink (EXTRACTION\_FAIL).}
+\caption{Per-kernel pass/fail heatmap across 6 standard translation directions (31 kernels, L0, Qwen~3.5 397B). Cell color: green (PASS), red (BUILD\_FAIL), orange (RUN\_FAIL), blue (VERIFY\_FAIL), pink (EXTRACTION\_FAIL). GPT-4.1~mini results in Appendix Figure~\ref{fig:f3-gpt}.}
 \label{fig:kernel-heatmap}
 \end{figure*}
 
@@ -1005,8 +1005,22 @@ Full pass@$k$ results are provided in Appendix Table~\ref{tab:pass-at-k}.
 % [Float moved to Appendix D]
 The pass@$k$ curve is shown in Appendix Figure~\ref{fig:pass-at-k}.
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction_qwen.pdf}
+\caption{Pass@$k$ rates by translation direction (Qwen~3.5 397B). Each group shows the proportion of direction-kernel pairs achieving at least one successful translation across $k=3$ samples at temperature 0.7. GPT-4.1~mini results in Appendix Figure~\ref{fig:f5-gpt}.}
+\label{fig:f5-qwen}
+\end{figure}
+
 % [Float moved to Appendix D]
 Cross-suite comparison is shown in Appendix Figure~\ref{fig:cross-suite}.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{f6_cross_suite_comparison_qwen.pdf}
+\caption{Cross-suite pass rate comparison (Qwen~3.5 397B). Per-suite aggregate pass rates with Wilson 95\% CIs across all 5 benchmark suites at L0. GPT-4.1~mini results in Appendix Figure~\ref{fig:f6-gpt}.}
+\label{fig:f6-qwen}
+\end{figure}
 
 
 % src: paper_data.json passk_campaign: 426 tasks = 142 pairs * 3 samples; categories verified above
