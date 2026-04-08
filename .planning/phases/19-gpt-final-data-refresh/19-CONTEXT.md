@@ -26,7 +26,7 @@ Phase 19 does NOT edit paper.tex, appendices.tex, or overleaf.tex — that is Ph
   - **XSBench net change:** -32 files, no replacement XSBench data added
 
 ### Figure Regeneration
-- **D-02:** Run `--figure all` — regenerate all 13 figures in one command. Qwen data is unchanged, so Qwen figure outputs will be identical. This is preferred over selective regeneration for simplicity and consistency.
+- **D-02:** Run `--figure all` — regenerate all 11 figure IDs (produces 14 PDFs; F3/F4/F5/F6 each output qwen+gpt variants; T2 outputs .tex not PDF). Qwen data is unchanged, so Qwen figure outputs will be identical. This is preferred over selective regeneration for simplicity and consistency.
 
 ### Phase 20 Structural Changes Artifact
 - **D-03:** Phase 19's final task produces `19-STRUCTURAL-CHANGES.md` in the phase directory. This explicitly lists the structural paper edits Phase 20 must make (beyond numeric substitution). This is critical because Phase 17 was written assuming omp_target-to-cuda was absent — now it is present.

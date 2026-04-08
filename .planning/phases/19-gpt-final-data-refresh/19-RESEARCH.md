@@ -17,7 +17,7 @@ The key structural change is a direction swap: `cuda-to-omp_target` (40 tasks, 0
 
 ### Locked Decisions
 - **D-01 (Data Scope):** All on-disk changes are intentional and complete. 200 deleted (Argonne empty-prompt), 213 added (HeCBench omp_target-to-cuda + omp-to-cuda, mixbench, Rodinia opencl-to-cuda), 9 modified. Net 910 files. XSBench: -32 files, 0 added.
-- **D-02 (Figure Regeneration):** Run `--figure all` -- regenerate all 13 figures. Qwen figures will be identical.
+- **D-02 (Figure Regeneration):** Run `--figure all` -- regenerate all 11 figure IDs (14 PDFs; F3/F4/F5/F6 produce qwen+gpt variants; T2 outputs .tex). Qwen figures will be identical.
 - **D-03 (Structural Changes Artifact):** Phase 19 must produce `19-STRUCTURAL-CHANGES.md` listing exact paper locations for Phase 20 edits. Minimum 5 items specified in CONTEXT.md.
 - **D-04 (Validation Gate):** Full `/validate` before commit.
 
@@ -50,7 +50,7 @@ The key structural change is a direction swap: `cuda-to-omp_target` (40 tasks, 0
 | `scripts/analysis/generate_paper_data.py` | `results/evaluation/azure-gpt-4.1-mini/` | `paper_data_gpt41mini.json` | [VERIFIED: file exists, direction inference correct] |
 | `scripts/analysis/build_error_taxonomy.py` | `results/evaluation/*/` | `error_taxonomy.json`, `error_taxonomy.md` | [VERIFIED: file exists] |
 | `scripts/analysis/cross_model_comparison.py` | `paper_data.json` + `paper_data_gpt41mini.json` | `cross_model_comparison.json` | [VERIFIED: file exists, handles direction set differences] |
-| `scripts/generate_paper_figures.py` | analysis JSONs | 13 PDF+PNG figure pairs | [VERIFIED: file exists, --figure all flag] |
+| `scripts/generate_paper_figures.py` | analysis JSONs | 14 PDF+PNG pairs (11 figure IDs: F2, F3×2, F4×2, F5×2, F6×2, F7, C.1, C.2, C.3, C.4; T2 outputs .tex not PDF) | [VERIFIED: file exists, --figure all flag, FIGURE_REGISTRY has 11 entries] |
 
 ## Architecture Patterns
 
@@ -91,7 +91,7 @@ paper_data.json + paper_data_gpt41mini.json
     
 analysis JSONs
     -> generate_paper_figures.py
-    -> 13 figure PDF+PNG pairs
+    -> 14 figure PDFs + PNGs (11 IDs; F3/F4/F5/F6 split by model; T2 outputs .tex)
 ```
 
 ### Anti-Patterns to Avoid
@@ -188,16 +188,16 @@ analysis JSONs
 
 Based on paper.tex analysis, Phase 20 will need these structural (non-numeric) changes:
 
-### 1. Remove "7 of 8 directions" footnote (paper.tex line 1047-1049)
+### 1. Remove "7 of 8 directions" footnote (paper.tex line 1047-1049 / overleaf.tex line 1104-1106)
 **Current:** `\footnote{Cross-model comparison covers 7 of 8 evaluated translation directions; \texttt{omp\_target}-to-CUDA GPT-4.1~mini results were unavailable at submission.}`
 **After Phase 19:** omp_target-to-cuda IS now available. Footnote must be removed or rewritten.
 **New status:** Cross-model comparison covers 6 common directions; each model has 1 unique direction (Qwen: cuda-to-omp_target; GPT: omp_target-to-cuda).
 
-### 2. Cross-model direction table (paper.tex line 1069-1094)
+### 2. Cross-model direction table (paper.tex line 1069-1094 / overleaf.tex line 1126-1151)
 **Current:** 7 rows including `CUDA -> OMP_tgt` with Qwen 17.5% vs GPT 0.0%
 **After Phase 19:** `cuda-to-omp_target` is no longer a common direction. Table should show 6 common directions, plus notes on model-exclusive directions.
 
-### 3. Effect size discussion (paper.tex line 1147-1156)
+### 3. Effect size discussion (paper.tex line 1147-1156 / overleaf.tex line 1203-1213)
 **Current:** References "4 of 7 directions have |h| < 0.20" and cites `cuda-to-omp_target` h=0.86 as largest.
 **After Phase 19:** `cuda-to-omp_target` is no longer comparable. Effect size discussion must be rewritten based on 6 common directions.
 
@@ -317,7 +317,7 @@ assert 'omp_target-to-cuda' in by_dir, "omp_target-to-cuda should be present"
 | Req ID | Behavior | Test Type | Automated Command | File Exists? |
 |--------|----------|-----------|-------------------|-------------|
 | D-01 | 910 files staged correctly | smoke | `git diff --cached --stat results/evaluation/azure-gpt-4.1-mini/ \| tail -1` | N/A (git check) |
-| D-02 | All 13 figures regenerated | smoke | `stat -c '%Y' docs/paper/figures/f*_*.pdf \| sort -n \| head -1` (should be recent) | N/A (mtime check) |
+| D-02 | All 14 figure PDFs regenerated (11 IDs) | smoke | `stat -c '%Y' docs/paper/figures/f*_*.pdf docs/paper/figures/c*_*.pdf \| sort -n \| head -1` (should be recent) | N/A (mtime check) |
 | D-03 | 19-STRUCTURAL-CHANGES.md produced | smoke | `test -f .planning/phases/19-gpt-final-data-refresh/19-STRUCTURAL-CHANGES.md` | Wave 0 |
 | D-04 | Validation passes | e2e | `/validate` | N/A |
 
