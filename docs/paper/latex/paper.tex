@@ -616,6 +616,23 @@ Statistical analysis uses Wilson score 95\% confidence intervals for proportions
 
 Execution timing and speedup metrics are excluded from this study. The current verification pipeline measures wall-clock time, which conflates kernel execution with I/O, memory allocation, and OS scheduling noise. Reliable performance comparison requires profiler-based kernel timing (e.g., Nsight Compute for CUDA, \texttt{omp\_get\_wtime()} for OpenMP), which is deferred to future work.
 
+\subsection{Prompt Anonymization}
+\label{sec:anonymization}
+
+% src: scripts/evaluation/llm_evaluate.py > build_translation_prompt() (lines 570-650), _strip_comments() (line 293), _anonymize_build_cmd() (line 545)
+To minimize training-data leakage through prompt content, ParBench applies six anonymization measures to every translation prompt before submission to the LLM:
+
+\begin{enumerate}
+  \item \textbf{Kernel identity removal.} The kernel name and description are omitted entirely from the prompt; the system message provides only the translation task specification without identifying the benchmark kernel. % src: llm_evaluate.py line 642: "Kernel name and description intentionally omitted (anonymization)"
+  \item \textbf{Comment stripping.} All source code comments are removed via a regex-based stripping pass (\texttt{\_strip\_comments()}), eliminating author attributions, algorithm descriptions, and benchmark-specific annotations that could trigger memorized associations. % src: llm_evaluate.py line 293: def _strip_comments()
+  \item \textbf{Filename genericization.} Source filenames are replaced with generic identifiers (``Source File 1'', ``Source File 2'') to prevent the model from inferring the kernel from file naming conventions. % src: llm_evaluate.py line 674: _strip_comments(contents) under "Source File {idx}"
+  \item \textbf{Target filename anonymization.} Target output filenames use a generic scheme (\texttt{translated\_0.ext}, \texttt{translated\_1.ext}) via an internal mapping that restores original filenames when writing LLM output to disk. % src: llm_evaluate.py lines 602-610: anon_map construction
+  \item \textbf{Build command anonymization.} Kernel names in build commands (e.g., make targets) are replaced with generic placeholders via \texttt{\_anonymize\_build\_cmd()}. % src: llm_evaluate.py line 545: def _anonymize_build_cmd()
+  \item \textbf{Support file genericization.} Header and auxiliary files are renamed to generic identifiers (``Header File 1'', ``Code File 1'') in the prompt, preventing identification through support file naming. % src: llm_evaluate.py lines 690-700: "Header File {idx}", "Code File {idx}"
+\end{enumerate}
+
+These measures complement the AST-driven augmentation engine (Section~\ref{sec:augmentation-robustness}): augmentation tests whether surface-level code changes affect translation quality, while anonymization prevents the model from identifying the benchmark kernel and recalling memorized translations. Together, they address training-data contamination from two orthogonal angles---input variation and identity concealment.
+
 \subsection{Hardware and Software}
 \label{sec:hardware}
 
