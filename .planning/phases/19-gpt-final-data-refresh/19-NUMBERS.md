@@ -48,7 +48,7 @@ Phase 20 executor: use these values to update paper.tex, overleaf.tex, appendice
 - **opencl-to-omp**: qwen_rate=0.3889, gpt_rate=0.4933, h=-0.2107, effect=small
 
 ## Per-Kernel Agreement Matrix
-- **total_common_kernels**: 29  (JSON: per_kernel_matrix.counts sum)
+- **total_common_kernels**: 29  (JSON: per_kernel_matrix.total_common_kernels; equals sum of counts dict)
 - **both_pass**: 18  (JSON: per_kernel_matrix.counts.both_pass)
 - **both_fail**: 4  (JSON: per_kernel_matrix.counts.both_fail)
 - **qwen_only**: 6  (JSON: per_kernel_matrix.counts.qwen_only_pass)
@@ -57,18 +57,20 @@ Phase 20 executor: use these values to update paper.tex, overleaf.tex, appendice
 ## Self-Repair (GPT)
 - **first_attempt_pass**: 134  (JSON: primary_campaign.self_repair.first_attempt_pass)
 - **repaired**: 43  (JSON: primary_campaign.self_repair.repaired)
+- **partial_repair**: 28  (JSON: primary_campaign.self_repair.partial_repair)
 - **total_pass**: 177  (JSON: primary_campaign.overall.pass)
 - **persistent_fail**: 347  (JSON: primary_campaign.self_repair.persistent_fail)
 - **regression**: 5  (JSON: primary_campaign.self_repair.regression)
 - **first_attempt_pass_rate**: 0.2406  (JSON: primary_campaign.self_repair.first_attempt_pass_rate.rate)
 - **repair_rate**: 0.1017  (JSON: primary_campaign.self_repair.repair_rate.rate)
+- NOTE: 134+43+28+5+347 = 557 = total_tasks (full accounting)
 
 ## Augmentation by Level (GPT)
-- **L0**: rate=0.3036, n=112, CI=[0.2261, 0.3941]  (JSON: primary_campaign.augmentation.all_directions.L0)
-- **L1**: rate=0.2946, n=112, CI=[0.2182, 0.3847]  (JSON: primary_campaign.augmentation.all_directions.L1)
-- **L2**: rate=0.3243, n=111, CI=[0.2444, 0.416]  (JSON: primary_campaign.augmentation.all_directions.L2)
-- **L3**: rate=0.3243, n=111, CI=[0.2444, 0.416]  (JSON: primary_campaign.augmentation.all_directions.L3)
-- **L4**: rate=0.3423, n=111, CI=[0.2607, 0.4346]  (JSON: primary_campaign.augmentation.all_directions.L4)
+- **L0**: rate=0.3036, n=112, CI=[0.2261, 0.3941]  (JSON: primary_campaign.augmentation.all_directions.L0; keys: rate, n, ci_lower, ci_upper)
+- **L1**: rate=0.2946, n=112, CI=[0.2182, 0.3847]  (JSON: primary_campaign.augmentation.all_directions.L1; keys: rate, n, ci_lower, ci_upper)
+- **L2**: rate=0.3243, n=111, CI=[0.2444, 0.416]  (JSON: primary_campaign.augmentation.all_directions.L2; keys: rate, n, ci_lower, ci_upper)
+- **L3**: rate=0.3243, n=111, CI=[0.2444, 0.416]  (JSON: primary_campaign.augmentation.all_directions.L3; keys: rate, n, ci_lower, ci_upper)
+- **L4**: rate=0.3423, n=111, CI=[0.2607, 0.4346]  (JSON: primary_campaign.augmentation.all_directions.L4; keys: rate, n, ci_lower, ci_upper)
 - **Cochran-Armitage z**: 0.6455  (JSON: primary_campaign.augmentation.cochran_armitage.z)
 - **Cochran-Armitage p**: 0.518605  (JSON: primary_campaign.augmentation.cochran_armitage.p_value)
 

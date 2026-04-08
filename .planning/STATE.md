@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: Ready to plan
-stopped_at: Completed 16-04-PLAN.md — Phase 16 gpt-data-analysis complete
-last_updated: "2026-04-08T00:37:47.843Z"
+status: Phase 20 in progress (uncommitted)
+stopped_at: Phase 20 paper edits applied to overleaf.tex — not yet committed
+last_updated: "2026-04-08T23:10:00.000Z"
 progress:
-  total_phases: 5
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_phases: 22
+  completed_phases: 19
+  total_plans: 47
+  completed_plans: 46
+  percent: 98
 ---
 
 # Project State
@@ -20,26 +20,26 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** Every data claim in the paper must be verifiable against actual result files on disk, and every methodology description must be precise enough to withstand SC-level peer review.
-**Current focus:** Phase 17 — paper-integration
+**Current focus:** Phase 20 — paper updates with refreshed GPT data (IN PROGRESS — uncommitted)
 
 ## Current Position
 
-Milestone: v1.0 SC26 Paper Completion Sprint — SHIPPED 2026-04-06
-Phase: 18
-Phase: 17 (paper-integration) — READY
-Plan: Not started
-Plans: 34/34 complete (including 16-04)
-Requirements: 39/39 satisfied (35 with 3-source evidence, 4 via SUMMARY+VALIDATION)
+Milestone: v1.0 SC26 Paper Completion Sprint
+Phase: 19 (gpt-final-data-refresh) — COMPLETE (commit 1e9a83c)
+Phase: 20 (paper-final-update) — IN PROGRESS (overleaf.tex edited, not yet committed)
+Plan: 20-01 executed (done markers present in PLAN.md, no SUMMARY.md yet, no commit yet)
+Plans: 46/47 committed (20-01 done but not committed)
 
-Progress: [##########] 100%
+Progress: [##########] ~98%
 
 ## Key Decisions
 
 - **16-04**: Per-model figure split — f3/f4/f5/f6 produce _qwen and _gpt PDF variants; paper.tex references _qwen as primary figures
-- **16-04**: coverage_gaps.md documents GPT missing omp_target-to-cuda (7 of 8 directions); provides footnote text for Section 6.9
+- **19-01**: GPT dataset corrected: 910 files, 7 directions (omp_target-to-cuda replaces cuda-to-omp_target). GPT pass rate 31.8% (177/557). chi2=5.54, p=0.019, h=0.137. 7 common cross-model directions (not 6).
+- **20-01**: Phase 20 paper edits applied to overleaf.tex (architecture caption, spec schema text, verify stage description, augmentation section). paper.tex and appendices.tex also need updates. Commit pending.
 
 ## Session Continuity
 
-Last session: 2026-04-07T22:51:13.097Z
-Stopped at: Completed 16-04-PLAN.md — Phase 16 gpt-data-analysis complete
-Resume file: .planning/phases/17-paper-integration/17-CONTEXT.md
+Last session: 2026-04-08T23:10:00.000Z
+Stopped at: Phase 20 overleaf.tex edits applied — need to complete paper.tex + appendices.tex edits, create 20-01-SUMMARY.md, commit paper(20)
+Resume file: .planning/phases/20-paper-final-update/20-01-PLAN.md

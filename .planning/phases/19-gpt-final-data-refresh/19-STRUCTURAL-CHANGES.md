@@ -74,11 +74,12 @@ this direction.
 ```
 
 **Required change:** Rewrite with new values from 7 common directions:
-- 2 of 7 directions have |h| < 0.20: cuda-to-omp (0.09), opencl-to-omp (-0.21 rounds to ~0.21)
-- Actually by strict |h| < 0.20: only cuda-to-omp (0.09) qualifies as negligible
+- **Only 1 of 7 directions has |h| < 0.20**: cuda-to-omp (h=0.086). opencl-to-omp has |h|=0.211, which exceeds the 0.20 threshold — do NOT write "2 of 7".
 - The two largest effects are now: omp_target-to-cuda (h=1.01, large) and omp-to-cuda (h=0.83, large)
 - The `cuda-to-omp_target h=0.86` reference must be removed (no longer a common direction)
 - New overall Cohen's h = 0.137 (negligible), down from 0.19
+
+**CORRECTION NOTE (adversarial review 2026-04-08):** An earlier draft of this item incorrectly listed "2 of 7" (citing opencl-to-omp as borderline). The actual value is h=-0.2107 (|h|=0.2107 > 0.20). The correct count is 1 of 7 directions with |h| < 0.20.
 
 **Source:** `cross_model_comparison.json > per_direction > [each].cohens_h`
 
@@ -249,6 +250,106 @@ nqueen, scan, stencil1d), and 1 is solved by GPT only (dwt2d).
 - The "11-vs.-2 asymmetry" becomes "6-vs.-1 asymmetry"
 
 **Source:** `cross_model_comparison.json > per_kernel_matrix`
+
+---
+
+## 10. Update Cross-Model Intro Paragraph (NEW — coverage gap found in adversarial review)
+
+**File:** paper.tex ~line 1050-1060 / overleaf.tex ~line 1107-1117
+**Section:** 6.9, opening paragraph after the footnote
+
+**Current text:**
+```
+Across all evaluated tasks, Qwen~3.5 achieves 38.3\% (272/710) and
+GPT-4.1~mini achieves 29.2\% (161/551). A chi-squared test of homogeneity
+yields $\chi^2 = 10.97$ ($\mathit{df} = 1$, $p = 9.3 \times 10^{-4}$),
+indicating a statistically significant difference. However, Cohen's $h = 0.19$
+(negligible effect size) indicates that the practical magnitude of the
+difference is modest.
+```
+
+**Required change:**
+```
+Across all evaluated tasks, Qwen~3.5 achieves 38.3\% (272/710) and
+GPT-4.1~mini achieves 31.8\% (177/557). A chi-squared test of homogeneity
+yields $\chi^2 = 5.54$ ($\mathit{df} = 1$, $p = 0.019$),
+indicating a statistically significant difference. However, Cohen's $h = 0.14$
+(negligible effect size) indicates that the practical magnitude of the
+difference is modest.
+```
+
+**Source:** `cross_model_comparison.json > overall`
+
+---
+
+## 11. Update Abstract GPT Numbers (NEW — coverage gap found in adversarial review)
+
+**File:** paper.tex ~line 82 / overleaf.tex ~line 82
+**Section:** Abstract
+
+**Current text:**
+```
+GPT-4.1~mini achieves 29.2\% [25.6\%, 33.2\%] across 551 tasks
+($\chi^2 = 10.97$, $p < 0.001$, Cohen's $h = 0.19$)
+```
+
+**Required change:**
+```
+GPT-4.1~mini achieves 31.8\% [28.1\%, 35.8\%] across 557 tasks
+($\chi^2 = 5.54$, $p = 0.019$, Cohen's $h = 0.14$)
+```
+
+**Note:** The abstract also contains `% src: cross_model_comparison.json > overall: gpt 161/551=0.2922, chi2=10.97, p=0.000926, h=0.1926` — update the comment to reflect new values.
+
+**Source:** `cross_model_comparison.json > overall`; `paper_data_gpt41mini.json > primary_campaign > overall`
+
+---
+
+## 12. Update Discussion GPT Reference (NEW — coverage gap found in adversarial review)
+
+**File:** paper.tex ~line 1176 / overleaf.tex ~line 1233
+**Section:** 7 (Discussion), "Model capability spectrum" paragraph
+
+**Current text:**
+```
+GPT-4.1~mini, a smaller dense model from a different provider, achieves
+29.2\% overall---demonstrating that ParBench can differentiate model
+capabilities across architectures (Section~\ref{sec:cross-model}).
+% src: paper_data_gpt41mini.json > overall: 161/551=0.2922
+```
+
+**Required change:**
+```
+GPT-4.1~mini, a smaller dense model from a different provider, achieves
+31.8\% overall---demonstrating that ParBench can differentiate model
+capabilities across architectures (Section~\ref{sec:cross-model}).
+% src: paper_data_gpt41mini.json > overall: 177/557=0.3178
+```
+
+**Source:** `paper_data_gpt41mini.json > primary_campaign > overall`
+
+---
+
+## 13. Update Conclusion GPT Reference (NEW — coverage gap found in adversarial review)
+
+**File:** paper.tex ~line 1252 / overleaf.tex ~line 1309
+**Section:** 8 (Conclusion), third contribution paragraph
+
+**Current text:**
+```
+GPT-4.1~mini achieves 29.2\% [25.6\%, 33.2\%] across 551 tasks ($p < 0.001$),
+confirming that the framework generalizes across providers.
+% src: paper_data_gpt41mini.json > overall: 161/551=0.2922; cross_model_comparison.json > overall > chi_squared > p_value=0.000926
+```
+
+**Required change:**
+```
+GPT-4.1~mini achieves 31.8\% [28.1\%, 35.8\%] across 557 tasks ($p = 0.019$),
+confirming that the framework generalizes across providers.
+% src: paper_data_gpt41mini.json > overall: 177/557=0.3178; cross_model_comparison.json > overall > chi_squared > p_value=0.01859
+```
+
+**Source:** `paper_data_gpt41mini.json > primary_campaign > overall`; `cross_model_comparison.json > overall`
 
 ---
 
