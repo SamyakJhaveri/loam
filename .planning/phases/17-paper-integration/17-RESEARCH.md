@@ -58,7 +58,7 @@ The paper currently has 18 `\pending{...}` markers in content lines (17 to fill,
 |------|---------|----------|
 | `results/analysis/paper_data_gpt41mini.json` | GPT numbers for pending/tbd fills | Overall: 161/551 = 29.2% [25.6%, 33.2%] [VERIFIED: file read] |
 | `results/analysis/cross_model_comparison.json` | Statistical comparison for Section 6.9 | chi2=10.97, p=0.000926, Cohen's h=0.1926 [VERIFIED: file read] |
-| `results/analysis/error_taxonomy.json` | Failure taxonomy per model | GPT BUILD_FAIL: 514 total (missing_target_api=196, missing_header=168) [VERIFIED: file read] |
+| `results/analysis/error_taxonomy.json` | Failure taxonomy per model | GPT BUILD_FAIL subcats sum=515 across total=897 tasks (primary+pass@k). For primary-campaign BUILD_FAIL count use paper_data_gpt41mini.json (316/551). Subcategory ranking: missing_target_api=196, missing_header=168 [VERIFIED: file read] |
 | `results/analysis/coverage_gaps.md` | Direction coverage, footnote text | 7 of 8 directions, footnote text provided [VERIFIED: file read] |
 
 ### Figure Files (all verified present)
@@ -182,6 +182,18 @@ Rate: 433/1261 = 34.3%
 **How to avoid:** F3 (line 831) already shows `f3_kernel_model_heatmap_qwen.pdf`. F4 (line 712) already shows `f4_failure_taxonomy_qwen.pdf`. 17E only needs to: (1) update captions with "(Qwen 3.5 397B)", (2) add F5/F6 Qwen figures in main body, (3) add all four GPT variants in appendices.tex.
 **Warning signs:** Duplicate `_qwen_qwen.pdf` or missing `_qwen.pdf` in path.
 
+### Pitfall 8: appendices.tex \tbd cells not in scope for Plan 01
+**What goes wrong:** Executor fills paper.tex \tbd cells and then checks appendices.tex, finding ~18 more \tbd cells (self-repair table lines ~1119-1125, augmentation-by-level table ~1141-1145, pass@k table ~1180, stats-summary table ~1214-1216). These are NOT covered by Plan 01.
+**Why it happens:** Plan 01 only counts the 24 \tbd cells in paper.tex. The appendices cells are separate.
+**How to avoid:** Plan 01 acceptance criteria check paper.tex only. Do NOT remove \newcommand{\tbd} -- appendices.tex still uses it. The appendices \tbd cells require separate handling (out of Phase 17 scope unless explicitly added).
+**Warning signs:** `grep '\\tbd' docs/paper/latex/appendices.tex` returns many matches even after Plan 01 completes.
+
+### Pitfall 9: Appendix anonymization section has no \label and only 3 measures
+**What goes wrong:** Plan 03 Task 2 cross-references `\ref{sec:appendix-anonymization}` but appendices.tex `\subsection{Anonymization Details}` (line 1366) has no `\label{}`. LaTeX will produce an undefined reference warning/error.
+**Why it happens:** The appendix subsection was written without a label.
+**How to avoid:** Either (a) add `\label{sec:appendix-anonymization}` to appendices.tex in Task 2, or (b) make the main-body anonymization subsection self-contained (no cross-reference to appendix). Option (b) is recommended since the appendix only documents 3 of the 6 measures anyway -- cross-referencing it for "complete details" would mislead readers.
+**Warning signs:** LaTeX `undefined reference` warning for `sec:appendix-anonymization`.
+
 ## Verified Data for All Fills
 
 ### tab:overall-pass GPT Row (9 cells)
@@ -233,6 +245,8 @@ Note: Wilson CI for aggregate needs computation. 433/1261 = 0.3434.
 [VERIFIED: cross_model_comparison.json > per_direction]
 
 Notable: GPT outperforms Qwen on cuda-to-opencl (30% vs 20%) and omp-to-opencl (33.3% vs 27.8%). Qwen dominates omp-to-cuda (52.5% vs 17.9%) and cuda-to-omp (64.2% vs 40.0%).
+
+TASK COUNT ASYMMETRY (flagged by plan-reviewer 2026-04-07): opencl-to-cuda has different task pool sizes — Qwen=100, GPT=27. omp-to-cuda also differs: Qwen=120, GPT=84. GPT evaluated fewer kernels for some directions. Do NOT compare raw counts between models for these directions — compare rates only. The direction table format `RATE% (PASS/TOTAL)` makes this transparent. No special prose treatment needed unless a reviewer asks.
 
 ### Per-Kernel Agreement Matrix
 | Category | Count | Kernels |
@@ -351,7 +365,7 @@ grep -n 'pending{' docs/paper/latex/paper.tex | grep -v 'newcommand'
 | Aspect | Current State | Impact |
 |--------|--------------|--------|
 | F3/F4 references | Already updated to `_qwen.pdf` by Phase 16-04 | 17E only needs caption updates + F5/F6 addition |
-| F5/F6 references | Not in paper.tex at all | 17E must add new `\begin{figure}` environments |
+| F5/F6 references | In appendices.tex only (lines ~1188, ~1196); NOT in paper.tex | 17E must add new `\begin{figure}` environments to paper.tex main body; recommend removing appendix duplicates once added |
 | Section 6.9 | Does not exist | 17B must create entire subsection |
 | tab:overall-pass GPT row | All 9 cells are `\tbd` | 17A-tbd fills these |
 | tab:direction-rates GPT column | All 6 cells are `\tbd` | 17A-tbd fills these |
@@ -362,7 +376,7 @@ grep -n 'pending{' docs/paper/latex/paper.tex | grep -v 'newcommand'
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | Wilson CI for aggregate (433/1261) is approximately [31.7%, 37.1%] | Verified Data | LOW -- can be computed exactly by executor with scipy |
+| A1 | Wilson CI for aggregate (433/1261) is [31.8%, 37.0%] | Verified Data | RESOLVED -- manually computed: center=(0.3434+1.96²/2522)/(1+1.96²/1261), exact bounds [0.3177, 0.3700] |
 | A2 | F5 figure should go near Section 6.7 (pass@k Analysis, ~line 987) | Architecture Patterns | LOW -- executor decides per Claude's Discretion |
 | A3 | F6 figure should go near Section 4.4 (Evaluation Corpus, ~line 496) or Section 6.3 | Architecture Patterns | LOW -- executor decides per Claude's Discretion |
 | A4 | Line 577 ("GPT-4.1~mini evaluation is pending and marked with \tbd{} throughout") should be updated/removed | State of the Art | MEDIUM -- if left unchanged, contradicts filled data |

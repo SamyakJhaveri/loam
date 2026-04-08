@@ -59,13 +59,13 @@ Plans:
 ### Phase 17: Paper Integration — Dual-Model Results & Differentiation
 
 **Goal:** Update paper.tex with GPT-4.1 mini data: fill 17 `\pending{}` markers (1 kept for hardware specs), 24 `\tbd{}` table cells, write Section 6.9 (cross-model comparison), add augmentation degradation examples, add prompt anonymization subsection, wire per-model figures.
-**Plans:** 4 plans
+**Plans:** 4/5 plans complete
 
 Plans:
-- [ ] 17-01-PLAN.md — 17A + 17A-tbd: Fill all pending markers and tbd table cells with GPT data
-- [ ] 17-02-PLAN.md — 17B: Write Section 6.9 (Cross-Model Comparison) with statistics
-- [ ] 17-03-PLAN.md — 17C + 17D: Augmentation degradation examples + prompt anonymization subsection
-- [ ] 17-04-PLAN.md — 17E: Wire per-model figures (Qwen main body, GPT appendix) + final validation
+- [x] 17-01-PLAN.md — 17A + 17A-tbd: Fill all pending markers and tbd table cells with GPT data
+- [x] 17-02-PLAN.md — 17B: Write Section 6.9 (Cross-Model Comparison) with statistics
+- [x] 17-03-PLAN.md — 17C + 17D: Augmentation degradation examples + prompt anonymization subsection
+- [x] 17-04-PLAN.md — 17E: Wire per-model figures (Qwen main body, GPT appendix) + final validation
 
 ### Phase 18: Cross-Model Verification Sprint
 
