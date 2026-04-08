@@ -74,9 +74,24 @@ Plans:
 
 - [ ] PLAN.md — Wave 1: cite-check (T1-T3), Wave 2: spot-checks (T4-T6), Wave 3: final checks (T7-T10)
 
+### Phase 19: GPT-4.1-mini Complete Data Re-Analysis
+
+**Goal:** Regenerate eval_summary, paper_data_gpt41mini, error_taxonomy, cross_model_comparison, and all paper figures with the corrected/complete GPT dataset. Background: 200 invalid HeCBench cuda-to-omp/omp_target results (Argonne empty-prompt batch) removed; 213 valid local results (omp/omp_target-to-cuda HeCBench + rodinia fixes) added. Structural change: cuda-to-omp_target direction removed, omp_target-to-cuda added.
+**Plans:** 1 plan
+
+Plans:
+- [ ] 19-01-PLAN.md — Stage GPT result files, run 4 analysis scripts + figure regeneration, produce 19-NUMBERS.md + 19-STRUCTURAL-CHANGES.md, validate and commit
+
+### Phase 20: Final Paper Update (overleaf.tex + appendices.tex + paper.tex)
+
+**Goal:** Update ALL GPT-4.1-mini numbers in overleaf.tex, appendices.tex, and paper.tex to match Phase 19 analysis outputs. Includes structural updates: cross-model direction table row changes, removal of stale "omp_target unavailable" footnote, rewrite of invalid h=0.86 effect-size discussion.
+**Plans:** 1/1 planned
+
+- [ ] 20-01-PLAN.md — Numeric + structural updates to overleaf.tex (12 sections), appendices.tex (3 tables), paper.tex sync, final verify, commit
+
 ## Progress
 
 | Milestone | Phases | Plans | Requirements | Status | Shipped |
 |-----------|--------|-------|-------------|--------|---------|
 | v1.0 SC26 Paper Sprint | 13 (2 dropped, 1 research stub) | 33/33 | 39/39 | Complete | 2026-04-06 |
-| GPT Integration & Submission | 5 (15, 15.5, 16, 17, 18) | 4/12 | — | In Progress | — |
+| GPT Integration & Submission | 7 (15, 15.5, 16, 17, 18, 19, 20) | 4/14 | -- | In Progress | -- |
