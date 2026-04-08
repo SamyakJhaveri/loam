@@ -1,0 +1,68 @@
+{
+  "source_spec": "rsbench-rsbench-omp",
+  "target_spec": "rsbench-rsbench-cuda",
+  "kernel": "rsbench",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-08T03:30:48Z",
+  "prompt_tokens": 18685,
+  "completion_tokens": 1337,
+  "llm_response_time_seconds": 18.541,
+  "build_status": "fail",
+  "build_time_seconds": 9.385,
+  "build_error_snippet": "simulation.cu(33): error: no instance of overloaded function \"atomicAdd\" matches the argument list\n            argument types are: (unsigned long *, unsigned long)\n      atomicAdd(GSD.verification, (unsigned long)(max_idx + 1));\n      ^\n/soft/compilers/cudatoolkit/cuda-12.9.1/bin/../targets/x86_64-linux/include/cuda_bf16.hpp(3824): note #3326-D: function \"atomicAdd(__nv_bfloat16 *, __nv_bfloat16)\" does not match because argument #1 does not match parameter\n  __inline__ __nv_bfloat16 atomicAdd(__nv_bfloat16 *const address, const __nv_bfloat16 val)\n                           ^\n/soft/compilers/cudatoolkit/cuda-12.9.1/bin/../targets/x86_64-linux/include/cuda_bf16.hpp(3802): note #3326-D: function \"atomicAdd(__nv_bfloat162 *, __nv_bfloat162)\" do\n...[truncated]...\n: note #3326-D: function \"atomicAdd(unsigned int *, unsigned int)\" does not match because argument #1 does not match parameter\n  static __inline__ __attribute__((device)) unsigned int atomicAdd(unsigned int *address, unsigned int val) { }\n                                                         ^\n/soft/compilers/cudatoolkit/cuda-12.9.1/bin/../targets/x86_64-linux/include/device_atomic_functions.h(89): note #3326-D: function \"atomicAdd(int *, int)\" does not match because argument #1 does not match parameter\n  static __inline__ __attribute__((device)) int atomicAdd(int *address, int val) { }\n                                                ^\n\n1 error detected in the compilation of \"simulation.cu\".\nmake: *** [Makefile:68: simulation.o] Error 2\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ice)) int atomicAdd(int *address, int val) { }\n                                                ^\n\n1 error detected in the compilation of \"simulation.cu\".\nmake: *** [Makefile:68: simulation.o] Error 2",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.6,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "simulation.cu": "#include \"rsbench.cuh\"\n\n__global__ void xs_lookup_kernel_baseline(Input in, SimulationData GSD)\n{\n    unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;\n    if (i >= in.lookups) return;\n\n    uint64_t seed = STARTING_SEED;\n\n    seed = fast_forward_LCG(seed, 2 * i);\n\n    double E = LCG_random_double(&seed);\n    int mat = pick_mat(&seed);\n\n    double macro_xs[4] = {0};\n\n    calculate_macro_xs(macro_xs, mat, E, in,\n                       GSD.num_nucs, GSD.mats, GSD.max_num_nucs, GSD.concs,\n                       GSD.n_windows, GSD.pseudo_K0RS, GSD.windows, GSD.poles,\n                       GSD.max_num_windows, GSD.max_num_poles);\n\n    double max = -DBL_MAX;\n    int max_idx = 0;\n    for (int x = 0; x < 4; x++)\n    {\n        if (macro_xs[x] > max)\n        {\n            max = macro_xs[x];\n            max_idx = x;\n        }\n    }\n\n    atomicAdd(GSD.verification, (unsigned long)(max_idx + 1));\n}\n\nvoid run_event_based_simulation(Input input, SimulationData data, unsigned long *vhash_result)\n{\n    printf(\"Beginning baseline event based simulation...\\n\");\n\n    // Allocate verification on device\n    unsigned long *d_verification;\n    gpuErrchk(cudaMalloc((void **)&d_verification, sizeof(unsigned long)));\n    gpuErrchk(cudaMemset(d_verification, 0, sizeof(unsigned long)));\n\n    int threadsPerBlock = 256;\n    int blocksPerGrid = (input.lookups + threadsPerBlock - 1) / threadsPerBlock;\n\n    xs_lookup_kernel_baseline<<<blocksPerGrid, threadsPerBlock>>>(input, data);\n    gpuErrchk(cudaPeekAtLastError());\n    gpuErrchk(cudaDeviceSynchronize());\n\n    unsigned long h_verification = 0;\n    gpuErrchk(cudaMemcpy(&h_verification, d_verification, sizeof(unsigned long), cudaMemcpyDeviceToHost));\n\n    gpuErrchk(cudaFree(d_verification));\n\n    *vhash_result = h_verification;\n}\n\n",
+    "init.cu": "#include \"rsbench.cuh\"\n\nvoid run_event_based_simulation_optimization_1(Input in, SimulationData SD, unsigned long *vhash_result)\n{\n    char *optimization_name = \"Optimization 1 - Kernel splitting + full material & energy sort\";\n\n    printf(\"Simulation Kernel:\\\"%s\\\"\\n\", optimization_name);\n\n    printf(\"Allocating additional data required by optimized kernel...\\n\");\n    size_t sz;\n    size_t total_sz = 0;\n    double start, stop;\n    int i, m;\n\n    sz = in.lookups * sizeof(double);\n    SD.p_energy_samples = (double *)malloc(sz);\n    total_sz += sz;\n    SD.length_p_energy_samples = in.lookups;\n\n    sz = in.lookups * sizeof(int);\n    SD.mat_samples = (int *)malloc(sz);\n    total_sz += sz;\n    SD.length_mat_samples = in.lookups;\n\n    printf(\"Allocated an additional %.0lf MB of data on CPU.\\n\", total_sz / 1024.0 / 1024.0);\n\n    printf(\"Sampling event data...\\n\");\n#pragma omp parallel for schedule(dynamic, 1000)\n    for (i = 0; i < in.lookups; i++)\n    {\n        uint64_t seed = STARTING_SEED;\n\n        seed = fast_forward_LCG(seed, 2 * i);\n\n        double p_energy = LCG_random_double(&seed);\n        int mat = pick_mat(&seed);\n\n        SD.p_energy_samples[i] = p_energy;\n        SD.mat_samples[i] = mat;\n    }\n    printf(\"Finished sampling.\\n\");\n\n    start = get_time();\n\n    quickSort_parallel_i_d(SD.mat_samples, SD.p_energy_samples, in.lookups, in.nthreads);\n\n    stop = get_time();\n\n    printf(\"Material sort took %.3lf seconds\\n\", stop - start);\n\n    start = get_time();\n\n    int num_samples_per_mat[12] = {0};\n    for (int l = 0; l < in.lookups; l++)\n        num_samples_per_mat[SD.mat_samples[l]]++;\n\n    int offsets[12] = {0};\n    for (int m = 1; m < 12; m++)\n        offsets[m] = offsets[m - 1] + num_samples_per_mat[m - 1];\n\n    stop = get_time();\n    printf(\"Counting samples and offsets took %.3lf seconds\\n\", stop - start);\n    start = stop;\n\n    int offset = 0;\n    for (int m = 0; m < 12; m++)\n        quickSort_parallel_d_i(SD.p_energy_samples + offsets[m], SD.mat_samples + offsets[m], num_samples_per_mat[m], in.nthreads);\n\n    stop = get_time();\n    printf(\"Energy Sorts took %.3lf seconds\\n\", stop - start);\n\n    start = get_time();\n\n    unsigned long long verification = 0;\n\n    offset = 0;\n    for (m = 0; m < 12; m++)\n    {\n#pragma omp parallel for schedule(dynamic, 100) reduction(+ \\\n                                                  : verification)\n        for (i = offset; i < offset + num_samples_per_mat[m]; i++)\n        {\n            double E = SD.p_energy_samples[i];\n            int mat = SD.mat_samples[i];\n\n            double macro_xs_vector[4] = {0};\n\n            calculate_macro_xs(macro_xs_vector, mat, E, in, SD);\n\n            double max = -DBL_MAX;\n            int max_idx = 0;\n            for (int j = 0; j < 4; j++)\n            {\n                if (macro_xs_vector[j] > max)\n                {\n                    max = macro_xs_vector[j];\n                    max_idx = j;\n                }\n            }\n            verification += max_idx + 1;\n        }\n        offset += num_samples_per_mat[m];\n    }\n\n    stop = get_time();\n    printf(\"XS Lookups took %.3lf seconds\\n\", stop - start);\n    *vhash_result = verification;\n}\n\n"
+  },
+  "target_files_expected": [
+    "simulation.cu",
+    "init.cu"
+  ],
+  "target_files_extracted": [
+    "simulation.cu",
+    "init.cu"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 18.541,
+      "prompt_tokens": 18685,
+      "completion_tokens": 1337,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "simulation.cu(33): error: no instance of overloaded function \"atomicAdd\" matches the argument list\n            argument types are: (unsigned long *, unsigned long)\n      atomicAdd(GSD.verification, (unsigned long)(max_idx + 1));\n      ^\n/soft/compilers/cudatoolkit/cuda-12.9.1/bin/../targets/x86_64-linux/include/cuda_bf16.hpp(3824): note #3326-D: function \"atomicAdd(__nv_bfloat16 *, __nv_bfloat16)\" does not match because argument #1 does not match parameter\n  __inline__ __nv_bfloat16 atomicAdd(__nv_bfloat16 *const address, const __nv_bfloat16 val)\n                           ^\n/soft/compilers/cudatoolkit/cuda-12.9.1/bin/../targets/x86_64-linux/include/cuda_bf16.hpp(3802): note #3326-D: function \"atomicAdd(__nv_bfloat162 *, __nv_bfloat162)\" do\n...[truncated]...\n: note #3326-D: function \"atomicAdd(unsigned int *, unsigned int)\" does not match because argument #1 does not match parameter\n  static __inline__ __attribute__((device)) unsigned int atomicAdd(unsigned int *address, unsigned int val) { }\n                                                         ^\n/soft/compilers/cudatoolkit/cuda-12.9.1/bin/../targets/x86_64-linux/include/device_atomic_functions.h(89): note #3326-D: function \"atomicAdd(int *, int)\" does not match because argument #1 does not match parameter\n  static __inline__ __attribute__((device)) int atomicAdd(int *address, int val) { }\n                                                ^\n\n1 error detected in the compilation of \"simulation.cu\".\nmake: *** [Makefile:68: simulation.o] Error 2\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

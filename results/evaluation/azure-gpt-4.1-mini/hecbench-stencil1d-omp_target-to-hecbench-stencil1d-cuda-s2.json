@@ -1,0 +1,73 @@
+{
+  "source_spec": "hecbench-stencil1d-omp_target",
+  "target_spec": "hecbench-stencil1d-cuda",
+  "kernel": "stencil1d",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 2,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "134217728",
+    "10"
+  ],
+  "timestamp": "2026-04-08T02:42:19Z",
+  "prompt_tokens": 963,
+  "completion_tokens": 876,
+  "llm_response_time_seconds": 18.2,
+  "build_status": "pass",
+  "build_time_seconds": 1.177,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 1.662,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Average kernel execution time: 0.008289 (s)\nError at 0: 28 (host) != 0 (device)\nError at 14: 210 (host) != 0 (device)\nFAIL\n",
+  "verify_status": "fail",
+  "verify_strategy": "stdout_pattern",
+  "overall_status": "VERIFY_FAIL",
+  "error_message": "Verify failed: Pattern '(?:PASS)' NOT found in stdout. ",
+  "metrics": {
+    "kernel_time": {
+      "value": 0.008289,
+      "unit": "s"
+    }
+  },
+  "baseline_wall_time_seconds": 0.619,
+  "translated_wall_time_seconds": 1.662,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.3724,
+  "translated_files": {
+    "stencil_1d.cu": "#include <stdio.h>\n#include <stdlib.h>\n#include <chrono>\n\n#define RADIUS 7\n#define BLOCK_SIZE 256\n\n__global__ void stencil_kernel(int *a, int *b, int length, int pad_size) {\n  int i = blockIdx.x * BLOCK_SIZE;\n\n  __shared__ int temp[BLOCK_SIZE + 2 * RADIUS];\n\n  int thread_id = threadIdx.x;\n  // Load elements into shared memory with halo\n  if (thread_id < BLOCK_SIZE + 2 * RADIUS) {\n    int index = i + thread_id - RADIUS;\n    if (index < RADIUS)\n      temp[thread_id] = 0;\n    else if (index < pad_size)\n      temp[thread_id] = a[index];\n    else\n      temp[thread_id] = 0;\n  }\n  __syncthreads();\n\n  if (i + thread_id < length) {\n    int result = 0;\n    for (int offset = -RADIUS; offset <= RADIUS; offset++) {\n      result += temp[thread_id + RADIUS + offset];\n    }\n    b[i + thread_id] = result;\n  }\n}\n\nint main(int argc, char* argv[]) {\n  if (argc != 3) {\n    printf(\"Usage: %s <length> <repeat>\\n\", argv[0]);\n    printf(\"length is a multiple of %d\\n\", BLOCK_SIZE);\n    return 1;\n  }\n  const int length = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  int size = length;\n  int pad_size = (length + RADIUS);\n\n  int* a = (int *)malloc(pad_size*sizeof(int)); \n  int* b = (int *)malloc(size*sizeof(int));\n\n  for (int i = 0; i < length+RADIUS; i++) a[i] = i;\n\n  int *d_a, *d_b;\n  cudaMalloc(&d_a, pad_size * sizeof(int));\n  cudaMalloc(&d_b, size * sizeof(int));\n\n  cudaMemcpy(d_a, a, pad_size * sizeof(int), cudaMemcpyHostToDevice);\n\n  auto start = std::chrono::steady_clock::now();\n\n  int grid_size = length / BLOCK_SIZE;\n\n  for (int i = 0; i < repeat; i++) {\n    stencil_kernel<<<grid_size, BLOCK_SIZE>>>(d_a, d_b, length, pad_size);\n    cudaDeviceSynchronize();\n  }\n\n  cudaMemcpy(b, d_b, size * sizeof(int), cudaMemcpyDeviceToHost);\n\n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  printf(\"Average kernel execution time: %f (s)\\n\", (time * 1e-9f) / repeat);\n\n  bool ok = true;\n  for (int i = 0; i < 2*RADIUS; i++) {\n    int s = 0;\n    for (int j = i; j <= i+2*RADIUS; j++)\n      s += j < RADIUS ? 0 : (a[j] - RADIUS);\n    if (s != b[i]) {\n      printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b[i]);\n      ok = false;\n      break;\n    }\n  }\n\n  for (int i = 2*RADIUS; i < length; i++) {\n    int s = 0;\n    for (int j = i-RADIUS; j <= i+RADIUS; j++)\n      s += a[j];\n    if (s != b[i]) {\n      printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  cudaFree(d_a);\n  cudaFree(d_b);\n  free(a);\n  free(b); \n  return 0;\n}\n"
+  },
+  "target_files_expected": [
+    "stencil_1d.cu"
+  ],
+  "target_files_extracted": [
+    "stencil_1d.cu"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 18.2,
+      "prompt_tokens": 963,
+      "completion_tokens": 876,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "fail",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

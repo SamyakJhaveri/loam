@@ -1,0 +1,68 @@
+{
+  "source_spec": "xsbench-xsbench-opencl",
+  "target_spec": "xsbench-xsbench-cuda",
+  "kernel": "xsbench",
+  "model": "azure-gpt-4.1-mini",
+  "augment_level": 0,
+  "temperature": 0.7,
+  "sample_id": 0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-08T03:44:18Z",
+  "prompt_tokens": 24532,
+  "completion_tokens": 2426,
+  "llm_response_time_seconds": 34.338,
+  "build_status": "fail",
+  "build_time_seconds": 44.59,
+  "build_error_snippet": "/usr/bin/ld: Simulation.o: in function `main':\ntmpxft_00110fc9_00000000-6_Simulation.cudafe1.cpp:(.text.startup+0x0): multiple definition of `main'; Main.o:tmpxft_00110e8f_00000000-6_Main.cudafe1.cpp:(.text.startup+0x0): first defined here\n/usr/bin/ld: Main.o: in function `main':\ntmpxft_00110e8f_00000000-6_Main.cudafe1.cpp:(.text.startup+0x93): undefined reference to `grid_init_do_not_profile(Inputs, int)'\n/usr/bin/ld: tmpxft_00110e8f_00000000-6_Main.cudafe1.cpp:(.text.startup+0x172): undefined reference to `move_simulation_data_to_device(Inputs, int, SimulationData)'\n/usr/bin/ld: tmpxft_00110e8f_00000000-6_Main.cudafe1.cpp:(.text.startup+0x25e): undefined reference to `run_event_based_simulation_optimization_5(Inputs, SimulationData, int)'\n...[truncated]...\n:(.text.startup+0x431): undefined reference to `run_event_based_simulation_optimization_1(Inputs, SimulationData, int)'\n/usr/bin/ld: tmpxft_00110fc9_00000000-6_Simulation.cudafe1.cpp:(.text.startup+0x471): undefined reference to `run_event_based_simulation_optimization_2(Inputs, SimulationData, int)'\n/usr/bin/ld: tmpxft_00110fc9_00000000-6_Simulation.cudafe1.cpp:(.text.startup+0x4b1): undefined reference to `run_event_based_simulation_optimization_3(Inputs, SimulationData, int)'\n/usr/bin/ld: tmpxft_00110fc9_00000000-6_Simulation.cudafe1.cpp:(.text.startup+0x4f1): undefined reference to `run_event_based_simulation_optimization_4(Inputs, SimulationData, int)'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:65: XSBench] Error 1\n",
+  "run_status": null,
+  "run_time_seconds": null,
+  "run_exit_code": null,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": null,
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "BUILD_FAIL",
+  "error_message": "Build failed: ext.startup+0x4f1): undefined reference to `run_event_based_simulation_optimization_4(Inputs, SimulationData, int)'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:65: XSBench] Error 1",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.465,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Simulation.cu": "#include \"XSbench_header.cuh\"\n\nint main( int argc, char* argv[] )\n{\n\tint version = 20;\n\tint mype = 0;\n\tdouble omp_start, omp_end;\n\tint nprocs = 1;\n\tunsigned long long verification;\n\n\tInputs in = read_CLI( argc, argv );\n\n\tif( mype == 0 )\n\t\tprint_inputs( in, nprocs, version );\n\n\tSimulationData SD;\n\n\tif( in.binary_mode == READ )\n\t\tSD = binary_read(in);\n\telse\n\t\tSD = grid_init_do_not_profile( in, mype );\n\n\tif( in.binary_mode == WRITE && mype == 0 )\n\t\tbinary_write(in, SD);\n\n\tSimulationData GSD = move_simulation_data_to_device( in, mype, SD );\n\n\tif( mype == 0 )\n\t{\n\t\tprintf(\"\\n\");\n\t\tborder_print();\n\t\tcenter_print(\"SIMULATION\", 79);\n\t\tborder_print();\n\t}\n\n\tomp_start = get_time();\n\n\tif( in.simulation_method == EVENT_BASED )\n\t{\n\t\tif( in.kernel_id == 0 )\n\t\t\tverification = run_event_based_simulation_baseline(in, GSD, mype);\n\t\telse if( in.kernel_id == 1 )\n\t\t\tverification = run_event_based_simulation_optimization_1(in, GSD, mype);\n\t\telse if( in.kernel_id == 2 )\n\t\t\tverification = run_event_based_simulation_optimization_2(in, GSD, mype);\n\t\telse if( in.kernel_id == 3 )\n\t\t\tverification = run_event_based_simulation_optimization_3(in, GSD, mype);\n\t\telse if( in.kernel_id == 4 )\n\t\t\tverification = run_event_based_simulation_optimization_4(in, GSD, mype);\n\t\telse if( in.kernel_id == 5 )\n\t\t\tverification = run_event_based_simulation_optimization_5(in, GSD, mype);\n\t\telse if( in.kernel_id == 6 )\n\t\t\tverification = run_event_based_simulation_optimization_6(in, GSD, mype);\n\t\telse\n\t\t{\n\t\t\tprintf(\"Error: No kernel ID %d found!\\n\", in.kernel_id);\n\t\t\texit(1);\n\t\t}\n\t}\n\telse\n\t{\n\t\tprintf(\"History-based simulation not implemented in CUDA code. Instead,\\nuse the event-based method with \\\"-m event\\\" argument.\\n\");\n\t\texit(1);\n\t}\n\n\tif( mype == 0)\t\n\t{\t\n\t\tprintf(\"\\n\" );\n\t\tprintf(\"Simulation complete.\\n\" );\n\t}\n\n\tomp_end = get_time();\n\n\trelease_device_memory(GSD);\n\n\tverification = verification % 999983;\n\n\tint is_invalid_result = print_results( in, mype, omp_end-omp_start, nprocs, verification );\n\n\treturn is_invalid_result;\n}\n",
+    "GridInit.cu": "#include \"XSbench_header.cuh\"\n\n__device__ uint64_t fast_forward_LCG(uint64_t seed, uint64_t n)\n{\n\tconst uint64_t m = 9223372036854775808ULL;\n\tuint64_t a = 2806196910506780709ULL;\n\tuint64_t c = 1ULL;\n\n\tn = n % m;\n\n\tuint64_t a_new = 1;\n\tuint64_t c_new = 0;\n\n\twhile(n > 0)\n\t{\n\t\tif(n & 1)\n\t\t{\n\t\t\ta_new = a_new * a;\n\t\t\tc_new = c_new * a + c;\n\t\t}\n\t\tc = c * (a + 1);\n\t\ta = a * a;\n\n\t\tn >>= 1;\n\t}\n\n\treturn (a_new * seed + c_new) % m;\n}\n\n__host__ __device__ double LCG_random_double(uint64_t * seed)\n{\n\tconst uint64_t m = 9223372036854775808ULL;\n\tconst uint64_t a = 2806196910506780709ULL;\n\tconst uint64_t c = 1ULL;\n\t*seed = (a * (*seed) + c) % m;\n\treturn (double)(*seed) / (double)m;\n}\n\n__device__ int pick_mat(uint64_t * seed)\n{\n\tdouble dist[12];\n\tdist[0]  = 0.140;\n\tdist[1]  = 0.052;\n\tdist[2]  = 0.275;\n\tdist[3]  = 0.134;\n\tdist[4]  = 0.154;\n\tdist[5]  = 0.064;\n\tdist[6]  = 0.066;\n\tdist[7]  = 0.055;\n\tdist[8]  = 0.008;\n\tdist[9]  = 0.015;\n\tdist[10] = 0.025;\n\tdist[11] = 0.013;\n\n\tdouble roll = LCG_random_double(seed);\n\n\tdouble running = 0.0;\n\tfor(int i = 0; i < 12; i++)\n\t{\n\t\trunning += dist[i];\n\t\tif(roll < running)\n\t\t\treturn i;\n\t}\n\treturn 11; // fallback in case of floating point rounding\n}\n\n__device__ long grid_search(long n, double quarry, double * __restrict__ A)\n{\n\tlong lowerLimit = 0;\n\tlong upperLimit = n - 1;\n\tlong examinationPoint;\n\tlong length = upperLimit - lowerLimit;\n\n\twhile(length > 1)\n\t{\n\t\texaminationPoint = lowerLimit + (length / 2);\n\t\tif(A[examinationPoint] > quarry)\n\t\t\tupperLimit = examinationPoint;\n\t\telse\n\t\t\tlowerLimit = examinationPoint;\n\t\tlength = upperLimit - lowerLimit;\n\t}\n\treturn lowerLimit;\n}\n\n__host__ __device__ long grid_search_nuclide(long n, double quarry, NuclideGridPoint * A, long low, long high)\n{\n\tlong lowerLimit = low;\n\tlong upperLimit = high;\n\tlong examinationPoint;\n\tlong length = upperLimit - lowerLimit;\n\n\twhile(length > 1)\n\t{\n\t\texaminationPoint = lowerLimit + (length / 2);\n\t\tif(A[examinationPoint].energy > quarry)\n\t\t\tupperLimit = examinationPoint;\n\t\telse\n\t\t\tlowerLimit = examinationPoint;\n\t\tlength = upperLimit - lowerLimit;\n\t}\n\treturn lowerLimit;\n}\n\n__device__ void calculate_micro_xs(double p_energy, int nuc, long n_isotopes,\n\tlong n_gridpoints,\n\tdouble * __restrict__ egrid, int * __restrict__ index_data,\n\tNuclideGridPoint * __restrict__ nuclide_grids,\n\tlong idx, double * __restrict__ xs_vector, int grid_type, int hash_bins)\n{\n\tdouble f;\n\tNuclideGridPoint * low;\n\tNuclideGridPoint * high;\n\n\tif(grid_type == NUCLIDE)\n\t{\n\t\tidx = grid_search_nuclide(n_gridpoints, p_energy, &nuclide_grids[nuc * n_gridpoints], 0, n_gridpoints - 1);\n\t\tif(idx == n_gridpoints - 1)\n\t\t\tlow = &nuclide_grids[nuc * n_gridpoints + idx - 1];\n\t\telse\n\t\t\tlow = &nuclide_grids[nuc * n_gridpoints + idx];\n\t}\n\telse if(grid_type == UNIONIZED)\n\t{\n\t\tif(index_data[idx * n_isotopes + nuc] == n_gridpoints - 1)\n\t\t\tlow = &nuclide_grids[nuc * n_gridpoints + index_data[idx * n_isotopes + nuc] - 1];\n\t\telse\n\t\t\tlow = &nuclide_grids[nuc * n_gridpoints + index_data[idx * n_isotopes + nuc]];\n\t}\n\telse\n\t{\n\t\tint u_low = index_data[idx * n_isotopes + nuc];\n\t\tint u_high;\n\t\tif(idx == hash_bins - 1)\n\t\t\tu_high = n_gridpoints - 1;\n\t\telse\n\t\t\tu_high = index_data[(idx + 1) * n_isotopes + nuc] + 1;\n\n\t\tdouble e_low = nuclide_grids[nuc * n_gridpoints + u_low].energy;\n\t\tdouble e_high = nuclide_grids[nuc * n_gridpoints + u_high].energy;\n\t\tint lower;\n\t\tif(p_energy <= e_low)\n\t\t\tlower = 0;\n\t\telse if(p_energy >= e_high)\n\t\t\tlower = n_gridpoints - 1;\n\t\telse\n\t\t\tlower = grid_search_nuclide(n_gridpoints, p_energy, &nuclide_grids[nuc * n_gridpoints], u_low, u_high);\n\n\t\tif(lower == n_gridpoints - 1)\n\t\t\tlow = &nuclide_grids[nuc * n_gridpoints + lower - 1];\n\t\telse\n\t\t\tlow = &nuclide_grids[nuc * n_gridpoints + lower];\n\t}\n\n\thigh = low + 1;\n\n\tf = (high->energy - p_energy) / (high->energy - low->energy);\n\n\txs_vector[0] = high->total_xs - f * (high->total_xs - low->total_xs);\n\txs_vector[1] = high->elastic_xs - f * (high->elastic_xs - low->elastic_xs);\n\txs_vector[2] = high->absorbtion_xs - f * (high->absorbtion_xs - low->absorbtion_xs);\n\txs_vector[3] = high->fission_xs - f * (high->fission_xs - low->fission_xs);\n\txs_vector[4] = high->nu_fission_xs - f * (high->nu_fission_xs - low->nu_fission_xs);\n}\n\n__device__ void calculate_macro_xs(double p_energy, int mat, long n_isotopes,\n\tlong n_gridpoints, int * __restrict__ num_nucs,\n\tdouble * __restrict__ concs,\n\tdouble * __restrict__ egrid, int * __restrict__ index_data,\n\tNuclideGridPoint * __restrict__ nuclide_grids,\n\tint * __restrict__ mats,\n\tdouble * __restrict__ macro_xs_vector, int grid_type, int hash_bins, int max_num_nucs)\n{\n\tint p_nuc;\n\tlong idx = -1;\n\tdouble conc;\n\n\tfor(int k = 0; k < 5; k++)\n\t\tmacro_xs_vector[k] = 0;\n\n\tif(grid_type == UNIONIZED)\n\t\tidx = grid_search(n_isotopes * n_gridpoints, p_energy, egrid);\n\telse if(grid_type == HASH)\n\t{\n\t\tdouble du = 1.0 / hash_bins;\n\t\tidx = p_energy / du;\n\t}\n\n\tfor(int j = 0; j < num_nucs[mat]; j++)\n\t{\n\t\tdouble xs_vector[5];\n\t\tp_nuc = mats[mat * max_num_nucs + j];\n\t\tconc = concs[mat * max_num_nucs + j];\n\t\tcalculate_micro_xs(p_energy, p_nuc, n_isotopes,\n\t\t\tn_gridpoints, egrid, index_data,\n\t\t\tnuclide_grids, idx, xs_vector, grid_type, hash_bins);\n\t\tfor(int k = 0; k < 5; k++)\n\t\t\tmacro_xs_vector[k] += xs_vector[k] * conc;\n\t}\n}\n"
+  },
+  "target_files_expected": [
+    "Simulation.cu",
+    "GridInit.cu"
+  ],
+  "target_files_extracted": [
+    "Simulation.cu",
+    "GridInit.cu"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 34.338,
+      "prompt_tokens": 24532,
+      "completion_tokens": 2426,
+      "finish_reason": "stop",
+      "build_status": "fail",
+      "run_status": null,
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": "/usr/bin/ld: Simulation.o: in function `main':\ntmpxft_00110fc9_00000000-6_Simulation.cudafe1.cpp:(.text.startup+0x0): multiple definition of `main'; Main.o:tmpxft_00110e8f_00000000-6_Main.cudafe1.cpp:(.text.startup+0x0): first defined here\n/usr/bin/ld: Main.o: in function `main':\ntmpxft_00110e8f_00000000-6_Main.cudafe1.cpp:(.text.startup+0x93): undefined reference to `grid_init_do_not_profile(Inputs, int)'\n/usr/bin/ld: tmpxft_00110e8f_00000000-6_Main.cudafe1.cpp:(.text.startup+0x172): undefined reference to `move_simulation_data_to_device(Inputs, int, SimulationData)'\n/usr/bin/ld: tmpxft_00110e8f_00000000-6_Main.cudafe1.cpp:(.text.startup+0x25e): undefined reference to `run_event_based_simulation_optimization_5(Inputs, SimulationData, int)'\n...[truncated]...\n:(.text.startup+0x431): undefined reference to `run_event_based_simulation_optimization_1(Inputs, SimulationData, int)'\n/usr/bin/ld: tmpxft_00110fc9_00000000-6_Simulation.cudafe1.cpp:(.text.startup+0x471): undefined reference to `run_event_based_simulation_optimization_2(Inputs, SimulationData, int)'\n/usr/bin/ld: tmpxft_00110fc9_00000000-6_Simulation.cudafe1.cpp:(.text.startup+0x4b1): undefined reference to `run_event_based_simulation_optimization_3(Inputs, SimulationData, int)'\n/usr/bin/ld: tmpxft_00110fc9_00000000-6_Simulation.cudafe1.cpp:(.text.startup+0x4f1): undefined reference to `run_event_based_simulation_optimization_4(Inputs, SimulationData, int)'\ncollect2: error: ld returned 1 exit status\nmake: *** [Makefile:65: XSBench] Error 1\n",
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}
