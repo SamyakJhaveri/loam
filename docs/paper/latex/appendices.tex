@@ -1379,6 +1379,39 @@ Three anonymization steps are applied before prompt construction:
   stripped from the build command string.
 \end{itemize}
 
+\section{GPT-4.1 Mini Per-Model Figures}
+\label{sec:appendix-gpt-figures}
+
+The following figures present GPT-4.1~mini evaluation results, complementing the Qwen~3.5 397B figures in the main body. Each figure uses the same visualization format as its main-body counterpart to enable direct visual comparison.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{f3_kernel_model_heatmap_gpt.pdf}
+\caption{Per-kernel pass rates across all translation directions (GPT-4.1~mini). Compare with Figure~\ref{fig:kernel-heatmap} in main body (Qwen~3.5 397B).}
+\label{fig:f3-gpt}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{f4_failure_taxonomy_gpt.pdf}
+\caption{Failure taxonomy distribution (GPT-4.1~mini). Compare with Figure~\ref{fig:failure-taxonomy} in main body (Qwen~3.5 397B).}
+\label{fig:f4-gpt}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction_gpt.pdf}
+\caption{Pass@$k$ rates by translation direction (GPT-4.1~mini). Compare with Figure~\ref{fig:f5-qwen} in main body (Qwen~3.5 397B).}
+\label{fig:f5-gpt}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\columnwidth]{f6_cross_suite_comparison_gpt.pdf}
+\caption{Cross-suite pass rate comparison (GPT-4.1~mini). Compare with Figure~\ref{fig:f6-qwen} in main body (Qwen~3.5 397B).}
+\label{fig:f6-gpt}
+\end{figure}
+
 \section{Evaluation Cost Summary}
 \label{sec:appendix-cost}
 
