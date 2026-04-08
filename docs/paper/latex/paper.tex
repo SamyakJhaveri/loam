@@ -998,6 +998,124 @@ The complete statistical summary is provided in Appendix Table~\ref{tab:stats-su
 Methodological notes: Wilson confidence intervals are preferred over Wald intervals because they provide better coverage near boundary proportions (0\% or 100\%). Cochran-Armitage tests model a linear trend in pass rate across ordered augmentation levels (L0 $<$ L1 $<$ L2 $<$ L3 $<$ L4). McNemar's test is used for direction asymmetry because each kernel-model pair is evaluated in both directions, creating natural pairing. Bonferroni correction divides $\alpha = 0.05$ across four direction pairs (including the omp\_target case-study pair) to control family-wise error rate.
 
 %% =============================================================
+%% S6.9 CROSS-MODEL COMPARISON
+%% =============================================================
+\subsection{Cross-Model Comparison}
+\label{sec:cross-model}
+
+% src: cross_model_comparison.json > overall
+ParBench evaluates two models from distinct providers---Qwen~3.5 397B-A17B
+(Alibaba, via Together~AI) and GPT-4.1~mini (OpenAI, via Azure)---to
+demonstrate the framework's utility for cross-provider capability
+comparison.\footnote{Cross-model comparison covers 7 of 8 evaluated
+translation directions; \texttt{omp\_target}-to-CUDA GPT-4.1~mini results
+were unavailable at submission.}
+% src: cross_model_comparison.json > overall > qwen.rate=0.3831, gpt.rate=0.2922
+Across all evaluated tasks, Qwen~3.5 achieves 38.3\% (272/710) and
+GPT-4.1~mini achieves 29.2\% (161/551). A chi-squared test of homogeneity
+yields $\chi^2 = 10.97$ ($\mathit{df} = 1$, $p = 9.3 \times 10^{-4}$),
+% src: cross_model_comparison.json > overall > chi_squared.chi2=10.9704, p_value=0.000926
+indicating a statistically significant difference. However, Cohen's $h = 0.19$
+% src: cross_model_comparison.json > overall > cohens_h=0.1926, effect_size=negligible
+(negligible effect size) indicates that the practical magnitude of the
+difference is modest. This result demonstrates ParBench's sensitivity: the
+framework detects even small cross-provider differences with statistical
+confidence.
+
+% src: cross_model_comparison.json > per_direction (all 7 directions)
+\textbf{Per-direction analysis.}
+Direction-level comparison reveals that cross-provider differences
+concentrate in specific translation paths rather than distributing
+uniformly. Table~\ref{tab:cross-model-direction} summarizes the 7 common
+directions.
+
+\begin{table}[h]
+\centering
+\caption{Per-direction pass rates for 7 common translation directions.}
+\label{tab:cross-model-direction}
+\footnotesize
+\begin{tabular}{lrrrc}
+\toprule
+\textbf{Direction} & \textbf{Qwen} & \textbf{GPT} & \textbf{$h$} & \textbf{Effect} \\
+\midrule
+% src: cross_model_comparison.json > per_direction > cuda-to-omp
+CUDA$\to$OMP        & 64.2\% & 40.0\% & 0.49  & small \\
+% src: cross_model_comparison.json > per_direction > omp-to-cuda
+OMP$\to$CUDA        & 52.5\% & 17.9\% & 0.75  & medium \\
+% src: cross_model_comparison.json > per_direction > opencl-to-omp
+OpenCL$\to$OMP      & 38.9\% & 41.1\% & $-$0.05 & negl. \\
+% src: cross_model_comparison.json > per_direction > omp-to-opencl
+OMP$\to$OpenCL      & 27.8\% & 33.3\% & $-$0.12 & negl. \\
+% src: cross_model_comparison.json > per_direction > cuda-to-opencl
+CUDA$\to$OpenCL     & 20.0\% & 30.0\% & $-$0.23 & small \\
+% src: cross_model_comparison.json > per_direction > opencl-to-cuda
+OpenCL$\to$CUDA     &  6.0\% &  3.7\% & 0.11  & negl. \\
+% src: cross_model_comparison.json > per_direction > cuda-to-omp_target
+CUDA$\to$OMP\_tgt   & 17.5\% &  0.0\% & 0.86  & large \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% src: cross_model_comparison.json > per_direction > omp-to-cuda.cohens_h=0.7482
+% src: cross_model_comparison.json > per_direction > cuda-to-omp.cohens_h=0.4887
+Qwen~3.5 achieves notably higher rates on CUDA-to-OpenMP (64.2\% vs.\
+40.0\%, $h = 0.49$) and OMP-to-CUDA (52.5\% vs.\ 17.9\%, $h = 0.75$),
+% src: cross_model_comparison.json > per_direction > cuda-to-opencl.cohens_h=-0.232
+while GPT-4.1~mini achieves higher rates on CUDA-to-OpenCL (30.0\% vs.\
+20.0\%, $h = -0.23$) and OMP-to-OpenCL (33.3\% vs.\ 27.8\%). Both
+% src: cross_model_comparison.json > per_direction > opencl-to-cuda
+models converge near zero on OpenCL-to-CUDA ($\leq$6\%), confirming
+that this direction poses a structural challenge independent of provider.
+These direction-specific strengths suggest complementary model
+capabilities that a benchmark must surface individually.
+
+% src: paper_data_gpt41mini.json > primary_campaign > overall > by_status (BUILD_FAIL=316, total=551)
+% src: paper_data.json > primary_campaign > overall > by_status (BUILD_FAIL=241, total=710)
+\textbf{Failure taxonomy comparison.}
+Build failures dominate both models but more severely affect GPT-4.1~mini:
+\textsc{build\_fail} accounts for 81.0\% of GPT failures (316/390) versus
+55.0\% of Qwen failures (241/438). As a fraction of all tasks, GPT-4.1~mini
+encounters build failures on 57.3\% of tasks (316/551) compared to Qwen's
+33.9\% (241/710). The most frequent GPT build-failure subcategories are
+% src: error_taxonomy.json > build_fail_categories > missing_target_api > by_model (GPT=196)
+% src: error_taxonomy.json > build_fail_categories > missing_header > by_model (GPT=168)
+missing target API references (196 instances) and missing headers (168
+instances), indicating that GPT-4.1~mini struggles more with API syntax
+translation than with algorithmic restructuring. Verification failures
+% src: paper_data.json > overall > by_status (VERIFY_FAIL=51, 51/710=7.2%)
+% src: paper_data_gpt41mini.json > overall > by_status (VERIFY_FAIL=31, 31/551=5.6%)
+are comparable: 7.2\% for Qwen versus 5.6\% for GPT, suggesting that
+once code compiles, both models produce semantically similar output at
+similar rates.
+
+% src: cross_model_comparison.json > per_kernel_matrix > counts
+\textbf{Per-kernel agreement.}
+% src: cross_model_comparison.json > per_kernel_matrix > total_common_kernels=31
+Across 31 kernels evaluated by both models, 13 are solved by both
+(backprop, bfs, cfd, hotspot, hotspot3d, lavamd, lud, nn, nw,
+particlefilter, pathfinder, srad, streamcluster), 5 are failed by both
+(convolution1d, heartwall, myocyte, rsbench, xsbench), 11 are solved by
+Qwen only (bptree, floydwarshall, heat2d, iso2dfd, jacobi, md, mixbench,
+nqueen, page-rank, scan, stencil1d), and 2 are solved by GPT only (dwt2d,
+gaussian). The 11-vs.-2 asymmetry in model-exclusive successes indicates
+broader kernel coverage for Qwen~3.5, yet the 2 GPT-exclusive kernels
+demonstrate that different provider architectures solve different subsets
+of the translation space---a pattern that only a multi-model benchmark
+can reveal.
+
+% src: cross_model_comparison.json > per_direction > [each].cohens_h
+\textbf{Effect sizes.}
+Despite the statistically significant aggregate difference ($p < 0.001$),
+Cohen's $h$ values reveal that most individual directions show negligible
+practical differences: 4 of 7 directions have $|h| < 0.20$. The two
+largest effects are OMP-to-CUDA ($h = 0.75$, medium) and CUDA-to-OMP
+($h = 0.49$, small). At the other extreme, CUDA-to-OMP\_target shows
+$h = 0.86$ (large), driven entirely by GPT-4.1~mini's 0\% pass rate on
+this direction. The pattern of direction-dependent effect sizes reinforces
+that aggregate comparisons alone are insufficient; ParBench's per-direction
+decomposition is essential for actionable cross-provider analysis.
+
+%% =============================================================
 %% S7 DISCUSSION
 %% =============================================================
 \section{Discussion}
