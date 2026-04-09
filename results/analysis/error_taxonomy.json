@@ -1,12 +1,12 @@
 {
-  "total_results": 2158,
+  "total_results": 2190,
   "total_pass": 602,
-  "total_failures": 1556,
+  "total_failures": 1588,
   "status_counts": {
     "VERIFY_FAIL": 228,
     "PASS": 602,
     "RUN_FAIL": 374,
-    "BUILD_FAIL": 931,
+    "BUILD_FAIL": 963,
     "EXTRACTION_FAIL": 22,
     "ERROR": 1
   },
@@ -77,7 +77,7 @@
       }
     },
     "other_build": {
-      "count": 172,
+      "count": 174,
       "examples": [
         {
           "file": "hecbench-scan-omp_target-to-hecbench-scan-cuda-s0.json",
@@ -102,7 +102,7 @@
         }
       ],
       "by_model": {
-        "azure-gpt-4.1-mini": 86,
+        "azure-gpt-4.1-mini": 88,
         "together-qwen-3.5-397b-a17b": 86
       },
       "by_direction": {
@@ -110,9 +110,9 @@
         "omp-to-cuda": 43,
         "opencl-to-omp": 9,
         "cuda-to-opencl": 8,
-        "omp-to-opencl": 8,
+        "omp-to-opencl": 9,
         "opencl-to-cuda": 45,
-        "cuda-to-omp": 18,
+        "cuda-to-omp": 19,
         "cuda-to-omp_target": 27
       },
       "by_kernel": {
@@ -128,7 +128,7 @@
         "pathfinder": 6,
         "srad": 9,
         "rsbench": 2,
-        "xsbench": 5,
+        "xsbench": 7,
         "convolution1d": 11,
         "floydwarshall": 3,
         "heat2d": 5,
@@ -251,7 +251,7 @@
       }
     },
     "missing_target_api": {
-      "count": 141,
+      "count": 171,
       "examples": [
         {
           "file": "mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-L1.json",
@@ -276,15 +276,16 @@
         }
       ],
       "by_model": {
-        "azure-gpt-4.1-mini": 62,
+        "azure-gpt-4.1-mini": 92,
         "together-qwen-3.5-397b-a17b": 79
       },
       "by_direction": {
         "opencl-to-cuda": 32,
-        "cuda-to-omp": 36,
+        "cuda-to-omp": 43,
         "omp-to-cuda": 38,
-        "omp-to-opencl": 4,
-        "opencl-to-omp": 30,
+        "omp-to-opencl": 11,
+        "opencl-to-omp": 38,
+        "cuda-to-opencl": 8,
         "cuda-to-omp_target": 1
       },
       "by_kernel": {
@@ -298,7 +299,7 @@
         "myocyte": 31,
         "srad": 2,
         "streamcluster": 5,
-        "xsbench": 21,
+        "xsbench": 51,
         "convolution1d": 1,
         "hotspot3d": 2,
         "lud": 4,
@@ -1844,14 +1845,14 @@
       "error": 1
     },
     "xsbench": {
-      "total": 54,
+      "total": 86,
       "pass": 0,
       "build_fail": {
+        "missing_target_api": 51,
+        "other_build": 7,
         "type_mismatch": 1,
         "undeclared_identifier": 4,
         "syntax_error": 1,
-        "missing_target_api": 21,
-        "other_build": 5,
         "retained_cuda_api": 1,
         "linker_error": 2,
         "retained_opencl_api": 3
@@ -1866,14 +1867,14 @@
   },
   "per_model": {
     "azure-gpt-4.1-mini": {
-      "total": 910,
+      "total": 942,
       "pass": 246,
       "build_fail": {
         "undeclared_identifier": 37,
-        "other_build": 86,
+        "other_build": 88,
         "linker_error": 54,
         "missing_header": 151,
-        "missing_target_api": 62,
+        "missing_target_api": 92,
         "implicit_declaration": 11,
         "retained_cuda_types": 1,
         "syntax_error": 3,
@@ -2013,17 +2014,17 @@
       "error": 0
     },
     "cuda-to-omp": {
-      "total": 352,
+      "total": 360,
       "pass": 170,
       "build_fail": {
-        "missing_target_api": 36,
+        "missing_target_api": 43,
         "linker_error": 22,
         "missing_header": 40,
         "undeclared_identifier": 30,
         "implicit_declaration": 7,
         "syntax_error": 6,
         "retained_cuda_api": 4,
-        "other_build": 18,
+        "other_build": 19,
         "redefinition": 2,
         "retained_cuda_types": 2,
         "type_mismatch": 1
@@ -2040,11 +2041,12 @@
       "error": 0
     },
     "cuda-to-opencl": {
-      "total": 344,
+      "total": 352,
       "pass": 73,
       "build_fail": {
         "other_build": 8,
-        "missing_header": 32
+        "missing_header": 32,
+        "missing_target_api": 8
       },
       "run_fail": {
         "abort": 8,
@@ -2063,12 +2065,12 @@
       "error": 1
     },
     "omp-to-opencl": {
-      "total": 296,
+      "total": 304,
       "pass": 83,
       "build_fail": {
         "missing_header": 29,
-        "other_build": 8,
-        "missing_target_api": 4
+        "other_build": 9,
+        "missing_target_api": 11
       },
       "run_fail": {
         "abort": 7,
@@ -2088,7 +2090,7 @@
       "error": 0
     },
     "opencl-to-omp": {
-      "total": 296,
+      "total": 304,
       "pass": 87,
       "build_fail": {
         "linker_error": 34,
@@ -2097,7 +2099,7 @@
         "missing_header": 26,
         "retained_cuda_types": 4,
         "implicit_declaration": 2,
-        "missing_target_api": 30,
+        "missing_target_api": 38,
         "syntax_error": 3,
         "type_mismatch": 7,
         "retained_cuda_api": 1
@@ -9063,6 +9065,166 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L1.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L2.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L3.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-L4.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-s0.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-s1.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-omp-s2.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-omp.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L1.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L2.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L3.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-L4.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-s0.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-s1.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl-s2.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-cuda-to-xsbench-xsbench-opencl.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "cuda-to-opencl",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-omp-to-xsbench-xsbench-cuda-s0.json",
       "model": "azure-gpt-4.1-mini",
       "kernel": "xsbench",
@@ -9095,6 +9257,86 @@
       "secondary_categories": []
     },
     {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L1.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L2.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L3.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-L4.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-s0.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-s1.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-omp-to-xsbench-xsbench-opencl-s2.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-omp-to-xsbench-xsbench-opencl.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "omp-to-opencl",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
       "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-opencl-to-xsbench-xsbench-cuda-s0.json",
       "model": "azure-gpt-4.1-mini",
       "kernel": "xsbench",
@@ -9124,6 +9366,86 @@
       "augment_level": 0,
       "overall_status": "BUILD_FAIL",
       "primary_category": "other_build",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L1.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 1,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L2.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 2,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L3.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 3,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-L4.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 4,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-s0.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-s1.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-opencl-to-xsbench-xsbench-omp-s2.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
+      "secondary_categories": []
+    },
+    {
+      "file": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-4.1-mini/xsbench-xsbench-opencl-to-xsbench-xsbench-omp.json",
+      "model": "azure-gpt-4.1-mini",
+      "kernel": "xsbench",
+      "direction": "opencl-to-omp",
+      "augment_level": 0,
+      "overall_status": "BUILD_FAIL",
+      "primary_category": "missing_target_api",
       "secondary_categories": []
     },
     {

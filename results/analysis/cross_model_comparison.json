@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-08T22:55:35.817189+00:00",
+  "generated_at": "2026-04-09T02:12:26.020905+00:00",
   "models": [
     "together-qwen-3.5-397b-a17b",
     "azure-gpt-4.1-mini"
@@ -26,12 +26,12 @@
       ],
       [
         177,
-        380
+        400
       ]
     ],
     "chi_squared": {
-      "chi2": 5.5396,
-      "p_value": 0.01859,
+      "chi2": 7.8336,
+      "p_value": 0.005128,
       "dof": 1
     },
     "qwen": {
@@ -41,10 +41,10 @@
     },
     "gpt": {
       "pass": 177,
-      "total": 557,
-      "rate": 0.3178
+      "total": 577,
+      "rate": 0.3068
     },
-    "cohens_h": 0.137,
+    "cohens_h": 0.1607,
     "effect_size": "negligible"
   },
   "per_direction": {
@@ -56,10 +56,10 @@
       },
       "gpt": {
         "pass": 48,
-        "total": 80,
-        "rate": 0.6
+        "total": 85,
+        "rate": 0.5647
       },
-      "cohens_h": 0.086,
+      "cohens_h": 0.1576,
       "effect_size": "negligible"
     },
     "cuda-to-opencl": {
@@ -70,10 +70,10 @@
       },
       "gpt": {
         "pass": 30,
-        "total": 85,
-        "rate": 0.3529
+        "total": 90,
+        "rate": 0.3333
       },
-      "cohens_h": -0.3449,
+      "cohens_h": -0.3036,
       "effect_size": "small"
     },
     "omp-to-cuda": {
@@ -98,10 +98,10 @@
       },
       "gpt": {
         "pass": 30,
-        "total": 75,
-        "rate": 0.4
+        "total": 80,
+        "rate": 0.375
       },
-      "cohens_h": -0.2591,
+      "cohens_h": -0.2078,
       "effect_size": "small"
     },
     "omp_target-to-cuda": {
@@ -140,15 +140,15 @@
       },
       "gpt": {
         "pass": 37,
-        "total": 75,
-        "rate": 0.4933
+        "total": 80,
+        "rate": 0.4625
       },
-      "cohens_h": -0.2107,
-      "effect_size": "small"
+      "cohens_h": -0.149,
+      "effect_size": "negligible"
     }
   },
   "per_kernel_matrix": {
-    "total_common_kernels": 29,
+    "total_common_kernels": 30,
     "both_pass": [
       "backprop",
       "bfs",
@@ -173,7 +173,8 @@
       "convolution1d",
       "gaussian",
       "heartwall",
-      "myocyte"
+      "myocyte",
+      "xsbench"
     ],
     "qwen_only_pass": [
       "bptree",
@@ -188,7 +189,7 @@
     ],
     "counts": {
       "both_pass": 18,
-      "both_fail": 4,
+      "both_fail": 5,
       "qwen_only_pass": 6,
       "gpt_only_pass": 1
     }

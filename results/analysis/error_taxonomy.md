@@ -1,40 +1,40 @@
 # Error Taxonomy — ParBench LLM Evaluation Results
 
-**Total results:** 2158  
-**PASS:** 602 (27.9%)  
-**Failures:** 1556 (72.1%)
+**Total results:** 2190  
+**PASS:** 602 (27.5%)  
+**Failures:** 1588 (72.5%)
 
 ## Table 1: Overall Status Distribution
 
 | Status | Count | % of Total |
 |--------|------:|----------:|
-| PASS | 602 | 27.9% |
-| BUILD_FAIL | 931 | 43.1% |
-| RUN_FAIL | 374 | 17.3% |
-| VERIFY_FAIL | 228 | 10.6% |
+| PASS | 602 | 27.5% |
+| BUILD_FAIL | 963 | 44.0% |
+| RUN_FAIL | 374 | 17.1% |
+| VERIFY_FAIL | 228 | 10.4% |
 | EXTRACTION_FAIL | 22 | 1.0% |
 | ERROR | 1 | 0.0% |
-| **Total** | **2158** | **100.0%** |
+| **Total** | **2190** | **100.0%** |
 
 ## Table 2: BUILD_FAIL Root Cause Categories
 
-*931 total BUILD_FAIL results classified into 12 categories.*
+*963 total BUILD_FAIL results classified into 12 categories.*
 
 | # | Category | Count | % of BUILD_FAIL | Description |
 |--:|----------|------:|----------------:|-------------|
-| 1 | `missing_header` | 271 | 29.1% | Missing or wrong #include directive — file not found |
-| 2 | `other_build` | 172 | 18.5% | Build failures not matching any specific pattern |
-| 3 | `undeclared_identifier` | 151 | 16.2% | Function, variable, or type not declared/defined in scope |
-| 4 | `missing_target_api` | 141 | 15.1% | LLM translation contains no target API constructs (no pragmas/kernels for target language) |
-| 5 | `linker_error` | 116 | 12.5% | Compilation succeeded but linking failed (undefined references, etc.) |
-| 6 | `syntax_error` | 23 | 2.5% | Parse errors, malformed code, unexpected tokens |
+| 1 | `missing_header` | 271 | 28.1% | Missing or wrong #include directive — file not found |
+| 2 | `other_build` | 174 | 18.1% | Build failures not matching any specific pattern |
+| 3 | `missing_target_api` | 171 | 17.8% | LLM translation contains no target API constructs (no pragmas/kernels for target language) |
+| 4 | `undeclared_identifier` | 151 | 15.7% | Function, variable, or type not declared/defined in scope |
+| 5 | `linker_error` | 116 | 12.0% | Compilation succeeded but linking failed (undefined references, etc.) |
+| 6 | `syntax_error` | 23 | 2.4% | Parse errors, malformed code, unexpected tokens |
 | 7 | `type_mismatch` | 18 | 1.9% | Type mismatches, wrong function signatures, incompatible conversions |
 | 8 | `implicit_declaration` | 17 | 1.8% | Missing function prototypes — implicit declaration warnings promoted to errors |
-| 9 | `redefinition` | 8 | 0.9% | Duplicate or conflicting definitions of types/functions/variables |
+| 9 | `redefinition` | 8 | 0.8% | Duplicate or conflicting definitions of types/functions/variables |
 | 10 | `retained_cuda_types` | 6 | 0.6% | LLM retained CUDA-specific types (float3, dim3, etc.) in non-CUDA target |
 | 11 | `retained_cuda_api` | 5 | 0.5% | LLM retained CUDA API calls/keywords in non-CUDA target code |
 | 12 | `retained_opencl_api` | 3 | 0.3% | LLM retained OpenCL API calls in non-OpenCL target code |
-| | **Total** | **931** | **100.0%** | |
+| | **Total** | **963** | **100.0%** | |
 
 ## Table 3: RUN_FAIL Root Cause Categories
 
@@ -78,9 +78,9 @@
 | Category | azure-gpt-4.1-mini | together-qwen-3.5-397b-a17b | Total |
 |----------|------:|------:|------:|
 | `missing_header` | 151 | 120 | 271 |
-| `other_build` | 86 | 86 | 172 |
+| `other_build` | 88 | 86 | 174 |
+| `missing_target_api` | 92 | 79 | 171 |
 | `undeclared_identifier` | 37 | 114 | 151 |
-| `missing_target_api` | 62 | 79 | 141 |
 | `linker_error` | 54 | 62 | 116 |
 | `syntax_error` | 3 | 20 | 23 |
 | `type_mismatch` | 4 | 14 | 18 |
@@ -89,25 +89,25 @@
 | `retained_cuda_types` | 1 | 5 | 6 |
 | `retained_cuda_api` | 1 | 4 | 5 |
 | `retained_opencl_api` | 0 | 3 | 3 |
-| **Total** | **411** | **520** | **931** |
+| **Total** | **443** | **520** | **963** |
 
 ## Table 6: BUILD_FAIL Categories by Direction
 
-| Category | opencl→cuda | omp→cuda | cuda→omp | opencl→omp | cuda→omp_target | omp→opencl | cuda→opencl | omp_target→cuda | Total |
+| Category | opencl→cuda | omp→cuda | cuda→omp | opencl→omp | omp→opencl | cuda→opencl | cuda→omp_target | omp_target→cuda | Total |
 |----------|------:|------:|------:|------:|------:|------:|------:|------:|------:|
-| `missing_header` | 93 | 51 | 40 | 26 | 0 | 29 | 32 | 0 | 271 |
-| `other_build` | 45 | 43 | 18 | 9 | 27 | 8 | 8 | 14 | 172 |
-| `undeclared_identifier` | 33 | 34 | 30 | 38 | 11 | 0 | 0 | 5 | 151 |
-| `missing_target_api` | 32 | 38 | 36 | 30 | 1 | 4 | 0 | 0 | 141 |
+| `missing_header` | 93 | 51 | 40 | 26 | 29 | 32 | 0 | 0 | 271 |
+| `other_build` | 45 | 43 | 19 | 9 | 9 | 8 | 27 | 14 | 174 |
+| `missing_target_api` | 32 | 38 | 43 | 38 | 11 | 8 | 1 | 0 | 171 |
+| `undeclared_identifier` | 33 | 34 | 30 | 38 | 0 | 0 | 11 | 5 | 151 |
 | `linker_error` | 47 | 13 | 22 | 34 | 0 | 0 | 0 | 0 | 116 |
-| `syntax_error` | 5 | 2 | 6 | 3 | 4 | 0 | 0 | 3 | 23 |
+| `syntax_error` | 5 | 2 | 6 | 3 | 0 | 0 | 4 | 3 | 23 |
 | `type_mismatch` | 0 | 10 | 1 | 7 | 0 | 0 | 0 | 0 | 18 |
 | `implicit_declaration` | 6 | 2 | 7 | 2 | 0 | 0 | 0 | 0 | 17 |
 | `redefinition` | 3 | 3 | 2 | 0 | 0 | 0 | 0 | 0 | 8 |
 | `retained_cuda_types` | 0 | 0 | 2 | 4 | 0 | 0 | 0 | 0 | 6 |
 | `retained_cuda_api` | 0 | 0 | 4 | 1 | 0 | 0 | 0 | 0 | 5 |
 | `retained_opencl_api` | 3 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 3 |
-| **Total** | **267** | **196** | **168** | **154** | **43** | **41** | **40** | **22** | **931** |
+| **Total** | **267** | **196** | **176** | **162** | **49** | **48** | **43** | **22** | **963** |
 
 ## Table 7: RUN_FAIL Categories by Model
 
@@ -126,21 +126,21 @@
 
 | Model | Total | PASS | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL | EXTRACTION_FAIL | ERROR | Pass Rate |
 |-------|------:|-----:|----------:|--------:|----------:|--------------:|------:|----------:|
-| azure-gpt-4.1-mini | 910 | 246 | 411 | 116 | 137 | 0 | 0 | 27.0% |
+| azure-gpt-4.1-mini | 942 | 246 | 443 | 116 | 137 | 0 | 0 | 26.1% |
 | together-qwen-3.5-397b-a17b | 1248 | 356 | 520 | 258 | 91 | 22 | 1 | 28.5% |
 
 ## Table 9: Complete Status Distribution by Direction
 
 | Direction | Total | PASS | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL | EXTRACTION_FAIL | ERROR | Pass Rate |
 |-----------|------:|-----:|----------:|--------:|----------:|--------------:|------:|----------:|
-| cuda→omp | 352 | 170 | 168 | 6 | 7 | 1 | 0 | 48.3% |
+| cuda→omp | 360 | 170 | 176 | 6 | 7 | 1 | 0 | 47.2% |
 | cuda→omp_target | 64 | 7 | 43 | 12 | 2 | 0 | 0 | 10.9% |
-| cuda→opencl | 344 | 73 | 40 | 190 | 38 | 2 | 1 | 21.2% |
+| cuda→opencl | 352 | 73 | 48 | 190 | 38 | 2 | 1 | 20.7% |
 | omp→cuda | 349 | 95 | 196 | 12 | 34 | 12 | 0 | 27.2% |
-| omp→opencl | 296 | 83 | 41 | 130 | 38 | 4 | 0 | 28.0% |
+| omp→opencl | 304 | 83 | 49 | 130 | 38 | 4 | 0 | 27.3% |
 | omp_target→cuda | 160 | 80 | 22 | 11 | 47 | 0 | 0 | 50.0% |
 | opencl→cuda | 297 | 7 | 267 | 5 | 15 | 3 | 0 | 2.4% |
-| opencl→omp | 296 | 87 | 154 | 8 | 47 | 0 | 0 | 29.4% |
+| opencl→omp | 304 | 87 | 162 | 8 | 47 | 0 | 0 | 28.6% |
 
 ## Table 10: Per-Kernel Pass Rate and Primary Failure Mode
 
@@ -179,15 +179,15 @@
 | srad | 90 | 23 | 25.6% | `wrong_exit_code` | 17 |
 | stencil1d | 40 | 22 | 55.0% | `wrong_numerical_output` | 16 |
 | streamcluster | 85 | 4 | 4.7% | `wrong_exit_code` | 30 |
-| xsbench | 54 | 0 | 0.0% | `missing_target_api` | 21 |
+| xsbench | 86 | 0 | 0.0% | `missing_target_api` | 51 |
 
 ## Key Findings
 
 ### Top BUILD_FAIL Root Causes
 
-1. **`missing_header`** — 271 (29.1% of BUILD_FAIL)
-2. **`other_build`** — 172 (18.5% of BUILD_FAIL)
-3. **`undeclared_identifier`** — 151 (16.2% of BUILD_FAIL)
+1. **`missing_header`** — 271 (28.1% of BUILD_FAIL)
+2. **`other_build`** — 174 (18.1% of BUILD_FAIL)
+3. **`missing_target_api`** — 171 (17.8% of BUILD_FAIL)
 
 ### Top RUN_FAIL Root Causes
 
@@ -203,18 +203,18 @@
 
 ### Direction Asymmetry
 
-- cuda→omp: 170/352 PASS (48.3%)
+- cuda→omp: 170/360 PASS (47.2%)
 - cuda→omp_target: 7/64 PASS (10.9%)
-- cuda→opencl: 73/344 PASS (21.2%)
+- cuda→opencl: 73/352 PASS (20.7%)
 - omp→cuda: 95/349 PASS (27.2%)
-- omp→opencl: 83/296 PASS (28.0%)
+- omp→opencl: 83/304 PASS (27.3%)
 - omp_target→cuda: 80/160 PASS (50.0%)
 - opencl→cuda: 7/297 PASS (2.4%)
-- opencl→omp: 87/296 PASS (29.4%)
+- opencl→omp: 87/304 PASS (28.6%)
 
 ### Compound Failures (Multiple Root Causes)
 
-**432** results (27.8% of failures) have secondary error categories.
+**432** results (27.2% of failures) have secondary error categories.
 
 | Primary + Secondary | Count |
 |---------------------|------:|
