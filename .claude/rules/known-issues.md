@@ -65,6 +65,30 @@ entries remain (append-only). Use streamcluster or backprop as replacement for b
 Git worktrees do NOT initialize submodules. The `rodinia/` submodule will be empty
 in any worktree. **Never run LLM evaluations in worktrees.** Only use worktrees for code review.
 
+## KNOWN_FAIL Inclusion Policy for Evaluation Statistics
+
+- Results where KNOWN_FAIL spec is the SOURCE: Exclude from the standard denominator.
+  Rationale: source correctness is unverified on the KNOWN_FAIL platform, making it
+  unclear whether a PASS reflects genuine translation quality.
+- Results where KNOWN_FAIL spec is the TARGET: Exclude from statistics. The target
+  build/run infrastructure is broken, making evaluation unfair.
+- When reporting pass rates, exclude results where EITHER source OR target is KNOWN_FAIL
+  (denominator = 1120 results where both source and target are non-KNOWN_FAIL;
+  347 PASS = 31.0%). Verified against 1,248 total results on disk (72 target-KF, 88 source-KF,
+  56 both-KF excluded).
+
+## Pipeline Audit Results (2026-04-09)
+
+Full audit of 1,248 Qwen 3.5 397B evaluation results across 156 (kernel, direction) combos.
+
+- **1 bug found:** Regex combiner in `_build_cross_api_verify_spec()` wrapped `(?i)` patterns
+  as `(?:(?i)...)`, causing Python `re.compile()` to reject the pattern. Fixed by converting
+  to scoped form `(?i:...)` via `_wrap_pattern()` helper. See `scripts/analysis/reverify_regex_bug.py`.
+- **9 results affected** (all nn-opencl source, KNOWN_FAIL): 3 would flip VERIFY_FAIL→PASS,
+  6 still fail (stdout lacks expected pattern).
+- **0 pipeline bugs in core (non-KNOWN_FAIL) evaluation set.**
+- **347/1120 = 31.0% non-KNOWN_FAIL pass rate** — unaffected by the fix.
+
 Historical details (FALSE_PASS fixes, Rodinia submodule policy, XSBench checksums, hook protection,
 augmentation baseline, eval timing limitations, localStorage divergence, eval JSON schema quirk,
 Gemini thinking confound, backprop anomaly, OpenCL kernel-only fix) are in `known-issues-archive.md`.

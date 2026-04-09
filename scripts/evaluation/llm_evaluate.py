@@ -1210,6 +1210,22 @@ def _is_kernel_only_translation(target_spec: dict) -> bool:
     return all(t.endswith(".cl") for t in targets)
 
 
+def _wrap_pattern(p: str) -> str:
+    """Wrap a pattern in a non-capturing group, preserving inline flags.
+
+    Patterns with leading inline flags like (?i) must be converted to scoped
+    form (?i:...) before combining via alternation. Otherwise, wrapping as
+    (?:(?i)...) places the global flag inside a group, which Python's re
+    rejects with 'global flags not at the start of the expression'.
+    """
+    m = re.match(r'^\(\?([aimsux]+)\)', p)
+    if m:
+        flags = m.group(1)
+        rest = p[m.end():]
+        return f"(?{flags}:{rest})"
+    return f"(?:{p})"
+
+
 def _build_cross_api_verify_spec(target_spec: dict, source_spec: dict) -> dict:
     """Build verification spec for cross-API translation.
 
@@ -1246,7 +1262,7 @@ def _build_cross_api_verify_spec(target_spec: dict, source_spec: dict) -> dict:
         target_patterns = [s.get("pattern", "") for s in target_stdout if s.get("pattern")]
         all_patterns = source_patterns + [p for p in target_patterns if p not in source_patterns]
         if all_patterns:
-            combined_pattern = "|".join(f"(?:{p})" for p in all_patterns)
+            combined_pattern = "|".join(_wrap_pattern(p) for p in all_patterns)
             combined_stdout = [{"type": "stdout_pattern", "pattern": combined_pattern}]
             verify_spec["verification"] = verify_spec.get("verification") or {}
             verify_spec["verification"]["strategies"] = combined_stdout + non_stdout
