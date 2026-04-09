@@ -38,7 +38,8 @@ COHEN_H_MEDIUM_THRESHOLD: float = 0.80
 PASSK_K_VALUES: list[int] = [1, 3]
 
 # KNOWN_FAIL specs — exclude from all aggregation.
-# Source: analyze_eval.py, cross-referenced with known-issues.md
+# Source: .claude/rules/known-issues.md (authoritative list)
+# NOTE: This list is duplicated from analyze_eval.py — see SPEC-02 (centralize to shared module).
 EXCLUDED_SPECS: frozenset[str] = frozenset({
     "rodinia-kmeans-cuda",
     "rodinia-mummergpu-cuda",
@@ -46,6 +47,8 @@ EXCLUDED_SPECS: frozenset[str] = frozenset({
     "rodinia-hybridsort-cuda",
     "rodinia-nn-opencl",
     "rodinia-kmeans-opencl",
+    "hecbench-stencil1d-omp_target",
+    "hecbench-scan-omp_target",
 })
 
 # Valid overall_status values

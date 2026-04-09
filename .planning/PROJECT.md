@@ -49,7 +49,7 @@ Every evaluation result is reproducible and pipeline-correct — so model compar
 
 ## Constraints
 
-- **Timeline:** NeurIPS 2026 deadline ~May (abstracts) / June (full papers) 2026
+- **Timeline:** NeurIPS 2026 deadline **May 1, 2026** (Datasets & Benchmarks track)
 - **Data immutability:** Never modify existing result JSONs — use --resume to append
 - **Audit-first:** Pipeline must be hardened before new model evals are trusted
 - **AskSage schema:** Adapter design blocked until full response schema confirmed by researcher
