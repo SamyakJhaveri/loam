@@ -84,14 +84,17 @@ Plans:
 
 ### Phase 20: Final Paper Update (overleaf.tex + appendices.tex + paper.tex)
 
-**Goal:** Update ALL GPT-4.1-mini numbers in overleaf.tex, appendices.tex, and paper.tex to match Phase 19 analysis outputs. Includes structural updates: cross-model direction table row changes, removal of stale "omp_target unavailable" footnote, rewrite of invalid h=0.86 effect-size discussion.
-**Plans:** 1/1 planned
+**Goal:** Update ALL GPT-4.1-mini numbers in overleaf.tex, appendices.tex, and paper.tex to match Phase 19 analysis outputs (re-run with expanded XSBench data). Includes structural updates: cross-model direction table row changes, removal of stale "omp_target unavailable" footnote, rewrite of invalid h=0.86 effect-size discussion. Fold in working-tree methodology edits.
+**Plans:** 3 plans
 
-- [ ] 20-01-PLAN.md — Numeric + structural updates to overleaf.tex (12 sections), appendices.tex (3 tables), paper.tex sync, final verify, commit
+Plans:
+- [ ] 20-02-PLAN.md — Re-run Phase 19 analysis pipeline with XSBench data + capture 20-NUMBERS.md
+- [ ] 20-03-PLAN.md — Update overleaf.tex (all 13 structural changes + numeric) + appendices.tex (4 tables)
+- [ ] 20-04-PLAN.md — Sync paper.tex + final verification + commit
 
 ## Progress
 
 | Milestone | Phases | Plans | Requirements | Status | Shipped |
 |-----------|--------|-------|-------------|--------|---------|
 | v1.0 SC26 Paper Sprint | 13 (2 dropped, 1 research stub) | 33/33 | 39/39 | Complete | 2026-04-06 |
-| GPT Integration & Submission | 7 (15, 15.5, 16, 17, 18, 19, 20) | 4/14 | -- | In Progress | -- |
+| GPT Integration & Submission | 7 (15, 15.5, 16, 17, 18, 19, 20) | 4/16 | -- | In Progress | -- |
