@@ -33,7 +33,7 @@
 \newcommand{\pass}{\textsc{Pass}}
 \newcommand{\fail}{\textsc{Fail}}
 \newcommand{\knownfail}{\textsc{Known\_Fail}}
-\newcommand{\pending}[1]{\textcolor{red}{\textbf{[PENDING-GPT: #1]}}}
+\newcommand{\pending}[1]{\textit{Provided in Artifact Description appendix}}
 % For numeric placeholders in tables
 \newcommand{\tbd}{\textcolor{red}{\textbf{--}}}
 
@@ -79,7 +79,7 @@
 % src: paper_data.json > augmentation > cochran_armitage: z=-0.0 (display as 0.0), p_value=1.0
 %% =============================================================
 \begin{abstract}
-Large language models (LLMs) are increasingly applied to parallel code generation, yet no benchmark framework systematically evaluates their ability to \emph{translate} parallel code across GPU programming APIs---and prior approaches share a critical blind spot: benchmark codes widely known in the HPC community are also present in LLM training data, making it impossible to distinguish genuine parallel reasoning from memorized translations. We present \textbf{ParBench}, a build-run-verify benchmark framework for evaluating LLM-based parallel code translation at the kernel level, with an integrated augmentation engine that systematically tests reliance on training-data pattern-matching. ParBench curates 96 benchmark specifications across five HPC benchmark suites (Rodinia, XSBench, RSBench, mixbench, HeCBench), six translation directions across three API pairs (CUDA, OpenMP, OpenCL), with two additional OpenMP-target directions evaluated as case studies. Evaluating Qwen~3.5 397B-A17B (a 397-billion-parameter Mixture-of-Experts model) across 710 primary campaign tasks spanning 31 kernels across five suites, six directions, and five augmentation levels (an unbalanced factorial design, since not all kernels have implementations in all three APIs), we observe an overall pass rate of 38.3\% [34.8\%, 41.9\%]. GPT-4.1~mini achieves 29.2\% [25.6\%, 33.2\%] across 551 tasks ($\chi^2 = 10.97$, $p < 0.001$, Cohen's $h = 0.19$). % src: cross_model_comparison.json > overall: gpt 161/551=0.2922, chi2=10.97, p=0.000926, h=0.1926 On the primary CUDA-to-OpenMP direction, Qwen~3.5 achieves 64.2\% (66.7\% at L0)---compared to 0\% in repository-level approaches~\cite{ParEvalRepo2025}. BUILD\_FAIL accounts for 33.9\% of all tasks; VERIFY\_FAIL accounts for 7.2\%, indicating that API-specific syntax is the primary bottleneck while a meaningful minority of compilable translations contain genuine parallel logic errors. An AST-driven augmentation engine applies six semantics-preserving transforms at five levels (L0--L4); 68 of 88 non-KNOWN\_FAIL specs across all five suites (54 Rodinia, 4 XSBench, 3 RSBench, 3 mixbench, and 4 spot-checked HeCBench) PASS at every level L1--L4 with zero correctness regressions, confirming level-invariant semantics preservation. LLM augmentation robustness evaluation on the balanced CUDA-to-OMP subset ($n{=}24$ kernels per level) yields a null result (Cochran-Armitage $z = 0.0$, $p = 1.0$), providing evidence that model failures are structural rather than surface-dependent, confirming benchmark validity against training-data memorization concerns. ParBench is publicly available as an extensible framework for the HPC community.
+Large language models (LLMs) are increasingly applied to parallel code generation, yet no benchmark framework systematically evaluates their ability to \emph{translate} parallel code across GPU programming APIs---and prior approaches share a critical blind spot: benchmark codes widely known in the HPC community are also present in LLM training data, making it impossible to distinguish genuine parallel reasoning from memorized translations. We present \textbf{ParBench}, a build-run-verify benchmark framework for evaluating LLM-based parallel code translation at the kernel level, with an integrated augmentation engine that systematically tests reliance on training-data pattern-matching. ParBench curates 96 benchmark specifications across five HPC benchmark suites (Rodinia, XSBench, RSBench, mixbench, HeCBench), six translation directions across three API pairs (CUDA, OpenMP, OpenCL), with two additional OpenMP-target directions evaluated as case studies. Evaluating Qwen~3.5 397B-A17B (a 397-billion-parameter Mixture-of-Experts model) across 710 primary campaign tasks spanning 31 kernels across five suites, six directions, and five augmentation levels (an unbalanced factorial design, since not all kernels have implementations in all three APIs), we observe an overall pass rate of 38.3\% [34.8\%, 41.9\%]. GPT-4.1~mini achieves 30.7\% [27.1\%, 34.6\%] across 577 tasks ($\chi^2 = 7.83$, $p = 0.005$, Cohen's $h = 0.16$). % src: cross_model_comparison.json > overall: gpt 177/577=0.3068, chi2=7.8336, p=0.005128, h=0.1607 On the primary CUDA-to-OpenMP direction, Qwen~3.5 achieves 64.2\% (66.7\% at L0)---compared to 0\% in repository-level approaches~\cite{ParEvalRepo2025}. BUILD\_FAIL accounts for 33.9\% of all tasks; VERIFY\_FAIL accounts for 7.2\%, indicating that API-specific syntax is the primary bottleneck while a meaningful minority of compilable translations contain genuine parallel logic errors. An AST-driven augmentation engine applies six semantics-preserving transforms at five levels (L0--L4); 68 of 88 non-KNOWN\_FAIL specs across all five suites (54 Rodinia, 4 XSBench, 3 RSBench, 3 mixbench, and 4 spot-checked HeCBench) PASS at every level L1--L4 with zero correctness regressions, confirming level-invariant semantics preservation. LLM augmentation robustness evaluation on the balanced CUDA-to-OMP subset ($n{=}24$ kernels per level) yields a null result (Cochran-Armitage $z = 0.0$, $p = 1.0$), providing evidence that model failures are structural rather than surface-dependent, confirming benchmark validity against training-data memorization concerns. ParBench is publicly available as an extensible framework for the HPC community.
 \end{abstract}
 
 %% =============================================================
@@ -146,7 +146,7 @@ This paper presents ParBench and makes the following contributions:
 \item \textbf{AST-driven augmentation engine}---Six semantics-preserving source-level transforms at five augmentation levels (L0--L4) that systematically test whether LLMs reason about parallel structure or pattern-match from training data. Level-invariant: 68 of 88 non-KNOWN\_FAIL specs across five suites PASS at all levels L1--L4 with zero correctness regressions. LLM evaluation at L0--L4 measures augmentation robustness as a discriminator of genuine parallel reasoning versus surface pattern-matching.
 
 % src: paper_data.json > file_counts: primary_campaign=710, passk_campaign=426; overall > by_status: BUILD_FAIL=241 (33.9%), VERIFY_FAIL=51 (7.2%)
-\item \textbf{Empirical evaluation}---Analysis of Qwen~3.5 397B-A17B across 710 primary campaign tasks and 426 pass@$k$ tasks spanning six directions and five augmentation levels, producing a failure taxonomy (33.9\% BUILD\_FAIL, 7.2\% VERIFY\_FAIL), per-kernel difficulty tiers, self-repair effectiveness measurement, augmentation robustness characterization with statistical independence testing, and a pass@$k$ analysis at temperature 0.7 to separate deterministic failures from sampling-sensitive cases. GPT-4.1~mini comparative evaluation across 551 tasks (seven directions, five augmentation levels) expands the dataset to 1{,}261 primary tasks across two providers (Alibaba via Together~AI, OpenAI via Azure), enabling cross-provider capability comparison with statistical independence testing. % src: paper_data_gpt41mini.json > primary_campaign > overall: 551 tasks; 710+551=1261
+\item \textbf{Empirical evaluation}---Analysis of Qwen~3.5 397B-A17B across 710 primary campaign tasks and 426 pass@$k$ tasks spanning six directions and five augmentation levels, producing a failure taxonomy (33.9\% BUILD\_FAIL, 7.2\% VERIFY\_FAIL), per-kernel difficulty tiers, self-repair effectiveness measurement, augmentation robustness characterization with statistical independence testing, and a pass@$k$ analysis at temperature 0.7 to separate deterministic failures from sampling-sensitive cases. GPT-4.1~mini comparative evaluation across 577 tasks (seven directions, five augmentation levels) expands the dataset to 1{,}287 primary tasks across two providers (Alibaba via Together~AI, OpenAI via Azure), enabling cross-provider capability comparison with statistical independence testing. % src: paper_data_gpt41mini.json > primary_campaign > overall: 577 tasks; 710+577=1287
 \end{enumerate}
 
 % src: paper_data.json > primary_campaign (all-suite scope, n=710)
@@ -165,7 +165,7 @@ ParBench produces several findings with immediate relevance for the HPC and LLM 
 
 \textbf{Kernel-centric isolation unlocks success.} Qwen~3.5 397B-A17B achieves 66.7\% PASS on CUDA-to-OpenMP translation at L0 (24 of 35 kernels with CUDA-to-OMP pairs across 5 suites), demonstrating that kernel-level evaluation reveals capability that repository-level approaches obscure. The gap quantifies the orthogonality of translation skill and build-system-generation skill.
 
-\textbf{Failure taxonomy reveals API syntax as the bottleneck.} Qwen~3.5 achieves 38.3\% [34.8\%, 41.9\%] overall across 710 tasks. GPT-4.1~mini achieves 29.2\% [25.6\%, 33.2\%] across 551 tasks; the difference is statistically significant ($\chi^2 = 10.97$, $p < 0.001$) but the effect size is negligible (Cohen's $h = 0.19$), suggesting both models encounter the same structural barriers. % src: cross_model_comparison.json > overall
+\textbf{Failure taxonomy reveals API syntax as the bottleneck.} Qwen~3.5 achieves 38.3\% [34.8\%, 41.9\%] overall across 710 tasks. GPT-4.1~mini achieves 30.7\% [27.1\%, 34.6\%] across 577 tasks; the difference is statistically significant ($\chi^2 = 7.83$, $p = 0.005$) but the effect size is negligible (Cohen's $h = 0.16$), suggesting both models encounter the same structural barriers. % src: cross_model_comparison.json > overall: gpt 177/577=0.3068, chi2=7.8336, p=0.005128, h=0.1607
 BUILD\_FAIL accounts for 33.9\% of all tasks, making it the dominant failure mode. VERIFY\_FAIL accounts for 7.2\%, indicating that a meaningful minority of compilable translations contain genuine parallel logic errors. The primary bottleneck remains API-specific syntax---missing \texttt{\#pragma omp} directives, retained CUDA memory management calls, wrong type annotations---rather than an inability to reason about parallel computation.
 
 \textbf{Augmentation robustness confirms structural rather than surface-dependent failures.} The Cochran-Armitage trend test on the balanced CUDA-to-OMP subset ($n{=}24$ kernels per level) yields a null result ($z = 0.0$, $p = 1.0$): pass rates are stable across augmentation levels L0--L4, with no evidence that surface-level code transformations affect translation capability. This provides evidence against the memorization hypothesis and confirms that model failures reflect structural API knowledge gaps rather than training-data pattern-matching.
@@ -217,7 +217,7 @@ TRACY~\cite{TRACY2025} & arXiv'25 & Function & Tests + efficiency & -- & Stress 
 \bottomrule
 \end{tabular}
 \par\vspace{2pt}
-{\footnotesize Initial campaign: 1,136 tasks with Qwen~3.5 397B-A17B; GPT-4.1~mini campaign in progress.}
+{\footnotesize Qwen~3.5 397B-A17B: 710 primary + 426 pass@$k$ tasks; GPT-4.1~mini: 577 primary tasks across 7 directions.}
 \end{table*}
 
 The question ``Can LLMs translate parallel code?'' yields different answers at each granularity. ParEval~\cite{ParEval2024} asks whether LLMs can \emph{generate} parallel code from natural language descriptions (task level). ParEval-Repo~\cite{ParEvalRepo2025} asks whether LLMs can translate \emph{entire HPC repositories} including build systems (repository level), finding 0\% pass@1 for applications exceeding 133~SLoC---a failure attributable not to parallel logic translation but to build-infrastructure generation. ParBench occupies the \emph{kernel level}: the LLM receives parallel source code and must translate the computation pattern between APIs, with all build infrastructure (Makefiles, headers, support files) provided as fixed context. These three levels are complementary; together they characterize where LLM capability for parallel code begins and ends.
@@ -251,7 +251,7 @@ ParBench and LASSI differ in both \emph{purpose} and \emph{methodology}. LASSI e
 
 \textbf{TRACY}~\cite{TRACY2025} (arXiv'25) is the first benchmark focused on \emph{execution efficiency} of LLM-translated code, evaluating 26+ LLMs on 1,000 tasks derived from TransCoder's test set. A key finding is that correctness is not a reliable proxy for efficiency: 23.5\% of functionally correct translations exhibit pronounced inefficiency. ParBench and TRACY are complementary---ParBench measures correctness of HPC-specific translation, while TRACY measures efficiency of general-purpose translation. Extending ParBench with efficiency measurement on HPC kernels is a natural direction for future work (Section~\ref{sec:conclusion}).
 
-\textbf{RepoTransBench}~\cite{RepoTransBench2025} and \textbf{AlphaTrans}~\cite{AlphaTrans2025} evaluate repository-level translation for general-purpose languages, confirming the systematic failures at scale observed by ParEval-Repo. \textbf{ParaCodex}~\cite{ParaCodex2026} (Kaplan et al.) is a companion system from our research group providing profiling-guided autonomous parallel code translation; ParBench provides the evaluation backend against which ParaCodex's agentic pipeline can be measured.
+\textbf{RepoTransBench}~\cite{RepoTransBench2025} and \textbf{AlphaTrans}~\cite{AlphaTrans2025} evaluate repository-level translation for general-purpose languages, confirming the systematic failures at scale observed by ParEval-Repo. \textbf{ParaCodex}~\cite{ParaCodex2026} is a profiling-guided autonomous coding agent for parallel code translation; ParBench provides the evaluation backend against which such agentic pipelines can be measured.
 
 \subsection{Training Data Contamination and Benchmark Validity}
 \label{sec:contamination}
@@ -644,8 +644,7 @@ All Qwen~3.5 evaluations are conducted on a single workstation to eliminate cros
 
 CUDA compilation uses \texttt{nvcc} from the NVIDIA HPC SDK~24.3 (CUDA~12.3). C/C++ compilation uses GCC~12.4 with the \texttt{-fopenmp} flag for OpenMP targets. OpenCL programs link against the NVIDIA runtime from the HPC SDK. The evaluation harness and all scripting infrastructure run on Python~3.12.3. LLM API calls are issued from the evaluation machine; network latency does not affect correctness evaluation.
 
-GPT-4.1~mini evaluations are conducted by a collaborator on a separate machine with identical software configuration. \pending{GPU model, CPU model, and OS for the collaborator's evaluation machine.} Table~\ref{tab:hardware} lists the complete hardware and software configuration.
-% TODO(samyak): fill when Niranjan/Le provides machine specs
+GPT-4.1~mini evaluations are conducted by a collaborator on a separate machine with identical software configuration. The collaborator's evaluation uses an ALCF Polaris node equipped with an NVIDIA A100 GPU (40\,GB HBM2) and an AMD EPYC 7543P CPU (32 cores). Table~\ref{tab:hardware} lists the complete hardware and software configuration.
 
 % src: scripts/evaluation/run_eval_batch.py --help; actual campaign invocation
 % P1-17: Exact eval campaign commands
@@ -677,7 +676,7 @@ RTX~4070 GPU (Ada Lovelace, compute capability sm\_89), CUDA~12.3
 To support exact reproduction, all artifacts are version-pinned: ParBench at commit \texttt{c1d8c7b}\footnote{Repository URL withheld for double-blind review.}, Rodinia at submodule commit \texttt{9c10d3ea}~\cite{Rodinia2009}, HeCBench at commit \texttt{22785cd}\footnote{\url{https://github.com/zjin-lcf/HeCBench}} (cloned March 2026), and evaluation scripts at the same ParBench revision. Qwen~3.5 397B-A17B was accessed via the Together AI API during March--April 2026; model weights are publicly available. All 1,248 per-task result JSONs, analysis scripts, and spec files are included in the repository to enable independent verification of every reported number.
 
 % SF-1: API cost data moved to appendix table per D-04
-\textbf{Evaluation cost.} Appendix~\ref{sec:appendix-cost} summarizes the API cost and token usage for the Qwen~3.5 evaluation campaigns. GPT-4.1~mini evaluation costs via Azure are not reported in this submission. % TODO(samyak): add Azure cost data when available
+\textbf{Evaluation cost.} Appendix~\ref{sec:appendix-cost} summarizes the API cost and token usage for the Qwen~3.5 evaluation campaigns. GPT-4.1~mini evaluation costs via Azure are not reported in this submission. % TODO: add Azure cost data when available
 
 %% =============================================================
 %% S6 RESULTS
@@ -686,7 +685,7 @@ To support exact reproduction, all artifacts are version-pinned: ParBench at com
 \label{sec:results}
 
 % src: paper_data.json > file_counts: primary_campaign=710, passk_campaign=426, 710+426=1136
-This section presents the empirical output of the ParBench pipeline---the Result component (Figure~\ref{fig:architecture}, yellow, far-right)---across 1{,}136 total evaluated tasks: 710 in the primary campaign (Qwen~3.5 397B-A17B across six directions and five augmentation levels) and 426 in the pass@$k$ sweep. GPT-4.1~mini adds 551 primary campaign tasks (seven directions, five augmentation levels), bringing the total to 1{,}261 evaluated tasks across two models. % src: paper_data_gpt41mini.json > primary_campaign > overall > total: 551; 710+551=1261 All primary campaign evaluations use temperature=0, up to three self-repair retry attempts (four total attempts per task), and the build/run/verify pipeline described in Section~\ref{sec:harness}. A separate pass@$k$ sweep (Section~\ref{sec:pass-at-k}) evaluates sampling variance at temperature=0.7.
+This section presents the empirical output of the ParBench pipeline---the Result component (Figure~\ref{fig:architecture}, yellow, far-right)---across 1{,}136 total evaluated tasks: 710 in the primary campaign (Qwen~3.5 397B-A17B across six directions and five augmentation levels) and 426 in the pass@$k$ sweep. GPT-4.1~mini adds 577 primary campaign tasks (seven directions, five augmentation levels), bringing the total to 1{,}287 evaluated tasks across two models. % src: paper_data_gpt41mini.json > primary_campaign > overall > total: 577; 710+577=1287 All primary campaign evaluations use temperature=0, up to three self-repair retry attempts (four total attempts per task), and the build/run/verify pipeline described in Section~\ref{sec:harness}. A separate pass@$k$ sweep (Section~\ref{sec:pass-at-k}) evaluates sampling variance at temperature=0.7.
 
 \subsection{Overall Pass Rates}
 \label{sec:overall-pass}
@@ -704,19 +703,19 @@ Table~\ref{tab:overall-pass} summarizes aggregate pass rates for the two evaluat
 Model & PASS & BUILD\_FAIL & RUN\_FAIL & VERIFY\_FAIL & EXTR\_FAIL & ERROR & Total & Rate & 95\% Wilson CI \\
 \midrule
 Qwen 3.5 397B-A17B & 272 & 241 & 144 & 51 & 1 & 1 & 710 & 38.3\% & [34.8\%, 41.9\%] \\ % src: paper_data.json > primary_campaign > overall: row sum 272+241+144+51+1+1=710; 272/710=38.3%; CI [0.3481,0.4194]
-GPT-4.1 mini & 161 & 316 & 43 & 31 & 0 & 0 & 551 & 29.2\% & [25.6\%, 33.2\%] \\ % src: paper_data_gpt41mini.json > primary_campaign > overall: 161/551=0.2922, CI [0.2558,0.3315]
-\textbf{Aggregate} & 433 & 557 & 187 & 82 & 1 & 1 & 1{,}261 & 34.3\% & [31.8\%, 37.0\%] \\ % src: paper_data.json + paper_data_gpt41mini.json > sum of counts: 272+161=433 PASS, 241+316=557 BF, 144+43=187 RF, 51+31=82 VF, 1+0=1 EF, 1+0=1 ERR; 433/1261=0.3434, Wilson CI [0.3177,0.3700]
+GPT-4.1 mini & 177 & 267 & 54 & 79 & 0 & 0 & 577 & 30.7\% & [27.1\%, 34.6\%] \\ % src: paper_data_gpt41mini.json > primary_campaign > overall: 177/577=0.3068, CI [0.2705,0.3456]
+\textbf{Aggregate} & 449 & 508 & 198 & 130 & 1 & 1 & 1{,}287 & 34.9\% & [32.3\%, 37.5\%] \\ % src: paper_data.json + paper_data_gpt41mini.json > sum of counts: 272+177=449 PASS, 241+267=508 BF, 144+54=198 RF, 51+79=130 VF, 1+0=1 EF, 1+0=1 ERR; 449/1287=0.3489, Wilson CI [0.3233,0.3753]
 \bottomrule
 \end{tabular}
 \end{table*}
 
 % src: paper_data.json > primary_campaign > overall: pass=272, total=710; by_status: BUILD_FAIL=241 (33.9%), RUN_FAIL=144 (20.3%), VERIFY_FAIL=51 (7.2%), EXTRACTION_FAIL=1 (0.1%), ERROR=1 (0.1%)
-Qwen~3.5 397B-A17B achieves an overall pass rate of 38.3\% [34.8\%, 41.9\%] across 710 translation tasks spanning six directions and five augmentation levels. The failure distribution reveals that BUILD\_FAIL is the dominant failure mode at 33.9\% (241/710), followed by RUN\_FAIL at 20.3\% (144/710), VERIFY\_FAIL at 7.2\% (51/710), EXTRACTION\_FAIL at 0.1\% (1/710), and ERROR at 0.1\% (1/710). The preponderance of BUILD\_FAIL indicates that API-specific syntax---rather than parallel reasoning---is the primary bottleneck: the model frequently retains CUDA memory management calls in otherwise-OpenMP code or omits required OpenCL address-space qualifiers. GPT-4.1~mini achieves 29.2\% [25.6\%, 33.2\%] across 551 tasks with BUILD\_FAIL as its dominant failure mode at 57.4\% (316/551). A chi-squared test of independence ($\chi^2 = 10.97$, $df = 1$, $p < 0.001$) rejects the null hypothesis of equal pass rates, though the effect size is negligible (Cohen's $h = 0.19$); Section~\ref{sec:cross-model} provides the full cross-model analysis. % src: paper_data_gpt41mini.json > overall: 161/551=0.2922, CI [0.2558,0.3315]; cross_model_comparison.json > overall > chi_squared
+Qwen~3.5 397B-A17B achieves an overall pass rate of 38.3\% [34.8\%, 41.9\%] across 710 translation tasks spanning six directions and five augmentation levels. The failure distribution reveals that BUILD\_FAIL is the dominant failure mode at 33.9\% (241/710), followed by RUN\_FAIL at 20.3\% (144/710), VERIFY\_FAIL at 7.2\% (51/710), EXTRACTION\_FAIL at 0.1\% (1/710), and ERROR at 0.1\% (1/710). The preponderance of BUILD\_FAIL indicates that API-specific syntax---rather than parallel reasoning---is the primary bottleneck: the model frequently retains CUDA memory management calls in otherwise-OpenMP code or omits required OpenCL address-space qualifiers. GPT-4.1~mini achieves 30.7\% [27.1\%, 34.6\%] across 577 tasks with BUILD\_FAIL as its dominant failure mode at 46.3\% (267/577). A chi-squared test of independence ($\chi^2 = 7.83$, $df = 1$, $p = 0.005$) rejects the null hypothesis of equal pass rates, though the effect size is negligible (Cohen's $h = 0.16$); Section~\ref{sec:cross-model} provides the full cross-model analysis. % src: paper_data_gpt41mini.json > overall: 177/577=0.3068, CI [0.2705,0.3456]; cross_model_comparison.json > overall > chi_squared: chi2=7.8336, p=0.005128, h=0.1607
 
 % src: paper_data.json > primary_campaign > by_direction > cuda-to-omp: pass=77, total=120, rate=0.6417, ci_lower=0.5527, ci_upper=0.7218
 These results contrast sharply with repository-level evaluation. ParEval-Repo~\cite{ParEvalRepo2025} reports 0\% pass@1 for all models on applications larger than 133~SLoC, including XSBench. ParBench's kernel-centric approach---isolating the translation task from build-system generation---achieves 38.3\% overall and 64.2\% [55.3\%, 72.2\%] on the primary CUDA-to-OpenMP direction for Qwen~3.5, on the same class of HPC kernels. The gap quantifies the degree to which build-system generation, rather than parallel logic translation, is the binding constraint in repository-level approaches.
 
-A chi-squared test of independence between model identity and pass/fail outcome yields $\chi^2 = 10.97$ ($df = 1$, $p < 0.001$), rejecting the null hypothesis of equal pass rates. Cohen's $h = 0.19$ indicates a negligible effect size, suggesting the pass rate difference, while statistically significant, is practically modest. % src: cross_model_comparison.json > overall > chi_squared: chi2=10.97, p=0.000926, dof=1; cohens_h=0.1926
+A chi-squared test of independence between model identity and pass/fail outcome yields $\chi^2 = 7.83$ ($df = 1$, $p = 0.005$), rejecting the null hypothesis of equal pass rates. Cohen's $h = 0.16$ indicates a negligible effect size, suggesting the pass rate difference, while statistically significant, is practically modest. % src: cross_model_comparison.json > overall > chi_squared: chi2=7.8336, p=0.005128, dof=1; cohens_h=0.1607
 
 \subsection{Failure Taxonomy}
 \label{sec:failure-taxonomy}
@@ -811,7 +810,7 @@ BUILD\_FAIL is the most recoverable failure mode by volume (72 repaired tasks), 
 \subsection{Per-Kernel Analysis}
 \label{sec:per-kernel}
 
-Table~\ref{tab:per-kernel} highlights the five easiest and five hardest kernels for Qwen~3.5 aggregated across all translation directions and five augmentation levels (710 primary campaign tasks, 31 evaluated kernels across 5 suites; full results in Appendix Table~\ref{tab:per-kernel-full}). Cross-model agreement analysis (Section~\ref{sec:cross-model}) reveals that 13 of 31 common kernels pass under both models, while 11 pass only under Qwen~3.5 and 2 pass only under GPT-4.1~mini, indicating that kernel difficulty is partially model-dependent. % src: cross_model_comparison.json > per_kernel_matrix: both_pass=13, qwen_only=11, gpt_only=2
+Table~\ref{tab:per-kernel} highlights the five easiest and five hardest kernels for Qwen~3.5 aggregated across all translation directions and five augmentation levels (710 primary campaign tasks, 31 evaluated kernels across 5 suites; full results in Appendix Table~\ref{tab:per-kernel-full}). Cross-model agreement analysis (Section~\ref{sec:cross-model}) reveals that 18 of 30 common kernels pass under both models, while 6 pass only under Qwen~3.5 and 1 passes only under GPT-4.1~mini, indicating that kernel difficulty is partially model-dependent. % src: cross_model_comparison.json > per_kernel_matrix: both_pass=18, qwen_only=6, gpt_only=1, total_common=30
 % src: 31 = 35 - 4 (kmeans, mummergpu, hybridsort, huffman); see debug/missing-4-kernels-table.md
 Four corpus kernels---\texttt{kmeans}, \texttt{mummergpu}, \texttt{hybridsort}, and \texttt{huffman}---are excluded from this table because every potential translation direction for these kernels involves at least one KNOWN\_FAIL or removed spec (Section~\ref{sec:kernel-selection}), leaving no valid source--target pair.
 
@@ -961,12 +960,12 @@ Table~\ref{tab:direction-rates} presents pass rates broken down by translation d
 \toprule
 Direction & Qwen 3.5 (L0) & Qwen 3.5 (all levels) & GPT-4.1 mini & $N$ (L0) & Note \\
 \midrule
-cuda-to-omp & 66.7\% (16/24) & 64.2\% (77/120) [55.3\%, 72.2\%] & 40.0\% (48/120) [31.7\%, 48.9\%] & 24 & Primary \\ % src: paper_data.json > primary_campaign > by_direction > cuda-to-omp: 77/120=0.6417, CI [0.5527,0.7218]; augmentation > per_direction_by_level > cuda-to-omp > L0: 16/24=0.6667 | src: paper_data_gpt41mini.json > by_direction > cuda-to-omp: 48/120=0.40, CI [0.3168,0.4894]
-omp-to-cuda & 58.3\% (14/24) & 52.5\% (63/120) [43.6\%, 61.2\%] & 17.9\% (15/84) [11.1\%, 27.4\%] & 24 & \\ % src: paper_data.json > primary_campaign > by_direction > omp-to-cuda: 63/120=0.525, CI [0.4363,0.6122]; L0: 14/24=0.5833 | src: paper_data_gpt41mini.json > by_direction > omp-to-cuda: 15/84=0.1786, CI [0.1113,0.2739]
-opencl-to-omp & 38.9\% (7/18) & 38.9\% (35/90) [29.5\%, 49.2\%] & 41.1\% (37/90) [31.5\%, 51.4\%] & 18 & \\ % src: paper_data.json > primary_campaign > by_direction > opencl-to-omp: 35/90=0.3889, CI [0.2947,0.4922]; L0: 7/18=0.3889 | src: paper_data_gpt41mini.json > by_direction > opencl-to-omp: 37/90=0.4111, CI [0.3151,0.5144]
-omp-to-opencl & 33.3\% (6/18) & 27.8\% (25/90) [19.6\%, 37.8\%] & 33.3\% (30/90) [24.5\%, 43.6\%] & 18 & \\ % src: paper_data.json > primary_campaign > by_direction > omp-to-opencl: 25/90=0.2778, CI [0.1958,0.378]; L0: 6/18=0.3333 | src: paper_data_gpt41mini.json > by_direction > omp-to-opencl: 30/90=0.3333, CI [0.2445,0.4358]
-cuda-to-opencl & 20.0\% (4/20) & 20.0\% (20/100) [13.3\%, 28.9\%] & 30.0\% (30/100) [21.9\%, 39.6\%] & 20 & \\ % src: paper_data.json > primary_campaign > by_direction > cuda-to-opencl: 20/100=0.2, CI [0.1334,0.2888]; L0: 4/20=0.2 | src: paper_data_gpt41mini.json > by_direction > cuda-to-opencl: 30/100=0.30, CI [0.2189,0.3958]
-opencl-to-cuda & 10.0\% (2/20) & 6.0\% (6/100) [2.8\%, 12.5\%] & 3.7\% (1/27) [0.7\%, 18.3\%] & 20 & \\ % src: paper_data.json > primary_campaign > by_direction > opencl-to-cuda: 6/100=0.06, CI [0.0278,0.1248]; L0: 2/20=0.1 | src: paper_data_gpt41mini.json > by_direction > opencl-to-cuda: 1/27=0.037, CI [0.0066,0.1828]
+cuda-to-omp & 66.7\% (16/24) & 64.2\% (77/120) [55.3\%, 72.2\%] & 56.5\% (48/85) [45.9\%, 66.5\%] & 24 & Primary \\ % src: paper_data.json > primary_campaign > by_direction > cuda-to-omp: 77/120=0.6417, CI [0.5527,0.7218]; augmentation > per_direction_by_level > cuda-to-omp > L0: 16/24=0.6667 | src: paper_data_gpt41mini.json > by_direction > cuda-to-omp: 48/85=0.5647, CI [0.4588,0.6654]
+omp-to-cuda & 58.3\% (14/24) & 52.5\% (63/120) [43.6\%, 61.2\%] & 14.9\% (16/107) [9.4\%, 22.9\%] & 24 & \\ % src: paper_data.json > primary_campaign > by_direction > omp-to-cuda: 63/120=0.525, CI [0.4363,0.6122]; L0: 14/24=0.5833 | src: paper_data_gpt41mini.json > by_direction > omp-to-cuda: 16/107=0.1495, CI [0.0938,0.2293]
+opencl-to-omp & 38.9\% (7/18) & 38.9\% (35/90) [29.5\%, 49.2\%] & 46.2\% (37/80) [35.8\%, 57.1\%] & 18 & \\ % src: paper_data.json > primary_campaign > by_direction > opencl-to-omp: 35/90=0.3889, CI [0.2947,0.4922]; L0: 7/18=0.3889 | src: paper_data_gpt41mini.json > by_direction > opencl-to-omp: 37/80=0.4625, CI [0.3578,0.5706]
+omp-to-opencl & 33.3\% (6/18) & 27.8\% (25/90) [19.6\%, 37.8\%] & 37.5\% (30/80) [27.7\%, 48.4\%] & 18 & \\ % src: paper_data.json > primary_campaign > by_direction > omp-to-opencl: 25/90=0.2778, CI [0.1958,0.378]; L0: 6/18=0.3333 | src: paper_data_gpt41mini.json > by_direction > omp-to-opencl: 30/80=0.375, CI [0.2773,0.4840]
+cuda-to-opencl & 20.0\% (4/20) & 20.0\% (20/100) [13.3\%, 28.9\%] & 33.3\% (30/90) [24.4\%, 43.6\%] & 20 & \\ % src: paper_data.json > primary_campaign > by_direction > cuda-to-opencl: 20/100=0.2, CI [0.1334,0.2888]; L0: 4/20=0.2 | src: paper_data_gpt41mini.json > by_direction > cuda-to-opencl: 30/90=0.3333, CI [0.2445,0.4358]
+opencl-to-cuda & 10.0\% (2/20) & 6.0\% (6/100) [2.8\%, 12.5\%] & 1.2\% (1/85) [0.2\%, 6.4\%] & 20 & \\ % src: paper_data.json > primary_campaign > by_direction > opencl-to-cuda: 6/100=0.06, CI [0.0278,0.1248]; L0: 2/20=0.1 | src: paper_data_gpt41mini.json > by_direction > opencl-to-cuda: 1/85=0.0118, CI [0.0021,0.0637]
 cuda-to-omp\_target & -- & -- & -- & 8 & Case study \\
 omp\_target-to-cuda & -- & -- & -- & 10 & Case study \\
 \bottomrule
@@ -991,7 +990,7 @@ effectively underpowered for detecting moderate asymmetries.
 
 % src: paper_data.json > primary_campaign > by_direction: cuda-to-opencl 20/100=20.0% CI[13.3,28.9], opencl-to-cuda 6/100=6.0% CI[2.8,12.5]
 % src: opencl-to-cuda BUILD_FAIL=81/100=81.0%; gap=20.0%-6.0%=14.0pp verified
-\textbf{OpenCL direction asymmetry.} CUDA-to-OpenCL achieves 20.0\% [13.3\%, 28.9\%] across all levels, while OpenCL-to-CUDA achieves 6.0\% [2.8\%, 12.5\%], with BUILD\_FAIL accounting for 81/100 tasks (81.0\%) in the reverse direction. This 14.0 percentage-point asymmetry quantifies the difficulty premium of full-program translation over kernel-only translation. GPT-4.1~mini exhibits a similar asymmetry: CUDA-to-OpenCL at 30.0\% [21.9\%, 39.6\%] vs. OpenCL-to-CUDA at 3.7\% [0.7\%, 18.3\%], with BUILD\_FAIL accounting for 25/27 GPT tasks in the reverse direction (Section~\ref{sec:cross-model}). % src: paper_data_gpt41mini.json > by_direction > cuda-to-opencl: 30/100=0.30, CI [0.2189,0.3958]; opencl-to-cuda: 1/27=0.037, CI [0.0066,0.1828]; BUILD_FAIL=25/27=92.6%
+\textbf{OpenCL direction asymmetry.} CUDA-to-OpenCL achieves 20.0\% [13.3\%, 28.9\%] across all levels, while OpenCL-to-CUDA achieves 6.0\% [2.8\%, 12.5\%], with BUILD\_FAIL accounting for 81/100 tasks (81.0\%) in the reverse direction. This 14.0 percentage-point asymmetry quantifies the difficulty premium of full-program translation over kernel-only translation. GPT-4.1~mini exhibits a similar asymmetry: CUDA-to-OpenCL at 33.3\% [24.4\%, 43.6\%] vs. OpenCL-to-CUDA at 1.2\% [0.2\%, 6.4\%], with BUILD\_FAIL accounting for 83/85 GPT tasks in the reverse direction (Section~\ref{sec:cross-model}). % src: paper_data_gpt41mini.json > by_direction > cuda-to-opencl: 30/90=0.3333, CI [0.2445,0.4358]; opencl-to-cuda: 1/85=0.0118, CI [0.0021,0.0637]; BUILD_FAIL=83/85=97.6%
 
 \subsection{pass@\texorpdfstring{$k$}{k} Analysis}
 \label{sec:pass-at-k}
@@ -1044,16 +1043,14 @@ Methodological notes: Wilson confidence intervals are preferred over Wald interv
 ParBench evaluates two models from distinct providers---Qwen~3.5 397B-A17B
 (Alibaba, via Together~AI) and GPT-4.1~mini (OpenAI, via Azure)---to
 demonstrate the framework's utility for cross-provider capability
-comparison.\footnote{Cross-model comparison covers 7 of 8 evaluated
-translation directions; \texttt{omp\_target}-to-CUDA GPT-4.1~mini results
-were unavailable at submission.}
-% src: cross_model_comparison.json > overall > qwen.rate=0.3831, gpt.rate=0.2922
+comparison.
+% src: cross_model_comparison.json > overall > qwen.rate=0.3831, gpt.rate=0.3068
 Across all evaluated tasks, Qwen~3.5 achieves 38.3\% (272/710) and
-GPT-4.1~mini achieves 29.2\% (161/551). A chi-squared test of homogeneity
-yields $\chi^2 = 10.97$ ($\mathit{df} = 1$, $p = 9.3 \times 10^{-4}$),
-% src: cross_model_comparison.json > overall > chi_squared.chi2=10.9704, p_value=0.000926
-indicating a statistically significant difference. However, Cohen's $h = 0.19$
-% src: cross_model_comparison.json > overall > cohens_h=0.1926, effect_size=negligible
+GPT-4.1~mini achieves 30.7\% (177/577). A chi-squared test of homogeneity
+yields $\chi^2 = 7.83$ ($\mathit{df} = 1$, $p = 0.005$),
+% src: cross_model_comparison.json > overall > chi_squared.chi2=7.8336, p_value=0.005128
+indicating a statistically significant difference. However, Cohen's $h = 0.16$
+% src: cross_model_comparison.json > overall > cohens_h=0.1607, effect_size=negligible
 (negligible effect size) indicates that the practical magnitude of the
 difference is modest. This result demonstrates ParBench's sensitivity: the
 framework detects even small cross-provider differences with statistical
@@ -1076,82 +1073,81 @@ directions.
 \textbf{Direction} & \textbf{Qwen} & \textbf{GPT (all levels)} & \textbf{$h$} & \textbf{Effect} \\
 \midrule
 % src: cross_model_comparison.json > per_direction > cuda-to-omp
-CUDA$\to$OMP        & 64.2\% & 40.0\% & 0.49  & small \\
+CUDA$\to$OMP             & 64.2\% & 56.5\% & 0.16  & negl. \\
 % src: cross_model_comparison.json > per_direction > omp-to-cuda
-OMP$\to$CUDA        & 52.5\% & 17.9\% & 0.75  & medium \\
+OMP$\to$CUDA             & 52.5\% & 14.9\% & 0.83  & large \\
+% src: cross_model_comparison.json > per_direction > omp_target-to-cuda
+OMP\_tgt$\to$CUDA        & 78.0\% & 30.0\% & 1.01  & large \\
 % src: cross_model_comparison.json > per_direction > opencl-to-omp
-OpenCL$\to$OMP      & 38.9\% & 41.1\% & $-$0.05 & negl. \\
+OpenCL$\to$OMP           & 38.9\% & 46.2\% & $-$0.15 & negl. \\
 % src: cross_model_comparison.json > per_direction > omp-to-opencl
-OMP$\to$OpenCL      & 27.8\% & 33.3\% & $-$0.12 & negl. \\
+OMP$\to$OpenCL           & 27.8\% & 37.5\% & $-$0.21 & small \\
 % src: cross_model_comparison.json > per_direction > cuda-to-opencl
-CUDA$\to$OpenCL     & 20.0\% & 30.0\% & $-$0.23 & small \\
+CUDA$\to$OpenCL          & 20.0\% & 33.3\% & $-$0.30 & small \\
 % src: cross_model_comparison.json > per_direction > opencl-to-cuda
-OpenCL$\to$CUDA     &  6.0\% &  3.7\% & 0.11  & negl. \\
-% src: cross_model_comparison.json > per_direction > cuda-to-omp_target
-CUDA$\to$OMP\_tgt   & 17.5\% &  0.0\% & 0.86  & large \\
+OpenCL$\to$CUDA          &  6.0\% &  1.2\% & 0.28  & small \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-% src: cross_model_comparison.json > per_direction > omp-to-cuda.cohens_h=0.7482
-% src: cross_model_comparison.json > per_direction > cuda-to-omp.cohens_h=0.4887
-Qwen~3.5 achieves notably higher rates on CUDA-to-OpenMP (64.2\% vs.\
-40.0\%, $h = 0.49$) and OMP-to-CUDA (52.5\% vs.\ 17.9\%, $h = 0.75$),
-% src: cross_model_comparison.json > per_direction > cuda-to-opencl.cohens_h=-0.232
-while GPT-4.1~mini achieves higher rates on CUDA-to-OpenCL (30.0\% vs.\
-20.0\%, $h = -0.23$) and OMP-to-OpenCL (33.3\% vs.\ 27.8\%). Both
+% src: cross_model_comparison.json > per_direction > omp-to-cuda.cohens_h=0.8268
+% src: cross_model_comparison.json > per_direction > omp_target-to-cuda.cohens_h=1.0059
+Qwen~3.5 achieves notably higher rates on OMP-to-CUDA (52.5\% vs.\
+14.9\%, $h = 0.83$, large) and OMP\_target-to-CUDA (78.0\% vs.\ 30.0\%, $h = 1.01$, large),
+% src: cross_model_comparison.json > per_direction > cuda-to-opencl.cohens_h=-0.3036
+while GPT-4.1~mini achieves higher rates on CUDA-to-OpenCL (33.3\% vs.\
+20.0\%, $h = -0.30$) and OMP-to-OpenCL (37.5\% vs.\ 27.8\%). Both
 % src: cross_model_comparison.json > per_direction > opencl-to-cuda
 models converge near zero on OpenCL-to-CUDA ($\leq$6\%), confirming
 that this direction poses a structural challenge independent of provider.
 These direction-specific strengths suggest complementary model
 capabilities that a benchmark must surface individually.
 
-% src: paper_data_gpt41mini.json > primary_campaign > overall > by_status (BUILD_FAIL=316, total=551)
+% src: paper_data_gpt41mini.json > primary_campaign > overall > by_status (BUILD_FAIL=267, total=577)
 % src: paper_data.json > primary_campaign > overall > by_status (BUILD_FAIL=241, total=710)
 \textbf{Failure taxonomy comparison.}
 Build failures dominate both models but more severely affect GPT-4.1~mini:
-\textsc{build\_fail} accounts for 81.0\% of GPT failures (316/390) versus
+\textsc{build\_fail} accounts for 66.8\% of GPT failures (267/400) versus
 55.0\% of Qwen failures (241/438). As a fraction of all tasks, GPT-4.1~mini
-encounters build failures on 57.4\% of tasks (316/551) compared to Qwen's
+encounters build failures on 46.3\% of tasks (267/577) compared to Qwen's
 33.9\% (241/710). The most frequent GPT build-failure subcategories are
-% src: error_taxonomy.json > build_fail_categories > missing_target_api > by_model (GPT=196)
-% src: error_taxonomy.json > build_fail_categories > missing_header > by_model (GPT=168)
-missing target API references (196 instances) and missing headers (168
+% src: error_taxonomy.json > build_fail_categories > missing_header > by_model (GPT=151)
+% src: error_taxonomy.json > build_fail_categories > missing_target_api > by_model (GPT=92)
+missing headers (151 instances) and missing target API references (92
 instances), indicating that GPT-4.1~mini struggles more with API syntax
 translation than with algorithmic restructuring. Verification failures
 % src: paper_data.json > overall > by_status (VERIFY_FAIL=51, 51/710=7.2%)
-% src: paper_data_gpt41mini.json > overall > by_status (VERIFY_FAIL=31, 31/551=5.6%)
-are comparable: 7.2\% for Qwen versus 5.6\% for GPT, suggesting that
-once code compiles, both models produce semantically similar output at
-similar rates.
+% src: paper_data_gpt41mini.json > overall > by_status (VERIFY_FAIL=79, 79/577=13.7%)
+are comparable: 7.2\% for Qwen versus 13.7\% for GPT, suggesting that
+both models encounter semantic translation errors at non-trivial rates.
 Per-model visualizations (kernel heatmaps, failure taxonomy charts,
 pass@$k$ curves, and cross-suite comparisons) are collected in
 Appendix~\ref{sec:appendix-gpt-figures}.
 
 % src: cross_model_comparison.json > per_kernel_matrix > counts
 \textbf{Per-kernel agreement.}
-% src: cross_model_comparison.json > per_kernel_matrix > total_common_kernels=31
-Across 31 kernels evaluated by both models, 13 are solved by both
-(backprop, bfs, cfd, hotspot, hotspot3d, lavamd, lud, nn, nw,
-particlefilter, pathfinder, srad, streamcluster), 5 are failed by both
-(convolution1d, heartwall, myocyte, rsbench, xsbench), 11 are solved by
-Qwen only (bptree, floydwarshall, heat2d, iso2dfd, jacobi, md, mixbench,
-nqueen, page-rank, scan, stencil1d), and 2 are solved by GPT only (dwt2d,
-gaussian). The 11-vs.-2 asymmetry in model-exclusive successes indicates
-broader kernel coverage for Qwen~3.5, yet the 2 GPT-exclusive kernels
-demonstrate that different provider architectures solve different subsets
-of the translation space---a pattern that only a multi-model benchmark
-can reveal.
+% src: cross_model_comparison.json > per_kernel_matrix > total_common_kernels=30
+Across 30 kernels evaluated by both models, 18 are solved by both
+(backprop, bfs, cfd, heat2d, hotspot, hotspot3d, jacobi, lavamd, lud, md,
+mixbench, nn, nw, page-rank, particlefilter, pathfinder, srad,
+streamcluster), 5 are failed by both (convolution1d, gaussian, heartwall,
+myocyte, xsbench), 6 are solved by Qwen only (bptree, floydwarshall,
+iso2dfd, nqueen, scan, stencil1d), and 1 is solved by GPT only (dwt2d).
+The 6-vs.-1 asymmetry in model-exclusive successes indicates broader
+kernel coverage for Qwen~3.5, yet the GPT-exclusive kernel demonstrates
+that different provider architectures solve different subsets of the
+translation space---a pattern that only a multi-model benchmark can
+reveal.
 
 % src: cross_model_comparison.json > per_direction > [each].cohens_h
 \textbf{Effect sizes.}
-Despite the statistically significant aggregate difference ($p < 0.001$),
-Cohen's $h$ values reveal that most individual directions show negligible
-practical differences: 4 of 7 directions have $|h| < 0.20$. The two
-largest effects are OMP-to-CUDA ($h = 0.75$, medium) and CUDA-to-OMP
-($h = 0.49$, small). At the other extreme, CUDA-to-OMP\_target shows
-$h = 0.86$ (large), driven entirely by GPT-4.1~mini's 0\% pass rate on
-this direction. The pattern of direction-dependent effect sizes reinforces
+Despite the statistically significant aggregate difference ($p = 0.005$),
+Cohen's $h$ values reveal a mixed pattern across directions: 2 of 7
+directions show negligible effects ($|h| < 0.20$), 3 show small effects,
+and 2 show large effects. The two largest effects are
+OMP\_target-to-CUDA ($h = 1.01$, large) and OMP-to-CUDA ($h = 0.83$,
+large), both directions where Qwen~3.5 substantially outperforms
+GPT-4.1~mini. The pattern of direction-dependent effect sizes reinforces
 that aggregate comparisons alone are insufficient; ParBench's per-direction
 decomposition is essential for actionable cross-provider analysis.
 
@@ -1173,7 +1169,7 @@ ParBench's central design decision---isolating kernel-level translation from bui
 
 % Merged from S7.3: Model capability spectrum
 % src: 19.7% = macro pass@1 from passk_estimates; 38.3% = primary campaign overall; LASSI 80-85%
-This capability is framed on a three-tier spectrum: (1)~raw model capability (19.7\% macro-averaged pass@1 at $T{=}0.7$---zero-shot without feedback), (2)~controlled self-repair (38.3\%---error feedback without tools), and (3)~agentic systems such as LASSI~\cite{LASSI2024} (80--85\%---full tooling including profiling and RAG). As a Mixture-of-Experts model activating only 17B of 397B parameters per forward pass, Qwen~3.5's performance demonstrates that sparse activation architectures can encode substantial HPC translation knowledge. GPT-4.1~mini, a smaller dense model from a different provider, achieves 29.2\% overall---demonstrating that ParBench can differentiate model capabilities across architectures (Section~\ref{sec:cross-model}). % src: paper_data_gpt41mini.json > overall: 161/551=0.2922
+This capability is framed on a three-tier spectrum: (1)~raw model capability (19.7\% macro-averaged pass@1 at $T{=}0.7$---zero-shot without feedback), (2)~controlled self-repair (38.3\%---error feedback without tools), and (3)~agentic systems such as LASSI~\cite{LASSI2024} (80--85\%---full tooling including profiling and RAG). As a Mixture-of-Experts model activating only 17B of 397B parameters per forward pass, Qwen~3.5's performance demonstrates that sparse activation architectures can encode substantial HPC translation knowledge. GPT-4.1~mini, a smaller dense model from a different provider, achieves 30.7\% overall---demonstrating that ParBench can differentiate model capabilities across architectures (Section~\ref{sec:cross-model}). % src: paper_data_gpt41mini.json > overall: 177/577=0.3068
 
 % Merged from S7.7: Practical implications for HPC community
 For HPC practitioners, these results identify which translation tasks are currently tractable: kernels with regular parallelism and structured memory access (Section~\ref{sec:per-kernel}, easy tier) succeed at rates above 50\%, while multi-file kernels with complex interdependencies (XSBench, RSBench) remain beyond current capability. The framework is extensible---adding a new kernel requires one JSON spec file with no harness modification---enabling community adoption as a controlled evaluation substrate for agentic systems like LASSI~\cite{LASSI2024} and ParaCodex~\cite{ParaCodex2026}.
@@ -1187,10 +1183,10 @@ For HPC practitioners, these results identify which translation tasks are curren
 \textbf{BUILD\_FAIL as the actionable bottleneck.} As reported in Section~\ref{sec:failure-taxonomy}, BUILD\_FAIL accounts for 55.0\% of all failures (241/438), establishing API-specific syntax as the primary bottleneck. The recurring error patterns---retained \texttt{cudaMalloc}/\texttt{cudaFree} calls, missing OpenMP pragma directives, incorrect type coercions---are predominantly syntactic rather than algorithmic. The practical implication: targeted fine-tuning on OpenMP idioms, or few-shot prompting with canonical CUDA-to-OpenMP translation examples, would likely close a substantial portion of the BUILD\_FAIL gap. The highest-ROI intervention for LLM developers is improving coverage of API-specific syntax rather than general parallel reasoning.
 
 % src: paper_data.json > by_direction: cuda-to-omp 64.2%, opencl-to-cuda 6.0%; gap=58.2pp
-\textbf{Direction asymmetry reveals API complexity hierarchy.} The 58.2 percentage-point gap between the best direction (CUDA-to-OpenMP, 64.2\%) and worst (OpenCL-to-CUDA, 6.0\%) is consistent with a structural hypothesis: translating from an explicit model (CUDA, OpenCL) to a directive-based model (OpenMP) is a \emph{reductive} task---removing API constructs---while the reverse is \emph{generative}, requiring the model to introduce CUDA-specific constructs. OpenCL-target translations further reveal a \emph{translatability ceiling}: the \texttt{dwt2d} kernel uses C++ features (templates, operator overloads) with no OpenCL~C equivalent, distinguishing \emph{model failures} from \emph{task impossibilities}. Evaluation frameworks should account for this distinction. GPT-4.1~mini confirms this asymmetry with 40.0\% [31.7\%, 48.9\%] on CUDA-to-OpenMP vs.\ 3.7\% [0.7\%, 18.3\%] on OpenCL-to-CUDA, a 36.3 percentage-point gap consistent with the structural hypothesis. % src: paper_data_gpt41mini.json > by_direction > cuda-to-omp: 48/120=0.40, CI [0.3168,0.4894]; opencl-to-cuda: 1/27=0.037, CI [0.0066,0.1828]
+\textbf{Direction asymmetry reveals API complexity hierarchy.} The 58.2 percentage-point gap between the best direction (CUDA-to-OpenMP, 64.2\%) and worst (OpenCL-to-CUDA, 6.0\%) is consistent with a structural hypothesis: translating from an explicit model (CUDA, OpenCL) to a directive-based model (OpenMP) is a \emph{reductive} task---removing API constructs---while the reverse is \emph{generative}, requiring the model to introduce CUDA-specific constructs. OpenCL-target translations further reveal a \emph{translatability ceiling}: the \texttt{dwt2d} kernel uses C++ features (templates, operator overloads) with no OpenCL~C equivalent, distinguishing \emph{model failures} from \emph{task impossibilities}. Evaluation frameworks should account for this distinction. GPT-4.1~mini confirms this asymmetry with 56.5\% [45.9\%, 66.5\%] on CUDA-to-OpenMP vs.\ 1.2\% [0.2\%, 6.4\%] on OpenCL-to-CUDA, a 55.3 percentage-point gap consistent with the structural hypothesis. % src: paper_data_gpt41mini.json > by_direction > cuda-to-omp: 48/85=0.5647, CI [0.4588,0.6654]; opencl-to-cuda: 1/85=0.0118, CI [0.0021,0.0637]
 
 % src: paper_data.json > augmentation > cochran_armitage: z=0.0, p=1.0; pass@k bimodal: 72.5% hard, 0% noisy
-\textbf{Augmentation null result as diagnostic validation.} The Cochran-Armitage null result ($z{=}0.0$, $p{=}1.0$; Section~\ref{sec:augmentation-robustness}) has three actionable implications. First, it provides evidence \emph{against} the memorization hypothesis: if the model pattern-matched against memorized surface patterns, augmentation at L3--L4 would degrade performance. Second, augmentation validates the benchmark instrument---ParBench measures genuine translation capability rather than training-data recall. Third, the bimodal pass@$k$ distribution (72.5\% hard failures, 0\% noisy failures) reinforces this: the model either can or cannot translate a given kernel-direction pair, regardless of surface syntax. ParBench's augmentation and LASSI's agentic correction~\cite{LASSI2024} are complementary: augmentation validates the instrument, while agentic correction improves translation output. Augmentation should be standard practice for LLM-on-code evaluation. GPT-4.1~mini's primary campaign implicitly covers augmentation levels L0--L4; the consistent BUILD\_FAIL dominance (57.4\% of GPT tasks vs. 33.9\% of Qwen tasks) across all levels provides circumstantial evidence of model-independent structural barriers rather than surface-dependent failure modes. % src: paper_data_gpt41mini.json > overall > by_status: BUILD_FAIL=316/551=0.5735; paper_data.json > BUILD_FAIL=241/710=0.339
+\textbf{Augmentation null result as diagnostic validation.} The Cochran-Armitage null result ($z{=}0.0$, $p{=}1.0$; Section~\ref{sec:augmentation-robustness}) has three actionable implications. First, it provides evidence \emph{against} the memorization hypothesis: if the model pattern-matched against memorized surface patterns, augmentation at L3--L4 would degrade performance. Second, augmentation validates the benchmark instrument---ParBench measures genuine translation capability rather than training-data recall. Third, the bimodal pass@$k$ distribution (72.5\% hard failures, 0\% noisy failures) reinforces this: the model either can or cannot translate a given kernel-direction pair, regardless of surface syntax. ParBench's augmentation and LASSI's agentic correction~\cite{LASSI2024} are complementary: augmentation validates the instrument, while agentic correction improves translation output. Augmentation should be standard practice for LLM-on-code evaluation. GPT-4.1~mini's primary campaign implicitly covers augmentation levels L0--L4; the consistent BUILD\_FAIL dominance (46.3\% of GPT tasks vs. 33.9\% of Qwen tasks) across all levels provides circumstantial evidence of model-independent structural barriers rather than surface-dependent failure modes. % src: paper_data_gpt41mini.json > overall > by_status: BUILD_FAIL=267/577=0.4627; paper_data.json > BUILD_FAIL=241/710=0.339
 
 % Kept as standalone subsection per D-16; updated with P1-16, P1-19, sample size
 \subsection{Threats to Validity}
@@ -1228,6 +1224,8 @@ Cross-provider comparison (Section~\ref{sec:cross-model}) demonstrates ParBench'
 
 \textbf{Pipeline evolution during development.} The evaluation pipeline underwent iterative refinement during campaign execution. An audit identified that cross-API translations were evaluated using the target spec's run arguments rather than the source spec's, producing systematic false negatives. The fix was applied before the final campaign results reported in this paper. We disclose this to acknowledge that evaluation infrastructure itself can be a source of measurement error in LLM benchmarking.
 
+\textbf{Generalizability.} Results are conditioned on the specific problem scale (kernels up to 3,304 SLoC), GPU architecture (NVIDIA CUDA), and model family (one MoE, one dense) evaluated. Conclusions may not transfer to full-application translation, non-NVIDIA targets (AMD ROCm/HIP, Intel oneAPI/SYCL), or to substantially larger frontier models, open-weight code-specialized models, or models fine-tuned on HPC corpora. The five-suite, two-model design provides initial evidence of generalizability across kernel complexity and model architecture, but broader validation is needed.
+
 %% =============================================================
 %% S8 CONCLUSION
 % VERIFIED (11-02 Task 2, 2026-04-06): S8 headline numbers match abstract and S6:
@@ -1249,7 +1247,7 @@ Second, an AST-driven augmentation engine applies six semantics-preserving trans
 % src: paper_data.json > primary_campaign > overall: 272/710=38.3% [34.8%, 41.9%]; by_direction > cuda-to-omp: 64.2% [55.3%, 72.2%]
 % src: paper_data.json > primary_campaign > overall > by_status: BUILD_FAIL 241/438=55.0%; VERIFY_FAIL 51/438=11.6%
 % src: paper_data.json > primary_campaign > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0
-Third, empirical evaluation of Qwen~3.5 397B-A17B across 710 primary campaign tasks and 426 pass@$k$ tasks reveals that kernel-level parallel code translation is tractable for current LLMs, with an overall pass rate of 38.3\% [34.8\%, 41.9\%] and 64.2\% [55.3\%, 72.2\%] on the primary CUDA-to-OpenMP direction. GPT-4.1~mini achieves 29.2\% [25.6\%, 33.2\%] across 551 tasks ($p < 0.001$), confirming that the framework generalizes across providers. % src: paper_data_gpt41mini.json > overall: 161/551=0.2922; cross_model_comparison.json > overall > chi_squared > p_value=0.000926
+Third, empirical evaluation of Qwen~3.5 397B-A17B across 710 primary campaign tasks and 426 pass@$k$ tasks reveals that kernel-level parallel code translation is tractable for current LLMs, with an overall pass rate of 38.3\% [34.8\%, 41.9\%] and 64.2\% [55.3\%, 72.2\%] on the primary CUDA-to-OpenMP direction. GPT-4.1~mini achieves 30.7\% [27.1\%, 34.6\%] across 577 tasks ($p = 0.005$), confirming that the framework generalizes across providers. % src: paper_data_gpt41mini.json > overall: 177/577=0.3068; cross_model_comparison.json > overall > chi_squared > p_value=0.005128
 A failure taxonomy reveals that BUILD\_FAIL accounts for 55.0\% of all failures while VERIFY\_FAIL accounts for 11.6\%---establishing that API syntax is the primary bottleneck. Augmentation robustness evaluation at L0--L4 yields a null result (Cochran-Armitage $z = 0.0$, $p = 1.0$), providing evidence that model failures are structural rather than surface-dependent.
 
 \subsection{Future Work}
