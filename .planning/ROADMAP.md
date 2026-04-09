@@ -85,12 +85,12 @@ Plans:
 ### Phase 20: Final Paper Update (overleaf.tex + appendices.tex + paper.tex)
 
 **Goal:** Update ALL GPT-4.1-mini numbers in overleaf.tex, appendices.tex, and paper.tex to match Phase 19 analysis outputs (re-run with expanded XSBench data). Includes structural updates: cross-model direction table row changes, removal of stale "omp_target unavailable" footnote, rewrite of invalid h=0.86 effect-size discussion. Fold in working-tree methodology edits.
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 20-02-PLAN.md — Re-run Phase 19 analysis pipeline with XSBench data + capture 20-NUMBERS.md
 - [x] 20-03-PLAN.md — Update overleaf.tex (all 13 structural changes + numeric) + appendices.tex (4 tables)
-- [ ] 20-04-PLAN.md — Sync paper.tex + final verification + commit
+- [x] 20-04-PLAN.md — Sync paper.tex + final verification + commit
 
 ## Progress
 
