@@ -1054,7 +1054,7 @@ Other                  & 8 & Rodinia (6), HeCBench (1), mixbench (1) \\
 Model & Provider & Arch. & Parameters & Temp. \\
 \midrule
 Qwen 3.5 397B-A17B & Together AI & MoE & 397B / 17B active & 0 \\
-GPT-4.1 mini & Azure OpenAI & N/D & \pending{size} & 0 \\
+GPT-4.1 mini & Azure OpenAI & N/D & N/D & 0 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1069,13 +1069,13 @@ GPT-4.1 mini & Azure OpenAI & N/D & \pending{size} & 0 \\
 \toprule
 Component & Qwen (primary) & GPT-4.1 mini (collaborator) \\
 \midrule
-GPU & RTX 4070 (12 GB) & \pending{GPU} \\
-CPU & Ryzen 9 7900X & \pending{CPU} \\
-OS & Ubuntu 24.04 LTS & \pending{OS} \\
-CUDA toolkit & HPC SDK 24.3 & \pending{toolkit} \\
-C/C++ compiler & GCC 12.4 & \pending{compiler} \\
-OpenCL runtime & NVIDIA HPC SDK & \pending{OCL runtime} \\
-Python & 3.12.3 & \pending{Python} \\
+GPU & RTX 4070 (12 GB) & NVIDIA A100 (40\,GB HBM2) \\
+CPU & Ryzen 9 7900X & AMD EPYC 7543P (32 cores) \\
+OS & Ubuntu 24.04 LTS & --- \\
+CUDA toolkit & HPC SDK 24.3 & --- \\
+C/C++ compiler & GCC 12.4 & --- \\
+OpenCL runtime & NVIDIA HPC SDK & --- \\
+Python & 3.12.3 & --- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1116,13 +1116,13 @@ UNKNOWN & 0 & 1 & -- & 1 & 0.0\% \\ % src: paper_data.json > self_repair > per_i
 \toprule
 Metric & Qwen 3.5 & GPT-4.1 mini & Combined \\
 \midrule
-Total tasks & 710 & 551 & 1261 \\ % src: paper_data_gpt41mini.json > primary_campaign > self_repair > total_tasks=551
-First-attempt PASS & 160 (22.5\%) & 119 (21.6\%) & 279 (22.1\%) \\ % src: paper_data.json > self_repair > first_attempt_pass=160, 160/710=0.2254; gpt: 119/551=0.2160; combined: 279/1261=0.2213
-Repaired (attempt 2--4) & 112 (15.8\%) & 42 (7.6\%) & 154 (12.2\%) \\ % src: paper_data.json > self_repair > repaired=112, 112/710=0.1577; gpt: 42/551=0.0762; combined: 154/1261=0.1221
-Total PASS & 272 (38.3\%) & 161 (29.2\%) & 433 (34.3\%) \\ % src: paper_data.json > primary_campaign > overall > pass=272; gpt: 161/551=0.2922; combined: 433/1261=0.3434
-Relative improvement & +70.0\% & +35.3\% & +55.2\% \\ % src: (272-160)/160=0.70; gpt: (161-119)/119=0.3529; combined: (433-279)/279=0.5520
-Persistent fail & 392 & 361 & 753 \\ % src: paper_data.json > self_repair > persistent_fail=392; gpt: 361; combined: 753
-Regression & 7 (1.0\%) & 5 (0.9\%) & 12 (1.0\%) \\ % src: paper_data.json > self_repair > regression=7, 7/710=0.0099; gpt: 5/551=0.0091; combined: 12/1261=0.0095
+Total tasks & 710 & 577 & 1287 \\ % src: paper_data_gpt41mini.json > primary_campaign > self_repair > total_tasks=577
+First-attempt PASS & 160 (22.5\%) & 134 (23.2\%) & 294 (22.8\%) \\ % src: paper_data.json > self_repair > first_attempt_pass=160, 160/710=0.2254; gpt: 134/577=0.2322; combined: 294/1287=0.2284
+Repaired (attempt 2--4) & 112 (15.8\%) & 43 (7.5\%) & 155 (12.0\%) \\ % src: paper_data.json > self_repair > repaired=112, 112/710=0.1577; gpt: 43/577=0.0745; combined: 155/1287=0.1204
+Total PASS & 272 (38.3\%) & 177 (30.7\%) & 449 (34.9\%) \\ % src: paper_data.json > primary_campaign > overall > pass=272; gpt: 177/577=0.3068; combined: 449/1287=0.3489
+Relative improvement & +70.0\% & +32.1\% & +52.7\% \\ % src: (272-160)/160=0.70; gpt: (177-134)/134=0.3209; combined: (449-294)/294=0.5272
+Persistent fail & 392 & 367 & 759 \\ % src: paper_data.json > self_repair > persistent_fail=392; gpt: 367; combined: 759
+Regression & 7 (1.0\%) & 5 (0.9\%) & 12 (0.9\%) \\ % src: paper_data.json > self_repair > regression=7, 7/710=0.0099; gpt: 5/577=0.0087; combined: 12/1287=0.0093
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1138,11 +1138,11 @@ Regression & 7 (1.0\%) & 5 (0.9\%) & 12 (1.0\%) \\ % src: paper_data.json > self
 \toprule
 Level & \makecell{Qwen 3.5\\(all dirs, $n$=142)} & \makecell{Qwen 3.5\\(C$\to$OMP, $n$=24)} & \makecell{GPT-4.1\\mini} \\
 \midrule
-L0 & 40.1\% [32.4\%, 48.4\%] & 66.7\% [46.7\%, 82.0\%] & 28.1\% [20.6\%, 36.9\%] \\ % src: paper_data.json > augmentation > all_directions.L0: 57/142; cuda_to_omp_balanced.L0: 16/24; gpt: paper_data_gpt41mini.json > augmentation > all_directions.L0: rate=0.2807, n=114
-L1 & 37.3\% [29.8\%, 45.5\%] & 58.3\% [38.8\%, 75.5\%] & 28.2\% [20.6\%, 37.2\%] \\ % src: paper_data.json > augmentation > all_directions.L1: 53/142; cuda_to_omp_balanced.L1: 14/24; gpt: rate=0.2818, n=110
-L2 & 40.1\% [32.4\%, 48.4\%] & 70.8\% [50.8\%, 85.1\%] & 30.3\% [22.4\%, 39.5\%] \\ % src: paper_data.json > augmentation > all_directions.L2: 57/142; cuda_to_omp_balanced.L2: 17/24; gpt: rate=0.3028, n=109
-L3 & 39.4\% [31.8\%, 47.6\%] & 58.3\% [38.8\%, 75.5\%] & 29.4\% [21.6\%, 38.5\%] \\ % src: paper_data.json > augmentation > all_directions.L3: 56/142; cuda_to_omp_balanced.L3: 14/24; gpt: rate=0.2936, n=109
-L4 & 34.5\% [27.2\%, 42.6\%] & 66.7\% [46.7\%, 82.0\%] & 30.3\% [22.4\%, 39.5\%] \\ % src: paper_data.json > augmentation > all_directions.L4: 49/142; cuda_to_omp_balanced.L4: 16/24; gpt: rate=0.3028, n=109
+L0 & 40.1\% [32.4\%, 48.4\%] & 66.7\% [46.7\%, 82.0\%] & 29.3\% [21.8\%, 38.2\%] \\ % src: paper_data.json > augmentation > all_directions.L0: 57/142; cuda_to_omp_balanced.L0: 16/24; gpt: paper_data_gpt41mini.json > augmentation > all_directions.L0: rate=0.2931, n=116
+L1 & 37.3\% [29.8\%, 45.5\%] & 58.3\% [38.8\%, 75.5\%] & 28.4\% [21.0\%, 37.3\%] \\ % src: paper_data.json > augmentation > all_directions.L1: 53/142; cuda_to_omp_balanced.L1: 14/24; gpt: rate=0.2845, n=116
+L2 & 40.1\% [32.4\%, 48.4\%] & 70.8\% [50.8\%, 85.1\%] & 31.3\% [23.6\%, 40.3\%] \\ % src: paper_data.json > augmentation > all_directions.L2: 57/142; cuda_to_omp_balanced.L2: 17/24; gpt: rate=0.3130, n=115
+L3 & 39.4\% [31.8\%, 47.6\%] & 58.3\% [38.8\%, 75.5\%] & 31.3\% [23.6\%, 40.3\%] \\ % src: paper_data.json > augmentation > all_directions.L3: 56/142; cuda_to_omp_balanced.L3: 14/24; gpt: rate=0.3130, n=115
+L4 & 34.5\% [27.2\%, 42.6\%] & 66.7\% [46.7\%, 82.0\%] & 33.0\% [25.1\%, 42.1\%] \\ % src: paper_data.json > augmentation > all_directions.L4: 49/142; cuda_to_omp_balanced.L4: 16/24; gpt: rate=0.3304, n=115
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1177,7 +1177,7 @@ L4 & 34.5\% [27.2\%, 42.6\%] & 66.7\% [46.7\%, 82.0\%] & 30.3\% [22.4\%, 39.5\%]
 Model & Greedy rate (T=0) & pass@1 (T=0.7) & pass@3 (T=0.7) & Hard Fail & Noisy Fail & Always Pass \\
 \midrule
 Qwen 3.5 397B-A17B & 38.3\% (primary) & 19.7\% (macro) & 27.5\% (macro) & 103/142 (72.5\%) & 0/142 (0.0\%) & 17/142 (12.0\%) \\ % src: paper_data.json > primary_campaign > overall > pass_rate=0.3831 -> 38.3% greedy pass rate; passk unchanged
-GPT-4.1 mini & 29.2\% (primary) & 23.1\% (macro) & 28.4\% (macro) & 63/88 (71.6\%) & 0/88 (0.0\%) & 15/88 (17.0\%) \\ % src: paper_data_gpt41mini.json > primary_campaign > overall > pass=161/551=0.2922; passk_campaign > aggregate_passk: pass@1=0.2311, pass@3=0.2841, n_tasks=88; hard_fail=63, noisy=0, always_pass=15
+GPT-4.1 mini & 30.7\% (primary) & 25.6\% (macro) & 31.5\% (macro) & -- & -- & -- \\ % src: paper_data_gpt41mini.json > primary_campaign > overall > pass=177/577=0.3068; passk_campaign > aggregate_passk: pass@1=0.2556, pass@3=0.3146, n_tasks=90; hard_fail/noisy/always_pass not in aggregate_passk
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -1211,9 +1211,9 @@ GPT-4.1 mini & 29.2\% (primary) & 23.1\% (macro) & 28.4\% (macro) & 63/88 (71.6\
 \toprule
 Test & Statistic & $p$-value & Effect Size & Interpretation \\
 \midrule
-Model comparison (chi-squared) & $\chi^2 = 10.97$, $df=1$ & $p = 9.3 \times 10^{-4}$ & Cramer's V = 0.09 & Significant difference; negligible effect \\ % src: cross_model_comparison.json > overall > chi_squared: chi2=10.9704, p=0.000926; cohens_h=0.1926; V=sqrt(10.9704/1261)=0.093
+Model comparison (chi-squared) & $\chi^2 = 7.83$, $df=1$ & $p = 0.005$ & Cramer's V = 0.08 & Significant difference; negligible effect \\ % src: cross_model_comparison.json > overall > chi_squared: chi2=7.8336, p=0.005128; cohens_h=0.1607; V=sqrt(7.8336/1287)=0.078
 Qwen augmentation (Cochran-Armitage) & $z = 0.0$ & $p = 1.0$ & -- & No monotonic trend; null supports robustness \\ % src: paper_data.json > augmentation > cochran_armitage: z=-0.0 (display 0.0), p_value=1.0, n_kernels=24
-GPT-4.1~mini augmentation (Cochran-Armitage) & $z = 0.53$ & $p = 0.60$ & -- & No monotonic trend; null supports robustness \\ % src: paper_data_gpt41mini.json > augmentation > cochran_armitage: z=0.527, p_value=0.5982, n_kernels=24
+GPT-4.1~mini augmentation (Cochran-Armitage) & $z = 0.62$ & $p = 0.54$ & -- & No monotonic trend; null supports robustness \\ % src: paper_data_gpt41mini.json > augmentation > cochran_armitage: z=0.6188, p_value=0.536064
 Direction: cuda-omp (McNemar) & $n=24$, exact & $p = 0.6875$ & Cohen's $h = -0.17$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > omp-to-cuda vs cuda-to-omp: n=24, p=0.6875, h=-0.1724
 Direction: cuda-opencl (McNemar) & $n=20$, exact & $p = 0.6875$ & Cohen's $h = 0.28$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > cuda-to-opencl vs opencl-to-cuda: n=20, p=0.6875, h=0.2838
 Direction: omp-opencl (McNemar) & $n=18$, exact & $p = 1.0$ & Cohen's $h = 0.12$ & No significant asymmetry ($\alpha=0.0125$) \\ % src: paper_data.json > direction_asymmetry > opencl-to-omp vs omp-to-opencl: n=18, p=1.0, h=0.1157
