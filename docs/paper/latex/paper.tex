@@ -62,7 +62,7 @@
 
 %% =============================================================
 %% ABSTRACT
-% DATA FREEZE (2026-04-03): 1248 Qwen result JSONs on disk (ls results/evaluation/together-qwen-3.5-397b-a17b/*.json | wc -l).
+% DATA FREEZE (2026-04-08): 2190 result JSONs on disk (1248 Qwen + 942 GPT). ls results/evaluation/together-qwen-3.5-397b-a17b/*.json | wc -l = 1248; ls results/evaluation/azure-gpt-4.1-mini/*.json | wc -l = 942.
 % SCOPE UPDATE (Phase 12): Abstract updated to all-suite 710-task scope per paper_data.json (D-01).
 % VERIFIED (11-02 Task 2, 2026-04-06): All abstract numbers cross-checked against S6 and
 % paper_data.json. 38.3% [34.8%,41.9%], 64.2% (66.7% L0), BUILD_FAIL 33.9%, VERIFY_FAIL 7.2%,
@@ -673,7 +673,7 @@ RTX~4070 GPU (Ada Lovelace, compute capability sm\_89), CUDA~12.3
 % src: git rev-parse HEAD (at paper-writing time); git submodule status -> 9c10d3ea (Rodinia)
 % src: cd HeCBench-master && git log --oneline -1 => 22785cdd7
 % P0-7: HeCBench commit hash added
-To support exact reproduction, all artifacts are version-pinned: ParBench at commit \texttt{c1d8c7b}\footnote{Repository URL withheld for double-blind review.}, Rodinia at submodule commit \texttt{9c10d3ea}~\cite{Rodinia2009}, HeCBench at commit \texttt{22785cd}\footnote{\url{https://github.com/zjin-lcf/HeCBench}} (cloned March 2026), and evaluation scripts at the same ParBench revision. Qwen~3.5 397B-A17B was accessed via the Together AI API during March--April 2026; model weights are publicly available. All 1,248 per-task result JSONs, analysis scripts, and spec files are included in the repository to enable independent verification of every reported number.
+To support exact reproduction, all artifacts are version-pinned: ParBench at commit \texttt{c1d8c7b}\footnote{Repository URL withheld for double-blind review.}, Rodinia at submodule commit \texttt{9c10d3ea}~\cite{Rodinia2009}, HeCBench at commit \texttt{22785cd}\footnote{\url{https://github.com/zjin-lcf/HeCBench}} (cloned March 2026), and evaluation scripts at the same ParBench revision. Qwen~3.5 397B-A17B was accessed via the Together AI API during March--April 2026; model weights are publicly available. All 2,190 per-task result JSONs (1,248 Qwen~3.5 and 942 GPT-4.1~mini), analysis scripts, and spec files are included in the repository to enable independent verification of every reported number. % src: ls results/evaluation/together-qwen-3.5-397b-a17b/*.json | wc -l = 1248; ls results/evaluation/azure-gpt-4.1-mini/*.json | wc -l = 942
 
 % SF-1: API cost data moved to appendix table per D-04
 \textbf{Evaluation cost.} Appendix~\ref{sec:appendix-cost} summarizes the API cost and token usage for the Qwen~3.5 evaluation campaigns. GPT-4.1~mini evaluation costs via Azure are not reported in this submission. % TODO: add Azure cost data when available
