@@ -116,7 +116,5 @@
             }
         ]
     },
-    "enabledPlugins": {
-        "superpowers@superpowers-dev": true
-    }
+    "enabledPlugins": {}
 }

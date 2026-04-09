@@ -1,16 +1,16 @@
 {
-  "generated_at": "2026-04-08T19:12:15.408970",
-  "total_tasks": 1981,
+  "generated_at": "2026-04-08T22:16:10.383789",
+  "total_tasks": 1949,
   "by_model": {
     "azure-gpt-4.1-mini": {
       "pass": 246,
-      "total": 845,
-      "rate": 0.2911,
+      "total": 813,
+      "rate": 0.3026,
       "by_status": {
         "VERIFY_FAIL": 119,
         "PASS": 246,
         "RUN_FAIL": 91,
-        "BUILD_FAIL": 389
+        "BUILD_FAIL": 357
       }
     },
     "together-qwen-3.5-397b-a17b": {
@@ -30,10 +30,10 @@
   "by_direction": {
     "cuda-to-omp": {
       "pass": 170,
-      "total": 328,
-      "rate": 0.5183,
+      "total": 320,
+      "rate": 0.5312,
       "by_status": {
-        "BUILD_FAIL": 144,
+        "BUILD_FAIL": 136,
         "PASS": 170,
         "VERIFY_FAIL": 7,
         "RUN_FAIL": 6,
@@ -53,12 +53,12 @@
     },
     "cuda-to-opencl": {
       "pass": 73,
-      "total": 304,
-      "rate": 0.2401,
+      "total": 296,
+      "rate": 0.2466,
       "by_status": {
         "PASS": 73,
         "RUN_FAIL": 158,
-        "BUILD_FAIL": 48,
+        "BUILD_FAIL": 40,
         "VERIFY_FAIL": 22,
         "EXTRACTION_FAIL": 2,
         "ERROR": 1
@@ -78,12 +78,12 @@
     },
     "omp-to-opencl": {
       "pass": 83,
-      "total": 272,
-      "rate": 0.3051,
+      "total": 264,
+      "rate": 0.3144,
       "by_status": {
         "PASS": 83,
         "RUN_FAIL": 115,
-        "BUILD_FAIL": 49,
+        "BUILD_FAIL": 41,
         "VERIFY_FAIL": 22,
         "EXTRACTION_FAIL": 3
       }
@@ -113,10 +113,10 @@
     },
     "opencl-to-omp": {
       "pass": 87,
-      "total": 272,
-      "rate": 0.3199,
+      "total": 264,
+      "rate": 0.3295,
       "by_status": {
-        "BUILD_FAIL": 139,
+        "BUILD_FAIL": 131,
         "VERIFY_FAIL": 39,
         "PASS": 87,
         "RUN_FAIL": 7
@@ -444,10 +444,10 @@
     },
     "xsbench": {
       "pass": 0,
-      "total": 86,
+      "total": 54,
       "rate": 0.0,
       "by_status": {
-        "BUILD_FAIL": 70,
+        "BUILD_FAIL": 38,
         "RUN_FAIL": 16
       }
     }
@@ -455,65 +455,65 @@
   "by_augment_level": {
     "L0": {
       "pass": 244,
-      "total": 952,
-      "rate": 0.2563,
+      "total": 936,
+      "rate": 0.2607,
       "by_status": {
         "VERIFY_FAIL": 79,
         "RUN_FAIL": 162,
         "PASS": 244,
-        "BUILD_FAIL": 446,
+        "BUILD_FAIL": 430,
         "EXTRACTION_FAIL": 20,
         "ERROR": 1
       }
     },
     "L1": {
       "pass": 86,
-      "total": 258,
-      "rate": 0.3333,
+      "total": 254,
+      "rate": 0.3386,
       "by_status": {
         "VERIFY_FAIL": 23,
         "RUN_FAIL": 42,
         "PASS": 86,
-        "BUILD_FAIL": 106,
+        "BUILD_FAIL": 102,
         "EXTRACTION_FAIL": 1
       }
     },
     "L2": {
       "pass": 93,
-      "total": 257,
-      "rate": 0.3619,
+      "total": 253,
+      "rate": 0.3676,
       "by_status": {
         "VERIFY_FAIL": 27,
         "RUN_FAIL": 38,
         "PASS": 93,
-        "BUILD_FAIL": 99
+        "BUILD_FAIL": 95
       }
     },
     "L3": {
       "pass": 92,
-      "total": 257,
-      "rate": 0.358,
+      "total": 253,
+      "rate": 0.3636,
       "by_status": {
         "VERIFY_FAIL": 29,
         "RUN_FAIL": 41,
         "PASS": 92,
-        "BUILD_FAIL": 95
+        "BUILD_FAIL": 91
       }
     },
     "L4": {
       "pass": 87,
-      "total": 257,
-      "rate": 0.3385,
+      "total": 253,
+      "rate": 0.3439,
       "by_status": {
         "VERIFY_FAIL": 27,
         "PASS": 87,
         "RUN_FAIL": 41,
-        "BUILD_FAIL": 102
+        "BUILD_FAIL": 98
       }
     }
   },
   "failure_taxonomy": {
-    "BUILD_FAIL": 848,
+    "BUILD_FAIL": 816,
     "RUN_FAIL": 324,
     "VERIFY_FAIL": 185,
     "EXTRACTION_FAIL": 21
@@ -521,15 +521,15 @@
   "self_repair": {
     "attempt_1_pass": 442,
     "total_repaired_by_retry": 160,
-    "total_with_attempts": 1981
+    "total_with_attempts": 1949
   },
   "by_complexity": {
     "multi_to_multi": {
       "pass": 6,
-      "total": 149,
-      "rate": 0.0403,
+      "total": 141,
+      "rate": 0.0426,
       "by_status": {
-        "BUILD_FAIL": 107,
+        "BUILD_FAIL": 99,
         "RUN_FAIL": 28,
         "VERIFY_FAIL": 7,
         "PASS": 6,
@@ -538,10 +538,10 @@
     },
     "multi_to_single": {
       "pass": 136,
-      "total": 413,
-      "rate": 0.3293,
+      "total": 397,
+      "rate": 0.3426,
       "by_status": {
-        "BUILD_FAIL": 140,
+        "BUILD_FAIL": 124,
         "PASS": 136,
         "RUN_FAIL": 128,
         "VERIFY_FAIL": 7,
@@ -563,10 +563,10 @@
     },
     "single_to_multi": {
       "pass": 18,
-      "total": 353,
-      "rate": 0.051,
+      "total": 345,
+      "rate": 0.0522,
       "by_status": {
-        "BUILD_FAIL": 288,
+        "BUILD_FAIL": 280,
         "VERIFY_FAIL": 28,
         "PASS": 18,
         "EXTRACTION_FAIL": 18,
