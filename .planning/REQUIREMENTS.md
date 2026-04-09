@@ -77,42 +77,40 @@
 
 ## Traceability
 
-*(Populated by roadmapper)*
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TDD-01 | — | Pending |
-| TDD-02 | — | Pending |
-| TDD-03 | — | Pending |
-| SPEC-01 | — | Pending |
-| SPEC-02 | — | Pending |
-| SPEC-03 | — | Pending |
-| SPEC-04 | — | Pending |
-| SPEC-05 | — | Pending |
-| HARN-01 | — | Pending |
-| HARN-02 | — | Pending |
-| HARN-03 | — | Pending |
-| HARN-04 | — | Pending |
-| EVAL-01 | — | Pending |
-| EVAL-02 | — | Pending |
-| EVAL-03 | — | Pending |
-| EVAL-04 | — | Pending |
-| PROV-01 | — | Pending |
-| PROV-02 | — | Pending |
-| PROV-03 | — | Pending |
-| PROV-04 | — | Pending |
-| ANLYS-01 | — | Pending |
-| ANLYS-02 | — | Pending |
-| ANLYS-03 | — | Pending |
-| ANLYS-04 | — | Pending |
-| PAPER-01 | — | Pending |
-| PAPER-02 | — | Pending |
+| TDD-01 | Phase 1 | Pending |
+| TDD-02 | Phase 1 | Pending |
+| TDD-03 | Phase 1 | Pending |
+| SPEC-01 | Phase 2 | Pending |
+| SPEC-02 | Phase 2 | Pending |
+| SPEC-03 | Phase 2 | Pending |
+| SPEC-04 | Phase 2 | Pending |
+| SPEC-05 | Phase 2 | Pending |
+| HARN-01 | Phase 3 | Pending |
+| HARN-02 | Phase 3 | Pending |
+| HARN-03 | Phase 3 | Pending |
+| HARN-04 | Phase 3 | Pending |
+| EVAL-01 | Phase 4 | Pending |
+| EVAL-02 | Phase 4 | Pending |
+| EVAL-03 | Phase 4 | Pending |
+| EVAL-04 | Phase 4 | Pending |
+| PROV-01 | Phase 5 | Pending |
+| PROV-02 | Phase 5 | Pending |
+| PROV-03 | Phase 5 | Pending |
+| PROV-04 | Phase 5 | Pending |
+| ANLYS-01 | Phase 5 | Pending |
+| ANLYS-02 | Phase 5 | Pending |
+| ANLYS-03 | Phase 5 | Pending |
+| ANLYS-04 | Phase 5 | Pending |
+| PAPER-01 | Phase 6 | Pending |
+| PAPER-02 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 26 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 26 ⚠️
+- Mapped to phases: 26/26
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-09*
-*Last updated: 2026-04-09 after initial definition*
+*Last updated: 2026-04-09 after roadmap creation*
