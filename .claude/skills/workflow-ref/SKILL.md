@@ -11,7 +11,7 @@ Use these at the right phase — don't skip them, don't over-invoke them.
 
 | When | Skill / Agent | Command | What it does |
 |------|--------------|---------|-------------|
-| After any code/spec change | `/validate` | `/validate` (full) or `/validate quick` | 4-wave validation; writes sentinel; required before commit |
+| After any code/spec change | `/validate` | `/validate` (full) or `/validate quick` | 4-wave validation; pre-commit gate requires waves 1-3, wave 4 optional |
 | Full post-session validation (context-clean) | `verification-lead` agent | Invoke via Agent tool | Runs all 4 waves internally; returns single report |
 | Before merging or after multiple file changes | `/review` | `/review` | 4-agent parallel code review (style, correctness, security, perf) |
 | Launching an eval batch | `/eval-run` | `/eval-run rodinia cuda-to-omp` | Param collection → pre-flight → execute → analyze |

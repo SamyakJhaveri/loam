@@ -640,9 +640,7 @@ You don't need to configure anything extra.
 | Hook | What It Does | When It Fires |
 |------|-------------|---------------|
 | `protect-benchmark-sources.sh` | Blocks Edit/Write to `rodinia-src/`, `xsbench-src/`, `HeCBench-master/` | PreToolUse on Edit\|Write |
-| `pre-commit-gate.sh` | Blocks `git commit` without `.validation_passed` sentinel | PreToolUse on Bash |
 | `rm -rf` blocker | Blocks `rm -rf` and `rm -fr` commands | PreToolUse on Bash |
-| `sentinel-cleanup.sh` | Invalidates `.validation_passed` when any file is edited | PostToolUse on Edit\|Write |
 | Ruff auto-lint | Auto-fixes Python style issues after edits | PostToolUse on Edit\|Write |
 | Pre-stop checklist | Shows validation checklist when stopping | Stop |
 

@@ -57,14 +57,14 @@ then NOT available for implementation quality. The user reviews all output line-
 - "Update your CLAUDE.md so you don't make that mistake again" (Boris's rule)
 
 ### 6. Verify (Post-Session Validation Loop)
-- **Run `/validate`** — full 4-wave validation loop (10+ agents, ~3 min)
+- **Run `/validate`** — validation loop (waves 1-3 required, wave 4 optional)
 - Wave 1 (parallel, ~30s): verify-app + diff-reviewer + security-scanner
 - Wave 2 (parallel, ~60s): test-synthesizer + regression-checker + spec-auditor
 - Wave 3 (parallel, ~45s): consistency-checker + code-simplifier
-- Wave 4 (sequential, ~30s): self-critic (Opus) + plan-reviewer
+- Wave 4 (optional, ~30s): self-critic (Opus) + plan-reviewer — run manually as needed
 - On FAIL → fix loop: plan mode → user approval → implement → re-validate (max 3 iterations)
-- On PASS → `.validation_passed` sentinel written → `git commit` unblocked
-- **Pre-commit hook enforces this** — `git commit` is blocked without a valid sentinel
+- On PASS (waves 1-3) → `.validation_passed` sentinel written → `git commit` unblocked
+- **Pre-commit hook enforces waves 1-3** — wave 4 is not required for commits
 - See `.claude/rules/validation-loop.md` for full protocol
 
 Full skill/agent reference table: use `/workflow-ref` skill.
@@ -112,12 +112,11 @@ Full skill/agent reference table: use `/workflow-ref` skill.
    See Run Argument Verification Protocol in `spec-conventions.md`. This rule exists
    because of a real incident where "fixes" based on documentation caused 2 specs to
    silently fail for weeks. The evidence is always in the source and the baseline stdout.
-10. **Don't commit without running `/validate`** — the pre-commit gate hook will block it
-    anyway. If tempted to skip validation, that's a signal the session scope is too large.
-    Split the work into smaller sessions instead of bypassing quality gates.
-11. **Don't rationalize incomplete work as complete** — the self-critic agent (Opus) will
-    catch it. If something isn't done, say so explicitly: "X is not yet done because Y."
-    Never frame partial work as sufficient to avoid running the full validation loop.
+10. **Don't commit without running `/validate`** — the pre-commit gate hook requires waves 1-3.
+    Wave 4 (self-critic/opus) is optional for commits but available for manual use.
+    If tempted to skip validation, that's a signal the session scope is too large.
+11. **Don't rationalize incomplete work as complete** — if something isn't done, say so
+    explicitly: "X is not yet done because Y." Never frame partial work as sufficient.
 12. **Don't frontload plan-mode with broad exploration sweeps.** Surgical exploration
     (Glob, Grep, targeted Read, single focused agent) is fine. Deep exploration is fine
     when the task warrants it — but ASK the user before launching 2+ Explore agents.

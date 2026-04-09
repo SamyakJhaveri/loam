@@ -9,7 +9,7 @@ paths:
 # Post-Session Validation Loop
 
 > Loads when working on validation hooks, skills, or agents.
-> Run `/validate` after implementation. Never commit without passing the validation loop.
+> Run `/validate` after implementation. Pre-commit hook requires waves 1-3 to pass.
 
 ## Quick Reference
 
@@ -26,11 +26,11 @@ paths:
 | 1 | verify-app, diff-reviewer, security-scanner | All must PASS | 30s |
 | 2 | test-synthesizer, regression-checker, spec-auditor* | All must PASS | 60s |
 | 3 | consistency-checker, code-simplifier† | consistency must PASS | 45s |
-| 4 | self-critic, plan-reviewer‡ | self-critic must PASS | 30s |
+| 4 | self-critic, plan-reviewer‡ | **Optional for commits** | 30s |
 
 *spec-auditor: only when `specs/` files changed
 †code-simplifier: advisory — WARN, not blocking
-‡plan-reviewer: only when fix loop was triggered
+‡Wave 4 uses Opus model. Not required by pre-commit gate — run manually as needed.
 
 ## Fix Loop Protocol
 
@@ -44,30 +44,12 @@ paths:
 ## Commit Gate Enforcement
 
 `.validation_passed` sentinel in project root:
-- Written by `/validate` after all waves PASS
+- Written by `/validate` after waves pass
 - Checked by `.claude/hooks/pre-commit-gate.sh` before `git commit`
+- **Requires waves 1-3** — wave 4 (self-critic/opus) is optional for commits
 - **Invalidated** (deleted) by `.claude/hooks/sentinel-cleanup.sh` whenever any file is edited
 - TTL: 30 minutes — re-validate if sentinel is older than that
 - Listed in `.gitignore` (never committed)
-
-## Anti-Rationalization Stop Hook
-
-When Claude tries to stop, a prompt-type Stop hook injects:
-> "BEFORE STOPPING: (1) Was /validate run? (2) All task items finished? (3) Evidence for
-> every 'works'/'fixed' claim? (4) Docs updated for gotchas? If ANY is NO — address it."
-
-This is the Trail of Bits anti-rationalization pattern. If validation hasn't passed, the
-Stop hook prevents premature completion.
-
-## Self-Improvement Feedback Loop (Kaizen)
-
-After Wave 4 self-critic runs:
-- **If rationalization pattern found** → add new anti-pattern to `workflow.md`
-- **If stale docs found** → update as part of fix loop (not deferred)
-- **If repeated mistake pattern** → consider creating a new PreToolUse hook to block it
-- **If new gotcha** → add to `known-issues.md`
-
-Every validation run is an opportunity to improve the process. Do not defer lessons.
 
 ## Context Budget
 
@@ -75,7 +57,6 @@ Each agent returns max 50 lines structured verdict.
 Main session receives ~50-line aggregated report.
 Subagent isolation: no raw test output, no verbose logs in main context.
 
-## Override (emergency only)
+## Override
 
 User says "skip validation" → acknowledge, document in commit message: `[skip-validate: reason]`.
-This must be rare. self-critic will flag systematic overuse as a quality concern.

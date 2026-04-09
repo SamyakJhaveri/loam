@@ -38,7 +38,7 @@ ParBench: benchmark for LLM-based parallel code translation (CUDA ↔ OpenMP ↔
 - Read before editing. No partial implementations. Verify before reporting done.
 - `ultrathink` for: architecture, eval pipeline, spec correctness, augmentation, published results.
 - If unsure, say so explicitly — never guess silently.
-- `/validate` before every commit. Pre-commit hook enforces `.validation_passed` sentinel.
+- `/validate` before every commit. Pre-commit hook requires waves 1-3; wave 4 (self-critic/opus) is optional.
 - **Model selection:** Use Opus for main work. Before commit/push: manually run `/model haiku` (faster, cheaper for transactional git ops).
 
 ## Conditional Rules (`.claude/rules/`, auto-loaded by file path)
@@ -52,7 +52,7 @@ ParBench: benchmark for LLM-based parallel code translation (CUDA ↔ OpenMP ↔
 | `augmentation.md` | `c_augmentation/`, `scripts/augmentation/` | `--project-root` required, transform bugs |
 | `known-issues-archive.md` | `c_augmentation/`, `harness/`, `scripts/augmentation/`, `scripts/evaluation/`, `results/augmentation/`, `results/evaluation/`, `specs/`, `visualizations/` | Historical fix details, moved guardrails |
 | `python.md` | `*.py` | `python3`, harness CLI flag ordering (`-v` before subcommand) |
-| `validation-loop.md` | hooks, validation agents | 4-wave protocol, sentinel, fix loop |
+| `validation-loop.md` | hooks, validation agents | 4-wave protocol (gate requires 1-3, wave 4 optional), sentinel, fix loop |
 | `github-pages.md` | `visualizations/` | URL, staticrypt, data refresh |
 | `frontend-design.md` | `visualizations/` | Design system, styling conventions |
 

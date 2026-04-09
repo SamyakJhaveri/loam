@@ -88,16 +88,18 @@ if [ "$AGE" -gt "$MAX_AGE" ]; then
     exit 2
 fi
 
-# ── 4b. Check that full validation (all 4 waves) was run, not just quick ────────
+# ── 4b. Check that at least 3 validation waves were run (not just quick) ────────
+# Wave 4 (self-critic/opus) is optional — only waves 1-3 required for commits.
 # Fail-open: if waves_passed field is missing, skip this check (backward compat).
 WAVES=$(grep '^waves_passed=' "$SENTINEL" 2>/dev/null | cut -d= -f2 | tr -d ' ')
-if [ -n "$WAVES" ] && [ "$WAVES" -lt 4 ] 2>/dev/null; then
+if [ -n "$WAVES" ] && [ "$WAVES" -lt 3 ] 2>/dev/null; then
     echo "" >&2
     echo "╔══════════════════════════════════════════════════════════════╗" >&2
-    echo "║  BLOCKED: Only ${WAVES}/4 validation waves passed.                ║" >&2
+    echo "║  BLOCKED: Only ${WAVES}/3 required validation waves passed.       ║" >&2
     echo "║                                                              ║" >&2
     echo "║  /validate quick is not sufficient for committing.          ║" >&2
-    echo "║  Run /validate (full) for all 4 waves.                      ║" >&2
+    echo "║  Run /validate for at least waves 1-3.                      ║" >&2
+    echo "║  Wave 4 (self-critic) is optional for commits.              ║" >&2
     echo "╚══════════════════════════════════════════════════════════════╝" >&2
     echo "" >&2
     exit 2

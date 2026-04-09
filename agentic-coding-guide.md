@@ -6,7 +6,7 @@
 >
 > Written for: Samyak Jhaveri (PhD candidate, HPC/SE/AI intersection)
 > Project: ParBench — LLM-based parallel code translation benchmark (SC26 paper)
-> Last updated: 2026-04-01
+> Last updated: 2026-04-09
 
 ---
 
@@ -53,10 +53,10 @@ I verify each one passes?"
 `★ Insight ─────────────────────────────────────`
 **Orchestrator pattern in ParBench:** The `/validate` skill is a pure orchestrator
 workflow. The main session doesn't run schema validation or security scanning itself.
-It spawns 10+ specialized agents (verify-app, diff-reviewer, security-scanner, etc.),
+It spawns 8+ specialized agents (verify-app, diff-reviewer, security-scanner, etc.),
 each with a narrow focus, and only consumes their structured verdicts. The new
 `verification-lead` agent takes this further — the main session spawns ONE agent,
-which internally orchestrates all 10+. This is "orchestrating the orchestrator."
+which internally orchestrates all 8+. This is "orchestrating the orchestrator."
 `─────────────────────────────────────────────────`
 
 ## 1.2 Steve Yegge's 8 Levels of AI-Assisted Development
@@ -77,7 +77,7 @@ Steve Yegge identified a progression in how developers use AI:
 Most developers plateau at L3-L4. This guide covers L5-L8 — the levels where you
 stop being a "user of AI" and start being a "designer of AI workflows." ParBench's
 `.claude/` directory already has infrastructure for L6-L8: 18 custom agents, 18+
-skills, 9 hooks, agent team support, and the Ralph loop pattern.
+skills, 7 hooks, agent team support, and the Ralph loop pattern.
 
 ## 1.3 The 80% Problem
 
@@ -90,10 +90,9 @@ failure rate means *every* output requires human review.
 
 The solution is not better generation — it's better verification infrastructure.
 This is why ParBench invests heavily in:
-- 10+ validation agents (Wave 1-4 in `/validate`)
-- Pre-commit gate hooks (`.validation_passed` sentinel)
+- 8+ validation agents (Wave 1-3 in `/validate`)
 - Continuous testing (post-edit hooks)
-- Adversarial self-review (self-critic agent with Opus)
+- Adversarial self-review (self-critic agent with Opus, available for manual use)
 
 The generation is "easy" — Claude writes the code. The engineering is in the
 verification pipeline that catches what Claude gets wrong.
@@ -392,7 +391,7 @@ codebase.
 
 | Skill | Phase | Key Feature |
 |-------|-------|-------------|
-| `/validate` | Verify | 4-wave hierarchical validation with sentinel gate |
+| `/validate` | Verify | 4-wave hierarchical validation |
 | `/review` | Verify | 4-parallel-agent code review (style, correctness, security, perf) |
 | `/eval-run` | Execute | Parameter collection, KNOWN_FAIL exclusion, post-batch analysis |
 | `/dream` | Record | 4-phase memory consolidation (orient, merge, prune, update) |
@@ -567,7 +566,6 @@ echo "$CLAUDE_TOOL_INPUT" | grep -oP '"command"\s*:\s*"\K[^"]*'
 
 | Hook | Matcher | Purpose | Blocks On |
 |------|---------|---------|-----------|
-| `pre-commit-gate.sh` | Bash | Blocks `git commit` without validation | Missing/stale `.validation_passed` sentinel |
 | `protect-benchmark-sources.sh` | Edit\|Write | Blocks edits to benchmark `.cu/.cpp/.c/.cl` files | File inside `rodinia/`, `HeCBench-master/`, `xsbench-src/` |
 | `protect-cuda-omp-results.sh` | Bash | Blocks deletion/overwrite of CUDA-OMP results | `rm` in `results/evaluation/` matching `*cuda*omp*` |
 | `result-immutability.sh` | Edit\|Write | Blocks overwriting existing result JSONs | Existing file in `results/evaluation/*.json` |
@@ -580,7 +578,6 @@ echo "$CLAUDE_TOOL_INPUT" | grep -oP '"command"\s*:\s*"\K[^"]*'
 |------|---------|---------|--------|
 | `post-edit-test.sh` | Edit\|Write | Runs lightweight tests after edits | Executes tests based on edited file path |
 | `context-budget.sh` | Bash | Tracks tool calls and context usage | Nudges for `/compact` at usage thresholds |
-| `sentinel-cleanup.sh` | Edit\|Write | Invalidates validation after edits | Deletes `.validation_passed` if it exists |
 | Ruff auto-lint (inline) | Edit\|Write | Auto-formats Python files | Runs `ruff check --fix` on `.py` files |
 | `post-compact-recovery.sh` | Compact | Recovers context after compaction | Restores essential context references |
 | `bash-audit-log.sh` | Bash | Logs all bash commands | Appends to audit log |
@@ -595,13 +592,11 @@ echo "$CLAUDE_TOOL_INPUT" | grep -oP '"command"\s*:\s*"\K[^"]*'
 
 `★ Insight ─────────────────────────────────────`
 **Hooks as a verification flywheel:** ParBench's hooks create a self-reinforcing
-quality loop. The sentinel-cleanup hook deletes `.validation_passed` whenever ANY
-file is edited. The pre-commit-gate hook blocks commits without that sentinel. The
-Stop hook reminds Claude to run `/validate`. Together, they make it structurally
-impossible to commit unvalidated changes — even if Claude rationalizes "this small
-change doesn't need validation." This is defense in depth: multiple independent
-mechanisms all pointing toward the same behavior (validate before commit). Breaking
-any single hook doesn't break the system, because the others catch it.
+quality loop. Safety hooks block edits to benchmark sources and protected results.
+The Stop hook reminds Claude to run `/validate`. Together with advisory rules in
+CLAUDE.md and workflow.md recommending validation before commits, they create
+defense in depth: multiple independent mechanisms all pointing toward the same
+behavior (validate before commit).
 `─────────────────────────────────────────────────`
 
 ## 4.5 Writing Your Own Hooks
@@ -754,8 +749,8 @@ One-paragraph description of role and purpose.
 | `spec-auditor` | 2 | sonnet | Full spec JSON audit (conditional — only when specs changed) |
 | `consistency-checker` | 3 | sonnet | Documentation vs code cross-check |
 | `code-simplifier` | 3 | sonnet | Code quality advisory (non-blocking) |
-| `self-critic` | 4 | opus | Adversarial self-review, rationalization detection |
-| `plan-reviewer` | 4 | opus | Adversarial plan review (conditional — after fix loop) |
+| `self-critic` | 4 | opus | Adversarial self-review, rationalization detection (optional for commits — wave 4) |
+| `plan-reviewer` | 4 | opus | Adversarial plan review (optional for commits — wave 4) |
 
 ### Orchestration Agents
 
@@ -793,21 +788,25 @@ Main Session
         ├── Wave 3 (2 agents in parallel)
         │     ├── consistency-checker
         │     └── code-simplifier
-        └── Wave 4 (1-2 agents sequential)
+        └── Wave 4 (2 agents in parallel — optional for commits)
               ├── self-critic
-              └── plan-reviewer (conditional)
+              └── plan-reviewer
 ```
+
+Note: Waves 1-3 are required for the pre-commit gate to pass. Wave 4 (`self-critic`
+and `plan-reviewer`) is part of the full `/validate` flow but is not required by the
+commit gate — it can be skipped for routine commits and run manually for adversarial review.
 
 The main session spawns ONE agent (verification-lead), which internally manages 10+
 sub-agents across 4 waves. The main session's context cost: ~60 lines (one report).
-Without this pattern, the same validation would dump ~500 lines (10+ agent summaries)
+Without this pattern, the same validation would dump ~400 lines (10+ agent summaries)
 into the main context.
 
 `★ Insight ─────────────────────────────────────`
 **Hierarchical agents as context management:** The verification-lead agent isn't just
 a convenience — it's a context budget optimization. Claude Code's context window is
 ~200K tokens. A main session that has been implementing features for an hour might
-already be at 50% context usage. Dumping 10+ agent summaries (each 50 lines = 500+
+already be at 50% context usage. Dumping 10+ agent summaries (each 50 lines = 400+
 lines) pushes toward compaction. But routing through verification-lead costs only ~60
 lines in the main context. The sub-agents' full contexts (all the files they read, all
 the commands they ran) are fully encapsulated. This is the same principle as
@@ -1142,10 +1141,9 @@ create the team until approved."
 ### Tier 2: Hooks (Automated Gate)
 
 Lifecycle hooks that run deterministically on every tool call:
-- `pre-commit-gate.sh` blocks commits without validation
 - `protect-benchmark-sources.sh` blocks edits to benchmark code
 - `result-immutability.sh` blocks overwriting existing results
-- `sentinel-cleanup.sh` invalidates validation after any file edit
+- `protect-cuda-omp-results.sh` blocks deletion of CUDA-OMP eval results
 
 These cannot be rationalized away. An LLM cannot argue "this edit is safe" if
 the hook exits 2.
@@ -1180,10 +1178,15 @@ Wave 3 (Cross-check, ~45s) — "Is it consistent?"
   ├── consistency-checker: Docs vs code cross-check
   └── code-simplifier:    Quality advisory (non-blocking)
 
-Wave 4 (Adversarial, ~30s) — "Did Claude cut corners?"
-  ├── self-critic:    Rationalization patterns, incomplete work
-  └── plan-reviewer:  Fix plan review (conditional)
+Wave 4 (Adversarial, ~30s) — "Did we miss anything?" [optional for commits]
+  ├── self-critic:   Adversarial self-review, rationalization detection
+  └── plan-reviewer: Adversarial plan review
 ```
+
+**Pre-commit gate:** Waves 1-3 are required — the pre-commit hook checks for the
+`.validation_passed` sentinel written after Wave 3 passes. Wave 4 is part of the
+full `/validate` flow but is not required by the commit gate; run it for adversarial
+review on high-stakes changes.
 
 **Wave gating:** Each wave must PASS before the next begins. If Wave 1 fails,
 Waves 2-4 don't run — no point in deep analysis if schema validation fails.
@@ -1199,55 +1202,37 @@ Waves 2-4 don't run — no point in deep analysis if schema validation fails.
 ## 8.3 Continuous Verification
 
 Beyond the 4-wave system, ParBench has continuous verification hooks that catch
-errors as they're introduced — not just at commit time:
+errors as they're introduced:
 
 - **Post-edit Ruff lint** — Every Python file is auto-linted after editing
   (PostToolUse hook on Edit|Write with `.py` filter)
-- **Sentinel invalidation** — Every file edit deletes `.validation_passed`,
-  requiring re-validation before the next commit
 
-## 8.4 The Pre-Commit Gate
+## 8.4 Required Validation Flow
 
-The `.validation_passed` sentinel is the single authority on commit readiness:
+Validation via `/validate` is required before every commit — enforced by the
+pre-commit gate. The workflow is:
 
 ```
                       ┌─────────────────┐
                       │  /validate      │
-                      │  (all 4 waves)  │
+                      │  (waves 1-3     │
+                      │   required;     │
+                      │   wave 4 opt.)  │
                       └────────┬────────┘
-                               │ PASS
+                               │ PASS (writes .validation_passed sentinel)
                       ┌────────▼────────┐
-                      │  Write sentinel │
-                      │  .validation_   │
-                      │  passed         │
-                      └────────┬────────┘
-                               │
-            ┌──────────────────┼──────────────────┐
-            │                  │                  │
-    ┌───────▼───────┐  ┌──────▼──────┐   ┌───────▼────────┐
-    │  Edit a file  │  │  git commit │   │  30 min pass   │
-    │  (any file)   │  │             │   │  (TTL expires)  │
-    └───────┬───────┘  └──────┬──────┘   └───────┬────────┘
-            │                 │                   │
-    ┌───────▼───────┐  ┌─────▼──────┐   ┌───────▼────────┐
-    │  sentinel     │  │  Hook      │   │  Hook checks   │
-    │  DELETED      │  │  checks:   │   │  age > 1800s   │
-    │  (cleanup     │  │  exists?   │   │  → BLOCKED     │
-    │   hook)       │  │  fresh?    │   └────────────────┘
-    └───────────────┘  │  4 waves?  │
-                       └─────┬──────┘
-                             │ All yes
-                       ┌─────▼──────┐
-                       │  COMMIT    │
-                       │  ALLOWED   │
-                       └────────────┘
+                      │  git commit     │
+                      │  (pre-commit-   │
+                      │   gate.sh checks│
+                      │   sentinel)     │
+                      └─────────────────┘
 ```
 
-The pre-commit-gate.sh hook checks:
-1. Sentinel exists
-2. Sentinel is less than 30 minutes old (not stale)
-3. Sentinel records `waves_passed=4` (not just `/validate quick`)
-4. No files were modified after the sentinel was written
+Commits are gated — `pre-commit-gate.sh` checks for the `.validation_passed`
+sentinel file before allowing `git commit` to proceed. The sentinel is written
+by `/validate` after waves 1-3 pass, and cleaned up by `sentinel-cleanup.sh`
+after each commit. Wave 4 (self-critic + plan-reviewer) is part of the full
+`/validate` flow but is not checked by the gate.
 
 ## 8.5 The REFLECTION.md Pattern
 
@@ -1284,8 +1269,8 @@ From Osmani's experience and ParBench's history:
    Trust the gates. Check every 5-10 minutes.
 
 4. **Skipping validation** — "This is just a docs change" is how bugs sneak through.
-   The pre-commit gate exists for a reason. If validation truly doesn't apply, use
-   `[skip-validate: reason]` in the commit message.
+   Running `/validate` before committing is required — the pre-commit gate enforces it.
+   The sentinel mechanism exists precisely to prevent rationalizing away this gate.
 
 ---
 
@@ -1320,7 +1305,7 @@ or memory files (session-to-session persistence).
 | `evaluation.md` | `scripts/evaluation/` | `--suite` required, result schema |
 | `augmentation.md` | `c_augmentation/` | `--project-root` required, transform bugs |
 | `python.md` | `*.py` | `python3`, CLI flag ordering |
-| `validation-loop.md` | hooks, validation agents | 4-wave protocol, sentinel mechanics |
+| `validation-loop.md` | hooks, validation agents | 4-wave protocol |
 | `known-issues-archive.md` | `c_augmentation/`, `harness/`, `scripts/`, `results/`, `specs/`, `visualizations/` | Historical fix details, moved guardrails |
 | `github-pages.md` | `visualizations/` | URL, staticrypt, data refresh |
 | `frontend-design.md` | `visualizations/` | Design system, styling conventions |
@@ -1397,7 +1382,7 @@ Strategies for maintaining comprehension:
    full file after an agent edit is slower and less focused than reading the diff.
 
 `★ Insight ─────────────────────────────────────`
-**Comprehension debt is real:** ParBench has 18 custom agents, 18+ skills, and 9 hooks.
+**Comprehension debt is real:** ParBench has 18 custom agents, 18+ skills, and 7 hooks.
 If you can't explain what each does from memory, you have comprehension debt. The
 quick reference card (Chapter 12) exists to help, but it's not a substitute for
 understanding. When an agent team produces unexpected results, your ability to debug
@@ -1592,8 +1577,8 @@ by a human, not by Claude. Claude proposed the structure; Samyak curated the con
 **Rule:** Check progress every 5-10 minutes, not continuously.
 **Why:** Agents are async by design. Checking every 30 seconds doesn't make them
 faster — it wastes your time and breaks your focus. Trust the quality gates.
-**ParBench example:** When running `/validate` (10+ agents, ~3 min), do something
-else. The sentinel will tell you if it passed.
+**ParBench example:** When running `/validate` (10+ agents, ~2 min), do something
+else. The final report will tell you if it passed.
 
 ### 3. Kill Stuck Agents After 3 Iterations
 
@@ -1634,8 +1619,8 @@ from running on misunderstood requirements.
 **Why:** The session that wrote the code has "anchoring bias" — it remembers why
 each decision was made and is less likely to question them. A fresh context
 approaches the code without preconceptions.
-**ParBench example:** The self-critic agent runs in Wave 4 with its own fresh
-context window. It reads the git diff without knowing why Claude made each change.
+**ParBench example:** The self-critic agent (available for manual use) runs with its own
+fresh context window. It reads the git diff without knowing why Claude made each change.
 
 ### 8. Abstraction Bloat — "Couldn't You Just...?"
 
@@ -1702,7 +1687,7 @@ Is it trivial (< 5 min, single file)?
 
 | Command | Source | Purpose | When to Use |
 |---------|--------|---------|-------------|
-| `/validate` | ParBench | 4-wave post-session validation | Before every commit |
+| `/validate` | ParBench | 4-wave post-session validation | Required before every commit (waves 1-3 enforced by pre-commit gate) |
 | `/validate quick` | ParBench | Wave 1 only (fast check) | Quick sanity check during dev |
 | `/validate fix` | ParBench | Re-run failed waves only | After fixing validation failures |
 | `/review` | ParBench | 4-agent parallel code review | Before merging or after multi-file changes |
@@ -1748,13 +1733,11 @@ Is it trivial (< 5 min, single file)?
 
 | Hook File | Type | Matcher | Purpose |
 |-----------|------|---------|---------|
-| `pre-commit-gate.sh` | PreToolUse | Bash | Blocks commit without `.validation_passed` |
 | `protect-benchmark-sources.sh` | PreToolUse | Edit\|Write | Blocks edits to `.cu/.cpp/.c/.cl` in benchmark dirs |
 | `protect-cuda-omp-results.sh` | PreToolUse | Bash | Blocks deletion of CUDA-OMP eval results |
 | `result-immutability.sh` | PreToolUse | Edit\|Write | Blocks overwriting existing result JSONs |
 | `rm -rf blocker` (inline) | PreToolUse | Bash | Blocks destructive `rm -rf` / `rm -fr` |
 | `file-ownership.sh` | PreToolUse | Edit\|Write | Blocks edits to files owned by another teammate |
-| `sentinel-cleanup.sh` | PostToolUse | Edit\|Write | Deletes `.validation_passed` after file edits |
 | `post-edit-test.sh` | PostToolUse | Edit\|Write | Runs tests based on edited file path |
 | `context-budget.sh` | PostToolUse | Bash | Context budget reminders at tool call thresholds |
 | Ruff auto-lint (inline) | PostToolUse | Edit\|Write | Auto-formats Python files with `ruff check --fix` |
@@ -1764,12 +1747,14 @@ Is it trivial (< 5 min, single file)?
 | `dream-hook.sh` | Stop | -- | Checks if memory consolidation is due |
 | Desktop notification (inline) | Stop | -- | `notify-send` alert when Claude stops |
 | Superpowers SessionStart (plugin) | SessionStart | startup\|clear\|compact | Injects `using-superpowers` skill into every session |
+| `pre-commit-gate.sh` | PreToolUse | Bash | Blocks `git commit` unless `.validation_passed` sentinel exists |
+| `sentinel-cleanup.sh` | PostToolUse | Bash | Removes `.validation_passed` sentinel after successful commit |
 
 ## Agents
 
 | Agent | Model | Purpose |
 |-------|-------|---------|
-| `verification-lead` | opus | Hierarchical validation coordinator (spawns 10+ agents internally) |
+| `verification-lead` | opus | Hierarchical validation coordinator (spawns 10+ agents across 4 waves) |
 | `paper-assembly-team` | opus | SC26 paper data gathering (3 parallel sub-agents) |
 | `verify-app` | sonnet | Schema validation, unit tests, spec integrity |
 | `diff-reviewer` | sonnet | Git diff analysis for regressions |
@@ -1779,8 +1764,8 @@ Is it trivial (< 5 min, single file)?
 | `spec-auditor` | sonnet | Full spec JSON audit |
 | `consistency-checker` | sonnet | Documentation vs code cross-check |
 | `code-simplifier` | sonnet | Code quality advisory (non-blocking) |
-| `self-critic` | opus | Adversarial self-review |
-| `plan-reviewer` | opus | Adversarial plan review |
+| `self-critic` | opus | Adversarial self-review (Wave 4 — optional for commits) |
+| `plan-reviewer` | opus | Adversarial plan review (Wave 4 — optional for commits) |
 | `rodinia-verifier` | sonnet | Harness verify on all Rodinia specs |
 | `xsbench-explorer` | opus | XSBench source exploration |
 | `eval-batcher` | sonnet | LLM evaluation batch runner |
@@ -1817,7 +1802,7 @@ Is it trivial (< 5 min, single file)?
 3. Plan      →  Plan mode + plan-reviewer agent. Wait for approval.
 4. Implement →  Work the plan. Subagents for independent subtasks.
 5. Record    →  /reflect. Update CLAUDE.md, known-issues.md, memory.
-6. Verify    →  /validate (4 waves). Fix loop if needed. Commit when PASS.
+6. Verify    →  /validate (4 waves; 1-3 required by gate, 4 optional). Fix loop if needed. Commit when PASS.
 ```
 
 ## Critical Rules (Always Remember)
@@ -1831,7 +1816,7 @@ Is it trivial (< 5 min, single file)?
 7. Always `python3`, never `python`
 8. Harness CLI: `-v` flag goes **before** the subcommand
 9. **Opus everywhere** — never use Sonnet or Haiku for main work
-10. **/validate before every commit** — pre-commit hook enforces this
+10. **/validate required before every commit** — pre-commit gate enforces waves 1-3; wave 4 optional
 
 ## "I Want To..." Situation Lookup
 
@@ -1843,7 +1828,7 @@ Is it trivial (< 5 min, single file)?
 | Fix a bug | `/fix-bug` + `systematic-debugging` (guides diagnostic phase) | ParBench + Superpowers |
 | Run LLM evaluations | `/eval-run` or `/overnight-eval` | ParBench |
 | Review code | `/review` + `requesting-code-review` / `receiving-code-review` | ParBench + Superpowers |
-| Validate before commit | `/validate` + `verification-before-completion` (discipline) | ParBench + Superpowers |
+| Validate before commit (required) | `/validate` + `verification-before-completion` (pre-commit gate enforces waves 1-3) | ParBench + Superpowers |
 | Finish a feature branch | `finishing-a-development-branch` | Superpowers |
 | Write paper sections | `paper-assembly-team` agent or `paper-drafter` agent | ParBench |
 | Manage memory | `/dream` or `/catchup` | ParBench |
@@ -1898,7 +1883,7 @@ What are you doing?
 │   └── /cite-check (verify citations)
 └── Finishing up
     ├── verification-before-completion (claim discipline)
-    ├── /validate (concrete 4-wave check)
+    ├── /validate (concrete 4-wave check; waves 1-3 required by gate)
     ├── finishing-a-development-branch (merge/rebase)
     └── /dream (memory consolidation)
 ```
@@ -2006,7 +1991,7 @@ Each Iron Law skill includes:
 
 `★ Insight ─────────────────────────────────────`
 **Anti-rationalization as a design pattern:** The Iron Law skills and ParBench's `self-critic`
-agent (Wave 4 of `/validate`) attack the same failure mode from opposite directions.
+agent (available for manual adversarial review) attack the same failure mode from opposite directions.
 The skills prevent Claude from *starting* to rationalize during execution ("I don't need
 to run the test, the code is obviously correct"). The self-critic catches rationalization
 *after the fact* in the git diff ("this claim says X is done but no test output exists").
@@ -2025,7 +2010,7 @@ patterns operationalized for agentic coding workflows.
 | `dispatching-parallel-agents` | Flexible | 2+ independent tasks, no shared state | Identify domains → create focused tasks → dispatch → integrate | Validation waves, multi-model analysis |
 | `test-driven-development` | Rigid (Iron Law) | Before any implementation code | RED (failing test) → verify RED → GREEN → verify GREEN → REFACTOR | Transform tests in `test_transforms.py` |
 | `systematic-debugging` | Rigid (Iron Law) | Any bug, test failure, unexpected behavior | Root cause investigation → pattern analysis → hypothesis → implement | Spec failure debugging, pipeline bugs |
-| `verification-before-completion` | Rigid (Iron Law) | Before claiming work is done | IDENTIFY command → RUN → READ output → VERIFY claim | Enforced by `/validate` and pre-commit gate |
+| `verification-before-completion` | Rigid (Iron Law) | Before claiming work is done | IDENTIFY command → RUN → READ output → VERIFY claim | Recommended via `/validate` before commits |
 | `requesting-code-review` | Flexible | After task completion, before merge | Get SHAs → dispatch code-reviewer → act on feedback | Used within `subagent-driven-development` |
 | `receiving-code-review` | Rigid | When receiving review feedback | READ → UNDERSTAND → VERIFY → EVALUATE → RESPOND → IMPLEMENT | PR reviews, agent team critic feedback |
 | `using-git-worktrees` | Rigid | Feature work needing isolation | Detect project → create worktree → setup → verify baseline | Sprint session isolation (NOT for evals) |
