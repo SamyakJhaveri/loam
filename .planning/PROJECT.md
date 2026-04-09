@@ -12,18 +12,22 @@ Every data claim in the paper must be verifiable against actual result files on 
 
 **Shipped:** v1.0 SC26 Paper Completion Sprint (2026-04-06)
 
-The SC26 paper (`docs/paper/latex/paper.tex`) is submission-ready with:
+The SC26 paper (`docs/paper/latex/overleaf.tex`) is submission-ready with:
 - 39/39 requirements satisfied (35 with 3-source cross-reference, 4 via SUMMARY+VALIDATION for phases 11, 12.1, 13, 14 which lack VERIFICATION.md)
-- 1,248 Qwen 3.5 397B evaluation tasks across 5 suites
+- 1,287 evaluation tasks across 2 models (710 Qwen 3.5 397B + 577 GPT-4.1 mini)
+- Cross-model statistical comparison: chi2=7.83, p=0.005, Cohen's h=0.16
 - 13 publication-quality figures wired into paper.tex + appendices.tex
-- 14-dimension quantitative analysis with provenance tracking
+- 14-dimension quantitative analysis with provenance tracking (197 `% src:` comments)
 - 10 simulated SC26 reviewer items addressed
 - 9 non-blocking tech debt items documented
-- Phase 15 complete — 7 review panel fixes applied (FIX-2a/2b, FIX-3, SF-1/3/6/7) + GPT integration plan reviewed
+- Phase 20 complete — all GPT-4.1 mini numbers updated with expanded XSBench dataset (942 result files)
 
-**Pending (v2 scope):**
-- GPT-4.1 mini results integration (Le's eval runs)
-- Cross-model statistical comparison
+**Completed (previously pending):**
+- ✓ GPT-4.1 mini results integration (577 tasks, 30.7% pass rate)
+- ✓ Cross-model statistical comparison (30 common kernels, 7 translation directions)
+- ✓ All three LaTeX files synced with fresh analysis data
+
+**Remaining (v2 scope):**
 - Performance/timing analysis with kernel-level profiling
 
 ## Requirements
@@ -86,4 +90,4 @@ The SC26 paper (`docs/paper/latex/paper.tex`) is submission-ready with:
 - **HeCBench source**: Cloned locally (gitignored, 1874 dirs) — no version pinning
 
 ---
-*Last updated: 2026-04-07 after Phase 15 completion*
+*Last updated: 2026-04-08 after Phase 20 completion*
