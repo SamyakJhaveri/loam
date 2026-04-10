@@ -84,7 +84,9 @@ Full skill/agent reference table: use `/workflow-ref` skill.
 - **All modes** → use Opus exclusively. Exception: user may switch to Haiku for commit/push (faster, cheaper for transactional git ops).
 - **Fast mode** → enable only during implementation (Stage 4). Disable for reading,
   exploration, planning, and verification — these benefit from full reasoning depth.
-- Subagents and agent team teammates: always Opus. Specify `model: "opus"` explicitly.
+- Subagents: always Opus. Agent team teammates: advisor pattern by default (Opus advisor
+  + Sonnet workers). Use `--all-opus` for tasks requiring deep reasoning from all
+  teammates. See `/agent-team` skill.
 
 ## Subagent Patterns
 

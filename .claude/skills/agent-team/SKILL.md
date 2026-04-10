@@ -16,8 +16,11 @@ state, and teammate lifecycle management.
 - `--scenario <name>` — Use a pre-built template from [scenarios.md](scenarios.md).
   Skips Phase 2 (team design). Still requires user approval before launching.
   Valid: `multi-model-eval`, `paper-assembly`, `failure-investigation`,
-  `cross-model-taxonomy`, `post-batch-analysis`, `augmentation-audit`.
+  `cross-model-taxonomy`, `post-batch-analysis`, `augmentation-audit`,
+  `advisor-guided-implementation`.
 - `--teammates N` — Override default teammate count.
+- `--all-opus` — Use Opus for all teammates (no advisor pattern). For tasks where
+  Sonnet workers aren't sufficient (complex architecture, deep reasoning).
 - `--no-critic` — Skip critic review (read-only/exploratory tasks only).
 - `--fast` — Skip plan approval (urgent tasks only).
 
@@ -71,21 +74,27 @@ digraph when_to_use {
    - **Role** — one sentence
    - **Scope** — specific files/areas they own (NO overlap between teammates)
    - **Skills/Agents** — which pre-made agents or skills they should use
-3. Present to Samyak:
+3. Default team includes an **advisor** (Opus) as first teammate. Workers default to
+   `model: "sonnet"`, critic defaults to `model: "sonnet"`. For analytically heavy tasks
+   (failure investigation, complex debugging), consider `--all-opus` or promoting specific
+   workers to Opus.
+
+4. Present to Samyak:
 
 ```
 ## Proposed Team: <team-name>
 
-| Teammate | Role | Scope | Skills/Agents |
-|----------|------|-------|---------------|
-| planner  | ... | ... | /writing-plans |
-| ...      | ... | ... | ... |
-| critic   | ... | ... | self-critic |
+| Teammate | Model  | Role | Scope | Skills/Agents |
+|----------|--------|------|-------|---------------|
+| advisor  | opus   | Strategic reviewer | All areas (read-only) | — |
+| planner  | sonnet | ... | ... | /writing-plans |
+| ...      | sonnet | ... | ... | ... |
+| critic   | sonnet | ... | ... | self-critic |
 
 Estimated cost: ~Nx (see Cost table below)
 ```
 
-4. **Wait for Samyak's approval.** Do NOT proceed until approved.
+5. **Wait for Samyak's approval.** Do NOT proceed until approved.
 
 ### Phase 3: Create and Launch
 
@@ -101,21 +110,35 @@ do not appear as teammates, and miss all coordination benefits.
 
 **Step 2 — Create tasks** with TaskCreate for each unit of work.
 
-**Step 3 — Compose teammate prompts.** For EVERY teammate:
+**Step 2.5 — Spawn advisor FIRST** (skip if `--all-opus`):
+```
+Agent(
+  prompt="<filled advisor-prompt.md>\n\n## YOUR TASK\n<advisor scope>",
+  model="opus",
+  team_name="<team-name-from-step-1>",
+  name="advisor"
+)
+```
+Read [advisor-prompt.md](advisor-prompt.md) and fill all `[FILL]` placeholders.
+**Wait for advisor's "ADVISOR READY" message before spawning any workers.**
+
+**Step 3 — Compose teammate prompts.** For EVERY worker/critic teammate:
 1. Read [teammate-prompt.md](teammate-prompt.md)
 2. Fill in ALL `[FILL]` placeholders with the teammate's specific scope, skills, etc.
 3. Append the teammate's task description after the directives block
 
-**Step 4 — Spawn teammates** with Agent tool:
+**Step 4 — Spawn workers** with Agent tool:
 ```
 Agent(
   prompt="<filled teammate-prompt.md>\n\n## YOUR TASK\n<task description>",
-  model="opus",
+  model="sonnet",
   team_name="<team-name-from-step-1>",
   name="<teammate-name>"
 )
 ```
 Every `Agent` call MUST include `team_name`.
+Use `model="sonnet"` by default. Use `model="opus"` only if `--all-opus` was specified
+or if the scenario recommends Opus for specific workers (see [scenarios.md](scenarios.md)).
 
 **Step 5 — Manage lifecycle:**
 - Assign tasks as teammates become available
@@ -125,27 +148,40 @@ Every `Agent` call MUST include `team_name`.
 - When a teammate signals context relay: spawn child, pass handoff summary, confirm
 - Shut down teammates when their work is done
 
+**Advisor Coordination** (skip if `--all-opus`):
+1. After each worker milestone -> forward summary to advisor via `SendMessage(to="advisor")`
+2. Advisor returns guidance -> relay to relevant worker via `SendMessage(to="worker-N")`
+3. If worker reports "consulted advisor: no" -> ask worker to justify or consult
+4. Before Phase 4 -> `SendMessage(to="advisor", message="PRE-REVIEW: <summary of all work>")`
+5. If worker stuck (2 failed attempts) -> escalate to advisor
+6. During advisor relay handoff: pause milestone forwarding, wait for new advisor READY signal
+
 ### Phase 4: Quality Gate
 
 Skip this phase only if `--no-critic` was specified.
 
-1. **Critic reviews ALL changes** by other teammates. Checks:
+1. **Sonnet critic reviews ALL changes** by other teammates (cheaper first pass). Checks:
    - Factual accuracy — claims match actual data files
    - Stale references — files, functions, numbers that don't exist
    - Consistency — no contradictions between teammate outputs
    - Completeness — all assigned tasks actually done
    - Scope compliance — no unauthorized file changes
 
-2. Present critic findings to Samyak.
+2. **Escalate complex findings to advisor** (skip if `--all-opus`):
+   - Ambiguous or borderline issues where the critic is unsure
+   - Cross-cutting concerns that span multiple workers' outputs
+   - Advisor provides final strategic sign-off before presenting to user
 
-3. If issues found → fix loop:
+3. Present critic findings (+ advisor arbitration if applicable) to Samyak.
+
+4. If issues found -> fix loop:
    a. Plan which teammate owns the fix
    b. Get Samyak's approval
    c. Teammate implements fix
    d. Critic re-reviews
    e. Max 3 iterations, then escalate to Samyak
 
-4. Final report to Samyak:
+5. Final report to Samyak:
    - What was done (with file paths)
    - What decisions were made (and why)
    - What files were changed
@@ -168,7 +204,30 @@ Teammates should reuse these rather than building from scratch:
 | `/validate` skill | Post-session validation |
 | `/review` skill | Multi-agent code review |
 
+## `--all-opus` Behavior
+
+When `--all-opus` is specified:
+- All teammates spawn with `model: "opus"`
+- No advisor teammate is created
+- `advisor-prompt.md` is NOT used
+- Workers use `teammate-prompt.md` without Section 7 (Section 7 says "skip if --all-opus")
+- Phase 4 critic is Opus (no escalation needed)
+- Phase 3 Step 2.5 is skipped entirely
+
 ## Cost Estimation
+
+**Default (advisor pattern):**
+
+| Team | Mix | Cost vs All-Opus |
+|------|-----|-----------------|
+| Advisor + 1W + critic | 1 Opus + 2 Sonnet | ~45-55% |
+| Advisor + 2W + critic | 1 Opus + 3 Sonnet | ~35-45% |
+| Advisor + 3W + critic | 1 Opus + 4 Sonnet | ~30-40% |
+
+Note: Opus is 5x Sonnet per token. Advisor uses fewer tokens than workers (guidance
+only, no file editing). Ranges account for varying advisor utilization.
+
+**`--all-opus` (legacy):**
 
 | Team Size | Token Multiplier | When to Use |
 |-----------|-----------------|-------------|
@@ -176,8 +235,6 @@ Teammates should reuse these rather than building from scratch:
 | Lead + 2 | ~3x | Most analysis (paper, debugging) |
 | Lead + 3 | ~4x | Multi-model analysis |
 | Lead + 4+ | ~5x+ | Rare; 4+ model comparison only |
-
-All teammates use Opus (`model: "opus"`).
 
 ## Known Limitations
 
@@ -212,16 +269,19 @@ using data from `analysis/data/`, with `/writing-plans` and `paper-drafter` agen
 ```
 ## Proposed Team: appendix-figures
 
-| Teammate    | Role                    | Scope                              | Skills/Agents    |
-|-------------|-------------------------|--------------------------------------|------------------|
-| planner     | Plan appendix structure | analysis/visualizations/, analysis/data/, docs/paper/appendix_*.md | /writing-plans |
-| writer      | Draft appendix content  | docs/paper/appendix_*.md             | paper-drafter    |
-| critic      | Review accuracy         | All teammate outputs (read-only)     | self-critic      |
+| Teammate    | Model  | Role                    | Scope                              | Skills/Agents    |
+|-------------|--------|-------------------------|--------------------------------------|------------------|
+| advisor     | opus   | Strategic reviewer      | All areas (read-only)                | —                |
+| planner     | sonnet | Plan appendix structure | analysis/visualizations/, analysis/data/, docs/paper/appendix_*.md | /writing-plans |
+| writer      | sonnet | Draft appendix content  | docs/paper/appendix_*.md             | paper-drafter    |
+| critic      | sonnet | Review accuracy         | All teammate outputs (read-only)     | self-critic      |
 
-Estimated cost: ~3x
+Estimated cost: ~35-45% of all-Opus equivalent
 ```
 
-**Phase 3:** TeamCreate → TaskCreate (3 tasks) → Spawn planner with filled
-teammate-prompt.md → Planner produces plan → Samyak approves → Spawn writer
-with plan + teammate-prompt.md → Writer drafts appendix sections → Spawn critic
-→ Critic reviews → Present findings → Done.
+**Phase 3:** TeamCreate -> TaskCreate (3 tasks) -> Spawn advisor (Opus), wait for
+READY -> Spawn planner (Sonnet) with filled teammate-prompt.md -> Planner consults
+advisor on structure -> Planner produces plan -> Samyak approves -> Spawn writer
+(Sonnet) with plan + teammate-prompt.md -> Writer drafts appendix sections, sends
+milestones to lead -> Lead forwards to advisor -> Spawn critic (Sonnet) -> Critic
+reviews, escalates ambiguities to advisor -> Advisor signs off -> Present findings -> Done.
