@@ -28,34 +28,9 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+from harness.constants import EXCLUDED_SPECS
 
-# Specs to exclude from aggregation — KNOWN_FAIL specs whose eval results
-# exist but should not count toward pass rates or failure taxonomies.
-# Exclusion is spec-level (not kernel-level) to avoid accidentally excluding
-# valid translations of kernels that are only partially KNOWN_FAIL.
-# E.g. kmeans-cuda is KNOWN_FAIL but kmeans-omp is valid — kernel-level
-# exclusion of "kmeans" would wrongly drop kmeans-omp-to-kmeans-cuda results.
-#
-# Full KNOWN_FAIL list (from .claude/rules/known-issues.md):
-#   kmeans-cuda:            texture<> removed in CUDA 12
-#   mummergpu-cuda:         texture<> removed in CUDA 12
-#   mummergpu-omp:          texture<> + cuMemGetInfo_v2 signature
-#   hybridsort-cuda:        GL/glew.h not found
-#   nn-opencl:              TIMEOUT / SIGSEGV (pre-existing)
-#   kmeans-opencl:          SIGSEGV in OpenCL runtime (pre-existing)
-#   stencil1d-omp_target:   BUILD_FAIL (omp_target compile issue)
-#   scan-omp_target:        VERIFY_FAIL (output mismatch on CPU target)
-EXCLUDED_SPECS: frozenset[str] = frozenset({
-    "rodinia-kmeans-cuda",
-    "rodinia-mummergpu-cuda",
-    "rodinia-mummergpu-omp",
-    "rodinia-hybridsort-cuda",
-    "rodinia-nn-opencl",
-    "rodinia-kmeans-opencl",
-    "hecbench-stencil1d-omp_target",
-    "hecbench-scan-omp_target",
-})
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 # --------------------------------------------------------------------------- #

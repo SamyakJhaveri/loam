@@ -37,6 +37,8 @@ from pathlib import Path
 import numpy as np
 from scipy import stats as sp_stats
 
+from harness.constants import EXCLUDED_SPECS
+
 # ---------------------------------------------------------------------------
 # Project root
 # ---------------------------------------------------------------------------
@@ -46,18 +48,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
-# All 8 KNOWN_FAIL specs: 6 Rodinia + 2 HeCBench
-EXCLUDED_SPECS: frozenset[str] = frozenset({
-    "rodinia-kmeans-cuda",
-    "rodinia-mummergpu-cuda",
-    "rodinia-mummergpu-omp",
-    "rodinia-hybridsort-cuda",
-    "rodinia-nn-opencl",
-    "rodinia-kmeans-opencl",
-    "hecbench-stencil1d-omp_target",
-    "hecbench-scan-omp_target",
-})
 
 STANDARD_DIRECTIONS: list[str] = [
     "cuda-to-omp", "omp-to-cuda",

@@ -24,6 +24,8 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
+from harness.constants import EXCLUDED_SPECS
+
 # --------------------------------------------------------------------------- #
 # Constants                                                                    #
 # --------------------------------------------------------------------------- #
@@ -36,20 +38,6 @@ ALPHA_SIGNIFICANCE: float = 0.05
 COHEN_H_SMALL_THRESHOLD: float = 0.20
 COHEN_H_MEDIUM_THRESHOLD: float = 0.80
 PASSK_K_VALUES: list[int] = [1, 3]
-
-# KNOWN_FAIL specs — exclude from all aggregation.
-# Source: .claude/rules/known-issues.md (authoritative list)
-# NOTE: This list is duplicated from analyze_eval.py — see SPEC-02 (centralize to shared module).
-EXCLUDED_SPECS: frozenset[str] = frozenset({
-    "rodinia-kmeans-cuda",
-    "rodinia-mummergpu-cuda",
-    "rodinia-mummergpu-omp",
-    "rodinia-hybridsort-cuda",
-    "rodinia-nn-opencl",
-    "rodinia-kmeans-opencl",
-    "hecbench-stencil1d-omp_target",
-    "hecbench-scan-omp_target",
-})
 
 # Valid overall_status values
 STATUS_VALUES = ("PASS", "BUILD_FAIL", "RUN_FAIL", "VERIFY_FAIL", "EXTRACTION_FAIL")

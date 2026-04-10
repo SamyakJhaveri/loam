@@ -29,6 +29,8 @@ import sys
 from pathlib import Path
 from collections import defaultdict
 
+from harness.constants import EXCLUDED_SPECS
+
 # Per-million-token pricing
 MODEL_PRICING = {
     "together-qwen-3.5-397b-a17b": {"input": 0.60, "output": 3.60, "display": "Qwen 3.5 397B (Together)"},
@@ -39,17 +41,6 @@ MODEL_PRICING = {
     "groq-llama-3.3-70b-versatile": {"input": 0.59, "output": 0.79, "display": "Groq Llama 3.3 70B"},
     "azure-gpt-4.1": {"input": 2.00, "output": 8.00, "display": "Azure GPT-4.1"},
 }
-
-# Canonical source: scripts/evaluation/analyze_eval.py line 47
-# Keep in sync — if EXCLUDED_SPECS changes there, update here too.
-EXCLUDED_SPECS: frozenset[str] = frozenset({
-    "rodinia-kmeans-cuda",
-    "rodinia-mummergpu-cuda",
-    "rodinia-mummergpu-omp",
-    "rodinia-hybridsort-cuda",
-    "rodinia-nn-opencl",
-    "rodinia-kmeans-opencl",
-})
 
 # Field-name constants — single source of truth for JSON key names
 FIELD_PROMPT_TOKENS = "prompt_tokens"
