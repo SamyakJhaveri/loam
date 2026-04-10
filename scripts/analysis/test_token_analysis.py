@@ -51,11 +51,11 @@ class TestExcludedSpecsDefinition:
     def test_excluded_specs_is_frozenset(self):
         assert isinstance(EXCLUDED_SPECS, frozenset)
 
-    def test_excluded_specs_has_six_entries(self):
-        assert len(EXCLUDED_SPECS) == 6
+    def test_excluded_specs_has_eight_entries(self):
+        assert len(EXCLUDED_SPECS) == 8
 
     def test_excluded_specs_matches_canonical(self):
-        """Must match the canonical list from analyze_eval.py."""
+        """Must match the canonical list from harness.constants."""
         expected = frozenset({
             "rodinia-kmeans-cuda",
             "rodinia-mummergpu-cuda",
@@ -63,6 +63,8 @@ class TestExcludedSpecsDefinition:
             "rodinia-hybridsort-cuda",
             "rodinia-nn-opencl",
             "rodinia-kmeans-opencl",
+            "hecbench-stencil1d-omp_target",
+            "hecbench-scan-omp_target",
         })
         assert EXCLUDED_SPECS == expected
 

@@ -4,7 +4,7 @@ Loads 1 spec per benchmark suite (Rodinia, XSBench, RSBench, mixbench, HeCBench)
 runs the complete build -> run -> verify pipeline, and asserts PASS at each stage.
 
 Run:  python3 -m pytest tests/test_harness_integration.py -v -m integration
-Unit: python3 -m pytest tests/test_harness_integration.py -v -k "not integration"
+Unit: python3 -m pytest tests/test_harness_integration.py -v -m "not integration"
 
 Requires: benchmark source dirs on disk + GPU (integration tests auto-skip otherwise).
 """
