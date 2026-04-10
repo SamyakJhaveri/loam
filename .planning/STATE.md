@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
+stopped_at: Completed 01-01-PLAN.md (centralize EXCLUDED_SPECS)
+last_updated: "2026-04-10T17:16:30.076Z"
+last_activity: 2026-04-10 -- Phase 1 planning complete
+progress:
+  total_phases: 4
+  completed_phases: 0
+  total_plans: 5
+  completed_plans: 1
+  percent: 20
+---
+
 # Project State
 
 ## Project Reference
@@ -10,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-04-09)
 ## Current Position
 
 Phase: 1 of 4 (Pipeline Testing & Uniformity)
-Status: In progress
-Last activity: 2026-04-09 -- Phase 1a complete: 104 spec_loader tests passing (32 unit + 71 integration + 1 degenerate-behavior doc test); conftest.py added for integration auto-skip
+Status: Ready to execute
+Last activity: 2026-04-10 -- Phase 1 planning complete
 
 Progress: [###░░░░░░░] ~15% (Phase 1a spec loading complete: 103 tests passing; Phase 1b-1e pending)
 
@@ -26,6 +42,7 @@ Recent decisions affecting current work:
 - AskSage is BLOCKED -- do not speculatively build adapter
 - Portability (hardcoded compiler paths in specs) deferred to post-NeurIPS
 - 4-phase plan replaces old 6-phase, 26-requirement structure
+- [Phase 01]: EXCLUDED_SPECS centralized in harness/constants.py as single source of truth
 
 ### Blockers/Concerns
 
@@ -34,6 +51,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-09
-Stopped at: Planning docs rewritten to 4-phase structure; Phase 1 execution starting
+Last session: 2026-04-10T17:16:30.074Z
+Stopped at: Completed 01-01-PLAN.md (centralize EXCLUDED_SPECS)
 Resume file: None
