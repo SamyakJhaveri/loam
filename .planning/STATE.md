@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-03-PLAN.md (suite-agnostic batch analyzer)
-last_updated: "2026-04-10T17:16:30.076Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-04-10T17:20:14.244Z"
 last_activity: 2026-04-10 -- Phase 1 planning complete
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
-  percent: 40
+  completed_plans: 3
+  percent: 60
 ---
 
 # Project State
@@ -44,6 +44,7 @@ Recent decisions affecting current work:
 - 4-phase plan replaces old 6-phase, 26-requirement structure
 - [Phase 01]: EXCLUDED_SPECS centralized in harness/constants.py as single source of truth
 - [Phase 01-03]: analyze_harness_batch.py replaces Rodinia-only script with --suite flag
+- [Phase 01]: Integration tests use marker-based filtering (-m not integration) for proper test isolation
 
 ### Blockers/Concerns
 
@@ -52,6 +53,6 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-10T17:16:31Z
-Stopped at: Completed 01-03-PLAN.md (suite-agnostic batch analyzer)
+Last session: 2026-04-10T17:20:14.242Z
+Stopped at: Completed 01-02-PLAN.md
 Resume file: None
