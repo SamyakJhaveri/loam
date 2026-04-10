@@ -30,6 +30,11 @@ all = [
     "parbench[eval,analysis,dev]",
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: requires real benchmark files on disk (GPU machine only)",
+]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["c_augmentation*", "harness*"]

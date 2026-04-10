@@ -2,103 +2,100 @@
 
 ## Overview
 
-This roadmap takes ParBench from a pilot-validated benchmark (Qwen 3.5 397B, 1,248 results) to a multi-model, peer-review-ready NeurIPS submission. The work is ordered audit-first: TDD infrastructure, then bottom-up pipeline hardening (specs, harness, eval, providers/analysis), then the paper. Every phase delivers testable correctness guarantees that compound -- so by the time new model evals run and the paper is written, every claim is defensible.
+This roadmap takes ParBench from a pilot-validated benchmark (Qwen 3.5 397B, 1,248 results) to a multi-model, peer-review-ready NeurIPS submission. Four phases: verify the pipeline with real data, test end-to-end evaluation, run full campaigns, write the paper.
 
 ## Phases
 
-**Phase Numbering:**
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-
-Decimal phases appear between their surrounding integers in numeric order.
-
-- [ ] **Phase 1: TDD Infrastructure** - Test scaffold (conftest.py, dev deps, mock pattern) that all audit phases build on
-- [ ] **Phase 2: Spec & Manifest Audit** - Verify all 96 specs, centralize exclusions, validate HeCBench L1-L4, unify analysis scripts
-- [ ] **Phase 3: Harness Pipeline Audit** - Test-cover all harness failure modes, verifier semantics, and cross-API logic
-- [ ] **Phase 4: Eval Pipeline & Campaign 2** - Campaign partitioning, pass@k implementation, integration tests, Campaign 2 config
-- [ ] **Phase 5: Provider Integration & Analysis Audit** - AskSage adapter, dry-run auth, analysis script correctness, GPT re-run
-- [ ] **Phase 6: NeurIPS Paper** - Write paper with every claim traceable to verified results; submit by May 1
+- [ ] **Phase 1: Pipeline Testing & Uniformity** -- Test and fix the full spec-build-run-verify pipeline across all 5 suites
+- [ ] **Phase 2: LLM Eval Testing** -- Test evaluation pipeline end-to-end with real LLM calls
+- [ ] **Phase 3: Full Evaluation Runs** -- Run complete Campaign 1 + Campaign 2 with all models
+- [ ] **Phase 4: NeurIPS Paper** -- Write paper with every claim traceable to verified results
 
 ## Phase Details
 
-### Phase 1: TDD Infrastructure
-**Goal**: A working test scaffold exists so every subsequent audit phase can write tests first
-**Depends on**: Nothing (first phase)
-**Requirements**: TDD-01, TDD-02, TDD-03
-**Success Criteria** (what must be TRUE):
-  1. `pytest tests/` runs successfully with conftest.py providing session-scoped fixtures for specs, result JSONs, and mock LLM providers
-  2. All four dev test dependencies (pytest-mock, respx, pytest-subprocess, pytest-asyncio) are installed and importable
-  3. A reference test exists demonstrating the mock-at-call_llm() boundary pattern that all eval pipeline tests will follow
-**Plans**: TBD
+### Phase 1: Pipeline Testing & Uniformity
 
-### Phase 2: Spec & Manifest Audit
-**Goal**: Every spec in the benchmark is verified correct, exclusion lists are canonical, and HeCBench augmentation levels are validated -- so new model evals run against a trusted spec set
-**Depends on**: Phase 1
-**Requirements**: SPEC-01, SPEC-02, SPEC-03, SPEC-04, SPEC-05
-**Success Criteria** (what must be TRUE):
-  1. Every non-KNOWN_FAIL spec either has a `stdout_pattern` in its verification config or carries an explicit exemption flag
-  2. `EXCLUDED_SPECS` is a single importable constant used by all analysis scripts (no stale duplicates)
-  3. All 23 passing HeCBench specs pass at augmentation levels L1-L4 (M10b-protocol retest), confirming level-invariance across all 5 suites
-  4. `python3 scripts/analysis/analyze_batch.py --suite hecbench` (and all other suites) works correctly
-  5. Manifest integrity check passes for all 5 suites (no phantom entries beyond the 5 known deleted specs)
-**Plans**: TBD
+**Goal:** Every non-KNOWN_FAIL spec builds, runs, and verifies across all 5 suites. No suite-specific special-casing in pipeline code. Pipeline is portable via config.
 
-### Phase 3: Harness Pipeline Audit
-**Goal**: The build-run-verify harness is test-covered so failures are caught before they pollute evaluation results
-**Depends on**: Phase 1
-**Requirements**: HARN-01, HARN-02, HARN-03, HARN-04
-**Success Criteria** (what must be TRUE):
-  1. Unit tests exist and pass for all 4 harness failure modes: BUILD_FAIL, RUN_FAIL, VERIFY_FAIL, TIMEOUT
-  2. Verifier conjunction semantics are tested -- a single strategy failure short-circuits the overall result to VERIFY_FAIL
-  3. Cross-API stdout union pattern (source|target) is tested for both match and mismatch cases
-  4. `_is_kernel_only_translation()` heuristic is tested for .cl detection and edge cases (non-.cl files, mixed extensions)
-**Plans**: TBD
+**Depends on:** Nothing (first phase)
 
-### Phase 4: Eval Pipeline & Campaign 2
-**Goal**: The evaluation pipeline supports both Campaign 1 (pass@1 + self-repair) and Campaign 2 (pass@k + single-shot) with proper result partitioning -- so multi-campaign model evals can run
-**Depends on**: Phase 1, Phase 2, Phase 3
-**Requirements**: EVAL-01, EVAL-02, EVAL-03, EVAL-04
-**Success Criteria** (what must be TRUE):
-  1. `evaluate_translation()` accepts `--campaign-id c1|c2` and writes results to `results/evaluation/{model}/{c1,c2}/` (existing Qwen results land in c1/)
-  2. `compute_pass_at_k(k=3)` returns correct values for known inputs (all-pass, all-fail, mixed)
-  3. Integration tests cover self-repair loop, sample naming (-s0/-s1/-s2), extraction failure, and cross-API arg/verify handling
-  4. Campaign 2 end-to-end config validated: temp=0.7, num_samples=3, max_retries=1, augment_level=0
-**Plans**: TBD
+**Deliverables:**
+- Spec loading tested: 1+ spec per suite loads correctly, paths resolve, source files readable
+- Build tested: 1+ program per suite per API builds successfully
+- Run + verify tested: built executables run and verify correctly
+- Suite-specific code fixed: `analyze_rodinia_batch.py` generalized, `EXCLUDED_SPECS` centralized, `if suite == "rodinia"` removed
+- Portability audit: compiler paths, include paths documented; hardcoded paths acknowledged and deferred
+- Unit tests (synthetic data) + integration smoke tests (real builds) written alongside testing
+- Test programs: bfs (Rodinia), xsbench, rsbench, mixbench, bezier-surface or bilateral (HeCBench)
 
-### Phase 5: Provider Integration & Analysis Audit
-**Goal**: AskSage adapter is ready for multi-model evals and analysis scripts produce correct, fair cross-model comparisons
-**Depends on**: Phase 1, Phase 4
-**Requirements**: PROV-01, PROV-02, PROV-03, PROV-04, ANLYS-01, ANLYS-02, ANLYS-03, ANLYS-04
-**Success Criteria** (what must be TRUE):
-  1. `call_llm()` dispatches to AskSage via OpenAI-compatible base_url swap when model starts with "asksage-"
-  2. A dry-run API call at batch start aborts cleanly if AskSage auth fails (24-hour token expiry handled)
-  3. `_kernel_from_spec()` and `_direction_from_ids()` pass parametrized tests for all 5 suite prefixes
-  4. `cross_model_comparison.py` emits a warning when suite-asymmetric denominators are detected
-  5. GPT-4.1 mini non-Rodinia results are re-run locally (replacing 209 invalid empty-prompt results)
-**Plans**: TBD
+**Success Criteria:**
+1. Every non-KNOWN_FAIL spec builds, runs, and verifies across all 5 suites
+2. Tests prove it -- `pytest tests/` passes
+3. No suite-specific special-casing in pipeline code
+4. `EXCLUDED_SPECS` is a single importable constant (no stale duplicates)
+5. Pipeline is portable via `config/paths.json` (not hardcoded paths in Python code)
 
-**Note**: PROV-04 (native /server/query fallback) is blocked on external schema from researcher. Implementation will proceed when schema is provided; other PROV requirements are independent.
+### Phase 2: LLM Eval Testing
 
-### Phase 6: NeurIPS Paper
-**Goal**: A complete NeurIPS Datasets & Benchmarks paper where every quantitative claim is traceable to verified result files on disk
-**Depends on**: Phase 2, Phase 3, Phase 4, Phase 5
-**Requirements**: PAPER-01, PAPER-02
-**Success Criteria** (what must be TRUE):
-  1. Every quantitative claim in the paper (pass rates, model comparisons, augmentation effects) has a traceable path to specific result JSON files on disk
-  2. Paper is submitted to NeurIPS 2026 Datasets & Benchmarks track by May 1, 2026
-**Plans**: TBD
+**Goal:** Can run `run_eval_batch.py --campaign c1` and `--campaign c2` for 1 kernel per suite with Qwen, get correct result JSONs, and `campaign_for()` correctly classifies them.
+
+**Depends on:** Phase 1
+
+**Deliverables:**
+- `campaign_for(record)` helper: returns `"c1"` or `"c2"` based on `temperature` + `sample_id` fields
+- `--campaign c1|c2` convenience flag on `run_eval_batch.py` (sets correct defaults)
+- Prompt construction verified for each suite via `--dry-run`
+- Real LLM calls tested: 1 program per suite, cuda-to-omp direction, via Qwen/Together AI
+- Campaign 2 verified: `pass_at_k()` produces correct results for k=3 with actual C2 data
+- AskSage adapter: BLOCKED until Le provides API docs -- do not build speculatively
+
+**Success Criteria:**
+1. `campaign_for()` correctly classifies existing C1 and C2 results
+2. End-to-end eval works for 1 kernel per suite with Qwen
+3. Result JSONs contain correct fields (prompt_tokens, completion_tokens, overall_status, attempts[])
+4. `pass_at_k(k=3)` returns correct values for known inputs
+5. Campaign 2 config validated: temp=0.7, num_samples=3, max_retries=1, augment_level=0
+
+### Phase 3: Full Evaluation Runs
+
+**Goal:** Complete Campaign 1 and Campaign 2 runs for all suites and directions with Qwen (+ AskSage when unblocked).
+
+**Depends on:** Phase 2
+
+**Deliverables:**
+- Campaign 1: temp=0, max_retries=3, L0-L4, all suites, all directions (including cuda<->omp_target for XSBench/RSBench)
+- Campaign 2: temp=0.7, num_samples=3, max_retries=1, L0-only, same directions
+- Qwen: use `--resume` to fill gaps in existing 1,248 results
+- AskSage: new runs when unblocked
+- Analysis: `analyze_eval.py` regenerated for each model + campaign
+
+**Success Criteria:**
+1. All Campaign 1 + Campaign 2 Qwen runs complete (no gaps)
+2. Pass rates, status distributions, per-suite breakdowns verified
+3. AskSage runs complete (when unblocked)
+
+### Phase 4: NeurIPS Paper
+
+**Goal:** A complete NeurIPS Datasets & Benchmarks paper where every quantitative claim is traceable to verified result files on disk.
+
+**Depends on:** Phase 3
+
+**Deliverables:**
+- Rewrite sections of `docs/paper/latex/overleaf_main.tex`
+- Every quantitative claim traceable to specific result JSON files
+- Submit by May 1, 2026
+
+**Success Criteria:**
+1. Every quantitative claim has a traceable path to result files on disk
+2. Paper submitted to NeurIPS 2026 Datasets & Benchmarks track by May 1, 2026
 
 ## Progress
 
-**Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
-(Phases 2 and 3 can execute in parallel after Phase 1 completes)
+**Execution Order:** Phase 1 -> Phase 2 -> Phase 3 -> Phase 4
 
-| Phase | Plans Complete | Status | Completed |
-|-------|----------------|--------|-----------|
-| 1. TDD Infrastructure | 0/TBD | Not started | - |
-| 2. Spec & Manifest Audit | 0/TBD | Not started | - |
-| 3. Harness Pipeline Audit | 0/TBD | Not started | - |
-| 4. Eval Pipeline & Campaign 2 | 0/TBD | Not started | - |
-| 5. Provider Integration & Analysis Audit | 0/TBD | Not started | - |
-| 6. NeurIPS Paper | 0/TBD | Not started | - |
+| Phase | Status | Completed |
+|-------|--------|-----------|
+| 1. Pipeline Testing & Uniformity | In progress | - |
+| 2. LLM Eval Testing | Not started | - |
+| 3. Full Evaluation Runs | Not started | - |
+| 4. NeurIPS Paper | Not started | - |
