@@ -149,7 +149,7 @@ def write_csv(rows: list[dict], output_path: Path) -> None:
         writer.writerows(rows)
 
 
-def print_summary(rows: list[dict]) -> None:
+def print_summary(rows: list[dict], suite_filter: str | None = None) -> None:
     """Print a summary table of pair counts by complexity class and direction."""
     from collections import Counter
 
@@ -162,11 +162,12 @@ def print_summary(rows: list[dict]) -> None:
         print(f"{cls:<20} {by_class.get(cls, 0):>6}")
     print(f"{'TOTAL':<20} {sum(by_class.values()):>6}")
 
-    # By direction (src_api → tgt_api), Rodinia only
-    print("\n=== By Direction (Rodinia) ===\n")
-    rodinia_rows = [r for r in rows if r["suite"] == "rodinia"]
+    # By direction (src_api -> tgt_api), optionally filtered by suite
+    suite_label = suite_filter.title() if suite_filter else "All Suites"
+    print(f"\n=== By Direction ({suite_label}) ===\n")
+    filtered_rows = [r for r in rows if r["suite"] == suite_filter] if suite_filter else rows
     direction_class: dict[str, Counter] = defaultdict(Counter)
-    for r in rodinia_rows:
+    for r in filtered_rows:
         direction = f"{r['source_api']}→{r['target_api']}"
         direction_class[direction][r["complexity_class"]] += 1
 
@@ -198,6 +199,12 @@ def main() -> int:
         default=None,
         help="Output CSV path (default: results/evaluation/translation_complexity.csv)",
     )
+    parser.add_argument(
+        "--suite",
+        type=str,
+        default=None,
+        help="Filter to a specific suite (default: all suites combined)",
+    )
     args = parser.parse_args()
 
     output_path = args.output or (
@@ -206,7 +213,7 @@ def main() -> int:
 
     rows = classify_pairs(args.project_root)
     write_csv(rows, output_path)
-    print_summary(rows)
+    print_summary(rows, suite_filter=args.suite)
     print(f"\nWrote {len(rows)} pairs to {output_path}")
     return 0
 

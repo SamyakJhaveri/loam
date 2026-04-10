@@ -2991,12 +2991,10 @@ def run_validation(output: dict, project_root: Path, verbose: bool) -> dict:
     c2_count = 0
     kf_excluded_count = 0
     pass_count_independent = 0
-    rodinia_c1_pass = 0
-    rodinia_c1_total = 0
+    suite_c1_counts: dict[str, dict[str, int]] = {}  # {suite: {"total": N, "pass": N}}
     status_counter: dict[str, int] = {}
     level_counter: dict[str, int] = {}
     direction_set: set[str] = set()
-    suite_c1_counts: dict[str, int] = defaultdict(int)
     bf_count_independent = 0
 
     for jp in sorted(results_dir.glob("*.json")):
@@ -3036,7 +3034,6 @@ def run_validation(output: dict, project_root: Path, verbose: bool) -> dict:
 
         if temp == 0.0:
             c1_count += 1
-            suite_c1_counts[suite] += 1
             level_key = f"L{aug_level}"
             level_counter[level_key] = level_counter.get(level_key, 0) + 1
 
@@ -3051,10 +3048,11 @@ def run_validation(output: dict, project_root: Path, verbose: bool) -> dict:
             if overall_status == "BUILD_FAIL":
                 bf_count_independent += 1
 
-            if suite == "rodinia":
-                rodinia_c1_total += 1
-                if overall_status == "PASS":
-                    rodinia_c1_pass += 1
+            if suite not in suite_c1_counts:
+                suite_c1_counts[suite] = {"total": 0, "pass": 0}
+            suite_c1_counts[suite]["total"] += 1
+            if overall_status == "PASS":
+                suite_c1_counts[suite]["pass"] += 1
         else:
             c2_count += 1
 
@@ -3075,6 +3073,7 @@ def run_validation(output: dict, project_root: Path, verbose: bool) -> dict:
     # --- Spot-check 5: Rodinia C1 pass count ---
     rod_sub = c1.get("rodinia_subset", {})
     rod_passes_expected = rod_sub.get("passes", 0)
+    rodinia_c1_pass = suite_c1_counts.get("rodinia", {}).get("pass", 0)
     results["spot_checks"].append(
         _spot("rodinia_c1_pass_count", rod_passes_expected, rodinia_c1_pass)
     )
