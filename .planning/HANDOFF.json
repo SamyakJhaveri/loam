@@ -1,0 +1,52 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-04-16T19:55:40Z",
+  "phase": "pre-2",
+  "phase_name": "NeurIPS experiment design (between Phase 1 and Phase 2)",
+  "phase_dir": ".planning/",
+  "plan": null,
+  "task": null,
+  "total_tasks": 5,
+  "status": "paused_awaiting_external_approval",
+  "completed_tasks": [
+    {"id": 1, "name": "Read + distill 2026-04-15 research meeting transcript (Gal/Samyak/Niranjan/Tomer)", "status": "done"},
+    {"id": 2, "name": "Inventory current 2-campaign design + identify confounds (temp × augment × sampling × self-repair mixed)", "status": "done"},
+    {"id": 3, "name": "Ground cost economics: per-sample GPT-5 std = $0.206, Qwen = $0.025; 4-stream total = ~$843", "status": "done"},
+    {"id": 4, "name": "Finalize canonical (pass@3 L0 temp=0.7 thinking=ON self-repair=OFF) + ablation (pass@1 L1-L4 same params)", "status": "done"},
+    {"id": 5, "name": "Write handoff report for Gal at ~/.claude/plans/gsd-context-goal-i-cached-finch.md (Option D, full coverage)", "status": "done"}
+  ],
+  "remaining_tasks": [
+    {"id": 6, "name": "Gal approves 5 decisions: GPT-5 tier (std vs Pro), Azure quota confirmation from Le, Option D approval, gpt-4.1-mini purge authorization, 2-machine allocation", "status": "blocked_on_gal", "target_date": "2026-04-17"},
+    {"id": 7, "name": "Apply 4 code changes to scripts/evaluation/llm_evaluate.py: add azure-gpt-5 entry (L94), reasoning_effort=medium (L879), flip Qwen enable_thinking to True (L1001), remove gpt-4.1-2025-04-14 + azure-gpt-4.1 (L82-100)", "status": "not_started", "eta": "Apr 18"},
+    {"id": 8, "name": "Purge gpt-4.1-mini from 10 ParBench-owned files (list in report Appendix B)", "status": "not_started", "eta": "Apr 18"},
+    {"id": 9, "name": "Update .planning/ROADMAP.md + REQUIREMENTS.md + Phase 2/3 specs to reflect canonical+ablation design (was 2-campaign)", "status": "not_started", "eta": "Apr 17-18"},
+    {"id": 10, "name": "Launch 4 parallel streams (qwen_main, qwen_abl, gpt_main, gpt_abl) on 2 machines", "status": "not_started", "eta": "Apr 19"},
+    {"id": 11, "name": "Analysis + paper rewrite + submit", "status": "not_started", "eta": "Apr 22-May 1"}
+  ],
+  "blockers": [
+    {"description": "Gal has not yet approved the experiment redesign (5 decisions)", "type": "human_action", "workaround": "None — must wait"},
+    {"description": "Azure GPT-5 quota (TPM/RPM) not confirmed by Le", "type": "external", "workaround": "Fallback to o3 if quota insufficient"}
+  ],
+  "human_actions_pending": [
+    {"action": "Gal reviews ~/.claude/plans/gsd-context-goal-i-cached-finch.md and decides on 5 items", "context": "Anchors everything downstream — pipeline edits, cost, timeline", "blocking": true},
+    {"action": "Le confirms Azure GPT-5 deployment name + TPM quota", "context": "Need ≥200k TPM sustained; otherwise rate-limiting hits wall-clock", "blocking": true},
+    {"action": "Le + Samyak confirm 2-machine allocation for Apr 19-21 exclusive use", "context": "4 parallel streams need 2 machines to finish in ~1 day wall clock", "blocking": false}
+  ],
+  "decisions": [
+    {"decision": "Replace 2-campaign design with canonical (pass@3 L0) + ablation (pass@1 L1-L4)", "rationale": "2-campaign confounds temp × augment × sampling × self-repair; reviewer-fragile for NeurIPS", "phase": "pre-2"},
+    {"decision": "Models: together-qwen-3.5-397b-a17b + azure-gpt-5 w/ reasoning_effort=medium", "rationale": "Open-source + proprietary two-track per 2026-04-15 meeting; remove gpt-4.1-mini (botched results)", "phase": "pre-2"},
+    {"decision": "Thinking ON for both models in all runs", "rationale": "Meeting-agreed: report best-effort capability; reflects test-time compute scaling norm", "phase": "pre-2"},
+    {"decision": "Self-repair OFF (max_retries=1) across all runs", "rationale": "Isolates one-shot capability; retries confound LLM ability with error-signal quality", "phase": "pre-2"},
+    {"decision": "Full kernel coverage (all 87 TRUE PASS) in both canonical and ablation", "rationale": "User preferred over 30-kernel subset; statistical coverage for NeurIPS reviewers", "phase": "pre-2"},
+    {"decision": "Derive pass@1 baseline from first canonical sample for apples-to-apples ablation delta", "rationale": "Mixed-estimator defense — no extra compute needed", "phase": "pre-2"},
+    {"decision": "Total budget ~$843 on GPT-5 standard tier (not Pro ~$9030)", "rationale": "12× cost difference; standard is sufficient for headline result", "phase": "pre-2"},
+    {"decision": "4 independent parallel streams on 2 machines → ~1 day wall clock", "rationale": "Fits May 1 deadline with 7-day buffer", "phase": "pre-2"}
+  ],
+  "uncommitted_files": [
+    ".validation_passed (sentinel — gitignored)",
+    "le_code/ (external, not staged)",
+    ".claude/skills/andrej-karpathy-skills/ (external, not staged)"
+  ],
+  "next_action": "When Gal's approval arrives (likely Apr 17): read ~/.claude/plans/gsd-context-goal-i-cached-finch.md Section 9, act on his 5 decisions, then apply code changes #1-#4 to scripts/evaluation/llm_evaluate.py",
+  "context_notes": "Phase 1 is fully complete (5/5 plans). Phase 2 as currently written in ROADMAP.md still describes the old 2-campaign design and MUST be updated to reflect the new canonical+ablation split before execution. The handoff report for Gal lives OUTSIDE the repo at ~/.claude/plans/gsd-context-goal-i-cached-finch.md. Meeting transcript at meeting_notes/transcripts/CUDA_OpenCL translation - 2026_04_15 08_58 PDT - Notes by Gemini.md is the source of truth for design decisions."
+}
