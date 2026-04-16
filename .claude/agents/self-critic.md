@@ -128,7 +128,7 @@ Identify patterns that should be added to rules/memory to prevent future issues:
 ```
 SELF-CRITIC REVIEW: PASS/FAIL
 
-Audited by: claude-opus (most capable model — this is the adversarial gate)
+Audited by: claude-opus (most capable model — this is the adversarial gate; Opus 4.7 as of 2026-04-16)
 Changed files reviewed: N
 
 [1] Completeness:       PASS/FAIL

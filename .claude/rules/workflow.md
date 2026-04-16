@@ -127,3 +127,12 @@ Full skill/agent reference table: use `/workflow-ref` skill.
 
 Additional reference material (agent teams, thinking levels, memory hygiene, atomic task
 decomposition, course correction): use `/workflow-ref` skill.
+
+## Opus 4.7 Notes (as of 2026-04-16)
+
+- Default effort = `xhigh`; downshift via `/effort high` for transactional work (commits, small edits).
+- 4.7 spawns **fewer subagents by default** — explicitly spawn agent teams when parallelism is needed.
+- 4.7 is **more literal** — phrase requirements as commands, not suggestions.
+- 4.7 uses **fewer tool calls by default** — at `high`/`xhigh` this usually helps; if it under-uses tools, raise effort or instruct explicitly.
+- Trigger `/compact` at ~40% context (not 50%) for 2 weeks while 4.7's new tokenizer is being recalibrated; restore 50% heuristic after.
+- Rollback if 4.7 regresses: pin `"model": "claude-opus-4-6-20260205"` in `.claude/settings.local.json`.

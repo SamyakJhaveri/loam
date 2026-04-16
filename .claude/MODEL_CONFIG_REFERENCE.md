@@ -8,7 +8,7 @@ Source: https://code.claude.com/docs/en/model-config
 |-------|----------|
 | `default` | Recommended model based on your account type |
 | `sonnet` | Latest Sonnet model (currently Sonnet 4.6) for daily coding tasks |
-| `opus` | Latest Opus model (currently Opus 4.6) for complex reasoning tasks |
+| `opus` | Latest Opus model (currently Opus 4.7) for complex reasoning tasks |
 | `haiku` | Fast and efficient Haiku model for simple tasks |
 | `sonnet[1m]` | Sonnet with 1 million token context window for long sessions |
 | `opusplan` | Uses `opus` in plan mode, switches to `sonnet` for execution |
