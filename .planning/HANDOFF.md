@@ -30,7 +30,7 @@ The plan is at: `/home/samyak/.claude/plans/ethereal-wishing-bumblebee.md`
 - Test each pipeline component with real programs from ALL 5 suites
 - Fix suite-specific code: `analyze_rodinia_batch.py`, `EXCLUDED_SPECS` duplication, batch scripts
 - Audit build workarounds for fairness (needle.h, OpenCL paths, data symlinks, HeCBench CMakeLists)
-- Acknowledge portability limits (hardcoded compiler paths in specs)
+- Acknowledge portability limits (hardcoded compiler paths in s
 - Write unit tests (synthetic data) + integration smoke tests (real builds)
 - Test programs: bfs (Rodinia), xsbench, rsbench, mixbench, bezier-surface (HeCBench)
 

@@ -327,14 +327,14 @@ def test_c2_classification():
 
 **If this table is empty:** N/A -- 2 assumptions listed above.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Import strategy for campaign_for TDD tests**
+1. **Import strategy for campaign_for TDD tests** — RESOLVED: try/except with `campaign_for = None` fallback adopted in Plan 01-02 Task 2.
    - What we know: `campaign_utils.py` won't exist until Phase 2. The import will fail at collection time.
    - What's unclear: Whether `pytest.importorskip` or a try/except at module level is the cleaner pattern.
    - Recommendation: Use try/except with `campaign_for = None` fallback (shown in Code Examples). The `@pytest.mark.skip` prevents actual execution. This is standard pytest TDD practice.
 
-2. **EXCLUDED_SPECS sync test**
+2. **EXCLUDED_SPECS sync test** — RESOLVED: comment-only approach chosen in Plan 01-01 Task 1 (no automated sync test).
    - What we know: D-09 says `harness/constants.py` and `known-issues.md` must stay in sync.
    - What's unclear: Whether to write an automated test that parses `known-issues.md` and compares to the frozenset.
    - Recommendation: Add a comment in `constants.py` pointing to `known-issues.md`. An automated sync test is overkill for 8 items -- the planner can decide.

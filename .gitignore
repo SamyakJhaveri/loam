@@ -63,3 +63,9 @@ env_parbench/
 *.so
 *.d
 .env
+
+# ANL credentials — never commit
+*.pem
+*_key*
+*_secret*
+*credentials*
