@@ -194,7 +194,7 @@ Track the iteration count for this task. Initialize to 1 on first attempt.
    git commit -m "$(cat <<'EOF'
    ralph-loop: <task description> (task #<id>)
 
-   Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+   Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>
    EOF
    )"
    ```

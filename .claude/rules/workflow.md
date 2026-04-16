@@ -134,5 +134,5 @@ decomposition, course correction): use `/workflow-ref` skill.
 - 4.7 spawns **fewer subagents by default** — explicitly spawn agent teams when parallelism is needed.
 - 4.7 is **more literal** — phrase requirements as commands, not suggestions.
 - 4.7 uses **fewer tool calls by default** — at `high`/`xhigh` this usually helps; if it under-uses tools, raise effort or instruct explicitly.
-- Trigger `/compact` at ~40% context (not 50%) for 2 weeks while 4.7's new tokenizer is being recalibrated; restore 50% heuristic after.
-- Rollback if 4.7 regresses: pin `"model": "claude-opus-4-6-20260205"` in `.claude/settings.local.json`.
+- Trigger `/compact` at ~40% context (not 50%) through **2026-04-30** while 4.7's new tokenizer is being recalibrated; restore 50% heuristic after that date.
+- Rollback if 4.7 regresses: pin `"model": "claude-opus-4-6"` in `.claude/settings.local.json` (verified against Anthropic docs 2026-04-16).
