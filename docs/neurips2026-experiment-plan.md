@@ -141,12 +141,14 @@ Based on 50-sample empirical measurement of existing Qwen results (thinking OFF)
 
 | Model | Per-sample cost | Source |
 |---|---:|---|
-| GPT-5 standard (reasoning_effort=medium) | **$0.206** | $1.25/M in + $10/M out [Azure pricing](https://azure.microsoft.com/en-us/pricing/details/azure-openai/) |
+| GPT-5 standard (reasoning_effort=medium) | **$0.3125** | $2.50/M in + $15/M out (Azure, <272K context) [Azure pricing](https://azure.microsoft.com/en-us/pricing/details/azure-openai/), verified 2026-04-17 |
 | GPT-5 Pro (reasoning-heavy) | $2.480 | $15/M in + $120/M out |
 | o3 standard (alternative) | $0.170 | $2/M in + $8/M out |
-| Qwen 3.5 Coder 480B via Together AI | **$0.025** | ~$1/M in + $2/M out (conservative) [Together pricing](https://www.together.ai/pricing) |
+| Qwen 3.5 397B via Together AI | **$0.075** | $0.60/M in + $3.60/M out [Together pricing](https://www.together.ai/models/qwen3-5-397b-a17b), verified 2026-04-17 |
 
-### 3.2 Full experiment budget (GPT-5 standard tier)
+> **2026-04-17 pricing refresh.** Azure GPT-5 standard was previously cited at $1.25/M in + $10/M out ($0.206/sample); the authoritative rate is now $2.50/M in + $15/M out ($0.3125/sample) per the Azure pricing page for GPT-5 deployments below the 272K context threshold (Batch API is $1.25/M in + $7.50/M out). Together's Qwen 3.5 397B rate was previously estimated at ~$1/M in + $2/M out ($0.025/sample); the advertised rate is $0.60/M in + $3.60/M out ($0.075/sample). The §3.2 table below still reflects the OLD rates AND the pre-2026-04-16 two-campaign scope (superseded by §2.4's canonical + L0-conditional ablation design). The authoritative current cost model is `.planning/phases/02-llm-eval-testing/02-CONTEXT.md` D-30; see also `.planning/phases/02-llm-eval-testing/02-08-integration-smoke-and-handoff-PLAN.md`. Gal signed off on the $559 GPT overshoot on 2026-04-17 (at old pricing); a recomputation at the new $0.3125/sample rate lands the canonical + ablation GPT spend closer to ~$848 — deviations from the original $559 will be flagged if/when they materialize, per Samyak's standing instruction "if anything changes I will let you know."
+
+### 3.2 Full experiment budget (GPT-5 standard tier — OLD rates, two-campaign scope, SUPERSEDED)
 
 | Stream | Samples | GPT-5 std | Qwen | Stream total |
 |---|---:|---:|---:|---:|
