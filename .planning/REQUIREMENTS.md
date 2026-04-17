@@ -17,20 +17,38 @@
 
 ## Phase 2: LLM Eval Testing
 
-- [ ] `campaign_for(record)` helper classifies results as C1 or C2 from existing `temperature` + `sample_id` fields
-- [ ] `--campaign c1|c2` convenience flag added to `run_eval_batch.py` with correct defaults
+Design revised 2026-04-16: two-campaign structure replaced with canonical + L0-conditional ablation. See `.planning/PROJECT.md` Key Decisions.
+
+- [ ] `MODEL_REGISTRY` entry added for `azure-gpt-5.4` in `scripts/evaluation/llm_evaluate.py`
+- [ ] `reasoning_effort="medium"` passed on Azure API calls for reasoning-capable models (guarded by capability check)
+- [ ] Qwen `enable_thinking` flipped to `True`; new `--thinking on|off` CLI flag (default `on`)
+- [ ] `gpt-4.1-2025-04-14`, `azure-gpt-4.1`, `gpt-4.1-mini` purged from scripts/docs (result JSONs stay on disk for audit)
+- [ ] New `scripts/evaluation/derive_l0_passers.py` — emits `l0_passers_{model}.json` with cells where ≥1 of 3 canonical samples passed (pass@1-of-any)
+- [ ] New `--task-list <json>` flag on `run_eval_batch.py` — consumes passer JSON instead of enumerating from manifest
 - [ ] Prompt construction verified for each suite (via `--dry-run`)
-- [ ] End-to-end eval tested with real Qwen/Together calls (1 program per suite, cuda-to-omp)
-- [ ] `pass_at_k()` verified with actual C2 data (do NOT reimplement -- already exists)
-- [ ] Campaign 2 config validated end-to-end (temp=0.7, num_samples=3, max_retries=1, augment_level=0)
-- [ ] AskSage adapter -- **BLOCKED** until Le provides API docs/credentials
+- [ ] End-to-end canonical eval tested with real LLM calls (1 program per suite, cuda-to-omp) for Qwen AND Azure GPT-5.4
+- [ ] `pass_at_k()` verified with actual canonical data (do NOT reimplement — already exists at `scripts/analysis/statistical_analysis.py:706`)
+- [ ] AskSage adapter — **BLOCKED** until Le provides API docs/credentials; deferred to post-submission
 
 ## Phase 3: Full Evaluation Runs
 
-- [ ] Campaign 1 complete: all suites, all directions (including cuda<->omp_target for XSBench/RSBench), Qwen via `--resume`
-- [ ] Campaign 2 complete: all suites, all directions, Qwen via `--resume`
-- [ ] AskSage runs complete (when unblocked)
-- [ ] Analysis regenerated: `analyze_eval.py` for each model + campaign
+Three-phase launch: canonical → derive → ablation. Canonical must complete before ablation can launch (ablation depends on passer-set derivation).
+
+### Phase A (canonical, parallel)
+- [ ] `qwen_canonical` complete: pass@3, L0, temp=0.7, thinking=ON, self-repair=OFF, all 87 × 6 cells
+- [ ] `gpt_canonical` complete: same config, Azure GPT-5.4 + reasoning_effort=medium, all 87 × 6 cells
+
+### Phase B (derive)
+- [ ] `l0_passers_qwen.json` committed to `.planning/eval-selections/`
+- [ ] `l0_passers_gpt5.json` committed to `.planning/eval-selections/`
+
+### Phase C (ablation, parallel)
+- [ ] `qwen_ablation` complete: pass@1, L1-L4, all L0-passer cells, thinking=ON, self-repair=OFF
+- [ ] `gpt_ablation` complete: pass@1, L1-L4, all L0-passer cells, thinking=ON, self-repair=OFF
+
+### Analysis
+- [ ] `analyze_eval.py` regenerated for canonical + ablation per model
+- [ ] Actual GPT cost ≤ $600 (tracks against Samyak-approved overshoot; abort if >50% over projection)
 
 ## Phase 4: NeurIPS Paper
 
@@ -49,8 +67,9 @@
 | Real-time eval dashboard redesign | Only update if driven by results analysis changes |
 | Full spec portability (compiler path templating) | Deferred to post-NeurIPS; document machine config in paper |
 | GPT-4.1 mini re-runs | All GPT results botched -- ignore entirely |
-| Speculative AskSage adapter | BLOCKED until Le provides API docs |
+| Two-campaign structure (C1 self-repair + C2 pass@k) | Superseded 2026-04-16 by canonical + L0-conditional ablation |
+| Speculative AskSage adapter | BLOCKED until Le provides API docs; deferred to post-submission |
 
 ---
 *Requirements defined: 2026-04-09*
-*Last updated: 2026-04-09 after plan simplification to 4 phases*
+*Last updated: 2026-04-16 after Gal-approved + Samyak-confirmed revision from two-campaign to canonical + L0-conditional ablation*

@@ -2,13 +2,15 @@
 
 ## Overview
 
-This roadmap takes ParBench from a pilot-validated benchmark (Qwen 3.5 397B, 1,248 results) to a multi-model, peer-review-ready NeurIPS submission. Four phases: verify the pipeline with real data, test end-to-end evaluation, run full campaigns, write the paper.
+This roadmap takes ParBench from a pilot-validated benchmark (Qwen 3.5 397B, 1,248 results) to a multi-model, peer-review-ready NeurIPS submission. Four phases: verify the pipeline with real data, test end-to-end evaluation with the revised experiment design, run canonical + L0-conditional ablation, write the paper.
+
+Experiment design was revised on 2026-04-16 from a two-campaign structure to a canonical + L0-conditional ablation structure (see `.planning/PROJECT.md` Key Decisions for full rationale; pre-approval snapshot at `~/.claude/plans/gsd-context-goal-i-cached-finch.md`).
 
 ## Phases
 
-- [ ] **Phase 1: Pipeline Testing & Uniformity** -- Test and fix the full spec-build-run-verify pipeline across all 5 suites
-- [ ] **Phase 2: LLM Eval Testing** -- Test evaluation pipeline end-to-end with real LLM calls
-- [ ] **Phase 3: Full Evaluation Runs** -- Run complete Campaign 1 + Campaign 2 with all models
+- [x] **Phase 1: Pipeline Testing & Uniformity** -- Test and fix the full spec-build-run-verify pipeline across all 5 suites
+- [ ] **Phase 2: LLM Eval Testing** -- Test evaluation pipeline end-to-end with real LLM calls; add azure-gpt-5.4 registry entry, reasoning_effort param, Qwen thinking flag, L0-passer derivation script, `--task-list` flag
+- [ ] **Phase 3: Full Evaluation Runs** -- Canonical (pass@3 L0) then L0-conditional ablation (pass@1 L1-L4) for Qwen 3.5 397B + Azure GPT-5.4
 - [ ] **Phase 4: NeurIPS Paper** -- Write paper with every claim traceable to verified results
 
 ## Phase Details
@@ -37,42 +39,50 @@ This roadmap takes ParBench from a pilot-validated benchmark (Qwen 3.5 397B, 1,2
 
 ### Phase 2: LLM Eval Testing
 
-**Goal:** Can run `run_eval_batch.py --campaign c1` and `--campaign c2` for 1 kernel per suite with Qwen, get correct result JSONs, and `campaign_for()` correctly classifies them.
+**Goal:** Can run `run_eval_batch.py` end-to-end for 1 kernel per suite with both Qwen and Azure GPT-5.4 under the canonical config (pass@3, L0, temp=0.7, thinking=ON, reasoning_effort=medium, self-repair=OFF), and separately run the L0-conditional ablation launcher with a task list from `derive_l0_passers.py`.
 
 **Depends on:** Phase 1
 
 **Deliverables:**
-- `campaign_for(record)` helper: returns `"c1"` or `"c2"` based on `temperature` + `sample_id` fields
-- `--campaign c1|c2` convenience flag on `run_eval_batch.py` (sets correct defaults)
+- `MODEL_REGISTRY` entry for `azure-gpt-5.4` in `scripts/evaluation/llm_evaluate.py`
+- `reasoning_effort="medium"` passed on Azure API calls for reasoning-capable models (guarded by capability check)
+- Qwen `enable_thinking` flipped to `True`; new `--thinking on|off` CLI flag (default `on`)
+- `gpt-4.1-2025-04-14`, `azure-gpt-4.1`, `gpt-4.1-mini` purged from scripts/docs (result JSONs stay on disk for audit)
+- New `scripts/evaluation/derive_l0_passers.py`: takes canonical result dir + model, emits `l0_passers_{model}.json` with cells where ≥1 of 3 samples passed (pass@1-of-any)
+- New `--task-list <json>` flag on `run_eval_batch.py`: consumes passer JSON instead of enumerating from manifest
 - Prompt construction verified for each suite via `--dry-run`
-- Real LLM calls tested: 1 program per suite, cuda-to-omp direction, via Qwen/Together AI
-- Campaign 2 verified: `pass_at_k()` produces correct results for k=3 with actual C2 data
-- AskSage adapter: BLOCKED until Le provides API docs -- do not build speculatively
+- Real LLM calls tested: 1 program per suite, cuda-to-omp direction, via Qwen and GPT-5.4
 
 **Success Criteria:**
-1. `campaign_for()` correctly classifies existing C1 and C2 results
-2. End-to-end eval works for 1 kernel per suite with Qwen
-3. Result JSONs contain correct fields (prompt_tokens, completion_tokens, overall_status, attempts[])
-4. `pass_at_k(k=3)` returns correct values for known inputs
-5. Campaign 2 config validated: temp=0.7, num_samples=3, max_retries=1, augment_level=0
+1. End-to-end canonical eval works for 1 kernel per suite with both models (result JSONs contain `temperature=0.7`, `num_samples=3`, `augment_level=0`, thinking=ON markers)
+2. `derive_l0_passers.py` correctly partitions synthetic canonical fixtures into passers/failers (pass@1-of-any semantics)
+3. `run_eval_batch.py --task-list` consumes the passer JSON and runs only listed cells
+4. All gpt-4.1 model IDs absent from scripts/docs (per `grep -rn "gpt-4\.1" scripts/ docs/ .planning/`)
+5. `pass_at_k(k=3)` returns correct values for known inputs (existing test unchanged)
 
 ### Phase 3: Full Evaluation Runs
 
-**Goal:** Complete Campaign 1 and Campaign 2 runs for all suites and directions with Qwen (+ AskSage when unblocked).
+**Goal:** Complete canonical + L0-conditional ablation runs for Qwen 3.5 397B and Azure GPT-5.4 across all 5 suites, all 6 directions (including omp_target case studies where available), using a 3-phase launch sequence.
 
 **Depends on:** Phase 2
 
 **Deliverables:**
-- Campaign 1: temp=0, max_retries=3, L0-L4, all suites, all directions (including cuda<->omp_target for XSBench/RSBench)
-- Campaign 2: temp=0.7, num_samples=3, max_retries=1, L0-only, same directions
-- Qwen: use `--resume` to fill gaps in existing 1,248 results
-- AskSage: new runs when unblocked
-- Analysis: `analyze_eval.py` regenerated for each model + campaign
+- **Phase A (canonical)**: 2 parallel streams on 2 machines
+  - `qwen_canonical`: pass@3, L0, temp=0.7, thinking=ON, self-repair=OFF (~17h wall clock)
+  - `gpt_canonical`: same config, Azure GPT-5.4 with `reasoning_effort=medium` (~17h wall clock)
+- **Phase B (derive)**: Run `derive_l0_passers.py` for each model → `l0_passers_{qwen,gpt5}.json` committed to `.planning/eval-selections/`
+- **Phase C (ablation)**: 2 parallel streams on 2 machines
+  - `qwen_ablation --task-list l0_passers_qwen.json --augment-levels 1 2 3 4` (pass@1, all 4 levels on all L0-passers)
+  - `gpt_ablation --task-list l0_passers_gpt5.json --augment-levels 1 2 3 4` (same config)
+- Analysis: `analyze_eval.py` regenerated for canonical + ablation per model
+- AskSage: still BLOCKED, not on May 1 critical path; deferred to post-submission if Le unblocks
 
 **Success Criteria:**
-1. All Campaign 1 + Campaign 2 Qwen runs complete (no gaps)
-2. Pass rates, status distributions, per-suite breakdowns verified
-3. AskSage runs complete (when unblocked)
+1. Canonical streams complete for both models across all 87 × 6 cells (no gaps)
+2. `l0_passers_{qwen,gpt5}.json` exist, committed to `.planning/eval-selections/`, with non-zero cell counts
+3. Ablation streams complete for all L0-passer cells × 4 levels for both models
+4. Pass rates, status distributions, per-suite breakdowns regenerated from `analyze_eval.py`
+5. Actual GPT-side cost ≤ $600 (tracks against Samyak-approved overshoot; abort if >50% over projection)
 
 ### Phase 4: NeurIPS Paper
 
@@ -91,11 +101,11 @@ This roadmap takes ParBench from a pilot-validated benchmark (Qwen 3.5 397B, 1,2
 
 ## Progress
 
-**Execution Order:** Phase 1 -> Phase 2 -> Phase 3 -> Phase 4
+**Execution Order:** Phase 1 -> Phase 2 -> Phase 3 (A -> B -> C) -> Phase 4
 
 | Phase | Status | Completed |
 |-------|--------|-----------|
-| 1. Pipeline Testing & Uniformity | In progress | - |
+| 1. Pipeline Testing & Uniformity | Complete | 2026-04-10 |
 | 2. LLM Eval Testing | Not started | - |
-| 3. Full Evaluation Runs | Not started | - |
+| 3. Full Evaluation Runs (canonical + L0-conditional ablation) | Not started | - |
 | 4. NeurIPS Paper | Not started | - |

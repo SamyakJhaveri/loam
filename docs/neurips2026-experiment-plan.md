@@ -1,8 +1,11 @@
-# ParBench NeurIPS 2026 — Experiment Plan (Handoff to Gal)
+# ParBench NeurIPS 2026 — Experiment Plan
 
 **Author:** Samyak Jhaveri · **Reviewers:** Gal Oren, Niranjan Hasabnis, Le Chen, Tomer Bitan
 **Target:** NeurIPS 2026 Datasets & Benchmarks · **Deadline:** May 1, 2026
-**Status:** Draft for Gal's approval · **Date:** 2026-04-16
+**Status:** Approved with revisions by Gal 2026-04-16; confirmed by Samyak 2026-04-16. See §2.4 for the authoritative current design.
+**Pre-approval snapshot:** `~/.claude/plans/gsd-context-goal-i-cached-finch.md` (unmodified historical record).
+
+> **⚠️ AUTHORITATIVE DESIGN LIVES IN §2.4 BELOW.** §§1–2.3 and §§3–9 are the pre-approval draft. They remain here for traceability but are superseded anywhere §2.4 conflicts.
 
 ---
 
@@ -58,6 +61,67 @@ One cleanly isolated variable: the semantics-preserving AST perturbation level a
 - **Robustness metric:** Δpass@1(L_k) = pass@1_canonical − pass@1_L_k
 
 No extra sampling needed. We already have the data implicit in the canonical pass@3 run.
+
+### 2.4 Gal-approved revisions (2026-04-16) — AUTHORITATIVE
+
+Gal reviewed the §2.1–2.3 draft on 2026-04-16 and approved with one budget-driven change: **the GPT ablation becomes L0-conditional.** Samyak confirmed specific parameters the same day. This section supersedes §2.2 wherever they conflict.
+
+**What stays identical to §2.1 (canonical):**
+- pass@3, L0, temp=0.7, thinking=ON, reasoning_effort=medium, self-repair=OFF
+- All 87 TRUE PASS kernels × 6 directions (+ omp_target case studies for XSBench/RSBench where available)
+- Both models: `together-qwen-3.5-397b-a17b` + `azure-gpt-5.4` (renamed from "azure-gpt-5" to reflect the specific deployment slot)
+
+**What changes for the ablation (supersedes §2.2):**
+
+| Parameter | §2.2 (pre-approval) | §2.4 (authoritative) |
+|---|---|---|
+| Filter | None — all 87 × 6 cells | **pass@1-of-any from canonical** (cell included iff ≥1 of 3 canonical samples passed at L0) |
+| Levels | L1, L2, L3, L4 (all 4) | **L1, L2, L3, L4 on ALL L0-passers** (no subset, no middle-level-only sampling) |
+| Audit sample | N/A | **None.** Paper threats-to-validity will acknowledge L0-failers were not evaluated under perturbation |
+| Symmetry | Both models run full 87 × 6 | **Both models run the same filter** for apples-to-apples delta |
+| Launch | Parallel with canonical | **Serial after canonical** — ablation depends on canonical passer-set derivation |
+
+**Budget (revised from §3.2):**
+
+Assuming 55% canonical L0-pass rate (pass@1-of-any; range 45–65%, linear scaling):
+
+| Stream | Samples | GPT | Qwen |
+|---|---:|---:|---:|
+| qwen_canonical (unchanged) | 1,566 | — | $39 |
+| gpt_canonical (unchanged) | 1,566 | $322 | — |
+| qwen_ablation (287 cells × 4 levels) | 1,148 | — | $29 |
+| gpt_ablation (287 cells × 4 levels) | 1,148 | $237 | — |
+| **TOTAL (estimated)** | **5,428** | **$559** | **$68** |
+
+**Grand total ≈ $627** (26% savings vs pre-approval $843). **GPT side $559 overshoots Gal's $400 target by $159 (40%).** Samyak accepted this tradeoff to preserve the full L1→L4 degradation curve (reviewer value: can report monotonic degradation across all levels, not just outer endpoints). **Gal sign-off on the overshoot is required before Phase A launch.** Fallback if Gal declines: raise filter to pass@2-of-3 (≈22% pass rate → ~$94 GPT ablation → $416 GPT total, hits target).
+
+**Launch sequence (supersedes §4):**
+
+Three-phase execution because ablation is data-dependent on canonical output:
+
+1. **Phase A — Canonical (Apr 19)**: 2 parallel streams on 2 machines, ~17h wall clock each.
+2. **Phase B — Derive (Apr 20 AM, ~1h)**: `derive_l0_passers.py` produces `l0_passers_{qwen,gpt5}.json`, committed to `.planning/eval-selections/`.
+3. **Phase C — Ablation (Apr 20 PM, ~4-5h)**: 2 parallel streams consuming passer JSONs via new `--task-list` flag on `run_eval_batch.py`.
+
+Net wall clock across Apr 19–20 is ~20–22h (vs ~17h in §4 parallel-all-streams design). Still fits May 1 deadline with ≥5-day buffer for analysis + paper.
+
+**Code changes required (supersedes §5):**
+
+| # | Change | File | Status |
+|---|---|---|---|
+| 1 | Add `azure-gpt-5.4` entry to `MODEL_REGISTRY` | `scripts/evaluation/llm_evaluate.py:94` | Pending execution |
+| 2 | Add `reasoning_effort="medium"` on Azure calls (guarded by capability) | `scripts/evaluation/llm_evaluate.py:879` | Pending |
+| 3 | Flip Qwen `enable_thinking: False → True`; add `--thinking on\|off` CLI flag | `scripts/evaluation/llm_evaluate.py:1001` | Pending |
+| 4 | Remove `gpt-4.1-2025-04-14` + `azure-gpt-4.1` + `gpt-4.1-mini` from scripts/docs | 10 files (see §Appendix B) | Pending |
+| 5 | New `derive_l0_passers.py` — emit `l0_passers_{model}.json` (pass@1-of-any filter) | `scripts/evaluation/derive_l0_passers.py` | Pending |
+| 6 | Add `--task-list <json>` flag to `run_eval_batch.py` | `scripts/evaluation/run_eval_batch.py` | Pending |
+
+**Decisions deferred vs §9:**
+- **Item 1 (GPT-5 tier)**: Gal approved standard via the budget-cutting directive.
+- **Item 3 (Option D)**: Approved with revision (L0-conditional ablation per §2.4).
+- **Item 4 (gpt-4.1-mini purge)**: Approved by Samyak 2026-04-16 — result JSONs on disk stay, scripts/docs get purged.
+- **Item 2 (Azure quota)**: Still pending Le; required before Phase A.
+- **Item 5 (2-machine allocation)**: Still pending; if only 1 machine available, fallback is serial canonical (+17h wall clock, still fits).
 
 ## 3. Grounded cost + wall-clock
 
