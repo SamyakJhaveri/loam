@@ -88,8 +88,8 @@ def test_missing_directions():
     qwen_data, gpt_data = _make_test_data_full_directions()
     result = build_comparison(qwen_data, gpt_data)
 
-    assert "azure-gpt-4.1-mini" in result["missing_directions"]
-    assert "omp_target-to-cuda" in result["missing_directions"]["azure-gpt-4.1-mini"]
+    assert "azure-gpt-5.4" in result["missing_directions"]
+    assert "omp_target-to-cuda" in result["missing_directions"]["azure-gpt-5.4"]
 
 
 def test_kernel_matrix_counts_sum():
@@ -141,7 +141,7 @@ def _make_test_data():
         },
     }
     gpt = {
-        "model": "azure-gpt-4.1-mini",
+        "model": "azure-gpt-5.4",
         "primary_campaign": {
             "total": 80,
             "overall": {
@@ -192,7 +192,7 @@ def _make_test_data_full_directions():
         },
     }
     gpt = {
-        "model": "azure-gpt-4.1-mini",
+        "model": "azure-gpt-5.4",
         "primary_campaign": {
             "total": 105,
             "overall": {

@@ -83,27 +83,27 @@ NA_COLOR = "#E0E0E0"
 
 MODEL_COLORS: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": OKABE_ITO["orange"],
-    "azure-gpt-4.1-mini":          OKABE_ITO["sky_blue"],
+    "azure-gpt-5.4":               OKABE_ITO["sky_blue"],
 }
 
 MODEL_DISPLAY: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "Qwen 3.5\n397B",
-    "azure-gpt-4.1-mini":          "GPT-4.1\nmini",
+    "azure-gpt-5.4":               "GPT-5.4",
 }
 
 MODEL_DISPLAY_SHORT: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "Qwen 3.5 397B-A17B",
-    "azure-gpt-4.1-mini":          "GPT-4.1 mini",
+    "azure-gpt-5.4":               "Azure GPT-5.4",
 }
 
 MODEL_LINESTYLE: dict[str, tuple[str, str]] = {
     "together-qwen-3.5-397b-a17b": ("D-.", "dashdot"),
-    "azure-gpt-4.1-mini":          ("v-", "solid"),
+    "azure-gpt-5.4":               ("v-", "solid"),
 }
 
 MODEL_SLUG: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "qwen",
-    "azure-gpt-4.1-mini": "gpt",
+    "azure-gpt-5.4": "gpt",
 }
 
 # Legacy palette references for survey figures (F2, C.4)
@@ -1674,7 +1674,7 @@ def generate_t2_model_table(
         rate = p / t * 100 if t > 0 else 0
         gpt_cells.append(f"{p}/{t} ({rate:.1f}\\%)")
     lines.append(
-        "GPT-4.1 mini & " + " & ".join(gpt_cells) + r" \\"
+        "Azure GPT-5.4 & " + " & ".join(gpt_cells) + r" \\"
     )
 
     lines.append(r"\bottomrule")

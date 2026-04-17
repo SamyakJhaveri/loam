@@ -44,11 +44,11 @@ def test_create_status_legend_returns_patches():
 
 
 # ---------------------------------------------------------------------------
-# G1: Model constants reflect 2-model layout (Qwen + GPT-4.1 mini)
+# G1: Model constants reflect 2-model layout (Qwen + Azure GPT-5.4)
 # ---------------------------------------------------------------------------
 
 def test_model_constants_reflect_two_model_layout():
-    """Verify old models are removed and azure-gpt-4.1-mini is present in all 4 dicts."""
+    """Verify old models are removed and azure-gpt-5.4 is present in all 4 dicts."""
     import scripts.generate_paper_figures as gpf
 
     old_models = [
@@ -56,7 +56,7 @@ def test_model_constants_reflect_two_model_layout():
         "groq-llama-3.3-70b-versatile",
         "gemini-2.5-flash-lite",
     ]
-    new_model = "azure-gpt-4.1-mini"
+    new_model = "azure-gpt-5.4"
     qwen_model = "together-qwen-3.5-397b-a17b"
 
     for dct_name in ("MODEL_COLORS", "MODEL_DISPLAY", "MODEL_DISPLAY_SHORT", "MODEL_LINESTYLE"):
@@ -129,11 +129,11 @@ def test_suite_order_contains_all_five_suites():
 
 
 # ---------------------------------------------------------------------------
-# G4: T2 table has 2-model layout with Qwen data and GPT-4.1 mini pending
+# G4: T2 table has 2-model layout with Qwen data and Azure GPT-5.4 pending
 # ---------------------------------------------------------------------------
 
 def test_t2_table_has_two_model_layout(tmp_path):
-    """Verify generate_t2_model_table produces a table with Qwen and GPT-4.1 mini rows."""
+    """Verify generate_t2_model_table produces a table with Qwen and Azure GPT-5.4 rows."""
     from scripts.generate_paper_figures import (
         load_eval_results, generate_t2_model_table,
     )
@@ -149,7 +149,7 @@ def test_t2_table_has_two_model_layout(tmp_path):
 
     content = tex_path.read_text()
     assert "Qwen 3.5 397B" in content, "Qwen model row missing from T2 table"
-    assert "GPT-4.1 mini" in content, "GPT-4.1 mini row missing from T2 table"
+    assert "Azure GPT-5.4" in content, "Azure GPT-5.4 row missing from T2 table"
     # GPT row should have computed stats (no "pending" entries)
     assert "pending" not in content.lower(), (
         f"T2 table still has 'pending' entries — GPT stats should be computed"

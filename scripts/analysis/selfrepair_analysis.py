@@ -46,7 +46,6 @@ MODEL_DISPLAY = {
     "claude-sonnet-4-6": "Claude Sonnet 4",
     "gemini-2.5-flash-lite": "Gemini 2.5 Flash-Lite",
     "groq-llama-3.3-70b-versatile": "Groq Llama 3.3 70B",
-    "azure-gpt-4.1": "Azure GPT-4.1",
 }
 
 

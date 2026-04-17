@@ -39,7 +39,6 @@ MODEL_PRICING = {
     "claude-sonnet-4-6": {"input": 3.00, "output": 15.00, "display": "Claude Sonnet 4"},
     "gemini-2.5-flash-lite": {"input": 0.075, "output": 0.30, "display": "Gemini 2.5 Flash-Lite"},
     "groq-llama-3.3-70b-versatile": {"input": 0.59, "output": 0.79, "display": "Groq Llama 3.3 70B"},
-    "azure-gpt-4.1": {"input": 2.00, "output": 8.00, "display": "Azure GPT-4.1"},
 }
 
 # Field-name constants — single source of truth for JSON key names

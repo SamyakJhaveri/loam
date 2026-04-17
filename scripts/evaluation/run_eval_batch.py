@@ -7,7 +7,7 @@ incremental per-task JSON results, and generates a Markdown summary.
 Usage:
     python3 scripts/evaluation/run_eval_batch.py \\
       --suite rodinia --direction cuda-to-omp \\
-      --models claude-sonnet-4-20250514 azure-gpt-4.1 \\
+      --models claude-sonnet-4-20250514 azure-gpt-5.4 \\
       --project-root /home/samyak/Desktop/parbench_sam \\
       --resume -v
 
@@ -389,7 +389,7 @@ def main() -> None:
         nargs="+",
         required=True,
         metavar="MODEL",
-        help="Model IDs to evaluate (e.g. claude-sonnet-4-20250514 azure-gpt-4.1).",
+        help="Model IDs to evaluate (e.g. claude-sonnet-4-20250514 azure-gpt-5.4).",
     )
     parser.add_argument(
         "--project-root",
