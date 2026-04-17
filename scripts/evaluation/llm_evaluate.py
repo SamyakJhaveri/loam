@@ -91,11 +91,6 @@ MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
         "supports_thinking": False,
         "notes": "Strong general-purpose",
     },
-    "gpt-4.1-2025-04-14": {
-        "provider": "openai",
-        "supports_thinking": True,
-        "notes": "Latest GPT-4 class",
-    },
     "o3-2025-04-16": {
         "provider": "openai",
         "supports_thinking": True,
@@ -105,11 +100,6 @@ MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
         "provider": "openai",
         "supports_thinking": True,
         "notes": "Fast reasoning",
-    },
-    "azure-gpt-4.1": {
-        "provider": "azure",
-        "supports_thinking": True,
-        "notes": "GPT-4.1 via Azure OpenAI (research lead deployment)",
     },
     "azure-gpt-5.4": {
         "provider": "azure",
@@ -884,7 +874,7 @@ def call_llm(
                 "openai package not installed. Run: python3 -m pip install openai"
             )
 
-        azure_model = model[len("azure-"):]  # e.g. "azure-gpt-4.1" → "gpt-4.1"
+        azure_model = model[len("azure-"):]  # e.g. "azure-gpt-5.4" → "gpt-5.4"
 
         # Strip any path/query from endpoint — SDK expects just scheme+host
         from urllib.parse import urlparse

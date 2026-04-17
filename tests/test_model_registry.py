@@ -1,7 +1,10 @@
-"""Phase 2 / Plan 02-02: MODEL_REGISTRY capability-field invariants.
+"""Phase 2 / Plan 02-02 + 02-04: MODEL_REGISTRY capability-field invariants.
 
 Enforces D-04 (every entry has `supports_thinking: bool`) and D-05
 (no `model.startswith(...)` thinking-capability branching).
+
+Post-02-04 the whitelist is finalized: the three transient `gpt-4.1*` entries
+that were carried through 02-02 are purged in 02-04 and no longer appear here.
 """
 from __future__ import annotations
 
@@ -12,16 +15,12 @@ from scripts.evaluation.llm_evaluate import MODEL_REGISTRY
 
 LLM_EVAL_PATH = Path(__file__).parent.parent / "scripts" / "evaluation" / "llm_evaluate.py"
 
-# Post-02-02 (pre-02-04) expected thinking-capable set.
-# Once 02-04 purges gpt-4.1-*, run the same test under that plan's updated expected set.
-EXPECTED_THINKERS_POST_02_02 = {
+# Post-02-04 authoritative thinking-capable set.
+EXPECTED_THINKERS = {
     "azure-gpt-5.4",
     "o3-2025-04-16",
     "o4-mini-2025-04-16",
     "together-qwen-3.5-397b-a17b",
-    # Transient — removed in 02-04:
-    "gpt-4.1-2025-04-14",
-    "azure-gpt-4.1",
 }
 
 
@@ -38,17 +37,18 @@ def test_every_supports_thinking_is_bool():
 
 
 def test_thinking_whitelist_matches_d04():
-    """Every key expected-thinker must be in the registry and set True.
+    """Every expected thinker must be in the registry and set True.
     Every other registry entry must be False.
+
+    Post-02-04 the transient-entry guard is removed: the whitelist is now
+    authoritative and every expected thinker MUST exist in the registry.
     """
-    # All expected thinkers that exist must be True.
-    for k in EXPECTED_THINKERS_POST_02_02:
-        if k in MODEL_REGISTRY:
-            assert MODEL_REGISTRY[k]["supports_thinking"] is True, \
-                f"{k} must have supports_thinking=True per D-04"
-    # Every other entry must be False.
+    for k in EXPECTED_THINKERS:
+        assert k in MODEL_REGISTRY, f"{k} must remain in registry post-02-04"
+        assert MODEL_REGISTRY[k]["supports_thinking"] is True, \
+            f"{k} must have supports_thinking=True per D-04"
     for k, v in MODEL_REGISTRY.items():
-        if k not in EXPECTED_THINKERS_POST_02_02:
+        if k not in EXPECTED_THINKERS:
             assert v["supports_thinking"] is False, \
                 f"{k} unexpectedly marked supports_thinking=True; update D-04 whitelist?"
 
