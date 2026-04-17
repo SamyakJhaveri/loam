@@ -83,9 +83,12 @@ Run ALL of these commands before making any paid API call. Each must exit 0.
 If any fails, the runbook is stale — pull `main` and retry.
 
 ```bash
-# 4a. Verify CLI surface: --thinking, --task-list, --dry-run flags exist
-python3 scripts/evaluation/run_eval_batch.py --help | grep -Eq -- '--thinking|--task-list|--dry-run' \
-  && echo "CLI flags OK" || echo "FAIL: pull main and retry"
+# 4a. Verify CLI surface: --thinking + --task-list on run_eval_batch.py;
+#     --dry-run on llm_evaluate.py (run_eval_batch.py does NOT carry --dry-run).
+python3 scripts/evaluation/run_eval_batch.py --help | grep -Eq -- '--thinking|--task-list' \
+  && echo "batch launcher CLI flags OK" || echo "FAIL: pull main and retry"
+python3 scripts/evaluation/llm_evaluate.py --help | grep -q -- '--dry-run' \
+  && echo "llm_evaluate --dry-run OK" || echo "FAIL: pull main and retry"
 
 # 4b. Verify azure-gpt-5.4 is in MODEL_REGISTRY with supports_thinking=True
 python3 -c "
@@ -98,13 +101,16 @@ print('MODEL_REGISTRY OK')
 # 4c. Verify derive_l0_passers.py is available
 python3 scripts/evaluation/derive_l0_passers.py --help && echo "derive_l0_passers OK"
 
-# 4d. Zero-cost dry-run smoke (one direction, one kernel — no API call)
-python3 scripts/evaluation/run_eval_batch.py \
-  --suite rodinia --direction cuda-to-omp \
-  --models azure-gpt-5.4 \
-  --augment-levels 0 --num-samples 1 \
+# 4d. Zero-cost dry-run smoke — uses llm_evaluate.py (the only entry point with --dry-run).
+#     Exercises the same evaluate_translation() prompt-construction path that Stage A would use.
+python3 scripts/evaluation/llm_evaluate.py \
+  --source specs/rodinia-bfs-cuda.json \
+  --target specs/rodinia-bfs-omp.json \
+  --model azure-gpt-5.4 \
+  --project-root . \
   --temperature 0.7 --thinking on \
-  --dry-run --project-root . \
+  --num-samples 1 --augment-level 0 \
+  --dry-run \
   && echo "dry-run smoke OK"
 ```
 
