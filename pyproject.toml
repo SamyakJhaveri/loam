@@ -33,6 +33,7 @@ all = [
 [tool.pytest.ini_options]
 markers = [
     "integration: requires real benchmark files on disk (GPU machine only)",
+    "llm: real LLM API calls (gated by PARBENCH_RUN_LLM_TESTS=1; costs ~$5.81 for full smoke set)",
 ]
 
 [tool.setuptools.packages.find]
