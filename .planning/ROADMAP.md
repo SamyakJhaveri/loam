@@ -56,6 +56,7 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 - New `--task-list <json>` flag on the eval batch launcher: consumes passer JSON instead of enumerating from manifest
 - Prompt construction verified for each suite via `--dry-run`
 - Real LLM calls tested: 1 program per suite, cuda-to-omp direction, via Qwen and GPT-5.4
+- Integration smoke + GPT-5.4 handoff runbook: `tests/test_eval_integration_smoke.py` covers zero-API dry-run matrix (5 suites × 6 directions × 2 models), real-API E2E canonical→derive→ablation slice on a candidate kernel (pass/fail decided empirically; zero-passer → `pytest.fail`), and one omp-to-cuda cell to prove direction independence. `docs/neurips2026-gpt5-handoff.md` is the runbook for Le to run GPT-5.4 on his own clone and hand back result JSONs as a tarball.
 
 **Success Criteria:**
 1. End-to-end canonical eval works for 1 kernel per suite with both models (result JSONs contain `temperature=0.7`, `num_samples=3`, `augment_level=0`, thinking=ON markers)
@@ -64,7 +65,7 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 4. All gpt-4.1 model IDs absent from scripts/docs (per `grep -rn "gpt-4\.1" scripts/ docs/ .planning/`)
 5. `pass_at_k(k=3)` returns correct values for known inputs (existing test unchanged)
 
-**Plans:** 7 plans
+**Plans:** 8 plans
 - [ ] 02-01-add-azure-gpt54-registry-PLAN.md — Add `azure-gpt-5.4` to MODEL_REGISTRY
 - [ ] 02-02-supports-thinking-capability-PLAN.md — Add `supports_thinking: bool` capability field + TypedDict schema
 - [ ] 02-03-thinking-cli-flag-PLAN.md — `--thinking on|off` CLI flag wired to Qwen (:1000-1002) + Azure (:878); result JSON schema bump (thinking_enabled, num_samples)
@@ -72,10 +73,14 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 - [ ] 02-05-derive-l0-passers-PLAN.md — New `scripts/evaluation/derive_l0_passers.py` (pass@1-of-any)
 - [ ] 02-06-task-list-flag-PLAN.md — New `--task-list <json>` flag on eval batch launcher with argparse mutex group
 - [ ] 02-07-eval-e2e-smoke-PLAN.md — End-to-end smoke test (5 suites × 2 models × cuda-to-omp, gated by `PARBENCH_RUN_LLM_TESTS=1`)
+- [ ] 02-08-integration-smoke-and-handoff-PLAN.md — Integration smoke + GPT-5.4 handoff runbook (dry-run matrix 5×6×2 + real E2E canonical→derive→ablation slice + omp-to-cuda cell + `docs/neurips2026-gpt5-handoff.md`)
 
 ### Phase 3: Full Evaluation Runs
 
 **Goal:** Complete canonical + L0-conditional ablation runs for Qwen 3.5 397B and Azure GPT-5.4 across all 5 suites, all 6 directions (including omp_target case studies where available), using a 3-phase launch sequence.
+
+**Execution split (two-track):**
+Phase A (canonical) and Phase C (ablation) run on **two machines**: `azure-gpt-5.4` streams are executed by Le on his own clone of the repo per `docs/neurips2026-gpt5-handoff.md`; result JSONs are delivered back to Samyak as a tarball and committed to `main`. `together-qwen-3.5-397b-a17b` streams run on the Linux GPU machine. Phase B (`derive_l0_passers.py`) runs on the machine that produced each canonical set. No named branches; no cross-repo merges. (See decision D-34 in `.planning/phases/02-llm-eval-testing/02-CONTEXT.md`.)
 
 **Depends on:** Phase 2
 

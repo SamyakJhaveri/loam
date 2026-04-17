@@ -366,6 +366,7 @@ def test_smoke_budget_documented_in_this_file():
 - `python3 -c "from tests.conftest import PROJECT_ROOT; from tests.test_spec_loader_integration import SUITE_SPECS; print(PROJECT_ROOT, len(SUITE_SPECS) if hasattr(SUITE_SPECS, '__len__') else 'n/a')"` exits 0.
 - `grep -c '@pytest.mark.llm' tests/` or equivalent shows the `llm` marker only in `test_eval_e2e_smoke.py`.
 - `git diff --stat` shows only pyproject.toml, tests/conftest.py, tests/test_eval_e2e_smoke.py.
+- Cross-reference: companion plan `02-08-integration-smoke-and-handoff-PLAN.md` provides the broader integration smoke (dry-run matrix + ablation E2E slice + handoff runbook) that depends on this plan's `llm` marker and `PROJECT_ROOT` promotion.
 </verification>
 
 <success_criteria>

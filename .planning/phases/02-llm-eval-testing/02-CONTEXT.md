@@ -115,6 +115,16 @@ Additive, non-redesigning changes to the evaluation pipeline that enable the new
   - `docs/neurips2026-experiment-plan.md §3.1 line 144` still cites $0.206/sample (GPT-5 standard) and line 147 cites $0.025/sample for "Qwen 3.5 Coder 480B" (WRONG model — ParBench targets 397B-a17b). Reconciling that doc is out of Phase 2 scope; tracked as a follow-up PR.
   - Note: "GPT-5.4" is the ParBench-internal registry key / Azure deployment name chosen by Le; the Azure SKU/tier is "GPT-5 standard".
 
+### Integration smoke + handoff (02-08 addendum — 2026-04-17)
+
+**D-31 — Dry-run matrix enumeration.** The 02-08 dry-run matrix parametrizes over: (a) the 5 suite names from `SUITE_SPECS` at `tests/test_spec_loader_integration.py:34` (rodinia, xsbench, rsbench, mixbench, hecbench), (b) the 6 translation directions `cuda-to-omp`, `omp-to-cuda`, `cuda-to-opencl`, `opencl-to-cuda`, `omp-to-opencl`, `opencl-to-omp`, and (c) the 2 models `together-qwen-3.5-397b-a17b` and `azure-gpt-5.4`. Total nominal = 60 cases; skips are derived at collection time. Marker: `@pytest.mark.integration` only (no `llm`), so the matrix exercises every default `pytest tests/` run at zero API cost.
+
+**D-32 — KNOWN_FAIL + missing-target skip semantics.** 02-08 parses `.claude/rules/known-issues.md` §"KNOWN_FAIL Specs (8 — exclude from eval batches)" at test-**collection** time (not hard-coded in the test module). Any dry-run or real-API case whose source OR target spec is in that 8-entry set calls `pytest.skip(...)` with the spec id in the reason. Separately, 02-08 loads `manifest.jsonl` at collection time and skips combinations whose target-API spec does not exist (e.g. mixbench has no `omp_target` spec, so any mixbench `*-to-omp_target` pair is skipped — this specific example is illustrative; the real skip set is derived from `manifest.jsonl` at test-collection time). Rationale: the KNOWN_FAIL list drifts — hard-coding it in the test module creates a second source of truth that will rot.
+
+**D-33 — Ablation-slice candidate-kernel rule.** The 02-08 real-API `test_real_e2e_canonical_to_ablation` test picks `rodinia-bfs-cuda → rodinia-bfs-omp` as a **candidate** (small runtime, small source, historically stable build) — NOT as a "known passer for model X". The canonical step (pass@3, L0, temp=0.7, thinking=on) decides pass/fail empirically. If `derive_l0_passers.py` returns zero passers for the (candidate, model) cell, the test calls `pytest.fail(...)` with guidance to pick a different candidate or investigate. An empty-passer smoke is NOT acceptable as "green light" — it IS the signal this test exists to catch before Phase 3 spends real money. Defines "pass@1-of-any" (on first use) per D-18: a cell is a passer iff ≥1 of its 3 canonical samples has `overall_status == PASS`. All real-API tests use `tmp_path` as `--project-root` to avoid touching `results/evaluation/`.
+
+**D-34 — GPT-5.4 handoff runbook + two-track Phase 3 execution split.** Phase 3 execution splits across two machines: **Phase A (canonical)** and **Phase C (ablation)** for `azure-gpt-5.4` run on Le's own clone of the repo (Azure account ownership + throughput) per `docs/neurips2026-gpt5-handoff.md`; the equivalent `together-qwen-3.5-397b-a17b` streams run on the Linux GPU machine. **Phase B (`derive_l0_passers.py`)** runs on the machine that produced each canonical set. Deliverable is a clone + result-JSON-tarball handback: Le tars `results/evaluation/azure-gpt-5.4/` and sends it; Samyak extracts, runs `/validate`, commits to `main`. No named branches, no cross-repo merges. The runbook (`docs/neurips2026-gpt5-handoff.md`) documents: context, repo setup, secrets checklist (`AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, deployment name `gpt-5.4`), pre-flight verification, exact stage commands for canonical/derive/ablation, output layout + schema, cost model at $2.50/1M input + $15/1M output (verified 2026-04-17 against azure.microsoft.com), $559 tentative ceiling (pending Gal sign-off during Phase 3 kickoff), $600 abort threshold (ROADMAP Phase 3 SC-5), and tarball delivery.
+
 ### Claude's Discretion
 
 - Fixture layout in `tests/test_derive_l0_passers.py` (tempfile-per-test vs module-scoped).
@@ -202,7 +212,7 @@ Downstream agents MUST read these before planning or implementing.
 
 ---
 
-## Plan Decomposition (7 atomic plans)
+## Plan Decomposition (8 atomic plans)
 
 Per user selection. Each plan is one atomic commit.
 
@@ -215,6 +225,7 @@ Per user selection. Each plan is one atomic commit.
 | 02-05 | New `scripts/evaluation/derive_l0_passers.py` | new file | `tests/test_derive_l0_passers.py` (new; synthetic fixtures, D-22) |
 | 02-06 | New `--task-list <json>` flag on `run_eval_batch.py` | `scripts/evaluation/run_eval_batch.py` | `tests/test_run_eval_batch_task_list.py` (new; mocked evaluate_translation, D-26) |
 | 02-07 | End-to-end smoke test (5 suites × 2 models × cuda-to-omp) | `tests/test_eval_e2e_smoke.py` (new), `tests/conftest.py` (register `llm` marker) | The smoke test IS the test; gated by `PARBENCH_RUN_LLM_TESTS=1` |
+| 02-08 | Integration smoke + GPT-5.4 handoff runbook (dry-run matrix + real E2E canonical→derive→ablation slice + omp-to-cuda cell + handoff runbook) | `tests/test_eval_integration_smoke.py` (new), `docs/neurips2026-gpt5-handoff.md` (new) | Dry-run matrix (zero API) + real-API tests gated by `PARBENCH_RUN_LLM_TESTS=1` |
 
 **Total estimated effort:** 1–1.5 days of focused work (excludes smoke-test wall clock, which is ~10 min for 30 real LLM calls).
 
@@ -240,6 +251,9 @@ Phase 2 is complete when:
 6. `python3 scripts/evaluation/run_eval_batch.py --help` shows `--task-list` and `--thinking` flags.
 7. `.planning/phases/02-llm-eval-testing/02-CONTEXT.md` exists with the content of this plan file.
 8. `.planning/STATE.md` updated: Phase 2 status → "In progress" (to be updated by `/gsd-plan-phase 2` after this discuss phase is approved).
+
+9. 02-08 plan file exists with frontmatter `depends_on: [02-01, 02-02, 02-03, 02-05, 02-06, 02-07]`, non-empty `must_haves.truths` + `must_haves.artifacts`, and `<verify>` blocks with real commands (pytest/grep/python3/ls).
+10. `docs/neurips2026-gpt5-handoff.md` exists with required pins: `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `reasoning_effort=medium`, `pre-flight`, `$2.50`, `derive_l0_passers`, `--task-list`.
 
 No evaluation streams are launched in Phase 2.
 
