@@ -108,7 +108,12 @@ Additive, non-redesigning changes to the evaluation pipeline that enable the new
 - **D-29:** Smoke test flow per (suite_sample, model) pair:
   1. `--dry-run` invocation of `run_eval_batch.py` — asserts the prompt is built, no API call.
   2. One real invocation — asserts `overall_status` is one of {PASS, BUILD_FAIL, RUN_FAIL, VERIFY_FAIL} (functional smoke — not a correctness claim); asserts result JSON has all seven schema-guardrail fields: `thinking_enabled`, `num_samples`, `sample_id`, `temperature`, `augment_level`, `model`, `overall_status`. The two new fields (`thinking_enabled`, `num_samples`) are the primary regression guardrails; the remaining five are existing fields re-asserted to catch accidental schema removals.
-- **D-30:** Budget: 5 kernels × 2 models × 3 samples = 30 samples. At GPT-5 standard tier via `azure-gpt-5.4` deployment (`reasoning_effort=medium`) ≈ $0.206/sample (per `docs/neurips2026-experiment-plan.md` §3.1 line 144) and Qwen ≈ $0.025/sample, smoke test cost = 15 × $0.206 + 15 × $0.025 = **$3.47** (inside the $3–$5 claim). Note: "GPT-5.4" is the ParBench-internal registry key / Azure deployment name chosen by Le; the Azure SKU/tier is "GPT-5 standard".
+- **D-30:** Budget: 5 kernels × 2 models × 3 samples = 30 samples. Pricing updated 2026-04-17 against live provider pages:
+  - `azure-gpt-5.4` (GPT-5 standard tier via Azure deployment, `reasoning_effort=medium`, <272K context): **$2.50/1M input, $15/1M output** (source: https://azure.microsoft.com/en-us/pricing/details/azure-openai/ and https://ai.azure.com/catalog/models/gpt-5.4). At 5k prompt + 20k output per sample → **$0.3125/sample**.
+  - `together-qwen-3.5-397b-a17b` (serverless): **$0.60/1M input, $3.60/1M output** (source: https://www.together.ai/models/qwen3-5-397b-a17b). Same assumption → **$0.075/sample**.
+  - Smoke cost = 15 × $0.3125 + 15 × $0.075 = $4.69 + $1.13 = **$5.81**. This EXCEEDS the prior $3–$5 claim; revised ceiling is **$6**. Reasoning tokens bill as output tokens on both providers — if `reasoning_effort=medium` doubles output tokens (20k → 40k), worst-case smoke cost ≈ $10.90.
+  - `docs/neurips2026-experiment-plan.md §3.1 line 144` still cites $0.206/sample (GPT-5 standard) and line 147 cites $0.025/sample for "Qwen 3.5 Coder 480B" (WRONG model — ParBench targets 397B-a17b). Reconciling that doc is out of Phase 2 scope; tracked as a follow-up PR.
+  - Note: "GPT-5.4" is the ParBench-internal registry key / Azure deployment name chosen by Le; the Azure SKU/tier is "GPT-5 standard".
 
 ### Claude's Discretion
 

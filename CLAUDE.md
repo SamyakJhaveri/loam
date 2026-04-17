@@ -105,6 +105,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - `.validation_passed` sentinel is single-use — it clears after each successful commit. Multi-commit sessions must re-run waves 1-3 before every commit. Docs-only commits still require validation (~90s).
 - When citing code identifiers in planning/design docs (line numbers, `MODEL_REGISTRY` keys, function names), grep to verify BEFORE commit. Line numbers drift; "fixing" a stale number without verifying the target line is in the right code block can introduce regressions (seen 2026-04-16: Azure call at `:879` was "fixed" to `:956`, which is actually the Gemini call).
 - **Model selection:** Use Opus for main work. Before commit/push: manually run `/model haiku` (faster, cheaper for transactional git ops).
+- **Multi-worker orchestration:** Use `/agent-team` as the default for any task that splits into 2+ parallel workers, regardless of whether workers need cross-talk. This overrides the `agent-team` skill description's "NOT for independent parallel tasks" guidance for this project — one orchestration pattern is simpler than two. Default composition: Opus advisor + Sonnet workers. Use `--all-opus` only when deep reasoning from every worker is explicitly required. Do NOT use `dispatching-parallel-agents` — consolidate on `/agent-team`.
 
 ## Conditional Rules (`.claude/rules/`, auto-loaded by file path)
 

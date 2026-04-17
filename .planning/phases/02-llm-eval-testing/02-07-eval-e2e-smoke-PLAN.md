@@ -190,10 +190,14 @@ Reuses the canonical `SUITE_SPECS` from `tests/test_spec_loader_integration.py:3
   - mixbench-mixbench-cuda
   - hecbench-bezier-surface-cuda
 
-Budget breakdown (D-30): 5 kernels × 2 models × 3 samples = 30 samples.
-  azure-gpt-5.4 (reasoning_effort=medium) ≈ $0.206/sample → 15 × $0.206 = $3.09
-  together-qwen-3.5-397b-a17b            ≈ $0.025/sample → 15 × $0.025 = $0.38
-  Total ≈ $3.47.
+Budget breakdown (D-30, pricing verified 2026-04-17): 5 kernels × 2 models × 3 samples = 30 samples.
+  azure-gpt-5.4 (GPT-5 standard tier, $2.50/1M in + $15/1M out, 5k prompt + 20k output)
+    ≈ $0.3125/sample → 15 × $0.3125 = $4.69
+  together-qwen-3.5-397b-a17b ($0.60/1M in + $3.60/1M out, same assumption)
+    ≈ $0.075/sample → 15 × $0.075 = $1.13
+  Total ≈ $5.81 (revised ceiling $6; prior $3.47 figure obsolete).
+  Reasoning tokens bill as output tokens on both providers — worst-case with 2× output
+  inflation ≈ $10.90.
 
 Registry-key vs SKU note: "GPT-5.4" is the ParBench-internal registry key / Azure
 deployment name chosen by Le; the Azure SKU/tier is "GPT-5 standard".
