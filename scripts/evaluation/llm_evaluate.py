@@ -42,7 +42,7 @@ import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
 # sys.path: scripts/evaluation/ -> scripts/ -> project_root/
 _SCRIPT_DIR = Path(__file__).resolve().parent
@@ -58,41 +58,57 @@ from harness.verifier import extract_metrics, verify_run
 # Constants
 # ---------------------------------------------------------------------------
 
-MODEL_REGISTRY: dict[str, dict[str, str]] = {
+class ModelRegistryEntry(TypedDict, total=False):
+    provider: str  # required at runtime
+    supports_thinking: bool  # required at runtime
+    notes: str  # required at runtime
+    api_model: NotRequired[str]  # optional, used by together-qwen entry
+
+
+MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
     "claude-sonnet-4-20250514": {
         "provider": "anthropic",
+        "supports_thinking": False,
         "notes": "Primary eval model",
     },
     "claude-sonnet-4-6-20260218": {
         "provider": "anthropic",
+        "supports_thinking": False,
         "notes": "Latest Sonnet",
     },
     "claude-opus-4-6-20260205": {
         "provider": "anthropic",
+        "supports_thinking": False,
         "notes": "Strongest reasoning",
     },
     "claude-haiku-4-5-20251001": {
         "provider": "anthropic",
+        "supports_thinking": False,
         "notes": "Fast/cheap baseline",
     },
     "gpt-4o": {
         "provider": "openai",
+        "supports_thinking": False,
         "notes": "Strong general-purpose",
     },
     "gpt-4.1-2025-04-14": {
         "provider": "openai",
+        "supports_thinking": True,
         "notes": "Latest GPT-4 class",
     },
     "o3-2025-04-16": {
         "provider": "openai",
+        "supports_thinking": True,
         "notes": "Reasoning model",
     },
     "o4-mini-2025-04-16": {
         "provider": "openai",
+        "supports_thinking": True,
         "notes": "Fast reasoning",
     },
     "azure-gpt-4.1": {
         "provider": "azure",
+        "supports_thinking": True,
         "notes": "GPT-4.1 via Azure OpenAI (research lead deployment)",
     },
     "azure-gpt-5.4": {
@@ -102,18 +118,22 @@ MODEL_REGISTRY: dict[str, dict[str, str]] = {
     },
     "groq-llama-3.3-70b-versatile": {
         "provider": "groq",
+        "supports_thinking": False,
         "notes": "Llama 3.3 70B via Groq (second eval model, Session 3)",
     },
     "gemini-2.5-flash-lite": {
         "provider": "google",
+        "supports_thinking": False,
         "notes": "Gemini 2.5 Flash-Lite via Google AI (OpenAI-compatible endpoint)",
     },
     "gemini-2.5-flash": {
         "provider": "google",
+        "supports_thinking": False,
         "notes": "Gemini 2.5 Flash via Google AI (thinking disabled via reasoning_effort=none)",
     },
     "together-qwen-3.5-397b-a17b": {
         "provider": "together",
+        "supports_thinking": True,
         "api_model": "Qwen/Qwen3.5-397B-A17B",
         "notes": "Qwen 3.5 397B MoE via Together AI (thinking disabled)",
     },
