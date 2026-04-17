@@ -43,7 +43,7 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 
 ### Phase 2: LLM Eval Testing
 
-**Goal:** Can run `run_eval_batch.py` end-to-end for 1 kernel per suite with both Qwen and Azure GPT-5.4 under the canonical config (pass@3, L0, temp=0.7, thinking=ON, reasoning_effort=medium, self-repair=OFF), and separately run the L0-conditional ablation launcher with a task list from `derive_l0_passers.py`.
+**Goal:** Can run the eval batch launcher end-to-end for 1 kernel per suite with both Qwen and Azure GPT-5.4 under the canonical config (pass@3, L0, temp=0.7, thinking=ON, reasoning_effort=medium, self-repair=OFF), and separately run the L0-conditional ablation launcher with a task list from `derive_l0_passers.py`.
 
 **Depends on:** Phase 1
 
@@ -53,16 +53,25 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 - Qwen `enable_thinking` flipped to `True`; new `--thinking on|off` CLI flag (default `on`)
 - `gpt-4.1-2025-04-14`, `azure-gpt-4.1`, `gpt-4.1-mini` purged from scripts/docs (result JSONs stay on disk for audit)
 - New `scripts/evaluation/derive_l0_passers.py`: takes canonical result dir + model, emits `l0_passers_{model}.json` with cells where ≥1 of 3 samples passed (pass@1-of-any)
-- New `--task-list <json>` flag on `run_eval_batch.py`: consumes passer JSON instead of enumerating from manifest
+- New `--task-list <json>` flag on the eval batch launcher: consumes passer JSON instead of enumerating from manifest
 - Prompt construction verified for each suite via `--dry-run`
 - Real LLM calls tested: 1 program per suite, cuda-to-omp direction, via Qwen and GPT-5.4
 
 **Success Criteria:**
 1. End-to-end canonical eval works for 1 kernel per suite with both models (result JSONs contain `temperature=0.7`, `num_samples=3`, `augment_level=0`, thinking=ON markers)
 2. `derive_l0_passers.py` correctly partitions synthetic canonical fixtures into passers/failers (pass@1-of-any semantics)
-3. `run_eval_batch.py --task-list` consumes the passer JSON and runs only listed cells
+3. Eval batch launcher `--task-list` consumes the passer JSON and runs only listed cells
 4. All gpt-4.1 model IDs absent from scripts/docs (per `grep -rn "gpt-4\.1" scripts/ docs/ .planning/`)
 5. `pass_at_k(k=3)` returns correct values for known inputs (existing test unchanged)
+
+**Plans:** 7 plans
+- [ ] 02-01-add-azure-gpt54-registry-PLAN.md — Add `azure-gpt-5.4` to MODEL_REGISTRY
+- [ ] 02-02-supports-thinking-capability-PLAN.md — Add `supports_thinking: bool` capability field + TypedDict schema
+- [ ] 02-03-thinking-cli-flag-PLAN.md — `--thinking on|off` CLI flag wired to Qwen (:1000-1002) + Azure (:878); result JSON schema bump (thinking_enabled, num_samples)
+- [ ] 02-04-purge-gpt41-PLAN.md — Purge `gpt-4.1-*` from 9 ParBench-owned files
+- [ ] 02-05-derive-l0-passers-PLAN.md — New `scripts/evaluation/derive_l0_passers.py` (pass@1-of-any)
+- [ ] 02-06-task-list-flag-PLAN.md — New `--task-list <json>` flag on eval batch launcher with argparse mutex group
+- [ ] 02-07-eval-e2e-smoke-PLAN.md — End-to-end smoke test (5 suites × 2 models × cuda-to-omp, gated by `PARBENCH_RUN_LLM_TESTS=1`)
 
 ### Phase 3: Full Evaluation Runs
 
