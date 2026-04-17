@@ -758,6 +758,7 @@ def call_llm(
     messages: list[dict[str, str]],
     verbose: bool = False,
     temperature: float = 0.0,
+    thinking_enabled: bool = False,
 ) -> dict[str, Any]:
     """Call the LLM and return response + usage metadata.
 
@@ -900,12 +901,19 @@ def call_llm(
             logger.info(
                 "Calling Azure OpenAI deployment=%s messages=%d", azure_model, len(full_messages)
             )
-        response = client_az.chat.completions.create(
-            model=azure_model,
-            max_completion_tokens=32768,
-            temperature=temperature,
-            messages=full_messages,
-        )
+        _az_kwargs: dict[str, Any] = {
+            "model": azure_model,
+            "max_completion_tokens": 32768,
+            "temperature": temperature,
+            "messages": full_messages,
+        }
+        # Plan 02-03 (D-08): inject reasoning_effort="medium" when --thinking=on
+        # AND the model has supports_thinking=True (capability-gated). Omit otherwise.
+        # Do NOT conflate with Gemini's `reasoning_effort="none"` safety line below —
+        # that is a different function, unrelated to the --thinking flag.
+        if thinking_enabled and MODEL_REGISTRY.get(model, {}).get("supports_thinking", False):
+            _az_kwargs["reasoning_effort"] = "medium"
+        response = client_az.chat.completions.create(**_az_kwargs)
         response_text = response.choices[0].message.content or ""
         prompt_tokens = response.usage.prompt_tokens
         completion_tokens = response.usage.completion_tokens
@@ -1023,7 +1031,7 @@ def call_llm(
             # enable_thinking=False in the Jinja2 chat template.
             # Ref: https://docs.together.ai/reference/chat-completions
             extra_body={
-                "chat_template_kwargs": {"enable_thinking": False},
+                "chat_template_kwargs": {"enable_thinking": thinking_enabled},
             },
         )
         response_text = response.choices[0].message.content or ""
@@ -1372,6 +1380,8 @@ def evaluate_translation(
     temperature: float = 0.0,
     sample_id: int = 0,
     save_to_disk: bool = True,
+    thinking: str = "on",
+    num_samples: int = 1,
 ) -> dict[str, Any]:
     """Translate source → target using the LLM, then build/run/verify.
 
@@ -1403,6 +1413,19 @@ def evaluate_translation(
     kernel_name = source_spec["identity"]["kernel_name"]
     source_api = source_spec.get("identity", {}).get("parallel_api", "")
     target_api = target_spec.get("identity", {}).get("parallel_api", "")
+
+    # Plan 02-03 (D-06..D-10): resolve the --thinking flag against the model's
+    # capability once per call. `thinking_enabled` is the authoritative boolean
+    # used downstream (call_llm, result JSON). The flag is a no-op for models
+    # with supports_thinking=False; log at DEBUG so it's visible without spam.
+    _model_caps = MODEL_REGISTRY.get(model, {})
+    thinking_enabled: bool = (thinking == "on") and bool(
+        _model_caps.get("supports_thinking", False)
+    )
+    if not _model_caps.get("supports_thinking", False):
+        logger.debug(
+            "--thinking=%s ignored for %s (supports_thinking=False)", thinking, model
+        )
 
     if verbose:
         logger.info("Evaluating: %s → %s  model=%s", source_id, target_id, model)
@@ -1538,7 +1561,11 @@ def evaluate_translation(
 
             # -- Call LLM --
             try:
-                llm_result = call_llm(model, system_msg, messages, verbose=verbose, temperature=temperature)
+                llm_result = call_llm(
+                    model, system_msg, messages,
+                    verbose=verbose, temperature=temperature,
+                    thinking_enabled=thinking_enabled,
+                )
             except Exception as exc:
                 error_message = f"LLM call failed: {exc}"
                 logger.error(error_message)
@@ -1840,6 +1867,10 @@ def evaluate_translation(
         "augment_level": augment_level,
         "temperature": temperature,
         "sample_id": sample_id,
+        # Plan 02-03 (D-09): new top-level fields for thinking-state filtering
+        # and single-file pass@k reconstruction.
+        "thinking_enabled": thinking_enabled,
+        "num_samples": num_samples,
         "translation_mode": translation_mode,
         "translation_type": "kernel_only" if _is_kernel_only_translation(target_spec) else "full_program",
         "verification_mode": ("same_api_target_pattern" if source_api == target_api
@@ -2073,6 +2104,28 @@ def main() -> None:
         default=0,
         help="Sample index for pass@k runs (0=default, >0 adds -s{N} to filename). Default: 0",
     )
+    parser.add_argument(
+        "--thinking",
+        choices=["on", "off"],
+        default="on",
+        help=(
+            "Enable LLM reasoning/thinking mode (default: on). "
+            "'on' → reasoning_effort=medium for Azure reasoning models, "
+            "enable_thinking=True for Qwen. 'off' → omit reasoning_effort, "
+            "enable_thinking=False. No-op for models where "
+            "MODEL_REGISTRY[model]['supports_thinking'] is False."
+        ),
+    )
+    parser.add_argument(
+        "--num-samples",
+        type=int,
+        default=1,
+        help=(
+            "Number of samples per task (k in pass@k). Single-task CLI default is 1; "
+            "run_eval_batch.py overrides. Recorded in the result JSON's num_samples field. "
+            "Default: 1"
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -2115,6 +2168,8 @@ def main() -> None:
         use_cpu_timing=args.use_cpu_timing,
         temperature=args.temperature,
         sample_id=args.sample_id,
+        thinking=args.thinking,
+        num_samples=args.num_samples,
     )
 
     _print_result(result, as_json=args.as_json, verbose=args.verbose)

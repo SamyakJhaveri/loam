@@ -144,6 +144,7 @@ def run_batch(
     verbose: bool,
     max_retries: int = 1,
     temperature: float = 0.0,
+    thinking: str = "on",
 ) -> list[dict]:
     """Execute all tasks sequentially; return list of result dicts."""
     results: list[dict] = []
@@ -197,6 +198,8 @@ def run_batch(
                 temperature=temperature,
                 sample_id=sample_id,
                 save_to_disk=False,  # batch runner owns file I/O (avoids dual-write)
+                thinking=thinking,
+                num_samples=num_samples,
             )
         except FileNotFoundError as exc:
             elapsed = time.time() - t0
@@ -466,6 +469,16 @@ def main() -> None:
         help="Number of independent samples per task for pass@k (default: 1).",
     )
     parser.add_argument(
+        "--thinking",
+        choices=["on", "off"],
+        default="on",
+        help=(
+            "Enable LLM reasoning/thinking mode for capable models (default: on). "
+            "Passed through to evaluate_translation(); no-op for models with "
+            "supports_thinking=False in MODEL_REGISTRY."
+        ),
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         default=False,
@@ -508,6 +521,7 @@ def main() -> None:
         f"augment_levels={args.augment_levels}  "
         f"temperature={args.temperature}  "
         f"num_samples={args.num_samples}  "
+        f"thinking={args.thinking}  "
         f"resume={args.resume}",
         flush=True,
     )
@@ -523,6 +537,7 @@ def main() -> None:
         verbose=args.verbose,
         max_retries=args.max_retries,
         temperature=args.temperature,
+        thinking=args.thinking,
     )
     total_elapsed = time.time() - t_start
 
@@ -543,6 +558,7 @@ def main() -> None:
         "kernels": args.kernels,
         "temperature": args.temperature,
         "num_samples": args.num_samples,
+        "thinking": args.thinking,
         "total_tasks": len(results),
         "total_elapsed_seconds": round(total_elapsed, 1),
         "results": results,
