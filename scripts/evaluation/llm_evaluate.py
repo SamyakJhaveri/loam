@@ -95,6 +95,11 @@ MODEL_REGISTRY: dict[str, dict[str, str]] = {
         "provider": "azure",
         "notes": "GPT-4.1 via Azure OpenAI (research lead deployment)",
     },
+    "azure-gpt-5.4": {
+        "provider": "azure",
+        "supports_thinking": True,
+        "notes": "Azure OpenAI GPT-5.4 reasoning deployment (Le) — requires AZURE_OPENAI_API_KEY+AZURE_OPENAI_ENDPOINT",
+    },
     "groq-llama-3.3-70b-versatile": {
         "provider": "groq",
         "notes": "Llama 3.3 70B via Groq (second eval model, Session 3)",
