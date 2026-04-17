@@ -415,6 +415,14 @@ ParBench is a kernel-centric benchmark framework for evaluating LLM-based parall
 | workflow-ref | "Skill/agent reference table, agent teams, thinking levels, atomic task decomposition, memory hygiene, course correction" | `.claude/skills/workflow-ref/SKILL.md` |
 <!-- GSD:skills-end -->
 
+### External Plugin Skills
+
+Skills provided by installed plugins (loaded via `~/.claude/settings.json` — not local files in `.claude/skills/`). Kept in a separate sub-table so the Project Skills table above stays a pure index of in-repo `SKILL.md` paths.
+
+| Skill | Description | Plugin | Source |
+|-------|-------------|--------|--------|
+| karpathy-guidelines | Behavioral guidelines to reduce common LLM coding mistakes (Andrej Karpathy's observations). The 4 core principles (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution) are also embedded verbatim in §Behavioral Guidelines above for always-on availability. | `andrej-karpathy-skills` | https://github.com/forrestchang/andrej-karpathy-skills |
+
 <!-- GSD:workflow-start source:GSD defaults -->
 ## GSD Workflow Enforcement
 
