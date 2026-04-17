@@ -67,7 +67,7 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 
 **Plans:** 1/8 plans executed
 - [x] 02-01-add-azure-gpt54-registry-PLAN.md — Add `azure-gpt-5.4` to MODEL_REGISTRY
-- [ ] 02-02-supports-thinking-capability-PLAN.md — Add `supports_thinking: bool` capability field + TypedDict schema
+- [x] 02-02-supports-thinking-capability-PLAN.md — Add `supports_thinking: bool` capability field + TypedDict schema
 - [ ] 02-03-thinking-cli-flag-PLAN.md — `--thinking on|off` CLI flag wired to Qwen (:1000-1002) + Azure (:878); result JSON schema bump (thinking_enabled, num_samples)
 - [ ] 02-04-purge-gpt41-PLAN.md — Purge `gpt-4.1-*` from 9 ParBench-owned files
 - [ ] 02-05-derive-l0-passers-PLAN.md — New `scripts/evaluation/derive_l0_passers.py` (pass@1-of-any)
