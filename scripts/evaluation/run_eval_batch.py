@@ -124,6 +124,107 @@ def _build_tasks(
     return tasks
 
 
+def _build_tasks_from_task_list(
+    task_list_path: Path,
+    project_root: Path,
+    direction: str,
+    models: list[str],
+    augment_levels: list[int],
+    num_samples: int,
+    manifest_path: Path,
+) -> list[dict]:
+    """Build task dict list from a passer-JSON file (D-25, plan 02-06).
+
+    Each entry in the passer JSON looks like:
+        {"source_spec": "rodinia-bfs-cuda", "target_spec": "rodinia-bfs-omp", "augment_level": 0}
+
+    The `augment_level` field in the passer file is a placeholder (D-19) — we override
+    via the supplied `augment_levels` arg. Cross-product with `models` × `augment_levels`
+    × `num_samples`, mirroring the existing manifest-enumeration branch's task dict shape.
+
+    Entries whose source_spec or target_spec are absent from the manifest emit a stderr
+    warning and are skipped (D-26 case 2 — not crash).
+    """
+    src_api, tgt_api = direction.split("-to-")
+
+    try:
+        data = json.loads(task_list_path.read_text())
+    except FileNotFoundError as e:
+        raise FileNotFoundError(f"--task-list file not found: {task_list_path}") from e
+    except json.JSONDecodeError as e:
+        raise ValueError(f"--task-list file is not valid JSON: {task_list_path}: {e}") from e
+
+    if not isinstance(data, list):
+        raise ValueError(
+            f"--task-list file must contain a JSON list of task dicts, got {type(data).__name__}: {task_list_path}"
+        )
+
+    manifest = load_manifest(str(manifest_path))
+    # Index by unique_id (source_suite-kernel_name-parallel_api) → entry
+    manifest_by_id: dict[str, dict] = {}
+    for entry in manifest:
+        uid = f"{entry['source_suite']}-{entry['kernel_name']}-{entry['parallel_api']}"
+        manifest_by_id[uid] = entry
+
+    tasks: list[dict] = []
+    for entry in data:
+        if not isinstance(entry, dict) or "source_spec" not in entry or "target_spec" not in entry:
+            print(
+                f"warning: passer entry skipped — missing source_spec/target_spec: {entry!r}",
+                file=sys.stderr,
+            )
+            continue
+        src = entry["source_spec"]
+        tgt = entry["target_spec"]
+        if src not in manifest_by_id or tgt not in manifest_by_id:
+            print(
+                f"warning: passer entry skipped — not in manifest: "
+                f"source_spec={src!r} target_spec={tgt!r}",
+                file=sys.stderr,
+            )
+            continue
+
+        src_entry = manifest_by_id[src]
+        tgt_entry = manifest_by_id[tgt]
+        # Sanity-check direction matches the passer entry.
+        if src_entry["parallel_api"] != src_api or tgt_entry["parallel_api"] != tgt_api:
+            print(
+                f"warning: passer entry skipped — APIs do not match --direction {direction}: "
+                f"source_spec={src!r}({src_entry['parallel_api']}) "
+                f"target_spec={tgt!r}({tgt_entry['parallel_api']})",
+                file=sys.stderr,
+            )
+            continue
+
+        src_spec_path = project_root / src_entry["spec_file"]
+        tgt_spec_path = project_root / tgt_entry["spec_file"]
+        if not src_spec_path.exists() or not tgt_spec_path.exists():
+            print(
+                f"warning: passer entry skipped — spec file missing on disk: "
+                f"{src_spec_path if not src_spec_path.exists() else tgt_spec_path}",
+                file=sys.stderr,
+            )
+            continue
+
+        kernel = src_entry["kernel_name"]
+        for model in models:
+            for level in augment_levels:
+                for sid in range(num_samples):
+                    tasks.append({
+                        "kernel": kernel,
+                        "src_spec": src_spec_path,
+                        "tgt_spec": tgt_spec_path,
+                        "model": model,
+                        "augment_level": level,
+                        "sample_id": sid,
+                        "num_samples": num_samples,
+                        "src_id": src_spec_path.stem,
+                        "tgt_id": tgt_spec_path.stem,
+                    })
+
+    return tasks
+
+
 def _result_path(project_root: Path, model: str, src_id: str, tgt_id: str, augment_level: int = 0, sample_id: int = 0, num_samples: int = 1) -> Path:
     safe_model = model.replace("/", "_")
     level_tag = f"-L{augment_level}" if augment_level > 0 else ""
@@ -361,22 +462,37 @@ def _generate_markdown(results: list[dict], models: list[str], title: str) -> st
 # CLI                                                                          #
 # --------------------------------------------------------------------------- #
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
+    """Construct the argparse parser. Extracted for testability (plan 02-06)."""
     parser = argparse.ArgumentParser(
         description="Batch LLM evaluation runner for ParBench.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument(
+    # D-23 LOCK: --task-list is mutex with --suite and --kernels via argparse-native
+    # add_mutually_exclusive_group(). Runtime mutex check (parser.error) is forbidden.
+    task_selection = parser.add_mutually_exclusive_group(required=False)
+    task_selection.add_argument(
         "--suite",
         default=None,
-        help="Filter to a single benchmark suite (e.g. 'rodinia').",
+        help="Filter to a single benchmark suite (e.g. 'rodinia'). Mutex with --task-list, --kernels.",
     )
-    parser.add_argument(
+    task_selection.add_argument(
         "--kernels",
         nargs="+",
         default=None,
         metavar="KERNEL",
-        help="Restrict to specific kernel names (e.g. bfs hotspot).",
+        help="Restrict to specific kernel names (e.g. bfs hotspot). Mutex with --task-list, --suite.",
+    )
+    task_selection.add_argument(
+        "--task-list",
+        type=Path,
+        default=None,
+        dest="task_list",
+        help=(
+            "Path to a passer-JSON list (e.g. from derive_l0_passers.py) — "
+            "runs only the listed cells, bypassing manifest enumeration. "
+            "Mutex with --suite and --kernels."
+        ),
     )
     parser.add_argument(
         "--direction",
@@ -484,7 +600,11 @@ def main() -> None:
         default=False,
         help="Verbose output.",
     )
+    return parser
 
+
+def main() -> None:
+    parser = _build_parser()
     args = parser.parse_args()
     project_root = args.project_root.resolve()
     manifest_path = project_root / "manifest.jsonl"
@@ -498,20 +618,31 @@ def main() -> None:
         if lvl not in range(5):
             parser.error(f"--augment-levels values must be 0-4, got {lvl}")
 
-    # Build task list
-    tasks = _build_tasks(
-        manifest_path=manifest_path,
-        project_root=project_root,
-        direction=args.direction,
-        suite=args.suite,
-        kernels=args.kernels,
-        models=args.models,
-        augment_levels=args.augment_levels,
-        num_samples=args.num_samples,
-    )
+    # Build task list — branch on --task-list (D-25, plan 02-06).
+    if args.task_list is not None:
+        tasks = _build_tasks_from_task_list(
+            task_list_path=args.task_list,
+            project_root=project_root,
+            direction=args.direction,
+            models=args.models,
+            augment_levels=args.augment_levels,
+            num_samples=args.num_samples,
+            manifest_path=manifest_path,
+        )
+    else:
+        tasks = _build_tasks(
+            manifest_path=manifest_path,
+            project_root=project_root,
+            direction=args.direction,
+            suite=args.suite,
+            kernels=args.kernels,
+            models=args.models,
+            augment_levels=args.augment_levels,
+            num_samples=args.num_samples,
+        )
 
     if not tasks:
-        print("No tasks found. Check --suite/--kernels/--direction arguments.", flush=True)
+        print("No tasks found. Check --suite/--kernels/--task-list/--direction arguments.", flush=True)
         sys.exit(1)
 
     print(
@@ -556,6 +687,7 @@ def main() -> None:
         "models": args.models,
         "suite": args.suite,
         "kernels": args.kernels,
+        "task_list": str(args.task_list) if args.task_list is not None else None,
         "temperature": args.temperature,
         "num_samples": args.num_samples,
         "thinking": args.thinking,
