@@ -65,8 +65,8 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 4. All gpt-4.1 model IDs absent from scripts/docs (per `grep -rn "gpt-4\.1" scripts/ docs/ .planning/`)
 5. `pass_at_k(k=3)` returns correct values for known inputs (existing test unchanged)
 
-**Plans:** 8 plans
-- [ ] 02-01-add-azure-gpt54-registry-PLAN.md — Add `azure-gpt-5.4` to MODEL_REGISTRY
+**Plans:** 1/8 plans executed
+- [x] 02-01-add-azure-gpt54-registry-PLAN.md — Add `azure-gpt-5.4` to MODEL_REGISTRY
 - [ ] 02-02-supports-thinking-capability-PLAN.md — Add `supports_thinking: bool` capability field + TypedDict schema
 - [ ] 02-03-thinking-cli-flag-PLAN.md — `--thinking on|off` CLI flag wired to Qwen (:1000-1002) + Azure (:878); result JSON schema bump (thinking_enabled, num_samples)
 - [ ] 02-04-purge-gpt41-PLAN.md — Purge `gpt-4.1-*` from 9 ParBench-owned files
