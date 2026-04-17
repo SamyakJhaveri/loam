@@ -323,3 +323,51 @@ produce misleading results.
 
 **Never run LLM evaluations in worktrees** unless you first symlink or copy the Rodinia
 source dirs into the worktree. Use the main repo for all evaluations.
+
+## Result JSON Schema (top-level fields, 2026-04-17 bump)
+
+Every per-task result JSON in `results/evaluation/<model>/` now includes these top-level fields
+(added in Phase 2 / plan 02-03):
+
+- `thinking_enabled: bool` — resolved thinking state at call time
+  (`--thinking` flag × `MODEL_REGISTRY[model]["supports_thinking"]`). Required for
+  canonical / ablation filtering and for pass@k reconstruction under thinking-variant
+  comparisons.
+- `num_samples: int` — k in pass@k (the batch size that produced this result).
+  Enables single-file pass@k reconstruction without grouping.
+
+Historical result JSONs on disk written before this bump do NOT carry these fields and
+are protected by `feedback_protect_qwen_results` / `feedback_protect_cuda_omp_results`;
+do not retrofit.
+
+## CLI flag: `--thinking {on,off}`
+
+Added in Phase 2 / plan 02-03 to both `llm_evaluate.py` and `run_eval_batch.py`.
+Default: `on`. The canonical config (pass@3, L0, temp=0.7) requires `thinking=on`.
+
+Per-provider semantics (capability-gated by `MODEL_REGISTRY[model]["supports_thinking"]`):
+
+- **Qwen (provider=together, supports_thinking=True):** flips
+  `extra_body.chat_template_kwargs.enable_thinking` (True when on, False when off).
+- **Azure reasoning (provider=azure, supports_thinking=True):** on →
+  `reasoning_effort="medium"` kwarg is injected into the `client_az.chat.completions.create(...)`
+  call (currently near `llm_evaluate.py:903`); off → the kwarg is omitted entirely.
+- **Other providers (supports_thinking=False):** flag is a no-op; a single
+  `log.debug("--thinking=%s ignored for %s ...")` line is emitted in `evaluate_translation()`.
+
+**Line-discipline note — do NOT confuse the Azure and Gemini call sites.** The Azure
+injection point (plan references: `llm_evaluate.py:878`; as of this plan landing the
+actual line is near `:903`) is inside `client_az.chat.completions.create(...)` in the
+`model.startswith("azure-")` branch. The Gemini dispatch (plan references:
+`llm_evaluate.py:956`; currently at `:981`) contains `reasoning_effort="none"` as a
+belt-and-suspenders safety measure (Flash Lite has thinking OFF by default, but we force
+it). The Gemini line is **unrelated to the `--thinking` flag** and must remain
+byte-identical. A prior incident (2026-04-16) saw an Azure patch move from `:879` to
+`:956`, silently modifying Gemini. Grep (`grep -n 'reasoning_effort' ...`) is
+authoritative as line numbers drift. When editing, always verify via grep that the
+Azure kwarg lives in the Azure block (inside the `model.startswith("azure-")` branch)
+and the Gemini kwarg lives in the Gemini block.
+
+`run_eval_batch.py` plumbs `--thinking` through `run_batch()` to every
+`evaluate_translation()` call; the selected value is also recorded in the batch summary
+JSON as the top-level `thinking` field.
