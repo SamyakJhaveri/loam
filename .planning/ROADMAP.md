@@ -13,7 +13,7 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 ## Phases
 
 - [x] **Phase 1: Pipeline Testing & Uniformity** -- Test and fix the full spec-build-run-verify pipeline across all 5 suites
-- [ ] **Phase 2: LLM Eval Testing** -- Test evaluation pipeline end-to-end with real LLM calls; add azure-gpt-5.4 registry entry, reasoning_effort param, Qwen thinking flag, L0-passer derivation script, `--task-list` flag
+- [x] **Phase 2: LLM Eval Testing** -- Test evaluation pipeline end-to-end with real LLM calls; add azure-gpt-5.4 registry entry, reasoning_effort param, Qwen thinking flag, L0-passer derivation script, `--task-list` flag (COMPLETE 2026-04-17)
 - [ ] **Phase 3: Full Evaluation Runs** -- Canonical (pass@3 L0) then L0-conditional ablation (pass@1 L1-L4) for Qwen 3.5 397B + Azure GPT-5.4
 - [ ] **Phase 4: NeurIPS Paper** -- Write paper with every claim traceable to verified results
 
@@ -65,7 +65,7 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 4. All gpt-4.1 model IDs absent from scripts/docs (per `grep -rn "gpt-4\.1" scripts/ docs/ .planning/`)
 5. `pass_at_k(k=3)` returns correct values for known inputs (existing test unchanged)
 
-**Plans:** 7/8 plans executed
+**Plans:** 8/8 plans executed (Phase 2 COMPLETE 2026-04-17)
 - [x] 02-01-add-azure-gpt54-registry-PLAN.md — Add `azure-gpt-5.4` to MODEL_REGISTRY
 - [x] 02-02-supports-thinking-capability-PLAN.md — Add `supports_thinking: bool` capability field + TypedDict schema
 - [x] 02-03-thinking-cli-flag-PLAN.md — `--thinking on|off` CLI flag wired to Qwen (currently :1034) + Azure (currently :915); result JSON schema bump (thinking_enabled, num_samples)
@@ -73,7 +73,7 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 - [x] 02-05-derive-l0-passers-PLAN.md — New `scripts/evaluation/derive_l0_passers.py` (pass@1-of-any)
 - [x] 02-06-task-list-flag-PLAN.md — New `--task-list <json>` flag on eval batch launcher with argparse mutex group
 - [x] 02-07-eval-e2e-smoke-PLAN.md — End-to-end smoke test (5 suites × 2 models × cuda-to-omp, gated by `PARBENCH_RUN_LLM_TESTS=1`); `llm` pytest marker registered + `PROJECT_ROOT` promoted public on tests/conftest.py
-- [ ] 02-08-integration-smoke-and-handoff-PLAN.md — Integration smoke + GPT-5.4 handoff runbook (dry-run matrix 5×6×2 + real E2E canonical→derive→ablation slice + omp-to-cuda cell + `docs/neurips2026-gpt5-handoff.md`)
+- [x] 02-08-integration-smoke-and-handoff-PLAN.md — Integration smoke + GPT-5.4 handoff runbook (dry-run matrix 5×6×2 + real E2E canonical→derive→ablation slice + omp-to-cuda cell + `docs/neurips2026-gpt5-handoff.md` 8-section runbook)
 
 ### Phase 3: Full Evaluation Runs
 
@@ -124,6 +124,6 @@ Phase A (canonical) and Phase C (ablation) run on **two machines**: `azure-gpt-5
 | Phase | Status | Completed |
 |-------|--------|-----------|
 | 1. Pipeline Testing & Uniformity | Complete | 2026-04-10 |
-| 2. LLM Eval Testing | Not started | - |
+| 2. LLM Eval Testing | Complete | 2026-04-17 |
 | 3. Full Evaluation Runs (canonical + L0-conditional ablation) | Not started | - |
 | 4. NeurIPS Paper | Not started | - |
