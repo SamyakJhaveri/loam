@@ -81,6 +81,8 @@ Gal reviewed the §2.1–2.3 draft on 2026-04-16 and approved with one budget-dr
 | Symmetry | Both models run full 87 × 6 | **Both models run the same filter** for apples-to-apples delta |
 | Launch | Parallel with canonical | **Serial after canonical** — ablation depends on canonical passer-set derivation |
 
+**Estimator-denominator clarification (supersedes §2.3 where applicable):** Because the ablation runs only on L0-passer cells, Δpass@1(L_k) must be computed with both terms restricted to the same L0-passer cell set (per model). Specifically: `pass@1_canonical` in §2.3's Δ formula is derived from the first canonical sample **of each L0-passer cell only** — NOT from the full 87 × 6 canonical run. Aggregate robustness numbers must report this denominator (≈287 cells per model at the 55% midpoint). Per-cell Δ within the L0-passer set is the primary robustness statistic; an overall robustness rate on the full 87 × 6 is not directly computable without an audit sample of L0-failers (see "No audit sample" row above).
+
 **Budget (revised from §3.2):**
 
 Assuming 55% canonical L0-pass rate (pass@1-of-any; range 45–65%, linear scaling):
@@ -93,7 +95,7 @@ Assuming 55% canonical L0-pass rate (pass@1-of-any; range 45–65%, linear scali
 | gpt_ablation (287 cells × 4 levels) | 1,148 | $237 | — |
 | **TOTAL (estimated)** | **5,428** | **$559** | **$68** |
 
-**Grand total ≈ $627** (26% savings vs pre-approval $843). **GPT side $559 overshoots Gal's $400 target by $159 (40%).** Samyak accepted this tradeoff to preserve the full L1→L4 degradation curve (reviewer value: can report monotonic degradation across all levels, not just outer endpoints). **Gal sign-off on the overshoot is required before Phase A launch.** Fallback if Gal declines: raise filter to pass@2-of-3 (≈22% pass rate → ~$94 GPT ablation → $416 GPT total, hits target).
+**Grand total ≈ $627** (26% savings vs pre-approval $843) at the 55% midpoint. Sensitivity to L0-pass rate (linear in passer count): at 45% GPT ≈ **$516**, at 65% GPT ≈ **$602** (Qwen $55–$80 over the same range). **GPT side $559 (midpoint) overshoots Gal's $400 target by ~$116–$202 depending on realized pass rate ($159 at midpoint, 40%).** Samyak accepted this tradeoff to preserve the full L1→L4 degradation curve (reviewer value: can report monotonic degradation across all levels, not just outer endpoints). **Gal sign-off on the overshoot is required before Phase A launch.** Fallback if Gal declines: raise filter to pass@2-of-3 (≈22% pass rate → ~$94 GPT ablation → $416 GPT total, hits target).
 
 **Launch sequence (supersedes §4):**
 
@@ -109,12 +111,14 @@ Net wall clock across Apr 19–20 is ~20–22h (vs ~17h in §4 parallel-all-stre
 
 | # | Change | File | Status |
 |---|---|---|---|
-| 1 | Add `azure-gpt-5.4` entry to `MODEL_REGISTRY` | `scripts/evaluation/llm_evaluate.py:94` | Pending execution |
-| 2 | Add `reasoning_effort="medium"` on Azure calls (guarded by capability) | `scripts/evaluation/llm_evaluate.py:879` | Pending |
+| 1 | Add `azure-gpt-5.4` entry to `MODEL_REGISTRY` | `scripts/evaluation/llm_evaluate.py:61` (MODEL_REGISTRY dict, lines ~61–125) | Pending execution |
+| 2 | Add `reasoning_effort="medium"` on Azure calls (guarded by capability) | `scripts/evaluation/llm_evaluate.py:956` (adjacent to existing Gemini `reasoning_effort="none"` call) | Pending |
 | 3 | Flip Qwen `enable_thinking: False → True`; add `--thinking on\|off` CLI flag | `scripts/evaluation/llm_evaluate.py:1001` | Pending |
 | 4 | Remove `gpt-4.1-2025-04-14` + `azure-gpt-4.1` + `gpt-4.1-mini` from scripts/docs | 10 files (see §Appendix B) | Pending |
 | 5 | New `derive_l0_passers.py` — emit `l0_passers_{model}.json` (pass@1-of-any filter) | `scripts/evaluation/derive_l0_passers.py` | Pending |
 | 6 | Add `--task-list <json>` flag to `run_eval_batch.py` | `scripts/evaluation/run_eval_batch.py` | Pending |
+
+> Line numbers verified against current `llm_evaluate.py` (2099 lines total) on 2026-04-16. Re-verify before execution if significant edits land in the interim.
 
 **Decisions deferred vs §9:**
 - **Item 1 (GPT-5 tier)**: Gal approved standard via the budget-cutting directive.
