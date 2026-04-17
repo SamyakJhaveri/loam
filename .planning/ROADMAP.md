@@ -65,11 +65,11 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 4. All gpt-4.1 model IDs absent from scripts/docs (per `grep -rn "gpt-4\.1" scripts/ docs/ .planning/`)
 5. `pass_at_k(k=3)` returns correct values for known inputs (existing test unchanged)
 
-**Plans:** 4/8 plans executed
+**Plans:** 5/8 plans executed
 - [x] 02-01-add-azure-gpt54-registry-PLAN.md — Add `azure-gpt-5.4` to MODEL_REGISTRY
 - [x] 02-02-supports-thinking-capability-PLAN.md — Add `supports_thinking: bool` capability field + TypedDict schema
 - [x] 02-03-thinking-cli-flag-PLAN.md — `--thinking on|off` CLI flag wired to Qwen (currently :1034) + Azure (currently :915); result JSON schema bump (thinking_enabled, num_samples)
-- [ ] 02-04-purge-gpt41-PLAN.md — Purge `gpt-4.1-*` from 9 ParBench-owned files
+- [x] 02-04-purge-gpt41-PLAN.md — Purge `gpt-4.1-*` from 9 ParBench-owned files
 - [x] 02-05-derive-l0-passers-PLAN.md — New `scripts/evaluation/derive_l0_passers.py` (pass@1-of-any)
 - [ ] 02-06-task-list-flag-PLAN.md — New `--task-list <json>` flag on eval batch launcher with argparse mutex group
 - [ ] 02-07-eval-e2e-smoke-PLAN.md — End-to-end smoke test (5 suites × 2 models × cuda-to-omp, gated by `PARBENCH_RUN_LLM_TESTS=1`)
