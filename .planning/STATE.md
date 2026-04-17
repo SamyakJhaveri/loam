@@ -41,8 +41,8 @@ Recent decisions affecting current work:
 - **[2026-04-16]** Canonical = pass@3 L0 temp=0.7 thinking=ON self-repair=OFF, both Qwen 3.5 397B + Azure GPT-5.4
 - **[2026-04-16]** Ablation filter = pass@1-of-any from 3 canonical samples
 - **[2026-04-16]** Ablation scope = all 4 levels (L1+L2+L3+L4) on ALL L0-passers, no subsets
-- **[2026-04-16]** No audit sample of L0-failers; acknowledged in paper threats-to-validity
-- **[2026-04-16]** GPT budget overshoot accepted (~$559 vs Gal's $400 target) — pending Gal sign-off
+- **[2026-04-16]** No audit sample of L0-failers; Phase 4 **must** write a threats-to-validity subsection acknowledging this — that subsection is an outstanding TODO, not a fulfilled mitigation.
+- **[2026-04-16]** GPT budget overshoot accepted (~$559 vs Gal's $400 target) — "accepted" = Samyak's scope choice; Gal's sign-off still PENDING. Phase A must not launch until sign-off is documented. Estimates also assume 55% L0-pass rate (not measured — see `docs/neurips2026-experiment-plan.md` §2.4).
 - **[2026-04-16]** 3-phase launch: canonical → derive L0-passers → ablation (canonical must complete first)
 - AskSage is BLOCKED -- deferred to post-submission (not on May 1 critical path)
 - Portability (hardcoded compiler paths in specs) deferred to post-NeurIPS

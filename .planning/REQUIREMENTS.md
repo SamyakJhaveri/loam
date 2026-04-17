@@ -3,6 +3,9 @@
 **Defined:** 2026-04-09
 **Core Value:** Every evaluation result is reproducible and pipeline-correct -- so model comparisons in the NeurIPS paper are defensible under peer review.
 
+> ⚠️ **`azure-gpt-5.4` is a placeholder** in all Phase 2/3 requirement rows below. As of 2026-04-16, no GPT-5 variant exists in `scripts/evaluation/llm_evaluate.py:MODEL_REGISTRY` (only `azure-gpt-4.1`). The Phase 2 requirement "`MODEL_REGISTRY` entry added for `azure-gpt-5.4`" must be completed — using the exact Azure deployment name confirmed by Le — before the Phase 3 canonical streams can satisfy their success criteria.
+> ⚠️ **Budget-related success criteria (e.g., "Actual GPT cost ≤ $600") are grounded in an estimated 55% L0-pass rate, not a measurement** — see `docs/neurips2026-experiment-plan.md` §2.4 for the full assumption chain. Closest observed datapoint is ~31% Qwen first-sample pass. Budget bound may need revision once Phase A provides real numbers.
+
 ## Phase 1: Pipeline Testing & Uniformity
 
 - [ ] Spec loading works for all 5 suites (paths resolve, source files exist, prompt payloads correct)

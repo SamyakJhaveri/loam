@@ -2,6 +2,8 @@
 
 Landing directory for **per-model canonical L0-passer sets** produced between Phase A (canonical runs) and Phase C (L0-conditional ablation) of the NeurIPS 2026 evaluation — see `.planning/ROADMAP.md` Phase 3 and `docs/neurips2026-experiment-plan.md` §2.4.
 
+> ⚠️ **`azure-gpt-5.4` is a placeholder identifier** used in the sample schema and commands below. As of 2026-04-16, no GPT-5 variant exists in `scripts/evaluation/llm_evaluate.py:MODEL_REGISTRY` (only `azure-gpt-4.1`). The model entry must be registered — with the exact Azure deployment name confirmed by Le — before Phase A produces any result JSONs. The `passer_count` and `total_cells_evaluated` example values (287 / 522) are illustrative extrapolations from a 55% pass-rate assumption, not measurements; see `docs/neurips2026-experiment-plan.md` §2.4.
+
 ## Contents (produced at runtime)
 
 | File | Produced by | Consumed by |

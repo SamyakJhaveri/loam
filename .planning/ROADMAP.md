@@ -1,5 +1,9 @@
 # Roadmap: ParBench NeurIPS 2026
 
+> ⚠️ **`azure-gpt-5.4` is a placeholder model identifier throughout this roadmap.** As of 2026-04-16, `scripts/evaluation/llm_evaluate.py:MODEL_REGISTRY` contains only `azure-gpt-4.1`; no GPT-5 variant is registered. Phase 2's first deliverable (`MODEL_REGISTRY` entry) must land — with the exact Azure deployment name confirmed by Le — before any Phase A success criterion can be met. Do not plan work assuming the identifier resolves today.
+> ⚠️ **Pass-rate and budget numbers cited below (e.g., "$559", "287 L0-passers", "55%") are estimates, not measurements.** See `docs/neurips2026-experiment-plan.md` §2.4. The closest in-repo datapoint is ~31% Qwen first-sample pass; 55% pass@1-of-any is an extrapolation. Real numbers only knowable after Phase A completes.
+> ⚠️ **Gal's sign-off on the GPT budget overshoot ($559 vs $400 target) is PENDING as of 2026-04-16** — it is a Phase A launch prerequisite.
+
 ## Overview
 
 This roadmap takes ParBench from a pilot-validated benchmark (Qwen 3.5 397B, 1,248 results) to a multi-model, peer-review-ready NeurIPS submission. Four phases: verify the pipeline with real data, test end-to-end evaluation with the revised experiment design, run canonical + L0-conditional ablation, write the paper.

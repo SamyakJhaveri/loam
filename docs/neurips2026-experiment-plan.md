@@ -71,6 +71,8 @@ Gal reviewed the §2.1–2.3 draft on 2026-04-16 and approved with one budget-dr
 - All 87 TRUE PASS kernels × 6 directions (+ omp_target case studies for XSBench/RSBench where available)
 - Both models: `together-qwen-3.5-397b-a17b` + `azure-gpt-5.4` (renamed from "azure-gpt-5" to reflect the specific deployment slot)
 
+> ⚠️ **`azure-gpt-5.4` is a placeholder identifier — NOT yet runnable.** Verified 2026-04-16 against `scripts/evaluation/llm_evaluate.py` (MODEL_REGISTRY, lines 61–125): only `azure-gpt-4.1` is registered; no GPT-5 variant exists. Two things must land before Phase A launches: (1) Task 7 (§2.4 code-change table row 1) registers the model entry, and (2) Le confirms the exact Azure deployment name + TPM quota. Treat "GPT-5.4" throughout this document as a working identifier, not a resolved one.
+
 **What changes for the ablation (supersedes §2.2):**
 
 | Parameter | §2.2 (pre-approval) | §2.4 (authoritative) |
@@ -87,6 +89,8 @@ Gal reviewed the §2.1–2.3 draft on 2026-04-16 and approved with one budget-dr
 
 Assuming 55% canonical L0-pass rate (pass@1-of-any; range 45–65%, linear scaling):
 
+> ⚠️ **The 55% figure is a working assumption, not a measurement.** Closest in-repo datapoint is Qwen historical first-sample pass rate ≈31% (347/1120 non-KNOWN_FAIL, `known-issues.md` Pipeline Audit 2026-04-09). Pass@1-of-any on 3-sample pass@3 runs will exceed 31% because "any of 3 passes" is strictly more permissive than "first sample passes," but 55% is an extrapolation, not an observation. The GPT-5-class L0-pass prior is cited from general literature, not from an in-repo run. Final coverage — and therefore the final budget — is only knowable after Phase A completes and `derive_l0_passers.py` runs against real result JSONs.
+
 | Stream | Samples | GPT | Qwen |
 |---|---:|---:|---:|
 | qwen_canonical (unchanged) | 1,566 | — | $39 |
@@ -95,7 +99,9 @@ Assuming 55% canonical L0-pass rate (pass@1-of-any; range 45–65%, linear scali
 | gpt_ablation (287 cells × 4 levels) | 1,148 | $237 | — |
 | **TOTAL (estimated)** | **5,428** | **$559** | **$68** |
 
-**Grand total ≈ $627** (26% savings vs pre-approval $843) at the 55% midpoint. Sensitivity to L0-pass rate (linear in passer count): at 45% GPT ≈ **$516**, at 65% GPT ≈ **$602** (Qwen $55–$80 over the same range). **GPT side $559 (midpoint) overshoots Gal's $400 target by ~$116–$202 depending on realized pass rate ($159 at midpoint, 40%).** Samyak accepted this tradeoff to preserve the full L1→L4 degradation curve (reviewer value: can report monotonic degradation across all levels, not just outer endpoints). **Gal sign-off on the overshoot is required before Phase A launch.** Fallback if Gal declines: raise filter to pass@2-of-3 (≈22% pass rate → ~$94 GPT ablation → $416 GPT total, hits target).
+**Grand total ≈ $627** (26% savings vs pre-approval $843) at the 55% midpoint. Sensitivity to L0-pass rate (linear in passer count): at 45% GPT ≈ **$516**, at 65% GPT ≈ **$602** (Qwen $55–$80 over the same range). **GPT side $559 (midpoint) overshoots Gal's $400 target by ~$116–$202 depending on realized pass rate ($159 at midpoint, 40%).** **Samyak accepted this tradeoff on 2026-04-16 to preserve the full L1→L4 degradation curve (reviewer value: can report monotonic degradation across all levels, not just outer endpoints). "Accepted" here refers to Samyak's scope choice, not a bilateral budget agreement — Gal's sign-off on the overshoot is still PENDING. Do NOT launch Phase A until Gal's sign-off is documented.** Fallback if Gal declines: raise filter to pass@2-of-3 (≈22% pass rate — also an assumption, not measured → ~$94 GPT ablation → $416 GPT total, hits target).
+
+**Threats-to-validity commitment (TODO, not done):** The "No audit sample" row above promises that the paper's threats-to-validity section will acknowledge L0-failers were not evaluated under perturbation. That section has **not been written yet** — it is an outstanding Phase 4 deliverable. Tracking: if Phase 4 does not produce that subsection, this mitigation argument is incomplete regardless of what §2.4 states.
 
 **Launch sequence (supersedes §4):**
 
@@ -111,8 +117,8 @@ Net wall clock across Apr 19–20 is ~20–22h (vs ~17h in §4 parallel-all-stre
 
 | # | Change | File | Status |
 |---|---|---|---|
-| 1 | Add `azure-gpt-5.4` entry to `MODEL_REGISTRY` | `scripts/evaluation/llm_evaluate.py:61` (MODEL_REGISTRY dict, lines ~61–125) | Pending execution |
-| 2 | Add `reasoning_effort="medium"` on Azure calls (guarded by capability) | `scripts/evaluation/llm_evaluate.py:956` (adjacent to existing Gemini `reasoning_effort="none"` call) | Pending |
+| 1 | Add `azure-gpt-5.4` entry to `MODEL_REGISTRY` (use `azure-gpt-4.1` at line 94 as the structural template) | `scripts/evaluation/llm_evaluate.py` (MODEL_REGISTRY dict starts line 61; azure-gpt-4.1 entry at line 94 — insert new entry nearby) | Pending execution |
+| 2 | Add `reasoning_effort="medium"` on the **Azure** `client_az.chat.completions.create(...)` call (guarded by capability check — only for reasoning-capable models like gpt-5.4, o3). NOTE: line 956's `reasoning_effort="none"` is in the **Gemini** path, not Azure — do NOT edit that one. | `scripts/evaluation/llm_evaluate.py:878–883` (Azure call block; add parameter between `messages=` and closing `)`) | Pending |
 | 3 | Flip Qwen `enable_thinking: False → True`; add `--thinking on\|off` CLI flag | `scripts/evaluation/llm_evaluate.py:1001` | Pending |
 | 4 | Remove `gpt-4.1-2025-04-14` + `azure-gpt-4.1` + `gpt-4.1-mini` from scripts/docs | 10 files (see §Appendix B) | Pending |
 | 5 | New `derive_l0_passers.py` — emit `l0_passers_{model}.json` (pass@1-of-any filter) | `scripts/evaluation/derive_l0_passers.py` | Pending |
