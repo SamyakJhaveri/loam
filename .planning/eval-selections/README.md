@@ -2,14 +2,14 @@
 
 Landing directory for **per-model canonical L0-passer sets** produced between Phase A (canonical runs) and Phase C (L0-conditional ablation) of the NeurIPS 2026 evaluation — see `.planning/ROADMAP.md` Phase 3 and `docs/neurips2026-experiment-plan.md` §2.4.
 
-> ⚠️ **`azure-gpt-5.4` is a placeholder identifier** used in the sample schema and commands below. As of 2026-04-16, no GPT-5 variant exists in `scripts/evaluation/llm_evaluate.py:MODEL_REGISTRY` (only `azure-gpt-4.1`). The model entry must be registered — with the exact Azure deployment name confirmed by Le — before Phase A produces any result JSONs. The `passer_count` and `total_cells_evaluated` example values (287 / 522) are illustrative extrapolations from a 55% pass-rate assumption, not measurements; see `docs/neurips2026-experiment-plan.md` §2.4.
+> `azure-gpt-5.3-chat` resolved 2026-04-17 — entry registered in `MODEL_REGISTRY` (Plan 02-01).
 
 ## Contents (produced at runtime)
 
 | File | Produced by | Consumed by |
 |---|---|---|
 | `l0_passers_qwen.json` | `scripts/evaluation/derive_l0_passers.py --model together-qwen-3.5-397b-a17b --condition any_of_3_pass` | `run_eval_batch.py --task-list l0_passers_qwen.json --augment-levels 1 2 3 4` |
-| `l0_passers_gpt5.json` | `scripts/evaluation/derive_l0_passers.py --model azure-gpt-5.4 --condition any_of_3_pass` | `run_eval_batch.py --task-list l0_passers_gpt5.json --augment-levels 1 2 3 4` |
+| `l0_passers_gpt5_3_chat.json` | `scripts/evaluation/derive_l0_passers.py --model azure-gpt-5.3-chat --condition any_of_3_pass` | `run_eval_batch.py --task-list l0_passers_gpt5_3_chat.json --augment-levels 1 2 3 4` |
 
 ## Expected schema (`l0_passers_{model}.json`)
 
@@ -17,8 +17,8 @@ Landing directory for **per-model canonical L0-passer sets** produced between Ph
 {
   "version": "1.0",
   "generated_at": "2026-04-20T09:00:00Z",
-  "model": "azure-gpt-5.4",
-  "source_canonical_dir": "results/evaluation/azure-gpt-5.4-canonical/",
+  "model": "azure-gpt-5.3-chat",
+  "source_canonical_dir": "results/evaluation/azure-gpt-5.3-chat-canonical/",
   "filter": "pass@1-of-any (>= 1 of 3 canonical samples has overall_status == PASS)",
   "total_cells_evaluated": 522,
   "passer_count": 287,

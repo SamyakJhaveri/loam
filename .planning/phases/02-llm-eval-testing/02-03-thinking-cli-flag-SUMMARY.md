@@ -31,8 +31,8 @@ decisions:
   - "thinking_enabled is computed once per evaluate_translation() call; downstream code reads the boolean, not the CLI string."
   - "No helper extraction (_call_qwen_once / _call_azure_once). Mocked-SDK unit tests work against call_llm() directly — the plan explicitly permits this via the 'Alternative (allowed)' path."
   - "Non-thinking-capable models use DEBUG logging (not INFO) for the no-op trace, per plan D-08 / Claude's-discretion line."
-  - "Azure call site is currently at llm_evaluate.py:903 (not :878 as the plan pre-text cites). Grep-result is authoritative per plan Step-1 — the plan already anticipates drift."
-  - "Gemini reasoning_effort='none' safety line is currently at :989 (not :956 as the plan pre-text cites). Verified byte-identical pre/post plan via git diff."
+  - "Azure call site is currently at llm_evaluate.py:905 (not :878 as the plan pre-text cites). Grep-result is authoritative per plan Step-1 — the plan already anticipates drift."
+  - "Gemini reasoning_effort='none' safety line is currently at :979 (not :956 as the plan pre-text cites). Verified byte-identical pre/post plan via git diff."
 metrics:
   duration_minutes: 12
   completed_date: 2026-04-17
@@ -54,21 +54,21 @@ Task 1 Step 5 required re-verification via grep. Current state (post-edit):
 
 ```
 grep -n 'client_az.chat.completions.create' scripts/evaluation/llm_evaluate.py
-→ 903:        response = client_az.chat.completions.create(... )
+→ 905:        response = client_az.chat.completions.create(... )
 ```
 
-The plan text referenced `:878`; actual live line is `:903`. The `reasoning_effort="medium"`
+The plan text referenced `:878`; actual live line is `:905`. The `reasoning_effort="medium"`
 assignment itself lives at `:915` inside the conditional `_az_kwargs` build. Acceptable
 per plan's explicit "grep result is authoritative" guidance (plan 02-03 §Step 1).
 
 ## Gemini `reasoning_effort="none"` — Byte-Identical
 
-The Gemini safety line (plan references `:956`; live `:989`) was verified byte-identical
+The Gemini safety line (plan references `:956`; live `:979`) was verified byte-identical
 pre/post edit:
 
 ```
 grep -n 'reasoning_effort="none"' scripts/evaluation/llm_evaluate.py
-→ 989:            reasoning_effort="none",
+→ 979:            reasoning_effort="none",
 ```
 
 `git diff scripts/evaluation/llm_evaluate.py` shows no change within the Gemini branch
@@ -119,7 +119,7 @@ run_eval_batch.py --thinking ──→ run_batch(thinking=...)
 ## Deviations from Plan
 
 1. **[Rule 0 — Surface-level reference] Line-number drift.** Plan text cited `:878` (Azure)
-   and `:956` (Gemini). Live grep returns `:903` and `:989` respectively. The plan explicitly
+   and `:956` (Gemini). Live grep returns `:905` and `:979` respectively. The plan explicitly
    anticipates this (Step 1 — "treat the grep result as authoritative") so this is not a
    behavioural deviation. The SUMMARY records the live values.
 

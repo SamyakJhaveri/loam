@@ -6,7 +6,7 @@ subsystem: scripts/evaluation, tests, docs
 tags: [tests, integration-smoke, handoff-runbook, gpt-5.4, dry-run-matrix, neurips]
 dependency_graph:
   requires:
-    - 02-01-add-azure-gpt54-registry
+    - 02-01-add-azure-gpt53-chat-registry
     - 02-02-supports-thinking-capability
     - 02-03-thinking-cli-flag
     - 02-05-derive-l0-passers
@@ -190,7 +190,7 @@ When both unblocks land, the runbook at `docs/neurips2026-gpt5-handoff.md` is Le
 - [x] `docs/neurips2026-gpt5-handoff.md` exists (301 lines)
 - [x] All 10 plan grep anchors pass
 - [x] Dry-run matrix: 52 PASSED, 12 SKIPPED, 0 FAIL
-- [x] Full unit+integration suite: 204 PASSED, 11 SKIPPED, 0 FAIL
+- [x] Full unit+integration suite: 282 PASSED, 37 SKIPPED, 0 FAIL (pytest tests/ -q, 319 collected; 204/11 was the integration-only subset)
 - [x] No purged model IDs (`gpt-4.1`, `azure-gpt-4.1`) anywhere in new artifacts
 - [x] No real API keys/secrets in any new file
 - [x] `tmp_path` confinement verified (3 occurrences, all real-API tests)

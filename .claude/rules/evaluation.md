@@ -12,11 +12,11 @@ paths:
 ```bash
 source env_parbench/bin/activate
 
-# Single translation (dry-run to check prompt) — Phase 1: azure-gpt-4.1
+# Single translation (dry-run to check prompt)
 python3 scripts/evaluation/llm_evaluate.py \
   --source specs/rodinia-bfs-cuda.json \
   --target specs/rodinia-bfs-omp.json \
-  --model azure-gpt-4.1 \
+  --model azure-gpt-5.3-chat \
   --project-root {{PROJECT_ROOT}} \
   --dry-run
 
@@ -25,18 +25,18 @@ python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --kernels bfs nw srad backprop hotspot \
   --direction cuda-to-omp \
-  --models azure-gpt-4.1 \
+  --models together-qwen-3.5-397b-a17b \
+  --thinking on \
   --project-root {{PROJECT_ROOT}} \
   --resume -v
 
 # Batch with retries (iterative repair on failure)
 python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia --direction cuda-to-omp \
-  --models azure-gpt-4.1 \
+  --models together-qwen-3.5-397b-a17b \
+  --thinking on \
   --max-retries 3 \
   --project-root {{PROJECT_ROOT}} -v
-
-# Phase 2 (after M7 Groq/Modal setup): add llama-70b and leaderboard model to --models
 ```
 
 ## Kernel-Centric Translation (M11 + SESSION 1.6 — 2026-03-22)
@@ -351,15 +351,15 @@ Per-provider semantics (capability-gated by `MODEL_REGISTRY[model]["supports_thi
   `extra_body.chat_template_kwargs.enable_thinking` (True when on, False when off).
 - **Azure reasoning (provider=azure, supports_thinking=True):** on →
   `reasoning_effort="medium"` kwarg is injected into the `client_az.chat.completions.create(...)`
-  call (currently near `llm_evaluate.py:903`); off → the kwarg is omitted entirely.
+  call (currently near `llm_evaluate.py:905`); off → the kwarg is omitted entirely.
 - **Other providers (supports_thinking=False):** flag is a no-op; a single
   `log.debug("--thinking=%s ignored for %s ...")` line is emitted in `evaluate_translation()`.
 
 **Line-discipline note — do NOT confuse the Azure and Gemini call sites.** The Azure
 injection point (plan references: `llm_evaluate.py:878`; as of this plan landing the
-actual line is near `:903`) is inside `client_az.chat.completions.create(...)` in the
+actual line is near `:905`) is inside `client_az.chat.completions.create(...)` in the
 `model.startswith("azure-")` branch. The Gemini dispatch (plan references:
-`llm_evaluate.py:956`; currently at `:981`) contains `reasoning_effort="none"` as a
+`llm_evaluate.py:956`; currently at `:979`) contains `reasoning_effort="none"` as a
 belt-and-suspenders safety measure (Flash Lite has thinking OFF by default, but we force
 it). The Gemini line is **unrelated to the `--thinking` flag** and must remain
 byte-identical. A prior incident (2026-04-16) saw an Azure patch move from `:879` to
