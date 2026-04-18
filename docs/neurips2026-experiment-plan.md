@@ -118,7 +118,7 @@ Net wall clock across Apr 19–20 is ~20–22h (vs ~17h in §4 parallel-all-stre
 | # | Change | File | Status |
 |---|---|---|---|
 | 1 | Add `azure-gpt-5.3-chat` entry to `MODEL_REGISTRY` (use `azure-gpt-4.1` at line 94 as the structural template) | `scripts/evaluation/llm_evaluate.py` (MODEL_REGISTRY dict starts line 61; azure-gpt-4.1 entry at line 94 — insert new entry nearby) | Pending execution |
-| 2 | Add `reasoning_effort="medium"` on the **Azure** `client_az.chat.completions.create(...)` call (guarded by capability check — only for reasoning-capable models like gpt-5.4, o3). NOTE: line 956's `reasoning_effort="none"` is in the **Gemini** path, not Azure — do NOT edit that one. | `scripts/evaluation/llm_evaluate.py:878–883` (Azure call block; add parameter between `messages=` and closing `)`) | Pending |
+| 2 | Add `reasoning_effort="medium"` on the **Azure** `client_az.chat.completions.create(...)` call (guarded by capability check — only for reasoning-capable models like gpt-5.3-chat, o3). NOTE: line 956's `reasoning_effort="none"` is in the **Gemini** path, not Azure — do NOT edit that one. | `scripts/evaluation/llm_evaluate.py:878–883` (Azure call block; add parameter between `messages=` and closing `)`) | Pending |
 | 3 | Flip Qwen `enable_thinking: False → True`; add `--thinking on\|off` CLI flag | `scripts/evaluation/llm_evaluate.py:1001` | Pending |
 | 4 | Remove `gpt-4.1-2025-04-14` + `azure-gpt-4.1` + `gpt-4.1-mini` from scripts/docs | 10 files (see §Appendix B) | Pending |
 | 5 | New `derive_l0_passers.py` — emit `l0_passers_{model}.json` (pass@1-of-any filter) | `scripts/evaluation/derive_l0_passers.py` | Pending |

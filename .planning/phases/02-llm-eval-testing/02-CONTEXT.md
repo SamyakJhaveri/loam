@@ -33,7 +33,7 @@ Additive, non-redesigning changes to the evaluation pipeline that enable the new
 
 - **D-01:** New entry key is `azure-gpt-5.3-chat`. Deployment name is resolved by the existing prefix-strip pattern at `llm_evaluate.py:877` (`model[len("azure-"):]` → `"gpt-5.3-chat"`). The placeholder `"gpt-5.4"` was replaced with the verified deployment name `"gpt-5.3-chat"` on 2026-04-17. Do **not** introduce an `api_model` override for Azure (Azure already uses prefix-strip resolution; matching the existing `azure-gpt-4.1` entry). Note: `api_model` exists elsewhere in the registry (e.g. Together-AI Qwen at `llm_evaluate.py:112`, where the displayed key and API model ID differ); symmetry here is scoped to the Azure entries only.
 - **D-02:** Entry fields: `{"provider": "azure", "supports_thinking": True, "notes": "Azure OpenAI GPT-5.3 Chat reasoning deployment (Le) — requires AZURE_OPENAI_API_KEY+AZURE_OPENAI_ENDPOINT"}`. No secret values in the registry.
-- **D-03:** The entry is added **before** the `gpt-4.1` purge (D-11) so the registry is never empty of Azure entries mid-commit. Order: 02-01 (add gpt-5.4) → 02-04 (purge gpt-4.1).
+- **D-03:** The entry is added **before** the `gpt-4.1` purge (D-11) so the registry is never empty of Azure entries mid-commit. Order: 02-01 (add gpt-5.3-chat, originally placeholder gpt-5.4) → 02-04 (purge gpt-4.1).
 
 ### `supports_thinking` capability schema
 
