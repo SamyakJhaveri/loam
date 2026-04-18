@@ -145,11 +145,17 @@ def _self_repair_stats(records: list[dict]) -> dict:
     }
 
 
-def _load_complexity_lookup(project_root: Path) -> dict[tuple[str, str], str]:
-    """Load translation_complexity.csv → {(source_id, target_id): complexity_class} lookup."""
+def _load_complexity_lookup(project_root: Path) -> dict[tuple[str, str], str] | None:
+    """Load translation_complexity.csv → {(source_id, target_id): complexity_class} lookup.
+
+    Returns None (not {}) when the CSV is missing, so callers can distinguish
+    "complexity data unavailable" from "complexity data present but empty".
+    Returning {} previously caused build_summary() to classify every result as
+    "unknown", producing a misleading by_complexity: {unknown: ...} artifact.
+    """
     csv_path = project_root / "results" / "evaluation" / "translation_complexity.csv"
     if not csv_path.exists():
-        return {}
+        return None
     lookup: dict[tuple[str, str], str] = {}
     with csv_path.open(newline="") as fh:
         reader = csv.DictReader(fh)

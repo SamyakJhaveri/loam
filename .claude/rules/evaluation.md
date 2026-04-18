@@ -118,7 +118,10 @@ treat it as append-only for reproducibility (regenerating after adding new specs
 
 **`_load_complexity_lookup(project_root)`** — reads `translation_complexity.csv` and returns
 `{(source_spec, target_spec): complexity_class}` dict. Called by `main()` and passed downstream.
-Returns `{}` (empty dict) if the CSV is missing, so the pipeline degrades gracefully.
+Returns `None` if the CSV is missing, so downstream callers can distinguish "complexity data
+unavailable" from "complexity data present but empty". Returning `{}` previously caused
+`build_summary()` to classify every result as `"unknown"`, producing a misleading
+`by_complexity: {unknown: ...}` artifact.
 
 **`build_summary(records, complexity_lookup=None)`** — when `complexity_lookup` is provided,
 adds a `"by_complexity"` key to the summary dict. Shape:
