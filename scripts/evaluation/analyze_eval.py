@@ -122,6 +122,87 @@ def _pass_fail_counts(records: list[dict]) -> dict:
     }
 
 
+def _cell_key(record: dict) -> tuple[str, str, int, str]:
+    """Group records into (kernel, direction, augment_level, model) cells.
+
+    Plan 02-10 Step 3 (A2): cells are the natural unit for pass@k metrics.
+    All samples (sample_id 0..k-1) for one cell share these 4 coordinates.
+    """
+    src_id = record.get("source_spec", "")
+    kernel = record.get("kernel") or (_kernel_from_spec(src_id) if src_id else "?")
+    direction = record.get("direction", "unknown")
+    level = int(record.get("augment_level", 0))
+    model = record.get("model", "unknown")
+    return (kernel, direction, level, model)
+
+
+def _compute_cell_pass_metrics(records: list[dict]) -> dict:
+    """Compute per-cell dual pass@1 metrics + aggregate stats.
+
+    Plan 02-10 Step 3 (A2, finding F-4.3): at interior rates (e.g. 1/3, 2/3)
+    pass@1-of-any and single-draw pass@1 diverge structurally. This function
+    reports BOTH metrics per cell and aggregates them by augmentation level
+    so downstream analysis can quantify the divergence.
+
+    Returns:
+        {
+          "cells": [
+            {kernel, direction, level, model, samples, passes,
+             "pass_at_1_of_any": 0|1, "pass_at_1_mean": float}, ...
+          ],
+          "by_level": {
+            "L0": {"cells": N, "mean_of_any": float, "mean_of_mean": float,
+                   "divergence": float (mean_of_any - mean_of_mean)},
+            ...
+          },
+        }
+    """
+    cell_groups: dict[tuple[str, str, int, str], list[dict]] = defaultdict(list)
+    for r in records:
+        cell_groups[_cell_key(r)].append(r)
+
+    cells: list[dict] = []
+    # Keep a parallel list of raw pass fractions so the aggregate avoids
+    # accumulating the per-cell 4-decimal rounding error.
+    raw_means_by_level: dict[int, list[float]] = defaultdict(list)
+    raw_any_by_level: dict[int, list[int]] = defaultdict(list)
+    for (kernel, direction, level, model), group in cell_groups.items():
+        samples = len(group)
+        passes = sum(1 for r in group if r.get("overall_status") == "PASS")
+        raw_mean = passes / samples if samples else 0.0
+        raw_any = 1 if passes >= 1 else 0
+        cells.append({
+            "kernel": kernel,
+            "direction": direction,
+            "level": level,
+            "model": model,
+            "samples": samples,
+            "passes": passes,
+            "pass_at_1_of_any": raw_any,
+            "pass_at_1_mean": round(raw_mean, 4),
+        })
+        raw_means_by_level[level].append(raw_mean)
+        raw_any_by_level[level].append(raw_any)
+
+    cells.sort(key=lambda c: (c["model"], c["direction"], c["level"], c["kernel"]))
+
+    by_level: dict[str, dict] = {}
+    for level in sorted(raw_means_by_level.keys()):
+        any_vals = raw_any_by_level[level]
+        mean_vals = raw_means_by_level[level]
+        n = len(any_vals)
+        mean_of_any = sum(any_vals) / n if n else 0.0
+        mean_of_mean = sum(mean_vals) / n if n else 0.0
+        by_level[f"L{level}"] = {
+            "cells": n,
+            "mean_of_any": round(mean_of_any, 4),
+            "mean_of_mean": round(mean_of_mean, 4),
+            "divergence": round(mean_of_any - mean_of_mean, 4),
+        }
+
+    return {"cells": cells, "by_level": by_level}
+
+
 def _self_repair_stats(records: list[dict]) -> dict:
     """Compute self-repair effectiveness from attempts[] field."""
     attempt1_pass = 0
@@ -208,6 +289,10 @@ def build_summary(records: list[dict], complexity_lookup: dict | None = None) ->
         "failure_taxonomy": dict(failure_counts),
         "self_repair": _self_repair_stats(records),
         "by_complexity": {k: _pass_fail_counts(v) for k, v in sorted(by_complexity.items())} if complexity_lookup is not None else {},
+        # Plan 02-10 Step 3 (A2, finding F-4.3): per-cell dual pass@1 metrics.
+        # Cells = (kernel, direction, augment_level, model). Both metrics
+        # coincide at 0/k and k/k; they diverge at any interior rate.
+        "pass_at_1": _compute_cell_pass_metrics(records),
     }
 
 
@@ -259,6 +344,43 @@ def build_markdown(summary: dict, records: list[dict], complexity_lookup: dict |
             f"| {level} | {stats['pass']} | {stats['total']} | {_pct(stats['rate'])} |"
         )
     lines.append("")
+    # Plan 02-10 Step 3 (A4, finding F-4.1): level-invariance scope note.
+    lines += [
+        "> **Scope note (level-invariance claim).** L1–L4 results reflect only "
+        "kernels that passed L0 (conditional ablation — `derive_l0_passers.py` "
+        "filter at `:79` uses pass@1-of-any on the canonical L0 cells). Any "
+        "level-invariance observation here is scoped to the **L0-passer subset** "
+        "by construction; it is NOT an unconditional statement about augmentation "
+        "robustness on kernels that fail L0. See `.planning/phases/02-llm-eval-"
+        "testing/02-THREATS-TO-VALIDITY.md` §4 and the Bucket D D1 unconditional "
+        "probe for context.",
+        "",
+    ]
+
+    # --- Plan 02-10 Step 3 (A2): per-cell dual pass@1 metrics ---
+    pass_at_1 = summary.get("pass_at_1") or {}
+    by_level_metrics: dict = pass_at_1.get("by_level") or {}
+    if by_level_metrics:
+        lines += [
+            "## pass@1 Metrics (Dual Reporting)",
+            "",
+            "Cells are `(kernel, direction, augment_level, model)` tuples. "
+            "`of_any` = fraction of cells with ≥1 PASS across all samples. "
+            "`mean` = average single-draw pass rate across cells (passes / samples, "
+            "averaged over cells). Both metrics coincide when every cell is at "
+            "0 / k or k / k passes; they diverge structurally at any interior rate.",
+            "",
+            "| Level | Cells | pass@1_of_any | pass@1_mean | divergence |",
+            "|-------|------:|--------------:|------------:|-----------:|",
+        ]
+        for level, stats in by_level_metrics.items():
+            lines.append(
+                f"| {level} | {stats['cells']} | "
+                f"{_pct(stats['mean_of_any'])} | "
+                f"{_pct(stats['mean_of_mean'])} | "
+                f"{stats['divergence']:+.4f} |"
+            )
+        lines.append("")
 
     # --- By translation complexity class ---
     by_comp = summary.get("by_complexity", {})
@@ -413,6 +535,8 @@ def write_dashboard_js(summary: dict, output_path: Path) -> None:
         "failureTaxonomy": summary["failure_taxonomy"],
         "selfRepair": summary["self_repair"],
         "byComplexity": summary.get("by_complexity", {}),
+        # Plan 02-10 Step 3 (A2): dual pass@1 metrics for dashboard consumers.
+        "passAt1": summary.get("pass_at_1", {"cells": [], "by_level": {}}),
     }
     content = f"// Auto-generated by analyze_eval.py — do not edit manually\n"
     content += f"const EVAL_SUMMARY = {json.dumps(js_data, indent=2)};\n"
