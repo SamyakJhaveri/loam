@@ -106,6 +106,14 @@ MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
         "supports_thinking": True,
         "notes": "Azure OpenAI GPT-5.3 Chat Global deployment (Le, placeholder 'gpt-5.4' resolved 2026-04-17) — requires AZURE_OPENAI_API_KEY+AZURE_OPENAI_ENDPOINT",
     },
+    "azure-gpt-5.4": {
+        "provider": "azure",
+        "supports_thinking": True,
+        "notes": "Azure OpenAI GPT-5.4 (Microsoft Foundry GA 2026-03-05; "
+                 "requires AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT + "
+                 "gpt-5.4 deployment name; kept alongside azure-gpt-5.3-chat "
+                 "per Samyak decision 2026-04-17)",
+    },
     "groq-llama-3.3-70b-versatile": {
         "provider": "groq",
         "supports_thinking": False,
