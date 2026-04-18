@@ -58,11 +58,11 @@ from harness.verifier import extract_metrics, verify_run
 # Constants
 # ---------------------------------------------------------------------------
 
-class ModelRegistryEntry(TypedDict, total=False):
-    provider: str  # required at runtime
-    supports_thinking: bool  # required at runtime
-    notes: str  # required at runtime
-    api_model: NotRequired[str]  # optional, used by together-qwen entry
+class ModelRegistryEntry(TypedDict):
+    provider: str
+    supports_thinking: bool
+    notes: str
+    api_model: NotRequired[str]
 
 
 MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
@@ -101,10 +101,10 @@ MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
         "supports_thinking": True,
         "notes": "Fast reasoning",
     },
-    "azure-gpt-5.4": {
+    "azure-gpt-5.3-chat": {
         "provider": "azure",
         "supports_thinking": True,
-        "notes": "Azure OpenAI GPT-5.4 reasoning deployment (Le) — requires AZURE_OPENAI_API_KEY+AZURE_OPENAI_ENDPOINT",
+        "notes": "Azure OpenAI GPT-5.3 Chat Global deployment (Le, placeholder 'gpt-5.4' resolved 2026-04-17) — requires AZURE_OPENAI_API_KEY+AZURE_OPENAI_ENDPOINT",
     },
     "groq-llama-3.3-70b-versatile": {
         "provider": "groq",
@@ -125,7 +125,7 @@ MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
         "provider": "together",
         "supports_thinking": True,
         "api_model": "Qwen/Qwen3.5-397B-A17B",
-        "notes": "Qwen 3.5 397B MoE via Together AI (thinking disabled)",
+        "notes": "Qwen 3.5 397B MoE via Together AI (thinking flag-driven, Plan 02-03)",
     },
 }
 
@@ -874,7 +874,7 @@ def call_llm(
                 "openai package not installed. Run: python3 -m pip install openai"
             )
 
-        azure_model = model[len("azure-"):]  # e.g. "azure-gpt-5.4" → "gpt-5.4"
+        azure_model = model[len("azure-"):]  # e.g. "azure-gpt-5.3-chat" → "gpt-5.3-chat"
 
         # Strip any path/query from endpoint — SDK expects just scheme+host
         from urllib.parse import urlparse
@@ -1016,9 +1016,9 @@ def call_llm(
             max_tokens=81920,
             temperature=temperature,
             messages=full_messages,
-            # Explicitly disable thinking/reasoning for Qwen 3.5 (thinking ON by
-            # default). Uses Together AI's chat_template_kwargs passthrough to set
-            # enable_thinking=False in the Jinja2 chat template.
+            # enable_thinking driven by --thinking flag via thinking_enabled bool
+            # (Plan 02-03). Uses Together AI's chat_template_kwargs passthrough to
+            # set enable_thinking in the Jinja2 chat template.
             # Ref: https://docs.together.ai/reference/chat-completions
             extra_body={
                 "chat_template_kwargs": {"enable_thinking": thinking_enabled},

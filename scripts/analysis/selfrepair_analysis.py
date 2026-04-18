@@ -41,6 +41,7 @@ STATUS_ORDER = {
 
 MODEL_DISPLAY = {
     "together-qwen-3.5-397b-a17b": "Qwen 3.5 397B (Together)",
+    "azure-gpt-5.3-chat": "Azure GPT-5.3 Chat",
     "gemini-2.5-flash": "Gemini 2.5 Flash",
     # Legacy models (kept for historical result analysis)
     "claude-sonnet-4-6": "Claude Sonnet 4",

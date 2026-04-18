@@ -3,7 +3,7 @@
 Gated by ``PARBENCH_RUN_LLM_TESTS=1`` (skipped otherwise — real API calls cost money).
 
 For each of 5 suite-representative kernels × 2 models
-(``together-qwen-3.5-397b-a17b``, ``azure-gpt-5.4``):
+(``together-qwen-3.5-397b-a17b``, ``azure-gpt-5.3-chat``):
 
   (a) ``test_smoke_dry_run`` — invoke ``llm_evaluate.py --dry-run`` and assert the
       prompt is built without any API call.
@@ -19,7 +19,7 @@ mixbench-mixbench-cuda, hecbench-bezier-surface-cuda. Direction: ``cuda-to-omp``
 
 Budget (D-30, pricing verified 2026-04-17 against provider pages):
   - 5 kernels × 2 models × 3 samples = 30 samples (real-API portion).
-  - ``azure-gpt-5.4`` (GPT-5 standard tier, ``reasoning_effort=medium``):
+  - ``azure-gpt-5.3-chat`` (GPT-5 standard tier, ``reasoning_effort=medium``):
     $2.50/1M input + $15/1M output. ~$0.3125/sample.
   - ``together-qwen-3.5-397b-a17b``: $0.60/1M input + $3.60/1M output.
     ~$0.075/sample.
@@ -27,8 +27,8 @@ Budget (D-30, pricing verified 2026-04-17 against provider pages):
   - Worst-case if reasoning tokens double output: ~$10.90.
   - The plan-frontmatter line "Budget ≈ $3.47 for 30 real samples" is the
     pre-2026-04-17 figure superseded by the verified $5.81 above.
-  - Note: "GPT-5.4" is the ParBench-internal registry key / Azure deployment
-    name chosen by Le; the Azure SKU/tier is "GPT-5 standard".
+  - Note: "gpt-5.3-chat" is the ParBench-internal registry key matching the
+    Azure deployment name.
 
 Why ``llm_evaluate.py`` for dry-run vs ``run_eval_batch.py`` for real:
   ``run_eval_batch.py`` does NOT carry a ``--dry-run`` flag (only the single-task
@@ -79,7 +79,7 @@ VALID_SMOKE_STATUSES = {"PASS", "BUILD_FAIL", "RUN_FAIL", "VERIFY_FAIL"}
 
 MODELS_UNDER_TEST = [
     "together-qwen-3.5-397b-a17b",
-    "azure-gpt-5.4",
+    "azure-gpt-5.3-chat",
 ]
 
 
@@ -196,7 +196,7 @@ def test_smoke_dry_run(source_spec: Path, model: str) -> None:
     _source_spec_paths(),
     ids=[_suite_id(p) for p in _source_spec_paths()],
 )
-def test_smoke_real_invocation(source_spec: Path, model: str) -> None:
+def test_smoke_real_invocation(source_spec: Path, model: str, tmp_path: Path) -> None:
     """One canonical-config invocation per (suite, model) pair.
 
     Asserts:
@@ -226,7 +226,7 @@ def test_smoke_real_invocation(source_spec: Path, model: str) -> None:
         "--num-samples", "3",
         "--temperature", "0.7",
         "--thinking", "on",
-        "--project-root", str(PROJECT_ROOT),
+        "--project-root", str(tmp_path),
         "--no-resume",  # force fresh samples for the smoke
         "-v",
     ]
@@ -250,7 +250,7 @@ def test_smoke_real_invocation(source_spec: Path, model: str) -> None:
     #   {project_root}/results/evaluation/{model}/{src}-to-{tgt}{level_tag}{sample_tag}.json
     # With augment_level=0, level_tag="" ; with num_samples=3, sample_tag is
     # "-s0", "-s1", "-s2" (per _result_path() in run_eval_batch.py:228).
-    out_dir = PROJECT_ROOT / "results" / "evaluation" / model
+    out_dir = tmp_path / "results" / "evaluation" / model
     pattern = f"{src_id}-to-{tgt_id}-s*.json"
     result_files = sorted(out_dir.glob(pattern))
     assert result_files, (

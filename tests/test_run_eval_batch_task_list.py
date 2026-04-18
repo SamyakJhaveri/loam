@@ -150,13 +150,13 @@ def test_task_list_expands_by_models(passer_json, fake_project):
             task_list_path=passer_json,
             project_root=fake_project,
             direction="cuda-to-omp",
-            models=["gpt-4o", "azure-gpt-5.4"],
+            models=["gpt-4o", "azure-gpt-5.3-chat"],
             augment_levels=[0],
             num_samples=1,
             manifest_path=fake_project / "manifest.jsonl",
         )
     assert len(tasks) == 4
-    assert {t["model"] for t in tasks} == {"gpt-4o", "azure-gpt-5.4"}
+    assert {t["model"] for t in tasks} == {"gpt-4o", "azure-gpt-5.3-chat"}
 
 
 def test_task_list_skips_unknown_specs(tmp_path, fake_project, capsys):
