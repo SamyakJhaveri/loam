@@ -539,10 +539,10 @@ def _validate_all() -> list[str]:
         print(f"    {suite}/{kname}: {', '.join(sorted(apis))}")
     print(f"  Total translation pairs: {total_pairs}")
 
-    # 7. Oracle-strength summary + weak/unknown WARN
+    # 7. Oracle-strength summary + weak/unknown WARN (truncated to avoid noise)
     print("\nRunning oracle_strength audit...")
     counts = {"strong": 0, "medium": 0, "weak": 0, "unknown": 0, "missing": 0}
-    specs_dir = PROJECT_ROOT / "specs"
+    flagged: list[str] = []  # weak / unknown / missing specs
     if specs_dir.exists():
         for json_file in sorted(specs_dir.glob("*.json")):
             try:
@@ -553,18 +553,22 @@ def _validate_all() -> list[str]:
             if strength in ("strong", "medium", "weak", "unknown"):
                 counts[strength] += 1
                 if strength in ("weak", "unknown"):
-                    all_errors.append(
-                        f"⚠ WARNING: [oracle] {json_file.name}: oracle_strength='{strength}'"
-                    )
+                    flagged.append(f"{json_file.name}: oracle_strength='{strength}'")
             else:
                 counts["missing"] += 1
-                all_errors.append(
-                    f"⚠ WARNING: [oracle] {json_file.name}: oracle_strength not set"
-                )
+                flagged.append(f"{json_file.name}: oracle_strength not set")
     print(
         f"  oracle_strength: {counts['strong']} strong / {counts['medium']} medium / "
         f"{counts['weak']} weak / {counts['unknown']} unknown / {counts['missing']} missing"
     )
+    if flagged:
+        for entry in flagged[:5]:
+            all_errors.append(f"⚠ WARNING: [oracle] {entry}")
+        if len(flagged) > 5:
+            all_errors.append(
+                f"⚠ WARNING: [oracle] ... {len(flagged) - 5} more specs flagged "
+                f"(total {len(flagged)}); S3 audit will populate oracle_strength"
+            )
 
     return all_errors
 

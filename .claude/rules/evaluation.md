@@ -256,7 +256,7 @@ semantics. Existing L0 results verified exit_code only — must be re-run for va
 
 **Details:** `results/evaluation/reverification_analysis.md`
 
-## Verifier Strategies (Tier 1 Oracle, schema v1.1 — 2026-04-18)
+## Verifier Strategies (Tier 1 Oracle, schema extension — 2026-04-18)
 
 `harness/verifier.py:verify_run(spec, run_result, *, working_dir=None)` dispatches on
 `verification.strategies[].type`. Conjunction semantics: every non-SKIP strategy must PASS

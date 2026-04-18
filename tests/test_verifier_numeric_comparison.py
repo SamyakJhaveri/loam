@@ -74,3 +74,53 @@ def test_numeric_zero_tolerance_exact_match_passes():
     run = _make_run("val=42.0\n")
     result = verify_run(spec, run)
     assert result.status == Status.PASS
+
+
+def test_numeric_invalid_regex_errors():
+    spec = _spec_with_numeric(extract_regex=r"(unbalanced", expected=1.0, tolerance=0.0)
+    run = _make_run("val=1.0\n")
+    result = verify_run(spec, run)
+    assert result.status == Status.ERROR
+    assert result.strategy_used == "numeric_comparison"
+
+
+def test_numeric_tolerance_null_errors():
+    spec = {
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {
+                    "type": "numeric_comparison",
+                    "extract_regex": r"val=(\S+)",
+                    "expected": 1.0,
+                    "tolerance": None,
+                }
+            ],
+        }
+    }
+    run = _make_run("val=1.0\n")
+    result = verify_run(spec, run)
+    assert result.status == Status.ERROR
+    assert result.strategy_used == "numeric_comparison"
+    assert "tolerance" in result.details.lower()
+
+
+def test_numeric_expected_non_numeric_errors():
+    spec = {
+        "verification": {
+            "method": "self_checking",
+            "strategies": [
+                {
+                    "type": "numeric_comparison",
+                    "extract_regex": r"val=(\S+)",
+                    "expected": "abc",
+                    "tolerance": 0.0,
+                }
+            ],
+        }
+    }
+    run = _make_run("val=1.0\n")
+    result = verify_run(spec, run)
+    assert result.status == Status.ERROR
+    assert result.strategy_used == "numeric_comparison"
+    assert "expected" in result.details.lower()

@@ -402,6 +402,7 @@ ParBench is a kernel-centric benchmark framework for evaluating LLM-based parall
 | fix-bug |  | `.claude/skills/fix-bug/SKILL.md` |
 | gen-spec |  | `.claude/skills/gen-spec/SKILL.md` |
 | grill-research |  | `.claude/skills/grill-research/SKILL.md` |
+| handoff | Write or update a handoff document so the next agent with fresh context can continue this work. | `.claude/skills/handoff/SKILL.md` |
 | hypothesis-tree |  | `.claude/skills/hypothesis-tree/SKILL.md` |
 | interpret-results |  | `.claude/skills/interpret-results/SKILL.md` |
 | mentoring | "HPC/SE/research teaching framework — surfaces insights grounded in ParBench" | `.claude/skills/mentoring/SKILL.md` |

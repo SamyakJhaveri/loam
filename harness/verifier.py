@@ -233,13 +233,29 @@ def _verify_numeric_comparison(
             details="Strategy missing required 'expected' field",
         )
 
-    tolerance = float(strategy.get("tolerance", 0.0))
+    try:
+        expected_f = float(expected)
+    except (TypeError, ValueError):
+        return VerificationResult(
+            status=Status.ERROR,
+            strategy_used="numeric_comparison",
+            details=f"Strategy 'expected' ({expected!r}) is not a number",
+        )
+
+    try:
+        tolerance = float(strategy.get("tolerance", 0.0))
+    except (TypeError, ValueError):
+        return VerificationResult(
+            status=Status.ERROR,
+            strategy_used="numeric_comparison",
+            details=f"Strategy 'tolerance' ({strategy.get('tolerance')!r}) is not a number",
+        )
 
     try:
         match = re.search(extract_regex, run_result.stdout)
     except re.error as exc:
         return VerificationResult(
-            status=Status.FAIL,
+            status=Status.ERROR,
             strategy_used="numeric_comparison",
             details=f"Invalid regex '{extract_regex}': {exc}",
         )
@@ -261,16 +277,16 @@ def _verify_numeric_comparison(
             details=f"Captured value {capture!r} is not parseable as float",
         )
 
-    if abs(actual - float(expected)) <= tolerance:
+    if abs(actual - expected_f) <= tolerance:
         return VerificationResult(
             status=Status.PASS,
             strategy_used="numeric_comparison",
-            details=f"actual={actual} within tolerance {tolerance} of expected={expected}",
+            details=f"actual={actual} within tolerance {tolerance} of expected={expected_f}",
         )
     return VerificationResult(
         status=Status.FAIL,
         strategy_used="numeric_comparison",
-        details=f"actual={actual} differs from expected={expected} by more than tolerance {tolerance}",
+        details=f"actual={actual} differs from expected={expected_f} by more than tolerance {tolerance}",
     )
 
 
@@ -295,7 +311,17 @@ def _verify_file_hash(
             details="Strategy missing required 'path' or 'expected_sha256' field",
         )
 
-    target = Path(working_dir) / rel_path
+    base = working_dir.resolve()
+    try:
+        target = (base / rel_path).resolve()
+        target.relative_to(base)
+    except (OSError, ValueError):
+        return VerificationResult(
+            status=Status.FAIL,
+            strategy_used="file_hash",
+            details=f"Path '{rel_path}' escapes working_dir",
+        )
+
     if not target.is_file():
         return VerificationResult(
             status=Status.FAIL,
@@ -304,7 +330,7 @@ def _verify_file_hash(
         )
 
     digest = hashlib.sha256(target.read_bytes()).hexdigest()
-    if digest == expected:
+    if digest == expected.lower():
         return VerificationResult(
             status=Status.PASS,
             strategy_used="file_hash",
