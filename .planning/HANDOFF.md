@@ -84,6 +84,7 @@ These apply across every session in this campaign. No exceptions, no `--no-verif
 9. **If a spec cannot be upgraded without touching benchmark source** (no output file, no numeric stdout, no self-check, non-deterministic FP output), it gets `oracle_strength: "weak"` + a `# TODO(paper-threats)` note in the spec + a paragraph in the paper Threats section. It is NOT silently shipped as passing.
 10. **Before any irreversible / paid action** (Phase 3 launch), stop and ask user. No silent launch.
 11. **Historical result JSONs are interpreted under their on-disk-time oracle definition.** Phase 3 results are evaluated under the upgraded oracle. Cross-campaign comparison of pass rates on the same `unique_id` is invalid — oracle semantics changed. State this explicitly in the paper.
+12. **Before any spec's oracle is upgraded to `file_hash`**, run the binary twice (using the spec's `run.input_configurations.correctness.arguments`) and confirm bit-identical output-file SHA-256s across both runs. Non-deterministic output → use `numeric_comparison` or mark `oracle_strength: "weak"`; **never `file_hash`**. This is a session-spanning invariant, not just an S4 step.
 
 ---
 
@@ -248,7 +249,10 @@ For each of the 53 specs:
   3. **needs-file_hash** — binary writes a deterministic output file; upgrade with `file_hash` strategy.
   4. **needs-numeric_comparison** — binary prints a timing-independent numeric value in stdout; upgrade with `numeric_comparison`.
   5. **truly-weak** — no output file, no numeric stdout, no self-check, or output is non-deterministic; set `oracle_strength: "weak"`, note in Threats.
-- Record: spec_id, source_file:line, gating_expression, bucket, recommended_fix.
+
+**MANDATORY citation format.** Each classification entry MUST cite the exact source `file:line` driving the decision. Example: `rodinia-hotspot3d-cuda → bucket 2 (regex-tighten); cite: rodinia/rodinia-src/openmp/hotspot3D/3D.c:265 printf("Accuracy: %e\n", acc)`. A classification without a source citation is invalid and must be re-done. This is the lesson from `.claude/rules/workflow.md` anti-pattern #8 ("documentation is not ground truth for code behavior") and workflow.md anti-pattern #9 ("don't change spec run args without reading the actual source's argc check").
+
+- Record per-spec: `spec_id, source_file:line (citation), gating_expression, bucket, recommended_fix`.
 - Produce `.planning/phases/03-oracle-framework/03-B1-AUDIT.md` — full classification matrix.
 
 **Exit criteria**
@@ -539,3 +543,12 @@ Per-session entry criteria are in §5. If entry criteria are not met, STOP and e
 | C2 (reviewer: descope S4) vs R11 (critic: same) | Both agree — no conflict. Converged on 6-8 highest-impact. |
 | R3 (critic: skip numeric_comparison) vs C1 (reviewer: full schema) | Resolved: build numeric_comparison in S1 because schema already declares it and harness stub exists; removing it would break validate_schema. But no spec is forced to use it — usage conditional on S3 audit demand. |
 | M4 (reviewer: SPOF) vs R4 (critic: Zenodo not needed) | Fully convergent: in-repo reference files for submission, Zenodo camera-ready. |
+
+### Late-arriving items (cross-talk round 2, joint reviewer finding)
+
+| Finding | Classification | Rationale |
+|---|---|---|
+| A — schema enum already has `numeric_comparison` + `file_diff` (at `schema/spec_schema.json:476-478`) | **ADOPT** | S1 schema work corrected: do NOT re-add `numeric_comparison`; ADD only `file_hash` to the enum. Also add per-strategy required-field constraints via if/then so `numeric_comparison` requires `extract_regex`+`expected` and `file_hash` requires `path`+`expected_sha256`. Without this, any spec can omit required fields. S1 effort updated to 6-8 hrs. |
+| B — `_capture_baseline.py` must use correctness run args (same-args invariant) | **ADOPT** | Helper must call the binary with exactly `run.input_configurations.correctness.arguments` — the same args Phase 3 eval uses. Otherwise the captured SHA-256 will not match the eval-time SHA-256 and every spec upgraded to `file_hash` will false-FAIL under harness verify. Documented prominently in §5 S2 step 1 and in the helper script's header comment. |
+| Rule 12 (plan-reviewer, post-apply follow-up) | **ADOPT** | `file_hash` determinism pre-flight elevated from session-local S4 step to campaign-wide §3 Rule 12. Prevents future sessions under deadline pressure from shipping non-deterministic `file_hash` specs. |
+| S3 MANDATORY citation discipline (plan-reviewer, post-apply follow-up) | **ADOPT** | Classification entries without `file:line` source citations are invalid. Enforces workflow.md anti-pattern #8 + #9 at audit-entry time. |
