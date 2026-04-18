@@ -129,12 +129,6 @@
                 "description": "Myocyte simulation timing reported"
             },
             {
-                "type": "numeric_comparison",
-                "tolerance": 0.001,
-                "tolerance_type": "relative",
-                "description": "Numerical results within tolerance"
-            },
-            {
                 "type": "exit_code",
                 "expected": 0,
                 "description": "Process exits cleanly"

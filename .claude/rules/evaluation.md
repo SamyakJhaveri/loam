@@ -256,6 +256,39 @@ semantics. Existing L0 results verified exit_code only — must be re-run for va
 
 **Details:** `results/evaluation/reverification_analysis.md`
 
+## Verifier Strategies (Tier 1 Oracle, schema v1.1 — 2026-04-18)
+
+`harness/verifier.py:verify_run(spec, run_result, *, working_dir=None)` dispatches on
+`verification.strategies[].type`. Conjunction semantics: every non-SKIP strategy must PASS
+for overall PASS; any FAIL/ERROR short-circuits. SKIP strategies are inert (neither block
+nor count toward PASS).
+
+| Strategy type | Required fields | Semantics |
+|---|---|---|
+| `exit_code` | `expected` | `run_result.exit_code == expected` |
+| `stdout_pattern` | `pattern` | `re.search(pattern, stdout)` matches |
+| `numeric_comparison` | `extract_regex`, `expected` (optional `tolerance`, default 0.0) | Regex captures a float from stdout; compare to `expected` within `tolerance` |
+| `file_hash` | `path`, `expected_sha256` | SHA-256 of `working_dir / path` equals `expected_sha256` (64-hex) |
+| `file_diff` / `custom_script` | — | Unimplemented — returns SKIP |
+
+`working_dir` kwarg is required for `file_hash`; passing `None` returns ERROR. All existing
+callers (`scripts/evaluation/llm_evaluate.py`, `scripts/augmentation/augment_verify.py`,
+`scripts/evaluation/reverify_pass_results.py`, `harness/cli.py`) omit `working_dir` and must
+pass it explicitly before upgrading any spec to `file_hash`.
+
+Spec schema (`schema/spec_schema.json`) enforces per-strategy required fields via
+`allOf` + `if/then` on the strategy item. The `verification` block accepts two new
+optional keys:
+
+- `oracle_strength`: one of `"strong" | "medium" | "weak" | "unknown"`. See §S3 audit in
+  `.planning/HANDOFF.md` for classification buckets.
+- `reference_files[]`: list of `{path, sha256, size_bytes?, description?}` entries pointing
+  at reference outputs committed under `specs/references/{kernel}/` (≤1 MB each).
+
+`python3 scripts/validate_schema.py --all` now prints an oracle_strength distribution
+summary and emits a `⚠ WARNING` per spec whose `oracle_strength` is missing, `weak`, or
+`unknown`. Warnings are non-blocking.
+
 ## Python Gotcha: null JSON values
 
 `dict.get("key", {})` returns `None` (not `{}`) when the key EXISTS with a null JSON value.

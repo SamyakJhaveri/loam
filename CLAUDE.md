@@ -300,7 +300,7 @@ ParBench is a kernel-centric benchmark framework for evaluating LLM-based parall
 - Used by: Harness, evaluation pipeline, augmentation pipeline, analysis scripts
 - Purpose: Compile, execute, and verify benchmark kernels from spec definitions
 - Location: `harness/` (7 Python modules)
-- Contains: `spec_loader.py` (load specs, resolve paths, extract prompt payloads), `builder.py` (compile via subprocess), `runner.py` (execute with optional GNU time), `verifier.py` (exit_code + stdout_pattern strategies), `reporter.py` (format results), `models.py` (dataclasses: Status, BuildResult, RunResult, VerificationResult, MetricResult, SpecResult), `cli.py` (argparse CLI entry point)
+- Contains: `spec_loader.py` (load specs, resolve paths, extract prompt payloads), `builder.py` (compile via subprocess), `runner.py` (execute with optional GNU time), `verifier.py` (exit_code + stdout_pattern + numeric_comparison + file_hash strategies), `reporter.py` (format results), `models.py` (dataclasses: Status, BuildResult, RunResult, VerificationResult, MetricResult, SpecResult), `cli.py` (argparse CLI entry point)
 - Depends on: Spec layer, benchmark source code on disk, system compilers (nvcc, gcc, nvc)
 - Used by: LLM evaluation pipeline, augmentation verification, manual spec testing
 - Purpose: Send source code to LLMs for translation, then grade results via harness
@@ -346,8 +346,8 @@ ParBench is a kernel-centric benchmark framework for evaluating LLM-based parall
 - Values: PASS, FAIL, ERROR, TIMEOUT, SKIP
 - Used by: BuildResult, RunResult, VerificationResult
 - Purpose: Pluggable checker for kernel output correctness
-- Implemented: `exit_code` (check return code), `stdout_pattern` (regex match on stdout)
-- Stub/TODO: `numeric_comparison`, `file_diff`, `custom_script`
+- Implemented: `exit_code` (check return code), `stdout_pattern` (regex match on stdout), `numeric_comparison` (regex-extract float + tolerance compare), `file_hash` (SHA-256 of output file)
+- Stub/TODO: `file_diff`, `custom_script`
 - Semantics: Conjunction -- ALL non-SKIP strategies must PASS for overall PASS
 - Purpose: Semantics-preserving C/C++ code rewriting to test LLM robustness
 - Examples: `ArithmeticTransform`, `SwapCondition`, `PointerArithmeticToArrayIndex`, `TypedefExpansion`, `ChangeNames`, `ChangeFunctionNames`

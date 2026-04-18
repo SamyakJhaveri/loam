@@ -475,16 +475,21 @@
                                     "stdout_pattern",
                                     "numeric_comparison",
                                     "file_diff",
+                                    "file_hash",
                                     "custom_script"
                                 ],
                                 "description": "Verification strategy type."
                             },
                             "expected": {
-                                "description": "Expected value (e.g., expected exit code)."
+                                "description": "Expected value (e.g., expected exit code, or numeric value for numeric_comparison)."
                             },
                             "pattern": {
                                 "type": "string",
                                 "description": "Regex pattern for stdout_pattern type."
+                            },
+                            "extract_regex": {
+                                "type": "string",
+                                "description": "Regex with a capture group extracting a numeric value from stdout, for numeric_comparison type."
                             },
                             "tolerance": {
                                 "type": "number",
@@ -498,6 +503,15 @@
                                 ],
                                 "description": "How tolerance is interpreted."
                             },
+                            "path": {
+                                "type": "string",
+                                "description": "Relative path (under working_directory) to the output file for file_hash / file_diff types."
+                            },
+                            "expected_sha256": {
+                                "type": "string",
+                                "pattern": "^[0-9a-fA-F]{64}$",
+                                "description": "Expected SHA-256 hex digest of the output file, for file_hash type."
+                            },
                             "reference_file": {
                                 "type": "string",
                                 "description": "Reference file for file_diff type."
@@ -510,7 +524,65 @@
                                 "type": "string",
                                 "description": "Human-readable description of this strategy."
                             }
-                        }
+                        },
+                        "allOf": [
+                            {
+                                "if": {
+                                    "properties": {
+                                        "type": {
+                                            "const": "file_hash"
+                                        }
+                                    },
+                                    "required": [
+                                        "type"
+                                    ]
+                                },
+                                "then": {
+                                    "required": [
+                                        "type",
+                                        "path",
+                                        "expected_sha256"
+                                    ]
+                                }
+                            },
+                            {
+                                "if": {
+                                    "properties": {
+                                        "type": {
+                                            "const": "numeric_comparison"
+                                        }
+                                    },
+                                    "required": [
+                                        "type"
+                                    ]
+                                },
+                                "then": {
+                                    "required": [
+                                        "type",
+                                        "extract_regex",
+                                        "expected"
+                                    ]
+                                }
+                            },
+                            {
+                                "if": {
+                                    "properties": {
+                                        "type": {
+                                            "const": "stdout_pattern"
+                                        }
+                                    },
+                                    "required": [
+                                        "type"
+                                    ]
+                                },
+                                "then": {
+                                    "required": [
+                                        "type",
+                                        "pattern"
+                                    ]
+                                }
+                            }
+                        ]
                     },
                     "description": "Ordered list of verification strategies."
                 },
@@ -536,6 +608,47 @@
                             "type": "string",
                             "description": "Any notes about floating-point behaviour."
                         }
+                    }
+                },
+                "oracle_strength": {
+                    "type": "string",
+                    "enum": [
+                        "strong",
+                        "medium",
+                        "weak",
+                        "unknown"
+                    ],
+                    "description": "Classification of how strongly this spec's verification oracle gates semantic correctness. See docs/design/spec_oracle_design.md."
+                },
+                "reference_files": {
+                    "type": "array",
+                    "description": "Reference output files committed under specs/references/{kernel}/; each entry records relative path + SHA-256.",
+                    "items": {
+                        "type": "object",
+                        "required": [
+                            "path",
+                            "sha256"
+                        ],
+                        "properties": {
+                            "path": {
+                                "type": "string",
+                                "description": "Path relative to the repo root (typically specs/references/{kernel}/...)."
+                            },
+                            "sha256": {
+                                "type": "string",
+                                "pattern": "^[0-9a-fA-F]{64}$",
+                                "description": "SHA-256 hex digest of the reference file contents."
+                            },
+                            "size_bytes": {
+                                "type": "integer",
+                                "description": "File size in bytes; informational."
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Human-readable note about this reference file."
+                            }
+                        },
+                        "additionalProperties": false
                     }
                 }
             }

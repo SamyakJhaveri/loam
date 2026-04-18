@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
+from pathlib import Path
 from typing import Any
 
 from harness.models import MetricResult, RunResult, Status, VerificationResult
@@ -14,19 +16,24 @@ log = logging.getLogger(__name__)
 def verify_run(
     spec: dict[str, Any],
     run_result: RunResult,
+    *,
+    working_dir: Path | None = None,
 ) -> VerificationResult:
     """Apply ALL verification strategies; every non-SKIP strategy must PASS.
 
     Returns PASS only when every implemented strategy passes.  Returns FAIL
     on the first strategy that fails (with that strategy's details).  SKIP
-    strategies (unimplemented types like numeric_comparison) are ignored —
+    strategies (unimplemented types like file_diff) are ignored —
     they neither block a PASS nor cause a FAIL.
 
     Supported strategy types
     ------------------------
     * **exit_code** — check ``run_result.exit_code == strategy["expected"]``
     * **stdout_pattern** — ``re.search(pattern, stdout)``
-    * **numeric_comparison** — *TODO* (returns SKIP)
+    * **numeric_comparison** — regex-extract a float from stdout and compare to
+      ``strategy["expected"]`` within ``strategy.get("tolerance", 0.0)``.
+    * **file_hash** — SHA-256 of ``working_dir / strategy["path"]`` must equal
+      ``strategy["expected_sha256"]``. Requires ``working_dir`` kwarg.
     * **file_diff** — *TODO* (returns SKIP)
     * **custom_script** — *TODO* (returns SKIP)
 
@@ -36,6 +43,9 @@ def verify_run(
         Parsed spec dict.
     run_result:
         The :class:`RunResult` to verify.
+    working_dir:
+        Directory in which the binary ran; required for file-based strategies
+        (``file_hash``). ``None`` triggers ERROR for those strategies.
 
     Returns
     -------
@@ -61,7 +71,9 @@ def verify_run(
         elif stype == "stdout_pattern":
             result = _check_stdout_pattern(strategy, run_result)
         elif stype == "numeric_comparison":
-            result = _stub_strategy(stype)
+            result = _verify_numeric_comparison(strategy, run_result)
+        elif stype == "file_hash":
+            result = _verify_file_hash(strategy, working_dir)
         elif stype == "file_diff":
             result = _stub_strategy(stype)
         elif stype == "custom_script":
@@ -198,6 +210,111 @@ def _check_stdout_pattern(
             strategy_used="stdout_pattern",
             details=f"Invalid regex '{pattern}': {exc}",
         )
+
+
+def _verify_numeric_comparison(
+    strategy: dict[str, Any],
+    run_result: RunResult,
+) -> VerificationResult:
+    """Regex-extract a float from stdout and compare to expected within tolerance."""
+    extract_regex = strategy.get("extract_regex")
+    if not extract_regex:
+        return VerificationResult(
+            status=Status.FAIL,
+            strategy_used="numeric_comparison",
+            details="Strategy missing required 'extract_regex' field",
+        )
+
+    expected = strategy.get("expected")
+    if expected is None:
+        return VerificationResult(
+            status=Status.FAIL,
+            strategy_used="numeric_comparison",
+            details="Strategy missing required 'expected' field",
+        )
+
+    tolerance = float(strategy.get("tolerance", 0.0))
+
+    try:
+        match = re.search(extract_regex, run_result.stdout)
+    except re.error as exc:
+        return VerificationResult(
+            status=Status.FAIL,
+            strategy_used="numeric_comparison",
+            details=f"Invalid regex '{extract_regex}': {exc}",
+        )
+
+    if not match:
+        return VerificationResult(
+            status=Status.FAIL,
+            strategy_used="numeric_comparison",
+            details=f"Pattern '{extract_regex}' did not match stdout",
+        )
+
+    capture = match.group(1) if match.groups() else match.group(0)
+    try:
+        actual = float(capture)
+    except (TypeError, ValueError):
+        return VerificationResult(
+            status=Status.FAIL,
+            strategy_used="numeric_comparison",
+            details=f"Captured value {capture!r} is not parseable as float",
+        )
+
+    if abs(actual - float(expected)) <= tolerance:
+        return VerificationResult(
+            status=Status.PASS,
+            strategy_used="numeric_comparison",
+            details=f"actual={actual} within tolerance {tolerance} of expected={expected}",
+        )
+    return VerificationResult(
+        status=Status.FAIL,
+        strategy_used="numeric_comparison",
+        details=f"actual={actual} differs from expected={expected} by more than tolerance {tolerance}",
+    )
+
+
+def _verify_file_hash(
+    strategy: dict[str, Any],
+    working_dir: Path | None,
+) -> VerificationResult:
+    """SHA-256 of `working_dir / strategy['path']` must equal `expected_sha256`."""
+    if working_dir is None:
+        return VerificationResult(
+            status=Status.ERROR,
+            strategy_used="file_hash",
+            details="file_hash strategy requires working_dir; none provided",
+        )
+
+    rel_path = strategy.get("path")
+    expected = strategy.get("expected_sha256")
+    if not rel_path or not expected:
+        return VerificationResult(
+            status=Status.FAIL,
+            strategy_used="file_hash",
+            details="Strategy missing required 'path' or 'expected_sha256' field",
+        )
+
+    target = Path(working_dir) / rel_path
+    if not target.is_file():
+        return VerificationResult(
+            status=Status.FAIL,
+            strategy_used="file_hash",
+            details=f"Output file not found at '{target}'",
+        )
+
+    digest = hashlib.sha256(target.read_bytes()).hexdigest()
+    if digest == expected:
+        return VerificationResult(
+            status=Status.PASS,
+            strategy_used="file_hash",
+            details=f"SHA-256 of '{rel_path}' matches expected",
+        )
+    return VerificationResult(
+        status=Status.FAIL,
+        strategy_used="file_hash",
+        details=f"SHA-256 of '{rel_path}' = {digest}; expected {expected}",
+    )
 
 
 def _stub_strategy(stype: str) -> VerificationResult:
