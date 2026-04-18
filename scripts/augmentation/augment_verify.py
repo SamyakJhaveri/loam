@@ -212,7 +212,7 @@ def augment_verify(
         run_result = run_spec(patched_spec, project_root, configuration=config, verbose=verbose)
 
         # --- 8. Verify + metrics ---
-        ver_result = verify_run(patched_spec, run_result)
+        ver_result = verify_run(patched_spec, run_result, working_dir=tempdir)
         _metrics = extract_metrics(patched_spec, run_result)
 
         overall = "PASS" if ver_result.status == Status.PASS else ver_result.status.value.upper()

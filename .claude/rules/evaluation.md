@@ -271,10 +271,13 @@ nor count toward PASS).
 | `file_hash` | `path`, `expected_sha256` | SHA-256 of `working_dir / path` equals `expected_sha256` (64-hex) |
 | `file_diff` / `custom_script` | — | Unimplemented — returns SKIP |
 
-`working_dir` kwarg is required for `file_hash`; passing `None` returns ERROR. All existing
-callers (`scripts/evaluation/llm_evaluate.py`, `scripts/augmentation/augment_verify.py`,
-`scripts/evaluation/reverify_pass_results.py`, `harness/cli.py`) omit `working_dir` and must
-pass it explicitly before upgrading any spec to `file_hash`.
+`working_dir` kwarg is required for `file_hash`; passing `None` returns ERROR. All four
+production callers (`harness/cli.py`, `scripts/evaluation/llm_evaluate.py`,
+`scripts/evaluation/reverify_pass_results.py`, `scripts/augmentation/augment_verify.py`)
+thread `working_dir` through explicitly as of S1.6 (2026-04-18). Specs using `file_hash`
+are safe to adopt without further caller changes. The contract is enforced by
+`tests/test_verifier_caller_contract.py` — a grep-based static check that fails if any
+caller is ever patched to drop the kwarg.
 
 Spec schema (`schema/spec_schema.json`) enforces per-strategy required fields via
 `allOf` + `if/then` on the strategy item. The `verification` block accepts two new

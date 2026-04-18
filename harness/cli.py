@@ -34,6 +34,7 @@ from harness.spec_loader import (
     get_prompt_payload,
     load_manifest,
     load_spec,
+    resolve_paths,
 )
 from harness.verifier import extract_metrics, verify_run
 
@@ -136,7 +137,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
     # Verify
     print(f"Verifying {spec_id} ...")
-    ver_result = verify_run(spec, run_result)
+    resolved = resolve_paths(spec, project_root)
+    ver_result = verify_run(spec, run_result, working_dir=resolved["working_dir"])
 
     # Metrics
     metrics = extract_metrics(spec, run_result)
