@@ -267,6 +267,22 @@ Does the metric measure what we claim?
   (`feedback_protect_cuda_omp_results`).
 - 🟢 **Augmentation is deterministic seed=42.** `experiment-plan §5`. Reproducible
   module of upstream libclang 18.1.1 pinned. **MITIGATED.**
+- 🟡 **Qwen-vs-GPT sampling-control asymmetry (provider seed + top_p).**
+  Plan 02-10 Step 2 (C1-C4) added `seed` + `top_p=1.0` across all provider
+  branches in `llm_evaluate.py`. Together AI accepts both kwargs (verified
+  2026-04-18 smoke test). Azure `gpt-5.3-chat` could not be smoke-tested at
+  handoff time — the configured `AZURE_OPENAI_ENDPOINT` points to a
+  `gpt-4.1` deployment and returned `DeploymentNotFound` for the 5.3-chat
+  deployment name. Azure reasoning-model paths use `max_completion_tokens`
+  with `reasoning_effort="medium"` when thinking is on; OpenAI/Azure
+  reasoning endpoints historically reject `top_p` and sometimes `seed`.
+  **If the Phase 3 launch surfaces a 400-class rejection from Azure, the
+  asymmetry is real and must be documented in the paper — Qwen samples
+  will carry a seed the provider treats as a hint, GPT samples will not
+  carry one at all.** `seed` is also best-effort even on Together AI
+  (Qwen3.5-397B MoE was observed to produce different completions on
+  identical seeds in the 2026-04-18 smoke test). **ACKNOWLEDGED**,
+  validation deferred to Phase 3 launch.
 
 ## 6. Mitigations vs acknowledged gaps
 

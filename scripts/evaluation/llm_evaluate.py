@@ -33,6 +33,7 @@ from __future__ import annotations
 import argparse
 import copy
 import datetime
+import hashlib
 import json
 import logging
 import os
@@ -311,6 +312,20 @@ def _head_tail(text: str, max_len: int = 1500, head: int = 750, tail: int = 750)
     if len(text) <= max_len:
         return text
     return text[:head] + "\n...[truncated]...\n" + text[-tail:]
+
+
+def _derive_llm_seed(source_spec: str, target_spec: str, sample_id: int) -> int:
+    """Deterministic 31-bit LLM sampling seed from (source_spec, target_spec, sample_id).
+
+    Uses SHA-256 (not Python's builtin hash()) because builtin hash() is salted
+    per-process via PYTHONHASHSEED. SHA-256 is deterministic across processes,
+    so the same (source, target, sample_id) yields the same seed everywhere —
+    enabling provider-level reproducibility when the endpoint honors `seed=`.
+    """
+    digest = hashlib.sha256(
+        f"{source_spec}|{target_spec}|{str(sample_id)}".encode()
+    ).hexdigest()
+    return int(digest[:8], 16) & 0x7FFFFFFF
 
 
 def _strip_comments(code: str) -> str:
@@ -757,6 +772,8 @@ def call_llm(
     verbose: bool = False,
     temperature: float = 0.0,
     thinking_enabled: bool = False,
+    seed: int | None = None,
+    top_p: float = 1.0,
 ) -> dict[str, Any]:
     """Call the LLM and return response + usage metadata.
 
@@ -768,6 +785,14 @@ def call_llm(
         verbose: Log request info to stderr.
         temperature: Sampling temperature (0.0 = greedy/deterministic,
             0.5+ = stochastic for pass@k multi-sampling).
+        seed: Deterministic sampling seed. Passed only to providers that
+            accept `seed=` (Together AI, Azure OpenAI). Anthropic does not
+            support `seed=` and ignores this argument. Reasoning-model
+            paths (o1/o3/o4) omit it along with temperature/top_p.
+        top_p: Nucleus-sampling parameter. Default 1.0 = full-distribution
+            sampling at the matched temperature (NOT argmax). Explicitly
+            set across all providers to decouple from provider-specific
+            defaults (Together AI default: 0.7; Azure defaults differ).
 
     Returns:
         {response_text, prompt_tokens, completion_tokens, duration_seconds, finish_reason}
@@ -813,10 +838,13 @@ def call_llm(
         # No `thinking` parameter = extended thinking disabled (base capability only).
         # This ensures parity with Gemini (reasoning_effort="none") and Groq (no
         # thinking capability). All models evaluated at equivalent base level.
+        # Plan 02-10 Step 2 (C3): top_p=1.0 explicit (full-distribution, not argmax).
+        # Anthropic does not accept `seed=`; omit seed here.
         response = client.messages.create(
             model=model,
             max_tokens=32768,
             temperature=temperature,
+            top_p=top_p,
             system=system_msg,
             messages=messages,
         )
@@ -853,9 +881,13 @@ def call_llm(
             "max_completion_tokens": 32768,
             "messages": full_messages,
         }
-        # o1/o3/o4 reasoning models do not accept temperature
+        # o1/o3/o4 reasoning models do not accept temperature or top_p
+        # Plan 02-10 Step 2 (C3): top_p=1.0 explicit on non-reasoning paths.
+        # `seed` is not added here (out of C1/C2 scope); add if OpenAI direct
+        # path is ever used for a Phase 3 model requiring reproducibility.
         if not model.startswith(("o1-", "o3-", "o4-")):
             kwargs["temperature"] = temperature
+            kwargs["top_p"] = top_p
 
         response = client.chat.completions.create(**kwargs)
         response_text = response.choices[0].message.content or ""
@@ -899,12 +931,21 @@ def call_llm(
             logger.info(
                 "Calling Azure OpenAI deployment=%s messages=%d", azure_model, len(full_messages)
             )
+        # Plan 02-10 Step 2 (C2, C3): seed + top_p=1.0 for sampling reproducibility.
+        # `seed` is best-effort at the provider level (OpenAI docs: "hint"). Azure
+        # GPT-5.3-chat smoke test was blocked at handoff time (deployment not yet
+        # live in endpoint URL). If the reasoning-model path at Phase 3 launch
+        # rejects either kwarg, surface the asymmetry and revise here; see
+        # .planning/phases/02-llm-eval-testing/02-THREATS-TO-VALIDITY.md.
         _az_kwargs: dict[str, Any] = {
             "model": azure_model,
             "max_completion_tokens": 32768,
             "temperature": temperature,
+            "top_p": top_p,
             "messages": full_messages,
         }
+        if seed is not None:
+            _az_kwargs["seed"] = seed
         # Plan 02-03 (D-08): inject reasoning_effort="medium" when --thinking=on
         # AND the model has supports_thinking=True (capability-gated). Omit otherwise.
         # Do NOT conflate with Gemini's `reasoning_effort="none"` safety line below —
@@ -941,10 +982,13 @@ def call_llm(
             logger.info(
                 "Calling Groq model=%s messages=%d", groq_model, len(full_messages)
             )
+        # Plan 02-10 Step 2 (C3): top_p=1.0 explicit. Groq is OpenAI-compatible;
+        # `seed` is not added here (out of C1/C2 scope, Groq not in Phase 3 lineup).
         response = client_groq.chat.completions.create(
             model=groq_model,
             max_tokens=32768,
             temperature=temperature,
+            top_p=top_p,
             messages=full_messages,
         )
         response_text = response.choices[0].message.content or ""
@@ -975,10 +1019,13 @@ def call_llm(
             logger.info(
                 "Calling Gemini model=%s messages=%d", model, len(full_messages)
             )
+        # Plan 02-10 Step 2 (C3): top_p=1.0 explicit. `seed` is not added here
+        # (out of C1/C2 scope, Gemini historical only).
         response = client_gemini.chat.completions.create(
             model=model,
             max_tokens=65536,
             temperature=temperature,
+            top_p=top_p,
             messages=full_messages,
             # Explicitly disable thinking/reasoning so all models are evaluated
             # at equivalent base capability — no inference-time compute scaling.
@@ -1019,19 +1066,29 @@ def call_llm(
                 "Calling Together AI model=%s (api_model=%s) messages=%d",
                 model, together_model, len(full_messages),
             )
-        response = client_together.chat.completions.create(
-            model=together_model,
-            max_tokens=81920,
-            temperature=temperature,
-            messages=full_messages,
+        # Plan 02-10 Step 2 (C1, C3): seed + top_p=1.0 for sampling reproducibility.
+        # Together AI accepts `seed=` and `top_p=` (verified 2026-04-18 smoke test).
+        # `seed` is best-effort on MoE models — identical seeds do not guarantee
+        # bit-identical completions on Qwen3.5-397B (observed empirically). Setting
+        # it still enables provider-level reproducibility metadata and is honored
+        # by providers that do lock on seed.
+        _together_kwargs: dict[str, Any] = {
+            "model": together_model,
+            "max_tokens": 81920,
+            "temperature": temperature,
+            "top_p": top_p,
+            "messages": full_messages,
             # enable_thinking driven by --thinking flag via thinking_enabled bool
             # (Plan 02-03). Uses Together AI's chat_template_kwargs passthrough to
             # set enable_thinking in the Jinja2 chat template.
             # Ref: https://docs.together.ai/reference/chat-completions
-            extra_body={
+            "extra_body": {
                 "chat_template_kwargs": {"enable_thinking": thinking_enabled},
             },
-        )
+        }
+        if seed is not None:
+            _together_kwargs["seed"] = seed
+        response = client_together.chat.completions.create(**_together_kwargs)
         response_text = response.choices[0].message.content or ""
         prompt_tokens = response.usage.prompt_tokens
         completion_tokens = response.usage.completion_tokens
@@ -1428,6 +1485,15 @@ def evaluate_translation(
     if verbose:
         logger.info("Evaluating: %s → %s  model=%s", source_id, target_id, model)
 
+    # Plan 02-10 Step 2 (C1/C2/C3/C4): sampling reproducibility metadata.
+    # Seed is deterministic across processes via SHA-256 (unlike Python's
+    # salted builtin hash()). top_p=1.0 decouples from provider defaults.
+    # Both values are recorded in the result JSON (C4) and passed through to
+    # providers that accept the corresponding kwargs (C1=Together, C2=Azure;
+    # top_p universal — C3).
+    llm_sampling_seed: int = _derive_llm_seed(source_id, target_id, sample_id)
+    llm_top_p: float = 1.0
+
     # Get source code (optionally augmented).
     # Seed random before augmentation so L1-L4 transforms are deterministic
     # per (spec, level) pair. Convention: seed = 42 + augment_level (eval-pipeline-specific).
@@ -1558,11 +1624,16 @@ def evaluate_translation(
             }
 
             # -- Call LLM --
+            # Plan 02-10 Step 2 (C1/C2/C3): deterministic SHA-256 seed (same for
+            # all attempts of this task) + explicit top_p=1.0 (full-distribution
+            # at matched temperature, NOT argmax).
             try:
                 llm_result = call_llm(
                     model, system_msg, messages,
                     verbose=verbose, temperature=temperature,
                     thinking_enabled=thinking_enabled,
+                    seed=llm_sampling_seed,
+                    top_p=llm_top_p,
                 )
             except Exception as exc:
                 error_message = f"LLM call failed: {exc}"
@@ -1869,6 +1940,14 @@ def evaluate_translation(
         # and single-file pass@k reconstruction.
         "thinking_enabled": thinking_enabled,
         "num_samples": num_samples,
+        # Plan 02-10 Step 2 (C4): sampling reproducibility metadata.
+        # `seed` is SHA-256-derived from (source, target, sample_id) —
+        # deterministic across processes. `top_p=1.0` = full-distribution
+        # sampling at matched temperature (NOT argmax). Both fields absent
+        # on historical result JSONs written before this schema bump; all
+        # downstream consumers tolerate the absence.
+        "seed": llm_sampling_seed,
+        "top_p": llm_top_p,
         "translation_mode": translation_mode,
         "translation_type": "kernel_only" if _is_kernel_only_translation(target_spec) else "full_program",
         "verification_mode": ("same_api_target_pattern" if source_api == target_api

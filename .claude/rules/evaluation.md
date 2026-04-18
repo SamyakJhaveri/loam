@@ -343,6 +343,28 @@ Historical result JSONs on disk written before this bump do NOT carry these fiel
 are protected by `feedback_protect_qwen_results` / `feedback_protect_cuda_omp_results`;
 do not retrofit.
 
+## Result JSON Schema (top-level fields, 2026-04-18 bump — plan 02-10 Step 2)
+
+Added for sampling reproducibility (Bucket C, C4):
+
+- `seed: int` — deterministic 31-bit LLM sampling seed derived via
+  `int(hashlib.sha256(f"{source_spec}|{target_spec}|{str(sample_id)}".encode()).hexdigest()[:8], 16) & 0x7FFFFFFF`
+  in `_derive_llm_seed()` (`scripts/evaluation/llm_evaluate.py`). Passed to
+  providers that accept the `seed=` kwarg (Together AI, Azure OpenAI; Anthropic
+  does not support it, and the OpenAI o1/o3/o4 reasoning paths also omit it).
+  Best-effort at the provider level — Qwen3.5-397B MoE on Together AI treats
+  seed as a hint, not a strict lock.
+- `top_p: float` — explicitly `1.0` across all provider branches. Semantics:
+  full-distribution sampling at the matched temperature; **NOT argmax**
+  (argmax requires `temperature=0` or `top_p→0`). Set explicitly to decouple
+  sampling from provider-specific defaults (Together AI default: 0.7; Azure
+  defaults differ).
+
+Historical result JSONs on disk written before this bump do NOT carry these
+fields and are protected by `feedback_protect_qwen_results` /
+`feedback_protect_cuda_omp_results`; do not retrofit. `analyze_eval.py` and
+all downstream consumers tolerate missing `seed` / `top_p` fields.
+
 ## CLI flag: `--thinking {on,off}`
 
 Added in Phase 2 / plan 02-03 to both `llm_evaluate.py` and `run_eval_batch.py`.
