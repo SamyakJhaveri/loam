@@ -1,13 +1,16 @@
 """Phase 2 / Plan 02-06 tests: --task-list flag (D-26).
 
 Uses synthetic passer JSON + a stubbed manifest. Validates:
-- argparse-native mutex group enforces --task-list ⊥ --suite ⊥ --kernels (D-23 LOCK).
+- runtime mutex enforces --task-list ⊥ {--suite, --kernels} (D-23, post 02-10 lift)
+  while --suite and --kernels now compose (intersection filter).
 - task matrix expansion: passers × augment_levels × num_samples (D-25).
 - skip-on-missing-manifest behavior (D-26 case 2).
 - --direction is still required even with --task-list (D-24).
 
 Per F-12: SystemExit tests assert `exc_info.value.code == 2` only — never the
-exact argparse error text (which drifts across Python versions).
+exact argparse error text (which drifts across Python versions). The 02-10
+lift replaced argparse's `add_mutually_exclusive_group()` with a runtime
+`parser.error()` call; both shapes raise SystemExit(2) so tests stay stable.
 """
 from __future__ import annotations
 
@@ -53,7 +56,7 @@ def fake_project(tmp_path):
 
 
 # --------------------------------------------------------------------------- #
-# Argparse mutex group (D-23 LOCK) + required-direction (D-24)                #
+# Runtime mutex (D-23, post 02-10 lift) + compose + required-direction (D-24) #
 # --------------------------------------------------------------------------- #
 
 def test_parser_advertises_task_list_flag():
@@ -64,32 +67,57 @@ def test_parser_advertises_task_list_flag():
 
 
 def test_task_list_mutex_with_kernels(passer_json):
-    """D-26 case 3: --task-list + --kernels → SystemExit(2).
-    Per F-12: assert exit code only, NOT error text."""
-    parser = run_eval_batch._build_parser()
+    """D-26 case 3: --task-list + --kernels → SystemExit(2) via runtime check.
+    Per F-12: assert exit code only, NOT error text.
+
+    Post 02-10 lift: argparse itself no longer rejects this combo (the 3-way
+    mutex group was removed). The runtime `parser.error()` in `main()` does,
+    with the same SystemExit(2) shape. This test exercises main() to hit it.
+    """
     argv = [
         "--task-list", str(passer_json),
         "--kernels", "bfs",
         "--direction", "cuda-to-omp",
         "--models", "gpt-4o",
     ]
-    with pytest.raises(SystemExit) as exc_info:
-        parser.parse_args(argv)
-    assert exc_info.value.code == 2  # argparse's standard error exit code
+    with patch.object(run_eval_batch.sys, "argv", ["run_eval_batch.py", *argv]):
+        with pytest.raises(SystemExit) as exc_info:
+            run_eval_batch.main()
+    assert exc_info.value.code == 2  # parser.error() → sys.exit(2)
 
 
 def test_task_list_mutex_with_suite(passer_json):
-    """D-26 case 3 (extended): --task-list + --suite → SystemExit(2)."""
-    parser = run_eval_batch._build_parser()
+    """D-26 case 3 (extended): --task-list + --suite → SystemExit(2) via runtime check."""
     argv = [
         "--task-list", str(passer_json),
         "--suite", "rodinia",
         "--direction", "cuda-to-omp",
         "--models", "gpt-4o",
     ]
-    with pytest.raises(SystemExit) as exc_info:
-        parser.parse_args(argv)
+    with patch.object(run_eval_batch.sys, "argv", ["run_eval_batch.py", *argv]):
+        with pytest.raises(SystemExit) as exc_info:
+            run_eval_batch.main()
     assert exc_info.value.code == 2
+
+
+def test_suite_and_kernels_compose():
+    """02-10 regression guard: --suite and --kernels MUST parse together.
+
+    The 02-06 D-23 LOCK (3-way argparse-native mutex) blocked this combo,
+    causing 12/12 Qwen real-API tests to fail at argparse on 2026-04-17
+    with `argument --kernels: not allowed with argument --suite`. The lift
+    restores composition semantics (narrow-to-suite then filter-by-kernel).
+    """
+    parser = run_eval_batch._build_parser()
+    args = parser.parse_args([
+        "--suite", "rodinia",
+        "--kernels", "bfs", "hotspot",
+        "--direction", "cuda-to-omp",
+        "--models", "gpt-4o",
+    ])
+    assert args.suite == "rodinia"
+    assert args.kernels == ["bfs", "hotspot"]
+    assert args.task_list is None
 
 
 def test_task_list_without_direction_fails(passer_json):

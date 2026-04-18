@@ -468,22 +468,25 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Batch LLM evaluation runner for ParBench.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    # D-23 LOCK: --task-list is mutex with --suite and --kernels via argparse-native
-    # add_mutually_exclusive_group(). Runtime mutex check (parser.error) is forbidden.
-    task_selection = parser.add_mutually_exclusive_group(required=False)
-    task_selection.add_argument(
+    # D-23 (lifted 2026-04-17, plan 02-10): --suite and --kernels COMPOSE
+    # (filter intersection). Only --task-list is mutex with the other two;
+    # enforced at runtime via parser.error() after parse_args(). The original
+    # 02-06 D-23 LOCK was over-scoped — an argparse-native 3-way mutex blocked
+    # the documented `--suite rodinia --kernels bfs` invocation and caused
+    # 12/12 Qwen real-API tests to fail at argparse on 2026-04-17.
+    parser.add_argument(
         "--suite",
         default=None,
-        help="Filter to a single benchmark suite (e.g. 'rodinia'). Mutex with --task-list, --kernels.",
+        help="Filter to a single benchmark suite (e.g. 'rodinia'). Composes with --kernels; mutex with --task-list.",
     )
-    task_selection.add_argument(
+    parser.add_argument(
         "--kernels",
         nargs="+",
         default=None,
         metavar="KERNEL",
-        help="Restrict to specific kernel names (e.g. bfs hotspot). Mutex with --task-list, --suite.",
+        help="Restrict to specific kernel names (e.g. bfs hotspot). Composes with --suite; mutex with --task-list.",
     )
-    task_selection.add_argument(
+    parser.add_argument(
         "--task-list",
         type=Path,
         default=None,
@@ -606,6 +609,13 @@ def _build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = _build_parser()
     args = parser.parse_args()
+
+    # D-23 runtime mutex (plan 02-10, 2026-04-17): --task-list is mutex with
+    # --suite and --kernels. parser.error() exits with code 2 — matches the
+    # existing SystemExit(2) contract asserted by D-26 case 3 tests.
+    if args.task_list and (args.suite or args.kernels):
+        parser.error("--task-list is mutually exclusive with --suite and --kernels")
+
     project_root = args.project_root.resolve()
     manifest_path = project_root / "manifest.jsonl"
 
