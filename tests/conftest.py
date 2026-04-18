@@ -29,6 +29,26 @@ _RODINIA_SRC = PROJECT_ROOT / "rodinia" / "rodinia-src"
 _HECBENCH_SRC = PROJECT_ROOT / "HeCBench-master"
 
 
+def stage_tmp_project_root(tmp_path: Path) -> Path:
+    """Symlink PROJECT_ROOT entries into ``tmp_path`` so tests using ``tmp_path``
+    as ``--project-root`` find ``manifest.jsonl``, ``specs/``, and benchmark
+    source dirs. Returns ``tmp_path`` for chaining.
+
+    Excludes ``results/`` — the ParBench eval pipeline writes per-task result
+    JSONs under ``{project_root}/results/evaluation/<model>/``, and the real
+    ``results/`` tree is inviolable (CLAUDE.md D-15, memory
+    feedback_protect_cuda_omp_results / feedback_protect_qwen_results). Staging
+    real entries as symlinks while leaving ``tmp_path/results/`` as a fresh
+    local directory keeps real-API tests correct without polluting production
+    eval data.
+    """
+    for entry in PROJECT_ROOT.iterdir():
+        if entry.name == "results":
+            continue
+        (tmp_path / entry.name).symlink_to(entry)
+    return tmp_path
+
+
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
     """Skip integration tests when benchmark source directories are absent.
 

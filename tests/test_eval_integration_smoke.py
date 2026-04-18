@@ -46,7 +46,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import PROJECT_ROOT
+from tests.conftest import PROJECT_ROOT, stage_tmp_project_root
 from tests.test_spec_loader_integration import SUITE_SPECS
 
 
@@ -286,6 +286,10 @@ def test_real_e2e_canonical_to_ablation(model: str, tmp_path: Path) -> None:
     rest = CANDIDATE_SOURCE[len(suite) + 1:]
     kernel_slug = rest.rpartition("-")[0]  # "bfs"
 
+    # Stage tmp_path as project-root view (symlinks for manifest/specs/benchmarks;
+    # tmp_path/results/ stays fresh so real results/evaluation/ is never touched).
+    stage_tmp_project_root(tmp_path)
+
     required_fields = (
         "thinking_enabled", "num_samples", "augment_level",
         "temperature", "model", "overall_status", "sample_id",
@@ -414,6 +418,10 @@ def test_real_direction_independence_omp_to_cuda(
     suite = CANDIDATE_TARGET.split("-")[0]  # "rodinia"
     rest = CANDIDATE_TARGET[len(suite) + 1:]
     kernel_slug = rest.rpartition("-")[0]  # "bfs"
+
+    # Stage tmp_path so run_eval_batch finds manifest/specs/benchmarks; keeps
+    # tmp_path/results/ isolated from the real tree.
+    stage_tmp_project_root(tmp_path)
 
     cmd = [
         sys.executable, "-m", "scripts.evaluation.run_eval_batch",

@@ -49,7 +49,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import PROJECT_ROOT
+from tests.conftest import PROJECT_ROOT, stage_tmp_project_root
 from tests.test_spec_loader_integration import SUITE_SPECS
 
 
@@ -178,12 +178,21 @@ def test_smoke_dry_run(source_spec: Path, model: str) -> None:
         f"STDERR: {result.stderr[-2000:]}"
     )
 
-    # Dry-run path in llm_evaluate.py returns a result dict with
-    # `overall_status`: "DRY_RUN" and `dry_run`: True (see :1471).
-    payload = json.loads(result.stdout)
+    # Dry-run with --json prints the SYSTEM/USER MESSAGE banner to stdout
+    # first (llm_evaluate.py:1463), then appends the JSON result object via
+    # print_result() (:1982). Extract the trailing JSON blob — the final
+    # balanced {...} segment in stdout — matching the parse pattern used by
+    # tests/test_eval_integration_smoke.py:249.
+    stdout = result.stdout
+    last_brace = stdout.rfind("\n{")
+    payload_text = stdout[last_brace + 1:] if last_brace != -1 else stdout
+    payload = json.loads(payload_text)
     assert payload.get("dry_run") is True, payload
     assert payload.get("overall_status") == "DRY_RUN", payload
     assert payload.get("model") == model, payload
+    # Functional smoke: prompt construction must have actually occurred.
+    assert "SYSTEM MESSAGE" in stdout, "dry-run did not emit SYSTEM MESSAGE banner"
+    assert "USER MESSAGE" in stdout, "dry-run did not emit USER MESSAGE banner"
 
 
 # ---------------------------------------------------------------------------
@@ -214,6 +223,11 @@ def test_smoke_real_invocation(source_spec: Path, model: str, tmp_path: Path) ->
     # `--kernels` matches by kernel_name, not unique_id. Strip the leading
     # "{suite}-" and trailing "-cuda" segments to recover the kernel slug.
     kernel_name = src_id.split("-", 1)[1].rsplit("-", 1)[0]
+
+    # Stage tmp_path as a project-root view: symlinks for manifest.jsonl,
+    # specs/, and benchmark source dirs; tmp_path/results/ stays fresh so
+    # this test never touches real results/evaluation/ (D-15).
+    stage_tmp_project_root(tmp_path)
 
     cmd = [
         sys.executable,
