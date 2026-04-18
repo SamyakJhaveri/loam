@@ -13,10 +13,6 @@ run as normal. Separate them explicitly with:
 
 Also gates @pytest.mark.llm tests behind PARBENCH_RUN_LLM_TESTS=1 (plan 02-07).
 LLM-marked tests cost real money — they are SKIPPED unless the env var is set.
-
-Plan 02-07 also promoted `_PROJECT_ROOT` → public `PROJECT_ROOT` so downstream
-tests can `from tests.conftest import PROJECT_ROOT` instead of replicating the
-`Path(__file__).parent.parent` idiom.
 """
 
 from __future__ import annotations
@@ -26,9 +22,8 @@ from pathlib import Path
 
 import pytest
 
-# Public alias — promoted from `_PROJECT_ROOT` per plan 02-07 (D-28 / F-02 fix).
+# Public export — downstream tests import PROJECT_ROOT from here.
 PROJECT_ROOT = Path(__file__).parent.parent
-_PROJECT_ROOT = PROJECT_ROOT  # retained for backward-compat with pre-02-07 tests
 
 _RODINIA_SRC = PROJECT_ROOT / "rodinia" / "rodinia-src"
 _HECBENCH_SRC = PROJECT_ROOT / "HeCBench-master"
