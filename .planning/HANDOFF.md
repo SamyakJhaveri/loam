@@ -32,7 +32,7 @@ two orthogonal bodies of work, done in order:
 
 ---
 
-## 2. Current State (as of 2026-04-19, HEAD = `255bf0d` — S5 complete; S4a/S4b still pending)
+## 2. Current State (as of 2026-04-19, HEAD = `f814a72` — S5 complete + 2 post-S5 hotfixes landed under `s5-review` team; S4a/S4b still pending)
 
 ### Commits landed (this series)
 
@@ -50,6 +50,9 @@ two orthogonal bodies of work, done in order:
 | `f6950b6` | S5 Batch 2: nn-cuda `numeric_comparison` on `Distance=` (expected=0.199997, tol=0.001). |
 | `dc125f7` | S5 Batch 3: hotspot3d×3 + md×2 bucket2 regex-tighten (`\\s+([0-9.eE+-]+)` capture) + nn-cuda stdout_pattern sentinel restore (conjunctive with Batch 2 numeric, preserves regex-combiner test compat). |
 | `255bf0d` | S5 Batch 4: 27 bucket5 specs `oracle_strength="weak"` (26 audit + myocyte-omp). |
+| `02868e8` | chore(docs): HANDOFF — mark S5 complete (Batches 1-4, 4 commits). |
+| `0adea0c` | **S5 hotfix A (s5-review team):** thread `["_resolved"]["working_dir"]` in `llm_evaluate.py:1821` + `reverify_pass_results.py:214` (latent S1.6 regression; grep-only contract test missed the KeyError). Strengthened `tests/test_verifier_caller_contract.py` with whitelist regex; added `tests/test_verify_run_working_dir_resolution.py` runtime-shape check. Authored by `s5-self-critic`. |
+| `f814a72` | **S5 hotfix B (s5-review team, "Batch 3a"):** tighten bucket2 regexes in hotspot3d×3 + md×2 from `[0-9.eE+-]+` to `[+-]?\\d[\\d.eE+-]*` (requires leading digit; rejects `-nan`/`nan`/`inf`/bare-sign false-PASS). Added `tests/test_bucket2_regex_rejects_non_numeric.py` regression test. `oracle_strength=strong` preserved and now justified per bucket2 definition. Authored by `s5-code-reviewer`. |
 
 ### Pending this campaign
 
@@ -68,6 +71,7 @@ two orthogonal bodies of work, done in order:
 - **myocyte-omp moved from Batch 1 (file_hash) to Batch 4 (weak):** `rodinia/openmp/myocyte/main.c:1374` fails to build under GCC 12 in the current env (`kernel_fin` prototype mismatch; pre-existing, not introduced this session). HANDOFF §3 Rule 12 requires a two-run SHA-256 determinism pre-flight before file_hash — BUILD_FAIL makes that impossible, so the spec takes the same treatment as non-deterministic kernels. myocyte-cuda and myocyte-opencl are unaffected (both build, deterministic, upgraded to `oracle_strength=strong`).
 - **nn-cuda kept stdout_pattern alongside numeric_comparison:** Batch 2 originally replaced `"Distance="` with numeric_comparison. This silently broke 5 tests in `tests/test_regex_combiner_integration.py` (cross-API combiner fix — `_build_cross_api_verify_spec` requires target-side stdout_pattern for nn-opencl→nn-cuda). Batch 3 restores the sentinel alongside the numeric strategy. Conjunction semantics → strictly stronger oracle than pre-Batch-2. `oracle_strength=medium`.
 - **`harness/cli.py` working_dir KeyError fix (bundled in Batch 1):** S1.6 (43142bc) intended to thread working_dir but the call site accessed `resolved["working_dir"]` directly; `resolve_paths()` returns the spec with a `_resolved` sub-dict. Fix: `resolved = resolve_paths(...)["_resolved"]`. Without this, any `harness verify` call (file_hash or otherwise) raised KeyError. The S1.6 contract test was grep-only and did not exercise the actual call — `tests/test_cli_verify_smoke.py` (added in Batch 1) closes the functional gap.
+- **Post-S5 hotfixes (`s5-review` team, 2026-04-19):** Adversarial review of `d29d187..02868e8` (Opus `s5-self-critic` + `s5-code-reviewer` + advisor, all ultrathink) surfaced two issues that Batches 1-3 missed. (1) Commit `0adea0c` — same `_resolved` KeyError bug class in `llm_evaluate.py:1821` + `reverify_pass_results.py:214`; Batch 1's cli.py fix didn't propagate. (2) Commit `f814a72` — bucket2 regex `[0-9.eE+-]+` accepted bare `-` in `-nan`, false-PASS under `stdout_pattern`. Both hotfixes land with strengthened regression tests; full post-commit `harness verify` on all 8 strategy-upgraded specs PASS. See `.planning/phases/03-oracle-framework/03-S5-REVIEW.md` for the full review log.
 
 ### Oracle strength distribution after S5
 
