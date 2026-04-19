@@ -12,7 +12,7 @@ superseded_by: null
 > codebase and planning docs. This is the Phase 4 threats-to-validity source document;
 > the paper subsection must be derived from (and not diverge from) this file.
 >
-> Counts (severity-bulleted entries in §§1–5): **24 🔴 high, 16 🟡 medium, 3 🟢 low**,
+> Counts (severity-bulleted entries in §§1–5): **24 🔴 high, 18 🟡 medium, 3 🟢 low**,
 > plus §6 prose catalog (≈9 UNDISCUSSED + ≈5 ACKNOWLEDGED-not-fixed + ≈8 MITIGATED-existing;
 > some overlap with §§1–5) and §6 "Additional threats" (4 items, 3 of which recur under
 > UNDISCUSSED). Of the 24 🔴 in §§1–5: ~10 are UNDISCUSSED in any repo doc, ~11 are
@@ -159,6 +159,23 @@ Does the metric measure what we claim?
   translates correctly P% of the time" is stronger than the measurement ("produces
   a binary that exits 0 and prints a known string"). **UNDISCUSSED** as a
   construct-validity issue.
+- 🟡 **11 weak-oracle Rodinia specs explicitly tagged.** S4a + S4b (commits
+  `e912c8d`, `5bcf7fe`) per `.planning/phases/03-oracle-framework/03-B1-AUDIT.md`
+  bucket5 classification: srad-{cuda,omp}, backprop-{cuda,omp,opencl},
+  bptree-{cuda,omp}, lavamd-{cuda,omp}, nn-omp, nw-opencl. These specs have no
+  deterministic output file accessible without touching benchmark source, no
+  correctness numeric in stdout, no self-check; current verification is
+  `stdout_pattern` on a completion sentinel only (e.g., "Training done",
+  "Computation completed successfully"). PASS for these 11 specs means "binary
+  printed the success string" — same construct gap as the bullet above, but now
+  explicitly labeled (`oracle_strength: "weak"`) so reviewers and downstream
+  analysis can isolate them. Bucket5 candidates ineligible for `file_hash` upgrade
+  per HANDOFF.md §3 Rules 1+9 (no benchmark-source mutation; weak + Threats note
+  is the documented escape hatch). **MITIGATED-NARROWLY** (audit + tagging +
+  Threats disclosure); paper Methodology must cite this list and exclude these
+  cells from any "semantic-gating" claim. Bptree-cuda is a known
+  audit-classification candidate for re-triage in S6 (source writes
+  `output.txt`; pending determinism pre-flight).
 - 🔴 **pass@1-of-any filter vs reader expectation.** `.planning/PROJECT.md:77`,
   `experiment-plan §2.4`. Reader hears "ablation on L0-passers" and may picture a
   stricter filter; pass@1-of-any is the most permissive pass@k reducer (any sample).
