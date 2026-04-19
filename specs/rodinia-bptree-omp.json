@@ -98,9 +98,10 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "stdout_pattern",
-                "pattern": "Total time:",
-                "description": "B-tree operations completed with timing"
+                "type": "file_hash",
+                "path": "output.txt",
+                "expected_sha256": "b22b08c5e4c13f3a4b01f3a97fc16164e12502a142c133b443b9c20ad8567def",
+                "description": "SHA-256 of bptree output.txt (6000 range queries + 10000 point lookups, deterministic two-run)"
             },
             {
                 "type": "exit_code",
@@ -109,7 +110,15 @@
             }
         ],
         "floating_point": null,
-        "oracle_strength": "weak"
+        "oracle_strength": "strong",
+        "reference_files": [
+            {
+                "path": "specs/references/bptree/omp_output.txt",
+                "sha256": "b22b08c5e4c13f3a4b01f3a97fc16164e12502a142c133b443b9c20ad8567def",
+                "size_bytes": 284095,
+                "description": "Reference output.txt (mil.txt + command.txt) captured via _capture_baseline (deterministic two-run)"
+            }
+        ]
     },
     "performance": null,
     "hardware": {
