@@ -112,7 +112,7 @@
             {
                 "type": "stdout_pattern",
                 "pattern": "Computation Done",
-                "description": "SRAD computation completed"
+                "description": "SRAD computation completed (completion sentinel only — OUTPUT block at srad.cpp:197-206 is #ifdef-gated and not active in default build)"
             },
             {
                 "type": "exit_code",
@@ -120,7 +120,8 @@
                 "description": "Process exits cleanly"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "weak"
     },
     "performance": null,
     "hardware": {
