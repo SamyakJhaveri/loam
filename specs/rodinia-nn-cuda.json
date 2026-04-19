@@ -104,6 +104,11 @@
         "method": "self_checking",
         "strategies": [
             {
+                "type": "stdout_pattern",
+                "pattern": "Distance=",
+                "description": "Sentinel — surfaces Distance= lines; required for regex-combiner cross-API verify (nn-opencl->nn-cuda pair)"
+            },
+            {
                 "type": "numeric_comparison",
                 "extract_regex": "Distance=([0-9.eE+-]+)",
                 "expected": 0.199997,

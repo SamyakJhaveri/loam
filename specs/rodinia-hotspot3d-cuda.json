@@ -101,8 +101,8 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "Accuracy:",
-                "description": "3D hotspot accuracy metric reported"
+                "pattern": "Accuracy:\\s+([0-9.eE+-]+)",
+                "description": "3D hotspot accuracy metric reported with numeric value (tightened from bare 'Accuracy:' per S3 audit bucket2 option (d))"
             },
             {
                 "type": "exit_code",
@@ -110,7 +110,8 @@
                 "description": "Process exits cleanly"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "strong"
     },
     "performance": null,
     "hardware": {
