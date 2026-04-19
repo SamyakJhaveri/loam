@@ -82,9 +82,10 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "stdout_pattern",
-                "pattern": "Result stored in",
-                "description": "BFS traversal completed and results written to file"
+                "type": "file_hash",
+                "path": "result.txt",
+                "expected_sha256": "f57afc01ed133df945d453b6be22968448b29dad6e53a1dd27d3c9a7de39c5a0",
+                "description": "SHA-256 of BFS traversal result.txt (deterministic two-run; reference file 14.2 MiB exceeds 1 MiB repo cap, deferred to Zenodo camera-ready)"
             },
             {
                 "type": "exit_code",
@@ -92,7 +93,8 @@
                 "description": "Process exits cleanly"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "strong"
     },
     "performance": null,
     "hardware": {

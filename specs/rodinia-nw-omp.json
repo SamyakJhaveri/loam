@@ -92,9 +92,10 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "stdout_pattern",
-                "pattern": "Total time:",
-                "description": "NW alignment completed with timing"
+                "type": "file_hash",
+                "path": "result.txt",
+                "expected_sha256": "912879cb9f8f81a9b34fbf514dbaaec3c8c0b6825f21a0b584b1134cc4f69fc5",
+                "description": "SHA-256 of NW alignment traceback result.txt (TRACEBACK active in needle.cpp:314; deterministic two-run)"
             },
             {
                 "type": "exit_code",
@@ -102,7 +103,16 @@
                 "description": "Process exits cleanly"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "strong",
+        "reference_files": [
+            {
+                "path": "specs/references/nw/omp_result.txt",
+                "sha256": "912879cb9f8f81a9b34fbf514dbaaec3c8c0b6825f21a0b584b1134cc4f69fc5",
+                "size_bytes": 6204,
+                "description": "Reference NW alignment traceback (args 2048 10 4) captured via _capture_baseline (deterministic two-run)"
+            }
+        ]
     },
     "performance": null,
     "hardware": {
