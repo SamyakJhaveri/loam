@@ -1,8 +1,8 @@
-# NeurIPS 2026 — GPT-5.3 Chat Campaign Handoff Runbook (Le)
+# NeurIPS 2026 — GPT-5.4 Campaign Handoff Runbook (Le)
 
-**Audience:** Le (external collaborator running the GPT-5.3 Chat evaluation stream)
-**Last updated:** 2026-04-17
-**Status:** Phase 2 complete; Phase 3 launch cleared at $559 (Gal-approved 2026-04-17 at pre-refresh Azure pricing); refreshed estimate at verified GPT-5.3 Chat rates is ~$784 — see §7.
+**Audience:** Le (external collaborator running the GPT-5.4 evaluation stream)
+**Last updated:** 2026-04-19 (retargeted from gpt-5.3-chat to gpt-5.4 after 5.3-chat was never deployed on Le's Azure resource; see §7 budget note).
+**Status:** Phase 2 complete; Phase 3 launch cleared at $559 (Gal-approved 2026-04-17 for gpt-5.3-chat at pre-refresh Azure pricing). Retarget to gpt-5.4 supersedes that sign-off; recomputed estimate at verified GPT-5.4 rates is ~$848 — fresh Gal sign-off required before Phase 3 launch. See §7.
 
 ---
 
@@ -19,30 +19,31 @@ deadline May 1, 2026) uses a **canonical + L0-conditional ablation** experiment 
   passed ("pass@1-of-any"), run 1 sample at each augmentation level L1–L4 to measure
   robustness degradation under progressively aggressive AST transforms.
 
-**Why Le runs GPT-5.3 Chat on his own machine:**
-Le has Azure account ownership and dedicated throughput (TPM quota) for GPT-5.3 Chat.
+**Why Le runs GPT-5.4 on his own machine:**
+Le has Azure account ownership and dedicated throughput (TPM quota) for GPT-5.4.
 Running on Le's machine avoids quota conflicts with Samyak's Azure account and lets both
-model streams (Qwen on Samyak's Linux GPU machine, GPT-5.3 Chat on Le's machine) run in
+model streams (Qwen on Samyak's Linux GPU machine, GPT-5.4 on Le's machine) run in
 parallel, halving Phase 3 wall-clock time.
 
 **Two-track execution:**
-- Track A (Le): GPT-5.3 Chat (`azure-gpt-5.3-chat`) — canonical + ablation on Le's clone of this repo.
+- Track A (Le): GPT-5.4 (`azure-gpt-5.4`) — canonical + ablation on Le's clone of this repo.
 - Track B (Samyak): Qwen 3.5 397B (`together-qwen-3.5-397b-a17b`) — canonical + ablation
   on the Linux GPU machine at `/home/samyak/Desktop/parbench_sam`.
 - Phase B (`derive_l0_passers.py`) runs on whichever machine produced each canonical set.
 
-**Cost ceiling:** Gal approved **$559** on 2026-04-17 at pre-refresh pricing assumptions.
-Refreshed estimate at verified Azure GPT-5.3 Chat rates ($1.75 input / $14 output per 1M;
-2,714 samples × $0.28875/sample = **~$784**) — this is **~$225 above** Gal's approved figure
-but substantially better than the $848 placeholder projection at unverified $2.50/$15 rates.
-Soft tripwire $600 (ROADMAP Phase 3 SC-5) retained as monitoring point; Samyak will
-escalate to Gal if realized spend trends materially above $559. See §7 for full math.
+**Cost ceiling:** Gal approved **$559** on 2026-04-17 at pre-refresh pricing assumptions
+for gpt-5.3-chat. That deployment never materialized on Le's Azure resource, so the
+campaign retargets to gpt-5.4 (Microsoft Foundry GA 2026-03-17) as of 2026-04-19.
+Recomputed estimate at verified GPT-5.4 rates ($2.50 input / $15 output per 1M;
+2,714 samples × $0.3125/sample = **~$848**) — this is **~$289 above** Gal's approved
+figure and requires **fresh Gal sign-off** before Phase 3 launch.
+Soft tripwire $600 (ROADMAP Phase 3 SC-5) retained as monitoring point. See §7 for full math.
 
 ---
 
 ## 2. Repo Setup
 
-No local CUDA compilation is required — GPT-5.3 Chat inference happens on Azure; Le's machine
+No local CUDA compilation is required — GPT-5.4 inference happens on Azure; Le's machine
 only runs the Python evaluation pipeline. No submodule initialization needed.
 
 ```bash
@@ -69,7 +70,7 @@ any evaluation command:
 ```bash
 export AZURE_OPENAI_API_KEY="..."          # Le's Azure OpenAI API key (do NOT share)
 export AZURE_OPENAI_ENDPOINT="https://..." # Le's Azure OpenAI endpoint URL
-# The deployment name must be "gpt-5.3-chat" — this matches the MODEL_REGISTRY key "azure-gpt-5.3-chat"
+# The deployment name must be "gpt-5.4" — this matches the MODEL_REGISTRY key "azure-gpt-5.4"
 # via the existing prefix-strip convention (azure- is stripped to get the deployment name).
 ```
 
@@ -93,11 +94,11 @@ python3 scripts/evaluation/run_eval_batch.py --help | grep -Eq -- '--thinking|--
 python3 scripts/evaluation/llm_evaluate.py --help | grep -q -- '--dry-run' \
   && echo "llm_evaluate --dry-run OK" || echo "FAIL: pull main and retry"
 
-# 4b. Verify azure-gpt-5.3-chat is in MODEL_REGISTRY with supports_thinking=True
+# 4b. Verify azure-gpt-5.4 is in MODEL_REGISTRY with supports_thinking=True
 python3 -c "
 from scripts.evaluation.llm_evaluate import MODEL_REGISTRY
-assert 'azure-gpt-5.3-chat' in MODEL_REGISTRY, 'azure-gpt-5.3-chat missing from registry'
-assert MODEL_REGISTRY['azure-gpt-5.3-chat']['supports_thinking'] is True, 'supports_thinking must be True'
+assert 'azure-gpt-5.4' in MODEL_REGISTRY, 'azure-gpt-5.4 missing from registry'
+assert MODEL_REGISTRY['azure-gpt-5.4']['supports_thinking'] is True, 'supports_thinking must be True'
 print('MODEL_REGISTRY OK')
 "
 
@@ -109,7 +110,7 @@ python3 scripts/evaluation/derive_l0_passers.py --help && echo "derive_l0_passer
 python3 scripts/evaluation/llm_evaluate.py \
   --source specs/rodinia-bfs-cuda.json \
   --target specs/rodinia-bfs-omp.json \
-  --model azure-gpt-5.3-chat \
+  --model azure-gpt-5.4 \
   --project-root . \
   --temperature 0.7 --thinking on \
   --num-samples 1 --augment-level 0 \
@@ -135,7 +136,7 @@ each `<dir>` ∈ {cuda-to-omp, omp-to-cuda, cuda-to-opencl, opencl-to-cuda, omp-
 python3 scripts/evaluation/run_eval_batch.py \
   --suite <suite> \
   --direction <dir> \
-  --models azure-gpt-5.3-chat \
+  --models azure-gpt-5.4 \
   --thinking on \
   --temperature 0.7 \
   --augment-levels 0 \
@@ -149,7 +150,7 @@ call (D-08 in `.planning/phases/02-llm-eval-testing/02-CONTEXT.md`). It is hardc
 `reasoning_effort=medium` inside the pipeline — this is NOT a user-tunable parameter.
 Do not attempt to pass `reasoning_effort` directly; use `--thinking on`.
 
-Results land in: `results/evaluation/azure-gpt-5.3-chat/`
+Results land in: `results/evaluation/azure-gpt-5.4/`
 
 ### Stage B — Derive L0 Passers
 
@@ -157,12 +158,12 @@ After ALL canonical batches complete across all suites and directions, run:
 
 ```bash
 python3 scripts/evaluation/derive_l0_passers.py \
-  --canonical-dir results/evaluation/azure-gpt-5.3-chat/ \
-  --model azure-gpt-5.3-chat \
-  --out l0_passers_azure-gpt-5.3-chat.json
+  --canonical-dir results/evaluation/azure-gpt-5.4/ \
+  --model azure-gpt-5.4 \
+  --out l0_passers_azure-gpt-5.4.json
 ```
 
-This produces `l0_passers_azure-gpt-5.3-chat.json` — a flat list of (source_spec, target_spec)
+This produces `l0_passers_azure-gpt-5.4.json` — a flat list of (source_spec, target_spec)
 pairs where ≥1 of 3 canonical samples passed (pass@1-of-any filter, D-18). Only these
 cells proceed to ablation.
 
@@ -172,8 +173,8 @@ Repeat for each `<dir>` used in Stage A:
 
 ```bash
 python3 scripts/evaluation/run_eval_batch.py \
-  --task-list l0_passers_azure-gpt-5.3-chat.json \
-  --models azure-gpt-5.3-chat \
+  --task-list l0_passers_azure-gpt-5.4.json \
+  --models azure-gpt-5.4 \
   --thinking on \
   --temperature 0.7 \
   --augment-levels 1 2 3 4 \
@@ -195,16 +196,16 @@ the passer JSON.
 
 | Stage | Pattern |
 |-------|---------|
-| Canonical L0 (sample n of 3) | `results/evaluation/azure-gpt-5.3-chat/{src}-to-{tgt}-s{n}.json` |
-| Ablation L1–L4 | `results/evaluation/azure-gpt-5.3-chat/{src}-to-{tgt}-L{level}.json` |
-| Passer list | `l0_passers_azure-gpt-5.3-chat.json` (at repo root, not in results/) |
+| Canonical L0 (sample n of 3) | `results/evaluation/azure-gpt-5.4/{src}-to-{tgt}-s{n}.json` |
+| Ablation L1–L4 | `results/evaluation/azure-gpt-5.4/{src}-to-{tgt}-L{level}.json` |
+| Passer list | `l0_passers_azure-gpt-5.4.json` (at repo root, not in results/) |
 
 ### Key result JSON fields
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `overall_status` | str | `PASS` / `BUILD_FAIL` / `RUN_FAIL` / `VERIFY_FAIL` / `ERROR` / `SKIP` |
-| `model` | str | `"azure-gpt-5.3-chat"` |
+| `model` | str | `"azure-gpt-5.4"` |
 | `augment_level` | int | 0 for canonical; 1–4 for ablation |
 | `num_samples` | int | 3 for canonical; 1 for ablation |
 | `sample_id` | int | Sample index (0-based) within the pass@k batch |
@@ -233,43 +234,44 @@ Full schema reference: `.planning/phases/02-llm-eval-testing/02-CONTEXT.md D-19`
 
 ## 7. Cost Model
 
-**Azure GPT-5.3 Chat Global** (Azure deployment name: `gpt-5.3-chat`, `reasoning_effort=medium`):
+**Azure GPT-5.4 Global** (Azure deployment name: `gpt-5.4`, `reasoning_effort=medium`):
 
 | Metric | Rate | Source |
 |--------|------|--------|
-| Input tokens (< 272K context) | **$1.75 per 1M tokens** | azure.microsoft.com/pricing/details/azure-openai/ (verified 2026-04-17) |
-| Output tokens (incl. reasoning) | **$14.00 per 1M tokens** | Same (verified 2026-04-17) |
-| Batch API input | $0.875 / 1M | Not used in Phase 3 |
-| Batch API output | $7.00 / 1M | Not used in Phase 3 |
+| Input tokens (< 272K context) | **$2.50 per 1M tokens** | techcommunity.microsoft.com/blog/azure-ai-foundry-blog/introducing-gpt-5-4-in-microsoft-foundry/4499785 (verified 2026-04-19) |
+| Output tokens (incl. reasoning) | **$15.00 per 1M tokens** | Same (verified 2026-04-19) |
+| Cached input | $0.25 / 1M | Not relied on in Phase 3 (context varies per task) |
+| Batch API input/output | Not yet supported for gpt-5.4 on Azure | MS Learn batch doc (2026-04-14) lists gpt-5/5.1 but not gpt-5.4 |
 
 **Important:** Reasoning tokens at `reasoning_effort=medium` are billed as output tokens
 (no separate rate). Reasoning can inflate output tokens 2–5× depending on problem difficulty.
-ParBench prompts are ~5k tokens, well under the 272K threshold — the $1.75/$14.00 tier applies.
+ParBench prompts are ~5k tokens, well under the 272K threshold — the $2.50/$15.00 tier applies.
 
 **Per-sample cost estimate** (5k prompt + 20k output, no reasoning inflation):
-- Input: 5,000 × $1.75/1M = $0.00875
-- Output: 20,000 × $14.00/1M = $0.28
-- **Total per sample ≈ $0.28875**
+- Input: 5,000 × $2.50/1M = $0.0125
+- Output: 20,000 × $15.00/1M = $0.30
+- **Total per sample ≈ $0.3125**
 
 **Worst-case per sample** (reasoning doubles output → 40k output tokens):
-- Output: 40,000 × $14.00/1M = $0.56
-- **Worst-case ≈ $0.56875 per sample**
+- Output: 40,000 × $15.00/1M = $0.60
+- **Worst-case ≈ $0.6125 per sample**
 
 **Budget:**
-- Gal-approved ceiling: **$559** (2026-04-17, based on pre-refresh pricing assumptions)
-- Refreshed estimate at verified pricing: **~$784** (GPT-5.3 Chat at $1.75/$14 per 1M, 2,714 samples × $0.28875/sample)
+- Gal-approved ceiling (for gpt-5.3-chat, 2026-04-17, pre-refresh): **$559**
+- Retarget to gpt-5.4 (2026-04-19): **~$848** estimated (2,714 samples × $0.3125/sample)
+- Delta vs Gal-approved: **+$289** — fresh Gal sign-off required before Phase 3 launch
 - Soft tripwire: **$600** (ROADMAP Phase 3 SC-5 — pause and consult Samyak if realized spend approaches; not a hard abort)
-- Historical: placeholder `azure-gpt-5.4` at unverified $2.50/$15 rates projected $848
+- Prior history: gpt-5.3-chat at verified $1.75/$14 projected $784; that deployment never stood up
 
 **Monitoring:** After each canonical batch, compute running spend:
 ```bash
 python3 -c "
 import json, glob
 total = 0.0
-for f in glob.glob('results/evaluation/azure-gpt-5.3-chat/*.json'):
+for f in glob.glob('results/evaluation/azure-gpt-5.4/*.json'):
     d = json.load(open(f))
-    total += (d.get('prompt_tokens', 0) or 0) * 1.75 / 1_000_000
-    total += (d.get('completion_tokens', 0) or 0) * 14.00 / 1_000_000
+    total += (d.get('prompt_tokens', 0) or 0) * 2.50 / 1_000_000
+    total += (d.get('completion_tokens', 0) or 0) * 15.00 / 1_000_000
 print(f'Estimated spend so far: \${total:.2f}')
 "
 ```
@@ -286,13 +288,13 @@ After all three stages complete (Canonical + Derive + Ablation), tar the result 
 and send it to Samyak:
 
 ```bash
-tar czf azure-gpt-5.3-chat-results-$(date +%Y%m%d).tar.gz results/evaluation/azure-gpt-5.3-chat/
+tar czf azure-gpt-5.4-results-$(date +%Y%m%d).tar.gz results/evaluation/azure-gpt-5.4/
 ```
 
-Send `azure-gpt-5.3-chat-results-YYYYMMDD.tar.gz` to Samyak (email or file share).
+Send `azure-gpt-5.4-results-YYYYMMDD.tar.gz` to Samyak (email or file share).
 
 **Samyak's receive protocol:**
-1. Extract into the main machine's repo: `tar xzf azure-gpt-5.3-chat-results-*.tar.gz`
+1. Extract into the main machine's repo: `tar xzf azure-gpt-5.4-results-*.tar.gz`
 2. Run `/validate` waves 1–3 to verify no schema violations.
 3. Commit to `main` with message referencing the date and model.
 

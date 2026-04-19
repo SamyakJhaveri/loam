@@ -130,7 +130,7 @@ def test_azure_call_includes_seed_and_top_p(monkeypatch):
 
     with patch.dict("sys.modules", {"openai": fake_openai}):
         call_llm(
-            model="azure-gpt-5.3-chat",
+            model="azure-gpt-5.4",
             system_msg="sys",
             messages=[{"role": "user", "content": "hi"}],
             temperature=0.7,
@@ -151,7 +151,7 @@ def test_azure_call_omits_seed_when_none(monkeypatch):
 
     with patch.dict("sys.modules", {"openai": fake_openai}):
         call_llm(
-            model="azure-gpt-5.3-chat",
+            model="azure-gpt-5.4",
             system_msg="sys",
             messages=[{"role": "user", "content": "hi"}],
             temperature=0.7,

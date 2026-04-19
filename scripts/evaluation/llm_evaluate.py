@@ -102,18 +102,13 @@ MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
         "supports_thinking": True,
         "notes": "Fast reasoning",
     },
-    "azure-gpt-5.3-chat": {
-        "provider": "azure",
-        "supports_thinking": True,
-        "notes": "Azure OpenAI GPT-5.3 Chat Global deployment (Le, placeholder 'gpt-5.4' resolved 2026-04-17) — requires AZURE_OPENAI_API_KEY+AZURE_OPENAI_ENDPOINT",
-    },
     "azure-gpt-5.4": {
         "provider": "azure",
         "supports_thinking": True,
-        "notes": "Azure OpenAI GPT-5.4 (Microsoft Foundry GA 2026-03-05; "
+        "notes": "Azure OpenAI GPT-5.4 (Microsoft Foundry GA 2026-03-17; "
                  "requires AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT + "
-                 "gpt-5.4 deployment name; kept alongside azure-gpt-5.3-chat "
-                 "per Samyak decision 2026-04-17)",
+                 "gpt-5.4 deployment name; "
+                 "reasoning_effort=medium when --thinking=on)",
     },
     "groq-llama-3.3-70b-versatile": {
         "provider": "groq",
@@ -914,7 +909,7 @@ def call_llm(
                 "openai package not installed. Run: python3 -m pip install openai"
             )
 
-        azure_model = model[len("azure-"):]  # e.g. "azure-gpt-5.3-chat" → "gpt-5.3-chat"
+        azure_model = model[len("azure-"):]  # e.g. "azure-gpt-5.4" → "gpt-5.4"
 
         # Strip any path/query from endpoint — SDK expects just scheme+host
         from urllib.parse import urlparse
@@ -932,10 +927,9 @@ def call_llm(
                 "Calling Azure OpenAI deployment=%s messages=%d", azure_model, len(full_messages)
             )
         # Plan 02-10 Step 2 (C2, C3): seed + top_p=1.0 for sampling reproducibility.
-        # `seed` is best-effort at the provider level (OpenAI docs: "hint"). Azure
-        # GPT-5.3-chat smoke test was blocked at handoff time (deployment not yet
-        # live in endpoint URL). If the reasoning-model path at Phase 3 launch
-        # rejects either kwarg, surface the asymmetry and revise here; see
+        # `seed` is best-effort at the provider level (OpenAI docs: "hint"). If the
+        # reasoning-model path at Phase 3 launch rejects either kwarg, surface the
+        # asymmetry and revise here; see
         # .planning/phases/02-llm-eval-testing/02-THREATS-TO-VALIDITY.md.
         _az_kwargs: dict[str, Any] = {
             "model": azure_model,

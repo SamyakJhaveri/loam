@@ -1,5 +1,5 @@
 """
-Phase 2 / Plan 02-08: Integration smoke + GPT-5.3 Chat handoff runbook.
+Phase 2 / Plan 02-08: Integration smoke + GPT-5.4 handoff runbook.
 
 Three parts:
   Part 1 — Zero-API dry-run matrix: 5 suites × 6 directions × 2 models = 60 cases.
@@ -15,16 +15,16 @@ Why this test exists (pre-Phase-3 guardrail):
   is the cheapest guardrail.
 
 Cost model (updated 2026-04-17 against live provider pricing):
-  azure-gpt-5.3-chat (GPT-5.3 Chat Global, Azure, <272K context):
+  azure-gpt-5.4 (GPT-5.4, Azure Foundry, <272K context):
     $2.50/1M input tokens, $15.00/1M output tokens
-    Source: https://azure.microsoft.com/en-us/pricing/details/azure-openai/
+    Source: https://techcommunity.microsoft.com/blog/azure-ai-foundry-blog/introducing-gpt-5-4-in-microsoft-foundry/4499785
     Per-sample assumption: 5k prompt + 20k output -> ~$0.3125/sample
   together-qwen-3.5-397b-a17b (Together AI serverless):
     $0.60/1M input tokens, $3.60/1M output tokens
     Source: https://www.together.ai/models/qwen3-5-397b-a17b
     Per-sample assumption: 5k prompt + 20k output -> ~$0.075/sample
   Reasoning tokens at reasoning_effort=medium bill as output tokens on both providers.
-  Worst-case envelope ~ $9/run (GPT-5.3 Chat emitting ~80k output tokens/sample at 4× inflation).
+  Worst-case envelope ~ $9/run (GPT-5.4 emitting ~80k output tokens/sample at 4× inflation).
   02-08 real-API budget: 8 samples × 2 models worst-case -> ~$3.10 typical, ~$10 worst-case.
 
 Candidate-kernel rule (D-19 / plan file §Part 2):
@@ -54,7 +54,7 @@ from tests.test_spec_loader_integration import SUITE_SPECS
 # Module-level constants
 # ---------------------------------------------------------------------------
 
-MODELS_UNDER_TEST = ["together-qwen-3.5-397b-a17b", "azure-gpt-5.3-chat"]
+MODELS_UNDER_TEST = ["together-qwen-3.5-397b-a17b", "azure-gpt-5.4"]
 
 DIRECTIONS = [
     "cuda-to-omp",
@@ -473,7 +473,7 @@ def _log_token_costs(request, tmp_path):
     Dry-run tests (Part 1) have no result JSONs and are silently skipped.
 
     Pricing (2026-04-17, verified against provider pages):
-      azure-gpt-5.3-chat: $1.75/1M input, $14.00/1M output
+      azure-gpt-5.4: $2.50/1M input, $15.00/1M output
       together-qwen-3.5-397b-a17b: $0.60/1M input, $3.60/1M output
     """
     yield  # run the test first
@@ -481,7 +481,7 @@ def _log_token_costs(request, tmp_path):
     if not results_root.exists():
         return
     pricing = {
-        "azure-gpt-5.3-chat": (1.75 / 1_000_000, 14.00 / 1_000_000),
+        "azure-gpt-5.4": (2.50 / 1_000_000, 15.00 / 1_000_000),
         "together-qwen-3.5-397b-a17b": (0.60 / 1_000_000, 3.60 / 1_000_000),
     }
     total_cost = 0.0

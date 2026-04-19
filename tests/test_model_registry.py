@@ -5,6 +5,9 @@ Enforces D-04 (every entry has `supports_thinking: bool`) and D-05
 
 Post-02-04 the whitelist is finalized: the three transient `gpt-4.1*` entries
 that were carried through 02-02 are purged in 02-04 and no longer appear here.
+
+2026-04-19: `azure-gpt-5.3-chat` removed (deployment never stood up on the
+production Azure resource; `azure-gpt-5.4` is the live Azure reasoning model).
 """
 from __future__ import annotations
 
@@ -15,13 +18,17 @@ from scripts.evaluation.llm_evaluate import MODEL_REGISTRY
 
 LLM_EVAL_PATH = Path(__file__).parent.parent / "scripts" / "evaluation" / "llm_evaluate.py"
 
-# Post-02-04 authoritative thinking-capable set.
+# Post-2026-04-19 authoritative thinking-capable set.
 EXPECTED_THINKERS = {
-    "azure-gpt-5.3-chat",
     "azure-gpt-5.4",
     "o3-2025-04-16",
     "o4-mini-2025-04-16",
     "together-qwen-3.5-397b-a17b",
+}
+
+# Models that must NOT appear in MODEL_REGISTRY (explicit purges).
+PURGED_MODELS = {
+    "azure-gpt-5.3-chat",  # never deployed; removed 2026-04-19
 }
 
 
@@ -76,3 +83,15 @@ def test_no_startswith_thinking_branching():
 
 def test_registry_is_nonempty():
     assert len(MODEL_REGISTRY) > 0
+
+
+def test_purged_models_absent():
+    """2026-04-19: azure-gpt-5.3-chat (never deployed) must not be in registry."""
+    present = PURGED_MODELS & MODEL_REGISTRY.keys()
+    assert not present, f"purged models unexpectedly present: {present}"
+
+
+def test_azure_gpt_5_4_present_and_thinking_capable():
+    """azure-gpt-5.4 is the live Azure reasoning model (2026-04-19)."""
+    assert "azure-gpt-5.4" in MODEL_REGISTRY
+    assert MODEL_REGISTRY["azure-gpt-5.4"]["supports_thinking"] is True

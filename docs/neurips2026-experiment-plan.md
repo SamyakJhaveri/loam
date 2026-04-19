@@ -69,9 +69,9 @@ Gal reviewed the §2.1–2.3 draft on 2026-04-16 and approved with one budget-dr
 **What stays identical to §2.1 (canonical):**
 - pass@3, L0, temp=0.7, thinking=ON, reasoning_effort=medium, self-repair=OFF
 - All 87 TRUE PASS kernels × 6 directions (+ omp_target case studies for XSBench/RSBench where available)
-- Both models: `together-qwen-3.5-397b-a17b` + `azure-gpt-5.3-chat` (renamed from "azure-gpt-5" to reflect the specific deployment slot)
+- Both models: `together-qwen-3.5-397b-a17b` + `azure-gpt-5.4` (renamed from "azure-gpt-5" to reflect the specific deployment slot)
 
-> ⚠️ **`azure-gpt-5.3-chat` is a placeholder identifier — NOT yet runnable.** Verified 2026-04-16 against `scripts/evaluation/llm_evaluate.py` (MODEL_REGISTRY, lines 61–125): only `azure-gpt-4.1` is registered; no GPT-5 variant exists. Two things must land before Phase A launches: (1) Task 7 (§2.4 code-change table row 1) registers the model entry, and (2) Le confirms the exact Azure deployment name + TPM quota. Treat "GPT-5.3 Chat" throughout this document as a working identifier, not a resolved one.
+> ⚠️ **`azure-gpt-5.4` is a placeholder identifier — NOT yet runnable.** Verified 2026-04-16 against `scripts/evaluation/llm_evaluate.py` (MODEL_REGISTRY, lines 61–125): only `azure-gpt-4.1` is registered; no GPT-5 variant exists. Two things must land before Phase A launches: (1) Task 7 (§2.4 code-change table row 1) registers the model entry, and (2) Le confirms the exact Azure deployment name + TPM quota. Treat "GPT-5.4" throughout this document as a working identifier, not a resolved one.
 
 **What changes for the ablation (supersedes §2.2):**
 
@@ -117,8 +117,8 @@ Net wall clock across Apr 19–20 is ~20–22h (vs ~17h in §4 parallel-all-stre
 
 | # | Change | File | Status |
 |---|---|---|---|
-| 1 | Add `azure-gpt-5.3-chat` entry to `MODEL_REGISTRY` (use `azure-gpt-4.1` at line 94 as the structural template) | `scripts/evaluation/llm_evaluate.py` (MODEL_REGISTRY dict starts line 61; azure-gpt-4.1 entry at line 94 — insert new entry nearby) | Pending execution |
-| 2 | Add `reasoning_effort="medium"` on the **Azure** `client_az.chat.completions.create(...)` call (guarded by capability check — only for reasoning-capable models like gpt-5.3-chat, o3). NOTE: line 956's `reasoning_effort="none"` is in the **Gemini** path, not Azure — do NOT edit that one. | `scripts/evaluation/llm_evaluate.py:878–883` (Azure call block; add parameter between `messages=` and closing `)`) | Pending |
+| 1 | Add `azure-gpt-5.4` entry to `MODEL_REGISTRY` (use `azure-gpt-4.1` at line 94 as the structural template) | `scripts/evaluation/llm_evaluate.py` (MODEL_REGISTRY dict starts line 61; azure-gpt-4.1 entry at line 94 — insert new entry nearby) | Pending execution |
+| 2 | Add `reasoning_effort="medium"` on the **Azure** `client_az.chat.completions.create(...)` call (guarded by capability check — only for reasoning-capable models like gpt-5.4, o3). NOTE: line 956's `reasoning_effort="none"` is in the **Gemini** path, not Azure — do NOT edit that one. | `scripts/evaluation/llm_evaluate.py:878–883` (Azure call block; add parameter between `messages=` and closing `)`) | Pending |
 | 3 | Flip Qwen `enable_thinking: False → True`; add `--thinking on\|off` CLI flag | `scripts/evaluation/llm_evaluate.py:1001` | Pending |
 | 4 | Remove `gpt-4.1-2025-04-14` + `azure-gpt-4.1` + `gpt-4.1-mini` from scripts/docs | 10 files (see §Appendix B) | Pending |
 | 5 | New `derive_l0_passers.py` — emit `l0_passers_{model}.json` (pass@1-of-any filter) | `scripts/evaluation/derive_l0_passers.py` | Pending |

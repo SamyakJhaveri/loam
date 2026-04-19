@@ -73,7 +73,7 @@ def test_two_samples_one_pass_included_with_warning(tmp_path, capsys):
 def test_zero_samples_vacuous(tmp_path, capsys):
     """D-22 case 5: no matching files -> empty passer list (0 samples means no cell discovered)."""
     # Put a file that does NOT match the model filter - should be ignored.
-    _write_result(tmp_path, "other-model.json", model="azure-gpt-5.3-chat", overall_status="PASS")
+    _write_result(tmp_path, "other-model.json", model="azure-gpt-5.4", overall_status="PASS")
     passers = derive_passers(tmp_path, MODEL)
     assert passers == []
 

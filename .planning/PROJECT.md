@@ -1,12 +1,12 @@
 # ParBench
 
-> ⚠️ **`azure-gpt-5.3-chat` is a placeholder model identifier throughout this document.** As of 2026-04-16, the `MODEL_REGISTRY` in `scripts/evaluation/llm_evaluate.py` contains only `azure-gpt-4.1`; there is no GPT-5 variant registered yet. Phase 2 Task 7 must register the exact Azure deployment name (confirmed with Le) before Phase A launches. Do not treat the model identifier as runnable in the current codebase.
+> ⚠️ **`azure-gpt-5.4` is a placeholder model identifier throughout this document.** As of 2026-04-16, the `MODEL_REGISTRY` in `scripts/evaluation/llm_evaluate.py` contains only `azure-gpt-4.1`; there is no GPT-5 variant registered yet. Phase 2 Task 7 must register the exact Azure deployment name (confirmed with Le) before Phase A launches. Do not treat the model identifier as runnable in the current codebase.
 > ⚠️ **Budget numbers quoted below (e.g., "$559", "287 L0-passers", "55% pass rate") are estimates built on a working assumption, not measurements.** See `docs/neurips2026-experiment-plan.md` §2.4 for the full caveat — the closest in-repo datapoint is ~31% Qwen first-sample pass, from which 55% pass@1-of-any is extrapolated.
 > ⚠️ **Gal's sign-off on the GPT budget overshoot ($559 vs $400 target) is PENDING.** Where rows say "accepted" below, read it as "Samyak's scope choice, not a bilateral agreement." Do NOT launch Phase A until Gal signs off.
 
 ## What This Is
 
-ParBench is a kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA <-> OpenMP <-> OpenCL). It provides 96 executable specs across 5 benchmark suites, a build-run-verify harness, an AST-driven augmentation engine for robustness testing, and — as of 2026-04-16 — a canonical + L0-conditional ablation evaluation protocol (replacing the earlier two-campaign structure). The current milestone verifies every pipeline component with real data, runs the canonical + ablation evaluations for Qwen 3.5 397B + Azure GPT-5.3 Chat, and writes the NeurIPS 2026 paper.
+ParBench is a kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA <-> OpenMP <-> OpenCL). It provides 96 executable specs across 5 benchmark suites, a build-run-verify harness, an AST-driven augmentation engine for robustness testing, and — as of 2026-04-16 — a canonical + L0-conditional ablation evaluation protocol (replacing the earlier two-campaign structure). The current milestone verifies every pipeline component with real data, runs the canonical + ablation evaluations for Qwen 3.5 397B + Azure GPT-5.4, and writes the NeurIPS 2026 paper.
 
 ## Core Value
 
@@ -31,8 +31,8 @@ Every evaluation result is reproducible and pipeline-correct -- so model compari
 ### Active (by Phase)
 
 - [x] **Phase 1:** Pipeline testing and uniformity across all 5 suites (spec loading, build, run, verify) — completed 2026-04-10
-- [ ] **Phase 2:** LLM eval testing with real calls — add `azure-gpt-5.3-chat` model entry, `reasoning_effort=medium` param, Qwen thinking flag, `derive_l0_passers.py`, `--task-list` flag on `run_eval_batch.py`; purge `gpt-4.1-mini` from scripts/docs
-- [ ] **Phase 3:** Full evaluation runs — 3-phase launch: canonical (pass@3 L0 temp=0.7 thinking=ON self-repair=OFF) → derive L0-passers (pass@1-of-any) → L0-conditional ablation (pass@1 L1-L4 on all L0-passers), for Qwen 3.5 397B + Azure GPT-5.3 Chat
+- [ ] **Phase 2:** LLM eval testing with real calls — add `azure-gpt-5.4` model entry, `reasoning_effort=medium` param, Qwen thinking flag, `derive_l0_passers.py`, `--task-list` flag on `run_eval_batch.py`; purge `gpt-4.1-mini` from scripts/docs
+- [ ] **Phase 3:** Full evaluation runs — 3-phase launch: canonical (pass@3 L0 temp=0.7 thinking=ON self-repair=OFF) → derive L0-passers (pass@1-of-any) → L0-conditional ablation (pass@1 L1-L4 on all L0-passers), for Qwen 3.5 397B + Azure GPT-5.4
 - [ ] **Phase 4:** NeurIPS 2026 paper -- every claim traceable to verified result files
 
 ### Out of Scope
@@ -78,15 +78,15 @@ Every evaluation result is reproducible and pipeline-correct -- so model compari
 | **[2026-04-16]** Ablation scope = all 4 levels (L1+L2+L3+L4) on ALL L0-passers, no subset | Rejected Gal's middle-level subset fallback to preserve the full degradation curve. Cost (at 55% L0-pass-rate midpoint, 287 L0-passer cells per model): $237 GPT ablation for full L1–L4 vs ~$118 GPT for outer-only L1+L4, or ~$78 GPT for outer-only L1+L4 on a ~190-cell subset — chose the first. Reviewer value: can report monotonic degradation across levels, not just two endpoints. | Decided |
 | **[2026-04-16]** No audit sample of L0-failers | Simplicity over reversal visibility. **COMMITMENT (not yet fulfilled):** paper's threats-to-validity section **must** acknowledge L0-failers were not evaluated under perturbation — that subsection is an outstanding Phase 4 deliverable, not a completed mitigation. If reviewers pushback, a small audit sample (~20 cells × L1+L4) can be added in a revision for ~$8. | Decided; threats-to-validity subsection TODO |
 | **[2026-04-16]** Budget overshoot accepted: GPT ≈ $559 vs Gal's $400 target | Chose full-curve ablation over tight budget adherence. Savings vs original $843 still ~$220. Requires Gal sign-off before Phase A launch. Fallback: raise filter to pass@2-of-3 (~22% → $94 ablation → $416 GPT total). | Pending Gal sign-off |
-| **[2026-04-16]** Models: Qwen 3.5 397B + Azure GPT-5.3 Chat (both thinking=ON, reasoning_effort=medium) | Open-source + proprietary two-track per meeting 2026-04-15. Drops gpt-4.1 variants (botched GPT-4.1 mini results + gpt-4.1 non-mini not run). Reflects "best-effort capability" norm under test-time compute scaling. **Caveat:** `azure-gpt-5.3-chat` is NOT yet in `scripts/evaluation/llm_evaluate.py:MODEL_REGISTRY` (only `azure-gpt-4.1` is registered); Task 7 adds it. Exact Azure deployment name pending Le's confirmation. | Decided (implementation pending) |
+| **[2026-04-16]** Models: Qwen 3.5 397B + Azure GPT-5.4 (both thinking=ON, reasoning_effort=medium) | Open-source + proprietary two-track per meeting 2026-04-15. Drops gpt-4.1 variants (botched GPT-4.1 mini results + gpt-4.1 non-mini not run). Reflects "best-effort capability" norm under test-time compute scaling. **Caveat:** `azure-gpt-5.4` is NOT yet in `scripts/evaluation/llm_evaluate.py:MODEL_REGISTRY` (only `azure-gpt-4.1` is registered); Task 7 adds it. Exact Azure deployment name pending Le's confirmation. | Decided (implementation pending) |
 
 ## Milestones
 
 ### Milestone 2: Pipeline Audit & Full Eval Runs (4 Phases)
 
 1. **Pipeline Testing & Uniformity** -- test each pipeline component with real programs from all 5 suites, fix suite-specific code [completed 2026-04-10]
-2. **LLM Eval Testing** -- add `azure-gpt-5.3-chat` model, `reasoning_effort` param, Qwen thinking flag, `derive_l0_passers.py`, `--task-list` flag; end-to-end dry-run for 1 kernel per suite with both models
-3. **Full Evaluation Runs** -- 3-phase launch: canonical (pass@3 L0) → derive L0-passers → L0-conditional ablation (pass@1 L1-L4) for Qwen 3.5 397B + Azure GPT-5.3 Chat
+2. **LLM Eval Testing** -- add `azure-gpt-5.4` model, `reasoning_effort` param, Qwen thinking flag, `derive_l0_passers.py`, `--task-list` flag; end-to-end dry-run for 1 kernel per suite with both models
+3. **Full Evaluation Runs** -- 3-phase launch: canonical (pass@3 L0) → derive L0-passers → L0-conditional ablation (pass@1 L1-L4) for Qwen 3.5 397B + Azure GPT-5.4
 4. **NeurIPS Paper** -- rewrite sections of `overleaf_main.tex`, every claim traceable to verified results
 
 ### Milestone 3: NeurIPS 2026 Submission

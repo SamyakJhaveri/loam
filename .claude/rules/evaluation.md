@@ -16,7 +16,7 @@ source env_parbench/bin/activate
 python3 scripts/evaluation/llm_evaluate.py \
   --source specs/rodinia-bfs-cuda.json \
   --target specs/rodinia-bfs-omp.json \
-  --model azure-gpt-5.3-chat \
+  --model azure-gpt-5.4 \
   --project-root {{PROJECT_ROOT}} \
   --dry-run
 

@@ -3,7 +3,7 @@
 Gated by ``PARBENCH_RUN_LLM_TESTS=1`` (skipped otherwise — real API calls cost money).
 
 For each of 5 suite-representative kernels × 2 models
-(``together-qwen-3.5-397b-a17b``, ``azure-gpt-5.3-chat``):
+(``together-qwen-3.5-397b-a17b``, ``azure-gpt-5.4``):
 
   (a) ``test_smoke_dry_run`` — invoke ``llm_evaluate.py --dry-run`` and assert the
       prompt is built without any API call.
@@ -19,7 +19,7 @@ mixbench-mixbench-cuda, hecbench-bezier-surface-cuda. Direction: ``cuda-to-omp``
 
 Budget (D-30, pricing verified 2026-04-17 against provider pages):
   - 5 kernels × 2 models × 3 samples = 30 samples (real-API portion).
-  - ``azure-gpt-5.3-chat`` (GPT-5 standard tier, ``reasoning_effort=medium``):
+  - ``azure-gpt-5.4`` (GPT-5.4 standard tier, ``reasoning_effort=medium``):
     $2.50/1M input + $15/1M output. ~$0.3125/sample.
   - ``together-qwen-3.5-397b-a17b``: $0.60/1M input + $3.60/1M output.
     ~$0.075/sample.
@@ -27,7 +27,7 @@ Budget (D-30, pricing verified 2026-04-17 against provider pages):
   - Worst-case if reasoning tokens double output: ~$10.90.
   - The plan-frontmatter line "Budget ≈ $3.47 for 30 real samples" is the
     pre-2026-04-17 figure superseded by the verified $5.81 above.
-  - Note: "gpt-5.3-chat" is the ParBench-internal registry key matching the
+  - Note: "gpt-5.4" is the ParBench-internal registry key matching the
     Azure deployment name.
 
 Why ``llm_evaluate.py`` for dry-run vs ``run_eval_batch.py`` for real:
@@ -79,7 +79,7 @@ VALID_SMOKE_STATUSES = {"PASS", "BUILD_FAIL", "RUN_FAIL", "VERIFY_FAIL"}
 
 MODELS_UNDER_TEST = [
     "together-qwen-3.5-397b-a17b",
-    "azure-gpt-5.3-chat",
+    "azure-gpt-5.4",
 ]
 
 

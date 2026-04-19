@@ -39,7 +39,7 @@ Progress: [##########] 100% Phase 1 complete · Phase 2 COMPLETE: 8/8 plans land
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- **[2026-04-16]** Canonical = pass@3 L0 temp=0.7 thinking=ON self-repair=OFF, both Qwen 3.5 397B + Azure GPT-5.3 Chat
+- **[2026-04-16]** Canonical = pass@3 L0 temp=0.7 thinking=ON self-repair=OFF, both Qwen 3.5 397B + Azure GPT-5.4
 - **[2026-04-16]** Ablation filter = pass@1-of-any from 3 canonical samples
 - **[2026-04-16]** Ablation scope = all 4 levels (L1+L2+L3+L4) on ALL L0-passers, no subsets
 - **[2026-04-16]** No audit sample of L0-failers; Phase 4 **must** write a threats-to-validity subsection acknowledging this — that subsection is an outstanding TODO, not a fulfilled mitigation.
@@ -53,7 +53,7 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - **Gal sign-off** required on GPT budget overshoot ($559 vs $400 target) before Phase A launch
-- **Le confirmation** required on Azure GPT-5.3 Chat TPM quota (need ≥200k TPM sustained)
+- **Le confirmation** required on Azure GPT-5.4 TPM quota (need ≥200k TPM sustained)
 - **2-machine allocation** for Apr 19-20 exclusive use (fallback: serial canonical, adds ~17h)
 - NeurIPS deadline May 1, 2026 -- hard constraint on Phase 4
 

@@ -34,7 +34,6 @@ from harness.constants import EXCLUDED_SPECS
 # Per-million-token pricing
 MODEL_PRICING = {
     "together-qwen-3.5-397b-a17b": {"input": 0.60, "output": 3.60, "display": "Qwen 3.5 397B (Together)"},
-    "azure-gpt-5.3-chat": {"input": 1.75, "output": 14.00, "display": "Azure GPT-5.3 Chat"},
     "azure-gpt-5.4": {"input": 2.50, "output": 15.00, "display": "Azure GPT-5.4"},
     "gemini-2.5-flash": {"input": 0.15, "output": 0.60, "display": "Gemini 2.5 Flash"},
     # Legacy models (kept for historical result analysis)

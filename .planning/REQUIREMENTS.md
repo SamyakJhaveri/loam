@@ -3,7 +3,7 @@
 **Defined:** 2026-04-09
 **Core Value:** Every evaluation result is reproducible and pipeline-correct -- so model comparisons in the NeurIPS paper are defensible under peer review.
 
-> ⚠️ **`azure-gpt-5.3-chat` is a placeholder** in all Phase 2/3 requirement rows below. As of 2026-04-16, no GPT-5 variant exists in `scripts/evaluation/llm_evaluate.py:MODEL_REGISTRY` (only `azure-gpt-4.1`). The Phase 2 requirement "`MODEL_REGISTRY` entry added for `azure-gpt-5.3-chat`" must be completed — using the exact Azure deployment name confirmed by Le — before the Phase 3 canonical streams can satisfy their success criteria.
+> ⚠️ **`azure-gpt-5.4` is a placeholder** in all Phase 2/3 requirement rows below. As of 2026-04-16, no GPT-5 variant exists in `scripts/evaluation/llm_evaluate.py:MODEL_REGISTRY` (only `azure-gpt-4.1`). The Phase 2 requirement "`MODEL_REGISTRY` entry added for `azure-gpt-5.4`" must be completed — using the exact Azure deployment name confirmed by Le — before the Phase 3 canonical streams can satisfy their success criteria.
 > ⚠️ **Budget-related success criteria (e.g., "Actual GPT cost ≤ $600") are grounded in an estimated 55% L0-pass rate, not a measurement** — see `docs/neurips2026-experiment-plan.md` §2.4 for the full assumption chain. Closest observed datapoint is ~31% Qwen first-sample pass. Budget bound may need revision once Phase A provides real numbers.
 
 ## Phase 1: Pipeline Testing & Uniformity
@@ -22,14 +22,14 @@
 
 Design revised 2026-04-16: two-campaign structure replaced with canonical + L0-conditional ablation. See `.planning/PROJECT.md` Key Decisions.
 
-- [ ] `MODEL_REGISTRY` entry added for `azure-gpt-5.3-chat` in `scripts/evaluation/llm_evaluate.py`
+- [ ] `MODEL_REGISTRY` entry added for `azure-gpt-5.4` in `scripts/evaluation/llm_evaluate.py`
 - [ ] `reasoning_effort="medium"` passed on Azure API calls for reasoning-capable models (guarded by capability check)
 - [ ] Qwen `enable_thinking` flipped to `True`; new `--thinking on|off` CLI flag (default `on`)
 - [ ] `gpt-4.1-2025-04-14`, `azure-gpt-4.1`, `gpt-4.1-mini` purged from scripts/docs (result JSONs stay on disk for audit)
 - [ ] New `scripts/evaluation/derive_l0_passers.py` — emits `l0_passers_{model}.json` with cells where ≥1 of 3 canonical samples passed (pass@1-of-any)
 - [ ] New `--task-list <json>` flag on `run_eval_batch.py` — consumes passer JSON instead of enumerating from manifest
 - [ ] Prompt construction verified for each suite (via `--dry-run`)
-- [ ] End-to-end canonical eval tested with real LLM calls (1 program per suite, cuda-to-omp) for Qwen AND Azure GPT-5.3 Chat
+- [ ] End-to-end canonical eval tested with real LLM calls (1 program per suite, cuda-to-omp) for Qwen AND Azure GPT-5.4
 - [ ] `pass_at_k()` verified with actual canonical data (do NOT reimplement — already exists at `scripts/analysis/statistical_analysis.py:706`)
 - [ ] AskSage adapter — **BLOCKED** until Le provides API docs/credentials; deferred to post-submission
 
@@ -39,7 +39,7 @@ Three-phase launch: canonical → derive → ablation. Canonical must complete b
 
 ### Phase A (canonical, parallel)
 - [ ] `qwen_canonical` complete: pass@3, L0, temp=0.7, thinking=ON, self-repair=OFF, all 87 × 6 cells
-- [ ] `gpt_canonical` complete: same config, Azure GPT-5.3 Chat + reasoning_effort=medium, all 87 × 6 cells
+- [ ] `gpt_canonical` complete: same config, Azure GPT-5.4 + reasoning_effort=medium, all 87 × 6 cells
 
 ### Phase B (derive)
 - [ ] `l0_passers_qwen.json` committed to `.planning/eval-selections/`

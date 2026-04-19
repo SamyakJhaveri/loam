@@ -14,7 +14,7 @@ Usage:
     python3 scripts/evaluation/analyze_eval.py --show-gaps --project-root ...
 
     # Filter to one model
-    python3 scripts/evaluation/analyze_eval.py --model azure-gpt-5.3-chat ...
+    python3 scripts/evaluation/analyze_eval.py --model azure-gpt-5.4 ...
 """
 
 from __future__ import annotations
@@ -599,7 +599,7 @@ def main() -> None:
         nargs="+",
         default=[
             "together-qwen-3.5-397b-a17b",
-            "azure-gpt-5.3-chat",
+            "azure-gpt-5.4",
         ],
         metavar="MODEL",
         help="Models expected in the full matrix (used by --show-gaps).",

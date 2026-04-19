@@ -6,7 +6,7 @@ These tests verify that the `--thinking on|off` flag is correctly wired to:
   - Non-thinking-capable models (no-op, capability-gated)
 
 They also verify the `thinking_enabled` + `num_samples` result-JSON fields and
-the MODEL_REGISTRY invariant that `azure-gpt-5.3-chat` is thinking-capable.
+the MODEL_REGISTRY invariant that `azure-gpt-5.4` is thinking-capable.
 
 No real API calls are made; SDK client factories are mocked via
 `unittest.mock.patch` so we can capture kwargs without network traffic.
@@ -128,7 +128,7 @@ def test_azure_thinking_on_injects_reasoning_effort_medium(monkeypatch):
 
     with patch.dict("sys.modules", {"openai": fake_openai}):
         call_llm(
-            model="azure-gpt-5.3-chat",
+            model="azure-gpt-5.4",
             system_msg="sys",
             messages=[{"role": "user", "content": "hi"}],
             thinking_enabled=True,
@@ -147,7 +147,7 @@ def test_azure_thinking_off_omits_reasoning_effort(monkeypatch):
 
     with patch.dict("sys.modules", {"openai": fake_openai}):
         call_llm(
-            model="azure-gpt-5.3-chat",
+            model="azure-gpt-5.4",
             system_msg="sys",
             messages=[{"role": "user", "content": "hi"}],
             thinking_enabled=False,
@@ -208,10 +208,10 @@ def test_noncapable_claude_does_not_send_reasoning_kwargs(monkeypatch):
 # Tests: Registry invariant (cross-check with 02-01 + 02-02 output)
 # ---------------------------------------------------------------------------
 
-def test_registry_azure_gpt_5_3_chat_is_thinking_capable():
-    """Plan 02-01 + 02-02 invariant: azure-gpt-5.3-chat must be thinking-capable."""
-    assert "azure-gpt-5.3-chat" in MODEL_REGISTRY
-    assert MODEL_REGISTRY["azure-gpt-5.3-chat"]["supports_thinking"] is True
+def test_registry_azure_gpt_5_4_is_thinking_capable():
+    """Plan 02-01 + 02-02 invariant: azure-gpt-5.4 must be thinking-capable."""
+    assert "azure-gpt-5.4" in MODEL_REGISTRY
+    assert MODEL_REGISTRY["azure-gpt-5.4"]["supports_thinking"] is True
 
 
 def test_registry_qwen_is_thinking_capable():

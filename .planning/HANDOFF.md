@@ -12,7 +12,7 @@
 
 ## 1. Campaign Goal
 
-Every PASS in the Phase 3 Qwen + GPT-5.3-chat evaluation must be **semantically
+Every PASS in the Phase 3 Qwen + GPT-5.4 evaluation must be **semantically
 gated** — i.e., the verdict reflects correctness of the LLM-translated kernel
 output, not merely "binary exited and printed a literal string." This requires
 two orthogonal bodies of work, done in order:
@@ -32,7 +32,7 @@ two orthogonal bodies of work, done in order:
 
 ---
 
-## 2. Current State (as of 2026-04-19, HEAD = `53136c3` — S6 complete (T2.3, 88/88 sweep PASS + bptree file_hash upgrade) + S5 + S4a + S4b complete)
+## 2. Current State (as of 2026-04-19, HEAD = `ef0780a` — S6 complete (T2.3, 88/88 sweep PASS + bptree file_hash upgrade) + docs refresh + S5 + S4a + S4b complete; ready for S7)
 
 ### Commits landed (this series)
 
@@ -69,7 +69,7 @@ two orthogonal bodies of work, done in order:
 | T2.2b | ✓ DONE | S4b — Rodinia weak Batch 2: 9 bucket5 weak-tags (backprop×3, bptree-cuda+omp, lavamd-cuda+omp, nn-omp, nw-opencl). Commit `5bcf7fe`. | S4b |
 | T2.2c | ✓ DONE (S5) | 35-unknowns → 2 bucket3 (myocyte cuda+opencl, file_hash), 1 bucket4 (nn-cuda, numeric_comparison), 5 bucket2 (hotspot3d×3 + md×2, regex-tighten), 27 bucket5 (weak-tag incl. myocyte-omp). Commits `d29d187` `f6950b6` `dc125f7` `255bf0d`. | S5 |
 | T2.3 | ✓ DONE | S6 — harness verify sweep: all 88 curated non-KNOWN_FAIL specs PASS. bptree-{cuda,omp} file_hash upgrade bundled (strong 14→16, weak 38→36). Commit `53136c3`. | S6 |
-| Phase 3 launch | pending | Qwen canonical + L0-conditional ablation; GPT-5.3-chat (or GPT-5.4) same | S7+ |
+| Phase 3 launch | pending | Qwen canonical + L0-conditional ablation; GPT-5.4 same | S7+ |
 
 ### S5 deviations from plan (approved in-session)
 
@@ -413,7 +413,7 @@ For each of the 53 specs:
 
 **Entry criteria**
 - S6 complete. All 88 non-KNOWN_FAIL specs pass harness verify.
-- Samyak has `gpt-5.3-chat` deployed on Azure (parallel user track — see §7).
+- Samyak has `gpt-5.4` deployed on Azure (parallel user track — see §7).
 
 **Work**
 1. Dry-run smoke: select 10 representative (source, target, model) combos from the Phase 3 task list — NOT 704 combos. Run `llm_evaluate.py --dry-run` on each. Verify prompts look correct and oracle type is visible in task log.
@@ -440,7 +440,7 @@ These are compute sessions, not engineering sessions. Run tmux. Samyak launches,
 
 **S9:** Qwen L0-conditional ablation (L1-L4 × 3 samples on L0-passer subset). Expected ~6-10 hrs, ~$100-200.
 
-**S10:** Azure GPT-5.3-chat canonical + ablation. Expected ~24-36 hrs, ~$300-500 (pending final pricing).
+**S10:** Azure GPT-5.4 canonical + ablation. Expected ~24-36 hrs, ~$300-500 (pending final pricing).
 
 All three use `run_eval_batch.py --resume` so restarts are cheap.
 
@@ -470,7 +470,7 @@ All three use `run_eval_batch.py --resume` so restarts are cheap.
 | D7 (Apr 24) | S6 + S7 | Claude | Full harness verify sweep PASS + Phase 3 pre-flight green |
 | D8 (Apr 25) | S8 start | Samyak (tmux overnight) | Qwen canonical running |
 | D9 (Apr 26) | S8 finish + S9 | Samyak | Qwen complete |
-| D10 (Apr 27) | S10 | Samyak (tmux) | GPT-5.3-chat launching |
+| D10 (Apr 27) | S10 | Samyak (tmux) | GPT-5.4 launching |
 | D11 (Apr 28) | S10 finish | Samyak | All eval runs done |
 | D12 (Apr 29) | analyze_eval + S11 start | Samyak + Gal | Results tables, paper draft |
 | D13 (Apr 30) | S11 | Samyak + Gal | Paper near-final + submit |
@@ -486,7 +486,7 @@ These block Phase 3 launch but are not on Claude's critical path. Samyak starts 
 
 | Task | Status | Blocks | Est. effort |
 |---|---|---|---|
-| Deploy `gpt-5.3-chat` (or `gpt-5.4`) in Azure; confirm `AZURE_OPENAI_ENDPOINT` URL resolves | pending | S7, S10 | 30 min - 2 hrs |
+| Deploy `gpt-5.4` in Azure; confirm `AZURE_OPENAI_ENDPOINT` URL resolves | pending | S7, S10 | 30 min - 2 hrs |
 | Review + sign-off on S3 B1 audit document before S4 batch upgrades begin | ✓ DONE 2026-04-18 | S4 | 30 min |
 | Sign off on Phase 3 go/no-go after S7 | pending | S8 | 15 min |
 | (Camera-ready, not deadline) Create Zenodo account + reserve draft deposit for "ParBench reference outputs v1" | pending | Post-submission | 10 min |
