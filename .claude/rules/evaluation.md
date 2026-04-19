@@ -413,6 +413,11 @@ Per-provider semantics (capability-gated by `MODEL_REGISTRY[model]["supports_thi
 - **Azure reasoning (provider=azure, supports_thinking=True):** on →
   `reasoning_effort="medium"` kwarg is injected into the `client_az.chat.completions.create(...)`
   call (currently near `llm_evaluate.py:905`); off → the kwarg is omitted entirely.
+  Additionally, `temperature` and `top_p` are OMITTED unconditionally for
+  `supports_thinking=True` Azure deployments (mirrors the OpenAI o1/o3/o4 gate at
+  `llm_evaluate.py:883`). Reason: Azure reasoning models reject `temperature != 1`
+  and `top_p` with HTTP 400 "Unsupported value". Surfaced 2026-04-19 in S7 live
+  smoke — see `.planning/phases/03-oracle-framework/04-S7-LIVE.log`.
 - **Other providers (supports_thinking=False):** flag is a no-op; a single
   `log.debug("--thinking=%s ignored for %s ...")` line is emitted in `evaluate_translation()`.
 

@@ -926,18 +926,20 @@ def call_llm(
             logger.info(
                 "Calling Azure OpenAI deployment=%s messages=%d", azure_model, len(full_messages)
             )
-        # Plan 02-10 Step 2 (C2, C3): seed + top_p=1.0 for sampling reproducibility.
-        # `seed` is best-effort at the provider level (OpenAI docs: "hint"). If the
-        # reasoning-model path at Phase 3 launch rejects either kwarg, surface the
-        # asymmetry and revise here; see
-        # .planning/phases/02-llm-eval-testing/02-THREATS-TO-VALIDITY.md.
+        # Plan 02-10 Step 2 (C2, C3): seed is best-effort for sampling
+        # reproducibility. Azure reasoning deployments (supports_thinking=True,
+        # e.g. gpt-5.4) reject temperature != 1 and top_p on the Responses API —
+        # 400 "Unsupported value: 'temperature' does not support 0.7 with this
+        # model" (surfaced 2026-04-19 S7 live smoke). Mirror the OpenAI o1/o3/o4
+        # gate at :883 and omit both kwargs for thinking-capable Azure models.
         _az_kwargs: dict[str, Any] = {
             "model": azure_model,
             "max_completion_tokens": 32768,
-            "temperature": temperature,
-            "top_p": top_p,
             "messages": full_messages,
         }
+        if not MODEL_REGISTRY.get(model, {}).get("supports_thinking", False):
+            _az_kwargs["temperature"] = temperature
+            _az_kwargs["top_p"] = top_p
         if seed is not None:
             _az_kwargs["seed"] = seed
         # Plan 02-03 (D-08): inject reasoning_effort="medium" when --thinking=on

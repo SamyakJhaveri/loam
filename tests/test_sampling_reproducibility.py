@@ -118,10 +118,12 @@ def test_together_call_omits_seed_when_none(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Azure: seed + top_p flow into _az_kwargs
+# Azure reasoning models (gpt-5.4, supports_thinking=True):
+#   seed flows; temperature + top_p are OMITTED (Azure API 400s with
+#   temperature != 1 on reasoning deployments — surfaced 2026-04-19 S7 smoke).
 # ---------------------------------------------------------------------------
 
-def test_azure_call_includes_seed_and_top_p(monkeypatch):
+def test_azure_reasoning_includes_seed(monkeypatch):
     monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com/")
     captured: dict = {}
@@ -139,10 +141,34 @@ def test_azure_call_includes_seed_and_top_p(monkeypatch):
         )
 
     assert captured.get("seed") == 98765
-    assert captured.get("top_p") == 1.0
 
 
-def test_azure_call_omits_seed_when_none(monkeypatch):
+def test_azure_reasoning_omits_temperature_and_top_p(monkeypatch):
+    """Azure reasoning deployments (supports_thinking=True) reject
+    temperature != 1 and top_p. Pipeline must omit both kwargs to avoid 400s.
+    Surfaced 2026-04-19 in S7 pre-flight live smoke; see .planning/phases/
+    03-oracle-framework/04-S7-LIVE.log.
+    """
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com/")
+    captured: dict = {}
+    fake_openai = MagicMock()
+    fake_openai.AzureOpenAI = _capturing_openai_factory(captured)
+
+    with patch.dict("sys.modules", {"openai": fake_openai}):
+        call_llm(
+            model="azure-gpt-5.4",
+            system_msg="sys",
+            messages=[{"role": "user", "content": "hi"}],
+            temperature=0.7,
+            top_p=1.0,
+        )
+
+    assert "temperature" not in captured, captured
+    assert "top_p" not in captured, captured
+
+
+def test_azure_reasoning_omits_seed_when_none(monkeypatch):
     monkeypatch.setenv("AZURE_OPENAI_API_KEY", "test-key")
     monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com/")
     captured: dict = {}
@@ -160,7 +186,7 @@ def test_azure_call_omits_seed_when_none(monkeypatch):
         )
 
     assert "seed" not in captured
-    assert captured.get("top_p") == 1.0
+    assert "top_p" not in captured, captured
 
 
 # ---------------------------------------------------------------------------
