@@ -93,9 +93,10 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "stdout_pattern",
-                "pattern": "Saving solution|Done\\.\\.\\.",
-                "description": "CFD computation completed"
+                "type": "file_hash",
+                "path": "density",
+                "expected_sha256": "4283a12d27bd594258fa00b49ecfb053d7d90ae58ce0ecb1dd3ad52772486329",
+                "description": "SHA-256 of CFD density field output (deterministic two-run)"
             },
             {
                 "type": "exit_code",
@@ -103,7 +104,16 @@
                 "description": "Process exits cleanly"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "strong",
+        "reference_files": [
+            {
+                "path": "specs/references/cfd/omp_density",
+                "sha256": "4283a12d27bd594258fa00b49ecfb053d7d90ae58ce0ecb1dd3ad52772486329",
+                "size_bytes": 765641,
+                "description": "Reference density (fvcorr.domn.097K) captured via _capture_baseline (deterministic two-run)"
+            }
+        ]
     },
     "performance": null,
     "hardware": {

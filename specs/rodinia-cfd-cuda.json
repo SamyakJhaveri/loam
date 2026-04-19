@@ -100,9 +100,10 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "stdout_pattern",
-                "pattern": "Saving solution|Done\\.\\.\\.",
-                "description": "CFD computation completed"
+                "type": "file_hash",
+                "path": "density",
+                "expected_sha256": "ab07aa0cb89cd5737eb61e9ebdc07cf5e9893b12299a2a72a7598f6067d8278d",
+                "description": "SHA-256 of CFD density field output (deterministic two-run)"
             },
             {
                 "type": "exit_code",
@@ -110,7 +111,16 @@
                 "description": "Process exits cleanly"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "strong",
+        "reference_files": [
+            {
+                "path": "specs/references/cfd/cuda_density",
+                "sha256": "ab07aa0cb89cd5737eb61e9ebdc07cf5e9893b12299a2a72a7598f6067d8278d",
+                "size_bytes": 765591,
+                "description": "Reference density (fvcorr.domn.097K) captured via _capture_baseline (deterministic two-run)"
+            }
+        ]
     },
     "performance": null,
     "hardware": {

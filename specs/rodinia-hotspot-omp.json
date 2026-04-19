@@ -110,9 +110,10 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "stdout_pattern",
-                "pattern": "Ending simulation",
-                "description": "Hotspot simulation completed"
+                "type": "file_hash",
+                "path": "output.out",
+                "expected_sha256": "f90474ff7bee2b6cf5f2632f75da25d2ac1b671541c15592a53c6ed80dd44af4",
+                "description": "SHA-256 of hotspot 2D thermal output.out (deterministic two-run; 3.6 MiB exceeds 1 MiB repo cap, reference deferred to Zenodo camera-ready)"
             },
             {
                 "type": "exit_code",
@@ -120,7 +121,8 @@
                 "description": "Process exits cleanly"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "strong"
     },
     "performance": null,
     "hardware": {
