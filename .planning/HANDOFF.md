@@ -32,7 +32,7 @@ two orthogonal bodies of work, done in order:
 
 ---
 
-## 2. Current State (as of 2026-04-18, HEAD = `f4c6acb` — S3 complete, sign-off received)
+## 2. Current State (as of 2026-04-19, HEAD = `255bf0d` — S5 complete; S4a/S4b still pending)
 
 ### Commits landed (this series)
 
@@ -46,23 +46,40 @@ two orthogonal bodies of work, done in order:
 | `43142bc` | S1.6: thread working_dir through 4 verify_run callers + contract test |
 | `f742ec6` | S2: `_capture_baseline.py` private helper + trimmed oracle guide |
 | `f4c6acb` | S3: B1 audit — 53 in-scope specs classified (b1=0, b2=0, b3=10, b4=6, b5=37). Samyak signed off 2026-04-18. |
+| `d29d187` | S5 Batch 1: myocyte×2 file_hash (cuda, opencl) + `harness/cli.py` `resolved["_resolved"]["working_dir"]` fix + `tests/test_cli_verify_smoke.py`. myocyte-omp deferred to Batch 4 (GCC 12 BUILD_FAIL). |
+| `f6950b6` | S5 Batch 2: nn-cuda `numeric_comparison` on `Distance=` (expected=0.199997, tol=0.001). |
+| `dc125f7` | S5 Batch 3: hotspot3d×3 + md×2 bucket2 regex-tighten (`\\s+([0-9.eE+-]+)` capture) + nn-cuda stdout_pattern sentinel restore (conjunctive with Batch 2 numeric, preserves regex-combiner test compat). |
+| `255bf0d` | S5 Batch 4: 27 bucket5 specs `oracle_strength="weak"` (26 audit + myocyte-omp). |
 
 ### Pending this campaign
 
 | ID | Status | Description | Session |
 |---|---|---|---|
-| T1.1 | ✓ DONE | Implement `numeric_comparison` verifier | S1 |
-| T1.2 | ✓ DONE | Implement `file_hash` verifier | S1 |
-| T1.3 | ✓ DONE | Extend spec schema — one bump: add `file_hash` to strategy enum + `expected_sha256` field + `oracle_strength` enum + `reference_files` array to verification block | S1 |
-| T1.4 | ✓ DONE | Unit tests for new verifiers | S1 |
-| T1.5 | ✓ DONE | `scripts/spec_tools/_capture_baseline.py` — private one-shot baseline helper (run twice, warn if SHA-256 differs) | S2 |
-| T1.6 | ✓ DONE | `docs/design/spec_oracle_design.md` — trimmed guide: ≤100 lines, 5-bucket decision tree + 1 worked example | S2 |
-| T1.7 | ✓ DONE | `scripts/validate_schema.py` WARN on weak/unknown oracle_strength (fold into S1 or S2; 10 LoC) | S1/S2 |
-| T2.1 | ✓ DONE | Source-grep triage of ALL 53 in-scope specs (35 unknown + 18 weak) → 5-bucket classification + determinism pre-flight. Commit `f4c6acb`. Scope: b3=10, b4=6, b5=37. | S3 |
-| T2.2a | pending | Upgrade confirmed-upgradeable Rodinia weak specs (first 9 of 18): 7 bucket3 `file_hash` (bfs×2, cfd×2, hotspot×2, nw-omp) + 2 bucket5 weak-tags from {backprop×3, bptree×2, lavamd×2, nn-omp, nw-opencl, srad×2} | S4a |
-| T2.2b | pending | Upgrade remaining 9 Rodinia weak (all bucket5 weak-tags) + audit-weak specs | S4b+S5 |
+| T1.1-T1.7 | ✓ DONE | Tier 1 primitives (verifiers, schema, helper, guide, WARN) | S1-S2 |
+| T2.1 | ✓ DONE | Audit 53 in-scope specs (b3=10, b4=6, b5=37) | S3 |
+| T2.2a | pending | S4a — Rodinia weak Batch 1: 7 bucket3 `file_hash` (bfs×2, cfd×2, hotspot×2, nw-omp) + 2 bucket5 weak-tags | S4a |
+| T2.2b | pending | S4b — Rodinia weak Batch 2: remaining 9 bucket5 weak-tags from 18-weak list | S4b |
+| T2.2c | ✓ DONE (S5) | 35-unknowns → 2 bucket3 (myocyte cuda+opencl, file_hash), 1 bucket4 (nn-cuda, numeric_comparison), 5 bucket2 (hotspot3d×3 + md×2, regex-tighten), 27 bucket5 (weak-tag incl. myocyte-omp). Commits `d29d187` `f6950b6` `dc125f7` `255bf0d`. | S5 |
 | T2.3 | pending | Harness verify sweep — all 88 non-KNOWN_FAIL specs PASS | S6 |
 | Phase 3 launch | pending | Qwen canonical + L0-conditional ablation; GPT-5.3-chat (or GPT-5.4) same | S7+ |
+
+### S5 deviations from plan (approved in-session)
+
+- **myocyte-omp moved from Batch 1 (file_hash) to Batch 4 (weak):** `rodinia/openmp/myocyte/main.c:1374` fails to build under GCC 12 in the current env (`kernel_fin` prototype mismatch; pre-existing, not introduced this session). HANDOFF §3 Rule 12 requires a two-run SHA-256 determinism pre-flight before file_hash — BUILD_FAIL makes that impossible, so the spec takes the same treatment as non-deterministic kernels. myocyte-cuda and myocyte-opencl are unaffected (both build, deterministic, upgraded to `oracle_strength=strong`).
+- **nn-cuda kept stdout_pattern alongside numeric_comparison:** Batch 2 originally replaced `"Distance="` with numeric_comparison. This silently broke 5 tests in `tests/test_regex_combiner_integration.py` (cross-API combiner fix — `_build_cross_api_verify_spec` requires target-side stdout_pattern for nn-opencl→nn-cuda). Batch 3 restores the sentinel alongside the numeric strategy. Conjunction semantics → strictly stronger oracle than pre-Batch-2. `oracle_strength=medium`.
+- **`harness/cli.py` working_dir KeyError fix (bundled in Batch 1):** S1.6 (43142bc) intended to thread working_dir but the call site accessed `resolved["working_dir"]` directly; `resolve_paths()` returns the spec with a `_resolved` sub-dict. Fix: `resolved = resolve_paths(...)["_resolved"]`. Without this, any `harness verify` call (file_hash or otherwise) raised KeyError. The S1.6 contract test was grep-only and did not exercise the actual call — `tests/test_cli_verify_smoke.py` (added in Batch 1) closes the functional gap.
+
+### Oracle strength distribution after S5
+
+```
+7 strong   — myocyte-{cuda,opencl} (file_hash) + hotspot3d×3 + md×2 (stdout_pattern w/ numeric capture)
+1 medium   — nn-cuda (stdout_pattern sentinel + numeric_comparison Distance tol=1e-3)
+27 weak    — 26 audit-unknowns + myocyte-omp
+0 unknown  — none
+171 missing — 54 already-strong HeCBench + 4 XSBench + 4 RSBench + remaining 109 not yet tagged (S4 + S6 complete the picture)
+```
+
+`scripts/validate_schema.py --all` still reports the 15 baseline phantom-spec errors; this is expected per `known-issues.md`.
 
 ### Deferred to camera-ready (not in this campaign)
 
