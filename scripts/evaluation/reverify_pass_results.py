@@ -211,7 +211,7 @@ def reverify_one(
         verify_result = verify_run(
             target_spec,
             run_result,
-            working_dir=target_spec_resolved["working_dir"],
+            working_dir=target_spec_resolved["_resolved"]["working_dir"],
         )
         result["verify_status"] = verify_result.status.name
         result["verify_strategy"] = verify_result.strategy_used

@@ -1818,7 +1818,7 @@ def evaluate_translation(
                     verify_result = verify_run(
                         verify_spec,
                         run_result,
-                        working_dir=target_spec_resolved["working_dir"],
+                        working_dir=target_spec_resolved["_resolved"]["working_dir"],
                     )
                     final_verify_result = verify_result
                     attempt_record["verify_status"] = verify_result.status.value
