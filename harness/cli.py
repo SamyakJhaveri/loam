@@ -137,7 +137,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
     # Verify
     print(f"Verifying {spec_id} ...")
-    resolved = resolve_paths(spec, project_root)
+    resolved = resolve_paths(spec, project_root)["_resolved"]
     ver_result = verify_run(spec, run_result, working_dir=resolved["working_dir"])
 
     # Metrics

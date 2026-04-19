@@ -124,9 +124,10 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "stdout_pattern",
-                "pattern": "Time spent in different stages",
-                "description": "Myocyte simulation timing reported"
+                "type": "file_hash",
+                "path": "output.txt",
+                "expected_sha256": "59efddcb7914a312d4de57cf1ee30cfaad9ef9457afac70f099fb3d60457e40c",
+                "description": "SHA-256 of ODE state-vector output.txt (deterministic across two runs)"
             },
             {
                 "type": "exit_code",
@@ -134,7 +135,16 @@
                 "description": "Process exits cleanly"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "strong",
+        "reference_files": [
+            {
+                "path": "specs/references/myocyte/opencl_output.txt",
+                "sha256": "59efddcb7914a312d4de57cf1ee30cfaad9ef9457afac70f099fb3d60457e40c",
+                "size_bytes": 266172,
+                "description": "Reference output.txt captured via _capture_baseline (deterministic two-run)"
+            }
+        ]
     },
     "performance": null,
     "hardware": {
