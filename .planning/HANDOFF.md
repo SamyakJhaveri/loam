@@ -32,7 +32,7 @@ two orthogonal bodies of work, done in order:
 
 ---
 
-## 2. Current State (as of 2026-04-18, HEAD = `7facfc0`)
+## 2. Current State (as of 2026-04-18, HEAD = `f4c6acb` — S3 complete, sign-off received)
 
 ### Commits landed (this series)
 
@@ -41,23 +41,28 @@ two orthogonal bodies of work, done in order:
 | `7b56b8d` | A1: `_load_complexity_lookup()` returns `None` when CSV missing |
 | `c8316d9` | C1-C4: SHA-256 `_derive_llm_seed()` + `seed` + `top_p` kwargs in `call_llm` + all 6 provider branches + result JSON schema bump |
 | `7facfc0` | A2+A4: per-cell `pass_at_1_mean` + `pass_at_1_of_any` + level-invariance scope note referencing L0-passer subset |
+| `74345e0` | S1: Tier 1 numeric_comparison + file_hash verifiers + schema v1.1 |
+| `62f602b` | S1.5: verifier hardening — path sandbox + type safety + ERROR consistency + hex case + audit noise |
+| `43142bc` | S1.6: thread working_dir through 4 verify_run callers + contract test |
+| `f742ec6` | S2: `_capture_baseline.py` private helper + trimmed oracle guide |
+| `f4c6acb` | S3: B1 audit — 53 in-scope specs classified (b1=0, b2=0, b3=10, b4=6, b5=37). Samyak signed off 2026-04-18. |
 
 ### Pending this campaign
 
-| ID | Description | Session |
-|---|---|---|
-| T1.1 | Implement `numeric_comparison` verifier | S1 |
-| T1.2 | Implement `file_hash` verifier | S1 |
-| T1.3 | Extend spec schema — one bump: add `file_hash` to strategy enum + `expected_sha256` field + `oracle_strength` enum + `reference_files` array to verification block | S1 |
-| T1.4 | Unit tests for new verifiers | S1 |
-| T1.5 | `scripts/spec_tools/_capture_baseline.py` — private one-shot baseline helper (run twice, warn if SHA-256 differs) | S2 |
-| T1.6 | `docs/design/spec_oracle_design.md` — trimmed guide: ≤100 lines, 5-bucket decision tree + 1 worked example | S2 |
-| T1.7 | `scripts/validate_schema.py` WARN on weak/unknown oracle_strength (fold into S1 or S2; 10 LoC) | S1/S2 |
-| T2.1 | Source-grep triage of ALL 53 in-scope specs (35 unknown + 18 weak) → 5-bucket classification + determinism pre-flight | S3 |
-| T2.2a | Upgrade confirmed-upgradeable Rodinia weak specs (first 9) | S4a |
-| T2.2b | Upgrade remaining Rodinia weak + audit-weak specs | S4b+S5 |
-| T2.3 | Harness verify sweep — all 88 non-KNOWN_FAIL specs PASS | S6 |
-| Phase 3 launch | Qwen canonical + L0-conditional ablation; GPT-5.3-chat same | S7+ |
+| ID | Status | Description | Session |
+|---|---|---|---|
+| T1.1 | ✓ DONE | Implement `numeric_comparison` verifier | S1 |
+| T1.2 | ✓ DONE | Implement `file_hash` verifier | S1 |
+| T1.3 | ✓ DONE | Extend spec schema — one bump: add `file_hash` to strategy enum + `expected_sha256` field + `oracle_strength` enum + `reference_files` array to verification block | S1 |
+| T1.4 | ✓ DONE | Unit tests for new verifiers | S1 |
+| T1.5 | ✓ DONE | `scripts/spec_tools/_capture_baseline.py` — private one-shot baseline helper (run twice, warn if SHA-256 differs) | S2 |
+| T1.6 | ✓ DONE | `docs/design/spec_oracle_design.md` — trimmed guide: ≤100 lines, 5-bucket decision tree + 1 worked example | S2 |
+| T1.7 | ✓ DONE | `scripts/validate_schema.py` WARN on weak/unknown oracle_strength (fold into S1 or S2; 10 LoC) | S1/S2 |
+| T2.1 | ✓ DONE | Source-grep triage of ALL 53 in-scope specs (35 unknown + 18 weak) → 5-bucket classification + determinism pre-flight. Commit `f4c6acb`. Scope: b3=10, b4=6, b5=37. | S3 |
+| T2.2a | pending | Upgrade confirmed-upgradeable Rodinia weak specs (first 9 of 18): 7 bucket3 `file_hash` (bfs×2, cfd×2, hotspot×2, nw-omp) + 2 bucket5 weak-tags from {backprop×3, bptree×2, lavamd×2, nn-omp, nw-opencl, srad×2} | S4a |
+| T2.2b | pending | Upgrade remaining 9 Rodinia weak (all bucket5 weak-tags) + audit-weak specs | S4b+S5 |
+| T2.3 | pending | Harness verify sweep — all 88 non-KNOWN_FAIL specs PASS | S6 |
+| Phase 3 launch | pending | Qwen canonical + L0-conditional ablation; GPT-5.3-chat (or GPT-5.4) same | S7+ |
 
 ### Deferred to camera-ready (not in this campaign)
 
@@ -311,15 +316,22 @@ For each of the 53 specs:
 
 ### Session S5 — Tier 2 Audit-Weak Upgrades (T2.3)
 
+**Scope LOCKED 2026-04-18 — Option (d) approved by Samyak:** S3 audit §S4/S5 Upgrade Scope Implications option (d) is ACCEPTED. Reclassify hotspot3d×3 + md×2 (originally bucket4) to bucket2 (`stdout_pattern` regex-tighten only — 1-line spec edit each). **This reduces S5 genuine-implementation upgrades from 9 to 4**, comfortably under the ≤5 hard cap:
+
+- 3 bucket3 `file_hash`: myocyte-cuda, myocyte-omp, myocyte-opencl (same `output.txt` pattern; 1 logical upgrade applied 3 times)
+- 1 bucket4 `numeric_comparison`: rodinia-nn-cuda (`Distance=%f`, tol=1e-3)
+- 5 bucket2 regex-tighten: hotspot3d-cuda, hotspot3d-omp, hotspot3d-opencl, hecbench-md-cuda, hecbench-md-omp_target
+- 26 bucket5 weak-tags: remaining 35-unknowns per audit
+
 **Entry criteria**
-- S4 complete
-- S3 audit document identifies upgrade candidates in the 35 unknown specs
+- S4 complete (S4a + S4b both committed)
+- S3 audit document `f4c6acb` on main
+- Samyak has approved option (d) (see line above — confirmed 2026-04-18)
 
 **Work**
-- Apply same per-spec process as S4: determinism pre-flight → bucket-based upgrade → harness verify.
-- Scope: all bucket-3 and bucket-4 specs from the 35 unknowns identified in S3.
-- Bucket-2 (regex-tighten) specs from S3 can be batched cheaply — 1 line each.
-- Bucket-5 (truly weak) from S3: set `oracle_strength: "weak"` + `# TODO(paper-threats)`.
+- Apply same per-spec process as S4: determinism pre-flight (only for myocyte×3 bucket3) → bucket-based upgrade → harness verify.
+- Bucket-2 specs are cheap batch: 1-line pattern edit each, no reference files, no pre-flight. 5-spec single-commit.
+- Bucket-5 specs: set `oracle_strength: "weak"` + `# TODO(paper-threats)`. Batch commit.
 
 **Exit criteria**
 - All audit-identified upgrade candidates from 35 unknowns upgraded (or explicitly tagged weak).
@@ -435,12 +447,12 @@ All three use `run_eval_batch.py --resume` so restarts are cheap.
 
 These block Phase 3 launch but are not on Claude's critical path. Samyak starts these IMMEDIATELY on Day 1:
 
-| Task | Blocks | Est. effort |
-|---|---|---|
-| Deploy `gpt-5.3-chat` in Azure; confirm `AZURE_OPENAI_ENDPOINT` URL resolves | S7, S10 | 30 min - 2 hrs |
-| Review + sign-off on S3 B1 audit document before S4 batch upgrades begin | S4 | 30 min |
-| Sign off on Phase 3 go/no-go after S7 | S8 | 15 min |
-| (Camera-ready, not deadline) Create Zenodo account + reserve draft deposit for "ParBench reference outputs v1" | Post-submission | 10 min |
+| Task | Status | Blocks | Est. effort |
+|---|---|---|---|
+| Deploy `gpt-5.3-chat` (or `gpt-5.4`) in Azure; confirm `AZURE_OPENAI_ENDPOINT` URL resolves | pending | S7, S10 | 30 min - 2 hrs |
+| Review + sign-off on S3 B1 audit document before S4 batch upgrades begin | ✓ DONE 2026-04-18 | S4 | 30 min |
+| Sign off on Phase 3 go/no-go after S7 | pending | S8 | 15 min |
+| (Camera-ready, not deadline) Create Zenodo account + reserve draft deposit for "ParBench reference outputs v1" | pending | Post-submission | 10 min |
 
 ---
 
