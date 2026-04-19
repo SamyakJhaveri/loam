@@ -104,9 +104,11 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "stdout_pattern",
-                "pattern": "Distance=",
-                "description": "Nearest neighbor distances computed"
+                "type": "numeric_comparison",
+                "extract_regex": "Distance=([0-9.eE+-]+)",
+                "expected": 0.199997,
+                "tolerance": 0.001,
+                "description": "Nearest-neighbor Distance for first record (closest hurricane to 30N/90W); absolute tolerance 1e-3 accommodates FP reduction-order drift across devices"
             },
             {
                 "type": "exit_code",
@@ -114,7 +116,8 @@
                 "description": "Process exits cleanly"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "medium"
     },
     "performance": null,
     "hardware": {
