@@ -101,7 +101,8 @@
                 "description": "Process exits with code 0 on successful completion"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "weak"
     },
     "performance": {
         "metrics": [

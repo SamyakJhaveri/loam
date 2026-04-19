@@ -110,7 +110,8 @@
                 "description": "Process exits cleanly"
             }
         ],
-        "floating_point": null
+        "floating_point": null,
+        "oracle_strength": "weak"
     },
     "performance": null,
     "hardware": {
