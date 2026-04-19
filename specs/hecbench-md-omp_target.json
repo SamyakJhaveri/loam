@@ -100,7 +100,7 @@
     "strategies": [
       {
         "type": "stdout_pattern",
-        "pattern": "Max error between host and device:\\s+([0-9.eE+-]+)",
+        "pattern": "Max error between host and device:\\s+([+-]?\\d[\\d.eE+-]*)",
         "description": "CPU reference force calculation compared to GPU; prints max error with numeric value (tightened from bare literal per S3 audit bucket2 option (d))"
       },
       {

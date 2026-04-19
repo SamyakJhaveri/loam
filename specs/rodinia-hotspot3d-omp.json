@@ -92,7 +92,7 @@
         "strategies": [
             {
                 "type": "stdout_pattern",
-                "pattern": "Accuracy:\\s+([0-9.eE+-]+)",
+                "pattern": "Accuracy:\\s+([+-]?\\d[\\d.eE+-]*)",
                 "description": "3D hotspot accuracy metric reported with numeric value (tightened from bare 'Accuracy:' per S3 audit bucket2 option (d))"
             },
             {
