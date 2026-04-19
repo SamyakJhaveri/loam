@@ -428,6 +428,27 @@ Skills provided by installed plugins (loaded via `~/.claude/settings.json` — n
 |-------|-------------|--------|--------|
 | karpathy-guidelines | Behavioral guidelines to reduce common LLM coding mistakes (Andrej Karpathy's observations). The 4 core principles (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution) are also embedded verbatim in §Behavioral Guidelines above for always-on availability. | `andrej-karpathy-skills` | https://github.com/forrestchang/andrej-karpathy-skills |
 
+## Project Agents
+
+Custom Task agents under `.claude/agents/`. Spawn via the Agent tool with matching `subagent_type`. Validation-wave agents are orchestrated by the `validate` skill.
+
+| Agent | Description | Path |
+|-------|-------------|------|
+| code-simplifier | Post-implementation cleanup: duplication, dead code, unclear names, over-engineering. Behavior-preserving suggestions only. Wave 3 advisory. | `.claude/agents/code-simplifier.md` |
+| consistency-checker | Cross-checks CLAUDE.md / known-issues.md / agent tables against actual files. Detects stale claims and undocumented changes. Wave 3. | `.claude/agents/consistency-checker.md` |
+| diff-reviewer | Reviews git diff for regressions, partial implementations, accidental file changes, and consistency issues. Wave 1. | `.claude/agents/diff-reviewer.md` |
+| eval-batcher | Runs LLM evaluation batches (`run_eval_batch.py`) for ParBench campaigns. Knows kernel eligibility rules and phantom-spec exclusions. | `.claude/agents/eval-batcher.md` |
+| explorer | Maps files, traces call chains, identifies dependencies, notes gotchas, checks test coverage. Faster than direct reads for broad exploration. | `.claude/agents/explorer.md` |
+| plan-reviewer | Adversarial plan review. Finds unstated assumptions, missing edge cases, security risks, ordering hazards before implementation. | `.claude/agents/plan-reviewer.md` |
+| regression-checker | Compares current project metrics against baselines (Rodinia spec count, test count, manifest append-only). Wave 2. | `.claude/agents/regression-checker.md` |
+| rodinia-verifier | Runs `harness verify` on Rodinia specs. Knows the 54 PASS-target specs and 6 KNOWN_FAIL specs. | `.claude/agents/rodinia-verifier.md` |
+| security-scanner | Scans changed files for secrets, command injection, path traversal, and unsafe patterns. Wave 1. | `.claude/agents/security-scanner.md` |
+| self-critic | Opus-powered adversarial self-review for rationalization patterns, incomplete work, unverified claims. Wave 4. | `.claude/agents/self-critic.md` |
+| spec-auditor | Audits spec JSONs for `unique_id` slugification, category enum validity, manifest cross-check, source dir existence, schema compliance. Wave 2 (conditional on spec changes). | `.claude/agents/spec-auditor.md` |
+| test-synthesizer | Writes temp test scripts for changed Python/spec/hook files, compiles/runs, reports results. Wave 2. | `.claude/agents/test-synthesizer.md` |
+| verification-lead | Hierarchical validation coordinator. Spawns and manages all 4 waves internally, returning a single structured report. | `.claude/agents/verification-lead.md` |
+| verify-app | Verifies ParBench project health: schema validation, unit tests, spec file integrity, manifest cross-check. Wave 1. | `.claude/agents/verify-app.md` |
+
 <!-- GSD:workflow-start source:GSD defaults -->
 ## GSD Workflow Enforcement
 
