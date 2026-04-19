@@ -32,7 +32,7 @@ two orthogonal bodies of work, done in order:
 
 ---
 
-## 2. Current State (as of 2026-04-19, HEAD = `5bcf7fe` — S5 complete + 2 post-S5 hotfixes + S4a complete (3 batches, 9 specs) + S4b complete (1 batch, 9 specs))
+## 2. Current State (as of 2026-04-19, HEAD = `53136c3` — S6 complete (T2.3, 88/88 sweep PASS + bptree file_hash upgrade) + S5 + S4a + S4b complete)
 
 ### Commits landed (this series)
 
@@ -57,6 +57,7 @@ two orthogonal bodies of work, done in order:
 | `27f3df5` | **S4a Batch 2 (s4a-review-2 team):** cfd-cuda + cfd-omp `file_hash` on `density` (748 KiB each, committed `specs/references/cfd/{cuda,omp}_density`). hotspot-cuda + hotspot-omp `file_hash` on `output.out` (3.6 MiB each → Option C, no committed reference). All 4 deterministic 2-run; FAIL probe confirmed. `oracle_strength=strong`. Trailing-newline fix applied to all 4 specs (code-reviewer NIT). /validate W1-3 PASS. |
 | `e912c8d` | **S4a Batch 3 (s4a-review-3 team):** srad-cuda + srad-omp `oracle_strength="weak"` (bucket5 per S3 audit — `#ifdef OUTPUT` blocks at srad.cu:242-251 / srad.cpp:197-206 not active in default build, completion sentinel only). Pure additive metadata — no strategy change. /validate W1-3 PASS. |
 | `5bcf7fe` | **S4b Batch 1:** 9 bucket5 Rodinia weak-tags (`oracle_strength="weak"`): backprop-{cuda,omp,opencl}, bptree-{cuda,omp}, lavamd-{cuda,omp}, nn-omp, nw-opencl. Per S3 audit classification (bucket5 = no deterministic output file or correctness numeric in stdout). Pure additive metadata — no strategy change. All 9 PASS post-edit harness verify. /validate W1-3 PASS (gate); W4 ran post-commit via verification-lead, sentinel hash 6b790da. Completes T2.2b. |
+| `53136c3` | **S6 — T2.3 harness verify sweep (88/88 PASS) + bptree file_hash upgrade.** New `scripts/spec_tools/run_verify_sweep.py` runs `harness verify --config correctness` on all 88 curated non-KNOWN_FAIL specs (CURATED + KNOWN_FAIL sets hardcoded with `# cite:` comments; exit 0 only on 88/88 PASS). bptree-{cuda,omp} upgraded `stdout_pattern` → `file_hash` on `output.txt` (284095 B, SHA `b22b08c5…a8567def`, cross-API bit-identical); `oracle_strength: weak → strong`; per-API reference files at `specs/references/bptree/{cuda,omp}_output.txt`. Sweep 88/88 PASS. First pass surfaced transient `rodinia-myocyte-omp` BUILD_FAIL traced to undocumented dirty `rodinia/rodinia-src/openmp/myocyte/main.c` (2731 lines vs HEAD's 375, not in `docs/rodinia_toolchain_patches.diff`); restored via `git -C rodinia/rodinia-src checkout HEAD -- openmp/myocyte/main.c` (submodule working-tree only; no parent-repo commit). `s6-review` team (Opus self-critic + Opus diff-reviewer + Sonnet code-simplifier, caveman ultra + karpathy-guidelines + test-driven-development, Rule 13 read-only git) unanimous ship. /validate W1-3 PASS (gate). Completes T2.3. |
 
 ### Pending this campaign
 
@@ -67,7 +68,7 @@ two orthogonal bodies of work, done in order:
 | T2.2a | ✓ DONE | S4a — Rodinia weak: 7 bucket3 `file_hash` (bfs×2, cfd×2, hotspot×2, nw-omp; 4 with Option C >1 MiB no-ref) + 2 bucket5 weak-tags (srad×2). Commits `9780b64` `27f3df5` `e912c8d`. | S4a |
 | T2.2b | ✓ DONE | S4b — Rodinia weak Batch 2: 9 bucket5 weak-tags (backprop×3, bptree-cuda+omp, lavamd-cuda+omp, nn-omp, nw-opencl). Commit `5bcf7fe`. | S4b |
 | T2.2c | ✓ DONE (S5) | 35-unknowns → 2 bucket3 (myocyte cuda+opencl, file_hash), 1 bucket4 (nn-cuda, numeric_comparison), 5 bucket2 (hotspot3d×3 + md×2, regex-tighten), 27 bucket5 (weak-tag incl. myocyte-omp). Commits `d29d187` `f6950b6` `dc125f7` `255bf0d`. | S5 |
-| T2.3 | pending | Harness verify sweep — all 88 non-KNOWN_FAIL specs PASS | S6 |
+| T2.3 | ✓ DONE | S6 — harness verify sweep: all 88 curated non-KNOWN_FAIL specs PASS. bptree-{cuda,omp} file_hash upgrade bundled (strong 14→16, weak 38→36). Commit `53136c3`. | S6 |
 | Phase 3 launch | pending | Qwen canonical + L0-conditional ablation; GPT-5.3-chat (or GPT-5.4) same | S7+ |
 
 ### S5 deviations from plan (approved in-session)
@@ -77,15 +78,16 @@ two orthogonal bodies of work, done in order:
 - **`harness/cli.py` working_dir KeyError fix (bundled in Batch 1):** S1.6 (43142bc) intended to thread working_dir but the call site accessed `resolved["working_dir"]` directly; `resolve_paths()` returns the spec with a `_resolved` sub-dict. Fix: `resolved = resolve_paths(...)["_resolved"]`. Without this, any `harness verify` call (file_hash or otherwise) raised KeyError. The S1.6 contract test was grep-only and did not exercise the actual call — `tests/test_cli_verify_smoke.py` (added in Batch 1) closes the functional gap.
 - **Post-S5 hotfixes (`s5-review` team, 2026-04-19):** Adversarial review of `d29d187..02868e8` (Opus `s5-self-critic` + `s5-code-reviewer` + advisor, all ultrathink) surfaced two issues that Batches 1-3 missed. (1) Commit `0adea0c` — same `_resolved` KeyError bug class in `llm_evaluate.py:1821` + `reverify_pass_results.py:214`; Batch 1's cli.py fix didn't propagate. (2) Commit `f814a72` — bucket2 regex `[0-9.eE+-]+` accepted bare `-` in `-nan`, false-PASS under `stdout_pattern`. Both hotfixes land with strengthened regression tests; full post-commit `harness verify` on all 8 strategy-upgraded specs PASS. See `.planning/phases/03-oracle-framework/03-S5-REVIEW.md` for the full review log.
 
-### Oracle strength distribution after S5 + S4a + S4b
+### Oracle strength distribution after S6 + S5 + S4a + S4b
 
 ```
-14 strong  — S5: myocyte-{cuda,opencl} + hotspot3d×3 + md×2 (7)
+16 strong  — S6: bptree-{cuda,omp} file_hash (2)
+              S5: myocyte-{cuda,opencl} + hotspot3d×3 + md×2 (7)
               S4a: bfs×2 + nw-omp + cfd×2 + hotspot×2 file_hash (7)
  1 medium  — nn-cuda (stdout_pattern sentinel + numeric_comparison Distance tol=1e-3)
-38 weak    — S5: 26 audit-unknowns + myocyte-omp (27)
+36 weak    — S5: 26 audit-unknowns + myocyte-omp (27)
               S4a: srad×2 (2)
-              S4b: backprop×3 + bptree×2 + lavamd×2 + nn-omp + nw-opencl (9)
+              S4b: backprop×3 + lavamd×2 + nn-omp + nw-opencl (7)  [bptree×2 upgraded to strong in S6]
  0 unknown — none
 153 missing — 54 already-strong HeCBench + 4 XSBench + 4 RSBench + remaining 91 not yet tagged
               (S6 sweep tags HeCBench bulk)

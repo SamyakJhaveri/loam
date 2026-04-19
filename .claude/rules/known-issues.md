@@ -12,15 +12,26 @@
   This is correct behavior — manifest.jsonl is append-only; spec files were deleted.
 Do NOT try to fix any of these errors.
 
-## Current Spec Status (as of 2026-03-28, post campaign expansion)
+## Current Spec Status (as of 2026-04-19, post S4a+S4b+S5+S6 oracle campaign)
 
 **Rodinia:** 60 specs total, 54 TRUE PASS, 0 FALSE_PASS, 6 KNOWN_FAIL.
 **XSBench:** 4 specs total, 4 PASS, 0 KNOWN_FAIL.
-**RSBench:** 4 specs (cuda, omp, opencl, omp_target), all 4 PASS — verified 2026-04-03.
-**mixbench:** 3 specs (cuda, omp, opencl), all 3 PASS — verified 2026-04-03.
+**RSBench:** 4 specs (cuda, omp, opencl, omp_target), all 4 PASS.
+**mixbench:** 3 specs (cuda, omp, opencl), all 3 PASS.
 **HeCBench (curated):** 10 kernels, 25 specs (cuda + omp/omp_target), 23 PASS, 2 KNOWN_FAIL.
-**All 65 Rodinia+XSBench+RSBench+mixbench non-KNOWN_FAIL specs verified PASS.**
-**Use 54 Rodinia TRUE PASS + 3 XSBench + 4 RSBench + 3 mixbench specs for eval batches.**
+**All 88 curated non-KNOWN_FAIL specs verified PASS.**
+**Use 54 Rodinia TRUE PASS + 3 XSBench + 4 RSBench + 3 mixbench + 23 HeCBench curated = 87 specs (plus 1 HeCBench cross-API pair) = 88 for eval batches.**
+
+**Oracle strength distribution (206 total specs):**
+- 16 strong (file_hash or numeric_comparison with reference_files)
+- 1 medium (rodinia-nn-cuda)
+- 36 weak (stdout_pattern + exit_code only)
+- 0 unknown (hard exit criterion met)
+- 153 untagged — 35 curated specs (HeCBench/XSBench/RSBench/mixbench remainder) + ~118 HeCBench bulk specs outside the curated 88-spec corpus. Post-NeurIPS S6.5 may bulk-tag them.
+
+**S6 sweep (2026-04-19):** 88/88 PASS via `scripts/spec_tools/run_verify_sweep.py`.
+Log: `.planning/phases/03-oracle-framework/03-S6-SWEEP.log`.
+One transient regression surfaced (`rodinia-myocyte-omp` BUILD_FAIL) and was traced to an undocumented dirty file in `rodinia/rodinia-src/openmp/myocyte/main.c` (2731 lines vs canonical 375); restored via `git -C rodinia/rodinia-src checkout HEAD -- openmp/myocyte/main.c` before the second sweep pass.
 
 ## KNOWN_FAIL Specs (8 — exclude from eval batches)
 
