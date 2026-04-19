@@ -32,7 +32,7 @@ two orthogonal bodies of work, done in order:
 
 ---
 
-## 2. Current State (as of 2026-04-19, HEAD = `f814a72` — S5 complete + 2 post-S5 hotfixes landed under `s5-review` team; S4a/S4b still pending)
+## 2. Current State (as of 2026-04-19, HEAD = `e912c8d` — S5 complete + 2 post-S5 hotfixes + S4a complete (3 batches, 9 specs); S4b still pending)
 
 ### Commits landed (this series)
 
@@ -53,6 +53,9 @@ two orthogonal bodies of work, done in order:
 | `02868e8` | chore(docs): HANDOFF — mark S5 complete (Batches 1-4, 4 commits). |
 | `0adea0c` | **S5 hotfix A (s5-review team):** thread `["_resolved"]["working_dir"]` in `llm_evaluate.py:1821` + `reverify_pass_results.py:214` (latent S1.6 regression; grep-only contract test missed the KeyError). Strengthened `tests/test_verifier_caller_contract.py` with whitelist regex; added `tests/test_verify_run_working_dir_resolution.py` runtime-shape check. Authored by `s5-self-critic`. |
 | `f814a72` | **S5 hotfix B (s5-review team, "Batch 3a"):** tighten bucket2 regexes in hotspot3d×3 + md×2 from `[0-9.eE+-]+` to `[+-]?\\d[\\d.eE+-]*` (requires leading digit; rejects `-nan`/`nan`/`inf`/bare-sign false-PASS). Added `tests/test_bucket2_regex_rejects_non_numeric.py` regression test. `oracle_strength=strong` preserved and now justified per bucket2 definition. Authored by `s5-code-reviewer`. |
+| `9780b64` | **S4a Batch 1 (s4a-review-1 team):** bfs-cuda + bfs-omp + nw-omp `file_hash` on `result.txt`. bfs cuda+omp output 14.2 MiB > 1 MiB cap → Option C (file_hash w/ embedded `expected_sha256`, no committed reference; deferred to Zenodo). nw-omp 6204 B → committed `specs/references/nw/omp_result.txt`. `oracle_strength=strong` on all 3. Pre-flight 2-run determinism + FAIL probe (1-hex-digit flip) confirmed oracle discriminates. /validate W1-3 PASS. |
+| `27f3df5` | **S4a Batch 2 (s4a-review-2 team):** cfd-cuda + cfd-omp `file_hash` on `density` (748 KiB each, committed `specs/references/cfd/{cuda,omp}_density`). hotspot-cuda + hotspot-omp `file_hash` on `output.out` (3.6 MiB each → Option C, no committed reference). All 4 deterministic 2-run; FAIL probe confirmed. `oracle_strength=strong`. Trailing-newline fix applied to all 4 specs (code-reviewer NIT). /validate W1-3 PASS. |
+| `e912c8d` | **S4a Batch 3 (s4a-review-3 team):** srad-cuda + srad-omp `oracle_strength="weak"` (bucket5 per S3 audit — `#ifdef OUTPUT` blocks at srad.cu:242-251 / srad.cpp:197-206 not active in default build, completion sentinel only). Pure additive metadata — no strategy change. /validate W1-3 PASS. |
 
 ### Pending this campaign
 
@@ -60,8 +63,8 @@ two orthogonal bodies of work, done in order:
 |---|---|---|---|
 | T1.1-T1.7 | ✓ DONE | Tier 1 primitives (verifiers, schema, helper, guide, WARN) | S1-S2 |
 | T2.1 | ✓ DONE | Audit 53 in-scope specs (b3=10, b4=6, b5=37) | S3 |
-| T2.2a | pending | S4a — Rodinia weak Batch 1: 7 bucket3 `file_hash` (bfs×2, cfd×2, hotspot×2, nw-omp) + 2 bucket5 weak-tags | S4a |
-| T2.2b | pending | S4b — Rodinia weak Batch 2: remaining 9 bucket5 weak-tags from 18-weak list | S4b |
+| T2.2a | ✓ DONE | S4a — Rodinia weak: 7 bucket3 `file_hash` (bfs×2, cfd×2, hotspot×2, nw-omp; 4 with Option C >1 MiB no-ref) + 2 bucket5 weak-tags (srad×2). Commits `9780b64` `27f3df5` `e912c8d`. | S4a |
+| T2.2b | pending | S4b — Rodinia weak Batch 2: remaining 9 bucket5 weak-tags from 18-weak list (backprop×3, bptree-cuda+omp, lavamd-cuda+omp, nn-omp, nw-opencl) | S4b |
 | T2.2c | ✓ DONE (S5) | 35-unknowns → 2 bucket3 (myocyte cuda+opencl, file_hash), 1 bucket4 (nn-cuda, numeric_comparison), 5 bucket2 (hotspot3d×3 + md×2, regex-tighten), 27 bucket5 (weak-tag incl. myocyte-omp). Commits `d29d187` `f6950b6` `dc125f7` `255bf0d`. | S5 |
 | T2.3 | pending | Harness verify sweep — all 88 non-KNOWN_FAIL specs PASS | S6 |
 | Phase 3 launch | pending | Qwen canonical + L0-conditional ablation; GPT-5.3-chat (or GPT-5.4) same | S7+ |
@@ -73,15 +76,23 @@ two orthogonal bodies of work, done in order:
 - **`harness/cli.py` working_dir KeyError fix (bundled in Batch 1):** S1.6 (43142bc) intended to thread working_dir but the call site accessed `resolved["working_dir"]` directly; `resolve_paths()` returns the spec with a `_resolved` sub-dict. Fix: `resolved = resolve_paths(...)["_resolved"]`. Without this, any `harness verify` call (file_hash or otherwise) raised KeyError. The S1.6 contract test was grep-only and did not exercise the actual call — `tests/test_cli_verify_smoke.py` (added in Batch 1) closes the functional gap.
 - **Post-S5 hotfixes (`s5-review` team, 2026-04-19):** Adversarial review of `d29d187..02868e8` (Opus `s5-self-critic` + `s5-code-reviewer` + advisor, all ultrathink) surfaced two issues that Batches 1-3 missed. (1) Commit `0adea0c` — same `_resolved` KeyError bug class in `llm_evaluate.py:1821` + `reverify_pass_results.py:214`; Batch 1's cli.py fix didn't propagate. (2) Commit `f814a72` — bucket2 regex `[0-9.eE+-]+` accepted bare `-` in `-nan`, false-PASS under `stdout_pattern`. Both hotfixes land with strengthened regression tests; full post-commit `harness verify` on all 8 strategy-upgraded specs PASS. See `.planning/phases/03-oracle-framework/03-S5-REVIEW.md` for the full review log.
 
-### Oracle strength distribution after S5
+### Oracle strength distribution after S5 + S4a
 
 ```
-7 strong   — myocyte-{cuda,opencl} (file_hash) + hotspot3d×3 + md×2 (stdout_pattern w/ numeric capture)
-1 medium   — nn-cuda (stdout_pattern sentinel + numeric_comparison Distance tol=1e-3)
-27 weak    — 26 audit-unknowns + myocyte-omp
-0 unknown  — none
-171 missing — 54 already-strong HeCBench + 4 XSBench + 4 RSBench + remaining 109 not yet tagged (S4 + S6 complete the picture)
+14 strong  — S5: myocyte-{cuda,opencl} + hotspot3d×3 + md×2 (7)
+              S4a: bfs×2 + nw-omp + cfd×2 + hotspot×2 file_hash (7)
+ 1 medium  — nn-cuda (stdout_pattern sentinel + numeric_comparison Distance tol=1e-3)
+29 weak    — S5: 26 audit-unknowns + myocyte-omp (27)
+              S4a: srad×2 (2)
+ 0 unknown — none
+162 missing — 54 already-strong HeCBench + 4 XSBench + 4 RSBench + remaining 100 not yet tagged
+              (S4b adds 9 Rodinia weak-tags; S6 sweep tags HeCBench bulk)
 ```
+
+### S4a deviations from plan (approved in-session by Samyak via prompt selection of Option C)
+
+- **Option C amendment to Rule 6 (≤1 MiB cap):** S4a determinism pre-flight surfaced 4 of 7 bucket3 specs producing output files >1 MiB (bfs cuda+omp 14.2 MiB result.txt; hotspot cuda+omp 3.6 MiB output.out). Per Rule 9 the strict-fallback would be weak-tag (loses 4 strong oracles). Samyak approved Option C: ship file_hash with embedded `expected_sha256` only; reference file deferred to Zenodo camera-ready (no committed reference for >1 MiB). Verifier reads `working_dir/<path>` and compares to spec-embedded SHA — semantic gating preserved. cfd density (748 KiB) + nw-omp result.txt (6 KiB) ship full reference_files entry as normal.
+- **Option C application:** 4 specs ship file_hash WITHOUT committed reference file (bfs-cuda, bfs-omp, hotspot-cuda, hotspot-omp). 3 specs ship full reference (cfd-cuda, cfd-omp, nw-omp). Spec descriptions document the Zenodo deferral inline.
 
 `scripts/validate_schema.py --all` still reports the 15 baseline phantom-spec errors; this is expected per `known-issues.md`.
 
@@ -104,7 +115,7 @@ These apply across every session in this campaign. No exceptions, no `--no-verif
 3. **NEVER modify `manifest.jsonl`** — append-only. Spec JSON edits happen in-place at the existing `unique_id` (no `-v2` suffix, no renaming).
 4. **NEVER modify `results/`** — historical result JSONs are immutable.
 5. **NEVER modify `.planning/phases/02-llm-eval-testing/02-0{1..9}-*.md`** historical plans — write-once.
-6. **Reference output files** live in `specs/references/{kernel}/` (committed to repo, sized ≤1 MB per file). Spec embeds `sha256` + relative path. Zenodo is deferred to camera-ready.
+6. **Reference output files** live in `specs/references/{kernel}/` (committed to repo, sized ≤1 MiB per file). Spec embeds `sha256` + relative path. Zenodo is deferred to camera-ready. **Option C amendment (S4a 2026-04-19, Samyak-approved):** if the binary's deterministic output file exceeds 1 MiB and no `numeric_comparison` candidate exists, ship `file_hash` with the embedded `expected_sha256` only; OMIT the `reference_files` entry. The spec strategy `description` MUST note "reference deferred to Zenodo camera-ready" so reviewers know the SHA is the verifiable claim and the reference will be deposited later. Verifier reads `working_dir/<path>` and compares to embedded `expected_sha256` — semantic gating preserved without bloating the repo. (Applies to bfs cuda+omp, hotspot cuda+omp in S4a; future >1 MiB upgrades follow same pattern.)
 7. **Every session runs `/validate` waves 1-3** before commit. Pre-commit hook enforces.
 8. **Spec JSON mutations are per-session-batch commited.** One commit per natural session batch (not one per spec, not prescriptively one per suite). Keeps diffs reviewable.
 9. **If a spec cannot be upgraded without touching benchmark source** (no output file, no numeric stdout, no self-check, non-deterministic FP output), it gets `oracle_strength: "weak"` + a `# TODO(paper-threats)` note in the spec + a paragraph in the paper Threats section. It is NOT silently shipped as passing.
