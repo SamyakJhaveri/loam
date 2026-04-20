@@ -11,68 +11,6 @@ ParBench: benchmark for LLM-based parallel code translation (CUDA ↔ OpenMP ↔
   nvcc: `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc`
   CUDA/OpenCL: `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/{include,lib64}`
 
-## Behavioral Guidelines
-
-Behavioral guidelines to reduce common LLM coding mistakes. These principles guide all work in this project.
-
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
-
-### 1. Think Before Coding
-
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
-
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them — don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
-
-### 2. Simplicity First
-
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-### 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it — don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-### 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
 ## Key Architecture
 
 | Path | What it is |
@@ -84,7 +22,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 | `scripts/evaluation/` | LLM eval pipeline (`run_eval_batch.py`, `llm_evaluate.py`) |
 | `results/` | Immutable eval + augmentation result JSONs |
 | `rodinia/rodinia-src/` | Git submodule (commit `9c10d3ea`) — **empty in worktrees** |
-| `HeCBench-master/` | Gitignored but **cloned locally** (1874 benchmark dirs) — specs in `specs/hecbench-*.json` |
+| `HeCBench-master/` | Gitignored but **cloned locally** (1874 benchmark dirs) |
+
+Full details: `.claude/rules/architecture.md` (conditional on harness/, scripts/, c_augmentation/).
 
 ## Invariants
 
@@ -92,20 +32,22 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 2. **Result JSONs are immutable** — use `--resume` to skip existing
 3. **Never run evaluations in worktrees** — submodules are empty there
 4. **Never change spec run args** without reading the source's `argc` check first
-5. **~15 `validate_schema.py --all` errors are expected** (phantom specs only — HeCBench **is** cloned locally) — do not fix
+5. **~15 `validate_schema.py --all` errors are expected** (phantom specs only) — do not fix
 6. **8 KNOWN_FAIL specs** — exclude from eval batches (list in `known-issues.md`)
-7. **`git push origin main` is blocked** by Bash permissions — even with user confirmation in AskUserQuestion. Push to a feature branch, or ask the user to run `! git push origin main` themselves. Don't retry the blocked push.
+7. **`git push origin main` is blocked** by Bash permissions — push to a feature branch, or ask the user to run `! git push origin main`. Don't retry the blocked push.
 
 ## Quality
 
 - Read before editing. No partial implementations. Verify before reporting done.
 - `ultrathink` for: architecture, eval pipeline, spec correctness, augmentation, published results.
 - If unsure, say so explicitly — never guess silently.
-- `/validate` before every commit. Pre-commit hook requires waves 1-3; wave 4 (self-critic/opus) is optional.
-- `.validation_passed` sentinel is single-use — it clears after each successful commit. Multi-commit sessions must re-run waves 1-3 before every commit. Docs-only commits still require validation (~90s).
-- When citing code identifiers in planning/design docs (line numbers, `MODEL_REGISTRY` keys, function names), grep to verify BEFORE commit. Line numbers drift; "fixing" a stale number without verifying the target line is in the right code block can introduce regressions (seen 2026-04-16: Azure call at `:879` was "fixed" to `:956`, which is actually the Gemini call).
-- **Model selection:** Use Opus for main work. Before commit/push: manually run `/model haiku` (faster, cheaper for transactional git ops).
-- **Multi-worker orchestration:** Use `/agent-team` as the default for any task that splits into 2+ parallel workers, regardless of whether workers need cross-talk. This overrides the `agent-team` skill description's "NOT for independent parallel tasks" guidance for this project — one orchestration pattern is simpler than two. Default composition: Opus advisor + Sonnet workers. Use `--all-opus` only when deep reasoning from every worker is explicitly required. Do NOT use `dispatching-parallel-agents` — consolidate on `/agent-team`.
+- `/validate` before every commit. Pre-commit hook requires waves 1-3; wave 4 optional.
+- `.validation_passed` sentinel is single-use — clears after each commit. Multi-commit sessions must re-run waves 1-3 every commit. Docs-only commits still require validation (~90s).
+- When citing code identifiers in docs (line numbers, `MODEL_REGISTRY` keys, function names), grep to verify BEFORE commit. Line numbers drift.
+- **Model selection:** Use Opus for main work. Before commit/push: `/model haiku` (faster, cheaper).
+- **Multi-worker orchestration:** Use `/agent-team` as default for 2+ parallel workers. Opus advisor + Sonnet workers. `--all-opus` only when deep reasoning from every worker is required. Do NOT use `dispatching-parallel-agents`.
+
+Behavioral guidelines (Think Before Coding / Simplicity First / Surgical Changes / Goal-Driven Execution): see `karpathy-guidelines` plugin (listed under External Plugin Skills below).
 
 ## Conditional Rules (`.claude/rules/`, auto-loaded by file path)
 
@@ -113,358 +55,111 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 |------|------------|-------------|
 | `known-issues.md` | Always | KNOWN_FAIL list, build gotchas, spec status |
 | `workflow.md` | Always | 6-stage workflow, agents, teams, anti-patterns |
+| `tech-stack.md` | `*.py`, `requirements*.txt`, `pyproject.toml`, `Makefile` | Languages, deps, compilers, config |
+| `architecture.md` | `harness/**`, `scripts/**`, `c_augmentation/**` | Layers, data flow, entry points, abstractions |
+| `python.md` | `*.py` | `python3`, CLI flag ordering, style, naming, module/function design, logging |
 | `spec-conventions.md` | `specs/`, `manifest.jsonl` | Naming, categories, run arg verification protocol |
-| `evaluation.md` | `scripts/evaluation/` | `--suite` required, `--project-root` required, result schema |
+| `evaluation.md` | `scripts/evaluation/` | `--suite`/`--project-root` required, result schema |
 | `augmentation.md` | `c_augmentation/`, `scripts/augmentation/` | `--project-root` required, transform bugs |
-| `known-issues-archive.md` | `c_augmentation/`, `harness/`, `scripts/augmentation/`, `scripts/evaluation/`, `results/augmentation/`, `results/evaluation/`, `specs/`, `visualizations/` | Historical fix details, moved guardrails |
-| `python.md` | `*.py` | `python3`, harness CLI flag ordering (`-v` before subcommand) |
-| `validation-loop.md` | hooks, validation agents | 4-wave protocol (gate requires 1-3, wave 4 optional), sentinel, fix loop |
+| `active-gotchas.md` | `harness/**`, `scripts/evaluation/**`, `scripts/analysis/**`, `visualizations/**` | Hook protection, submodule patches, checksums, `overall_status` rule, timing caveat, OpenCL predicate |
+| `known-issues-archive.md` | `scripts/evaluation/**`, `c_augmentation/**`, `scripts/augmentation/**`, `results/evaluation/**` | Historical eval/augmentation fix details, cited by planning docs |
+| `validation-loop.md` | hooks, validation agents | 4-wave protocol, sentinel, fix loop |
 | `github-pages.md` | `visualizations/` | URL, staticrypt, data refresh |
-| `frontend-design.md` | `visualizations/` | Design system, styling conventions |
+| `frontend-design.md` | `visualizations/` | Design system, styling |
 
 <!-- GSD:project-start source:PROJECT.md -->
 ## Project
 
 **ParBench**
 
-ParBench is a kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA ↔ OpenMP ↔ OpenCL). It provides 96 executable specs across 5 benchmark suites, a build-run-verify harness, an AST-driven augmentation engine for robustness testing, and a two-campaign evaluation protocol. The current sprint hardens the full pipeline with TDD, integrates a new LLM provider (AskSage/Argonne), and runs multi-model evaluations for NeurIPS 2026 submission.
+Kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA ↔ OpenMP ↔ OpenCL). 96 executable specs across 5 suites, build-run-verify harness, AST-driven augmentation engine, two-campaign evaluation protocol. Current sprint hardens pipeline with TDD, integrates AskSage/Argonne provider, runs multi-model evaluations for NeurIPS 2026.
 
-**Core Value:** Every evaluation result is reproducible and pipeline-correct — so model comparisons in the NeurIPS paper are defensible under peer review.
+**Core Value:** Every evaluation result is reproducible and pipeline-correct — so model comparisons are defensible under peer review.
 
 ### Constraints
 
 - **Timeline:** NeurIPS 2026 deadline **May 1, 2026** (Datasets & Benchmarks track)
-- **Data immutability:** Never modify existing result JSONs — use --resume to append
+- **Data immutability:** Never modify existing result JSONs — use `--resume`
 - **Audit-first:** Pipeline must be hardened before new model evals are trusted
-- **AskSage schema:** Adapter design blocked until full response schema confirmed by researcher
-- **Lean planning:** PROJECT.md stays lightweight; phases added to milestones incrementally as work is scoped
+- **AskSage schema:** Adapter design blocked until response schema confirmed
+- **Lean planning:** PROJECT.md stays lightweight; phases added incrementally
 <!-- GSD:project-end -->
-
-<!-- GSD:stack-start source:codebase/STACK.md -->
-## Technology Stack
-
-## Languages
-- Python 3.12+ — All pipeline code: harness, evaluation, augmentation, analysis, figure generation
-- C/C++ (C++17) — Benchmark kernel source code (CUDA, OpenMP, OpenCL, SYCL targets)
-- CUDA — GPU kernel code in Rodinia, HeCBench, XSBench, RSBench, mixbench suites
-- HTML/CSS/JavaScript — Static dashboard visualizations in `visualizations/`
-- LaTeX — SC26 paper in `docs/paper/latex/`
-- Bash — Batch runner scripts in `scripts/batch/`, setup scripts
-- JSON — Spec definitions (`specs/`), schemas (`schema/`), manifest (`manifest.jsonl`)
-## Runtime
-- Python 3.12.3 (Ubuntu 24.04)
-- Virtual environment: `env_parbench/` (activate: `source env_parbench/bin/activate`)
-- Always use `python3`, never bare `python`
-- NVIDIA GeForce RTX 4070 (Ada Lovelace, sm_89, 12 GB VRAM)
-- CUDA Toolkit 12.3 (nvcc at `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc`)
-- NVIDIA HPC SDK 24.3 (nvc++ 24.3-0, for OpenMP target offloading)
-- OpenCL via NVIDIA CUDA (headers/libs at `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/{include,lib64}`)
-- Intel oneAPI DPC++/C++ 2025.3.2 (SYCL, CPU-only — no GPU backend)
-- AMD Ryzen 9 7900X (12 cores / 24 threads, 4.7 GHz base)
-- GCC 12.4.0 / G++ 12.4.0 (Ubuntu)
-- OpenMP via GCC `-fopenmp`
-## Package Manager
-- pip (via `python3 -m pip`)
-- Lockfile: `requirements-lock.txt` (exact pinned versions from working environment)
-- Flexible deps: `requirements.txt` (minimum version constraints)
-- Build system: setuptools >= 68 (configured in `pyproject.toml`)
-## Frameworks & Libraries
-- pydantic 2.12.5 — Data validation for specs and results (`harness/models.py`)
-- jsonschema 4.26.0 — Spec/manifest validation against JSON Schema (`scripts/validate_schema.py`)
-- libclang 18.1.1 — AST analysis for C/C++/CUDA code augmentation (`c_augmentation/augment_dataset.py`)
-- anthropic 0.85.0 — Anthropic API client for Claude models
-- openai 2.28.0 — OpenAI API client (also used for Groq, Gemini, Together AI via OpenAI-compatible endpoints)
-- matplotlib 3.10.8 — Publication-quality figures for SC26 paper (`scripts/generate_paper_figures.py`)
-- numpy 2.4.3 — Numerical analysis (`scripts/analysis/`)
-- pytest 9.0.2 — Test runner (`c_augmentation/test_transforms.py`, `tests/test_campaign_results.py`)
-- ruff 0.11.13 — Python linter/formatter
-- httpx 0.28.1 — HTTP client (used by anthropic SDK)
-- tqdm 4.67.3 — Progress bars (used in batch evaluation)
-- PyYAML 6.0.3 — YAML parsing
-- pillow 12.1.1 — Image handling (matplotlib dependency)
-## Build Tools
-- setuptools >= 68 — Build backend (`pyproject.toml`)
-- Package name: `parbench` v0.1.0
-- Installable packages: `c_augmentation`, `harness`
-- Optional dependency groups: `[eval]`, `[analysis]`, `[dev]`, `[all]`
-- nvcc 12.3 (CUDA compilation) — at `/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/bin/nvcc`
-- nvc++ 24.3 (OpenMP target offloading) — NVIDIA HPC SDK
-- gcc/g++ 12.4.0 (OpenMP, serial C/C++)
-- icpx (Intel oneAPI DPC++ — SYCL, CPU-only target)
-- Make — Benchmark suites use Makefiles; harness executes `make` via spec build commands
-- LaTeX toolchain — `docs/paper/latex/Makefile` for paper compilation
-- BibTeX — `docs/paper/latex/references.bib`
-- staticrypt (npm package, installed via `npm install -g staticrypt` in CI) — AES-256 HTML encryption
-## Key Dependencies (with pinned versions)
-| Package | Version (lock) | Purpose | Location |
-|---------|---------------|---------|----------|
-| pydantic | 2.12.5 | Spec/result data models | `harness/`, `c_augmentation/` |
-| jsonschema | 4.26.0 | JSON Schema validation | `scripts/validate_schema.py` |
-| libclang | 18.1.1 | C/C++ AST transforms | `c_augmentation/augment_dataset.py` |
-| anthropic | 0.85.0 | Claude API client | `scripts/evaluation/llm_evaluate.py` |
-| openai | 2.28.0 | OpenAI/Groq/Gemini/Together client | `scripts/evaluation/llm_evaluate.py` |
-| matplotlib | 3.10.8 | Paper figures | `scripts/generate_paper_figures.py` |
-| numpy | 2.4.3 | Numerical analysis | `scripts/analysis/` |
-| pytest | 9.0.2 | Test runner | `c_augmentation/test_transforms.py` |
-| ruff | 0.11.13 | Linting/formatting | Project-wide |
-## Configuration
-- `config/paths.json` — Machine-specific paths (project_root, downloads_root, hecbench_root)
-- `config/paths.json.template` — Template with `{{PROJECT_ROOT}}` placeholders
-- Generated by: `scripts/setup_claude_for_sam.sh`
-- `schema/spec_schema.json` — JSON Schema for Level 2 kernel specs (34K lines)
-- `schema/manifest_schema.json` — JSON Schema for manifest.jsonl entries
-- `schema/reference_platform.json` — Reference hardware/software platform definition
-- `templates/spec_template.json` — Template for new kernel specs
-- Build commands are spec-embedded (each spec JSON contains its own build commands)
-- Compiler flags vary per spec (CUDA arch, OpenMP flags, OpenCL version targeting)
-- `config/compiler_inventory.txt` — Inventory of available compilers on the machine
-## Platform Requirements
-- Ubuntu 22.04/24.04 LTS
-- Python 3.12+
-- NVIDIA GPU with CUDA 12.x support
-- NVIDIA HPC SDK 24.3 (for nvc++/OpenMP target offload)
-- GCC 12+ with OpenMP support
-- NVIDIA CUDA toolkit 12.3
-- Intel oneAPI 2025.3 (optional, SYCL only)
-- Python 3.12+
-- No GPU compilation — evaluation must run on Linux GPU machine
-- GitHub Actions (ubuntu-latest) for GitHub Pages deployment only
-- No CI for compilation or evaluation — all eval runs are manual on the GPU machine
-<!-- GSD:stack-end -->
-
-<!-- GSD:conventions-start source:CONVENTIONS.md -->
-## Conventions
-
-## Languages
-## Style & Formatting
-- 4-space indentation throughout all Python files
-- Double quotes for strings (consistent across `harness/`, `scripts/`, `c_augmentation/`)
-- Line length: no explicit limit configured, but most lines stay under 100 characters
-- Trailing commas used in multi-line data structures
-- `from __future__ import annotations` at the top of every module (PEP 604 union syntax, forward refs)
-## Naming Patterns
-- snake_case for all Python modules: `spec_loader.py`, `build_error_taxonomy.py`, `augment_dataset.py`
-- `test_` prefix for test files: `test_transforms.py`, `test_build_error_taxonomy.py`
-- Spec JSON files: `{suite}-{kernel_slug}-{api}.json` (e.g., `rodinia-bfs-cuda.json`)
-- snake_case: `build_spec()`, `run_spec()`, `verify_run()`, `load_manifest()`
-- Private functions with leading underscore: `_substitute_variables()`, `_run_shell()`, `_extract_kernel()`
-- CLI command functions prefixed `cmd_`: `cmd_build()`, `cmd_run()`, `cmd_verify()`
-- snake_case: `project_root`, `build_result`, `spec_id`
-- Type annotations on all function signatures (return types included)
-- Constants are UPPER_SNAKE_CASE: `BUILD_TIMEOUT_SECONDS`, `EXCLUDED_SPECS`, `MODEL_REGISTRY`
-- PascalCase: `BuildResult`, `RunResult`, `VerificationResult`, `Status`, `AugmentationConfig`
-- Dataclasses (not Pydantic models) for harness result types in `harness/models.py`
-- Pydantic BaseModel for augmentation config in `c_augmentation/augment_dataset.py`
-- PascalCase class name, UPPER_CASE values: `Status.PASS`, `Status.FAIL`, `Status.TIMEOUT`
-- `kernel_name`: lowercase slug, `+` removed, no uppercase (e.g., `btree`, `hotspot3d`, `lavamd`)
-- `unique_id`: `{source_suite}-{kernel_name}-{parallel_api}` (e.g., `rodinia-bfs-cuda`)
-- Enforced by `scripts/validate_schema.py`
-## Module Design
-- `harness/` is a proper Python package with `__init__.py`, invoked via `python3 -m harness`
-- `scripts/evaluation/` has `__init__.py` for package imports
-- `c_augmentation/` has `__init__.py` for package imports
-- `scripts/analysis/` does NOT have `__init__.py` -- scripts use `sys.path.insert` for imports
-## Import Organization
-## Error Handling
-## Logging
-- `log.debug()` for subprocess commands and internal state
-- `log.info()` for stdout/stderr forwarding when verbose
-- `log.warning()` for non-zero exit codes and skipped strategies
-- `log.error()` for missing directories and unhandled exceptions
-## Comments & Documentation
-## Function Design
-- Keyword-only for optional parameters using `*`: `def build_spec(spec, project_root, *, timeout=600, verbose=False)`
-- `Path` for file paths, `dict[str, Any]` for spec dicts (not typed dicts or Pydantic models)
-- `bool` for flags (verbose, measure_cpu_time)
-- Named dataclass instances for complex returns: `BuildResult`, `RunResult`, `VerificationResult`
-- `list[str]` for validation errors (empty = valid)
-- `int` for CLI commands (exit code)
-- `dict[str, Any]` for JSON-serializable data
-## Data Patterns
-<!-- GSD:conventions-end -->
-
-<!-- GSD:architecture-start source:ARCHITECTURE.md -->
-## Architecture
-
-## Pattern Overview
-- Spec-centric: Every operation is parameterized by a JSON kernel spec file
-- Pipeline-oriented: Sequential stages (build -> run -> verify) with clear data contracts between stages
-- Result immutability: Evaluation and augmentation result JSONs are append-only and never modified
-- Manifest-driven: `manifest.jsonl` serves as the global kernel registry (append-only)
-- Multi-suite: Supports Rodinia, HeCBench, XSBench, RSBench, mixbench benchmark suites
-## Layers
-- Purpose: Define kernels, their build/run/verify configurations, and metadata
-- Location: `specs/` (208 JSON files), `manifest.jsonl`, `schema/spec_schema.json`
-- Contains: Kernel identity, provenance, file lists, build commands, run configurations, verification strategies, hardware requirements, baseline results
-- Depends on: Nothing (pure data)
-- Used by: Harness, evaluation pipeline, augmentation pipeline, analysis scripts
-- Purpose: Compile, execute, and verify benchmark kernels from spec definitions
-- Location: `harness/` (7 Python modules)
-- Contains: `spec_loader.py` (load specs, resolve paths, extract prompt payloads), `builder.py` (compile via subprocess), `runner.py` (execute with optional GNU time), `verifier.py` (exit_code + stdout_pattern + numeric_comparison + file_hash strategies), `reporter.py` (format results), `models.py` (dataclasses: Status, BuildResult, RunResult, VerificationResult, MetricResult, SpecResult), `cli.py` (argparse CLI entry point)
-- Depends on: Spec layer, benchmark source code on disk, system compilers (nvcc, gcc, nvc)
-- Used by: LLM evaluation pipeline, augmentation verification, manual spec testing
-- Purpose: Send source code to LLMs for translation, then grade results via harness
-- Location: `scripts/evaluation/` (5 Python modules)
-- Contains: `llm_evaluate.py` (single-task LLM call + build/run/verify cycle with iterative repair), `run_eval_batch.py` (batch orchestrator building task lists from manifest), `analyze_eval.py` (result aggregation into summaries), `reverify_pass_results.py` (re-check existing PASS results)
-- Depends on: Harness layer, LLM API clients (anthropic, openai SDKs), spec layer
-- Used by: Batch shell scripts in `scripts/batch/`, analysis scripts
-- Purpose: Apply semantics-preserving C/C++ transforms to source code before LLM translation
-- Location: `c_augmentation/` (core transforms), `scripts/augmentation/` (pipeline scripts)
-- Contains: `augment_dataset.py` (66K lines: transform classes using libclang AST), `test_transforms.py` (unit tests), `validate_augmentation.py` (validation), `augment_verify.py` (augment -> build -> verify pipeline), `run_augment_batch.py` (batch runner)
-- Depends on: libclang Python bindings, harness layer (for verification)
-- Used by: Evaluation pipeline (via `augment_level` parameter), standalone augmentation verification
-- Purpose: Aggregate evaluation results into tables, figures, and statistics for the SC26 paper
-- Location: `scripts/analysis/` (20+ Python modules), `scripts/generate_paper_figures.py`
-- Contains: `quantitative_findings.py`, `statistical_analysis.py`, `build_error_taxonomy.py`, `benchmark_characterization.py`, `cross_consistency_audit.py`, `token_analysis.py`, `augmentation_analysis.py`, `sloc_analysis.py`, `generate_paper_data.py`, `cross_model_comparison.py`, plus test files for each
-- Depends on: Result JSONs in `results/evaluation/`, spec layer, manifest
-- Used by: Paper LaTeX, visualization dashboard
-- Purpose: Interactive HTML dashboard for browsing evaluation and augmentation results
-- Location: `visualizations/` (HTML pages + JS data files)
-- Contains: `overview.html`, `results.html`, `build_results.html`, `llm_evaluation.html`, `pipeline.html`, `architecture.html`, `augmentation_deep_dive.html`, `benchmark_landscape.html`, `sprint_dashboard.html`, data files (`results_data.js`, `eval_results_data.js`, `build_results_data.js`)
-- Depends on: Data generated by `scripts/generate_viz_data.py` and `scripts/evaluation/analyze_eval.py --write-dashboard`
-- Used by: GitHub Pages deployment, project stakeholders
-## Data Flow
-- No runtime state database; all state lives in JSON files on disk
-- Evaluation state managed via file existence: `--resume` flag skips tasks whose result JSONs already exist
-- Manifest is append-only: deleted specs leave orphan manifest entries (expected behavior)
-- Baseline results stored directly in spec JSONs (`baseline_results` field)
-## Key Abstractions
-- Purpose: Complete definition of a single benchmark kernel variant
-- Examples: `specs/rodinia-bfs-cuda.json`, `specs/hecbench-nn-omp.json`
-- Pattern: JSON conforming to `schema/spec_schema.json` with sections: identity, provenance, files, implementation, build, run, verification, performance, hardware, baseline_results, metadata
-- Schema version: `1.0.0`
-- Purpose: A (source_spec, target_spec) pair defining a translation task
-- Pattern: Same kernel_name, different parallel_api (e.g., rodinia-bfs-cuda -> rodinia-bfs-omp)
-- Generated by: `find_translation_pairs()` in `harness/spec_loader.py` from manifest entries
-- Purpose: Subset of `files.prompt_payload` that the LLM must produce (kernel-centric translation)
-- Pattern: `files.translation_targets` field in every spec JSON
-- Families: OpenCL targets = `.cl` files only (kernel-only); OMP/CUDA = curated kernel files
-- Purpose: Complete record of a single LLM evaluation task
-- Pattern: Per-task JSON with fields: overall_status, source_spec, target_spec, model, augment_level, attempts[], prompt_tokens, completion_tokens, timing data, translated code snippets
-- Statuses: PASS, BUILD_FAIL, RUN_FAIL, VERIFY_FAIL, EXTRACTION_FAIL, ERROR, SKIP, TIMEOUT
-- Purpose: Outcome type for any harness operation
-- Values: PASS, FAIL, ERROR, TIMEOUT, SKIP
-- Used by: BuildResult, RunResult, VerificationResult
-- Purpose: Pluggable checker for kernel output correctness
-- Implemented: `exit_code` (check return code), `stdout_pattern` (regex match on stdout), `numeric_comparison` (regex-extract float + tolerance compare), `file_hash` (SHA-256 of output file)
-- Stub/TODO: `file_diff`, `custom_script`
-- Semantics: Conjunction -- ALL non-SKIP strategies must PASS for overall PASS
-- Purpose: Semantics-preserving C/C++ code rewriting to test LLM robustness
-- Examples: `ArithmeticTransform`, `SwapCondition`, `PointerArithmeticToArrayIndex`, `TypedefExpansion`, `ChangeNames`, `ChangeFunctionNames`
-- Pattern: ABC subclass of `AstTransform` with `discover()` + `apply()` methods using libclang cursors
-## Entry Points
-- Location: `harness/__main__.py` -> `harness/cli.py:main()`
-- Triggers: Manual spec testing, build verification
-- Commands: `build`, `run`, `verify` (full pipeline), `prompt` (show LLM payload), `info` (spec summary), `pairs` (list translation pairs)
-- Critical: `-v` flag must come BEFORE subcommand
-- Location: `scripts/evaluation/run_eval_batch.py`
-- Triggers: `python3 scripts/evaluation/run_eval_batch.py --suite rodinia --direction cuda-to-omp --models <model> --project-root <path> --resume -v`
-- Responsibilities: Build task list from manifest, iterate tasks calling `evaluate_translation()`, write per-task results + batch summary
-- Location: `scripts/evaluation/llm_evaluate.py`
-- Triggers: Direct CLI or imported by `run_eval_batch.py`
-- Responsibilities: End-to-end translation evaluation for one (source, target, model, level) tuple
-- Location: `scripts/evaluation/analyze_eval.py`
-- Triggers: `python3 scripts/evaluation/analyze_eval.py --project-root <path>`
-- Responsibilities: Aggregate all result JSONs into `eval_summary.json` + `eval_summary.md`
-- Location: `scripts/validate_schema.py`
-- Triggers: Pre-commit validation, CI
-- Responsibilities: Validate all specs against `schema/spec_schema.json`, cross-check manifest consistency
-- Location: `scripts/augmentation/augment_verify.py`
-- Triggers: Augmentation testing
-- Responsibilities: Apply transforms at specified level, then build/run/verify via harness
-- Location: `scripts/generate_paper_figures.py`
-- Triggers: Paper preparation
-- Responsibilities: Generate matplotlib figures from evaluation data for LaTeX
-- Location: `scripts/batch/`
-- Contains: `run_eval_campaign.sh` (full multi-direction campaign), `run_rodinia_batch.sh`, `run_cuda_batch.sh`, `run_omp_batch.sh`, `run_xsbench_eval.sh`, `run_rodinia_augmented_eval.sh`
-## Error Handling
-- Harness operations return typed result objects (BuildResult, RunResult, VerificationResult) with Status enum -- never raise exceptions for expected failures
-- `evaluate_translation()` wraps the entire evaluation in try/finally to guarantee file restoration (backup/restore pattern)
-- Build errors captured as head+tail snippets (`_head_tail()` function) for inclusion in retry prompts and result JSONs
-- LLM API failures caught and stored in result JSON `error_message` field
-- Iterative repair: on BUILD_FAIL, `analyze_build_failure()` parses linker errors, finds missing symbols in source files, generates targeted repair hints for the LLM retry
-- Subprocess timeouts handled with configurable `timeout_seconds` (default 300s for run, 600s for build)
-## Cross-Cutting Concerns
-<!-- GSD:architecture-end -->
 
 <!-- GSD:skills-start source:skills/ -->
 ## Project Skills
 
 | Skill | Description | Path |
 |-------|-------------|------|
-| creating-agent-teams | Creates and launches coordinated agent teams using TeamCreate for multi-teammate tasks requiring cross-talk, shared task lists, and lifecycle management. Use when 2+ workers need to communicate findings to each other, not just report to parent. NOT for independent parallel tasks (use dispatching-parallel-agents instead). | `.claude/skills/agent-team/SKILL.md` |
-| augment-test |  | `.claude/skills/augment-test/SKILL.md` |
-| catchup |  | `.claude/skills/catchup/SKILL.md` |
-| cite-check |  | `.claude/skills/cite-check/SKILL.md` |
-| dream |  | `.claude/skills/dream/SKILL.md` |
-| eval-run |  | `.claude/skills/eval-run/SKILL.md` |
-| feature-dev |  | `.claude/skills/feature-dev/SKILL.md` |
-| fix-bug |  | `.claude/skills/fix-bug/SKILL.md` |
-| gen-spec |  | `.claude/skills/gen-spec/SKILL.md` |
-| grill-research |  | `.claude/skills/grill-research/SKILL.md` |
-| handoff | Write or update a handoff document so the next agent with fresh context can continue this work. | `.claude/skills/handoff/SKILL.md` |
-| hypothesis-tree |  | `.claude/skills/hypothesis-tree/SKILL.md` |
-| interpret-results |  | `.claude/skills/interpret-results/SKILL.md` |
-| mentoring | "HPC/SE/research teaching framework — surfaces insights grounded in ParBench" | `.claude/skills/mentoring/SKILL.md` |
-| model-route |  | `.claude/skills/model-route/SKILL.md` |
-| overnight-eval |  | `.claude/skills/overnight-eval/SKILL.md` |
-| paper-review-sim |  | `.claude/skills/paper-review-sim/SKILL.md` |
-| post-eval |  | `.claude/skills/post-eval/SKILL.md` |
-| ralph-loop |  | `.claude/skills/ralph-loop/SKILL.md` |
-| reflect |  | `.claude/skills/reflect/SKILL.md` |
-| review |  | `.claude/skills/review/SKILL.md` |
-| session-start |  | `.claude/skills/session-start/SKILL.md` |
-| spec-check |  | `.claude/skills/spec-check/SKILL.md` |
-| techdebt |  | `.claude/skills/techdebt/SKILL.md` |
-| validate |  | `.claude/skills/validate/SKILL.md` |
-| workflow-ref | "Skill/agent reference table, agent teams, thinking levels, atomic task decomposition, memory hygiene, course correction" | `.claude/skills/workflow-ref/SKILL.md` |
+| creating-agent-teams | Coordinated agent teams via TeamCreate for multi-teammate tasks with cross-talk. NOT for independent parallel tasks. | `.claude/skills/agent-team/SKILL.md` |
+| augment-test | Augmentation testing workflow | `.claude/skills/augment-test/SKILL.md` |
+| catchup | Session bootstrap | `.claude/skills/catchup/SKILL.md` |
+| cite-check | Paper citation checker | `.claude/skills/cite-check/SKILL.md` |
+| dream | Memory consolidation | `.claude/skills/dream/SKILL.md` |
+| eval-run | Eval batch launcher | `.claude/skills/eval-run/SKILL.md` |
+| feature-dev | Feature development workflow | `.claude/skills/feature-dev/SKILL.md` |
+| fix-bug | Bug fix workflow | `.claude/skills/fix-bug/SKILL.md` |
+| gen-spec | Spec generation | `.claude/skills/gen-spec/SKILL.md` |
+| grill-research | Research interrogation | `.claude/skills/grill-research/SKILL.md` |
+| handoff | Handoff doc writer | `.claude/skills/handoff/SKILL.md` |
+| hypothesis-tree | Hypothesis tree manager | `.claude/skills/hypothesis-tree/SKILL.md` |
+| interpret-results | Hypothesis-first interpretation | `.claude/skills/interpret-results/SKILL.md` |
+| mentoring | HPC/SE/research teaching framework grounded in ParBench | `.claude/skills/mentoring/SKILL.md` |
+| model-route | Model route advisor | `.claude/skills/model-route/SKILL.md` |
+| overnight-eval | Overnight eval campaign | `.claude/skills/overnight-eval/SKILL.md` |
+| paper-review-sim | Paper review simulator | `.claude/skills/paper-review-sim/SKILL.md` |
+| post-eval | Post-eval pipeline | `.claude/skills/post-eval/SKILL.md` |
+| ralph-loop | Stateless loop | `.claude/skills/ralph-loop/SKILL.md` |
+| reflect | Structured reflection | `.claude/skills/reflect/SKILL.md` |
+| review | Multi-agent code review | `.claude/skills/review/SKILL.md` |
+| session-start | Session bootstrap | `.claude/skills/session-start/SKILL.md` |
+| spec-check | Spec health check | `.claude/skills/spec-check/SKILL.md` |
+| techdebt | Tech debt inventory | `.claude/skills/techdebt/SKILL.md` |
+| validate | Post-session validation | `.claude/skills/validate/SKILL.md` |
+| workflow-ref | Skill/agent reference, agent teams, thinking levels | `.claude/skills/workflow-ref/SKILL.md` |
 <!-- GSD:skills-end -->
 
 ### External Plugin Skills
 
-Skills provided by installed plugins (loaded via `~/.claude/settings.json` — not local files in `.claude/skills/`). Kept in a separate sub-table so the Project Skills table above stays a pure index of in-repo `SKILL.md` paths.
-
-| Skill | Description | Plugin | Source |
-|-------|-------------|--------|--------|
-| karpathy-guidelines | Behavioral guidelines to reduce common LLM coding mistakes (Andrej Karpathy's observations). The 4 core principles (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution) are also embedded verbatim in §Behavioral Guidelines above for always-on availability. | `andrej-karpathy-skills` | https://github.com/forrestchang/andrej-karpathy-skills |
+| Skill | Plugin | Source |
+|-------|--------|--------|
+| karpathy-guidelines | `andrej-karpathy-skills` | https://github.com/forrestchang/andrej-karpathy-skills |
 
 ## Project Agents
 
-Custom Task agents under `.claude/agents/`. Spawn via the Agent tool with matching `subagent_type`. Validation-wave agents are orchestrated by the `validate` skill.
+Custom Task agents under `.claude/agents/`. Spawn via Agent tool with matching `subagent_type`. Validation agents orchestrated by `validate` skill.
 
-| Agent | Description | Path |
-|-------|-------------|------|
-| code-simplifier | Post-implementation cleanup: duplication, dead code, unclear names, over-engineering. Behavior-preserving suggestions only. Wave 3 advisory. | `.claude/agents/code-simplifier.md` |
-| consistency-checker | Cross-checks CLAUDE.md / known-issues.md / agent tables against actual files. Detects stale claims and undocumented changes. Wave 3. | `.claude/agents/consistency-checker.md` |
-| diff-reviewer | Reviews git diff for regressions, partial implementations, accidental file changes, and consistency issues. Wave 1. | `.claude/agents/diff-reviewer.md` |
-| eval-batcher | Runs LLM evaluation batches (`run_eval_batch.py`) for ParBench campaigns. Knows kernel eligibility rules and phantom-spec exclusions. | `.claude/agents/eval-batcher.md` |
-| explorer | Maps files, traces call chains, identifies dependencies, notes gotchas, checks test coverage. Faster than direct reads for broad exploration. | `.claude/agents/explorer.md` |
-| plan-reviewer | Adversarial plan review. Finds unstated assumptions, missing edge cases, security risks, ordering hazards before implementation. | `.claude/agents/plan-reviewer.md` |
-| regression-checker | Compares current project metrics against baselines (Rodinia spec count, test count, manifest append-only). Wave 2. | `.claude/agents/regression-checker.md` |
-| rodinia-verifier | Runs `harness verify` on Rodinia specs. Knows the 54 PASS-target specs and 6 KNOWN_FAIL specs. | `.claude/agents/rodinia-verifier.md` |
-| security-scanner | Scans changed files for secrets, command injection, path traversal, and unsafe patterns. Wave 1. | `.claude/agents/security-scanner.md` |
-| self-critic | Opus-powered adversarial self-review for rationalization patterns, incomplete work, unverified claims. Wave 4. | `.claude/agents/self-critic.md` |
-| spec-auditor | Audits spec JSONs for `unique_id` slugification, category enum validity, manifest cross-check, source dir existence, schema compliance. Wave 2 (conditional on spec changes). | `.claude/agents/spec-auditor.md` |
-| test-synthesizer | Writes temp test scripts for changed Python/spec/hook files, compiles/runs, reports results. Wave 2. | `.claude/agents/test-synthesizer.md` |
-| verification-lead | Hierarchical validation coordinator. Spawns and manages all 4 waves internally, returning a single structured report. | `.claude/agents/verification-lead.md` |
-| verify-app | Verifies ParBench project health: schema validation, unit tests, spec file integrity, manifest cross-check. Wave 1. | `.claude/agents/verify-app.md` |
+| Agent | Description |
+|-------|-------------|
+| code-simplifier | Post-impl cleanup: duplication, dead code, unclear names. Wave 3. |
+| consistency-checker | Cross-checks CLAUDE.md / known-issues.md / agent tables. Wave 3. |
+| diff-reviewer | Reviews git diff for regressions/partial work. Wave 1. |
+| eval-batcher | Runs LLM eval batches, knows kernel eligibility and phantom exclusions. |
+| explorer | Maps files, call chains, dependencies, coverage. |
+| plan-reviewer | Adversarial plan review. |
+| regression-checker | Compares metrics against baselines. Wave 2. |
+| rodinia-verifier | Runs `harness verify` on Rodinia specs. |
+| security-scanner | Scans for secrets, injection, unsafe patterns. Wave 1. |
+| self-critic | Opus adversarial self-review. Wave 4. |
+| spec-auditor | Audits spec JSONs. Wave 2 (conditional). |
+| test-synthesizer | Writes temp test scripts for changed files. Wave 2. |
+| verification-lead | Hierarchical validation coordinator. |
+| verify-app | Project health check: schema, tests, specs, manifest. Wave 1. |
 
 <!-- GSD:workflow-start source:GSD defaults -->
 ## GSD Workflow Enforcement
 
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+Before Edit/Write/other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
 
-Use these entry points:
-- `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd-debug` for investigation and bug fixing
-- `/gsd-execute-phase` for planned phase work
+- `/gsd-quick` — small fixes, doc updates, ad-hoc tasks
+- `/gsd-debug` — investigation and bug fixing
+- `/gsd-execute-phase` — planned phase work
 
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
+Don't make direct repo edits outside GSD unless the user explicitly asks to bypass.
 <!-- GSD:workflow-end -->
 
 <!-- GSD:profile-start -->
 ## Developer Profile
 
-> Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
-> This section is managed by `generate-claude-profile` -- do not edit manually.
+> Profile not yet configured. Run `/gsd-profile-user` to generate.
+> Managed by `generate-claude-profile` — do not edit manually.
 <!-- GSD:profile-end -->

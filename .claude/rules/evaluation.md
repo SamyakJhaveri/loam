@@ -6,6 +6,7 @@ paths:
 # Evaluation Pipeline Rules
 
 > Auto-loaded when working on `scripts/evaluation/` files.
+> Historical eval fix details: see `active-gotchas.md` (conditional) and git log.
 
 ## Quick-Start Commands
 

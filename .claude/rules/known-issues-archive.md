@@ -1,19 +1,19 @@
 ---
 paths:
-  - "c_augmentation/**"
-  - "harness/**"
-  - "scripts/augmentation/**"
   - "scripts/evaluation/**"
-  - "results/augmentation/**"
+  - "c_augmentation/**"
+  - "scripts/augmentation/**"
   - "results/evaluation/**"
-  - "specs/**"
-  - "visualizations/**"
+  # narrowed 2026-04-20 from original 8-path set (8 paths → 4).
+  # removed triggers: harness/**, results/augmentation/**, specs/**, visualizations/**.
+  # line-count preserved via these comments so .planning/phases/02-*/ docs
+  # that cite archive content by line range remain valid (e.g., :303-313, :337-346).
 ---
 
 # Known Issues — Historical Archive
 
-> Conditional: loads only when working on augmentation, harness, specs, or results files.
-> For active guardrails, see `known-issues.md` (always loaded).
+> Conditional: loads on `scripts/evaluation/`, `c_augmentation/`, `scripts/augmentation/`, `results/evaluation/`.
+> For active guardrails, see `known-issues.md` (always loaded); for live rules, see `active-gotchas.md`.
 
 ## Augmentation Transform Bugs (c_augmentation — all FIXED as of 2026-03-19)
 

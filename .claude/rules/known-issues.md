@@ -1,7 +1,8 @@
 # Known Issues & Gotchas
 
 > Always loaded. Contains active guardrails that prevent recurring mistakes.
-> Historical fix details are in `known-issues-archive.md` (conditional, loads on augmentation/harness files).
+> Live rescued rules: `active-gotchas.md` (conditional).
+> Historical fix details: `known-issues-archive.md` (conditional, loads on `scripts/evaluation/`, `c_augmentation/`, `scripts/augmentation/`, `results/evaluation/`).
 
 ## Schema Validation Errors (pre-existing — ignore)
 
@@ -116,6 +117,9 @@ numbers now source exclusively from Phase 3 runs on `together-qwen-3.5-397b-a17b
 - Do NOT cite the 31.0% / 347/1120 / 1,248 figures in new docs or paper prose. Phase 3
   data reconstitutes these statistics from scratch.
 
-Historical details (FALSE_PASS fixes, Rodinia submodule policy, XSBench checksums, hook protection,
-augmentation baseline, eval timing limitations, localStorage divergence, eval JSON schema quirk,
-Gemini thinking confound, backprop anomaly, OpenCL kernel-only fix) are in `known-issues-archive.md`.
+Active rescued rules (hook protection, Rodinia submodule patches, XSBench checksums,
+`overall_status` rule, timing caveat, OpenCL kernel-only predicate, dashboard localStorage)
+are in `active-gotchas.md` (conditional). Other historical details (FALSE_PASS baseline fixes,
+augmentation bugs A/B/C, Gemini thinking confound, backprop anomaly, M10b toolchain fixes,
+M11 kernel-centric structural mismatch, OpenCL kernel-only fix origin-context, eval JSON
+schema quirk, nn filelist_4 bug): `known-issues-archive.md` (conditional).
