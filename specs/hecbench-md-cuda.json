@@ -106,13 +106,20 @@
         "description": "CPU reference force calculation compared to GPU; prints max error with numeric value (tightened from bare literal per S3 audit bucket2 option (d))"
       },
       {
+        "type": "numeric_comparison",
+        "extract_regex": "Max error between host and device:\\s+([+-]?\\d[\\d.eE+-]*)",
+        "expected": 1.86265e-09,
+        "tolerance": 1e-08,
+        "description": "Molecular dynamics host-vs-device force calculation max-error vs baseline 1.86265e-09 (CUDA). Policy B-per-spec tolerance 1e-8 absolute (window accommodates the 'near-zero' regime including a strictly-better translation producing 0). Added 2026-04-19 (S7c): bucket2 mis-label \u2192 medium numeric_comparison oracle."
+      },
+      {
         "type": "exit_code",
         "expected": 0,
         "description": "Process exits cleanly"
       }
     ],
     "floating_point": null,
-    "oracle_strength": "strong"
+    "oracle_strength": "medium"
   },
   "performance": {
     "metrics": [
@@ -169,7 +176,7 @@
       "correctness": {
         "status": "pass",
         "exit_code": 0,
-        "stdout_snippet": "Max error between host and device: 0\nAverage kernel execution time 0.00445281 (s)",
+        "stdout_snippet": "Max error between host and device: 1.86265e-09\nAverage kernel execution time 0.00445281 (s)",
         "wall_time_seconds": null
       },
       "performance": {

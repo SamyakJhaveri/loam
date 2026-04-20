@@ -22,9 +22,9 @@ Do NOT try to fix any of these errors.
 **All 88 curated non-KNOWN_FAIL specs verified PASS.**
 **Use 54 Rodinia TRUE PASS + 3 XSBench + 4 RSBench + 3 mixbench + 23 HeCBench curated = 87 specs (plus 1 HeCBench cross-API pair) = 88 for eval batches.**
 
-**Oracle strength distribution (206 total specs, post-S7b audit 2026-04-19):**
-- 7 strong (`oracle_strength: "strong"` label) — of which 2 carry `file_hash` with matching cross-API hashes (bptree×2) and 5 are mis-labeled (hotspot3d×3, hecbench-md×2 are effectively weak; label correction deferred to post-NeurIPS cleanup)
-- 0 medium
+**Oracle strength distribution (206 total specs, post-S7c bucket2 upgrade 2026-04-19):**
+- 2 strong (`oracle_strength: "strong"` label) — bptree×2 carry `file_hash` with matching cross-API hashes. All prior mis-labels (hotspot3d×3, hecbench-md×2) were upgraded in S7c to medium `numeric_comparison` oracles.
+- 5 medium (`oracle_strength: "medium"`) — `numeric_comparison` on printed scalar vs own-API baseline: hotspot3d-{cuda,omp,opencl} (Accuracy, tolerance 1e-7 abs); hecbench-md-{cuda,omp_target} (Max-error, tolerance 1e-8 / 1e-9 abs). Policy B-per-spec. See `tests/test_bucket2_numeric_comparison.py`.
 - 46 weak (stdout_pattern + exit_code only)
 - 153 untagged — 35 curated specs (HeCBench/XSBench/RSBench/mixbench remainder) + ~118 HeCBench bulk specs outside the curated 88-spec corpus. Post-NeurIPS S6.5 may bulk-tag them.
 

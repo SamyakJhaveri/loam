@@ -96,13 +96,20 @@
                 "description": "3D hotspot accuracy metric reported with numeric value (tightened from bare 'Accuracy:' per S3 audit bucket2 option (d))"
             },
             {
+                "type": "numeric_comparison",
+                "extract_regex": "Accuracy:\\s+([+-]?\\d[\\d.eE+-]*)",
+                "expected": 4.096975e-05,
+                "tolerance": 0.0001,
+                "description": "3D hotspot RMS-error metric vs own-API baseline 4.09697e-05 (OMP). Accuracy() = sqrt(sum((a-b)^2)/len) \u2014 residual metric where 0=perfect, lower=better. Tolerance 0.0001 absolute (~2.4x baseline) allows accepted window [0, 0.000141] \u2014 catches gross errors (Accuracy >= 1e-3) while accepting strictly-better translations (Accuracy = 0) and cross-compiler FP-reordering drift. Widened from 1e-7 abs in S7c post-review after plan-reviewer flagged RMS-residual semantics (faithful-reproduction oracle spuriously rejects better translations). Added 2026-04-19 (S7c): bucket2 mis-label -> medium numeric_comparison oracle."
+            },
+            {
                 "type": "exit_code",
                 "expected": 0,
                 "description": "Process exits cleanly"
             }
         ],
         "floating_point": null,
-        "oracle_strength": "strong"
+        "oracle_strength": "medium"
     },
     "performance": null,
     "hardware": {

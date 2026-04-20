@@ -104,13 +104,20 @@
         "description": "CPU reference force calculation compared to GPU; prints max error with numeric value (tightened from bare literal per S3 audit bucket2 option (d))"
       },
       {
+        "type": "numeric_comparison",
+        "extract_regex": "Max error between host and device:\\s+([+-]?\\d[\\d.eE+-]*)",
+        "expected": 0.0,
+        "tolerance": 1e-09,
+        "description": "Molecular dynamics host-vs-device force calculation max-error vs baseline 0.0 (omp_target). Policy B-per-spec tolerance 1e-9 absolute (~1 ppb \u2014 semantically 'max error below 1 ppb'). Added 2026-04-19 (S7c): bucket2 mis-label \u2192 medium numeric_comparison oracle."
+      },
+      {
         "type": "exit_code",
         "expected": 0,
         "description": "Process exits cleanly"
       }
     ],
     "floating_point": null,
-    "oracle_strength": "strong"
+    "oracle_strength": "medium"
   },
   "performance": {
     "metrics": [

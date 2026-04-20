@@ -25,7 +25,7 @@ At HEAD `9b1a1f5` the strong-oracle inventory:
 | `rodinia-nw-omp`      | `file_hash` on `result.txt` | 1 | strong |
 | `rodinia-nn-cuda`     | `numeric_comparison` on `Distance=` | 0 | medium |
 
-**Out of scope but flagged for follow-up:** `hecbench-md-{cuda,omp_target}` and `rodinia-hotspot3d-{cuda,omp,opencl}` carry `oracle_strength: "strong"` as a label but use only `stdout_pattern + exit_code` strategies. Label mismatch — should be `weak`. Documented here; fix deferred to post-NeurIPS cleanup.
+**Out of scope but flagged for follow-up:** `hecbench-md-{cuda,omp_target}` and `rodinia-hotspot3d-{cuda,omp,opencl}` carry `oracle_strength: "strong"` as a label but use only `stdout_pattern + exit_code` strategies. Label mismatch — should be `weak`. ~~Fix deferred to post-NeurIPS cleanup.~~ **UPGRADED 2026-04-19 (S7c):** all 5 specs now carry `oracle_strength: "medium"` with `numeric_comparison` strategy (Policy B-per-spec tolerance: hotspot3d×3 → 1e-7 abs on Accuracy; hecbench-md-cuda → 1e-8 abs on Max-error; hecbench-md-omp_target → 1e-9 abs on Max-error). Baselines deterministic 3/3 at capture. Strategies now conjunctive: `stdout_pattern + numeric_comparison + exit_code`. See `tests/test_bucket2_numeric_comparison.py` (30 tests, all PASS).
 
 ---
 
@@ -94,6 +94,6 @@ S7 commit `851a29d` downgraded `rodinia-bfs-{cuda,omp}` for identical reasons: C
 
 ## Follow-up work (NOT in S7b)
 
-1. Correct `oracle_strength` labeling for `hotspot3d-{cuda,omp,opencl}` and `hecbench-md-{cuda,omp_target}` — currently labeled `strong` but have only `stdout_pattern + exit_code`. True strength is `weak`.
+1. ~~Correct `oracle_strength` labeling for `hotspot3d-{cuda,omp,opencl}` and `hecbench-md-{cuda,omp_target}` — currently labeled `strong` but have only `stdout_pattern + exit_code`. True strength is `weak`.~~ **UPGRADED 2026-04-19 (S7c, commit pending):** All 5 specs now `oracle_strength: "medium"` with `numeric_comparison` conjunctive strategy. Policy B-per-spec tolerances: hotspot3d×3 → 1e-4 abs on Accuracy (widened from initial 1e-7 after plan-reviewer flagged RMS-residual semantics — `3D.cu:122-132` `accuracy()` = sqrt(sum((a-b)²)/len) where 0=perfect; tight tolerance around non-zero baseline would spuriously reject strictly-better translations; widened window [0, baseline+1e-4] still rejects gross errors); hecbench-md-cuda → 1e-8 abs on Max-error (baseline 1.86265e-09); hecbench-md-omp_target → 1e-9 abs on Max-error (baseline 0.0). Baselines deterministic 3/3 at capture. Tests in `tests/test_bucket2_numeric_comparison.py` (30 PASS). See also S7c review doc for reviewer dialogue on Policy-B design.
 2. Explore numeric_comparison with per-API tolerance for cfd/hotspot/myocyte as Zenodo-camera-ready alternative (would require FP-tolerance extraction from density/output.out — non-trivial).
 3. Consider algorithm-level equivalence oracles (e.g., max relative error < ε over the density field) as a paper-time methodological contribution.
