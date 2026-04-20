@@ -106,14 +106,7 @@
             {
                 "type": "stdout_pattern",
                 "pattern": "Distance=",
-                "description": "Sentinel — surfaces Distance= lines; required for regex-combiner cross-API verify (nn-opencl->nn-cuda pair)"
-            },
-            {
-                "type": "numeric_comparison",
-                "extract_regex": "Distance=([0-9.eE+-]+)",
-                "expected": 0.199997,
-                "tolerance": 0.001,
-                "description": "Nearest-neighbor Distance for first record (closest hurricane to 30N/90W); absolute tolerance 1e-3 accommodates FP reduction-order drift across devices"
+                "description": "NN completion banner / sentinel — surfaces Distance= lines. numeric_comparison downgraded 2026-04-19 (S7b): `nn_cuda.cu:185` emits `printf(\"%s --> Distance=%f\\n\", ...)` to stdout; `nn_openmp.c:149` emits `fprintf(stderr, \"%s --> %f\\n\", ...)` to stderr with no `Distance=` prefix. Distance values ARE printed in both APIs but via different streams and formats, so the `Distance=` regex on stdout fails cross-API even when the underlying numeric answer is identical. Faithful OMP->CUDA translation preserves the OMP stderr format; the numeric_comparison oracle on the CUDA target punishes that. stdout_pattern + exit_code is the honest oracle. See .planning/phases/03-oracle-framework/04-S7b-ORACLE-AUDIT.md."
             },
             {
                 "type": "exit_code",
@@ -122,7 +115,7 @@
             }
         ],
         "floating_point": null,
-        "oracle_strength": "medium"
+        "oracle_strength": "weak"
     },
     "performance": null,
     "hardware": {

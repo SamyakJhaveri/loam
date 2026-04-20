@@ -92,10 +92,9 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "file_hash",
-                "path": "result.txt",
-                "expected_sha256": "912879cb9f8f81a9b34fbf514dbaaec3c8c0b6825f21a0b584b1134cc4f69fc5",
-                "description": "SHA-256 of NW alignment traceback result.txt (TRACEBACK active in needle.cpp:314; deterministic two-run)"
+                "type": "stdout_pattern",
+                "pattern": "Processing bottom-right matrix",
+                "description": "NW alignment progress banner. file_hash downgraded 2026-04-19 (S7b): CUDA needle.cu:194 comments out `#define TRACEBACK` — CUDA variant does NOT produce result.txt. OMP needle.cpp:314 has TRACEBACK active — only OMP writes result.txt. LLM translation from omp-to-cuda is faithful to source semantics and does not produce result.txt; cross-API file_hash on the OMP target also punishes CUDA->OMP translators who correctly preserve the `//#define TRACEBACK` comment. stdout_pattern is the honest oracle until TRACEBACK asymmetry is resolved upstream. See .planning/phases/03-oracle-framework/04-S7b-ORACLE-AUDIT.md."
             },
             {
                 "type": "exit_code",
@@ -104,15 +103,8 @@
             }
         ],
         "floating_point": null,
-        "oracle_strength": "strong",
-        "reference_files": [
-            {
-                "path": "specs/references/nw/omp_result.txt",
-                "sha256": "912879cb9f8f81a9b34fbf514dbaaec3c8c0b6825f21a0b584b1134cc4f69fc5",
-                "size_bytes": 6204,
-                "description": "Reference NW alignment traceback (args 2048 10 4) captured via _capture_baseline (deterministic two-run)"
-            }
-        ]
+        "oracle_strength": "weak",
+        "reference_files": []
     },
     "performance": null,
     "hardware": {

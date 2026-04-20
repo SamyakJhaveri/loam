@@ -114,10 +114,9 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "file_hash",
-                "path": "output.out",
-                "expected_sha256": "06b21039f105501b2e297e43809f8db2faa3bf1253b11fad6f442e09a89c6fe2",
-                "description": "SHA-256 of hotspot 2D thermal output.out (deterministic two-run; 3.6 MiB exceeds 1 MiB repo cap, reference deferred to Zenodo camera-ready)"
+                "type": "stdout_pattern",
+                "pattern": "Ending simulation",
+                "description": "Hotspot completion banner. file_hash downgraded 2026-04-19 (S7b): CUDA hotspot.cu and OMP hotspot_openmp.cpp run the same transient-temperature iteration but diverge bit-exact due to floating-point non-associativity — OMP and CUDA accumulate thermal flux contributions in different order across threads/blocks, producing different output.out bytes (CUDA=06b21039..., OMP=f90474ff...). LLM translations faithful to source-API semantics cannot match both file_hash references. stdout_pattern is the honest oracle until resolved upstream. See .planning/phases/03-oracle-framework/04-S7b-ORACLE-AUDIT.md."
             },
             {
                 "type": "exit_code",
@@ -126,7 +125,7 @@
             }
         ],
         "floating_point": null,
-        "oracle_strength": "strong"
+        "oracle_strength": "weak"
     },
     "performance": null,
     "hardware": {

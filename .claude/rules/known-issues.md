@@ -22,14 +22,25 @@ Do NOT try to fix any of these errors.
 **All 88 curated non-KNOWN_FAIL specs verified PASS.**
 **Use 54 Rodinia TRUE PASS + 3 XSBench + 4 RSBench + 3 mixbench + 23 HeCBench curated = 87 specs (plus 1 HeCBench cross-API pair) = 88 for eval batches.**
 
-**Oracle strength distribution (206 total specs):**
-- 14 strong (file_hash or numeric_comparison with reference_files)
-- 1 medium (rodinia-nn-cuda)
-- 38 weak (stdout_pattern + exit_code only)
-- 0 unknown (hard exit criterion met)
-
-**2026-04-19 S7 BUG-3 downgrade:** `rodinia-bfs-cuda` + `rodinia-bfs-omp` dropped from strong (file_hash) to weak (stdout_pattern+exit_code). Root cause: Rodinia's CUDA and OMP implementations diverge in source-node selection (`cuda/bfs/bfs.cu:130` hardcodes `source=0` as debug leftover; `openmp/bfs/bfs.cpp:87` has it commented out, labeled "tesing code line"). CUDA baseline hashes to `3c5eeb...`, OMP baseline hashes to `f57afc...`. LLM translations in either direction are faithful to source-API semantics and cannot satisfy both file_hash references. stdout_pattern is the honest oracle until resolved upstream. See S7 live smoke log + spec description.
+**Oracle strength distribution (206 total specs, post-S7b audit 2026-04-19):**
+- 7 strong (`oracle_strength: "strong"` label) — of which 2 carry `file_hash` with matching cross-API hashes (bptree×2) and 5 are mis-labeled (hotspot3d×3, hecbench-md×2 are effectively weak; label correction deferred to post-NeurIPS cleanup)
+- 0 medium
+- 46 weak (stdout_pattern + exit_code only)
 - 153 untagged — 35 curated specs (HeCBench/XSBench/RSBench/mixbench remainder) + ~118 HeCBench bulk specs outside the curated 88-spec corpus. Post-NeurIPS S6.5 may bulk-tag them.
+
+**2026-04-19 S7 BUG-3 downgrade (bfs):** `rodinia-bfs-cuda` + `rodinia-bfs-omp` dropped from strong (file_hash) to weak. Root cause: Rodinia's CUDA and OMP implementations diverge in source-node selection (`cuda/bfs/bfs.cu:130` hardcodes `source=0` as debug leftover; `openmp/bfs/bfs.cpp:87` has it commented out, labeled "tesing code line"). CUDA baseline hashes to `3c5eeb...`, OMP to `f57afc...`. Faithful LLM translations cannot satisfy both.
+
+**2026-04-19 S7b audit downgrades (8 specs):** cross-API divergence or synthesis-asymmetry applies the same bfs pattern. Full report: `.planning/phases/03-oracle-framework/04-S7b-ORACLE-AUDIT.md`.
+
+| Spec | Reason | Replacement oracle |
+|------|--------|--------------------|
+| `rodinia-cfd-cuda`, `rodinia-cfd-omp` | FP reduction-order divergence over 2000 RK3 iterations (CUDA=`ab07aa0c`, OMP=`4283a12d`) | `stdout_pattern: "Saved solution\\.\\.\\."` + `exit_code` |
+| `rodinia-hotspot-cuda`, `rodinia-hotspot-omp` | FP reduction-order divergence in transient-temperature solver (CUDA=`06b21039`, OMP=`f90474ff`) | `stdout_pattern: "Ending simulation"` + `exit_code` |
+| `rodinia-myocyte-cuda`, `rodinia-myocyte-opencl` | FP reduction-order divergence in ODE integration across API runtimes (CUDA=`1e329f02`, OpenCL=`59efddcb`) | `stdout_pattern: "Time spent in different stages..."` + `exit_code` |
+| `rodinia-nw-omp` | Synthesis-asymmetric: CUDA `needle.cu:194` has `//#define TRACEBACK` commented out; only OMP writes `result.txt` | `stdout_pattern: "Processing bottom-right matrix"` + `exit_code` |
+| `rodinia-nn-cuda` | Synthesis-asymmetric: `nn_cuda.cu:185` emits `Distance=`; `nn_openmp.c` has no equivalent print | `stdout_pattern: "Distance="` + `exit_code` (numeric_comparison removed) |
+
+Downgrade checklist applied per spec: file_hash/numeric_comparison strategy removed, stdout_pattern added/retained, reference_files cleared, `oracle_strength: "weak"` set, description updated, reference artifacts deleted under `specs/references/{cfd,myocyte,nw}/`. Bptree pair retains file_hash (cross-API hashes match). Post-downgrade sweep: 88/88 PASS. Tests in `tests/test_oracle_divergence.py` (6 PASS) document the audit evidence.
 
 **S6 sweep (2026-04-19):** 88/88 PASS via `scripts/spec_tools/run_verify_sweep.py`.
 Log: `.planning/phases/03-oracle-framework/03-S6-SWEEP.log`.
