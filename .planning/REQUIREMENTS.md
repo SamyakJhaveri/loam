@@ -25,7 +25,7 @@ Design revised 2026-04-16: two-campaign structure replaced with canonical + L0-c
 - [ ] `MODEL_REGISTRY` entry added for `azure-gpt-5.4` in `scripts/evaluation/llm_evaluate.py`
 - [ ] `reasoning_effort="medium"` passed on Azure API calls for reasoning-capable models (guarded by capability check)
 - [ ] Qwen `enable_thinking` flipped to `True`; new `--thinking on|off` CLI flag (default `on`)
-- [ ] `gpt-4.1-2025-04-14`, `azure-gpt-4.1`, `gpt-4.1-mini` purged from scripts/docs (result JSONs stay on disk for audit)
+- [ ] `gpt-4.1-2025-04-14`, `azure-gpt-4.1`, `gpt-4.1-mini` purged from scripts/docs
 - [ ] New `scripts/evaluation/derive_l0_passers.py` — emits `l0_passers_{model}.json` with cells where ≥1 of 3 canonical samples passed (pass@1-of-any)
 - [ ] New `--task-list <json>` flag on `run_eval_batch.py` — consumes passer JSON instead of enumerating from manifest
 - [ ] Prompt construction verified for each suite (via `--dry-run`)

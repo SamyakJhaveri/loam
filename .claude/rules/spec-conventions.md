@@ -75,7 +75,7 @@ When known-issues.md contradicts the source, the **source wins** — update know
 ## Validation
 
 ```bash
-# All specs (~135 errors are expected as of 2026-03-20 — see known-issues.md)
+# All specs (~15 errors are expected as of 2026-04-03 — see known-issues.md)
 python3 scripts/validate_schema.py --all
 
 # Single spec

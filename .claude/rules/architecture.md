@@ -22,7 +22,7 @@ paths:
 
 ### Spec layer
 - Purpose: Define kernels, build/run/verify configs, metadata
-- Location: `specs/` (208 JSON files), `manifest.jsonl`, `schema/spec_schema.json`
+- Location: `specs/` (206 JSON files), `manifest.jsonl`, `schema/spec_schema.json`
 - Contains: identity, provenance, files, implementation, build, run, verification, performance, hardware, baseline_results, metadata
 - Depends on: nothing (pure data)
 - Used by: harness, evaluation, augmentation, analysis
@@ -145,7 +145,7 @@ paths:
 - `scripts/generate_paper_figures.py` — matplotlib figures for LaTeX
 
 ### Batch Shell Scripts
-- `scripts/batch/` — `run_eval_campaign.sh`, `run_rodinia_batch.sh`, `run_cuda_batch.sh`, `run_omp_batch.sh`, `run_xsbench_eval.sh`, `run_rodinia_augmented_eval.sh`
+- `scripts/batch/` — `run_eval_campaign.sh`, `run_rodinia_batch.sh`, `run_cuda_batch.sh`, `run_omp_batch.sh`; archived: `_archive/pre-phase3-2026-03-16/run_xsbench_eval.sh`, `run_rodinia_augmented_eval.sh`
 
 ## Error Handling
 

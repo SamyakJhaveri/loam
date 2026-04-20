@@ -6,7 +6,7 @@
 
 ## What This Is
 
-ParBench is a kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA <-> OpenMP <-> OpenCL). It provides 96 executable specs across 5 benchmark suites, a build-run-verify harness, an AST-driven augmentation engine for robustness testing, and — as of 2026-04-16 — a canonical + L0-conditional ablation evaluation protocol (replacing the earlier two-campaign structure). The current milestone verifies every pipeline component with real data, runs the canonical + ablation evaluations for Qwen 3.5 397B + Azure GPT-5.4, and writes the NeurIPS 2026 paper.
+ParBench is a kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA <-> OpenMP <-> OpenCL). It provides 88 curated non-KNOWN_FAIL specs (206 JSON total) across 5 benchmark suites, a build-run-verify harness, an AST-driven augmentation engine for robustness testing, and a canonical + L0-conditional ablation evaluation protocol. The current milestone runs Phase 3 canonical + ablation evaluations for Qwen 3.5 397B + Azure GPT-5.4, and writes the NeurIPS 2026 paper.
 
 ## Core Value
 
@@ -17,12 +17,12 @@ Every evaluation result is reproducible and pipeline-correct -- so model compari
 ### Validated
 
 - Pipeline (harness, spec_loader, llm_evaluate.py) is already suite-agnostic -- zero `if suite == "rodinia"` in core code
-- 96 executable specs across 5 suites (60 Rodinia, 4 XSBench, 4 RSBench, 3 mixbench, 25 HeCBench)
+- 88 curated non-KNOWN_FAIL specs (206 JSON total) across 5 suites (60 Rodinia, 4 XSBench, 4 RSBench, 3 mixbench, 25 HeCBench curated)
 - Build-run-verify harness (3-stage, conjunctive exit-code + stdout-pattern verification)
 - AST-driven augmentation engine (6 transforms, L0-L4 intensity levels, libclang-backed)
 - Prior Campaign 1 / Campaign 2 eval infrastructure retained as building blocks; superseded by canonical + L0-conditional ablation (2026-04-16)
 - LLM provider adapters: Together AI, Azure OpenAI, Anthropic (all OpenAI-compatible)
-- Qwen 3.5 397B results (1,248 eval results from the earlier two-campaign structure; kept on disk for audit but not used as the NeurIPS headline)
+- Qwen 3.5 397B results (1,248 eval results from the earlier two-campaign structure; purged 2026-04-20 — Phase 3 regenerates from scratch)
 - Cross-API arg + verification handling (source args + union stdout pattern)
 - Regex combiner bug fixed (_wrap_pattern, scoped inline flags) -- 2026-04-09
 - `pass_at_k()` implemented in `statistical_analysis.py` and `quantitative_findings.py`
@@ -30,8 +30,8 @@ Every evaluation result is reproducible and pipeline-correct -- so model compari
 
 ### Active (by Phase)
 
-- [x] **Phase 1:** Pipeline testing and uniformity across all 5 suites (spec loading, build, run, verify) — completed 2026-04-10
-- [ ] **Phase 2:** LLM eval testing with real calls — add `azure-gpt-5.4` model entry, `reasoning_effort=medium` param, Qwen thinking flag, `derive_l0_passers.py`, `--task-list` flag on `run_eval_batch.py`; purge `gpt-4.1-mini` from scripts/docs
+- [x] **Phase 1:** Pipeline testing and uniformity — ARCHIVED → `.planning/_archive/phase-01-pipeline-testing-uniformity/` (completed 2026-04-10)
+- [x] **Phase 2:** LLM eval testing — ARCHIVED → `.planning/_archive/phase-02-llm-eval-testing/` (completed 2026-04-17)
 - [ ] **Phase 3:** Full evaluation runs — 3-phase launch: canonical (pass@3 L0 temp=0.7 thinking=ON self-repair=OFF) → derive L0-passers (pass@1-of-any) → L0-conditional ablation (pass@1 L1-L4 on all L0-passers), for Qwen 3.5 397B + Azure GPT-5.4
 - [ ] **Phase 4:** NeurIPS 2026 paper -- every claim traceable to verified result files
 
@@ -46,7 +46,7 @@ Every evaluation result is reproducible and pipeline-correct -- so model compari
 
 ## Context
 
-- **Qwen results:** 1,248 files -- C1 (780, temp=0.0, L0-L4) + C2 (468, temp=0.7, -s0/-s1/-s2). Every result JSON has `temperature` and `sample_id` fields.
+- **Qwen results:** Pre-Phase-3 results (1,248 files) purged 2026-04-20 per user directive. Phase 3 regenerates from scratch under canonical + L0-conditional ablation design.
 - **GPT results:** ALL BOTCHED -- ignore entirely (empty prompts from Argonne machine)
 - **AskSage:** BLOCKED -- zero code, zero documentation in codebase. Integration blocked until Le provides API docs/credentials. Do not speculatively build.
 - **tmux sessions:** `qwen_hecbench` and `qwen_small` deleted (2026-04-09)

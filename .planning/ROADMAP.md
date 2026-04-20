@@ -6,14 +6,14 @@
 
 ## Overview
 
-This roadmap takes ParBench from a pilot-validated benchmark (Qwen 3.5 397B, 1,248 results) to a multi-model, peer-review-ready NeurIPS submission. Four phases: verify the pipeline with real data, test end-to-end evaluation with the revised experiment design, run canonical + L0-conditional ablation, write the paper.
+This roadmap takes ParBench from a pilot-validated benchmark (pipeline verified, pre-Phase-3 pilot results purged 2026-04-20) to a multi-model, peer-review-ready NeurIPS submission. Four phases: verify the pipeline with real data, test end-to-end evaluation with the revised experiment design, run canonical + L0-conditional ablation, write the paper.
 
 Experiment design was revised on 2026-04-16 from a two-campaign structure to a canonical + L0-conditional ablation structure (see `.planning/PROJECT.md` Key Decisions for full rationale; pre-approval snapshot at `~/.claude/plans/gsd-context-goal-i-cached-finch.md`).
 
 ## Phases
 
-- [x] **Phase 1: Pipeline Testing & Uniformity** -- Test and fix the full spec-build-run-verify pipeline across all 5 suites
-- [x] **Phase 2: LLM Eval Testing** -- Test evaluation pipeline end-to-end with real LLM calls; add azure-gpt-5.4 registry entry, reasoning_effort param, Qwen thinking flag, L0-passer derivation script, `--task-list` flag (COMPLETE 2026-04-17)
+- [x] **Phase 1: Pipeline Testing & Uniformity** -- ARCHIVED → `.planning/_archive/phase-01-pipeline-testing-uniformity/`
+- [x] **Phase 2: LLM Eval Testing** -- ARCHIVED → `.planning/_archive/phase-02-llm-eval-testing/` (COMPLETE 2026-04-17)
 - [ ] **Phase 3: Full Evaluation Runs** -- Canonical (pass@3 L0) then L0-conditional ablation (pass@1 L1-L4) for Qwen 3.5 397B + Azure GPT-5.4
 - [ ] **Phase 4: NeurIPS Paper** -- Write paper with every claim traceable to verified results
 
@@ -51,7 +51,7 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 - `MODEL_REGISTRY` entry for `azure-gpt-5.4` in `scripts/evaluation/llm_evaluate.py`
 - `reasoning_effort="medium"` passed on Azure API calls for reasoning-capable models (guarded by capability check)
 - Qwen `enable_thinking` flipped to `True`; new `--thinking on|off` CLI flag (default `on`)
-- `gpt-4.1-2025-04-14`, `azure-gpt-4.1`, `gpt-4.1-mini` purged from scripts/docs (result JSONs stay on disk for audit)
+- `gpt-4.1-2025-04-14`, `azure-gpt-4.1`, `gpt-4.1-mini` purged from scripts/docs (result JSONs also purged 2026-04-20 per user directive; paper re-sources from Phase 3 canonical+ablation)
 - New `scripts/evaluation/derive_l0_passers.py`: takes canonical result dir + model, emits `l0_passers_{model}.json` with cells where ≥1 of 3 samples passed (pass@1-of-any)
 - New `--task-list <json>` flag on the eval batch launcher: consumes passer JSON instead of enumerating from manifest
 - Prompt construction verified for each suite via `--dry-run`
@@ -80,7 +80,7 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 **Goal:** Complete canonical + L0-conditional ablation runs for Qwen 3.5 397B and Azure GPT-5.4 across all 5 suites, all 6 directions (including omp_target case studies where available), using a 3-phase launch sequence.
 
 **Execution split (two-track):**
-Phase A (canonical) and Phase C (ablation) run on **two machines**: `azure-gpt-5.4` streams are executed by Le on his own clone of the repo per `docs/neurips2026-gpt5-handoff.md`; result JSONs are delivered back to Samyak as a tarball and committed to `main`. `together-qwen-3.5-397b-a17b` streams run on the Linux GPU machine. Phase B (`derive_l0_passers.py`) runs on the machine that produced each canonical set. No named branches; no cross-repo merges. (See decision D-34 in `.planning/phases/02-llm-eval-testing/02-CONTEXT.md`.)
+Phase A (canonical) and Phase C (ablation) run on **two machines**: `azure-gpt-5.4` streams are executed by Le on his own clone of the repo per `docs/neurips2026-gpt5-handoff.md`; result JSONs are delivered back to Samyak as a tarball and committed to `main`. `together-qwen-3.5-397b-a17b` streams run on the Linux GPU machine. Phase B (`derive_l0_passers.py`) runs on the machine that produced each canonical set. No named branches; no cross-repo merges. (See decision D-34 in `.planning/_archive/phase-02-llm-eval-testing/02-CONTEXT.md`.)
 
 **Depends on:** Phase 2
 

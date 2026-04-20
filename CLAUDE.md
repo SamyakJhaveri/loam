@@ -72,7 +72,7 @@ Behavioral guidelines (Think Before Coding / Simplicity First / Surgical Changes
 
 **ParBench**
 
-Kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA ↔ OpenMP ↔ OpenCL). 96 executable specs across 5 suites, build-run-verify harness, AST-driven augmentation engine, two-campaign evaluation protocol. Current sprint hardens pipeline with TDD, integrates AskSage/Argonne provider, runs multi-model evaluations for NeurIPS 2026.
+Kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA ↔ OpenMP ↔ OpenCL). 88 curated non-KNOWN_FAIL specs (206 JSON total) across 5 suites, build-run-verify harness, AST-driven augmentation engine, canonical + L0-conditional ablation protocol. Current sprint runs multi-model evaluations for NeurIPS 2026.
 
 **Core Value:** Every evaluation result is reproducible and pipeline-correct — so model comparisons are defensible under peer review.
 
@@ -81,7 +81,6 @@ Kernel-centric benchmark framework for evaluating LLM-based parallel code transl
 - **Timeline:** NeurIPS 2026 deadline **May 1, 2026** (Datasets & Benchmarks track)
 - **Data immutability:** Never modify existing result JSONs — use `--resume`
 - **Audit-first:** Pipeline must be hardened before new model evals are trusted
-- **AskSage schema:** Adapter design blocked until response schema confirmed
 - **Lean planning:** PROJECT.md stays lightweight; phases added incrementally
 <!-- GSD:project-end -->
 

@@ -71,8 +71,6 @@ Gal reviewed the §2.1–2.3 draft on 2026-04-16 and approved with one budget-dr
 - All 87 TRUE PASS kernels × 6 directions (+ omp_target case studies for XSBench/RSBench where available)
 - Both models: `together-qwen-3.5-397b-a17b` + `azure-gpt-5.4` (renamed from "azure-gpt-5" to reflect the specific deployment slot)
 
-> ⚠️ **`azure-gpt-5.4` is a placeholder identifier — NOT yet runnable.** Verified 2026-04-16 against `scripts/evaluation/llm_evaluate.py` (MODEL_REGISTRY, lines 61–125): only `azure-gpt-4.1` is registered; no GPT-5 variant exists. Two things must land before Phase A launches: (1) Task 7 (§2.4 code-change table row 1) registers the model entry, and (2) Le confirms the exact Azure deployment name + TPM quota. Treat "GPT-5.4" throughout this document as a working identifier, not a resolved one.
-
 **What changes for the ablation (supersedes §2.2):**
 
 | Parameter | §2.2 (pre-approval) | §2.4 (authoritative) |
@@ -117,10 +115,10 @@ Net wall clock across Apr 19–20 is ~20–22h (vs ~17h in §4 parallel-all-stre
 
 | # | Change | File | Status |
 |---|---|---|---|
-| 1 | Add `azure-gpt-5.4` entry to `MODEL_REGISTRY` (use `azure-gpt-4.1` at line 94 as the structural template) | `scripts/evaluation/llm_evaluate.py` (MODEL_REGISTRY dict starts line 61; azure-gpt-4.1 entry at line 94 — insert new entry nearby) | Pending execution |
-| 2 | Add `reasoning_effort="medium"` on the **Azure** `client_az.chat.completions.create(...)` call (guarded by capability check — only for reasoning-capable models like gpt-5.4, o3). NOTE: line 956's `reasoning_effort="none"` is in the **Gemini** path, not Azure — do NOT edit that one. | `scripts/evaluation/llm_evaluate.py:878–883` (Azure call block; add parameter between `messages=` and closing `)`) | Pending |
-| 3 | Flip Qwen `enable_thinking: False → True`; add `--thinking on\|off` CLI flag | `scripts/evaluation/llm_evaluate.py:1001` | Pending |
-| 4 | Remove `gpt-4.1-2025-04-14` + `azure-gpt-4.1` + `gpt-4.1-mini` from scripts/docs | 10 files (see §Appendix B) | Pending |
+| 1 | Add `azure-gpt-5.4` entry to `MODEL_REGISTRY` | `scripts/evaluation/llm_evaluate.py` | DONE (2026-04-17) |
+| 2 | Add `reasoning_effort="medium"` on the **Azure** `client_az.chat.completions.create(...)` call (guarded by capability check — only for reasoning-capable models like gpt-5.4, o3). NOTE: `reasoning_effort="none"` in the Gemini path — do NOT edit that one. | `scripts/evaluation/llm_evaluate.py` (Azure call block) | Pending |
+| 3 | Flip Qwen `enable_thinking: False → True`; add `--thinking on\|off` CLI flag | `scripts/evaluation/llm_evaluate.py` | Pending |
+| 4 | Remove `gpt-4.1-2025-04-14` + `azure-gpt-4.1` + `gpt-4.1-mini` from scripts/docs | 10 files (see §Appendix B) | DONE (2026-04-20) |
 | 5 | New `derive_l0_passers.py` — emit `l0_passers_{model}.json` (pass@1-of-any filter) | `scripts/evaluation/derive_l0_passers.py` | Pending |
 | 6 | Add `--task-list <json>` flag to `run_eval_batch.py` | `scripts/evaluation/run_eval_batch.py` | Pending |
 
@@ -129,7 +127,7 @@ Net wall clock across Apr 19–20 is ~20–22h (vs ~17h in §4 parallel-all-stre
 **Decisions deferred vs §9:**
 - **Item 1 (GPT-5 tier)**: Gal approved standard via the budget-cutting directive.
 - **Item 3 (Option D)**: Approved with revision (L0-conditional ablation per §2.4).
-- **Item 4 (gpt-4.1-mini purge)**: Approved by Samyak 2026-04-16 — result JSONs on disk stay, scripts/docs get purged.
+- **Item 4 (gpt-4.1-mini purge)**: DONE 2026-04-20 — scripts/docs purged; result JSONs also purged per updated directive.
 - **Item 2 (Azure quota)**: Still pending Le; required before Phase A.
 - **Item 5 (2-machine allocation)**: Still pending; if only 1 machine available, fallback is serial canonical (+17h wall clock, still fits).
 
@@ -146,7 +144,7 @@ Based on 50-sample empirical measurement of existing Qwen results (thinking OFF)
 | o3 standard (alternative) | $0.170 | $2/M in + $8/M out |
 | Qwen 3.5 397B via Together AI | **$0.075** | $0.60/M in + $3.60/M out [Together pricing](https://www.together.ai/models/qwen3-5-397b-a17b), verified 2026-04-17 |
 
-> **2026-04-17 pricing refresh.** Azure GPT-5 standard was previously cited at $1.25/M in + $10/M out ($0.206/sample); the authoritative rate is now $2.50/M in + $15/M out ($0.3125/sample) per the Azure pricing page for GPT-5 deployments below the 272K context threshold (Batch API is $1.25/M in + $7.50/M out). Together's Qwen 3.5 397B rate was previously estimated at ~$1/M in + $2/M out ($0.025/sample); the advertised rate is $0.60/M in + $3.60/M out ($0.075/sample). The §3.2 table below still reflects the OLD rates AND the pre-2026-04-16 two-campaign scope (superseded by §2.4's canonical + L0-conditional ablation design). The authoritative current cost model is `.planning/phases/02-llm-eval-testing/02-CONTEXT.md` D-30; see also `.planning/phases/02-llm-eval-testing/02-08-integration-smoke-and-handoff-PLAN.md`. Gal signed off on the $559 GPT overshoot on 2026-04-17 (at old pricing); a recomputation at the new $0.3125/sample rate lands the canonical + ablation GPT spend closer to ~$848 — deviations from the original $559 will be flagged if/when they materialize, per Samyak's standing instruction "if anything changes I will let you know."
+> **2026-04-17 pricing refresh.** Azure GPT-5 standard was previously cited at $1.25/M in + $10/M out ($0.206/sample); the authoritative rate is now $2.50/M in + $15/M out ($0.3125/sample) per the Azure pricing page for GPT-5 deployments below the 272K context threshold (Batch API is $1.25/M in + $7.50/M out). Together's Qwen 3.5 397B rate was previously estimated at ~$1/M in + $2/M out ($0.025/sample); the advertised rate is $0.60/M in + $3.60/M out ($0.075/sample). The §3.2 table below still reflects the OLD rates AND the pre-2026-04-16 two-campaign scope (superseded by §2.4's canonical + L0-conditional ablation design). The authoritative current cost model is `.planning/_archive/phase-02-llm-eval-testing/02-CONTEXT.md` D-30; see also `.planning/_archive/phase-02-llm-eval-testing/02-08-integration-smoke-and-handoff-PLAN.md`. Gal signed off on the $559 GPT overshoot on 2026-04-17 (at old pricing); a recomputation at the new $0.3125/sample rate lands the canonical + ablation GPT spend closer to ~$848 — deviations from the original $559 will be flagged if/when they materialize, per Samyak's standing instruction "if anything changes I will let you know."
 
 ### 3.2 Full experiment budget (GPT-5 standard tier — OLD rates, two-campaign scope, SUPERSEDED)
 
@@ -253,10 +251,10 @@ Seven-day buffer between experiment completion and submission.
 
 ## 9. Decisions needed from Gal
 
-1. ☐ **GPT-5 tier** — standard ($1.25/$10) or Pro ($15/$120)? Recommend **standard**; Pro is ~12× more expensive.
+1. ☑ **GPT-5 tier** — standard approved (Gal, 2026-04-17).
 2. ☐ **Azure quota** — Le, please confirm TPM/RPM on the GPT-5 thinking deployment. We need ≥200k TPM sustained to run without throttling concerns.
-3. ☐ **Approve Option D** (main = pass@3 L0, ablation = pass@1 L1–L4, full kernel coverage). Total ~$843 on GPT-5 standard.
-4. ☐ **Purge `gpt-4.1-mini`** from ParBench scripts, memory, and agenda (raw result JSONs stay on disk for audit)?
+3. ☑ **Approve Option D** — approved with revision: L0-conditional ablation per §2.4 (Samyak, 2026-04-16).
+4. ☑ **Purge `gpt-4.1-mini`** — DONE 2026-04-20 (scripts/docs purged; result JSONs purged per updated directive).
 5. ☐ **Machines committed** — confirm Samyak's machine + Le's machine are both available for 2-day exclusive use between Apr 19–21.
 
 ---

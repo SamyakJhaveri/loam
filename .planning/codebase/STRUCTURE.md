@@ -64,8 +64,7 @@ parbench_sam/
 │   │   ├── run_rodinia_batch.sh
 │   │   ├── run_cuda_batch.sh
 │   │   ├── run_omp_batch.sh
-│   │   ├── run_xsbench_eval.sh
-│   │   ├── run_rodinia_augmented_eval.sh
+│   │   ├── _archive/pre-phase3-2026-03-16/  # Archived: run_xsbench_eval.sh, run_rodinia_augmented_eval.sh
 │   │   ├── run_qwen_missing_batches.sh
 │   │   └── run_phase_api.sh
 │   ├── archive/                # Deprecated fix scripts
@@ -82,7 +81,7 @@ parbench_sam/
 │   ├── test_transforms.py      # Unit tests for transforms (15 tests)
 │   └── requirements.txt        # libclang dependency
 │
-├── specs/                      # Kernel spec JSON files (208 files)
+├── specs/                      # Kernel spec JSON files (206 files)
 │   ├── rodinia-*.json          # Rodinia benchmark specs (~120 files)
 │   ├── hecbench-*.json         # HeCBench curated specs (~70 files)
 │   ├── xsbench-*.json          # XSBench specs (4 files)
@@ -95,22 +94,14 @@ parbench_sam/
 │   └── reference_platform.json
 │
 ├── results/                    # Evaluation and augmentation results (IMMUTABLE)
-│   ├── evaluation/
-│   │   ├── together-qwen-3.5-397b-a17b/  # 1248 Qwen result JSONs
-│   │   ├── azure-gpt-4.1-mini/           # 905 GPT-4.1-mini result JSONs
-│   │   ├── eval_summary.json             # Aggregated summary
-│   │   ├── eval_summary.md               # Human-readable summary
-│   │   ├── translation_complexity.csv    # Complexity classification
-│   │   ├── batch_*.json                  # Batch run summaries
-│   │   └── batch_*.md                    # Batch run markdown reports
+│   ├── evaluation/             # Phase 3+ results only (pre-Phase-3 data purged 2026-04-20)
 │   ├── augmentation/
 │   │   ├── retest_post_session2.json     # Definitive augmentation baseline
 │   │   ├── retest_post_m9.json
 │   │   ├── full_aug_results.json
 │   │   ├── eval_{cuda,omp,opencl}.json
 │   │   └── phase{3,4,5}_*.json           # Historical phase results
-│   ├── analysis/                          # (Currently empty)
-│   └── evaluation_backup_20260328/       # Pre-reverification backup
+│   └── analysis/                          # (Currently empty)
 │
 ├── manifest.jsonl              # Append-only kernel registry (JSONL, ~200 entries)
 │
@@ -227,7 +218,7 @@ parbench_sam/
 
 **`specs/`:**
 - Purpose: JSON specifications defining every benchmark kernel variant
-- Contains: 208 JSON files, one per (suite, kernel, api) tuple
+- Contains: 206 JSON files, one per (suite, kernel, api) tuple
 - Naming: `{suite}-{slug}-{api}.json` (e.g., `rodinia-bfs-cuda.json`, `hecbench-nn-omp.json`)
 - Suites: rodinia (~120), hecbench (~70), xsbench (4), rsbench (4), mixbench (3)
 

@@ -19,7 +19,7 @@ ParBench is a benchmark framework for evaluating LLM-based parallel code transla
 
 **Spec Layer (Data Definition):**
 - Purpose: Define kernels, their build/run/verify configurations, and metadata
-- Location: `specs/` (208 JSON files), `manifest.jsonl`, `schema/spec_schema.json`
+- Location: `specs/` (206 JSON files), `manifest.jsonl`, `schema/spec_schema.json`
 - Contains: Kernel identity, provenance, file lists, build commands, run configurations, verification strategies, hardware requirements, baseline results
 - Depends on: Nothing (pure data)
 - Used by: Harness, evaluation pipeline, augmentation pipeline, analysis scripts
@@ -181,7 +181,7 @@ ParBench is a benchmark framework for evaluating LLM-based parallel code transla
 
 **Batch Shell Scripts:**
 - Location: `scripts/batch/`
-- Contains: `run_eval_campaign.sh` (full multi-direction campaign), `run_rodinia_batch.sh`, `run_cuda_batch.sh`, `run_omp_batch.sh`, `run_xsbench_eval.sh`, `run_rodinia_augmented_eval.sh`
+- Contains: `run_eval_campaign.sh` (full multi-direction campaign), `run_rodinia_batch.sh`, `run_cuda_batch.sh`, `run_omp_batch.sh`; archived: `_archive/pre-phase3-2026-03-16/run_xsbench_eval.sh`, `run_rodinia_augmented_eval.sh`
 
 ## Error Handling
 
