@@ -169,46 +169,56 @@ Extend to other suites by swapping `--suite`, as in §4.
 
 **Rationale:** D-16..D-21 (`project_ablation_filter` memory) — pass@1-of-any filter: the cell `(source,target)` qualifies for the ablation set iff `≥1` of the 3 canonical samples passes at L0. Per-cell, pass@1 at each of L0..L4 is then run with `--num-samples 1 --temperature 0.0`. Greedy + single sample so every augmentation level produces exactly one comparable data point.
 
-### 6.1 Derive passer set per model (one file covers both directions)
+### 6.1 Derive passer set per model × direction
 
-`derive_l0_passers.py` has **no `--direction` filter** (verified by plan-reviewer 2026-04-19). It scans `--canonical-dir` recursively and groups by `(source_spec, target_spec)` at `augment_level == 0`, returning every `(src, tgt)` cell where ≥1 canonical sample passed. Running it twice per direction produces byte-identical output. Consume the same passer file from both direction invocations in §6.2; `run_eval_batch.py:190-197` (`_build_tasks_from_task_list`) filters passer entries whose `source_spec`/`target_spec` parallel-api suffix does not match `--direction` (logs a skip warning per mismatched entry — those are expected, not errors).
+`derive_l0_passers.py` gained a `--direction` filter on 2026-04-19 (S7c; commit pending). The flag extracts source/target API from the last hyphen-delimited segment of each `unique_id` (safe: no `parallel_api` value in `manifest.jsonl` contains a `-`). When provided, the output passer file is scoped to one direction; the legacy mixed-direction behavior (`--direction` omitted) is preserved but **no longer recommended** for Phase 3 — use one passer file per `(model, direction)` cell to keep the ablation batch explicit. `run_eval_batch.py:190-197` (`_build_tasks_from_task_list`) retains its direction-suffix filter as a safety net; with direction-scoped passer files it becomes a no-op.
 
 ```bash
-# One passer file per model covers both directions.
+# Four passer files: model × direction.
 python3 -m scripts.evaluation.derive_l0_passers \
     --canonical-dir results/evaluation/together-qwen-3.5-397b-a17b \
     --model together-qwen-3.5-397b-a17b \
-    --out .planning/eval-selections/l0_passers_qwen.json
+    --direction cuda-to-omp \
+    --out .planning/eval-selections/l0_passers_qwen_c2o.json
+
+python3 -m scripts.evaluation.derive_l0_passers \
+    --canonical-dir results/evaluation/together-qwen-3.5-397b-a17b \
+    --model together-qwen-3.5-397b-a17b \
+    --direction omp-to-cuda \
+    --out .planning/eval-selections/l0_passers_qwen_o2c.json
 
 python3 -m scripts.evaluation.derive_l0_passers \
     --canonical-dir results/evaluation/azure-gpt-5.4 \
     --model azure-gpt-5.4 \
-    --out .planning/eval-selections/l0_passers_azure.json
+    --direction cuda-to-omp \
+    --out .planning/eval-selections/l0_passers_azure_c2o.json
+
+python3 -m scripts.evaluation.derive_l0_passers \
+    --canonical-dir results/evaluation/azure-gpt-5.4 \
+    --model azure-gpt-5.4 \
+    --direction omp-to-cuda \
+    --out .planning/eval-selections/l0_passers_azure_o2c.json
 ```
 
 **Pre-consumption sanity checks:**
 
 ```bash
 # D-21: cells with <3 samples warn; non-fatal but must be reviewed before ablation runs.
-python3 -m scripts.evaluation.derive_l0_passers \
-    --canonical-dir results/evaluation/together-qwen-3.5-397b-a17b \
-    --model together-qwen-3.5-397b-a17b \
-    --out .planning/eval-selections/l0_passers_qwen.json 2>&1 | grep -i warning
-
-# Per-direction count sanity: confirm both directions have passers (the run-time
-# filter in §6.2 will skip mismatched entries silently; count first so you
-# notice if one direction's canonical stream didn't pass anything).
-jq -r '.[] | (.source_spec|split("-")|.[-1]) + "-to-" + (.target_spec|split("-")|.[-1])' \
-    .planning/eval-selections/l0_passers_qwen.json | sort | uniq -c
+for f in l0_passers_qwen_c2o.json l0_passers_qwen_o2c.json \
+         l0_passers_azure_c2o.json l0_passers_azure_o2c.json; do
+    echo "=== $f ==="
+    jq -r '.[] | (.source_spec|split("-")|.[-1]) + "-to-" + (.target_spec|split("-")|.[-1])' \
+        ".planning/eval-selections/$f" | sort | uniq -c
+done
 ```
 
 ### 6.2 Run ablation (L0..L4 × --task-list passers)
 
 ```bash
-# Qwen cuda-to-omp — consumes the shared passer file; run_eval_batch filters by direction.
+# Qwen cuda-to-omp — consumes direction-scoped passer file.
 tmux new-session -d -s phase3-qwen-abl-c2o "cd $PROJECT_ROOT && source env_parbench/bin/activate && \
 python3 scripts/evaluation/run_eval_batch.py \
-    --task-list .planning/eval-selections/l0_passers_qwen.json \
+    --task-list .planning/eval-selections/l0_passers_qwen_c2o.json \
     --direction cuda-to-omp \
     --models together-qwen-3.5-397b-a17b \
     --augment-levels 0 1 2 3 4 \
@@ -221,7 +231,7 @@ python3 scripts/evaluation/run_eval_batch.py \
     -v 2>&1 | tee -a .planning/phases/03-oracle-framework/phase3-qwen-abl-c2o.log"
 ```
 
-Mirror for `omp-to-cuda` (same `--task-list`, flip `--direction omp-to-cuda`, rename tmux session + log) and for `azure-gpt-5.4` (swap model + passer file `l0_passers_azure.json`). `--suite` is **not** passed with `--task-list` — the task list itself enumerates cells (mutex per argparse `:477-499`). Mismatched-direction entries in the shared passer file are skipped with a one-line warning per entry — this is expected behavior, not an error.
+Mirror for the remaining three cells: flip `--direction`, swap the `--task-list` path (`l0_passers_qwen_o2c.json`, `l0_passers_azure_c2o.json`, `l0_passers_azure_o2c.json`), rename tmux session + log, and swap `--models` for azure. `--suite` is **not** passed with `--task-list` — the task list itself enumerates cells (mutex per argparse `:477-499`). With direction-scoped passer files the `_build_tasks_from_task_list` direction guard is a no-op safety net; no skip warnings are expected.
 
 ---
 
