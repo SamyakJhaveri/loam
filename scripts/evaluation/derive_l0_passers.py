@@ -40,16 +40,29 @@ def _load_result(path: Path) -> dict[str, Any] | None:
         return None
 
 
-def derive_passers(canonical_dir: Path, model: str) -> list[dict[str, Any]]:
+def derive_passers(canonical_dir: Path, model: str,
+                   direction: str | None = None) -> list[dict[str, Any]]:
     """Return sorted passer list. Pure function — no filesystem writes.
 
     Per D-18: cell is a passer iff >=1 of its (augment_level=0, model==model) samples
     has overall_status == "PASS".
     Per D-21: cells with <3 samples emit a stderr warning but are still included if
     they have >=1 PASS.
+
+    S7c: Optional `direction` filter of the form "SRC-to-TGT" (e.g. "cuda-to-omp").
+    When provided, only cells whose source_spec ends in -SRC and target_spec ends in
+    -TGT are considered. API is the final hyphen-delimited segment of unique_id
+    (safe: no parallel_api in manifest.jsonl contains a "-"). direction=None = legacy.
     """
     if not canonical_dir.is_dir():
         raise FileNotFoundError(f"canonical dir not found: {canonical_dir}")
+
+    src_api: str | None = None
+    tgt_api: str | None = None
+    if direction is not None:
+        if "-to-" not in direction:
+            raise ValueError(f"--direction must match pattern SRC-to-TGT, got {direction!r}")
+        src_api, tgt_api = direction.split("-to-", 1)
 
     # Group samples per cell.
     cell_samples: dict[tuple[str, str], list[str]] = defaultdict(list)
@@ -68,6 +81,9 @@ def derive_passers(canonical_dir: Path, model: str) -> list[dict[str, Any]]:
         if not src or not tgt:
             print(f"warning: {path} missing source_spec/target_spec", file=sys.stderr)
             continue
+        if src_api is not None:
+            if src.rsplit("-", 1)[-1] != src_api or tgt.rsplit("-", 1)[-1] != tgt_api:
+                continue
         cell_samples[(src, tgt)].append(status)
 
     passers: list[dict[str, Any]] = []
@@ -94,15 +110,23 @@ def main(argv: list[str] | None = None) -> int:
                         help="Directory of canonical (L0) result JSONs (recursively scanned).")
     parser.add_argument("--model", type=str, required=True,
                         help="Model id to filter on (e.g. together-qwen-3.5-397b-a17b).")
+    parser.add_argument("--direction", type=str, default=None, metavar="SRC-to-TGT",
+                        help="Optional. Filters passers to the given translation direction "
+                             "(e.g. cuda-to-omp). API extracted from the last hyphen-delimited "
+                             "segment of each unique_id. When omitted, both directions pass "
+                             "(legacy behavior).")
     parser.add_argument("--out", type=Path, default=None,
                         help="Output path (default: .planning/eval-selections/l0_passers_{model}.json).")
     args = parser.parse_args(argv)
 
     try:
-        passers = derive_passers(args.canonical_dir, args.model)
+        passers = derive_passers(args.canonical_dir, args.model, direction=args.direction)
     except FileNotFoundError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
+    except ValueError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
 
     out_path = args.out
     if out_path is None:

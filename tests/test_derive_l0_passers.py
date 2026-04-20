@@ -125,3 +125,40 @@ def test_missing_canonical_dir_returns_1(tmp_path, capsys):
     assert rc == 1
     err = capsys.readouterr().err
     assert "not found" in err
+
+
+# --- S7c Stage 2: --direction filter (D-?? TBD) ---------------------------------
+
+def test_direction_filter_keeps_matching_entries(tmp_path):
+    """S7c: direction='cuda-to-omp' keeps cells whose source.api=cuda and target.api=omp."""
+    _write_result(tmp_path, "c2o-pass.json",
+                  source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                  overall_status="PASS")
+    _write_result(tmp_path, "o2c-pass.json",
+                  source_spec="rodinia-nw-omp", target_spec="rodinia-nw-cuda",
+                  overall_status="PASS")
+    passers = derive_passers(tmp_path, MODEL, direction="cuda-to-omp")
+    assert len(passers) == 1
+    assert passers[0]["source_spec"] == "rodinia-bfs-cuda"
+    assert passers[0]["target_spec"] == "rodinia-bfs-omp"
+
+
+def test_direction_filter_drops_non_matching_entries(tmp_path):
+    """S7c: direction='cuda-to-omp' drops omp-to-cuda cells even if they PASS."""
+    _write_result(tmp_path, "o2c-pass.json",
+                  source_spec="rodinia-nw-omp", target_spec="rodinia-nw-cuda",
+                  overall_status="PASS")
+    passers = derive_passers(tmp_path, MODEL, direction="cuda-to-omp")
+    assert passers == []
+
+
+def test_direction_none_preserves_legacy_behavior(tmp_path):
+    """S7c: direction=None keeps both directions (pre-S7c default behavior)."""
+    _write_result(tmp_path, "c2o-pass.json",
+                  source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                  overall_status="PASS")
+    _write_result(tmp_path, "o2c-pass.json",
+                  source_spec="rodinia-nw-omp", target_spec="rodinia-nw-cuda",
+                  overall_status="PASS")
+    passers = derive_passers(tmp_path, MODEL, direction=None)
+    assert len(passers) == 2
