@@ -96,22 +96,25 @@ in any worktree. **Never run LLM evaluations in worktrees.** Only use worktrees 
   unclear whether a PASS reflects genuine translation quality.
 - Results where KNOWN_FAIL spec is the TARGET: Exclude from statistics. The target
   build/run infrastructure is broken, making evaluation unfair.
-- When reporting pass rates, exclude results where EITHER source OR target is KNOWN_FAIL
-  (denominator = 1120 results where both source and target are non-KNOWN_FAIL;
-  347 PASS = 31.0%). Verified against 1,248 total results on disk (72 target-KF, 88 source-KF,
-  56 both-KF excluded).
+- When reporting pass rates, exclude cells where EITHER source OR target is KNOWN_FAIL.
+  Denominator math (`N_total − N_target_KF − N_source_KF + N_both_KF`) to be recomputed
+  against the Phase 3 canonical + ablation result corpus once those runs complete.
 
-## Pipeline Audit Results (2026-04-09)
+## Pre-Phase-3 evaluation data decommissioned (2026-04-20)
 
-Full audit of 1,248 Qwen 3.5 397B evaluation results across 156 (kernel, direction) combos.
+The 1,248 Qwen 3.5 397B results (780 C1 + 468 C2) and 905 GPT-4.1 mini results that
+previously backed the "31.0% non-KNOWN_FAIL pass rate" / "backprop anomaly" / "347/1120"
+numbers in this file were **purged from `results/evaluation/` per user directive**. The
+two-campaign design (C1 temp=0 L0-L4 + C2 temp=0.7 -s0/s1/s2) was superseded by the
+Gal-approved canonical + L0-conditional ablation experiment plan. NeurIPS evaluation
+numbers now source exclusively from Phase 3 runs on `together-qwen-3.5-397b-a17b` +
+`azure-gpt-5.4`.
 
-- **1 bug found:** Regex combiner in `_build_cross_api_verify_spec()` wrapped `(?i)` patterns
-  as `(?:(?i)...)`, causing Python `re.compile()` to reject the pattern. Fixed by converting
-  to scoped form `(?i:...)` via `_wrap_pattern()` helper. See `scripts/analysis/reverify_regex_bug.py`.
-- **9 results affected** (all nn-opencl source, KNOWN_FAIL): 3 would flip VERIFY_FAIL→PASS,
-  6 still fail (stdout lacks expected pattern).
-- **0 pipeline bugs in core (non-KNOWN_FAIL) evaluation set.**
-- **347/1120 = 31.0% non-KNOWN_FAIL pass rate** — unaffected by the fix.
+- Historical regex-combiner bug (`_build_cross_api_verify_spec()` → `_wrap_pattern()` helper)
+  still stands as a code-level fact; the 9-results-affected analysis is archived in
+  `known-issues-archive.md` for provenance.
+- Do NOT cite the 31.0% / 347/1120 / 1,248 figures in new docs or paper prose. Phase 3
+  data reconstitutes these statistics from scratch.
 
 Historical details (FALSE_PASS fixes, Rodinia submodule policy, XSBench checksums, hook protection,
 augmentation baseline, eval timing limitations, localStorage divergence, eval JSON schema quirk,

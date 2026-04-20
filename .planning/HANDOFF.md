@@ -32,7 +32,7 @@ two orthogonal bodies of work, done in order:
 
 ---
 
-## 2. Current State (as of 2026-04-19, HEAD = S7b complete — launch manifest + oracle audit (8 downgrades) + adversarial review landed. S8 = Phase 3 canonical launch, gated on 3 PHASE-3-BLOCKER items.)
+## 2. Current State (as of 2026-04-20, HEAD = S7c complete — pre-Phase-3 evaluation data purged (1,248 Qwen + 905 GPT-4.1-mini + eval_summary + 31 MB backup); protect hook retargeted to `results/phase[3-9]/`; paper prose scaffolded with DATA PENDING banner; memories refreshed. S8 = Phase 3 canonical launch, still gated on 3 PHASE-3-BLOCKER items: Gal budget re-approval, Le azure-gpt-5.4 deployment, TPM quota check.)
 
 ### Commits landed (this series)
 

@@ -101,23 +101,22 @@
 
 \maketitle
 
+\begin{center}
+\fbox{\parbox{0.9\linewidth}{\centering\small\textbf{DRAFT — DATA PENDING.} Evaluation numbers in this manuscript are scaffolded from a superseded campaign structure. Phase~3 canonical + $L_0$-conditional ablation runs on \texttt{together-qwen-3.5-397b-a17b} and \texttt{azure-gpt-5.4} are the source of record. All pass rates, tier tables, per-kernel figures, and totals must be regenerated from Phase~3 results before camera-ready. Remove this banner once regeneration is complete.}}
+\end{center}
+\vspace{1em}
+
 %% =============================================================
 %% ABSTRACT
-% DATA FREEZE (2026-04-03): 1248 Qwen result JSONs on disk (ls results/evaluation/together-qwen-3.5-397b-a17b/*.json | wc -l).
-% SCOPE UPDATE (Phase 12): Abstract updated to all-suite 710-task scope per paper_data.json (D-01).
-% VERIFIED (11-02 Task 2, 2026-04-06): All abstract numbers cross-checked against S6 and
-% paper_data.json. 38.3% [34.8%,41.9%], 64.2% (66.7% L0), BUILD_FAIL 33.9%, VERIFY_FAIL 7.2%,
-% Cochran-Armitage z=0.0 p=1.0. \pending{} macros preserved for GPT-4.1 mini.
-% src: paper_data.json > file_counts: primary_campaign=710, passk_campaign=426
-% src: "96 specs" = 60+25+4+4+3 (disk-verified via ls specs/{rodinia,hecbench,xsbench,rsbench,mixbench}-*.json)
-% src: "710 tasks" = paper_data.json > file_counts > primary_campaign (31 eval kernels * 142 L0 pairs at 5 levels, 6 Rodinia KNOWN_FAIL excluded)
-% src: "35 kernels" = 35 unique kernels across 5 suites (benchmark corpus size)
-% src: paper_data.json > primary_campaign > overall: pass=272, total=710, rate=0.3831, ci_lower=0.3481, ci_upper=0.4194
-% src: paper_data.json > primary_campaign > by_direction > cuda-to-omp: pass=77, total=120, rate=0.6417
-% src: paper_data.json > augmentation > cuda_to_omp_balanced > L0: rate=0.6667 (16/24)
-% src: paper_data.json > primary_campaign > overall > by_status: BUILD_FAIL=241, 241/710=33.9%; VERIFY_FAIL=51, 51/710=7.2%
-% src: "68 of 88" = unchanged (scope-independent augmentation invariance)
-% src: paper_data.json > augmentation > cochran_armitage: z=-0.0 (display as 0.0), p_value=1.0
+% DATA STATE (2026-04-20): pre-Phase-3 evaluation results (1,248 Qwen 3.5 +
+% 905 GPT-4.1 mini JSONs) were purged from results/evaluation/ per user
+% directive. All evaluation numbers in this paper are PENDING the Phase 3
+% canonical (pass@3, L0, temp=0.7, thinking on) + L0-conditional ablation
+% (pass@1, L0-L4, temp=0.0) runs on `together-qwen-3.5-397b-a17b` +
+% `azure-gpt-5.4`. Paper prose below retains the prior-campaign structure
+% as a scaffold; numbers must be regenerated from Phase 3 data before
+% camera-ready. See .planning/phases/03-oracle-framework/04-S7-LAUNCH-MANIFEST.md
+% for the launch command sheet and S8 gating items.
 %% =============================================================
 
 
@@ -376,7 +375,7 @@ RTX~4070 GPU (Ada Lovelace, compute capability sm\_89), CUDA~12.3
 % src: git rev-parse HEAD (at paper-writing time); git submodule status -> 9c10d3ea (Rodinia)
 % src: cd HeCBench-master && git log --oneline -1 => 22785cdd7
 % P0-7: HeCBench commit hash added
-To support exact reproduction, all artifacts are version-pinned: ParBench at commit \texttt{c1d8c7b}\footnote{Repository URL withheld for double-blind review.}, Rodinia at submodule commit \texttt{9c10d3ea}~\cite{Rodinia2009}, HeCBench at commit \texttt{22785cd}\footnote{\url{https://github.com/zjin-lcf/HeCBench}} (cloned March 2026), and evaluation scripts at the same ParBench revision. Qwen~3.5 397B-A17B was accessed via the Together AI API during March--April 2026; model weights are publicly available. All 2,190 per-task result JSONs (1,248 Qwen~3.5 and 942 GPT-4.1~mini), analysis scripts, and spec files are included in the repository to enable independent verification of every reported number.
+To support exact reproduction, all artifacts are version-pinned: ParBench at commit \pending{Phase-3 head}\footnote{Repository URL withheld for double-blind review.}, Rodinia at submodule commit \texttt{9c10d3ea}~\cite{Rodinia2009}, HeCBench at commit \texttt{22785cd}\footnote{\url{https://github.com/zjin-lcf/HeCBench}} (cloned March 2026), and evaluation scripts at the same ParBench revision. Qwen~3.5 397B-A17B was accessed via the Together AI API and \texttt{azure-gpt-5.4} via the Microsoft Foundry Azure deployment; model identifiers and deployment details are given in Appendix~\ref{sec:appendix-models}. All per-task result JSONs from the Phase~3 canonical (pass@3, $L_0$, $T{=}0.7$, thinking on) and $L_0$-conditional ablation (pass@1, $L_0$--$L_4$, $T{=}0.0$) runs, analysis scripts, and spec files are included in the repository to enable independent verification of every reported number. \pending{Exact JSON counts per model and direction — populate from Phase~3 results after launch.}
 
 % SF-1: API cost data moved to appendix table per D-04
 \textbf{Evaluation cost.} Appendix~\ref{sec:appendix-cost} summarizes the API cost and token usage for the Qwen~3.5 evaluation campaigns. GPT-4.1~mini evaluation costs via Azure are not reported in this submission.
