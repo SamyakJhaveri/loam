@@ -32,7 +32,7 @@ two orthogonal bodies of work, done in order:
 
 ---
 
-## 2. Current State (as of 2026-04-19, HEAD = `ef0780a` — S6 complete (T2.3, 88/88 sweep PASS + bptree file_hash upgrade) + docs refresh + S5 + S4a + S4b complete; ready for S7)
+## 2. Current State (as of 2026-04-19, HEAD = S7b complete — launch manifest + oracle audit (8 downgrades) + adversarial review landed. S8 = Phase 3 canonical launch, gated on 3 PHASE-3-BLOCKER items.)
 
 ### Commits landed (this series)
 
@@ -61,6 +61,8 @@ two orthogonal bodies of work, done in order:
 | `54dc988` | **S7 part 2 — fix Azure reasoning temp/top_p gate (S7 live smoke BUG-1).** Azure reasoning models (gpt-5.4) reject temperature != 1 and top_p with HTTP 400. Pipeline was unconditionally sending both to every Azure call. Fix: mirror the OpenAI o1/o3/o4 gate — omit temp/top_p when `MODEL_REGISTRY[model]["supports_thinking"]` is True. TDD RED→GREEN in test_sampling_reproducibility.py. evaluation.md §Azure reasoning updated to document the new omission. Waves 1-3 PASS (1 flaky pre-existing cli_verify test, not caused by change). |
 | `851a29d` | **S7 part 3 — bfs oracle downgrade (S7 live smoke BUG-3).** Root cause investigation: Rodinia CUDA and OMP BFS implementations diverge in source-node selection (`cuda/bfs/bfs.cu:130` hardcodes `source=0;` debug leftover; `openmp/bfs/bfs.cpp:87` has it commented out, labeled "tesing code line"). CUDA baseline → `3c5eeb...`, OMP baseline → `f57afc...`, LLM translations faithful to source-API semantics. No upstream edits (benchmark-source sacred). Downgrade `rodinia-bfs-{cuda,omp}` from file_hash strong → stdout_pattern weak. Oracle tally: 16 strong → 14 strong; 36 weak → 38 weak. S7 live smoke v3: 4/4 PASS (canonical + L1-L4 ablation + reverse-dir for both Qwen + gpt-5.4), ~$0.63 spend, 10:38 wall. Pipeline end-to-end validated. |
 | `53136c3` | **S6 — T2.3 harness verify sweep (88/88 PASS) + bptree file_hash upgrade.** New `scripts/spec_tools/run_verify_sweep.py` runs `harness verify --config correctness` on all 88 curated non-KNOWN_FAIL specs (CURATED + KNOWN_FAIL sets hardcoded with `# cite:` comments; exit 0 only on 88/88 PASS). bptree-{cuda,omp} upgraded `stdout_pattern` → `file_hash` on `output.txt` (284095 B, SHA `b22b08c5…a8567def`, cross-API bit-identical); `oracle_strength: weak → strong`; per-API reference files at `specs/references/bptree/{cuda,omp}_output.txt`. Sweep 88/88 PASS. First pass surfaced transient `rodinia-myocyte-omp` BUILD_FAIL traced to undocumented dirty `rodinia/rodinia-src/openmp/myocyte/main.c` (2731 lines vs HEAD's 375, not in `docs/rodinia_toolchain_patches.diff`); restored via `git -C rodinia/rodinia-src checkout HEAD -- openmp/myocyte/main.c` (submodule working-tree only; no parent-repo commit). `s6-review` team (Opus self-critic + Opus diff-reviewer + Sonnet code-simplifier, caveman ultra + karpathy-guidelines + test-driven-development, Rule 13 read-only git) unanimous ship. /validate W1-3 PASS (gate). Completes T2.3. |
+| `ca30a2e` | **S7b part 1 — oracle audit + 8 spec downgrades.** Audit of 10 strong-oracle specs (9 file_hash + 1 numeric_comparison) identified 3 cross-API pairs with FP reduction-order divergence (cfd×2, hotspot×2, myocyte-cuda+opencl) + 2 synthesis-asymmetric singletons (nw-omp TRACEBACK commented-out in CUDA, nn-cuda Distance= print stderr-vs-stdout). 8 specs downgraded file_hash/numeric_comparison → stdout_pattern+exit_code; `oracle_strength: weak`; `reference_files: []`; 5 reference artifacts deleted from `specs/references/{cfd,myocyte,nw}/`. bptree×2 stays strong (same hash cross-API). Oracle tally: 14→7 strong / 1→0 medium / 38→46 weak. Sweep 88/88 PASS post-downgrade. `tests/test_oracle_divergence.py` (6 tests, all PASS) documents audit evidence. known-issues.md tally + downgrade table updated. |
+| `710e687` | **S7b part 2 — Phase 3 launch manifest + adversarial review.** `04-S7-LAUNCH-MANIFEST.md`: paste-ready tmux command blocks for Qwen + azure-gpt-5.4 canonical (pass@3, L0, temp=0.7, thinking on) + L0-conditional ablation (pass@1, L0-L4, temp=0.0). D-RESUME / D-RETRIES / D-BUDGET decision blocks. `04-S7b-ORACLE-AUDIT.md` documents the 8 downgrades + Zenodo-follow-up items. `04-S7b-PLAN-REVIEW.md` preserves the pre-execution plan review (2 BLOCKERs resolved before execution). Adversarial review (`04-S7b-REVIEW.md`) via 3 parallel reviewers (plan-reviewer Opus, self-critic Opus, code-simplifier Sonnet): found 2 BLOCKERs (derive_l0_passers direction-filter gap — fixed by collapsing §6.1 to one file per model; myocyte audit framing — fixed with scope-note paragraph) + minor precision refinement (nn stderr distinction) + dead-code cleanup in verify tool. All BLOCKERs resolved pre-commit. Committed verifier at `.planning/phases/03-oracle-framework/tools/verify_launch_manifest.py`. /validate W1-3 PASS. |
 
 ### Pending this campaign
 
@@ -72,9 +74,11 @@ two orthogonal bodies of work, done in order:
 | T2.2b | ✓ DONE | S4b — Rodinia weak Batch 2: 9 bucket5 weak-tags (backprop×3, bptree-cuda+omp, lavamd-cuda+omp, nn-omp, nw-opencl). Commit `5bcf7fe`. | S4b |
 | T2.2c | ✓ DONE (S5) | 35-unknowns → 2 bucket3 (myocyte cuda+opencl, file_hash), 1 bucket4 (nn-cuda, numeric_comparison), 5 bucket2 (hotspot3d×3 + md×2, regex-tighten), 27 bucket5 (weak-tag incl. myocyte-omp). Commits `d29d187` `f6950b6` `dc125f7` `255bf0d`. | S5 |
 | T2.3 | ✓ DONE | S6 — harness verify sweep: all 88 curated non-KNOWN_FAIL specs PASS. bptree-{cuda,omp} file_hash upgrade bundled (strong 14→16, weak 38→36). Commit `53136c3`. | S6 |
-| S7 pre-flight | partial (3 commits) | model retarget + Azure temp-gate fix + bfs oracle downgrade. Pipeline validated end-to-end via live smoke (4/4 PASS, $0.63). Remaining S7 stages deferred to S7b (new session): launch manifest, adversarial review team, handoff for S8. | S7 → S7b |
-| Phase 3 launch | pending | Qwen canonical + L0-conditional ablation; GPT-5.4 same. Remaining blockers: (a) fresh Gal sign-off on gpt-5.4 budget ~$848 (was $559 for gpt-5.3-chat); (b) Le deploys gpt-5.4 on his Azure resource; (c) S7b completes launch manifest + review team. | S8+ |
-| S7b follow-up | pending | Audit remaining 14 strong file_hash oracles for CUDA/OMP source asymmetries (bfs was not unique — systemic risk). | S7b |
+| S7 pre-flight | ✓ DONE | model retarget + Azure temp-gate fix + bfs oracle downgrade. Pipeline validated end-to-end via live smoke (4/4 PASS, $0.63). S7 parts 1-3 landed at `44c6222`, `54dc988`, `851a29d`. | S7 |
+| S7b | ✓ DONE | Oracle audit (8 downgrades), Phase 3 launch manifest, adversarial review team. Commits `ca30a2e` (spec downgrades + audit + tests + known-issues tally) + `710e687` (launch manifest + plan review + review doc + verifier). /validate W1-3 PASS. | S7b |
+| S7b follow-up | ✓ SUBSUMED | S7b audit answered: 14 strong oracles → 2 actual strong (bptree×2) + 5 mis-labeled-strong deferred to post-NeurIPS cleanup. 8 legitimate downgrades applied. See `04-S7b-ORACLE-AUDIT.md`. | S7b |
+| Phase 3 launch (S8) | pending | Qwen canonical + L0-conditional ablation; GPT-5.4 same. Command sheet: `.planning/phases/03-oracle-framework/04-S7-LAUNCH-MANIFEST.md`. **PHASE-3-BLOCKER** items: (a) fresh Gal sign-off on gpt-5.4 recomputed budget (~$848, up from Gal-approved $559 for gpt-5.3-chat baseline — framed as recomputation per `feedback_no_silent_budget_restatement`); (b) Le provisions `azure-gpt-5.4` deployment on his Azure resource (matching Samyak's); (c) TPM quota verified sufficient for ~1566 canonical + ~1148 ablation samples across both resources. | S8+ |
+| S7b ops follow-ups (post-launch, not blockers) | pending | (i) `derive_l0_passers.py --direction` flag (currently manifest §6.1 routes around via run_eval_batch filter); (ii) correct mis-labeled `oracle_strength: strong` on hotspot3d×3 + hecbench-md×2 (should be weak); (iii) Zenodo deposit of deferred reference files for camera-ready. | post-NeurIPS |
 
 ### S5 deviations from plan (approved in-session)
 
@@ -83,20 +87,22 @@ two orthogonal bodies of work, done in order:
 - **`harness/cli.py` working_dir KeyError fix (bundled in Batch 1):** S1.6 (43142bc) intended to thread working_dir but the call site accessed `resolved["working_dir"]` directly; `resolve_paths()` returns the spec with a `_resolved` sub-dict. Fix: `resolved = resolve_paths(...)["_resolved"]`. Without this, any `harness verify` call (file_hash or otherwise) raised KeyError. The S1.6 contract test was grep-only and did not exercise the actual call — `tests/test_cli_verify_smoke.py` (added in Batch 1) closes the functional gap.
 - **Post-S5 hotfixes (`s5-review` team, 2026-04-19):** Adversarial review of `d29d187..02868e8` (Opus `s5-self-critic` + `s5-code-reviewer` + advisor, all ultrathink) surfaced two issues that Batches 1-3 missed. (1) Commit `0adea0c` — same `_resolved` KeyError bug class in `llm_evaluate.py:1821` + `reverify_pass_results.py:214`; Batch 1's cli.py fix didn't propagate. (2) Commit `f814a72` — bucket2 regex `[0-9.eE+-]+` accepted bare `-` in `-nan`, false-PASS under `stdout_pattern`. Both hotfixes land with strengthened regression tests; full post-commit `harness verify` on all 8 strategy-upgraded specs PASS. See `.planning/phases/03-oracle-framework/03-S5-REVIEW.md` for the full review log.
 
-### Oracle strength distribution after S6 + S5 + S4a + S4b
+### Oracle strength distribution after S7b
 
 ```
-16 strong  — S6: bptree-{cuda,omp} file_hash (2)
-              S5: myocyte-{cuda,opencl} + hotspot3d×3 + md×2 (7)
-              S4a: bfs×2 + nw-omp + cfd×2 + hotspot×2 file_hash (7)
- 1 medium  — nn-cuda (stdout_pattern sentinel + numeric_comparison Distance tol=1e-3)
-36 weak    — S5: 26 audit-unknowns + myocyte-omp (27)
-              S4a: srad×2 (2)
-              S4b: backprop×3 + lavamd×2 + nn-omp + nw-opencl (7)  [bptree×2 upgraded to strong in S6]
- 0 unknown — none
-153 missing — 54 already-strong HeCBench + 4 XSBench + 4 RSBench + remaining 91 not yet tagged
-              (S6 sweep tags HeCBench bulk)
+ 7 strong   — 2 valid: bptree-{cuda,omp} file_hash (cross-API identical hash)
+              5 mis-labeled (deferred post-NeurIPS cleanup): hotspot3d×3 + hecbench-md×2 carry
+                oracle_strength: strong but use only stdout_pattern+exit_code
+ 0 medium
+46 weak    — +8 from S7b downgrades (cfd×2, hotspot×2, myocyte×2, nw-omp, nn-cuda)
+              +2 S7 bfs downgrades (already in previous tally)
+              prior baseline: S5 bucket5 (27) + S4a srad×2 + S4b backprop×3 + lavamd×2 + nn-omp + nw-opencl (7)
+153 untagged — 35 curated specs (HeCBench/XSBench/RSBench/mixbench remainder)
+              + ~118 HeCBench bulk specs outside the curated 88-spec corpus
+              (post-NeurIPS S6.5 may bulk-tag)
 ```
+
+S7b audit concluded: cross-API file_hash is defensible only when the underlying algorithm is deterministic AND both API implementations share the exact same source-level output-generation code. FP reduction-order divergence across any cross-runtime pair breaks file_hash; source-level API-specific flags (TRACEBACK in nw, source=0 in bfs, Distance= print in nn) break it for affected pairs. Bptree is the surviving strong oracle; it sorts integer keys through a deterministic B+tree traversal with no FP reduction, and both cuda+omp implementations call identical output code paths.
 
 ### S4a deviations from plan (approved in-session by Samyak via prompt selection of Option C)
 
