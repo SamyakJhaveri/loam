@@ -2,10 +2,10 @@
 """
 scripts/analysis/augmentation_analysis.py
 
-Complete augmentation analysis for the SC26 ParBench paper.
-Builds per-kernel x per-level status matrices from raw Qwen eval result JSONs,
-classifies kernel patterns, computes aggregate statistics with Wilson CIs,
-and writes JSON + MD output artifacts.
+Complete augmentation analysis for the NeurIPS 2026 ParBench paper.
+Builds per-kernel x per-level status matrices from raw eval result JSONs
+(Phase 3 canonical+ablation corpus), classifies kernel patterns, computes
+aggregate statistics with Wilson CIs, and writes JSON + MD output artifacts.
 
 Metrics:
   AUG-01: Per-kernel x per-level status matrix (cuda-to-omp, L0-L4)
@@ -782,7 +782,7 @@ def generate_markdown(data: dict) -> str:
 def main() -> int:
     """Orchestrate augmentation analysis: build matrices, classify, write output."""
     parser = argparse.ArgumentParser(
-        description="Augmentation analysis for SC26 ParBench paper"
+        description="Augmentation analysis for NeurIPS 2026 ParBench paper (Phase 3 canonical+ablation corpus)"
     )
     parser.add_argument(
         "--project-root",
@@ -812,69 +812,77 @@ def main() -> int:
         default=None,
         help="Output directory for figures (default: docs/paper/figures/)",
     )
+    parser.add_argument(
+        "--model-dir",
+        nargs="+",
+        default=[EVAL_DIR_NAME, "azure-gpt-5.4"],
+        help="Model results subdirectories under results/evaluation/ (space-separated; default: %(default)s)",
+    )
     args = parser.parse_args()
 
     project_root = args.project_root.resolve()
-    results_dir = project_root / "results" / "evaluation" / EVAL_DIR_NAME
     output_dir = (args.output_dir or project_root / "results" / "analysis").resolve()
-
-    if not results_dir.exists():
-        print(f"ERROR: Results directory not found: {results_dir}", file=sys.stderr)
-        return 1
-
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if args.verbose:
-        print(f"Project root: {project_root}")
-        print(f"Results dir:  {results_dir}")
-        print(f"Output dir:   {output_dir}")
+    for model_dir_name in args.model_dir:
+        results_dir = project_root / "results" / "evaluation" / model_dir_name
 
-    # Build primary matrix (cuda-to-omp)
-    print("Building primary matrix (cuda-to-omp)...")
-    primary = build_primary_matrix(results_dir, verbose=args.verbose)
-    print(f"  Found {primary['kernel_count']} kernels")
-    print(f"  Patterns: {', '.join(f'{k}={len(v)}' for k, v in primary['pattern_summary'].items())}")
+        if not results_dir.exists():
+            print(f"WARNING: Results directory not found, skipping: {results_dir}", file=sys.stderr)
+            continue
 
-    # Build secondary matrix (all directions)
-    print("Building secondary matrix (all directions)...")
-    secondary = build_secondary_matrix(results_dir, verbose=args.verbose)
-    print(f"  Found {secondary['direction_count']} directions")
+        if args.verbose:
+            print(f"Project root: {project_root}")
+            print(f"Results dir:  {results_dir}")
+            print(f"Output dir:   {output_dir}")
 
-    # Assemble combined JSON
-    combined = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "data_source": f"results/evaluation/{EVAL_DIR_NAME}",
-        "primary_matrix": primary,
-        "secondary_matrix": secondary,
-    }
+        # Build primary matrix (cuda-to-omp)
+        print(f"[{model_dir_name}] Building primary matrix (cuda-to-omp)...")
+        primary = build_primary_matrix(results_dir, verbose=args.verbose)
+        print(f"  Found {primary['kernel_count']} kernels")
+        print(f"  Patterns: {', '.join(f'{k}={len(v)}' for k, v in primary['pattern_summary'].items())}")
 
-    # Write JSON
-    json_path = output_dir / "augmentation_per_kernel_matrix.json"
-    json_path.write_text(
-        json.dumps(combined, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    print(f"  Wrote: {json_path}")
+        # Build secondary matrix (all directions)
+        print(f"[{model_dir_name}] Building secondary matrix (all directions)...")
+        secondary = build_secondary_matrix(results_dir, verbose=args.verbose)
+        print(f"  Found {secondary['direction_count']} directions")
 
-    # Generate and write markdown
-    md_content = generate_markdown(combined)
-    md_path = output_dir / "augmentation_per_kernel_matrix.md"
-    md_path.write_text(md_content, encoding="utf-8")
-    print(f"  Wrote: {md_path}")
+        # Assemble combined JSON
+        combined = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "data_source": f"results/evaluation/{model_dir_name}",
+            "primary_matrix": primary,
+            "secondary_matrix": secondary,
+        }
 
-    # Generate figures if requested
-    if args.figures:
-        figures_dir = (
-            args.figures_dir or project_root / "docs" / "paper" / "figures"
-        ).resolve()
-        figures_dir.mkdir(parents=True, exist_ok=True)
+        # Write JSON (per-model suffix when multiple models)
+        suffix = f"_{model_dir_name}" if len(args.model_dir) > 1 else ""
+        json_path = output_dir / f"augmentation_per_kernel_matrix{suffix}.json"
+        json_path.write_text(
+            json.dumps(combined, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        print(f"  Wrote: {json_path}")
 
-        print("Generating figures...")
-        generate_heatmap(combined, figures_dir)
-        print(f"  Wrote: {figures_dir}/aug_heatmap.{{pdf,png}}")
+        # Generate and write markdown
+        md_content = generate_markdown(combined)
+        md_path = output_dir / f"augmentation_per_kernel_matrix{suffix}.md"
+        md_path.write_text(md_content, encoding="utf-8")
+        print(f"  Wrote: {md_path}")
 
-        generate_trend_line(combined, figures_dir)
-        print(f"  Wrote: {figures_dir}/aug_trend.{{pdf,png}}")
+        # Generate figures if requested
+        if args.figures:
+            figures_dir = (
+                args.figures_dir or project_root / "docs" / "paper" / "figures"
+            ).resolve()
+            figures_dir.mkdir(parents=True, exist_ok=True)
+
+            print("Generating figures...")
+            generate_heatmap(combined, figures_dir)
+            print(f"  Wrote: {figures_dir}/aug_heatmap.{{pdf,png}}")
+
+            generate_trend_line(combined, figures_dir)
+            print(f"  Wrote: {figures_dir}/aug_trend.{{pdf,png}}")
 
     print("Done.")
     return 0

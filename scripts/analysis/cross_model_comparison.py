@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Cross-model comparison: Qwen 3.5 397B vs GPT-4.1 mini.
+"""Cross-model comparison: Qwen 3.5 397B vs azure-gpt-5.4.
 
-Produces statistical comparison for SC26 paper Section 6.9.
-Reads paper_data.json (Qwen) and paper_data_gpt41mini.json (GPT).
+Produces statistical comparison for NeurIPS 2026 paper using Phase 3 canonical+ablation corpus.
+Reads paper_data.json (Qwen) and paper_data_azure_gpt54.json (GPT).
 
 Output: results/analysis/cross_model_comparison.json
 
@@ -59,7 +59,7 @@ def build_comparison(qwen_data: dict, gpt_data: dict) -> dict:
 
     Args:
         qwen_data: Parsed paper_data.json (Qwen model)
-        gpt_data: Parsed paper_data_gpt41mini.json (GPT model)
+        gpt_data: Parsed paper_data_azure_gpt54.json (GPT model)
 
     Returns:
         Dict with overall, per_direction, per_kernel_matrix sections.
@@ -196,7 +196,7 @@ def build_comparison(qwen_data: dict, gpt_data: dict) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Cross-model comparison for SC26 paper Section 6.9.",
+        description="Cross-model comparison for NeurIPS 2026 paper (Phase 3 canonical+ablation corpus).",
     )
     parser.add_argument(
         "--qwen-data",
@@ -207,8 +207,8 @@ def main() -> None:
     parser.add_argument(
         "--gpt-data",
         type=Path,
-        default=Path("results/analysis/paper_data_gpt41mini.json"),
-        help="Path to GPT paper_data.json",
+        default=Path("results/analysis/paper_data_azure_gpt54.json"),
+        help="Path to azure-gpt-5.4 paper_data.json",
     )
     parser.add_argument(
         "--output",

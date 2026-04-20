@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-"""Quantitative Findings — SC26 ParBench paper.
+"""Quantitative Findings — NeurIPS 2026 ParBench paper.
 
-Computes all 14 quantitative dimensions from the full 1,248-file Qwen evaluation
-dataset:
+Computes all 14 quantitative dimensions from the Phase 3 canonical+ablation corpus:
   D1: Aggregate pass rates          D8: Per-kernel difficulty tiers
   D2: Per-direction rates            D9: Translation complexity correlation
   D3: Direction asymmetry           D10: Cross-suite comparison
@@ -2441,7 +2440,7 @@ def cross_check(
 def write_markdown(output: dict, path: Path) -> None:
     """Write quantitative findings as markdown."""
     lines = []
-    lines.append("# Quantitative Findings — SC26 ParBench")
+    lines.append("# Quantitative Findings — NeurIPS 2026 ParBench")
     lines.append("")
     lines.append(f"Generated: {output.get('metadata', {}).get('generated_at', 'unknown')}")
     lines.append(f"Git hash: {output.get('metadata', {}).get('git_hash', 'unknown')}")
@@ -2928,7 +2927,7 @@ def _pct(val) -> str:
 # ---------------------------------------------------------------------------
 
 
-def run_validation(output: dict, project_root: Path, verbose: bool) -> dict:
+def run_validation(output: dict, project_root: Path, verbose: bool, model_dir: str = "together-qwen-3.5-397b-a17b") -> dict:
     """Validate computed findings via spot-checks, cross-checks, consistency, and paper claims.
 
     Uses INDEPENDENT code paths (not the main computation functions) to verify
@@ -2946,7 +2945,7 @@ def run_validation(output: dict, project_root: Path, verbose: bool) -> dict:
         "summary": {"total": 0, "passed": 0, "failed": 0, "warnings": 0},
     }
 
-    results_dir = project_root / "results" / "evaluation" / "together-qwen-3.5-397b-a17b"
+    results_dir = project_root / "results" / "evaluation" / model_dir
     analysis_dir = project_root / "results" / "analysis"
     metadata = output.get("metadata", {})
     file_counts = metadata.get("file_counts", {})
@@ -3311,7 +3310,7 @@ def run_validation(output: dict, project_root: Path, verbose: bool) -> dict:
                 _xcheck(
                     "vs_error_taxonomy_build_fail",
                     our_bf, et_bf,
-                    scope_note="error_taxonomy includes ALL 1248 records, we use C1-only (700) with 8 KF exclusions",
+                    scope_note="error_taxonomy includes ALL records from the model dir; we exclude 8 KF specs",
                 )
             )
         except (json.JSONDecodeError, OSError):
@@ -3683,13 +3682,19 @@ def _build_claim_search_patterns(claim_id: str, current_value, display_value: st
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Quantitative findings for SC26 ParBench paper"
+        description="Quantitative findings for NeurIPS 2026 ParBench paper (Phase 3 canonical+ablation corpus)"
     )
     parser.add_argument(
         "--project-root",
         type=Path,
         default=PROJECT_ROOT,
         help="Project root directory",
+    )
+    parser.add_argument(
+        "--model-dir",
+        type=str,
+        default="together-qwen-3.5-397b-a17b",
+        help="Model results subdirectory under results/evaluation/",
     )
     parser.add_argument(
         "-v", "--verbose",
@@ -3704,7 +3709,7 @@ def main() -> int:
     args = parser.parse_args()
 
     project_root = args.project_root.resolve()
-    results_dir = project_root / "results" / "evaluation" / "together-qwen-3.5-397b-a17b"
+    results_dir = project_root / "results" / "evaluation" / args.model_dir
     output_dir = project_root / "results" / "analysis"
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -3835,7 +3840,7 @@ def main() -> int:
     if args.validate:
         if args.verbose:
             print("\n--- Running validation ---")
-        val_results = run_validation(output, project_root, args.verbose)
+        val_results = run_validation(output, project_root, args.verbose, model_dir=args.model_dir)
         if val_results["summary"]["failed"] > 0:
             return 1
         return 0

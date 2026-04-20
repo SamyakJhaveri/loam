@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""Generate paper_data.json — clean, single-source data for SC26 paper tables.
+"""Generate paper_data.json — clean, single-source data for NeurIPS 2026 paper tables.
 
 Reads all result JSONs from results/evaluation/{model}/, separates primary
 (temp=0.0) and pass@k (temp=0.7) campaigns, computes statistics with Wilson
 CIs, error taxonomy, self-repair analysis, and augmentation trend tests.
 
 Produces: results/analysis/paper_data.json
+
+--results-dir is required (no default) to force explicit model selection and
+prevent accidentally analyzing the wrong corpus.
 
 Usage:
     python3 scripts/analysis/generate_paper_data.py \\
@@ -1128,13 +1131,13 @@ def compute_sample_size_flags(primary: list[dict], passk: list[dict]) -> list[st
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generate paper_data.json for SC26 paper tables.",
+        description="Generate paper_data.json for NeurIPS 2026 paper tables.",
     )
     parser.add_argument(
         "--results-dir",
         type=Path,
-        default=Path("results/evaluation/together-qwen-3.5-397b-a17b"),
-        help="Path to model results directory",
+        required=True,
+        help="Path to model results directory (required — no default to prevent wrong-corpus analysis)",
     )
     parser.add_argument(
         "--output",
