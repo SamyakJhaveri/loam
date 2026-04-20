@@ -413,27 +413,17 @@ Per-provider semantics (capability-gated by `MODEL_REGISTRY[model]["supports_thi
   `extra_body.chat_template_kwargs.enable_thinking` (True when on, False when off).
 - **Azure reasoning (provider=azure, supports_thinking=True):** on →
   `reasoning_effort="medium"` kwarg is injected into the `client_az.chat.completions.create(...)`
-  call (currently near `llm_evaluate.py:905`); off → the kwarg is omitted entirely.
-  Additionally, `temperature` and `top_p` are OMITTED unconditionally for
-  `supports_thinking=True` Azure deployments (mirrors the OpenAI o1/o3/o4 gate at
-  `llm_evaluate.py:883`). Reason: Azure reasoning models reject `temperature != 1`
-  and `top_p` with HTTP 400 "Unsupported value". Surfaced 2026-04-19 in S7 live
-  smoke — see `.planning/phases/03-oracle-framework/04-S7-LIVE.log`.
+  call (grep `'reasoning_effort' scripts/evaluation/llm_evaluate.py` to locate); off → the
+  kwarg is omitted entirely. Additionally, `temperature` and `top_p` are OMITTED
+  unconditionally for `supports_thinking=True` Azure deployments (mirrors the OpenAI
+  o1/o3/o4 gate — grep `'is_openai_reasoning' scripts/evaluation/llm_evaluate.py` or the
+  `o1/o3/o4` family check to locate). Reason: Azure reasoning models reject
+  `temperature != 1` and `top_p` with HTTP 400 "Unsupported value". Surfaced 2026-04-19
+  in S7 live smoke — see `.planning/phases/03-oracle-framework/04-S7-LIVE.log`.
 - **Other providers (supports_thinking=False):** flag is a no-op; a single
   `log.debug("--thinking=%s ignored for %s ...")` line is emitted in `evaluate_translation()`.
 
-**Line-discipline note — do NOT confuse the Azure and Gemini call sites.** The Azure
-injection point (plan references: `llm_evaluate.py:878`; as of this plan landing the
-actual line is near `:905`) is inside `client_az.chat.completions.create(...)` in the
-`model.startswith("azure-")` branch. The Gemini dispatch (plan references:
-`llm_evaluate.py:956`; currently at `:979`) contains `reasoning_effort="none"` as a
-belt-and-suspenders safety measure (Flash Lite has thinking OFF by default, but we force
-it). The Gemini line is **unrelated to the `--thinking` flag** and must remain
-byte-identical. A prior incident (2026-04-16) saw an Azure patch move from `:879` to
-`:956`, silently modifying Gemini. Grep (`grep -n 'reasoning_effort' ...`) is
-authoritative as line numbers drift. When editing, always verify via grep that the
-Azure kwarg lives in the Azure block (inside the `model.startswith("azure-")` branch)
-and the Gemini kwarg lives in the Gemini block.
+The Azure injection lives inside the `model.startswith('azure-')` branch, in the `client_az.chat.completions.create(...)` call. The Gemini `reasoning_effort='none'` safety line lives inside the Gemini dispatch branch and is UNRELATED to `--thinking`. When editing, ALWAYS run `grep -n 'reasoning_effort' scripts/evaluation/llm_evaluate.py` first to confirm which branch you are modifying.
 
 `run_eval_batch.py` plumbs `--thinking` through `run_batch()` to every
 `evaluate_translation()` call; the selected value is also recorded in the batch summary
