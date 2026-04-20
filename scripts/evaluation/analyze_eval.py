@@ -351,7 +351,7 @@ def build_markdown(summary: dict, records: list[dict], complexity_lookup: dict |
         "filter at `:79` uses pass@1-of-any on the canonical L0 cells). Any "
         "level-invariance observation here is scoped to the **L0-passer subset** "
         "by construction; it is NOT an unconditional statement about augmentation "
-        "robustness on kernels that fail L0. See `.planning/phases/02-llm-eval-"
+        "robustness on kernels that fail L0. See `.planning/_archive/phase-02-llm-eval-"
         "testing/02-THREATS-TO-VALIDITY.md` §4 and the Bucket D D1 unconditional "
         "probe for context.",
         "",

@@ -6,7 +6,7 @@ paths:
   - "results/evaluation/**"
   # narrowed 2026-04-20 from original 8-path set (8 paths → 4).
   # removed triggers: harness/**, results/augmentation/**, specs/**, visualizations/**.
-  # line-count preserved via these comments so .planning/phases/02-*/ docs
+  # line-count preserved via these comments so .planning/_archive/phase-02-*/ docs
   # that cite archive content by line range remain valid (e.g., :303-313, :337-346).
 ---
 

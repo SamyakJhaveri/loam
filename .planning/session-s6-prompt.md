@@ -19,7 +19,7 @@ Hard rules (HANDOFF §3 — inviolable):
 - NEVER touch benchmark source (rodinia/rodinia-src, HeCBench-master, XSBench, RSBench, mixbench).
 - NEVER modify manifest.jsonl (append-only).
 - NEVER modify results/.
-- NEVER modify historical plans (.planning/phases/02-llm-eval-testing/02-0[1-9]-*.md).
+- NEVER modify historical plans (.planning/_archive/phase-02-llm-eval-testing/02-0[1-9]-*.md).
 - Rule 12: file_hash determinism is campaign-wide. If a sweep regression surfaces a non-deterministic file_hash spec, downgrade to oracle_strength="weak" with Threats note — do NOT mask the failure.
 - git push origin main is Bash-blocked; ask user to run `! git push origin main` after all work lands.
 
