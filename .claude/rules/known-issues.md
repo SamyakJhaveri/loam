@@ -23,10 +23,12 @@ Do NOT try to fix any of these errors.
 **Use 54 Rodinia TRUE PASS + 3 XSBench + 4 RSBench + 3 mixbench + 23 HeCBench curated = 87 specs (plus 1 HeCBench cross-API pair) = 88 for eval batches.**
 
 **Oracle strength distribution (206 total specs):**
-- 16 strong (file_hash or numeric_comparison with reference_files)
+- 14 strong (file_hash or numeric_comparison with reference_files)
 - 1 medium (rodinia-nn-cuda)
-- 36 weak (stdout_pattern + exit_code only)
+- 38 weak (stdout_pattern + exit_code only)
 - 0 unknown (hard exit criterion met)
+
+**2026-04-19 S7 BUG-3 downgrade:** `rodinia-bfs-cuda` + `rodinia-bfs-omp` dropped from strong (file_hash) to weak (stdout_pattern+exit_code). Root cause: Rodinia's CUDA and OMP implementations diverge in source-node selection (`cuda/bfs/bfs.cu:130` hardcodes `source=0` as debug leftover; `openmp/bfs/bfs.cpp:87` has it commented out, labeled "tesing code line"). CUDA baseline hashes to `3c5eeb...`, OMP baseline hashes to `f57afc...`. LLM translations in either direction are faithful to source-API semantics and cannot satisfy both file_hash references. stdout_pattern is the honest oracle until resolved upstream. See S7 live smoke log + spec description.
 - 153 untagged — 35 curated specs (HeCBench/XSBench/RSBench/mixbench remainder) + ~118 HeCBench bulk specs outside the curated 88-spec corpus. Post-NeurIPS S6.5 may bulk-tag them.
 
 **S6 sweep (2026-04-19):** 88/88 PASS via `scripts/spec_tools/run_verify_sweep.py`.

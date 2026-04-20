@@ -91,10 +91,9 @@
         "method": "self_checking",
         "strategies": [
             {
-                "type": "file_hash",
-                "path": "result.txt",
-                "expected_sha256": "3c5eebc465be345be6048c7033a9f15e5ad32ecee99e77098fdfc144f68e8bed",
-                "description": "SHA-256 of BFS traversal result.txt (deterministic two-run; reference file 14.2 MiB exceeds 1 MiB repo cap, deferred to Zenodo camera-ready)"
+                "type": "stdout_pattern",
+                "pattern": "Result stored in result\\.txt",
+                "description": "BFS completion banner. file_hash downgraded 2026-04-19 (S7 BUG-3): Rodinia CUDA and OMP BFS implementations diverge in source-node selection — cuda/bfs/bfs.cu:130 hardcodes 'source=0' as leftover debug code; openmp/bfs/bfs.cpp:87 reads source from input file (override commented out, labeled 'tesing code line'). LLM translations between APIs cannot match both baselines via file_hash because benchmark sources differ. stdout_pattern is the honest oracle until this asymmetry is resolved upstream. See .planning/phases/03-oracle-framework/04-S7-LIVE-v2.log."
             },
             {
                 "type": "exit_code",
@@ -103,7 +102,7 @@
             }
         ],
         "floating_point": null,
-        "oracle_strength": "strong"
+        "oracle_strength": "weak"
     },
     "performance": null,
     "hardware": {
