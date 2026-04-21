@@ -37,5 +37,10 @@
   "phase_naming": "sequential",
   "agent_skills": {},
   "mode": "interactive",
-  "granularity": "standard"
+  "granularity": "standard",
+  "review": {
+    "models": {
+      "codex": "gpt-5.3-codex"
+    }
+  }
 }
