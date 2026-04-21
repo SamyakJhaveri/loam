@@ -18,7 +18,7 @@
 | Spec sweep clean | `python3 scripts/spec_tools/run_verify_sweep.py --project-root $PWD --exclude-known-fail --jobs 4` → `PASS 88/88` |
 | Divergence tests PASS | `python3 -m pytest tests/test_oracle_divergence.py -q` → 6 passed |
 | Smoke artifacts intact (optional) | `ls /tmp/s7-artifacts-v3/` → 6 basetemp dirs present; if missing, fallback recipe in §10 |
-| Gal budget re-approval received | PHASE-3-BLOCKER — see `.planning/HANDOFF.md` S8 row |
+| Gal budget re-approval received | PHASE-3-BLOCKER — see `.planning/STATE.md` Launch Blockers |
 | Le's `azure-gpt-5.4` deployment provisioned on Le's node | PHASE-3-BLOCKER |
 | TPM quota sufficient | PHASE-3-BLOCKER |
 
@@ -319,4 +319,4 @@ Fallback per S7b plan-reviewer ADV-2: re-run smoke v3 (~10 min, ~$0.63) or consu
 | Canonical config doc | `docs/neurips2026-experiment-plan.md §2.4` + memory `project_neurips_experiment_design` |
 | Oracle audit | `.planning/phases/03-oracle-framework/04-S7b-ORACLE-AUDIT.md` |
 | Live smoke v3 | `.planning/phases/03-oracle-framework/04-S7-LIVE-v3.log` |
-| HANDOFF / phase blockers | `.planning/HANDOFF.md` S7b row + S8 row |
+| Phase blockers | `.planning/STATE.md` Launch Blockers section |

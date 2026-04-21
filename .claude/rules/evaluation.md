@@ -284,8 +284,9 @@ Spec schema (`schema/spec_schema.json`) enforces per-strategy required fields vi
 `allOf` + `if/then` on the strategy item. The `verification` block accepts two new
 optional keys:
 
-- `oracle_strength`: one of `"strong" | "medium" | "weak" | "unknown"`. See §S3 audit in
-  `.planning/HANDOFF.md` for classification buckets.
+- `oracle_strength`: one of `"strong" | "medium" | "weak" | "unknown"`. Distribution
+  table and per-bucket criteria live in `.claude/rules/known-issues.md` (Oracle strength
+  distribution section).
 - `reference_files[]`: list of `{path, sha256, size_bytes?, description?}` entries pointing
   at reference outputs committed under `specs/references/{kernel}/` (≤1 MB each).
 

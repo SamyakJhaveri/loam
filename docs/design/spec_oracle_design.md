@@ -79,7 +79,7 @@ $ python3 scripts/spec_tools/_capture_baseline.py specs/rodinia-bfs-omp.json \
 ## Escape hatch
 
 If `_capture_baseline` shows no deterministic output AND no numeric stdout
-is available, see `.planning/HANDOFF.md` §4 — author a short Python
-post-processor at `scripts/spec_tools/postprocess_{kernel}.py` invoked via
-`custom_script` strategy. Invoke only if buckets 3 and 4 are both infeasible.
-Otherwise the spec drops to bucket 5 (`oracle_strength: "weak"`).
+is available, author a short Python post-processor at
+`scripts/spec_tools/postprocess_{kernel}.py` invoked via `custom_script`
+strategy. Invoke only if buckets 3 and 4 are both infeasible. Otherwise the
+spec drops to bucket 5 (`oracle_strength: "weak"`).

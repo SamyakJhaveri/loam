@@ -12,10 +12,11 @@ Review of S5 commits `d29d187..02868e8` by team `s5-review` (advisor + s5-self-c
 ### Methodology
 
 Invoked `andrej-karpathy-skills:karpathy-guidelines`, `superpowers:verification-before-completion`,
-`superpowers:test-driven-development` before the first tool call. Read HANDOFF.md §1-§12,
-CLAUDE.md invariants, `known-issues.md` current guardrails, 03-B1-AUDIT.md, and the full
-diff/commit-body of all 5 S5 commits. Did NOT trust commit-message claims — re-ran every
-verification command fresh in the review session.
+`superpowers:test-driven-development` before the first tool call. Read HANDOFF.md §1-§12
+(HANDOFF.md was the live tracker at S5 time; deleted post-S7c during the pre-Phase-3 cleanup
+on 2026-04-20), CLAUDE.md invariants, `known-issues.md` current guardrails, 03-B1-AUDIT.md,
+and the full diff/commit-body of all 5 S5 commits. Did NOT trust commit-message claims —
+re-ran every verification command fresh in the review session.
 
 ### Round-1 evidence (fresh runs)
 
@@ -139,7 +140,7 @@ Invoked `andrej-karpathy-skills:karpathy-guidelines`, `superpowers:test-driven-d
 - Unit tests: 335 passed, 43 skipped, 2 pre-existing figure-test failures + 24 pre-existing paper-data errors (verified pre-S5 via `git stash` bisect — unrelated to these commits)
 - All 22 S5-related verifier/cli/contract/regex-combiner tests PASS at baseline
 
-Reviewed all 5 S5 commits via `git diff` + direct Read of every S5-touched spec/test/source file. Cross-referenced against `03-B1-AUDIT.md` bucket classifications + `HANDOFF.md` §2 distribution claim + `known-issues.md` guardrails.
+Reviewed all 5 S5 commits via `git diff` + direct Read of every S5-touched spec/test/source file. Cross-referenced against `03-B1-AUDIT.md` bucket classifications + `HANDOFF.md` §2 distribution claim (see post-S7c tombstone above) + `known-issues.md` guardrails.
 
 ### Findings
 
