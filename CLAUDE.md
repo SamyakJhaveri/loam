@@ -104,6 +104,7 @@ Kernel-centric benchmark framework for evaluating LLM-based parallel code transl
 | interpret-results | Hypothesis-first interpretation | `.claude/skills/interpret-results/SKILL.md` |
 | mentoring | HPC/SE/research teaching framework grounded in ParBench | `.claude/skills/mentoring/SKILL.md` |
 | model-route | Model route advisor | `.claude/skills/model-route/SKILL.md` |
+| navigate | Intent → tool recommender across ParBench/GSD/superpowers | `.claude/skills/navigate/SKILL.md` |
 | overnight-eval | Overnight eval campaign | `.claude/skills/overnight-eval/SKILL.md` |
 | paper-review-sim | Paper review simulator | `.claude/skills/paper-review-sim/SKILL.md` |
 | post-eval | Post-eval pipeline | `.claude/skills/post-eval/SKILL.md` |
