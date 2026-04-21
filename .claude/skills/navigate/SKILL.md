@@ -35,7 +35,7 @@ If no argument is given, ask the user: "What are you trying to do?"
    - **Scope:** single-file / multi-file / cross-cutting / overnight-batch
 
 2. **Load taxonomy** by reading `taxonomy.md` in this skill's directory. It has 4 tables:
-   - Table A: ParBench skills (25)
+   - Table A: ParBench skills (26)
    - Table B: ParBench agents (14)
    - Table C: GSD commands (top 20 routing targets)
    - Table D: superpowers skills (14)

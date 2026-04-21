@@ -54,7 +54,8 @@ Grounded in real ParBench usage (memory files, git log, active Phase 3 work). Lo
 |--------|---------|--------------|
 | "resumed after a break — orient me" | `/catchup` | `/gsd-progress` if GSD active |
 | "resume mid-phase GSD work" | `/gsd-resume-work` | `/catchup` |
-| "write handoff for next session" | `/handoff` | `/gsd-pause-work` |
+| "hand off in-progress work to a fresh session" | `/handoff` | `/gsd-pause-work` |
+| "session done — push and clean up" | `/reflect` | `/dream` |
 | "capture a stray idea" | `/gsd-note` or `/gsd-add-todo` | — |
 | "consolidate memory before a break" | `/dream` | `/reflect` |
 | "reflect on what I just learned" | `/reflect` | — |

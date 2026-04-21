@@ -111,6 +111,7 @@ Kernel-centric benchmark framework for evaluating LLM-based parallel code transl
 | ralph-loop | Stateless loop | `.claude/skills/ralph-loop/SKILL.md` |
 | reflect | Structured reflection | `.claude/skills/reflect/SKILL.md` |
 | review | Multi-agent code review | `.claude/skills/review/SKILL.md` |
+| session-critique | Adversarial session review via advisor-pattern agent team | `.claude/skills/session-critique/SKILL.md` |
 | spec-check | Spec health check | `.claude/skills/spec-check/SKILL.md` |
 | techdebt | Tech debt inventory | `.claude/skills/techdebt/SKILL.md` |
 | validate | Post-session validation | `.claude/skills/validate/SKILL.md` |

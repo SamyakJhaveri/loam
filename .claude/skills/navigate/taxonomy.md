@@ -4,7 +4,7 @@ Grounded reference for `/navigate`. ~100 tools across 4 ecosystems. Each row inc
 
 ---
 
-## Table A: ParBench Skills (25)
+## Table A: ParBench Skills (26)
 
 All at `/home/samyak/Desktop/parbench_sam/.claude/skills/<name>/SKILL.md`.
 
@@ -31,6 +31,7 @@ All at `/home/samyak/Desktop/parbench_sam/.claude/skills/<name>/SKILL.md`.
 | `/ralph-loop` | implement | Stateless loop over N independent tasks, commit after each |
 | `/reflect` | ops | Post-task reflection; record patterns to CLAUDE.md or rules |
 | `/review` | verify | Multi-agent code review (style/correctness/security/perf) |
+| `/session-critique` | verify | Adversarial session review via advisor-pattern agent team — user approves every fix |
 | `/spec-check` | verify | Single-spec health check — verify source + args + harness |
 | `/techdebt` | verify | Scan for duplication, dead code, magic numbers (advisory) |
 | `/validate` | verify | Pre-commit gate — 4-wave validation loop |
