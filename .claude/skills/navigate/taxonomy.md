@@ -85,7 +85,7 @@ Global, at `~/.claude/skills/gsd-<name>/SKILL.md`.
 | `/gsd-verify-work` | Conversational UAT on built features |
 | `/gsd-ship` | Create PR, run review, prepare for merge |
 | `/gsd-note` | Zero-friction idea capture |
-| `/gsd-handoff` | Pause-work alias that writes context handoff |
+| `/gsd-handoff` | Pause-work alias — routes to `/gsd-pause-work` (no own SKILL.md) |
 | `/gsd-help` | List all GSD commands |
 
 ---

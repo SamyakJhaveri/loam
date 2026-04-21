@@ -11,7 +11,7 @@ Grounded in real ParBench usage (memory files, git log, active Phase 3 work). Lo
 | "an eval batch just finished — now what?" | `/post-eval <model>` | `/interpret-results` |
 | "interpret results from the latest batch" | `/interpret-results` | `/cite-check` if paper-bound |
 | "stress-test my experimental design before launch" | `/grill-research` | `superpowers:brainstorming` |
-| "refresh the dashboard after new eval data" | `dashboard-refresher` agent | `/post-eval` (includes refresh) |
+| "refresh the dashboard after new eval data" | `/post-eval` | — |
 
 ## Spec / oracle / benchmark
 
