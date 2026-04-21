@@ -1,3 +1,8 @@
+---
+name: ralph-loop
+description: Stateless iterative task execution loop. Use when you have a task file with N independent tasks that should each run to success with commit after each, forced reflection every 3 iterations, and max 8 retries per task. NOT for interactive multi-step planning (use feature-dev or gsd-plan-phase).
+---
+
 # Ralph Loop — Stateless Iterative Task Execution
 
 The Ralph Loop pattern (via Geoffrey Huntley/Ryan Carson, popularized by Osmani).

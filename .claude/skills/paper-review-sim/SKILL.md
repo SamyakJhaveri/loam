@@ -1,3 +1,8 @@
+---
+name: paper-review-sim
+description: Simulate a NeurIPS/SC/ICSE-style peer review with 5 reviewer personas (HPC, ML, Stats, Reproducibility, Devil's Advocate). Use before paper submission, after major methodology changes, or when stress-testing a draft against expected objections. Each reviewer verifies claims against actual result data.
+---
+
 # Paper Review Simulation
 
 Use when preparing a paper draft for submission, stress-testing claims before

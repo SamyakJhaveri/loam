@@ -1,3 +1,8 @@
+---
+name: post-eval
+description: Post-batch analysis pipeline that runs after an eval batch completes. Use after /eval-run or /overnight-eval finishes. Verifies results → runs analyze_eval.py → classify_pairs.py → refreshes dashboard → writes summary. Does NOT launch new eval runs.
+---
+
 # Post-Eval Pipeline
 
 After an eval batch completes, run the full post-processing chain: analyze results,

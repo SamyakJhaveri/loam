@@ -1,3 +1,8 @@
+---
+name: fix-bug
+description: Bug fix workflow — reproduce, diagnose, plan, fix, verify, record. Use when a test fails, a spec breaks, a harness step fails, or eval results show an unexpected pattern. Mandates reproduction before diagnosis. Integrates with /validate on exit.
+---
+
 # Bug Fix Workflow
 
 Structured workflow for diagnosing and fixing a bug in ParBench.

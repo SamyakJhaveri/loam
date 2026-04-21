@@ -1,3 +1,8 @@
+---
+name: validate
+description: Post-session validation loop — 4 waves required before commit. Use before every git commit; pre-commit hook enforces waves 1-3. Wave 1 (schema/diff/security), Wave 2 (tests/regression/specs), Wave 3 (consistency/simplifier), Wave 4 (self-critic, optional). Writes .validation_passed sentinel on success (single-use, clears per commit).
+---
+
 # Post-Session Validation Loop
 
 **Trigger:** When user types `/validate`, `/validate quick`, or `/validate fix`

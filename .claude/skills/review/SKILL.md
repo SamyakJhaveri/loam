@@ -1,3 +1,8 @@
+---
+name: review
+description: Multi-agent parallel code review with 4 reviewers (style, correctness, security, performance). Use before merging a feature branch, before committing a non-trivial change, or when a second pair of eyes is needed. Complements /validate (which checks pipeline correctness); review checks code quality.
+---
+
 # Multi-Agent Code Review
 
 Structured code review using parallel subagents for thorough coverage.

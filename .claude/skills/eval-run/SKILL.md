@@ -1,3 +1,8 @@
+---
+name: eval-run
+description: Launch an LLM evaluation batch. Use for interactive/foreground eval runs — param collection, pre-flight checks, execution via run_eval_batch.py, and post-run analysis. For long-running batches that need tmux isolation, use overnight-eval instead.
+---
+
 # Eval Batch Launcher
 
 Launch an LLM evaluation batch with automatic parameter collection, KNOWN_FAIL

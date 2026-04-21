@@ -1,3 +1,8 @@
+---
+name: reflect
+description: Structured post-task reflection — surprises, pattern proposals, prompt improvements, gotchas to record. Use at the end of a significant session, after a debugging marathon, or when patterns emerged that should update CLAUDE.md or .claude/rules/.
+---
+
 # Structured Reflection
 
 After completing a significant task, generate a structured reflection capturing

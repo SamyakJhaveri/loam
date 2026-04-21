@@ -1,3 +1,8 @@
+---
+name: augment-test
+description: Augmentation testing workflow for ParBench C-code transforms. Use when testing a new AST transform in c_augmentation/, diagnosing transform failures on a spec, or validating a transform against known-bug ground truth. Runs c_augmentation tests and reports pass/fail per transform.
+---
+
 # Augmentation Testing Workflow
 
 Structured workflow for testing augmentation transforms on a ParBench spec.

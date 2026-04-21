@@ -1,3 +1,8 @@
+---
+name: spec-check
+description: Single-spec health check — verify source exists, args match source argc, run harness verify, report PASS/FAIL with diagnosis. Use when a single spec is suspected broken, after editing a spec JSON, or as a quick sanity check before adding a spec to an eval batch. For bulk spec audits use spec-auditor agent.
+---
+
 # Spec Health Check
 
 Declarative verification for a single benchmark spec. Reads the spec, checks the

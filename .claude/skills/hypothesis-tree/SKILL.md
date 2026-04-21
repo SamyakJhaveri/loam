@@ -1,3 +1,8 @@
+---
+name: hypothesis-tree
+description: Structured hypothesis tree manager for multi-step research investigations. Use when investigating "why X fails" questions that branch into sub-hypotheses, or when you need to track falsifiable claims with linked evidence and timestamps. Subcommands: add, update, review, prune.
+---
+
 # Hypothesis Tree Manager
 
 Use when building, updating, or reviewing the persistent hypothesis tree for the SC26

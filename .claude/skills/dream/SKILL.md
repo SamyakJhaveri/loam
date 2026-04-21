@@ -1,3 +1,8 @@
+---
+name: dream
+description: Memory consolidation for ~/.claude/projects memory files. Use after major milestones, after 5+ sessions without consolidation, when memory feels stale, or before long breaks. Runs 4-phase audit→plan→approval→execute; subcommands `audit` (read-only) and `prune <file>` (targeted).
+---
+
 # Memory Consolidation (Dream)
 
 Performs a reflective consolidation pass over auto-memory files — the manual

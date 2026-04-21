@@ -1,3 +1,8 @@
+---
+name: overnight-eval
+description: Long-running LLM evaluation campaign with tmux isolation. Use for any eval batch that exceeds ~30 minutes, for canonical Phase 3 + ablation runs, or when the user will be away during the run. Pre-flight → tmux launch → monitor → post-flight analysis → dashboard refresh. For short interactive runs use eval-run instead.
+---
+
 # Overnight Eval Campaign
 
 Use when launching a long-running LLM evaluation batch that will take more than

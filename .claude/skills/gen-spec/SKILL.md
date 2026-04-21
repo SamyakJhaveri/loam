@@ -1,3 +1,8 @@
+---
+name: gen-spec
+description: Guided kernel spec generation wizard for new benchmark suites or kernels. Use when adding a new benchmark (e.g., /gen-spec xsbench), porting a kernel to a new API, or generating specs for an uncharacterized directory of kernels. Validates source, writes generator, standardizes, checks schema, updates manifest, smoke-tests.
+---
+
 # Spec Generation Workflow
 
 Structured workflow for generating ParBench specs for a new benchmark suite.
