@@ -162,3 +162,6 @@ Don't make direct repo edits outside GSD unless the user explicitly asks to bypa
 > Profile not yet configured. Run `/gsd-profile-user` to generate.
 > Managed by `generate-claude-profile` — do not edit manually.
 <!-- GSD:profile-end -->
+
+- challenge assumptions or offer corrections anytime you get a chance
+- point out any flaws in the questions or solutions I suggest
