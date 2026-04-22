@@ -9,6 +9,7 @@ This document is self-contained. Follow it linearly. Every `# <-- CHANGE THIS` m
 
 ## Table of Contents
 
+0. **UPDATE: Re-pull the Repo + Use `run_phase3.sh` (READ FIRST)**
 1. Machine Prerequisites
 2. Clone & Setup
 3. Benchmark Source Acquisition (all 5 suites)
@@ -17,12 +18,60 @@ This document is self-contained. Follow it linearly. Every `# <-- CHANGE THIS` m
 6. Azure API Key Setup
 7. Understanding the Experiment Protocol
 8. Shell Setup (copy into every tmux session)
-9. Run Canonical Evaluations (Study 1) — 30 commands
+9. Run Canonical Evaluations (Study 1) — Automated Script (recommended) or 30 manual commands
 10. Derive L0 Passers (between Study 1 and Study 2)
 11. Run Ablation Evaluations (Study 2) — 6 commands
 12. Post-Eval Analysis
 13. Troubleshooting
 14. 8 KNOWN_FAIL Specs (excluded automatically)
+
+---
+
+## 0. UPDATE: Re-pull the Repo + Use `run_phase3.sh` (READ FIRST)
+
+**The repo has changed since this handoff was written.** Before starting anything, re-pull to get the latest code:
+
+```bash
+cd parbench_sam
+git pull origin main
+```
+
+### What changed (since this handoff was created)
+
+The pipeline code (`specs/`, `harness/`, `scripts/evaluation/`) is **unchanged** — all commands in this document still work.
+
+**New:** `scripts/batch/run_phase3.sh` — automates the entire campaign (Study 1 + derive + Study 2) into **3 commands** instead of 30+ manual tmux invocations. It also correctly handles two things the manual commands in §9 get wrong:
+
+1. **HeCBench curated kernel filtering** — the script uses `--kernels` to restrict HeCBench to the 10 curated kernels. Without this, `--suite hecbench` processes all 60+ kernels (wasteful, outside paper scope).
+2. **HeCBench omp_target directions** — the script runs `cuda↔omp_target` and `omp↔omp_target` directions that the manual commands in §9 miss entirely.
+
+### Recommended workflow (3 commands instead of 42)
+
+**Before using:** edit line 21 of `scripts/batch/run_phase3.sh` to set `PROJECT_ROOT` to your machine's path (currently hardcoded to Samyak's machine).
+
+```bash
+# 1. Edit PROJECT_ROOT in the script
+sed -i 's|PROJECT_ROOT=.*|PROJECT_ROOT="'"$PROJECT_ROOT"'"|' scripts/batch/run_phase3.sh
+
+# 2. Run Study 1 (canonical pass@3) — launches in tmux automatically
+bash scripts/batch/run_phase3.sh canonical azure-gpt-5.4
+
+# 3. After Study 1 completes, derive L0 passers
+bash scripts/batch/run_phase3.sh derive azure-gpt-5.4
+
+# 4. Run Study 2 (ablation L1-L4) — launches in tmux automatically
+bash scripts/batch/run_phase3.sh ablation azure-gpt-5.4
+```
+
+The script provides:
+- Pre-flight checks (API key, submodule populated, not in worktree, GPU detection)
+- Auto tmux session with logging to `results/evaluation/`
+- HeCBench curated kernel filtering and omp_target directions
+- Automatic retry of failed batches
+- Post-run analysis via `analyze_eval.py`
+- Done marker file for easy completion detection
+
+**If you prefer manual control**, the original §9/§10/§11 commands still work — but read the **HeCBench corrections** added at the bottom of §9.
 
 ---
 
@@ -310,11 +359,18 @@ Two studies run **sequentially**. Do NOT start Study 2 until Study 1 is complete
 - **Self-repair:** OFF (`--max-retries 1`).
 - **Scope:** L0-passer subset × 6 directions × 5 levels × 1 sample.
 
-### Translation directions (6)
+### Translation directions
 
+**Standard (6) — all suites:**
 - `cuda-to-omp`, `omp-to-cuda`
 - `cuda-to-opencl`, `opencl-to-cuda`
 - `omp-to-opencl`, `opencl-to-omp`
+
+**HeCBench-only (4 additional) — omp_target directions:**
+- `cuda-to-omp_target`, `omp_target-to-cuda`
+- `omp-to-omp_target`, `omp_target-to-omp`
+
+(HeCBench has no OpenCL specs, so the 4 opencl-involving standard directions produce zero tasks for HeCBench. It does have omp_target specs, adding these 4 directions.)
 
 ### Benchmark suites (5) — separate invocation each
 
@@ -460,6 +516,56 @@ ls results/evaluation/azure-gpt-5.4/ | wc -l                 # total results so 
 tail -f logs/phase3-azure-rodinia-c2o.log                    # follow log
 ```
 
+### HeCBench corrections (IMPORTANT if using manual commands above)
+
+> **If you use `run_phase3.sh` (§0), skip this — the script handles it automatically.**
+
+The 6 hecbench commands listed above have two problems:
+
+**Problem 1: Missing `--kernels` filter.** Running `--suite hecbench` without `--kernels` processes all 60+ HeCBench kernels. Only 10 are curated for the paper. Add `--kernels` to every HeCBench invocation:
+
+**Problem 2: Wrong directions.** HeCBench has **no OpenCL specs** (4 opencl-involving directions produce zero tasks) but **does have omp_target specs** (missing from the matrix above).
+
+**Corrected HeCBench manual commands (replace the 6 hecbench entries above):**
+
+```bash
+# 10 curated kernels, grouped by API availability:
+#   cuda+omp+omp_target (5): stencil1d heat2d floydwarshall scan iso2dfd
+#   cuda+omp_target only (5): convolution1d jacobi md nqueen page-rank
+
+# cuda ↔ omp (5 kernels that have both cuda and omp specs)
+SUITE=hecbench  DIRECTION=cuda-to-omp         KERNELS="stencil1d heat2d floydwarshall scan iso2dfd"
+SUITE=hecbench  DIRECTION=omp-to-cuda         KERNELS="stencil1d heat2d floydwarshall scan iso2dfd"
+
+# cuda ↔ omp_target (all 10 curated kernels)
+SUITE=hecbench  DIRECTION=cuda-to-omp_target  KERNELS="stencil1d heat2d floydwarshall scan iso2dfd convolution1d jacobi md nqueen page-rank"
+SUITE=hecbench  DIRECTION=omp_target-to-cuda  KERNELS="stencil1d heat2d floydwarshall scan iso2dfd convolution1d jacobi md nqueen page-rank"
+
+# omp ↔ omp_target (5 kernels that have both)
+SUITE=hecbench  DIRECTION=omp-to-omp_target   KERNELS="stencil1d heat2d floydwarshall scan iso2dfd"
+SUITE=hecbench  DIRECTION=omp_target-to-omp   KERNELS="stencil1d heat2d floydwarshall scan iso2dfd"
+```
+
+Add `--kernels $KERNELS` to the template command for each HeCBench invocation. Example:
+
+```bash
+tmux new-session -d -s p3-az-hecbench-c2o "cd $PROJECT_ROOT && source env_parbench/bin/activate && \
+export AZURE_OPENAI_API_KEY='$AZURE_OPENAI_API_KEY' && export AZURE_OPENAI_ENDPOINT='$AZURE_OPENAI_ENDPOINT' && \
+python3 scripts/evaluation/run_eval_batch.py \
+    --suite hecbench \
+    --direction cuda-to-omp \
+    --kernels stencil1d heat2d floydwarshall scan iso2dfd \
+    --models azure-gpt-5.4 \
+    --augment-levels 0 \
+    --num-samples 3 \
+    --temperature 0.7 \
+    --thinking on \
+    --max-retries 1 \
+    --resume \
+    --project-root $PROJECT_ROOT \
+    -v 2>&1 | tee -a logs/phase3-azure-hecbench-c2o.log"
+```
+
 ---
 
 ## 10. Derive L0 Passers (between Study 1 and Study 2)
@@ -566,7 +672,7 @@ python3 scripts/evaluation/analyze_eval.py \
     --write-dashboard \
     --show-gaps \
     --expected-models azure-gpt-5.4 \
-    --expected-directions cuda-to-omp omp-to-cuda cuda-to-opencl opencl-to-cuda omp-to-opencl opencl-to-omp \
+    --expected-directions cuda-to-omp omp-to-cuda cuda-to-opencl opencl-to-cuda omp-to-opencl opencl-to-omp cuda-to-omp_target omp_target-to-cuda omp-to-omp_target omp_target-to-omp \
     --expected-levels 0 1 2 3 4
 
 # Outputs:
@@ -590,7 +696,7 @@ python3 scripts/generate_viz_data.py --project-root $PROJECT_ROOT
 | Azure API 400 | Deployment name mismatch. Must be **exactly** `gpt-5.4`. Check: `curl $AZURE_OPENAI_ENDPOINT/openai/deployments?api-version=2024-02-01 -H "api-key: $AZURE_OPENAI_API_KEY"` |
 | "Unsupported value for temperature" (Azure) | Normal for Azure reasoning models. The pipeline already omits `temperature` / `top_p` when calling `azure-gpt-5.4`. If you see this, you're on stale code. |
 | `--resume` skips tasks you want re-run | Keyed on file existence, not parameters. Check: `jq '.temperature' results/evaluation/azure-gpt-5.4/<file>.json`. Delete the specific JSONs you want re-run, then invoke again. |
-| Hook blocks `rm` in `results/` | Pre-commit protection for CUDA↔OMP results. Be precise: delete one specific file, don't wildcard. Ask Samyak if unsure. |
+| Hook blocks `rm` in `results/` | Pre-commit protection for ALL eval results (`.claude/hooks/protect-eval-results.sh`). Be precise: delete one specific file, don't wildcard. Ask Samyak if unsure. |
 | Schema validation shows ~15 errors | Expected. 5 deleted phantom Rodinia specs still referenced in append-only `manifest.jsonl`. Not a problem. |
 | Pre-commit hook blocks commits | Don't commit the path adaptations from §4 — they're local-only. |
 | Spec build uses wrong nvcc | Check `which nvcc` points at your expected install. The bulk-rewrite in §4c only replaces the reference machine's `/opt/nvidia/hpc_sdk/...` prefix — if your nvcc is elsewhere, that's fine as long as `NEW_CUDA` in §4c points at its parent. |
@@ -623,6 +729,7 @@ These 8 specs are in `harness/constants.py:EXCLUDED_SPECS` and are skipped by th
 | `config/paths.json` | Machine paths (project_root, downloads_root, hecbench_root) |
 | `docs/rodinia_toolchain_patches.diff` | Rodinia Makefile patches (§4d) |
 | `requirements-lock.txt` | Pinned Python deps |
+| `scripts/batch/run_phase3.sh` | **Recommended** automated campaign runner (§0) — 3 commands for the entire campaign |
 | `scripts/evaluation/run_eval_batch.py` | Batch orchestrator (canonical §9, ablation §11) |
 | `scripts/evaluation/llm_evaluate.py` | Single-task evaluator. `MODEL_REGISTRY` entry for `azure-gpt-5.4` at line 110 |
 | `scripts/evaluation/derive_l0_passers.py` | Builds ablation task-lists (§10) |
