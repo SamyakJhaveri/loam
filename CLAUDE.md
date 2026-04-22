@@ -111,7 +111,6 @@ Kernel-centric benchmark framework for evaluating LLM-based parallel code transl
 | overnight-eval | Overnight eval campaign | `.claude/skills/overnight-eval/SKILL.md` |
 | paper-review-sim | Paper review simulator | `.claude/skills/paper-review-sim/SKILL.md` |
 | post-eval | Post-eval pipeline | `.claude/skills/post-eval/SKILL.md` |
-| ralph-loop | Stateless loop | `.claude/skills/ralph-loop/SKILL.md` |
 | reflect | Structured reflection | `.claude/skills/reflect/SKILL.md` |
 | review | Multi-agent code review | `.claude/skills/review/SKILL.md` |
 | session-critique | Adversarial session review via advisor-pattern agent team | `.claude/skills/session-critique/SKILL.md` |
