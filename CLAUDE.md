@@ -93,13 +93,16 @@ Kernel-centric benchmark framework for evaluating LLM-based parallel code transl
 | augment-test | Augmentation testing workflow | `.claude/skills/augment-test/SKILL.md` |
 | catchup | Session bootstrap | `.claude/skills/catchup/SKILL.md` |
 | cite-check | Paper citation checker | `.claude/skills/cite-check/SKILL.md` |
+| cuda-omp-translator | CUDA↔OpenMP translation pattern guide for eval results and paper writing | `.claude/skills/cuda-omp-translator/SKILL.md` |
 | dream | Memory consolidation | `.claude/skills/dream/SKILL.md` |
+| eval-grader | LLM eval result grading, KNOWN_FAIL exclusion, pass-rate tables for paper | `.claude/skills/eval-grader/SKILL.md` |
 | eval-run | Eval batch launcher | `.claude/skills/eval-run/SKILL.md` |
 | feature-dev | Feature development workflow | `.claude/skills/feature-dev/SKILL.md` |
 | fix-bug | Bug fix workflow | `.claude/skills/fix-bug/SKILL.md` |
 | gen-spec | Spec generation | `.claude/skills/gen-spec/SKILL.md` |
 | grill-research | Research interrogation | `.claude/skills/grill-research/SKILL.md` |
 | handoff | Handoff doc writer | `.claude/skills/handoff/SKILL.md` |
+| hpc-code-reviewer | Code review checklist for CUDA/OpenMP/OpenCL parallel correctness | `.claude/skills/hpc-code-reviewer/SKILL.md` |
 | hypothesis-tree | Hypothesis tree manager | `.claude/skills/hypothesis-tree/SKILL.md` |
 | interpret-results | Hypothesis-first interpretation | `.claude/skills/interpret-results/SKILL.md` |
 | mentoring | HPC/SE/research teaching framework grounded in ParBench | `.claude/skills/mentoring/SKILL.md` |
@@ -113,6 +116,7 @@ Kernel-centric benchmark framework for evaluating LLM-based parallel code transl
 | review | Multi-agent code review | `.claude/skills/review/SKILL.md` |
 | session-critique | Adversarial session review via advisor-pattern agent team | `.claude/skills/session-critique/SKILL.md` |
 | spec-check | Spec health check | `.claude/skills/spec-check/SKILL.md` |
+| spec-validator | Validates new/modified specs against spec-conventions.md rules | `.claude/skills/spec-validator/SKILL.md` |
 | techdebt | Tech debt inventory | `.claude/skills/techdebt/SKILL.md` |
 | validate | Post-session validation | `.claude/skills/validate/SKILL.md` |
 | workflow-ref | Skill/agent reference, agent teams, thinking levels | `.claude/skills/workflow-ref/SKILL.md` |
@@ -166,3 +170,15 @@ Don't make direct repo edits outside GSD unless the user explicitly asks to bypa
 
 - challenge assumptions or offer corrections anytime you get a chance
 - point out any flaws in the questions or solutions I suggest
+
+## graphify
+
+This project has a graphify knowledge graph at graphify-out/.
+
+Requires: `source env_parbench/bin/activate` (graphify CLI is in the project venv).
+
+Rules:
+- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
+- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
+- For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
+- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)

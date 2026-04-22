@@ -1,0 +1,26 @@
+# Community 59
+
+> 2 nodes
+
+## Key Concepts
+
+- **__main__.py** (1 connections) — `harness/__main__.py`
+- **Allow running the harness as ``python -m harness``.** (1 connections) — `harness/__main__.py`
+
+## Relationships
+
+- No strong cross-community connections detected
+
+## Source Files
+
+- `harness/__main__.py`
+
+## Audit Trail
+
+- EXTRACTED: 2 (100%)
+- INFERRED: 0 (0%)
+- AMBIGUOUS: 0 (0%)
+
+---
+
+*Part of the graphify knowledge wiki. See [[index]] to navigate.*

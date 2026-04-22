@@ -12,17 +12,23 @@ paths:
 > These are NOT historical fix records (those are in git log) — they are live rules
 > that still govern how pipeline code should behave.
 
-## 1. Hook Protection (`protect-cuda-omp-results.sh`)
+## 1. Result Protection (post hook-deletion 2026-04-21)
 
-PreToolUse hook on Bash. Registered in `.claude/settings.json`. Blocks:
+`protect-cuda-omp-results.sh` was **deleted** on 2026-04-21 because it guarded
+`results/phase[3-9]/` but Phase 3 results actually land in `results/evaluation/`.
 
-- `rm` commands targeting `results/evaluation/` files matching `*cuda*omp*` or `*omp*cuda*`
-- Wildcard `rm` in `results/evaluation/` that could expand to CUDA↔OMP files
-- `run_eval_batch.py` with `cuda-to-omp` or `omp-to-cuda` direction without `--resume`
+**Current protection layers:**
+- `result-immutability.sh` (PreToolUse on Edit|Write) — blocks overwriting existing
+  `results/evaluation/*.json` files. Does NOT protect against `rm` or shell redirects.
+- Global deny rule in `.claude/settings.json` — blocks `rm -rf` and `rm -fr` but NOT
+  targeted `rm` on individual files (e.g., `rm results/evaluation/some-file.json`).
+- `--resume` discipline — always use `--resume` with `run_eval_batch.py` to skip existing.
 
-ALLOWS all OpenCL operations (cuda-to-opencl, opencl-to-cuda, etc.).
+**Known gap:** Targeted `rm` on individual result files is NOT blocked by any hook.
+Mitigation: always ask Samyak before deleting any file under `results/evaluation/`.
 
-Additional hook regex: `/(rodinia|rodinia-src|HeCBench-master|hecbench|xsbench-src)/` — protects both direct and symlink paths to benchmark sources.
+Benchmark source protection: `protect-benchmark-sources.sh` (PreToolUse on Edit|Write)
+still active — protects `/(rodinia|rodinia-src|HeCBench-master|hecbench|xsbench-src)/`.
 
 ## 2. Rodinia Submodule Patch Policy
 

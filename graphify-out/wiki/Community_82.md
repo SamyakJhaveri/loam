@@ -1,0 +1,25 @@
+# Community 82
+
+> 1 nodes
+
+## Key Concepts
+
+- **CLutils.h** (0 connections) — `xsbench/xsbench-src/opencl/CLutils.h`
+
+## Relationships
+
+- No strong cross-community connections detected
+
+## Source Files
+
+- `xsbench/xsbench-src/opencl/CLutils.h`
+
+## Audit Trail
+
+- EXTRACTED: 0 (0%)
+- INFERRED: 0 (0%)
+- AMBIGUOUS: 0 (0%)
+
+---
+
+*Part of the graphify knowledge wiki. See [[index]] to navigate.*

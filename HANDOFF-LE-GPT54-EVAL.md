@@ -128,10 +128,10 @@ cd $PROJECT_ROOT
 
 # Verify all sources present:
 ls rodinia/rodinia-src/cuda/bfs/bfs.cu            # Rodinia CUDA source
-ls HeCBench-master/src/nn-cuda/main.cu             # HeCBench CUDA source
+ls HeCBench-master/src/nn-cuda/nearestNeighbor.cu  # HeCBench CUDA source
 ls xsbench/xsbench-src/cuda/Main.cu                # XSBench CUDA source
 ls rsbench/rsbench-src/cuda/main.cu                # RSBench CUDA source
-ls mixbench/mixbench-src/mixbench-cuda/main.cu     # mixbench CUDA source
+ls mixbench/mixbench-src/mixbench-cuda/main-cuda.cpp # mixbench CUDA source
 ```
 
 ---
@@ -232,15 +232,16 @@ python3 scripts/validate_schema.py --all
 # Expected: ~15 errors. Anything beyond that indicates a real problem.
 
 # 5b. Single CUDA spec build + run + verify
-python3 -m harness -v verify specs/rodinia-bfs-cuda.json --project-root $PROJECT_ROOT
+# NOTE: --project-root must come BEFORE the `verify` subcommand (argparse subcommand rule)
+python3 -m harness --project-root $PROJECT_ROOT -v verify specs/rodinia-bfs-cuda.json
 # Expected: BUILD: PASS | RUN: PASS | VERIFY: PASS
 
 # 5c. Single OMP spec
-python3 -m harness -v verify specs/rodinia-bfs-omp.json --project-root $PROJECT_ROOT
+python3 -m harness --project-root $PROJECT_ROOT -v verify specs/rodinia-bfs-omp.json
 # Expected: PASS
 
 # 5d. Single OpenCL spec
-python3 -m harness -v verify specs/rodinia-bfs-opencl.json --project-root $PROJECT_ROOT
+python3 -m harness --project-root $PROJECT_ROOT -v verify specs/rodinia-bfs-opencl.json
 # Expected: PASS
 
 # 5e. Full 88-spec sweep (~10-15 min)
