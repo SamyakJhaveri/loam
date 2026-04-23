@@ -1,0 +1,228 @@
+{
+  "direction": "omp-to-opencl",
+  "models": [
+    "together-qwen-3.5-397b-a17b"
+  ],
+  "suite": "mixbench",
+  "kernels": null,
+  "task_list": null,
+  "temperature": 0.7,
+  "num_samples": 3,
+  "thinking": "on",
+  "total_tasks": 3,
+  "total_elapsed_seconds": 0.0,
+  "results": [
+    {
+      "source_spec": "mixbench-mixbench-omp",
+      "target_spec": "mixbench-mixbench-opencl",
+      "kernel": "mixbench",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1825021715,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "kernel_only",
+      "verification_mode": "kernel_only_target_pattern",
+      "run_args_mode": "kernel_only_target_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-22T04:25:34Z",
+      "prompt_tokens": 11191,
+      "completion_tokens": 1399,
+      "llm_response_time_seconds": 11.243,
+      "build_status": "pass",
+      "build_time_seconds": 0.469,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.382,
+      "run_exit_code": 1,
+      "run_stderr_snippet": " ^\n<kernel>:68:9: error: use of undeclared identifier 'elem_idx'\n    if (elem_idx == 0 && fusion_idx == 0) {\n        ^\n<kernel>:68:26: error: use of undeclared identifier 'fusion_idx'\n    if (elem_idx == 0 && fusion_idx == 0) {\n                         ^\n<kernel>:86:16: error: 'reqd_work_group_size' attribute requires exactly 3 arguments\n__attribute__((reqd_work_group_size(blockdim)))\n               ^\n----------------------------------------------------------------------------------------------\n",
+      "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 30.0,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "mix_kernels.cl": "#ifdef ENABLE_DP\n#pragma OPENCL EXTENSION cl_khr_fp64 ENABLE\n#endif\n\n#ifdef ENABLE_HP\n#pragma OPENCL EXTENSION cl_khr_fp16 ENABLE\n#endif\n\n#ifndef class_T\n#define class_T float\n#endif\n\n#ifndef COMPUTE_ITERATIONS\n#define COMPUTE_ITERATIONS 1\n#endif\n\n#ifndef ELEMENTS_PER_THREAD\n#define ELEMENTS_PER_THREAD 1\n#endif\n\n#ifndef FUSION_DEGREE\n#define FUSION_DEGREE 1\n#endif\n\n#ifndef blockdim\n#define blockdim 256\n#endif\n\n#ifdef BLOCK_STRIDED\n#define STRIDE blockdim\n#else\n#define STRIDE 1\n#endif\n\n#ifdef ENABLE_HP\ntypedef short cl_half2[2];\n#endif\n\n__attribute__((reqd_work_group_size(blockdim)))\nvoid benchmark_func(class_T seed, class_T* data) {\n    size_t gid = get_global_id(0);\n    size_t local_id = get_local_id(0);\n    \n    class_T sum = (class_T)0;\n    \n    for (unsigned int fusion_idx = 0; fusion_idx < FUSION_DEGREE; fusion_idx++) {\n        for (unsigned int elem_idx = 0; elem_idx < ELEMENTS_PER_THREAD; elem_idx++) {\n#ifdef BLOCK_STRIDED\n            size_t idx = gid * ELEMENTS_PER_THREAD * FUSION_DEGREE + \n                         local_id * STRIDE * ELEMENTS_PER_THREAD * FUSION_DEGREE +\n                         elem_idx * FUSION_DEGREE + fusion_idx;\n#else\n            size_t idx = gid * ELEMENTS_PER_THREAD * FUSION_DEGREE + \n                         elem_idx * FUSION_DEGREE + fusion_idx;\n#endif\n            \n            class_T t = data[idx];\n            class_T f = seed;\n            \n            for (unsigned int iter = 0; iter < COMPUTE_ITERATIONS; iter++) {\n                t = t * t + f;\n            }\n            \n            sum += t;\n        }\n    }\n    \n    if (elem_idx == 0 && fusion_idx == 0) {\n        data[gid] = sum;\n    }\n}\n\n#ifdef BLOCK_STRIDED\n__attribute__((reqd_work_group_size(blockdim)))\nvoid benchmark_func_warmup(short seed, class_T* data) {\n    size_t gid = get_global_id(0);\n    size_t local_id = get_local_id(0);\n    \n    for (unsigned int i = 0; i < ELEMENTS_PER_THREAD * FUSION_DEGREE; i++) {\n        size_t idx = gid * ELEMENTS_PER_THREAD * FUSION_DEGREE + \n                     local_id * STRIDE * ELEMENTS_PER_THREAD * FUSION_DEGREE + i;\n        data[idx] = (class_T)0;\n    }\n}\n#else\n__attribute__((reqd_work_group_size(blockdim)))\nvoid benchmark_func_warmup(short seed, class_T* data) {\n    size_t gid = get_global_id(0);\n    \n    for (unsigned int i = 0; i < ELEMENTS_PER_THREAD * FUSION_DEGREE; i++) {\n        size_t idx = gid * ELEMENTS_PER_THREAD * FUSION_DEGREE + i;\n        data[idx] = (class_T)0;\n    }\n}\n#endif\n"
+      },
+      "target_files_expected": [
+        "mix_kernels.cl"
+      ],
+      "target_files_extracted": [
+        "mix_kernels.cl"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 11.243,
+          "prompt_tokens": 11191,
+          "completion_tokens": 1399,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": " ^\n<kernel>:68:9: error: use of undeclared identifier 'elem_idx'\n    if (elem_idx == 0 && fusion_idx == 0) {\n        ^\n<kernel>:68:26: error: use of undeclared identifier 'fusion_idx'\n    if (elem_idx == 0 && fusion_idx == 0) {\n                         ^\n<kernel>:86:16: error: 'reqd_work_group_size' attribute requires exactly 3 arguments\n__attribute__((reqd_work_group_size(blockdim)))\n               ^\n----------------------------------------------------------------------------------------------\n",
+          "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "mixbench-mixbench-omp",
+      "target_spec": "mixbench-mixbench-opencl",
+      "kernel": "mixbench",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 214925752,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "kernel_only",
+      "verification_mode": "kernel_only_target_pattern",
+      "run_args_mode": "kernel_only_target_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-22T04:25:46Z",
+      "prompt_tokens": 11191,
+      "completion_tokens": 3869,
+      "llm_response_time_seconds": 26.609,
+      "build_status": "pass",
+      "build_time_seconds": 0.472,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 3.777,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "1.03\n          192,     96.250,    0.81,15906.29, 165.26,     48.125,   30.29,  426.55,   8.86,    192.500,    0.00,     inf,    inf,    96.250,    0.81,15949.66, 165.71\n          256,    128.250,    0.70,24468.68, 190.79,     64.125,   40.33,  426.84,   6.66,    256.500,    0.00,     inf,    inf,   128.250,    1.08,16009.51, 124.83\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "single_precision_gflops": {
+          "value": 108.86,
+          "unit": "GFLOPS"
+        }
+      },
+      "baseline_wall_time_seconds": 30.0,
+      "translated_wall_time_seconds": 3.777,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 7.9428,
+      "translated_files": {
+        "mix_kernels.cl": "// OpenCL kernel for mixbench - translated from OpenMP implementation\n\n#ifdef ENABLE_DP\n#pragma OPENCL EXTENSION cl_khr_fp64 enabled\n#endif\n\n#ifdef ENABLE_HP\n#pragma OPENCL EXTENSION cl_khr_fp16 enabled\n#endif\n\n__kernel void benchmark_func(class_T seed, __global class_T* data) {\n    size_t global_id = get_global_id(0);\n    \n    class_T f = seed;\n    class_T sum = (class_T)0;\n    \n    #if ELEMENTS_PER_THREAD > 0\n    #define EPT ELEMENTS_PER_THREAD\n    #else\n    #define EPT 1\n    #endif\n    \n    #if FUSION_DEGREE > 0\n    #define FD FUSION_DEGREE\n    #else\n    #define FD 1\n    #endif\n    \n    #if COMPUTE_ITERATIONS > 0\n    #define CI COMPUTE_ITERATIONS\n    #else\n    #define CI 1\n    #endif\n    \n    #ifdef BLOCK_STRIDED\n    size_t stride = blockdim;\n    #else\n    size_t stride = 1;\n    #endif\n    \n    size_t base_idx = global_id * EPT * FD * stride;\n    \n    for (int fd = 0; fd < FD; fd++) {\n        for (int ei = 0; ei < EPT; ei++) {\n            size_t idx = base_idx + (fd * EPT + ei) * stride;\n            class_T t = data[idx];\n            \n            for (int j = 0; j < CI; j++) {\n                t = t * t + f;\n            }\n            \n            sum += t;\n        }\n    }\n    \n    data[global_id] = sum;\n}\n"
+      },
+      "target_files_expected": [
+        "mix_kernels.cl"
+      ],
+      "target_files_extracted": [
+        "mix_kernels.cl"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 26.609,
+          "prompt_tokens": 11191,
+          "completion_tokens": 3869,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "mixbench-mixbench-omp",
+      "target_spec": "mixbench-mixbench-opencl",
+      "kernel": "mixbench",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1157497905,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "kernel_only",
+      "verification_mode": "kernel_only_target_pattern",
+      "run_args_mode": "kernel_only_target_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-22T04:26:17Z",
+      "prompt_tokens": 11191,
+      "completion_tokens": 1962,
+      "llm_response_time_seconds": 14.566,
+      "build_status": "pass",
+      "build_time_seconds": 0.472,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.325,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "1 error generated.\nProgram built error code: -11\n------------------------------------ Kernel compilation log ----------------------------------\n<kernel>:40:16: error: 'reqd_work_group_size' attribute requires exactly 3 arguments\n__attribute__((reqd_work_group_size(blockdim)))\n               ^\n----------------------------------------------------------------------------------------------\n",
+      "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 30.0,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "mix_kernels.cl": "// OpenCL kernel for mixbench GPU benchmark\n// Translated from OpenMP CPU implementation\n\n#ifdef ENABLE_DP\n#pragma OPENCL EXTENSION cl_khr_fp64 enable\n#endif\n\n#ifdef ENABLE_HP\n#pragma OPENCL EXTENSION cl_khr_fp16 enable\n#endif\n\n#ifndef class_T\n#define class_T float\n#endif\n\n#ifndef COMPUTE_ITERATIONS\n#define COMPUTE_ITERATIONS 1\n#endif\n\n#ifndef ELEMENTS_PER_THREAD\n#define ELEMENTS_PER_THREAD 1\n#endif\n\n#ifndef FUSION_DEGREE\n#define FUSION_DEGREE 1\n#endif\n\n#ifndef blockdim\n#define blockdim 256\n#endif\n\n#ifdef BLOCK_STRIDED\n#define WORKITEM_IDX (get_group_id(0) * blockdim + get_local_id(0))\n#define GRID_STRIDE (get_num_groups(0) * blockdim)\n#else\n#define WORKITEM_IDX get_global_id(0)\n#define GRID_STRIDE get_global_size(0)\n#endif\n\n__attribute__((reqd_work_group_size(blockdim)))\nvoid benchmark_func(class_T seed, class_T* data) {\n    class_T sum = 0;\n    class_T f = seed;\n    \n    size_t total_elements = GRID_STRIDE * ELEMENTS_PER_THREAD * FUSION_DEGREE;\n    \n    for (size_t fusion = 0; fusion < FUSION_DEGREE; fusion++) {\n        size_t base_idx = WORKITEM_IDX * ELEMENTS_PER_THREAD + \n                          fusion * GRID_STRIDE * ELEMENTS_PER_THREAD;\n        \n        for (size_t elem = 0; elem < ELEMENTS_PER_THREAD; elem++) {\n            size_t idx = base_idx + elem;\n            if (idx < total_elements) {\n                class_T t = data[idx];\n                for (size_t iter = 0; iter < COMPUTE_ITERATIONS; iter++) {\n                    t = t * t + f;\n                }\n                sum += t;\n            }\n        }\n    }\n    \n    data[WORKITEM_IDX] = sum;\n}\n"
+      },
+      "target_files_expected": [
+        "mix_kernels.cl"
+      ],
+      "target_files_extracted": [
+        "mix_kernels.cl"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 14.566,
+          "prompt_tokens": 11191,
+          "completion_tokens": 1962,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "1 error generated.\nProgram built error code: -11\n------------------------------------ Kernel compilation log ----------------------------------\n<kernel>:40:16: error: 'reqd_work_group_size' attribute requires exactly 3 arguments\n__attribute__((reqd_work_group_size(blockdim)))\n               ^\n----------------------------------------------------------------------------------------------\n",
+          "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+          "extraction_fail": null
+        }
+      ]
+    }
+  ]
+}

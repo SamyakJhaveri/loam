@@ -1,0 +1,1135 @@
+{
+  "direction": "omp-to-omp_target",
+  "models": [
+    "together-qwen-3.5-397b-a17b"
+  ],
+  "suite": "hecbench",
+  "kernels": [
+    "stencil1d",
+    "heat2d",
+    "floydwarshall",
+    "scan",
+    "iso2dfd"
+  ],
+  "task_list": null,
+  "temperature": 0.7,
+  "num_samples": 3,
+  "thinking": "on",
+  "total_tasks": 15,
+  "total_elapsed_seconds": 638.7,
+  "results": [
+    {
+      "source_spec": "hecbench-scan-omp",
+      "target_spec": "hecbench-scan-omp_target",
+      "kernel": "scan",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1066796763,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "10000",
+        "1"
+      ],
+      "timestamp": "2026-04-22T06:37:54Z",
+      "prompt_tokens": 2294,
+      "completion_tokens": 2813,
+      "llm_response_time_seconds": 12.601,
+      "build_status": "pass",
+      "build_time_seconds": 13.04,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.155,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " (w/o bank conflicts): 34.685001 (us). Reduce the time by -3.0%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 34.284000 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 34.444000 (us). Reduce the time by -0.5%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 34.655003 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 35.457001 (us). Reduce the time by -2.3%\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 14.687,
+          "unit": "us"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.155,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <chrono>\n#include <omp.h>\n\ntemplate<typename T>\nvoid verify(const T* ref_out, const T* out, int64_t n)\n{\n  int error = memcmp(ref_out, out, n * sizeof(T));\n  if (error) {\n    for (int64_t i = 0; i < n; i++) {\n      if (ref_out[i] != out[i]) {\n        printf(\"@%zu: %lf != %lf\\n\", i, (double)ref_out[i], (double)out[i]);\n        break;\n      }\n    }\n  }\n  printf(\"%s\\n\", error ? \"FAIL\" : \"PASS\");\n}\n\n\n#define LOG_MEM_BANKS 5\n#define OFFSET(n) ((n) >> LOG_MEM_BANKS)\n\ntemplate<typename T, int N>\nvoid runTest (const int64_t n, const int repeat, bool timing = false)\n{\n  int64_t num_blocks = (n + N - 1) / N;\n\n  int64_t nelems = num_blocks * N; \n\n  int64_t bytes = nelems * sizeof(T);\n\n  T *in = (T*) malloc (bytes);\n  T *out = (T*) malloc (bytes);\n  T *ref_out = (T*) malloc (bytes);\n\n  srand(123);\n  for (int64_t n = 0; n < nelems; n++) in[n] = rand() % 5 + 1;\n\n  T *t_in = in;\n  T *t_out = ref_out;\n  for (int64_t n = 0; n < num_blocks; n++) {\n    t_out[0] = 0;\n    for (int i = 1; i < N; i++)\n      t_out[i] = t_out[i-1] + t_in[i-1];\n    t_out += N;\n    t_in += N;\n  }\n\n  #pragma omp target data map(to: in[0:nelems]) map(alloc: out[0:nelems])\n  {\n    auto start = std::chrono::steady_clock::now();\n\n    for (int i = 0; i < repeat; i++) {\n      #pragma omp target teams num_teams(num_blocks) thread_limit(N/2)\n      {\n        T temp[N];\n        #pragma omp parallel\n        {\n          for (int64_t bid = omp_get_team_num(); bid < num_blocks; bid += omp_get_num_teams())\n          {\n            T *t_in  = in + bid * N;\n            T *t_out = out + bid * N;\n\n            int thid = omp_get_thread_num();\n            int offset = 1;\n\n            temp[2*thid]   = t_in[2*thid];\n            temp[2*thid+1] = t_in[2*thid+1];\n\n            for (int d = N >> 1; d > 0; d >>= 1)\n            {\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                temp[bi] += temp[ai];\n              }\n              offset *= 2;\n            }\n\n            if (thid == 0) temp[N-1] = 0; \n            for (int d = 1; d < N; d *= 2) \n            {\n              offset >>= 1;\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                T t = temp[ai];\n                temp[ai] = temp[bi];\n                temp[bi] += t;\n              }\n            }\n            t_out[2*thid] = temp[2*thid];\n            t_out[2*thid+1] = temp[2*thid+1];\n\t  }\n\t}\n      }\n    }\n\n    auto end = std::chrono::steady_clock::now();\n    auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    if (timing) {\n      printf(\"Element size in bytes is %zu. Average execution time of scan (w/  bank conflicts): %f (us)\\n\",\n             sizeof(T), (time * 1e-3f) / repeat);\n    }\n    #pragma omp target update from (out[0:nelems])\n    if (!timing) verify(ref_out, out, nelems);\n\n    \n    start = std::chrono::steady_clock::now();\n    for (int i = 0; i < repeat; i++) {\n      #pragma omp target teams num_teams(num_blocks) thread_limit(N/2)\n      {\n        T temp[2*N];\n        #pragma omp parallel\n        {\n          for (int64_t bid = omp_get_team_num(); bid < num_blocks; bid += omp_get_num_teams())\n          {\n            T *t_in  = in + bid * N;\n            T *t_out = out + bid * N;\n\n            int thid = omp_get_thread_num();\n            int a = thid;\n            int b = a + (N/2);\n            int oa = OFFSET(a);\n            int ob = OFFSET(b);\n\n            temp[a + oa] = t_in[a];\n            temp[b + ob] = t_in[b];\n\n            int offset = 1;\n            for (int d = N >> 1; d > 0; d >>= 1)\n            {\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                ai += OFFSET(ai);\n                bi += OFFSET(bi);\n                temp[bi] += temp[ai];\n              }\n              offset *= 2;\n            }\n\n            if (thid == 0) temp[N-1+OFFSET(N-1)] = 0; \n            for (int d = 1; d < N; d *= 2) \n            {\n              offset >>= 1;\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                ai += OFFSET(ai);\n                bi += OFFSET(bi);\n                T t = temp[ai];\n                temp[ai] = temp[bi];\n                temp[bi] += t;\n              }\n            }\n            #pragma omp barrier \n\n            t_out[a] = temp[a + oa];\n            t_out[b] = temp[b + ob];\n          }\n        }\n      }\n    }\n\n    end = std::chrono::steady_clock::now();\n    auto bcao_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    if (timing) {\n      printf(\"Element size in bytes is %zu. Average execution time of scan (w/o bank conflicts): %f (us). \",\n             sizeof(T), (bcao_time * 1e-3f) / repeat);\n      printf(\"Reduce the time by %.1f%%\\n\", (time - bcao_time) * 1.0 / time * 100);\n    }\n\n    #pragma omp target update from (out[0:nelems])\n    if (!timing) verify(ref_out, out, nelems);\n  }\n\n  free(in);\n  free(out);\n  free(ref_out);\n}\n\ntemplate<int N>\nvoid run (const int n, const int repeat) {\n  for (int i = 0; i < 2; i++) {\n    bool report_timing = i > 0;\n    printf(\"\\nThe number of elements to scan in a thread block: %d\\n\", N);\n    runTest< char, N>(n, repeat, report_timing);\n    runTest<short, N>(n, repeat, report_timing);\n    runTest<  int, N>(n, repeat, report_timing);\n    runTest< long, N>(n, repeat, report_timing);\n  }\n}\n\nint main(int argc, char* argv[])\n{\n  if (argc != 3) {\n    printf(\"Usage: %s <number of elements> <repeat>\\n\", argv[0]);\n    return 1;\n  }\n  const int n = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  run< 128>(n, repeat);\n  run< 256>(n, repeat);\n  run< 512>(n, repeat);\n  run<1024>(n, repeat);\n  run<2048>(n, repeat);\n\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 12.601,
+          "prompt_tokens": 2294,
+          "completion_tokens": 2813,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-scan-omp",
+      "target_spec": "hecbench-scan-omp_target",
+      "kernel": "scan",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1091332873,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "10000",
+        "1"
+      ],
+      "timestamp": "2026-04-22T06:38:20Z",
+      "prompt_tokens": 2294,
+      "completion_tokens": 2894,
+      "llm_response_time_seconds": 16.468,
+      "build_status": "pass",
+      "build_time_seconds": 13.004,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.149,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " (w/o bank conflicts): 34.705002 (us). Reduce the time by -3.5%\nElement size in bytes is 4. Average execution time of scan (w/  bank conflicts): 34.044003 (us)\nElement size in bytes is 4. Average execution time of scan (w/o bank conflicts): 34.324001 (us). Reduce the time by -0.8%\nElement size in bytes is 8. Average execution time of scan (w/  bank conflicts): 34.675003 (us)\nElement size in bytes is 8. Average execution time of scan (w/o bank conflicts): 35.276001 (us). Reduce the time by -1.7%\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 14.737,
+          "unit": "us"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.149,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <chrono>\n#include <omp.h>\n\ntemplate<typename T>\nvoid verify(const T* ref_out, const T* out, int64_t n)\n{\n  int error = memcmp(ref_out, out, n * sizeof(T));\n  if (error) {\n    for (int64_t i = 0; i < n; i++) {\n      if (ref_out[i] != out[i]) {\n        printf(\"@%zu: %lf != %lf\\n\", i, (double)ref_out[i], (double)out[i]);\n        break;\n      }\n    }\n  }\n  printf(\"%s\\n\", error ? \"FAIL\" : \"PASS\");\n}\n\n\n#define LOG_MEM_BANKS 5\n#define OFFSET(n) ((n) >> LOG_MEM_BANKS)\n\ntemplate<typename T, int N>\nvoid runTest (const int64_t n, const int repeat, bool timing = false)\n{\n  int64_t num_blocks = (n + N - 1) / N;\n\n  int64_t nelems = num_blocks * N; \n\n  int64_t bytes = nelems * sizeof(T);\n\n  T *in = (T*) malloc (bytes);\n  T *out = (T*) malloc (bytes);\n  T *ref_out = (T*) malloc (bytes);\n\n  srand(123);\n  for (int64_t n = 0; n < nelems; n++) in[n] = rand() % 5 + 1;\n\n  T *t_in = in;\n  T *t_out = ref_out;\n  for (int64_t n = 0; n < num_blocks; n++) {\n    t_out[0] = 0;\n    for (int i = 1; i < N; i++)\n      t_out[i] = t_out[i-1] + t_in[i-1];\n    t_out += N;\n    t_in += N;\n  }\n\n  #pragma omp target data map(to: in[0:nelems]) map(alloc: out[0:nelems])\n  {\n    auto start = std::chrono::steady_clock::now();\n\n    for (int i = 0; i < repeat; i++) {\n      #pragma omp target teams num_teams(num_blocks) thread_limit(N/2)\n      {\n        T temp[N];\n        #pragma omp parallel\n        {\n          for (int64_t bid = omp_get_team_num(); bid < num_blocks; bid += omp_get_num_teams())\n          {\n            T *t_in  = in + bid * N;\n            T *t_out = out + bid * N;\n\n            int thid = omp_get_thread_num();\n            int offset = 1;\n\n            temp[2*thid]   = t_in[2*thid];\n            temp[2*thid+1] = t_in[2*thid+1];\n\n            for (int d = N >> 1; d > 0; d >>= 1)\n            {\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                temp[bi] += temp[ai];\n              }\n              offset *= 2;\n            }\n\n            if (thid == 0) temp[N-1] = 0; \n            for (int d = 1; d < N; d *= 2) \n            {\n              offset >>= 1;\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                T t = temp[ai];\n                temp[ai] = temp[bi];\n                temp[bi] += t;\n              }\n            }\n            t_out[2*thid] = temp[2*thid];\n            t_out[2*thid+1] = temp[2*thid+1];\n\t  }\n\t}\n      }\n    }\n\n    auto end = std::chrono::steady_clock::now();\n    auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    if (timing) {\n      printf(\"Element size in bytes is %zu. Average execution time of scan (w/  bank conflicts): %f (us)\\n\",\n             sizeof(T), (time * 1e-3f) / repeat);\n    }\n    #pragma omp target update from (out[0:nelems])\n    if (!timing) verify(ref_out, out, nelems);\n\n    \n    start = std::chrono::steady_clock::now();\n    for (int i = 0; i < repeat; i++) {\n      #pragma omp target teams num_teams(num_blocks) thread_limit(N/2)\n      {\n        T temp[2*N];\n        #pragma omp parallel\n        {\n          for (int64_t bid = omp_get_team_num(); bid < num_blocks; bid += omp_get_num_teams())\n          {\n            T *t_in  = in + bid * N;\n            T *t_out = out + bid * N;\n\n            int thid = omp_get_thread_num();\n            int a = thid;\n            int b = a + (N/2);\n            int oa = OFFSET(a);\n            int ob = OFFSET(b);\n\n            temp[a + oa] = t_in[a];\n            temp[b + ob] = t_in[b];\n\n            int offset = 1;\n            for (int d = N >> 1; d > 0; d >>= 1)\n            {\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                ai += OFFSET(ai);\n                bi += OFFSET(bi);\n                temp[bi] += temp[ai];\n              }\n              offset *= 2;\n            }\n\n            if (thid == 0) temp[N-1+OFFSET(N-1)] = 0; \n            for (int d = 1; d < N; d *= 2) \n            {\n              offset >>= 1;\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                ai += OFFSET(ai);\n                bi += OFFSET(bi);\n                T t = temp[ai];\n                temp[ai] = temp[bi];\n                temp[bi] += t;\n              }\n            }\n            #pragma omp barrier \n\n            t_out[a] = temp[a + oa];\n            t_out[b] = temp[b + ob];\n          }\n        }\n      }\n    }\n\n    end = std::chrono::steady_clock::now();\n    auto bcao_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    if (timing) {\n      printf(\"Element size in bytes is %zu. Average execution time of scan (w/o bank conflicts): %f (us). \",\n             sizeof(T), (bcao_time * 1e-3f) / repeat);\n      printf(\"Reduce the time by %.1f%%\\n\", (time - bcao_time) * 1.0 / time * 100);\n    }\n\n    #pragma omp target update from (out[0:nelems])\n    if (!timing) verify(ref_out, out, nelems);\n  }\n}\n\ntemplate<int N>\nvoid run (const int n, const int repeat) {\n  for (int i = 0; i < 2; i++) {\n    bool report_timing = i > 0;\n    printf(\"\\nThe number of elements to scan in a thread block: %d\\n\", N);\n    runTest< char, N>(n, repeat, report_timing);\n    runTest<short, N>(n, repeat, report_timing);\n    runTest<  int, N>(n, repeat, report_timing);\n    runTest< long, N>(n, repeat, report_timing);\n  }\n}\n\nint main(int argc, char* argv[])\n{\n  if (argc != 3) {\n    printf(\"Usage: %s <number of elements> <repeat>\\n\", argv[0]);\n    return 1;\n  }\n  const int n = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  run< 128>(n, repeat);\n  run< 256>(n, repeat);\n  run< 512>(n, repeat);\n  run<1024>(n, repeat);\n  run<2048>(n, repeat);\n\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 16.468,
+          "prompt_tokens": 2294,
+          "completion_tokens": 2894,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-scan-omp",
+      "target_spec": "hecbench-scan-omp_target",
+      "kernel": "scan",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 55928398,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-22T06:38:50Z",
+      "prompt_tokens": 2294,
+      "completion_tokens": 5110,
+      "llm_response_time_seconds": 36.778,
+      "build_status": "fail",
+      "build_time_seconds": 2.562,
+      "build_error_snippet": "\"main.cpp\", line 125: remark: declaration hides variable \"t_in\" (declared at line 42)\n              T *t_in  = in + bid * N;\n                 ^\n          detected during:\n            instantiation of \"void runTest<T,N>(int64_t, int, bool) [with T=char, N=128]\" at line 195\n            instantiation of \"void run<N>(int, int) [with N=128]\" at line 211\n\n\"main.cpp\", line 126: remark: declaration hides variable \"t_out\" (declared at line 43)\n              T *t_out = out + bid * N;\n                 ^\n          detected during:\n            instantiation of \"void runTest<T,N>(int64_t, int, bool) [with T=char, N=128]\" at line 195\n            instantiation of \"void run<N>(int, int) [with N=128]\" at line 211\n\n\"main.cpp\", line 40: remark: declaration hid\n...[truncated]...\n: contains call\nvoid run<128>(int, int):\n    192, Loop not vectorized/parallelized: contains call\nvoid run<256>(int, int):\n    192, Loop not vectorized/parallelized: contains call\nvoid run<512>(int, int):\n    192, Loop not vectorized/parallelized: contains call\nvoid run<1024>(int, int):\n    192, Loop not vectorized/parallelized: contains call\nvoid run<2048>(int, int):\n    192, Loop not vectorized/parallelized: contains call\nNVC++-F-0000-Internal compiler error. child tinfo should have been created at outlining function for host    5888  (main.cpp: 61)\nNVC++/x86-64 Linux 24.3-0: compilation aborted\nnvc++-Fatal-/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/tools/nvcpfe TERMINATED by signal 11\nmake: *** [Makefile.nvc:57: main.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: pp: 61)\nNVC++/x86-64 Linux 24.3-0: compilation aborted\nnvc++-Fatal-/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/tools/nvcpfe TERMINATED by signal 11\nmake: *** [Makefile.nvc:57: main.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n#include <chrono>\n#include <omp.h>\n\ntemplate<typename T>\nvoid verify(const T* ref_out, const T* out, int64_t n)\n{\n  int error = memcmp(ref_out, out, n * sizeof(T));\n  if (error) {\n    for (int64_t i = 0; i < n; i++) {\n      if (ref_out[i] != out[i]) {\n        printf(\"@%zu: %lf != %lf\\n\", i, (double)ref_out[i], (double)out[i]);\n        break;\n      }\n    }\n  }\n  printf(\"%s\\n\", error ? \"FAIL\" : \"PASS\");\n}\n\n\n#define LOG_MEM_BANKS 5\n#define OFFSET(n) ((n) >> LOG_MEM_BANKS)\n\ntemplate<typename T, int N>\nvoid runTest (const int64_t n, const int repeat, bool timing = false)\n{\n  int64_t num_blocks = (n + N - 1) / N;\n\n  int64_t nelems = num_blocks * N; \n\n  int64_t bytes = nelems * sizeof(T);\n\n  T *in = (T*) malloc (bytes);\n  T *out = (T*) malloc (bytes);\n  T *ref_out = (T*) malloc (bytes);\n\n  srand(123);\n  for (int64_t n = 0; n < nelems; n++) in[n] = rand() % 5 + 1;\n\n  T *t_in = in;\n  T *t_out = ref_out;\n  for (int64_t n = 0; n < num_blocks; n++) {\n    t_out[0] = 0;\n    for (int i = 1; i < N; i++)\n      t_out[i] = t_out[i-1] + t_in[i-1];\n    t_out += N;\n    t_in += N;\n  }\n\n  #pragma omp target data map(to: in[0:nelems]) map(alloc: out[0:nelems])\n  {\n    auto start = std::chrono::steady_clock::now();\n\n    for (int i = 0; i < repeat; i++) {\n      #pragma omp target teams num_teams(num_blocks) thread_limit(N/2)\n      {\n        T temp[N];\n        #pragma omp target parallel\n        {\n          for (int64_t bid = omp_get_team_num(); bid < num_blocks; bid += omp_get_num_teams())\n          {\n            T *t_in  = in + bid * N;\n            T *t_out = out + bid * N;\n\n            int thid = omp_get_thread_num();\n            int offset = 1;\n\n            temp[2*thid]   = t_in[2*thid];\n            temp[2*thid+1] = t_in[2*thid+1];\n\n            for (int d = N >> 1; d > 0; d >>= 1)\n            {\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                temp[bi] += temp[ai];\n              }\n              offset *= 2;\n            }\n\n            if (thid == 0) temp[N-1] = 0; \n            for (int d = 1; d < N; d *= 2) \n            {\n              offset >>= 1;\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                T t = temp[ai];\n                temp[ai] = temp[bi];\n                temp[bi] += t;\n              }\n            }\n            t_out[2*thid] = temp[2*thid];\n            t_out[2*thid+1] = temp[2*thid+1];\n\t  }\n\t}\n      }\n    }\n\n    auto end = std::chrono::steady_clock::now();\n    auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    if (timing) {\n      printf(\"Element size in bytes is %zu. Average execution time of scan (w/  bank conflicts): %f (us)\\n\",\n             sizeof(T), (time * 1e-3f) / repeat);\n    }\n    #pragma omp target update from (out[0:nelems])\n    if (!timing) verify(ref_out, out, nelems);\n\n    \n    start = std::chrono::steady_clock::now();\n    for (int i = 0; i < repeat; i++) {\n      #pragma omp target teams num_teams(num_blocks) thread_limit(N/2)\n      {\n        T temp[2*N];\n        #pragma omp target parallel\n        {\n          for (int64_t bid = omp_get_team_num(); bid < num_blocks; bid += omp_get_num_teams())\n          {\n            T *t_in  = in + bid * N;\n            T *t_out = out + bid * N;\n\n            int thid = omp_get_thread_num();\n            int a = thid;\n            int b = a + (N/2);\n            int oa = OFFSET(a);\n            int ob = OFFSET(b);\n\n            temp[a + oa] = t_in[a];\n            temp[b + ob] = t_in[b];\n\n            int offset = 1;\n            for (int d = N >> 1; d > 0; d >>= 1)\n            {\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                ai += OFFSET(ai);\n                bi += OFFSET(bi);\n                temp[bi] += temp[ai];\n              }\n              offset *= 2;\n            }\n\n            if (thid == 0) temp[N-1+OFFSET(N-1)] = 0; \n            for (int d = 1; d < N; d *= 2) \n            {\n              offset >>= 1;\n              #pragma omp barrier\n              if (thid < d)\n              {\n                int ai = offset*(2*thid+1)-1;\n                int bi = offset*(2*thid+2)-1;\n                ai += OFFSET(ai);\n                bi += OFFSET(bi);\n                T t = temp[ai];\n                temp[ai] = temp[bi];\n                temp[bi] += t;\n              }\n            }\n            #pragma omp barrier \n\n            t_out[a] = temp[a + oa];\n            t_out[b] = temp[b + ob];\n          }\n        }\n      }\n    }\n\n    end = std::chrono::steady_clock::now();\n    auto bcao_time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n    if (timing) {\n      printf(\"Element size in bytes is %zu. Average execution time of scan (w/o bank conflicts): %f (us). \",\n             sizeof(T), (bcao_time * 1e-3f) / repeat);\n      printf(\"Reduce the time by %.1f%%\\n\", (time - bcao_time) * 1.0 / time * 100);\n    }\n\n    #pragma omp target update from (out[0:nelems])\n    if (!timing) verify(ref_out, out, nelems);\n  }\n}\n\ntemplate<int N>\nvoid run (const int n, const int repeat) {\n  for (int i = 0; i < 2; i++) {\n    bool report_timing = i > 0;\n    printf(\"\\nThe number of elements to scan in a thread block: %d\\n\", N);\n    runTest< char, N>(n, repeat, report_timing);\n    runTest<short, N>(n, repeat, report_timing);\n    runTest<  int, N>(n, repeat, report_timing);\n    runTest< long, N>(n, repeat, report_timing);\n  }\n}\n\nint main(int argc, char* argv[])\n{\n  if (argc != 3) {\n    printf(\"Usage: %s <number of elements> <repeat>\\n\", argv[0]);\n    return 1;\n  }\n  const int n = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  run< 128>(n, repeat);\n  run< 256>(n, repeat);\n  run< 512>(n, repeat);\n  run<1024>(n, repeat);\n  run<2048>(n, repeat);\n\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 36.778,
+          "prompt_tokens": 2294,
+          "completion_tokens": 5110,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "\"main.cpp\", line 125: remark: declaration hides variable \"t_in\" (declared at line 42)\n              T *t_in  = in + bid * N;\n                 ^\n          detected during:\n            instantiation of \"void runTest<T,N>(int64_t, int, bool) [with T=char, N=128]\" at line 195\n            instantiation of \"void run<N>(int, int) [with N=128]\" at line 211\n\n\"main.cpp\", line 126: remark: declaration hides variable \"t_out\" (declared at line 43)\n              T *t_out = out + bid * N;\n                 ^\n          detected during:\n            instantiation of \"void runTest<T,N>(int64_t, int, bool) [with T=char, N=128]\" at line 195\n            instantiation of \"void run<N>(int, int) [with N=128]\" at line 211\n\n\"main.cpp\", line 40: remark: declaration hid\n...[truncated]...\n: contains call\nvoid run<128>(int, int):\n    192, Loop not vectorized/parallelized: contains call\nvoid run<256>(int, int):\n    192, Loop not vectorized/parallelized: contains call\nvoid run<512>(int, int):\n    192, Loop not vectorized/parallelized: contains call\nvoid run<1024>(int, int):\n    192, Loop not vectorized/parallelized: contains call\nvoid run<2048>(int, int):\n    192, Loop not vectorized/parallelized: contains call\nNVC++-F-0000-Internal compiler error. child tinfo should have been created at outlining function for host    5888  (main.cpp: 61)\nNVC++/x86-64 Linux 24.3-0: compilation aborted\nnvc++-Fatal-/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/compilers/bin/tools/nvcpfe TERMINATED by signal 11\nmake: *** [Makefile.nvc:57: main.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-floydwarshall-omp",
+      "target_spec": "hecbench-floydwarshall-omp_target",
+      "kernel": "floydwarshall",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 577903296,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-22T06:39:29Z",
+      "prompt_tokens": 1846,
+      "completion_tokens": 3618,
+      "llm_response_time_seconds": 50.119,
+      "build_status": "fail",
+      "build_time_seconds": 0.121,
+      "build_error_snippet": "\"main.cpp\", line 109: error: expected a \")\"\n    #pragma omp target data use_device_addr(pathDistanceMatrix[0:matrixSize], \\\n                                                              ^\n\n\"main.cpp\", line 140: error: invalid text in pragma\n        #pragma omp target wait\n                           ^\n\n\"main.cpp\", line 140: error: a structured block must follow this OMP pragma\n        #pragma omp target wait\n                           ^\n\n3 errors detected in the compilation of \"main.cpp\".\nmake: *** [Makefile.nvc:58: main.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: uctured block must follow this OMP pragma\n        #pragma omp target wait\n                           ^\n\n3 errors detected in the compilation of \"main.cpp\".\nmake: *** [Makefile.nvc:58: main.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <assert.h>\n#include <string.h>\n#include <chrono>\n#include <omp.h>\n\n#define MAXDISTANCE    (200)\n\nunsigned int minimum(unsigned int a, unsigned int b) \n{\n  return (b < a) ? b : a;\n}\n\nvoid floydWarshallCPUReference(unsigned int * pathDistanceMatrix,\n    unsigned int * pathMatrix, unsigned int numNodes)\n{\n  unsigned int distanceYtoX, distanceYtoK, distanceKtoX, indirectDistance;\n\n  unsigned int width = numNodes;\n  unsigned int yXwidth;\n\n  for(unsigned int k = 0; k < numNodes; ++k)\n  {\n    for(unsigned int y = 0; y < numNodes; ++y)\n    {\n      yXwidth =  y*numNodes;\n      for(unsigned int x = 0; x < numNodes; ++x)\n      {\n        distanceYtoX = pathDistanceMatrix[yXwidth + x];\n        distanceYtoK = pathDistanceMatrix[yXwidth + k];\n        distanceKtoX = pathDistanceMatrix[k * width + x];\n\n        indirectDistance = distanceYtoK + distanceKtoX;\n\n        if(indirectDistance < distanceYtoX)\n        {\n          pathDistanceMatrix[yXwidth + x] = indirectDistance;\n          pathMatrix[yXwidth + x]         = k;\n        }\n      }\n    }\n  }\n}\n\nint main(int argc, char** argv) {\n  if (argc != 4) {\n    printf(\"Usage: %s <number of nodes> <iterations> <block size>\\n\", argv[0]);\n    return 1;\n  }\n  \n  unsigned int numNodes = atoi(argv[1]);\n  unsigned int numIterations = atoi(argv[2]);\n  unsigned int blockSize = atoi(argv[3]);\n\n  if(numNodes % blockSize != 0) {\n    numNodes = (numNodes / blockSize + 1) * blockSize;\n  }\n\n  unsigned int* pathMatrix = NULL;\n  unsigned int* pathDistanceMatrix = NULL;\n  unsigned int* verificationPathDistanceMatrix = NULL;\n  unsigned int* verificationPathMatrix = NULL;\n  unsigned int matrixSize;\n  unsigned int matrixSizeBytes;\n\n  matrixSize = numNodes * numNodes;\n  matrixSizeBytes = numNodes * numNodes * sizeof(unsigned int);\n  pathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathDistanceMatrix != NULL) ;\n\n  pathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathMatrix != NULL) ;\n\n  srand(2);\n  for(unsigned int i = 0; i < numNodes; i++)\n    for(unsigned int j = 0; j < numNodes; j++)\n    {\n      int index = i*numNodes + j;\n      pathDistanceMatrix[index] = rand() % (MAXDISTANCE + 1);\n    }\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    unsigned int iXWidth = i * numNodes;\n    pathDistanceMatrix[iXWidth + i] = 0;\n  }\n\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    for(unsigned int j = 0; j < i; ++j)\n    {\n      pathMatrix[i * numNodes + j] = i;\n      pathMatrix[j * numNodes + i] = j;\n    }\n    pathMatrix[i * numNodes + i] = i;\n  }\n\n  verificationPathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (verificationPathDistanceMatrix != NULL);\n\n  verificationPathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert(verificationPathMatrix != NULL);\n\n  memcpy(verificationPathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes);\n  memcpy(verificationPathMatrix, pathMatrix, matrixSizeBytes);\n\n  unsigned int numPasses = numNodes;\n\n  #pragma omp target data use_device_addr(pathDistanceMatrix[0:matrixSize], \\\n                                          pathMatrix[0:matrixSize])\n  {\n    float total_time = 0.f;\n\n    for (unsigned int n = 0; n < numIterations; n++) {\n      #pragma omp target update to(pathDistanceMatrix[0:matrixSize])\n\n      auto start = std::chrono::steady_clock::now();\n\n      for(unsigned int k = 0; k < numPasses; k++)\n      {\n        #pragma omp target teams distribute parallel for collapse(2) \\\n        thread_limit(blockSize*blockSize)\n        for(unsigned int y = 0; y < numNodes; ++y)\n        {\n          for(unsigned int x = 0; x < numNodes; ++x)\n          {\n            unsigned int distanceYtoX = pathDistanceMatrix[y*numNodes + x];\n            unsigned int distanceYtoK = pathDistanceMatrix[y*numNodes + k];\n            unsigned int distanceKtoX = pathDistanceMatrix[k*numNodes + x];\n            unsigned int indirectDistance = distanceYtoK + distanceKtoX;\n\n            if(indirectDistance < distanceYtoX)\n            {\n              pathDistanceMatrix[y*numNodes + x] = indirectDistance;\n              pathMatrix[y*numNodes + x]         = k;\n            }\n          }\n        }\n      }\n      #pragma omp target wait\n\n      auto end = std::chrono::steady_clock::now();\n      auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n      total_time += time;\n    }\n\n    printf(\"Average kernel execution time %f (s)\\n\", (total_time * 1e-9f) / numIterations);\n\n    #pragma omp target update from(pathDistanceMatrix[0:matrixSize])\n  }\n\n  floydWarshallCPUReference(verificationPathDistanceMatrix,\n      verificationPathMatrix, numNodes);\n  if(memcmp(pathDistanceMatrix, verificationPathDistanceMatrix,\n        numNodes*numNodes*sizeof(unsigned int)) == 0)\n  {\n    printf(\"PASS\\n\");\n  }\n  else\n  {\n    printf(\"FAIL\\n\");\n    if (numNodes <= 8) \n    {\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"host: %u \", verificationPathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"device: %u \", pathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n    }\n  }\n\n  free(pathDistanceMatrix);\n  free(pathMatrix);\n  free(verificationPathDistanceMatrix);\n  free(verificationPathMatrix);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 50.119,
+          "prompt_tokens": 1846,
+          "completion_tokens": 3618,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "\"main.cpp\", line 109: error: expected a \")\"\n    #pragma omp target data use_device_addr(pathDistanceMatrix[0:matrixSize], \\\n                                                              ^\n\n\"main.cpp\", line 140: error: invalid text in pragma\n        #pragma omp target wait\n                           ^\n\n\"main.cpp\", line 140: error: a structured block must follow this OMP pragma\n        #pragma omp target wait\n                           ^\n\n3 errors detected in the compilation of \"main.cpp\".\nmake: *** [Makefile.nvc:58: main.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-floydwarshall-omp",
+      "target_spec": "hecbench-floydwarshall-omp_target",
+      "kernel": "floydwarshall",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1869806487,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "1024",
+        "1",
+        "16"
+      ],
+      "timestamp": "2026-04-22T06:40:19Z",
+      "prompt_tokens": 1846,
+      "completion_tokens": 3984,
+      "llm_response_time_seconds": 80.776,
+      "build_status": "pass",
+      "build_time_seconds": 0.389,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.654,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time 0.027284 (s)\nFAIL\n",
+      "verify_status": "fail",
+      "verify_strategy": "stdout_pattern",
+      "overall_status": "VERIFY_FAIL",
+      "error_message": "Verify failed: Pattern '(?:PASS)' NOT found in stdout. ",
+      "metrics": {
+        "kernel_time": {
+          "value": 0.027284,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.654,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <assert.h>\n#include <string.h>\n#include <chrono>\n#include <omp.h>\n\n#define MAXDISTANCE    (200)\n\nunsigned int minimum(unsigned int a, unsigned int b) \n{\n  return (b < a) ? b : a;\n}\n\nvoid floydWarshallCPUReference(unsigned int * pathDistanceMatrix,\n    unsigned int * pathMatrix, unsigned int numNodes)\n{\n  unsigned int distanceYtoX, distanceYtoK, distanceKtoX, indirectDistance;\n\n  unsigned int width = numNodes;\n  unsigned int yXwidth;\n\n  for(unsigned int k = 0; k < numNodes; ++k)\n  {\n    for(unsigned int y = 0; y < numNodes; ++y)\n    {\n      yXwidth =  y*numNodes;\n      for(unsigned int x = 0; x < numNodes; ++x)\n      {\n        distanceYtoX = pathDistanceMatrix[yXwidth + x];\n        distanceYtoK = pathDistanceMatrix[yXwidth + k];\n        distanceKtoX = pathDistanceMatrix[k * width + x];\n\n        indirectDistance = distanceYtoK + distanceKtoX;\n\n        if(indirectDistance < distanceYtoX)\n        {\n          pathDistanceMatrix[yXwidth + x] = indirectDistance;\n          pathMatrix[yXwidth + x]         = k;\n        }\n      }\n    }\n  }\n}\n\nint main(int argc, char** argv) {\n  if (argc != 4) {\n    printf(\"Usage: %s <number of nodes> <iterations> <block size>\\n\", argv[0]);\n    return 1;\n  }\n  \n  unsigned int numNodes = atoi(argv[1]);\n  unsigned int numIterations = atoi(argv[2]);\n  unsigned int blockSize = atoi(argv[3]);\n\n  if(numNodes % blockSize != 0) {\n    numNodes = (numNodes / blockSize + 1) * blockSize;\n  }\n\n  unsigned int* pathMatrix = NULL;\n  unsigned int* pathDistanceMatrix = NULL;\n  unsigned int* verificationPathDistanceMatrix = NULL;\n  unsigned int* verificationPathMatrix = NULL;\n  unsigned int matrixSize;\n  unsigned int matrixSizeBytes;\n\n  matrixSize = numNodes * numNodes;\n  matrixSizeBytes = numNodes * numNodes * sizeof(unsigned int);\n  pathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathDistanceMatrix != NULL) ;\n\n  pathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathMatrix != NULL) ;\n\n  srand(2);\n  for(unsigned int i = 0; i < numNodes; i++)\n    for(unsigned int j = 0; j < numNodes; j++)\n    {\n      int index = i*numNodes + j;\n      pathDistanceMatrix[index] = rand() % (MAXDISTANCE + 1);\n    }\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    unsigned int iXWidth = i * numNodes;\n    pathDistanceMatrix[iXWidth + i] = 0;\n  }\n\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    for(unsigned int j = 0; j < i; ++j)\n    {\n      pathMatrix[i * numNodes + j] = i;\n      pathMatrix[j * numNodes + i] = j;\n    }\n    pathMatrix[i * numNodes + i] = i;\n  }\n\n  verificationPathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (verificationPathDistanceMatrix != NULL);\n\n  verificationPathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert(verificationPathMatrix != NULL);\n\n  memcpy(verificationPathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes);\n  memcpy(verificationPathMatrix, pathMatrix, matrixSizeBytes);\n\n  unsigned int numPasses = numNodes;\n\n  #pragma omp target data map(alloc: pathDistanceMatrix[0:matrixSize], \\\n                                     pathMatrix[0:matrixSize])\n  {\n    float total_time = 0.f;\n\n    for (unsigned int n = 0; n < numIterations; n++) {\n      #pragma omp target update to (pathDistanceMatrix[0:matrixSize]) \n\n      auto start = std::chrono::steady_clock::now();\n\n      for(unsigned int k = 0; k < numPasses; k++)\n      {\n        #pragma omp target teams distribute parallel for collapse(2) \\\n        thread_limit (blockSize*blockSize) nowait\n        for(unsigned int y = 0; y < numNodes; ++y)\n        {\n          for(unsigned int x = 0; x < numNodes; ++x)\n          {\n            unsigned int distanceYtoX = pathDistanceMatrix[y*numNodes + x];\n            unsigned int distanceYtoK = pathDistanceMatrix[y*numNodes + k];\n            unsigned int distanceKtoX = pathDistanceMatrix[k*numNodes + x];\n            unsigned int indirectDistance = distanceYtoK + distanceKtoX;\n\n            if(indirectDistance < distanceYtoX)\n            {\n              pathDistanceMatrix[y*numNodes + x] = indirectDistance;\n              pathMatrix[y*numNodes + x]         = k;\n            }\n          }\n        }\n      }\n\n      auto end = std::chrono::steady_clock::now();\n      auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n      total_time += time;\n    }\n\n    printf(\"Average kernel execution time %f (s)\\n\", (total_time * 1e-9f) / numIterations);\n\n    #pragma omp target update from (pathDistanceMatrix[0:matrixSize]) \n  }\n\n  floydWarshallCPUReference(verificationPathDistanceMatrix,\n      verificationPathMatrix, numNodes);\n  if(memcmp(pathDistanceMatrix, verificationPathDistanceMatrix,\n        numNodes*numNodes*sizeof(unsigned int)) == 0)\n  {\n    printf(\"PASS\\n\");\n  }\n  else\n  {\n    printf(\"FAIL\\n\");\n    if (numNodes <= 8) \n    {\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"host: %u \", verificationPathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"device: %u \", pathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n    }\n  }\n\n  free(pathDistanceMatrix);\n  free(pathMatrix);\n  free(verificationPathDistanceMatrix);\n  free(verificationPathMatrix);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 80.776,
+          "prompt_tokens": 1846,
+          "completion_tokens": 3984,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "fail",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-floydwarshall-omp",
+      "target_spec": "hecbench-floydwarshall-omp_target",
+      "kernel": "floydwarshall",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 650749098,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "1024",
+        "1",
+        "16"
+      ],
+      "timestamp": "2026-04-22T06:41:41Z",
+      "prompt_tokens": 1846,
+      "completion_tokens": 3691,
+      "llm_response_time_seconds": 94.262,
+      "build_status": "pass",
+      "build_time_seconds": 0.388,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.649,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time 0.018651 (s)\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 0.018651,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.649,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <assert.h>\n#include <string.h>\n#include <chrono>\n#include <omp.h>\n\n#define MAXDISTANCE    (200)\n\nunsigned int minimum(unsigned int a, unsigned int b) \n{\n  return (b < a) ? b : a;\n}\n\nvoid floydWarshallCPUReference(unsigned int * pathDistanceMatrix,\n    unsigned int * pathMatrix, unsigned int numNodes)\n{\n  unsigned int distanceYtoX, distanceYtoK, distanceKtoX, indirectDistance;\n\n  unsigned int width = numNodes;\n  unsigned int yXwidth;\n\n  for(unsigned int k = 0; k < numNodes; ++k)\n  {\n    for(unsigned int y = 0; y < numNodes; ++y)\n    {\n      yXwidth =  y*numNodes;\n      for(unsigned int x = 0; x < numNodes; ++x)\n      {\n        distanceYtoX = pathDistanceMatrix[yXwidth + x];\n        distanceYtoK = pathDistanceMatrix[yXwidth + k];\n        distanceKtoX = pathDistanceMatrix[k * width + x];\n\n        indirectDistance = distanceYtoK + distanceKtoX;\n\n        if(indirectDistance < distanceYtoX)\n        {\n          pathDistanceMatrix[yXwidth + x] = indirectDistance;\n          pathMatrix[yXwidth + x]         = k;\n        }\n      }\n    }\n  }\n}\n\nint main(int argc, char** argv) {\n  if (argc != 4) {\n    printf(\"Usage: %s <number of nodes> <iterations> <block size>\\n\", argv[0]);\n    return 1;\n  }\n  \n  unsigned int numNodes = atoi(argv[1]);\n  unsigned int numIterations = atoi(argv[2]);\n  unsigned int blockSize = atoi(argv[3]);\n\n  if(numNodes % blockSize != 0) {\n    numNodes = (numNodes / blockSize + 1) * blockSize;\n  }\n\n  unsigned int* pathMatrix = NULL;\n  unsigned int* pathDistanceMatrix = NULL;\n  unsigned int* verificationPathDistanceMatrix = NULL;\n  unsigned int* verificationPathMatrix = NULL;\n  unsigned int matrixSize;\n  unsigned int matrixSizeBytes;\n\n  matrixSize = numNodes * numNodes;\n  matrixSizeBytes = numNodes * numNodes * sizeof(unsigned int);\n  pathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathDistanceMatrix != NULL) ;\n\n  pathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (pathMatrix != NULL) ;\n\n  srand(2);\n  for(unsigned int i = 0; i < numNodes; i++)\n    for(unsigned int j = 0; j < numNodes; j++)\n    {\n      int index = i*numNodes + j;\n      pathDistanceMatrix[index] = rand() % (MAXDISTANCE + 1);\n    }\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    unsigned int iXWidth = i * numNodes;\n    pathDistanceMatrix[iXWidth + i] = 0;\n  }\n\n  for(unsigned int i = 0; i < numNodes; ++i)\n  {\n    for(unsigned int j = 0; j < i; ++j)\n    {\n      pathMatrix[i * numNodes + j] = i;\n      pathMatrix[j * numNodes + i] = j;\n    }\n    pathMatrix[i * numNodes + i] = i;\n  }\n\n  verificationPathDistanceMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert (verificationPathDistanceMatrix != NULL);\n\n  verificationPathMatrix = (unsigned int *) malloc(matrixSizeBytes);\n  assert(verificationPathMatrix != NULL);\n\n  memcpy(verificationPathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes);\n  memcpy(verificationPathMatrix, pathMatrix, matrixSizeBytes);\n\n  unsigned int numPasses = numNodes;\n\n  #pragma omp target data map(alloc: pathDistanceMatrix[0:matrixSize], \\\n                                     pathMatrix[0:matrixSize])\n  {\n    float total_time = 0.f;\n\n    for (unsigned int n = 0; n < numIterations; n++) {\n      #pragma omp target update to(pathDistanceMatrix[0:matrixSize])\n\n      auto start = std::chrono::steady_clock::now();\n\n      for(unsigned int k = 0; k < numPasses; k++)\n      {\n        #pragma omp target teams distribute parallel for collapse(2) \\\n        thread_limit(blockSize*blockSize)\n        for(unsigned int y = 0; y < numNodes; ++y)\n        {\n          for(unsigned int x = 0; x < numNodes; ++x)\n          {\n            unsigned int distanceYtoX = pathDistanceMatrix[y*numNodes + x];\n            unsigned int distanceYtoK = pathDistanceMatrix[y*numNodes + k];\n            unsigned int distanceKtoX = pathDistanceMatrix[k*numNodes + x];\n            unsigned int indirectDistance = distanceYtoK + distanceKtoX;\n\n            if(indirectDistance < distanceYtoX)\n            {\n              pathDistanceMatrix[y*numNodes + x] = indirectDistance;\n              pathMatrix[y*numNodes + x]         = k;\n            }\n          }\n        }\n      }\n\n      auto end = std::chrono::steady_clock::now();\n      auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n      total_time += time;\n    }\n\n    printf(\"Average kernel execution time %f (s)\\n\", (total_time * 1e-9f) / numIterations);\n\n    #pragma omp target update from(pathDistanceMatrix[0:matrixSize])\n  }\n\n  floydWarshallCPUReference(verificationPathDistanceMatrix,\n      verificationPathMatrix, numNodes);\n  if(memcmp(pathDistanceMatrix, verificationPathDistanceMatrix,\n        numNodes*numNodes*sizeof(unsigned int)) == 0)\n  {\n    printf(\"PASS\\n\");\n  }\n  else\n  {\n    printf(\"FAIL\\n\");\n    if (numNodes <= 8) \n    {\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"host: %u \", verificationPathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"device: %u \", pathDistanceMatrix[i*numNodes+j]);\n        printf(\"\\n\");\n      }\n    }\n  }\n\n  free(pathDistanceMatrix);\n  free(pathMatrix);\n  free(verificationPathDistanceMatrix);\n  free(verificationPathMatrix);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 94.262,
+          "prompt_tokens": 1846,
+          "completion_tokens": 3691,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-iso2dfd-omp",
+      "target_spec": "hecbench-iso2dfd-omp_target",
+      "kernel": "iso2dfd",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1493946187,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-22T06:43:16Z",
+      "prompt_tokens": 2874,
+      "completion_tokens": 3351,
+      "llm_response_time_seconds": 142.553,
+      "build_status": "fail",
+      "build_time_seconds": 0.254,
+      "build_error_snippet": "\"iso2dfd.cpp\", line 6: catastrophic error: expected a file name\n  #include <cstring\n           ^\n\n1 catastrophic error detected in the compilation of \"iso2dfd.cpp\".\nCompilation terminated.\nmake: *** [Makefile.nvc:58: iso2dfd.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: error: expected a file name\n  #include <cstring\n           ^\n\n1 catastrophic error detected in the compilation of \"iso2dfd.cpp\".\nCompilation terminated.\nmake: *** [Makefile.nvc:58: iso2dfd.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "iso2dfd.cpp": "#include <fstream>\n#include <iostream>\n#include <omp.h>\n#include <chrono>\n#include <cmath>\n#include <cstring\n\n#define DT 0.002f\n#define DXY 20.0f\n#define HALF_LENGTH 1\n\n#define MIN(a, b) (a) < (b) ? (a) : (b)\n\nvoid usage(std::string programName) {\n  std::cout << \" Incorrect parameters \" << std::endl;\n  std::cout << \" Usage: \";\n  std::cout << programName << \" n1 n2 Iterations \" << std::endl\n            << std::endl;\n  std::cout << \" n1 n2      : Grid sizes for the stencil \" << std::endl;\n  std::cout << \" Iterations : No. of timesteps. \" << std::endl;\n}\n\nvoid initialize(float* ptr_prev, float* ptr_next, float* ptr_vel, size_t nRows,\n                size_t nCols) {\n  std::cout << \"Initializing ... \" << std::endl;\n\n  float wavelet[12] = {0.016387336, -0.041464937, -0.067372555, 0.386110067,\n                       0.812723635, 0.416998396,  0.076488599,  -0.059434419,\n                       0.023680172, 0.005611435,  0.001823209,  -0.000720549};\n\n  for (size_t i = 0; i < nRows; i++) {\n    size_t offset = i * nCols;\n\n    for (int k = 0; k < nCols; k++) {\n      ptr_prev[offset + k] = 0.0f;\n      ptr_next[offset + k] = 0.0f;\n      \n      ptr_vel[offset + k] = 2250000.0f;\n    }\n  }\n  \n  for (int s = 11; s >= 0; s--) {\n    for (size_t i = nRows / 2 - s; i < nRows / 2 + s; i++) {\n      size_t offset = i * nCols;\n      for (size_t k = nCols / 2 - s; k < nCols / 2 + s; k++) {\n        ptr_prev[offset + k] = wavelet[s];\n      }\n    }\n  }\n}\n\nbool within_epsilon(float* output, float* reference, const size_t dimx,\n                    const size_t dimy, const unsigned int radius,\n                    const float delta = 0.01f) {\n  FILE* fp = fopen(\"./error_diff.txt\", \"w\");\n  if (!fp) fp = stderr;\n\n  bool error = false;\n  \n  double norm2 = 0;\n\n  for (size_t iy = 0; iy < dimy; iy++) {\n    for (size_t ix = 0; ix < dimx; ix++) {\n      if (ix >= radius && ix < (dimx - radius) && iy >= radius &&\n          iy < (dimy - radius)) {\n        float difference = fabsf(*reference - *output);\n        norm2 += difference * difference;\n        if (difference > delta) {\n          error = true;\n          fprintf(fp, \" ERROR: (%zu,%zu)\\t%e instead of %e (|e|=%e)\\n\", ix, iy,\n                  *output, *reference, difference);\n        }\n      }\n\n      ++output;\n      ++reference;\n    }\n  }\n\n  if (fp != stderr) fclose(fp);\n  norm2 = sqrt(norm2);\n  if (error) printf(\"error (Euclidean norm): %.9e\\n\", norm2);\n  return error;\n}\n\nvoid iso_2dfd_iteration_cpu(float* next, float* prev, float* vel,\n                            const float dtDIVdxy, int nRows, int nCols,\n                            int nIterations) {\n  for (unsigned int k = 0; k < nIterations; k += 1) {\n    for (size_t i = 1; i < nRows - HALF_LENGTH; i += 1) {\n      for (size_t j = 1; j < nCols - HALF_LENGTH; j += 1) {\n        \n        size_t gid = j + (i * nCols);\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n\n    \n    float* swap = next;\n    next = prev;\n    prev = swap;\n  }\n}\n\nvoid iso_2dfd_kernel(float* next, const float* prev, const float* vel, \n                     const float dtDIVdxy, const size_t nRows, const size_t nCols) {\n  #pragma omp target teams distribute parallel for simd collapse(2) thread_limit(256) \n  for (size_t gidRow = 0; gidRow < nRows ; gidRow++)\n    for (size_t gidCol = 0; gidCol < nCols ; gidCol++) {\n      size_t gid = (gidRow)*nCols + gidCol;\n      \n      if ((gidCol >= HALF_LENGTH && gidCol < nCols - HALF_LENGTH) &&\n          (gidRow >= HALF_LENGTH && gidRow < nRows - HALF_LENGTH)) {\n        \n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n  }\n}\n\nint main(int argc, char* argv[]) {\n  \n  float* prev_base;\n  float* next_base;\n  float* next_cpu;\n  \n  float* vel_base;\n\n  bool error = false;\n\n  size_t nRows, nCols;\n  unsigned int nIterations;\n\n  \n  try {\n    nRows = std::stoi(argv[1]);\n    nCols = std::stoi(argv[2]);\n    nIterations = std::stoi(argv[3]);\n  }\n\n  catch (...) {\n    usage(argv[0]);\n    return 1;\n  }\n\n  \n  size_t nsize = nRows * nCols;\n\n  \n  prev_base = new float[nsize];\n  next_base = new float[nsize];\n  next_cpu = new float[nsize];\n  vel_base = new float[nsize];\n\n  \n  \n  float dtDIVdxy = (DT * DT) / (DXY * DXY);\n\n  \n  initialize(prev_base, next_base, vel_base, nRows, nCols);\n\n  std::cout << \"Grid Sizes: \" << nRows << \" \" << nCols << std::endl;\n  std::cout << \"Iterations: \" << nIterations << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Computing wavefield in device ..\" << std::endl;\n\n  #pragma omp target data map(next_base[0:nsize], prev_base[0:nsize]) \\\n                          map(to: vel_base[0:nsize])\n  {\n    auto kstart = std::chrono::steady_clock::now();\n  \n    \n    for (unsigned int k = 0; k < nIterations; k += 1) {\n      \n      \n      iso_2dfd_kernel((k % 2) ? prev_base : next_base,\n                      (k % 2) ? next_base : prev_base,\n                      vel_base, dtDIVdxy, nRows, nCols);\n    }  \n  \n    auto kend = std::chrono::steady_clock::now();\n    auto ktime = std::chrono::duration_cast<std::chrono::nanoseconds>(kend - kstart).count();\n    std::cout << \"Total kernel execution time \" << ktime * 1e-6f << \" (ms)\\n\";\n    std::cout << \"Average kernel execution time \" << (ktime * 1e-3f) / nIterations << \" (us)\\n\";\n  }\n\n  \n  std::ofstream outFile;\n  outFile.open(\"wavefield_snapshot.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_base), nsize * sizeof(float));\n  outFile.close();\n\n  \n  \n  std::cout << \"Computing wavefield in CPU ..\" << std::endl;\n  \n  initialize(prev_base, next_cpu, vel_base, nRows, nCols);\n\n  \n  \n  auto start = std::chrono::steady_clock::now();\n  iso_2dfd_iteration_cpu(next_cpu, prev_base, vel_base, dtDIVdxy, nRows, nCols,\n                         nIterations);\n\n  \n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start)\n                  .count();\n  std::cout << \"CPU time: \" << time << \" ms\" << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Check difference between final wavefields computed in device and host\"\n            << std::endl;\n  error = within_epsilon(next_base, next_cpu, nRows, nCols, HALF_LENGTH, 0.1f);\n  std::cout << (error ? \"FAIL\" : \"PASS\") << std::endl;\n\n  \n  outFile.open(\"wavefield_snapshot_cpu.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_cpu), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Final wavefields (from device and CPU) written to disk\"\n            << std::endl;\n  std::cout << \"Finished.  \" << std::endl;\n\n  \n  delete[] prev_base;\n  delete[] next_base;\n  delete[] vel_base;\n\n  return error ? 1 : 0;\n}\n"
+      },
+      "target_files_expected": [
+        "iso2dfd.cpp"
+      ],
+      "target_files_extracted": [
+        "iso2dfd.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 142.553,
+          "prompt_tokens": 2874,
+          "completion_tokens": 3351,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "\"iso2dfd.cpp\", line 6: catastrophic error: expected a file name\n  #include <cstring\n           ^\n\n1 catastrophic error detected in the compilation of \"iso2dfd.cpp\".\nCompilation terminated.\nmake: *** [Makefile.nvc:58: iso2dfd.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-iso2dfd-omp",
+      "target_spec": "hecbench-iso2dfd-omp_target",
+      "kernel": "iso2dfd",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1804476463,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "2048",
+        "2048",
+        "10"
+      ],
+      "timestamp": "2026-04-22T06:45:39Z",
+      "prompt_tokens": 2874,
+      "completion_tokens": 3011,
+      "llm_response_time_seconds": 14.692,
+      "build_status": "pass",
+      "build_time_seconds": 0.841,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.211,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nTotal kernel execution time 2.10004 (ms)\nAverage kernel execution time 210.004 (us)\nComputing wavefield in CPU ..\nInitializing ... \nCPU time: 16 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "total_kernel_time": {
+          "value": 2.10004,
+          "unit": "ms"
+        },
+        "avg_kernel_time": {
+          "value": 210.004,
+          "unit": "us"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.211,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "iso2dfd.cpp": "#include <fstream>\n#include <iostream>\n#include <omp.h>\n#include <chrono>\n#include <cmath>\n#include <cstring>\n\n#define DT 0.002f\n#define DXY 20.0f\n#define HALF_LENGTH 1\n\n#define MIN(a, b) (a) < (b) ? (a) : (b)\n\nvoid usage(std::string programName) {\n  std::cout << \" Incorrect parameters \" << std::endl;\n  std::cout << \" Usage: \";\n  std::cout << programName << \" n1 n2 Iterations \" << std::endl\n            << std::endl;\n  std::cout << \" n1 n2      : Grid sizes for the stencil \" << std::endl;\n  std::cout << \" Iterations : No. of timesteps. \" << std::endl;\n}\n\nvoid initialize(float* ptr_prev, float* ptr_next, float* ptr_vel, size_t nRows,\n                size_t nCols) {\n  std::cout << \"Initializing ... \" << std::endl;\n\n  float wavelet[12] = {0.016387336, -0.041464937, -0.067372555, 0.386110067,\n                       0.812723635, 0.416998396,  0.076488599,  -0.059434419,\n                       0.023680172, 0.005611435,  0.001823209,  -0.000720549};\n\n  for (size_t i = 0; i < nRows; i++) {\n    size_t offset = i * nCols;\n\n    for (int k = 0; k < nCols; k++) {\n      ptr_prev[offset + k] = 0.0f;\n      ptr_next[offset + k] = 0.0f;\n      \n      ptr_vel[offset + k] = 2250000.0f;\n    }\n  }\n  \n  for (int s = 11; s >= 0; s--) {\n    for (size_t i = nRows / 2 - s; i < nRows / 2 + s; i++) {\n      size_t offset = i * nCols;\n      for (size_t k = nCols / 2 - s; k < nCols / 2 + s; k++) {\n        ptr_prev[offset + k] = wavelet[s];\n      }\n    }\n  }\n}\n\nbool within_epsilon(float* output, float* reference, const size_t dimx,\n                    const size_t dimy, const unsigned int radius,\n                    const float delta = 0.01f) {\n  FILE* fp = fopen(\"./error_diff.txt\", \"w\");\n  if (!fp) fp = stderr;\n\n  bool error = false;\n  \n  double norm2 = 0;\n\n  for (size_t iy = 0; iy < dimy; iy++) {\n    for (size_t ix = 0; ix < dimx; ix++) {\n      if (ix >= radius && ix < (dimx - radius) && iy >= radius &&\n          iy < (dimy - radius)) {\n        float difference = fabsf(*reference - *output);\n        norm2 += difference * difference;\n        if (difference > delta) {\n          error = true;\n          fprintf(fp, \" ERROR: (%zu,%zu)\\t%e instead of %e (|e|=%e)\\n\", ix, iy,\n                  *output, *reference, difference);\n        }\n      }\n\n      ++output;\n      ++reference;\n    }\n  }\n\n  if (fp != stderr) fclose(fp);\n  norm2 = sqrt(norm2);\n  if (error) printf(\"error (Euclidean norm): %.9e\\n\", norm2);\n  return error;\n}\n\nvoid iso_2dfd_iteration_cpu(float* next, float* prev, float* vel,\n                            const float dtDIVdxy, int nRows, int nCols,\n                            int nIterations) {\n  for (unsigned int k = 0; k < nIterations; k += 1) {\n    for (size_t i = 1; i < nRows - HALF_LENGTH; i += 1) {\n      for (size_t j = 1; j < nCols - HALF_LENGTH; j += 1) {\n        \n        size_t gid = j + (i * nCols);\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n\n    \n    float* swap = next;\n    next = prev;\n    prev = swap;\n  }\n}\n\nvoid iso_2dfd_kernel(float* next, const float* prev, const float* vel, \n                     const float dtDIVdxy, const size_t nRows, const size_t nCols) {\n  #pragma omp target teams distribute parallel for simd collapse(2) thread_limit(256) \n  for (size_t gidRow = 0; gidRow < nRows ; gidRow++)\n    for (size_t gidCol = 0; gidCol < nCols ; gidCol++) {\n      size_t gid = (gidRow)*nCols + gidCol;\n      \n      \n      if ((gidCol >= HALF_LENGTH && gidCol < nCols - HALF_LENGTH) &&\n          (gidRow >= HALF_LENGTH && gidRow < nRows - HALF_LENGTH)) {\n        \n        \n        \n        \n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n  }\n}\n\nint main(int argc, char* argv[]) {\n  \n  float* prev_base;\n  float* next_base;\n  float* next_cpu;\n  \n  float* vel_base;\n\n  bool error = false;\n\n  size_t nRows, nCols;\n  unsigned int nIterations;\n\n  \n  try {\n    nRows = std::stoi(argv[1]);\n    nCols = std::stoi(argv[2]);\n    nIterations = std::stoi(argv[3]);\n  }\n\n  catch (...) {\n    usage(argv[0]);\n    return 1;\n  }\n\n  \n  size_t nsize = nRows * nCols;\n\n  \n  prev_base = new float[nsize];\n  next_base = new float[nsize];\n  next_cpu = new float[nsize];\n  vel_base = new float[nsize];\n\n  \n  \n  float dtDIVdxy = (DT * DT) / (DXY * DXY);\n\n  \n  initialize(prev_base, next_base, vel_base, nRows, nCols);\n\n  std::cout << \"Grid Sizes: \" << nRows << \" \" << nCols << std::endl;\n  std::cout << \"Iterations: \" << nIterations << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Computing wavefield in device ..\" << std::endl;\n\n  #pragma omp target data map(next_base[0:nsize], prev_base[0:nsize]) \\\n                          map(to: vel_base[0:nsize])\n  {\n    auto kstart = std::chrono::steady_clock::now();\n  \n    \n    for (unsigned int k = 0; k < nIterations; k += 1) {\n      \n      \n      iso_2dfd_kernel((k % 2) ? prev_base : next_base,\n                      (k % 2) ? next_base : prev_base,\n                      vel_base, dtDIVdxy, nRows, nCols);\n    }  \n  \n    auto kend = std::chrono::steady_clock::now();\n    auto ktime = std::chrono::duration_cast<std::chrono::nanoseconds>(kend - kstart).count();\n    std::cout << \"Total kernel execution time \" << ktime * 1e-6f << \" (ms)\\n\";\n    std::cout << \"Average kernel execution time \" << (ktime * 1e-3f) / nIterations << \" (us)\\n\";\n  }\n\n  \n  std::ofstream outFile;\n  outFile.open(\"wavefield_snapshot.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_base), nsize * sizeof(float));\n  outFile.close();\n\n  \n  \n  std::cout << \"Computing wavefield in CPU ..\" << std::endl;\n  \n  initialize(prev_base, next_cpu, vel_base, nRows, nCols);\n\n  \n  \n  auto start = std::chrono::steady_clock::now();\n  iso_2dfd_iteration_cpu(next_cpu, prev_base, vel_base, dtDIVdxy, nRows, nCols,\n                         nIterations);\n\n  \n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start)\n                  .count();\n  std::cout << \"CPU time: \" << time << \" ms\" << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Check difference between final wavefields computed in device and host\"\n            << std::endl;\n  error = within_epsilon(next_base, next_cpu, nRows, nCols, HALF_LENGTH, 0.1f);\n  std::cout << (error ? \"FAIL\" : \"PASS\") << std::endl;\n\n  \n  outFile.open(\"wavefield_snapshot_cpu.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_cpu), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Final wavefields (from device and CPU) written to disk\"\n            << std::endl;\n  std::cout << \"Finished.  \" << std::endl;\n\n  \n  delete[] prev_base;\n  delete[] next_base;\n  delete[] vel_base;\n\n  return error ? 1 : 0;\n}\n"
+      },
+      "target_files_expected": [
+        "iso2dfd.cpp"
+      ],
+      "target_files_extracted": [
+        "iso2dfd.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 14.692,
+          "prompt_tokens": 2874,
+          "completion_tokens": 3011,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-iso2dfd-omp",
+      "target_spec": "hecbench-iso2dfd-omp_target",
+      "kernel": "iso2dfd",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 787946222,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "2048",
+        "2048",
+        "10"
+      ],
+      "timestamp": "2026-04-22T06:45:55Z",
+      "prompt_tokens": 2874,
+      "completion_tokens": 5681,
+      "llm_response_time_seconds": 35.554,
+      "build_status": "pass",
+      "build_time_seconds": 0.854,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.211,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nTotal kernel execution time 2.09708 (ms)\nAverage kernel execution time 209.708 (us)\nComputing wavefield in CPU ..\nInitializing ... \nCPU time: 16 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "total_kernel_time": {
+          "value": 2.09708,
+          "unit": "ms"
+        },
+        "avg_kernel_time": {
+          "value": 209.708,
+          "unit": "us"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.211,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "iso2dfd.cpp": "#include <fstream>\n#include <iostream>\n#include <omp.h>\n#include <chrono>\n#include <cmath>\n#include <cstring>\n\n#define DT 0.002f\n#define DXY 20.0f\n#define HALF_LENGTH 1\n\n#define MIN(a, b) (a) < (b) ? (a) : (b)\n\nvoid usage(std::string programName) {\n  std::cout << \" Incorrect parameters \" << std::endl;\n  std::cout << \" Usage: \";\n  std::cout << programName << \" n1 n2 Iterations \" << std::endl\n            << std::endl;\n  std::cout << \" n1 n2      : Grid sizes for the stencil \" << std::endl;\n  std::cout << \" Iterations : No. of timesteps. \" << std::endl;\n}\n\nvoid initialize(float* ptr_prev, float* ptr_next, float* ptr_vel, size_t nRows,\n                size_t nCols) {\n  std::cout << \"Initializing ... \" << std::endl;\n\n  float wavelet[12] = {0.016387336, -0.041464937, -0.067372555, 0.386110067,\n                       0.812723635, 0.416998396,  0.076488599,  -0.059434419,\n                       0.023680172, 0.005611435,  0.001823209,  -0.000720549};\n\n  for (size_t i = 0; i < nRows; i++) {\n    size_t offset = i * nCols;\n\n    for (int k = 0; k < nCols; k++) {\n      ptr_prev[offset + k] = 0.0f;\n      ptr_next[offset + k] = 0.0f;\n      \n      ptr_vel[offset + k] = 2250000.0f;\n    }\n  }\n  \n  for (int s = 11; s >= 0; s--) {\n    for (size_t i = nRows / 2 - s; i < nRows / 2 + s; i++) {\n      size_t offset = i * nCols;\n      for (size_t k = nCols / 2 - s; k < nCols / 2 + s; k++) {\n        ptr_prev[offset + k] = wavelet[s];\n      }\n    }\n  }\n}\n\nbool within_epsilon(float* output, float* reference, const size_t dimx,\n                    const size_t dimy, const unsigned int radius,\n                    const float delta = 0.01f) {\n  FILE* fp = fopen(\"./error_diff.txt\", \"w\");\n  if (!fp) fp = stderr;\n\n  bool error = false;\n  \n  double norm2 = 0;\n\n  for (size_t iy = 0; iy < dimy; iy++) {\n    for (size_t ix = 0; ix < dimx; ix++) {\n      if (ix >= radius && ix < (dimx - radius) && iy >= radius &&\n          iy < (dimy - radius)) {\n        float difference = fabsf(*reference - *output);\n        norm2 += difference * difference;\n        if (difference > delta) {\n          error = true;\n          fprintf(fp, \" ERROR: (%zu,%zu)\\t%e instead of %e (|e|=%e)\\n\", ix, iy,\n                  *output, *reference, difference);\n        }\n      }\n\n      ++output;\n      ++reference;\n    }\n  }\n\n  if (fp != stderr) fclose(fp);\n  norm2 = sqrt(norm2);\n  if (error) printf(\"error (Euclidean norm): %.9e\\n\", norm2);\n  return error;\n}\n\nvoid iso_2dfd_iteration_cpu(float* next, float* prev, float* vel,\n                            const float dtDIVdxy, int nRows, int nCols,\n                            int nIterations) {\n  for (unsigned int k = 0; k < nIterations; k += 1) {\n    for (size_t i = 1; i < nRows - HALF_LENGTH; i += 1) {\n      for (size_t j = 1; j < nCols - HALF_LENGTH; j += 1) {\n        \n        size_t gid = j + (i * nCols);\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n\n    \n    float* swap = next;\n    next = prev;\n    prev = swap;\n  }\n}\n\nvoid iso_2dfd_kernel(float* next, const float* prev, const float* vel, \n                     const float dtDIVdxy, const size_t nRows, const size_t nCols) {\n  #pragma omp target teams distribute parallel for simd collapse(2) thread_limit(256) \n  for (size_t gidRow = 0; gidRow < nRows ; gidRow++)\n    for (size_t gidCol = 0; gidCol < nCols ; gidCol++) {\n      size_t gid = (gidRow)*nCols + gidCol;\n      \n      \n      if ((gidCol >= HALF_LENGTH && gidCol < nCols - HALF_LENGTH) &&\n          (gidRow >= HALF_LENGTH && gidRow < nRows - HALF_LENGTH)) {\n        \n        \n        \n        \n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n  }\n}\n\nint main(int argc, char* argv[]) {\n  \n  float* prev_base;\n  float* next_base;\n  float* next_cpu;\n  \n  float* vel_base;\n\n  bool error = false;\n\n  size_t nRows, nCols;\n  unsigned int nIterations;\n\n  \n  try {\n    nRows = std::stoi(argv[1]);\n    nCols = std::stoi(argv[2]);\n    nIterations = std::stoi(argv[3]);\n  }\n\n  catch (...) {\n    usage(argv[0]);\n    return 1;\n  }\n\n  \n  size_t nsize = nRows * nCols;\n\n  \n  prev_base = new float[nsize];\n  next_base = new float[nsize];\n  next_cpu = new float[nsize];\n  vel_base = new float[nsize];\n\n  \n  \n  float dtDIVdxy = (DT * DT) / (DXY * DXY);\n\n  \n  initialize(prev_base, next_base, vel_base, nRows, nCols);\n\n  std::cout << \"Grid Sizes: \" << nRows << \" \" << nCols << std::endl;\n  std::cout << \"Iterations: \" << nIterations << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Computing wavefield in device ..\" << std::endl;\n\n  #pragma omp target data map(next_base[0:nsize], prev_base[0:nsize]) \\\n                          map(to: vel_base[0:nsize])\n  {\n    auto kstart = std::chrono::steady_clock::now();\n  \n    \n    for (unsigned int k = 0; k < nIterations; k += 1) {\n      \n      \n      iso_2dfd_kernel((k % 2) ? prev_base : next_base,\n                      (k % 2) ? next_base : prev_base,\n                      vel_base, dtDIVdxy, nRows, nCols);\n    }  \n  \n    auto kend = std::chrono::steady_clock::now();\n    auto ktime = std::chrono::duration_cast<std::chrono::nanoseconds>(kend - kstart).count();\n    std::cout << \"Total kernel execution time \" << ktime * 1e-6f << \" (ms)\\n\";\n    std::cout << \"Average kernel execution time \" << (ktime * 1e-3f) / nIterations << \" (us)\\n\";\n  }\n\n  \n  std::ofstream outFile;\n  outFile.open(\"wavefield_snapshot.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_base), nsize * sizeof(float));\n  outFile.close();\n\n  \n  \n  std::cout << \"Computing wavefield in CPU ..\" << std::endl;\n  \n  initialize(prev_base, next_cpu, vel_base, nRows, nCols);\n\n  \n  \n  auto start = std::chrono::steady_clock::now();\n  iso_2dfd_iteration_cpu(next_cpu, prev_base, vel_base, dtDIVdxy, nRows, nCols,\n                         nIterations);\n\n  \n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start)\n                  .count();\n  std::cout << \"CPU time: \" << time << \" ms\" << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Check difference between final wavefields computed in device and host\"\n            << std::endl;\n  error = within_epsilon(next_base, next_cpu, nRows, nCols, HALF_LENGTH, 0.1f);\n  std::cout << (error ? \"FAIL\" : \"PASS\") << std::endl;\n\n  \n  outFile.open(\"wavefield_snapshot_cpu.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_cpu), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Final wavefields (from device and CPU) written to disk\"\n            << std::endl;\n  std::cout << \"Finished.  \" << std::endl;\n\n  \n  delete[] prev_base;\n  delete[] next_base;\n  delete[] vel_base;\n\n  return error ? 1 : 0;\n}\n"
+      },
+      "target_files_expected": [
+        "iso2dfd.cpp"
+      ],
+      "target_files_extracted": [
+        "iso2dfd.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 35.554,
+          "prompt_tokens": 2874,
+          "completion_tokens": 5681,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-heat2d-omp",
+      "target_spec": "hecbench-heat2d-omp_target",
+      "kernel": "heat2d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1626451426,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "4096",
+        "4096",
+        "10"
+      ],
+      "timestamp": "2026-04-22T06:46:32Z",
+      "prompt_tokens": 1781,
+      "completion_tokens": 2193,
+      "llm_response_time_seconds": 10.238,
+      "build_status": "pass",
+      "build_time_seconds": 0.351,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.318,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    427.2 usec/iter, BW = 314.180 GB/s, P = 235.635 Gflop/s\nMismatch at 0 cpu=0.081016 gpu=0.000000\nFAIL\n",
+      "verify_status": "fail",
+      "verify_strategy": "stdout_pattern",
+      "overall_status": "VERIFY_FAIL",
+      "error_message": "Verify failed: Pattern '(?:PASS)' NOT found in stdout. ",
+      "metrics": {
+        "throughput": {
+          "value": 314.18,
+          "unit": "GB/s"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.318,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <assert.h>\n#include <sys/time.h>\n#include <math.h>\n#include <utility>\n#include <omp.h>\n\n#define NTX 16\n#define NTY 16\n\ndouble stop_watch(double t0)\n{\n  double time;\n  struct timeval t;\n  gettimeofday(&t, NULL);\n  time = t.tv_sec * 1e6 + t.tv_usec;\n  return time-t0;\n}\n\nvoid usage(char *argv[]) {\n  fprintf(stderr, \" Usage: %s LX LY NITER\\n\", argv[0]);\n  return;\n}\n\nvoid reference(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp parallel for collapse(2)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y*Lx + x;\n      int v0p = y*Lx + (x + 1)%Lx;\n      int v0m = y*Lx + (Lx + x - 1)%Lx;\n      int vp0 = ((y+1)%Ly)*Lx + x;\n      int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n      out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nvoid dev_lapl_iter(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp target teams distribute parallel for collapse(2) thread_limit(256)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y*Lx + x;\n      int v0p = y*Lx + (x + 1)%Lx;\n      int v0m = y*Lx + (Lx + x - 1)%Lx;\n      int vp0 = ((y+1)%Ly)*Lx + x;\n      int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n      out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nint main(int argc, char *argv[]) {\n  \n  if(argc != 4) {\n    usage(argv);\n    exit(1);\n  }\n  \n\n  int Lx = atoi(argv[1]);\n  int Ly = atoi(argv[2]);\n  if (Lx % NTX != 0 ||  Ly % NTY != 0) {\n    printf(\"Array length LX and LY must be a multiple of block size %d and %d, respectively\\n\",\n          NTX, NTY);\n    exit(1);\n  }\n  \n  int niter = atoi(argv[3]);\n  assert(niter >= 1);\n\n  \n  const float sigma = 0.01;\n  const float xdelta = sigma / (1.0+4.0*sigma);\n  const float xnorm = 1.0/(1.0+4.0*sigma);\n\n  printf(\" Ly,Lx = %d,%d\\n\", Ly, Lx);\n  printf(\" niter = %d\\n\", niter);\n\n  \n  srand(123);\n  float *buffer = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_out = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_in  = (float*) malloc(sizeof(float)*Lx*Ly);\n\n  int i, j, x, y;\n  for (i = 0; i < Lx; i += 16) {\n    x = rand() % Lx;\n    for (j = 0; j < Ly; j++)\n       buffer[x + j*Lx] = 1.f;\n  }\n  for (i = 0; i < Ly; i += 16) {\n    y = rand() % Ly;\n    for (j = 0; j < Lx; j++)\n       buffer[j + y*Lx] = 1.f;\n  }\n  memcpy(h_in, buffer, sizeof(float)*Lx*Ly);\n\n  for(i=0; i<niter; i++) {\n    reference (h_out, h_in, xdelta, xnorm, Lx, Ly);\n    std::swap(h_out, h_in);\n  }\n\n  float *d_out = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *d_in  = (float*) malloc(sizeof(float)*Lx*Ly);\n  memcpy(d_in, buffer, sizeof(float)*Lx*Ly);\n\n  double t0;\n  \n\n  #pragma omp target data map(to: d_in[0:Lx*Ly]) map(alloc: d_out[0:Lx*Ly])\n  {\n    t0 = stop_watch(0);\n    for(i=0; i<niter; i++) {\n      dev_lapl_iter(d_out, d_in, xdelta, xnorm, Lx, Ly);\n      std::swap(d_out, d_in);\n    }\n    t0 = stop_watch(t0)/(double)niter;\n  }\n\n  printf(\"Device: iters = %8d, (Lx,Ly) = %6d, %6d, t = %8.1f usec/iter, BW = %6.3f GB/s, P = %6.3f Gflop/s\\n\",\n  \t niter, Lx, Ly, t0,\n  \t Lx*Ly*sizeof(float)*2.0/(t0*1.0e3),\n  \t (Lx*Ly*6.0)/(t0*1.0e3));\n\n  \n  bool ok = true;\n  for (i = 0; i < Lx*Ly; i++) {\n    \n    if ( fabs(h_in[i] - d_in[i]) > 1e-2 ) {\n      printf(\"Mismatch at %d cpu=%f gpu=%f\\n\", i, h_in[i], d_in[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(buffer);\n  free(h_out);\n  free(h_in);\n  free(d_in);\n  free(d_out);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 10.238,
+          "prompt_tokens": 1781,
+          "completion_tokens": 2193,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "fail",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-heat2d-omp",
+      "target_spec": "hecbench-heat2d-omp_target",
+      "kernel": "heat2d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 2032566065,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "4096",
+        "4096",
+        "10"
+      ],
+      "timestamp": "2026-04-22T06:46:42Z",
+      "prompt_tokens": 1781,
+      "completion_tokens": 2183,
+      "llm_response_time_seconds": 9.513,
+      "build_status": "pass",
+      "build_time_seconds": 0.35,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.328,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    428.6 usec/iter, BW = 313.154 GB/s, P = 234.865 Gflop/s\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "throughput": {
+          "value": 313.154,
+          "unit": "GB/s"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.328,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <assert.h>\n#include <sys/time.h>\n#include <math.h>\n#include <utility>\n#include <omp.h>\n\n#define NTX 16\n#define NTY 16\n\ndouble stop_watch(double t0)\n{\n  double time;\n  struct timeval t;\n  gettimeofday(&t, NULL);\n  time = t.tv_sec * 1e6 + t.tv_usec;\n  return time-t0;\n}\n\nvoid usage(char *argv[]) {\n  fprintf(stderr, \" Usage: %s LX LY NITER\\n\", argv[0]);\n  return;\n}\n\nvoid reference(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp parallel for collapse(2)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y*Lx + x;\n      int v0p = y*Lx + (x + 1)%Lx;\n      int v0m = y*Lx + (Lx + x - 1)%Lx;\n      int vp0 = ((y+1)%Ly)*Lx + x;\n      int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n      out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nvoid dev_lapl_iter(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp target teams distribute parallel for collapse(2) thread_limit(256)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y*Lx + x;\n      int v0p = y*Lx + (x + 1)%Lx;\n      int v0m = y*Lx + (Lx + x - 1)%Lx;\n      int vp0 = ((y+1)%Ly)*Lx + x;\n      int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n      out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nint main(int argc, char *argv[]) {\n  \n  if(argc != 4) {\n    usage(argv);\n    exit(1);\n  }\n  \n\n  int Lx = atoi(argv[1]);\n  int Ly = atoi(argv[2]);\n  if (Lx % NTX != 0 ||  Ly % NTY != 0) {\n    printf(\"Array length LX and LY must be a multiple of block size %d and %d, respectively\\n\",\n          NTX, NTY);\n    exit(1);\n  }\n  \n  int niter = atoi(argv[3]);\n  assert(niter >= 1);\n\n  \n  const float sigma = 0.01;\n  const float xdelta = sigma / (1.0+4.0*sigma);\n  const float xnorm = 1.0/(1.0+4.0*sigma);\n\n  printf(\" Ly,Lx = %d,%d\\n\", Ly, Lx);\n  printf(\" niter = %d\\n\", niter);\n\n  \n  srand(123);\n  float *buffer = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_out = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_in  = (float*) malloc(sizeof(float)*Lx*Ly);\n\n  int i, j, x, y;\n  for (i = 0; i < Lx; i += 16) {\n    x = rand() % Lx;\n    for (j = 0; j < Ly; j++)\n       buffer[x + j*Lx] = 1.f;\n  }\n  for (i = 0; i < Ly; i += 16) {\n    y = rand() % Ly;\n    for (j = 0; j < Lx; j++)\n       buffer[j + y*Lx] = 1.f;\n  }\n  memcpy(h_in, buffer, sizeof(float)*Lx*Ly);\n\n  for(i=0; i<niter; i++) {\n    reference (h_out, h_in, xdelta, xnorm, Lx, Ly);\n    std::swap(h_out, h_in);\n  }\n\n  float *d_out = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *d_in  = (float*) malloc(sizeof(float)*Lx*Ly);\n  memcpy(d_in, buffer, sizeof(float)*Lx*Ly);\n\n  double t0;\n  \n\n  #pragma omp target data map(tofrom: d_in[0:Lx*Ly]) map(alloc: d_out[0:Lx*Ly])\n  {\n    t0 = stop_watch(0);\n    for(i=0; i<niter; i++) {\n      dev_lapl_iter(d_out, d_in, xdelta, xnorm, Lx, Ly);\n      std::swap(d_out, d_in);\n    }\n    t0 = stop_watch(t0)/(double)niter;\n  }\n\n  printf(\"Device: iters = %8d, (Lx,Ly) = %6d, %6d, t = %8.1f usec/iter, BW = %6.3f GB/s, P = %6.3f Gflop/s\\n\",\n  \t niter, Lx, Ly, t0,\n  \t Lx*Ly*sizeof(float)*2.0/(t0*1.0e3),\n  \t (Lx*Ly*6.0)/(t0*1.0e3));\n\n  \n  bool ok = true;\n  for (i = 0; i < Lx*Ly; i++) {\n    \n    if ( fabs(h_in[i] - d_in[i]) > 1e-2 ) {\n      printf(\"Mismatch at %d cpu=%f gpu=%f\\n\", i, h_in[i], d_in[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(buffer);\n  free(h_out);\n  free(h_in);\n  free(d_in);\n  free(d_out);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 9.513,
+          "prompt_tokens": 1781,
+          "completion_tokens": 2183,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-heat2d-omp",
+      "target_spec": "hecbench-heat2d-omp_target",
+      "kernel": "heat2d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 440903261,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-22T06:46:53Z",
+      "prompt_tokens": 1781,
+      "completion_tokens": 2217,
+      "llm_response_time_seconds": 17.501,
+      "build_status": "fail",
+      "build_time_seconds": 0.122,
+      "build_error_snippet": "\"main.cpp\", line 119: error: a for statement must follow this OMP pragma\n        #pragma omp target teams distribute parallel for collapse(2)\n                                                                    ^\n\n\"main.cpp\", line 126: error: invalid text in pragma\n    #pragma omp target update (d_in[0:Lx*Ly])\n                              ^\n\n\"main.cpp\", line 126: error: extra text after expected end of preprocessing directive\n    #pragma omp target update (d_in[0:Lx*Ly])\n                               ^\n\n3 errors detected in the compilation of \"main.cpp\".\nmake: *** [Makefile.nvc:57: main.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: preprocessing directive\n    #pragma omp target update (d_in[0:Lx*Ly])\n                               ^\n\n3 errors detected in the compilation of \"main.cpp\".\nmake: *** [Makefile.nvc:57: main.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <assert.h>\n#include <sys/time.h>\n#include <math.h>\n#include <utility>\n#include <omp.h>\n\n#define NTX 16\n#define NTY 16\n\ndouble stop_watch(double t0)\n{\n  double time;\n  struct timeval t;\n  gettimeofday(&t, NULL);\n  time = t.tv_sec * 1e6 + t.tv_usec;\n  return time-t0;\n}\n\nvoid usage(char *argv[]) {\n  fprintf(stderr, \" Usage: %s LX LY NITER\\n\", argv[0]);\n  return;\n}\n\nvoid reference(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp parallel for collapse(2)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y*Lx + x;\n      int v0p = y*Lx + (x + 1)%Lx;\n      int v0m = y*Lx + (Lx + x - 1)%Lx;\n      int vp0 = ((y+1)%Ly)*Lx + x;\n      int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n      out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nvoid dev_lapl_iter(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp target teams distribute parallel for collapse(2)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y*Lx + x;\n      int v0p = y*Lx + (x + 1)%Lx;\n      int v0m = y*Lx + (Lx + x - 1)%Lx;\n      int vp0 = ((y+1)%Ly)*Lx + x;\n      int vm0 = ((Ly+y-1)%Ly)*Lx + x;\n      out[v00] = norm*in[v00] + delta*(in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nint main(int argc, char *argv[]) {\n  \n  if(argc != 4) {\n    usage(argv);\n    exit(1);\n  }\n  \n\n  int Lx = atoi(argv[1]);\n  int Ly = atoi(argv[2]);\n  if (Lx % NTX != 0 ||  Ly % NTY != 0) {\n    printf(\"Array length LX and LY must be a multiple of block size %d and %d, respectively\\n\",\n          NTX, NTY);\n    exit(1);\n  }\n  \n  int niter = atoi(argv[3]);\n  assert(niter >= 1);\n\n  \n  const float sigma = 0.01;\n  const float xdelta = sigma / (1.0+4.0*sigma);\n  const float xnorm = 1.0/(1.0+4.0*sigma);\n\n  printf(\" Ly,Lx = %d,%d\\n\", Ly, Lx);\n  printf(\" niter = %d\\n\", niter);\n\n  \n  srand(123);\n  float *buffer = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_out = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *h_in  = (float*) malloc(sizeof(float)*Lx*Ly);\n\n  int i, j, x, y;\n  for (i = 0; i < Lx; i += 16) {\n    x = rand() % Lx;\n    for (j = 0; j < Ly; j++)\n       buffer[x + j*Lx] = 1.f;\n  }\n  for (i = 0; i < Ly; i += 16) {\n    y = rand() % Ly;\n    for (j = 0; j < Lx; j++)\n       buffer[j + y*Lx] = 1.f;\n  }\n  memcpy(h_in, buffer, sizeof(float)*Lx*Ly);\n\n  for(i=0; i<niter; i++) {\n    reference (h_out, h_in, xdelta, xnorm, Lx, Ly);\n    std::swap(h_out, h_in);\n  }\n\n  float *d_out = (float*) malloc(sizeof(float)*Lx*Ly);\n  float *d_in  = (float*) malloc(sizeof(float)*Lx*Ly);\n  memcpy(d_in, buffer, sizeof(float)*Lx*Ly);\n\n  double t0;\n  \n\n  #pragma omp target data map (to: d_in[0:Lx*Ly]) map(alloc: d_out[0:Lx*Ly])\n  {\n    t0 = stop_watch(0);\n    for(i=0; i<niter; i++) {\n      #pragma omp target teams distribute parallel for collapse(2)\n      dev_lapl_iter(d_out, d_in, xdelta, xnorm, Lx, Ly);\n      std::swap(d_out, d_in);\n    }\n    t0 = stop_watch(t0)/(double)niter;\n  }\n\n  #pragma omp target update (d_in[0:Lx*Ly])\n\n  printf(\"Device: iters = %8d, (Lx,Ly) = %6d, %6d, t = %8.1f usec/iter, BW = %6.3f GB/s, P = %6.3f Gflop/s\\n\",\n  \t niter, Lx, Ly, t0,\n  \t Lx*Ly*sizeof(float)*2.0/(t0*1.0e3),\n  \t (Lx*Ly*6.0)/(t0*1.0e3));\n\n  \n  bool ok = true;\n  for (i = 0; i < Lx*Ly; i++) {\n    \n    if ( fabs(h_in[i] - d_in[i]) > 1e-2 ) {\n      printf(\"Mismatch at %d cpu=%f gpu=%f\\n\", i, h_in[i], d_in[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(buffer);\n  free(h_out);\n  free(h_in);\n  free(d_in);\n  free(d_out);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 17.501,
+          "prompt_tokens": 1781,
+          "completion_tokens": 2217,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "\"main.cpp\", line 119: error: a for statement must follow this OMP pragma\n        #pragma omp target teams distribute parallel for collapse(2)\n                                                                    ^\n\n\"main.cpp\", line 126: error: invalid text in pragma\n    #pragma omp target update (d_in[0:Lx*Ly])\n                              ^\n\n\"main.cpp\", line 126: error: extra text after expected end of preprocessing directive\n    #pragma omp target update (d_in[0:Lx*Ly])\n                               ^\n\n3 errors detected in the compilation of \"main.cpp\".\nmake: *** [Makefile.nvc:57: main.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-stencil1d-omp",
+      "target_spec": "hecbench-stencil1d-omp_target",
+      "kernel": "stencil1d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 800123530,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-22T06:47:10Z",
+      "prompt_tokens": 1068,
+      "completion_tokens": 3936,
+      "llm_response_time_seconds": 25.146,
+      "build_status": "fail",
+      "build_time_seconds": 0.13,
+      "build_error_snippet": "NVC++-S-0155-OMP for loop increment not in canonical form\n  (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0000-Internal compiler error. Illegal compare operand  in collapsed loop:       12  (stencil_1d.cpp: 32)\nNVC++/x86-64 Linux 24.3-0: compilation completed with severe errors\nmake: *** [Makefile.nvc:57: stencil_1d.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: error. Illegal compare operand  in collapsed loop:       12  (stencil_1d.cpp: 32)\nNVC++/x86-64 Linux 24.3-0: compilation completed with severe errors\nmake: *** [Makefile.nvc:57: stencil_1d.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "stencil_1d.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <chrono>\n#include <omp.h>\n\n#define RADIUS 7\n#define BLOCK_SIZE 256\n\nint main(int argc, char* argv[]) {\n  if (argc != 3) {\n    printf(\"Usage: %s <length> <repeat>\\n\", argv[0]);\n    printf(\"length is a multiple of %d\\n\", BLOCK_SIZE);\n    return 1;\n  }\n  const int length = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  int size = length;\n  int pad_size = (length + RADIUS);\n\n  int* a = (int *)malloc(pad_size*sizeof(int)); \n  int* b = (int *)malloc(size*sizeof(int));\n\n  for (int i = 0; i < length+RADIUS; i++) a[i] = i;\n\n  auto start = std::chrono::steady_clock::now();\n\n  for (int i = 0; i < repeat; i++) {\n    #pragma omp target map(to: a[0:pad_size]) map(from: b[0:size])\n    {\n      #pragma omp teams distribute parallel for\n      for (int i = 0; i < length; i = i + BLOCK_SIZE) {\n        int temp[BLOCK_SIZE + 2 * RADIUS];\n        #pragma omp parallel for schedule(static,1)\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n          int gindex = i+j;\n          temp[j+RADIUS] = a[gindex]; \n          if (j < RADIUS) {\n            temp[j] = (gindex < RADIUS) ? 0 : a[gindex - RADIUS];\n            temp[j + RADIUS + BLOCK_SIZE] = a[gindex + BLOCK_SIZE];\n          }\n        }\n\n        #pragma omp parallel for schedule(static,1)\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n          int result = 0;\n          for (int offset = -RADIUS ; offset <= RADIUS ; offset++)\n            result += temp[j+RADIUS+offset];\n          b[i+j] = result; \n        }\n      }\n    }\n  }\n\n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  printf(\"Average kernel execution time: %f (s)\\n\", (time * 1e-9f) / repeat);\n\n  bool ok = true;\n  for (int i = 0; i < 2*RADIUS; i++) {\n    int s = 0;\n    for (int j = i; j <= i+2*RADIUS; j++)\n      s += j < RADIUS ? 0 : (a[j] - RADIUS);\n    if (s != b[i]) {\n      printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b[i]);\n      ok = false;\n      break;\n    }\n  }\n\n  for (int i = 2*RADIUS; i < length; i++) {\n    int s = 0;\n    for (int j = i-RADIUS; j <= i+RADIUS; j++)\n      s += a[j];\n    if (s != b[i]) {\n      printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(a);\n  free(b); \n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "stencil_1d.cpp"
+      ],
+      "target_files_extracted": [
+        "stencil_1d.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 25.146,
+          "prompt_tokens": 1068,
+          "completion_tokens": 3936,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "NVC++-S-0155-OMP for loop increment not in canonical form\n  (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0000-Internal compiler error. Illegal compare operand  in collapsed loop:       12  (stencil_1d.cpp: 32)\nNVC++/x86-64 Linux 24.3-0: compilation completed with severe errors\nmake: *** [Makefile.nvc:57: stencil_1d.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-stencil1d-omp",
+      "target_spec": "hecbench-stencil1d-omp_target",
+      "kernel": "stencil1d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1713836618,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-22T06:47:36Z",
+      "prompt_tokens": 1068,
+      "completion_tokens": 2035,
+      "llm_response_time_seconds": 14.083,
+      "build_status": "fail",
+      "build_time_seconds": 0.129,
+      "build_error_snippet": "NVC++-S-0155-OMP for loop increment not in canonical form\n  (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++/x86-64 Linux 24.3-0: compilation completed with severe errors\nmake: *** [Makefile.nvc:57: stencil_1d.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: il_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++/x86-64 Linux 24.3-0: compilation completed with severe errors\nmake: *** [Makefile.nvc:57: stencil_1d.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "stencil_1d.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <chrono>\n#include <omp.h>\n\n#define RADIUS 7\n#define BLOCK_SIZE 256\n\nint main(int argc, char* argv[]) {\n  if (argc != 3) {\n    printf(\"Usage: %s <length> <repeat>\\n\", argv[0]);\n    printf(\"length is a multiple of %d\\n\", BLOCK_SIZE);\n    return 1;\n  }\n  const int length = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  int size = length;\n  int pad_size = (length + RADIUS);\n\n  \n  int* a = (int *)malloc(pad_size*sizeof(int)); \n  int* b = (int *)malloc(size*sizeof(int));\n\n  for (int i = 0; i < length+RADIUS; i++) a[i] = i;\n\n  auto start = std::chrono::steady_clock::now();\n\n  #pragma omp target data map(to: a[0:pad_size]) map(from: b[0:size])\n  for (int i = 0; i < repeat; i++) {\n    #pragma omp target teams distribute\n    for (int i = 0; i < length; i = i + BLOCK_SIZE) {\n      int temp[BLOCK_SIZE + 2 * RADIUS];\n      #pragma omp parallel for schedule(static,1)\n      for (int j = 0; j < BLOCK_SIZE; j++) {\n        int gindex = i+j;\n        temp[j+RADIUS] = a[gindex]; \n        if (j < RADIUS) {\n          temp[j] = (gindex < RADIUS) ? 0 : a[gindex - RADIUS];\n          temp[j + RADIUS + BLOCK_SIZE] = a[gindex + BLOCK_SIZE];\n        }\n      }\n\n      #pragma omp parallel for schedule(static,1)\n      for (int j = 0; j < BLOCK_SIZE; j++) {\n        int result = 0;\n        for (int offset = -RADIUS ; offset <= RADIUS ; offset++)\n          result += temp[j+RADIUS+offset];\n        b[i+j] = result; \n      }\n    }\n  }\n\n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  printf(\"Average kernel execution time: %f (s)\\n\", (time * 1e-9f) / repeat);\n\n  \n  bool ok = true;\n  for (int i = 0; i < 2*RADIUS; i++) {\n    int s = 0;\n    for (int j = i; j <= i+2*RADIUS; j++)\n      s += j < RADIUS ? 0 : (a[j] - RADIUS);\n    if (s != b[i]) {\n      printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b[i]);\n      ok = false;\n      break;\n    }\n  }\n\n  for (int i = 2*RADIUS; i < length; i++) {\n    int s = 0;\n    for (int j = i-RADIUS; j <= i+RADIUS; j++)\n      s += a[j];\n    if (s != b[i]) {\n      printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  \n  free(a);\n  free(b); \n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "stencil_1d.cpp"
+      ],
+      "target_files_extracted": [
+        "stencil_1d.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 14.083,
+          "prompt_tokens": 1068,
+          "completion_tokens": 2035,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "NVC++-S-0155-OMP for loop increment not in canonical form\n  (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++/x86-64 Linux 24.3-0: compilation completed with severe errors\nmake: *** [Makefile.nvc:57: stencil_1d.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-stencil1d-omp",
+      "target_spec": "hecbench-stencil1d-omp_target",
+      "kernel": "stencil1d",
+      "model": "together-qwen-3.5-397b-a17b",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 847723485,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-22T06:47:50Z",
+      "prompt_tokens": 1068,
+      "completion_tokens": 5108,
+      "llm_response_time_seconds": 43.057,
+      "build_status": "fail",
+      "build_time_seconds": 0.129,
+      "build_error_snippet": "NVC++-S-0155-OMP for loop increment not in canonical form\n  (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++/x86-64 Linux 24.3-0: compilation completed with severe errors\nmake: *** [Makefile.nvc:57: stencil_1d.o] Error 2\n",
+      "run_status": null,
+      "run_time_seconds": null,
+      "run_exit_code": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "BUILD_FAIL",
+      "error_message": "Build failed: il_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++/x86-64 Linux 24.3-0: compilation completed with severe errors\nmake: *** [Makefile.nvc:57: stencil_1d.o] Error 2",
+      "metrics": {},
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "stencil_1d.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <chrono>\n#include <omp.h>\n\n#define RADIUS 7\n#define BLOCK_SIZE 256\n\nint main(int argc, char* argv[]) {\n  if (argc != 3) {\n    printf(\"Usage: %s <length> <repeat>\\n\", argv[0]);\n    printf(\"length is a multiple of %d\\n\", BLOCK_SIZE);\n    return 1;\n  }\n  const int length = atoi(argv[1]);\n  const int repeat = atoi(argv[2]);\n\n  int size = length;\n  int pad_size = (length + RADIUS);\n\n  int* a = (int *)malloc(pad_size*sizeof(int)); \n  int* b = (int *)malloc(size*sizeof(int));\n\n  for (int i = 0; i < length+RADIUS; i++) a[i] = i;\n\n  auto start = std::chrono::steady_clock::now();\n\n  #pragma omp target data map(to:a[0:pad_size],b[0:size])\n  {\n    for (int i = 0; i < repeat; i++) {\n      #pragma omp target teams distribute\n      for (int i = 0; i < length; i = i + BLOCK_SIZE) {\n        int temp[BLOCK_SIZE + 2 * RADIUS];\n        #pragma omp target parallel for schedule(static,1)\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n          int gindex = i+j;\n          temp[j+RADIUS] = a[gindex]; \n          if (j < RADIUS) {\n            temp[j] = (gindex < RADIUS) ? 0 : a[gindex - RADIUS];\n            temp[j + RADIUS + BLOCK_SIZE] = a[gindex + BLOCK_SIZE];\n          }\n        }\n\n        #pragma omp target parallel for schedule(static,1)\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n          int result = 0;\n          for (int offset = -RADIUS ; offset <= RADIUS ; offset++)\n            result += temp[j+RADIUS+offset];\n          b[i+j] = result; \n        }\n      }\n    }\n  }\n\n  auto end = std::chrono::steady_clock::now();\n  auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n  printf(\"Average kernel execution time: %f (s)\\n\", (time * 1e-9f) / repeat);\n\n  bool ok = true;\n  for (int i = 0; i < 2*RADIUS; i++) {\n    int s = 0;\n    for (int j = i; j <= i+2*RADIUS; j++)\n      s += j < RADIUS ? 0 : (a[j] - RADIUS);\n    if (s != b[i]) {\n      printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b[i]);\n      ok = false;\n      break;\n    }\n  }\n\n  for (int i = 2*RADIUS; i < length; i++) {\n    int s = 0;\n    for (int j = i-RADIUS; j <= i+RADIUS; j++)\n      s += a[j];\n    if (s != b[i]) {\n      printf(\"Error at %d: %d (host) != %d (device)\\n\", i, s, b[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(a);\n  free(b); \n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "stencil_1d.cpp"
+      ],
+      "target_files_extracted": [
+        "stencil_1d.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 43.057,
+          "prompt_tokens": 1068,
+          "completion_tokens": 5108,
+          "finish_reason": "stop",
+          "build_status": "fail",
+          "run_status": null,
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": "NVC++-S-0155-OMP for loop increment not in canonical form\n  (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++-S-0094-Illegal type conversion required (stencil_1d.cpp: 32)\nNVC++/x86-64 Linux 24.3-0: compilation completed with severe errors\nmake: *** [Makefile.nvc:57: stencil_1d.o] Error 2\n",
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    }
+  ]
+}

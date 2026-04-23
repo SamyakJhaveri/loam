@@ -288,7 +288,7 @@ Six primary translation directions are evaluated across three parallel APIs, cov
 \item OpenMP $\leftrightarrow$ OpenCL (2 directions)
 \end{itemize}
 
-Two additional directions involving OpenMP target offload (OMP-target) are evaluated within the HeCBench subset only: CUDA to OMP-target (8 pairs) and OMP-target to CUDA (10 pairs). These are treated as a case study rather than part of the primary evaluation matrix, because OMP-target requires the NVIDIA HPC compiler (\texttt{nvc}) and is available only for the 10 curated HeCBench kernels.
+Two additional directions involving OpenMP target offload (OMP-target) are evaluated within the HeCBench subset only: CUDA to OMP-target (8 pairs) and OMP-target to CUDA (10 pairs). These are treated as a case study rather than part of the primary evaluation matrix, because OMP-target requires the NVIDIA HPC compiler (\texttt{nvc}) and is available only for the 10 curated HeCBench kernels.\footnote{XSBench and RSBench each provide an \texttt{omp\_target} specification but are evaluated over the six standard CUDA/OpenMP/OpenCL directions only. HeCBench has no OpenCL implementations; \texttt{omp\_target} is promoted as its third API axis in place of OpenCL. XSBench and RSBench, which include OpenCL, follow the six-direction standard.}
 
 % src: paper_data.json > primary_campaign > total=710; L0 pairs = 710/5 = 142; verified 2026-04-05
 At L0 (no augmentation), this yields 142 translation task pairs per model across all five benchmark suites. CUDA to OpenMP serves as the primary evaluation direction, representing the most common real-world HPC translation need.
