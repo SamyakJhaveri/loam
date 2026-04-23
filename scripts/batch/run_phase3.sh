@@ -205,7 +205,7 @@ run_batch() {
     echo "============================================================"
 
     local CMD=(python3 scripts/evaluation/run_eval_batch.py
-        --suite "$SUITE" --direction "$DIR"
+        --direction "$DIR"
         --models "$MODEL"
         --augment-levels $AUGMENT_LEVELS
         --temperature $TEMPERATURE
@@ -214,8 +214,12 @@ run_batch() {
         --thinking on
         --resume -v
         --project-root "$PROJECT_ROOT")
-    [[ ${#TASK_LIST_ARGS[@]} -gt 0 ]] && CMD+=("${TASK_LIST_ARGS[@]}")
-    [[ ${#KERNEL_ARGS[@]} -gt 0 ]] && CMD+=(--kernels "${KERNEL_ARGS[@]}")
+    if [[ ${#TASK_LIST_ARGS[@]} -gt 0 ]]; then
+        CMD+=("${TASK_LIST_ARGS[@]}")
+    else
+        CMD+=(--suite "$SUITE")
+        [[ ${#KERNEL_ARGS[@]} -gt 0 ]] && CMD+=(--kernels "${KERNEL_ARGS[@]}")
+    fi
 
     set +e
     "${CMD[@]}"
@@ -268,18 +272,33 @@ if [[ ${#FAILED_BATCHES[@]} -gt 0 ]]; then
         read -r -a KERNEL_ARGS <<< "$KERNELS"
         echo "--- Retrying: $SUITE $DIR ---"
         set +e
-        RETRY=(python3 scripts/evaluation/run_eval_batch.py
-            --suite "$SUITE" --direction "$DIR"
-            --models "$MODEL"
-            --augment-levels $AUGMENT_LEVELS
-            --temperature $TEMPERATURE
-            --num-samples $NUM_SAMPLES
-            --max-retries $MAX_RETRIES
-            --thinking on
-            --resume -v
-            --project-root "$PROJECT_ROOT")
-        [[ ${#TASK_LIST_ARGS[@]} -gt 0 ]] && RETRY+=("${TASK_LIST_ARGS[@]}")
-        [[ ${#KERNEL_ARGS[@]} -gt 0 ]] && RETRY+=(--kernels "${KERNEL_ARGS[@]}")
+        if [[ ${#TASK_LIST_ARGS[@]} -gt 0 ]]; then
+            # Ablation phase: --task-list is mutually exclusive with --suite/--kernels
+            RETRY=(python3 scripts/evaluation/run_eval_batch.py
+                --direction "$DIR"
+                --models "$MODEL"
+                --augment-levels $AUGMENT_LEVELS
+                --temperature $TEMPERATURE
+                --num-samples $NUM_SAMPLES
+                --max-retries $MAX_RETRIES
+                --thinking on
+                --resume -v
+                --project-root "$PROJECT_ROOT"
+                "${TASK_LIST_ARGS[@]}")
+        else
+            # Canonical phase: --suite is required, no --task-list
+            RETRY=(python3 scripts/evaluation/run_eval_batch.py
+                --suite "$SUITE" --direction "$DIR"
+                --models "$MODEL"
+                --augment-levels $AUGMENT_LEVELS
+                --temperature $TEMPERATURE
+                --num-samples $NUM_SAMPLES
+                --max-retries $MAX_RETRIES
+                --thinking on
+                --resume -v
+                --project-root "$PROJECT_ROOT")
+            [[ ${#KERNEL_ARGS[@]} -gt 0 ]] && RETRY+=(--kernels "${KERNEL_ARGS[@]}")
+        fi
         "${RETRY[@]}"
         [[ $? -ne 0 ]] && STILL_FAILED+=("$ENTRY") || echo "  OK: retry succeeded"
         set -e

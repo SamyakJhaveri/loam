@@ -1144,6 +1144,25 @@ def strip_think_tags(text: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _deanonymize_extracted(
+    anon_map: dict[str, str], anon_extracted: dict[str, str]
+) -> dict[str, str]:
+    """De-anonymize extracted code: rename dict keys AND patch filenames in code bodies.
+
+    The LLM sees generic filenames (translated_0.cu) and may emit cross-file
+    #include "translated_1.cu" references. These must be replaced with real
+    filenames so the code compiles correctly after extraction.
+    """
+    result: dict[str, str] = {}
+    for generic_fname, code in anon_extracted.items():
+        real_fname = anon_map[generic_fname]
+        for gen_fn, real_fn in anon_map.items():
+            code = code.replace(f'"{gen_fn}"', f'"{real_fn}"')
+            code = code.replace(f"'{gen_fn}'", f"'{real_fn}'")
+        result[real_fname] = code
+    return result
+
+
 def extract_code_blocks(
     response_text: str,
     target_filenames: list[str],
@@ -1663,7 +1682,7 @@ def evaluate_translation(
                 )
 
             # De-anonymize: map generic filenames back to real filenames
-            extracted = {anon_map[gf]: code for gf, code in anon_extracted.items()}
+            extracted = _deanonymize_extracted(anon_map, anon_extracted)
 
             # Merge into accumulator — newer extractions win for duplicate keys,
             # so re-emitted files get the latest version while previously-extracted
@@ -1922,7 +1941,7 @@ def evaluate_translation(
     # last_llm_response was saved inside the loop before restore_files() ran
     # Extract using anonymized filenames (what the LLM produced), then de-anonymize
     anon_extracted_last = extract_code_blocks(last_llm_response, anon_target_filenames)
-    extracted_last = {anon_map[gf]: code for gf, code in anon_extracted_last.items()}
+    extracted_last = _deanonymize_extracted(anon_map, anon_extracted_last)
     # Store FULL translated files — truncating to 200 chars made retroactive
     # re-verification impossible (discovered in S-VERIFY session, 2026-03-27).
     translated_files_full = {
