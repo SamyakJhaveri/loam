@@ -181,18 +181,19 @@ Requires: `source env_parbench/bin/activate` (graphify CLI is in the project ven
 | Question type | Command | Notes |
 |---------------|---------|-------|
 | Architecture overview / "what is this codebase?" | Read `graphify-out/GRAPH_REPORT.md`; if `graphify-out/wiki/index.md` exists, navigate wiki instead | Fastest orientation — god nodes + community map |
-| Single node deep-dive ("what is X?", "what does X do?") | `graphify explain "NodeName"` | Returns node, all neighbors, source file locations |
-| Cross-module broad context ("how does X relate to Y?") | `graphify query "<question>"` (BFS) | Explores all connections within 3 hops |
+| Single node deep-dive ("what is X?", "what does X do?") | `graphify explain "NodeName"` | Returns node, top neighbors (by degree), source file locations |
+| Cross-module broad context ("how does X relate to Y?") | `graphify query "<question>"` (BFS) | Explores connections within 2 hops |
 | Dependency chains ("who calls X?", "what does X depend on?") | `graphify query "<question>" --dfs` | Traces deep paths before backtracking |
 | Shortest path between two named nodes | `graphify path "NodeA" "NodeB"` | Finds minimum-hop route with edge explanations |
 
-**Rule:** Prefer the graph over grep/Glob/Read for ANY question about code structure or relationships.
+**Rule:** Prefer the graph for questions about code structure, module relationships, and dependency chains. Use grep/Glob for exact text search, literal strings, and occurrence counting. Do NOT route simple file-existence or text-lookup queries through graphify.
 
 ### After using the graph
 
 After any `graphify query / path / explain` that yields a useful answer, save the result:
 ```bash
 graphify save-result --question "the question asked" --answer "summary of answer" --type query --nodes NodeA NodeB
+# --type options: query (for graphify query), path_query (for graphify path), explain (for graphify explain)
 ```
 Saved results go to `graphify-out/memory/` and are incorporated on next `graphify update .`.
 
@@ -200,4 +201,4 @@ Saved results go to `graphify-out/memory/` and are incorporated on next `graphif
 
 - **After modifying code files in this session**: `graphify update .` (AST-only, no API cost, no LLM)
 - **After git commits**: automatic — post-commit hook already installed at `.git/hooks/post-commit`
-- **After adding docs/papers/images**: `graphify add <file-or-url>` (LLM-assisted ingestion for non-code content)
+- **After adding external references**: `graphify add <url>` (fetches remote content — URLs only, not local files)

@@ -1196,7 +1196,7 @@
       "file_type": "code",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1",
-      "id": "scripts_generate_paper_figures_py",
+      "id": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "community": 9,
       "norm_label": "generate_paper_figures.py"
     },
@@ -1547,135 +1547,135 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L406",
-      "id": "generate_paper_figures_rationale_406",
       "community": 9,
-      "norm_label": "return canonical l0 records: true base files, or sample_id=0 as fallback."
+      "norm_label": "return canonical l0 records: true base files, or sample_id=0 as fallback.",
+      "id": "generate_paper_figures_rationale_406"
     },
     {
       "label": "Build (kernel, model) -> overall_status lookup.      Returns:         kernels: s",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L426",
-      "id": "generate_paper_figures_rationale_426",
       "community": 9,
-      "norm_label": "build (kernel, model) -> overall_status lookup.      returns:         kernels: s"
+      "norm_label": "build (kernel, model) -> overall_status lookup.      returns:         kernels: s",
+      "id": "generate_paper_figures_rationale_426"
     },
     {
       "label": "F2: Grouped bar chart comparing repo-level vs kernel-level counts.",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L469",
-      "id": "generate_paper_figures_rationale_469",
       "community": 9,
-      "norm_label": "f2: grouped bar chart comparing repo-level vs kernel-level counts."
+      "norm_label": "f2: grouped bar chart comparing repo-level vs kernel-level counts.",
+      "id": "generate_paper_figures_rationale_469"
     },
     {
       "label": "F3: Single-panel heatmap of all benchmark kernels x directions, grouped by suite",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L555",
-      "id": "generate_paper_figures_rationale_555",
       "community": 9,
-      "norm_label": "f3: single-panel heatmap of all benchmark kernels x directions, grouped by suite"
+      "norm_label": "f3: single-panel heatmap of all benchmark kernels x directions, grouped by suite",
+      "id": "generate_paper_figures_rationale_555"
     },
     {
       "label": "F4: Failure taxonomy -- status distribution by direction (per model).",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L821",
-      "id": "generate_paper_figures_rationale_821",
       "community": 9,
-      "norm_label": "f4: failure taxonomy -- status distribution by direction (per model)."
+      "norm_label": "f4: failure taxonomy -- status distribution by direction (per model).",
+      "id": "generate_paper_figures_rationale_821"
     },
     {
       "label": "F5: pass@k by translation direction (per model).      CRITICAL: Filters to true",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L912",
-      "id": "generate_paper_figures_rationale_912",
       "community": 9,
-      "norm_label": "f5: pass@k by translation direction (per model).      critical: filters to true"
+      "norm_label": "f5: pass@k by translation direction (per model).      critical: filters to true",
+      "id": "generate_paper_figures_rationale_912"
     },
     {
       "label": "Wilson score 95% confidence interval for a binomial proportion.",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1012",
-      "id": "generate_paper_figures_rationale_1012",
       "community": 9,
-      "norm_label": "wilson score 95% confidence interval for a binomial proportion."
+      "norm_label": "wilson score 95% confidence interval for a binomial proportion.",
+      "id": "generate_paper_figures_rationale_1012"
     },
     {
       "label": "F6: Cross-suite aggregate pass rate comparison bar chart (per model).",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1039",
-      "id": "generate_paper_figures_rationale_1039",
       "community": 9,
-      "norm_label": "f6: cross-suite aggregate pass rate comparison bar chart (per model)."
+      "norm_label": "f6: cross-suite aggregate pass rate comparison bar chart (per model).",
+      "id": "generate_paper_figures_rationale_1039"
     },
     {
       "label": "F7: Augmentation robustness -- pass rate vs. augmentation level (dual-model).",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1184",
-      "id": "generate_paper_figures_rationale_1184",
       "community": 9,
-      "norm_label": "f7: augmentation robustness -- pass rate vs. augmentation level (dual-model)."
+      "norm_label": "f7: augmentation robustness -- pass rate vs. augmentation level (dual-model).",
+      "id": "generate_paper_figures_rationale_1184"
     },
     {
       "label": "C.1: Transition matrix -- initial failure -> final outcome.",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1299",
-      "id": "generate_paper_figures_rationale_1299",
       "community": 9,
-      "norm_label": "c.1: transition matrix -- initial failure -> final outcome."
+      "norm_label": "c.1: transition matrix -- initial failure -> final outcome.",
+      "id": "generate_paper_figures_rationale_1299"
     },
     {
       "label": "C.2: Self-repair rate by translation direction.",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1378",
-      "id": "generate_paper_figures_rationale_1378",
       "community": 9,
-      "norm_label": "c.2: self-repair rate by translation direction."
+      "norm_label": "c.2: self-repair rate by translation direction.",
+      "id": "generate_paper_figures_rationale_1378"
     },
     {
       "label": "C.3: Heatmap of transform frequency per kernel.",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1456",
-      "id": "generate_paper_figures_rationale_1456",
       "community": 9,
-      "norm_label": "c.3: heatmap of transform frequency per kernel."
+      "norm_label": "c.3: heatmap of transform frequency per kernel.",
+      "id": "generate_paper_figures_rationale_1456"
     },
     {
       "label": "C.4: HeCBench kernel selection pipeline funnel diagram.",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1545",
-      "id": "generate_paper_figures_rationale_1545",
       "community": 9,
-      "norm_label": "c.4: hecbench kernel selection pipeline funnel diagram."
+      "norm_label": "c.4: hecbench kernel selection pipeline funnel diagram.",
+      "id": "generate_paper_figures_rationale_1545"
     },
     {
       "label": "T2: Model comparison LaTeX table -- 2-model layout, all suites.",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1630",
-      "id": "generate_paper_figures_rationale_1630",
       "community": 9,
-      "norm_label": "t2: model comparison latex table -- 2-model layout, all suites."
+      "norm_label": "t2: model comparison latex table -- 2-model layout, all suites.",
+      "id": "generate_paper_figures_rationale_1630"
     },
     {
       "label": "Normalize user input to a figure registry key, or None if unknown.",
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1736",
-      "id": "generate_paper_figures_rationale_1736",
       "community": 9,
-      "norm_label": "normalize user input to a figure registry key, or none if unknown."
+      "norm_label": "normalize user input to a figure registry key, or none if unknown.",
+      "id": "generate_paper_figures_rationale_1736"
     },
     {
       "label": "fix_rodinia_run_args2.py",
@@ -4274,7 +4274,7 @@
       "file_type": "code",
       "source_file": "scripts/analysis/selfrepair_analysis.py",
       "source_location": "L1",
-      "id": "scripts_analysis_selfrepair_analysis_py",
+      "id": "home_samyak_desktop_parbench_sam_scripts_analysis_selfrepair_analysis_py",
       "community": 48,
       "norm_label": "selfrepair_analysis.py"
     },
@@ -25585,9 +25585,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L185",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_setup_rcparams",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_setup_rcparams",
       "confidence_score": 1.0
     },
@@ -25597,9 +25597,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L203",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_text_color_for_bg",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_text_color_for_bg",
       "confidence_score": 1.0
     },
@@ -25609,9 +25609,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L212",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_save_figure",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_save_figure",
       "confidence_score": 1.0
     },
@@ -25621,9 +25621,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L220",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_aggregate_status_counts",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_aggregate_status_counts",
       "confidence_score": 1.0
     },
@@ -25633,9 +25633,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L234",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_create_status_legend",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_create_status_legend",
       "confidence_score": 1.0
     },
@@ -25645,9 +25645,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L254",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_extract_api",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_extract_api",
       "confidence_score": 1.0
     },
@@ -25657,9 +25657,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L262",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_extract_suite",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_extract_suite",
       "confidence_score": 1.0
     },
@@ -25669,9 +25669,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L271",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_classify_initial_status",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_classify_initial_status",
       "confidence_score": 1.0
     },
@@ -25681,9 +25681,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L294",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_load_eval_results",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_load_eval_results",
       "confidence_score": 1.0
     },
@@ -25693,9 +25693,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L371",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_load_augmentation_eval_results",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_load_augmentation_eval_results",
       "confidence_score": 1.0
     },
@@ -25705,9 +25705,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L386",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_filter_records",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_filter_records",
       "confidence_score": 1.0
     },
@@ -25717,9 +25717,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L405",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_get_canonical_l0",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_get_canonical_l0",
       "confidence_score": 1.0
     },
@@ -25729,9 +25729,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L420",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_build_kernel_model_matrix",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_build_kernel_model_matrix",
       "confidence_score": 1.0
     },
@@ -25741,9 +25741,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L466",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_f2_repo_vs_kernel",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_f2_repo_vs_kernel",
       "confidence_score": 1.0
     },
@@ -25753,9 +25753,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L547",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_f3_kernel_heatmap",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_f3_kernel_heatmap",
       "confidence_score": 1.0
     },
@@ -25765,9 +25765,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L814",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_f4_failure_taxonomy",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_f4_failure_taxonomy",
       "confidence_score": 1.0
     },
@@ -25777,9 +25777,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L905",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_f5_pass_at_k",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_f5_pass_at_k",
       "confidence_score": 1.0
     },
@@ -25789,9 +25789,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1011",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_wilson_ci",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_wilson_ci",
       "confidence_score": 1.0
     },
@@ -25801,9 +25801,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1032",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_f6_cross_suite_comparison",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_f6_cross_suite_comparison",
       "confidence_score": 1.0
     },
@@ -25813,9 +25813,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1179",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_f7_augmentation",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_f7_augmentation",
       "confidence_score": 1.0
     },
@@ -25825,9 +25825,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1294",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_c1_repair_transitions",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_c1_repair_transitions",
       "confidence_score": 1.0
     },
@@ -25837,9 +25837,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1373",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_c2_repair_rate",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_c2_repair_rate",
       "confidence_score": 1.0
     },
@@ -25849,9 +25849,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1451",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_c3_transform_frequency",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_c3_transform_frequency",
       "confidence_score": 1.0
     },
@@ -25861,9 +25861,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1542",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_c4_selection_funnel",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_c4_selection_funnel",
       "confidence_score": 1.0
     },
@@ -25873,9 +25873,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1625",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_generate_t2_model_table",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_generate_t2_model_table",
       "confidence_score": 1.0
     },
@@ -25885,9 +25885,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1735",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_normalize_figure_id",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_normalize_figure_id",
       "confidence_score": 1.0
     },
@@ -25897,9 +25897,9 @@
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1748",
       "weight": 1.0,
-      "_src": "scripts_generate_paper_figures_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "_tgt": "generate_paper_figures_main",
-      "source": "scripts_generate_paper_figures_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_generate_paper_figures_py",
       "target": "generate_paper_figures_main",
       "confidence_score": 1.0
     },
@@ -32269,9 +32269,9 @@
       "source_file": "scripts/analysis/selfrepair_analysis.py",
       "source_location": "L53",
       "weight": 1.0,
-      "_src": "scripts_analysis_selfrepair_analysis_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_analysis_selfrepair_analysis_py",
       "_tgt": "selfrepair_analysis_classify_attempt_status",
-      "source": "scripts_analysis_selfrepair_analysis_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_analysis_selfrepair_analysis_py",
       "target": "selfrepair_analysis_classify_attempt_status",
       "confidence_score": 1.0
     },
@@ -32281,9 +32281,9 @@
       "source_file": "scripts/analysis/selfrepair_analysis.py",
       "source_location": "L76",
       "weight": 1.0,
-      "_src": "scripts_analysis_selfrepair_analysis_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_analysis_selfrepair_analysis_py",
       "_tgt": "selfrepair_analysis_classify_repair",
-      "source": "scripts_analysis_selfrepair_analysis_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_analysis_selfrepair_analysis_py",
       "target": "selfrepair_analysis_classify_repair",
       "confidence_score": 1.0
     },
@@ -32293,9 +32293,9 @@
       "source_file": "scripts/analysis/selfrepair_analysis.py",
       "source_location": "L89",
       "weight": 1.0,
-      "_src": "scripts_analysis_selfrepair_analysis_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_analysis_selfrepair_analysis_py",
       "_tgt": "selfrepair_analysis_load_all_results",
-      "source": "scripts_analysis_selfrepair_analysis_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_analysis_selfrepair_analysis_py",
       "target": "selfrepair_analysis_load_all_results",
       "confidence_score": 1.0
     },
@@ -32305,9 +32305,9 @@
       "source_file": "scripts/analysis/selfrepair_analysis.py",
       "source_location": "L108",
       "weight": 1.0,
-      "_src": "scripts_analysis_selfrepair_analysis_py",
+      "_src": "home_samyak_desktop_parbench_sam_scripts_analysis_selfrepair_analysis_py",
       "_tgt": "selfrepair_analysis_main",
-      "source": "scripts_analysis_selfrepair_analysis_py",
+      "source": "home_samyak_desktop_parbench_sam_scripts_analysis_selfrepair_analysis_py",
       "target": "selfrepair_analysis_main",
       "confidence_score": 1.0
     },
@@ -57932,18 +57932,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L183",
-      "weight": 1.0,
-      "_src": "augment_dataset_arithmetictransform",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_arithmetictransform",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -58026,6 +58014,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_arithmetictransform",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L183",
+      "weight": 1.0,
+      "_src": "augment_dataset_arithmetictransform",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_arithmetictransform",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -58136,18 +58136,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L184",
-      "weight": 1.0,
-      "_src": "augment_dataset_swapcondition",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_swapcondition",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -58230,6 +58218,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_swapcondition",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L184",
+      "weight": 1.0,
+      "_src": "augment_dataset_swapcondition",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_swapcondition",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -58304,18 +58304,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L185",
-      "weight": 1.0,
-      "_src": "augment_dataset_pointerarithmetictoarrayindex",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_pointerarithmetictoarrayindex",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -58398,6 +58386,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_pointerarithmetictoarrayindex",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L185",
+      "weight": 1.0,
+      "_src": "augment_dataset_pointerarithmetictoarrayindex",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_pointerarithmetictoarrayindex",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -58460,18 +58460,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L186",
-      "weight": 1.0,
-      "_src": "augment_dataset_typedefexpansion",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_typedefexpansion",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -58554,6 +58542,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_typedefexpansion",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L186",
+      "weight": 1.0,
+      "_src": "augment_dataset_typedefexpansion",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_typedefexpansion",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -58736,18 +58736,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L187",
-      "weight": 1.0,
-      "_src": "augment_dataset_changenames",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_changenames",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -58830,6 +58818,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_changenames",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L187",
+      "weight": 1.0,
+      "_src": "augment_dataset_changenames",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_changenames",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -59192,18 +59192,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L188",
-      "weight": 1.0,
-      "_src": "augment_dataset_changefunctionnames",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_changefunctionnames",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -59286,6 +59274,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_changefunctionnames",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L188",
+      "weight": 1.0,
+      "_src": "augment_dataset_changefunctionnames",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_changefunctionnames",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -59504,18 +59504,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L180",
-      "weight": 1.0,
-      "_src": "augment_dataset_augmentationconfig",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_augmentationconfig",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -59598,6 +59586,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_augmentationconfig",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L180",
+      "weight": 1.0,
+      "_src": "augment_dataset_augmentationconfig",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_augmentationconfig",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -69212,30 +69212,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/builder.py",
-      "source_location": "L99",
-      "weight": 1.0,
-      "_src": "models_buildresult",
-      "_tgt": "builder_build_spec",
-      "source": "models_buildresult",
-      "target": "builder_build_spec"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/cli.py",
-      "source_location": "L206",
-      "weight": 1.0,
-      "_src": "models_buildresult",
-      "_tgt": "cli_dummy_build",
-      "source": "models_buildresult",
-      "target": "cli_dummy_build"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/builder.py",
@@ -69380,6 +69356,30 @@
       "target": "cli_rationale_220"
     },
     {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/builder.py",
+      "source_location": "L99",
+      "weight": 1.0,
+      "_src": "models_buildresult",
+      "_tgt": "builder_build_spec",
+      "source": "models_buildresult",
+      "target": "builder_build_spec"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/cli.py",
+      "source_location": "L206",
+      "weight": 1.0,
+      "_src": "models_buildresult",
+      "_tgt": "cli_dummy_build",
+      "source": "models_buildresult",
+      "target": "cli_dummy_build"
+    },
+    {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "harness/models.py",
@@ -69500,78 +69500,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/verifier.py",
-      "source_location": "L58",
-      "weight": 1.0,
-      "_src": "models_verificationresult",
-      "_tgt": "verifier_verify_run",
-      "source": "models_verificationresult",
-      "target": "verifier_verify_run"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/verifier.py",
-      "source_location": "L166",
-      "weight": 1.0,
-      "_src": "models_verificationresult",
-      "_tgt": "verifier_check_exit_code",
-      "source": "models_verificationresult",
-      "target": "verifier_check_exit_code"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/verifier.py",
-      "source_location": "L187",
-      "weight": 1.0,
-      "_src": "models_verificationresult",
-      "_tgt": "verifier_check_stdout_pattern",
-      "source": "models_verificationresult",
-      "target": "verifier_check_stdout_pattern"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/verifier.py",
-      "source_location": "L222",
-      "weight": 1.0,
-      "_src": "models_verificationresult",
-      "_tgt": "verifier_verify_numeric_comparison",
-      "source": "models_verificationresult",
-      "target": "verifier_verify_numeric_comparison"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/verifier.py",
-      "source_location": "L299",
-      "weight": 1.0,
-      "_src": "models_verificationresult",
-      "_tgt": "verifier_verify_file_hash",
-      "source": "models_verificationresult",
-      "target": "verifier_verify_file_hash"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/verifier.py",
-      "source_location": "L348",
-      "weight": 1.0,
-      "_src": "models_verificationresult",
-      "_tgt": "verifier_stub_strategy",
-      "source": "models_verificationresult",
-      "target": "verifier_stub_strategy"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/verifier.py",
@@ -69668,6 +69596,78 @@
       "target": "verifier_rationale_347"
     },
     {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/verifier.py",
+      "source_location": "L58",
+      "weight": 1.0,
+      "_src": "models_verificationresult",
+      "_tgt": "verifier_verify_run",
+      "source": "models_verificationresult",
+      "target": "verifier_verify_run"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/verifier.py",
+      "source_location": "L166",
+      "weight": 1.0,
+      "_src": "models_verificationresult",
+      "_tgt": "verifier_check_exit_code",
+      "source": "models_verificationresult",
+      "target": "verifier_check_exit_code"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/verifier.py",
+      "source_location": "L187",
+      "weight": 1.0,
+      "_src": "models_verificationresult",
+      "_tgt": "verifier_check_stdout_pattern",
+      "source": "models_verificationresult",
+      "target": "verifier_check_stdout_pattern"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/verifier.py",
+      "source_location": "L222",
+      "weight": 1.0,
+      "_src": "models_verificationresult",
+      "_tgt": "verifier_verify_numeric_comparison",
+      "source": "models_verificationresult",
+      "target": "verifier_verify_numeric_comparison"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/verifier.py",
+      "source_location": "L299",
+      "weight": 1.0,
+      "_src": "models_verificationresult",
+      "_tgt": "verifier_verify_file_hash",
+      "source": "models_verificationresult",
+      "target": "verifier_verify_file_hash"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/verifier.py",
+      "source_location": "L348",
+      "weight": 1.0,
+      "_src": "models_verificationresult",
+      "_tgt": "verifier_stub_strategy",
+      "source": "models_verificationresult",
+      "target": "verifier_stub_strategy"
+    },
+    {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "harness/models.py",
@@ -69678,18 +69678,6 @@
       "source": "models_metricresult",
       "target": "models_rationale_56",
       "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/verifier.py",
-      "source_location": "L143",
-      "weight": 1.0,
-      "_src": "models_metricresult",
-      "_tgt": "verifier_extract_metrics",
-      "source": "models_metricresult",
-      "target": "verifier_extract_metrics"
     },
     {
       "relation": "uses",
@@ -69860,6 +69848,18 @@
       "target": "reporter_rationale_133"
     },
     {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/verifier.py",
+      "source_location": "L143",
+      "weight": 1.0,
+      "_src": "models_metricresult",
+      "_tgt": "verifier_extract_metrics",
+      "source": "models_metricresult",
+      "target": "verifier_extract_metrics"
+    },
+    {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "harness/models.py",
@@ -69870,42 +69870,6 @@
       "source": "models_specresult",
       "target": "models_rationale_65",
       "confidence_score": 1.0
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/cli.py",
-      "source_location": "L78",
-      "weight": 1.0,
-      "_src": "models_specresult",
-      "_tgt": "cli_cmd_build",
-      "source": "models_specresult",
-      "target": "cli_cmd_build"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/cli.py",
-      "source_location": "L101",
-      "weight": 1.0,
-      "_src": "models_specresult",
-      "_tgt": "cli_cmd_run",
-      "source": "models_specresult",
-      "target": "cli_cmd_run"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/cli.py",
-      "source_location": "L127",
-      "weight": 1.0,
-      "_src": "models_specresult",
-      "_tgt": "cli_cmd_verify",
-      "source": "models_specresult",
-      "target": "cli_cmd_verify"
     },
     {
       "relation": "uses",
@@ -70074,6 +70038,42 @@
       "confidence_score": 0.5,
       "source": "models_specresult",
       "target": "reporter_rationale_133"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/cli.py",
+      "source_location": "L78",
+      "weight": 1.0,
+      "_src": "models_specresult",
+      "_tgt": "cli_cmd_build",
+      "source": "models_specresult",
+      "target": "cli_cmd_build"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/cli.py",
+      "source_location": "L101",
+      "weight": 1.0,
+      "_src": "models_specresult",
+      "_tgt": "cli_cmd_run",
+      "source": "models_specresult",
+      "target": "cli_cmd_run"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/cli.py",
+      "source_location": "L127",
+      "weight": 1.0,
+      "_src": "models_specresult",
+      "_tgt": "cli_cmd_verify",
+      "source": "models_specresult",
+      "target": "cli_cmd_verify"
     },
     {
       "relation": "contains",
