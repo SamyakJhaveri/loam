@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-lud-cuda",
+  "target_spec": "rodinia-lud-omp",
+  "kernel": "lud",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "thinking_enabled": true,
+  "num_samples": 1,
+  "seed": 54614963,
+  "top_p": 1.0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "-s",
+    "256"
+  ],
+  "timestamp": "2026-04-22T23:17:32Z",
+  "prompt_tokens": 9725,
+  "completion_tokens": 13847,
+  "llm_response_time_seconds": 83.561,
+  "build_status": "pass",
+  "build_time_seconds": 0.294,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.003,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Generate input matrix internally, size =256\nCreating matrix internally size=256\nTime consumed(ms): 2.378000\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.004,
+  "translated_wall_time_seconds": 0.003,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 1.3333,
+  "translated_files": {
+    "omp/lud_omp.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <omp.h>\n\n#ifdef RD_WG_SIZE_0_0\n        #define BLOCK_SIZE RD_WG_SIZE_0_0\n#elif defined(RD_WG_SIZE_0)\n        #define BLOCK_SIZE RD_WG_SIZE_0\n#elif defined(RD_WG_SIZE)\n        #define BLOCK_SIZE RD_WG_SIZE\n#else\n        #define BLOCK_SIZE 16\n#endif\n\nvoid lud_omp(float *m, int matrix_dim)\n{\n    int i, j, k, l, p, offset;\n    float sum;\n    int block_count;\n    \n    for (offset = 0; offset < matrix_dim - BLOCK_SIZE; offset += BLOCK_SIZE) {\n        // Diagonal block processing\n        for (i = 0; i < BLOCK_SIZE; i++) {\n            // Upper triangular - parallelize j loop\n            #pragma omp parallel for\n            for (j = i; j < BLOCK_SIZE; j++) {\n                sum = m[(offset + i) * matrix_dim + offset + j];\n                for (k = 0; k < i; k++) {\n                    sum -= m[(offset + i) * matrix_dim + offset + k] * m[(offset + k) * matrix_dim + offset + j];\n                }\n                m[(offset + i) * matrix_dim + offset + j] = sum;\n            }\n            \n            // Lower triangular - parallelize j loop\n            if (i < BLOCK_SIZE - 1) {\n                #pragma omp parallel for\n                for (j = i + 1; j < BLOCK_SIZE; j++) {\n                    sum = m[(offset + j) * matrix_dim + offset + i];\n                    for (k = 0; k < i; k++) {\n                        sum -= m[(offset + j) * matrix_dim + offset + k] * m[(offset + k) * matrix_dim + offset + i];\n                    }\n                    m[(offset + j) * matrix_dim + offset + i] = sum / m[(offset + i) * matrix_dim + offset + i];\n                }\n            }\n        }\n        \n        block_count = (matrix_dim - offset) / BLOCK_SIZE - 1;\n        \n        // Perimeter processing - parallelize i loop\n        #pragma omp parallel for\n        for (i = 0; i < block_count; i++) {\n            // Row perimeter\n            for (j = 1; j < BLOCK_SIZE; j++) {\n                for (k = 0; k < BLOCK_SIZE; k++) {\n                    sum = m[(offset + j) * matrix_dim + offset + BLOCK_SIZE + i * BLOCK_SIZE + k];\n                    for (l = 0; l < j; l++) {\n                        sum -= m[(offset + j) * matrix_dim + offset + l] * m[(offset + l) * matrix_dim + offset + BLOCK_SIZE + i * BLOCK_SIZE + k];\n                    }\n                    m[(offset + j) * matrix_dim + offset + BLOCK_SIZE + i * BLOCK_SIZE + k] = sum;\n                }\n            }\n            \n            // Column perimeter\n            for (j = 0; j < BLOCK_SIZE; j++) {\n                for (k = 0; k < BLOCK_SIZE; k++) {\n                    sum = m[(offset + BLOCK_SIZE + i * BLOCK_SIZE + k) * matrix_dim + offset + j];\n                    for (l = 0; l < j; l++) {\n                        sum -= m[(offset + BLOCK_SIZE + i * BLOCK_SIZE + k) * matrix_dim + offset + l] * m[(offset + l) * matrix_dim + offset + j];\n                    }\n                    m[(offset + BLOCK_SIZE + i * BLOCK_SIZE + k) * matrix_dim + offset + j] = sum / m[(offset + j) * matrix_dim + offset + j];\n                }\n            }\n        }\n        \n        // Internal block processing - parallelize i and j loops\n        #pragma omp parallel for\n        for (i = 0; i < block_count; i++) {\n            for (j = 0; j < block_count; j++) {\n                for (k = 0; k < BLOCK_SIZE; k++) {\n                    for (l = 0; l < BLOCK_SIZE; l++) {\n                        sum = m[(offset + BLOCK_SIZE + i * BLOCK_SIZE + k) * matrix_dim + offset + BLOCK_SIZE + j * BLOCK_SIZE + l];\n                        for (p = 0; p < BLOCK_SIZE; p++) {\n                            sum -= m[(offset + BLOCK_SIZE + i * BLOCK_SIZE + k) * matrix_dim + offset + p] * m[(offset + p) * matrix_dim + offset + BLOCK_SIZE + j * BLOCK_SIZE + l];\n                        }\n                        m[(offset + BLOCK_SIZE + i * BLOCK_SIZE + k) * matrix_dim + offset + BLOCK_SIZE + j * BLOCK_SIZE + l] = sum;\n                    }\n                }\n            }\n        }\n    }\n    \n    // Final diagonal block - parallelize i loop\n    offset = matrix_dim - BLOCK_SIZE;\n    #pragma omp parallel for\n    for (i = 0; i < BLOCK_SIZE; i++) {\n        for (j = i; j < BLOCK_SIZE; j++) {\n            sum = m[(offset + i) * matrix_dim + offset + j];\n            for (k = 0; k < i; k++) {\n                sum -= m[(offset + i) * matrix_dim + offset + k] * m[(offset + k) * matrix_dim + offset + j];\n            }\n            m[(offset + i) * matrix_dim + offset + j] = sum;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "omp/lud_omp.c"
+  ],
+  "target_files_extracted": [
+    "omp/lud_omp.c"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 83.561,
+      "prompt_tokens": 9725,
+      "completion_tokens": 13847,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

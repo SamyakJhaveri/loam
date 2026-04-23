@@ -1,0 +1,81 @@
+{
+  "source_spec": "rodinia-streamcluster-omp",
+  "target_spec": "rodinia-streamcluster-opencl",
+  "kernel": "streamcluster",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "thinking_enabled": true,
+  "num_samples": 1,
+  "seed": 219716437,
+  "top_p": 1.0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "10",
+    "20",
+    "256",
+    "65536",
+    "65536",
+    "1000",
+    "none",
+    "output.txt",
+    "1",
+    "-p",
+    "0"
+  ],
+  "timestamp": "2026-04-23T00:51:29Z",
+  "prompt_tokens": 28383,
+  "completion_tokens": 1482,
+  "llm_response_time_seconds": 11.853,
+  "build_status": "pass",
+  "build_time_seconds": 0.739,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.155,
+  "run_exit_code": 255,
+  "run_stderr_snippet": "m\n<kernel>:30:25: error: use of undeclared identifier 'THREADS_PER_BLOCK'\n        local_coord[d * THREADS_PER_BLOCK + get_local_id(0)] = coord[d * num + i];\n                        ^\n<kernel>:34:18: error: variable length arrays are not supported in OpenCL\n    float x_coord[dim];\n                 ^\n<kernel>:41:38: error: use of undeclared identifier 'THREADS_PER_BLOCK'\n        float diff = local_coord[d * THREADS_PER_BLOCK + get_local_id(0)] - x_coord[d];\n                                     ^\n\n",
+  "run_stdout_snippet": "PARSEC Benchmark Suite\n--cambine: device name=NVIDIA GeForce RTX 4070\nexception caught in main function->InitCL()::Error: Building Program (clBuildProgram)\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 255)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 2.092,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Kernels.cl": "// OpenCL kernel for streamcluster pgain operation\n\n#define CACHE_LINE 512\n\ntypedef struct {\n  float weight;\n  long assign;\n  float cost;\n} Point_Struct;\n\n// Kernel to compute gain for opening new center x\nkernel void pgain_kernel(\n    global Point_Struct* p,\n    global float* coord,\n    global float* work_mem,\n    global int* center_table,\n    global char* switch_membership,\n    local float* local_coord,\n    const int num,\n    const int dim,\n    const long x,\n    const int K)\n{\n    int i = get_global_id(0);\n    \n    if (i >= num) return;\n    \n    // Load point coordinates into local memory\n    for (int d = 0; d < dim; d++) {\n        local_coord[d * THREADS_PER_BLOCK + get_local_id(0)] = coord[d * num + i];\n    }\n    \n    // Compute distance from point i to center x\n    float x_coord[dim];\n    for (int d = 0; d < dim; d++) {\n        x_coord[d] = coord[d * num + x];\n    }\n    \n    float x_cost = 0.0f;\n    for (int d = 0; d < dim; d++) {\n        float diff = local_coord[d * THREADS_PER_BLOCK + get_local_id(0)] - x_coord[d];\n        x_cost += diff * diff;\n    }\n    x_cost *= p[i].weight;\n    \n    float current_cost = p[i].cost;\n    \n    if (x_cost < current_cost) {\n        switch_membership[i] = 1;\n        work_mem[i * (K + 1) + K] += x_cost - current_cost;\n    } else {\n        int assign = p[i].assign;\n        int ct = center_table[assign];\n        if (ct >= 0 && ct < K) {\n            work_mem[i * (K + 1) + ct] += current_cost - x_cost;\n        }\n    }\n}\n\n// Kernel to aggregate work_mem across points for center evaluation\nkernel void pgain_aggregate_kernel(\n    global float* work_mem,\n    global int* center_table,\n    global float* gl_lower,\n    global char* is_center,\n    const int num,\n    const int K,\n    const float z)\n{\n    int i = get_global_id(0);\n    \n    if (i >= num) return;\n    \n    if (is_center[i]) {\n        int ct = center_table[i];\n        if (ct >= 0 && ct < K) {\n            float low = z;\n            for (int j = 0; j < num; j++) {\n                low += work_mem[j * (K + 1) + ct];\n            }\n            gl_lower[ct] = low;\n        }\n    }\n}\n\n// Kernel to update point assignments after center change\nkernel void pgain_update_kernel(\n    global Point_Struct* p,\n    global float* coord,\n    global int* center_table,\n    global char* switch_membership,\n    global float* gl_lower,\n    global char* is_center,\n    const int num,\n    const int dim,\n    const long x,\n    const int K)\n{\n    int i = get_global_id(0);\n    \n    if (i >= num) return;\n    \n    int assign = p[i].assign;\n    int ct = center_table[assign];\n    bool close_center = (ct >= 0 && ct < K && gl_lower[ct] > 0);\n    \n    if (switch_membership[i] == 1 || close_center) {\n        // Compute new cost to center x\n        float x_cost = 0.0f;\n        for (int d = 0; d < dim; d++) {\n            float diff = coord[d * num + i] - coord[d * num + x];\n            x_cost += diff * diff;\n        }\n        p[i].cost = x_cost * p[i].weight;\n        p[i].assign = x;\n    }\n    \n    // Update center status\n    if (is_center[i]) {\n        int ct_i = center_table[i];\n        if (ct_i >= 0 && ct_i < K && gl_lower[ct_i] > 0) {\n            is_center[i] = 0;\n        }\n    }\n    \n    if (i == x) {\n        is_center[i] = 1;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 11.853,
+      "prompt_tokens": 28383,
+      "completion_tokens": 1482,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "m\n<kernel>:30:25: error: use of undeclared identifier 'THREADS_PER_BLOCK'\n        local_coord[d * THREADS_PER_BLOCK + get_local_id(0)] = coord[d * num + i];\n                        ^\n<kernel>:34:18: error: variable length arrays are not supported in OpenCL\n    float x_coord[dim];\n                 ^\n<kernel>:41:38: error: use of undeclared identifier 'THREADS_PER_BLOCK'\n        float diff = local_coord[d * THREADS_PER_BLOCK + get_local_id(0)] - x_coord[d];\n                                     ^\n\n",
+      "run_stdout_snippet": "PARSEC Benchmark Suite\n--cambine: device name=NVIDIA GeForce RTX 4070\nexception caught in main function->InitCL()::Error: Building Program (clBuildProgram)\n",
+      "extraction_fail": null
+    }
+  ]
+}

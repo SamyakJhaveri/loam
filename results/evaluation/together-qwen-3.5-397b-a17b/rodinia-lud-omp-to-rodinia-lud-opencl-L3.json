@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-lud-omp",
+  "target_spec": "rodinia-lud-opencl",
+  "kernel": "lud",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "thinking_enabled": true,
+  "num_samples": 1,
+  "seed": 55408477,
+  "top_p": 1.0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-s",
+    "256"
+  ],
+  "timestamp": "2026-04-23T00:37:40Z",
+  "prompt_tokens": 12505,
+  "completion_tokens": 9291,
+  "llm_response_time_seconds": 134.084,
+  "build_status": "pass",
+  "build_time_seconds": 0.465,
+  "build_error_snippet": null,
+  "run_status": "timeout",
+  "run_time_seconds": 300.143,
+  "run_exit_code": -1,
+  "run_stderr_snippet": "Execution timed out after 300s",
+  "run_stdout_snippet": "",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.07,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "lud_kernel.cl": "#ifndef BLOCK_SIZE\n#define BLOCK_SIZE 16\n#endif\n\nkernel void lud_diagonal(global float* a, local float* temp, const int size, const int offset) {\n    int i = get_global_id(0);\n    \n    if (i >= BLOCK_SIZE) return;\n    \n    // Load diagonal block into local memory\n    for (int j = 0; j < BLOCK_SIZE; j++) {\n        temp[i * BLOCK_SIZE + j] = a[(offset + i) * size + (offset + j)];\n    }\n    \n    barrier(CLK_LOCAL_MEM_FENCE);\n    \n    // Sequential LU decomposition on diagonal block\n    for (int row = 0; row < BLOCK_SIZE; row++) {\n        if (i == row) {\n            // Update upper triangle\n            for (int j = row; j < BLOCK_SIZE; j++) {\n                float sum = 0.0f;\n                for (int k = 0; k < row; k++) {\n                    sum += temp[row * BLOCK_SIZE + k] * temp[k * BLOCK_SIZE + j];\n                }\n                temp[row * BLOCK_SIZE + j] -= sum;\n            }\n            \n            // Compute diagonal inverse\n            float diag_inv = 1.0f / temp[row * BLOCK_SIZE + row];\n            \n            // Update lower triangle\n            for (int j = row + 1; j < BLOCK_SIZE; j++) {\n                float sum = 0.0f;\n                for (int k = 0; k < row; k++) {\n                    sum += temp[j * BLOCK_SIZE + k] * temp[k * BLOCK_SIZE + row];\n                }\n                temp[j * BLOCK_SIZE + row] = (temp[j * BLOCK_SIZE + row] - sum) * diag_inv;\n            }\n        }\n        barrier(CLK_LOCAL_MEM_FENCE);\n    }\n    \n    // Write back to global memory\n    for (int j = 0; j < BLOCK_SIZE; j++) {\n        a[(offset + i) * size + (offset + j)] = temp[i * BLOCK_SIZE + j];\n    }\n}\n\nkernel void lud_perimeter(global float* a, local float* temp_top, local float* temp_left, local float* temp_diag,\n                          const int size, const int offset) {\n    int idx = get_global_id(0);\n    int num_blocks = (size - offset) / BLOCK_SIZE - 1;\n    \n    if (idx >= BLOCK_SIZE * 2 * num_blocks) return;\n    \n    int section = idx / (BLOCK_SIZE * num_blocks);\n    int block_id = (idx / BLOCK_SIZE) % num_blocks;\n    int elem_id = idx % BLOCK_SIZE;\n    \n    if (section == 0) {\n        // Right perimeter: blocks to the right of diagonal\n        int col_offset = offset + BLOCK_SIZE + block_id * BLOCK_SIZE;\n        \n        // Load diagonal block row\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n            temp_diag[elem_id * BLOCK_SIZE + j] = a[(offset + elem_id) * size + (offset + j)];\n        }\n        \n        barrier(CLK_LOCAL_MEM_FENCE);\n        \n        // Load right block\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n            temp_top[elem_id * BLOCK_SIZE + j] = a[(offset + elem_id) * size + (col_offset + j)];\n        }\n        \n        barrier(CLK_LOCAL_MEM_FENCE);\n        \n        // Update: subtract product of diagonal row and corresponding values\n        for (int k = 0; k < elem_id; k++) {\n            for (int j = 0; j < BLOCK_SIZE; j++) {\n                temp_top[elem_id * BLOCK_SIZE + j] -= temp_diag[elem_id * BLOCK_SIZE + k] * temp_diag[k * BLOCK_SIZE + j];\n            }\n        }\n        \n        // Write back\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n            a[(offset + elem_id) * size + (col_offset + j)] = temp_top[elem_id * BLOCK_SIZE + j];\n        }\n    } else {\n        // Bottom perimeter: blocks below diagonal\n        int row_offset = offset + BLOCK_SIZE + block_id * BLOCK_SIZE;\n        \n        // Load diagonal block\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n            temp_diag[elem_id * BLOCK_SIZE + j] = a[(offset + elem_id) * size + (offset + j)];\n        }\n        \n        barrier(CLK_LOCAL_MEM_FENCE);\n        \n        // Load bottom block\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n            temp_left[elem_id * BLOCK_SIZE + j] = a[(row_offset + elem_id) * size + (offset + j)];\n        }\n        \n        barrier(CLK_LOCAL_MEM_FENCE);\n        \n        float diag_inv = 1.0f / temp_diag[elem_id * BLOCK_SIZE + elem_id];\n        \n        // Update: subtract and divide by diagonal\n        for (int k = 0; k < elem_id; k++) {\n            for (int j = 0; j < BLOCK_SIZE; j++) {\n                temp_left[elem_id * BLOCK_SIZE + j] -= temp_diag[elem_id * BLOCK_SIZE + k] * temp_diag[k * BLOCK_SIZE + j];\n            }\n        }\n        \n        // Write back\n        for (int j = 0; j < BLOCK_SIZE; j++) {\n            a[(row_offset + elem_id) * size + (offset + j)] = temp_left[elem_id * BLOCK_SIZE + j] * diag_inv;\n        }\n    }\n}\n\nkernel void lud_internal(global float* a, local float* temp_top, local float* temp_left,\n                         const int size, const int offset) {\n    int x = get_global_id(0);\n    int y = get_global_id(1);\n    \n    int num_blocks = (size - offset) / BLOCK_SIZE - 1;\n    \n    if (x >= BLOCK_SIZE * num_blocks || y >= BLOCK_SIZE * num_blocks) return;\n    \n    int block_x = x / BLOCK_SIZE;\n    int block_y = y / BLOCK_SIZE;\n    int elem_x = x % BLOCK_SIZE;\n    int elem_y = y % BLOCK_SIZE;\n    \n    int row_offset = offset + BLOCK_SIZE + block_x * BLOCK_SIZE;\n    int col_offset = offset + BLOCK_SIZE + block_y * BLOCK_SIZE;\n    \n    // Load from diagonal row block\n    for (int j = 0; j < BLOCK_SIZE; j++) {\n        temp_top[elem_x * BLOCK_SIZE + j] = a[(offset + elem_x) * size + (col_offset + j)];\n    }\n    \n    // Load from diagonal column block\n    for (int j = 0; j < BLOCK_SIZE; j++) {\n        temp_left[elem_x * BLOCK_SIZE + j] = a[(row_offset + elem_x) * size + (offset + j)];\n    }\n    \n    barrier(CLK_LOCAL_MEM_FENCE);\n    \n    // Update internal block element\n    float sum = 0.0f;\n    for (int k = 0; k < BLOCK_SIZE; k++) {\n        sum += temp_left[elem_x * BLOCK_SIZE + k] * temp_top[k * BLOCK_SIZE + elem_y];\n    }\n    \n    a[(row_offset + elem_x) * size + (col_offset + elem_y)] -= sum;\n}\n"
+  },
+  "target_files_expected": [
+    "lud_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "lud_kernel.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 134.084,
+      "prompt_tokens": 12505,
+      "completion_tokens": 9291,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "timeout",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "Execution timed out after 300s",
+      "run_stdout_snippet": "",
+      "extraction_fail": null
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "source_spec": "rodinia-lud-opencl",
+  "target_spec": "rodinia-lud-omp",
+  "kernel": "lud",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "thinking_enabled": true,
+  "num_samples": 1,
+  "seed": 637290608,
+  "top_p": 1.0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "full_program",
+  "verification_mode": "cross_api_combined_pattern",
+  "run_args_mode": "cross_api_source_args",
+  "run_arguments_used": [
+    "-s",
+    "256"
+  ],
+  "timestamp": "2026-04-23T01:06:08Z",
+  "prompt_tokens": 12411,
+  "completion_tokens": 14780,
+  "llm_response_time_seconds": 83.271,
+  "build_status": "pass",
+  "build_time_seconds": 0.871,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.005,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Generate input matrix internally, size =256\nCreating matrix internally size=256\nTime consumed(ms): 4.365000\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.004,
+  "translated_wall_time_seconds": 0.005,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.8,
+  "translated_files": {
+    "omp/lud_omp.c": "#include <stdio.h>\n#include <stdlib.h>\n#include <math.h>\n#include <omp.h>\n\n#ifndef BLOCK_SIZE\n#define BLOCK_SIZE 16\n#endif\n\nvoid lud_omp(float *m, int matrix_dim) {\n    int i, j, k, offset;\n    \n    for (offset = 0; offset < matrix_dim - BLOCK_SIZE; offset += BLOCK_SIZE) {\n        // lud_diagonal equivalent - process diagonal block\n        float shadow[BLOCK_SIZE * BLOCK_SIZE];\n        \n        // Load diagonal block into shadow (equivalent to OpenCL local memory load)\n        for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n            int array_offset = offset * matrix_dim + offset;\n            for (i = 0; i < BLOCK_SIZE; i++) {\n                shadow[i * BLOCK_SIZE + tx] = m[array_offset + tx];\n                array_offset += matrix_dim;\n            }\n        }\n        \n        // LU decomposition on shadow (equivalent to OpenCL kernel computation)\n        for (i = 0; i < BLOCK_SIZE - 1; i++) {\n            // First part: update lower triangle\n            #pragma omp parallel for\n            for (int tx = i + 1; tx < BLOCK_SIZE; tx++) {\n                for (j = 0; j < i; j++)\n                    shadow[tx * BLOCK_SIZE + i] -= shadow[tx * BLOCK_SIZE + j] * shadow[j * BLOCK_SIZE + i];\n                shadow[tx * BLOCK_SIZE + i] /= shadow[i * BLOCK_SIZE + i];\n            }\n            \n            // Second part: update upper triangle\n            #pragma omp parallel for\n            for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n                for (j = 0; j < i + 1; j++)\n                    shadow[(i + 1) * BLOCK_SIZE + tx] -= shadow[(i + 1) * BLOCK_SIZE + j] * shadow[j * BLOCK_SIZE + tx];\n            }\n        }\n        \n        // Write back diagonal block (except first row which is already correct)\n        for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n            int array_offset = (offset + 1) * matrix_dim + offset;\n            for (i = 1; i < BLOCK_SIZE; i++) {\n                m[array_offset + tx] = shadow[i * BLOCK_SIZE + tx];\n                array_offset += matrix_dim;\n            }\n        }\n        \n        // lud_perimeter equivalent - process perimeter blocks\n        int num_blocks = (matrix_dim - offset) / BLOCK_SIZE - 1;\n        \n        for (int bx = 0; bx < num_blocks; bx++) {\n            float dia[BLOCK_SIZE * BLOCK_SIZE];\n            float peri_row[BLOCK_SIZE * BLOCK_SIZE];\n            float peri_col[BLOCK_SIZE * BLOCK_SIZE];\n            \n            // Load diagonal block\n            for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n                int array_offset = offset * matrix_dim + offset;\n                for (i = 0; i < BLOCK_SIZE; i++) {\n                    dia[i * BLOCK_SIZE + tx] = m[array_offset + tx];\n                    array_offset += matrix_dim;\n                }\n            }\n            \n            // Load perimeter row block\n            for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n                int array_offset = offset * matrix_dim + offset;\n                for (i = 0; i < BLOCK_SIZE; i++) {\n                    peri_row[i * BLOCK_SIZE + tx] = m[array_offset + (bx + 1) * BLOCK_SIZE + tx];\n                    array_offset += matrix_dim;\n                }\n            }\n            \n            // Load perimeter column block\n            for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n                int array_offset = (offset + (bx + 1) * BLOCK_SIZE) * matrix_dim + offset;\n                for (i = 0; i < BLOCK_SIZE; i++) {\n                    peri_col[i * BLOCK_SIZE + tx] = m[array_offset + tx];\n                    array_offset += matrix_dim;\n                }\n            }\n            \n            // Update perimeter row\n            #pragma omp parallel for\n            for (i = 1; i < BLOCK_SIZE; i++) {\n                for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n                    for (j = 0; j < i; j++)\n                        peri_row[i * BLOCK_SIZE + tx] -= dia[i * BLOCK_SIZE + j] * peri_row[j * BLOCK_SIZE + tx];\n                }\n            }\n            \n            // Update perimeter column\n            #pragma omp parallel for\n            for (i = 0; i < BLOCK_SIZE; i++) {\n                for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n                    for (j = 0; j < i; j++)\n                        peri_col[tx * BLOCK_SIZE + i] -= peri_col[tx * BLOCK_SIZE + j] * dia[j * BLOCK_SIZE + i];\n                    peri_col[tx * BLOCK_SIZE + i] /= dia[i * BLOCK_SIZE + i];\n                }\n            }\n            \n            // Write back perimeter row\n            for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n                int array_offset = (offset + 1) * matrix_dim + offset;\n                for (i = 1; i < BLOCK_SIZE; i++) {\n                    m[array_offset + (bx + 1) * BLOCK_SIZE + tx] = peri_row[i * BLOCK_SIZE + tx];\n                    array_offset += matrix_dim;\n                }\n            }\n            \n            // Write back perimeter column\n            for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n                int array_offset = (offset + (bx + 1) * BLOCK_SIZE) * matrix_dim + offset;\n                for (i = 0; i < BLOCK_SIZE; i++) {\n                    m[array_offset + tx] = peri_col[i * BLOCK_SIZE + tx];\n                    array_offset += matrix_dim;\n                }\n            }\n        }\n        \n        // lud_internal equivalent - process internal blocks\n        #pragma omp parallel for collapse(2)\n        for (int by = 0; by < num_blocks; by++) {\n            for (int bx = 0; bx < num_blocks; bx++) {\n                int global_row_id = offset + (by + 1) * BLOCK_SIZE;\n                int global_col_id = offset + (bx + 1) * BLOCK_SIZE;\n                \n                for (int ty = 0; ty < BLOCK_SIZE; ty++) {\n                    for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n                        float sum = 0;\n                        for (k = 0; k < BLOCK_SIZE; k++) {\n                            sum += m[(global_row_id + ty) * matrix_dim + offset + k] * \n                                   m[(offset + ty) * matrix_dim + global_col_id + k];\n                        }\n                        m[(global_row_id + ty) * matrix_dim + global_col_id + tx] -= sum;\n                    }\n                }\n            }\n        }\n    }\n    \n    // Final diagonal block (last BLOCK_SIZE x BLOCK_SIZE)\n    offset = matrix_dim - BLOCK_SIZE;\n    float shadow[BLOCK_SIZE * BLOCK_SIZE];\n    \n    for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n        int array_offset = offset * matrix_dim + offset;\n        for (i = 0; i < BLOCK_SIZE; i++) {\n            shadow[i * BLOCK_SIZE + tx] = m[array_offset + tx];\n            array_offset += matrix_dim;\n        }\n    }\n    \n    for (i = 0; i < BLOCK_SIZE - 1; i++) {\n        #pragma omp parallel for\n        for (int tx = i + 1; tx < BLOCK_SIZE; tx++) {\n            for (j = 0; j < i; j++)\n                shadow[tx * BLOCK_SIZE + i] -= shadow[tx * BLOCK_SIZE + j] * shadow[j * BLOCK_SIZE + i];\n            shadow[tx * BLOCK_SIZE + i] /= shadow[i * BLOCK_SIZE + i];\n        }\n        \n        #pragma omp parallel for\n        for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n            for (j = 0; j < i + 1; j++)\n                shadow[(i + 1) * BLOCK_SIZE + tx] -= shadow[(i + 1) * BLOCK_SIZE + j] * shadow[j * BLOCK_SIZE + tx];\n        }\n    }\n    \n    for (int tx = 0; tx < BLOCK_SIZE; tx++) {\n        int array_offset = (offset + 1) * matrix_dim + offset;\n        for (i = 1; i < BLOCK_SIZE; i++) {\n            m[array_offset + tx] = shadow[i * BLOCK_SIZE + tx];\n            array_offset += matrix_dim;\n        }\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "omp/lud_omp.c"
+  ],
+  "target_files_extracted": [
+    "omp/lud_omp.c"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 83.271,
+      "prompt_tokens": 12411,
+      "completion_tokens": 14780,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

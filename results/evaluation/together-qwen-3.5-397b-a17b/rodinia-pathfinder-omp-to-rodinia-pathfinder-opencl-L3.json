@@ -1,0 +1,76 @@
+{
+  "source_spec": "rodinia-pathfinder-omp",
+  "target_spec": "rodinia-pathfinder-opencl",
+  "kernel": "pathfinder",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "thinking_enabled": true,
+  "num_samples": 1,
+  "seed": 793451816,
+  "top_p": 1.0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "-c",
+    "100000",
+    "-r",
+    "100",
+    "-h",
+    "20"
+  ],
+  "timestamp": "2026-04-23T00:50:12Z",
+  "prompt_tokens": 4329,
+  "completion_tokens": 9835,
+  "llm_response_time_seconds": 67.518,
+  "build_status": "pass",
+  "build_time_seconds": 0.478,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.247,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "Init: 128.022003\nMemAlloc: 0.003000\nHtoD: 2.218272\nExec: 0.153536\nDtoH: 0.017280\nClose: 0.862000\nTotal: 134.401993\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": null,
+  "translated_wall_time_seconds": 0.247,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": null,
+  "translated_files": {
+    "kernels.cl": "#define MIN(a, b) ((a)<=(b) ? (a) : (b))\n\n__kernel void dynproc_kernel(\n    int pyramid_height,\n    __global int* d_gpuWall,\n    __global int* d_gpuResult_src,\n    __global int* d_gpuResult_dst,\n    int cols,\n    int rows,\n    int t,\n    int borderCols,\n    int theHalo,\n    __local int* local_src,\n    __local int* local_dst,\n    __global int* d_outputBuffer\n)\n{\n    int n = get_global_id(0);\n    \n    if (n >= cols) return;\n    \n    // Get current value from source buffer\n    int current = d_gpuResult_src[n];\n    \n    // Get min from three adjacent positions (above, above-left, above-right)\n    int min = current;\n    if (n > 0)\n        min = MIN(min, d_gpuResult_src[n-1]);\n    if (n < cols-1)\n        min = MIN(min, d_gpuResult_src[n+1]);\n    \n    // Add wall value for the next row\n    // d_gpuWall starts from wall[1], so wall[t+1][n] = d_gpuWall[t*cols + n]\n    int wall_idx = t * cols + n;\n    int result = d_gpuWall[wall_idx] + min;\n    \n    // Write result to destination buffer\n    d_gpuResult_dst[n] = result;\n}\n"
+  },
+  "target_files_expected": [
+    "kernels.cl"
+  ],
+  "target_files_extracted": [
+    "kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 67.518,
+      "prompt_tokens": 4329,
+      "completion_tokens": 9835,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

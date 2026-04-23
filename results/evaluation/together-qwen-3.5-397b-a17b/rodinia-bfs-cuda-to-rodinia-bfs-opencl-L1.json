@@ -1,0 +1,71 @@
+{
+  "source_spec": "rodinia-bfs-cuda",
+  "target_spec": "rodinia-bfs-opencl",
+  "kernel": "bfs",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "thinking_enabled": true,
+  "num_samples": 1,
+  "seed": 702725938,
+  "top_p": 1.0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "../../data/bfs/graph1MW_6.txt"
+  ],
+  "timestamp": "2026-04-23T00:16:58Z",
+  "prompt_tokens": 14146,
+  "completion_tokens": 3026,
+  "llm_response_time_seconds": 18.236,
+  "build_status": "pass",
+  "build_time_seconds": 0.795,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 1.635,
+  "run_exit_code": -11,
+  "run_stderr_snippet": "1 error generated.\nInitCL()::Error: In clBuildProgram\n<kernel>:6:26: error: must use 'struct' tag to refer to type 'Node'\nkernel void BFS_1(global Node* g_graph_nodes, global int* g_graph_edges, global char* g_graph_mask, global char* g_updating_graph_mask, global char *g_graph_visited, global int* v_0, int no_of_nodes) \n                         ^\n                         struct \n\n",
+  "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code -11)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.519,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "Kernels.cl": "struct Node {\n    int starting;\n    int no_of_edges;\n};\n\nkernel void BFS_1(global Node* g_graph_nodes, global int* g_graph_edges, global char* g_graph_mask, global char* g_updating_graph_mask, global char *g_graph_visited, global int* v_0, int no_of_nodes) \n{\n\tint tid = get_global_id(0);\n\tif( tid<no_of_nodes && g_graph_mask[tid])\n\t{\n\t\tg_graph_mask[tid]=0;\n\t\tfor(int i=g_graph_nodes[tid].starting; i<(g_graph_nodes[tid].no_of_edges + g_graph_nodes[tid].starting); i++)\n\t\t\t{\n\t\t\tint id = g_graph_edges[i];\n\t\t\tif(!g_graph_visited[id])\n\t\t\t\t{\n\t\t\t\tv_0[id]=v_0[tid]+1;\n\t\t\t\tg_updating_graph_mask[id]=1;\n\t\t\t\t}\n\t\t\t}\n\t}\n}\n\nkernel void BFS_2(global char* g_graph_mask, global char *g_updating_graph_mask, global char* g_graph_visited, global char *g_over, int no_of_nodes)\n{\n\tint tid = get_global_id(0);\n\tif( no_of_nodes > tid && g_updating_graph_mask[tid])\n\t{\n\t\tg_graph_mask[tid]=1;\n\t\tg_graph_visited[tid]=1;\n\t\t*g_over=1;\n\t\tg_updating_graph_mask[tid]=0;\n\t}\n}\n"
+  },
+  "target_files_expected": [
+    "Kernels.cl"
+  ],
+  "target_files_extracted": [
+    "Kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 18.236,
+      "prompt_tokens": 14146,
+      "completion_tokens": 3026,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "1 error generated.\nInitCL()::Error: In clBuildProgram\n<kernel>:6:26: error: must use 'struct' tag to refer to type 'Node'\nkernel void BFS_1(global Node* g_graph_nodes, global int* g_graph_edges, global char* g_graph_mask, global char* g_updating_graph_mask, global char *g_graph_visited, global int* v_0, int no_of_nodes) \n                         ^\n                         struct \n\n",
+      "run_stdout_snippet": "Reading File\nnumber of platforms:1\nvendor is NVIDIA Corporation\ndevice number: 1\nCreating GPU Context\n",
+      "extraction_fail": null
+    }
+  ]
+}

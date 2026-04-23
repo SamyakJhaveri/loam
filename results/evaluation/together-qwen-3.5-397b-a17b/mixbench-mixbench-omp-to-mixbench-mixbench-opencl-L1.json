@@ -1,0 +1,69 @@
+{
+  "source_spec": "mixbench-mixbench-omp",
+  "target_spec": "mixbench-mixbench-opencl",
+  "kernel": "mixbench",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 1,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "thinking_enabled": true,
+  "num_samples": 1,
+  "seed": 1825021715,
+  "top_p": 1.0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-23T00:24:45Z",
+  "prompt_tokens": 11193,
+  "completion_tokens": 2578,
+  "llm_response_time_seconds": 26.565,
+  "build_status": "pass",
+  "build_time_seconds": 0.472,
+  "build_error_snippet": null,
+  "run_status": "fail",
+  "run_time_seconds": 0.382,
+  "run_exit_code": 1,
+  "run_stderr_snippet": "m built error code: -11\n------------------------------------ Kernel compilation log ----------------------------------\n<kernel>:78:5: error: use of undeclared identifier 'constexpr'\n    constexpr size_t static_chunk_size = 4096;\n    ^\n<kernel>:105:34: error: use of undeclared identifier 'static_chunk_size'\n    for (size_t base = 0; base < static_chunk_size; base++) {\n                                 ^\n----------------------------------------------------------------------------------------------\n",
+  "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+  "verify_status": null,
+  "verify_strategy": null,
+  "overall_status": "RUN_FAIL",
+  "error_message": "Run failed (exit code 1)",
+  "metrics": {},
+  "baseline_wall_time_seconds": 30.0,
+  "translated_wall_time_seconds": null,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": null,
+  "speedup_ratio": null,
+  "translated_files": {
+    "mix_kernels.cl": "// Mixbench OpenCL Kernel\n// Translated from OpenMP CPU benchmark to OpenCL GPU benchmark\n\n#ifdef ENABLE_DP\n#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#endif\n\n#ifdef ENABLE_HP\n#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n#endif\n\n// Kernel parameters are set via build definitions:\n// - class_T: data type (float, double, int, half2, short)\n// - blockdim: workgroup size\n// - COMPUTE_ITERATIONS: number of computation iterations\n// - ELEMENTS_PER_THREAD: elements processed per workitem\n// - FUSION_DEGREE: fusion degree for computation\n// - BLOCK_STRIDED: whether to use workgroup-strided access\n\ntypedef class_T element_t;\n\n#ifdef ENABLE_HP\ntypedef half2 element_half2_t;\n#endif\n\n__attribute__((noinline))\nelement_t bench_block(element_t* data, element_t f, size_t static_chunk_size) {\n    element_t sum = (element_t)0;\n    \n#ifdef BASELINE_IMPL\n    for (size_t i = 0; i < static_chunk_size; i++) {\n        element_t t = data[i];\n        for (size_t j = 0; j < COMPUTE_ITERATIONS; j++) {\n            t = t * t + f;\n        }\n        sum += t;\n    }\n#else\n    element_t f_arr[8];\n    for (int k = 0; k < 8; k++) {\n        f_arr[k] = f;\n    }\n    \n    for (size_t i = 0; i < static_chunk_size; i++) {\n        element_t t_arr[8];\n        for (int k = 0; k < 8; k++) {\n            t_arr[k] = data[i];\n        }\n        \n        for (size_t j = 0; j < COMPUTE_ITERATIONS / 8; j++) {\n            for (int k = 0; k < 8; k++) {\n                t_arr[k] = t_arr[k] * t_arr[k] + f_arr[k];\n            }\n        }\n        \n        // Handle remainder iterations\n        int remainder = COMPUTE_ITERATIONS % 8;\n        for (int k = 0; k < remainder; k++) {\n            t_arr[k] = t_arr[k] * t_arr[k] + f_arr[k];\n        }\n        \n        for (int k = 0; k < 8; k++) {\n            sum += t_arr[k];\n        }\n    }\n#endif\n    \n    return sum;\n}\n\n__kernel void benchmark_func(element_t seed, __global element_t* data) {\n    size_t wi_id = get_global_id(0);\n    size_t total_wi = get_global_size(0);\n    size_t wg_id = get_group_id(0);\n    size_t wg_size = get_local_size(0);\n    \n    element_t sum = (element_t)0;\n    constexpr size_t static_chunk_size = 4096;\n    \n#ifdef BLOCK_STRIDED\n    // Workgroup-strided access pattern\n    size_t stride = wg_size * ELEMENTS_PER_THREAD * FUSION_DEGREE;\n    size_t base_idx = wg_id * stride;\n    size_t wi_offset = (wi_id - wg_id * wg_size) * ELEMENTS_PER_THREAD * FUSION_DEGREE;\n    \n    for (size_t base = 0; base < static_chunk_size; base++) {\n        for (size_t fusion = 0; fusion < FUSION_DEGREE; fusion++) {\n            for (size_t elem = 0; elem < ELEMENTS_PER_THREAD; elem++) {\n                size_t idx = base_idx + wi_offset + fusion * ELEMENTS_PER_THREAD + elem + base * stride;\n                if (idx < total_wi * ELEMENTS_PER_THREAD * FUSION_DEGREE) {\n                    element_t t = data[idx];\n                    for (size_t j = 0; j < COMPUTE_ITERATIONS; j++) {\n                        t = t * t + seed;\n                    }\n                    sum += t;\n                }\n            }\n        }\n    }\n#else\n    // NDRange-strided access pattern (default)\n    size_t total_elements = total_wi * ELEMENTS_PER_THREAD * FUSION_DEGREE;\n    size_t wi_start = wi_id * ELEMENTS_PER_THREAD * FUSION_DEGREE;\n    \n    for (size_t base = 0; base < static_chunk_size; base++) {\n        for (size_t fusion = 0; fusion < FUSION_DEGREE; fusion++) {\n            for (size_t elem = 0; elem < ELEMENTS_PER_THREAD; elem++) {\n                size_t idx = wi_start + fusion * ELEMENTS_PER_THREAD + elem + base * total_wi * ELEMENTS_PER_THREAD * FUSION_DEGREE;\n                if (idx < total_elements) {\n                    element_t t = data[idx];\n                    for (size_t j = 0; j < COMPUTE_ITERATIONS; j++) {\n                        t = t * t + seed;\n                    }\n                    sum += t;\n                }\n            }\n        }\n    }\n#endif\n    \n    // Store result at workitem's base position\n    if (wi_id < total_wi) {\n        data[wi_id * ELEMENTS_PER_THREAD * FUSION_DEGREE] = sum;\n    }\n}\n\n// Warmup kernel for initialization\n__kernel void benchmark_func_warmup(short seed, __global element_t* data) {\n    size_t idx = get_global_id(0);\n    size_t total = get_global_size(0);\n    \n    if (idx < total) {\n        element_t t = data[idx];\n        for (int j = 0; j < 16; j++) {\n            t = t * t + (element_t)seed;\n        }\n        data[idx] = t;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "mix_kernels.cl"
+  ],
+  "target_files_extracted": [
+    "mix_kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 26.565,
+      "prompt_tokens": 11193,
+      "completion_tokens": 2578,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "fail",
+      "verify_status": null,
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": "m built error code: -11\n------------------------------------ Kernel compilation log ----------------------------------\n<kernel>:78:5: error: use of undeclared identifier 'constexpr'\n    constexpr size_t static_chunk_size = 4096;\n    ^\n<kernel>:105:34: error: use of undeclared identifier 'static_chunk_size'\n    for (size_t base = 0; base < static_chunk_size; base++) {\n                                 ^\n----------------------------------------------------------------------------------------------\n",
+      "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+      "extraction_fail": null
+    }
+  ]
+}

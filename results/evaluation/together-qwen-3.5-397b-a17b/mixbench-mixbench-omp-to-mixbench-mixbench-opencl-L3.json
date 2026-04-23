@@ -1,0 +1,69 @@
+{
+  "source_spec": "mixbench-mixbench-omp",
+  "target_spec": "mixbench-mixbench-opencl",
+  "kernel": "mixbench",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 3,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "thinking_enabled": true,
+  "num_samples": 1,
+  "seed": 1825021715,
+  "top_p": 1.0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": null,
+  "timestamp": "2026-04-23T00:25:41Z",
+  "prompt_tokens": 11193,
+  "completion_tokens": 2942,
+  "llm_response_time_seconds": 29.471,
+  "build_status": "pass",
+  "build_time_seconds": 0.469,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 3.747,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "9.02\n          192,     96.250,    0.83,15600.79, 162.09,     48.125,   25.53,  505.98,  10.51,    192.500,    0.00,     inf,    inf,    96.250,    0.81,15943.36, 165.65\n          256,    128.250,    0.66,26272.01, 204.85,     64.125,   33.99,  506.48,   7.90,    256.500,    0.00,     inf,    inf,   128.250,    1.08,15984.30, 124.63\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 30.0,
+  "translated_wall_time_seconds": 3.747,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 8.0064,
+  "translated_files": {
+    "mix_kernels.cl": "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n\n#ifdef ENABLE_DP\n#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#endif\n\n#ifdef ENABLE_HP\n#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n#endif\n\n__kernel void benchmark_func(class_T seed, __global class_T* data) {\n    size_t global_id = get_global_id(0);\n    size_t local_id = get_local_id(0);\n    size_t group_id = get_group_id(0);\n    size_t num_groups = get_num_groups(0);\n    \n    size_t total_workitems = get_global_size(0);\n    size_t elements_per_thread = ELEMENTS_PER_THREAD;\n    size_t fusion_degree = FUSION_DEGREE;\n    size_t compute_iterations = COMPUTE_ITERATIONS;\n    \n    // Calculate stride based on BLOCK_STRIDED\n#ifdef BLOCK_STRIDED\n    size_t stride = blockdim * elements_per_thread * fusion_degree;\n#else\n    size_t stride = total_workitems * elements_per_thread * fusion_degree;\n#endif\n    \n    size_t start_idx = global_id * elements_per_thread * fusion_degree;\n    \n    class_T sum = 0;\n    class_T f = data[0];\n    \n    // Process elements\n    for (size_t elem = 0; elem < elements_per_thread; elem++) {\n        size_t idx = start_idx + elem * fusion_degree;\n        \n        // Fusion loop\n        for (size_t fusion = 0; fusion < fusion_degree; fusion++) {\n            size_t actual_idx = idx + fusion;\n            \n            class_T t = data[actual_idx];\n            \n            // Compute iterations\n            for (size_t iter = 0; iter < compute_iterations; iter++) {\n                t = t * t + f;\n            }\n            \n            sum += t;\n        }\n    }\n    \n    // Store result\n    if (global_id == 0) {\n        data[0] = sum;\n    }\n}\n"
+  },
+  "target_files_expected": [
+    "mix_kernels.cl"
+  ],
+  "target_files_extracted": [
+    "mix_kernels.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 29.471,
+      "prompt_tokens": 11193,
+      "completion_tokens": 2942,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}

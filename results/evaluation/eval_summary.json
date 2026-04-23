@@ -1,0 +1,4075 @@
+{
+  "generated_at": "2026-04-22T21:05:50.809288",
+  "total_tasks": 642,
+  "by_model": {
+    "together-qwen-3.5-397b-a17b": {
+      "pass": 243,
+      "total": 642,
+      "rate": 0.3785,
+      "by_status": {
+        "BUILD_FAIL": 252,
+        "PASS": 243,
+        "VERIFY_FAIL": 31,
+        "RUN_FAIL": 115,
+        "EXTRACTION_FAIL": 1
+      }
+    }
+  },
+  "by_direction": {
+    "cuda-to-omp": {
+      "pass": 71,
+      "total": 120,
+      "rate": 0.5917,
+      "by_status": {
+        "PASS": 71,
+        "VERIFY_FAIL": 3,
+        "RUN_FAIL": 5,
+        "BUILD_FAIL": 41
+      }
+    },
+    "cuda-to-omp_target": {
+      "pass": 0,
+      "total": 24,
+      "rate": 0.0,
+      "by_status": {
+        "BUILD_FAIL": 23,
+        "RUN_FAIL": 1
+      }
+    },
+    "cuda-to-opencl": {
+      "pass": 5,
+      "total": 72,
+      "rate": 0.0694,
+      "by_status": {
+        "RUN_FAIL": 58,
+        "VERIFY_FAIL": 9,
+        "PASS": 5
+      }
+    },
+    "omp-to-cuda": {
+      "pass": 41,
+      "total": 104,
+      "rate": 0.3942,
+      "by_status": {
+        "PASS": 41,
+        "BUILD_FAIL": 60,
+        "VERIFY_FAIL": 1,
+        "EXTRACTION_FAIL": 1,
+        "RUN_FAIL": 1
+      }
+    },
+    "omp-to-omp_target": {
+      "pass": 11,
+      "total": 21,
+      "rate": 0.5238,
+      "by_status": {
+        "PASS": 11,
+        "BUILD_FAIL": 6,
+        "VERIFY_FAIL": 3,
+        "RUN_FAIL": 1
+      }
+    },
+    "omp-to-opencl": {
+      "pass": 44,
+      "total": 94,
+      "rate": 0.4681,
+      "by_status": {
+        "RUN_FAIL": 41,
+        "PASS": 44,
+        "VERIFY_FAIL": 9
+      }
+    },
+    "omp_target-to-cuda": {
+      "pass": 39,
+      "total": 56,
+      "rate": 0.6964,
+      "by_status": {
+        "BUILD_FAIL": 17,
+        "PASS": 39
+      }
+    },
+    "omp_target-to-omp": {
+      "pass": 21,
+      "total": 21,
+      "rate": 1.0,
+      "by_status": {
+        "PASS": 21
+      }
+    },
+    "opencl-to-cuda": {
+      "pass": 0,
+      "total": 60,
+      "rate": 0.0,
+      "by_status": {
+        "RUN_FAIL": 2,
+        "BUILD_FAIL": 58
+      }
+    },
+    "opencl-to-omp": {
+      "pass": 11,
+      "total": 70,
+      "rate": 0.1571,
+      "by_status": {
+        "BUILD_FAIL": 47,
+        "VERIFY_FAIL": 6,
+        "RUN_FAIL": 6,
+        "PASS": 11
+      }
+    }
+  },
+  "by_kernel": {
+    "backprop": {
+      "pass": 4,
+      "total": 22,
+      "rate": 0.1818,
+      "by_status": {
+        "BUILD_FAIL": 12,
+        "VERIFY_FAIL": 6,
+        "PASS": 4
+      }
+    },
+    "bfs": {
+      "pass": 17,
+      "total": 34,
+      "rate": 0.5,
+      "by_status": {
+        "PASS": 17,
+        "RUN_FAIL": 9,
+        "BUILD_FAIL": 7,
+        "EXTRACTION_FAIL": 1
+      }
+    },
+    "bptree": {
+      "pass": 0,
+      "total": 18,
+      "rate": 0.0,
+      "by_status": {
+        "BUILD_FAIL": 9,
+        "RUN_FAIL": 7,
+        "VERIFY_FAIL": 2
+      }
+    },
+    "cfd": {
+      "pass": 7,
+      "total": 22,
+      "rate": 0.3182,
+      "by_status": {
+        "PASS": 7,
+        "VERIFY_FAIL": 6,
+        "BUILD_FAIL": 9
+      }
+    },
+    "convolution1d": {
+      "pass": 2,
+      "total": 10,
+      "rate": 0.2,
+      "by_status": {
+        "BUILD_FAIL": 8,
+        "PASS": 2
+      }
+    },
+    "dwt2d": {
+      "pass": 0,
+      "total": 6,
+      "rate": 0.0,
+      "by_status": {
+        "RUN_FAIL": 3,
+        "BUILD_FAIL": 3
+      }
+    },
+    "floydwarshall": {
+      "pass": 31,
+      "total": 38,
+      "rate": 0.8158,
+      "by_status": {
+        "PASS": 31,
+        "BUILD_FAIL": 6,
+        "VERIFY_FAIL": 1
+      }
+    },
+    "gaussian": {
+      "pass": 0,
+      "total": 6,
+      "rate": 0.0,
+      "by_status": {
+        "RUN_FAIL": 4,
+        "BUILD_FAIL": 2
+      }
+    },
+    "heartwall": {
+      "pass": 0,
+      "total": 18,
+      "rate": 0.0,
+      "by_status": {
+        "BUILD_FAIL": 12,
+        "RUN_FAIL": 6
+      }
+    },
+    "heat2d": {
+      "pass": 29,
+      "total": 38,
+      "rate": 0.7632,
+      "by_status": {
+        "PASS": 29,
+        "VERIFY_FAIL": 3,
+        "BUILD_FAIL": 5,
+        "RUN_FAIL": 1
+      }
+    },
+    "hotspot": {
+      "pass": 15,
+      "total": 30,
+      "rate": 0.5,
+      "by_status": {
+        "BUILD_FAIL": 7,
+        "RUN_FAIL": 6,
+        "PASS": 15,
+        "VERIFY_FAIL": 2
+      }
+    },
+    "hotspot3d": {
+      "pass": 19,
+      "total": 34,
+      "rate": 0.5588,
+      "by_status": {
+        "PASS": 19,
+        "RUN_FAIL": 5,
+        "BUILD_FAIL": 9,
+        "VERIFY_FAIL": 1
+      }
+    },
+    "iso2dfd": {
+      "pass": 32,
+      "total": 38,
+      "rate": 0.8421,
+      "by_status": {
+        "PASS": 32,
+        "BUILD_FAIL": 5,
+        "RUN_FAIL": 1
+      }
+    },
+    "jacobi": {
+      "pass": 1,
+      "total": 10,
+      "rate": 0.1,
+      "by_status": {
+        "BUILD_FAIL": 9,
+        "PASS": 1
+      }
+    },
+    "lavamd": {
+      "pass": 0,
+      "total": 18,
+      "rate": 0.0,
+      "by_status": {
+        "BUILD_FAIL": 11,
+        "RUN_FAIL": 6,
+        "VERIFY_FAIL": 1
+      }
+    },
+    "lud": {
+      "pass": 14,
+      "total": 30,
+      "rate": 0.4667,
+      "by_status": {
+        "BUILD_FAIL": 8,
+        "PASS": 14,
+        "RUN_FAIL": 8
+      }
+    },
+    "md": {
+      "pass": 5,
+      "total": 10,
+      "rate": 0.5,
+      "by_status": {
+        "BUILD_FAIL": 5,
+        "PASS": 5
+      }
+    },
+    "mixbench": {
+      "pass": 3,
+      "total": 22,
+      "rate": 0.1364,
+      "by_status": {
+        "BUILD_FAIL": 11,
+        "RUN_FAIL": 8,
+        "PASS": 3
+      }
+    },
+    "myocyte": {
+      "pass": 0,
+      "total": 18,
+      "rate": 0.0,
+      "by_status": {
+        "BUILD_FAIL": 12,
+        "RUN_FAIL": 6
+      }
+    },
+    "nn": {
+      "pass": 0,
+      "total": 6,
+      "rate": 0.0,
+      "by_status": {
+        "BUILD_FAIL": 6
+      }
+    },
+    "nqueen": {
+      "pass": 6,
+      "total": 10,
+      "rate": 0.6,
+      "by_status": {
+        "BUILD_FAIL": 4,
+        "PASS": 6
+      }
+    },
+    "nw": {
+      "pass": 12,
+      "total": 30,
+      "rate": 0.4,
+      "by_status": {
+        "PASS": 12,
+        "BUILD_FAIL": 14,
+        "RUN_FAIL": 4
+      }
+    },
+    "page-rank": {
+      "pass": 6,
+      "total": 10,
+      "rate": 0.6,
+      "by_status": {
+        "BUILD_FAIL": 4,
+        "PASS": 6
+      }
+    },
+    "particlefilter": {
+      "pass": 9,
+      "total": 26,
+      "rate": 0.3462,
+      "by_status": {
+        "PASS": 9,
+        "VERIFY_FAIL": 6,
+        "BUILD_FAIL": 10,
+        "RUN_FAIL": 1
+      }
+    },
+    "pathfinder": {
+      "pass": 10,
+      "total": 30,
+      "rate": 0.3333,
+      "by_status": {
+        "PASS": 10,
+        "BUILD_FAIL": 15,
+        "RUN_FAIL": 5
+      }
+    },
+    "rsbench": {
+      "pass": 0,
+      "total": 18,
+      "rate": 0.0,
+      "by_status": {
+        "BUILD_FAIL": 12,
+        "RUN_FAIL": 6
+      }
+    },
+    "scan": {
+      "pass": 0,
+      "total": 6,
+      "rate": 0.0,
+      "by_status": {
+        "VERIFY_FAIL": 1,
+        "RUN_FAIL": 2,
+        "BUILD_FAIL": 3
+      }
+    },
+    "srad": {
+      "pass": 9,
+      "total": 26,
+      "rate": 0.3462,
+      "by_status": {
+        "PASS": 9,
+        "RUN_FAIL": 6,
+        "BUILD_FAIL": 11
+      }
+    },
+    "stencil1d": {
+      "pass": 10,
+      "total": 14,
+      "rate": 0.7143,
+      "by_status": {
+        "PASS": 10,
+        "VERIFY_FAIL": 2,
+        "BUILD_FAIL": 1,
+        "RUN_FAIL": 1
+      }
+    },
+    "streamcluster": {
+      "pass": 1,
+      "total": 22,
+      "rate": 0.0455,
+      "by_status": {
+        "BUILD_FAIL": 10,
+        "RUN_FAIL": 11,
+        "PASS": 1
+      }
+    },
+    "xsbench": {
+      "pass": 1,
+      "total": 22,
+      "rate": 0.0455,
+      "by_status": {
+        "BUILD_FAIL": 12,
+        "RUN_FAIL": 9,
+        "PASS": 1
+      }
+    }
+  },
+  "by_augment_level": {
+    "L0": {
+      "pass": 104,
+      "total": 438,
+      "rate": 0.2374,
+      "by_status": {
+        "BUILD_FAIL": 219,
+        "PASS": 104,
+        "VERIFY_FAIL": 27,
+        "RUN_FAIL": 87,
+        "EXTRACTION_FAIL": 1
+      }
+    },
+    "L1": {
+      "pass": 37,
+      "total": 51,
+      "rate": 0.7255,
+      "by_status": {
+        "BUILD_FAIL": 6,
+        "PASS": 37,
+        "RUN_FAIL": 7,
+        "VERIFY_FAIL": 1
+      }
+    },
+    "L2": {
+      "pass": 34,
+      "total": 51,
+      "rate": 0.6667,
+      "by_status": {
+        "BUILD_FAIL": 11,
+        "PASS": 34,
+        "VERIFY_FAIL": 1,
+        "RUN_FAIL": 5
+      }
+    },
+    "L3": {
+      "pass": 34,
+      "total": 51,
+      "rate": 0.6667,
+      "by_status": {
+        "BUILD_FAIL": 7,
+        "PASS": 34,
+        "VERIFY_FAIL": 2,
+        "RUN_FAIL": 8
+      }
+    },
+    "L4": {
+      "pass": 34,
+      "total": 51,
+      "rate": 0.6667,
+      "by_status": {
+        "PASS": 34,
+        "BUILD_FAIL": 9,
+        "RUN_FAIL": 8
+      }
+    }
+  },
+  "failure_taxonomy": {
+    "BUILD_FAIL": 252,
+    "RUN_FAIL": 115,
+    "VERIFY_FAIL": 31,
+    "EXTRACTION_FAIL": 1
+  },
+  "self_repair": {
+    "attempt_1_pass": 243,
+    "total_repaired_by_retry": 0,
+    "total_with_attempts": 642
+  },
+  "by_complexity": {
+    "multi_to_multi": {
+      "pass": 0,
+      "total": 30,
+      "rate": 0.0,
+      "by_status": {
+        "BUILD_FAIL": 21,
+        "RUN_FAIL": 7,
+        "VERIFY_FAIL": 2
+      }
+    },
+    "multi_to_single": {
+      "pass": 37,
+      "total": 117,
+      "rate": 0.3162,
+      "by_status": {
+        "BUILD_FAIL": 25,
+        "VERIFY_FAIL": 3,
+        "PASS": 37,
+        "RUN_FAIL": 52
+      }
+    },
+    "single_file": {
+      "pass": 200,
+      "total": 406,
+      "rate": 0.4926,
+      "by_status": {
+        "BUILD_FAIL": 130,
+        "PASS": 200,
+        "VERIFY_FAIL": 20,
+        "RUN_FAIL": 56
+      }
+    },
+    "single_to_multi": {
+      "pass": 6,
+      "total": 89,
+      "rate": 0.0674,
+      "by_status": {
+        "BUILD_FAIL": 76,
+        "PASS": 6,
+        "EXTRACTION_FAIL": 1,
+        "VERIFY_FAIL": 6
+      }
+    }
+  },
+  "pass_at_1": {
+    "cells": [
+      {
+        "kernel": "backprop",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "bptree",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "cfd",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heartwall",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lavamd",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "mixbench",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "myocyte",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nn",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "rsbench",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "scan",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "stencil1d",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "streamcluster",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "xsbench",
+        "direction": "cuda-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "cfd",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "stencil1d",
+        "direction": "cuda-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "cfd",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "stencil1d",
+        "direction": "cuda-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "cfd",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "stencil1d",
+        "direction": "cuda-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "cfd",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "stencil1d",
+        "direction": "cuda-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "convolution1d",
+        "direction": "cuda-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "cuda-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "cuda-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "cuda-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "jacobi",
+        "direction": "cuda-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "md",
+        "direction": "cuda-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nqueen",
+        "direction": "cuda-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "page-rank",
+        "direction": "cuda-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "backprop",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "bptree",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "cfd",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "dwt2d",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "gaussian",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "heartwall",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "lavamd",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "mixbench",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "myocyte",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "rsbench",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "streamcluster",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "xsbench",
+        "direction": "cuda-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "cuda-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "cuda-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "cuda-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "cuda-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "cuda-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "cuda-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "cuda-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "cuda-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "cuda-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "cuda-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "cuda-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "cuda-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "backprop",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "bptree",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "cfd",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heartwall",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lavamd",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "mixbench",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "myocyte",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nn",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "rsbench",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "scan",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "stencil1d",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "streamcluster",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "xsbench",
+        "direction": "omp-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "omp-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "omp-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "omp-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "omp-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "stencil1d",
+        "direction": "omp-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "omp-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "omp-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "omp-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "omp-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "stencil1d",
+        "direction": "omp-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "omp-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "omp-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "omp-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "omp-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "stencil1d",
+        "direction": "omp-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "omp-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "omp-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "omp-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "omp-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "stencil1d",
+        "direction": "omp-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp-to-omp_target",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp-to-omp_target",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp-to-omp_target",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp-to-omp_target",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp-to-omp_target",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp-to-omp_target",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp-to-omp_target",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp-to-omp_target",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp-to-omp_target",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp-to-omp_target",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp-to-omp_target",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp-to-omp_target",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp-to-omp_target",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "backprop",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "bfs",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "bptree",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "cfd",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "heartwall",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "lavamd",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "mixbench",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "myocyte",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "rsbench",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "streamcluster",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "xsbench",
+        "direction": "omp-to-opencl",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "backprop",
+        "direction": "omp-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "omp-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "omp-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "omp-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "omp-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "mixbench",
+        "direction": "omp-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "omp-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "omp-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "streamcluster",
+        "direction": "omp-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "xsbench",
+        "direction": "omp-to-opencl",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "backprop",
+        "direction": "omp-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "omp-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "omp-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "omp-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "omp-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "mixbench",
+        "direction": "omp-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "omp-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "omp-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "streamcluster",
+        "direction": "omp-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "xsbench",
+        "direction": "omp-to-opencl",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "backprop",
+        "direction": "omp-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "omp-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "omp-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "omp-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "omp-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "mixbench",
+        "direction": "omp-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "omp-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "omp-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "streamcluster",
+        "direction": "omp-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "xsbench",
+        "direction": "omp-to-opencl",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "backprop",
+        "direction": "omp-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "omp-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "omp-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "omp-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "omp-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "mixbench",
+        "direction": "omp-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "omp-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "omp-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "streamcluster",
+        "direction": "omp-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "xsbench",
+        "direction": "omp-to-opencl",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "convolution1d",
+        "direction": "omp_target-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp_target-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp_target-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp_target-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "jacobi",
+        "direction": "omp_target-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "md",
+        "direction": "omp_target-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "nqueen",
+        "direction": "omp_target-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "page-rank",
+        "direction": "omp_target-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "convolution1d",
+        "direction": "omp_target-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp_target-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp_target-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp_target-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "jacobi",
+        "direction": "omp_target-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "md",
+        "direction": "omp_target-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nqueen",
+        "direction": "omp_target-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "page-rank",
+        "direction": "omp_target-to-cuda",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "convolution1d",
+        "direction": "omp_target-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp_target-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp_target-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp_target-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "jacobi",
+        "direction": "omp_target-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "md",
+        "direction": "omp_target-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nqueen",
+        "direction": "omp_target-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "page-rank",
+        "direction": "omp_target-to-cuda",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "convolution1d",
+        "direction": "omp_target-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp_target-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp_target-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp_target-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "jacobi",
+        "direction": "omp_target-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "md",
+        "direction": "omp_target-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nqueen",
+        "direction": "omp_target-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "page-rank",
+        "direction": "omp_target-to-cuda",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "convolution1d",
+        "direction": "omp_target-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp_target-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp_target-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp_target-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "jacobi",
+        "direction": "omp_target-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "md",
+        "direction": "omp_target-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "nqueen",
+        "direction": "omp_target-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "page-rank",
+        "direction": "omp_target-to-cuda",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp_target-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp_target-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp_target-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 3,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp_target-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp_target-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp_target-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp_target-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp_target-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp_target-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp_target-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp_target-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp_target-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "floydwarshall",
+        "direction": "omp_target-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "heat2d",
+        "direction": "omp_target-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "iso2dfd",
+        "direction": "omp_target-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "backprop",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bptree",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "cfd",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "dwt2d",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "gaussian",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "heartwall",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "lavamd",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "mixbench",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "myocyte",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "rsbench",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "streamcluster",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "xsbench",
+        "direction": "opencl-to-cuda",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "backprop",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bfs",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "bptree",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "cfd",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "heartwall",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "lavamd",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 2,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.6667
+      },
+      {
+        "kernel": "mixbench",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "myocyte",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "nw",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "pathfinder",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "rsbench",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 0.3333
+      },
+      {
+        "kernel": "streamcluster",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "xsbench",
+        "direction": "opencl-to-omp",
+        "level": 0,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 3,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "opencl-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "opencl-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "opencl-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "opencl-to-omp",
+        "level": 1,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "opencl-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "opencl-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "opencl-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "opencl-to-omp",
+        "level": 2,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "opencl-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "opencl-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "opencl-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "opencl-to-omp",
+        "level": 3,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "hotspot3d",
+        "direction": "opencl-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "lud",
+        "direction": "opencl-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      },
+      {
+        "kernel": "particlefilter",
+        "direction": "opencl-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
+      },
+      {
+        "kernel": "srad",
+        "direction": "opencl-to-omp",
+        "level": 4,
+        "model": "together-qwen-3.5-397b-a17b",
+        "samples": 1,
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
+      }
+    ],
+    "by_level": {
+      "L0": {
+        "cells": 146,
+        "mean_of_any": 0.3493,
+        "mean_of_mean": 0.2374,
+        "divergence": 0.1119
+      },
+      "L1": {
+        "cells": 51,
+        "mean_of_any": 0.7255,
+        "mean_of_mean": 0.7255,
+        "divergence": 0.0
+      },
+      "L2": {
+        "cells": 51,
+        "mean_of_any": 0.6667,
+        "mean_of_mean": 0.6667,
+        "divergence": 0.0
+      },
+      "L3": {
+        "cells": 51,
+        "mean_of_any": 0.6667,
+        "mean_of_mean": 0.6667,
+        "divergence": 0.0
+      },
+      "L4": {
+        "cells": 51,
+        "mean_of_any": 0.6667,
+        "mean_of_mean": 0.6667,
+        "divergence": 0.0
+      }
+    }
+  }
+}

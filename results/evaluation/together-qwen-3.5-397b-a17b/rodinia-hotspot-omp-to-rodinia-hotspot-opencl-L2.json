@@ -1,0 +1,76 @@
+{
+  "source_spec": "rodinia-hotspot-omp",
+  "target_spec": "rodinia-hotspot-opencl",
+  "kernel": "hotspot",
+  "model": "together-qwen-3.5-397b-a17b",
+  "augment_level": 2,
+  "temperature": 0.0,
+  "sample_id": 0,
+  "thinking_enabled": true,
+  "num_samples": 1,
+  "seed": 325865020,
+  "top_p": 1.0,
+  "translation_mode": "kernel_centric",
+  "translation_type": "kernel_only",
+  "verification_mode": "kernel_only_target_pattern",
+  "run_args_mode": "kernel_only_target_args",
+  "run_arguments_used": [
+    "512",
+    "2",
+    "4",
+    "../../data/hotspot/temp_512",
+    "../../data/hotspot/power_512",
+    "output.out"
+  ],
+  "timestamp": "2026-04-23T00:30:41Z",
+  "prompt_tokens": 7798,
+  "completion_tokens": 13689,
+  "llm_response_time_seconds": 121.852,
+  "build_status": "pass",
+  "build_time_seconds": 0.179,
+  "build_error_snippet": null,
+  "run_status": "pass",
+  "run_time_seconds": 0.278,
+  "run_exit_code": 0,
+  "run_stderr_snippet": null,
+  "run_stdout_snippet": "WG size of kernel = 16 X 16\nPlatform: NVIDIA Corporation\nnum_devices = 1\nDevice: NVIDIA GeForce RTX 4070\nUse GPU device\nInit: 141.201996\nMemAlloc: 0.003000\nHtoD: 0.393000\nExec: 0.020448\nDtoH: 0.039776\nClose: 0.320000\nTotal: 182.556000\n",
+  "verify_status": "pass",
+  "verify_strategy": "stdout_pattern+exit_code",
+  "overall_status": "PASS",
+  "error_message": null,
+  "metrics": {},
+  "baseline_wall_time_seconds": 0.159,
+  "translated_wall_time_seconds": 0.278,
+  "translated_cpu_time_seconds": null,
+  "translated_kernel_time_seconds": null,
+  "timing_method": "wall_time",
+  "speedup_ratio": 0.5719,
+  "translated_files": {
+    "hotspot_kernel.cl": "#define MAX_PD (3.0e6)\n#define PRECISION 0.001\n#define SPEC_HEAT_SI 1.75e6\n#define K_SI 100\n#define FACTOR_CHIP 0.5\n\nconst float t_chip = 0.0005f;\nconst float chip_height = 0.016f;\nconst float chip_width = 0.016f;\nconst float amb_temp = 80.0f;\n\n__kernel void hotspot(\n    const int iter,\n    const __global float* power,\n    const __global float* temp,\n    __global float* result,\n    const int col,\n    const int row,\n    const int borderCols,\n    const int borderRows,\n    const float Cap,\n    const float Rx,\n    const float Ry,\n    const float Rz,\n    const float step)\n{\n    float Rx_1 = 1.f / Rx;\n    float Ry_1 = 1.f / Ry;\n    float Rz_1 = 1.f / Rz;\n    float Cap_1 = step / Cap;\n\n    int c = get_global_id(0);\n    int r = get_global_id(1);\n\n    if (c >= col || r >= row) return;\n\n    int idx = r * col + c;\n\n    float current_temp = temp[idx];\n    \n    for (int i = 0; i < iter; i++) {\n        float delta;\n\n        if (r == 0 && c == 0) {\n            delta = Cap_1 * (power[idx] +\n                (temp[idx + 1] - current_temp) * Rx_1 +\n                (temp[idx + col] - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        }\n        else if (r == 0 && c == col - 1) {\n            delta = Cap_1 * (power[idx] +\n                (temp[idx - 1] - current_temp) * Rx_1 +\n                (temp[idx + col] - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        }\n        else if (r == row - 1 && c == col - 1) {\n            delta = Cap_1 * (power[idx] +\n                (temp[idx - 1] - current_temp) * Rx_1 +\n                (temp[idx - col] - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        }\n        else if (r == row - 1 && c == 0) {\n            delta = Cap_1 * (power[idx] +\n                (temp[idx + 1] - current_temp) * Rx_1 +\n                (temp[idx - col] - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        }\n        else if (r == 0) {\n            delta = Cap_1 * (power[idx] +\n                (temp[idx + 1] + temp[idx - 1] - 2.0f * current_temp) * Rx_1 +\n                (temp[idx + col] - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        }\n        else if (c == col - 1) {\n            delta = Cap_1 * (power[idx] +\n                (temp[idx + col] + temp[idx - col] - 2.0f * current_temp) * Ry_1 +\n                (temp[idx - 1] - current_temp) * Rx_1 +\n                (amb_temp - current_temp) * Rz_1);\n        }\n        else if (r == row - 1) {\n            delta = Cap_1 * (power[idx] +\n                (temp[idx + 1] + temp[idx - 1] - 2.0f * current_temp) * Rx_1 +\n                (temp[idx - col] - current_temp) * Ry_1 +\n                (amb_temp - current_temp) * Rz_1);\n        }\n        else if (c == 0) {\n            delta = Cap_1 * (power[idx] +\n                (temp[idx + col] + temp[idx - col] - 2.0f * current_temp) * Ry_1 +\n                (temp[idx + 1] - current_temp) * Rx_1 +\n                (amb_temp - current_temp) * Rz_1);\n        }\n        else {\n            delta = Cap_1 * (power[idx] +\n                (temp[idx + col] + temp[idx - col] - 2.0f * current_temp) * Ry_1 +\n                (temp[idx + 1] + temp[idx - 1] - 2.0f * current_temp) * Rx_1 +\n                (amb_temp - current_temp) * Rz_1);\n        }\n\n        current_temp = current_temp + delta;\n    }\n\n    result[idx] = current_temp;\n}\n"
+  },
+  "target_files_expected": [
+    "hotspot_kernel.cl"
+  ],
+  "target_files_extracted": [
+    "hotspot_kernel.cl"
+  ],
+  "max_retries": 1,
+  "total_attempts": 1,
+  "attempts": [
+    {
+      "attempt": 1,
+      "llm_response_time_seconds": 121.852,
+      "prompt_tokens": 7798,
+      "completion_tokens": 13689,
+      "finish_reason": "stop",
+      "build_status": "pass",
+      "run_status": "pass",
+      "verify_status": "pass",
+      "error_feedback_sent": null,
+      "build_error_snippet": null,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": null,
+      "extraction_fail": null
+    }
+  ]
+}
