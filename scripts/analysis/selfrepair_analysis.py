@@ -322,10 +322,16 @@ def main() -> int:
         f"{len(repairs)} multi-attempt (needed retry).",
         "",
         f"Of {len(repairs)} retried translations:",
-        f"- **{full_repair_count}** ({full_repair_count/len(repairs):.1%}) achieved full repair (reached PASS)",
-        f"- **{partial_repair_count}** ({partial_repair_count/len(repairs):.1%}) showed partial improvement",
-        f"- **{no_repair_count}** ({no_repair_count/len(repairs):.1%}) showed no change",
-        f"- **{regression_count}** ({regression_count/len(repairs):.1%}) regressed to a worse status",
+        *(
+            [
+                f"- **{full_repair_count}** ({full_repair_count/len(repairs):.1%}) achieved full repair (reached PASS)",
+                f"- **{partial_repair_count}** ({partial_repair_count/len(repairs):.1%}) showed partial improvement",
+                f"- **{no_repair_count}** ({no_repair_count/len(repairs):.1%}) showed no change",
+                f"- **{regression_count}** ({regression_count/len(repairs):.1%}) regressed to a worse status",
+            ]
+            if len(repairs) > 0
+            else ["- No multi-attempt translations found (all tasks single-attempt)."]
+        ),
         "",
         "## Table 1: Per-Model Self-Repair",
         "",

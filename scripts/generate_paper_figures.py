@@ -402,6 +402,21 @@ def filter_records(
     return out
 
 
+def get_canonical_l0(records: list[dict]) -> list[dict]:
+    """Return canonical L0 records: true base files, or sample_id=0 as fallback."""
+    base = [r for r in records if not r.get("is_sample", False)]
+    l0 = filter_records(base, level=0)
+    if l0:
+        return l0
+    s0 = [
+        r for r in records
+        if r.get("is_sample", False)
+        and r.get("augment_level", -1) == 0
+        and r.get("sample_id") == 0
+    ]
+    return s0
+
+
 def build_kernel_model_matrix(
     records: list[dict],
     level: int = 0,
@@ -549,8 +564,7 @@ def generate_f3_kernel_heatmap(
     # ------------------------------------------------------------------
     # 1. Filter to base L0 records for this model's directions
     # ------------------------------------------------------------------
-    base_records = [r for r in records if not r.get("is_sample", False)]
-    l0_records = filter_records(base_records, level=0)
+    l0_records = get_canonical_l0(records)
     directions = list(ALL_DIRECTIONS)  # always 8 directions for consistent layout
     std_records = [r for r in l0_records if r["direction"] in directions and r.get("model") == model_id]
 
@@ -582,7 +596,7 @@ def generate_f3_kernel_heatmap(
         specs_dir = project_root / "specs"
         # Curated HeCBench kernels: those that have eval results
         curated_hec = set()
-        for r in base_records:
+        for r in l0_records:
             if r.get("suite") == "hecbench":
                 curated_hec.add(r.get("kernel", ""))
         for spec_file in specs_dir.glob("*.json"):
@@ -805,8 +819,7 @@ def generate_f4_failure_taxonomy(
     model_id: str,
 ) -> None:
     """F4: Failure taxonomy -- status distribution by direction (per model)."""
-    base_records = [r for r in records if not r.get("is_sample", False)]
-    l0_records = filter_records(base_records, level=0)
+    l0_records = get_canonical_l0(records)
     directions = list(ALL_DIRECTIONS)  # always 8 directions for consistent layout
     std_records = [r for r in l0_records if r["direction"] in directions and r.get("model") == model_id]
 
@@ -1024,8 +1037,7 @@ def generate_f6_cross_suite_comparison(
     model_id: str,
 ) -> None:
     """F6: Cross-suite aggregate pass rate comparison bar chart (per model)."""
-    base_records = [r for r in records if not r.get("is_sample", False)]
-    l0_records = filter_records(base_records, level=0)
+    l0_records = get_canonical_l0(records)
     directions = list(ALL_DIRECTIONS)  # always 8 directions for consistent layout
     std_records = [r for r in l0_records if r["direction"] in directions and r.get("model") == model_id]
 
@@ -1173,9 +1185,11 @@ def generate_f7_augmentation(
     levels = [0, 1, 2, 3, 4]
     level_labels = ["L0\n(original)", "L1", "L2", "L3", "L4\n(max)"]
 
-    # Filter to non-sample, cuda-to-omp direction only
-    base_records = [r for r in records if not r.get("is_sample", False)]
-    c2o_all = [r for r in base_records
+    # Canonical L0 + L1-L4 augmented, cuda-to-omp direction only
+    l0_canonical = get_canonical_l0(records)
+    augmented = [r for r in records if not r.get("is_sample", False)]
+    combined = l0_canonical + augmented
+    c2o_all = [r for r in combined
                if r.get("direction") == "cuda-to-omp"]
 
     if not c2o_all:
@@ -1614,8 +1628,7 @@ def generate_t2_model_table(
     verbose: bool,
 ) -> None:
     """T2: Model comparison LaTeX table -- 2-model layout, all suites."""
-    base_records = [r for r in records if not r.get("is_sample", False)]
-    l0_records = filter_records(base_records, level=0)
+    l0_records = get_canonical_l0(records)
     std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
 
     # Compute Qwen overall stats
