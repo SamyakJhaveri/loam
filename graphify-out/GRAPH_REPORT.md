@@ -1,7 +1,7 @@
 # Graph Report - parbench_sam  (2026-04-22)
 
 ## Corpus Check
-- 192 files · ~712,915 words
+- 192 files · ~714,963 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -106,8 +106,8 @@
 ## Surprising Connections (you probably didn't know these)
 - `_wrap_pattern()` --calls--> `test_wrap_pattern_on_real_spec()`  [INFERRED]
   scripts/evaluation/llm_evaluate.py → tests/test_regex_combiner_integration.py
-- `main()` --calls--> `mixbenchCPU()`  [INFERRED]
-  xsbench/xsbench-src/sycl/Main.cpp → mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp
+- `mixbenchCPU()` --calls--> `main()`  [INFERRED]
+  mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp → xsbench/xsbench-src/sycl/Main.cpp
 - `main()` --calls--> `initialize_simulation()`  [INFERRED]
   xsbench/xsbench-src/sycl/Main.cpp → rsbench/rsbench-src/sycl/init.cpp
 - `load()` --calls--> `_load_spec()`  [INFERRED]
