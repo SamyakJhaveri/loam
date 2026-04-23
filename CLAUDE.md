@@ -176,8 +176,28 @@ This project has a graphify knowledge graph at graphify-out/.
 
 Requires: `source env_parbench/bin/activate` (graphify CLI is in the project venv).
 
-Rules:
-- Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure
-- If graphify-out/wiki/index.md exists, navigate it instead of reading raw files
-- For cross-module "how does X relate to Y" questions, prefer `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` over grep — these traverse the graph's EXTRACTED + INFERRED edges instead of scanning files
-- After modifying code files in this session, run `graphify update .` to keep the graph current (AST-only, no API cost)
+### When to use which command
+
+| Question type | Command | Notes |
+|---------------|---------|-------|
+| Architecture overview / "what is this codebase?" | Read `graphify-out/GRAPH_REPORT.md`; if `graphify-out/wiki/index.md` exists, navigate wiki instead | Fastest orientation — god nodes + community map |
+| Single node deep-dive ("what is X?", "what does X do?") | `graphify explain "NodeName"` | Returns node, all neighbors, source file locations |
+| Cross-module broad context ("how does X relate to Y?") | `graphify query "<question>"` (BFS) | Explores all connections within 3 hops |
+| Dependency chains ("who calls X?", "what does X depend on?") | `graphify query "<question>" --dfs` | Traces deep paths before backtracking |
+| Shortest path between two named nodes | `graphify path "NodeA" "NodeB"` | Finds minimum-hop route with edge explanations |
+
+**Rule:** Prefer the graph over grep/Glob/Read for ANY question about code structure or relationships.
+
+### After using the graph
+
+After any `graphify query / path / explain` that yields a useful answer, save the result:
+```bash
+graphify save-result --question "the question asked" --answer "summary of answer" --type query --nodes NodeA NodeB
+```
+Saved results go to `graphify-out/memory/` and are incorporated on next `graphify update .`.
+
+### Keeping the graph current
+
+- **After modifying code files in this session**: `graphify update .` (AST-only, no API cost, no LLM)
+- **After git commits**: automatic — post-commit hook already installed at `.git/hooks/post-commit`
+- **After adding docs/papers/images**: `graphify add <file-or-url>` (LLM-assisted ingestion for non-code content)
