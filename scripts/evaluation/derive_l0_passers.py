@@ -27,6 +27,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from harness.constants import EXCLUDED_SPECS
+
 log = logging.getLogger(__name__)
 
 
@@ -80,6 +82,8 @@ def derive_passers(canonical_dir: Path, model: str,
         status = obj.get("overall_status")
         if not src or not tgt:
             print(f"warning: {path} missing source_spec/target_spec", file=sys.stderr)
+            continue
+        if src in EXCLUDED_SPECS or tgt in EXCLUDED_SPECS:
             continue
         if src_api is not None:
             if src.rsplit("-", 1)[-1] != src_api or tgt.rsplit("-", 1)[-1] != tgt_api:

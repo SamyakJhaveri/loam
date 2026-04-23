@@ -162,6 +162,18 @@ else
     exit 1
 fi
 
+# KNOWN_FAIL specs — excluded at run time to avoid wasting API calls
+KNOWN_FAIL_SPECS=(
+    rodinia-kmeans-cuda
+    rodinia-mummergpu-cuda
+    rodinia-mummergpu-omp
+    rodinia-hybridsort-cuda
+    rodinia-nn-opencl
+    rodinia-kmeans-opencl
+    hecbench-stencil1d-omp_target
+    hecbench-scan-omp_target
+)
+
 echo "Configuration:"
 echo "  Phase:        $PHASE"
 echo "  Augment:      $AUGMENT_LEVELS"
@@ -219,6 +231,7 @@ run_batch() {
     else
         CMD+=(--suite "$SUITE")
         [[ ${#KERNEL_ARGS[@]} -gt 0 ]] && CMD+=(--kernels "${KERNEL_ARGS[@]}")
+        CMD+=(--excluded-specs "${KNOWN_FAIL_SPECS[@]}")
     fi
 
     set +e
@@ -298,6 +311,7 @@ if [[ ${#FAILED_BATCHES[@]} -gt 0 ]]; then
                 --resume -v
                 --project-root "$PROJECT_ROOT")
             [[ ${#KERNEL_ARGS[@]} -gt 0 ]] && RETRY+=(--kernels "${KERNEL_ARGS[@]}")
+            RETRY+=(--excluded-specs "${KNOWN_FAIL_SPECS[@]}")
         fi
         "${RETRY[@]}"
         [[ $? -ne 0 ]] && STILL_FAILED+=("$ENTRY") || echo "  OK: retry succeeded"

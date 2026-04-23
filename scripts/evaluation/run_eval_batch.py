@@ -64,6 +64,7 @@ def _build_tasks(
     models: list[str],
     augment_levels: list[int] | None = None,
     num_samples: int = 1,
+    excluded_specs: set[str] | None = None,
 ) -> list[dict]:
     """Return a list of task dicts: {src_spec, tgt_spec, kernel, model, augment_level, sample_id}."""
     src_api, tgt_api = direction.split("-to-")
@@ -104,6 +105,10 @@ def _build_tasks(
             print(f"  ⚠ SKIP {kernel}: target spec not found: {tgt_spec_path}", flush=True)
             continue
 
+        if excluded_specs:
+            if src_spec_path.stem in excluded_specs or tgt_spec_path.stem in excluded_specs:
+                continue
+
         for model in models:
             for level in levels:
                 for sid in range(num_samples):
@@ -132,6 +137,7 @@ def _build_tasks_from_task_list(
     augment_levels: list[int],
     num_samples: int,
     manifest_path: Path,
+    excluded_specs: set[str] | None = None,
 ) -> list[dict]:
     """Build task dict list from a passer-JSON file (D-25, plan 02-06).
 
@@ -205,6 +211,10 @@ def _build_tasks_from_task_list(
                 file=sys.stderr,
             )
             continue
+
+        if excluded_specs:
+            if src_spec_path.stem in excluded_specs or tgt_spec_path.stem in excluded_specs:
+                continue
 
         kernel = src_entry["kernel_name"]
         for model in models:
@@ -598,6 +608,13 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--excluded-specs",
+        nargs="*",
+        default=[],
+        metavar="SPEC_ID",
+        help="Spec IDs to exclude as source or target (e.g. KNOWN_FAIL specs).",
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         default=False,
@@ -617,6 +634,7 @@ def main() -> None:
         parser.error("--task-list is mutually exclusive with --suite and --kernels")
 
     project_root = args.project_root.resolve()
+    excluded_specs = set(args.excluded_specs) if args.excluded_specs else set()
     manifest_path = project_root / "manifest.jsonl"
 
     # Validate direction format
@@ -638,6 +656,7 @@ def main() -> None:
             augment_levels=args.augment_levels,
             num_samples=args.num_samples,
             manifest_path=manifest_path,
+            excluded_specs=excluded_specs,
         )
     else:
         tasks = _build_tasks(
@@ -649,6 +668,7 @@ def main() -> None:
             models=args.models,
             augment_levels=args.augment_levels,
             num_samples=args.num_samples,
+            excluded_specs=excluded_specs,
         )
 
     if not tasks:
