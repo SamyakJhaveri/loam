@@ -56,6 +56,11 @@
           },
           {
             "type": "command",
+            "command": ".claude/hooks/codex-review-reminder.sh",
+            "timeout": 5
+          },
+          {
+            "type": "command",
             "command": ".claude/hooks/bash-audit-log.sh",
             "timeout": 5
           },

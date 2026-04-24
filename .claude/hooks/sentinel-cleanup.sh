@@ -27,4 +27,10 @@ if [ -f "$SENTINEL" ]; then
     echo "sentinel-cleanup: .validation_passed deleted (file edited after validation)" >&2
 fi
 
+CODEX_SENTINEL="$PROJECT_ROOT/.codex_review_done"
+if [ -f "$CODEX_SENTINEL" ]; then
+    rm -f "$CODEX_SENTINEL"
+    echo "sentinel-cleanup: .codex_review_done deleted (file edited after Codex review)" >&2
+fi
+
 exit 0

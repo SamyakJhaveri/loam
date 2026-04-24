@@ -43,6 +43,7 @@ Full details: `.claude/rules/architecture.md` (conditional on harness/, scripts/
 - If unsure, say so explicitly — never guess silently.
 - `/validate` before every commit. Pre-commit hook requires waves 1-3; wave 4 optional.
 - `.validation_passed` sentinel is single-use — clears after each commit. Multi-commit sessions must re-run waves 1-3 every commit. Docs-only commits still require validation (~90s).
+- After `/session-critique`, run `/codex:rescue review the uncommitted changes` for a GPT-5.4 second opinion. After the review, run `touch .codex_review_done` to mark it complete. The pre-commit hook reminds you if you skip this step.
 - When citing code identifiers in docs (line numbers, `MODEL_REGISTRY` keys, function names), grep to verify BEFORE commit. Line numbers drift.
 - **Model selection:** Use Opus for main work. Before commit/push: `/model haiku` (faster, cheaper).
 - **Multi-worker orchestration:** Use `/agent-team` as default for 2+ parallel workers. Opus advisor + Sonnet workers. `--all-opus` only when deep reasoning from every worker is required. Do NOT use `dispatching-parallel-agents`.
