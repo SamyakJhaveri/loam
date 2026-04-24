@@ -1,1 +1,0 @@
-Cross-consistency audit SKIPPED: paper.tex does not exist yet (paper is overleaf_main.tex). Run this audit AFTER paper prose is updated with Phase 3 numbers.
