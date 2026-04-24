@@ -1,62 +1,71 @@
-# HANDOFF: Re-Run Ablation Study (Clean Slate)
+# HANDOFF: Create Gated TDD Skill for Claude Code
 
 **Date:** 2026-04-23
-**Author:** Claude Code session (investigation + execution + adversarial review)
-**Status:** Ready to execute — all prior cleanup DONE, ablation needs fresh re-run
+**Author:** Claude Code session (brainstorming + adversarial plan review + infrastructure exploration)
+**Status:** Ready to implement — complete SKILL.md content provided, all design decisions finalized
 **Audience:** Written for undergraduate software engineering clarity. Follow every step in order. Do not skip ahead.
 
 ---
 
 ## What Is This? (Plain English)
 
-ParBench is a benchmark that tests how well LLMs translate parallel code (CUDA to OpenMP, etc.). We're running a Phase 3 evaluation experiment with the **Qwen 3.5 397B** model via **Together AI**. The experiment has two parts:
+Claude Code has a **TDD skill** (from the "superpowers" plugin) that guides test-driven development. The problem: it lets Claude run through the entire red-green-refactor cycle **autonomously** — writing tests, running them, implementing fixes — without ever stopping to ask "is this actually what the user wants?"
 
-1. **Canonical runs** (L0): The LLM translates original source code. 3 samples per task at temperature=0.7.
-2. **Ablation runs** (L1-L4): We apply cosmetic code transforms (rename variables, swap conditions, etc.) BEFORE giving the code to the LLM, to test sensitivity. 1 sample per task at temperature=0.7.
+This led to a **real incident**: during ParBench ablation studies, Claude used `temperature=0.0` instead of the approved `temperature=0.7`. The tests all passed internally because Claude was testing *its own assumptions*, not the user's intent. The wrong data was committed and had to be deleted.
 
-### What Already Happened (Prior Session)
+### What You're Building
 
-A prior session found and fixed two bugs:
+A **"Gated TDD" skill** — an augmented version of the superpowers TDD that adds 3 mandatory human checkpoints ("gates") to every TDD cycle:
 
-1. **Temperature confound (FIXED):** The batch script used `TEMPERATURE=0.0` for ablation instead of `0.7`. This was fixed and committed as `e1c6ea2`.
-2. **Stale analysis outputs (DELETED):** 36 analysis files, 36 batch summaries, and all ablation result files were deleted. Committed as `72b848b`.
+1. **Gate 1: INTENT** — Before writing any test, Claude stops and asks: "Here's what I plan to test. Is this right?"
+2. **Gate 2: RED** — After the test fails, Claude stops and shows: "Here's why it failed. Is this the correct failure?"
+3. **Gate 3: GREEN** — After the test passes, Claude stops and shows: "Here's what I implemented. Is this correct?"
 
-The prior session then attempted to re-run the ablation, but **Together AI had a sustained 500/503 outage**. The run produced 38 files (14 PASS, 24 ERROR) before being killed. **All 38 files have been deleted.** The system is now in a clean state.
+At each gate, Claude presents a **structured report** (summary table + code blocks) and uses **AskUserQuestion** (interactive multiple-choice) so the user must make an explicit choice before Claude proceeds.
 
-### What This Session Must Do
+### Why This Matters
 
-Re-run the ablation study from scratch. That's it — no code changes, no analysis, no commits. Just:
-1. Verify the system is clean
-2. Confirm Together AI is healthy
-3. Launch the ablation
-4. Monitor until complete (with proper error escalation this time)
-5. Verify the output
+Without gates, Claude is essentially a student who does homework, checks their own answers, and turns it in without showing the teacher. Gates force Claude to show its work at every step — the teacher (you) can catch mistakes like `temperature=0.0` before they become committed code.
 
 ---
 
-## Current State of the System
+## What's Already Done
 
-| Item | Status | Count |
-|------|--------|-------|
-| Canonical L0 results (`*-s0.json`, `*-s1.json`, `*-s2.json`) | CLEAN | 504 files |
-| Ablation L1-L4 results (`*-L[1-4].json`) | DELETED (clean slate) | 0 files |
-| L0 passers file (`.planning/eval-selections/l0_passers_*.json`) | VALID — do NOT regenerate | 51 cells |
-| Temperature fix in `scripts/batch/run_phase3.sh` | COMMITTED (`e1c6ea2`) | Both lines = 0.7 |
-| Stale analysis/figures/summaries | DELETED + COMMITTED (`72b848b`) | 0 files |
-| Ablation batch summaries | DELETED | 0 files |
-| Ablation log/done marker | DELETED | 0 files |
+| Item | Status | Details |
+|------|--------|---------|
+| Design brainstorming | DONE | 8 rounds of user feedback on gate format, checkpoint granularity, and options |
+| Gate report format | FINALIZED | Summary table + code blocks outside table + AskUserQuestion with rich descriptions |
+| Adversarial plan review | DONE | `plan-reviewer` agent found 8 issues — all addressed in the plan below |
+| Infrastructure exploration | DONE | Confirmed: custom skills shadow plugin skills; hook input format is JSON via stdin; settings.json backup required |
+| Complete SKILL.md content | WRITTEN | Full 580-line file ready to write — no "copy and weave" ambiguity |
+| Superpowers plugin update | SKIPPED | Pinned to v5.0.7 cache — update independently later |
 
-**Expected output:** 51 L0-passer cells × 4 augmentation levels (L1,L2,L3,L4) = **204 ablation result files**.
+### What Worked
+
+- **Iterative gate format design**: Started verbose, user asked for tables, then for code outside tables, then for compact format. Final format is clean and scannable.
+- **Real incident grounding**: Using the temp=0.0 incident as a concrete example made design decisions crisp — every feature exists to prevent that specific class of error.
+- **Adversarial review**: The plan-reviewer caught that "copy and weave" was not an executable instruction. The final plan now includes the complete file content.
+
+### What Didn't Work
+
+- **Referencing superpowers TDD instead of copying**: User explicitly rejected the "thin wrapper" approach. The skill must be self-contained with the full content, not a reference to `superpowers:test-driven-development`.
+- **Verbose per-gate report formats**: User found 3 different report templates (one per gate) too heavy. Settled on one compact table template used for all 3 gates.
+- **Plugin update step**: The command `claude plugins update superpowers` is unverified — no documentation confirms it exists. Removed from plan; pinned to current cached version.
 
 ---
 
 ## Skills to Load at Session Start
 
-Before doing ANY work, invoke these two skills. They guide HOW you work:
+Before doing ANY implementation work, invoke these skills. They guide HOW you work:
 
 ```
-Skill("superpowers:test-driven-development")        — run verification checks BEFORE and AFTER each step
-Skill("andrej-karpathy-skills:karpathy-guidelines")  — no unnecessary changes, surgical precision
+Skill("andrej-karpathy-skills:karpathy-guidelines")  — think before coding, surgical changes, verify before claiming done
+Skill("superpowers:verification-before-completion")   — verify each step before moving on
+```
+
+**After Step 2 (creating SKILL.md)**, invoke the new skill to test it:
+```
+Skill("test-driven-development")  — should load the gated version you just created
 ```
 
 ---
@@ -69,269 +78,257 @@ cd /home/samyak/Desktop/parbench_sam
 source env_parbench/bin/activate
 ```
 
-Run these two lines FIRST, before any other command.
+Run these two lines FIRST, before any other command. (The venv isn't strictly required for this task, but it's the project convention.)
 
 ---
 
-## Step-by-Step Execution
+## Step-by-Step Implementation
 
-### Step 0: Pre-Flight Verification
+### Step 1: Create Skill Directory
 
-Verify the system is in the expected clean state. Every check must pass.
+**What:** Create the directory where the new global skill will live.
+
+**Why:** Claude Code auto-discovers skills from `~/.claude/skills/{name}/`. A directory named `test-driven-development` with a `SKILL.md` file will automatically register as a skill and shadow the plugin version (`superpowers:test-driven-development`).
 
 ```bash
-# 1. Canonical files intact (MUST be 504)
-echo "Canonical: $(ls results/evaluation/together-qwen-3.5-397b-a17b/*-s[012].json | wc -l) (expect 504)"
+mkdir -p /home/samyak/.claude/skills/test-driven-development
+```
 
-# 2. Ablation files gone (MUST be 0)
-echo "Ablation: $(ls results/evaluation/together-qwen-3.5-397b-a17b/*-L[1-4].json 2>/dev/null | wc -l) (expect 0)"
+**Verification:**
+```bash
+ls -la /home/samyak/.claude/skills/test-driven-development/
+# Expected: empty directory exists, no errors
+```
 
-# 3. No stale ablation log or done marker (MUST be 0)
-echo "Stale markers: $(ls results/evaluation/together-qwen-3_5-397b-a17b_ablation* 2>/dev/null | wc -l) (expect 0)"
+**GATE:** Directory must exist before proceeding.
 
-# 4. L0 passers file valid — derive the expected file count
+---
+
+### Step 2: Write SKILL.md (Complete Content)
+
+**What:** Write the full Gated TDD skill file. This is the COMPLETE, FINAL content — do NOT modify it, do NOT "improve" it, do NOT add anything. Write exactly what is provided.
+
+**Why:** This file IS the skill. When Claude invokes `test-driven-development`, this file's content is loaded as instructions.
+
+**Action:** Write the following content to `/home/samyak/.claude/skills/test-driven-development/SKILL.md`:
+
+<details>
+<summary>The complete SKILL.md content is in the plan file. Read it from there.</summary>
+
+**Plan file location:** `/home/samyak/.claude/plans/show-me-the-test-driven-development-vast-popcorn.md`
+
+The complete SKILL.md content is between the ```` ```markdown ```` fence starting at approximately line 48 and ending at approximately line 582. Read the plan file and extract that content exactly.
+
+</details>
+
+**The content starts with this frontmatter:**
+```yaml
+---
+name: test-driven-development
+description: Gated TDD with mandatory human checkpoints at every cycle step. Use when implementing any feature or bugfix, before writing implementation code. Supersedes superpowers:test-driven-development.
+---
+```
+
+**Key sections in the file (in order):**
+1. Overview — adds "Gated principle" to the standard TDD overview
+2. When to Use — same as superpowers, adds gate-skipping warning
+3. The Iron Law — adds "NO TEST WITHOUT USER-APPROVED INTENT FIRST"
+4. The 3-Gate Protocol — NEW: detailed gate report formats and AskUserQuestion options
+5. Red-Green-Refactor (Gated) — modified flow diagram with gates, STOP callouts at each step
+6. Good Tests — same as superpowers
+7. Why Order Matters — same as superpowers
+8. Common Rationalizations — superpowers table + 4 new gate-skipping rows
+9. Red Flags — superpowers list + 4 new gate-specific red flags
+10. Example: Bug Fix (Gated) — full worked example showing all 3 gates
+11. Verification Checklist — superpowers checklist + 3 gate-specific items
+12. When Stuck, Debugging Integration, Anti-Patterns, Final Rule — same as superpowers
+
+**Verification:**
+```bash
+# File exists and has correct frontmatter
+head -5 /home/samyak/.claude/skills/test-driven-development/SKILL.md
+# Expected:
+# ---
+# name: test-driven-development
+# description: Gated TDD with mandatory human checkpoints...
+# ---
+
+# File has gate sections
+grep -c "Gate 1\|Gate 2\|Gate 3" /home/samyak/.claude/skills/test-driven-development/SKILL.md
+# Expected: 9 or more matches
+
+# File has AskUserQuestion references
+grep -c "AskUserQuestion" /home/samyak/.claude/skills/test-driven-development/SKILL.md
+# Expected: 6 or more matches
+
+# File is not suspiciously short (should be ~500+ lines)
+wc -l /home/samyak/.claude/skills/test-driven-development/SKILL.md
+# Expected: 500+ lines
+```
+
+**GATE:** All 4 checks must pass before proceeding.
+
+---
+
+### Step 3: Copy Testing Anti-Patterns Companion File
+
+**What:** Copy the testing anti-patterns reference file from the superpowers plugin to your skill directory.
+
+**Why:** The SKILL.md references `@testing-anti-patterns.md` (a sibling-file reference). The file must exist in the same directory for the reference to resolve. We copy it verbatim rather than writing a new one — the superpowers version is comprehensive and well-maintained.
+
+**Source file (READ ONLY):** `/home/samyak/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/test-driven-development/testing-anti-patterns.md`
+
+**Destination:** `/home/samyak/.claude/skills/test-driven-development/testing-anti-patterns.md`
+
+```bash
+cp /home/samyak/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/test-driven-development/testing-anti-patterns.md \
+   /home/samyak/.claude/skills/test-driven-development/testing-anti-patterns.md
+```
+
+**Verification:**
+```bash
+# Files are identical
+diff /home/samyak/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/test-driven-development/testing-anti-patterns.md \
+     /home/samyak/.claude/skills/test-driven-development/testing-anti-patterns.md
+# Expected: no output (empty diff = files match)
+
+# File exists and is not empty
+wc -l /home/samyak/.claude/skills/test-driven-development/testing-anti-patterns.md
+# Expected: ~200+ lines
+```
+
+**GATE:** Diff must be empty before proceeding.
+
+---
+
+### Step 4: Add PreToolUse Hook to Block Superpowers TDD
+
+**What:** Add a hook to `~/.claude/settings.json` that blocks direct invocation of `superpowers:test-driven-development` and tells Claude to use the gated version instead.
+
+**Why:** Even though custom skills shadow plugin skills by name, someone could explicitly invoke `superpowers:test-driven-development` (the namespaced version). This hook catches that and redirects. It's a safety net, not the primary mechanism.
+
+**How hooks work (background for the implementer):**
+- Claude Code hooks are shell commands that run before/after tool invocations
+- `PreToolUse` hooks run BEFORE a tool executes
+- The `matcher` field matches **tool names** (like `"Bash"`, `"Write"`, `"Skill"`), NOT skill names
+- Hook input comes via **stdin** as JSON: `{"tool_name": "Skill", "tool_input": {"skill": "superpowers:test-driven-development", "args": "..."}}`
+- Hook exit codes: `0` = allow, `2` = block (with stderr message shown to Claude)
+
+**IMPORTANT — Back up settings.json first:**
+```bash
+cp /home/samyak/.claude/settings.json /home/samyak/.claude/settings.json.bak
+```
+
+**Hook to add:** Append this object to the existing `PreToolUse` array in `/home/samyak/.claude/settings.json`:
+
+```json
+{
+  "matcher": "Skill",
+  "hooks": [
+    {
+      "type": "command",
+      "command": "INPUT=$(cat); if echo \"$INPUT\" | python3 -c \"import sys,json; d=json.load(sys.stdin); exit(0 if 'superpowers:test-driven-development' in d.get('tool_input',{}).get('skill','') else 1)\" 2>/dev/null; then echo 'BLOCKED: Use test-driven-development (gated version) instead of superpowers:test-driven-development. Invoke with skill: test-driven-development' >&2; exit 2; fi",
+      "timeout": 5
+    }
+  ]
+}
+```
+
+**Step-by-step explanation of the hook command:**
+1. `INPUT=$(cat)` — reads the JSON from stdin into a variable
+2. `echo "$INPUT" | python3 -c "..."` — pipes the JSON to Python for parsing
+3. Python extracts `tool_input.skill` and checks if it contains `superpowers:test-driven-development`
+4. If match: Python exits 0 → the `if` is true → hook prints BLOCKED message to stderr → exits 2 (block)
+5. If no match: Python exits 1 → the `if` is false → hook exits normally (allow)
+
+**Where to add it:** The `PreToolUse` key in `/home/samyak/.claude/settings.json` already has entries for `Write|Edit` and `Bash` matchers. Add this `Skill` matcher as a new entry in the same array.
+
+**Verification:**
+```bash
+# Settings.json is still valid JSON
+python3 -c "import json; json.load(open('/home/samyak/.claude/settings.json')); print('JSON OK')"
+# Expected: JSON OK
+
+# Hook was added correctly
 python3 -c "
 import json
-cells = len(json.load(open('.planning/eval-selections/l0_passers_together_qwen_3_5_397b_a17b.json')))
-expected = cells * 4
-print(f'L0 passers: {cells} cells x 4 levels = {expected} expected ablation files')
-assert expected == 204, f'Expected 204 but got {expected} — STOP and investigate'
+d = json.load(open('/home/samyak/.claude/settings.json'))
+hooks = d.get('hooks', {}).get('PreToolUse', [])
+skill_hooks = [h for h in hooks if h.get('matcher') == 'Skill']
+print(f'Skill hooks found: {len(skill_hooks)}')
+if skill_hooks:
+    cmd = skill_hooks[0]['hooks'][0]['command']
+    print(f'Hook command starts with: {cmd[:50]}...')
+    print(f'Contains superpowers check: {\"superpowers:test-driven-development\" in cmd}')
 "
-
-# 5. API key present
-echo "TOGETHER_API_KEY length: ${#TOGETHER_API_KEY}"
-# Must be > 0
-
-# 6. Temperature fix committed (both lines must show 0.7)
-grep -n '^[[:space:]]*TEMPERATURE=' scripts/batch/run_phase3.sh
 # Expected:
-#   142:    TEMPERATURE=0.7
-#   149:    TEMPERATURE=0.7
+#   Skill hooks found: 1
+#   Hook command starts with: INPUT=$(cat); if echo "$INPUT" | python3...
+#   Contains superpowers check: True
 ```
 
-**GATE:** If ANY check fails, STOP and diagnose. Do not proceed to Step 1.
+**GATE:** JSON must be valid AND hook must be found before proceeding.
+
+**Rollback if settings.json is broken:**
+```bash
+cp /home/samyak/.claude/settings.json.bak /home/samyak/.claude/settings.json
+```
 
 ---
 
-### Step 1: Test Together AI API Health
+### Step 5: End-to-End Verification
 
-The prior run failed because Together AI had a sustained outage. Before launching 204 tasks, confirm the API is responding.
+**What:** Verify the complete integration works — skill loads, gates fire, hook blocks.
 
+**5a. Confirm skill directory is complete:**
 ```bash
-python3 -c "
-from openai import OpenAI
-import os
-client = OpenAI(
-    api_key=os.environ['TOGETHER_API_KEY'],
-    base_url='https://api.together.xyz/v1'
-)
-# Use the exact model ID from MODEL_REGISTRY in llm_evaluate.py line 136
-r = client.chat.completions.create(
-    model='Qwen/Qwen3.5-397B-A17B',
-    messages=[{'role':'user','content':'Say OK'}],
-    max_tokens=5
-)
-print(f'API response: {r.choices[0].message.content}')
-
-# Quick burst test — 2 more calls to check rate limiting
-for i in range(2):
-    r2 = client.chat.completions.create(
-        model='Qwen/Qwen3.5-397B-A17B',
-        messages=[{'role':'user','content':'Say OK'}],
-        max_tokens=5
-    )
-print(f'Burst test: 3/3 calls succeeded. Together AI is healthy.')
-"
+ls -la /home/samyak/.claude/skills/test-driven-development/
+# Expected: SKILL.md and testing-anti-patterns.md, both non-empty
 ```
 
-**GATE:** Must print "3/3 calls succeeded." If you get 500/503 errors, STOP — the API is still down. Wait and retry later.
+**5b. Invoke the gated skill (requires fresh Claude Code session or /clear):**
+After `/clear`, the skill list should include `test-driven-development` (unprefixed). Invoke it:
+```
+Skill("test-driven-development")
+```
+The skill content should load and include "Gated TDD", "3-Gate Protocol", and "AskUserQuestion" references.
+
+**5c. Test the hook (try invoking the superpowers version):**
+```
+Skill("superpowers:test-driven-development")
+```
+Expected: Hook blocks with message "BLOCKED: Use test-driven-development (gated version)..."
+
+**5d. Test a real TDD cycle:**
+Ask Claude to implement a trivial change (e.g., "add a function that returns 42") using TDD. Verify:
+- Gate 1 fires with summary table before test is written
+- Gate 2 fires with failure output after test runs
+- Gate 3 fires with implementation code after test passes
+- Each gate uses AskUserQuestion (not plain text "proceed?")
+
+**If any verification step fails:** Stop and diagnose. Do NOT proceed to claim the task is done.
 
 ---
 
-### Step 2: Launch Ablation Re-Run
+## Files Summary
 
-```bash
-bash scripts/batch/run_phase3.sh ablation together-qwen-3.5-397b-a17b
-```
+| File | Action | Absolute Path |
+|------|--------|---|
+| Skill directory | Create | `/home/samyak/.claude/skills/test-driven-development/` |
+| SKILL.md | Create (content in plan file) | `/home/samyak/.claude/skills/test-driven-development/SKILL.md` |
+| Anti-patterns companion | Copy from superpowers | `/home/samyak/.claude/skills/test-driven-development/testing-anti-patterns.md` |
+| Settings backup | Create before editing | `/home/samyak/.claude/settings.json.bak` |
+| Settings (hooks) | Edit — add PreToolUse entry | `/home/samyak/.claude/settings.json` |
 
-**What this does:**
-- Launches a tmux session named `phase3-ablation`
-- Runs 30 batches across all suite/direction combinations
-- Each batch calls `run_eval_batch.py` with `--temperature 0.7 --augment-levels 1 2 3 4 --num-samples 1 --thinking on --resume`
-- Uses the 51-cell L0-passers file as the task list (`--task-list`)
+## Source Files (Read Only — Do NOT Modify)
 
-**Verify launch by checking the first few lines of log output:**
-```bash
-sleep 15 && head -5 results/evaluation/together-qwen-3_5-397b-a17b_ablation.log
-```
-
-Expected: Pre-launch checks (API key OK, submodule OK, GPU info).
-
-**Confirm parameters in the first batch header:**
-```bash
-sleep 30 && grep -m1 "temperature=" results/evaluation/together-qwen-3_5-397b-a17b_ablation.log
-```
-
-Expected: `temperature=0.7`
-
-**Estimated time:** ~2-4 hours for 204 tasks (~30-90 seconds per LLM call).
-**Estimated cost:** ~$2-3 (Together AI pricing for Qwen 3.5 397B).
-
----
-
-### Step 3: Monitor Every 8 Minutes (With Error Escalation)
-
-**THIS IS CRITICAL.** The prior run failed because the monitoring didn't catch a sustained API outage. This time, actively watch for consecutive errors.
-
-Run this monitoring script every 8 minutes:
-
-```bash
-python3 -c "
-import json, glob, os
-
-# Count files and statuses
-files = glob.glob('results/evaluation/together-qwen-3.5-397b-a17b/*-L[1234].json')
-statuses = {}
-for f in files:
-    with open(f) as fh:
-        s = json.load(fh).get('overall_status', 'UNKNOWN')
-    statuses[s] = statuses.get(s, 0) + 1
-total = len(files)
-
-# Check done marker
-done = os.path.exists('results/evaluation/together-qwen-3_5-397b-a17b_ablation_done.marker')
-
-print(f'Progress: {total}/204 ({total*100//204}%)')
-print('  '.join(f'{s}: {c}' for s, c in sorted(statuses.items())) if statuses else 'No files yet')
-print(f'Done marker: {\"YES\" if done else \"no\"}')
-
-# ERROR ESCALATION: check for high error rate
-error_count = statuses.get('ERROR', 0) + statuses.get('EXTRACTION_FAIL', 0)
-if total > 0 and error_count / total > 0.3:
-    print(f'WARNING: {error_count}/{total} ({error_count*100//total}%) errors — check Together AI status!')
-    print('Consider killing tmux and waiting for API to recover.')
-"
-```
-
-Also check the log tail for consecutive errors:
-
-```bash
-tail -10 results/evaluation/together-qwen-3_5-397b-a17b_ablation.log 2>/dev/null | grep -c 'ERROR'
-# If this returns 5 or more: STOP the run. The API is down.
-# Kill with: tmux kill-session -t phase3-ablation
-```
-
-**Error escalation rule:** If you see 5+ consecutive ERRORs in the log tail, IMMEDIATELY:
-1. Kill the tmux session: `tmux kill-session -t phase3-ablation`
-2. Alert the user that Together AI is down
-3. Wait for the user to say when to retry
-
-**Expected log noise (NOT errors):**
-- "warning: passer entry skipped — APIs do not match" — NORMAL. The 51-cell task list gets filtered by direction; non-matching cells are skipped.
-- Some batches will show all tasks as "SKIP" — NORMAL. With `--task-list`, multiple batch calls share the same direction; `--resume` skips already-completed tasks.
-- Final summary may report "WARNING: N batches still failing" — NORMAL if those are directions with zero matching cells. The definitive check is the file count (204), NOT the batch failure count.
-
----
-
-### Step 4: Post-Run Verification (When Done)
-
-When the done marker appears (`results/evaluation/together-qwen-3_5-397b-a17b_ablation_done.marker`), OR when 204 files exist, run these checks:
-
-```bash
-# 1. File count (MUST be 204)
-echo "Ablation files: $(ls results/evaluation/together-qwen-3.5-397b-a17b/*-L[1-4].json | wc -l) (expect 204)"
-
-# 2. ALL must have temperature=0.7
-python3 -c "
-import json, glob
-files = sorted(glob.glob('results/evaluation/together-qwen-3.5-397b-a17b/*-L[1234].json'))
-print(f'Ablation files: {len(files)}')
-wrong = [f for f in files if json.load(open(f)).get('temperature') != 0.7]
-if wrong:
-    print(f'FAIL: {len(wrong)} files have wrong temperature!')
-else:
-    print('PASS: all files have temperature=0.7')
-"
-
-# 3. Status breakdown — check for retryable errors
-python3 -c "
-import json, glob
-files = glob.glob('results/evaluation/together-qwen-3.5-397b-a17b/*-L[1234].json')
-statuses = {}
-for f in files:
-    with open(f) as fh:
-        s = json.load(fh).get('overall_status', 'UNKNOWN')
-    statuses[s] = statuses.get(s, 0) + 1
-print(f'Total: {len(files)}/204')
-for s, c in sorted(statuses.items()):
-    print(f'  {s}: {c}')
-retryable = statuses.get('ERROR', 0) + statuses.get('EXTRACTION_FAIL', 0)
-if retryable > 0:
-    print(f'\n{retryable} retryable failures. Re-run the same launch command to retry them.')
-    print('The --resume flag auto-retries ERROR/EXTRACTION_FAIL (skips PASS/BUILD_FAIL/etc.)')
-else:
-    print('\nNo retryable failures. Ablation run is COMPLETE.')
-"
-
-# 4. Verify all 51 L0-passer cells have exactly 4 levels each
-python3 -c "
-import json, glob, os
-from collections import defaultdict
-
-passers = json.load(open('.planning/eval-selections/l0_passers_together_qwen_3_5_397b_a17b.json'))
-files = glob.glob('results/evaluation/together-qwen-3.5-397b-a17b/*-L[1234].json')
-
-# Group by cell (source→target)
-cells = defaultdict(set)
-for f in files:
-    r = json.load(open(f))
-    key = (r.get('source_spec'), r.get('target_spec'))
-    cells[key].add(r.get('augment_level'))
-
-missing = []
-for p in passers:
-    key = (p['source_spec'], p['target_spec'])
-    levels = cells.get(key, set())
-    if levels != {1, 2, 3, 4}:
-        missing.append((key, levels))
-
-if missing:
-    print(f'FAIL: {len(missing)} cells missing levels:')
-    for (s,t), levels in missing[:5]:
-        print(f'  {s} → {t}: has levels {sorted(levels)}')
-else:
-    print(f'PASS: all {len(passers)} cells have levels {{1,2,3,4}}')
-"
-
-# 5. Canonical files untouched (MUST still be 504)
-echo "Canonical: $(ls results/evaluation/together-qwen-3.5-397b-a17b/*-s[012].json | wc -l) (expect 504)"
-```
-
-**If fewer than 204 files or retryable errors exist:** Re-run the same launch command:
-```bash
-bash scripts/batch/run_phase3.sh ablation together-qwen-3.5-397b-a17b
-```
-The `--resume` flag auto-retries ERROR/EXTRACTION_FAIL statuses and skips everything else.
-
-If a specific task fails 3+ times in a row, it's a deterministic failure (not a transient API issue). Record the task name and move on.
-
----
-
-### Step 5: Tmux Session Recovery (If It Dies)
-
-If `tmux ls` shows no `phase3-ablation` session and the done marker does NOT exist, the session died (OOM, SSH disconnect, etc.).
-
-**Recovery steps:**
-```bash
-# 1. Check what we have so far
-ls results/evaluation/together-qwen-3.5-397b-a17b/*-L[1-4].json 2>/dev/null | wc -l
-
-# 2. Check last log entry
-tail -5 results/evaluation/together-qwen-3_5-397b-a17b_ablation.log
-
-# 3. Re-launch — --resume picks up where it left off
-bash scripts/batch/run_phase3.sh ablation together-qwen-3.5-397b-a17b
-```
+| File | Why You Need It |
+|------|----------------|
+| `/home/samyak/.claude/plans/show-me-the-test-driven-development-vast-popcorn.md` | **THE PLAN** — contains the complete SKILL.md content between markdown fences (lines ~48-582) |
+| `/home/samyak/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/test-driven-development/SKILL.md` | Original superpowers TDD (reference only — do NOT copy this, use the plan file content) |
+| `/home/samyak/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.7/skills/test-driven-development/testing-anti-patterns.md` | Source for Step 3 copy |
+| `/home/samyak/.claude/plugins/cache/karpathy-skills/andrej-karpathy-skills/1.0.0/skills/karpathy-guidelines/SKILL.md` | Karpathy behavioral guidelines skill (load for implementation discipline) |
+| `/home/samyak/.claude/settings.json` | Global Claude Code settings — edit carefully (has existing hooks) |
 
 ---
 
@@ -339,56 +336,45 @@ bash scripts/batch/run_phase3.sh ablation together-qwen-3.5-397b-a17b
 
 | Don't | Why | Instead |
 |-------|-----|---------|
-| Use `rm` on files in `results/evaluation/` | `protect-eval-results.sh` hook will BLOCK | Use `python3 -c "import os; os.remove(...)"` |
-| Change defaults in `llm_evaluate.py` or `run_eval_batch.py` | Would make all future ad-hoc runs stochastic | Only `run_phase3.sh` was fixed (already committed) |
-| Regenerate `l0_passers_*.json` | Derived from canonical L0 (unchanged) | Keep existing file |
-| Run analysis scripts (`analyze_eval.py`, etc.) | They still use broken campaign split logic | Defer to NEXT session |
-| Commit anything | No code changes in this session | Only data generation |
-| Ignore consecutive ERRORs in the log | Prior run failed this way — 24 ERROR files | Kill tmux if 5+ consecutive ERRORs |
+| Modify the superpowers plugin files | They're in a cache directory and will be overwritten on update | Create in `~/.claude/skills/` |
+| Write a "thin wrapper" that references superpowers TDD | User explicitly rejected this approach — must be self-contained | Use the complete content from the plan file |
+| Skip the settings.json backup | A malformed JSON breaks ALL hooks globally | `cp settings.json settings.json.bak` first |
+| "Improve" or "enhance" the SKILL.md content | The content was iteratively designed with the user over 8 rounds | Write it exactly as provided |
+| Run `claude plugins update superpowers` | This command is unverified — may not exist | Plugin stays at v5.0.7, update independently later |
+| Skip end-to-end verification (Step 5) | The hook mechanism is novel and untested on this machine | Must verify all 4 checks |
 
 ---
 
-## Key Files Reference
+## Glossary (For Quick Reference)
 
-| File | Path | What It Does |
-|------|------|-------------|
-| Batch launch script | `scripts/batch/run_phase3.sh` | Runs ablation in tmux (already fixed) |
-| L0 passers (task list) | `.planning/eval-selections/l0_passers_together_qwen_3_5_397b_a17b.json` | 51 cells to run ablation on |
-| Ablation results (output) | `results/evaluation/together-qwen-3.5-397b-a17b/*-L[1-4].json` | 204 files expected |
-| Run log | `results/evaluation/together-qwen-3_5-397b-a17b_ablation.log` | Monitor for errors |
-| Done marker | `results/evaluation/together-qwen-3_5-397b-a17b_ablation_done.marker` | Written when all 30 batches complete |
-| Eval batch runner | `scripts/evaluation/run_eval_batch.py` | `--resume` retries ERROR/EXTRACTION_FAIL |
-| LLM evaluator | `scripts/evaluation/llm_evaluate.py` | MODEL_REGISTRY has `Qwen/Qwen3.5-397B-A17B` |
-| Hook (blocks rm) | `.claude/hooks/protect-eval-results.sh` | Blocks `rm results/evaluation/*` |
-| Project rules | `CLAUDE.md` (project root) | Critical invariants — read this |
-
----
-
-## What Happened and Why (Full History)
-
-1. **2026-04-23 Session 1:** Samyak noticed `quantitative_findings.md` reported `temperature=0.0` for the "primary experiment." Investigation revealed the analysis scripts split data by temperature (old design) instead of augment_level (Phase 3 design), inverting canonical and ablation data. Further investigation found `run_phase3.sh` hardcoded `TEMPERATURE=0.0` for ablation — a confounding variable.
-
-2. **2026-04-23 Session 2 (this session's predecessor):** Deleted all stale outputs (36 analysis + 36 batch summaries + 204 ablation results). Fixed `run_phase3.sh` (0.0→0.7). Committed both changes. Attempted ablation re-run.
-
-3. **Ablation re-run failure:** Together AI had a sustained 500/503 outage. The monitoring loop checked every 8 minutes but failed to catch the cascade — by the time it was noticed, 24/38 files were ERROR. The tmux session was manually killed.
-
-4. **Cleanup:** All 38 partial ablation files (14 PASS + 24 ERROR) were deleted. System is now at clean slate.
-
-**Lesson learned:** The monitoring was too passive. This handoff adds explicit error escalation rules (5+ consecutive ERRORs = kill and alert) and a burst API health check before launch.
+| Term | Meaning |
+|------|---------|
+| **Gate** | A mandatory human checkpoint in the TDD cycle where Claude stops and asks for approval |
+| **AskUserQuestion** | A Claude Code tool that presents interactive multiple-choice options to the user |
+| **PreToolUse hook** | A shell command that runs BEFORE a Claude Code tool executes — can block the tool |
+| **Custom skill** | A skill in `~/.claude/skills/` that auto-registers and takes precedence over plugin skills |
+| **Plugin skill** | A skill bundled with a plugin (like superpowers) — has a namespace prefix (e.g., `superpowers:`) |
+| **Shadow** | When a custom skill has the same name as a plugin skill, it "shadows" (overrides) the plugin version |
+| **superpowers** | A Claude Code plugin (v5.0.7) that provides TDD, brainstorming, and other development skills |
+| **Iron Law** | The TDD rule that no production code should exist without a failing test first |
 
 ---
 
-## Deferred Work (NEXT Session, After Ablation Completes)
+## Design Decisions (Why Things Are The Way They Are)
 
-The analysis scripts in `scripts/analysis/` are structurally broken for Phase 3. They split data by temperature (old design) instead of augment_level. Full rewrite plan:
+These decisions were made during the brainstorming session. If you're tempted to change something, read the rationale first.
 
-| Script | Key Issue |
-|--------|-----------|
-| `scripts/analysis/generate_paper_data.py` | `split_campaigns()` ~line 546 splits by `temperature` — must split by `augment_level` |
-| `scripts/analysis/quantitative_findings.py` | Same `split_campaigns()` issue ~line 352 |
-| `scripts/analysis/statistical_analysis.py` | `is_deterministic()`/`is_stochastic()` ~lines 59-62 — must become `is_canonical()`/`is_ablation()` |
-| `scripts/analysis/augmentation_analysis.py` | `_is_stochastic()` ~line 160 skips `-s\d+` files, accidentally dropping all canonical data |
-| `scripts/analysis/cross_consistency_audit.py` | Hardcoded `primary_campaign`/`passk_campaign` keys |
-| `scripts/analysis/cross_model_comparison.py` | Reads `primary_campaign` from `paper_data.json` |
+**Q: Why 3 gates and not 4 (no gate for refactor)?**
+A: Refactoring is behavior-preserving cleanup. If the implementation was approved at Gate 3, refactoring doesn't introduce new assumptions. Adding a 4th gate would slow the cycle without catching a new class of error.
 
-**Do NOT run these scripts until they are rewritten.** They will produce wrong numbers.
+**Q: Why always full checkpoints, no escape hatch?**
+A: The temp=0.0 incident "looked trivial" at the time. Any escape hatch would have been used to skip the exact gate that would have caught it. No exceptions means no judgment calls about when to skip.
+
+**Q: Why AskUserQuestion instead of plain text "proceed?"?**
+A: Plain text prompts can be rubber-stamped (user types "yes" without reading). AskUserQuestion forces the user to choose from structured options, each with a description of what happens next. Harder to approve without reading.
+
+**Q: Why copy the full superpowers content instead of referencing it?**
+A: The user wants a self-contained skill that works even if the superpowers plugin is updated or removed. References create a dependency; copies are independent.
+
+**Q: Why a hook AND a custom skill (isn't shadowing enough)?**
+A: Shadowing means `test-driven-development` (unprefixed) loads the gated version. But someone could explicitly invoke `superpowers:test-driven-development` (the namespaced version). The hook catches that edge case.

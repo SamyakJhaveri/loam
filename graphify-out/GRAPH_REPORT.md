@@ -1,7 +1,7 @@
 # Graph Report - parbench_sam  (2026-04-23)
 
 ## Corpus Check
-- 192 files · ~754,405 words
+- 192 files · ~720,698 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -572,16 +572,16 @@ Nodes (1): Decision to Omit Long Build Times from Final Report
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `load()` connect `Community 4` to `Community 32`, `Community 1`, `Community 2`, `Community 0`, `Community 12`, `Community 15`, `Community 18`, `Community 24`, `Community 26`, `Community 28`?**
-  _High betweenness centrality (0.190) - this node is a cross-community bridge._
+  _High betweenness centrality (0.208) - this node is a cross-community bridge._
 - **Why does `load_spec()` connect `Community 0` to `Community 1`, `Community 4`, `Community 5`, `Community 17`?**
-  _High betweenness centrality (0.108) - this node is a cross-community bridge._
+  _High betweenness centrality (0.110) - this node is a cross-community bridge._
 - **Why does `load_results()` connect `Community 2` to `Community 4`?**
-  _High betweenness centrality (0.071) - this node is a cross-community bridge._
+  _High betweenness centrality (0.086) - this node is a cross-community bridge._
 - **Are the 90 inferred relationships involving `Status` (e.g. with `Backup original files before writing translated code.` and `Restore original files after verification.`) actually correct?**
   _`Status` has 90 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 57 inferred relationships involving `RunResult` (e.g. with `ModelRegistryEntry` and `Load source code files from the source spec for linker symbol search.      Reads`) actually correct?**
+- **Are the 57 inferred relationships involving `RunResult` (e.g. with `_make_run()` and `_make_run()`) actually correct?**
   _`RunResult` has 57 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 44 inferred relationships involving `MetricResult` (e.g. with `ModelRegistryEntry` and `Load source code files from the source spec for linker symbol search.      Reads`) actually correct?**
+- **Are the 44 inferred relationships involving `MetricResult` (e.g. with `extract_metrics()` and `ModelRegistryEntry`) actually correct?**
   _`MetricResult` has 44 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 24 inferred relationships involving `ChangeNames` (e.g. with `Return (ci.Index, AugmentationConfig) for the given level, or (None, None).` and `Read prompt_payload files, apply augmentation, return contents + transforms.`) actually correct?**
+- **Are the 24 inferred relationships involving `ChangeNames` (e.g. with `_build_aug_config()` and `test_change_names()`) actually correct?**
   _`ChangeNames` has 24 INFERRED edges - model-reasoned connections that need verification._
