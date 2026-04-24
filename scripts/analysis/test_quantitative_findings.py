@@ -518,6 +518,52 @@ def test_pass_at_k():
     assert "per_suite" in result
 
 
+def test_pass_at_k_excludes_ablation_levels():
+    """compute_pass_at_k ignores augment_level>0 records (ablation, not seeds)."""
+    records = [
+        # Task 1: 3 canonical seeds all PASS (augment_level=0)
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", temperature=0.7, sample_id=0, augment_level=0),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", temperature=0.7, sample_id=1, augment_level=0),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", temperature=0.7, sample_id=2, augment_level=0),
+        # Task 1: 4 ablation records (augment_level 1-4) — some FAIL
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", temperature=0.7, augment_level=1),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="BUILD_FAIL", temperature=0.7, augment_level=2),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", temperature=0.7, augment_level=3),
+        _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
+                     overall_status="PASS", temperature=0.7, augment_level=4),
+        # Task 2: 3 canonical seeds, 1 passes (augment_level=0)
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+                     overall_status="PASS", temperature=0.7, sample_id=0, augment_level=0),
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+                     overall_status="BUILD_FAIL", temperature=0.7, sample_id=1, augment_level=0),
+        _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
+                     overall_status="BUILD_FAIL", temperature=0.7, sample_id=2, augment_level=0),
+    ]
+    result = qf.compute_pass_at_k(records)
+
+    # Only 2 tasks (ablation records excluded from task-set)
+    assert result["total_tasks"]["value"] == 2
+
+    # Task 1: 3/3 canonical PASS -> always_pass, contributes to both pass@1 and pass@3
+    # Task 2: 1/3 canonical PASS -> noisy_fail, contributes to pass@1 only
+    assert round(result["pass_at_1"]["value"], 4) == round(2 / 2, 4)
+    assert round(result["pass_at_3"]["value"], 4) == round(1 / 2, 4)
+
+    # Classification
+    assert result["task_classification"]["always_pass"] == 1
+    assert result["task_classification"]["noisy_fail"] == 1
+    assert result["task_classification"]["hard_fail"] == 0
+
+    # No warnings about unexpected seed counts
+    assert len(result.get("warnings", [])) == 0
+
+
 # ---------------------------------------------------------------------------
 # QUANT-08: Per-kernel difficulty tiers
 # ---------------------------------------------------------------------------

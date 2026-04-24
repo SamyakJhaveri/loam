@@ -1180,9 +1180,13 @@ def compute_pass_at_k(records: list[dict]) -> dict:
     pass@1 = fraction of tasks where at least 1 of 3 seeds passes.
     pass@3 = fraction of tasks where all 3 seeds pass.
     """
+    # Only canonical (augment_level=0) records are seeds;
+    # ablation L1-L4 are different augmentation levels, not samples.
+    canonical = [r for r in records if (r.get("augment_level") or 0) == 0]
+
     # Group by task
     by_task: dict[tuple[str, str], list[dict]] = defaultdict(list)
-    for r in records:
+    for r in canonical:
         key = (r.get("source_spec", ""), r.get("target_spec", ""))
         by_task[key].append(r)
 
