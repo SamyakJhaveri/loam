@@ -6,7 +6,7 @@
 #
 # Phase A (canonical):  pass@3, L0, temp=0.7, thinking=ON, self-repair=OFF
 # Phase B (derive):     derive_l0_passers.py → .planning/eval-selections/l0_passers_*.json
-# Phase C (ablation):   pass@1, L1-L4, temp=0.0, thinking=ON, --task-list from Phase B
+# Phase C (ablation):   pass@1, L1-L4, temp=0.7, thinking=ON, --task-list from Phase B
 #
 # Defaults: canonical / together-qwen-3.5-397b-a17b
 #
@@ -146,7 +146,7 @@ if [[ "$PHASE" == "canonical" ]]; then
     TOTAL_BATCHES=30  # 6 rodinia + 6 xsbench + 6 rsbench + 6 mixbench + 6 hecbench
 elif [[ "$PHASE" == "ablation" ]]; then
     AUGMENT_LEVELS="1 2 3 4"
-    TEMPERATURE=0.0
+    TEMPERATURE=0.7
     NUM_SAMPLES=1
     MAX_RETRIES=1
     SLUG=$(echo "$MODEL_SHORT" | tr '-' '_')
