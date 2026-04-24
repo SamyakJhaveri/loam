@@ -89,3 +89,25 @@ grep -n "status: 'blocked'\|status: 'todo'" visualizations/sprint_dashboard.html
 ```
 
 If grep shows stale values, edit `DEFAULT_TASKS` before committing.
+
+## 8. Eval Batch Monitoring Protocol
+
+Long-running eval batches (ablation, canonical) run in tmux and can silently accumulate
+ERROR files during API outages. The 2026-04-23 ablation re-run lost 24/38 tasks to a
+Together AI 500/503 outage that went undetected for ~30 minutes.
+
+**Before launch:**
+- Burst-test the API with 3 rapid calls (not just a single ping).
+- A single "Say OK" can succeed during intermittent outages.
+
+**During monitoring (every 5-8 minutes):**
+1. Check log tail for consecutive ERRORs: `tail -10 <logfile> | grep -c ERROR`
+2. If 5+ consecutive ERRORs → KILL tmux session, alert user immediately.
+3. Check error rate: if `(ERROR count / total files) > 30%` → warn about API instability.
+4. Do NOT declare "API stable" after a few PASSes following errors — wait for 20+ consecutive PASSes.
+5. If `tmux ls` shows no session and done marker absent → session died. Report immediately.
+
+**After completion:**
+- `--resume` auto-retries ERROR and EXTRACTION_FAIL (skips PASS/BUILD_FAIL/RUN_FAIL/VERIFY_FAIL/SKIP).
+- Verified in `run_eval_batch.py` lines 284-289.
+- To do a clean re-run instead: delete result files with Python `os.remove()` (not `rm` — hook blocks it).
