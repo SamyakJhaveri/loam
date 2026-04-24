@@ -47,7 +47,7 @@ Downgrade checklist applied per spec: file_hash/numeric_comparison strategy remo
 Log: `.planning/phases/03-oracle-framework/03-S6-SWEEP.log`.
 One transient regression surfaced (`rodinia-myocyte-omp` BUILD_FAIL) and was traced to an undocumented dirty file in `rodinia/rodinia-src/openmp/myocyte/main.c` (2731 lines vs canonical 375); restored via `git -C rodinia/rodinia-src checkout HEAD -- openmp/myocyte/main.c` before the second sweep pass.
 
-## KNOWN_FAIL Specs (8 — exclude from eval batches)
+## KNOWN_FAIL Specs (9 — exclude from eval batches)
 
 | Spec | Error | Why deferred |
 |------|-------|-------------|
@@ -57,6 +57,7 @@ One transient regression surfaced (`rodinia-myocyte-omp` BUILD_FAIL) and was tra
 | `rodinia-hybridsort-cuda` | `GL/glew.h` not found | Needs `libglew-dev` + display server |
 | `rodinia-nn-opencl` | TIMEOUT / SIGSEGV | Pre-existing; never passed |
 | `rodinia-kmeans-opencl` | SIGSEGV in OpenCL runtime | Pre-existing; never passed |
+| `rodinia-backprop-opencl` | `clEnqueueReadBuffer` error (exit 0) | Baseline silently broken; `stdout_exclude_pattern` now catches it |
 | `hecbench-stencil1d-omp_target` | BUILD_FAIL | omp_target compile issue |
 | `hecbench-scan-omp_target` | VERIFY_FAIL | Output mismatch on CPU target |
 

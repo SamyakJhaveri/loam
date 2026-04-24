@@ -473,6 +473,7 @@
                                 "enum": [
                                     "exit_code",
                                     "stdout_pattern",
+                                    "stdout_exclude_pattern",
                                     "numeric_comparison",
                                     "file_diff",
                                     "file_hash",

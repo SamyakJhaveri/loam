@@ -1,15 +1,15 @@
 # Quantitative Findings — NeurIPS 2026 ParBench
 
-Generated: 2026-04-24T22:01:13.141684+00:00
-Git hash: f013989
+Generated: 2026-04-24T23:33:41.576665+00:00
+Git hash: 6fce616
 
 ## File Counts
 
 - Total on disk: 708
-- Excluded (KNOWN_FAIL, 8 specs): 66
-- Valid after exclusion: 642
+- Excluded (KNOWN_FAIL, 8 specs): 82
+- Valid after exclusion: 626
 - Campaign 1 (temp=0.0): 0
-- Campaign 2 (temp=0.7): 642
+- Campaign 2 (temp=0.7): 626
 
 ---
 
@@ -78,15 +78,15 @@ No direction pairs found for McNemar test.
 
 ## Campaign 2: pass@k Evaluation (temperature=0.7)
 
-**Overall:** 36.6% [33.0%, 40.4%] (n=642)
+**Overall:** 36.7% [33.1%, 40.6%] (n=626)
 
 ### Dimension 7: pass@k Estimates
 
-**Total tasks:** 146
-- **pass@1** (any seed passes): 34.9% [27.7%, 43.0%]
-- **pass@3** (all seeds pass): 13.0% [8.5%, 19.4%]
+**Total tasks:** 142
+- **pass@1** (any seed passes): 35.2% [27.8%, 43.4%]
+- **pass@3** (all seeds pass): 13.4% [8.7%, 20.0%]
 
-**Task classification:** 19 always pass, 32 noisy fail, 95 hard fail
+**Task classification:** 19 always pass, 31 noisy fail, 92 hard fail
 
 **Per-direction pass@k:**
 
@@ -94,14 +94,14 @@ No direction pairs found for McNemar test.
 |-----------|--------|--------|---|
 | cuda-to-omp | 50.0% | 29.2% | 24 |
 | cuda-to-omp_target | 0.0% | 0.0% | 8 |
-| cuda-to-opencl | 15.0% | 0.0% | 20 |
+| cuda-to-opencl | 15.8% | 0.0% | 19 |
 | omp-to-cuda | 33.3% | 16.7% | 24 |
 | omp-to-omp_target | 100.0% | 0.0% | 3 |
-| omp-to-opencl | 55.6% | 11.1% | 18 |
+| omp-to-opencl | 52.9% | 11.8% | 17 |
 | omp_target-to-cuda | 100.0% | 37.5% | 8 |
 | omp_target-to-omp | 100.0% | 100.0% | 3 |
-| opencl-to-cuda | 0.0% | 0.0% | 20 |
-| opencl-to-omp | 22.2% | 0.0% | 18 |
+| opencl-to-cuda | 0.0% | 0.0% | 19 |
+| opencl-to-omp | 23.5% | 0.0% | 17 |
 
 **Per-suite pass@k:**
 
@@ -109,7 +109,7 @@ No direction pairs found for McNemar test.
 |-------|--------|--------|---|
 | hecbench | 68.8% | 34.4% | 32 |
 | mixbench | 16.7% | 0.0% | 6 |
-| rodinia | 28.1% | 8.3% | 96 |
+| rodinia | 28.3% | 8.7% | 92 |
 | rsbench | 0.0% | 0.0% | 6 |
 | xsbench | 16.7% | 0.0% | 6 |
 
@@ -121,7 +121,7 @@ No direction pairs found for McNemar test.
 |---|----------|-------|---------------|----------------|
 | 1 | overall_pass_rate_rodinia | rodinia_only | 0.0% [0.0%, 0.0%] | abstract/line~71, S6.1/line~707 |
 | 2 | primary_campaign_task_counts | all_suite | 0 Rodinia, 0 all-suite | abstract/line~61, S5.2/line~630 |
-| 3 | passk_task_count | all_suite | 146 pass@k tasks | S1/line~106, S5.5/line~689 |
+| 3 | passk_task_count | all_suite | 142 pass@k tasks | S1/line~106, S5.5/line~689 |
 | 4 | build_fail_percentage | all_suite | 0/0 = 0.0% | abstract/line~66, S1/line~107, S6.2/line~714 |
 | 5 | verify_fail_percentage | all_suite | 0/0 = 0.0% | abstract/line~66, S6.2/line~714 |
 | 6 | cuda_to_omp_pass_rate | all_suite | ? | S6.1/line~909, S7.1/line~1041 |
@@ -136,7 +136,7 @@ No direction pairs found for McNemar test.
 | 15 | multi_file_percentage | all_suite | 76/206 = 36.9% | S1/implied, S4/implied |
 | 16 | overall_pass_rate_all_suite | all_suite | 0.0% [0.0%, 0.0%] | S6.1 (all-suite scope) |
 | 17 | first_attempt_pass | all_suite | 0 | S6.3/line~848 |
-| 18 | pass_at_k_rates | all_suite | pass@1=34.9%, pass@3=13.0% | S6.5/line~955 |
+| 18 | pass_at_k_rates | all_suite | pass@1=35.2%, pass@3=13.4% | S6.5/line~955 |
 | 19 | token_cost | all_suite | $0.00 | S5.2/implied |
 | 20 | sloc_correlation | all_suite | None | S7/implied |
 

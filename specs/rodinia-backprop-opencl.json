@@ -111,6 +111,11 @@
                 "description": "Computation completed successfully"
             },
             {
+                "type": "stdout_exclude_pattern",
+                "pattern": "ERROR.*cl",
+                "description": "No OpenCL runtime errors (clBuildProgram, clEnqueueReadBuffer, etc.)"
+            },
+            {
                 "type": "exit_code",
                 "expected": 0,
                 "description": "Process exits cleanly"

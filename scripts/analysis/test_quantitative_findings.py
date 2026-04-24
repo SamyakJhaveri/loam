@@ -83,7 +83,7 @@ def _make_record(
 # ---------------------------------------------------------------------------
 
 def test_known_fail_exclusion():
-    """All 8 KNOWN_FAIL specs (6 Rodinia + 2 HeCBench) are excluded."""
+    """All 9 KNOWN_FAIL specs (7 Rodinia + 2 HeCBench) are excluded."""
     records = [
         _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp"),
         _make_record(source_spec="rodinia-kmeans-cuda", target_spec="rodinia-kmeans-omp"),
@@ -92,6 +92,7 @@ def test_known_fail_exclusion():
         _make_record(source_spec="rodinia-hybridsort-cuda", target_spec="rodinia-hybridsort-omp"),
         _make_record(source_spec="rodinia-nn-opencl", target_spec="rodinia-nn-cuda"),
         _make_record(source_spec="rodinia-kmeans-opencl", target_spec="rodinia-kmeans-cuda"),
+        _make_record(source_spec="rodinia-backprop-opencl", target_spec="rodinia-backprop-cuda"),
         _make_record(source_spec="hecbench-stencil1d-omp_target", target_spec="hecbench-stencil1d-cuda"),
         _make_record(source_spec="hecbench-scan-omp_target", target_spec="hecbench-scan-cuda"),
         _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp"),
@@ -103,8 +104,9 @@ def test_known_fail_exclusion():
     assert "rodinia-bfs-cuda" in specs_remaining
     assert "rodinia-hotspot-cuda" in specs_remaining
 
-    # Verify the constant has exactly 8 entries
-    assert len(qf.EXCLUDED_SPECS) == 8
+    # Verify the constant has exactly 9 entries
+    assert len(qf.EXCLUDED_SPECS) == 9
+    assert "rodinia-backprop-opencl" in qf.EXCLUDED_SPECS
     assert "hecbench-stencil1d-omp_target" in qf.EXCLUDED_SPECS
     assert "hecbench-scan-omp_target" in qf.EXCLUDED_SPECS
 

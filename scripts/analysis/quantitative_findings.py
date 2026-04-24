@@ -340,7 +340,7 @@ def load_results(results_dir: Path, verbose: bool = False) -> list[dict]:
 
 
 def exclude_known_fail(records: list[dict]) -> list[dict]:
-    """Remove records involving KNOWN_FAIL specs (all 8)."""
+    """Remove records involving KNOWN_FAIL specs (all 9)."""
     return [
         r for r in records
         if r.get("source_spec") not in EXCLUDED_SPECS

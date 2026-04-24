@@ -72,6 +72,8 @@ def verify_run(
             result = _check_stdout_pattern(strategy, run_result)
         elif stype == "numeric_comparison":
             result = _verify_numeric_comparison(strategy, run_result)
+        elif stype == "stdout_exclude_pattern":
+            result = _check_stdout_exclude_pattern(strategy, run_result)
         elif stype == "file_hash":
             result = _verify_file_hash(strategy, working_dir)
         elif stype == "file_diff":
@@ -208,6 +210,43 @@ def _check_stdout_pattern(
         return VerificationResult(
             status=Status.ERROR,
             strategy_used="stdout_pattern",
+            details=f"Invalid regex '{pattern}': {exc}",
+        )
+
+
+def _check_stdout_exclude_pattern(
+    strategy: dict[str, Any],
+    run_result: RunResult,
+) -> VerificationResult:
+    """FAIL if a regex pattern IS found in stdout (inverse of stdout_pattern)."""
+    pattern = strategy.get("pattern", "")
+    desc = strategy.get("description", "")
+
+    if not pattern:
+        return VerificationResult(
+            status=Status.SKIP,
+            strategy_used="stdout_exclude_pattern",
+            details="Empty pattern",
+        )
+
+    flags = re.MULTILINE if strategy.get("multiline") else 0
+
+    try:
+        if re.search(pattern, run_result.stdout, flags):
+            return VerificationResult(
+                status=Status.FAIL,
+                strategy_used="stdout_exclude_pattern",
+                details=f"Excluded pattern '{pattern}' found in stdout. {desc}",
+            )
+        return VerificationResult(
+            status=Status.PASS,
+            strategy_used="stdout_exclude_pattern",
+            details=f"Excluded pattern '{pattern}' not found. {desc}",
+        )
+    except re.error as exc:
+        return VerificationResult(
+            status=Status.ERROR,
+            strategy_used="stdout_exclude_pattern",
             details=f"Invalid regex '{pattern}': {exc}",
         )
 
