@@ -35,6 +35,7 @@ Full details: `.claude/rules/architecture.md` (conditional on harness/, scripts/
 5. **~15 `validate_schema.py --all` errors are expected** (phantom specs only) — do not fix
 6. **9 KNOWN_FAIL specs** — exclude from eval batches (list in `known-issues.md`)
 7. **`git push origin main` is blocked** by Bash permissions — push to a feature branch, or ask the user to run `! git push origin main`. Don't retry the blocked push.
+8. **Keep `AGENTS.md` in sync** — when updating KNOWN_FAIL list, architecture table, or invariants in CLAUDE.md or `known-issues.md`, also update `AGENTS.md` (Codex's project context file)
 
 ## Quality
 
