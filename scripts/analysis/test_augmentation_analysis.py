@@ -31,9 +31,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT / "scripts" / "analysis"))
 
 from augmentation_analysis import _extract_api  # noqa: E402
+from augmentation_analysis import _consensus_status  # noqa: E402
 RESULTS_DIR = PROJECT_ROOT / "results" / "evaluation" / "together-qwen-3.5-397b-a17b"
-OUTPUT_JSON = PROJECT_ROOT / "results" / "analysis" / "augmentation_per_kernel_matrix.json"
-OUTPUT_MD = PROJECT_ROOT / "results" / "analysis" / "augmentation_per_kernel_matrix.md"
+OUTPUT_JSON = PROJECT_ROOT / "results" / "analysis" / "augmentation_per_kernel_matrix_together-qwen-3.5-397b-a17b.json"
+OUTPUT_MD = PROJECT_ROOT / "results" / "analysis" / "augmentation_per_kernel_matrix_together-qwen-3.5-397b-a17b.md"
 
 
 # ---------------------------------------------------------------------------
@@ -48,13 +49,12 @@ def _load_output() -> dict:
 
 
 def _count_cuda_to_omp_kernels_on_disk() -> int:
-    """Independently count unique cuda-to-omp kernel pairs from raw files."""
+    """Independently count unique cuda-to-omp kernel pairs from raw files.
+
+    Includes stochastic seed files (L0) since the matrix now uses consensus.
+    """
     seen = set()
     for f in RESULTS_DIR.glob("*.json"):
-        stem = f.stem
-        # Skip stochastic samples
-        if re.search(r"-s\d+$", stem):
-            continue
         data = json.loads(f.read_text(encoding="utf-8"))
         src = data.get("source_spec", "")
         tgt = data.get("target_spec", "")
@@ -67,8 +67,28 @@ def _count_cuda_to_omp_kernels_on_disk() -> int:
 
 
 def _load_raw_status(kernel_name: str, level: int) -> str:
-    """Load overall_status for a specific kernel + level from raw JSON."""
-    # Find the matching file
+    """Load overall_status for a specific kernel + level from raw JSON.
+
+    For L0: collects all seed results and applies consensus (PASS if any passes).
+    For L1+: returns single result (skips stochastic files).
+    """
+    if level == 0:
+        statuses = []
+        for f in RESULTS_DIR.glob("*.json"):
+            data = json.loads(f.read_text(encoding="utf-8"))
+            src_api = _extract_api(data.get("source_spec", ""))
+            tgt_api = _extract_api(data.get("target_spec", ""))
+            if src_api != "cuda" or tgt_api != "omp":
+                continue
+            if data.get("kernel") != kernel_name:
+                continue
+            aug = data.get("augment_level", 0)
+            if aug == 0:
+                statuses.append(data.get("overall_status", "UNKNOWN"))
+        if statuses:
+            return _consensus_status(statuses)
+        return "NOT_FOUND"
+
     for f in RESULTS_DIR.glob("*.json"):
         stem = f.stem
         if re.search(r"-s\d+$", stem):
@@ -117,17 +137,25 @@ class TestMatrixStructure:
         assert data["primary_matrix"]["kernel_count"] == disk_count
 
     def test_status_values_match_raw(self) -> None:
-        """Spot-check 3 kernels x 2 levels against independently loaded raw data."""
+        """Spot-check kernels at L0 (consensus) and L2 (ablation) against raw data."""
         data = _load_output()
         pm = data["primary_matrix"]["per_kernel"]
 
+        # L0 consensus check for all kernels
         for kernel in ["backprop", "bfs", "hotspot"]:
-            for level in [0, 2]:
-                raw = _load_raw_status(kernel, level)
-                matrix_val = pm[kernel][f"L{level}"]
-                assert matrix_val == raw, (
-                    f"{kernel} L{level}: matrix={matrix_val}, raw={raw}"
-                )
+            raw = _load_raw_status(kernel, 0)
+            matrix_val = pm[kernel]["L0"]
+            assert matrix_val == raw, (
+                f"{kernel} L0: matrix={matrix_val}, raw={raw}"
+            )
+
+        # L2 ablation check (only kernels with ablation data)
+        for kernel in ["bfs"]:
+            raw = _load_raw_status(kernel, 2)
+            matrix_val = pm[kernel]["L2"]
+            assert matrix_val == raw, (
+                f"{kernel} L2: matrix={matrix_val}, raw={raw}"
+            )
 
     def test_stochastic_excluded(self) -> None:
         """No kernel should have more than 5 level entries (L0-L4 only)."""
@@ -186,10 +214,9 @@ class TestPatternClassification:
     def test_pattern_classification(self) -> None:
         data = _load_output()
         ps = data["primary_matrix"]["pattern_summary"]
-        assert "backprop" in ps["degradation"]
-        assert "bfs" in ps["stable_pass"]
-        assert "kmeans" in ps["stable_fail"]
-        assert "nn" in ps["improvement"]
+        assert "bfs" in ps["degradation"]
+        assert "srad" in ps["stable_pass"]
+        assert "backprop" in ps["other"]
 
     def test_md_summary_contains_sections(self) -> None:
         if not OUTPUT_MD.exists():
@@ -238,15 +265,49 @@ class TestFigureGeneration:
         assert '"#0072B2"' in src, "Missing VERIFY_FAIL blue"
 
     def test_heatmap_dimensions(self) -> None:
-        """AUG-04: Heatmap data has 26 rows (kernels) and 5 columns (L0-L4)."""
+        """AUG-04: Heatmap data has 26 kernels, L0 for all, L1-L4 for ablation kernels."""
         data = _load_output()
         pm = data["primary_matrix"]
         assert pm["kernel_count"] == 26, f"Expected 26 kernels, got {pm['kernel_count']}"
         assert len(pm["levels"]) == 5, f"Expected 5 levels, got {len(pm['levels'])}"
-        # Verify each kernel has L0-L4 entries
         for kernel, entry in pm["per_kernel"].items():
-            level_keys = [k for k in entry if k.startswith("L") and k[1:].isdigit()]
-            assert len(level_keys) == 5, (
-                f"{kernel} has {len(level_keys)} levels, expected 5: {level_keys}"
-            )
+            assert "L0" in entry, f"{kernel} missing L0"
+        # Kernels with ablation data must have L1-L4
+        for kernel in ["bfs", "lud", "nw"]:
+            if kernel in pm["per_kernel"]:
+                entry = pm["per_kernel"][kernel]
+                for lvl in ["L1", "L2", "L3", "L4"]:
+                    assert lvl in entry, f"{kernel} missing {lvl} (ablation data expected)"
+
+
+# ---------------------------------------------------------------------------
+# AUG-05: L0 consensus and multi-direction (Change 1)
+# ---------------------------------------------------------------------------
+
+
+class TestConsensusStatus:
+    """Verify _consensus_status helper for L0 seed aggregation."""
+
+    def test_pass_if_any_passes(self) -> None:
+        assert _consensus_status(["PASS", "BUILD_FAIL", "BUILD_FAIL"]) == "PASS"
+
+    def test_pass_if_all_pass(self) -> None:
+        assert _consensus_status(["PASS", "PASS", "PASS"]) == "PASS"
+
+    def test_most_common_on_all_fail(self) -> None:
+        assert _consensus_status(["BUILD_FAIL", "RUN_FAIL", "BUILD_FAIL"]) == "BUILD_FAIL"
+
+    def test_single_status(self) -> None:
+        assert _consensus_status(["VERIFY_FAIL"]) == "VERIFY_FAIL"
+
+
+class TestL0Populated:
+    """After the fix, L0 should be populated for all kernels."""
+
+    def test_l0_present_for_all_kernels(self) -> None:
+        data = _load_output()
+        pm = data["primary_matrix"]
+        for kernel, entry in pm["per_kernel"].items():
+            assert "L0" in entry, f"{kernel} missing L0"
+            assert entry["L0"] not in ("", None), f"{kernel} L0 is empty"
 

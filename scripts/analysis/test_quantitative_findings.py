@@ -401,95 +401,34 @@ def test_direction_pass_rates():
 
 
 # ---------------------------------------------------------------------------
-# QUANT-06: Self-repair effectiveness
-# ---------------------------------------------------------------------------
-
-def test_self_repair():
-    """compute_self_repair classifies repair outcomes from attempts[] arrays."""
-    records = [
-        # Record 1: BUILD_FAIL -> PASS (full repair on attempt 2)
-        _make_record(
-            source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
-            overall_status="PASS",
-            attempts=[
-                {"build_status": "fail"},
-                {"build_status": "pass", "run_status": "pass", "verify_status": "pass"},
-            ],
-        ),
-        # Record 2: BUILD_FAIL -> VERIFY_FAIL (partial repair)
-        _make_record(
-            source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
-            overall_status="VERIFY_FAIL",
-            attempts=[
-                {"build_status": "fail"},
-                {"build_status": "pass", "run_status": "pass", "verify_status": "fail"},
-            ],
-        ),
-        # Record 3: RUN_FAIL -> BUILD_FAIL (regression)
-        _make_record(
-            source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-omp",
-            overall_status="BUILD_FAIL",
-            attempts=[
-                {"build_status": "pass", "run_status": "fail"},
-                {"build_status": "fail"},
-            ],
-        ),
-        # Record 4: single attempt PASS (not multi-attempt, should not count)
-        _make_record(
-            source_spec="rodinia-nw-cuda", target_spec="rodinia-nw-omp",
-            overall_status="PASS",
-            attempts=[
-                {"build_status": "pass", "run_status": "pass", "verify_status": "pass"},
-            ],
-        ),
-    ]
-    # Set total_attempts on each record to match attempts length
-    for r in records:
-        r["total_attempts"] = len(r["attempts"])
-
-    result = qf.compute_self_repair(records)
-
-    # 3 initially failing multi-attempt records (records 1, 2, 3)
-    assert result["total_initially_failing"] == 3
-    assert result["full_repairs"] == 1
-    assert result["partial_repairs"] == 1
-    assert result["regressions"] == 1
-
-    # Repair rate = 1/3
-    assert result["overall_repair_rate"]["value"] == round(1 / 3, 4)
-    # Regression rate = 1/3
-    assert result["regression_rate"]["value"] == round(1 / 3, 4)
-
-    # Per-failure-type breakdown
-    assert "BUILD_FAIL" in result["per_failure_type"]
-    bf = result["per_failure_type"]["BUILD_FAIL"]
-    assert bf["total"] == 2  # records 1 and 2 started as BUILD_FAIL
-    assert bf["full_repair"] == 1
-    assert bf["partial_repair"] == 1
-
-
-# ---------------------------------------------------------------------------
 # QUANT-07: pass@k estimates
 # ---------------------------------------------------------------------------
 
 def test_pass_at_k():
-    """compute_pass_at_k computes pass@1 and pass@3 from seed variants."""
+    """pass@k uses Chen et al. (2021) unbiased estimator: 1 - C(n-c,k)/C(n,k).
+
+    Task 1: c=3 → pass@1 = 3/3 = 1.0,   pass@3 = 1 - C(0,3)/C(3,3) = 1.0
+    Task 2: c=1 → pass@1 = 1/3 = 0.333,  pass@3 = 1 - C(2,3)/C(3,3) = 1.0
+    Task 3: c=0 → pass@1 = 0/3 = 0.0,    pass@3 = 1 - C(3,3)/C(3,3) = 0.0
+    Macro-avg: pass@1 = (1 + 1/3 + 0)/3 = 4/9 ≈ 0.4444
+               pass@3 = (1 + 1   + 0)/3 = 2/3 ≈ 0.6667
+    """
     records = [
-        # Task 1: all 3 seeds pass -> contributes to both pass@1 and pass@3
+        # Task 1: all 3 seeds pass (c=3)
         _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
                      overall_status="PASS", temperature=0.7, sample_id=0),
         _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
                      overall_status="PASS", temperature=0.7, sample_id=1),
         _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
                      overall_status="PASS", temperature=0.7, sample_id=2),
-        # Task 2: 1 of 3 passes -> contributes to pass@1 only
+        # Task 2: 1 of 3 passes (c=1)
         _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
                      overall_status="PASS", temperature=0.7, sample_id=0),
         _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
                      overall_status="BUILD_FAIL", temperature=0.7, sample_id=1),
         _make_record(source_spec="rodinia-hotspot-cuda", target_spec="rodinia-hotspot-omp",
                      overall_status="BUILD_FAIL", temperature=0.7, sample_id=2),
-        # Task 3: 0 of 3 pass -> contributes to neither
+        # Task 3: 0 of 3 pass (c=0)
         _make_record(source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-omp",
                      overall_status="BUILD_FAIL", temperature=0.7, sample_id=0),
         _make_record(source_spec="rodinia-srad-cuda", target_spec="rodinia-srad-omp",
@@ -502,15 +441,15 @@ def test_pass_at_k():
     # 3 tasks total
     assert result["total_tasks"]["value"] == 3
 
-    # pass@1: 2/3 tasks have at least 1 seed passing
-    assert round(result["pass_at_1"]["value"], 4) == round(2 / 3, 4)
-    # pass@3: 1/3 tasks have all 3 seeds passing
-    assert round(result["pass_at_3"]["value"], 4) == round(1 / 3, 4)
+    # Chen formula: pass@1 = macro-avg(c_i/n_i) = (1 + 1/3 + 0)/3 = 4/9
+    assert abs(result["pass_at_1"]["value"] - 4 / 9) < 0.001
+    # Chen formula: pass@3 = macro-avg(1-C(n-c,3)/C(n,3)) = (1+1+0)/3 = 2/3
+    assert abs(result["pass_at_3"]["value"] - 2 / 3) < 0.001
 
-    # Invariant: pass@1 >= pass@3
-    assert result["pass_at_1"]["value"] >= result["pass_at_3"]["value"]
+    # MONOTONICITY: pass@1 <= pass@3 (Chen et al. convention)
+    assert result["pass_at_1"]["value"] <= result["pass_at_3"]["value"]
 
-    # Task classification
+    # Task classification unchanged
     assert result["task_classification"]["always_pass"] == 1
     assert result["task_classification"]["hard_fail"] == 1
     assert result["task_classification"]["noisy_fail"] == 1
@@ -552,10 +491,12 @@ def test_pass_at_k_excludes_ablation_levels():
     # Only 2 tasks (ablation records excluded from task-set)
     assert result["total_tasks"]["value"] == 2
 
-    # Task 1: 3/3 canonical PASS -> always_pass, contributes to both pass@1 and pass@3
-    # Task 2: 1/3 canonical PASS -> noisy_fail, contributes to pass@1 only
-    assert round(result["pass_at_1"]["value"], 4) == round(2 / 2, 4)
-    assert round(result["pass_at_3"]["value"], 4) == round(1 / 2, 4)
+    # Chen formula (ablation excluded, only canonical L0 seeds):
+    # Task 1: c=3 → pass@1=1.0, pass@3=1.0
+    # Task 2: c=1 → pass@1=1/3, pass@3=1.0
+    # Macro-avg: pass@1 = (1 + 1/3)/2 = 2/3, pass@3 = (1+1)/2 = 1.0
+    assert abs(result["pass_at_1"]["value"] - 2 / 3) < 0.001
+    assert abs(result["pass_at_3"]["value"] - 1.0) < 0.001
 
     # Classification
     assert result["task_classification"]["always_pass"] == 1
@@ -902,3 +843,23 @@ def test_opencl_kernel_only_effect():
     # CI bounds valid
     assert result["x_to_opencl"]["ci_lower"] <= result["x_to_opencl"]["value"]
     assert result["x_to_opencl"]["value"] <= result["x_to_opencl"]["ci_upper"]
+
+
+# ---------------------------------------------------------------------------
+# QUANT-SR: Self-repair removal verification
+# ---------------------------------------------------------------------------
+
+def test_no_compute_self_repair_function():
+    """compute_self_repair should no longer exist after self-repair removal."""
+    assert not hasattr(qf, "compute_self_repair"), \
+        "compute_self_repair function should be deleted"
+
+
+def test_no_self_repair_helpers():
+    """Self-repair helper functions should no longer exist."""
+    assert not hasattr(qf, "_classify_attempt_status"), \
+        "_classify_attempt_status should be deleted"
+    assert not hasattr(qf, "_classify_repair"), \
+        "_classify_repair should be deleted"
+    assert not hasattr(qf, "STATUS_ORDER"), \
+        "STATUS_ORDER should be deleted"

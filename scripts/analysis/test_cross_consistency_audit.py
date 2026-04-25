@@ -85,14 +85,6 @@ def sample_paper_data(tmp_path):
                 },
                 "cochran_armitage": {"z": -0.0, "p_value": 1.0, "n_kernels": 24},
             },
-            "self_repair": {
-                "total_tasks": 710,
-                "first_attempt_pass": 160,
-                "repaired": 112,
-                "regression": 7,
-                "first_attempt_pass_rate": {"rate": 0.2254},
-                "repair_rate": {"rate": 0.2036},
-            },
             "build_fail_subcategories": {
                 "total": 241,
                 "subcategories": {

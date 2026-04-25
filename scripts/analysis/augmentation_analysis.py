@@ -162,6 +162,19 @@ def _is_stochastic(stem: str) -> bool:
     return bool(re.search(r"-s\d+$", stem))
 
 
+def _consensus_status(statuses: list[str]) -> str:
+    """Compute consensus status from multiple seed results.
+
+    PASS if any seed passes (pass@1-of-any), matching ablation filter.
+    Otherwise, return the most common failure status.
+    """
+    if any(s == "PASS" for s in statuses):
+        return "PASS"
+    from collections import Counter
+    counts = Counter(statuses)
+    return counts.most_common(1)[0][0]
+
+
 def _extract_api(spec_name: str) -> str:
     """Extract the API from a spec name like 'rodinia-backprop-cuda'.
 
@@ -183,26 +196,26 @@ def _extract_api(spec_name: str) -> str:
 # Primary Matrix: cuda-to-omp
 # ---------------------------------------------------------------------------
 
-def build_primary_matrix(results_dir: Path, verbose: bool = False) -> dict:
-    """Build per-kernel x per-level status matrix for cuda-to-omp direction.
+def build_primary_matrix(results_dir: Path, verbose: bool = False,
+                         direction: str = "cuda-to-omp") -> dict:
+    """Build per-kernel x per-level status matrix for a specific direction.
 
-    Reads all result JSON files, filters to cuda-to-omp direction (excluding
-    omp_target), skips stochastic samples, and builds a status matrix.
+    For L0: collects all seed results and applies consensus (PASS if any passes).
+    For L1-L4: uses single result per kernel (ablation files are not seeded).
 
     Returns:
         dict with keys: direction, levels, kernel_count, per_kernel, aggregate,
         pattern_summary, exceptions
     """
+    src_api_filter, tgt_api_filter = direction.split("-to-")
+
     per_kernel: dict[str, dict] = {}
+    l0_seeds: dict[str, list[str]] = defaultdict(list)
+    l0_meta: dict[str, dict] = {}
 
     for f in sorted(results_dir.glob("*.json")):
         stem = f.stem
 
-        # Skip stochastic samples
-        if _is_stochastic(stem):
-            continue
-
-        # Load JSON to get authoritative source/target spec names
         try:
             data = json.loads(f.read_text(encoding="utf-8"))
         except (json.JSONDecodeError, UnicodeDecodeError):
@@ -213,22 +226,18 @@ def build_primary_matrix(results_dir: Path, verbose: bool = False) -> dict:
         source_spec = data.get("source_spec", "")
         target_spec = data.get("target_spec", "")
 
-        # Extract APIs from spec names (JSON fields are authoritative)
         src_api = _extract_api(source_spec)
         tgt_api = _extract_api(target_spec)
 
-        # Filter: cuda-to-omp only (not omp_target)
-        if src_api != "cuda" or tgt_api != "omp":
+        if src_api != src_api_filter or tgt_api != tgt_api_filter:
             continue
 
-        # CRITICAL: use overall_status, never run_status
         status = data.get("overall_status", "UNKNOWN")
         kernel = data.get("kernel", "unknown")
         level = data.get("augment_level")
         if level is None:
             level = _augment_level_from_filename(stem)
 
-        # Only include L0-L4
         if level < 0 or level > 4:
             continue
 
@@ -242,26 +251,45 @@ def build_primary_matrix(results_dir: Path, verbose: bool = False) -> dict:
                 "known_fail": source_spec in KNOWN_FAIL_SOURCES,
             }
 
+        if level == 0:
+            l0_seeds[kernel].append(status)
+            if kernel not in l0_meta:
+                l0_meta[kernel] = {"suite": suite, "source_spec": source_spec,
+                                   "target_spec": target_spec}
+            continue
+
+        if _is_stochastic(stem):
+            continue
+
         per_kernel[kernel][f"L{level}"] = status
+
+    # Apply consensus for L0 seeds
+    for kernel, statuses in l0_seeds.items():
+        if kernel not in per_kernel:
+            meta = l0_meta.get(kernel, {})
+            per_kernel[kernel] = {
+                "suite": meta.get("suite", "unknown"),
+                "source_spec": meta.get("source_spec", ""),
+                "target_spec": meta.get("target_spec", ""),
+                "known_fail": meta.get("source_spec", "") in KNOWN_FAIL_SOURCES,
+            }
+        per_kernel[kernel]["L0"] = _consensus_status(statuses)
 
     # Classify patterns
     pattern_summary = classify_patterns(per_kernel)
 
-    # Set pattern on each kernel entry
     for pattern_type, kernels in pattern_summary.items():
         for k in kernels:
             if k in per_kernel:
                 per_kernel[k]["pattern"] = pattern_type
 
-    # Compute aggregates
     aggregate = compute_aggregates(per_kernel)
     aggregate_excl_kf = compute_aggregates(per_kernel, exclude_known_fail=True)
 
-    # Identify exceptions
     exceptions = identify_exceptions(per_kernel, pattern_summary)
 
     return {
-        "direction": "cuda-to-omp",
+        "direction": direction,
         "levels": LEVELS,
         "kernel_count": len(per_kernel),
         "per_kernel": per_kernel,
@@ -836,11 +864,32 @@ def main() -> int:
             print(f"Results dir:  {results_dir}")
             print(f"Output dir:   {output_dir}")
 
-        # Build primary matrix (cuda-to-omp)
+        # Discover all directions from data
+        all_directions: set[str] = set()
+        for f in results_dir.glob("*.json"):
+            try:
+                d = json.loads(f.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                continue
+            src_api = _extract_api(d.get("source_spec", ""))
+            tgt_api = _extract_api(d.get("target_spec", ""))
+            if src_api and tgt_api and src_api != "unknown" and tgt_api != "unknown":
+                all_directions.add(f"{src_api}-to-{tgt_api}")
+
+        # Build primary matrix (cuda-to-omp, backward compatible)
         print(f"[{model_dir_name}] Building primary matrix (cuda-to-omp)...")
-        primary = build_primary_matrix(results_dir, verbose=args.verbose)
+        primary = build_primary_matrix(results_dir, verbose=args.verbose, direction="cuda-to-omp")
         print(f"  Found {primary['kernel_count']} kernels")
         print(f"  Patterns: {', '.join(f'{k}={len(v)}' for k, v in primary['pattern_summary'].items())}")
+
+        # Build per-direction matrices for all ablation directions
+        per_direction_matrices = {}
+        for direction in sorted(all_directions):
+            print(f"[{model_dir_name}] Building matrix for {direction}...")
+            mat = build_primary_matrix(results_dir, verbose=args.verbose, direction=direction)
+            if mat["kernel_count"] > 0:
+                per_direction_matrices[direction] = mat
+                print(f"  Found {mat['kernel_count']} kernels")
 
         # Build secondary matrix (all directions)
         print(f"[{model_dir_name}] Building secondary matrix (all directions)...")
@@ -852,6 +901,7 @@ def main() -> int:
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "data_source": f"results/evaluation/{model_dir_name}",
             "primary_matrix": primary,
+            "per_direction": per_direction_matrices,
             "secondary_matrix": secondary,
         }
 

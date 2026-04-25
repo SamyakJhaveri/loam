@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-04-25T05:57:55.591464+00:00",
+  "generated_at": "2026-04-25T23:01:53.542030+00:00",
   "model": "together-qwen-3.5-397b-a17b",
   "terminology_note": "All json_path values use 'canonical' as the top-level key in the source analysis JSONs.",
   "claims": [
     {
       "claim_id": "overall_pass_at_1",
       "section": "Abstract, S6.1",
-      "claim_text": "Qwen 3.5 397B achieves pass@1 of 35.2% [27.8%, 43.4%] across 142 tasks",
-      "value": 0.3521,
+      "claim_text": "Qwen 3.5 397B achieves pass@1 of 23.9% [17.7%, 31.6%] across 142 tasks",
+      "value": 0.2394,
       "source_files": [
         "results/analysis/quantitative_findings.json"
       ],
@@ -15,8 +15,8 @@
       "verification_cmd": "python3 -c \"import json; d=json.load(open('results/analysis/quantitative_findings.json')); print(d['canonical']['pass_at_k']['pass_at_1'])\"",
       "model": "together-qwen-3.5-397b-a17b",
       "terminology": "canonical",
-      "ci_lower": 0.2784,
-      "ci_upper": 0.4336,
+      "ci_lower": 0.1767,
+      "ci_upper": 0.3159,
       "ci_level": 0.95,
       "n": 142,
       "unit": "fraction"
@@ -24,8 +24,8 @@
     {
       "claim_id": "overall_pass_at_3",
       "section": "S6.1",
-      "claim_text": "pass@3 of 13.4% [8.7%, 20.0%]",
-      "value": 0.1338,
+      "claim_text": "pass@3 of 35.2% [27.8%, 43.4%]",
+      "value": 0.3521,
       "source_files": [
         "results/analysis/quantitative_findings.json"
       ],
@@ -33,8 +33,8 @@
       "verification_cmd": "python3 -c \"import json; d=json.load(open('results/analysis/quantitative_findings.json')); print(d['canonical']['pass_at_k']['pass_at_3'])\"",
       "model": "together-qwen-3.5-397b-a17b",
       "terminology": "canonical",
-      "ci_lower": 0.0874,
-      "ci_upper": 0.1995,
+      "ci_lower": 0.2784,
+      "ci_upper": 0.4336,
       "ci_level": 0.95,
       "n": 142,
       "unit": "fraction"
@@ -168,8 +168,8 @@
     {
       "claim_id": "suite_pass_hecbench",
       "section": "S6.3",
-      "claim_text": "hecbench pass@1: 68.8% [51.4%, 82.0%] (n=32)",
-      "value": 0.6875,
+      "claim_text": "hecbench pass@1: 52.1% [36.4%, 69.1%] (n=32)",
+      "value": 0.5208,
       "source_files": [
         "results/analysis/quantitative_findings.json"
       ],
@@ -177,8 +177,8 @@
       "verification_cmd": "python3 -c \"import json; d=json.load(open('results/analysis/quantitative_findings.json')); print(d['canonical']['pass_at_k']['per_suite']['pass_at_1']['hecbench'])\"",
       "model": "together-qwen-3.5-397b-a17b",
       "terminology": "canonical",
-      "ci_lower": 0.5143,
-      "ci_upper": 0.8205,
+      "ci_lower": 0.3645,
+      "ci_upper": 0.6913,
       "ci_level": 0.95,
       "n": 32,
       "unit": "fraction"
@@ -186,8 +186,8 @@
     {
       "claim_id": "suite_pass_mixbench",
       "section": "S6.3",
-      "claim_text": "mixbench pass@1: 16.7% [3.0%, 56.4%] (n=6)",
-      "value": 0.1667,
+      "claim_text": "mixbench pass@1: 5.6% [0.0%, 39.0%] (n=6)",
+      "value": 0.0556,
       "source_files": [
         "results/analysis/quantitative_findings.json"
       ],
@@ -195,8 +195,8 @@
       "verification_cmd": "python3 -c \"import json; d=json.load(open('results/analysis/quantitative_findings.json')); print(d['canonical']['pass_at_k']['per_suite']['pass_at_1']['mixbench'])\"",
       "model": "together-qwen-3.5-397b-a17b",
       "terminology": "canonical",
-      "ci_lower": 0.0301,
-      "ci_upper": 0.5635,
+      "ci_lower": 0.0,
+      "ci_upper": 0.3903,
       "ci_level": 0.95,
       "n": 6,
       "unit": "fraction"
@@ -204,8 +204,8 @@
     {
       "claim_id": "suite_pass_rodinia",
       "section": "S6.3",
-      "claim_text": "rodinia pass@1: 28.3% [20.1%, 38.2%] (n=92)",
-      "value": 0.2826,
+      "claim_text": "rodinia pass@1: 18.1% [11.9%, 27.6%] (n=92)",
+      "value": 0.1812,
       "source_files": [
         "results/analysis/quantitative_findings.json"
       ],
@@ -213,8 +213,8 @@
       "verification_cmd": "python3 -c \"import json; d=json.load(open('results/analysis/quantitative_findings.json')); print(d['canonical']['pass_at_k']['per_suite']['pass_at_1']['rodinia'])\"",
       "model": "together-qwen-3.5-397b-a17b",
       "terminology": "canonical",
-      "ci_lower": 0.2008,
-      "ci_upper": 0.3819,
+      "ci_lower": 0.1187,
+      "ci_upper": 0.2761,
       "ci_level": 0.95,
       "n": 92,
       "unit": "fraction"
@@ -240,8 +240,8 @@
     {
       "claim_id": "suite_pass_xsbench",
       "section": "S6.3",
-      "claim_text": "xsbench pass@1: 16.7% [3.0%, 56.4%] (n=6)",
-      "value": 0.1667,
+      "claim_text": "xsbench pass@1: 5.6% [0.0%, 39.0%] (n=6)",
+      "value": 0.0556,
       "source_files": [
         "results/analysis/quantitative_findings.json"
       ],
@@ -249,8 +249,8 @@
       "verification_cmd": "python3 -c \"import json; d=json.load(open('results/analysis/quantitative_findings.json')); print(d['canonical']['pass_at_k']['per_suite']['pass_at_1']['xsbench'])\"",
       "model": "together-qwen-3.5-397b-a17b",
       "terminology": "canonical",
-      "ci_lower": 0.0301,
-      "ci_upper": 0.5635,
+      "ci_lower": 0.0,
+      "ci_upper": 0.3903,
       "ci_level": 0.95,
       "n": 6,
       "unit": "fraction"
@@ -424,21 +424,6 @@
       "model": "together-qwen-3.5-397b-a17b",
       "terminology": "canonical",
       "unit": "correlation_coefficient"
-    },
-    {
-      "claim_id": "self_repair_status",
-      "section": "S5",
-      "claim_text": "Self-repair was OFF in canonical evaluation (0 multi-attempt results)",
-      "value": 0,
-      "source_files": [
-        "results/analysis/selfrepair_analysis.json"
-      ],
-      "json_path": "",
-      "verification_cmd": "",
-      "model": "together-qwen-3.5-397b-a17b",
-      "terminology": "canonical",
-      "notes": "Not applicable \u2014 self-repair disabled in canonical config",
-      "unit": "count"
     },
     {
       "claim_id": "total_eval_files",

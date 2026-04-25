@@ -143,38 +143,6 @@ def test_per_direction_rates(paper_data):
 
 
 # ---------------------------------------------------------------------------
-# Test 7: Self-repair counts
-# ---------------------------------------------------------------------------
-
-def test_self_repair_counts(paper_data):
-    """Verify first_attempt_pass=160, repaired=112, regressions=7."""
-    sr = paper_data["primary_campaign"]["self_repair"]
-    assert sr["first_attempt_pass"] == 160
-    assert sr["repaired"] == 112
-    assert sr["regression"] == 7
-
-
-# ---------------------------------------------------------------------------
-# Test 8: Self-repair categories sum correctly
-# ---------------------------------------------------------------------------
-
-def test_self_repair_categories_sum(paper_data):
-    """All self-repair categories must sum to total_tasks."""
-    sr = paper_data["primary_campaign"]["self_repair"]
-    category_sum = (
-        sr["first_attempt_pass"]
-        + sr["repaired"]
-        + sr["partial_repair"]
-        + sr["regression"]
-        + sr["persistent_fail"]
-        + sr["single_attempt_fail"]
-    )
-    assert category_sum == sr["total_tasks"], (
-        f"Self-repair categories sum {category_sum} != total {sr['total_tasks']}"
-    )
-
-
-# ---------------------------------------------------------------------------
 # Test 9: Cochran-Armitage trend test results
 # ---------------------------------------------------------------------------
 

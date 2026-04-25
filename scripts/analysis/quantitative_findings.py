@@ -967,218 +967,18 @@ def compute_failure_taxonomy(records: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Self-repair status helpers (Dimension 6)
-# ---------------------------------------------------------------------------
-
-STATUS_ORDER = {
-    "EXTRACTION_FAIL": 0,
-    "BUILD_FAIL": 1,
-    "RUN_FAIL": 2,
-    "VERIFY_FAIL": 3,
-    "PASS": 4,
-    "ERROR": -1,
-    "OTHER": -1,
-}
-
-
-def _classify_attempt_status(attempt: dict) -> str:
-    """Determine the status of a single attempt (mirrors selfrepair_analysis.py)."""
-    if attempt.get("extraction_fail"):
-        return "EXTRACTION_FAIL"
-    bs = attempt.get("build_status")
-    rs = attempt.get("run_status")
-    vs = attempt.get("verify_status")
-    if bs == "fail":
-        return "BUILD_FAIL"
-    if bs is None and rs is None and vs is None and not attempt.get("extraction_fail"):
-        return "OTHER"
-    if rs in ("fail", "timeout"):
-        return "RUN_FAIL"
-    if vs == "fail":
-        return "VERIFY_FAIL"
-    if vs == "pass":
-        return "PASS"
-    return "OTHER"
-
-
-def _classify_repair(first_status: str, final_status: str) -> str:
-    """Classify repair outcome (mirrors selfrepair_analysis.py)."""
-    if final_status == "PASS":
-        return "full_repair"
-    first_ord = STATUS_ORDER.get(first_status, -1)
-    final_ord = STATUS_ORDER.get(final_status, -1)
-    if final_ord > first_ord:
-        return "partial_repair"
-    if final_ord < first_ord:
-        return "regression"
-    return "no_repair"
-
-
-# ---------------------------------------------------------------------------
-# Dimension 6: Self-repair effectiveness (legacy temp=0.0 only)
-# ---------------------------------------------------------------------------
-
-def compute_self_repair(records: list[dict]) -> dict:
-    """Compute self-repair effectiveness from attempts[] arrays.
-
-    Legacy (temp=0.0) ONLY (max_retries=3). Canonical has max_retries=1 = no self-repair.
-    """
-    # Only records with multiple attempts and initial != PASS
-    multi_attempt = [
-        r for r in records
-        if (r.get("total_attempts") or 1) > 1
-    ]
-
-    total_initially_failing = 0
-    full_repairs = 0
-    partial_repairs = 0
-    no_changes = 0
-    regressions = 0
-    attempts_to_success: list[int] = []
-
-    # Per initial failure type
-    by_initial_failure: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-
-    # Per suite
-    by_suite: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
-
-    for r in multi_attempt:
-        attempts = r.get("attempts") or []
-        if len(attempts) < 2:
-            continue
-
-        first_status = _classify_attempt_status(attempts[0])
-        final_status = _classify_attempt_status(attempts[-1])
-
-        if first_status == "PASS":
-            # Initially passing -- skip for repair analysis
-            continue
-
-        total_initially_failing += 1
-        outcome = _classify_repair(first_status, final_status)
-
-        if outcome == "full_repair":
-            full_repairs += 1
-            # Find which attempt passed
-            for idx, att in enumerate(attempts[1:], start=2):
-                if _classify_attempt_status(att) == "PASS":
-                    attempts_to_success.append(idx)
-                    break
-        elif outcome == "partial_repair":
-            partial_repairs += 1
-        elif outcome == "regression":
-            regressions += 1
-        else:
-            no_changes += 1
-
-        by_initial_failure[first_status][outcome] += 1
-
-        suite = r.get("_suite", "unknown")
-        by_suite[suite][outcome] += 1
-
-    # Compute rates
-    total_records = len(records)
-    single_attempt = total_records - len(multi_attempt)
-    first_attempt_pass = sum(
-        1 for r in records
-        if (r.get("total_attempts") or 1) == 1
-        and r.get("overall_status") == "PASS"
-    )
-    # Also count multi-attempt records where first attempt was PASS
-    first_attempt_pass += sum(
-        1 for r in multi_attempt
-        if (r.get("attempts") or [{}]) and _classify_attempt_status((r.get("attempts") or [{}])[0]) == "PASS"
-    )
-
-    overall_repair_rate = (
-        full_repairs / total_initially_failing
-        if total_initially_failing > 0 else 0.0
-    )
-    regression_rate = (
-        regressions / total_initially_failing
-        if total_initially_failing > 0 else 0.0
-    )
-    mean_attempts = (
-        sum(attempts_to_success) / len(attempts_to_success)
-        if attempts_to_success else 0.0
-    )
-
-    # Per-failure-type repair rates
-    per_failure_type = {}
-    for fail_type in sorted(by_initial_failure.keys()):
-        type_data = by_initial_failure[fail_type]
-        type_total = sum(type_data.values())
-        type_full = type_data.get("full_repair", 0)
-        per_failure_type[fail_type] = {
-            "total": type_total,
-            "full_repair": type_full,
-            "partial_repair": type_data.get("partial_repair", 0),
-            "no_repair": type_data.get("no_repair", 0),
-            "regression": type_data.get("regression", 0),
-            "repair_rate": round(type_full / type_total, 4) if type_total > 0 else 0.0,
-        }
-
-    # Per-suite breakdown
-    per_suite_repair = {}
-    for suite_name in sorted(by_suite.keys()):
-        sd = by_suite[suite_name]
-        s_total = sum(sd.values())
-        s_full = sd.get("full_repair", 0)
-        per_suite_repair[suite_name] = {
-            "total_initially_failing": s_total,
-            "full_repair": s_full,
-            "partial_repair": sd.get("partial_repair", 0),
-            "no_repair": sd.get("no_repair", 0),
-            "regression": sd.get("regression", 0),
-            "repair_rate": round(s_full / s_total, 4) if s_total > 0 else 0.0,
-        }
-
-    return {
-        "total_records": make_finding(
-            total_records, "computed", total_records,
-            "len(legacy temp=0.0 records)",
-        ),
-        "single_attempt_count": single_attempt,
-        "multi_attempt_count": len(multi_attempt),
-        "total_initially_failing": total_initially_failing,
-        "first_attempt_pass": make_finding(
-            first_attempt_pass, "computed", total_records,
-            "count of records where first attempt PASS",
-        ),
-        "overall_repair_rate": make_finding(
-            round(overall_repair_rate, 4),
-            "computed",
-            total_initially_failing,
-            "full_repairs / total_initially_failing",
-            n=total_initially_failing,
-        ),
-        "full_repairs": full_repairs,
-        "partial_repairs": partial_repairs,
-        "no_repairs": no_changes,
-        "regressions": regressions,
-        "regression_rate": make_finding(
-            round(regression_rate, 4),
-            "computed",
-            total_initially_failing,
-            "regressions / total_initially_failing",
-            n=total_initially_failing,
-        ),
-        "mean_attempts_to_success": round(mean_attempts, 2),
-        "per_failure_type": per_failure_type,
-        "per_suite": per_suite_repair,
-    }
-
-
-# ---------------------------------------------------------------------------
 # Dimension 7: pass@k estimates (canonical only)
 # ---------------------------------------------------------------------------
 
 def compute_pass_at_k(records: list[dict]) -> dict:
-    """Compute pass@k from canonical seed variants.
+    """Compute pass@k using Chen et al. (2021) unbiased estimator.
+
+    pass@k = 1 - C(n-c, k) / C(n, k)
 
     Canonical ONLY. Groups by task = (source_spec, target_spec).
-    pass@1 = fraction of tasks where at least 1 of 3 seeds passes.
-    pass@3 = fraction of tasks where all 3 seeds pass.
+    pass@1 = expected single-sample success rate (c/n per task, macro-averaged).
+    pass@3 = probability at least 1 of 3 samples passes.
+    Monotonicity: pass@1 <= pass@3 always.
     """
     # Only canonical (augment_level=0) records are seeds;
     # ablation L1-L4 are different augmentation levels, not samples.
@@ -1200,15 +1000,22 @@ def compute_pass_at_k(records: list[dict]) -> dict:
                 f"Task {task_key[0]}-to-{task_key[1]} has {len(recs)} seeds (expected 3)"
             )
 
-    # Compute pass@1 and pass@3
-    pass_at_1_count = 0
-    pass_at_3_count = 0
+    def _chen_passk(n: int, c: int, k: int) -> float:
+        """Chen et al. (2021) unbiased estimator: 1 - C(n-c, k) / C(n, k)."""
+        den = math.comb(n, k)
+        if den == 0:
+            return 0.0
+        return 1.0 - math.comb(n - c, k) / den
 
-    # Per-direction and per-suite
-    dir_pass1: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "total": 0})
-    dir_pass3: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "total": 0})
-    suite_pass1: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "total": 0})
-    suite_pass3: dict[str, dict[str, int]] = defaultdict(lambda: {"pass": 0, "total": 0})
+    # Per-task pass@k values for macro-averaging
+    passk1_values: list[float] = []
+    passk3_values: list[float] = []
+
+    # Per-direction and per-suite accumulators
+    dir_passk1: dict[str, list[float]] = defaultdict(list)
+    dir_passk3: dict[str, list[float]] = defaultdict(list)
+    suite_passk1: dict[str, list[float]] = defaultdict(list)
+    suite_passk3: dict[str, list[float]] = defaultdict(list)
 
     # Classify tasks: always_pass, hard_fail, noisy_fail
     always_pass = 0
@@ -1219,16 +1026,13 @@ def compute_pass_at_k(records: list[dict]) -> dict:
         passes = sum(1 for r in recs if r.get("overall_status") == "PASS")
         n_seeds = len(recs)
 
-        any_pass = passes > 0
-        all_pass = passes == n_seeds
-
-        if any_pass:
-            pass_at_1_count += 1
-        if all_pass:
-            pass_at_3_count += 1
+        pk1 = _chen_passk(n_seeds, passes, 1)
+        pk3 = _chen_passk(n_seeds, passes, 3) if n_seeds >= 3 else pk1
+        passk1_values.append(pk1)
+        passk3_values.append(pk3)
 
         # Classify
-        if all_pass:
+        if passes == n_seeds:
             always_pass += 1
         elif passes == 0:
             hard_fail += 1
@@ -1239,39 +1043,43 @@ def compute_pass_at_k(records: list[dict]) -> dict:
         direction = recs[0].get("direction") or _direction_from_data(recs[0])
         suite = _suite_from_spec(recs[0].get("source_spec", ""))
 
-        dir_pass1[direction]["total"] += 1
-        dir_pass3[direction]["total"] += 1
-        suite_pass1[suite]["total"] += 1
-        suite_pass3[suite]["total"] += 1
+        dir_passk1[direction].append(pk1)
+        dir_passk3[direction].append(pk3)
+        suite_passk1[suite].append(pk1)
+        suite_passk3[suite].append(pk3)
 
-        if any_pass:
-            dir_pass1[direction]["pass"] += 1
-            suite_pass1[suite]["pass"] += 1
-        if all_pass:
-            dir_pass3[direction]["pass"] += 1
-            suite_pass3[suite]["pass"] += 1
+    # Macro-average across tasks with normal-approximation CI
+    # (pass@k values are continuous per-task floats, not binomial counts)
+    def _macro_avg_ci(values: list[float], alpha: float = 0.05) -> dict:
+        n = len(values)
+        if n == 0:
+            return {"value": 0.0, "ci_lower": 0.0, "ci_upper": 0.0, "ci_level": 1 - alpha, "n": 0}
+        mean = sum(values) / n
+        if n == 1:
+            return {"value": round(mean, 4), "ci_lower": round(mean, 4), "ci_upper": round(mean, 4), "ci_level": 1 - alpha, "n": 1}
+        variance = sum((v - mean) ** 2 for v in values) / (n - 1)
+        se = math.sqrt(variance / n)
+        z = 1.96 if alpha == 0.05 else 1.645
+        lo = max(0.0, mean - z * se)
+        hi = min(1.0, mean + z * se)
+        return {"value": round(mean, 4), "ci_lower": round(lo, 4), "ci_upper": round(hi, 4), "ci_level": 1 - alpha, "n": n}
 
-    # Aggregate rates
-    p1_ci = wilson_ci(pass_at_1_count, total_tasks)
-    p3_ci = wilson_ci(pass_at_3_count, total_tasks)
+    p1_ci = _macro_avg_ci(passk1_values)
+    p3_ci = _macro_avg_ci(passk3_values)
 
-    # Per-direction rates
+    # Per-direction rates (macro-avg within direction)
     per_direction_pass1 = {}
     per_direction_pass3 = {}
-    for d in sorted(set(list(dir_pass1.keys()) + list(dir_pass3.keys()))):
-        d1 = dir_pass1[d]
-        d3 = dir_pass3[d]
-        per_direction_pass1[d] = wilson_ci(d1["pass"], d1["total"])
-        per_direction_pass3[d] = wilson_ci(d3["pass"], d3["total"])
+    for d in sorted(set(list(dir_passk1.keys()) + list(dir_passk3.keys()))):
+        per_direction_pass1[d] = _macro_avg_ci(dir_passk1[d])
+        per_direction_pass3[d] = _macro_avg_ci(dir_passk3[d])
 
-    # Per-suite rates
+    # Per-suite rates (macro-avg within suite)
     per_suite_pass1 = {}
     per_suite_pass3 = {}
-    for s in sorted(set(list(suite_pass1.keys()) + list(suite_pass3.keys()))):
-        s1 = suite_pass1[s]
-        s3 = suite_pass3[s]
-        per_suite_pass1[s] = wilson_ci(s1["pass"], s1["total"])
-        per_suite_pass3[s] = wilson_ci(s3["pass"], s3["total"])
+    for s in sorted(set(list(suite_passk1.keys()) + list(suite_passk3.keys()))):
+        per_suite_pass1[s] = _macro_avg_ci(suite_passk1[s])
+        per_suite_pass3[s] = _macro_avg_ci(suite_passk3[s])
 
     return {
         "total_tasks": make_finding(
@@ -1280,13 +1088,13 @@ def compute_pass_at_k(records: list[dict]) -> dict:
         ),
         "pass_at_1": make_finding(
             p1_ci["value"], "computed", total_tasks,
-            "fraction of tasks where at least 1 of 3 seeds passes",
+            "expected single-sample success rate (Chen et al. 2021: 1-C(n-c,1)/C(n,1) = c/n)",
             ci_lower=p1_ci["ci_lower"], ci_upper=p1_ci["ci_upper"],
             n=total_tasks,
         ),
         "pass_at_3": make_finding(
             p3_ci["value"], "computed", total_tasks,
-            "fraction of tasks where all 3 seeds pass",
+            "probability at least 1 of 3 passes (Chen et al. 2021: 1-C(n-c,3)/C(n,3))",
             ci_lower=p3_ci["ci_lower"], ci_upper=p3_ci["ci_upper"],
             n=total_tasks,
         ),
@@ -2088,41 +1896,6 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
         "display_value": f"z={ca.get('z')}, p={ca.get('p_value')}",
     })
 
-    # --- Claim 9: Self-repair effectiveness ---
-    sr = c1_results.get("self_repair", {})
-    sr_rate = _val(sr.get("overall_repair_rate", {}))
-    claims.append({
-        "claim_id": "self_repair_rate",
-        "paper_location": "S6.3/line~859, S7.1/line~1049",
-        "json_path": "canonical.self_repair.overall_repair_rate.value",
-        "scope": "all_suite",
-        "current_value": sr_rate,
-        "display_value": _pct(sr_rate),
-    })
-
-    # --- Claim 10: Repair count and rate ---
-    sr_full = sr.get("full_repairs", 0)
-    sr_initially_failing = sr.get("total_initially_failing", 0)
-    claims.append({
-        "claim_id": "repair_count",
-        "paper_location": "S6.3/line~849, S6.3/line~859",
-        "json_path": "canonical.self_repair.full_repairs",
-        "scope": "all_suite",
-        "current_value": {"full_repairs": sr_full, "initially_failing": sr_initially_failing},
-        "display_value": f"{sr_full} of {sr_initially_failing} repaired",
-    })
-
-    # --- Claim 11: Regression count ---
-    sr_reg = sr.get("regressions", 0)
-    claims.append({
-        "claim_id": "regression_count",
-        "paper_location": "S6.3/line~853",
-        "json_path": "canonical.self_repair.regressions",
-        "scope": "all_suite",
-        "current_value": sr_reg,
-        "display_value": f"{sr_reg} regressions",
-    })
-
     # --- Claim 12: Cohen's h range ---
     cohens_adj = agg_trend.get("cohens_h_adjacent", {})
     if cohens_adj:
@@ -2187,17 +1960,6 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
         "scope": "all_suite",
         "current_value": all_rate,
         "display_value": f"{_pct(all_rate)} [{_pct(all_ci_lo)}, {_pct(all_ci_hi)}]" if all_rate is not None else "N/A",
-    })
-
-    # --- Claim 17: First-attempt pass rate ---
-    first_pass = _val(sr.get("first_attempt_pass", {}))
-    claims.append({
-        "claim_id": "first_attempt_pass",
-        "paper_location": "S6.3/line~848",
-        "json_path": "canonical.self_repair.first_attempt_pass.value",
-        "scope": "all_suite",
-        "current_value": first_pass,
-        "display_value": str(first_pass),
     })
 
     # --- Claim 18: pass@1 and pass@3 ---
@@ -2330,42 +2092,6 @@ def cross_check(
 
         except (json.JSONDecodeError, OSError) as e:
             warnings.append(f"WARNING: Could not read statistical_analysis.json: {e}")
-
-    # --- Check against selfrepair_analysis.json ---
-    selfrepair_path = analysis_dir / "selfrepair_analysis.json"
-    if selfrepair_path.exists():
-        try:
-            sr_data = json.loads(selfrepair_path.read_text())
-            checks_run += 1
-
-            # Compare overall repair rate
-            sr_ref_rate = sr_data.get("overall_repair_rate")
-            our_sr = c1_results.get("self_repair", {})
-            our_sr_rate_finding = our_sr.get("overall_repair_rate", {})
-            our_sr_rate = our_sr_rate_finding.get("value") if isinstance(our_sr_rate_finding, dict) else None
-
-            if sr_ref_rate is not None and our_sr_rate is not None:
-                checks_run += 1
-                diff = abs(sr_ref_rate - our_sr_rate)
-                if diff > 0.05:
-                    warnings.append(
-                        f"WARNING: Self-repair rate mismatch: selfrepair_analysis={sr_ref_rate}, "
-                        f"ours={our_sr_rate} (diff={diff:.4f}). "
-                        f"Note: selfrepair_analysis.json includes ALL records (no KF exclusion), "
-                        f"we exclude {len(EXCLUDED_SPECS)} KNOWN_FAIL specs."
-                    )
-                elif diff > 0.001:
-                    warnings.append(
-                        f"INFO: Self-repair rate minor diff: selfrepair_analysis={sr_ref_rate}, "
-                        f"ours={our_sr_rate} (diff={diff:.4f}). "
-                        f"Expected due to different KNOWN_FAIL exclusion scope."
-                    )
-
-            if verbose:
-                print(f"  Cross-check: selfrepair_analysis.json repair_rate={sr_ref_rate}")
-
-        except (json.JSONDecodeError, OSError) as e:
-            warnings.append(f"WARNING: Could not read selfrepair_analysis.json: {e}")
 
     # --- Check against token_analysis.json ---
     token_path = analysis_dir / "token_analysis.json"
@@ -2604,44 +2330,6 @@ def write_markdown(output: dict, path: Path) -> None:
             lines.append(f"| {entry['subcategory']} | {entry['count']} |")
         lines.append("")
 
-    # Dimension 6: Self-repair
-    sr = c1.get("self_repair", {})
-    lines.append("### Dimension 6: Self-Repair Effectiveness (legacy temp=0.0 only)")
-    lines.append("")
-    sr_rate = sr.get("overall_repair_rate", {})
-    lines.append(
-        f"**Overall repair rate:** {_pct(sr_rate.get('value') if isinstance(sr_rate, dict) else sr_rate)} "
-        f"({sr.get('full_repairs', '?')} full repairs / "
-        f"{sr.get('total_initially_failing', '?')} initially failing)"
-    )
-    lines.append(f"- Multi-attempt records: {sr.get('multi_attempt_count', '?')}")
-    lines.append(f"- Regressions: {sr.get('regressions', '?')}")
-    lines.append(f"- Mean attempts to success: {sr.get('mean_attempts_to_success', '?')}")
-    lines.append("")
-
-    pft = sr.get("per_failure_type", {})
-    if pft:
-        lines.append("**Per initial failure type:**")
-        lines.append("")
-        lines.append("| Initial Status | Total | Full Repair | Partial | No Change | Regression | Repair Rate |")
-        lines.append("|----------------|-------|-------------|---------|-----------|------------|-------------|")
-        for ft, data in sorted(pft.items()):
-            lines.append(
-                f"| {ft} | {data.get('total', 0)} | {data.get('full_repair', 0)} | "
-                f"{data.get('partial_repair', 0)} | {data.get('no_repair', 0)} | "
-                f"{data.get('regression', 0)} | {_pct(data.get('repair_rate'))} |"
-            )
-        lines.append("")
-
-    if isinstance(sr_rate, dict) and sr_rate.get("value") is not None:
-        lines.append(
-            f"*Observation: {_pct(sr_rate['value'])} of initially-failing tasks "
-            f"are fully repaired through the retry loop.*"
-        )
-    lines.append("")
-
-    # Dimension 7 is in canonical section below
-
     # Dimension 8: Per-kernel difficulty tiers
     tiers = c1.get("per_kernel_tiers", {})
     lines.append("### Dimension 8: Per-Kernel Difficulty Tiers (L0)")
@@ -2827,11 +2515,11 @@ def write_markdown(output: dict, path: Path) -> None:
     total_tasks_val = total_tasks_finding.get("value") if isinstance(total_tasks_finding, dict) else total_tasks_finding
     lines.append(f"**Total tasks:** {total_tasks_val}")
     lines.append(
-        f"- **pass@1** (any seed passes): {_pct(p1_data.get('value'))} "
+        f"- **pass@1** (single-sample success rate): {_pct(p1_data.get('value'))} "
         f"[{_pct(p1_data.get('ci_lower'))}, {_pct(p1_data.get('ci_upper'))}]"
     )
     lines.append(
-        f"- **pass@3** (all seeds pass): {_pct(p3_data.get('value'))} "
+        f"- **pass@3** (at least 1 of 3 passes): {_pct(p3_data.get('value'))} "
         f"[{_pct(p3_data.get('ci_lower'))}, {_pct(p3_data.get('ci_upper'))}]"
     )
     lines.append("")
@@ -3319,29 +3007,6 @@ def run_validation(output: dict, project_root: Path, verbose: bool, model_dir: s
                 "note": "Could not read error_taxonomy.json",
             })
 
-    # --- Cross-check vs selfrepair_analysis.json ---
-    sr_path = analysis_dir / "selfrepair_analysis.json"
-    if sr_path.exists():
-        try:
-            sr_data = json.loads(sr_path.read_text())
-            sr_ref_rate = sr_data.get("overall_repair_rate")
-            our_sr = c1.get("self_repair", {})
-            our_sr_rate_finding = our_sr.get("overall_repair_rate", {})
-            our_sr_rate = our_sr_rate_finding.get("value") if isinstance(our_sr_rate_finding, dict) else None
-            results["cross_checks"].append(
-                _xcheck(
-                    "vs_selfrepair_rate",
-                    our_sr_rate, sr_ref_rate,
-                    scope_note="selfrepair_analysis includes ALL records (no KF exclusion + both campaigns), we use C1-only with 8 KF exclusions",
-                )
-            )
-        except (json.JSONDecodeError, OSError):
-            results["cross_checks"].append({
-                "check": "vs_selfrepair_analysis_json",
-                "status": "WARNING",
-                "note": "Could not read selfrepair_analysis.json",
-            })
-
     # --- Cross-check vs token_analysis.json ---
     tk_path = analysis_dir / "token_analysis.json"
     if tk_path.exists():
@@ -3457,14 +3122,14 @@ def run_validation(output: dict, project_root: Path, verbose: bool, model_dir: s
         )
     )
 
-    # 5. pass@k: pass_at_1 >= pass_at_3 (any passing >= all passing)
+    # 5. pass@k: pass_at_1 <= pass_at_3 (Chen et al. monotonicity)
     p1 = (pk.get("pass_at_1") or {}).get("value")
     p3 = (pk.get("pass_at_3") or {}).get("value")
     if p1 is not None and p3 is not None:
         results["consistency_checks"].append(
             _consist(
-                "pass_at_1_gte_pass_at_3",
-                p1 >= p3 - 1e-9,
+                "pass_at_1_lte_pass_at_3",
+                p1 <= p3 + 1e-9,
                 f"pass@1={p1}, pass@3={p3}",
             )
         )
@@ -3760,11 +3425,7 @@ def main() -> int:
 
     # --- Compute dimensions 6-13 for legacy (temp=0.0) ---
     if args.verbose:
-        print("\nComputing dimensions 6-13 for legacy (temp=0.0)...")
-
-    if args.verbose:
-        print("  Dimension 6: Self-repair effectiveness...")
-    c1_results["self_repair"] = compute_self_repair(c1)
+        print("\nComputing dimensions 8-13 for legacy (temp=0.0)...")
 
     if args.verbose:
         print("  Dimension 8: Per-kernel difficulty tiers...")

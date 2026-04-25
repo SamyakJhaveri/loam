@@ -619,9 +619,6 @@ def analyze_primary(records: list[dict], verbose: bool = False) -> dict:
     # Direction asymmetry (L0 primary only, McNemar)
     result["direction_asymmetry"] = _analyze_direction_asymmetry(records)
 
-    # Self-repair analysis
-    result["self_repair"] = _analyze_self_repair(records)
-
     # Error taxonomy subcategories
     result["build_fail_subcategories"] = _classify_failures(records, "BUILD_FAIL", classify_build_fail)
     result["run_fail_subcategories"] = _classify_failures(records, "RUN_FAIL", classify_run_fail)
@@ -794,144 +791,6 @@ def _analyze_direction_asymmetry(records: list[dict]) -> dict:
 
 
 # --------------------------------------------------------------------------- #
-# Self-repair analysis                                                         #
-# --------------------------------------------------------------------------- #
-
-def _determine_first_attempt_status(attempt: dict) -> str:
-    """Determine the effective status of a single attempt record.
-
-    Maps the per-field build_status / run_status / verify_status / extraction_fail
-    fields to a single overall status string matching STATUS_VALUES.
-    """
-    build = attempt.get("build_status", "")
-    run = attempt.get("run_status")
-    verify = attempt.get("verify_status")
-
-    if build == "fail":
-        return "BUILD_FAIL"
-    if attempt.get("extraction_fail"):
-        return "EXTRACTION_FAIL"
-    if run == "fail" or (run is not None and run != "pass"):
-        return "RUN_FAIL"
-    if verify == "fail":
-        return "VERIFY_FAIL"
-    if build == "pass" and verify == "pass":
-        return "PASS"
-    return "UNKNOWN"
-
-
-def _analyze_self_repair(records: list[dict]) -> dict:
-    """Analyze self-repair from attempts[] arrays."""
-    first_attempt_pass = 0
-    repaired = 0          # fail on attempt 1 -> PASS overall
-    partial_repair = 0    # progressed (e.g., BUILD_FAIL -> RUN_FAIL) but didn't PASS
-    regression = 0        # was closer to passing, then regressed
-    persistent_fail = 0   # failed consistently
-    single_attempt_fail = 0
-
-    # Per-initial-failure repair rates
-    repair_from: dict[str, dict[str, int]] = defaultdict(lambda: {"total": 0, "repaired": 0})
-
-    # Token cost tracking
-    total_repair_prompt_tokens = 0
-    total_repair_completion_tokens = 0
-    repair_attempt_count = 0
-
-    for r in records:
-        attempts = r.get("attempts") or []
-        overall = r.get("overall_status", "UNKNOWN")
-        total_attempts = r.get("total_attempts", 1) or 1
-
-        if not attempts:
-            # No attempts array — use top-level fields
-            if overall == "PASS":
-                first_attempt_pass += 1
-            else:
-                single_attempt_fail += 1
-            continue
-
-        # First attempt status
-        first_att = attempts[0]
-        first_status = _determine_first_attempt_status(first_att)
-
-        if first_status == "PASS":
-            first_attempt_pass += 1
-            continue
-
-        # Failed on first attempt — track repair outcome
-        repair_from[first_status]["total"] += 1
-
-        if overall == "PASS":
-            repaired += 1
-            repair_from[first_status]["repaired"] += 1
-        else:
-            # Check for partial repair or regression
-            if total_attempts > 1 and len(attempts) > 1:
-                last_att = attempts[-1]
-                last_build = last_att.get("build_status", "")
-                last_run = last_att.get("run_status")
-
-                # Detect progression: BUILD_FAIL -> RUN_FAIL or VERIFY_FAIL
-                if first_status == "BUILD_FAIL" and last_build == "pass":
-                    partial_repair += 1
-                # Detect regression: RUN_FAIL -> BUILD_FAIL on retry
-                elif first_status != "BUILD_FAIL" and last_build == "fail":
-                    regression += 1
-                else:
-                    persistent_fail += 1
-            else:
-                persistent_fail += 1
-
-        # Token cost of repair attempts (attempts beyond the first)
-        for att in attempts[1:]:
-            pt = att.get("prompt_tokens") or 0
-            ct = att.get("completion_tokens") or 0
-            total_repair_prompt_tokens += pt
-            total_repair_completion_tokens += ct
-            repair_attempt_count += 1
-
-    total = len(records)
-
-    # Per-initial-failure repair rates with Wilson CIs
-    per_failure_repair: dict[str, dict] = {}
-    for status, counts in repair_from.items():
-        t = counts["total"]
-        p = counts["repaired"]
-        ci = wilson_ci(p, t)
-        per_failure_repair[status] = {
-            "total": t,
-            "repaired": p,
-            **ci,
-        }
-
-    return {
-        "total_tasks": total,
-        "first_attempt_pass": first_attempt_pass,
-        "repaired": repaired,
-        "partial_repair": partial_repair,
-        "regression": regression,
-        "persistent_fail": persistent_fail,
-        "single_attempt_fail": single_attempt_fail,
-        "first_attempt_pass_rate": wilson_ci(first_attempt_pass, total),
-        "repair_rate": wilson_ci(repaired, max(total - first_attempt_pass - single_attempt_fail, 1)),
-        "per_initial_failure": per_failure_repair,
-        "repair_token_cost": {
-            "total_prompt_tokens": total_repair_prompt_tokens,
-            "total_completion_tokens": total_repair_completion_tokens,
-            "total_repair_attempts": repair_attempt_count,
-            "avg_prompt_tokens_per_repair": (
-                round(total_repair_prompt_tokens / repair_attempt_count)
-                if repair_attempt_count > 0 else 0
-            ),
-            "avg_completion_tokens_per_repair": (
-                round(total_repair_completion_tokens / repair_attempt_count)
-                if repair_attempt_count > 0 else 0
-            ),
-        },
-    }
-
-
-# --------------------------------------------------------------------------- #
 # Token & cost metrics                                                         #
 # --------------------------------------------------------------------------- #
 
@@ -1004,7 +863,12 @@ def _analyze_tokens(records: list[dict]) -> dict:
 # --------------------------------------------------------------------------- #
 
 def analyze_passk(records: list[dict], verbose: bool = False) -> dict:
-    """Analyze pass@k campaign (temp=0.7 samples)."""
+    """Analyze pass@k campaign (temp=0.7 samples).
+
+    Filters to L0-only records: ablation L1-L4 are different augmentation
+    levels, not i.i.d. samples, so they must not inflate n for pass@k.
+    """
+    records = [r for r in records if r.get("augment_level", 0) == 0]
     result: dict = {}
     result["total"] = len(records)
     result["overall"] = status_breakdown(records)
@@ -1259,12 +1123,6 @@ def main() -> None:
         ci = wilson_ci(c["pass"], c["total"])
         print(f"  {d}: {c['pass']}/{c['total']} ({ci['rate']:.1%}) "
               f"[{ci['ci_lower']:.1%}, {ci['ci_upper']:.1%}]")
-
-    # Self-repair summary
-    sr = primary_analysis["self_repair"]
-    print(f"\nSelf-repair: {sr['repaired']} repaired, "
-          f"{sr['regression']} regressions, "
-          f"{sr['first_attempt_pass']} first-attempt PASS")
 
     # Augmentation summary
     aug = primary_analysis["augmentation"]

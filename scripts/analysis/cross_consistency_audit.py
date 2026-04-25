@@ -273,57 +273,6 @@ def build_known_values(ground_truth: dict) -> dict[str, float]:
                     sk = subset_name.replace("-", "_")
                     known[f"aug_{sk}_{level}_rate"] = round(ldata["rate"] * 100, 1)
 
-    # Self-repair stats
-    sr = pd.get("self_repair", {})
-    if sr:
-        known["first_attempt_pass"] = sr.get("first_attempt_pass", 0)
-        known["repaired"] = sr.get("repaired", 0)
-        known["regression"] = sr.get("regression", 0)
-        known["persistent_fail"] = sr.get("persistent_fail", 0)
-        known["partial_repair"] = sr.get("partial_repair", 0)
-        # Initially failing tasks
-        initially_failing = total - sr.get("first_attempt_pass", 0)
-        known["initially_failing"] = initially_failing
-        if "first_attempt_pass_rate" in sr:
-            rate = sr["first_attempt_pass_rate"]
-            if isinstance(rate, dict):
-                known["first_attempt_rate"] = round(rate.get("rate", 0) * 100, 1)
-                if "ci_lower" in rate:
-                    known["first_attempt_ci_lower"] = round(rate["ci_lower"] * 100, 1)
-                if "ci_upper" in rate:
-                    known["first_attempt_ci_upper"] = round(rate["ci_upper"] * 100, 1)
-            else:
-                known["first_attempt_rate"] = round(rate * 100, 1)
-        if "repair_rate" in sr:
-            rrate = sr["repair_rate"]
-            if isinstance(rrate, dict):
-                known["repair_rate"] = round(rrate.get("rate", 0) * 100, 1)
-                if "ci_lower" in rrate:
-                    known["repair_rate_ci_lower"] = round(rrate["ci_lower"] * 100, 1)
-                if "ci_upper" in rrate:
-                    known["repair_rate_ci_upper"] = round(rrate["ci_upper"] * 100, 1)
-            else:
-                known["repair_rate"] = round(rrate * 100, 1)
-        # Relative increase
-        fap = sr.get("first_attempt_pass", 0)
-        total_pass = pd["overall"]["pass"]
-        if fap > 0:
-            rel_increase = round((total_pass - fap) / fap * 100, 1)
-            known["self_repair_relative_increase"] = rel_increase
-        # Per-initial-failure repair rates
-        pif = sr.get("per_initial_failure", {})
-        for fail_type, fdata in pif.items():
-            if isinstance(fdata, dict):
-                ft = fail_type.lower()
-                known[f"repair_{ft}_total"] = fdata.get("total", 0)
-                known[f"repair_{ft}_repaired"] = fdata.get("repaired", 0)
-                if "rate" in fdata:
-                    known[f"repair_{ft}_rate"] = round(fdata["rate"] * 100, 1)
-                if "ci_lower" in fdata:
-                    known[f"repair_{ft}_ci_lower"] = round(fdata["ci_lower"] * 100, 1)
-                if "ci_upper" in fdata:
-                    known[f"repair_{ft}_ci_upper"] = round(fdata["ci_upper"] * 100, 1)
-
     # Build-fail subcategories
     bfs = pd.get("build_fail_subcategories", {})
     if bfs:

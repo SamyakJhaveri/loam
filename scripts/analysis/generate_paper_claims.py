@@ -346,17 +346,6 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
             unit="correlation_coefficient",
         ))
 
-    # 27. Self-repair status
-    claims.append(_make_claim(
-        "self_repair_status", "S5",
-        "Self-repair was OFF in canonical evaluation (0 multi-attempt results)",
-        0,
-        [_rp("selfrepair_analysis.json")],
-        "",
-        notes="Not applicable — self-repair disabled in canonical config",
-        unit="count",
-    ))
-
     # 28. Total eval files
     fc = meta.get("file_counts", {})
     claims.append(_make_claim(

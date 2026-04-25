@@ -1,34 +1,48 @@
 # Per-Kernel Augmentation Matrix
 
-Generated: 2026-04-25T05:02:39.922326+00:00
+Generated: 2026-04-25T23:01:53.486211+00:00
 Data source: `results/evaluation/together-qwen-3.5-397b-a17b`
 Direction: cuda-to-omp
-Kernel count: 12
+Kernel count: 26
 
 ## Per-Kernel Status Table
 
 | Kernel | Suite | L0 | L1 | L2 | L3 | L4 | Pattern | Known Fail |
 |--------|-------|----|----|----|----|----|---------|-----------:|
-| bfs | rodinia | ? | PASS | PASS | PASS | BUILD_FAIL | improvement |  |
-| cfd | rodinia | ? | BUILD_FAIL | PASS | PASS | PASS | improvement |  |
-| floydwarshall | hecbench | ? | PASS | PASS | PASS | PASS | improvement |  |
-| heat2d | hecbench | ? | PASS | PASS | PASS | PASS | improvement |  |
-| hotspot3d | rodinia | ? | PASS | PASS | PASS | PASS | improvement |  |
-| iso2dfd | hecbench | ? | PASS | PASS | PASS | PASS | improvement |  |
-| lud | rodinia | ? | PASS | PASS | RUN_FAIL | PASS | improvement |  |
-| nw | rodinia | ? | PASS | PASS | RUN_FAIL | PASS | improvement |  |
-| particlefilter | rodinia | ? | PASS | PASS | PASS | PASS | improvement |  |
-| pathfinder | rodinia | ? | BUILD_FAIL | BUILD_FAIL | BUILD_FAIL | PASS | improvement |  |
-| srad | rodinia | ? | PASS | PASS | PASS | PASS | improvement |  |
-| stencil1d | hecbench | ? | BUILD_FAIL | VERIFY_FAIL | PASS | VERIFY_FAIL | improvement |  |
+| backprop | rodinia | BUILD_FAIL | ? | ? | ? | ? | other |  |
+| bfs | rodinia | PASS | PASS | PASS | PASS | BUILD_FAIL | degradation |  |
+| bptree | rodinia | BUILD_FAIL | ? | ? | ? | ? | other |  |
+| cfd | rodinia | PASS | BUILD_FAIL | PASS | PASS | PASS | degradation |  |
+| floydwarshall | hecbench | PASS | PASS | PASS | PASS | PASS | stable_pass |  |
+| heartwall | rodinia | BUILD_FAIL | ? | ? | ? | ? | other |  |
+| heat2d | hecbench | PASS | PASS | PASS | PASS | PASS | stable_pass |  |
+| hotspot | rodinia | BUILD_FAIL | ? | ? | ? | ? | other |  |
+| hotspot3d | rodinia | PASS | PASS | PASS | PASS | PASS | stable_pass |  |
+| iso2dfd | hecbench | PASS | PASS | PASS | PASS | PASS | stable_pass |  |
+| kmeans | rodinia | BUILD_FAIL | ? | ? | ? | ? | other | Yes |
+| lavamd | rodinia | BUILD_FAIL | ? | ? | ? | ? | other |  |
+| lud | rodinia | PASS | PASS | PASS | RUN_FAIL | PASS | degradation |  |
+| mixbench | mixbench | BUILD_FAIL | ? | ? | ? | ? | other |  |
+| mummergpu | rodinia | BUILD_FAIL | ? | ? | ? | ? | other | Yes |
+| myocyte | rodinia | BUILD_FAIL | ? | ? | ? | ? | other |  |
+| nn | rodinia | BUILD_FAIL | ? | ? | ? | ? | other |  |
+| nw | rodinia | PASS | PASS | PASS | RUN_FAIL | PASS | degradation |  |
+| particlefilter | rodinia | PASS | PASS | PASS | PASS | PASS | stable_pass |  |
+| pathfinder | rodinia | PASS | BUILD_FAIL | BUILD_FAIL | BUILD_FAIL | PASS | degradation |  |
+| rsbench | rsbench | BUILD_FAIL | ? | ? | ? | ? | other |  |
+| scan | hecbench | RUN_FAIL | ? | ? | ? | ? | other |  |
+| srad | rodinia | PASS | PASS | PASS | PASS | PASS | stable_pass |  |
+| stencil1d | hecbench | PASS | BUILD_FAIL | VERIFY_FAIL | PASS | VERIFY_FAIL | degradation |  |
+| streamcluster | rodinia | BUILD_FAIL | ? | ? | ? | ? | other |  |
+| xsbench | xsbench | BUILD_FAIL | ? | ? | ? | ? | other |  |
 
 ## Pattern Summary
 
-- **stable_pass** (0): none
+- **stable_pass** (6): floydwarshall, heat2d, hotspot3d, iso2dfd, particlefilter, srad
 - **stable_fail** (0): none
-- **degradation** (0): none
-- **improvement** (12): bfs, cfd, floydwarshall, heat2d, hotspot3d, iso2dfd, lud, nw, particlefilter, pathfinder, srad, stencil1d
-- **other** (0): none
+- **degradation** (6): bfs, cfd, lud, nw, pathfinder, stencil1d
+- **improvement** (0): none
+- **other** (14): backprop, bptree, heartwall, hotspot, kmeans, lavamd, mixbench, mummergpu, myocyte, nn, rsbench, scan, streamcluster, xsbench
 
 ## Aggregate Pass Rates
 
@@ -36,7 +50,7 @@ Kernel count: 12
 
 | Level | Pass | Total | Rate | 95% CI |
 |-------|------|-------|------|--------|
-| L0 | 0 | 0 | 0.0% | [0.0%, 0.0%] |
+| L0 | 12 | 26 | 46.2% | [28.7%, 64.5%] |
 | L1 | 9 | 12 | 75.0% | [46.8%, 91.1%] |
 | L2 | 10 | 12 | 83.3% | [55.2%, 95.3%] |
 | L3 | 9 | 12 | 75.0% | [46.8%, 91.1%] |
@@ -46,7 +60,7 @@ Kernel count: 12
 
 | Level | Pass | Total | Rate | 95% CI |
 |-------|------|-------|------|--------|
-| L0 | 0 | 0 | 0.0% | [0.0%, 0.0%] |
+| L0 | 12 | 24 | 50.0% | [31.4%, 68.6%] |
 | L1 | 9 | 12 | 75.0% | [46.8%, 91.1%] |
 | L2 | 10 | 12 | 83.3% | [55.2%, 95.3%] |
 | L3 | 9 | 12 | 75.0% | [46.8%, 91.1%] |
@@ -54,64 +68,34 @@ Kernel count: 12
 
 ## Exceptions
 
-### bfs (rodinia) -- improvement
-- L0: UNKNOWN
-- Affected: L1=PASS, L2=PASS, L3=PASS
+### bfs (rodinia) -- degradation
+- L0: PASS
+- Affected: L4=BUILD_FAIL
 - Root cause: Not yet investigated
 
-### cfd (rodinia) -- improvement
-- L0: UNKNOWN
-- Affected: L2=PASS, L3=PASS, L4=PASS
+### cfd (rodinia) -- degradation
+- L0: PASS
+- Affected: L1=BUILD_FAIL
 - Root cause: Not yet investigated
 
-### floydwarshall (hecbench) -- improvement
-- L0: UNKNOWN
-- Affected: L1=PASS, L2=PASS, L3=PASS, L4=PASS
+### lud (rodinia) -- degradation
+- L0: PASS
+- Affected: L3=RUN_FAIL
 - Root cause: Not yet investigated
 
-### heat2d (hecbench) -- improvement
-- L0: UNKNOWN
-- Affected: L1=PASS, L2=PASS, L3=PASS, L4=PASS
+### nw (rodinia) -- degradation
+- L0: PASS
+- Affected: L3=RUN_FAIL
 - Root cause: Not yet investigated
 
-### hotspot3d (rodinia) -- improvement
-- L0: UNKNOWN
-- Affected: L1=PASS, L2=PASS, L3=PASS, L4=PASS
+### pathfinder (rodinia) -- degradation
+- L0: PASS
+- Affected: L1=BUILD_FAIL, L2=BUILD_FAIL, L3=BUILD_FAIL
 - Root cause: Not yet investigated
 
-### iso2dfd (hecbench) -- improvement
-- L0: UNKNOWN
-- Affected: L1=PASS, L2=PASS, L3=PASS, L4=PASS
-- Root cause: Not yet investigated
-
-### lud (rodinia) -- improvement
-- L0: UNKNOWN
-- Affected: L1=PASS, L2=PASS, L4=PASS
-- Root cause: Not yet investigated
-
-### nw (rodinia) -- improvement
-- L0: UNKNOWN
-- Affected: L1=PASS, L2=PASS, L4=PASS
-- Root cause: Not yet investigated
-
-### particlefilter (rodinia) -- improvement
-- L0: UNKNOWN
-- Affected: L1=PASS, L2=PASS, L3=PASS, L4=PASS
-- Root cause: Not yet investigated
-
-### pathfinder (rodinia) -- improvement
-- L0: UNKNOWN
-- Affected: L4=PASS
-- Root cause: Not yet investigated
-
-### srad (rodinia) -- improvement
-- L0: UNKNOWN
-- Affected: L1=PASS, L2=PASS, L3=PASS, L4=PASS
-- Root cause: Not yet investigated
-
-### stencil1d (hecbench) -- improvement
-- L0: UNKNOWN
-- Affected: L3=PASS
+### stencil1d (hecbench) -- degradation
+- L0: PASS
+- Affected: L1=BUILD_FAIL, L2=VERIFY_FAIL, L4=VERIFY_FAIL
 - Root cause: Not yet investigated
 
 ## Secondary Directions
