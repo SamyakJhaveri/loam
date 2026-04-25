@@ -23,7 +23,49 @@ stage validates the previous stage's output before proceeding.
 - Venv: `source {{PROJECT_ROOT}}/env_parbench/bin/activate`
 - An eval batch must have completed (result JSONs exist in `results/evaluation/`)
 
+## Critical Rules
+
+1. **Ground truth is result JSONs, not summaries or documentation.** Always verify claims
+   against the actual JSON files on disk. `eval_summary.json` is derived — check it.
+2. **KNOWN_FAIL exclusion is non-negotiable.** Exclude results where EITHER source OR
+   target is a KNOWN_FAIL spec. The 8 KNOWN_FAIL specs are in `known-issues.md`.
+   `analyze_eval.py` handles this (line 89-92, `EXCLUDED_SPECS`), but always verify.
+3. **Never assume "all clean" without spot-checking.** Schema validation catches structural
+   issues but not semantic ones (wrong verification mode, header confusion BUILD_FAILs,
+   status derivation errors). Always spot-check 5-10 results manually.
+4. **BUILD_FAIL is not a monolith.** Classify BUILD_FAILs into: model translation errors,
+   OMP-specific errors, linker errors, header/file confusion, and uncategorized. Some
+   BUILD_FAILs (header confusion) are partially attributable to prompt design, not purely
+   model quality. Quantify this for the paper.
+5. **Check experiment configuration explicitly.** Verify: temperature, thinking_enabled,
+   max_retries (zero-shot vs self-repair), seed uniqueness, num_samples, augment_level
+   correctness. Don't assume these are right — confirm from the data.
+6. **KNOWN_FAIL PASS results are interesting signal.** When a KNOWN_FAIL-involved pair
+   achieves PASS, note it in findings (LLM may "fix" broken source during translation).
+   Still exclude from statistics.
+7. **Use subagents for deep analysis.** Pipeline integrity audits benefit from parallel
+   agents checking: (a) schema/field completeness, (b) pipeline status consistency,
+   (c) canonical coverage, (d) ablation coverage/filter compliance, (e) anomaly detection.
+
 ## Workflow
+
+### Step 0: Pipeline Integrity Check (NEW — run before analysis)
+
+Before running analysis scripts, verify the harness operated correctly:
+
+```python
+# Quick integrity checks (run as inline Python or dispatch to agents)
+# 1. Status consistency: overall_status matches build/run/verify status
+# 2. Attempts sync: total_attempts == len(attempts), last attempt matches top-level
+# 3. Config verification: temperature, thinking_enabled, max_retries, seeds
+# 4. Coverage: expected pairs × samples all present
+# 5. KNOWN_FAIL pollution: count results involving KNOWN_FAIL specs
+```
+
+If any check fails, report the specific issue before proceeding. Don't run
+`analyze_eval.py` on data with structural integrity issues — fix first.
+
+Write findings to `docs/eval-findings/YYYY-MM-DD-<model>-pipeline-audit.md`.
 
 ### Step 1: Verify Results Exist
 

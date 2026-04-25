@@ -1,30 +1,30 @@
 {
-  "generated_at": "2026-04-23T11:21:46.614222",
+  "generated_at": "2026-04-24T14:01:56.168731",
   "total_tasks": 642,
   "by_model": {
     "together-qwen-3.5-397b-a17b": {
-      "pass": 243,
+      "pass": 235,
       "total": 642,
-      "rate": 0.3785,
+      "rate": 0.366,
       "by_status": {
-        "BUILD_FAIL": 252,
-        "PASS": 243,
-        "VERIFY_FAIL": 31,
-        "RUN_FAIL": 115,
+        "BUILD_FAIL": 251,
+        "PASS": 235,
+        "VERIFY_FAIL": 34,
+        "RUN_FAIL": 121,
         "EXTRACTION_FAIL": 1
       }
     }
   },
   "by_direction": {
     "cuda-to-omp": {
-      "pass": 71,
+      "pass": 67,
       "total": 120,
-      "rate": 0.5917,
+      "rate": 0.5583,
       "by_status": {
-        "PASS": 71,
-        "VERIFY_FAIL": 3,
-        "RUN_FAIL": 5,
-        "BUILD_FAIL": 41
+        "PASS": 67,
+        "VERIFY_FAIL": 4,
+        "RUN_FAIL": 7,
+        "BUILD_FAIL": 42
       }
     },
     "cuda-to-omp_target": {
@@ -37,25 +37,24 @@
       }
     },
     "cuda-to-opencl": {
-      "pass": 5,
+      "pass": 8,
       "total": 72,
-      "rate": 0.0694,
+      "rate": 0.1111,
       "by_status": {
-        "RUN_FAIL": 58,
+        "RUN_FAIL": 55,
         "VERIFY_FAIL": 9,
-        "PASS": 5
+        "PASS": 8
       }
     },
     "omp-to-cuda": {
-      "pass": 41,
+      "pass": 39,
       "total": 104,
-      "rate": 0.3942,
+      "rate": 0.375,
       "by_status": {
-        "PASS": 41,
-        "BUILD_FAIL": 60,
+        "PASS": 39,
+        "BUILD_FAIL": 63,
         "VERIFY_FAIL": 1,
-        "EXTRACTION_FAIL": 1,
-        "RUN_FAIL": 1
+        "EXTRACTION_FAIL": 1
       }
     },
     "omp-to-omp_target": {
@@ -64,36 +63,38 @@
       "rate": 0.5238,
       "by_status": {
         "PASS": 11,
-        "BUILD_FAIL": 6,
-        "VERIFY_FAIL": 3,
-        "RUN_FAIL": 1
+        "VERIFY_FAIL": 5,
+        "RUN_FAIL": 2,
+        "BUILD_FAIL": 3
       }
     },
     "omp-to-opencl": {
-      "pass": 44,
+      "pass": 39,
       "total": 94,
-      "rate": 0.4681,
+      "rate": 0.4149,
       "by_status": {
-        "RUN_FAIL": 41,
-        "PASS": 44,
-        "VERIFY_FAIL": 9
+        "PASS": 39,
+        "RUN_FAIL": 47,
+        "VERIFY_FAIL": 8
       }
     },
     "omp_target-to-cuda": {
-      "pass": 39,
+      "pass": 40,
       "total": 56,
-      "rate": 0.6964,
+      "rate": 0.7143,
       "by_status": {
-        "BUILD_FAIL": 17,
-        "PASS": 39
+        "BUILD_FAIL": 15,
+        "PASS": 40,
+        "RUN_FAIL": 1
       }
     },
     "omp_target-to-omp": {
-      "pass": 21,
+      "pass": 20,
       "total": 21,
-      "rate": 1.0,
+      "rate": 0.9524,
       "by_status": {
-        "PASS": 21
+        "PASS": 20,
+        "BUILD_FAIL": 1
       }
     },
     "opencl-to-cuda": {
@@ -110,8 +111,8 @@
       "total": 70,
       "rate": 0.1571,
       "by_status": {
-        "BUILD_FAIL": 47,
-        "VERIFY_FAIL": 6,
+        "BUILD_FAIL": 46,
+        "VERIFY_FAIL": 7,
         "RUN_FAIL": 6,
         "PASS": 11
       }
@@ -119,23 +120,23 @@
   },
   "by_kernel": {
     "backprop": {
-      "pass": 4,
+      "pass": 5,
       "total": 22,
-      "rate": 0.1818,
+      "rate": 0.2273,
       "by_status": {
         "BUILD_FAIL": 12,
-        "VERIFY_FAIL": 6,
-        "PASS": 4
+        "VERIFY_FAIL": 5,
+        "PASS": 5
       }
     },
     "bfs": {
-      "pass": 17,
+      "pass": 15,
       "total": 34,
-      "rate": 0.5,
+      "rate": 0.4412,
       "by_status": {
-        "PASS": 17,
+        "PASS": 15,
+        "BUILD_FAIL": 9,
         "RUN_FAIL": 9,
-        "BUILD_FAIL": 7,
         "EXTRACTION_FAIL": 1
       }
     },
@@ -150,13 +151,13 @@
       }
     },
     "cfd": {
-      "pass": 7,
+      "pass": 6,
       "total": 22,
-      "rate": 0.3182,
+      "rate": 0.2727,
       "by_status": {
-        "PASS": 7,
-        "VERIFY_FAIL": 6,
-        "BUILD_FAIL": 9
+        "BUILD_FAIL": 10,
+        "PASS": 6,
+        "VERIFY_FAIL": 6
       }
     },
     "convolution1d": {
@@ -178,13 +179,14 @@
       }
     },
     "floydwarshall": {
-      "pass": 31,
+      "pass": 29,
       "total": 38,
-      "rate": 0.8158,
+      "rate": 0.7632,
       "by_status": {
-        "PASS": 31,
-        "BUILD_FAIL": 6,
-        "VERIFY_FAIL": 1
+        "PASS": 29,
+        "BUILD_FAIL": 5,
+        "VERIFY_FAIL": 3,
+        "RUN_FAIL": 1
       }
     },
     "gaussian": {
@@ -217,25 +219,25 @@
       }
     },
     "hotspot": {
-      "pass": 15,
+      "pass": 14,
       "total": 30,
-      "rate": 0.5,
+      "rate": 0.4667,
       "by_status": {
         "BUILD_FAIL": 7,
-        "RUN_FAIL": 6,
-        "PASS": 15,
+        "RUN_FAIL": 7,
+        "PASS": 14,
         "VERIFY_FAIL": 2
       }
     },
     "hotspot3d": {
-      "pass": 19,
+      "pass": 20,
       "total": 34,
-      "rate": 0.5588,
+      "rate": 0.5882,
       "by_status": {
-        "PASS": 19,
-        "RUN_FAIL": 5,
-        "BUILD_FAIL": 9,
-        "VERIFY_FAIL": 1
+        "PASS": 20,
+        "RUN_FAIL": 4,
+        "BUILD_FAIL": 8,
+        "VERIFY_FAIL": 2
       }
     },
     "iso2dfd": {
@@ -249,12 +251,12 @@
       }
     },
     "jacobi": {
-      "pass": 1,
+      "pass": 3,
       "total": 10,
-      "rate": 0.1,
+      "rate": 0.3,
       "by_status": {
-        "BUILD_FAIL": 9,
-        "PASS": 1
+        "BUILD_FAIL": 7,
+        "PASS": 3
       }
     },
     "lavamd": {
@@ -272,28 +274,29 @@
       "total": 30,
       "rate": 0.4667,
       "by_status": {
-        "BUILD_FAIL": 8,
         "PASS": 14,
-        "RUN_FAIL": 8
+        "RUN_FAIL": 10,
+        "BUILD_FAIL": 6
       }
     },
     "md": {
-      "pass": 5,
+      "pass": 4,
       "total": 10,
-      "rate": 0.5,
+      "rate": 0.4,
       "by_status": {
         "BUILD_FAIL": 5,
-        "PASS": 5
+        "PASS": 4,
+        "RUN_FAIL": 1
       }
     },
     "mixbench": {
-      "pass": 3,
+      "pass": 2,
       "total": 22,
-      "rate": 0.1364,
+      "rate": 0.0909,
       "by_status": {
         "BUILD_FAIL": 11,
-        "RUN_FAIL": 8,
-        "PASS": 3
+        "RUN_FAIL": 9,
+        "PASS": 2
       }
     },
     "myocyte": {
@@ -323,13 +326,13 @@
       }
     },
     "nw": {
-      "pass": 12,
+      "pass": 11,
       "total": 30,
-      "rate": 0.4,
+      "rate": 0.3667,
       "by_status": {
-        "PASS": 12,
-        "BUILD_FAIL": 14,
-        "RUN_FAIL": 4
+        "PASS": 11,
+        "RUN_FAIL": 5,
+        "BUILD_FAIL": 14
       }
     },
     "page-rank": {
@@ -353,12 +356,12 @@
       }
     },
     "pathfinder": {
-      "pass": 10,
+      "pass": 8,
       "total": 30,
-      "rate": 0.3333,
+      "rate": 0.2667,
       "by_status": {
-        "PASS": 10,
-        "BUILD_FAIL": 15,
+        "BUILD_FAIL": 17,
+        "PASS": 8,
         "RUN_FAIL": 5
       }
     },
@@ -392,13 +395,13 @@
       }
     },
     "stencil1d": {
-      "pass": 10,
+      "pass": 9,
       "total": 14,
-      "rate": 0.7143,
+      "rate": 0.6429,
       "by_status": {
-        "PASS": 10,
-        "VERIFY_FAIL": 2,
         "BUILD_FAIL": 1,
+        "VERIFY_FAIL": 3,
+        "PASS": 9,
         "RUN_FAIL": 1
       }
     },
@@ -437,57 +440,57 @@
       }
     },
     "L1": {
-      "pass": 37,
+      "pass": 38,
       "total": 51,
-      "rate": 0.7255,
+      "rate": 0.7451,
       "by_status": {
-        "BUILD_FAIL": 6,
-        "PASS": 37,
-        "RUN_FAIL": 7,
-        "VERIFY_FAIL": 1
-      }
-    },
-    "L2": {
-      "pass": 34,
-      "total": 51,
-      "rate": 0.6667,
-      "by_status": {
-        "BUILD_FAIL": 11,
-        "PASS": 34,
-        "VERIFY_FAIL": 1,
+        "BUILD_FAIL": 8,
+        "PASS": 38,
         "RUN_FAIL": 5
       }
     },
-    "L3": {
-      "pass": 34,
+    "L2": {
+      "pass": 33,
       "total": 51,
-      "rate": 0.6667,
+      "rate": 0.6471,
       "by_status": {
-        "BUILD_FAIL": 7,
-        "PASS": 34,
-        "VERIFY_FAIL": 2,
-        "RUN_FAIL": 8
+        "PASS": 33,
+        "VERIFY_FAIL": 3,
+        "BUILD_FAIL": 6,
+        "RUN_FAIL": 9
+      }
+    },
+    "L3": {
+      "pass": 32,
+      "total": 51,
+      "rate": 0.6275,
+      "by_status": {
+        "BUILD_FAIL": 8,
+        "PASS": 32,
+        "RUN_FAIL": 10,
+        "VERIFY_FAIL": 1
       }
     },
     "L4": {
-      "pass": 34,
+      "pass": 28,
       "total": 51,
-      "rate": 0.6667,
+      "rate": 0.549,
       "by_status": {
-        "PASS": 34,
-        "BUILD_FAIL": 9,
-        "RUN_FAIL": 8
+        "BUILD_FAIL": 10,
+        "PASS": 28,
+        "VERIFY_FAIL": 3,
+        "RUN_FAIL": 10
       }
     }
   },
   "failure_taxonomy": {
-    "BUILD_FAIL": 252,
-    "RUN_FAIL": 115,
-    "VERIFY_FAIL": 31,
+    "BUILD_FAIL": 251,
+    "RUN_FAIL": 121,
+    "VERIFY_FAIL": 34,
     "EXTRACTION_FAIL": 1
   },
   "self_repair": {
-    "attempt_1_pass": 243,
+    "attempt_1_pass": 235,
     "total_repaired_by_retry": 0,
     "total_with_attempts": 642
   },
@@ -507,30 +510,30 @@
       "total": 117,
       "rate": 0.3162,
       "by_status": {
-        "BUILD_FAIL": 25,
+        "BUILD_FAIL": 24,
         "VERIFY_FAIL": 3,
         "PASS": 37,
-        "RUN_FAIL": 52
+        "RUN_FAIL": 53
       }
     },
     "single_file": {
-      "pass": 200,
+      "pass": 193,
       "total": 406,
-      "rate": 0.4926,
+      "rate": 0.4754,
       "by_status": {
-        "BUILD_FAIL": 130,
-        "PASS": 200,
-        "VERIFY_FAIL": 20,
-        "RUN_FAIL": 56
+        "BUILD_FAIL": 129,
+        "PASS": 193,
+        "VERIFY_FAIL": 23,
+        "RUN_FAIL": 61
       }
     },
     "single_to_multi": {
-      "pass": 6,
+      "pass": 5,
       "total": 89,
-      "rate": 0.0674,
+      "rate": 0.0562,
       "by_status": {
-        "BUILD_FAIL": 76,
-        "PASS": 6,
+        "BUILD_FAIL": 77,
+        "PASS": 5,
         "EXTRACTION_FAIL": 1,
         "VERIFY_FAIL": 6
       }
@@ -794,9 +797,9 @@
         "level": 1,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "floydwarshall",
@@ -844,9 +847,9 @@
         "level": 1,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "nw",
@@ -874,9 +877,9 @@
         "level": 1,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "srad",
@@ -894,9 +897,9 @@
         "level": 1,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "bfs",
@@ -1084,9 +1087,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "nw",
@@ -1094,9 +1097,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "particlefilter",
@@ -1114,9 +1117,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "srad",
@@ -1144,9 +1147,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "cfd",
@@ -1204,9 +1207,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "nw",
@@ -1234,9 +1237,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "srad",
@@ -1584,9 +1587,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "hotspot3d",
@@ -1614,9 +1617,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "hotspot3d",
@@ -1654,9 +1657,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "backprop",
@@ -1984,9 +1987,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "floydwarshall",
@@ -2064,9 +2067,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "floydwarshall",
@@ -2144,9 +2147,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "floydwarshall",
@@ -2184,9 +2187,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "nw",
@@ -2284,9 +2287,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "heat2d",
@@ -2294,9 +2297,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "iso2dfd",
@@ -2554,9 +2557,9 @@
         "level": 1,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "bfs",
@@ -2604,9 +2607,9 @@
         "level": 1,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "nw",
@@ -2664,9 +2667,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "hotspot",
@@ -2674,9 +2677,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "hotspot3d",
@@ -2694,9 +2697,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "mixbench",
@@ -2754,9 +2757,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "bfs",
@@ -2774,9 +2777,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "hotspot3d",
@@ -2794,9 +2797,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "mixbench",
@@ -2804,9 +2807,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "nw",
@@ -2854,9 +2857,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "bfs",
@@ -2864,9 +2867,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "hotspot",
@@ -2874,9 +2877,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "hotspot3d",
@@ -2894,9 +2897,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "mixbench",
@@ -2904,9 +2907,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "nw",
@@ -2924,9 +2927,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "streamcluster",
@@ -3074,9 +3077,9 @@
         "level": 1,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "md",
@@ -3114,9 +3117,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "floydwarshall",
@@ -3144,9 +3147,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "jacobi",
@@ -3164,9 +3167,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "nqueen",
@@ -3184,9 +3187,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "convolution1d",
@@ -3274,9 +3277,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "floydwarshall",
@@ -3294,9 +3297,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "iso2dfd",
@@ -3314,9 +3317,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "md",
@@ -3344,9 +3347,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "floydwarshall",
@@ -3444,9 +3447,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "heat2d",
@@ -3924,9 +3927,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "lud",
@@ -3934,9 +3937,9 @@
         "level": 2,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "particlefilter",
@@ -3974,9 +3977,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "particlefilter",
@@ -3984,9 +3987,9 @@
         "level": 3,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "srad",
@@ -4004,9 +4007,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 0,
-        "pass_at_1_of_any": 0,
-        "pass_at_1_mean": 0.0
+        "passes": 1,
+        "pass_at_1_of_any": 1,
+        "pass_at_1_mean": 1.0
       },
       {
         "kernel": "lud",
@@ -4024,9 +4027,9 @@
         "level": 4,
         "model": "together-qwen-3.5-397b-a17b",
         "samples": 1,
-        "passes": 1,
-        "pass_at_1_of_any": 1,
-        "pass_at_1_mean": 1.0
+        "passes": 0,
+        "pass_at_1_of_any": 0,
+        "pass_at_1_mean": 0.0
       },
       {
         "kernel": "srad",
@@ -4048,26 +4051,26 @@
       },
       "L1": {
         "cells": 51,
-        "mean_of_any": 0.7255,
-        "mean_of_mean": 0.7255,
+        "mean_of_any": 0.7451,
+        "mean_of_mean": 0.7451,
         "divergence": 0.0
       },
       "L2": {
         "cells": 51,
-        "mean_of_any": 0.6667,
-        "mean_of_mean": 0.6667,
+        "mean_of_any": 0.6471,
+        "mean_of_mean": 0.6471,
         "divergence": 0.0
       },
       "L3": {
         "cells": 51,
-        "mean_of_any": 0.6667,
-        "mean_of_mean": 0.6667,
+        "mean_of_any": 0.6275,
+        "mean_of_mean": 0.6275,
         "divergence": 0.0
       },
       "L4": {
         "cells": 51,
-        "mean_of_any": 0.6667,
-        "mean_of_mean": 0.6667,
+        "mean_of_any": 0.549,
+        "mean_of_mean": 0.549,
         "divergence": 0.0
       }
     }

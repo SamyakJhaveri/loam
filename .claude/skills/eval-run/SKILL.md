@@ -30,7 +30,9 @@ Extract parameters from `$ARGUMENTS`. Use defaults below; prompt only for missin
 | Augment levels | `0`                        | space-separated ints 0–4                         |
 | Kernels        | (all eligible)             | restrict only for partial re-runs                |
 | Resume         | `--resume`                 | pass `--no-resume` to force re-run               |
-| Max retries    | `2`                        | LLM re-attempts per task on failure              |
+| Max retries    | `1`                        | 1 = zero-shot (no retry). >1 = iterative repair. |
+| Thinking       | `on`                       | `--thinking {on,off}` — canonical requires on    |
+| Samples        | `3`                        | `--num-samples 3` for canonical pass@3            |
 
 **Default models (Gal's 4-model directive):**
 ```

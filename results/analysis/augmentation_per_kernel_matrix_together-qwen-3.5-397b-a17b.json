@@ -1,0 +1,750 @@
+{
+  "generated_at": "2026-04-24T21:01:46.753461+00:00",
+  "data_source": "results/evaluation/together-qwen-3.5-397b-a17b",
+  "primary_matrix": {
+    "direction": "cuda-to-omp",
+    "levels": [
+      "L0",
+      "L1",
+      "L2",
+      "L3",
+      "L4"
+    ],
+    "kernel_count": 12,
+    "per_kernel": {
+      "floydwarshall": {
+        "suite": "hecbench",
+        "source_spec": "hecbench-floydwarshall-cuda",
+        "target_spec": "hecbench-floydwarshall-omp",
+        "known_fail": false,
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "pattern": "improvement"
+      },
+      "heat2d": {
+        "suite": "hecbench",
+        "source_spec": "hecbench-heat2d-cuda",
+        "target_spec": "hecbench-heat2d-omp",
+        "known_fail": false,
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "pattern": "improvement"
+      },
+      "iso2dfd": {
+        "suite": "hecbench",
+        "source_spec": "hecbench-iso2dfd-cuda",
+        "target_spec": "hecbench-iso2dfd-omp",
+        "known_fail": false,
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "pattern": "improvement"
+      },
+      "stencil1d": {
+        "suite": "hecbench",
+        "source_spec": "hecbench-stencil1d-cuda",
+        "target_spec": "hecbench-stencil1d-omp",
+        "known_fail": false,
+        "L1": "BUILD_FAIL",
+        "L2": "VERIFY_FAIL",
+        "L3": "PASS",
+        "L4": "VERIFY_FAIL",
+        "pattern": "improvement"
+      },
+      "bfs": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-bfs-cuda",
+        "target_spec": "rodinia-bfs-omp",
+        "known_fail": false,
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "BUILD_FAIL",
+        "pattern": "improvement"
+      },
+      "cfd": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-cfd-cuda",
+        "target_spec": "rodinia-cfd-omp",
+        "known_fail": false,
+        "L1": "BUILD_FAIL",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "pattern": "improvement"
+      },
+      "hotspot3d": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-hotspot3d-cuda",
+        "target_spec": "rodinia-hotspot3d-omp",
+        "known_fail": false,
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "pattern": "improvement"
+      },
+      "lud": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-lud-cuda",
+        "target_spec": "rodinia-lud-omp",
+        "known_fail": false,
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "RUN_FAIL",
+        "L4": "PASS",
+        "pattern": "improvement"
+      },
+      "nw": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-nw-cuda",
+        "target_spec": "rodinia-nw-omp",
+        "known_fail": false,
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "RUN_FAIL",
+        "L4": "PASS",
+        "pattern": "improvement"
+      },
+      "particlefilter": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-particlefilter-cuda",
+        "target_spec": "rodinia-particlefilter-omp",
+        "known_fail": false,
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "pattern": "improvement"
+      },
+      "pathfinder": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-pathfinder-cuda",
+        "target_spec": "rodinia-pathfinder-omp",
+        "known_fail": false,
+        "L1": "BUILD_FAIL",
+        "L2": "BUILD_FAIL",
+        "L3": "BUILD_FAIL",
+        "L4": "PASS",
+        "pattern": "improvement"
+      },
+      "srad": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-srad-cuda",
+        "target_spec": "rodinia-srad-omp",
+        "known_fail": false,
+        "L1": "PASS",
+        "L2": "PASS",
+        "L3": "PASS",
+        "L4": "PASS",
+        "pattern": "improvement"
+      }
+    },
+    "aggregate": {
+      "L0": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.0,
+        "n": 0
+      },
+      "L1": {
+        "rate": 0.75,
+        "ci_lower": 0.4676,
+        "ci_upper": 0.9111,
+        "n": 12
+      },
+      "L2": {
+        "rate": 0.8333,
+        "ci_lower": 0.5519,
+        "ci_upper": 0.953,
+        "n": 12
+      },
+      "L3": {
+        "rate": 0.75,
+        "ci_lower": 0.4676,
+        "ci_upper": 0.9111,
+        "n": 12
+      },
+      "L4": {
+        "rate": 0.8333,
+        "ci_lower": 0.5519,
+        "ci_upper": 0.953,
+        "n": 12
+      }
+    },
+    "aggregate_excluding_known_fail": {
+      "L0": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.0,
+        "n": 0
+      },
+      "L1": {
+        "rate": 0.75,
+        "ci_lower": 0.4676,
+        "ci_upper": 0.9111,
+        "n": 12
+      },
+      "L2": {
+        "rate": 0.8333,
+        "ci_lower": 0.5519,
+        "ci_upper": 0.953,
+        "n": 12
+      },
+      "L3": {
+        "rate": 0.75,
+        "ci_lower": 0.4676,
+        "ci_upper": 0.9111,
+        "n": 12
+      },
+      "L4": {
+        "rate": 0.8333,
+        "ci_lower": 0.5519,
+        "ci_upper": 0.953,
+        "n": 12
+      }
+    },
+    "pattern_summary": {
+      "stable_pass": [],
+      "stable_fail": [],
+      "degradation": [],
+      "improvement": [
+        "bfs",
+        "cfd",
+        "floydwarshall",
+        "heat2d",
+        "hotspot3d",
+        "iso2dfd",
+        "lud",
+        "nw",
+        "particlefilter",
+        "pathfinder",
+        "srad",
+        "stencil1d"
+      ],
+      "other": []
+    },
+    "exceptions": [
+      {
+        "kernel": "bfs",
+        "suite": "rodinia",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "BUILD_FAIL"
+        },
+        "affected_levels": {
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "cfd",
+        "suite": "rodinia",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "BUILD_FAIL",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "affected_levels": {
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "floydwarshall",
+        "suite": "hecbench",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "affected_levels": {
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "heat2d",
+        "suite": "hecbench",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "affected_levels": {
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "hotspot3d",
+        "suite": "rodinia",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "affected_levels": {
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "iso2dfd",
+        "suite": "hecbench",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "affected_levels": {
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "lud",
+        "suite": "rodinia",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "RUN_FAIL",
+          "L4": "PASS"
+        },
+        "affected_levels": {
+          "L1": "PASS",
+          "L2": "PASS",
+          "L4": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "nw",
+        "suite": "rodinia",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "RUN_FAIL",
+          "L4": "PASS"
+        },
+        "affected_levels": {
+          "L1": "PASS",
+          "L2": "PASS",
+          "L4": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "particlefilter",
+        "suite": "rodinia",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "affected_levels": {
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "pathfinder",
+        "suite": "rodinia",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "BUILD_FAIL",
+          "L2": "BUILD_FAIL",
+          "L3": "BUILD_FAIL",
+          "L4": "PASS"
+        },
+        "affected_levels": {
+          "L4": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "srad",
+        "suite": "rodinia",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "affected_levels": {
+          "L1": "PASS",
+          "L2": "PASS",
+          "L3": "PASS",
+          "L4": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "stencil1d",
+        "suite": "hecbench",
+        "pattern": "improvement",
+        "L0_status": "UNKNOWN",
+        "all_statuses": {
+          "L0": "UNKNOWN",
+          "L1": "BUILD_FAIL",
+          "L2": "VERIFY_FAIL",
+          "L3": "PASS",
+          "L4": "VERIFY_FAIL"
+        },
+        "affected_levels": {
+          "L3": "PASS"
+        },
+        "root_cause": "Not yet investigated"
+      }
+    ]
+  },
+  "secondary_matrix": {
+    "direction_count": 8,
+    "per_direction_aggregate": {
+      "cuda-to-omp": {
+        "kernel_count": 12,
+        "levels": {
+          "L0": {
+            "rate": 0.0,
+            "ci_lower": 0.0,
+            "ci_upper": 0.0,
+            "n": 0
+          },
+          "L1": {
+            "rate": 0.75,
+            "ci_lower": 0.4676,
+            "ci_upper": 0.9111,
+            "n": 12
+          },
+          "L2": {
+            "rate": 0.8333,
+            "ci_lower": 0.5519,
+            "ci_upper": 0.953,
+            "n": 12
+          },
+          "L3": {
+            "rate": 0.75,
+            "ci_lower": 0.4676,
+            "ci_upper": 0.9111,
+            "n": 12
+          },
+          "L4": {
+            "rate": 0.8333,
+            "ci_lower": 0.5519,
+            "ci_upper": 0.953,
+            "n": 12
+          }
+        }
+      },
+      "cuda-to-opencl": {
+        "kernel_count": 3,
+        "levels": {
+          "L0": {
+            "rate": 0.0,
+            "ci_lower": 0.0,
+            "ci_upper": 0.0,
+            "n": 0
+          },
+          "L1": {
+            "rate": 0.0,
+            "ci_lower": 0.0,
+            "ci_upper": 0.5616,
+            "n": 3
+          },
+          "L2": {
+            "rate": 0.6667,
+            "ci_lower": 0.2076,
+            "ci_upper": 0.9385,
+            "n": 3
+          },
+          "L3": {
+            "rate": 0.3333,
+            "ci_lower": 0.0615,
+            "ci_upper": 0.7924,
+            "n": 3
+          },
+          "L4": {
+            "rate": 0.3333,
+            "ci_lower": 0.0615,
+            "ci_upper": 0.7924,
+            "n": 3
+          }
+        }
+      },
+      "omp-to-cuda": {
+        "kernel_count": 8,
+        "levels": {
+          "L0": {
+            "rate": 0.0,
+            "ci_lower": 0.0,
+            "ci_upper": 0.0,
+            "n": 0
+          },
+          "L1": {
+            "rate": 0.75,
+            "ci_lower": 0.4092,
+            "ci_upper": 0.9285,
+            "n": 8
+          },
+          "L2": {
+            "rate": 0.75,
+            "ci_lower": 0.4092,
+            "ci_upper": 0.9285,
+            "n": 8
+          },
+          "L3": {
+            "rate": 0.625,
+            "ci_lower": 0.3057,
+            "ci_upper": 0.8632,
+            "n": 8
+          },
+          "L4": {
+            "rate": 0.5,
+            "ci_lower": 0.2152,
+            "ci_upper": 0.7848,
+            "n": 8
+          }
+        }
+      },
+      "omp-to-omp_target": {
+        "kernel_count": 3,
+        "levels": {
+          "L0": {
+            "rate": 0.0,
+            "ci_lower": 0.0,
+            "ci_upper": 0.0,
+            "n": 0
+          },
+          "L1": {
+            "rate": 1.0,
+            "ci_lower": 0.4384,
+            "ci_upper": 1.0,
+            "n": 3
+          },
+          "L2": {
+            "rate": 0.6667,
+            "ci_lower": 0.2076,
+            "ci_upper": 0.9385,
+            "n": 3
+          },
+          "L3": {
+            "rate": 0.3333,
+            "ci_lower": 0.0615,
+            "ci_upper": 0.7924,
+            "n": 3
+          },
+          "L4": {
+            "rate": 0.3333,
+            "ci_lower": 0.0615,
+            "ci_upper": 0.7924,
+            "n": 3
+          }
+        }
+      },
+      "omp-to-opencl": {
+        "kernel_count": 10,
+        "levels": {
+          "L0": {
+            "rate": 0.0,
+            "ci_lower": 0.0,
+            "ci_upper": 0.0,
+            "n": 0
+          },
+          "L1": {
+            "rate": 0.8,
+            "ci_lower": 0.4901,
+            "ci_upper": 0.9433,
+            "n": 10
+          },
+          "L2": {
+            "rate": 0.4,
+            "ci_lower": 0.1681,
+            "ci_upper": 0.6874,
+            "n": 10
+          },
+          "L3": {
+            "rate": 0.5,
+            "ci_lower": 0.2366,
+            "ci_upper": 0.7634,
+            "n": 10
+          },
+          "L4": {
+            "rate": 0.3,
+            "ci_lower": 0.1078,
+            "ci_upper": 0.6033,
+            "n": 10
+          }
+        }
+      },
+      "omp_target-to-cuda": {
+        "kernel_count": 8,
+        "levels": {
+          "L0": {
+            "rate": 0.0,
+            "ci_lower": 0.0,
+            "ci_upper": 0.0,
+            "n": 0
+          },
+          "L1": {
+            "rate": 0.875,
+            "ci_lower": 0.529,
+            "ci_upper": 0.9776,
+            "n": 8
+          },
+          "L2": {
+            "rate": 0.75,
+            "ci_lower": 0.4092,
+            "ci_upper": 0.9285,
+            "n": 8
+          },
+          "L3": {
+            "rate": 0.75,
+            "ci_lower": 0.4092,
+            "ci_upper": 0.9285,
+            "n": 8
+          },
+          "L4": {
+            "rate": 0.625,
+            "ci_lower": 0.3057,
+            "ci_upper": 0.8632,
+            "n": 8
+          }
+        }
+      },
+      "omp_target-to-omp": {
+        "kernel_count": 3,
+        "levels": {
+          "L0": {
+            "rate": 0.0,
+            "ci_lower": 0.0,
+            "ci_upper": 0.0,
+            "n": 0
+          },
+          "L1": {
+            "rate": 1.0,
+            "ci_lower": 0.4384,
+            "ci_upper": 1.0,
+            "n": 3
+          },
+          "L2": {
+            "rate": 1.0,
+            "ci_lower": 0.4384,
+            "ci_upper": 1.0,
+            "n": 3
+          },
+          "L3": {
+            "rate": 0.6667,
+            "ci_lower": 0.2076,
+            "ci_upper": 0.9385,
+            "n": 3
+          },
+          "L4": {
+            "rate": 1.0,
+            "ci_lower": 0.4384,
+            "ci_upper": 1.0,
+            "n": 3
+          }
+        }
+      },
+      "opencl-to-omp": {
+        "kernel_count": 4,
+        "levels": {
+          "L0": {
+            "rate": 0.0,
+            "ci_lower": 0.0,
+            "ci_upper": 0.0,
+            "n": 0
+          },
+          "L1": {
+            "rate": 0.5,
+            "ci_lower": 0.15,
+            "ci_upper": 0.85,
+            "n": 4
+          },
+          "L2": {
+            "rate": 0.0,
+            "ci_lower": 0.0,
+            "ci_upper": 0.49,
+            "n": 4
+          },
+          "L3": {
+            "rate": 0.75,
+            "ci_lower": 0.3006,
+            "ci_upper": 0.9544,
+            "n": 4
+          },
+          "L4": {
+            "rate": 0.25,
+            "ci_lower": 0.0456,
+            "ci_upper": 0.6994,
+            "n": 4
+          }
+        }
+      }
+    }
+  }
+}

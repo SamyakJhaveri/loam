@@ -52,18 +52,36 @@ stated their prior hypothesis.
 ## Project Context
 
 - **Result directories:**
-  - `results/evaluation/claude-sonnet/` — Claude results
-  - `results/evaluation/gemini-2.5-flash-lite/` — Gemini results
-  - `results/evaluation/groq-llama-3.3-70b/` — Groq Llama results
-  - `results/evaluation/together-qwen-3.5-397b-a17b/` — Qwen results
+  - `results/evaluation/together-qwen-3.5-397b-a17b/` — Qwen 3.5 397B (Phase 3 canonical + ablation)
+  - Pre-Phase-3 data (claude-sonnet, gemini, groq-llama) was purged 2026-04-20
 - **Result JSON structure:** Each file contains `overall_status` (authoritative verdict),
-  `attempts[]` array, `build_error_snippet`, `run_stderr_snippet`, `timing_method`
+  `attempts[]` array, `build_error_snippet`, `run_stderr_snippet`, `timing_method`,
+  `thinking_enabled`, `num_samples`, `seed`, `top_p`, `augment_level`, `sample_id`
 - **Failure taxonomy:** PASS, BUILD_FAIL, RUN_FAIL, VERIFY_FAIL, EXTRACTION_FAIL, TIMEOUT
 - **Known timing limitation:** All results use `wall_time`. `translated_cpu_time_seconds`
   and `translated_kernel_time_seconds` are null. Do NOT use `speedup_ratio` for claims.
-- **Overall pass rate:** 105/468 = 22.44% (3-model campaign, as of 2026-03-27)
-- **Key anomaly:** backprop tier inversion — weakest model (Gemini) passes where stronger
-  model (Groq) fails on specific kernels
+- **Qwen canonical (Phase 3, 2026-04-24):**
+  - 708 total results: 504 canonical (168 pairs × 3 samples) + 204 ablation (51 pairs × L1-L4)
+  - Overall: 243 PASS (34.3%), 290 BUILD_FAIL (41.0%), 131 RUN_FAIL (18.5%), 43 VERIFY_FAIL (6.1%)
+  - Zero-shot (max_retries=1, no self-repair). Temperature=0.7. Thinking=on.
+  - 146 clean pairs + 22 KNOWN_FAIL-involved (excluded by analyze_eval.py)
+- **Pipeline audit findings (2026-04-24):** See `docs/eval-findings/2026-04-24-qwen-pipeline-audit.md`
+  - 18 BUILD_FAILs are "header confusion" (prompt shows headers, model #includes instead of inlining)
+  - 8 PASS results from KNOWN_FAIL pairs (LLM "fixed" broken source during translation)
+  - Ablation pass rate declines monotonically: L1=74.5% → L4=54.9%
+
+## Known Confounding Variables (from pipeline audit)
+
+When interpreting results, always consider these confounds:
+1. **Header confusion BUILD_FAILs (~18/290):** Prompt shows source headers and says "inline."
+   Some models #include instead → BUILD_FAIL. This is partially prompt design, not purely model quality.
+2. **Zero-shot only:** No self-repair means BUILD_FAILs that a retry could fix are counted as failures.
+3. **KNOWN_FAIL pollution:** 22 pairs involving KNOWN_FAIL specs ran. Excluded by analysis, but
+   8 PASS results suggest LLMs can recover from broken source code — interesting signal.
+4. **nvc++ strictness:** OpenMP target translations compiled with nvc++ (NVIDIA HPC SDK 24.3) which
+   is stricter about pragma syntax than GCC. Some OMP BUILD_FAILs may pass on GCC.
+5. **Verification mode asymmetry:** 527 results use cross_api_combined_pattern, 181 use
+   kernel_only_target_pattern. Pass rates differ by verification mode — compare within mode.
 
 ## Workflow
 

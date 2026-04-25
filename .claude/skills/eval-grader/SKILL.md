@@ -52,17 +52,38 @@ N_valid = N_total - N_target_KF - N_source_KF + N_both_KF
 
 ### Step 3: Classify Failure Modes
 
-For non-PASS results, classify into categories:
+For non-PASS results, classify into fine-grained categories.
+
+**BUILD_FAIL taxonomy (from Qwen 3.5 canonical audit, 2026-04-24):**
+
+| Category | Subcategory | Typical cause |
+|----------|-------------|---------------|
+| Model translation errors | cuda_qualifier_error | `__global__`/`__device__` used incorrectly |
+| | cuda_launch_syntax | `<<<>>>` kernel launch syntax errors |
+| | not_in_scope / identifier_undefined | Variables/functions not declared |
+| | syntax_error | General syntax (`expected a ")"`, etc.) |
+| | implicit_declaration | C implicit function declarations |
+| | type_conversion / unknown_type | Type system errors |
+| OMP-specific errors | omp_invalid_pragma_syntax | Invalid OpenMP pragma (nvc++ strict) |
+| | omp_nesting_violation | Illegal nesting of OMP constructs |
+| Linker errors | linker_undefined_ref | Undefined references at link time |
+| Header/file confusion | header_confusion | Model `#include`d source headers instead of inlining |
+| | missing_generated_file | Model referenced files it should have produced |
+| | wrong_lang_header | C++ headers in `.c` files |
+
+**Header confusion is a prompt design artifact, not purely model error.** The prompt
+shows header content but instructs inlining. Models that `#include` instead get
+BUILD_FAIL. Quantify separately from genuine translation errors (~2-5% of total).
+
+**RUN_FAIL / VERIFY_FAIL categories:**
 
 | Category | Indicator | Typical cause |
 |----------|-----------|---------------|
-| BUILD_FAIL:syntax | Compiler error on generated code | LLM produced invalid syntax |
-| BUILD_FAIL:missing_include | Missing header/library | LLM forgot API-specific includes |
-| BUILD_FAIL:type_error | Type mismatch | Incomplete API type translation |
 | RUN_FAIL:segfault | SIGSEGV/SIGBUS | Null pointer, buffer overrun |
-| RUN_FAIL:timeout | Exceeded time limit | Infinite loop or deadlock |
-| VERIFY_FAIL:wrong_output | Output doesn't match oracle | Semantic translation error |
-| VERIFY_FAIL:empty_output | No output produced | Early exit or crash without signal |
+| RUN_FAIL:timeout | 300s limit, exit_code=-1 | Infinite loop or deadlock |
+| VERIFY_FAIL:wrong_output | stdout_pattern not matched | Semantic translation error |
+| VERIFY_FAIL:numeric_mismatch | numeric_comparison failed | Numerical accuracy degradation |
+| VERIFY_FAIL:false_positive_override | verify=pass, overall=VERIFY_FAIL | OpenCL clBuildProgram hidden failure |
 
 ### Step 4: Compute Statistics
 
