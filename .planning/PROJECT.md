@@ -6,7 +6,7 @@
 
 ## What This Is
 
-ParBench is a kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA <-> OpenMP <-> OpenCL). It provides 88 curated non-KNOWN_FAIL specs (206 JSON total) across 5 benchmark suites, a build-run-verify harness, an AST-driven augmentation engine for robustness testing, and a canonical + L0-conditional ablation evaluation protocol. The current milestone runs Phase 3 canonical + ablation evaluations for Qwen 3.5 397B + Azure GPT-5.4, and writes the NeurIPS 2026 paper.
+ParBench is a kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA <-> OpenMP <-> OpenCL). It provides 87 curated non-KNOWN_FAIL specs (206 JSON total) across 5 benchmark suites, a build-run-verify harness, an AST-driven augmentation engine for robustness testing, and a canonical + L0-conditional ablation evaluation protocol. The current milestone runs Phase 3 canonical + ablation evaluations for Qwen 3.5 397B + Azure GPT-5.4, and writes the NeurIPS 2026 paper.
 
 ## Core Value
 
@@ -17,7 +17,7 @@ Every evaluation result is reproducible and pipeline-correct -- so model compari
 ### Validated
 
 - Pipeline (harness, spec_loader, llm_evaluate.py) is already suite-agnostic -- zero `if suite == "rodinia"` in core code
-- 88 curated non-KNOWN_FAIL specs (206 JSON total) across 5 suites (60 Rodinia, 4 XSBench, 4 RSBench, 3 mixbench, 25 HeCBench curated)
+- 87 curated non-KNOWN_FAIL specs (206 JSON total) across 5 suites (60 Rodinia, 4 XSBench, 4 RSBench, 3 mixbench, 25 HeCBench curated)
 - Build-run-verify harness (3-stage, conjunctive exit-code + stdout-pattern verification)
 - AST-driven augmentation engine (6 transforms, L0-L4 intensity levels, libclang-backed)
 - Prior Campaign 1 / Campaign 2 eval infrastructure retained as building blocks; superseded by canonical + L0-conditional ablation (2026-04-16)
@@ -46,11 +46,11 @@ Every evaluation result is reproducible and pipeline-correct -- so model compari
 
 ## Context
 
-- **Qwen results:** Pre-Phase-3 results (1,248 files) purged 2026-04-20 per user directive. Phase 3 regenerates from scratch under canonical + L0-conditional ablation design.
-- **GPT results:** ALL BOTCHED -- ignore entirely (empty prompts from Argonne machine)
+- **Qwen results:** Phase 3 canonical + ablation COMPLETE (708 result JSONs, 626 valid after 9 KNOWN_FAIL exclusion). pass@1=35.2%, pass@3=13.4%, aggregate=36.7%. Results: `results/evaluation/together-qwen-3.5-397b-a17b/`
+- **GPT results:** GPT-5.4 NOT YET RUN (Azure provisioning pending; Le's confirmation required)
 - **AskSage:** BLOCKED -- zero code, zero documentation in codebase. Integration blocked until Le provides API docs/credentials. Do not speculatively build.
 - **tmux sessions:** `qwen_hecbench` and `qwen_small` deleted (2026-04-09)
-- **8 KNOWN_FAIL specs** (texture<>/CUDA12, missing GL, pre-existing runtime failures) -- excluded from eval denominators
+- **9 KNOWN_FAIL specs** (texture<>/CUDA12, missing GL, pre-existing runtime failures, backprop-opencl) -- excluded from eval denominators
 - **5 phantom specs** deleted from specs/ but entries remain in manifest.jsonl (append-only) -- 15 expected schema validation errors, do not fix
 
 ## Constraints

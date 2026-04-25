@@ -1,7 +1,7 @@
 # Token Usage Analysis — ParBench Evaluation
 
-**642 results** across 1 models, 31 kernels, 10 directions.
-Grand total (from result JSONs): **11,742,189 tokens** (7,606,944 input + 4,135,245 output), estimated cost: **$19.45**.
+**626 results** across 1 models, 31 kernels, 10 directions.
+Grand total (from result JSONs): **11,481,716 tokens** (7,394,516 input + 4,087,200 output), estimated cost: **$19.15**.
 
 ### Actual Billing (Together AI, Mar 27 – Apr 2 2026)
 
@@ -17,7 +17,7 @@ Result JSONs capture ~46% of billed tokens. The gap reflects system prompt overh
 
 | Model | N | Pass% | Prompt (mean) | Completion (mean) | tok/s (mean) | Total Cost | Cost/PASS |
 |-------|--:|------:|--------------:|------------------:|-------------:|-----------:|----------:|
-| Qwen 3.5 397B (Together) | 642 | 36.6% | 11,849 | 6,441 | 110 | $19.45 | $0.0233 |
+| Qwen 3.5 397B (Together) | 626 | 36.7% | 11,812 | 6,529 | 110 | $19.15 | $0.0235 |
 
 ## Table 2: Per-Kernel Token Statistics (sorted by prompt size)
 
@@ -33,13 +33,13 @@ Result JSONs capture ~46% of billed tokens. The gap reflects system prompt overh
 | streamcluster | 22 | 4.5% | 22,065 | 7,712 |
 | bptree | 18 | 0.0% | 20,297 | 6,516 |
 | gaussian | 6 | 0.0% | 15,472 | 4,942 |
-| backprop | 22 | 22.7% | 11,504 | 3,530 |
 | lud | 30 | 46.7% | 11,051 | 5,219 |
 | srad | 26 | 34.6% | 10,949 | 5,233 |
 | mixbench | 22 | 9.1% | 9,221 | 5,662 |
 | lavamd | 18 | 0.0% | 8,945 | 4,618 |
 | bfs | 34 | 44.1% | 8,596 | 4,283 |
 | nw | 30 | 36.7% | 8,355 | 7,913 |
+| backprop | 6 | 0.0% | 6,777 | 4,936 |
 | hotspot3d | 34 | 58.8% | 6,315 | 5,542 |
 | hotspot | 30 | 46.7% | 6,139 | 6,182 |
 | pathfinder | 30 | 26.7% | 3,733 | 5,675 |
@@ -61,10 +61,10 @@ Result JSONs capture ~46% of billed tokens. The gap reflects system prompt overh
 |-----------|--:|------:|--------------:|------------------:|
 | cuda-to-omp | 120 | 55.8% | 9,562 | 7,253 |
 | omp-to-cuda | 104 | 37.5% | 7,634 | 7,574 |
-| omp-to-opencl | 94 | 41.5% | 15,950 | 4,207 |
-| cuda-to-opencl | 72 | 11.1% | 18,412 | 4,376 |
-| opencl-to-omp | 70 | 15.7% | 19,357 | 8,650 |
-| opencl-to-cuda | 60 | 0.0% | 20,072 | 9,204 |
+| omp-to-opencl | 87 | 39.1% | 16,092 | 4,418 |
+| cuda-to-opencl | 69 | 11.6% | 18,514 | 4,498 |
+| opencl-to-omp | 67 | 16.4% | 19,720 | 8,838 |
+| opencl-to-cuda | 57 | 0.0% | 20,581 | 9,357 |
 | omp_target-to-cuda | 56 | 71.4% | 2,315 | 5,369 |
 | cuda-to-omp_target | 24 | 0.0% | 2,528 | 5,309 |
 | omp-to-omp_target | 21 | 52.4% | 2,185 | 4,207 |
@@ -74,22 +74,22 @@ Result JSONs capture ~46% of billed tokens. The gap reflects system prompt overh
 
 | Level | N | Pass% | Prompt (mean) | Completion (mean) |
 |-------|--:|------:|--------------:|------------------:|
-| L0 | 438 | 23.7% | 13,997 | 7,012 |
-| L1 | 51 | 74.5% | 7,193 | 5,152 |
-| L2 | 51 | 64.7% | 7,193 | 5,705 |
-| L3 | 51 | 62.7% | 7,203 | 5,210 |
-| L4 | 51 | 54.9% | 7,356 | 4,796 |
+| L0 | 426 | 23.9% | 14,026 | 7,113 |
+| L1 | 50 | 74.0% | 7,053 | 5,186 |
+| L2 | 50 | 64.0% | 7,053 | 5,797 |
+| L3 | 50 | 62.0% | 7,063 | 5,294 |
+| L4 | 50 | 56.0% | 7,220 | 4,864 |
 
 ## Table 5: Cost Analysis
 
 | Model | Total Cost | Cost on PASS | Cost on FAIL | Cost/PASS | Cost/Task |
 |-------|----------:|-----------:|-----------:|----------:|----------:|
-| Qwen 3.5 397B (Together) | $19.45 | $5.49 | $13.96 | $0.0233 | $0.0303 |
-| **TOTAL** | **$19.45** | | | | |
+| Qwen 3.5 397B (Together) | $19.15 | $5.41 | $13.74 | $0.0235 | $0.0306 |
+| **TOTAL** | **$19.15** | | | | |
 
 ## Correlations
 
-- **Kernel-level (prompt)**: Spearman(mean prompt tokens, pass rate) = **-0.6161**
-- **Result-level (prompt)**: Mean prompt tokens for PASS = **5,872**, for FAIL = **15,300**
-- **Result-level (completion)**: Spearman(completion tokens, pass) = **-0.0142**; Mean completion for PASS = **5,507**, for FAIL = **6,981**
+- **Kernel-level (prompt)**: Spearman(mean prompt tokens, pass rate) = **-0.5786**
+- **Result-level (prompt)**: Mean prompt tokens for PASS = **5,692**, for FAIL = **15,367**
+- **Result-level (completion)**: Spearman(completion tokens, pass) = **-0.0207**; Mean completion for PASS = **5,589**, for FAIL = **7,075**
 

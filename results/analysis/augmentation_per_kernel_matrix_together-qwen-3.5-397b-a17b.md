@@ -1,6 +1,6 @@
 # Per-Kernel Augmentation Matrix
 
-Generated: 2026-04-24T21:01:46.753461+00:00
+Generated: 2026-04-25T05:02:39.922326+00:00
 Data source: `results/evaluation/together-qwen-3.5-397b-a17b`
 Direction: cuda-to-omp
 Kernel count: 12

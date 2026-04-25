@@ -8,6 +8,12 @@ paths:
 > Auto-loaded when working on `scripts/evaluation/` files.
 > Historical eval fix details: see `active-gotchas.md` (conditional) and git log.
 
+## Current Evaluation State (as of 2026-04-24)
+- Qwen 3.5 397B canonical + ablation: COMPLETE (708 results, 626 valid)
+- Results: `results/evaluation/together-qwen-3.5-397b-a17b/`
+- Analysis: `results/analysis/` (regenerated 2026-04-24)
+- GPT-5.4: NOT YET RUN
+
 ## Quick-Start Commands
 
 ```bash

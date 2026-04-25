@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate all publication-quality figures for the SC26 paper.
+"""Generate all publication-quality figures for the NeurIPS 2026 paper.
 
 Unified script combining main-body figures (F2--F7), appendix figures
 (C.1--C.4), and the LaTeX model-comparison table (T2).
@@ -183,7 +183,7 @@ HECBENCH_FUNNEL_STAGES: list[tuple[str, int, str | None]] = [
 
 
 def setup_rcparams() -> None:
-    """Configure matplotlib for publication-quality output (IEEE SC26)."""
+    """Configure matplotlib for publication-quality output (NeurIPS 2026)."""
     plt.rcParams.update({
         "font.size": FONT_SIZE_DEFAULT,
         "axes.titlesize": 11,
@@ -1681,14 +1681,20 @@ def generate_t2_model_table(
         d_pass = sum(1 for r in d_recs if r["overall_status"] == "PASS")
         gpt_dir_stats[d] = (d_pass, d_total)
 
-    gpt_cells = [f"{gpt_pass}/{gpt_total} ({gpt_rate:.1f}\\%)"]
-    for d in DIRECTIONS:
-        p, t = gpt_dir_stats[d]
-        rate = p / t * 100 if t > 0 else 0
-        gpt_cells.append(f"{p}/{t} ({rate:.1f}\\%)")
-    lines.append(
-        "Azure GPT-5.4 & " + " & ".join(gpt_cells) + r" \\"
-    )
+    if gpt_total == 0:
+        gpt_cells = ["---"] * (1 + len(DIRECTIONS))
+        lines.append(
+            r"Azure GPT-5.4 & " + " & ".join(gpt_cells) + r" \\  % pending data"
+        )
+    else:
+        gpt_cells = [f"{gpt_pass}/{gpt_total} ({gpt_rate:.1f}\\%)"]
+        for d in DIRECTIONS:
+            p, t = gpt_dir_stats[d]
+            rate = p / t * 100 if t > 0 else 0
+            gpt_cells.append(f"{p}/{t} ({rate:.1f}\\%)")
+        lines.append(
+            "Azure GPT-5.4 & " + " & ".join(gpt_cells) + r" \\"
+        )
 
     lines.append(r"\bottomrule")
     lines.append(r"\end{tabular}")
@@ -1747,7 +1753,7 @@ def _normalize_figure_id(raw: str) -> str | None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Generate publication-quality figures for the SC26 paper.",
+        description="Generate publication-quality figures for the NeurIPS 2026 paper.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="Figure IDs: " + ", ".join(FIGURE_REGISTRY.keys()),
     )

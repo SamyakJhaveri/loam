@@ -134,7 +134,7 @@ def sample_qf(tmp_path):
             {
                 "claim_id": "overall_pass_rate_all_suite",
                 "paper_location": "abstract",
-                "json_path": "campaign_1.aggregate_pass_rates.overall.value",
+                "json_path": "canonical.aggregate_pass_rates.overall.value",
                 "scope": "all_suite",
                 "current_value": 0.38,
                 "display_value": "38.0%",

@@ -14,8 +14,8 @@ Experiment design was revised on 2026-04-16 from a two-campaign structure to a c
 
 - [x] **Phase 1: Pipeline Testing & Uniformity** -- ARCHIVED → `.planning/_archive/phase-01-pipeline-testing-uniformity/`
 - [x] **Phase 2: LLM Eval Testing** -- ARCHIVED → `.planning/_archive/phase-02-llm-eval-testing/` (COMPLETE 2026-04-17)
-- [ ] **Phase 3: Full Evaluation Runs** -- Canonical (pass@3 L0) then L0-conditional ablation (pass@1 L1-L4) for Qwen 3.5 397B + Azure GPT-5.4
-- [ ] **Phase 4: NeurIPS Paper** -- Write paper with every claim traceable to verified results
+- [ ] **Phase 3: Full Evaluation Runs** -- Qwen canonical + ablation COMPLETE (2026-04-24); GPT-5.4 blocked on Azure provisioning
+- [ ] **Phase 4: NeurIPS Paper** -- In progress: analysis JSONs, figures, claims generated; paper writing pending
 
 ## Phase Details
 
@@ -125,5 +125,5 @@ Phase A (canonical) and Phase C (ablation) run on **two machines**: `azure-gpt-5
 |-------|--------|-----------|
 | 1. Pipeline Testing & Uniformity | Complete | 2026-04-10 |
 | 2. LLM Eval Testing | Complete | 2026-04-17 |
-| 3. Full Evaluation Runs (canonical + L0-conditional ablation) | Not started | - |
-| 4. NeurIPS Paper | Not started | - |
+| 3. Full Evaluation Runs (canonical + L0-conditional ablation) | In progress | Qwen complete 2026-04-24; GPT pending |
+| 4. NeurIPS Paper | In progress | Analysis JSONs, figures, claims underway |

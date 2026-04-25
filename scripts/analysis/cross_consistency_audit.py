@@ -383,7 +383,7 @@ def build_known_values(ground_truth: dict) -> dict[str, float]:
 
     # Complexity correlation from quantitative_findings.json
     qf = ground_truth.get("quantitative_findings", {})
-    cc = (qf.get("campaign_1") or {}).get("complexity_correlation", {})
+    cc = (qf.get("canonical") or {}).get("complexity_correlation", {})
     for cls_name, cls_data in cc.get("per_class", {}).items():
         if isinstance(cls_data, dict) and "value" in cls_data:
             known[f"complexity_{cls_name}_rate"] = round(cls_data["value"] * 100, 1)
@@ -692,7 +692,7 @@ def check_provenance_comments(
         # Strip annotations: "key=value", "key: value", "key (note)"
         first_key = first_seg.split("=")[0].split(":")[0].split("(")[0].strip()
         # Also handle dot-separated paths from quantitative_findings
-        # e.g., "campaign_1.augmentation_trends.per_direction" -> "campaign_1"
+        # e.g., "canonical.augmentation_trends.per_direction" -> "canonical"
         if "." in first_key:
             first_key = first_key.split(".")[0]
 

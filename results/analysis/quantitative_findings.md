@@ -1,23 +1,22 @@
 # Quantitative Findings — NeurIPS 2026 ParBench
 
-Generated: 2026-04-25T00:07:35.551155+00:00
-Git hash: fd55456
+Generated: 2026-04-25T05:47:13.660701+00:00
+Git hash: e58f911
 
 ## File Counts
 
 - Total on disk: 708
 - Excluded (KNOWN_FAIL, 9 specs): 82
 - Valid after exclusion: 626
-- Campaign 1 (temp=0.0): 0
-- Campaign 2 (temp=0.7): 626
+- Canonical (temp=0.7): 626
 
 ---
 
-## Campaign 1: Primary Evaluation (temperature=0.0)
+## Legacy (temperature=0.0) — No Data
 
 ### Dimension 1: Aggregate Pass Rates
 
-**Overall:** 0.0% [0.0%, 0.0%] (n=0)
+**Overall:** ? [?, ?] (n=?)
 
 ### Dimension 2: Per-Direction Pass Rates (L0 only)
 
@@ -27,30 +26,22 @@ No direction pairs found for McNemar test.
 
 ### Dimension 4: Augmentation Trends
 
-**Aggregate Cochran-Armitage:** z=?, p=?, trend=?, significant=No
-
 ### Dimension 5: Failure Taxonomy
 
-### Dimension 6: Self-Repair Effectiveness (Campaign 1 only)
+### Dimension 6: Self-Repair Effectiveness (legacy temp=0.0 only)
 
-**Overall repair rate:** 0.0% (0 full repairs / 0 initially failing)
-- Multi-attempt records: 0
-- Regressions: 0
-- Mean attempts to success: 0.0
+**Overall repair rate:** ? (? full repairs / ? initially failing)
+- Multi-attempt records: ?
+- Regressions: ?
+- Mean attempts to success: ?
 
-*Observation: 0.0% of initially-failing tasks are fully repaired through the retry loop.*
 
 ### Dimension 8: Per-Kernel Difficulty Tiers (L0)
 
-**Total kernels:** 0
+**Total kernels:** ?
 
 
 ### Dimension 9: Translation Complexity Correlation
-
-| Complexity Class | Pass Rate | 95% CI | Passes/Total |
-|------------------|-----------|--------|--------------|
-
-**Statistical test:** insufficient_data, p=None, significant=No
 
 ### Dimension 10: Cross-Suite Comparison (L0)
 
@@ -59,24 +50,23 @@ No direction pairs found for McNemar test.
 - **Total cost:** ?
 - **Cost per task:** ?
 - **Cost per PASS:** ?
-- **Tasks with tokens:** 0
+- **Tasks with tokens:** ?
 
 ### Dimension 12: SLoC Correlation
 
 - **Spearman:** rho=?, p=? (not significant)
 - **Pearson:** r=?, p=? (not significant)
 - **Interpretation:** ?
-- **n kernels:** 0
+- **n kernels:** ?
 
 ### Dimension 13: OpenCL Kernel-Only Effect (L0)
 
-- **X-to-OpenCL (kernel-only):** 0.0% [0.0%, 0.0%] (n=0)
-- **X-to-OMP (full program):** 0.0% [0.0%, 0.0%] (n=0)
-- **Fisher's exact:** p=None, OR=?, Cohen's h=?, significant=No
+- **X-to-OpenCL (kernel-only):** ? [?, ?] (n=?)
+- **X-to-OMP (full program):** ? [?, ?] (n=?)
 
 ---
 
-## Campaign 2: pass@k Evaluation (temperature=0.7)
+## Canonical Evaluation (temperature=0.7)
 
 **Overall:** 36.7% [33.1%, 40.6%] (n=626)
 

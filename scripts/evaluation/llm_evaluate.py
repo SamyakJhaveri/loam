@@ -57,7 +57,7 @@ from harness.verifier import extract_metrics, verify_run
 
 # NOTE: 'C1'-'C4' labels in comments below refer to plan 02-10 Step 2 Bucket C items
 # (Together/Azure/Groq/Gemini seed & temperature gates). These are UNRELATED to the
-# pre-Phase-3 "Campaign 1 / Campaign 2" experimental taxonomy, which was decommissioned
+# pre-Phase-3 "Campaign 1 / Campaign 2" experimental taxonomy, which was replaced by
 # 2026-04-20. Do NOT rename on the assumption they reference campaigns.
 
 # ---------------------------------------------------------------------------

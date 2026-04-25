@@ -1,11 +1,12 @@
 {
-  "generated_at": "2026-04-24T21:01:33.513974+00:00",
+  "generated_at": "2026-04-25T05:02:09.749871+00:00",
   "model": "together-qwen-3.5-397b-a17b",
   "results_dir": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b",
   "suite_filter": null,
   "excluded_specs": [
     "hecbench-scan-omp_target",
     "hecbench-stencil1d-omp_target",
+    "rodinia-backprop-opencl",
     "rodinia-hybridsort-cuda",
     "rodinia-kmeans-cuda",
     "rodinia-kmeans-opencl",
@@ -15,9 +16,9 @@
   ],
   "file_counts": {
     "total_on_disk": 708,
-    "excluded_known_fail": 66,
+    "excluded_known_fail": 82,
     "primary_campaign": 0,
-    "passk_campaign": 642
+    "passk_campaign": 626
   },
   "primary_campaign": {
     "total": 0,
@@ -120,17 +121,17 @@
     }
   },
   "passk_campaign": {
-    "total": 642,
+    "total": 626,
     "overall": {
-      "total": 642,
-      "pass": 235,
-      "pass_rate": 0.366,
-      "ci_lower": 0.3297,
-      "ci_upper": 0.404,
+      "total": 626,
+      "pass": 230,
+      "pass_rate": 0.3674,
+      "ci_lower": 0.3306,
+      "ci_upper": 0.4059,
       "by_status": {
-        "BUILD_FAIL": 251,
-        "PASS": 235,
-        "VERIFY_FAIL": 34,
+        "BUILD_FAIL": 245,
+        "PASS": 230,
+        "VERIFY_FAIL": 29,
         "RUN_FAIL": 121,
         "EXTRACTION_FAIL": 1
       }
@@ -161,15 +162,15 @@
         }
       },
       "cuda-to-opencl": {
-        "total": 72,
+        "total": 69,
         "pass": 8,
-        "pass_rate": 0.1111,
-        "ci_lower": 0.0574,
-        "ci_upper": 0.2042,
+        "pass_rate": 0.1159,
+        "ci_lower": 0.0599,
+        "ci_upper": 0.2125,
         "by_status": {
           "RUN_FAIL": 55,
-          "VERIFY_FAIL": 9,
-          "PASS": 8
+          "PASS": 8,
+          "VERIFY_FAIL": 6
         }
       },
       "omp-to-cuda": {
@@ -199,15 +200,15 @@
         }
       },
       "omp-to-opencl": {
-        "total": 94,
-        "pass": 39,
-        "pass_rate": 0.4149,
-        "ci_lower": 0.3206,
-        "ci_upper": 0.5159,
+        "total": 87,
+        "pass": 34,
+        "pass_rate": 0.3908,
+        "ci_lower": 0.295,
+        "ci_upper": 0.4959,
         "by_status": {
-          "PASS": 39,
+          "PASS": 34,
           "RUN_FAIL": 47,
-          "VERIFY_FAIL": 8
+          "VERIFY_FAIL": 6
         }
       },
       "omp_target-to-cuda": {
@@ -234,24 +235,24 @@
         }
       },
       "opencl-to-cuda": {
-        "total": 60,
+        "total": 57,
         "pass": 0,
         "pass_rate": 0.0,
         "ci_lower": 0.0,
-        "ci_upper": 0.0602,
+        "ci_upper": 0.0631,
         "by_status": {
           "RUN_FAIL": 2,
-          "BUILD_FAIL": 58
+          "BUILD_FAIL": 55
         }
       },
       "opencl-to-omp": {
-        "total": 70,
+        "total": 67,
         "pass": 11,
-        "pass_rate": 0.1571,
-        "ci_lower": 0.0901,
-        "ci_upper": 0.2599,
+        "pass_rate": 0.1642,
+        "ci_lower": 0.0942,
+        "ci_upper": 0.2706,
         "by_status": {
-          "BUILD_FAIL": 46,
+          "BUILD_FAIL": 43,
           "VERIFY_FAIL": 7,
           "RUN_FAIL": 6,
           "PASS": 11
@@ -265,31 +266,7 @@
         "pass@1": 0.0,
         "pass@3": 0.0
       },
-      "backprop:cuda-to-opencl": {
-        "n": 3,
-        "c": 0,
-        "pass@1": 0.0,
-        "pass@3": 0.0
-      },
       "backprop:omp-to-cuda": {
-        "n": 3,
-        "c": 0,
-        "pass@1": 0.0,
-        "pass@3": 0.0
-      },
-      "backprop:omp-to-opencl": {
-        "n": 7,
-        "c": 5,
-        "pass@1": 0.7143,
-        "pass@3": 1.0
-      },
-      "backprop:opencl-to-cuda": {
-        "n": 3,
-        "c": 0,
-        "pass@1": 0.0,
-        "pass@3": 0.0
-      },
-      "backprop:opencl-to-omp": {
         "n": 3,
         "c": 0,
         "pass@1": 0.0,
@@ -1137,10 +1114,10 @@
       }
     },
     "aggregate_passk": {
-      "pass@1_macro_avg": 0.2299,
-      "pass@3_macro_avg": 0.3127,
-      "n_tasks": 146,
-      "total_samples": 642
+      "pass@1_macro_avg": 0.2314,
+      "pass@3_macro_avg": 0.3145,
+      "n_tasks": 142,
+      "total_samples": 626
     }
   },
   "sample_size_flags": [

@@ -1,7 +1,7 @@
 # Graph Report - parbench_sam  (2026-04-24)
 
 ## Corpus Check
-- 195 files · ~719,685 words
+- 195 files · ~731,423 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -868,16 +868,16 @@ Nodes (1): Decision to Omit Long Build Times from Final Report
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `load()` connect `Community 5` to `Community 0`, `Community 1`, `Community 2`, `Community 34`, `Community 4`, `Community 15`, `Community 24`, `Community 26`, `Community 27`?**
-  _High betweenness centrality (0.175) - this node is a cross-community bridge._
+  _High betweenness centrality (0.208) - this node is a cross-community bridge._
 - **Why does `load_spec()` connect `Community 0` to `Community 1`, `Community 3`, `Community 5`, `Community 17`?**
-  _High betweenness centrality (0.102) - this node is a cross-community bridge._
+  _High betweenness centrality (0.115) - this node is a cross-community bridge._
 - **Why does `load_results()` connect `Community 2` to `Community 5`?**
-  _High betweenness centrality (0.061) - this node is a cross-community bridge._
-- **Are the 111 inferred relationships involving `Status` (e.g. with `Backup original files before writing translated code.` and `Restore original files after verification.`) actually correct?**
+  _High betweenness centrality (0.077) - this node is a cross-community bridge._
+- **Are the 111 inferred relationships involving `Status` (e.g. with `Tests for stdout_exclude_pattern verification strategy.` and `stdout_exclude_pattern FAILS when the pattern IS found in stdout.`) actually correct?**
   _`Status` has 111 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 79 inferred relationships involving `RunResult` (e.g. with `ModelRegistryEntry` and `Load source code files from the source spec for linker symbol search.      Reads`) actually correct?**
+- **Are the 79 inferred relationships involving `RunResult` (e.g. with `Tests for stdout_exclude_pattern verification strategy.` and `stdout_exclude_pattern FAILS when the pattern IS found in stdout.`) actually correct?**
   _`RunResult` has 79 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 58 inferred relationships involving `MetricResult` (e.g. with `ModelRegistryEntry` and `Load source code files from the source spec for linker symbol search.      Reads`) actually correct?**
+- **Are the 58 inferred relationships involving `MetricResult` (e.g. with `harness.verifier — Verify kernel output against spec strategies.` and `Apply ALL verification strategies; every non-SKIP strategy must PASS.      Retur`) actually correct?**
   _`MetricResult` has 58 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 24 inferred relationships involving `ChangeNames` (e.g. with `Return (ci.Index, AugmentationConfig) for the given level, or (None, None).` and `Read prompt_payload files, apply augmentation, return contents + transforms.`) actually correct?**
+- **Are the 24 inferred relationships involving `ChangeNames` (e.g. with `_build_aug_config()` and `test_change_names()`) actually correct?**
   _`ChangeNames` has 24 INFERRED edges - model-reasoned connections that need verification._

@@ -349,10 +349,10 @@ def exclude_known_fail(records: list[dict]) -> list[dict]:
 
 
 def split_campaigns(records: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Split records into Campaign 1 (temp=0.0) and Campaign 2 (temp>0).
+    """Split records into legacy (temp=0.0) and canonical (temp>0).
 
-    Campaign 1: Primary evaluation (deterministic, temp=0.0)
-    Campaign 2: pass@k evaluation (temp=0.7)
+    Legacy: temp=0.0 (never run — always empty)
+    Canonical: temp=0.7 (pass@3 stochastic sampling)
     """
     c1 = []
     c2 = []
@@ -1015,13 +1015,13 @@ def _classify_repair(first_status: str, final_status: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Dimension 6: Self-repair effectiveness (Campaign 1 only)
+# Dimension 6: Self-repair effectiveness (legacy temp=0.0 only)
 # ---------------------------------------------------------------------------
 
 def compute_self_repair(records: list[dict]) -> dict:
     """Compute self-repair effectiveness from attempts[] arrays.
 
-    Campaign 1 ONLY (max_retries=3). Campaign 2 has max_retries=1 = no self-repair.
+    Legacy (temp=0.0) ONLY (max_retries=3). Canonical has max_retries=1 = no self-repair.
     """
     # Only records with multiple attempts and initial != PASS
     multi_attempt = [
@@ -1136,7 +1136,7 @@ def compute_self_repair(records: list[dict]) -> dict:
     return {
         "total_records": make_finding(
             total_records, "computed", total_records,
-            "len(Campaign 1 records)",
+            "len(legacy temp=0.0 records)",
         ),
         "single_attempt_count": single_attempt,
         "multi_attempt_count": len(multi_attempt),
@@ -1170,13 +1170,13 @@ def compute_self_repair(records: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Dimension 7: pass@k estimates (Campaign 2 only)
+# Dimension 7: pass@k estimates (canonical only)
 # ---------------------------------------------------------------------------
 
 def compute_pass_at_k(records: list[dict]) -> dict:
-    """Compute pass@k from Campaign 2 seed variants.
+    """Compute pass@k from canonical seed variants.
 
-    Campaign 2 ONLY. Groups by task = (source_spec, target_spec).
+    Canonical ONLY. Groups by task = (source_spec, target_spec).
     pass@1 = fraction of tasks where at least 1 of 3 seeds passes.
     pass@3 = fraction of tasks where all 3 seeds pass.
     """
@@ -1276,7 +1276,7 @@ def compute_pass_at_k(records: list[dict]) -> dict:
     return {
         "total_tasks": make_finding(
             total_tasks, "computed", total_tasks * 3,
-            "count of unique (source_spec, target_spec) tasks in Campaign 2",
+            "count of unique (source_spec, target_spec) tasks in canonical evaluation",
         ),
         "pass_at_1": make_finding(
             p1_ci["value"], "computed", total_tasks,
@@ -1308,11 +1308,11 @@ def compute_pass_at_k(records: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Dimension 8: Per-kernel difficulty tiers (L0 Campaign 1)
+# Dimension 8: Per-kernel difficulty tiers (L0 legacy)
 # ---------------------------------------------------------------------------
 
 def compute_per_kernel_tiers(records: list[dict]) -> dict:
-    """Per-kernel difficulty tiers from L0 Campaign 1 records.
+    """Per-kernel difficulty tiers from L0 legacy records.
 
     Ranks kernels by pass rate, assigns quartile tiers, identifies
     top-5 easiest and top-5 hardest kernels.
@@ -1725,11 +1725,11 @@ def compute_token_cost(records: list[dict]) -> dict:
     return {
         "total_input_tokens": make_finding(
             total_input, "computed", tasks_with_tokens,
-            "sum of prompt_tokens across Campaign 1 records",
+            "sum of prompt_tokens across legacy temp=0.0 records",
         ),
         "total_output_tokens": make_finding(
             total_output, "computed", tasks_with_tokens,
-            "sum of completion_tokens across Campaign 1 records",
+            "sum of completion_tokens across legacy temp=0.0 records",
         ),
         "total_cost": make_finding(
             round(total_cost, 4), "computed", tasks_with_tokens,
@@ -1756,7 +1756,7 @@ def compute_token_cost(records: list[dict]) -> dict:
 def compute_sloc_correlation(records: list[dict], project_root: Path) -> dict:
     """Compute Spearman and Pearson correlation between SLoC and pass rate.
 
-    Uses per-kernel L0 pass rates from Campaign 1 and SLoC from sloc_analysis.json.
+    Uses per-kernel L0 pass rates from legacy (temp=0.0) and SLoC from sloc_analysis.json.
     """
     sloc_path = project_root / "results" / "analysis" / "sloc_analysis.json"
     if not sloc_path.exists():
@@ -1838,7 +1838,7 @@ def compute_sloc_correlation(records: list[dict], project_root: Path) -> dict:
 def compute_opencl_kernel_only_effect(records: list[dict]) -> dict:
     """Compare X-to-opencl (kernel-only) vs X-to-omp (full program) pass rates.
 
-    L0 Campaign 1 only. Uses Fisher's exact test on 2x2 contingency table.
+    L0 legacy temp=0.0 only. Uses Fisher's exact test on 2x2 contingency table.
     """
     l0 = [r for r in records if r.get("augment_level", 0) == 0]
 
@@ -1954,11 +1954,9 @@ def build_metadata(
             "total_on_disk": len(all_records),
             "excluded_known_fail": len(all_records) - len(valid_records),
             "valid_after_exclusion": len(valid_records),
-            "campaign_1_valid": len(c1),
-            "campaign_2_valid": len(c2),
+            "canonical_valid": len(c2),
         },
-        "campaign_1_description": "Primary evaluation (temperature=0.0, deterministic)",
-        "campaign_2_description": "pass@k evaluation (temperature=0.7, stochastic sampling)",
+        "canonical_description": "Canonical evaluation (temperature=0.7, stochastic sampling, pass@3)",
     }
 
 
@@ -1994,7 +1992,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "overall_pass_rate_rodinia",
         "paper_location": "abstract/line~71, S6.1/line~707",
-        "json_path": "campaign_1.rodinia_subset.pass_rate.value",
+        "json_path": "canonical.rodinia_subset.pass_rate.value",
         "scope": "rodinia_only",
         "current_value": rod_rate,
         "display_value": f"{_pct(rod_rate)} [{_pct(rod_ci_lo)}, {_pct(rod_ci_hi)}]" if rod_rate is not None else "N/A",
@@ -2007,7 +2005,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "primary_campaign_task_counts",
         "paper_location": "abstract/line~61, S5.2/line~630",
-        "json_path": "campaign_1.aggregate_pass_rates.overall.n",
+        "json_path": "canonical.aggregate_pass_rates.overall.n",
         "scope": "all_suite",
         "current_value": {"rodinia_tasks": rod_total, "all_suite_tasks": overall_n},
         "display_value": f"{rod_total} Rodinia, {overall_n} all-suite",
@@ -2019,7 +2017,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "passk_task_count",
         "paper_location": "S1/line~106, S5.5/line~689",
-        "json_path": "campaign_2.pass_at_k.total_tasks.value",
+        "json_path": "canonical.pass_at_k.total_tasks.value",
         "scope": "all_suite",
         "current_value": passk_total,
         "display_value": f"{passk_total} pass@k tasks",
@@ -2034,7 +2032,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "build_fail_percentage",
         "paper_location": "abstract/line~66, S1/line~107, S6.2/line~714",
-        "json_path": "campaign_1.failure_taxonomy.status_counts.BUILD_FAIL",
+        "json_path": "canonical.failure_taxonomy.status_counts.BUILD_FAIL",
         "scope": "all_suite",
         "current_value": {"count": bf_count, "percentage": round(bf_pct, 4)},
         "display_value": f"{bf_count}/{total_recs} = {bf_pct*100:.1f}%",
@@ -2046,7 +2044,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "verify_fail_percentage",
         "paper_location": "abstract/line~66, S6.2/line~714",
-        "json_path": "campaign_1.failure_taxonomy.status_counts.VERIFY_FAIL",
+        "json_path": "canonical.failure_taxonomy.status_counts.VERIFY_FAIL",
         "scope": "all_suite",
         "current_value": {"count": vf_count, "percentage": round(vf_pct, 4)},
         "display_value": f"{vf_count}/{total_recs} = {vf_pct*100:.1f}%",
@@ -2059,7 +2057,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "cuda_to_omp_pass_rate",
         "paper_location": "S6.1/line~909, S7.1/line~1041",
-        "json_path": "campaign_1.direction_pass_rates.standard.cuda-to-omp.value",
+        "json_path": "canonical.direction_pass_rates.standard.cuda-to-omp.value",
         "scope": "all_suite",
         "current_value": _val(cuda_omp),
         "display_value": _pct(_val(cuda_omp)),
@@ -2073,7 +2071,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "l0_pass_rate",
         "paper_location": "S6.4/line~899",
-        "json_path": "campaign_1.augmentation_trends.aggregate.per_level.L0.value",
+        "json_path": "canonical.augmentation_trends.aggregate.per_level.L0.value",
         "scope": "all_suite",
         "current_value": l0_data.get("value"),
         "display_value": _pct(l0_data.get("value")),
@@ -2084,7 +2082,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "cochran_armitage_trend",
         "paper_location": "abstract/line~71, S6.4/line~899, S6.8/line~1003",
-        "json_path": "campaign_1.augmentation_trends.aggregate.cochran_armitage",
+        "json_path": "canonical.augmentation_trends.aggregate.cochran_armitage",
         "scope": "all_suite",
         "current_value": {"z": ca.get("z"), "p_value": ca.get("p_value")},
         "display_value": f"z={ca.get('z')}, p={ca.get('p_value')}",
@@ -2096,7 +2094,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "self_repair_rate",
         "paper_location": "S6.3/line~859, S7.1/line~1049",
-        "json_path": "campaign_1.self_repair.overall_repair_rate.value",
+        "json_path": "canonical.self_repair.overall_repair_rate.value",
         "scope": "all_suite",
         "current_value": sr_rate,
         "display_value": _pct(sr_rate),
@@ -2108,7 +2106,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "repair_count",
         "paper_location": "S6.3/line~849, S6.3/line~859",
-        "json_path": "campaign_1.self_repair.full_repairs",
+        "json_path": "canonical.self_repair.full_repairs",
         "scope": "all_suite",
         "current_value": {"full_repairs": sr_full, "initially_failing": sr_initially_failing},
         "display_value": f"{sr_full} of {sr_initially_failing} repaired",
@@ -2119,7 +2117,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "regression_count",
         "paper_location": "S6.3/line~853",
-        "json_path": "campaign_1.self_repair.regressions",
+        "json_path": "canonical.self_repair.regressions",
         "scope": "all_suite",
         "current_value": sr_reg,
         "display_value": f"{sr_reg} regressions",
@@ -2136,7 +2134,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "cohens_h_range",
         "paper_location": "S6.4/implied",
-        "json_path": "campaign_1.augmentation_trends.aggregate.cohens_h_adjacent",
+        "json_path": "canonical.augmentation_trends.aggregate.cohens_h_adjacent",
         "scope": "all_suite",
         "current_value": {"min": h_min, "max": h_max},
         "display_value": f"h range [{h_min:.4f}, {h_max:.4f}]",
@@ -2157,7 +2155,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "opencl_to_cuda_pass_rate",
         "paper_location": "S6.1/line~941",
-        "json_path": "campaign_1.direction_pass_rates.standard.opencl-to-cuda.value",
+        "json_path": "canonical.direction_pass_rates.standard.opencl-to-cuda.value",
         "scope": "all_suite",
         "current_value": _val(ocl_cuda),
         "display_value": _pct(_val(ocl_cuda)),
@@ -2172,7 +2170,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "multi_file_percentage",
         "paper_location": "S1/implied, S4/implied",
-        "json_path": "campaign_1.cross_suite.multi_file_fraction",
+        "json_path": "canonical.cross_suite.multi_file_fraction",
         "scope": "all_suite",
         "current_value": {"multi_file_specs": total_multi, "total_specs": total_specs, "fraction": round(mf_pct, 4)},
         "display_value": f"{total_multi}/{total_specs} = {mf_pct*100:.1f}%",
@@ -2185,7 +2183,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "overall_pass_rate_all_suite",
         "paper_location": "S6.1 (all-suite scope)",
-        "json_path": "campaign_1.aggregate_pass_rates.overall.value",
+        "json_path": "canonical.aggregate_pass_rates.overall.value",
         "scope": "all_suite",
         "current_value": all_rate,
         "display_value": f"{_pct(all_rate)} [{_pct(all_ci_lo)}, {_pct(all_ci_hi)}]" if all_rate is not None else "N/A",
@@ -2196,7 +2194,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "first_attempt_pass",
         "paper_location": "S6.3/line~848",
-        "json_path": "campaign_1.self_repair.first_attempt_pass.value",
+        "json_path": "canonical.self_repair.first_attempt_pass.value",
         "scope": "all_suite",
         "current_value": first_pass,
         "display_value": str(first_pass),
@@ -2208,7 +2206,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "pass_at_k_rates",
         "paper_location": "S6.5/line~955",
-        "json_path": "campaign_2.pass_at_k.pass_at_1.value",
+        "json_path": "canonical.pass_at_k.pass_at_1.value",
         "scope": "all_suite",
         "current_value": {"pass_at_1": p1, "pass_at_3": p3},
         "display_value": f"pass@1={_pct(p1)}, pass@3={_pct(p3)}",
@@ -2220,7 +2218,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "token_cost",
         "paper_location": "S5.2/implied",
-        "json_path": "campaign_1.token_cost.total_cost.value",
+        "json_path": "canonical.token_cost.total_cost.value",
         "scope": "all_suite",
         "current_value": total_cost,
         "display_value": f"${total_cost:.2f}" if total_cost is not None else "N/A",
@@ -2233,7 +2231,7 @@ def build_paper_claims(c1_results: dict, c2_results: dict, project_root: Path) -
     claims.append({
         "claim_id": "sloc_correlation",
         "paper_location": "S7/implied",
-        "json_path": "campaign_1.sloc_correlation.spearman.value",
+        "json_path": "canonical.sloc_correlation.spearman.value",
         "scope": "all_suite",
         "current_value": sp_val,
         "display_value": (
@@ -2281,7 +2279,7 @@ def cross_check(
                     f"our total={our_total} (expected match)"
                 )
 
-            # Campaign 1 overall pass rate (paper_data.json uses 6 exclusions = 710 records)
+            # Legacy overall pass rate (paper_data.json uses 6 exclusions = 710 records)
             pd_c1_rate = (pd.get("primary_campaign") or {}).get("overall", {}).get("pass_rate")
             our_c1_overall = c1_results.get("aggregate_pass_rates", {}).get("overall", {})
             our_c1_rate = our_c1_overall.get("value")
@@ -2457,15 +2455,14 @@ def write_markdown(output: dict, path: Path) -> None:
     lines.append(f"- Total on disk: {fc.get('total_on_disk', '?')}")
     lines.append(f"- Excluded (KNOWN_FAIL, {len(EXCLUDED_SPECS)} specs): {fc.get('excluded_known_fail', '?')}")
     lines.append(f"- Valid after exclusion: {fc.get('valid_after_exclusion', '?')}")
-    lines.append(f"- Campaign 1 (temp=0.0): {fc.get('campaign_1_valid', '?')}")
-    lines.append(f"- Campaign 2 (temp=0.7): {fc.get('campaign_2_valid', '?')}")
+    lines.append(f"- Canonical (temp=0.7): {fc.get('canonical_valid', '?')}")
     lines.append("")
 
-    # Campaign 1
-    c1 = output.get("campaign_1", {})
+    # Legacy empty section (temp=0.0 was never run)
+    c1 = {}
     lines.append("---")
     lines.append("")
-    lines.append("## Campaign 1: Primary Evaluation (temperature=0.0)")
+    lines.append("## Legacy (temperature=0.0) — No Data")
     lines.append("")
 
     # Dimension 1: Aggregate pass rates
@@ -2609,7 +2606,7 @@ def write_markdown(output: dict, path: Path) -> None:
 
     # Dimension 6: Self-repair
     sr = c1.get("self_repair", {})
-    lines.append("### Dimension 6: Self-Repair Effectiveness (Campaign 1 only)")
+    lines.append("### Dimension 6: Self-Repair Effectiveness (legacy temp=0.0 only)")
     lines.append("")
     sr_rate = sr.get("overall_repair_rate", {})
     lines.append(
@@ -2643,7 +2640,7 @@ def write_markdown(output: dict, path: Path) -> None:
         )
     lines.append("")
 
-    # Dimension 7 is in Campaign 2 section below
+    # Dimension 7 is in canonical section below
 
     # Dimension 8: Per-kernel difficulty tiers
     tiers = c1.get("per_kernel_tiers", {})
@@ -2807,11 +2804,11 @@ def write_markdown(output: dict, path: Path) -> None:
         )
     lines.append("")
 
-    # ---- Campaign 2 ----
-    c2 = output.get("campaign_2", {})
+    # ---- Canonical Evaluation ----
+    c2 = output.get("canonical", {})
     lines.append("---")
     lines.append("")
-    lines.append("## Campaign 2: pass@k Evaluation (temperature=0.7)")
+    lines.append("## Canonical Evaluation (temperature=0.7)")
     lines.append("")
     c2_agg = c2.get("aggregate_pass_rates", {})
     c2_overall = c2_agg.get("overall", {})
@@ -2953,8 +2950,8 @@ def run_validation(output: dict, project_root: Path, verbose: bool, model_dir: s
     analysis_dir = project_root / "results" / "analysis"
     metadata = output.get("metadata", {})
     file_counts = metadata.get("file_counts", {})
-    c1 = output.get("campaign_1", {})
-    c2 = output.get("campaign_2", {})
+    c1 = {}
+    c2 = output.get("canonical", {})
 
     # -----------------------------------------------------------------------
     # Category 1: Spot-checks (independent file counting)
@@ -2988,7 +2985,7 @@ def run_validation(output: dict, project_root: Path, verbose: bool, model_dir: s
         _spot("total_file_count", file_counts.get("total_on_disk"), raw_count)
     )
 
-    # --- Spot-check 2: Campaign 1 count ---
+    # --- Spot-check 2: Legacy count ---
     # Independently load each file, check temperature and KNOWN_FAIL exclusion
     c1_count = 0
     c2_count = 0
@@ -3059,13 +3056,11 @@ def run_validation(output: dict, project_root: Path, verbose: bool, model_dir: s
         else:
             c2_count += 1
 
-    results["spot_checks"].append(
-        _spot("campaign_1_count", file_counts.get("campaign_1_valid"), c1_count)
-    )
+    # campaign_1 (temp=0.0) was never run — skip its spot-check
 
-    # --- Spot-check 3: Campaign 2 count ---
+    # --- Spot-check 3: Canonical count ---
     results["spot_checks"].append(
-        _spot("campaign_2_count", file_counts.get("campaign_2_valid"), c2_count)
+        _spot("canonical_count", file_counts.get("canonical_valid"), c2_count)
     )
 
     # --- Spot-check 4: KNOWN_FAIL exclusion count ---
@@ -3109,13 +3104,13 @@ def run_validation(output: dict, project_root: Path, verbose: bool, model_dir: s
     )
 
     # --- Spot-check 9: Augmentation level distribution ---
-    expected_level_total = file_counts.get("campaign_1_valid", 0)
+    expected_level_total = 0  # temp=0.0 was never run
     actual_level_total = sum(level_counter.values())
     results["spot_checks"].append(
         _spot("augmentation_level_sum", expected_level_total, actual_level_total)
     )
 
-    # --- Spot-check 10: Campaign 2 seed count ---
+    # --- Spot-check 10: Canonical seed count ---
     # Group C2 files by (source_spec, target_spec) and check each has exactly 3 seeds
     c2_groups: dict[str, int] = defaultdict(int)
     for jp in sorted(results_dir.glob("*.json")):
@@ -3144,7 +3139,7 @@ def run_validation(output: dict, project_root: Path, verbose: bool, model_dir: s
     pk_total_tasks = pk.get("total_tasks", {})
     pk_expected = pk_total_tasks.get("value") if isinstance(pk_total_tasks, dict) else pk_total_tasks
     results["spot_checks"].append({
-        "check": "campaign_2_seed_count",
+        "check": "canonical_seed_count",
         "expected": f"{pk_expected} tasks, all with 3 seeds",
         "actual": f"{c2_task_count} tasks, all_have_3={all_have_3}",
         "status": "PASS" if (c2_task_count == pk_expected and all_have_3) else "FAIL",
@@ -3453,7 +3448,7 @@ def run_validation(output: dict, project_root: Path, verbose: bool, model_dir: s
     # 4. Augmentation level counts: L0+L1+L2+L3+L4 match C1 total
     at_agg = c1.get("augmentation_trends", {}).get("aggregate", {}).get("per_level", {})
     level_sum = sum(v.get("n", 0) for v in at_agg.values())
-    c1_total = file_counts.get("campaign_1_valid", 0)
+    c1_total = 0  # temp=0.0 was never run
     results["consistency_checks"].append(
         _consist(
             "augmentation_level_counts_sum",
@@ -3733,12 +3728,12 @@ def main() -> int:
     # --- Split campaigns ---
     c1, c2 = split_campaigns(valid)
     if args.verbose:
-        print(f"Campaign 1 (temp=0.0): {len(c1)} records")
-        print(f"Campaign 2 (temp>0):   {len(c2)} records")
+        print(f"Legacy (temp=0.0): {len(c1)} records")
+        print(f"Canonical (temp>0):   {len(c2)} records")
 
-    # --- Compute dimensions 1-5 for Campaign 1 ---
+    # --- Compute dimensions 1-5 for legacy (temp=0.0) ---
     if args.verbose:
-        print("\nComputing dimensions 1-5 for Campaign 1...")
+        print("\nComputing dimensions 1-5 for legacy (temp=0.0)...")
 
     c1_results: dict = {}
     c1_results["_metadata"] = {"total_on_disk": len(all_records)}
@@ -3763,9 +3758,9 @@ def main() -> int:
         print("  Dimension 5: Failure taxonomy...")
     c1_results["failure_taxonomy"] = compute_failure_taxonomy(c1)
 
-    # --- Compute dimensions 6-13 for Campaign 1 ---
+    # --- Compute dimensions 6-13 for legacy (temp=0.0) ---
     if args.verbose:
-        print("\nComputing dimensions 6-13 for Campaign 1...")
+        print("\nComputing dimensions 6-13 for legacy (temp=0.0)...")
 
     if args.verbose:
         print("  Dimension 6: Self-repair effectiveness...")
@@ -3800,9 +3795,9 @@ def main() -> int:
         print("  Computing Rodinia subset...")
     c1_results["rodinia_subset"] = compute_rodinia_subset(c1)
 
-    # --- Compute dimensions 1-5 for Campaign 2 ---
+    # --- Compute dimensions 1-5 for canonical ---
     if args.verbose:
-        print("\nComputing dimensions 1-5 for Campaign 2...")
+        print("\nComputing dimensions 1-5 for canonical...")
 
     c2_results: dict = {}
 
@@ -3812,9 +3807,9 @@ def main() -> int:
     c2_results["augmentation_trends"] = compute_augmentation_trends(c2)
     c2_results["failure_taxonomy"] = compute_failure_taxonomy(c2)
 
-    # --- Dimension 7: pass@k (Campaign 2 only) ---
+    # --- Dimension 7: pass@k (canonical only) ---
     if args.verbose:
-        print("\nComputing dimension 7: pass@k for Campaign 2...")
+        print("\nComputing dimension 7: pass@k for canonical...")
     c2_results["pass_at_k"] = compute_pass_at_k(c2)
 
     # --- Cross-check ---
@@ -3831,14 +3826,12 @@ def main() -> int:
 
     output = {
         "metadata": metadata,
-        "campaign_1": c1_results,
-        "campaign_2": c2_results,
+        "canonical": c2_results,
         "cross_check": xc,
         "paper_claims": paper_claims,
     }
 
-    # Remove internal metadata from campaign results
-    output["campaign_1"].pop("_metadata", None)
+    # c1_results is always empty (temp=0.0 was never run) — omitted from output
 
     # --- Validate mode ---
     if args.validate:

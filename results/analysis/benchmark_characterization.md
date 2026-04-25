@@ -1,6 +1,6 @@
 # ParBench Benchmark Characterization
 
-Generated: 2026-04-24T21:01:50.049935+00:00
+Generated: 2026-04-25T05:02:38.857155+00:00
 
 ## 1. Source Lines of Code (SLoC)
 

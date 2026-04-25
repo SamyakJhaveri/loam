@@ -21,7 +21,8 @@ Do NOT try to fix any of these errors.
 **mixbench:** 3 specs (cuda, omp, opencl), all 3 PASS.
 **HeCBench (curated):** 10 kernels, 25 specs (cuda + omp/omp_target), 23 PASS, 2 KNOWN_FAIL.
 **All 87 curated non-KNOWN_FAIL specs verified PASS.**
-**Use 53 Rodinia TRUE PASS + 3 XSBench + 4 RSBench + 3 mixbench + 23 HeCBench curated = 86 specs (plus 1 HeCBench cross-API pair) = 87 for eval batches.**
+**Use 53 Rodinia TRUE PASS + 3 XSBench + 3 RSBench + 3 mixbench + 23 HeCBench curated = 85 specs (plus 2 HeCBench cross-API pairs) = 87 for eval batches.**
+Note: RSBench has 4 specs (cuda, omp, opencl, omp_target) but omp_target does not participate in the standard 6-direction translations. Analysis scripts use `EXCLUDED_SPECS` from `harness/constants.py` (9 specs) as ground truth, not this manual count.
 
 **Oracle strength distribution (206 total specs, post-S7c bucket2 upgrade 2026-04-19):**
 - 2 strong (`oracle_strength: "strong"` label) — bptree×2 carry `file_hash` with matching cross-API hashes. All prior mis-labels (hotspot3d×3, hecbench-md×2) were upgraded in S7c to medium `numeric_comparison` oracles.
