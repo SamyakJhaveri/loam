@@ -15,13 +15,13 @@ Do NOT try to fix any of these errors.
 
 ## Current Spec Status (as of 2026-04-19, post S4a+S4b+S5+S6 oracle campaign)
 
-**Rodinia:** 60 specs total, 54 TRUE PASS, 0 FALSE_PASS, 6 KNOWN_FAIL.
+**Rodinia:** 60 specs total, 53 TRUE PASS, 0 FALSE_PASS, 7 KNOWN_FAIL.
 **XSBench:** 4 specs total, 4 PASS, 0 KNOWN_FAIL.
 **RSBench:** 4 specs (cuda, omp, opencl, omp_target), all 4 PASS.
 **mixbench:** 3 specs (cuda, omp, opencl), all 3 PASS.
 **HeCBench (curated):** 10 kernels, 25 specs (cuda + omp/omp_target), 23 PASS, 2 KNOWN_FAIL.
-**All 88 curated non-KNOWN_FAIL specs verified PASS.**
-**Use 54 Rodinia TRUE PASS + 3 XSBench + 4 RSBench + 3 mixbench + 23 HeCBench curated = 87 specs (plus 1 HeCBench cross-API pair) = 88 for eval batches.**
+**All 87 curated non-KNOWN_FAIL specs verified PASS.**
+**Use 53 Rodinia TRUE PASS + 3 XSBench + 4 RSBench + 3 mixbench + 23 HeCBench curated = 86 specs (plus 1 HeCBench cross-API pair) = 87 for eval batches.**
 
 **Oracle strength distribution (206 total specs, post-S7c bucket2 upgrade 2026-04-19):**
 - 2 strong (`oracle_strength: "strong"` label) — bptree×2 carry `file_hash` with matching cross-API hashes. All prior mis-labels (hotspot3d×3, hecbench-md×2) were upgraded in S7c to medium `numeric_comparison` oracles.

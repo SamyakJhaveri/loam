@@ -60,3 +60,35 @@ def test_stdout_exclude_pattern_combined_with_positive():
     )
     result = verify_run(spec, run_result)
     assert result.status == Status.FAIL
+    assert "stdout_exclude_pattern" in result.strategy_used
+
+
+def test_stdout_exclude_pattern_empty_pattern_is_skip():
+    """Empty pattern returns SKIP, not PASS or FAIL."""
+    run_result = _make_run_result(stdout="some output\n")
+    spec = _make_spec(
+        {"type": "stdout_exclude_pattern", "pattern": "", "description": "empty"},
+    )
+    result = verify_run(spec, run_result)
+    assert result.status == Status.SKIP
+
+
+def test_stdout_exclude_pattern_invalid_regex_is_error():
+    """Invalid regex returns ERROR."""
+    run_result = _make_run_result(stdout="some output\n")
+    spec = _make_spec(
+        {"type": "stdout_exclude_pattern", "pattern": "[invalid", "description": "bad regex"},
+    )
+    result = verify_run(spec, run_result)
+    assert result.status == Status.ERROR
+
+
+def test_stdout_exclude_pattern_multiline_flag():
+    """Multiline flag enables ^ and $ to match line boundaries."""
+    run_result = _make_run_result(stdout="line1\nERROR: clBuildProgram\nline3\n")
+    spec = _make_spec(
+        {"type": "stdout_exclude_pattern", "pattern": "^ERROR:", "multiline": True,
+         "description": "No error lines"},
+    )
+    result = verify_run(spec, run_result)
+    assert result.status == Status.FAIL

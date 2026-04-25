@@ -34,7 +34,7 @@ paths:
   - `spec_loader.py` — load specs, resolve paths, extract prompt payloads
   - `builder.py` — compile via subprocess
   - `runner.py` — execute with optional GNU time
-  - `verifier.py` — exit_code + stdout_pattern + numeric_comparison + file_hash strategies
+  - `verifier.py` — exit_code + stdout_pattern + stdout_exclude_pattern + numeric_comparison + file_hash strategies
   - `reporter.py` — format results
   - `models.py` — dataclasses (Status, BuildResult, RunResult, VerificationResult, MetricResult, SpecResult)
   - `cli.py` — argparse CLI entry point
@@ -110,7 +110,7 @@ paths:
 - Used by BuildResult, RunResult, VerificationResult
 
 ### Verification Strategy
-- Implemented: `exit_code`, `stdout_pattern`, `numeric_comparison`, `file_hash`
+- Implemented: `exit_code`, `stdout_pattern`, `stdout_exclude_pattern`, `numeric_comparison`, `file_hash`
 - Stub: `file_diff`, `custom_script`
 - Semantics: conjunction — ALL non-SKIP strategies must PASS for overall PASS
 

@@ -30,6 +30,7 @@ def verify_run(
     ------------------------
     * **exit_code** — check ``run_result.exit_code == strategy["expected"]``
     * **stdout_pattern** — ``re.search(pattern, stdout)``
+    * **stdout_exclude_pattern** — FAIL if ``re.search(pattern, stdout)`` matches
     * **numeric_comparison** — regex-extract a float from stdout and compare to
       ``strategy["expected"]`` within ``strategy.get("tolerance", 0.0)``.
     * **file_hash** — SHA-256 of ``working_dir / strategy["path"]`` must equal

@@ -1182,7 +1182,7 @@ def compute_pass_at_k(records: list[dict]) -> dict:
     """
     # Only canonical (augment_level=0) records are seeds;
     # ablation L1-L4 are different augmentation levels, not samples.
-    canonical = [r for r in records if (r.get("augment_level") or 0) == 0]
+    canonical = [r for r in records if r.get("augment_level", 0) == 0]
 
     # Group by task
     by_task: dict[tuple[str, str], list[dict]] = defaultdict(list)
@@ -2354,7 +2354,7 @@ def cross_check(
                         f"WARNING: Self-repair rate mismatch: selfrepair_analysis={sr_ref_rate}, "
                         f"ours={our_sr_rate} (diff={diff:.4f}). "
                         f"Note: selfrepair_analysis.json includes ALL records (no KF exclusion), "
-                        f"we exclude 8 KNOWN_FAIL specs."
+                        f"we exclude {len(EXCLUDED_SPECS)} KNOWN_FAIL specs."
                     )
                 elif diff > 0.001:
                     warnings.append(
@@ -2455,7 +2455,7 @@ def write_markdown(output: dict, path: Path) -> None:
     lines.append("## File Counts")
     lines.append("")
     lines.append(f"- Total on disk: {fc.get('total_on_disk', '?')}")
-    lines.append(f"- Excluded (KNOWN_FAIL, 8 specs): {fc.get('excluded_known_fail', '?')}")
+    lines.append(f"- Excluded (KNOWN_FAIL, {len(EXCLUDED_SPECS)} specs): {fc.get('excluded_known_fail', '?')}")
     lines.append(f"- Valid after exclusion: {fc.get('valid_after_exclusion', '?')}")
     lines.append(f"- Campaign 1 (temp=0.0): {fc.get('campaign_1_valid', '?')}")
     lines.append(f"- Campaign 2 (temp=0.7): {fc.get('campaign_2_valid', '?')}")
@@ -3314,7 +3314,7 @@ def run_validation(output: dict, project_root: Path, verbose: bool, model_dir: s
                 _xcheck(
                     "vs_error_taxonomy_build_fail",
                     our_bf, et_bf,
-                    scope_note="error_taxonomy includes ALL records from the model dir; we exclude 8 KF specs",
+                    scope_note=f"error_taxonomy includes ALL records from the model dir; we exclude {len(EXCLUDED_SPECS)} KF specs",
                 )
             )
         except (json.JSONDecodeError, OSError):

@@ -2,7 +2,7 @@
 """Tests for quantitative_findings.py — TDD RED phase.
 
 Covers:
-  Test 1: KNOWN_FAIL exclusion removes all 8 specs (6 Rodinia + 2 HeCBench)
+  Test 1: KNOWN_FAIL exclusion removes all 9 specs (7 Rodinia + 2 HeCBench)
   Test 2: Campaign split produces C1 (temp=0.0) and C2 (temp=0.7) with no overlap
   Test 3: Wilson CI returns dict with value, ci_lower, ci_upper, ci_level=0.95, n fields
   Test 4: Provenance wrapper includes value, source, files_matched, derivation fields
@@ -79,7 +79,7 @@ def _make_record(
 
 
 # ---------------------------------------------------------------------------
-# Test 1: KNOWN_FAIL exclusion removes all 8 specs
+# Test 1: KNOWN_FAIL exclusion removes all 9 specs
 # ---------------------------------------------------------------------------
 
 def test_known_fail_exclusion():

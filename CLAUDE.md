@@ -33,7 +33,7 @@ Full details: `.claude/rules/architecture.md` (conditional on harness/, scripts/
 3. **Never run evaluations in worktrees** — submodules are empty there
 4. **Never change spec run args** without reading the source's `argc` check first
 5. **~15 `validate_schema.py --all` errors are expected** (phantom specs only) — do not fix
-6. **8 KNOWN_FAIL specs** — exclude from eval batches (list in `known-issues.md`)
+6. **9 KNOWN_FAIL specs** — exclude from eval batches (list in `known-issues.md`)
 7. **`git push origin main` is blocked** by Bash permissions — push to a feature branch, or ask the user to run `! git push origin main`. Don't retry the blocked push.
 
 ## Quality
@@ -73,7 +73,7 @@ Behavioral guidelines (Think Before Coding / Simplicity First / Surgical Changes
 
 **ParBench**
 
-Kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA ↔ OpenMP ↔ OpenCL). 88 curated non-KNOWN_FAIL specs (206 JSON total) across 5 suites, build-run-verify harness, AST-driven augmentation engine, canonical + L0-conditional ablation protocol. Current sprint runs multi-model evaluations for NeurIPS 2026.
+Kernel-centric benchmark framework for evaluating LLM-based parallel code translation (CUDA ↔ OpenMP ↔ OpenCL). 87 curated non-KNOWN_FAIL specs (206 JSON total) across 5 suites, build-run-verify harness, AST-driven augmentation engine, canonical + L0-conditional ablation protocol. Current sprint runs multi-model evaluations for NeurIPS 2026.
 
 **Core Value:** Every evaluation result is reproducible and pipeline-correct — so model comparisons are defensible under peer review.
 

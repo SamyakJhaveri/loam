@@ -1,12 +1,12 @@
 # Quantitative Findings — NeurIPS 2026 ParBench
 
-Generated: 2026-04-24T23:33:41.576665+00:00
-Git hash: 6fce616
+Generated: 2026-04-25T00:07:35.551155+00:00
+Git hash: fd55456
 
 ## File Counts
 
 - Total on disk: 708
-- Excluded (KNOWN_FAIL, 8 specs): 82
+- Excluded (KNOWN_FAIL, 9 specs): 82
 - Valid after exclusion: 626
 - Campaign 1 (temp=0.0): 0
 - Campaign 2 (temp=0.7): 626
