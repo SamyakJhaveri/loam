@@ -25,8 +25,10 @@ def _load_results() -> list[dict]:
     if not os.path.isdir(d):
         pytest.skip(f"Results directory not found: {d}")
     results = []
+    import re
     for fname in os.listdir(d):
-        if not fname.endswith(".json"):
+        # Only canonical sample files (-s0, -s1, -s2); excludes ablation (-L1 .. -L4)
+        if not fname.endswith(".json") or not re.search(r"-s\d+\.json$", fname):
             continue
         with open(os.path.join(d, fname)) as f:
             results.append(json.load(f))

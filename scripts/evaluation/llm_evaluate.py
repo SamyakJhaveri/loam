@@ -112,7 +112,7 @@ MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
         "supports_thinking": True,
         "notes": "Azure OpenAI GPT-5.4 (Microsoft Foundry GA 2026-03-17; "
                  "requires AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT + "
-                 "gpt-5.4 deployment name; "
+                 "gpt-5.4 deployment on norwayeast; "
                  "reasoning_effort=medium when --thinking=on)",
     },
     "groq-llama-3.3-70b-versatile": {
@@ -914,7 +914,8 @@ def call_llm(
                 "openai package not installed. Run: python3 -m pip install openai"
             )
 
-        azure_model = model[len("azure-"):]  # e.g. "azure-gpt-5.4" → "gpt-5.4"
+        _api_model = MODEL_REGISTRY.get(model, {}).get("api_model")
+        azure_model = _api_model if _api_model is not None else model[len("azure-"):]
 
         # Strip any path/query from endpoint — SDK expects just scheme+host
         from urllib.parse import urlparse

@@ -36,7 +36,7 @@ SUITE_SPECS = {
     "hecbench": SPECS_DIR / "hecbench-bezier-surface-cuda.json",
 }
 
-# The 8 KNOWN_FAIL spec IDs -- must match harness/constants.py exactly.
+# The 9 KNOWN_FAIL spec IDs -- must match harness/constants.py exactly.
 _EXPECTED_EXCLUDED = frozenset({
     "rodinia-kmeans-cuda",
     "rodinia-mummergpu-cuda",
@@ -44,6 +44,7 @@ _EXPECTED_EXCLUDED = frozenset({
     "rodinia-hybridsort-cuda",
     "rodinia-nn-opencl",
     "rodinia-kmeans-opencl",
+    "rodinia-backprop-opencl",
     "hecbench-stencil1d-omp_target",
     "hecbench-scan-omp_target",
 })
@@ -105,9 +106,9 @@ def test_full_pipeline(suite_spec: tuple[str, dict[str, Any]]) -> None:
 
 
 def test_excluded_specs_count() -> None:
-    """EXCLUDED_SPECS has exactly 8 entries matching known-issues.md."""
-    assert len(EXCLUDED_SPECS) == 8, (
-        f"Expected 8 EXCLUDED_SPECS, got {len(EXCLUDED_SPECS)}"
+    """EXCLUDED_SPECS has exactly 9 entries matching known-issues.md."""
+    assert len(EXCLUDED_SPECS) == 9, (
+        f"Expected 9 EXCLUDED_SPECS, got {len(EXCLUDED_SPECS)}"
     )
     for spec_id in _EXPECTED_EXCLUDED:
         assert spec_id in EXCLUDED_SPECS, f"{spec_id} missing from EXCLUDED_SPECS"

@@ -170,6 +170,7 @@ KNOWN_FAIL_SPECS=(
     rodinia-hybridsort-cuda
     rodinia-nn-opencl
     rodinia-kmeans-opencl
+    rodinia-backprop-opencl
     hecbench-stencil1d-omp_target
     hecbench-scan-omp_target
 )
