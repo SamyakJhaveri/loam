@@ -51,22 +51,22 @@
           },
           {
             "type": "command",
-            "command": ".claude/hooks/pre-commit-gate.sh",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/pre-commit-gate.sh",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": ".claude/hooks/codex-review-reminder.sh",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/codex-review-reminder.sh",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": ".claude/hooks/bash-audit-log.sh",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/bash-audit-log.sh",
             "timeout": 5
           },
           {
             "type": "command",
-            "command": ".claude/hooks/protect-eval-results.sh",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/protect-eval-results.sh",
             "timeout": 10
           }
         ]
@@ -76,12 +76,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/protect-benchmark-sources.sh",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/protect-benchmark-sources.sh",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": ".claude/hooks/result-immutability.sh",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/result-immutability.sh",
             "timeout": 10
           }
         ]
@@ -102,7 +102,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/post-compact-recovery.sh",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/post-compact-recovery.sh",
             "timeout": 10
           }
         ]
@@ -116,12 +116,12 @@
           },
           {
             "type": "command",
-            "command": ".claude/hooks/post-edit-test.sh",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/post-edit-test.sh",
             "timeout": 35
           },
           {
             "type": "command",
-            "command": ".claude/hooks/sentinel-cleanup.sh",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/sentinel-cleanup.sh",
             "timeout": 5
           }
         ]
@@ -131,7 +131,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/context-budget.sh",
+            "command": "/home/samyak/Desktop/parbench_sam/.claude/hooks/context-budget.sh",
             "timeout": 5
           }
         ]
