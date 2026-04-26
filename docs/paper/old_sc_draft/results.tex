@@ -1,0 +1,92 @@
+\section{Results-new}
+\label{sec:results}
+
+This section presents the main empirical results of ParBench. We organize the analysis around four questions: (1) whether kernel-centric evaluation reveals non-trivial translation capability, (2) where translations fail in the pipeline, (3) how difficulty varies across directions and kernels, and (4) how results change under sampling and across models. Detailed per-kernel tables, extended breakdowns, and additional statistics are deferred to the appendix.
+
+\subsection{Kernel-Centric Evaluation Reveals Non-Trivial Translation Capability}
+\label{sec:overall-pass}
+
+Table~\ref{tab:overall-pass} summarizes aggregate pass rates across all tasks.
+
+\begin{table*}[t]
+\centering
+\caption{Overall pass rates across all tasks (Qwen~3.5 and GPT-4.1~mini; 5 suites, 6+2 directions, L0--L4). KNOWN\_FAIL source specs (6 Rodinia) are excluded from evaluation.}
+\label{tab:overall-pass}
+\small
+\begin{tabular}{@{}lrrrrrrrrl@{}}
+\toprule
+Model & PASS & \buildfail & \runfail{} & \verifyfail{} & EXTR\_FAIL & ERROR & Total & Rate & 95\% Wilson CI \\
+\midrule
+Qwen 3.5 397B-A17B & 272 & 241 & 144 & 51 & 1 & 1 & 710 & 38.3\% & [34.8\%, 41.9\%] \\
+GPT-4.1 mini & 161 & 316 & 43 & 31 & 0 & 0 & 551 & 29.2\% & [25.6\%, 33.2\%] \\
+\textbf{Aggregate} & 433 & 557 & 187 & 82 & 1 & 1 & 1{,}261 & 34.3\% & [31.8\%, 37.0\%] \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Qwen~3.5 achieves an overall pass rate of 38.3\% [34.8\%, 41.9\%] across 710 translation tasks spanning six directions and five augmentation levels. GPT-4.1~mini achieves 29.2\% [25.6\%, 33.2\%] across 551 tasks. Across both models, the aggregate pass rate is 34.3\% [31.8\%, 37.0\%]. These rates are non-trivial given that ParBench requires successful traversal of the full build, run, and verification pipeline rather than string-level similarity or partial compilation.
+
+The central point is not only the absolute pass rate, but the contrast with repository-level evaluation. ParEval-Repo~\cite{ParEvalRepo2025} reports 0\% pass@1 for all models on applications larger than 133~SLoC, including XSBench. In contrast, ParBench's kernel-centric formulation achieves 38.3\% overall for Qwen~3.5 and 64.2\% [55.3\%, 72.2\%] on the primary CUDA-to-OpenMP direction. This gap suggests that repository-level workflows conflate at least two sources of difficulty: translation of the computational kernel itself, and regeneration of the surrounding build and integration scaffold. By isolating the kernel translation problem while preserving executable evaluation, ParBench reveals substantial translation capability that would otherwise remain hidden.
+
+A chi-squared test of independence between model identity and pass/fail outcome yields $\chi^2 = 10.97$ ($df = 1$, $p < 0.001$), rejecting the null hypothesis of equal pass rates. However, Cohen's $h = 0.19$ indicates that the practical magnitude of the aggregate difference is modest; we return to the direction-level cross-model picture in Section~\ref{sec:cross-model}.
+
+\subsection{Build-Stage Adaptation Is the Dominant Bottleneck}
+\label{sec:failure-taxonomy}
+
+Of the 438 total failures in the Qwen~3.5 primary campaign, the distribution is: \buildfail{} 241/438 (55.0\%), \runfail{} 144/438 (32.9\%), \verifyfail{} 51/438 (11.6\%), \extractionfail{} 1/438 (0.2\%), and ERROR 1/438 (0.2\%). Figure~\ref{fig:failure-taxonomy} shows the high-level taxonomy.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{f4_failure_taxonomy_qwen}
+\caption{Failure taxonomy stacked bar chart (Qwen~3.5 397B). X-axis: models. Y-axis: task count stacked by outcome (PASS, \buildfail, \runfail{}, \verifyfail{}, \extractionfail). GPT-4.1~mini results appear in Appendix Figure~\ref{fig:f4-gpt}.}
+\label{fig:failure-taxonomy}
+\end{figure}
+
+\buildfail{} is the dominant failure mode, accounting for 241/710 tasks (33.9\%) and 55.0\% of all Qwen failures. Three subcategories dominate: undeclared identifiers (56 tasks, 23.2\% of \buildfail{}), missing headers (55 tasks, 22.8\%), and linker errors (49 tasks, 20.3\%). Together they account for 160 of 241 build failures. These errors are often not evidence that the model failed to understand the parallel computation itself. Rather, they indicate incomplete adaptation of the target API surface: retained CUDA intrinsics in translated OpenMP code, missing OpenCL address-space qualifiers, or unresolved target-side dependencies.
+
+By contrast, \verifyfail{} accounts for 51/710 tasks (7.2\%) and 11.6\% of all failures. Of these, 46 (90.2\%) produce wrong numerical output and 5 (9.8\%) produce missing output. These are the genuinely deeper failures in which code compiles and runs but violates functional semantics. The overall pattern is therefore not a simple ``syntax vs. reasoning'' binary, but a depth spectrum from surface-level adaptation errors through API mapping failures to semantic errors in reduction scope, thread-index logic, or data dependencies. Still, the center of mass in the current benchmark lies clearly at build-stage adaptation.
+
+This interpretation is reinforced by self-repair. ParBench permits up to three retry attempts with failure-specific diagnostics injected into subsequent prompts. For Qwen~3.5, self-repair raises the effective pass rate from 22.5\% [19.6\%, 25.8\%] on the first attempt to 38.3\% [34.8\%, 41.9\%] after retries, a 15.8 percentage-point gain (70.0\% relative). Of the 550 initially failing tasks, 112 are repaired through the retry protocol, for a repair rate of 20.4\% [17.2\%, 23.9\%]. Only seven regressions occur, corresponding to a 1.0\% regression rate. In other words, a substantial fraction of failures are recoverable once the model is given concrete compiler or verification feedback, again pointing to adaptation and integration errors as the dominant bottleneck. Detailed self-repair breakdowns by direction move to Appendix Table~\ref{tab:self-repair}.
+
+\subsection{Translation Difficulty Is Direction- and Kernel-Dependent}
+\label{sec:direction-analysis}
+
+Table~\ref{tab:direction-rates} reports pass rates by translation direction.
+
+\begin{table*}[t]
+\centering
+\caption{Pass rates by translation direction (L0, all suites, Qwen~3.5 and GPT-4.1~mini). Directions with fewer than 10 kernel-model pairs are marked as exploratory.}
+\label{tab:direction-rates}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Direction & Qwen 3.5 (L0) & Qwen 3.5 (all levels) & GPT-4.1 mini & $N$ (L0) & Note \\
+\midrule
+cuda-to-omp & 66.7\% (16/24) & 64.2\% (77/120) [55.3\%, 72.2\%] & 40.0\% (48/120) [31.7\%, 48.9\%] & 24 & Primary \\
+omp-to-cuda & 58.3\% (14/24) & 52.5\% (63/120) [43.6\%, 61.2\%] & 17.9\% (15/84) [11.1\%, 27.4\%] & 24 & \\
+opencl-to-omp & 38.9\% (7/18) & 38.9\% (35/90) [29.5\%, 49.2\%] & 41.1\% (37/90) [31.5\%, 51.4\%] & 18 & \\
+omp-to-opencl & 33.3\% (6/18) & 27.8\% (25/90) [19.6\%, 37.8\%] & 33.3\% (30/90) [24.5\%, 43.6\%] & 18 & \\
+cuda-to-opencl & 20.0\% (4/20) & 20.0\% (20/100) [13.3\%, 28.9\%] & 30.0\% (30/100) [21.9\%, 39.6\%] & 20 & \\
+opencl-to-cuda & 10.0\% (2/20) & 6.0\% (6/100) [2.8\%, 12.5\%] & 3.7\% (1/27) [0.7\%, 18.3\%] & 20 & \\
+cuda-to-omp\_target & -- & -- & -- & 8 & Case study \\
+omp\_target-to-cuda & -- & -- & -- & 10 & Case study \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Translation success varies sharply by direction. For Qwen~3.5, CUDA-to-OpenMP is the strongest direction at 64.2\%, followed by OpenMP-to-CUDA at 52.5\%. OpenCL-targeting and OpenCL-source directions are substantially harder, with OpenCL-to-CUDA particularly challenging at 6.0\%. This pattern is consistent with an intuition about translation asymmetry: CUDA-to-OpenMP is comparatively reductive, removing explicit thread indexing and device-memory management, whereas OpenMP-to-CUDA is generative, requiring the model to introduce CUDA-specific execution and memory constructs.
+
+OpenCL-target translations exhibit a distinct failure profile. Because OpenCL translations are kernel-only while the host program remains fixed, the benchmark surfaces kernel compilation failures at runtime rather than conventional host-side build failures. Two recurring error patterns are missing \texttt{\_\_global} address-space qualifiers on kernel pointer arguments and hallucinated API names such as \texttt{get\_block\_id()} instead of \texttt{get\_group\_id()}. More broadly, the OpenCL directions quantify a full-program penalty: Qwen~3.5 achieves 20.0\% on CUDA-to-OpenCL but only 6.0\% on OpenCL-to-CUDA, while GPT-4.1~mini shows a similar 30.0\% versus 3.7\% asymmetry.
+
+Kernel-level results show equally strong heterogeneity. Among 31 evaluated kernels, the easiest include \texttt{stencil1d} (15/15, 100.0\%), \texttt{floydwarshall} (16/20, 80.0\%), \texttt{heat2d} (15/20, 75.0\%), \texttt{iso2dfd} (15/20, 75.0\%), and \texttt{hotspot} (21/30, 70.0\%). At the other end, \texttt{gaussian}, \texttt{heartwall}, \texttt{myocyte}, \texttt{rsbench}, and \texttt{xsbench} all have 0\% greedy pass rate in the primary campaign. The easy tier is dominated by regular stencil- and solver-like kernels with structured memory access and predictable loop nests, while the hard tier contains irregular or structurally complex kernels with dynamic work patterns, multi-file dependencies, or more brittle synchronization requirements. We retain one compact representative table in the appendix rather than a long main-text catalog; the full 31-kernel breakdown moves to Appendix Table~\ref{tab:per-kernel-full}.
+
+Augmentation does not show evidence of systematic degradation. On the balanced CUDA-to-OpenMP subset ($n=24$ kernels per level), the Cochran--Armitage trend test yields $z = 0.0$, $p = 1.0$, with pass counts 16, 14, 17, 14, and 16 from L0 through L4. This is a null result, but an informative one: surface-level AST-preserving transformations do not appear to monotonically erode translation success. We therefore view augmentation as a robustness probe rather than a stress test that uniformly makes tasks harder. The full augmentation table and heatmap move to Appendix Table~\ref{tab:augmentation-rates} and Figure~\ref{fig:aug-heatmap}.
+
+\subsection{Sampling and Cross-Model Comparisons}
+\label{sec:cross-model}
+
+To characterize sampling variance independently of self-repair, we run a separate pass@$k$ sweep for Qwen~3.5 at L0 with temperature=0.7 and three independent samples per task. The resulting distribution is sharply bimodal. Of 142 direction--kernel pairs, 103 (72.5\%) are hard failures where no sample succeeds, 22 (15.5\%) are partial successes with pass@1 between 0.33 and 0.67, and 17 (12.0\%) succeed on all samples. Notably, there are no noisy failures with pass@1 = 0 but pass@3 $> 0$. This suggests that, at the kernel-direction level, translation success is often stable rather than sample-fragile: if the model can solve the task, it tends to do so consistently, and if it cannot, additional sampling rarely rescues it. We therefore treat pass@$k$ as a useful but limited secondary signal rather than the central evaluation lens. Full pass@$k$ results move to Appendix Table~\ref{tab:pass-at-k}.
+
+ParBench also enables cross-provider comparison. Across all evaluated tasks, Qwen~3.5 achieves 38.3\% (272/710) and GPT-4.1~mini 29.2\% (161/551). The aggregate difference is statistically significant but practically modest ($\chi^2 = 10.97$, $p < 0.001$, Cohen's $h = 0.19$). The more informative picture appears at the direction level. Qwen~3.5 is notably stronger on CUDA-to-OpenMP (64.2\% vs. 40.0\%, $h = 0.49$) and especially OpenMP-to-CUDA (52.5\% vs. 17.9\%, $h = 0.75$), while GPT-4.1~mini is moderately stronger on CUDA-to-OpenCL (30.0\% vs. 20.0\%, $h = -0.23$) and OMP-to-OpenCL (33.3\% vs. 27.8\%). Both models converge near zero on OpenCL-to-CUDA, indicating that this direction remains structurally hard independent of provider.
+
+The failure taxonomies also differ in degree. Build failures dominate both models, but more severely for GPT-4.1~mini: \textsc{build\_fail} accounts for 81.0\% of GPT failures (316/390) versus 55.0\% of Qwen failures (241/438). Verification failures, however, are similar as a fraction of total tasks (7.2\% for Qwen, 5.6\% for GPT), suggesting that once code compiles and runs, both models encounter semantic failures at comparable rates. At the kernel level, 13 of 31 common kernels are solved by both models, 5 are failed by both, 11 are solved only by Qwen~3.5, and 2 only by GPT-4.1~mini. Thus, the benchmark surfaces both broader coverage for Qwen and genuine provider-specific pockets of strength for GPT. Extended per-direction, per-kernel, and per-model visualizations move to the appendix.

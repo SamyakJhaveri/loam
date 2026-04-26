@@ -1,0 +1,147 @@
+\begin{thebibliography}{13}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Chaturvedi et~al.(2024)Chaturvedi, Nichols, Singh, and
+  Bhatele]{HPCCoderV2}
+Aman Chaturvedi, Daniel Nichols, Siddharth Singh, and Abhinav Bhatele.
+\newblock {HPC-Coder-V2}: Studying code {LLMs} across low-resource parallel
+  languages.
+\newblock arXiv preprint arXiv:2412.15178, 2024.
+\newblock URL \url{https://arxiv.org/abs/2412.15178}.
+
+\bibitem[Che et~al.(2009)Che, Boyer, Meng, Tarjan, Sheaffer, Lee, and
+  Skadron]{Rodinia2009}
+Shuai Che, Michael Boyer, Jiayuan Meng, David Tarjan, Jeremy~W. Sheaffer,
+  Sang-Ha Lee, and Kevin Skadron.
+\newblock {Rodinia}: A benchmark suite for heterogeneous computing.
+\newblock In \emph{2009 {IEEE} International Symposium on Workload
+  Characterization ({IISWC})}, pages 44--54. IEEE, 2009.
+\newblock \doi{10.1109/IISWC.2009.5306797}.
+\newblock URL \url{https://doi.org/10.1109/IISWC.2009.5306797}.
+
+\bibitem[Chen et~al.(2021)Chen, Tworek, Jun, Yuan, de~Oliveira~Pinto, Kaplan,
+  Edwards, Burda, Joseph, Brockman, Ray, Puri, Krueger, Petrov, Khlaaf, Sastry,
+  Mishkin, Chan, Gray, Ryder, Pavlov, Power, Kaiser, Bavarian, Winter, Tillet,
+  Such, Cummings, Plappert, Chantzis, Barnes, Herbert-Voss, Guss, Nichol,
+  Paino, Tezak, Tang, Babuschkin, Balaji, Jain, Saunders, Hesse, Carr, Leike,
+  Achiam, Misra, Morikawa, Radford, Knight, Brundage, Murati, Mayer, Welinder,
+  McGrew, Amodei, McCandlish, Sutskever, and Zaremba]{HumanEval2021}
+Mark Chen, Jerry Tworek, Heewoo Jun, Qiming Yuan, Henrique~Ponde
+  de~Oliveira~Pinto, Jared Kaplan, Harri Edwards, Yuri Burda, Nicholas Joseph,
+  Greg Brockman, Alex Ray, Raul Puri, Gretchen Krueger, Michael Petrov, Heidy
+  Khlaaf, Girish Sastry, Pamela Mishkin, Brooke Chan, Scott Gray, Nick Ryder,
+  Mikhail Pavlov, Alethea Power, Lukasz Kaiser, Mohammad Bavarian, Clemens
+  Winter, Philippe Tillet, Felipe~Petroski Such, Dave Cummings, Matthias
+  Plappert, Fotios Chantzis, Elizabeth Barnes, Ariel Herbert-Voss,
+  William~Hebgen Guss, Alex Nichol, Alex Paino, Nikolas Tezak, Jie Tang, Igor
+  Babuschkin, Suchir Balaji, Shantanu Jain, William Saunders, Christopher
+  Hesse, Andrew~N. Carr, Jan Leike, Josh Achiam, Vedant Misra, Evan Morikawa,
+  Alec Radford, Matthew Knight, Miles Brundage, Mira Murati, Katie Mayer, Peter
+  Welinder, Bob McGrew, Dario Amodei, Sam McCandlish, Ilya Sutskever, and
+  Wojciech Zaremba.
+\newblock Evaluating large language models trained on code.
+\newblock arXiv preprint arXiv:2107.03374, 2021.
+\newblock URL \url{https://arxiv.org/abs/2107.03374}.
+
+\bibitem[Davis et~al.(2025)Davis, Nichols, Khillan, and
+  Bhatele]{ParEvalRepo2025}
+Joshua~H. Davis, Daniel Nichols, Ishan Khillan, and Abhinav Bhatele.
+\newblock On the limits of {LLM}-based repository-level {HPC} code translation.
+\newblock In \emph{Proceedings of the 54th International Conference on Parallel
+  Processing ({ICPP})}, pages 94--103. ACM, 2025.
+\newblock \doi{10.1145/3754598.3754669}.
+\newblock URL \url{https://doi.org/10.1145/3754598.3754669}.
+
+\bibitem[Dearing et~al.(2024)Dearing, Tao, Wu, Lan, and Taylor]{LASSI2024}
+Matthew~T. Dearing, Yiheng Tao, Xingfu Wu, Zhiling Lan, and Valerie Taylor.
+\newblock {LASSI}: An {LLM}-based automated self-correcting pipeline for
+  translating parallel scientific codes.
+\newblock In \emph{2024 {IEEE} International Conference on Cluster Computing
+  Workshops ({CLUSTER} Workshops)}, pages 136--143. IEEE, 2024.
+\newblock \doi{10.1109/CLUSTERWorkshops61563.2024.00029}.
+\newblock URL \url{https://doi.org/10.1109/CLUSTERWorkshops61563.2024.00029}.
+
+\bibitem[Gong et~al.(2025)Gong, Sun, Huang, Liang, Zhang, and Hao]{TRACY2025}
+Zhihao Gong, Zeyu Sun, Dong Huang, Qingyuan Liang, Jie~M. Zhang, and Dan Hao.
+\newblock {TRACY}: Benchmarking execution efficiency of {LLM}-based code
+  translation.
+\newblock arXiv preprint arXiv:2508.11468, 2025.
+\newblock URL \url{https://arxiv.org/abs/2508.11468}.
+
+\bibitem[Jimenez et~al.(2024)Jimenez, Yang, Wettig, Yao, Pei, Press, and
+  Narasimhan]{SWEbench2024}
+Carlos~E. Jimenez, John Yang, Alexander Wettig, Shunyu Yao, Kexin Pei, Ofir
+  Press, and Karthik Narasimhan.
+\newblock {SWE-bench}: Can language models resolve real-world {GitHub} issues?
+\newblock In \emph{Proceedings of the Twelfth International Conference on
+  Learning Representations ({ICLR})}, 2024.
+\newblock \doi{10.48550/arXiv.2310.06770}.
+\newblock URL \url{https://openreview.net/forum?id=VTF8yNQM66}.
+
+\bibitem[Jin and Vetter(2023)]{HeCBench2023}
+Zheming Jin and Jeffrey~S. Vetter.
+\newblock A benchmark suite for improving performance portability of the {SYCL}
+  programming model.
+\newblock In \emph{2023 {IEEE} International Symposium on Performance Analysis
+  of Systems and Software ({ISPASS})}, pages 325--327. IEEE, 2023.
+\newblock \doi{10.1109/ISPASS57527.2023.00041}.
+\newblock URL \url{https://doi.org/10.1109/ISPASS57527.2023.00041}.
+
+\bibitem[Kadosh et~al.(2023)Kadosh, Schneider, Hasabnis, Mattson, Pinter, and
+  Oren]{OMPify2023}
+Tal Kadosh, Nadav Schneider, Niranjan Hasabnis, Timothy Mattson, Yuval Pinter,
+  and Gal Oren.
+\newblock Advising {OpenMP} parallelization via a graph-based approach with
+  transformers.
+\newblock In \emph{OpenMP: Advanced Task-Based, Device and Compiler Programming
+  ({IWOMP} 2023)}, volume 14114 of \emph{Lecture Notes in Computer Science},
+  pages 3--17. Springer, 2023.
+\newblock \doi{10.1007/978-3-031-40744-4_1}.
+\newblock URL \url{https://doi.org/10.1007/978-3-031-40744-4_1}.
+
+\bibitem[Nichols et~al.(2024)Nichols, Davis, Xie, Rajaram, and
+  Bhatele]{ParEval2024}
+Daniel Nichols, Joshua~H. Davis, Zhaojun Xie, Arjun Rajaram, and Abhinav
+  Bhatele.
+\newblock Can large language models write parallel code?
+\newblock In \emph{Proceedings of the 33rd International Symposium on
+  High-Performance Parallel and Distributed Computing ({HPDC})}, pages
+  281--294. ACM, 2024.
+\newblock \doi{10.1145/3625549.3658689}.
+\newblock URL \url{https://doi.org/10.1145/3625549.3658689}.
+
+\bibitem[Rozi{\`e}re et~al.(2020)Rozi{\`e}re, Lachaux, Chanussot, and
+  Lample]{TransCoder2020}
+Baptiste Rozi{\`e}re, Marie-Anne Lachaux, Lo{\"i}k Chanussot, and Guillaume
+  Lample.
+\newblock Unsupervised translation of programming languages.
+\newblock In \emph{Advances in Neural Information Processing Systems 33
+  ({NeurIPS})}, 2020.
+\newblock \doi{https://dl.acm.org/doi/10.5555/3495724.3497454}.
+\newblock URL
+  \url{https://proceedings.neurips.cc/paper/2020/hash/ed23fbf18c2cd35f8c7f8de44f85c08d-Abstract.html}.
+
+\bibitem[TehraniJamsaz et~al.(2024)TehraniJamsaz, Bhattacharjee, Chen, Ahmed,
+  Yazdanbakhsh, and Jannesari]{CodeRosetta2024}
+Ali TehraniJamsaz, Arijit Bhattacharjee, Le~Chen, Nesreen~K. Ahmed, Amir
+  Yazdanbakhsh, and Ali Jannesari.
+\newblock {CodeRosetta}: Pushing the boundaries of unsupervised code
+  translation for parallel programming.
+\newblock In \emph{Advances in Neural Information Processing Systems 37
+  ({NeurIPS})}, 2024.
+\newblock \doi{https://doi.org/10.52202/079017-3202}.
+\newblock URL \url{https://openreview.net/forum?id=V6hrg4O9gg}.
+
+\bibitem[Tramm et~al.(2014)Tramm, Siegel, Islam, and Schulz]{XSBench2014}
+John~R. Tramm, Andrew~R. Siegel, Tanzima Islam, and Martin Schulz.
+\newblock {XSBench} -- the development and verification of a performance
+  abstraction for {Monte Carlo} reactor analysis.
+\newblock In \emph{Proceedings of the International Conference on the Physics
+  of Reactors ({PHYSOR})}, Kyoto, Japan, 2014.
+\newblock \doi{https://www.mcs.anl.gov/papers/P5064-0114.pdf}.
+
+\end{thebibliography}

@@ -1,0 +1,686 @@
+{
+  "generated_at": "2026-04-25T23:01:53.491605+00:00",
+  "data_source": "results/evaluation/azure-gpt-5.4",
+  "primary_matrix": {
+    "direction": "cuda-to-omp",
+    "levels": [
+      "L0",
+      "L1",
+      "L2",
+      "L3",
+      "L4"
+    ],
+    "kernel_count": 10,
+    "per_kernel": {
+      "backprop": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-backprop-cuda",
+        "target_spec": "rodinia-backprop-omp",
+        "known_fail": false,
+        "L0": "PASS",
+        "pattern": "degradation"
+      },
+      "bfs": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-bfs-cuda",
+        "target_spec": "rodinia-bfs-omp",
+        "known_fail": false,
+        "L0": "PASS",
+        "pattern": "degradation"
+      },
+      "bptree": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-bptree-cuda",
+        "target_spec": "rodinia-bptree-omp",
+        "known_fail": false,
+        "L0": "BUILD_FAIL",
+        "pattern": "other"
+      },
+      "cfd": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-cfd-cuda",
+        "target_spec": "rodinia-cfd-omp",
+        "known_fail": false,
+        "L0": "PASS",
+        "pattern": "degradation"
+      },
+      "heartwall": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-heartwall-cuda",
+        "target_spec": "rodinia-heartwall-omp",
+        "known_fail": false,
+        "L0": "PASS",
+        "pattern": "degradation"
+      },
+      "hotspot": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-hotspot-cuda",
+        "target_spec": "rodinia-hotspot-omp",
+        "known_fail": false,
+        "L0": "PASS",
+        "pattern": "degradation"
+      },
+      "hotspot3d": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-hotspot3d-cuda",
+        "target_spec": "rodinia-hotspot3d-omp",
+        "known_fail": false,
+        "L0": "PASS",
+        "pattern": "degradation"
+      },
+      "lavamd": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-lavamd-cuda",
+        "target_spec": "rodinia-lavamd-omp",
+        "known_fail": false,
+        "L0": "PASS",
+        "pattern": "degradation"
+      },
+      "lud": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-lud-cuda",
+        "target_spec": "rodinia-lud-omp",
+        "known_fail": false,
+        "L0": "PASS",
+        "pattern": "degradation"
+      },
+      "myocyte": {
+        "suite": "rodinia",
+        "source_spec": "rodinia-myocyte-cuda",
+        "target_spec": "rodinia-myocyte-omp",
+        "known_fail": false,
+        "L0": "BUILD_FAIL",
+        "pattern": "other"
+      }
+    },
+    "aggregate": {
+      "L0": {
+        "rate": 0.8,
+        "ci_lower": 0.4901,
+        "ci_upper": 0.9433,
+        "n": 10
+      },
+      "L1": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.0,
+        "n": 0
+      },
+      "L2": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.0,
+        "n": 0
+      },
+      "L3": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.0,
+        "n": 0
+      },
+      "L4": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.0,
+        "n": 0
+      }
+    },
+    "aggregate_excluding_known_fail": {
+      "L0": {
+        "rate": 0.8,
+        "ci_lower": 0.4901,
+        "ci_upper": 0.9433,
+        "n": 10
+      },
+      "L1": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.0,
+        "n": 0
+      },
+      "L2": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.0,
+        "n": 0
+      },
+      "L3": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.0,
+        "n": 0
+      },
+      "L4": {
+        "rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.0,
+        "n": 0
+      }
+    },
+    "pattern_summary": {
+      "stable_pass": [],
+      "stable_fail": [],
+      "degradation": [
+        "backprop",
+        "bfs",
+        "cfd",
+        "heartwall",
+        "hotspot",
+        "hotspot3d",
+        "lavamd",
+        "lud"
+      ],
+      "improvement": [],
+      "other": [
+        "bptree",
+        "myocyte"
+      ]
+    },
+    "exceptions": [
+      {
+        "kernel": "backprop",
+        "suite": "rodinia",
+        "pattern": "degradation",
+        "L0_status": "PASS",
+        "all_statuses": {
+          "L0": "PASS",
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "affected_levels": {
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "root_cause": "Linker error: multiple definition of 'gettime' and 'main' -- LLM duplicated functions across files when given augmented source. Augmentation engine validated separately (backprop-cuda PASSES at all harness levels). This is genuine model brittleness, not a transform artifact."
+      },
+      {
+        "kernel": "bfs",
+        "suite": "rodinia",
+        "pattern": "degradation",
+        "L0_status": "PASS",
+        "all_statuses": {
+          "L0": "PASS",
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "affected_levels": {
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "cfd",
+        "suite": "rodinia",
+        "pattern": "degradation",
+        "L0_status": "PASS",
+        "all_statuses": {
+          "L0": "PASS",
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "affected_levels": {
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "heartwall",
+        "suite": "rodinia",
+        "pattern": "degradation",
+        "L0_status": "PASS",
+        "all_statuses": {
+          "L0": "PASS",
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "affected_levels": {
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "hotspot",
+        "suite": "rodinia",
+        "pattern": "degradation",
+        "L0_status": "PASS",
+        "all_statuses": {
+          "L0": "PASS",
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "affected_levels": {
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "hotspot3d",
+        "suite": "rodinia",
+        "pattern": "degradation",
+        "L0_status": "PASS",
+        "all_statuses": {
+          "L0": "PASS",
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "affected_levels": {
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "lavamd",
+        "suite": "rodinia",
+        "pattern": "degradation",
+        "L0_status": "PASS",
+        "all_statuses": {
+          "L0": "PASS",
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "affected_levels": {
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "root_cause": "Not yet investigated"
+      },
+      {
+        "kernel": "lud",
+        "suite": "rodinia",
+        "pattern": "degradation",
+        "L0_status": "PASS",
+        "all_statuses": {
+          "L0": "PASS",
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "affected_levels": {
+          "L1": "UNKNOWN",
+          "L2": "UNKNOWN",
+          "L3": "UNKNOWN",
+          "L4": "UNKNOWN"
+        },
+        "root_cause": "Not yet investigated"
+      }
+    ]
+  },
+  "per_direction": {
+    "cuda-to-omp": {
+      "direction": "cuda-to-omp",
+      "levels": [
+        "L0",
+        "L1",
+        "L2",
+        "L3",
+        "L4"
+      ],
+      "kernel_count": 10,
+      "per_kernel": {
+        "backprop": {
+          "suite": "rodinia",
+          "source_spec": "rodinia-backprop-cuda",
+          "target_spec": "rodinia-backprop-omp",
+          "known_fail": false,
+          "L0": "PASS",
+          "pattern": "degradation"
+        },
+        "bfs": {
+          "suite": "rodinia",
+          "source_spec": "rodinia-bfs-cuda",
+          "target_spec": "rodinia-bfs-omp",
+          "known_fail": false,
+          "L0": "PASS",
+          "pattern": "degradation"
+        },
+        "bptree": {
+          "suite": "rodinia",
+          "source_spec": "rodinia-bptree-cuda",
+          "target_spec": "rodinia-bptree-omp",
+          "known_fail": false,
+          "L0": "BUILD_FAIL",
+          "pattern": "other"
+        },
+        "cfd": {
+          "suite": "rodinia",
+          "source_spec": "rodinia-cfd-cuda",
+          "target_spec": "rodinia-cfd-omp",
+          "known_fail": false,
+          "L0": "PASS",
+          "pattern": "degradation"
+        },
+        "heartwall": {
+          "suite": "rodinia",
+          "source_spec": "rodinia-heartwall-cuda",
+          "target_spec": "rodinia-heartwall-omp",
+          "known_fail": false,
+          "L0": "PASS",
+          "pattern": "degradation"
+        },
+        "hotspot": {
+          "suite": "rodinia",
+          "source_spec": "rodinia-hotspot-cuda",
+          "target_spec": "rodinia-hotspot-omp",
+          "known_fail": false,
+          "L0": "PASS",
+          "pattern": "degradation"
+        },
+        "hotspot3d": {
+          "suite": "rodinia",
+          "source_spec": "rodinia-hotspot3d-cuda",
+          "target_spec": "rodinia-hotspot3d-omp",
+          "known_fail": false,
+          "L0": "PASS",
+          "pattern": "degradation"
+        },
+        "lavamd": {
+          "suite": "rodinia",
+          "source_spec": "rodinia-lavamd-cuda",
+          "target_spec": "rodinia-lavamd-omp",
+          "known_fail": false,
+          "L0": "PASS",
+          "pattern": "degradation"
+        },
+        "lud": {
+          "suite": "rodinia",
+          "source_spec": "rodinia-lud-cuda",
+          "target_spec": "rodinia-lud-omp",
+          "known_fail": false,
+          "L0": "PASS",
+          "pattern": "degradation"
+        },
+        "myocyte": {
+          "suite": "rodinia",
+          "source_spec": "rodinia-myocyte-cuda",
+          "target_spec": "rodinia-myocyte-omp",
+          "known_fail": false,
+          "L0": "BUILD_FAIL",
+          "pattern": "other"
+        }
+      },
+      "aggregate": {
+        "L0": {
+          "rate": 0.8,
+          "ci_lower": 0.4901,
+          "ci_upper": 0.9433,
+          "n": 10
+        },
+        "L1": {
+          "rate": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "n": 0
+        },
+        "L2": {
+          "rate": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "n": 0
+        },
+        "L3": {
+          "rate": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "n": 0
+        },
+        "L4": {
+          "rate": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "n": 0
+        }
+      },
+      "aggregate_excluding_known_fail": {
+        "L0": {
+          "rate": 0.8,
+          "ci_lower": 0.4901,
+          "ci_upper": 0.9433,
+          "n": 10
+        },
+        "L1": {
+          "rate": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "n": 0
+        },
+        "L2": {
+          "rate": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "n": 0
+        },
+        "L3": {
+          "rate": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "n": 0
+        },
+        "L4": {
+          "rate": 0.0,
+          "ci_lower": 0.0,
+          "ci_upper": 0.0,
+          "n": 0
+        }
+      },
+      "pattern_summary": {
+        "stable_pass": [],
+        "stable_fail": [],
+        "degradation": [
+          "backprop",
+          "bfs",
+          "cfd",
+          "heartwall",
+          "hotspot",
+          "hotspot3d",
+          "lavamd",
+          "lud"
+        ],
+        "improvement": [],
+        "other": [
+          "bptree",
+          "myocyte"
+        ]
+      },
+      "exceptions": [
+        {
+          "kernel": "backprop",
+          "suite": "rodinia",
+          "pattern": "degradation",
+          "L0_status": "PASS",
+          "all_statuses": {
+            "L0": "PASS",
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "affected_levels": {
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "root_cause": "Linker error: multiple definition of 'gettime' and 'main' -- LLM duplicated functions across files when given augmented source. Augmentation engine validated separately (backprop-cuda PASSES at all harness levels). This is genuine model brittleness, not a transform artifact."
+        },
+        {
+          "kernel": "bfs",
+          "suite": "rodinia",
+          "pattern": "degradation",
+          "L0_status": "PASS",
+          "all_statuses": {
+            "L0": "PASS",
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "affected_levels": {
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "root_cause": "Not yet investigated"
+        },
+        {
+          "kernel": "cfd",
+          "suite": "rodinia",
+          "pattern": "degradation",
+          "L0_status": "PASS",
+          "all_statuses": {
+            "L0": "PASS",
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "affected_levels": {
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "root_cause": "Not yet investigated"
+        },
+        {
+          "kernel": "heartwall",
+          "suite": "rodinia",
+          "pattern": "degradation",
+          "L0_status": "PASS",
+          "all_statuses": {
+            "L0": "PASS",
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "affected_levels": {
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "root_cause": "Not yet investigated"
+        },
+        {
+          "kernel": "hotspot",
+          "suite": "rodinia",
+          "pattern": "degradation",
+          "L0_status": "PASS",
+          "all_statuses": {
+            "L0": "PASS",
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "affected_levels": {
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "root_cause": "Not yet investigated"
+        },
+        {
+          "kernel": "hotspot3d",
+          "suite": "rodinia",
+          "pattern": "degradation",
+          "L0_status": "PASS",
+          "all_statuses": {
+            "L0": "PASS",
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "affected_levels": {
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "root_cause": "Not yet investigated"
+        },
+        {
+          "kernel": "lavamd",
+          "suite": "rodinia",
+          "pattern": "degradation",
+          "L0_status": "PASS",
+          "all_statuses": {
+            "L0": "PASS",
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "affected_levels": {
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "root_cause": "Not yet investigated"
+        },
+        {
+          "kernel": "lud",
+          "suite": "rodinia",
+          "pattern": "degradation",
+          "L0_status": "PASS",
+          "all_statuses": {
+            "L0": "PASS",
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "affected_levels": {
+            "L1": "UNKNOWN",
+            "L2": "UNKNOWN",
+            "L3": "UNKNOWN",
+            "L4": "UNKNOWN"
+          },
+          "root_cause": "Not yet investigated"
+        }
+      ]
+    }
+  },
+  "secondary_matrix": {
+    "direction_count": 0,
+    "per_direction_aggregate": {}
+  }
+}

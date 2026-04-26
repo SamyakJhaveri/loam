@@ -121,6 +121,11 @@ Kernel-centric benchmark framework for evaluating LLM-based parallel code transl
 | techdebt | Tech debt inventory | `.claude/skills/techdebt/SKILL.md` |
 | validate | Post-session validation | `.claude/skills/validate/SKILL.md` |
 | workflow-ref | Skill/agent reference, agent teams, thinking levels | `.claude/skills/workflow-ref/SKILL.md` |
+| citation-audit | Zero-context citation verification (existence, metadata, context appropriateness) | `.claude/skills/citation-audit/SKILL.md` |
+| paper-claim-audit | Zero-context numerical verification against raw result files | `.claude/skills/paper-claim-audit/SKILL.md` |
+| auto-paper-improvement-loop | Cross-model iterative review→fix→recompile with bias guards | `.claude/skills/auto-paper-improvement-loop/SKILL.md` |
+| rebuttal | 7-phase rebuttal pipeline for reviewer responses | `.claude/skills/rebuttal/SKILL.md` |
+| paper-write | Section-by-section LaTeX generation with DBLP citation fetching | `.claude/skills/paper-write/SKILL.md` |
 <!-- GSD:skills-end -->
 
 ### External Plugin Skills

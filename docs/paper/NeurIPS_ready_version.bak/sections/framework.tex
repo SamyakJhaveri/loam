@@ -1,0 +1,155 @@
+\section{ParBench Framework}
+\label{sec:framework}
+
+ParBench is a benchmark framework designed to evaluate LLM-based parallel code translation through automated, end-to-end correctness assessment. The framework comprises four integrated components: (1)~a declarative spec schema that encodes what constitutes correct execution for each benchmark kernel, (2)~a three-stage build/run/verify pipeline that evaluates translated code, (3)~an AST-driven augmentation engine that generates semantically-equivalent code variants to assess translation robustness in the face of code perturbations, and (4)~an evaluation pipeline that augments the LLM-based translation with an iterative self-repair. This section describes each component in detail.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{parbench_architecture}
+\caption{ParBench system architecture. API Selection (stage~0, red) identifies the target parallel APIs from a 35-repo survey. The Benchmark Corpus (stage~1, grey) contains 206 JSON specs drawn from five suites---Rodinia (60 specs), XSBench (4), RSBench (4), mixbench (3), and a curated HeCBench subset (25)---spanning CUDA, OpenMP, and OpenCL. Each spec encodes declarative correctness contracts that configure both the Evaluation Pipeline and the Harness. Original source feeds into the Augmentation Engine (stage~2, gold), which applies six AST-driven semantics-preserving transforms at five intensity levels (L0--L4). The Evaluation Pipeline (stage~3, blue) constructs a structured prompt, issues it to an LLM, and extracts translated files. The Harness (stage~4, green) executes a three-stage Build, Run, Verify sequence with conjunctive correctness verification (exit code AND stdout pattern matching). Results (stage~5) classify each task outcome. On failure, a dashed self-repair feedback loop returns failure-specific diagnostics for up to three iterative retry attempts.}
+\label{fig:architecture}
+\end{figure*}
+
+\subsection{Spec Schema: Declarative Correctness Contracts}
+\label{sec:spec-schema}
+
+Each benchmark in ParBench is described by a JSON specification (spec) that serves as a declarative contract defining what ``correct execution'' means for that kernel--API variant. As illustrated by the spec configuration flow in Figure~\ref{fig:architecture} (stage~1$\rightarrow$3 and stage~1$\rightarrow$4), the spec provides both prompt configuration to the Evaluation Pipeline and build/run/verify configuration to the Harness. The spec encodes all information required to build, run, and verify a benchmark without manual intervention, enabling fully automated evaluation. The schema (version 1.0.0) is formally defined in JSON Schema draft-07 and enforced by an offline validator.
+
+A spec is organized into the following field groups:
+
+\textbf{Identity and provenance.} The \texttt{identity} block assigns a globally unique identifier following the convention \texttt{\{source\_suite\}-\{kernel\_name\}-\{parallel\_api\}} (e.g., \texttt{rodinia-bfs-cuda}), and records the parallel API from a controlled vocabulary of 15 APIs including CUDA, OpenMP, OpenCL, HIP, SYCL, and serial. The \texttt{provenance} block pins the exact source repository and commit hash, ensuring reproducibility across environments.
+
+\textbf{File partitioning.} The \texttt{files} block partitions benchmark source files into three disjoint sets: \texttt{prompt\_payload} (files provided to the LLM during translation), \texttt{support\_files} (build infrastructure such as Makefiles and shared headers --- contents of the header are provided as read-only reference in the translation prompt), and \texttt{verification\_only} (reference implementations that are never provided to the LLM). The fourth field, \texttt{translation\_targets}, identifies a subset of \texttt{prompt\_payload} that the LLM must translate. This field is central to the kernel-centric translation methodology described in Section~\ref{sec:eval-pipeline}.
+
+\textbf{Build, run, and verification.} The \texttt{build} block specifies the build system, compiler commands, environment variables, and expected executable path. The \texttt{run} block defines named input configurations (e.g., \texttt{correctness}, \texttt{performance}) with arguments, timeout, and optional environment variables. The \texttt{verification} block declares an ordered list of verification strategies --- currently \texttt{exit\_code} (check process return code) and \texttt{stdout\_pattern} (regex match against captured standard output)---evaluated in conjunction --- all of the mentioned strategies must pass for the overall verdict to be PASS (see Section~\ref{sec:harness} for evaluation semantics). Three additional strategy types (\texttt{numeric\_comparison}, \texttt{file\_diff}, \texttt{custom\_script}) are reserved in the schema for future work. 
+
+% src: "96 specs = 60+4+4+3+25" verified via ls specs/{suite}-*.json: rodinia=60, xsbench=4, rsbench=4, mixbench=3, hecbench=135 (25 curated) (01-01 verified 2026-04-03)
+This design separates the definition of correctness from the mechanism of verification: the harness can evolve independently of what ``correct'' means for each kernel. For example, the \texttt{main} function that typically launches the kernel may contain an output verification check and generate return code depending on the pass or fail scenario. We have defined 96 such specs that span five benchmark suites: 60 from Rodinia~\cite{Rodinia2009}, 4 from XSBench~\cite{XSBench2014}, 4 from RSBench, 3 from mixbench, and 25 from a curated subset of HeCBench~\cite{HeCBench2023}.
+
+\textbf{Baseline results.} The \texttt{baseline\_results} block, populated by running the original implementation on a reference platform, records the expected output for each input configuration. This provides the ground truth to evaluate the functional correctness of the translated code.
+
+Listing~\ref{lst:bfs_spec} illustrates the essential structure using an example of the BFS benchmark from Rodinia suite~\cite{Rodinia2009}:
+
+\begin{lstlisting}[
+  language=JSON,
+  float,
+  floatplacement=tbp,
+  numbers=none,
+  label={lst:bfs_spec},
+  caption={Condensed spec for \texttt{rodinia-bfs-cuda}.}]
+{
+  "identity": {
+    "unique_id": "rodinia-bfs-cuda",
+    "parallel_api": "cuda",
+    "source_suite": "rodinia"
+  },
+  "files": {
+    "prompt_payload": ["bfs.cu", "kernel.cu",
+                       "kernel2.cu"],
+    "support_files": ["Makefile"],
+    "translation_targets": ["bfs.cu", "kernel.cu",
+                            "kernel2.cu"]
+  },
+  "build": {
+    "commands": {"build": "make CUDA_DIR=..."},
+    "outputs": {"executable": "./bfs.out"}
+  },
+  "run": {
+    "executable": "./bfs.out",
+    "timeout_seconds": 300,
+    "input_configurations": {
+      "correctness": {
+        "arguments": ["../../data/bfs/graph1MW_6.txt"]
+      }
+    }
+  },
+  "verification": {
+    "strategies": [
+      {"type": "exit_code", "expected": 0}
+    ]
+  }
+}
+\end{lstlisting}
+
+\subsection{Evaluation Pipeline: Kernel-Centric Translation}
+\label{sec:eval-pipeline}
+
+The evaluation pipeline --- corresponding to the Evaluation Pipeline component in Figure~\ref{fig:architecture} (orange, center) --- orchestrates LLM-based parallel code translation through a structured prompt-response-verify cycle. Its design reflects a deliberate methodological choice: kernel-centric translation, in which only the parallel computation files are translated while the surrounding build infrastructure remains untouched. On failure, a self-repair feedback loop (dashed orange arrow in Figure~\ref{fig:architecture}) returns diagnostic information from the Harness Pipeline to the Evaluation Pipeline for iterative correction.
+
+% src: quantitative_findings.json > campaign_1.augmentation_trends.per_direction.cuda-to-omp: 77/120=64.2%
+% src: sloc_analysis.json > summary.kernels_above_pareval_threshold = 31/35
+% src: paper_data.json > primary_campaign > overall > by_status: BUILD_FAIL=241, 241/710=33.9%
+%We isolate kernel translation from build-system generation because they are orthogonal competencies: the ability to correctly map parallel idioms between APIs is independent of the ability to produce working Makefiles, linker flags, and directory structures. Three observations support this design choice. First, ParEval-Repo~\cite{ParEvalRepo2025} achieves a~0\% pass rate on XSBench because repository-level translation conflates build-system generation with translation skill; ParBench achieves a 64.2\% CUDA-to-OpenMP pass rate across all five suites (77~of~120 tasks, aggregated over augmentation levels L0--L4; 68.8\% at L0 on the 16-kernel balanced Rodinia subset). Second, 31~of~35 benchmark kernels (88.6\%) exceed ParEval-Repo's 133~SLoC code-complexity threshold, demonstrating that kernel isolation does not trivialize the translation task. Third, even with build infrastructure provided, 33.9\% of translation tasks (241~of~710) fail at the build stage, confirming that kernel-level translation remains a substantive challenge.
+%Conflating build-system generation with translation skill therefore produces artificially low pass rates that obscure the model's actual parallel programming competence.
+
+\textbf{Kernel-centric methodology.} ParBench isolates the translation skill by feeding only the \texttt{translation\_targets} files (the parallel kernel code) to the LLM; Makefiles, shared headers, serial baselines, and utility code remain unchanged in the target directory. This design enables evaluation of whether an LLM can correctly map parallel programming patterns from one API to another, independent of its ability to replicate project file organization.
+
+\textbf{Prompt structure.} Each translation prompt consists of a system message establishing the role of a parallel programming expert and a user message containing: (1)~the source kernel code with API-specific syntax highlighting, (2)~the target API and the filenames the LLM must produce, (3)~the target build command for compilation compatibility, and (4)~read-only target infrastructure context (non-kernel files from the target directory) so the LLM can match expected function signatures and data structures. Source support headers are included with instructions to inline definitions rather than emit unresolvable \texttt{\#include} directives. The full prompt template is provided in Appendix~\ref{sec:appendix-prompt}.
+
+% FIX-3: Anonymization protocol description
+%\textbf{Prompt anonymization.} To reduce the risk that benchmark-specific identifiers in the prompt trigger memorized translations, the evaluation pipeline applies six anonymization measures: (1)~the kernel name and description are omitted from the prompt entirely, (2)~source code comments are stripped from all files, (3)~source filenames are replaced with generic identifiers (``Source File 1'', etc.), (4)~target output filenames use a generic scheme (\texttt{translated\_0.ext}, \texttt{translated\_1.ext}, etc.), (5)~kernel names in build commands are replaced with generic placeholders, and (6)~support header and auxiliary files are renamed to generic identifiers. This anonymization is orthogonal to the AST-driven augmentation engine (Section~\ref{sec:augmentation-engine}), which modifies the source code \emph{structure}; prompt anonymization targets the surrounding \emph{metadata}. Full details appear in Section~\ref{sec:anonymization}.
+
+\textbf{Cross-API argument and verification handling.} When translating between APIs (e.g., CUDA to OpenMP), the source and target implementations may expect different command-line arguments and produce different \texttt{stdout} formats. ParBench handles this asymmetry explicitly. For run arguments, the pipeline uses the \emph{source} spec's arguments because LLMs preserve the source implementation's \texttt{argc}/\texttt{argv} parsing convention---a translated binary retains the argument-handling logic of the code it was translated from, not the reference target implementation. For verification, the pipeline constructs a union of source and target \texttt{stdout\_pattern} regexes via alternation (\texttt{source\_pattern|target\_pattern}), accommodating translations that produce either source-native or target-native output formats. This dual handling ensures that the evaluation measures translation quality rather than penalizing correct translations for superficial format differences.
+
+% Commenting out as it looks confusing to talk about kernel-only translation and then removing false positives. It is
+% understanble by now that we translate kernel + host code.
+% \textbf{Kernel-only vs.\ full-program translation.} Not all cross-API translations require the LLM to rewrite the entire program. ParBench distinguishes \emph{kernel-only} translations --- where only the device kernel files are translated while the host code remains untouched --- from \emph{full-program} translations, where the LLM rewrites all source files, including host-side API calls. The distinction arises naturally from API architecture: translations targeting OpenCL produce only \texttt{.cl} kernel files, because the OpenCL programming model separates kernel source (compiled at runtime via \texttt{clBuildProgram()}) from host orchestration code. In contrast, CUDA-to-OpenMP translations require rewriting the entire source file, replacing device kernels, memory management, and launch syntax with OpenMP pragmas and CPU-side equivalents. ParBench detects kernel-only translations automatically by checking whether all \texttt{translation\_targets} in the target spec end with \texttt{.cl}. For kernel-only translations, the target spec's native run arguments and verification patterns are used directly (since the host binary is unchanged), whereas full-program translations use the cross-API argument and verification handling described above.
+
+% \textbf{False-positive detection for kernel-only translations.} Kernel-only translations introduce a subtle verification challenge: the host program may swallow kernel compilation errors and still produce expected output. To guard against such false positives, the verification pipeline includes a post-verification scan of \texttt{stdout} for OpenCL kernel build failure signatures. Translations that pass exit-code and stdout-pattern checks but contain evidence of kernel compilation failure are downgraded from PASS to \verifyfail{}. This specificity filter reduces false positives with zero additional false negatives, since legitimate kernel executions do not produce \texttt{clBuildProgram()} error messages.
+
+\textbf{Self-repair loop.} On failure, the pipeline feeds failure-specific diagnostics back to the LLM: compiler errors on build failure, runtime errors and \texttt{stderr} on execution failure, and verification details on output mismatch. This feedback serves as a follow-up prompt, requesting a corrected translation. This iterative self-repair mechanism is repeated for a configurable number of attempts before a final failure classification.
+
+\textbf{Complexity taxonomy.} To enable stratified analysis of translation difficulty, each source--target pair is classified into one of four complexity classes based on the file cardinality of the translation: \texttt{single\_file} (1 source file to 1 target file), \texttt{multi\_to\_single} ($N$ source files to 1 target file), \texttt{single\_to\_multi} (1 source file to $N$ targets), and \texttt{multi\_to\_multi} ($N$ source files to $M$ target files).
+
+%\textbf{Model-agnostic design.} The pipeline supports multiple LLM providers through a model registry that maps human-readable identifiers to provider-specific API configurations. All evaluations use temperature~0 for deterministic reproducibility. The framework supports multiple LLM provider API endpoints, enabling cross-model comparison under identical prompt content and evaluation conditions.
+
+
+\subsection{Augmentation Engine: Probing Robustness via Code Perturbations}
+\label{sec:augmentation-engine}
+
+To address the concern that LLMs may have seen open-source benchmarks, such as Rodinia~\cite{Rodinia2009}, already, the augmentation engine ---the Augmentation component in Figure~\ref{fig:architecture} (gold, top-center) --- generates semantically-equivalent code variants by applying AST-level transformations.
+
+The engine implements six transforms, each backed by the libclang API for AST analysis to guarantee syntactic validity:
+\begin{enumerate}
+    \item \textbf{SwapCondition}---reverses operands of comparison expressions (e.g., \texttt{a < b} becomes \texttt{b > a}), with guards against side-effect-bearing subexpressions and assignments.
+    
+    \item \textbf{ArithmeticTransform}---converts between compound and expanded assignment forms (e.g., \texttt{x += 1} becomes \texttt{x = x + 1} and vice versa). 
+    
+    \item \textbf{ChangeNames}---consistently renames local variables and function parameters using symbol-aware reference collection, respecting scope boundaries and OpenMP pragma clauses.
+    
+    \item \textbf{TypedefExpansion}---replaces typedef aliases with their underlying primitive types at AST-identified type-reference sites.
+    \item \textbf{PointerArithmeticToArrayIndex}---converts between pointer dereference and array indexing notation (e.g., \texttt{*(arr + i)} becomes \texttt{arr[i]}).
+    
+    \item \textbf{ChangeFunctionNames}---renames \texttt{static} (internal-linkage) helper functions across their definition and all call sites within the translation unit. \texttt{\_\_global\_\_} and \texttt{\_\_kernel\_\_} entry points are excluded because OpenCL resolves kernel names at runtime via string lookup in \texttt{clCreateKernel}; renaming the C function without updating the corresponding string literal would silently break execution.
+\end{enumerate}
+
+All six transforms apply to every source file in the prompt payload---including both host code and GPU kernel function bodies. AST nodes originating from \texttt{\#include}d headers are excluded; only symbols defined in the main translation unit are rewritten. All transforms operate on the parsed AST rather than on raw text, which avoids the fragility of regex-based rewriting. Each candidate rewrite is validated by re-parsing the transformed code and confirming that no new diagnostic errors are introduced. %Overlapping candidates are resolved by a greedy subset-selection algorithm that maximizes the number of applied transforms without introducing conflicts.
+
+% [Float moved to Appendix D]
+%The complete augmentation level definitions are provided in Appendix Table~\ref{tab:augmentation-levels}.
+
+Five augmentation levels (L0--L4) control the density of applied transforms. At L0, the source code is unmodified. At L1, exactly one transform is selected and applied to a single candidate site. Levels L2--L4 apply both transform selection and candidate-site selection at increasing fractions: the fraction mapping chooses how many of the six transforms to run: 33\% at L2, 66\% at L3, and 100\% at L4. Within each selected transform, the same fraction determines how many eligible AST nodes to rewrite, with a minimum of one applied via $\max(1, \lfloor n \cdot f \rfloor)$, where $n$ is the number of available AST transforms and $f$ is the fraction selected at each augmentation level.
+
+The augmentation baseline confirms that the transforms are semantics-preserving: 68 of 88 non-KNOWN\_FAIL specs across all five suites (54 Rodinia, 4 XSBench, 3 RSBench, 3 mixbench, and 4 spot-checked HeCBench) pass the build/run/verify pipeline at all levels L1--L4, with zero correctness regressions relative to L0. The 8 KNOWN\_FAIL specs (which fail at L0 due to CUDA~12 deprecations, missing system libraries, and pre-existing runtime errors) also fail identically at all augmented levels, confirming that augmentation introduces no new failures.
+%Transform application frequency across 240 augmented tasks: SwapCondition (162), ArithmeticTransform (69), ChangeNames (55), TypedefExpansion (7), PointerArithmeticToArrayIndex (6), ChangeFunctionNames (2).
+
+\subsection{Harness Pipeline: Build, Run, Verify}
+\label{sec:harness}
+
+The harness pipeline is a three-stage evaluation engine invoked via a command-line interface, corresponding to the Build, Run, and Verify sub-stages within the Harness Pipeline component of Figure~\ref{fig:architecture} (light blue, center-right). Each stage consumes the output of the previous stage and failure at any stage short-circuits subsequent stages. The Harness Pipeline receives translated files from the Evaluation Pipeline and build/run/verify configuration from the Spec JSON, and then emits a verdict to the Result node.
+
+\textbf{Build stage.} The builder resolves the spec's working directory, executes an optional \texttt{clean} command, runs any \texttt{configure} step, substitutes template variables (e.g., \texttt{\$\{CUDA\_DIR\}}) in the build command, and invokes the build via a shell subprocess. After compilation, the builder verifies that the expected executable exists as a file on the disk. The build stage captures both \texttt{stdout} and \texttt{stderr} for diagnostic reporting and enforces a configurable timeout (default: 600 seconds).
+
+\textbf{Run stage.} The runner executes the compiled binary with arguments drawn from the spec's named input configuration (typically \texttt{correctness}). Execution proceeds without a shell to avoid argument-parsing ambiguities. The runner captures \texttt{stdout}, \texttt{stderr}, exit code, and wall-clock duration, and enforces the spec-defined timeout (default: 300 seconds). An optional CPU-time measurement mode wraps execution with \texttt{/usr/bin/time -v} to capture user+system time independently of wall-clock duration.
+
+\textbf{Verify stage.} The verifier applies the spec's verification strategies in declared order. For \texttt{exit\_code} verification, the actual exit code is compared against the expected value. For \texttt{stdout\_pattern} verification, a regular expression is applied to the captured stdout. A FAIL or ERROR result triggers immediate termination; a PASS is recorded and evaluation continues to the next strategy---all implemented strategies must pass for the overall verdict to be PASS. In cross-API translation evaluation, the verification stage uses a combined pattern that accepts output matching either the source or target spec's \texttt{stdout} format (Section~\ref{sec:eval-pipeline}), preventing false negatives from format differences between API implementations. 
+
+The conjunction of exit code and \texttt{stdout}-pattern verification is essential for accurate measurement. For example, CUDA translation of Gaussian elimination kernel (written in OpenCL) compiles without error, runs to completion with exit code zero, and produces partial \texttt{stdout} output --- matrix creation messages appear normally --- but fails to print the expected \texttt{Total:} timing summary that the reference implementation produces. All three self-repair attempts reproduce the same incorrect output, indicating a systematic translation defect rather than a transient failure. Compilation-only verification~\cite{CodeRosetta2024} would misclassify such as task as a successful translation; exit-code-only verification would similarly fail, since this translation terminated normally without signaling an error.
+
+%Strategies that cannot produce a definitive result are bypassed (SKIP); if every strategy is bypassed, the overall outcome is SKIP. For instance, 13 Rodinia specs declare a \texttt{numeric\_comparison} strategy for tolerance-based output validation that is not yet implemented in the current harness; the verifier marks it as SKIP for that individual strategy and advances to the remaining \texttt{stdout\_pattern} and \texttt{exit\_code} strategies, whose results determine the overall verdict. This design allows specs to declare future verification methods without blocking current evaluation.
+
+Each harness invocation produces one of four failure classifications---BUILD\_FAIL, RUN\_FAIL, VERIFY\_FAIL, or TIMEOUT---providing diagnostic granularity that enables systematic failure-mode analysis. The evaluation pipeline (Section~\ref{sec:eval-pipeline}) adds a fifth classification, EXTRACTION\_FAIL, when the LLM response does not contain parseable target files. % A \texttt{--resume} flag allows batch evaluations to skip previously completed tasks, supporting append-only result accumulation without re-executing passing benchmarks.
+
+% src: paper_data.json > primary_campaign > overall > by_status: VERIFY_FAIL=51, 51/710=7.2%
+% src: results/evaluation/together-qwen-3.5-397b-a17b/rodinia-gaussian-opencl-to-rodinia-gaussian-cuda.json: overall_status=VERIFY_FAIL, all 3 attempts build=pass, run=pass, verify=fail
+% \textbf{Verification methodology.} The conjunction of exit code and \texttt{stdout}-pattern verification is essential for accurate measurement. Across all five benchmark suites, 51~of~710 translation tasks (7.2\%) compile and run successfully with \texttt{exit\_code} of 0, yet they produce incorrect output, receiving a \verifyfail{} classification. For example, CUDA translation of Gaussian elimination kernel (written in OpenCL) compiles without error, runs to completion with exit code zero, and produces partial \texttt{stdout} output --- matrix creation messages appear normally --- but fails to print the expected \texttt{Total:} timing summary that the reference implementation produces. All three self-repair attempts reproduce the same incorrect output, indicating a systematic translation defect rather than a transient failure. Compilation-only verification~\cite{CodeRosetta2024} would misclassify all of these 51 tasks as successful translations; exit-code-only verification would similarly fail, since these translations terminate normally without signaling an error.
