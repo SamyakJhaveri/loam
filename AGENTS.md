@@ -58,6 +58,14 @@ pytest c_augmentation/test_transforms.py                  # augmentation tests
 pytest tests/                                             # unit tests
 ```
 
+## End-of-Session Codex Review (Mandatory)
+
+At the end of every Claude Code session with substantive changes, Codex must be
+invoked for a cross-model second opinion: `/codex:rescue review the uncommitted
+changes`. After review, `touch .codex_review_done` marks completion. The
+pre-commit hook reminds if this step is skipped. Codex catches issues that
+same-model self-review misses.
+
 ## Review Guidelines
 
 When reviewing code in this repository, focus on these areas:
