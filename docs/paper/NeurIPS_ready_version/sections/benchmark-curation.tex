@@ -164,7 +164,7 @@ mixbench         &       312     &  -- &  0/3~~~(0\%) & C++11 \\
 The five suites contribute a total of 96 benchmark specifications, of which 87 achieve PASS through the complete build/run/verify pipeline and 9 are \knownfail{} (Table~\ref{tab:suite-summary}). The 87 verified-PASS specs constitute the evaluation corpus. The selected kernels span popular computational domains such as graph traversal, machine learning, stencil computation, signal processing etc.
 
 % src: specs/ on disk: rodinia=60, hecbench=25(curated), xsbench=4, rsbench=4, mixbench=3 = 96 total
-% src: paper_data.json > primary_campaign > by_kernel: 31 eval kernels; corpus = 35 kernels (incl. 4 KNOWN_FAIL-only)
+% src: paper_data_together-qwen-3.5-397b-a17b.json > passk_campaign: 31 eval kernels; corpus = 35 kernels (incl. 4 KNOWN_FAIL-only)
 % The evaluation corpus spans five suites: Rodinia (22 kernels, 60 specs),
 % XSBench (1 kernel, 4 specs), RSBench (1 kernel, 4 specs), mixbench
 % (1 kernel, 3 specs), and HeCBench (10 kernels, 25 specs), totaling
@@ -173,7 +173,7 @@ The five suites contribute a total of 96 benchmark specifications, of which 87 a
 
 %(bfs, floydwarshall, page-rank), physics simulation (hotspot, hotspot3d, cfd, srad, iso2dfd), machine learning (backprop, nn), linear algebra (lud, nw), molecular dynamics (lavamd, md), nuclear physics (xsbench, rsbench), stencil computation (stencil1d, heat2d, jacobi), signal processing (convolution1d, scan), biophysical simulation (myocyte, heartwall), particle methods (particlefilter, streamcluster), dynamic programming (pathfinder), combinatorial search (nqueen), and GPU micro-benchmarking (mixbench).
 
-% src: paper_data.json > primary_campaign > total=710; L0 pairs = 710/5 = 142; verified 2026-04-05
+% src: paper_data_together-qwen-3.5-397b-a17b.json > passk_campaign > overall > total=426; L0 pairs = 426/3 = 142
 %At L0 (unaugmented), the corpus yields 142 unique translation pairs per model across six standard translation directions, with two additional OMP-target directions evaluated as case studies.
 
 % src: SLoC from results/analysis/sloc_analysis.json (35 kernels); verified 2026-04-03

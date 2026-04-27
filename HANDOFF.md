@@ -1,8 +1,8 @@
 # HANDOFF: NeurIPS 2026 Paper Completion
 
-**Date:** 2026-04-27 (updated from 2026-04-25 original)
+**Date:** 2026-04-27 (updated after Phase 3-5 session)
 **Deadline:** NeurIPS 2026 — May 1, 2026 (3 days remaining)
-**Status:** Main body sections COMPLETE. Appendix, checklist, and final pass remain.
+**Status:** Phases 0-5 COMPLETE. Review sim findings need addressing (P0 items). Validate + commit remain.
 
 ---
 
@@ -172,107 +172,80 @@ ALL numbers verified 2026-04-27 against raw result files.
 
 ---
 
+### Session 2026-04-27 Evening: Phases 3–5 Execution
+
+**Phase 3 (Appendix Fixes) — DONE:**
+- Pass@k table: replaced stale 38.3%/19.7%/27.5% with Qwen 23.9%/35.2% + GPT-5.4 62.7%/69.7%; added Noisy column
+- Augmentation table: replaced stale rates with ablation data (Qwen L1=74%, GPT L1=88.9%); updated caption for L0-conditional design
+- Per-kernel table: replaced all 31 rows from raw result files (230/626, not 272/710); verified Wilson CIs
+- Source comments: all `paper_data.json` / `quantitative_findings.json` → model-specific filenames (15+ occurrences across 4 files)
+- GPT-5.4 cost table added (14.9M tokens, 27.4h wall time, 822 tasks)
+- framework.tex: `\textbf{}.` → `\textbf{ParBench system architecture.}`
+- HeCBench 513→516 inconsistency harmonized (4 occurrences)
+
+**Phase 4 (NeurIPS Checklist) — DONE:**
+- 16-item checklist added to appendices_neurips.tex using `\answerYes`/`\answerNA` macros
+- All `\ref{}` targets verified
+
+**Phase 5 (Final Pass) — DONE:**
+- Stale-data sweep: 0 hits across all sections
+- TBD/in-progress: 0 (only macros.tex definition)
+- Citation check: 18/18 OK (added RSBench2014 to references.bib)
+- Dangling refs: fixed `sec:curation` → `sec:benchmark-curation` in results.tex
+- Paper-claim-audit: 78 claims, 0 mismatches, verdict PASS
+- Paper-review-sim: 5-reviewer panel, avg 67.6/100, BORDERLINE
+  Full report: `docs/paper/NeurIPS_ready_version/REVIEW_SIM_2026-04-27.md`
+
+**Files changed (6 paper + 1 bib):**
+- `appendices_neurips.tex` — pass@k table, augmentation table, per-kernel table, cost table, checklist, HeCBench count
+- `references.bib` — added RSBench2014
+- `sections/framework.tex` — figure caption fix
+- `sections/results.tex` — dangling ref fix, source comment updates (13 occurrences)
+- `sections/benchmark-curation.tex` — source comment updates (2 occurrences)
+- `sections/experimental-setup.tex` — source comment update (1 occurrence)
+
+---
+
 ## Remaining Work
 
-### Phase 3: Appendix Fixes
-**File:** `APPENDIX` (1,403 lines)
-**Why:** Stale numbers from purged pre-Phase-3 dataset, missing GPT-5.4 content.
+### Phase 5.5: Address Review Sim P0 Findings (NEW — before commit)
 
-#### Step 3.1: Fix stale pass@k table
-```bash
-grep -n "38\.3\|19\.7.*macro\|27\.5.*macro\|103/142\|72\.5" APPENDIX
-```
-**Problem:** Shows `38.3%` greedy rate, `19.7%` pass@1, `27.5%` pass@3 — all stale.
-**Fix with:** Qwen: pass@1=23.9%, pass@3=35.2%, hard fail=92/142 (64.8%), always pass=19/142 (13.4%), noisy=31/142 (21.8%). Add GPT-5.4 row: pass@1=62.7%, pass@3=69.7%, hard fail=43/142 (30.3%), always pass=76/142 (53.5%), noisy=23/142 (16.2%).
+Full details in `docs/paper/NeurIPS_ready_version/REVIEW_SIM_2026-04-27.md`.
 
-#### Step 3.2: Fix stale per-kernel table
-```bash
-grep -n "272\|710" APPENDIX
-```
-**Problem:** Comment says "total PASS = 272; total tasks = 710" — should be 230 PASS / 626 total for Qwen.
-**Fix:** Update comment. Verify per-kernel rows against `PD_QWEN > passk_campaign > by_direction` (note: `by_kernel` not available in passk_campaign — compute from raw result files if needed).
-
-#### Step 3.3: Fix stale augmentation table (appendix version)
-```bash
-grep -n "paper_data\.json\|quantitative_findings\.json" APPENDIX
-```
-**Fix:** Update all `% src:` comments from unsuffixed filenames to model-specific filenames (e.g., `paper_data.json` → `paper_data_together-qwen-3.5-397b-a17b.json`).
-
-#### Step 3.4: Add GPT-5.4 cost data
-```bash
-grep -n "Cost\|cost" APPENDIX | tail -10
-```
-**Fix:** Add GPT-5.4 cost table. Compute from result JSONs:
-```bash
-source env_parbench/bin/activate && python3 -c "
-import json, glob
-files = glob.glob('results/evaluation/azure-gpt-5.4/*.json')
-total_in = total_out = 0
-for f in files:
-    with open(f) as fh:
-        d = json.load(fh)
-    u = d.get('usage', {})
-    total_in += u.get('prompt_tokens', 0) + u.get('cached_tokens', 0)
-    total_out += u.get('completion_tokens', 0)
-print(f'Input: {total_in:,}, Output: {total_out:,}, Files: {len(files)}')
-"
+#### P0-1: Fix cross-model chi-squared → McNemar
+**File:** `SECTIONS/discussion.tex` (cross-model comparison paragraph)
+**Problem:** Unpaired chi-squared on 142 paired tasks. Should be McNemar's test.
+**Fix:** Compute McNemar from `paper_data_*.json > passk_campaign > passk_estimates` (both models have same 142 tasks). Report concordance table + McNemar p-value. Keep Cohen's h (0.80).
+```python
+# Compute from existing data:
+# For each of 142 tasks: qwen_pass = (c >= 1), gpt_pass = (c >= 1)
+# Concordance: both_pass, both_fail, qwen_only, gpt_only
+# McNemar chi2 = (b-c)^2 / (b+c)
 ```
 
-#### Step 3.5: Fix framework.tex figure caption
-Erel's edit left an empty `\textbf{}.` in the figure caption. Add a title like "ParBench system architecture."
+#### P0-2: Strengthen temperature confound language
+**Files:** `SECTIONS/discussion.tex`, possibly `SECTIONS/abstract.tex`
+**Fix:** Replace chi-squared p-value framing. State: "The observed gap is large (Cohen's h = 0.80) but cannot be fully attributed to model capability given unmatched sampling conditions."
 
-#### Step 3.6: Verify entire appendix
-```bash
-cd /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version
-# Stale data (must return 0 non-comment hits)
-grep -n "38\.3\|19\.7\|27\.5\|710\b\|272\b\|GPT-4.1" appendices_neurips.tex | grep -v '^\s*%' | grep -v '^[0-9]*:%'
-# Unsuffixed analysis file references (must return 0)
-grep -n "paper_data\.json\|quantitative_findings\.json" appendices_neurips.tex | grep -v '_qwen\|_gpt54\|_together\|_azure\|_validation' | grep -v '^\s*%'
-```
+#### P0-3: Add FP divergence discussion
+**File:** `SECTIONS/discussion.tex` (limitations subsection)
+**Fix:** Add 2-3 sentences: 8 specs downgraded from strong/medium to weak oracles due to cross-API FP reduction-order divergence (cfd, hotspot, myocyte, nw, nn, bfs). This limits oracle strength but correctly avoids false failures.
 
-**Phase 3 gate:** Zero stale numbers, zero unsuffixed file references, GPT-5.4 data added.
+### Phase 5.6: Address P1 Findings (recommended if time permits)
 
----
+#### P1-1: Scope augmentation claim in abstract
+**File:** `SECTIONS/abstract.tex`
+**Fix:** "stable (75–83%)" → "no evidence of memorization-dependent degradation on the tested subset"
 
-### Phase 4: NeurIPS Checklist
-**Why:** NeurIPS REQUIRES a paper checklist. `neurips_2026.sty` provides `\answerYes`/`\answerNo`/`\answerNA` but NO checklist section exists.
+#### P1-2: Add GPT-5.4 per-direction rates to Table 3
+**File:** `SECTIONS/results.tex` (tab:direction-rates)
+**Data:** `quantitative_findings_gpt54.json > canonical > direction_pass_rates`
 
-**Action:** Add checklist section at end of `appendices_neurips.tex` or `main_neurips.tex`. Covers: claims, method reproducibility, open access, broader impact, limitations, experiments.
+#### P1-3: Compute GPT-5.4 within-task variance
+**Data:** Compare c distributions across 142 tasks for both models to assess effective temperature
 
----
-
-### Phase 5: Whole-Paper Final Pass
-
-#### Step 5.1: Global stale-data check
-```bash
-cd /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version
-# Zero stale data
-grep -rn "GPT-4.1\|38\.3\|710\b\|64\.2\|19\.7\|27\.5" sections/ appendices_neurips.tex --include="*.tex" | grep -v '^\s*%' | grep -v '^[^:]*:[0-9]*:%'
-# Zero TBDs (only macros.tex definition)
-grep -rc "\\\\tbd" sections/ appendices_neurips.tex --include="*.tex" | grep -v ':0$'
-# Zero "in progress"
-grep -rn "in progress" sections/ appendices_neurips.tex --include="*.tex" | grep -v '%'
-```
-
-#### Step 5.2: Citation check
-```bash
-grep -rhoP '\\cite[tp]?\{([^}]+)\}' sections/ appendices_neurips.tex --include="*.tex" | tr ',' '\n' | sed 's/.*{//' | sed 's/}//' | sort -u > /tmp/cite_keys.txt
-while read key; do
-  grep -q "${key}" references.bib && echo "OK: $key" || echo "MISSING: $key"
-done < /tmp/cite_keys.txt
-```
-
-#### Step 5.3: Dangling references
-```bash
-grep -rn '\\ref{' sections/ appendices_neurips.tex --include="*.tex" | grep -oP 'ref\{[^}]+\}' | sort -u > /tmp/refs.txt
-grep -rn '\\label{' sections/ appendices_neurips.tex --include="*.tex" | grep -oP 'label\{[^}]+\}' | sed 's/label/ref/' | sort -u > /tmp/labels.txt
-comm -23 /tmp/refs.txt /tmp/labels.txt
-```
-
-#### Step 5.4: Run `Skill("paper-review-sim")` on entire paper.
-#### Step 5.5: Run `Skill("cite-check")` on entire paper.
-
----
+#### P1-4: Add benchmark longevity paragraph
+**File:** `SECTIONS/discussion.tex`
 
 ### Phase 6: Validate, Commit, Prepare for Overleaf
 
@@ -290,6 +263,7 @@ git add results/analysis/augmentation_per_kernel_matrix_together-qwen-3.5-397b-a
 git add results/analysis/augmentation_per_kernel_matrix_together-qwen-3.5-397b-a17b.md
 git add docs/paper/NeurIPS_ready_version/sections/*.tex
 git add docs/paper/NeurIPS_ready_version/appendices_neurips.tex
+git add docs/paper/NeurIPS_ready_version/references.bib
 git add docs/paper/NeurIPS_ready_version/figures/*.pdf
 git add scripts/analysis/cross_model_comparison.py
 git add scripts/analysis/quantitative_findings.py
@@ -297,8 +271,6 @@ git add scripts/analysis/generate_paper_data.py
 # 3. Commit
 # 4. Copy docs/paper/NeurIPS_ready_version/ to Overleaf for compilation
 ```
-
----
 
 ### Phase 7: Submission Readiness (User's Responsibility)
 1. **Compile on Overleaf** — no LaTeX compiler locally

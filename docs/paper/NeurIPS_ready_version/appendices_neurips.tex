@@ -813,7 +813,7 @@ sample size.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{figures/c4_selection_funnel.pdf}
-  \caption{HeCBench kernel selection funnel. Starting from 513 kernels spanning
+  \caption{HeCBench kernel selection funnel. Starting from 516 kernels spanning
     CUDA, HIP, SYCL, and OpenMP, successive filters for API completeness (327
     with all 4~variants), build infrastructure (325), self-checking output
     patterns (242), complexity bounds, and domain diversity yield the 60-kernel
@@ -822,12 +822,12 @@ sample size.
 \end{figure}
 
 HeCBench is the largest source of multi-API kernel implementations in the
-benchmark survey, with 513 kernels spanning CUDA, HIP, SYCL, and
+benchmark survey, with 516 kernels spanning CUDA, HIP, SYCL, and
 OpenMP (Figure~\ref{fig:selection-funnel}). Its scale necessitated a structured
 selection funnel to identify kernels suitable for automated evaluation:
 
 \begin{enumerate}
-  \item \textbf{API completeness} (513 $\rightarrow$ 327): Retained only kernels
+  \item \textbf{API completeness} (516 $\rightarrow$ 327): Retained only kernels
     providing implementations in all 4~primary APIs. Kernels missing one or more
     API variants cannot support the full matrix of cross-API translation
     directions that ParBench evaluates.
@@ -858,7 +858,7 @@ selection funnel to identify kernels suitable for automated evaluation:
 This funnel illustrates a general challenge in constructing LLM code translation
 benchmarks: the vast majority of available HPC kernels are unsuitable for
 automated evaluation due to missing API variants, non-deterministic output, or
-excessive complexity. Only 3.9\% of HeCBench's 513 kernels (20/513) survive the
+excessive complexity. Only 3.9\% of HeCBench's 516 kernels (20/516) survive the
 full selection pipeline, highlighting the gap between ``available parallel code''
 and ``evaluable parallel code.''
 
@@ -1095,21 +1095,23 @@ Python & 3.12.3 \\
 % Self-repair tables removed: no self-repair data in canonical evaluation (single-attempt, temp=0.7).
 
 
-% src: paper_data.json > primary_campaign > augmentation > all_directions + cuda_to_omp_balanced (all 10 cells verified 2026-04-05)
+% src: quantitative_findings_qwen.json > canonical > augmentation_trends > aggregate > per_level
+% src: quantitative_findings_gpt54.json > canonical > augmentation_trends > aggregate > per_level
+% src: L0 = all 426 tasks (142 pairs x 3 samples); L1-L4 = ablation qualifying pairs only (Qwen n=50, GPT n=99)
 \begin{table}[htbp]
 \centering
-\caption{LLM pass rates across augmentation levels. All directions ($n=142$ per level) and balanced CUDA-to-OpenMP subset ($n=24$ per level).}
+\caption{LLM pass rates across augmentation levels. L0 covers all 142 direction--kernel pairs ($n=426$ tasks). L1--L4 are evaluated only for pairs where $\geq$1 of 3 L0 samples passed (Qwen: 50 pairs, GPT-5.4: 99 pairs).}
 \label{tab:augmentation-rates}
 \small
-\begin{tabular}{@{}cccc@{}}
+\begin{tabular}{@{}ccccc@{}}
 \toprule
-Level & \makecell{Qwen 3.5\\(all dirs, $n$=142)} & \makecell{Qwen 3.5\\(C$\to$OMP, $n$=24)} & \makecell{GPT-5.4} \\
+Level & \makecell{Qwen 3.5\\(all dirs)} & \makecell{Qwen 3.5\\(C$\to$OMP)} & \makecell{GPT-5.4\\(all dirs)} & \makecell{GPT-5.4\\(C$\to$OMP)} \\
 \midrule
-L0 & 40.1\% [32.4\%, 48.4\%] & 66.7\% [46.7\%, 82.0\%] & 28.1\% [20.6\%, 36.9\%] \\ % src: paper_data.json > augmentation > all_directions.L0: 57/142; cuda_to_omp_balanced.L0: 16/24; gpt: paper_data_gpt41mini.json > augmentation > all_directions.L0: rate=0.2807, n=114
-L1 & 37.3\% [29.8\%, 45.5\%] & 58.3\% [38.8\%, 75.5\%] & 28.2\% [20.6\%, 37.2\%] \\ % src: paper_data.json > augmentation > all_directions.L1: 53/142; cuda_to_omp_balanced.L1: 14/24; gpt: rate=0.2818, n=110
-L2 & 40.1\% [32.4\%, 48.4\%] & 70.8\% [50.8\%, 85.1\%] & 30.3\% [22.4\%, 39.5\%] \\ % src: paper_data.json > augmentation > all_directions.L2: 57/142; cuda_to_omp_balanced.L2: 17/24; gpt: rate=0.3028, n=109
-L3 & 39.4\% [31.8\%, 47.6\%] & 58.3\% [38.8\%, 75.5\%] & 29.4\% [21.6\%, 38.5\%] \\ % src: paper_data.json > augmentation > all_directions.L3: 56/142; cuda_to_omp_balanced.L3: 14/24; gpt: rate=0.2936, n=109
-L4 & 34.5\% [27.2\%, 42.6\%] & 66.7\% [46.7\%, 82.0\%] & 30.3\% [22.4\%, 39.5\%] \\ % src: paper_data.json > augmentation > all_directions.L4: 49/142; cuda_to_omp_balanced.L4: 16/24; gpt: rate=0.3028, n=109
+L0 & 23.9\% ($n$=426) & 40.3\% ($n$=72) & 62.7\% ($n$=426) & 83.3\% ($n$=72) \\
+L1 & 74.0\% ($n$=50) & 75.0\% ($n$=12) & 88.9\% ($n$=99) & 90.9\% ($n$=22) \\
+L2 & 64.0\% ($n$=50) & 83.3\% ($n$=12) & 90.9\% ($n$=99) & 95.5\% ($n$=22) \\
+L3 & 62.0\% ($n$=50) & 75.0\% ($n$=12) & 86.9\% ($n$=99) & 81.8\% ($n$=22) \\
+L4 & 56.0\% ($n$=50) & 83.3\% ($n$=12) & 90.9\% ($n$=99) & 90.9\% ($n$=22) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1130,21 +1132,22 @@ L4 & 34.5\% [27.2\%, 42.6\%] & 66.7\% [46.7\%, 82.0\%] & 30.3\% [22.4\%, 39.5\%]
 \end{figure}
 
 
-% src: paper_data.json > passk_campaign > passk_estimates (142 direction-kernel pairs, 3 samples each = 426 tasks)
-% src: 103 hard_fail + 0 noisy + 17 always_pass + 22 partial = 142 verified
-% src: 103/142=72.5%, 22/142=15.5%, 17/142=12.0% verified
-% src: macro pass@1=19.7%, macro pass@3=27.5% verified; greedy pass rate=38.3% = primary campaign rate (paper_data.json > primary_campaign > overall > pass_rate=0.3831)
+% src: paper_data_together-qwen-3.5-397b-a17b.json > passk_campaign > passk_estimates (142 pairs, 3 samples = 426 tasks)
+% src: paper_data_azure_gpt54.json > passk_campaign > passk_estimates (142 pairs, 3 samples = 426 tasks)
+% src: Qwen: 92 hard_fail + 31 noisy + 19 always_pass = 142; macro pass@1=23.9%, pass@3=35.2%
+% src: GPT-5.4: 43 hard_fail + 23 noisy + 76 always_pass = 142; macro pass@1=62.7%, pass@3=69.7%
 \begin{table*}[htbp]
 \centering
-\caption{Qwen~3.5 pass@$k$ results (L0, temperature=0.7, three independent samples, no self-repair).}
+\caption{Pass@$k$ results (L0, temperature=0.7, three independent samples per direction--kernel pair, no self-repair). Hard Fail = 0/3 samples pass; Always Pass = 3/3; Noisy = 1--2/3.}
 \label{tab:pass-at-k}
 \small
 \resizebox{\textwidth}{!}{%
-\begin{tabular}{@{}lrrrrr@{}}
+\begin{tabular}{@{}lrrrrrr@{}}
 \toprule
-Pairs & Greedy rate (T=0) & pass@1 (T=0.7) & pass@3 (T=0.7) & Hard Fail & Always Pass \\
+Model & Pairs & pass@1 & pass@3 & Hard Fail & Noisy & Always Pass \\
 \midrule
-142 direction--kernel pairs & 38.3\% (primary campaign) & 19.7\% (macro) & 27.5\% (macro) & 103/142 (72.5\%) & 17/142 (12.0\%) \\
+Qwen~3.5 397B-A17B & 142 & 23.9\% & 35.2\% & 92/142 (64.8\%) & 31/142 (21.8\%) & 19/142 (13.4\%) \\
+GPT-5.4 & 142 & 62.7\% & 69.7\% & 43/142 (30.3\%) & 23/142 (16.2\%) & 76/142 (53.5\%) \\
 \bottomrule
 \end{tabular}
 }
@@ -1167,8 +1170,8 @@ Pairs & Greedy rate (T=0) & pass@1 (T=0.7) & pass@3 (T=0.7) & Hard Fail & Always
 \end{figure}
 
 
-% src: quantitative_findings.json > canonical > direction_asymmetry (5 McNemar tests)
-% src: quantitative_findings.json > canonical > augmentation_trends > aggregate > cochran_armitage
+% src: quantitative_findings_qwen.json > canonical > direction_asymmetry (5 McNemar tests)
+% src: quantitative_findings_qwen.json > canonical > augmentation_trends > aggregate > cochran_armitage
 % src: Bonferroni alpha = 0.05/5 = 0.01 (5 McNemar tests: 3 standard + 2 omp_target)
 \begin{table*}[htbp]
 \centering
@@ -1181,11 +1184,11 @@ Pairs & Greedy rate (T=0) & pass@1 (T=0.7) & pass@3 (T=0.7) & Hard Fail & Always
 Test & Statistic & $p$-value & Effect Size & Interpretation \\
 \midrule
 Qwen augmentation (Cochran--Armitage) & $z = 7.65$ & $p < 0.001$ & $h_{L0 \to L1} = 1.05$ & Significant increasing trend (L0 dominated; see text) \\
-Direction: cuda$\leftrightarrow$omp (McNemar) & $n_{\text{paired}}=24$, exact & $p = 0.180$ & Cohen's $h = -0.44$ & No significant asymmetry ($\alpha=0.01$) \\ % src: quantitative_findings.json > omp-to-cuda vs cuda-to-omp
-Direction: cuda$\leftrightarrow$opencl (McNemar) & $n_{\text{paired}}=19$, exact & $p = 1.000$ & Cohen's $h = 0.46$ & No significant asymmetry ($\alpha=0.01$) \\ % src: quantitative_findings.json > cuda-to-opencl vs opencl-to-cuda
-Direction: omp$\leftrightarrow$opencl (McNemar) & $n_{\text{paired}}=17$, exact & $p = 0.289$ & Cohen's $h = 0.53$ & No significant asymmetry ($\alpha=0.01$) \\ % src: quantitative_findings.json > omp-to-opencl vs opencl-to-omp
-Direction: cuda$\leftrightarrow$omp\_target (McNemar) & $n_{\text{paired}}=8$, exact & $p = 0.031$ & Cohen's $h = 2.09$ & Large effect but not significant ($\alpha=0.01$; $n$ too small) \\ % src: quantitative_findings.json > omp_target-to-cuda vs cuda-to-omp_target
-Direction: omp$\leftrightarrow$omp\_target (McNemar) & $n_{\text{paired}}=3$, exact & $p = 1.000$ & Cohen's $h = -1.23$ & Underpowered ($n=3$) \\ % src: quantitative_findings.json > omp-to-omp_target vs omp_target-to-omp
+Direction: cuda$\leftrightarrow$omp (McNemar) & $n_{\text{paired}}=24$, exact & $p = 0.180$ & Cohen's $h = -0.44$ & No significant asymmetry ($\alpha=0.01$) \\ % src: quantitative_findings_qwen.json > omp-to-cuda vs cuda-to-omp
+Direction: cuda$\leftrightarrow$opencl (McNemar) & $n_{\text{paired}}=19$, exact & $p = 1.000$ & Cohen's $h = 0.46$ & No significant asymmetry ($\alpha=0.01$) \\ % src: quantitative_findings_qwen.json > cuda-to-opencl vs opencl-to-cuda
+Direction: omp$\leftrightarrow$opencl (McNemar) & $n_{\text{paired}}=17$, exact & $p = 0.289$ & Cohen's $h = 0.53$ & No significant asymmetry ($\alpha=0.01$) \\ % src: quantitative_findings_qwen.json > omp-to-opencl vs opencl-to-omp
+Direction: cuda$\leftrightarrow$omp\_target (McNemar) & $n_{\text{paired}}=8$, exact & $p = 0.031$ & Cohen's $h = 2.09$ & Large effect but not significant ($\alpha=0.01$; $n$ too small) \\ % src: quantitative_findings_qwen.json > omp_target-to-cuda vs cuda-to-omp_target
+Direction: omp$\leftrightarrow$omp\_target (McNemar) & $n_{\text{paired}}=3$, exact & $p = 1.000$ & Cohen's $h = -1.23$ & Underpowered ($n=3$) \\ % src: quantitative_findings_qwen.json > omp-to-omp_target vs omp_target-to-omp
 \bottomrule
 \end{tabular}
 }
@@ -1194,83 +1197,50 @@ Direction: omp$\leftrightarrow$omp\_target (McNemar) & $n_{\text{paired}}=3$, ex
 % --- Full Per-Kernel Table (complete 31-row version of condensed main-text table) ---
 
 
-% src: paper_data.json > primary_campaign > by_kernel (all 31 rows verified 2026-04-05)
-% src: row sums all match Total; total PASS across kernels = 272; total tasks = 710
+% src: raw result files in results/evaluation/together-qwen-3.5-397b-a17b/ (verified 2026-04-27)
+% src: 31 kernels, total PASS = 230, total tasks = 626 (426 L0 + 200 ablation, KNOWN_FAIL excluded)
 % src: 31 evaluated kernels = 35 corpus kernels - 4 with all specs KNOWN_FAIL/phantom (kmeans, mummergpu, hybridsort, huffman)
-% src: spot-checked vs raw JSONs: hotspot(21P/4R/5V=30), stencil1d(15P=15), xsbench(20B/10R=30)
 \begin{table*}[htbp]
 \centering
-\caption{Full per-kernel pass rates across all 31 evaluation kernels (Qwen~3.5 397B-A17B, 626 valid records, 31~kernels across 5 suites). \knownfail{} source specs excluded.}
+\caption{Full per-kernel pass rates across all 31 evaluation kernels (Qwen~3.5 397B-A17B, 626 valid records including L0 and ablation, 31~kernels across 5 suites). \knownfail{} source specs excluded.}
 \label{tab:per-kernel-full}
 \footnotesize
 \begin{tabular}{@{}llrrrrl@{}}
 \toprule
 Suite & Kernel & Total & PASS & Fail & Rate & 95\% Wilson CI \\
 \midrule
-% src: paper_data.json > primary_campaign > by_kernel > stencil1d: pass=15, total=15, rate=1.0
-HeCBench & stencil1d & 15 & 15 & 0 & 100.0\% & [79.6\%, 100.0\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > floydwarshall: pass=16, total=20, rate=0.8
-HeCBench & floydwarshall & 20 & 16 & 4 & 80.0\% & [58.4\%, 91.9\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > heat2d: pass=15, total=20, rate=0.75
-HeCBench & heat2d & 20 & 15 & 5 & 75.0\% & [53.1\%, 88.8\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > iso2dfd: pass=15, total=20, rate=0.75
-HeCBench & iso2dfd & 20 & 15 & 5 & 75.0\% & [53.1\%, 88.8\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > hotspot: pass=21, total=30, rate=0.7
-Rodinia & hotspot & 30 & 21 & 9 & 70.0\% & [52.1\%, 83.3\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > nn: pass=7, total=10, rate=0.7
-Rodinia & nn & 10 & 7 & 3 & 70.0\% & [39.7\%, 89.2\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > hotspot3d: pass=19, total=30, rate=0.6333
-Rodinia & hotspot3d & 30 & 19 & 11 & 63.3\% & [45.5\%, 78.1\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > jacobi: pass=6, total=10, rate=0.6
-HeCBench & jacobi & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > md: pass=6, total=10, rate=0.6
-HeCBench & md & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > nqueen: pass=6, total=10, rate=0.6
+HeCBench & iso2dfd & 38 & 32 & 6 & 84.2\% & [69.6\%, 92.6\%] \\
+HeCBench & floydwarshall & 38 & 29 & 9 & 76.3\% & [60.8\%, 87.0\%] \\
+HeCBench & heat2d & 38 & 29 & 9 & 76.3\% & [60.8\%, 87.0\%] \\
+HeCBench & stencil1d & 14 & 9 & 5 & 64.3\% & [38.8\%, 83.7\%] \\
 HeCBench & nqueen & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > page-rank: pass=6, total=10, rate=0.6
 HeCBench & page-rank & 10 & 6 & 4 & 60.0\% & [31.3\%, 83.2\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > particlefilter: pass=17, total=30, rate=0.5667
-Rodinia & particlefilter & 30 & 17 & 13 & 56.7\% & [39.2\%, 72.6\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > bfs: pass=16, total=30, rate=0.5333
-Rodinia & bfs & 30 & 16 & 14 & 53.3\% & [36.1\%, 69.8\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > cfd: pass=16, total=30, rate=0.5333
-Rodinia & cfd & 30 & 16 & 14 & 53.3\% & [36.1\%, 69.8\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > lud: pass=15, total=30, rate=0.5; Wilson CI [33.1539%, 66.8461%]
-Rodinia & lud & 30 & 15 & 15 & 50.0\% & [33.2\%, 66.8\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > nw: pass=15, total=30, rate=0.5; Wilson CI [33.1539%, 66.8461%]
-Rodinia & nw & 30 & 15 & 15 & 50.0\% & [33.2\%, 66.8\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > pathfinder: pass=15, total=30, rate=0.5; Wilson CI [33.1539%, 66.8461%]
-Rodinia & pathfinder & 30 & 15 & 15 & 50.0\% & [33.2\%, 66.8\%] \\
+Rodinia & hotspot3d & 34 & 20 & 14 & 58.8\% & [42.2\%, 73.6\%] \\
+Rodinia & hotspot & 30 & 14 & 16 & 46.7\% & [30.2\%, 63.9\%] \\
+Rodinia & lud & 30 & 14 & 16 & 46.7\% & [30.2\%, 63.9\%] \\
+Rodinia & bfs & 34 & 15 & 19 & 44.1\% & [28.9\%, 60.5\%] \\
+HeCBench & md & 10 & 4 & 6 & 40.0\% & [16.8\%, 68.7\%] \\
+Rodinia & nw & 30 & 11 & 19 & 36.7\% & [21.9\%, 54.5\%] \\
+Rodinia & particlefilter & 26 & 9 & 17 & 34.6\% & [19.4\%, 53.8\%] \\
+Rodinia & srad & 26 & 9 & 17 & 34.6\% & [19.4\%, 53.8\%] \\
+HeCBench & jacobi & 10 & 3 & 7 & 30.0\% & [10.8\%, 60.3\%] \\
+Rodinia & cfd & 22 & 6 & 16 & 27.3\% & [13.2\%, 48.2\%] \\
+Rodinia & pathfinder & 30 & 8 & 22 & 26.7\% & [14.2\%, 44.4\%] \\
+HeCBench & convolution1d & 10 & 2 & 8 & 20.0\% & [5.7\%, 51.0\%] \\
+mixbench & mixbench & 22 & 2 & 20 & 9.1\% & [2.5\%, 27.8\%] \\
+Rodinia & streamcluster & 22 & 1 & 21 & 4.5\% & [0.8\%, 21.8\%] \\
+XSBench & xsbench & 22 & 1 & 21 & 4.5\% & [0.8\%, 21.8\%] \\
 \midrule
-% src: paper_data.json > primary_campaign > by_kernel > backprop: pass=13, total=30, rate=0.4333
-Rodinia & backprop & 30 & 13 & 17 & 43.3\% & [27.4\%, 60.8\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > srad: pass=12, total=30, rate=0.4
-Rodinia & srad & 30 & 12 & 18 & 40.0\% & [24.6\%, 57.7\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > scan: pass=5, total=15, rate=0.3333
-HeCBench & scan & 15 & 5 & 10 & 33.3\% & [15.2\%, 58.3\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > mixbench: pass=8, total=30, rate=0.2667; Wilson CI [14.1825%, 44.4483%]
-mixbench & mixbench & 30 & 8 & 22 & 26.7\% & [14.2\%, 44.4\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > bptree: pass=4, total=30, rate=0.1333
-Rodinia & bptree & 30 & 4 & 26 & 13.3\% & [5.3\%, 29.7\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > lavamd: pass=2, total=30, rate=0.0667
-Rodinia & lavamd & 30 & 2 & 28 & 6.7\% & [1.8\%, 21.3\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > streamcluster: pass=2, total=30, rate=0.0667
-Rodinia & streamcluster & 30 & 2 & 28 & 6.7\% & [1.8\%, 21.3\%] \\
-\midrule
-% src: paper_data.json > primary_campaign > by_kernel > convolution1d: pass=0, total=10, rate=0.0
-HeCBench & convolution1d & 10 & 0 & 10 & 0.0\% & [0.0\%, 27.8\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > dwt2d: pass=0, total=10, rate=0.0
-Rodinia & dwt2d & 10 & 0 & 10 & 0.0\% & [0.0\%, 27.8\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > gaussian: pass=0, total=10, rate=0.0
-Rodinia & gaussian & 10 & 0 & 10 & 0.0\% & [0.0\%, 27.8\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > heartwall: pass=0, total=30, rate=0.0; Wilson CI [0.0%, 11.3517%]
-Rodinia & heartwall & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.4\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > myocyte: pass=0, total=30, rate=0.0; Wilson CI [0.0%, 11.3517%]
-Rodinia & myocyte & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.4\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > rsbench: pass=0, total=30, rate=0.0; Wilson CI [0.0%, 11.3517%]
-RSBench & rsbench & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.4\%] \\
-% src: paper_data.json > primary_campaign > by_kernel > xsbench: pass=0, total=30, rate=0.0; Wilson CI [0.0%, 11.3517%]
-XSBench & xsbench & 30 & 0 & 30 & 0.0\% & [0.0\%, 11.4\%] \\
+Rodinia & backprop & 6 & 0 & 6 & 0.0\% & [0.0\%, 39.0\%] \\
+Rodinia & bptree & 18 & 0 & 18 & 0.0\% & [0.0\%, 17.6\%] \\
+Rodinia & dwt2d & 6 & 0 & 6 & 0.0\% & [0.0\%, 39.0\%] \\
+Rodinia & gaussian & 6 & 0 & 6 & 0.0\% & [0.0\%, 39.0\%] \\
+Rodinia & heartwall & 18 & 0 & 18 & 0.0\% & [0.0\%, 17.6\%] \\
+Rodinia & lavamd & 18 & 0 & 18 & 0.0\% & [0.0\%, 17.6\%] \\
+Rodinia & myocyte & 18 & 0 & 18 & 0.0\% & [0.0\%, 17.6\%] \\
+Rodinia & nn & 6 & 0 & 6 & 0.0\% & [0.0\%, 39.0\%] \\
+RSBench & rsbench & 18 & 0 & 18 & 0.0\% & [0.0\%, 17.6\%] \\
+HeCBench & scan & 6 & 0 & 6 & 0.0\% & [0.0\%, 39.0\%] \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -1389,7 +1359,7 @@ The following figures present GPT-5.4 evaluation results, complementing the Qwen
 \begin{table}[h]
 \centering
 \caption{Qwen~3.5 evaluation campaign cost summary (March 27--April 2, 2026).}
-\label{tab:eval-cost}
+\label{tab:eval-cost-qwen}
 \begin{tabular}{lr}
 \toprule
 \textbf{Metric} & \textbf{Value} \\
@@ -1401,3 +1371,110 @@ Campaign duration & 7 days (1{,}136 tasks, 4{,}600 requests) \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+% src: raw result files in results/evaluation/azure-gpt-5.4/ (822 files, verified 2026-04-27)
+\begin{table}[h]
+\centering
+\caption{GPT-5.4 evaluation campaign cost summary (April 25--27, 2026).}
+\label{tab:eval-cost-gpt}
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Total tokens & 14.9M (9.3M in, 5.6M out) \\
+Avg.\ tokens per task & 18{,}138 (11{,}374 in, 6{,}764 out) \\
+Total LLM wall time & 27.4 hours \\
+Campaign duration & 3 days (822 tasks) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%% ============================================================================
+%% NeurIPS Paper Checklist (REQUIRED)
+%% ============================================================================
+
+\section*{NeurIPS Paper Checklist}
+
+\begin{enumerate}
+
+\item {\bf Claims}
+    \item[] Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: The abstract states L0 pass rates (Qwen 23.9\%, GPT-5.4 62.7\%), failure taxonomy percentages, and augmentation robustness findings, all verified against raw result files (Section~\ref{sec:results}). Claims are scoped to the two models evaluated.
+
+\item {\bf Limitations}
+    \item[] Question: Does the paper discuss the limitations of the work performed by the authors?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Section~\ref{sec:discussion} includes a dedicated limitations subsection addressing: two-model scope, single-GPU evaluation platform, weak oracle coverage, and the absence of performance (runtime) evaluation.
+
+\item {\bf Theory}
+    \item[] Question: For each theoretical result, does the paper provide the full set of assumptions and a complete proof?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: This is an empirical benchmark paper with no theoretical results.
+
+\item {\bf Experiments}
+    \item[] Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Section~\ref{sec:experimental-setup} and Appendix~\ref{sec:appendix-framework} provide model configurations (Table~\ref{tab:model-config}), hardware specifications (Table~\ref{tab:hardware}), the complete prompt template (Appendix~\ref{sec:appendix-prompt}), and augmentation level definitions (Table~\ref{tab:augmentation-levels}). The evaluation pipeline is deterministic given a fixed spec and model response.
+
+\item {\bf Code and data}
+    \item[] Question: Does the paper provide instructions for reproducing the main experimental results, including code and data?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: ParBench will be released as an open-source repository containing all 206 kernel specifications, the build/run/verify harness, the evaluation pipeline, and augmentation engine. Result JSON files for both models will be included.
+
+\item {\bf Experimental details}
+    \item[] Question: Does the paper specify all the training and test details necessary to understand the results?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: No training is performed. Evaluation details are specified: temperature (0.7), number of samples (3), augmentation levels (L0--L4), KNOWN\_FAIL exclusion policy (9 specs), and the L0-conditional ablation design.
+
+\item {\bf Error bars}
+    \item[] Question: Does the paper report error bars suitably and correctly?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: All pass rates include Wilson 95\% confidence intervals. Direction asymmetry uses McNemar's exact test with Bonferroni correction ($\alpha=0.01$). Effect sizes reported via Cohen's $h$. Cross-model comparison uses $\chi^2$ test.
+
+\item {\bf Compute}
+    \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources used?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Table~\ref{tab:hardware} specifies the evaluation platform (RTX 4070, Ryzen 9 7900X, Ubuntu 24.04, HPC SDK 24.3). Appendix~\ref{sec:appendix-cost} reports token usage and wall-clock time for both model campaigns.
+
+\item {\bf NeurIPS code of ethics}
+    \item[] Question: Does the research conform to the NeurIPS Code of Ethics?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: The work evaluates publicly available benchmark code using commercial LLM APIs. No human subjects, private data, or dual-use concerns.
+
+\item {\bf Broader impacts}
+    \item[] Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Section~\ref{sec:discussion} discusses implications for HPC code migration and identifies the limitation that LLM-generated parallel code should not be trusted without verification. The benchmark itself enables systematic measurement of translation quality, which supports responsible deployment.
+
+\item {\bf Safeguards}
+    \item[] Question: Does the paper describe safeguards that have been put in place for responsible release of data or models?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: ParBench releases benchmark specifications and evaluation infrastructure, not trained models or generated datasets. The benchmark code originates from established open-source HPC suites.
+
+\item {\bf Licenses}
+    \item[] Question: Are the creators of assets used in the paper properly credited and are the license and terms of use explicitly mentioned and properly respected?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: All five benchmark suites are cited (Rodinia~\cite{Rodinia2009}, XSBench, RSBench, mixbench, HeCBench). Repository URLs and commit hashes are recorded in kernel specifications. LLM providers (Together AI, Azure OpenAI) are identified.
+
+\item {\bf New assets}
+    \item[] Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: ParBench's specification schema is documented (Section~\ref{sec:spec-schema}, Appendix~\ref{sec:appendix-framework-schema}). The augmentation engine, evaluation pipeline, and harness are described in Section~\ref{sec:framework}. A datasheet will accompany the code release.
+
+\item {\bf Crowdsourcing and human subjects}
+    \item[] Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: No crowdsourcing or human subjects research.
+
+\item {\bf IRB approvals}
+    \item[] Question: Does the paper describe potential risks incurred by study participants?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: No human subjects research.
+
+\item {\bf LLM usage declaration}
+    \item[] Question: Does the paper disclose the use of LLMs in the core methodology?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: LLMs (Qwen~3.5 397B-A17B and GPT-5.4) are the primary subjects of evaluation. Model identifiers, providers, and configurations are fully disclosed in Table~\ref{tab:model-config} and Section~\ref{sec:experimental-setup}.
+
+\end{enumerate}

@@ -79,7 +79,7 @@ The canonical campaign evaluates all 142~unique pairs at augmentation level~L0 (
 % src: Qwen: 50 qualifying pairs × 4 levels = 200 records; GPT-5.4: 99 qualifying pairs
 The augmentation ablation isolates source-code robustness from baseline translation capability. We apply an L0-conditional filter: a pair is included in the ablation only if any of its three canonical L0 samples passes. This filter avoids spending budget on pairs the model cannot translate even from unmodified source; however, it restricts the ablation to pairs with at least one L0 canonical success, and the resulting robustness conclusions apply only to that subset. For \qwenshort{}, 50~of 142~pairs qualify (35\%); for \gptnew{}, 99~pairs qualify (70\%). The qualifying subset is determined independently per model---cross-model ablation comparisons therefore operate on different (though overlapping) pair sets.
 
-% src: Qwen ablation: 50 per level × 4 levels = 200 (quantitative_findings.json: L1 n=50, L2 n=50, etc.)
+% src: Qwen ablation: 50 per level × 4 levels = 200 (quantitative_findings_qwen.json: L1 n=50, L2 n=50, etc.)
 % src: GPT-5.4 ablation: 99 qualifying pairs × 4 levels = 396 records (complete)
 Each qualifying pair is evaluated once ($k$~=~1) at each of levels L1 through L4, with the same thinking settings as the canonical campaign. The single-sample ablation trades statistical precision for budget efficiency: apparent failures at augmented levels may reflect stochastic noise rather than augmentation-induced difficulty, particularly for pairs that passed L0 marginally (1 of 3 samples).
 
