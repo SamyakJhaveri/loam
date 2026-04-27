@@ -1,0 +1,228 @@
+{
+  "direction": "cuda-to-opencl",
+  "models": [
+    "azure-gpt-5.4"
+  ],
+  "suite": "mixbench",
+  "kernels": null,
+  "task_list": null,
+  "temperature": 0.7,
+  "num_samples": 3,
+  "thinking": "on",
+  "total_tasks": 3,
+  "total_elapsed_seconds": 312.3,
+  "results": [
+    {
+      "source_spec": "mixbench-mixbench-cuda",
+      "target_spec": "mixbench-mixbench-opencl",
+      "kernel": "mixbench",
+      "model": "azure-gpt-5.4",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 729461310,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "kernel_only",
+      "verification_mode": "kernel_only_target_pattern",
+      "run_args_mode": "kernel_only_target_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-26T12:02:26Z",
+      "prompt_tokens": 11054,
+      "completion_tokens": 4491,
+      "llm_response_time_seconds": 100.148,
+      "build_status": "pass",
+      "build_time_seconds": 0.468,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.381,
+      "run_exit_code": 1,
+      "run_stderr_snippet": "on is here\nstatic inline int equal_fn(const short a, const short b) { return a == b; }\n                  ^\n<kernel>:66:19: error: conflicting types for 'equal_fn'\nstatic inline int equal_fn(const float a, const float b) { return a == b; }\n                  ^\n<kernel>:64:19: note: previous definition is here\nstatic inline int equal_fn(const short a, const short b) { return a == b; }\n                  ^\n----------------------------------------------------------------------------------------------\n",
+      "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 30.0,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "mix_kernels.cl": "#ifdef ENABLE_DP\n#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#endif\n\n#ifdef ENABLE_HP\n#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n#endif\n\n#ifndef class_T\n#error \"class_T must be defined\"\n#endif\n\n#ifndef blockdim\n#error \"blockdim must be defined\"\n#endif\n\n#ifndef COMPUTE_ITERATIONS\n#error \"COMPUTE_ITERATIONS must be defined\"\n#endif\n\n#ifndef ELEMENTS_PER_THREAD\n#error \"ELEMENTS_PER_THREAD must be defined\"\n#endif\n\n#ifndef FUSION_DEGREE\n#error \"FUSION_DEGREE must be defined\"\n#endif\n\ntypedef class_T T;\n\nstatic inline short conv_int_fn(const int i) { return (short)i; }\nstatic inline int conv_int_fn(const int i) { return i; }\nstatic inline float conv_int_fn(const int i) { return (float)i; }\n#ifdef ENABLE_DP\nstatic inline double conv_int_fn(const int i) { return (double)i; }\n#endif\n#ifdef ENABLE_HP\nstatic inline half2 conv_int_fn(const int i) {\n  half h = convert_half(i);\n  return (half2)(h, h);\n}\n#endif\n\nstatic inline short mad_fn(const short a, const short b, const short c) {\n  return (short)(a * b + c);\n}\nstatic inline int mad_fn(const int a, const int b, const int c) {\n  return a * b + c;\n}\nstatic inline float mad_fn(const float a, const float b, const float c) {\n  return a * b + c;\n}\n#ifdef ENABLE_DP\nstatic inline double mad_fn(const double a, const double b, const double c) {\n  return a * b + c;\n}\n#endif\n#ifdef ENABLE_HP\nstatic inline half2 mad_fn(const half2 a, const half2 b, const half2 c) {\n  return a * b + c;\n}\n#endif\n\nstatic inline int equal_fn(const short a, const short b) { return a == b; }\nstatic inline int equal_fn(const int a, const int b) { return a == b; }\nstatic inline int equal_fn(const float a, const float b) { return a == b; }\n#ifdef ENABLE_DP\nstatic inline int equal_fn(const double a, const double b) { return a == b; }\n#endif\n#ifdef ENABLE_HP\nstatic inline int equal_fn(const half2 a, const half2 b) { return all(a == b); }\n#endif\n\n__kernel void benchmark_func(T seed, __global T *g_data) {\n  const size_t lid = get_local_id(0);\n  const size_t gid = get_global_id(0);\n  const size_t group_id = get_group_id(0);\n  const size_t global_size = get_global_size(0);\n  const size_t block_size = (size_t)blockdim;\n\n#ifdef BLOCK_STRIDED\n  const size_t stride = block_size;\n  const size_t idx = group_id * block_size * (size_t)ELEMENTS_PER_THREAD + lid;\n  const size_t big_stride =\n      get_num_groups(0) * block_size * (size_t)ELEMENTS_PER_THREAD;\n#else\n  const size_t stride = global_size;\n  const size_t idx = gid;\n  const size_t big_stride = global_size * (size_t)ELEMENTS_PER_THREAD;\n#endif\n\n  T tmps[ELEMENTS_PER_THREAD];\n\n  for (int k = 0; k < FUSION_DEGREE; ++k) {\n    for (int j = 0; j < ELEMENTS_PER_THREAD; ++j) {\n      tmps[j] = g_data[idx + (size_t)j * stride + (size_t)k * big_stride];\n\n      for (int i = 0; i < COMPUTE_ITERATIONS; ++i) {\n        tmps[j] = mad_fn(tmps[j], tmps[j], seed);\n      }\n    }\n\n    T sum = conv_int_fn(0);\n    for (int j = 0; j < ELEMENTS_PER_THREAD; j += 2) {\n      sum = mad_fn(tmps[j], tmps[j + 1], sum);\n    }\n\n    if (equal_fn(sum, conv_int_fn(-1))) {\n      g_data[idx + (size_t)k * big_stride] = sum;\n    }\n  }\n}\n"
+      },
+      "target_files_expected": [
+        "mix_kernels.cl"
+      ],
+      "target_files_extracted": [
+        "mix_kernels.cl"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 100.148,
+          "prompt_tokens": 11054,
+          "completion_tokens": 4491,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": "on is here\nstatic inline int equal_fn(const short a, const short b) { return a == b; }\n                  ^\n<kernel>:66:19: error: conflicting types for 'equal_fn'\nstatic inline int equal_fn(const float a, const float b) { return a == b; }\n                  ^\n<kernel>:64:19: note: previous definition is here\nstatic inline int equal_fn(const short a, const short b) { return a == b; }\n                  ^\n----------------------------------------------------------------------------------------------\n",
+          "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "mixbench-mixbench-cuda",
+      "target_spec": "mixbench-mixbench-opencl",
+      "kernel": "mixbench",
+      "model": "azure-gpt-5.4",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1136831229,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "kernel_only",
+      "verification_mode": "kernel_only_target_pattern",
+      "run_args_mode": "kernel_only_target_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-26T12:04:07Z",
+      "prompt_tokens": 11054,
+      "completion_tokens": 6244,
+      "llm_response_time_seconds": 125.384,
+      "build_status": "pass",
+      "build_time_seconds": 0.47,
+      "build_error_snippet": null,
+      "run_status": "fail",
+      "run_time_seconds": 0.382,
+      "run_exit_code": 1,
+      "run_stderr_snippet": " a, int b) { return a == b; }\n           ^\n<kernel>:36:12: note: previous definition is here\ninline int equal_t(short a, short b) { return a == b; }\n           ^\n<kernel>:38:12: error: conflicting types for 'equal_t'\ninline int equal_t(float a, float b) { return a == b; }\n           ^\n<kernel>:36:12: note: previous definition is here\ninline int equal_t(short a, short b) { return a == b; }\n           ^\n----------------------------------------------------------------------------------------------\n",
+      "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+      "verify_status": null,
+      "verify_strategy": null,
+      "overall_status": "RUN_FAIL",
+      "error_message": "Run failed (exit code 1)",
+      "metrics": {},
+      "baseline_wall_time_seconds": 30.0,
+      "translated_wall_time_seconds": null,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": null,
+      "speedup_ratio": null,
+      "translated_files": {
+        "mix_kernels.cl": "#ifdef ENABLE_DP\n#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#endif\n\n#ifdef ENABLE_HP\n#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n#endif\n\ninline short conv_int_t(int i, short) { return (short)i; }\ninline int conv_int_t(int i, int) { return i; }\ninline float conv_int_t(int i, float) { return (float)i; }\n\n#ifdef ENABLE_DP\ninline double conv_int_t(int i, double) { return (double)i; }\n#endif\n\n#ifdef ENABLE_HP\ninline half2 conv_int_t(int i, half2) {\n  half h = (half)i;\n  return (half2)(h, h);\n}\n#endif\n\ninline short mad_t(short a, short b, short c) { return (short)(a * b + c); }\ninline int mad_t(int a, int b, int c) { return a * b + c; }\ninline float mad_t(float a, float b, float c) { return a * b + c; }\n\n#ifdef ENABLE_DP\ninline double mad_t(double a, double b, double c) { return a * b + c; }\n#endif\n\n#ifdef ENABLE_HP\ninline half2 mad_t(half2 a, half2 b, half2 c) { return a * b + c; }\n#endif\n\ninline int equal_t(short a, short b) { return a == b; }\ninline int equal_t(int a, int b) { return a == b; }\ninline int equal_t(float a, float b) { return a == b; }\n\n#ifdef ENABLE_DP\ninline int equal_t(double a, double b) { return a == b; }\n#endif\n\n#ifdef ENABLE_HP\ninline int equal_t(half2 a, half2 b) {\n  return (a.s0 == b.s0) && (a.s1 == b.s1);\n}\n#endif\n\n__kernel void benchmark_func(const class_T seed, __global class_T* g_data) {\n  const size_t lid = get_local_id(0);\n  const size_t gid = get_global_id(0);\n  const size_t group = get_group_id(0);\n\n#ifdef BLOCK_STRIDED\n  const size_t stride = (size_t)blockdim;\n  const size_t idx = group * ((size_t)blockdim * (size_t)ELEMENTS_PER_THREAD) + lid;\n#else\n  const size_t stride = get_global_size(0);\n  const size_t idx = gid;\n#endif\n\n  const size_t big_stride = get_global_size(0) * (size_t)ELEMENTS_PER_THREAD;\n\n  class_T tmps[ELEMENTS_PER_THREAD];\n\n  for (uint k = 0; k < (uint)FUSION_DEGREE; ++k) {\n    for (uint j = 0; j < (uint)ELEMENTS_PER_THREAD; ++j) {\n      tmps[j] = g_data[idx + (size_t)j * stride + (size_t)k * big_stride];\n      for (int i = 0; i < COMPUTE_ITERATIONS; ++i) {\n        tmps[j] = mad_t(tmps[j], tmps[j], seed);\n      }\n    }\n\n    class_T sum = conv_int_t(0, seed);\n    for (uint j = 0; j + 1 < (uint)ELEMENTS_PER_THREAD; j += 2) {\n      sum = mad_t(tmps[j], tmps[j + 1], sum);\n    }\n    if ((ELEMENTS_PER_THREAD & 1) != 0) {\n      sum = mad_t(tmps[ELEMENTS_PER_THREAD - 1], conv_int_t(1, seed), sum);\n    }\n\n    if (equal_t(sum, conv_int_t(-1, seed))) {\n      g_data[idx + (size_t)k * big_stride] = sum;\n    }\n  }\n}\n"
+      },
+      "target_files_expected": [
+        "mix_kernels.cl"
+      ],
+      "target_files_extracted": [
+        "mix_kernels.cl"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 125.384,
+          "prompt_tokens": 11054,
+          "completion_tokens": 6244,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "fail",
+          "verify_status": null,
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": " a, int b) { return a == b; }\n           ^\n<kernel>:36:12: note: previous definition is here\ninline int equal_t(short a, short b) { return a == b; }\n           ^\n<kernel>:38:12: error: conflicting types for 'equal_t'\ninline int equal_t(float a, float b) { return a == b; }\n           ^\n<kernel>:36:12: note: previous definition is here\ninline int equal_t(short a, short b) { return a == b; }\n           ^\n----------------------------------------------------------------------------------------------\n",
+          "run_stdout_snippet": "uffer:  2962 MB\nOpenCL version:      OpenCL 3.0 CUDA\nTotal CUs:           46\n-----------------------------------------------------------------------\nBuffer size:            256MB\nWorkgroup size:         256\nElements per workitem:  8\nWorkitem fusion degree: 4\nWorkitem stride:        NDRange\nBuffer allocation:      Device allocated\nTimer:                  CL event based\nWarning:                Half precision computations are not supported\nLoading kernel source file...\nPrecompilation of kernels... ",
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "mixbench-mixbench-cuda",
+      "target_spec": "mixbench-mixbench-opencl",
+      "kernel": "mixbench",
+      "model": "azure-gpt-5.4",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 151085058,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "kernel_only",
+      "verification_mode": "kernel_only_target_pattern",
+      "run_args_mode": "kernel_only_target_args",
+      "run_arguments_used": null,
+      "timestamp": "2026-04-26T12:06:13Z",
+      "prompt_tokens": 11054,
+      "completion_tokens": 3495,
+      "llm_response_time_seconds": 80.1,
+      "build_status": "pass",
+      "build_time_seconds": 0.47,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 4.444,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "3.33\n          192,     96.250,    0.42,30727.79, 319.25,     48.125,   30.26,  426.94,   8.87,    192.500,    0.00,     inf,    inf,    96.250,    0.81,15868.78, 164.87\n          256,    128.250,    0.55,31133.20, 242.75,     64.125,   40.31,  427.00,   6.66,    256.500,    0.00,     inf,    inf,   128.250,    1.08,15948.75, 124.36\n--------------------------------------------------------------------------------------------------------------------------------------------------------------------\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "single_precision_gflops": {
+          "value": 118.72,
+          "unit": "GFLOPS"
+        }
+      },
+      "baseline_wall_time_seconds": 30.0,
+      "translated_wall_time_seconds": 4.444,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": 6.7507,
+      "translated_files": {
+        "mix_kernels.cl": "#ifdef ENABLE_DP\n#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n#endif\n\n#ifdef ENABLE_HP\n#pragma OPENCL EXTENSION cl_khr_fp16 : enable\n#endif\n\n#ifndef class_T\n#define class_T float\n#endif\n\n#ifndef blockdim\n#define blockdim 256\n#endif\n\n#ifndef COMPUTE_ITERATIONS\n#define COMPUTE_ITERATIONS 0\n#endif\n\n#ifndef ELEMENTS_PER_THREAD\n#define ELEMENTS_PER_THREAD 8\n#endif\n\n#ifndef FUSION_DEGREE\n#define FUSION_DEGREE 4\n#endif\n\n#define CONV_INT(i) ((class_T)(i))\n#define MULADD(a, b, c) ((a) * (b) + (c))\n\n#ifdef ENABLE_HP\n#define EQUAL_VAL(a, b) (all((a) == (b)))\n#else\n#define EQUAL_VAL(a, b) ((a) == (b))\n#endif\n\n__kernel void benchmark_func(class_T seed, __global class_T *g_data) {\n    const int lid = (int)get_local_id(0);\n    const int gid = (int)get_global_id(0);\n    const int group = (int)get_group_id(0);\n\n#ifdef BLOCK_STRIDED\n    const int stride = blockdim;\n    const int idx = group * blockdim * ELEMENTS_PER_THREAD + lid;\n    const int big_stride = (int)get_num_groups(0) * blockdim * ELEMENTS_PER_THREAD;\n#else\n    const int stride = (int)get_global_size(0);\n    const int idx = gid;\n    const int big_stride = stride * ELEMENTS_PER_THREAD;\n#endif\n\n    class_T tmps[ELEMENTS_PER_THREAD];\n\n    for (int k = 0; k < FUSION_DEGREE; k++) {\n        for (int j = 0; j < ELEMENTS_PER_THREAD; j++) {\n            tmps[j] = g_data[idx + j * stride + k * big_stride];\n\n            for (int i = 0; i < COMPUTE_ITERATIONS; i++) {\n                tmps[j] = MULADD(tmps[j], tmps[j], seed);\n            }\n        }\n\n        class_T sum = CONV_INT(0);\n        for (int j = 0; j < ELEMENTS_PER_THREAD; j += 2) {\n            sum = MULADD(tmps[j], tmps[j + 1], sum);\n        }\n\n        if (EQUAL_VAL(sum, CONV_INT(-1))) {\n            g_data[idx + k * big_stride] = sum;\n        }\n    }\n}\n"
+      },
+      "target_files_expected": [
+        "mix_kernels.cl"
+      ],
+      "target_files_extracted": [
+        "mix_kernels.cl"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 80.1,
+          "prompt_tokens": 11054,
+          "completion_tokens": 3495,
+          "finish_reason": "stop",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    }
+  ]
+}
