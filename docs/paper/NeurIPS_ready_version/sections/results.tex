@@ -6,38 +6,49 @@
 
 \begin{table*}[t]
 \centering
-\caption{Overall pass rates. \qwenshort{} covers 626 valid records (426 L0 + 200 ablation) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} evaluation is in progress.}
+\caption{Overall pass rates. \qwenshort{} covers 626 valid records (426 L0 baseline + 200 augmentation-ablation at L1--L4; see Section~\ref{sec:augmentation-robustness}) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} evaluation is in progress.}
 \label{tab:overall-pass}
 \small
 \begin{tabular}{@{}lrrrrrrl@{}}
 \toprule
-Model & \pass{} & \buildfail{} & \runfail{} & \verifyfail{} & EXTR\_FAIL & Total & Rate [95\% Wilson CI] \\
+Model & \pass{} & \buildfail{} & \runfail{} & \verifyfail{} & \extractionfail{} & Total & Rate [95\% Wilson CI] \\
 \midrule
+% src: quantitative_findings.json > canonical > failure_taxonomy > status_counts
 \qwen{} & 230 & 245 & 121 & 29 & 1 & 626 & 36.7\% [33.1\%, 40.6\%] \\
 \gptnew{} & \tbd{} & \tbd{} & \tbd{} & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-Kernel-centric evaluation reveals translation capability that repository-level evaluation obscures. \qwenshort{} passes 230 of 626 valid records, or 36.7\%~[33.1\%, 40.6\%], across five suites, all augmentation levels, and eight directions including case studies (Table~\ref{tab:overall-pass}).
+% src: quantitative_findings.json > canonical > aggregate_pass_rates > overall: value=0.3674, ci=[0.3306, 0.4059], n=626
+Kernel-centric evaluation isolates executable kernel translation from repository reconstruction. \qwenshort{} passes 230 of 626 valid records, or 36.7\%~[33.1\%, 40.6\%], across five benchmark suites, ten translation directions, and five augmentation levels (Table~\ref{tab:overall-pass}).
+% src: quantitative_findings.json > canonical > aggregate_pass_rates > per_suite
+Per-suite rates range from 65.2\% (HeCBench, $n{=}184$) through 28.2\% (Rodinia, $n{=}380$) and 9.1\% (mixbench, $n{=}22$) to 4.6\% (XSBench, $n{=}22$) and 0\% (RSBench, $n{=}18$), reflecting the heterogeneous difficulty of the curated corpus.
 
-The comparison to repository-level work is the main methodological point. ParEval-Repo reports 0\% pass@1 for all models on applications larger than 133~SLoC~\cite{ParEvalRepo2025}. \parbench{} evaluates many kernels above that size but fixes the build and integration scaffold, yielding 36.7\% overall and 40.3\%~[29.7\%, 51.8\%] on \qwenshort{} CUDA-to-OpenMP at L0. This does not make the task easy; it separates kernel translation failures from full-repository reconstruction failures.
+The comparison to repository-level work is the main methodological point. ParEval-Repo reports 0\% pass@1 for all tested models on repository-level applications larger than 133~SLoC~\cite{ParEvalRepo2025}.
+% src: sloc_analysis.json: 27 of 31 evaluated kernels above ParEval-Repo 133 SLoC threshold
+Of the 31 evaluated kernels, 27 (87\%) exceed that threshold (Section~\ref{sec:curation}), but \parbench{} fixes host code, build infrastructure, and I/O---isolating kernel translation from repository reconstruction. Under this isolation, \qwenshort{} achieves 36.7\% overall and 40.3\%~[29.7\%, 51.8\%] on CUDA-to-OpenMP at L0.
+% src: quantitative_findings.json > canonical > direction_pass_rates > standard > cuda-to-omp: value=0.4028, ci=[0.2972, 0.5182], n=72
+This does not make the task easy; it separates kernel translation failures from full-repository reconstruction failures.
 
 \subsection{pass@$k$ Analysis}
 \label{sec:passk-analysis}
 
 \begin{table}[t]
 \centering
-\caption{pass@$k$ results for \qwenshort{} (L0 only, temperature~0.7, three independent samples per task, 142 unique source-target pairs).}
+\caption{pass@$k$ results for \qwenshort{} (L0 only, temperature~0.7, three independent samples per task, 142 unique source-target pairs). CIs are normal-approximation intervals on the macro-averaged Chen et al.\ estimator, not Wilson intervals on binomial counts.}
 \label{tab:pass-at-k-main}
 \small
 \begin{tabular}{@{}lr@{}}
 \toprule
 Metric & Value [95\% CI] \\
 \midrule
+% src: quantitative_findings.json > canonical > pass_at_k > pass_at_1: value=0.2394, ci=[0.1791, 0.2998], n=142
 pass@1 & 23.9\% [17.9\%, 30.0\%] \\
+% src: quantitative_findings.json > canonical > pass_at_k > pass_at_3: value=0.3521, ci=[0.2733, 0.4310], n=142
 pass@3 & 35.2\% [27.3\%, 43.1\%] \\
 \midrule
+% src: quantitative_findings.json > canonical > pass_at_k > task_classification
 Always pass (3/3) & 19 tasks (13.4\%) \\
 Noisy (1--2/3) & 31 tasks (21.8\%) \\
 Hard fail (0/3) & 92 tasks (64.8\%) \\
@@ -45,44 +56,54 @@ Hard fail (0/3) & 92 tasks (64.8\%) \\
 \end{tabular}
 \end{table}
 
-Stochastic sampling provides limited rescue. Of 142 unique L0 source-target pairs, 92 (64.8\%) are hard failures with no passing sample across three independent attempts (Table~\ref{tab:pass-at-k-main}). Only 19 tasks (13.4\%) pass in all three samples, while 31 (21.8\%) are noisy---passing in some samples but not others. The gap between pass@1 (23.9\%) and pass@3 (35.2\%) is modest, indicating that additional samples yield diminishing returns. Most failures are structural at the kernel-direction level rather than stochastic.
+The 36.7\% per-record rate in Table~\ref{tab:overall-pass} treats each sample and augmentation level independently. The pass@$k$ analysis below restricts to the 142 L0 tasks and macro-averages to estimate single-sample and three-sample success probabilities. Each of the 142 tasks generates three independent samples at temperature~0.7, yielding 426 L0 records that contribute to the per-record rate.
+
+Additional stochastic samples partially recover only 31 of 142 tasks and none of the 92 hard failures. Of 142 unique L0 source-target pairs, 92 (64.8\%) produce no passing sample across three independent attempts (Table~\ref{tab:pass-at-k-main}). Only 19 tasks (13.4\%) pass in all three samples, while the remaining 31 (21.8\%) are noisy---passing in some samples but not others. The gap between pass@1 (23.9\%) and pass@3 (35.2\%) is modest, indicating that additional samples yield diminishing returns. Limited stochastic resampling is insufficient to recover most task-direction pairs.
 
 \subsection{Direction Dependence}
 \label{sec:direction-analysis}
 
 \begin{table*}[t]
 \centering
-\caption{Pass rates by direction (L0 records, including all three samples per task). OpenMP-target rows are case studies rather than part of the standard six-direction matrix.}
+\caption{Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes total L0 records and $m$ the number of distinct kernels.}
 \label{tab:direction-rates}
 \small
-\begin{tabular}{@{}lrcl@{}}
+\begin{tabular}{@{}lrc@{}}
 \toprule
-Direction & \qwenshort{} & $n$ & Note \\
+Direction & \qwenshort{} & $n$ \\
 \midrule
-CUDA$\to$OMP & 40.3\% [29.7\%, 51.8\%] & 72 & Primary \\
-OMP$\to$OpenCL & 33.3\% [22.0\%, 47.0\%] & 51 & \\
-OMP$\to$CUDA & 25.0\% [16.4\%, 36.1\%] & 72 & \\
-OpenCL$\to$OMP & 9.8\% [4.3\%, 21.0\%] & 51 & \\
-CUDA$\to$OpenCL & 7.0\% [2.8\%, 16.7\%] & 57 & \\
-OpenCL$\to$CUDA & 0.0\% [0.0\%, 6.3\%] & 57 & \\
+% src: quantitative_findings.json > canonical > direction_pass_rates > standard
+CUDA$\to$OMP & 40.3\% [29.7\%, 51.8\%] & 72 \\
+OMP$\to$OpenCL & 33.3\% [22.0\%, 47.0\%] & 51 \\
+OMP$\to$CUDA & 25.0\% [16.4\%, 36.1\%] & 72 \\
+OpenCL$\to$OMP & 9.8\% [4.3\%, 21.0\%] & 51 \\
+CUDA$\to$OpenCL & 7.0\% [2.8\%, 16.7\%] & 57 \\
+OpenCL$\to$CUDA & 0.0\% [0.0\%, 6.3\%] & 57 \\
 \midrule
-OMP-target$\to$CUDA & 66.7\% [46.7\%, 82.0\%] & 24 & Case study \\
-CUDA$\to$OMP-target & 0.0\% [0.0\%, 13.8\%] & 24 & Case study \\
+% src: quantitative_findings.json > canonical > direction_pass_rates > standard (omp_target_to_omp, omp_to_omp_target) + case_study
+OMP-target$\to$OMP ($m{=}3$) & 100\% [70.1\%, 100\%] & 9 \\
+OMP-target$\to$CUDA ($m{=}8$) & 66.7\% [46.7\%, 82.0\%] & 24 \\
+OMP$\to$OMP-target ($m{=}3$) & 44.4\% [18.9\%, 73.3\%] & 9 \\
+CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 24 \\
 \midrule
-\gptnew{} (all directions) & \tbd{} & \tbd{} & \\
+\gptnew{} (all directions) & \tbd{} & \tbd{} \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-Performance is strongly direction-dependent (Table~\ref{tab:direction-rates}). For \qwenshort{}, CUDA-to-OpenMP is the strongest standard direction at 40.3\%, followed by OMP-to-OpenCL at 33.3\% and OMP-to-CUDA at 25.0\%. OpenCL-to-CUDA yields 0\% across all 57 L0 records. This pattern reflects the structural asymmetry of the APIs: translating from CUDA to OpenMP removes explicit device memory management and thread launch syntax, whereas translating into CUDA or OpenCL requires introducing those details coherently. OpenCL translations additionally face a separate host/kernel source model and address-space qualifiers that surface compilation errors only at runtime through \texttt{clBuildProgram()}.
+% src: quantitative_findings.json > canonical > direction_pass_rates > standard
+Per-record pass rates vary across directions (Table~\ref{tab:direction-rates}). Among the six standard directions, CUDA-to-OpenMP passes at 40.3\% while OpenCL-to-CUDA yields 0\% across all 57 L0 records. This pattern is consistent with the structural asymmetry of the APIs: translating from CUDA to OpenMP replaces explicit device memory allocation, host-device data transfers, and kernel launch configuration with directive-based parallelism where the compiler manages thread scheduling. Conversely, translating into CUDA or OpenCL requires coherently introducing those explicit constructs. OpenCL translations additionally face a separate host/kernel source model and address-space qualifiers (\texttt{\_\_global}, \texttt{\_\_local}) in kernel source that is JIT-compiled via \texttt{clBuildProgram()}. Of the 121 \runfail{} records, 56 involve OpenCL JIT compilation errors at \texttt{clBuildProgram()}, which occur during host execution because OpenCL compiles kernel source at runtime rather than at build time.
 
-The OMP-target case study shows a striking asymmetry: OMP-target-to-CUDA passes at 66.7\% while CUDA-to-OMP-target passes at 0\%. OMP-target code uses directive-based offloading that maps straightforwardly to CUDA's explicit device model, but generating correct \texttt{\#pragma omp target} directives with proper data-mapping clauses from CUDA kernels appears beyond current model capability.
+% src: quantitative_findings.json > canonical > direction_pass_rates > case_study + standard (omp_target pairs)
+The OMP-target case studies suggest an abstraction gradient, though the small samples warrant caution. Stripping \texttt{\#pragma omp target} directives to recover plain OpenMP succeeds at 100\% ($n{=}9$), and converting OMP-target to explicit CUDA kernels passes at 66.7\% ($n{=}24$). In the reverse direction, generating correct target directives with data-mapping clauses from OpenMP reaches 44.4\% ($n{=}9$) but from CUDA reaches 0\% ($n{=}24$).
+% src: quantitative_findings.json > canonical > direction_asymmetry: 5 McNemar tests, Bonferroni alpha=0.01, none significant
+Five paired McNemar exact tests (Bonferroni-corrected $\alpha = 0.01$) do not reach statistical significance for direction asymmetry at the kernel level (Appendix Table~\ref{tab:stats-summary}). Given the small paired samples (3--24 paired kernels per test), these comparisons are inconclusive regarding whether the observed rate differences reflect systematic direction effects or sampling variability.
 
-At the kernel level, difficulty is heterogeneous. Table~\ref{tab:per-kernel-main} shows the five easiest and five hardest kernels under \qwenshort{}. The easier kernels tend to be regular stencil, graph, or solver kernels with structured loop nests; the hard set includes irregular control flow, domain-specific data structures, brittle synchronization, and multi-file dependencies. The full kernel table is in Appendix Table~\ref{tab:per-kernel-full}.
+At the kernel level, difficulty is heterogeneous. Table~\ref{tab:per-kernel-main} shows the five easiest and five hardest kernels under \qwenshort{}. The five easiest kernels are all from HeCBench and feature regular stencil or graph patterns with structured loop nests; this reflects HeCBench's selection for kernel-level translation accessibility. The hard-fail set spans Rodinia and RSBench, featuring kernels whose difficulty we attribute to: cardiac tracking with irregular memory access patterns (\textit{heartwall}), stiff ODE integration with multi-file dependencies (\textit{myocyte}), B\textsuperscript{+}-tree traversal with pointer-heavy data structures (\textit{bptree}), cross-section lookup over multi-level nuclide grids (\textit{rsbench}), and particle-pair neighbor-list traversal (\textit{lavamd}). Five additional kernels have 0\% pass rates with fewer evaluation records ($n{=}6$ each). The full 31-kernel table is in Appendix Table~\ref{tab:per-kernel-full}.
 
 \begin{table}[t]
 \centering
-\caption{Representative per-kernel pass rates for \qwenshort{} across all directions and augmentation levels.}
+\caption{Representative per-kernel pass rates for \qwenshort{} across all directions and augmentation levels (626 records, 31 evaluated kernels---4 curated kernels with no evaluable translation pairs). Full table in Appendix Table~\ref{tab:per-kernel-full}.}
 \label{tab:per-kernel-main}
 \small
 \begin{tabular}{@{}llrrrr@{}}
@@ -90,18 +111,20 @@ At the kernel level, difficulty is heterogeneous. Table~\ref{tab:per-kernel-main
 Suite & Kernel & Total & \pass{} & Fail & Rate \\
 \midrule
 \multicolumn{6}{l}{\textit{Easiest kernels}} \\
-HeCBench & stencil1d & 15 & 15 & 0 & 100.0\% \\
-HeCBench & floydwarshall & 20 & 16 & 4 & 80.0\% \\
-HeCBench & heat2d & 20 & 15 & 5 & 75.0\% \\
-HeCBench & iso2dfd & 20 & 15 & 5 & 75.0\% \\
-Rodinia & hotspot & 30 & 21 & 9 & 70.0\% \\
+% src: verified against raw results in results/evaluation/together-qwen-3.5-397b-a17b/
+HeCBench & iso2dfd & 38 & 32 & 6 & 84.2\% \\
+HeCBench & floydwarshall & 38 & 29 & 9 & 76.3\% \\
+HeCBench & heat2d & 38 & 29 & 9 & 76.3\% \\
+HeCBench & stencil1d & 14 & 9 & 5 & 64.3\% \\
+HeCBench & page-rank & 10 & 6 & 4 & 60.0\% \\
 \midrule
-\multicolumn{6}{l}{\textit{Hardest kernels}} \\
-Rodinia & gaussian & 10 & 0 & 10 & 0.0\% \\
-Rodinia & heartwall & 30 & 0 & 30 & 0.0\% \\
-Rodinia & myocyte & 30 & 0 & 30 & 0.0\% \\
-RSBench & rsbench & 30 & 0 & 30 & 0.0\% \\
-XSBench & xsbench & 30 & 0 & 30 & 0.0\% \\
+\multicolumn{6}{l}{\textit{Hardest kernels (0\% pass rate, $n \geq 18$)}} \\
+% src: verified against raw results in results/evaluation/together-qwen-3.5-397b-a17b/
+Rodinia & heartwall & 18 & 0 & 18 & 0.0\% \\
+Rodinia & myocyte & 18 & 0 & 18 & 0.0\% \\
+Rodinia & bptree & 18 & 0 & 18 & 0.0\% \\
+RSBench & rsbench & 18 & 0 & 18 & 0.0\% \\
+Rodinia & lavamd & 18 & 0 & 18 & 0.0\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -116,31 +139,33 @@ XSBench & xsbench & 30 & 0 & 30 & 0.0\% \\
 \label{fig:failure-taxonomy}
 \end{figure}
 
-Build-stage adaptation is the dominant bottleneck. \buildfail{} accounts for 245 of 626 records (39.1\%) and 61.9\% of all failures (Table~\ref{tab:overall-pass}, Figure~\ref{fig:failure-taxonomy}). These failures indicate incomplete API-surface adaptation: retained CUDA identifiers in OpenMP translations, missing OpenCL address-space qualifiers, or mismatched target-side dependencies.
+% src: quantitative_findings.json > canonical > failure_taxonomy: BUILD_FAIL=245, RUN_FAIL=121, VERIFY_FAIL=29, EXTRACTION_FAIL=1, total_failures=396
+Build-stage adaptation is the dominant failure mode. \buildfail{} accounts for 245 of 626 records (39.1\%) and 61.9\% of all 396 failures (Table~\ref{tab:overall-pass}, Figure~\ref{fig:failure-taxonomy}). These failures indicate incomplete API-surface adaptation: retained CUDA identifiers in OpenMP translations, missing OpenCL address-space qualifiers, or mismatched target-side dependencies.
 
-\verifyfail{} is smaller but important: 29 of 626 records (4.6\%) compile and run but fail correctness. These cases are the strongest evidence that compilation alone is insufficient: exit-code-only or compile-only checks would misclassify them as successful translations. \runfail{} accounts for 121 records (19.3\%), and a single \extractionfail{} (0.2\%) occurred where the LLM response could not be parsed into target files. Detailed failure case studies appear in Appendix~\ref{sec:appendix-c}.
+\verifyfail{} is smaller but important: 29 of 626 records (4.6\%) compile and run but fail correctness. These cases demonstrate that compilation alone is insufficient: exit-code-only or compile-only checks would misclassify them as successful translations. \runfail{} accounts for 121 records (19.3\%), and a single \extractionfail{} (0.2\%) occurred where the LLM response could not be parsed into target files. Detailed failure case studies appear in Appendix~\ref{sec:appendix-c}.
 
 \subsection{Augmentation Robustness}
 \label{sec:augmentation-robustness}
 
 \begin{table}[t]
 \centering
-\caption{Augmentation pass rates on the balanced 12-kernel CUDA-to-OpenMP subset present at all five levels.}
+\caption{Augmentation pass rates on the balanced 12-kernel CUDA-to-OpenMP subset present at all five levels. These 12 kernels were selected by the L0-conditional ablation filter ($\geq$1 of 3 L0 samples passes), so L0 rates exceed the overall CUDA-to-OpenMP rate of 40.3\%.}
 \label{tab:aug-balanced}
 \small
 \begin{tabular}{@{}lrrl@{}}
 \toprule
 Level & Pass / Total & Rate & Kernels with any pass \\
 \midrule
+% src: verified against raw results: 12 balanced kernels = bfs, cfd, floydwarshall, heat2d, hotspot3d, iso2dfd, lud, nw, particlefilter, pathfinder, srad, stencil1d
 L0 & 29/36 & 80.6\% & 12/12 (100\%) \\
-L1 &  9/12 & 75.0\% &  9/12 ~~(75\%) \\
-L2 & 10/12 & 83.3\% & 10/12 ~~(83\%) \\
-L3 &  9/12 & 75.0\% &  9/12 ~~(75\%) \\
-L4 & 10/12 & 83.3\% & 10/12 ~~(83\%) \\
+L1 &  9/12 & 75.0\% &  9/12 \phantom{0}(75\%) \\
+L2 & 10/12 & 83.3\% & 10/12 \phantom{0}(83\%) \\
+L3 &  9/12 & 75.0\% &  9/12 \phantom{0}(75\%) \\
+L4 & 10/12 & 83.3\% & 10/12 \phantom{0}(83\%) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-If baseline success were driven primarily by surface-form memorization, augmented source variants should degrade pass rates. On a balanced 12-kernel CUDA-to-OpenMP subset present at all five augmentation levels, pass rates remain stable between 75\% and 83\% (Table~\ref{tab:aug-balanced}). L0 has higher counts because the canonical evaluation generates three samples per task (36 records for 12 kernels), while L1--L4 each generate one record per kernel.
+If baseline success were driven primarily by surface-form memorization, augmented source variants should degrade pass rates. On a balanced 12-kernel CUDA-to-OpenMP subset present at all five augmentation levels, pass rates remain between 75\% and 83\% at L1--L4 (Table~\ref{tab:aug-balanced}). The L0 rate on this subset (80.6\%) exceeds the overall CUDA-to-OpenMP L0 rate (40.3\%) because the ablation filter selects kernels that already pass at L0, creating a survivorship bias toward easier kernels. L0 has higher counts because the canonical evaluation generates three samples per task (36 records for 12 kernels), while L1--L4 each generate one sample per kernel.
 
-The sample sizes at L1--L4 (12 records per level) are too small for a formal monotonic trend test. We therefore report descriptive rates only and note the absence of evidence for systematic degradation. The observed stability is consistent with translation driven by structural understanding of the parallel APIs rather than rote reproduction of memorized source patterns, though the small sample cannot rule out moderate effects. Full per-kernel augmentation heatmaps appear in Appendix Figure~\ref{fig:aug-heatmap}.
+We computed Cochran-Armitage trend tests, but two confounds undermine their interpretability: the 3:1 ratio of L0 to L1--L4 sample sizes on this subset (8.5:1 in the full evaluation), and the survivorship selection inherent in L0-conditional ablation. We therefore report only descriptive rates for L1--L4. With $n{=}12$ per level and a baseline near 80\%, the analysis is powered to detect only a large drop (roughly to 45\%) at 80\% power; moderate effects would likely go undetected. The observed stability is compatible with some robustness to surface-form perturbation, though it does not rule out memorization at other levels of abstraction. The small, direction-restricted ($\text{CUDA}{\to}\text{OMP}$ only) sample limits generalizability. Testing on the highest-rate standard direction (CUDA-to-OpenMP) provides a conservative bound on degradation but a weak test of memorization-dependence for harder directions. Full per-kernel augmentation heatmaps appear in Appendix Figure~\ref{fig:aug-heatmap}.
