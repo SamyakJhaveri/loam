@@ -64,8 +64,8 @@ def build_comparison(qwen_data: dict, gpt_data: dict) -> dict:
     Returns:
         Dict with overall, per_direction, per_kernel_matrix sections.
     """
-    qwen_pc = qwen_data["primary_campaign"]
-    gpt_pc = gpt_data["primary_campaign"]
+    qwen_pc = qwen_data.get("passk_campaign") or qwen_data["primary_campaign"]
+    gpt_pc = gpt_data.get("passk_campaign") or gpt_data["primary_campaign"]
 
     # --- Determine common directions (intersection) ---
     qwen_dirs = set(qwen_pc["by_direction"].keys())
@@ -146,8 +146,10 @@ def build_comparison(qwen_data: dict, gpt_data: dict) -> dict:
 
     # --- Per-kernel agreement matrix (four-way per D-04) ---
     # A kernel "passes" for a model if it has any passing task (pass > 0)
-    qwen_kernels = set(qwen_pc["by_kernel"].keys())
-    gpt_kernels = set(gpt_pc["by_kernel"].keys())
+    qwen_bk = qwen_pc.get("by_kernel", {})
+    gpt_bk = gpt_pc.get("by_kernel", {})
+    qwen_kernels = set(qwen_bk.keys())
+    gpt_kernels = set(gpt_bk.keys())
     common_kernels = sorted(qwen_kernels & gpt_kernels)
 
     both_pass = []
@@ -156,8 +158,8 @@ def build_comparison(qwen_data: dict, gpt_data: dict) -> dict:
     gpt_only_pass = []
 
     for kernel in common_kernels:
-        qk = qwen_pc["by_kernel"][kernel]
-        gk = gpt_pc["by_kernel"][kernel]
+        qk = qwen_bk[kernel]
+        gk = gpt_bk[kernel]
         q_passes = qk["pass"] > 0
         g_passes = gk["pass"] > 0
         if q_passes and g_passes:
@@ -201,8 +203,8 @@ def main() -> None:
     parser.add_argument(
         "--qwen-data",
         type=Path,
-        default=Path("results/analysis/paper_data.json"),
-        help="Path to Qwen paper_data.json",
+        default=Path("results/analysis/paper_data_together-qwen-3.5-397b-a17b.json"),
+        help="Path to Qwen paper_data JSON",
     )
     parser.add_argument(
         "--gpt-data",

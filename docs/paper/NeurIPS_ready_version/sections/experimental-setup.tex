@@ -9,7 +9,7 @@
 %   Direction counts:  10 directions (verified: spec-ID suffix extraction across 426 L0 files)
 %   KNOWN_FAIL:        harness/constants.py EXCLUDED_SPECS (9 specs)
 %   Ablation filter:   pass@1-of-any (memory: project_neurips_experiment_design.md)
-%   Metrics:           quantitative_findings.json (generated 2026-04-25)
+%   Metrics:           quantitative_findings_qwen.json, quantitative_findings_gpt54.json
 %   Temperature gate:  llm_evaluate.py lines 946-948 (Azure reasoning omits temp/top_p)
 % ============================================================================
 
@@ -70,7 +70,7 @@ Self-repair is disabled (single attempt, no iterative feedback): each sample rec
 % src: 142 pairs × 3 samples = 426 L0 records (verified for both models)
 % src: Qwen: 708 total on disk, 82 KF excluded, 626 valid (426 L0 + 200 ablation)
 % src: GPT-5.4: 426 L0 on disk (batch pre-excluded KF), 267 PASS = 62.7%
-The canonical campaign evaluates all 142~unique pairs at augmentation level~L0 (unmodified source code) with three samples each, producing 426~L0 records per model and 852~total. Each record passes through the full build--run--verify pipeline with conjunction semantics: all verification strategies (exit code, stdout pattern) must pass for a record to receive \pass{} status. \qwenshort{} evaluation is complete; \gptnew{} L0 evaluation is complete and ablation is in progress. All corresponding cells that remain pending are marked \tbd{}.
+The canonical campaign evaluates all 142~unique pairs at augmentation level~L0 (unmodified source code) with three samples each, producing 426~L0 records per model and 852~total. Each record passes through the full build--run--verify pipeline with conjunction semantics: all verification strategies (exit code, stdout pattern) must pass for a record to receive \pass{} status. Both models' L0 and ablation evaluations are complete.
 
 \subsection{Augmentation Ablation (L1--L4)}
 \label{sec:augmentation-ablation}
@@ -80,7 +80,7 @@ The canonical campaign evaluates all 142~unique pairs at augmentation level~L0 (
 The augmentation ablation isolates source-code robustness from baseline translation capability. We apply an L0-conditional filter: a pair is included in the ablation only if any of its three canonical L0 samples passes. This filter avoids spending budget on pairs the model cannot translate even from unmodified source; however, it restricts the ablation to pairs with at least one L0 canonical success, and the resulting robustness conclusions apply only to that subset. For \qwenshort{}, 50~of 142~pairs qualify (35\%); for \gptnew{}, 99~pairs qualify (70\%). The qualifying subset is determined independently per model---cross-model ablation comparisons therefore operate on different (though overlapping) pair sets.
 
 % src: Qwen ablation: 50 per level × 4 levels = 200 (quantitative_findings.json: L1 n=50, L2 n=50, etc.)
-% src: GPT-5.4 ablation: 99 qualifying pairs, in progress
+% src: GPT-5.4 ablation: 99 qualifying pairs × 4 levels = 396 records (complete)
 Each qualifying pair is evaluated once ($k$~=~1) at each of levels L1 through L4, with the same thinking settings as the canonical campaign. The single-sample ablation trades statistical precision for budget efficiency: apparent failures at augmented levels may reflect stochastic noise rather than augmentation-induced difficulty, particularly for pairs that passed L0 marginally (1 of 3 samples).
 
 \subsection{Metrics}

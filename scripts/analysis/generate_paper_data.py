@@ -1006,8 +1006,8 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("results/analysis/paper_data.json"),
-        help="Output JSON path",
+        required=True,
+        help="Output JSON path (include model name, e.g. paper_data_azure_gpt54.json)",
     )
     parser.add_argument(
         "--suite",

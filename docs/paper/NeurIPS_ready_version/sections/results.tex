@@ -6,7 +6,8 @@
 
 \begin{table*}[t]
 \centering
-\caption{Overall pass rates. \qwenshort{} covers 626 valid records (426 L0 baseline + 200 augmentation-ablation at L1--L4; see Section~\ref{sec:augmentation-robustness}) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} evaluation is in progress.}
+% src: quantitative_findings_qwen.json, quantitative_findings_gpt54.json > canonical > failure_taxonomy
+\caption{Overall pass rates. \qwenshort{} covers 626 valid records (426 L0 + 200 ablation) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} covers 822 valid records (426 L0 + 396 ablation); \knownfail{} specs were pre-excluded from the evaluation batch.}
 \label{tab:overall-pass}
 \small
 \begin{tabular}{@{}lrrrrrrl@{}}
@@ -15,7 +16,8 @@ Model & \pass{} & \buildfail{} & \runfail{} & \verifyfail{} & \extractionfail{} 
 \midrule
 % src: quantitative_findings.json > canonical > failure_taxonomy > status_counts
 \qwen{} & 230 & 245 & 121 & 29 & 1 & 626 & 36.7\% [33.1\%, 40.6\%] \\
-\gptnew{} & \tbd{} & \tbd{} & \tbd{} & \tbd{} & \tbd{} & \tbd{} & \tbd{} \\
+% src: quantitative_findings_gpt54.json > canonical > failure_taxonomy > status_counts (all 822 valid records)
+\gptnew{} & 621 & 123 & 43 & 32 & 3 & 822 & 75.5\% [72.5\%, 78.4\%] \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -86,7 +88,8 @@ OMP-target$\to$CUDA ($m{=}8$) & 66.7\% [46.7\%, 82.0\%] & 24 \\
 OMP$\to$OMP-target ($m{=}3$) & 44.4\% [18.9\%, 73.3\%] & 9 \\
 CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 24 \\
 \midrule
-\gptnew{} (all directions) & \tbd{} & \tbd{} \\
+% src: paper_data_azure_gpt54.json > passk_campaign > overall (L0 per-record Wilson CI)
+\gptnew{} (all directions) & 62.7\% [58.0\%, 67.1\%] & 426 \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -135,7 +138,7 @@ Rodinia & lavamd & 18 & 0 & 18 & 0.0\% \\
 \begin{figure}[t]
 \centering
 \includegraphics[width=\columnwidth]{f4_failure_taxonomy_qwen}
-\caption{\qwenshort{} outcome taxonomy across 626 valid records. Build-stage failures are the largest non-pass category. \gptnew{} figures are in Appendix~\ref{sec:appendix-gpt-figures}.}
+\caption{\qwenshort{} outcome taxonomy across 626 valid records. Build-stage failures are the largest non-pass category. \gptnew{} taxonomy (822 records) is in Appendix~\ref{sec:appendix-gpt-figures}.}
 \label{fig:failure-taxonomy}
 \end{figure}
 

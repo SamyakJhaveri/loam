@@ -1,7 +1,7 @@
 # Quantitative Findings — NeurIPS 2026 ParBench
 
-Generated: 2026-04-25T23:18:09.905308+00:00
-Git hash: 1c02161
+Generated: 2026-04-27T19:56:47.392096+00:00
+Git hash: e58fab3
 
 ## File Counts
 

@@ -3504,7 +3504,8 @@ def main() -> int:
         return 0
 
     # --- Write JSON ---
-    json_path = output_dir / "quantitative_findings.json"
+    model_slug = args.model_dir.replace("/", "_")
+    json_path = output_dir / f"quantitative_findings_{model_slug}.json"
     json_path.write_text(
         json.dumps(output, indent=2, default=str) + "\n",
         encoding="utf-8",
@@ -3513,7 +3514,7 @@ def main() -> int:
         print(f"\nWrote: {json_path}")
 
     # --- Write markdown ---
-    md_path = output_dir / "quantitative_findings.md"
+    md_path = output_dir / f"quantitative_findings_{model_slug}.md"
     write_markdown(output, md_path)
     if args.verbose:
         print(f"Wrote: {md_path}")
