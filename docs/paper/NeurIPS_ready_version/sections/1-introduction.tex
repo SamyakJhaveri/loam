@@ -21,6 +21,6 @@ This paper makes three contributions:
 \item \textbf{AST-driven augmentation engine.} We develop an augmentation engine with six semantics-preserving source-level transformations applied at four intensity levels (L1--L4). This engine tests whether models preserve parallel semantics beyond surface similarity by producing structurally varied but functionally equivalent source code.
 
 % src: quantitative_findings_qwen.json + quantitative_findings_gpt54.json > canonical > pass_at_k
-\item \textbf{Empirical characterization.} Across two models and 1,448 valid translation records, we report the first systematic evaluation of LLM parallel code translation under stochastic sampling with pass@$k$ analysis. \qwenshort{} achieves pass@1\,=\,23.9\% and \gptnew{} achieves pass@1\,=\,62.7\% on 142 unique L0 tasks. Key findings include build-stage adaptation as the main bottleneck, strong direction dependence, broad stability under augmentation, and limited rescue from repeated sampling.
+\item \textbf{Empirical characterization.} Across two models and 1,448 valid translation records, we report the first multi-suite, multi-direction evaluation of LLM parallel code translation under stochastic sampling with pass@$k$ analysis. \qwenshort{} achieves pass@1\,=\,23.9\% and \gptnew{} achieves pass@1\,=\,62.7\% on 142 unique L0 tasks. Key findings include build-stage adaptation as the main bottleneck, strong direction dependence, broad stability under augmentation, and limited rescue from repeated sampling.
 \end{enumerate}
 
