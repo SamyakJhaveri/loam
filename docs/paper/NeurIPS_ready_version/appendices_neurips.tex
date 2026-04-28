@@ -526,13 +526,11 @@ HeCBench's 516 kernels were filtered through a multi-stage funnel to identify
 the curated evaluation set:
 
 \begin{itemize}
-  \item \textbf{Stage~1 (API filter):} 516 total kernels in the HeCBench
-    repository. Of these, 272 provide implementations in all 4~primary APIs
-    (CUDA, HIP, SYCL, OpenMP) with Makefiles and self-checking output. The
-    remaining 244 lack one or more API variants, Makefiles in the CUDA variant,
-    or self-checking output patterns.
+  \item \textbf{Stage~1 (API and infrastructure filter):} Of 516 total kernels in the HeCBench
+    repository, 327 provide implementations in all 4~primary APIs
+    (CUDA, HIP, SYCL, OpenMP). After excluding 2~without Makefiles and retaining only the 242 with self-checking output patterns, 242~candidates remain.
 
-  \item \textbf{Stage~2 (Complexity filter):} The 272 candidates were filtered
+  \item \textbf{Stage~2 (Complexity filter):} The 242 candidates were filtered
     for evaluation tractability. Kernels with more than 15 source files or fewer
     than 2 were excluded (the former are too complex for single-prompt
     translation; the latter are trivial boilerplate). Kernels requiring external
@@ -797,7 +795,7 @@ hierarchy:
     contain only 1--3 user-defined functions.
 \end{itemize}
 
-The level-invariance property (54/60 Rodinia specs pass at all levels L1--L4)
+The level-invariance property (all 53 non-\knownfail{} Rodinia specs pass at all levels L1--L4)
 confirms that augmentation introduces no new correctness failures. This is
 expected: all transforms preserve semantic equivalence by construction, and the
 augmentation unit tests (\texttt{c\_augmentation/test\_transforms.py}, 15~tests)

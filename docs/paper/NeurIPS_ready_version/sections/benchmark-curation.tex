@@ -35,7 +35,7 @@ Applying them to the 35 surveyed repositories yielded five suites that satisfy a
 
 Kernel selection proceeds in two stages: selection from HeCBench (which provides the largest pool of multi-API kernels) and curation of kernels from Rodinia and three additional suites.
 
-\textbf{HeCBench selection funnel.} HeCBench~\cite{HeCBench2023}\footnote{Commit \texttt{22785cdd}.} is the largest source of multi-API kernel implementations in the survey, with 513 kernels spanning CUDA, HIP, SYCL, and OpenMP. We applied a structured selection funnel to identify kernels suitable for automated translation evaluation:
+\textbf{HeCBench selection funnel.} HeCBench~\cite{HeCBench2023}\footnote{Commit \texttt{22785cdd}.} is the largest source of multi-API kernel implementations in the survey, with 516 kernels spanning CUDA, HIP, SYCL, and OpenMP. We applied a structured selection funnel to identify kernels suitable for automated translation evaluation:
 
 \begin{enumerate}
 \item \textbf{4-API filter.} 327 kernels provide implementations in all four APIs (CUDA, HIP, SYCL, OpenMP).
