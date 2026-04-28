@@ -208,28 +208,18 @@ ALL numbers verified 2026-04-27 against raw result files.
 
 ## Remaining Work
 
-### Phase 5.5: Address Review Sim P0 Findings (NEW — before commit)
+### Phase 5.5: Address Review Sim P0 Findings — DONE (2026-04-27)
 
 Full details in `docs/paper/NeurIPS_ready_version/REVIEW_SIM_2026-04-27.md`.
+Commit: `f15763a`
 
-#### P0-1: Fix cross-model chi-squared → McNemar
-**File:** `SECTIONS/discussion.tex` (cross-model comparison paragraph)
-**Problem:** Unpaired chi-squared on 142 paired tasks. Should be McNemar's test.
-**Fix:** Compute McNemar from `paper_data_*.json > passk_campaign > passk_estimates` (both models have same 142 tasks). Report concordance table + McNemar p-value. Keep Cohen's h (0.80).
-```python
-# Compute from existing data:
-# For each of 142 tasks: qwen_pass = (c >= 1), gpt_pass = (c >= 1)
-# Concordance: both_pass, both_fail, qwen_only, gpt_only
-# McNemar chi2 = (b-c)^2 / (b+c)
-```
+**P0-1: DONE.** Replaced unpaired chi-squared (128.6) with Yates-corrected McNemar (chi²=45.2, p<10⁻¹⁰). Concordance: 49 both-pass, 42 both-fail, 50 GPT-only, 1 Qwen-only. Added `compute_mcnemar()` to `cross_model_comparison.py` with Yates correction matching codebase convention. Added "task-level paired" clarifier per Codex review (unit-of-analysis transparency). 12 tests pass.
 
-#### P0-2: Strengthen temperature confound language
-**Files:** `SECTIONS/discussion.tex`, possibly `SECTIONS/abstract.tex`
-**Fix:** Replace chi-squared p-value framing. State: "The observed gap is large (Cohen's h = 0.80) but cannot be fully attributed to model capability given unmatched sampling conditions."
+**P0-2: DONE.** Replaced "observed gap reflects both model capability and uncontrolled provider differences" with "cannot be fully attributed to model capability given unmatched sampling conditions." Abstract unchanged (no chi-squared cited there).
 
-#### P0-3: Add FP divergence discussion
-**File:** `SECTIONS/discussion.tex` (limitations subsection)
-**Fix:** Add 2-3 sentences: 8 specs downgraded from strong/medium to weak oracles due to cross-API FP reduction-order divergence (cfd, hotspot, myocyte, nw, nn, bfs). This limits oracle strength but correctly avoids false failures.
+**P0-3: DONE.** Added to limitations: "Ten specs across six kernels were downgraded from strong or medium oracles to weak: six due to cross-API floating-point reduction-order divergence (cfd, hotspot, myocyte) and four due to synthesis asymmetry (bfs, nw, nn)." Corrected HANDOFF count from 8 to 10 (verified against known-issues.md).
+
+**Files changed:** `discussion.tex`, `cross_model_comparison.py`, `test_cross_model_comparison.py`, `cross_model_comparison.json`.
 
 ### Phase 5.6: Address P1 Findings (recommended if time permits)
 
