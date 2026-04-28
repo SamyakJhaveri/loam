@@ -67,29 +67,26 @@ Additional stochastic samples partially recover only 31 of 142 tasks and none of
 
 \begin{table*}[t]
 \centering
-\caption{Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes total L0 records and $m$ the number of distinct kernels.}
+\caption{Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes total L0 records and $m$ the number of distinct kernels. Wilson 95\% CIs in brackets.}
 \label{tab:direction-rates}
 \small
-\begin{tabular}{@{}lrc@{}}
+\begin{tabular}{@{}lrrc@{}}
 \toprule
-Direction & \qwenshort{} & $n$ \\
+Direction & \qwenshort{} & \gptnew{} & $n$ \\
 \midrule
-% src: quantitative_findings_qwen.json > canonical > direction_pass_rates > standard
-CUDA$\to$OMP & 40.3\% [29.7\%, 51.8\%] & 72 \\
-OMP$\to$OpenCL & 33.3\% [22.0\%, 47.0\%] & 51 \\
-OMP$\to$CUDA & 25.0\% [16.4\%, 36.1\%] & 72 \\
-OpenCL$\to$OMP & 9.8\% [4.3\%, 21.0\%] & 51 \\
-CUDA$\to$OpenCL & 7.0\% [2.8\%, 16.7\%] & 57 \\
-OpenCL$\to$CUDA & 0.0\% [0.0\%, 6.3\%] & 57 \\
+% src: quantitative_findings_qwen.json + quantitative_findings_gpt54.json > canonical > direction_pass_rates > standard
+CUDA$\to$OMP & 40.3\% [29.7\%, 51.8\%] & 83.3\% [73.1\%, 90.2\%] & 72 \\
+OMP$\to$OpenCL & 33.3\% [22.0\%, 47.0\%] & 72.5\% [59.1\%, 82.9\%] & 51 \\
+OMP$\to$CUDA & 25.0\% [16.4\%, 36.1\%] & 55.6\% [44.1\%, 66.5\%] & 72 \\
+OpenCL$\to$OMP & 9.8\% [4.3\%, 21.0\%] & 41.2\% [28.8\%, 54.8\%] & 51 \\
+CUDA$\to$OpenCL & 7.0\% [2.8\%, 16.7\%] & 59.7\% [46.7\%, 71.4\%] & 57 \\
+OpenCL$\to$CUDA & 0.0\% [0.0\%, 6.3\%] & 19.3\% [11.1\%, 31.3\%] & 57 \\
 \midrule
-% src: quantitative_findings_qwen.json > canonical > direction_pass_rates > standard (omp_target_to_omp, omp_to_omp_target) + case_study
-OMP-target$\to$OMP ($m{=}3$) & 100\% [70.1\%, 100\%] & 9 \\
-OMP-target$\to$CUDA ($m{=}8$) & 66.7\% [46.7\%, 82.0\%] & 24 \\
-OMP$\to$OMP-target ($m{=}3$) & 44.4\% [18.9\%, 73.3\%] & 9 \\
-CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 24 \\
-\midrule
-% src: paper_data_azure_gpt54.json > passk_campaign > overall (L0 per-record Wilson CI)
-\gptnew{} (all directions) & 62.7\% [58.0\%, 67.1\%] & 426 \\
+% src: quantitative_findings_qwen.json + quantitative_findings_gpt54.json > canonical > direction_pass_rates > standard (omp_target) + case_study
+OMP-target$\to$OMP ($m{=}3$) & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 9 \\
+OMP-target$\to$CUDA ($m{=}8$) & 66.7\% [46.7\%, 82.0\%] & 95.8\% [79.8\%, 99.3\%] & 24 \\
+OMP$\to$OMP-target ($m{=}3$) & 44.4\% [18.9\%, 73.3\%] & 100\% [70.1\%, 100\%] & 9 \\
+CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 95.8\% [79.8\%, 99.3\%] & 24 \\
 \bottomrule
 \end{tabular}
 \end{table*}

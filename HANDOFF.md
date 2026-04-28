@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-27 (updated after Phase 3-5 session)
 **Deadline:** NeurIPS 2026 — May 1, 2026 (3 days remaining)
-**Status:** Phases 0-5 COMPLETE. Review sim findings need addressing (P0 items). Validate + commit remain.
+**Status:** Phases 0-5.6 COMPLETE. All P0 and P1 review sim findings addressed. Phase 6 (validate + commit + Overleaf prep) and Phase 7 (submission) remain.
 
 ---
 
@@ -221,21 +221,17 @@ Commit: `f15763a`
 
 **Files changed:** `discussion.tex`, `cross_model_comparison.py`, `test_cross_model_comparison.py`, `cross_model_comparison.json`.
 
-### Phase 5.6: Address P1 Findings (recommended if time permits)
+### Phase 5.6: Address P1 Findings — DONE (2026-04-27)
 
-#### P1-1: Scope augmentation claim in abstract
-**File:** `SECTIONS/abstract.tex`
-**Fix:** "stable (75–83%)" → "no evidence of memorization-dependent degradation on the tested subset"
+**P1-1: DONE.** Abstract augmentation claim scoped: removed specific range "(75–83%)", replaced with "no evidence of memorization-dependent degradation on the tested subset."
 
-#### P1-2: Add GPT-5.4 per-direction rates to Table 3
-**File:** `SECTIONS/results.tex` (tab:direction-rates)
-**Data:** `quantitative_findings_gpt54.json > canonical > direction_pass_rates`
+**P1-2: DONE.** Table 3 (tab:direction-rates) expanded from 1 to 2 model columns. All 10 GPT-5.4 direction rates with Wilson CIs added. Summary row removed (redundant with per-direction data). All numbers verified against `quantitative_findings_gpt54.json > canonical > direction_pass_rates`.
 
-#### P1-3: Compute GPT-5.4 within-task variance
-**Data:** Compare c distributions across 142 tasks for both models to assess effective temperature
+**P1-3: DONE.** Within-task variance added to discussion opening paragraph. GPT-5.4: 53.5% always-pass, 30.3% hard-fail; Qwen: 13.4% always-pass, 64.8% hard-fail. pass@1→pass@3 gap: 7.0pp vs 11.3pp. All numbers verified against `paper_data_*.json > passk_campaign > passk_estimates`.
 
-#### P1-4: Add benchmark longevity paragraph
-**File:** `SECTIONS/discussion.tex`
+**P1-4: DONE.** Benchmark longevity paragraph added to Future work. Three extension mechanisms: corpus expansion via declarative specs, augmentation beyond L4, oracle upgrades. 3 sentences.
+
+**Files changed:** `abstract.tex`, `results.tex`, `discussion.tex`.
 
 ### Phase 6: Validate, Commit, Prepare for Overleaf
 
