@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-27 (updated after Phase 3-5 session)
 **Deadline:** NeurIPS 2026 — May 1, 2026 (3 days remaining)
-**Status:** Phases 0-5.6 COMPLETE. All P0 and P1 review sim findings addressed. Phase 6 (validate + commit + Overleaf prep) and Phase 7 (submission) remain.
+**Status:** Phases 0-5.7 COMPLETE. All P0 and P1 findings from two review simulations addressed. Phase 6 (Overleaf prep) and Phase 7 (submission) remain.
 
 ---
 
@@ -232,6 +232,26 @@ Commit: `f15763a`
 **P1-4: DONE.** Benchmark longevity paragraph added to Future work. Three extension mechanisms: corpus expansion via declarative specs, augmentation beyond L4, oracle upgrades. 3 sentences.
 
 **Files changed:** `abstract.tex`, `results.tex`, `discussion.tex`.
+
+### Phase 5.7: Address Review Sim 2 Findings — DONE (2026-04-27)
+
+Second review-sim (5-reviewer NeurIPS panel, avg 68/100) produced new P0/P1 items distinct from Phase 5.5/5.6. All addressed as prose edits.
+
+**New-P0-1: DONE.** Discussion opening reframed: leads with three benchmark findings (direction dependence, build-stage bottleneck, augmentation stability), then presents cross-model gap as evidence the benchmark discriminates. Sampling caveat moved adjacent to McNemar result. Commits: `5e0e4bd`, `51e2b25`.
+
+**New-P0-2: DONE.** LASSI differentiation sharpened in related-work.tex: explicit delta (10 kernels/2 dirs vs 35 kernels/6 standard + 4 OMP-target dirs, augmentation, declarative spec format). Contribution #3 softened from "first systematic" to "first multi-suite, multi-direction."
+
+**New-P1-1: DONE.** Memory consistency model note added to direction asymmetry paragraph (CUDA weak model + explicit fences vs OpenMP barrier + acquire-release semantics).
+
+**New-P1-2: DONE.** Sampling caveat moved adjacent to McNemar result (covered by New-P0-1).
+
+**New-P1-3: DONE.** Supplemental data availability sentence added to conclusion paragraph.
+
+**Deslop fixes:** "landscape of" removed (benchmark-curation), "sits at the intersection" → "draws on" (related-work), "indicating that" filler cut (results).
+
+**Paper-claim-audit:** 62 claims verified, 0 mismatches, verdict PASS.
+
+**Files changed:** `discussion.tex`, `related-work.tex`, `1-introduction.tex`, `results.tex`, `benchmark-curation.tex`.
 
 ### Phase 6: Validate, Commit, Prepare for Overleaf
 
