@@ -45,15 +45,16 @@ def test_classify_effect_size():
 
 
 def test_output_json_has_required_keys():
-    """Test 5: Output JSON has required keys."""
+    """Test 5: Output JSON has required keys (mcnemar when passk_estimates present)."""
     from cross_model_comparison import build_comparison
 
-    qwen_data, gpt_data = _make_test_data()
+    qwen_data, gpt_data = _make_test_data_with_estimates()
     result = build_comparison(qwen_data, gpt_data)
 
     assert "overall" in result
-    assert "chi_squared" in result["overall"]
-    assert "p_value" in result["overall"]["chi_squared"]
+    assert "mcnemar" in result["overall"]
+    assert "chi_squared" not in result["overall"]
+    assert "p_value" in result["overall"]["mcnemar"]
     assert "cohens_h" in result["overall"]
     assert "per_direction" in result
     assert "per_kernel_matrix" in result
@@ -207,6 +208,92 @@ def _make_test_data_full_directions():
         },
     }
     return qwen, gpt
+
+
+def test_build_comparison_has_mcnemar():
+    """build_comparison output contains mcnemar (not chi_squared) when passk_estimates present."""
+    from cross_model_comparison import build_comparison
+
+    qwen_data, gpt_data = _make_test_data_with_estimates()
+    result = build_comparison(qwen_data, gpt_data)
+
+    assert "mcnemar" in result["overall"]
+    assert "chi_squared" not in result["overall"]
+    mcn = result["overall"]["mcnemar"]
+    assert "both_pass" in mcn
+    assert "both_fail" in mcn
+    assert "qwen_only" in mcn
+    assert "gpt_only" in mcn
+    assert "mcnemar_chi2" in mcn
+    assert "p_value" in mcn
+    assert mcn["both_pass"] + mcn["both_fail"] + mcn["qwen_only"] + mcn["gpt_only"] == mcn["total"]
+    assert "cohens_h" in result["overall"]
+
+
+def _make_test_data_with_estimates():
+    """Extend _make_test_data with passk_campaign including passk_estimates."""
+    qwen, gpt = _make_test_data()
+    # 4 tasks covering all concordance cells
+    estimates_qwen = {
+        "k1:cuda-to-omp": {"n": 3, "c": 2},  # pass
+        "k2:cuda-to-omp": {"n": 3, "c": 0},  # fail
+        "k3:omp-to-cuda": {"n": 3, "c": 1},  # pass (qwen_only)
+        "k4:omp-to-cuda": {"n": 3, "c": 0},  # fail
+    }
+    estimates_gpt = {
+        "k1:cuda-to-omp": {"n": 3, "c": 3},  # pass (both_pass)
+        "k2:cuda-to-omp": {"n": 3, "c": 0},  # fail (both_fail)
+        "k3:omp-to-cuda": {"n": 3, "c": 0},  # fail (qwen_only)
+        "k4:omp-to-cuda": {"n": 3, "c": 2},  # pass (gpt_only)
+    }
+    qwen["passk_campaign"] = dict(qwen["primary_campaign"])
+    qwen["passk_campaign"]["passk_estimates"] = estimates_qwen
+    gpt["passk_campaign"] = dict(gpt["primary_campaign"])
+    gpt["passk_campaign"]["passk_estimates"] = estimates_gpt
+    return qwen, gpt
+
+
+def test_compute_mcnemar_basic():
+    """McNemar concordance table and chi² on synthetic paired data."""
+    from cross_model_comparison import compute_mcnemar
+
+    # 7 paired tasks with known concordance
+    qwen_est = {
+        "a": {"c": 3}, "b": {"c": 0}, "c": {"c": 1},
+        "d": {"c": 0}, "e": {"c": 2}, "f": {"c": 0},
+        "g": {"c": 0},
+    }
+    gpt_est = {
+        "a": {"c": 2}, "b": {"c": 0}, "c": {"c": 0},
+        "d": {"c": 1}, "e": {"c": 3}, "f": {"c": 1},
+        "g": {"c": 0},
+    }
+    # a=both_pass, b=both_fail, c=qwen_only, d=gpt_only,
+    # e=both_pass, f=gpt_only, g=both_fail
+
+    result = compute_mcnemar(qwen_est, gpt_est)
+
+    assert result["both_pass"] == 2
+    assert result["both_fail"] == 2
+    assert result["qwen_only"] == 1
+    assert result["gpt_only"] == 2
+    assert result["total"] == 7
+    # Yates-corrected McNemar chi2 = (|1-2| - 1)^2 / (1+2) = 0/3 = 0
+    assert result["mcnemar_chi2"] == 0.0
+    assert result["p_value"] == 1.0
+
+
+def test_build_comparison_fallback_chi_squared():
+    """build_comparison uses chi_squared when passk_estimates is absent."""
+    from cross_model_comparison import build_comparison
+
+    qwen_data, gpt_data = _make_test_data()
+    result = build_comparison(qwen_data, gpt_data)
+
+    assert "chi_squared" in result["overall"]
+    assert "mcnemar" not in result["overall"]
+    assert "p_value" in result["overall"]["chi_squared"]
+    assert "chi2" in result["overall"]["chi_squared"]
 
 
 if __name__ == "__main__":

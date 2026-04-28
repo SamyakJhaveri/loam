@@ -7,7 +7,8 @@ Reads paper_data.json (Qwen) and paper_data_azure_gpt54.json (GPT).
 Output: results/analysis/cross_model_comparison.json
 
 Statistical tests:
-  - Chi-squared test on 2x2 contingency table (model x pass/fail)
+  - McNemar's test with Yates correction on paired task-level pass/fail (when passk_estimates available)
+  - Chi-squared fallback on 2x2 contingency table (when passk_estimates absent)
   - Cohen's h effect sizes (overall + per-direction)
   - Per-direction paired comparison for common directions only
   - Per-kernel agreement matrix with four-way classification
@@ -54,6 +55,51 @@ def classify_effect_size(h: float) -> str:
         return "large"
 
 
+def compute_mcnemar(qwen_estimates: dict, gpt_estimates: dict) -> dict:
+    common_tasks = sorted(set(qwen_estimates) & set(gpt_estimates))
+    if set(qwen_estimates) != set(gpt_estimates):
+        raise ValueError(
+            f"Task key mismatch: {len(set(qwen_estimates) - set(gpt_estimates))} qwen-only, "
+            f"{len(set(gpt_estimates) - set(qwen_estimates))} gpt-only"
+        )
+
+    both_pass = 0
+    both_fail = 0
+    qwen_only = 0
+    gpt_only = 0
+
+    for task in common_tasks:
+        q_pass = qwen_estimates[task]["c"] >= 1
+        g_pass = gpt_estimates[task]["c"] >= 1
+        if q_pass and g_pass:
+            both_pass += 1
+        elif not q_pass and not g_pass:
+            both_fail += 1
+        elif q_pass:
+            qwen_only += 1
+        else:
+            gpt_only += 1
+
+    discordant = qwen_only + gpt_only
+    if discordant > 0:
+        # Yates continuity correction (matches statistical_analysis.py convention)
+        mcnemar_chi2 = (abs(qwen_only - gpt_only) - 1) ** 2 / discordant
+        p_value = float(1 - sp_stats.chi2.cdf(mcnemar_chi2, df=1))
+    else:
+        mcnemar_chi2 = 0.0
+        p_value = 1.0
+
+    return {
+        "both_pass": both_pass,
+        "both_fail": both_fail,
+        "qwen_only": qwen_only,
+        "gpt_only": gpt_only,
+        "total": both_pass + both_fail + qwen_only + gpt_only,
+        "mcnemar_chi2": round(mcnemar_chi2, 4),
+        "p_value": round(p_value, 6),
+    }
+
+
 def build_comparison(qwen_data: dict, gpt_data: dict) -> dict:
     """Build the full cross-model comparison dict.
 
@@ -91,22 +137,30 @@ def build_comparison(qwen_data: dict, gpt_data: dict) -> dict:
     gpt_total = gpt_overall["total"]
     gpt_fail = gpt_total - gpt_pass
 
-    # Chi-squared on 2x2 contingency table
-    table = np.array([[qwen_pass, qwen_fail],
-                      [gpt_pass, gpt_fail]])
-    chi2, p_value, dof, expected = sp_stats.chi2_contingency(table)
-
     qwen_rate = qwen_overall["pass_rate"]
     gpt_rate = gpt_overall["pass_rate"]
     h_overall = cohens_h(qwen_rate, gpt_rate)
 
-    overall = {
-        "contingency_table": table.tolist(),
-        "chi_squared": {
+    # McNemar on paired task-level data when passk_estimates available
+    qwen_est = qwen_pc.get("passk_estimates")
+    gpt_est = gpt_pc.get("passk_estimates")
+    if qwen_est and gpt_est:
+        mcnemar_result = compute_mcnemar(qwen_est, gpt_est)
+        stat_key = "mcnemar"
+        stat_value = mcnemar_result
+    else:
+        table = np.array([[qwen_pass, qwen_fail],
+                          [gpt_pass, gpt_fail]])
+        chi2, p_value_val, dof, _ = sp_stats.chi2_contingency(table)
+        stat_key = "chi_squared"
+        stat_value = {
             "chi2": round(float(chi2), 4),
-            "p_value": round(float(p_value), 6),
+            "p_value": round(float(p_value_val), 6),
             "dof": int(dof),
-        },
+        }
+
+    overall = {
+        stat_key: stat_value,
         "qwen": {
             "pass": int(qwen_pass),
             "total": int(qwen_total),
@@ -254,8 +308,14 @@ def main() -> None:
         print(f"\n=== Cross-Model Comparison ===")
         print(f"Qwen: {o['qwen']['pass']}/{o['qwen']['total']} ({o['qwen']['rate']:.1%})")
         print(f"GPT:  {o['gpt']['pass']}/{o['gpt']['total']} ({o['gpt']['rate']:.1%})")
-        print(f"Chi-squared: chi2={o['chi_squared']['chi2']:.4f}, "
-              f"p={o['chi_squared']['p_value']:.6f}")
+        if "mcnemar" in o:
+            mcn = o["mcnemar"]
+            print(f"McNemar: chi2={mcn['mcnemar_chi2']:.4f}, p={mcn['p_value']:.6f}")
+            print(f"  Concordance: both_pass={mcn['both_pass']}, both_fail={mcn['both_fail']}, "
+                  f"qwen_only={mcn['qwen_only']}, gpt_only={mcn['gpt_only']}")
+        else:
+            print(f"Chi-squared: chi2={o['chi_squared']['chi2']:.4f}, "
+                  f"p={o['chi_squared']['p_value']:.6f}")
         print(f"Cohen's h: {o['cohens_h']:.4f} ({o['effect_size']})")
         print(f"\nCommon directions: {len(result['common_directions'])}")
         print(f"Missing: {result['missing_directions']}")
