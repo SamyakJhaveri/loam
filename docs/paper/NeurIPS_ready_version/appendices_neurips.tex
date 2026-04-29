@@ -165,7 +165,8 @@ chart, making the quantitative dominance of the top-3 APIs clear.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\columnwidth]{api_coverage_bar_v5.png}
+  % \includegraphics[width=\columnwidth]{api_coverage_bar_v5.png}
+  \input{NeurIPS_ready_version/figures/api_coverage_bar_v5}
   \caption{API coverage across the expanded benchmark survey. OpenMP (${\sim}50$
     benchmarks), MPI (${\sim}45$), and CUDA (${\sim}38$) dominate, with OpenACC
     (${\sim}17$), HIP (${\sim}15$), and MPI+OpenMP (${\sim}15$) forming a second
@@ -189,7 +190,8 @@ available per direction.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\columnwidth]{kernel_level_cooccurrence_heatmap.png}
+  % \includegraphics[width=\columnwidth]{kernel_level_cooccurrence_heatmap.png}
+  \input{NeurIPS_ready_version/figures/kernel_level_cooccurrence_heatmap}
   \caption{Kernel-level API co-occurrence matrix. Each cell counts the number of
     individual kernels with verified equivalent implementations in both the row
     and column APIs. The CUDA--HIP pair leads with 633 shared kernels, followed
@@ -223,7 +225,7 @@ structure visually apparent.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\columnwidth]{kernel_level_cooccurrence_network.png}
+  \includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/api_cooccurrence_network_color_v7.png}
   \caption{Kernel-level API co-occurrence network. Edges shown for $\geq 20$
     kernel pairs; edge width proportional to count. The tight
     CUDA/HIP/SYCL/OpenMP cluster reflects HeCBench and RAJAPerf's uniform
@@ -410,7 +412,8 @@ across categories.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\columnwidth]{benchmark_types.png}
+  % \includegraphics[width=\columnwidth]{benchmark_types.png}
+  \input{NeurIPS_ready_version/figures/benchmark_types}
   \caption{Distribution of benchmark types across the 35 surveyed repositories.
     Suites (13, 37\%) and mini-applications (12, 34\%) dominate, together
     accounting for 71\% of the survey. Proxy applications (4, 11\%), libraries
@@ -431,7 +434,8 @@ the surveyed benchmarks.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\columnwidth]{benchmark_api_count_hist_v5.png}
+  % \includegraphics[width=\columnwidth]{benchmark_api_count_hist_v5.png}
+  \input{NeurIPS_ready_version/figures/benchmark_api_count_hist_v5}
   \caption{Distribution of API breadth (number of parallel APIs supported)
     across surveyed benchmarks. The modal benchmark supports 3~APIs, with a peak
     of approximately 18 benchmarks in the 3-API bin. A long tail extends to 12+
@@ -1090,8 +1094,6 @@ Python & 3.12.3 \\
 \end{table}
 
 % --- From Section 6 (Results) ---
-% Self-repair tables removed: no self-repair data in canonical evaluation (single-attempt, temp=0.7).
-
 
 % src: quantitative_findings_qwen.json > canonical > augmentation_trends > aggregate > per_level
 % src: quantitative_findings_gpt54.json > canonical > augmentation_trends > aggregate > per_level
@@ -1136,7 +1138,7 @@ L4 & 56.0\% ($n$=50) & 83.3\% ($n$=12) & 90.9\% ($n$=99) & 90.9\% ($n$=22) \\
 % src: GPT-5.4: 43 hard_fail + 23 noisy + 76 always_pass = 142; macro pass@1=62.7%, pass@3=69.7%
 \begin{table*}[htbp]
 \centering
-\caption{Pass@$k$ results (L0, temperature=0.7, three independent samples per direction--kernel pair, no self-repair). Hard Fail = 0/3 samples pass; Always Pass = 3/3; Noisy = 1--2/3.}
+\caption{Pass@$k$ results (L0, temperature=0.7, three independent samples per direction--kernel pair, single-attempt). Hard Fail = 0/3 samples pass; Always Pass = 3/3; Noisy = 1--2/3.}
 \label{tab:pass-at-k}
 \small
 \resizebox{\textwidth}{!}{%

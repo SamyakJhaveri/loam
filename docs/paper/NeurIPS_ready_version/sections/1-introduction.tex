@@ -1,15 +1,41 @@
+% Para 1 — MOTIVATION: Scientific code must move across parallel APIs;
+%   practitioners use LLMs; but parallel translation is structurally harder
+%   than ordinary translation (thread indexing, sync, memory, host-kernel).
+%
+% Para 2 — EVALUATION GAP: Existing benchmarks cannot answer the question
+%   cleanly. Walk through what each misses:
+%   - Sequential benchmarks (HumanEval, SWE-bench): no parallelism
+%   - Parallel generation (ParEval): synthesis ≠ translation
+%   - Repository-level (ParEval-Repo): 0% — build system is the bottleneck
+%   - Kernel-level (LASSI): only 2 directions, coupled to repair mechanism
+%   → Pose the central question: "when build infrastructure is fixed, can
+%     LLMs translate parallel kernels — and where do they fail?"
+%
+% Para 3 — OUR APPROACH: Introduce ParBench. Key design choices:
+%   - Fix build infrastructure, translate only the kernel
+%   - Build-run-verify harness with conjunctive correctness
+%   - Survey-grounded corpus (35 repos → 5 suites)
+%   - AST-driven augmentation to probe memorization
+%
+% Para 4 — THREE CONTRIBUTIONS (enumerated):
+%   1. Benchmark: 96 specs, 6+4 directions, kernel-centric isolation
+%   2. Augmentation engine: 6 transforms × 4 intensity levels
+%   3. Empirical characterization: 1,448 records, two models, key findings
+%      (a) real capability revealed, (b) build-stage adaptation dominant,
+%      (c) direction dependence, (d) augmentation stability
+
 \section{Introduction}
 \label{sec:introduction}
 
-Scientific code increasingly needs to move across parallel programming APIs. CUDA implementations written for NVIDIA GPUs must be ported to OpenMP, OpenCL, HIP, SYCL, or other portability layers as hardware and procurement constraints change. Practitioners increasingly use large language models for this work, but parallel translation is not ordinary code translation. Correctness depends on preserving thread-index arithmetic, synchronization, memory-management semantics, and host-kernel interfaces, structural concerns that go well beyond surface-level token replacement.
+Scientific code increasingly needs to move across parallel programming APIs. CUDA implementations written for NVIDIA GPUs must be ported to OpenMP, OpenCL, HIP, SYCL, or other portability layers as hardware and procurement constraints change. Practitioners increasingly use large language models (LLMs) for this work, but parallel translation is not ordinary code translation. Correctness depends on preserving thread-index arithmetic, synchronization, memory-management semantics, and host-kernel interfaces, structural concerns that go well beyond surface-level token replacement.
 
-Existing evaluation does not isolate this capability cleanly. Sequential code benchmarks such as HumanEval~\cite{HumanEval2021} and SWE-bench~\cite{SWEbench2024} contain no parallelism. Parallel code generation benchmarks such as ParEval~\cite{ParEval2024} ask models to synthesize code from natural language descriptions, not translate existing parallel structure across APIs. Repository-level translation, as in ParEval-Repo~\cite{ParEvalRepo2025}, evaluates a realistic workflow but makes build-system and integration generation the binding constraint: that study reports 0\% pass@$k$ on applications larger than 133~SLoC. LASSI~\cite{LASSI2024} takes a step toward kernel-level evaluation with an agentic self-correction pipeline on 10 HeCBench kernels, but covers only two translation directions and couples evaluation to the repair mechanism. This leaves two questions open: can models translate the computational kernel itself across a broad set of directions when build infrastructure is fixed? And do the results reflect genuine parallel reasoning or memorization of widely circulated benchmark code?
+Existing evaluation does not isolate this capability cleanly. Sequential code benchmarks such as HumanEval~\cite{HumanEval2021} and SWE-bench~\cite{SWEbench2024} contain no parallelism. Parallel code generation benchmarks such as ParEval~\cite{ParEval2024} ask models to synthesize code from natural language descriptions, not translate existing parallel structure across APIs. Repository-level translation, as in ParEval-Repo~\cite{ParEvalRepo2025}, evaluates a realistic workflow but makes build-system and integration generation the binding constraint: that study reports 0\% pass@$k$ on applications larger than 133~SLoC. LASSI~\cite{LASSI2024} takes a step toward kernel-level evaluation with an agentic self-correction pipeline on 10 HeCBench kernels, but covers only two translation directions and couples evaluation to the repair mechanism. This leaves two questions open: can models translate the computational kernel itself across a broad set of directions when build infrastructure is fixed? And, do the results reflect genuine parallel reasoning or memorization of widely circulated benchmark code?
 
 To address these gaps, we present \textbf{ParBench}, a kernel-centric benchmark framework for evaluating LLM-based parallel code translation. ParBench provides fixed build and verification infrastructure, asks the model to translate only the selected kernel files, and judges the output with a build-run-verify harness. The benchmark corpus is not ad hoc: it is derived from a survey of 35 open-source HPC benchmark repositories and narrowed to suites with equivalent multi-API kernels and automated correctness checks. ParBench's design addresses several dimensions that prior work leaves open:
 
-\textbf{Survey-grounded benchmark selection.} Prior benchmarks do not justify \emph{which} parallel APIs or kernels to evaluate. ParBench's survey analyzed kernel-level translation opportunities across the 35 repositories and revealed that kernel-level counting exposes far more translation material than repository-level counting. For example, just six repositories yield 472 CUDA--OpenMP kernel pairs (Section~\ref{sec:suite-selection}; Appendix Figure~\ref{fig:repo-vs-kernel}). From this analysis, five suites were selected for their multi-API kernel equivalence and self-checking correctness infrastructure: Rodinia~\cite{Rodinia2009}, HeCBench~\cite{HeCBench2023}, XSBench~\cite{XSBench2014}, RSBench, and mixbench, spanning CUDA, OpenMP, and OpenCL with additional OpenMP-target case studies.
+\textbf{Survey-grounded benchmark selection.} Prior benchmarks do not justify \emph{which} parallel APIs or kernels to evaluate. ParBench's survey analyzed kernel-level translation opportunities across the 35 repositories and revealed that kernel-level counting exposes far more translation material than repository-level counting. For example, just six repositories yield 472 CUDA--OpenMP kernel pairs (Section~\ref{sec:suite-selection}; Appendix Figure~\ref{fig:repo-vs-kernel}). From this analysis, five suites were selected for their multi-API kernel equivalence and self-checking correctness infrastructure: Rodinia~\cite{Rodinia2009}, HeCBench~\cite{HeCBench2023}, XSBench~\cite{XSBench2014}, RSBench, and mixbench~\cite{mixbench2017}, spanning CUDA, OpenMP, and OpenCL with additional OpenMP-target case studies.
 
-\textbf{Multi-file coordination.} A substantial fraction of ParBench specifications require translating two or more source files, testing whether models can coordinate changes across file boundaries---a challenge distinct from within-file API mapping. Single-file translations pass at substantially higher rates, suggesting that file-boundary coordination is an independent difficulty dimension (Section~\ref{sec:eval-corpus}).
+\textbf{Multi-file coordination.} A substantial fraction of ParBench specifications require translating two or more source files, testing whether models can coordinate changes across file boundaries, a challenge distinct from within-file API mapping. Single-file translations pass at substantially higher rates, suggesting that file-boundary coordination is an independent difficulty dimension (Section~\ref{sec:eval-corpus}).
 
 \textbf{Training data contamination.} HPC suites such as Rodinia and HeCBench are widely replicated across hundreds of GitHub repositories, so success on unmodified source may reflect familiarity with public code rather than robust parallel reasoning. An AST-driven augmentation engine produces semantically equivalent but syntactically novel source variants at multiple intensity levels, enabling controlled evaluation of whether models reason about parallel structure or rely on surface similarity (Section~\ref{sec:augmentation-engine}; results in Section~\ref{sec:augmentation-robustness}).
 
@@ -21,6 +47,6 @@ This paper makes three contributions:
 \item \textbf{AST-driven augmentation engine.} We develop an augmentation engine with six semantics-preserving source-level transformations applied at four intensity levels (L1--L4). This engine tests whether models preserve parallel semantics beyond surface similarity by producing structurally varied but functionally equivalent source code.
 
 % src: quantitative_findings_qwen.json + quantitative_findings_gpt54.json > canonical > pass_at_k
-\item \textbf{Empirical characterization.} Across two models and 1,448 valid translation records, we report the first multi-suite, multi-direction evaluation of LLM parallel code translation under stochastic sampling with pass@$k$ analysis. \qwenshort{} achieves pass@1\,=\,23.9\% and \gptnew{} achieves pass@1\,=\,62.7\% on 142 unique L0 tasks. Key findings include build-stage adaptation as the main bottleneck, strong direction dependence, broad stability under augmentation, and limited rescue from repeated sampling.
+\item \textbf{Empirical characterization.} Across two models and 1,448 valid translation records, we report the first multi-suite, multi-direction evaluation of LLM parallel code translation under stochastic sampling with pass@$k$ analysis. \qwenshort{} achieves pass@1\,=\,23.9\% and \gptnew{} achieves pass@1\,=\,62.7\% on 142 unique no-augmentation (L0) tasks. Key findings include build-stage adaptation as the main bottleneck, strong direction dependence, broad stability under augmentation, and limited rescue from repeated sampling.
 \end{enumerate}
 

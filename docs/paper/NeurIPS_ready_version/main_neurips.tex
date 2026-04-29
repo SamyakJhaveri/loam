@@ -20,12 +20,59 @@
 \usepackage{hyperref}
 \usepackage{array}
 \usepackage{float}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepgfplotslibrary{statistics,colorbrewer}
+\usetikzlibrary{patterns,positioning,calc}
+
+% ParBench colour palette
+\definecolor{pbPass}{RGB}{44,160,44}
+\definecolor{pbBuildFail}{RGB}{214,39,40}
+\definecolor{pbRunFail}{RGB}{255,127,14}
+\definecolor{pbVerifyFail}{RGB}{148,103,189}
+\definecolor{pbExtractionFail}{RGB}{140,86,75}
+\definecolor{pbNA}{RGB}{200,200,200}
+\definecolor{pbTeal}{RGB}{23,190,207}
+\definecolor{pbTealDark}{RGB}{15,120,140}
+\definecolor{pbTealLight}{RGB}{158,218,229}
+\definecolor{pbRose}{RGB}{227,119,194}
+\definecolor{pbOrange}{RGB}{255,127,14}
+\definecolor{pbYellow}{RGB}{255,215,0}
+\definecolor{pbGray}{RGB}{150,150,150}
+\definecolor{pbRodinia}{RGB}{31,119,180}
+\definecolor{pbXSBench}{RGB}{255,127,14}
+\definecolor{pbRSBench}{RGB}{44,160,44}
+\definecolor{pbMixbench}{RGB}{214,39,40}
+\definecolor{pbHeCBench}{RGB}{148,103,189}
+
+\pgfplotsset{
+  parbench compact/.style={
+    width=\columnwidth, height=5.5cm,
+    enlarge x limits=0.08,
+    tick pos=left,
+    legend style={font=\footnotesize, draw=gray!50},
+    tick label style={font=\footnotesize},
+    label style={font=\footnotesize},
+    title style={font=\small\bfseries, align=center},
+    ymajorgrids=true,
+    grid style={draw=gray!20},
+    clip=false,
+  },
+  parbench heatmap/.style={
+    width=\columnwidth, height=\columnwidth,
+    enlargelimits=false,
+    tick label style={font=\tiny, rotate=45, anchor=east},
+    title style={font=\small\bfseries},
+    colorbar style={font=\tiny},
+    axis on top,
+  },
+}
 
 \graphicspath{{figures/}}
 
 \colorlet{punct}{red!60!black}
 \definecolor{background}{RGB}{242,242,242}
-\definecolor{delim}{RGB}{20,105,176}
+\definecolor{delim}{RGB}{20,105,176} 
 \lstdefinelanguage{JSON}{
   basicstyle=\ttfamily\scriptsize,
   backgroundcolor=\color{background},

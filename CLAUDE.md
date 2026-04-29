@@ -49,7 +49,7 @@ Full details: `.claude/rules/architecture.md` (conditional on harness/, scripts/
 - **Model selection:** Use Opus for main work. Before commit/push: `/model haiku` (faster, cheaper).
 - **Multi-worker orchestration:** Use `/agent-team` as default for 2+ parallel workers. Opus advisor + Sonnet workers. `--all-opus` only when deep reasoning from every worker is required. Do NOT use `dispatching-parallel-agents`.
 
-Behavioral guidelines (Think Before Coding / Simplicity First / Surgical Changes / Goal-Driven Execution): see `karpathy-guidelines` plugin (listed under External Plugin Skills below).
+Behavioral guidelines (Think Before Coding / Simplicity First / Surgical Changes / Goal-Driven Execution): invoke `Skill tool` with `skill: "andrej-karpathy-skills:karpathy-guidelines"` **before planning or implementing any code change**.
 
 ## Conditional Rules (`.claude/rules/`, auto-loaded by file path)
 
