@@ -1,8 +1,8 @@
 # HANDOFF: NeurIPS 2026 Paper Completion
 
-**Date:** 2026-04-27 (updated after Phase 3-5 session)
-**Deadline:** NeurIPS 2026 — May 1, 2026 (3 days remaining)
-**Status:** Phases 0-5.7 COMPLETE. All P0 and P1 findings from two review simulations addressed. Phase 6 (Overleaf prep) and Phase 7 (submission) remain.
+**Date:** 2026-04-28 (updated after Phase 6 execution session)
+**Deadline:** NeurIPS 2026 E&D Track — **Team deadline: May 1, 2026.** (NeurIPS official: abstract May 4, full paper May 6 AoE — but team ships by May 1.)
+**Status:** Phases 0-6 COMPLETE. Phase 7 (validate + commit) ready. Phase 8 (submission) remains.
 
 ---
 
@@ -253,7 +253,77 @@ Second review-sim (5-reviewer NeurIPS panel, avg 68/100) produced new P0/P1 item
 
 **Files changed:** `discussion.tex`, `related-work.tex`, `1-introduction.tex`, `results.tex`, `benchmark-curation.tex`.
 
-### Phase 6: Validate, Commit, Prepare for Overleaf
+### Phase 6: Figures, Diagram, Data Integrity & NeurIPS Compliance — DONE (2026-04-28)
+
+**Deadline:** Team deadline May 1. NeurIPS official: abstract May 4, full paper May 6 (AoE). Source: https://neurips.cc/Conferences/2026/CallForEvaluationsDatasets. Track renamed to "Evaluations & Datasets (E&D)."
+
+**Figure verification (DONE):** All 14 figure PDFs regenerated April 27 from latest data. Both Qwen + GPT-5.4 variants exist. No figures need regeneration.
+
+**Appendix verification (DONE):** All tables verified correct against raw data files.
+
+#### Task 1: Architecture Diagram Fixes — DONE (2026-04-28)
+
+**File:** `docs/paper/NeurIPS_ready_version/figures/parbench_architecture.drawio`
+
+User edited in draw.io locally. Claude Code verified all changes via grep checks on the XML.
+
+**Original 8 fixes (all applied and verified):**
+1.1 Removed `(T=0, greedy decode)` from LLM box (Qwen uses T=0.7; GPT-5.4 is provider-controlled).
+1.2 Changed `96 eval-eligible` → `96 curated, 87 eval-eligible`.
+1.3 Changed `142 pairs x 5 levels x 2 models = 1,420 tasks` → `142 pairs × 2 models L0-conditional ablation = 1,448 records`.
+1.4 Fixed typos `Heterogenous` → `Heterogeneous`, `Qualidtatively` → `Qualitatively`.
+1.5 Removed `self-repair rate` from Metrics; changed `Fisher` → `McNemar`.
+1.6 Changed `6 Translation Directions` → `10 Translation Directions`.
+1.7 Deleted `Multi-Attempt Self-Repair` box entirely (was Fix 1.7 + 1.8 combined).
+1.8 Deleted `self_repair_label` arrow and label entirely.
+
+**Additional fixes found during code-grounded review:**
+- Changed `+2 OpenMP Offload dirs` → listed all 5 bidirectional pairs explicitly (CUDA↔OpenMP, CUDA↔OpenCL, OpenMP↔OpenCL, CUDA↔OpenMP Offload, OpenMP↔OpenMP Offload).
+- Fixed second green label from `✓BUILD PASS` → `✓RUN PASS` after Run stage.
+- Changed HeCBench `× 3 APIs` → `2–3 APIs` (5 kernels have 3 APIs, 5 have 2).
+- Changed Rodinia `× 3 APIs` → `× 2-3 APIs` (22 cuda + 18 omp + 20 opencl = 60 specs, not 66).
+- Removed k=1/k=3 feedback loop arrows; replaced with `× 3 translated samples` forward label.
+- Added dashed extensibility box `+ New Suites via JSON Spec` inside Benchmark Corpus.
+
+**Self-critic session fixes (3 additional):**
+- Changed `JSON Schema` → `JSON Spec` in extensibility box (correct terminology).
+- Changed transform names from Helvetica back to Courier New (monospace for code identifiers).
+- Fixed `coverage(3/35` → `coverage (3/35` and `renaming.` → `renaming;` in Excluded text.
+
+**All verified via grep: 0 matches for T=0, 1420, Qualidtatively, Heterogenous, self-repair, Fisher, 6 Translation, Multi-Attempt, ≤3 attempts, BUILD PASS (only 1), JSON Schema.**
+
+#### Task 2: Data Integrity Fix — DONE (2026-04-28)
+
+**File:** `results/analysis/quantitative_findings_gpt54.json`
+
+The `metadata.model` field was `"together-qwen-3.5-397b-a17b"` — wrong model ID. Fixed to `"azure-gpt-5.4"`. Data content (822 records) was already correct; only the metadata label was wrong.
+
+**Verification PASSED:** `python3 -c "import json; d=json.load(open('results/analysis/quantitative_findings_gpt54.json')); assert d['metadata']['model'] == 'azure-gpt-5.4'"`
+
+#### Task 3: NeurIPS Compliance Fixes — DONE (2026-04-28, applied on Overleaf)
+
+**3.1 — E&D track option** (`main_neurips.tex`): `\usepackage{neurips_2026}` → `\usepackage[eandd]{neurips_2026}`. Applied on Overleaf.
+
+**3.2 — Code availability** (`appendices_neurips.tex`, checklist item 5): Changed future-tense to present-tense ("is submitted as supplementary material"). Applied on Overleaf.
+
+**3.3 — Statistical test name** (`appendices_neurips.tex`, checklist item 7): `$\chi^2$ test` → `Yates-corrected McNemar test`. Applied on Overleaf.
+
+#### Task 4: Self-Repair Removal — DONE (2026-04-28, applied on Overleaf)
+
+Decision: self-repair was never exercised and was removed from the diagram. All paper references removed for consistency.
+
+**7 Overleaf edits applied:**
+- S1: Deleted dashed-arrow sentence from Figure 1 caption (`framework.tex`).
+- S2: Deleted `\textbf{Optional self-repair.}` paragraph (`framework.tex`).
+- S3: Rewrote single-attempt sentence without self-repair reference (`experimental-setup.tex`).
+- S4: Removed self-repair clause from limitations (`discussion.tex`).
+- S5: Removed self-repair phrase from future work (`discussion.tex`).
+- S6: Changed `no self-repair` → `single-attempt` in pass@k table caption (`appendices_neurips.tex`).
+- S7: Deleted self-repair comment (`appendices_neurips.tex`).
+
+**Kept:** LASSI self-correction reference in `related-work.tex` (describes their work, not ours).
+
+### Phase 7: Validate, Commit, Prepare for Overleaf
 
 ```bash
 # 1. Run /validate (waves 1-3 required by pre-commit hook)
@@ -271,6 +341,8 @@ git add docs/paper/NeurIPS_ready_version/sections/*.tex
 git add docs/paper/NeurIPS_ready_version/appendices_neurips.tex
 git add docs/paper/NeurIPS_ready_version/references.bib
 git add docs/paper/NeurIPS_ready_version/figures/*.pdf
+git add docs/paper/NeurIPS_ready_version/figures/*.png
+git add docs/paper/NeurIPS_ready_version/figures/*.drawio
 git add scripts/analysis/cross_model_comparison.py
 git add scripts/analysis/quantitative_findings.py
 git add scripts/analysis/generate_paper_data.py
@@ -278,13 +350,14 @@ git add scripts/analysis/generate_paper_data.py
 # 4. Copy docs/paper/NeurIPS_ready_version/ to Overleaf for compilation
 ```
 
-### Phase 7: Submission Readiness (User's Responsibility)
+### Phase 8: Submission Readiness (User's Responsibility)
 1. **Compile on Overleaf** — no LaTeX compiler locally
-2. **Page count** — 9 pages max (to end of Conclusion)
-3. **Anonymous mode** — `\usepackage{neurips_2026}` without `[final]`
-4. **Supplementary material** — ZIP of code/data if submitting
+2. **Page count** — 9 pages max (to end of Conclusion), references + appendices unlimited
+3. **Anonymous mode** — `\usepackage[eandd]{neurips_2026}` (double-blind is E&D default)
+4. **Supplementary material** — ZIP of code/data **required at submission** (E&D track). Must include: specs, harness, eval pipeline, result JSONs
 5. **Author information form** — separate NeurIPS requirement
 6. **Teammate review** — final PDF review on Overleaf
+7. **Abstract deadline** — May 4 AoE (separate from full paper May 6 AoE)
 
 ---
 
@@ -298,3 +371,6 @@ git add scripts/analysis/generate_paper_data.py
 - **Don't add self-repair results** — no data exists.
 - **Don't confuse `appendices.tex` with `appendices_neurips.tex`** — only the latter is active.
 - **Don't run `humanizer_academic`** — user found it ineffective. Use `deslop` principles inline.
+- **`quantitative_findings_gpt54.json` metadata.model was WRONG** — was `together-qwen-3.5-397b-a17b`, fixed to `azure-gpt-5.4` in Phase 6 Task 2 (2026-04-28). Not yet committed. Verify: `python3 -c "import json; d=json.load(open('results/analysis/quantitative_findings_gpt54.json')); print(d['metadata']['model'])"`
+- **`eandd` option has no visible effect in submission mode** — don't debug why the PDF looks the same after adding `[eandd]`. The track name only appears in camera-ready `[final]` mode.
+- **Overleaf may have diverged from local copy** — teammates edited on Overleaf. Use exact text search, not line numbers, for any edits.

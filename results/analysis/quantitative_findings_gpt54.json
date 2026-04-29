@@ -3,7 +3,7 @@
     "generated_at": "2026-04-27T19:47:11.628248+00:00",
     "git_hash": "e58fab3",
     "project_root": "/home/samyak/Desktop/parbench_sam",
-    "model": "together-qwen-3.5-397b-a17b",
+    "model": "azure-gpt-5.4",
     "excluded_specs": [
       "hecbench-scan-omp_target",
       "hecbench-stencil1d-omp_target",
