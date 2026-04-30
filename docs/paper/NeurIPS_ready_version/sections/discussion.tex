@@ -11,6 +11,6 @@ The gap is concentrated in deterministic outcomes: 53.5\% of \gptnew{} tasks pas
 
 Additional directions include self-repair experiments using the framework's built-in feedback loop, evaluation of agentic systems such as LASSI~\cite{LASSI2024} and ParaCodex~\cite{ParaCodex2026}, fine-tuned HPC models~\cite{HPCCoderV2}, efficiency-aware evaluation following TRACY~\cite{TRACY2025}, and expansion of the augmentation campaign to more kernels and directions.
 
-Appendix~\ref{sec:eval-card} provides a structured Evaluation Card declaring \parbench{}'s measurement scope, assumptions, valid and invalid claims, and a recommended reporting protocol for future users.
+Appendix~\ref{sec:eval-card} provides a structured Evaluation Card declaring \parbench{}'s measurement scope, assumptions, valid and invalid claims, and a recommended reporting protocol for future users. 
 
 \parbench{} is evaluation infrastructure rather than a new translation method. Its contribution is to make the measurement problem sharper: kernel-centric isolation avoids repository-level build confounds, declarative specs make correctness reproducible, augmentation probes robustness, and the harness exposes where translations fail. The initial results show that current LLMs have real but uneven parallel translation capability, with build adaptation, direction asymmetry, and multi-file coordination as central barriers to reliable use. The benchmark code, all 96~spec JSONs, and per-record result files are included in the supplementary material to enable independent verification and extension.

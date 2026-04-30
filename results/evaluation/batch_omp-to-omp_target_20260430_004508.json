@@ -1,0 +1,736 @@
+{
+  "direction": "omp-to-omp_target",
+  "models": [
+    "azure-gpt-5.3-codex"
+  ],
+  "suite": "hecbench",
+  "kernels": [
+    "stencil1d",
+    "heat2d",
+    "floydwarshall",
+    "scan",
+    "iso2dfd"
+  ],
+  "task_list": null,
+  "temperature": 0.7,
+  "num_samples": 3,
+  "thinking": "on",
+  "total_tasks": 9,
+  "total_elapsed_seconds": 281.1,
+  "results": [
+    {
+      "source_spec": "hecbench-floydwarshall-omp",
+      "target_spec": "hecbench-floydwarshall-omp_target",
+      "kernel": "floydwarshall",
+      "model": "azure-gpt-5.3-codex",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 577903296,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "1024",
+        "1",
+        "16"
+      ],
+      "timestamp": "2026-04-30T07:40:27Z",
+      "prompt_tokens": 1689,
+      "completion_tokens": 2261,
+      "llm_response_time_seconds": 35.762,
+      "build_status": "pass",
+      "build_time_seconds": 0.39,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.651,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time 0.018795 (s)\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 0.018795,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.651,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <assert.h>\n#include <string.h>\n#include <chrono>\n#include <omp.h>\n\n#define MAXDISTANCE (200)\n\nunsigned int minimum(unsigned int a, unsigned int b)\n{\n  return (b < a) ? b : a;\n}\n\nvoid floydWarshallCPUReference(unsigned int *pathDistanceMatrix,\n                               unsigned int *pathMatrix, unsigned int numNodes)\n{\n  unsigned int distanceYtoX, distanceYtoK, distanceKtoX, indirectDistance;\n  unsigned int width = numNodes;\n  unsigned int yXwidth;\n\n  for (unsigned int k = 0; k < numNodes; ++k)\n  {\n    for (unsigned int y = 0; y < numNodes; ++y)\n    {\n      yXwidth = y * numNodes;\n      for (unsigned int x = 0; x < numNodes; ++x)\n      {\n        distanceYtoX = pathDistanceMatrix[yXwidth + x];\n        distanceYtoK = pathDistanceMatrix[yXwidth + k];\n        distanceKtoX = pathDistanceMatrix[k * width + x];\n\n        indirectDistance = distanceYtoK + distanceKtoX;\n\n        if (indirectDistance < distanceYtoX)\n        {\n          pathDistanceMatrix[yXwidth + x] = indirectDistance;\n          pathMatrix[yXwidth + x] = k;\n        }\n      }\n    }\n  }\n}\n\nint main(int argc, char **argv)\n{\n  if (argc != 4)\n  {\n    printf(\"Usage: %s <number of nodes> <iterations> <block size>\\n\", argv[0]);\n    return 1;\n  }\n\n  unsigned int numNodes = atoi(argv[1]);\n  unsigned int numIterations = atoi(argv[2]);\n  unsigned int blockSize = atoi(argv[3]);\n\n  if (numNodes % blockSize != 0)\n  {\n    numNodes = (numNodes / blockSize + 1) * blockSize;\n  }\n\n  unsigned int *pathMatrix = NULL;\n  unsigned int *pathDistanceMatrix = NULL;\n  unsigned int *verificationPathDistanceMatrix = NULL;\n  unsigned int *verificationPathMatrix = NULL;\n  unsigned int matrixSize;\n  unsigned int matrixSizeBytes;\n\n  matrixSize = numNodes * numNodes;\n  matrixSizeBytes = numNodes * numNodes * sizeof(unsigned int);\n  pathDistanceMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(pathDistanceMatrix != NULL);\n\n  pathMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(pathMatrix != NULL);\n\n  srand(2);\n  for (unsigned int i = 0; i < numNodes; i++)\n    for (unsigned int j = 0; j < numNodes; j++)\n    {\n      int index = i * numNodes + j;\n      pathDistanceMatrix[index] = rand() % (MAXDISTANCE + 1);\n    }\n\n  for (unsigned int i = 0; i < numNodes; ++i)\n  {\n    unsigned int iXWidth = i * numNodes;\n    pathDistanceMatrix[iXWidth + i] = 0;\n  }\n\n  for (unsigned int i = 0; i < numNodes; ++i)\n  {\n    for (unsigned int j = 0; j < i; ++j)\n    {\n      pathMatrix[i * numNodes + j] = i;\n      pathMatrix[j * numNodes + i] = j;\n    }\n    pathMatrix[i * numNodes + i] = i;\n  }\n\n  verificationPathDistanceMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(verificationPathDistanceMatrix != NULL);\n\n  verificationPathMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(verificationPathMatrix != NULL);\n\n  memcpy(verificationPathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes);\n  memcpy(verificationPathMatrix, pathMatrix, matrixSizeBytes);\n\n  unsigned int numPasses = numNodes;\n\n#pragma omp target data map(alloc : pathDistanceMatrix[0:matrixSize], pathMatrix[0:matrixSize])\n  {\n    float total_time = 0.f;\n\n    for (unsigned int n = 0; n < numIterations; n++)\n    {\n#pragma omp target update to(pathDistanceMatrix[0:matrixSize])\n\n      auto start = std::chrono::steady_clock::now();\n\n      for (unsigned int k = 0; k < numPasses; k++)\n      {\n#pragma omp target teams distribute parallel for collapse(2) thread_limit(blockSize * blockSize)\n        for (unsigned int y = 0; y < numNodes; ++y)\n        {\n          for (unsigned int x = 0; x < numNodes; ++x)\n          {\n            unsigned int distanceYtoX = pathDistanceMatrix[y * numNodes + x];\n            unsigned int distanceYtoK = pathDistanceMatrix[y * numNodes + k];\n            unsigned int distanceKtoX = pathDistanceMatrix[k * numNodes + x];\n            unsigned int indirectDistance = distanceYtoK + distanceKtoX;\n\n            if (indirectDistance < distanceYtoX)\n            {\n              pathDistanceMatrix[y * numNodes + x] = indirectDistance;\n              pathMatrix[y * numNodes + x] = k;\n            }\n          }\n        }\n      }\n\n      auto end = std::chrono::steady_clock::now();\n      auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n      total_time += (float)time;\n    }\n\n    printf(\"Average kernel execution time %f (s)\\n\", (total_time * 1e-9f) / numIterations);\n\n#pragma omp target update from(pathDistanceMatrix[0:matrixSize])\n  }\n\n  floydWarshallCPUReference(verificationPathDistanceMatrix,\n                            verificationPathMatrix, numNodes);\n\n  if (memcmp(pathDistanceMatrix, verificationPathDistanceMatrix,\n             numNodes * numNodes * sizeof(unsigned int)) == 0)\n  {\n    printf(\"PASS\\n\");\n  }\n  else\n  {\n    printf(\"FAIL\\n\");\n    if (numNodes <= 8)\n    {\n      for (unsigned int i = 0; i < numNodes; i++)\n      {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"host: %u \", verificationPathDistanceMatrix[i * numNodes + j]);\n        printf(\"\\n\");\n      }\n      for (unsigned int i = 0; i < numNodes; i++)\n      {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"device: %u \", pathDistanceMatrix[i * numNodes + j]);\n        printf(\"\\n\");\n      }\n    }\n  }\n\n  free(pathDistanceMatrix);\n  free(pathMatrix);\n  free(verificationPathDistanceMatrix);\n  free(verificationPathMatrix);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 35.762,
+          "prompt_tokens": 1689,
+          "completion_tokens": 2261,
+          "finish_reason": "completed",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-floydwarshall-omp",
+      "target_spec": "hecbench-floydwarshall-omp_target",
+      "kernel": "floydwarshall",
+      "model": "azure-gpt-5.3-codex",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1869806487,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "1024",
+        "1",
+        "16"
+      ],
+      "timestamp": "2026-04-30T07:41:04Z",
+      "prompt_tokens": 1689,
+      "completion_tokens": 2146,
+      "llm_response_time_seconds": 31.517,
+      "build_status": "pass",
+      "build_time_seconds": 0.373,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.651,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time 0.018782 (s)\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 0.018782,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.651,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <assert.h>\n#include <string.h>\n#include <chrono>\n#include <omp.h>\n\n#define MAXDISTANCE (200)\n\nunsigned int minimum(unsigned int a, unsigned int b)\n{\n  return (b < a) ? b : a;\n}\n\nvoid floydWarshallCPUReference(unsigned int *pathDistanceMatrix,\n                               unsigned int *pathMatrix,\n                               unsigned int numNodes)\n{\n  unsigned int distanceYtoX, distanceYtoK, distanceKtoX, indirectDistance;\n  unsigned int width = numNodes;\n  unsigned int yXwidth;\n\n  for (unsigned int k = 0; k < numNodes; ++k)\n  {\n    for (unsigned int y = 0; y < numNodes; ++y)\n    {\n      yXwidth = y * numNodes;\n      for (unsigned int x = 0; x < numNodes; ++x)\n      {\n        distanceYtoX = pathDistanceMatrix[yXwidth + x];\n        distanceYtoK = pathDistanceMatrix[yXwidth + k];\n        distanceKtoX = pathDistanceMatrix[k * width + x];\n\n        indirectDistance = distanceYtoK + distanceKtoX;\n\n        if (indirectDistance < distanceYtoX)\n        {\n          pathDistanceMatrix[yXwidth + x] = indirectDistance;\n          pathMatrix[yXwidth + x] = k;\n        }\n      }\n    }\n  }\n}\n\nint main(int argc, char **argv)\n{\n  if (argc != 4)\n  {\n    printf(\"Usage: %s <number of nodes> <iterations> <block size>\\n\", argv[0]);\n    return 1;\n  }\n\n  unsigned int numNodes = atoi(argv[1]);\n  unsigned int numIterations = atoi(argv[2]);\n  unsigned int blockSize = atoi(argv[3]);\n\n  if (numNodes % blockSize != 0)\n  {\n    numNodes = (numNodes / blockSize + 1) * blockSize;\n  }\n\n  unsigned int *pathMatrix = NULL;\n  unsigned int *pathDistanceMatrix = NULL;\n  unsigned int *verificationPathDistanceMatrix = NULL;\n  unsigned int *verificationPathMatrix = NULL;\n  unsigned int matrixSize;\n  unsigned int matrixSizeBytes;\n\n  matrixSize = numNodes * numNodes;\n  matrixSizeBytes = numNodes * numNodes * sizeof(unsigned int);\n  pathDistanceMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(pathDistanceMatrix != NULL);\n\n  pathMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(pathMatrix != NULL);\n\n  srand(2);\n  for (unsigned int i = 0; i < numNodes; i++)\n    for (unsigned int j = 0; j < numNodes; j++)\n    {\n      int index = i * numNodes + j;\n      pathDistanceMatrix[index] = rand() % (MAXDISTANCE + 1);\n    }\n\n  for (unsigned int i = 0; i < numNodes; ++i)\n  {\n    unsigned int iXWidth = i * numNodes;\n    pathDistanceMatrix[iXWidth + i] = 0;\n  }\n\n  for (unsigned int i = 0; i < numNodes; ++i)\n  {\n    for (unsigned int j = 0; j < i; ++j)\n    {\n      pathMatrix[i * numNodes + j] = i;\n      pathMatrix[j * numNodes + i] = j;\n    }\n    pathMatrix[i * numNodes + i] = i;\n  }\n\n  verificationPathDistanceMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(verificationPathDistanceMatrix != NULL);\n\n  verificationPathMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(verificationPathMatrix != NULL);\n\n  memcpy(verificationPathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes);\n  memcpy(verificationPathMatrix, pathMatrix, matrixSizeBytes);\n\n  unsigned int numPasses = numNodes;\n\n#pragma omp target data map(alloc : pathDistanceMatrix[0:matrixSize], pathMatrix[0:matrixSize])\n  {\n    float total_time = 0.f;\n\n    for (unsigned int n = 0; n < numIterations; n++)\n    {\n#pragma omp target update to(pathDistanceMatrix[0:matrixSize])\n\n      auto start = std::chrono::steady_clock::now();\n\n      for (unsigned int k = 0; k < numPasses; k++)\n      {\n#pragma omp target teams distribute parallel for collapse(2) thread_limit(blockSize * blockSize)\n        for (unsigned int y = 0; y < numNodes; ++y)\n        {\n          for (unsigned int x = 0; x < numNodes; ++x)\n          {\n            unsigned int distanceYtoX = pathDistanceMatrix[y * numNodes + x];\n            unsigned int distanceYtoK = pathDistanceMatrix[y * numNodes + k];\n            unsigned int distanceKtoX = pathDistanceMatrix[k * numNodes + x];\n            unsigned int indirectDistance = distanceYtoK + distanceKtoX;\n\n            if (indirectDistance < distanceYtoX)\n            {\n              pathDistanceMatrix[y * numNodes + x] = indirectDistance;\n              pathMatrix[y * numNodes + x] = k;\n            }\n          }\n        }\n      }\n\n      auto end = std::chrono::steady_clock::now();\n      auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n      total_time += time;\n    }\n\n    printf(\"Average kernel execution time %f (s)\\n\", (total_time * 1e-9f) / numIterations);\n\n#pragma omp target update from(pathDistanceMatrix[0:matrixSize])\n  }\n\n  floydWarshallCPUReference(verificationPathDistanceMatrix, verificationPathMatrix, numNodes);\n  if (memcmp(pathDistanceMatrix, verificationPathDistanceMatrix,\n             numNodes * numNodes * sizeof(unsigned int)) == 0)\n  {\n    printf(\"PASS\\n\");\n  }\n  else\n  {\n    printf(\"FAIL\\n\");\n    if (numNodes <= 8)\n    {\n      for (unsigned int i = 0; i < numNodes; i++)\n      {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"host: %u \", verificationPathDistanceMatrix[i * numNodes + j]);\n        printf(\"\\n\");\n      }\n      for (unsigned int i = 0; i < numNodes; i++)\n      {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"device: %u \", pathDistanceMatrix[i * numNodes + j]);\n        printf(\"\\n\");\n      }\n    }\n  }\n\n  free(pathDistanceMatrix);\n  free(pathMatrix);\n  free(verificationPathDistanceMatrix);\n  free(verificationPathMatrix);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 31.517,
+          "prompt_tokens": 1689,
+          "completion_tokens": 2146,
+          "finish_reason": "completed",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-floydwarshall-omp",
+      "target_spec": "hecbench-floydwarshall-omp_target",
+      "kernel": "floydwarshall",
+      "model": "azure-gpt-5.3-codex",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 650749098,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "1024",
+        "1",
+        "16"
+      ],
+      "timestamp": "2026-04-30T07:41:36Z",
+      "prompt_tokens": 1689,
+      "completion_tokens": 2509,
+      "llm_response_time_seconds": 30.366,
+      "build_status": "pass",
+      "build_time_seconds": 0.392,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.653,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Average kernel execution time 0.018805 (s)\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "kernel_time": {
+          "value": 0.018805,
+          "unit": "seconds"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.653,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdio.h>\n#include <stdlib.h>\n#include <assert.h>\n#include <string.h>\n#include <chrono>\n#include <omp.h>\n\n#define MAXDISTANCE (200)\n\nunsigned int minimum(unsigned int a, unsigned int b) {\n  return (b < a) ? b : a;\n}\n\nvoid floydWarshallCPUReference(unsigned int *pathDistanceMatrix,\n                               unsigned int *pathMatrix,\n                               unsigned int numNodes) {\n  unsigned int distanceYtoX, distanceYtoK, distanceKtoX, indirectDistance;\n  unsigned int width = numNodes;\n  unsigned int yXwidth;\n\n  for (unsigned int k = 0; k < numNodes; ++k) {\n    for (unsigned int y = 0; y < numNodes; ++y) {\n      yXwidth = y * numNodes;\n      for (unsigned int x = 0; x < numNodes; ++x) {\n        distanceYtoX = pathDistanceMatrix[yXwidth + x];\n        distanceYtoK = pathDistanceMatrix[yXwidth + k];\n        distanceKtoX = pathDistanceMatrix[k * width + x];\n\n        indirectDistance = distanceYtoK + distanceKtoX;\n\n        if (indirectDistance < distanceYtoX) {\n          pathDistanceMatrix[yXwidth + x] = indirectDistance;\n          pathMatrix[yXwidth + x] = k;\n        }\n      }\n    }\n  }\n}\n\nint main(int argc, char **argv) {\n  if (argc != 4) {\n    printf(\"Usage: %s <number of nodes> <iterations> <block size>\\n\", argv[0]);\n    return 1;\n  }\n\n  unsigned int numNodes = atoi(argv[1]);\n  unsigned int numIterations = atoi(argv[2]);\n  unsigned int blockSize = atoi(argv[3]);\n\n  if (numNodes % blockSize != 0) {\n    numNodes = (numNodes / blockSize + 1) * blockSize;\n  }\n\n  unsigned int *pathMatrix = NULL;\n  unsigned int *pathDistanceMatrix = NULL;\n  unsigned int *verificationPathDistanceMatrix = NULL;\n  unsigned int *verificationPathMatrix = NULL;\n  unsigned int matrixSize;\n  unsigned int matrixSizeBytes;\n\n  matrixSize = numNodes * numNodes;\n  matrixSizeBytes = numNodes * numNodes * sizeof(unsigned int);\n  pathDistanceMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(pathDistanceMatrix != NULL);\n\n  pathMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(pathMatrix != NULL);\n\n  srand(2);\n  for (unsigned int i = 0; i < numNodes; i++)\n    for (unsigned int j = 0; j < numNodes; j++) {\n      int index = i * numNodes + j;\n      pathDistanceMatrix[index] = rand() % (MAXDISTANCE + 1);\n    }\n\n  for (unsigned int i = 0; i < numNodes; ++i) {\n    unsigned int iXWidth = i * numNodes;\n    pathDistanceMatrix[iXWidth + i] = 0;\n  }\n\n  for (unsigned int i = 0; i < numNodes; ++i) {\n    for (unsigned int j = 0; j < i; ++j) {\n      pathMatrix[i * numNodes + j] = i;\n      pathMatrix[j * numNodes + i] = j;\n    }\n    pathMatrix[i * numNodes + i] = i;\n  }\n\n  verificationPathDistanceMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(verificationPathDistanceMatrix != NULL);\n\n  verificationPathMatrix = (unsigned int *)malloc(matrixSizeBytes);\n  assert(verificationPathMatrix != NULL);\n\n  memcpy(verificationPathDistanceMatrix, pathDistanceMatrix, matrixSizeBytes);\n  memcpy(verificationPathMatrix, pathMatrix, matrixSizeBytes);\n\n  unsigned int numPasses = numNodes;\n\n#pragma omp target data map(alloc : pathDistanceMatrix[0:matrixSize], pathMatrix[0:matrixSize])\n  {\n    float total_time = 0.f;\n\n    for (unsigned int n = 0; n < numIterations; n++) {\n#pragma omp target update to(pathDistanceMatrix[0:matrixSize])\n\n      auto start = std::chrono::steady_clock::now();\n\n      for (unsigned int k = 0; k < numPasses; k++) {\n#pragma omp target teams distribute parallel for collapse(2) thread_limit(blockSize * blockSize)\n        for (unsigned int y = 0; y < numNodes; ++y) {\n          for (unsigned int x = 0; x < numNodes; ++x) {\n            unsigned int distanceYtoX = pathDistanceMatrix[y * numNodes + x];\n            unsigned int distanceYtoK = pathDistanceMatrix[y * numNodes + k];\n            unsigned int distanceKtoX = pathDistanceMatrix[k * numNodes + x];\n            unsigned int indirectDistance = distanceYtoK + distanceKtoX;\n\n            if (indirectDistance < distanceYtoX) {\n              pathDistanceMatrix[y * numNodes + x] = indirectDistance;\n              pathMatrix[y * numNodes + x] = k;\n            }\n          }\n        }\n      }\n\n      auto end = std::chrono::steady_clock::now();\n      auto time = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();\n      total_time += time;\n    }\n\n    printf(\"Average kernel execution time %f (s)\\n\", (total_time * 1e-9f) / numIterations);\n\n#pragma omp target update from(pathDistanceMatrix[0:matrixSize])\n  }\n\n  floydWarshallCPUReference(verificationPathDistanceMatrix, verificationPathMatrix, numNodes);\n  if (memcmp(pathDistanceMatrix, verificationPathDistanceMatrix,\n             numNodes * numNodes * sizeof(unsigned int)) == 0) {\n    printf(\"PASS\\n\");\n  } else {\n    printf(\"FAIL\\n\");\n    if (numNodes <= 8) {\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"host: %u \", verificationPathDistanceMatrix[i * numNodes + j]);\n        printf(\"\\n\");\n      }\n      for (unsigned int i = 0; i < numNodes; i++) {\n        for (unsigned int j = 0; j < numNodes; j++)\n          printf(\"device: %u \", pathDistanceMatrix[i * numNodes + j]);\n        printf(\"\\n\");\n      }\n    }\n  }\n\n  free(pathDistanceMatrix);\n  free(pathMatrix);\n  free(verificationPathDistanceMatrix);\n  free(verificationPathMatrix);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 30.366,
+          "prompt_tokens": 1689,
+          "completion_tokens": 2509,
+          "finish_reason": "completed",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-iso2dfd-omp",
+      "target_spec": "hecbench-iso2dfd-omp_target",
+      "kernel": "iso2dfd",
+      "model": "azure-gpt-5.3-codex",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1493946187,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "2048",
+        "2048",
+        "10"
+      ],
+      "timestamp": "2026-04-30T07:42:08Z",
+      "prompt_tokens": 2613,
+      "completion_tokens": 2655,
+      "llm_response_time_seconds": 27.001,
+      "build_status": "pass",
+      "build_time_seconds": 0.831,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.206,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nTotal kernel execution time 2.12085 (ms)\nAverage kernel execution time 212.085 (us)\nComputing wavefield in CPU ..\nInitializing ... \nCPU time: 16 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "total_kernel_time": {
+          "value": 2.12085,
+          "unit": "ms"
+        },
+        "avg_kernel_time": {
+          "value": 212.085,
+          "unit": "us"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.206,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "iso2dfd.cpp": "#include <fstream>\n#include <iostream>\n#include <chrono>\n#include <cmath>\n#include <cstring>\n#include <cstdio>\n#include <string>\n#include <omp.h>\n\n#define DT 0.002f\n#define DXY 20.0f\n#define HALF_LENGTH 1\n#define MIN(a, b) (a) < (b) ? (a) : (b)\n\nvoid usage(std::string programName) {\n  std::cout << \" Incorrect parameters \" << std::endl;\n  std::cout << \" Usage: \";\n  std::cout << programName << \" n1 n2 Iterations \" << std::endl\n            << std::endl;\n  std::cout << \" n1 n2      : Grid sizes for the stencil \" << std::endl;\n  std::cout << \" Iterations : No. of timesteps. \" << std::endl;\n}\n\nvoid initialize(float* ptr_prev, float* ptr_next, float* ptr_vel, size_t nRows,\n                size_t nCols) {\n  std::cout << \"Initializing ... \" << std::endl;\n\n  float wavelet[12] = {0.016387336, -0.041464937, -0.067372555, 0.386110067,\n                       0.812723635, 0.416998396,  0.076488599,  -0.059434419,\n                       0.023680172, 0.005611435,  0.001823209,  -0.000720549};\n\n  for (size_t i = 0; i < nRows; i++) {\n    size_t offset = i * nCols;\n\n    for (size_t k = 0; k < nCols; k++) {\n      ptr_prev[offset + k] = 0.0f;\n      ptr_next[offset + k] = 0.0f;\n      ptr_vel[offset + k] = 2250000.0f;\n    }\n  }\n\n  for (int s = 11; s >= 0; s--) {\n    for (size_t i = nRows / 2 - s; i < nRows / 2 + s; i++) {\n      size_t offset = i * nCols;\n      for (size_t k = nCols / 2 - s; k < nCols / 2 + s; k++) {\n        ptr_prev[offset + k] = wavelet[s];\n      }\n    }\n  }\n}\n\nbool within_epsilon(float* output, float* reference, const size_t dimx,\n                    const size_t dimy, const unsigned int radius,\n                    const float delta = 0.01f) {\n  FILE* fp = fopen(\"./error_diff.txt\", \"w\");\n  if (!fp) fp = stderr;\n\n  bool error = false;\n  double norm2 = 0;\n\n  for (size_t iy = 0; iy < dimy; iy++) {\n    for (size_t ix = 0; ix < dimx; ix++) {\n      if (ix >= radius && ix < (dimx - radius) && iy >= radius &&\n          iy < (dimy - radius)) {\n        float difference = fabsf(*reference - *output);\n        norm2 += difference * difference;\n        if (difference > delta) {\n          error = true;\n          fprintf(fp, \" ERROR: (%zu,%zu)\\t%e instead of %e (|e|=%e)\\n\", ix, iy,\n                  *output, *reference, difference);\n        }\n      }\n\n      ++output;\n      ++reference;\n    }\n  }\n\n  if (fp != stderr) fclose(fp);\n  norm2 = sqrt(norm2);\n  if (error) printf(\"error (Euclidean norm): %.9e\\n\", norm2);\n  return error;\n}\n\nvoid iso_2dfd_iteration_cpu(float* next, float* prev, float* vel,\n                            const float dtDIVdxy, int nRows, int nCols,\n                            int nIterations) {\n  for (unsigned int k = 0; k < (unsigned int)nIterations; k += 1) {\n    for (size_t i = 1; i < (size_t)(nRows - HALF_LENGTH); i += 1) {\n      for (size_t j = 1; j < (size_t)(nCols - HALF_LENGTH); j += 1) {\n        size_t gid = j + (i * (size_t)nCols);\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n\n    float* swap = next;\n    next = prev;\n    prev = swap;\n  }\n}\n\nvoid iso_2dfd_kernel(float* next, const float* prev, const float* vel,\n                     const float dtDIVdxy, const size_t nRows, const size_t nCols) {\n#pragma omp target teams distribute parallel for simd collapse(2) thread_limit(256)\n  for (size_t gidRow = 0; gidRow < nRows; gidRow++) {\n    for (size_t gidCol = 0; gidCol < nCols; gidCol++) {\n      size_t gid = gidRow * nCols + gidCol;\n      if ((gidCol >= HALF_LENGTH && gidCol < nCols - HALF_LENGTH) &&\n          (gidRow >= HALF_LENGTH && gidRow < nRows - HALF_LENGTH)) {\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n  }\n}\n\nint main(int argc, char* argv[]) {\n  float* prev_base;\n  float* next_base;\n  float* next_cpu;\n  float* vel_base;\n\n  bool error = false;\n\n  size_t nRows, nCols;\n  unsigned int nIterations;\n\n  try {\n    nRows = std::stoi(argv[1]);\n    nCols = std::stoi(argv[2]);\n    nIterations = std::stoi(argv[3]);\n  } catch (...) {\n    usage(argv[0]);\n    return 1;\n  }\n\n  size_t nsize = nRows * nCols;\n\n  prev_base = new float[nsize];\n  next_base = new float[nsize];\n  next_cpu = new float[nsize];\n  vel_base = new float[nsize];\n\n  float dtDIVdxy = (DT * DT) / (DXY * DXY);\n\n  initialize(prev_base, next_base, vel_base, nRows, nCols);\n\n  std::cout << \"Grid Sizes: \" << nRows << \" \" << nCols << std::endl;\n  std::cout << \"Iterations: \" << nIterations << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Computing wavefield in device ..\" << std::endl;\n\n#pragma omp target data map(next_base[0:nsize], prev_base[0:nsize]) map(to: vel_base[0:nsize])\n  {\n    auto kstart = std::chrono::steady_clock::now();\n\n    for (unsigned int k = 0; k < nIterations; k += 1) {\n      iso_2dfd_kernel((k % 2) ? prev_base : next_base,\n                      (k % 2) ? next_base : prev_base, vel_base, dtDIVdxy,\n                      nRows, nCols);\n    }\n\n    auto kend = std::chrono::steady_clock::now();\n    auto ktime =\n        std::chrono::duration_cast<std::chrono::nanoseconds>(kend - kstart)\n            .count();\n    std::cout << \"Total kernel execution time \" << ktime * 1e-6f << \" (ms)\\n\";\n    std::cout << \"Average kernel execution time \" << (ktime * 1e-3f) / nIterations\n              << \" (us)\\n\";\n  }\n\n  std::ofstream outFile;\n  outFile.open(\"wavefield_snapshot.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_base), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Computing wavefield in CPU ..\" << std::endl;\n\n  initialize(prev_base, next_cpu, vel_base, nRows, nCols);\n\n  auto start = std::chrono::steady_clock::now();\n  iso_2dfd_iteration_cpu(next_cpu, prev_base, vel_base, dtDIVdxy, (int)nRows, (int)nCols,\n                         (int)nIterations);\n\n  auto end = std::chrono::steady_clock::now();\n  auto time =\n      std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();\n  std::cout << \"CPU time: \" << time << \" ms\" << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Check difference between final wavefields computed in device and host\"\n            << std::endl;\n  error = within_epsilon(next_base, next_cpu, nRows, nCols, HALF_LENGTH, 0.1f);\n  std::cout << (error ? \"FAIL\" : \"PASS\") << std::endl;\n\n  outFile.open(\"wavefield_snapshot_cpu.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_cpu), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Final wavefields (from device and CPU) written to disk\"\n            << std::endl;\n  std::cout << \"Finished.  \" << std::endl;\n\n  delete[] prev_base;\n  delete[] next_base;\n  delete[] vel_base;\n  delete[] next_cpu;\n\n  return error ? 1 : 0;\n}\n"
+      },
+      "target_files_expected": [
+        "iso2dfd.cpp"
+      ],
+      "target_files_extracted": [
+        "iso2dfd.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 27.001,
+          "prompt_tokens": 2613,
+          "completion_tokens": 2655,
+          "finish_reason": "completed",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-iso2dfd-omp",
+      "target_spec": "hecbench-iso2dfd-omp_target",
+      "kernel": "iso2dfd",
+      "model": "azure-gpt-5.3-codex",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1804476463,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "2048",
+        "2048",
+        "10"
+      ],
+      "timestamp": "2026-04-30T07:42:36Z",
+      "prompt_tokens": 2613,
+      "completion_tokens": 2832,
+      "llm_response_time_seconds": 31.655,
+      "build_status": "pass",
+      "build_time_seconds": 0.853,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.213,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nTotal kernel execution time 2.11832 (ms)\nAverage kernel execution time 211.832 (us)\nComputing wavefield in CPU ..\nInitializing ... \nCPU time: 16 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "total_kernel_time": {
+          "value": 2.11832,
+          "unit": "ms"
+        },
+        "avg_kernel_time": {
+          "value": 211.832,
+          "unit": "us"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.213,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "iso2dfd.cpp": "#include <chrono>\n#include <cmath>\n#include <cstring>\n#include <fstream>\n#include <iostream>\n#include <omp.h>\n#include <cstdio>\n#include <string>\n\n#define DT 0.002f\n#define DXY 20.0f\n#define HALF_LENGTH 1\n\n#define MIN(a, b) (a) < (b) ? (a) : (b)\n\nvoid usage(std::string programName) {\n  std::cout << \" Incorrect parameters \" << std::endl;\n  std::cout << \" Usage: \";\n  std::cout << programName << \" n1 n2 Iterations \" << std::endl\n            << std::endl;\n  std::cout << \" n1 n2      : Grid sizes for the stencil \" << std::endl;\n  std::cout << \" Iterations : No. of timesteps. \" << std::endl;\n}\n\nvoid initialize(float* ptr_prev, float* ptr_next, float* ptr_vel, size_t nRows,\n                size_t nCols) {\n  std::cout << \"Initializing ... \" << std::endl;\n\n  float wavelet[12] = {0.016387336, -0.041464937, -0.067372555, 0.386110067,\n                       0.812723635, 0.416998396,  0.076488599,  -0.059434419,\n                       0.023680172, 0.005611435,  0.001823209,  -0.000720549};\n\n  for (size_t i = 0; i < nRows; i++) {\n    size_t offset = i * nCols;\n\n    for (int k = 0; k < (int)nCols; k++) {\n      ptr_prev[offset + k] = 0.0f;\n      ptr_next[offset + k] = 0.0f;\n      ptr_vel[offset + k] = 2250000.0f;\n    }\n  }\n\n  for (int s = 11; s >= 0; s--) {\n    for (size_t i = nRows / 2 - s; i < nRows / 2 + s; i++) {\n      size_t offset = i * nCols;\n      for (size_t k = nCols / 2 - s; k < nCols / 2 + s; k++) {\n        ptr_prev[offset + k] = wavelet[s];\n      }\n    }\n  }\n}\n\nbool within_epsilon(float* output, float* reference, const size_t dimx,\n                    const size_t dimy, const unsigned int radius,\n                    const float delta = 0.01f) {\n  FILE* fp = fopen(\"./error_diff.txt\", \"w\");\n  if (!fp) fp = stderr;\n\n  bool error = false;\n  double norm2 = 0;\n\n  for (size_t iy = 0; iy < dimy; iy++) {\n    for (size_t ix = 0; ix < dimx; ix++) {\n      if (ix >= radius && ix < (dimx - radius) && iy >= radius &&\n          iy < (dimy - radius)) {\n        float difference = fabsf(*reference - *output);\n        norm2 += difference * difference;\n        if (difference > delta) {\n          error = true;\n          fprintf(fp, \" ERROR: (%zu,%zu)\\t%e instead of %e (|e|=%e)\\n\", ix, iy,\n                  *output, *reference, difference);\n        }\n      }\n\n      ++output;\n      ++reference;\n    }\n  }\n\n  if (fp != stderr) fclose(fp);\n  norm2 = sqrt(norm2);\n  if (error) printf(\"error (Euclidean norm): %.9e\\n\", norm2);\n  return error;\n}\n\nvoid iso_2dfd_iteration_cpu(float* next, float* prev, float* vel,\n                            const float dtDIVdxy, int nRows, int nCols,\n                            int nIterations) {\n  for (unsigned int k = 0; k < (unsigned int)nIterations; k += 1) {\n    for (size_t i = 1; i < (size_t)(nRows - HALF_LENGTH); i += 1) {\n      for (size_t j = 1; j < (size_t)(nCols - HALF_LENGTH); j += 1) {\n        size_t gid = j + (i * nCols);\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n\n    float* swap = next;\n    next = prev;\n    prev = swap;\n  }\n}\n\nvoid iso_2dfd_kernel(float* next, const float* prev, const float* vel,\n                     const float dtDIVdxy, const size_t nRows,\n                     const size_t nCols) {\n#pragma omp target teams distribute parallel for simd collapse(2) thread_limit(256)\n  for (size_t gidRow = 0; gidRow < nRows; gidRow++)\n    for (size_t gidCol = 0; gidCol < nCols; gidCol++) {\n      size_t gid = (gidRow)*nCols + gidCol;\n\n      if ((gidCol >= HALF_LENGTH && gidCol < nCols - HALF_LENGTH) &&\n          (gidRow >= HALF_LENGTH && gidRow < nRows - HALF_LENGTH)) {\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n}\n\nint main(int argc, char* argv[]) {\n  float* prev_base;\n  float* next_base;\n  float* next_cpu;\n  float* vel_base;\n\n  bool error = false;\n\n  size_t nRows, nCols;\n  unsigned int nIterations;\n\n  try {\n    nRows = std::stoi(argv[1]);\n    nCols = std::stoi(argv[2]);\n    nIterations = std::stoi(argv[3]);\n  } catch (...) {\n    usage(argv[0]);\n    return 1;\n  }\n\n  size_t nsize = nRows * nCols;\n\n  prev_base = new float[nsize];\n  next_base = new float[nsize];\n  next_cpu = new float[nsize];\n  vel_base = new float[nsize];\n\n  float dtDIVdxy = (DT * DT) / (DXY * DXY);\n\n  initialize(prev_base, next_base, vel_base, nRows, nCols);\n\n  std::cout << \"Grid Sizes: \" << nRows << \" \" << nCols << std::endl;\n  std::cout << \"Iterations: \" << nIterations << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Computing wavefield in device ..\" << std::endl;\n\n#pragma omp target data map(next_base[0:nsize], prev_base[0:nsize]) map(to: vel_base[0:nsize])\n  {\n    auto kstart = std::chrono::steady_clock::now();\n\n    for (unsigned int k = 0; k < nIterations; k += 1) {\n      iso_2dfd_kernel((k % 2) ? prev_base : next_base,\n                      (k % 2) ? next_base : prev_base, vel_base, dtDIVdxy,\n                      nRows, nCols);\n    }\n\n    auto kend = std::chrono::steady_clock::now();\n    auto ktime =\n        std::chrono::duration_cast<std::chrono::nanoseconds>(kend - kstart)\n            .count();\n    std::cout << \"Total kernel execution time \" << ktime * 1e-6f << \" (ms)\\n\";\n    std::cout << \"Average kernel execution time \"\n              << (ktime * 1e-3f) / nIterations << \" (us)\\n\";\n  }\n\n  std::ofstream outFile;\n  outFile.open(\"wavefield_snapshot.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_base), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Computing wavefield in CPU ..\" << std::endl;\n\n  initialize(prev_base, next_cpu, vel_base, nRows, nCols);\n\n  auto start = std::chrono::steady_clock::now();\n  iso_2dfd_iteration_cpu(next_cpu, prev_base, vel_base, dtDIVdxy, (int)nRows,\n                         (int)nCols, (int)nIterations);\n\n  auto end = std::chrono::steady_clock::now();\n  auto time =\n      std::chrono::duration_cast<std::chrono::milliseconds>(end - start)\n          .count();\n  std::cout << \"CPU time: \" << time << \" ms\" << std::endl;\n  std::cout << std::endl;\n\n  std::cout\n      << \"Check difference between final wavefields computed in device and host\"\n      << std::endl;\n  error = within_epsilon(next_base, next_cpu, nRows, nCols, HALF_LENGTH, 0.1f);\n  std::cout << (error ? \"FAIL\" : \"PASS\") << std::endl;\n\n  outFile.open(\"wavefield_snapshot_cpu.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char*>(next_cpu), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Final wavefields (from device and CPU) written to disk\"\n            << std::endl;\n  std::cout << \"Finished.  \" << std::endl;\n\n  delete[] prev_base;\n  delete[] next_base;\n  delete[] vel_base;\n\n  return error ? 1 : 0;\n}\n"
+      },
+      "target_files_expected": [
+        "iso2dfd.cpp"
+      ],
+      "target_files_extracted": [
+        "iso2dfd.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 31.655,
+          "prompt_tokens": 2613,
+          "completion_tokens": 2832,
+          "finish_reason": "completed",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-iso2dfd-omp",
+      "target_spec": "hecbench-iso2dfd-omp_target",
+      "kernel": "iso2dfd",
+      "model": "azure-gpt-5.3-codex",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 787946222,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "2048",
+        "2048",
+        "10"
+      ],
+      "timestamp": "2026-04-30T07:43:08Z",
+      "prompt_tokens": 2613,
+      "completion_tokens": 2741,
+      "llm_response_time_seconds": 37.362,
+      "build_status": "pass",
+      "build_time_seconds": 0.828,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.207,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": "Initializing ... \nGrid Sizes: 2048 2048\nIterations: 10\n\nComputing wavefield in device ..\nTotal kernel execution time 2.11578 (ms)\nAverage kernel execution time 211.578 (us)\nComputing wavefield in CPU ..\nInitializing ... \nCPU time: 16 ms\n\nCheck difference between final wavefields computed in device and host\nPASS\nFinal wavefields (from device and CPU) written to disk\nFinished.  \n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "total_kernel_time": {
+          "value": 2.11578,
+          "unit": "ms"
+        },
+        "avg_kernel_time": {
+          "value": 211.578,
+          "unit": "us"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.207,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "iso2dfd.cpp": "#include <chrono>\n#include <cmath>\n#include <cstdio>\n#include <cstring>\n#include <fstream>\n#include <iostream>\n#include <omp.h>\n#include <string>\n\n#define DT 0.002f\n#define DXY 20.0f\n#define HALF_LENGTH 1\n\n#define MIN(a, b) (a) < (b) ? (a) : (b)\n\nvoid usage(std::string programName) {\n  std::cout << \" Incorrect parameters \" << std::endl;\n  std::cout << \" Usage: \";\n  std::cout << programName << \" n1 n2 Iterations \" << std::endl << std::endl;\n  std::cout << \" n1 n2      : Grid sizes for the stencil \" << std::endl;\n  std::cout << \" Iterations : No. of timesteps. \" << std::endl;\n}\n\nvoid initialize(float *ptr_prev, float *ptr_next, float *ptr_vel, size_t nRows,\n                size_t nCols) {\n  std::cout << \"Initializing ... \" << std::endl;\n\n  float wavelet[12] = {0.016387336, -0.041464937, -0.067372555, 0.386110067,\n                       0.812723635, 0.416998396,  0.076488599,  -0.059434419,\n                       0.023680172, 0.005611435,  0.001823209,  -0.000720549};\n\n  for (size_t i = 0; i < nRows; i++) {\n    size_t offset = i * nCols;\n\n    for (size_t k = 0; k < nCols; k++) {\n      ptr_prev[offset + k] = 0.0f;\n      ptr_next[offset + k] = 0.0f;\n      ptr_vel[offset + k] = 2250000.0f;\n    }\n  }\n\n  for (int s = 11; s >= 0; s--) {\n    for (size_t i = nRows / 2 - s; i < nRows / 2 + s; i++) {\n      size_t offset = i * nCols;\n      for (size_t k = nCols / 2 - s; k < nCols / 2 + s; k++) {\n        ptr_prev[offset + k] = wavelet[s];\n      }\n    }\n  }\n}\n\nbool within_epsilon(float *output, float *reference, const size_t dimx,\n                    const size_t dimy, const unsigned int radius,\n                    const float delta = 0.01f) {\n  FILE *fp = fopen(\"./error_diff.txt\", \"w\");\n  if (!fp)\n    fp = stderr;\n\n  bool error = false;\n  double norm2 = 0;\n\n  for (size_t iy = 0; iy < dimy; iy++) {\n    for (size_t ix = 0; ix < dimx; ix++) {\n      if (ix >= radius && ix < (dimx - radius) && iy >= radius &&\n          iy < (dimy - radius)) {\n        float difference = fabsf(*reference - *output);\n        norm2 += difference * difference;\n        if (difference > delta) {\n          error = true;\n          fprintf(fp, \" ERROR: (%zu,%zu)\\t%e instead of %e (|e|=%e)\\n\", ix, iy,\n                  *output, *reference, difference);\n        }\n      }\n\n      ++output;\n      ++reference;\n    }\n  }\n\n  if (fp != stderr)\n    fclose(fp);\n  norm2 = sqrt(norm2);\n  if (error)\n    printf(\"error (Euclidean norm): %.9e\\n\", norm2);\n  return error;\n}\n\nvoid iso_2dfd_iteration_cpu(float *next, float *prev, float *vel,\n                            const float dtDIVdxy, int nRows, int nCols,\n                            int nIterations) {\n  for (unsigned int k = 0; k < (unsigned int)nIterations; k += 1) {\n    for (size_t i = 1; i < (size_t)nRows - HALF_LENGTH; i += 1) {\n      for (size_t j = 1; j < (size_t)nCols - HALF_LENGTH; j += 1) {\n        size_t gid = j + (i * (size_t)nCols);\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n\n    float *swap = next;\n    next = prev;\n    prev = swap;\n  }\n}\n\nvoid iso_2dfd_kernel(float *next, const float *prev, const float *vel,\n                     const float dtDIVdxy, const size_t nRows,\n                     const size_t nCols) {\n#pragma omp target teams distribute parallel for simd collapse(2) thread_limit(256)\n  for (size_t gidRow = 0; gidRow < nRows; gidRow++)\n    for (size_t gidCol = 0; gidCol < nCols; gidCol++) {\n      size_t gid = (gidRow)*nCols + gidCol;\n\n      if ((gidCol >= HALF_LENGTH && gidCol < nCols - HALF_LENGTH) &&\n          (gidRow >= HALF_LENGTH && gidRow < nRows - HALF_LENGTH)) {\n        float value = 0.f;\n        value += prev[gid + 1] - 2.f * prev[gid] + prev[gid - 1];\n        value += prev[gid + nCols] - 2.f * prev[gid] + prev[gid - nCols];\n        value *= dtDIVdxy * vel[gid];\n        next[gid] = 2.f * prev[gid] - next[gid] + value;\n      }\n    }\n}\n\nint main(int argc, char *argv[]) {\n  float *prev_base;\n  float *next_base;\n  float *next_cpu;\n  float *vel_base;\n\n  bool error = false;\n\n  size_t nRows, nCols;\n  unsigned int nIterations;\n\n  try {\n    nRows = std::stoi(argv[1]);\n    nCols = std::stoi(argv[2]);\n    nIterations = std::stoi(argv[3]);\n  } catch (...) {\n    usage(argv[0]);\n    return 1;\n  }\n\n  size_t nsize = nRows * nCols;\n\n  prev_base = new float[nsize];\n  next_base = new float[nsize];\n  next_cpu = new float[nsize];\n  vel_base = new float[nsize];\n\n  float dtDIVdxy = (DT * DT) / (DXY * DXY);\n\n  initialize(prev_base, next_base, vel_base, nRows, nCols);\n\n  std::cout << \"Grid Sizes: \" << nRows << \" \" << nCols << std::endl;\n  std::cout << \"Iterations: \" << nIterations << std::endl;\n  std::cout << std::endl;\n\n  std::cout << \"Computing wavefield in device ..\" << std::endl;\n\n#pragma omp target data map(next_base[0:nsize], prev_base[0:nsize]) map(to : vel_base[0:nsize])\n  {\n    auto kstart = std::chrono::steady_clock::now();\n\n    for (unsigned int k = 0; k < nIterations; k += 1) {\n      iso_2dfd_kernel((k % 2) ? prev_base : next_base,\n                      (k % 2) ? next_base : prev_base, vel_base, dtDIVdxy,\n                      nRows, nCols);\n    }\n\n    auto kend = std::chrono::steady_clock::now();\n    auto ktime =\n        std::chrono::duration_cast<std::chrono::nanoseconds>(kend - kstart)\n            .count();\n    std::cout << \"Total kernel execution time \" << ktime * 1e-6f << \" (ms)\\n\";\n    std::cout << \"Average kernel execution time \"\n              << (ktime * 1e-3f) / nIterations << \" (us)\\n\";\n  }\n\n  std::ofstream outFile;\n  outFile.open(\"wavefield_snapshot.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char *>(next_base), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Computing wavefield in CPU ..\" << std::endl;\n\n  initialize(prev_base, next_cpu, vel_base, nRows, nCols);\n\n  auto start = std::chrono::steady_clock::now();\n  iso_2dfd_iteration_cpu(next_cpu, prev_base, vel_base, dtDIVdxy, nRows, nCols,\n                         nIterations);\n\n  auto end = std::chrono::steady_clock::now();\n  auto time =\n      std::chrono::duration_cast<std::chrono::milliseconds>(end - start)\n          .count();\n  std::cout << \"CPU time: \" << time << \" ms\" << std::endl;\n  std::cout << std::endl;\n\n  std::cout\n      << \"Check difference between final wavefields computed in device and host\"\n      << std::endl;\n  error = within_epsilon(next_base, next_cpu, nRows, nCols, HALF_LENGTH, 0.1f);\n  std::cout << (error ? \"FAIL\" : \"PASS\") << std::endl;\n\n  outFile.open(\"wavefield_snapshot_cpu.bin\", std::ios::out | std::ios::binary);\n  outFile.write(reinterpret_cast<char *>(next_cpu), nsize * sizeof(float));\n  outFile.close();\n\n  std::cout << \"Final wavefields (from device and CPU) written to disk\"\n            << std::endl;\n  std::cout << \"Finished.  \" << std::endl;\n\n  delete[] prev_base;\n  delete[] next_base;\n  delete[] vel_base;\n\n  return error ? 1 : 0;\n}\n"
+      },
+      "target_files_expected": [
+        "iso2dfd.cpp"
+      ],
+      "target_files_extracted": [
+        "iso2dfd.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 37.362,
+          "prompt_tokens": 2613,
+          "completion_tokens": 2741,
+          "finish_reason": "completed",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-heat2d-omp",
+      "target_spec": "hecbench-heat2d-omp_target",
+      "kernel": "heat2d",
+      "model": "azure-gpt-5.3-codex",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 0,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 1626451426,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "4096",
+        "4096",
+        "10"
+      ],
+      "timestamp": "2026-04-30T07:43:47Z",
+      "prompt_tokens": 1640,
+      "completion_tokens": 1947,
+      "llm_response_time_seconds": 22.761,
+      "build_status": "pass",
+      "build_time_seconds": 0.366,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.342,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    429.1 usec/iter, BW = 312.789 GB/s, P = 234.592 Gflop/s\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "throughput": {
+          "value": 312.789,
+          "unit": "GB/s"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.342,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <assert.h>\n#include <sys/time.h>\n#include <math.h>\n#include <utility>\n#include <omp.h>\n\n#define NTX 16\n#define NTY 16\n\ndouble stop_watch(double t0)\n{\n  double time;\n  struct timeval t;\n  gettimeofday(&t, NULL);\n  time = t.tv_sec * 1e6 + t.tv_usec;\n  return time - t0;\n}\n\nvoid usage(char *argv[]) {\n  fprintf(stderr, \" Usage: %s LX LY NITER\\n\", argv[0]);\n  return;\n}\n\nvoid reference(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp parallel for collapse(2)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y * Lx + x;\n      int v0p = y * Lx + (x + 1) % Lx;\n      int v0m = y * Lx + (Lx + x - 1) % Lx;\n      int vp0 = ((y + 1) % Ly) * Lx + x;\n      int vm0 = ((Ly + y - 1) % Ly) * Lx + x;\n      out[v00] = norm * in[v00] + delta * (in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nvoid dev_lapl_iter(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp target teams distribute parallel for collapse(2) thread_limit(256)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y * Lx + x;\n      int v0p = y * Lx + (x + 1) % Lx;\n      int v0m = y * Lx + (Lx + x - 1) % Lx;\n      int vp0 = ((y + 1) % Ly) * Lx + x;\n      int vm0 = ((Ly + y - 1) % Ly) * Lx + x;\n      out[v00] = norm * in[v00] + delta * (in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nint main(int argc, char *argv[]) {\n\n  if (argc != 4) {\n    usage(argv);\n    exit(1);\n  }\n\n  int Lx = atoi(argv[1]);\n  int Ly = atoi(argv[2]);\n  if (Lx % NTX != 0 || Ly % NTY != 0) {\n    printf(\"Array length LX and LY must be a multiple of block size %d and %d, respectively\\n\",\n           NTX, NTY);\n    exit(1);\n  }\n\n  int niter = atoi(argv[3]);\n  assert(niter >= 1);\n\n  const float sigma = 0.01;\n  const float xdelta = sigma / (1.0 + 4.0 * sigma);\n  const float xnorm = 1.0 / (1.0 + 4.0 * sigma);\n\n  printf(\" Ly,Lx = %d,%d\\n\", Ly, Lx);\n  printf(\" niter = %d\\n\", niter);\n\n  srand(123);\n  float *buffer = (float *) malloc(sizeof(float) * Lx * Ly);\n  float *h_out = (float *) malloc(sizeof(float) * Lx * Ly);\n  float *h_in = (float *) malloc(sizeof(float) * Lx * Ly);\n\n  int i, j, x, y;\n  for (i = 0; i < Lx; i += 16) {\n    x = rand() % Lx;\n    for (j = 0; j < Ly; j++)\n      buffer[x + j * Lx] = 1.f;\n  }\n  for (i = 0; i < Ly; i += 16) {\n    y = rand() % Ly;\n    for (j = 0; j < Lx; j++)\n      buffer[j + y * Lx] = 1.f;\n  }\n  memcpy(h_in, buffer, sizeof(float) * Lx * Ly);\n\n  for (i = 0; i < niter; i++) {\n    reference(h_out, h_in, xdelta, xnorm, Lx, Ly);\n    std::swap(h_out, h_in);\n  }\n\n  float *d_out = (float *) malloc(sizeof(float) * Lx * Ly);\n  float *d_in = (float *) malloc(sizeof(float) * Lx * Ly);\n  memcpy(d_in, buffer, sizeof(float) * Lx * Ly);\n\n  double t0;\n\n  #pragma omp target data map(tofrom: d_in[0:Lx*Ly]) map(alloc: d_out[0:Lx*Ly])\n  {\n    t0 = stop_watch(0);\n    for (i = 0; i < niter; i++) {\n      dev_lapl_iter(d_out, d_in, xdelta, xnorm, Lx, Ly);\n      std::swap(d_out, d_in);\n    }\n    t0 = stop_watch(t0) / (double) niter;\n  }\n\n  printf(\"Device: iters = %8d, (Lx,Ly) = %6d, %6d, t = %8.1f usec/iter, BW = %6.3f GB/s, P = %6.3f Gflop/s\\n\",\n         niter, Lx, Ly, t0,\n         Lx * Ly * sizeof(float) * 2.0 / (t0 * 1.0e3),\n         (Lx * Ly * 6.0) / (t0 * 1.0e3));\n\n  bool ok = true;\n  for (i = 0; i < Lx * Ly; i++) {\n    if (fabs(h_in[i] - d_in[i]) > 1e-2) {\n      printf(\"Mismatch at %d cpu=%f gpu=%f\\n\", i, h_in[i], d_in[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(buffer);\n  free(h_out);\n  free(h_in);\n  free(d_in);\n  free(d_out);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 22.761,
+          "prompt_tokens": 1640,
+          "completion_tokens": 1947,
+          "finish_reason": "completed",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-heat2d-omp",
+      "target_spec": "hecbench-heat2d-omp_target",
+      "kernel": "heat2d",
+      "model": "azure-gpt-5.3-codex",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 1,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 2032566065,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "4096",
+        "4096",
+        "10"
+      ],
+      "timestamp": "2026-04-30T07:44:10Z",
+      "prompt_tokens": 1640,
+      "completion_tokens": 2163,
+      "llm_response_time_seconds": 26.38,
+      "build_status": "pass",
+      "build_time_seconds": 0.352,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.334,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    428.7 usec/iter, BW = 313.081 GB/s, P = 234.811 Gflop/s\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "throughput": {
+          "value": 313.081,
+          "unit": "GB/s"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.334,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <assert.h>\n#include <sys/time.h>\n#include <math.h>\n#include <utility>\n#include <omp.h>\n\n#define NTX 16\n#define NTY 16\n\ndouble stop_watch(double t0)\n{\n  double time;\n  struct timeval t;\n  gettimeofday(&t, NULL);\n  time = t.tv_sec * 1e6 + t.tv_usec;\n  return time - t0;\n}\n\nvoid usage(char *argv[]) {\n  fprintf(stderr, \" Usage: %s LX LY NITER\\n\", argv[0]);\n  return;\n}\n\nvoid reference(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp parallel for collapse(2)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y * Lx + x;\n      int v0p = y * Lx + (x + 1) % Lx;\n      int v0m = y * Lx + (Lx + x - 1) % Lx;\n      int vp0 = ((y + 1) % Ly) * Lx + x;\n      int vm0 = ((Ly + y - 1) % Ly) * Lx + x;\n      out[v00] = norm * in[v00] + delta * (in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nvoid dev_lapl_iter(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp target teams distribute parallel for collapse(2) thread_limit(256)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y * Lx + x;\n      int v0p = y * Lx + (x + 1) % Lx;\n      int v0m = y * Lx + (Lx + x - 1) % Lx;\n      int vp0 = ((y + 1) % Ly) * Lx + x;\n      int vm0 = ((Ly + y - 1) % Ly) * Lx + x;\n      out[v00] = norm * in[v00] + delta * (in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nint main(int argc, char *argv[]) {\n\n  if (argc != 4) {\n    usage(argv);\n    exit(1);\n  }\n\n  int Lx = atoi(argv[1]);\n  int Ly = atoi(argv[2]);\n  if (Lx % NTX != 0 || Ly % NTY != 0) {\n    printf(\"Array length LX and LY must be a multiple of block size %d and %d, respectively\\n\",\n           NTX, NTY);\n    exit(1);\n  }\n\n  int niter = atoi(argv[3]);\n  assert(niter >= 1);\n\n  const float sigma = 0.01f;\n  const float xdelta = sigma / (1.0f + 4.0f * sigma);\n  const float xnorm = 1.0f / (1.0f + 4.0f * sigma);\n\n  printf(\" Ly,Lx = %d,%d\\n\", Ly, Lx);\n  printf(\" niter = %d\\n\", niter);\n\n  srand(123);\n  float *buffer = (float *)malloc(sizeof(float) * Lx * Ly);\n  float *h_out = (float *)malloc(sizeof(float) * Lx * Ly);\n  float *h_in  = (float *)malloc(sizeof(float) * Lx * Ly);\n\n  int i, j, x, y;\n  for (i = 0; i < Lx; i += 16) {\n    x = rand() % Lx;\n    for (j = 0; j < Ly; j++)\n      buffer[x + j * Lx] = 1.f;\n  }\n  for (i = 0; i < Ly; i += 16) {\n    y = rand() % Ly;\n    for (j = 0; j < Lx; j++)\n      buffer[j + y * Lx] = 1.f;\n  }\n  memcpy(h_in, buffer, sizeof(float) * Lx * Ly);\n\n  for (i = 0; i < niter; i++) {\n    reference(h_out, h_in, xdelta, xnorm, Lx, Ly);\n    std::swap(h_out, h_in);\n  }\n\n  float *d_out = (float *)malloc(sizeof(float) * Lx * Ly);\n  float *d_in  = (float *)malloc(sizeof(float) * Lx * Ly);\n  memcpy(d_in, buffer, sizeof(float) * Lx * Ly);\n\n  double t0;\n\n  #pragma omp target data map(tofrom: d_in[0:Lx*Ly]) map(alloc: d_out[0:Lx*Ly])\n  {\n    t0 = stop_watch(0);\n    for (i = 0; i < niter; i++) {\n      dev_lapl_iter(d_out, d_in, xdelta, xnorm, Lx, Ly);\n      std::swap(d_out, d_in);\n    }\n    t0 = stop_watch(t0) / (double)niter;\n  }\n\n  printf(\"Device: iters = %8d, (Lx,Ly) = %6d, %6d, t = %8.1f usec/iter, BW = %6.3f GB/s, P = %6.3f Gflop/s\\n\",\n         niter, Lx, Ly, t0,\n         Lx * Ly * sizeof(float) * 2.0 / (t0 * 1.0e3),\n         (Lx * Ly * 6.0) / (t0 * 1.0e3));\n\n  bool ok = true;\n  for (i = 0; i < Lx * Ly; i++) {\n    if (fabs(h_in[i] - d_in[i]) > 1e-2) {\n      printf(\"Mismatch at %d cpu=%f gpu=%f\\n\", i, h_in[i], d_in[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(buffer);\n  free(h_out);\n  free(h_in);\n  free(d_in);\n  free(d_out);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 26.38,
+          "prompt_tokens": 1640,
+          "completion_tokens": 2163,
+          "finish_reason": "completed",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    },
+    {
+      "source_spec": "hecbench-heat2d-omp",
+      "target_spec": "hecbench-heat2d-omp_target",
+      "kernel": "heat2d",
+      "model": "azure-gpt-5.3-codex",
+      "augment_level": 0,
+      "temperature": 0.7,
+      "sample_id": 2,
+      "thinking_enabled": true,
+      "num_samples": 3,
+      "seed": 440903261,
+      "top_p": 1.0,
+      "translation_mode": "kernel_centric",
+      "translation_type": "full_program",
+      "verification_mode": "cross_api_combined_pattern",
+      "run_args_mode": "cross_api_source_args",
+      "run_arguments_used": [
+        "4096",
+        "4096",
+        "10"
+      ],
+      "timestamp": "2026-04-30T07:44:37Z",
+      "prompt_tokens": 1640,
+      "completion_tokens": 2053,
+      "llm_response_time_seconds": 29.955,
+      "build_status": "pass",
+      "build_time_seconds": 0.368,
+      "build_error_snippet": null,
+      "run_status": "pass",
+      "run_time_seconds": 0.341,
+      "run_exit_code": 0,
+      "run_stderr_snippet": null,
+      "run_stdout_snippet": " Ly,Lx = 4096,4096\n niter = 10\nDevice: iters =       10, (Lx,Ly) =   4096,   4096, t =    429.3 usec/iter, BW = 312.643 GB/s, P = 234.482 Gflop/s\nPASS\n",
+      "verify_status": "pass",
+      "verify_strategy": "stdout_pattern+exit_code",
+      "overall_status": "PASS",
+      "error_message": null,
+      "metrics": {
+        "throughput": {
+          "value": 312.643,
+          "unit": "GB/s"
+        }
+      },
+      "baseline_wall_time_seconds": null,
+      "translated_wall_time_seconds": 0.341,
+      "translated_cpu_time_seconds": null,
+      "translated_kernel_time_seconds": null,
+      "timing_method": "wall_time",
+      "speedup_ratio": null,
+      "translated_files": {
+        "main.cpp": "#include <stdlib.h>\n#include <stdio.h>\n#include <string.h>\n#include <assert.h>\n#include <sys/time.h>\n#include <math.h>\n#include <utility>\n#include <omp.h>\n\n#define NTX 16\n#define NTY 16\n\ndouble stop_watch(double t0)\n{\n  double time;\n  struct timeval t;\n  gettimeofday(&t, NULL);\n  time = t.tv_sec * 1e6 + t.tv_usec;\n  return time - t0;\n}\n\nvoid usage(char *argv[]) {\n  fprintf(stderr, \" Usage: %s LX LY NITER\\n\", argv[0]);\n  return;\n}\n\nvoid reference(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp parallel for collapse(2)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y * Lx + x;\n      int v0p = y * Lx + (x + 1) % Lx;\n      int v0m = y * Lx + (Lx + x - 1) % Lx;\n      int vp0 = ((y + 1) % Ly) * Lx + x;\n      int vm0 = ((Ly + y - 1) % Ly) * Lx + x;\n      out[v00] = norm * in[v00] + delta * (in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nvoid dev_lapl_iter(float *out, const float *in, const float delta, const float norm, const int Lx, const int Ly)\n{\n  #pragma omp target teams distribute parallel for collapse(2) thread_limit(256)\n  for (int y = 0; y < Ly; y++) {\n    for (int x = 0; x < Lx; x++) {\n      int v00 = y * Lx + x;\n      int v0p = y * Lx + (x + 1) % Lx;\n      int v0m = y * Lx + (Lx + x - 1) % Lx;\n      int vp0 = ((y + 1) % Ly) * Lx + x;\n      int vm0 = ((Ly + y - 1) % Ly) * Lx + x;\n      out[v00] = norm * in[v00] + delta * (in[v0p] + in[v0m] + in[vp0] + in[vm0]);\n    }\n  }\n}\n\nint main(int argc, char *argv[]) {\n\n  if (argc != 4) {\n    usage(argv);\n    exit(1);\n  }\n\n  int Lx = atoi(argv[1]);\n  int Ly = atoi(argv[2]);\n  if (Lx % NTX != 0 || Ly % NTY != 0) {\n    printf(\"Array length LX and LY must be a multiple of block size %d and %d, respectively\\n\",\n           NTX, NTY);\n    exit(1);\n  }\n\n  int niter = atoi(argv[3]);\n  assert(niter >= 1);\n\n  const float sigma = 0.01f;\n  const float xdelta = sigma / (1.0f + 4.0f * sigma);\n  const float xnorm = 1.0f / (1.0f + 4.0f * sigma);\n\n  printf(\" Ly,Lx = %d,%d\\n\", Ly, Lx);\n  printf(\" niter = %d\\n\", niter);\n\n  srand(123);\n  float *buffer = (float *) malloc(sizeof(float) * Lx * Ly);\n  float *h_out = (float *) malloc(sizeof(float) * Lx * Ly);\n  float *h_in = (float *) malloc(sizeof(float) * Lx * Ly);\n\n  int i, j, x, y;\n  for (i = 0; i < Lx; i += 16) {\n    x = rand() % Lx;\n    for (j = 0; j < Ly; j++)\n      buffer[x + j * Lx] = 1.f;\n  }\n  for (i = 0; i < Ly; i += 16) {\n    y = rand() % Ly;\n    for (j = 0; j < Lx; j++)\n      buffer[j + y * Lx] = 1.f;\n  }\n  memcpy(h_in, buffer, sizeof(float) * Lx * Ly);\n\n  for (i = 0; i < niter; i++) {\n    reference(h_out, h_in, xdelta, xnorm, Lx, Ly);\n    std::swap(h_out, h_in);\n  }\n\n  float *d_out = (float *) malloc(sizeof(float) * Lx * Ly);\n  float *d_in = (float *) malloc(sizeof(float) * Lx * Ly);\n  memcpy(d_in, buffer, sizeof(float) * Lx * Ly);\n\n  double t0;\n\n  #pragma omp target data map(tofrom: d_in[0:Lx*Ly]) map(alloc: d_out[0:Lx*Ly])\n  {\n    t0 = stop_watch(0);\n    for (i = 0; i < niter; i++) {\n      dev_lapl_iter(d_out, d_in, xdelta, xnorm, Lx, Ly);\n      std::swap(d_out, d_in);\n    }\n    t0 = stop_watch(t0) / (double) niter;\n  }\n\n  printf(\"Device: iters = %8d, (Lx,Ly) = %6d, %6d, t = %8.1f usec/iter, BW = %6.3f GB/s, P = %6.3f Gflop/s\\n\",\n         niter, Lx, Ly, t0,\n         Lx * Ly * sizeof(float) * 2.0 / (t0 * 1.0e3),\n         (Lx * Ly * 6.0) / (t0 * 1.0e3));\n\n  bool ok = true;\n  for (i = 0; i < Lx * Ly; i++) {\n    if (fabs(h_in[i] - d_in[i]) > 1e-2) {\n      printf(\"Mismatch at %d cpu=%f gpu=%f\\n\", i, h_in[i], d_in[i]);\n      ok = false;\n      break;\n    }\n  }\n  printf(\"%s\\n\", ok ? \"PASS\" : \"FAIL\");\n\n  free(buffer);\n  free(h_out);\n  free(h_in);\n  free(d_in);\n  free(d_out);\n  return 0;\n}\n"
+      },
+      "target_files_expected": [
+        "main.cpp"
+      ],
+      "target_files_extracted": [
+        "main.cpp"
+      ],
+      "max_retries": 1,
+      "total_attempts": 1,
+      "attempts": [
+        {
+          "attempt": 1,
+          "llm_response_time_seconds": 29.955,
+          "prompt_tokens": 1640,
+          "completion_tokens": 2053,
+          "finish_reason": "completed",
+          "build_status": "pass",
+          "run_status": "pass",
+          "verify_status": "pass",
+          "error_feedback_sent": null,
+          "build_error_snippet": null,
+          "run_stderr_snippet": null,
+          "run_stdout_snippet": null,
+          "extraction_fail": null
+        }
+      ]
+    }
+  ]
+}

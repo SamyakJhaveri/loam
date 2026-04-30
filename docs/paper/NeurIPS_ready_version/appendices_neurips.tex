@@ -109,6 +109,27 @@ commands. These measures complement source augmentation: anonymization reduces
 benchmark identity leakage, while augmentation changes the source surface form.
 The complete prompt template is reproduced in Appendix~\ref{sec:appendix-prompt}.
 
+\subsection{Extended Experimental Setup Details}
+\label{sec:appendix-framework-extended}
+
+This section expands on the experimental setup described in Section~\ref{sec:experimental-setup}.
+
+\paragraph{\knownfail{} Exclusion Policy.}
+Nine specs are classified as \knownfail{} due to toolchain incompatibilities or pre-existing runtime failures unrelated to LLM translation quality: seven Rodinia specs affected by deprecated CUDA~12 texture APIs, missing system libraries, pre-existing segmentation faults, or silent OpenCL runtime failures, and two HeCBench \texttt{omp\_target} specs with build or verification failures on the evaluation platform. 
+A record is excluded when \emph{either} the source or the target spec is \knownfail{}. Source-side exclusion is necessary because source correctness is unverified on the failing platform; target-side exclusion is necessary because the target build or verification infrastructure is broken. For \qwenshort{}, this policy excludes 82~of 708~total records, leaving 626~valid records (426~L0 + 200~ablation). The \gptnew{} evaluation batch pre-excludes \knownfail{} specs, so all on-disk records are valid.
+
+\paragraph{Sampling Configuration.}
+For \qwenshort{}, we set temperature~0.7 with top-$p$~=~1.0 (full-distribution sampling). For \gptnew{}, the Azure reasoning API does not accept explicit temperature or top-$p$ parameters - these are controlled internally by the provider and cannot be set by the caller. Cross-model differences in pass rates may therefore partly reflect unmatched sampling conditions rather than model capability alone.
+A deterministic seed derived from SHA-256 of the concatenation \texttt{source\_spec|target\_spec|sample\_id} (pipe-delimited, truncated to 31 bits) is passed to both providers. Seeds are recorded for auditing but do not guarantee bitwise-identical outputs: Together AI treats seeds as advisory for MoE inference, and Azure provides no determinism guarantee for reasoning models. Each sample receives one LLM call with no iterative feedback, isolating first-attempt translation capability.
+
+\paragraph{Canonical Evaluation and Augmentation Ablation.}
+The canonical campaign evaluates all 142 unique pairs at augmentation level L0 (unmodified source code) with three samples each, producing 426 L0 records per model and 852 total. Each record passes through the full build--run--verify pipeline with conjunction semantics. Most specs verify via exit-code and stdout-pattern checks; a subset additionally declare numeric-comparison or file-hash oracles.
+For the augmentation ablation, an L0-conditional filter is applied: a pair is included only if any of its three canonical L0 samples passes. This avoids spending budget on pairs the model cannot translate even from unmodified source. For \qwenshort{}, 50~of the 142~pairs qualify (35\%); for \gptnew{}, 99~pairs qualify (70\%). Each qualifying pair is evaluated once ($k$~=~1) at each of levels L1 through L4.
+
+\paragraph{Metrics Details.}
+For pass@$k$, following \citet{HumanEval2021}, we use the unbiased estimator $1 - \binom{n-c}{k}/\binom{n}{k}$, where $c$ is the number of correct samples out of $n$~total. We report pass@1 (expected single-sample success rate, equivalent to $c/n$ averaged across tasks) and pass@3 (fraction of tasks where any sample passes).
+Separately, we report per-record pass rates with Wilson 95\%~confidence intervals. Wilson intervals are preferred over the Wald interval for their superior coverage at extreme proportions. Since three samples per task share the same kernel and direction, the independence assumption is anti-conservative and the Wilson CI understates the true uncertainty. For augmentation analysis, we apply the Cochran--Armitage trend test where per-level sample sizes are adequate, with Cohen's~$h$ for adjacent-level effect sizes.
+
 %% ============================================================================
 %% APPENDIX B: API Selection Rationale
 %% ============================================================================
@@ -512,7 +533,8 @@ in corpus construction.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\columnwidth]{top_candidates.png}
+  % \includegraphics[width=\columnwidth]{top_candidates.png}
+  \input{NeurIPS_ready_version/figures/top_candidates}
   \caption{Top ``Rosetta Stone'' candidates ranked by kernel count (blue bars,
     scaled for readability; true counts annotated above) and API breadth (red
     bars). HeCBench provides the largest kernel pool (516 kernels) but with
@@ -752,7 +774,8 @@ heatmap.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\columnwidth]{figures/c3_transform_frequency.pdf}
+  % \includegraphics[width=\columnwidth]{figures/c3_transform_frequency.pdf}
+  \input{NeurIPS_ready_version/figures/c3_transform_frequency}
   \caption{Transform frequency heatmap showing candidate sites per kernel per
     transform type. Rows represent kernels; columns represent the six AST-level
     transforms. Cell intensity indicates the number of candidate sites
@@ -814,7 +837,8 @@ sample size.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\columnwidth]{figures/c4_selection_funnel.pdf}
+  % \includegraphics[width=\columnwidth]{figures/c4_selection_funnel.pdf}
+  \input{NeurIPS_ready_version/figures/c4_selection_funnel}
   \caption{HeCBench kernel selection funnel. Starting from 516 kernels spanning
     CUDA, HIP, SYCL, and OpenMP, successive filters for API completeness (327
     with all 4~variants), build infrastructure (325), self-checking output
@@ -957,6 +981,79 @@ programs. However, the varying failure modes across augmentation levels indicate
 that a simple post-processing pass (e.g., find-and-replace renaming) would only
 address subcategory~2, leaving subcategories 1, 3, and~4 unresolved.
 
+\subsection{Extended Results Details}
+\label{sec:appendix-c-extended}
+
+This section expands on the results presented in Section~\ref{sec:results}.
+
+\paragraph{pass@k Analysis.}
+\begin{table}[h]
+\centering
+\caption{pass@$k$ results for \qwenshort{} (L0 only, temperature~0.7, three independent samples per task, 142 unique source-target pairs). CIs are normal-approximation intervals on the macro-averaged Chen et al.\ estimator.}
+\label{tab:pass-at-k-main}
+\small
+\begin{tabular}{@{}lr@{}}
+\toprule
+Metric & Value [95\% CI] \\
+\midrule
+pass@1 & 23.9\% [17.9\%, 30.0\%] \\
+pass@3 & 35.2\% [27.3\%, 43.1\%] \\
+\midrule
+Always pass (3/3) & 19 tasks (13.4\%) \\
+Noisy (1--2/3) & 31 tasks (21.8\%) \\
+Hard fail (0/3) & 92 tasks (64.8\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+The 36.7\% per-record rate treats each sample and augmentation level independently. The pass@$k$ analysis restricts to the 142 L0 tasks and macro-averages to estimate single-sample and three-sample success probabilities. Each of the 142 tasks generates three independent samples at temperature~0.7. Additional stochastic samples partially recover only 31 of 142 tasks and none of the 92 hard failures. The gap between pass@1 (23.9\%) and pass@3 (35.2\%) is modest; additional samples yield diminishing returns.
+
+\paragraph{Representative Per-Kernel Pass Rates.}
+\begin{table}[h]
+\centering
+\caption{Representative per-kernel pass rates for \qwenshort{} across all directions and augmentation levels (626 records, 31 evaluated kernels -- 4 curated kernels with no evaluable translation pairs).}
+\label{tab:per-kernel-main}
+\small
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+Suite & Kernel & Total & \pass{} & Fail & Rate \\
+\midrule
+\multicolumn{6}{l}{\textit{Easiest kernels}} \\
+HeCBench & iso2dfd & 38 & 32 & 6 & 84.2\% \\
+HeCBench & floydwarshall & 38 & 29 & 9 & 76.3\% \\
+HeCBench & heat2d & 38 & 29 & 9 & 76.3\% \\
+HeCBench & stencil1d & 14 & 9 & 5 & 64.3\% \\
+HeCBench & page-rank & 10 & 6 & 4 & 60.0\% \\
+\midrule
+\multicolumn{6}{l}{\textit{Hardest kernels (0\% pass rate, $n \geq 18$)}} \\
+Rodinia & heartwall & 18 & 0 & 18 & 0.0\% \\
+Rodinia & myocyte & 18 & 0 & 18 & 0.0\% \\
+Rodinia & bptree & 18 & 0 & 18 & 0.0\% \\
+RSBench & rsbench & 18 & 0 & 18 & 0.0\% \\
+Rodinia & lavamd & 18 & 0 & 18 & 0.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Augmentation Pass Rates.}
+\begin{table}[h]
+\centering
+\caption{Augmentation pass rates on the balanced 12-kernel CUDA-to-OpenMP subset present at all five levels. These 12 kernels were selected by the L0-conditional ablation filter ($\geq$1 of 3 L0 samples passes), so L0 rates exceed the overall CUDA-to-OpenMP rate of 40.3\%.}
+\label{tab:aug-balanced}
+\small
+\begin{tabular}{@{}lrrl@{}}
+\toprule
+Level & Pass / Total & Rate & Kernels with any pass \\
+\midrule
+L0 & 29/36 & 80.6\% & 12/12 (100\%) \\
+L1 &  9/12 & 75.0\% &  9/12 \phantom{0}(75\%) \\
+L2 & 10/12 & 83.3\% & 10/12 \phantom{0}(83\%) \\
+L3 &  9/12 & 75.0\% &  9/12 \phantom{0}(75\%) \\
+L4 & 10/12 & 83.3\% & 10/12 \phantom{0}(83\%) \\
+\bottomrule
+\end{tabular}
+\end{table}
+If baseline success were driven primarily by surface-form memorization, augmented source variants should degrade pass rates. On a balanced 12-kernel CUDA-to-OpenMP subset present at all five augmentation levels, pass rates remain between 75\% and 83\% at L1--L4. The L0 rate on this subset (80.6\%) exceeds the overall CUDA-to-OpenMP L0 rate (40.3\%) because the ablation filter selects kernels that already pass at L0, creating a survivorship bias toward easier kernels. We computed Cochran-Armitage trend tests, but two confounds undermine their interpretability: the 3:1 ratio of L0 to L1--L4 sample sizes on this subset, and the survivorship selection inherent in L0-conditional ablation. The observed stability is compatible with some robustness to surface-form perturbation, though it does not rule out memorization at other levels of abstraction.
+
 %% ============================================================================
 %% APPENDIX D: Supplementary Tables and Figures
 %% ============================================================================
@@ -997,8 +1094,9 @@ Floats are ordered by their original section appearance.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f2_repo_vs_kernel.pdf}
-\caption{Repository-level vs.\ kernel-level translation pair counts. Left bars show the number of repositories containing both APIs; right bars show the number of independent kernel-level translation pairs. The multipliers (79$\times$--308$\times$) demonstrate that repository-level counting substantially underestimates the translation evaluation opportunity.}
+% \includegraphics[width=\columnwidth]{f2_repo_vs_kernel.pdf}
+\input{NeurIPS_ready_version/figures/f2_repo_vs_kernel}
+\caption{Repository-level vs.\ kernel-level translation pair counts. Left bars show the number of repositories containing both APIs; right bars show the number of independent kernel-level translation pairs. The multipliers (78$\times$--308$\times$) demonstrate that repository-level counting substantially underestimates the translation evaluation opportunity.}
 \label{fig:repo-vs-kernel}
 \end{figure}
 
@@ -1825,6 +1923,7 @@ pass@3~=~Y\%~[CI]. Build-stage failure accounts for Z\% of all failures.
 CUDA-to-OpenMP is the most tractable direction (A\%~[CI]); OpenCL-to-CUDA is
 the hardest (B\%~[CI]). Augmentation analysis on [K]~qualifying kernels shows
 pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
+
 
 
 %% ============================================================================
