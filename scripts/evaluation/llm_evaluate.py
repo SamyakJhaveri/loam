@@ -69,6 +69,9 @@ class ModelRegistryEntry(TypedDict):
     supports_thinking: bool
     notes: str
     api_model: NotRequired[str]
+    api_key_env: NotRequired[str]
+    endpoint_env: NotRequired[str]
+    wire_api: NotRequired[str]
 
 
 MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
@@ -113,6 +116,18 @@ MODEL_REGISTRY: dict[str, ModelRegistryEntry] = {
         "notes": "Azure OpenAI GPT-5.4 (Microsoft Foundry GA 2026-03-17; "
                  "requires AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT + "
                  "gpt-5.4 deployment on norwayeast; "
+                 "reasoning_effort=medium when --thinking=on)",
+    },
+    "azure-gpt-5.3-codex": {
+        "provider": "azure",
+        "supports_thinking": True,
+        "api_model": "gpt-5.3-codex",
+        "api_key_env": "AZURE_OPENAI_API_KEY_CODEX",
+        "endpoint_env": "AZURE_OPENAI_ENDPOINT_CODEX",
+        "wire_api": "responses",
+        "notes": "Azure OpenAI gpt-5.3-codex (Responses API only; "
+                 "requires AZURE_OPENAI_API_KEY_CODEX + AZURE_OPENAI_ENDPOINT_CODEX + "
+                 "gpt-5.3-codex deployment on swedencentral; "
                  "reasoning_effort=medium when --thinking=on)",
     },
     "groq-llama-3.3-70b-versatile": {
@@ -897,15 +912,18 @@ def call_llm(
 
     elif model.startswith("azure-"):
         # ---- Azure OpenAI path ----
-        api_key = os.environ.get("AZURE_OPENAI_API_KEY")
-        endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+        _reg = MODEL_REGISTRY.get(model, {})
+        _key_env = _reg.get("api_key_env", "AZURE_OPENAI_API_KEY")
+        _endpoint_env = _reg.get("endpoint_env", "AZURE_OPENAI_ENDPOINT")
+        api_key = os.environ.get(_key_env)
+        endpoint = os.environ.get(_endpoint_env)
         if not api_key:
             raise ValueError(
-                "Set AZURE_OPENAI_API_KEY environment variable to use Azure models."
+                f"Set {_key_env} environment variable to use {model}."
             )
         if not endpoint:
             raise ValueError(
-                "Set AZURE_OPENAI_ENDPOINT environment variable to use Azure models."
+                f"Set {_endpoint_env} environment variable to use {model}."
             )
         try:
             from openai import AzureOpenAI
@@ -914,51 +932,69 @@ def call_llm(
                 "openai package not installed. Run: python3 -m pip install openai"
             )
 
-        _api_model = MODEL_REGISTRY.get(model, {}).get("api_model")
+        _api_model = _reg.get("api_model")
         azure_model = _api_model if _api_model is not None else model[len("azure-"):]
 
-        # Strip any path/query from endpoint — SDK expects just scheme+host
         from urllib.parse import urlparse
         parsed = urlparse(endpoint)
         base_endpoint = f"{parsed.scheme}://{parsed.netloc}"
 
-        client_az = AzureOpenAI(
-            api_key=api_key,
-            azure_endpoint=base_endpoint,
-            api_version="2025-01-01-preview",
-        )
-        full_messages = [{"role": "system", "content": system_msg}] + messages
-        if verbose:
-            logger.info(
-                "Calling Azure OpenAI deployment=%s messages=%d", azure_model, len(full_messages)
+        _wire_api = _reg.get("wire_api", "chat")
+
+        if _wire_api == "responses":
+            # ---- Responses API path (gpt-5.3-codex and future models) ----
+            client_az = AzureOpenAI(
+                api_key=api_key,
+                azure_endpoint=base_endpoint,
+                api_version="2025-04-01-preview",
             )
-        # Plan 02-10 Step 2 (C2, C3): seed is best-effort for sampling
-        # reproducibility. Azure reasoning deployments (supports_thinking=True,
-        # e.g. gpt-5.4) reject temperature != 1 and top_p on the Responses API —
-        # 400 "Unsupported value: 'temperature' does not support 0.7 with this
-        # model" (surfaced 2026-04-19 S7 live smoke). Mirror the OpenAI o1/o3/o4
-        # gate at :883 and omit both kwargs for thinking-capable Azure models.
-        _az_kwargs: dict[str, Any] = {
-            "model": azure_model,
-            "max_completion_tokens": 32768,
-            "messages": full_messages,
-        }
-        if not MODEL_REGISTRY.get(model, {}).get("supports_thinking", False):
-            _az_kwargs["temperature"] = temperature
-            _az_kwargs["top_p"] = top_p
-        if seed is not None:
-            _az_kwargs["seed"] = seed
-        # Plan 02-03 (D-08): inject reasoning_effort="medium" when --thinking=on
-        # AND the model has supports_thinking=True (capability-gated). Omit otherwise.
-        # Do NOT conflate with Gemini's `reasoning_effort="none"` safety line below —
-        # that is a different function, unrelated to the --thinking flag.
-        if thinking_enabled and MODEL_REGISTRY.get(model, {}).get("supports_thinking", False):
-            _az_kwargs["reasoning_effort"] = "medium"
-        response = client_az.chat.completions.create(**_az_kwargs)
-        response_text = response.choices[0].message.content or ""
-        prompt_tokens = response.usage.prompt_tokens
-        completion_tokens = response.usage.completion_tokens
-        finish_reason = response.choices[0].finish_reason or "unknown"
+            if verbose:
+                logger.info(
+                    "Calling Azure OpenAI Responses API deployment=%s", azure_model
+                )
+            _resp_kwargs: dict[str, Any] = {
+                "model": azure_model,
+                "instructions": system_msg,
+                "input": [{"role": m["role"], "content": m["content"]} for m in messages],
+                "max_output_tokens": 32768,
+                "store": False,
+            }
+            if thinking_enabled and _reg.get("supports_thinking", False):
+                _resp_kwargs["reasoning"] = {"effort": "medium"}
+            response = client_az.responses.create(**_resp_kwargs)
+            response_text = response.output_text or ""
+            prompt_tokens = response.usage.input_tokens
+            completion_tokens = response.usage.output_tokens
+            finish_reason = response.status or "unknown"
+        else:
+            # ---- Chat Completions path (gpt-5.4) ----
+            client_az = AzureOpenAI(
+                api_key=api_key,
+                azure_endpoint=base_endpoint,
+                api_version="2025-01-01-preview",
+            )
+            full_messages = [{"role": "system", "content": system_msg}] + messages
+            if verbose:
+                logger.info(
+                    "Calling Azure OpenAI deployment=%s messages=%d", azure_model, len(full_messages)
+                )
+            _az_kwargs: dict[str, Any] = {
+                "model": azure_model,
+                "max_completion_tokens": 32768,
+                "messages": full_messages,
+            }
+            if not _reg.get("supports_thinking", False):
+                _az_kwargs["temperature"] = temperature
+                _az_kwargs["top_p"] = top_p
+            if seed is not None:
+                _az_kwargs["seed"] = seed
+            if thinking_enabled and _reg.get("supports_thinking", False):
+                _az_kwargs["reasoning_effort"] = "medium"
+            response = client_az.chat.completions.create(**_az_kwargs)
+            response_text = response.choices[0].message.content or ""
+            prompt_tokens = response.usage.prompt_tokens
+            completion_tokens = response.usage.completion_tokens
+            finish_reason = response.choices[0].finish_reason or "unknown"
 
     elif model.startswith("groq-"):
         # ---- Groq (OpenAI-compatible) path ----

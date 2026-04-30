@@ -21,6 +21,7 @@ LLM_EVAL_PATH = Path(__file__).parent.parent / "scripts" / "evaluation" / "llm_e
 # Post-2026-04-19 authoritative thinking-capable set.
 EXPECTED_THINKERS = {
     "azure-gpt-5.4",
+    "azure-gpt-5.3-codex",
     "o3-2025-04-16",
     "o4-mini-2025-04-16",
     "together-qwen-3.5-397b-a17b",

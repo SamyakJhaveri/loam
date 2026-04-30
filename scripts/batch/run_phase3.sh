@@ -36,6 +36,11 @@ check_api_key() {
                 || { echo "FATAL: TOGETHER_API_KEY is not set."; exit 1; }
             echo "  OK: TOGETHER_API_KEY set (${#TOGETHER_API_KEY} chars)"
             ;;
+        azure-*codex*)
+            [[ -n "${AZURE_OPENAI_API_KEY_CODEX:-}" ]] \
+                || { echo "FATAL: AZURE_OPENAI_API_KEY_CODEX is not set."; exit 1; }
+            echo "  OK: AZURE_OPENAI_API_KEY_CODEX set"
+            ;;
         azure-*)
             [[ -n "${AZURE_OPENAI_API_KEY:-}" ]] \
                 || { echo "FATAL: AZURE_OPENAI_API_KEY is not set."; exit 1; }
@@ -101,6 +106,7 @@ fi
 # ════════════════════════════════════════════════════════════════════════════
 trap 'echo ""; echo "INTERRUPTED $(date -Iseconds)"; exit 130' INT TERM
 
+source ~/.bashrc 2>/dev/null || true
 source "$PROJECT_ROOT/env_parbench/bin/activate"
 cd "$PROJECT_ROOT"
 
