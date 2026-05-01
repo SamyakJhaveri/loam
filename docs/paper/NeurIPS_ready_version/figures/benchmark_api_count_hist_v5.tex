@@ -1,0 +1,30 @@
+% Benchmark API-count histogram — style matches api_coverage_bar_v5
+% Data: #benchmarks supporting exactly N distinct APIs
+% Bins: 1=13, 2=11, 3=18, 4=8, 5=8, 6=6, 7=2, 8=1, 9=0, 10=0, 11=2, 12=2
+\begin{tikzpicture}
+\begin{axis}[
+  ybar,
+  bar width=12pt,
+  height=6cm,
+  width=\columnwidth,
+  xmin=0, xmax=13,
+  ylabel={\#Benchmarks},
+  ymin=0, ymax=21,
+  ytick={0,5,10,15,20},
+  xtick={1,2,3,4,5,6,7,8,9,10,11,12},
+  xticklabel style={font=\small},
+  tick label style={font=\small},
+  label style={font=\small},
+  title style={font=\normalsize\bfseries},
+  xlabel={\#Parallel APIs per Benchmark},
+  ymajorgrids=true,
+  major grid style={dashed, draw=gray!40},
+  title={API Breadth Distribution Across Benchmarks},
+  nodes near coords,
+  nodes near coords style={font=\small\bfseries, anchor=south},
+  clip=false,
+]
+  \addplot[fill=pbTealDark, draw=pbTealDark!70!black, line width=0.5pt]
+    coordinates {(1,13) (2,11) (3,18) (4,8) (5,8) (6,6) (7,2) (8,0) (9,1) (10,0) (11,2) (12,2)};
+\end{axis}
+\end{tikzpicture}

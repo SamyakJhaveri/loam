@@ -450,6 +450,28 @@ implement a single API (e.g., SPEC OMP, PARSEC, LonestarGPU), while others
 provide implementations across 10+ APIs (BabelStream with~12, miniBUDE
 with~14).
 
+\begin{table*}[!htbp]
+\centering
+\caption{Quantitative characterization of the evaluation corpus. SLoC counts physical source lines (non-blank, non-comment) in each kernel's CUDA prompt payload, the code provided to the LLM as translation input. Multi-File gives specs requiring translation of $>$1 source file. Std.\ shows the dominant language standard per suite.}
+\label{tab:benchmark-characterization}
+\small
+% src: Rodinia SLoC 195--3304, median 333.5 (rounded to 334), 21/60 multi-file; verified 2026-04-03
+% src: HeCBench SLoC 80--235, median 180, 0/25 multi-file; verified 2026-04-03
+% src: XSBench 1390, RSBench 1016, mixbench 312 SLoC; verified 2026-04-03
+\begin{tabular}{@{}lcrcl@{}}
+\toprule
+Suite & SLoC Range & Med. & Multi-File & Std. \\
+\midrule
+Rodinia            & 195--3{,}304       & 334 & 21/60 (35\%) & C++14 \\
+HeCBench (curated) &    80--235         & 180 &  0/25 ~(0\%) & C++17 \\
+XSBench            &    1{,}390         &  -- &  2/4~~(50\%) & C11   \\
+RSBench            &    1{,}016         &  -- &  1/4~~(25\%) & C11   \\
+mixbench           &       312          &  -- &  0/3~~~(0\%) & C++11 \\
+\midrule
+\textbf{Total} & \textbf{80--3{,}304} & \textbf{271} & \textbf{24/96 (25\%)} & \\
+\bottomrule
+\end{tabular}
+\end{table*}
 Figure~\ref{fig:api-count-hist} quantifies the API breadth distribution across
 the surveyed benchmarks.
 
@@ -1957,7 +1979,7 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 \item {\bf Code and data}
     \item[] Question: Does the paper provide instructions for reproducing the main experimental results, including code and data?
     \item[] Answer: \answerYes{}
-    \item[] Justification: ParBench will be released as an open-source repository containing all 206 kernel specifications, the build/run/verify harness, the evaluation pipeline, and augmentation engine. Result JSON files for both models will be included.
+    \item[] Justification: ParBench is included as anonymized supplementary material containing all 206 kernel specifications, the build-run-verify harness, the evaluation pipeline, augmentation engine, and per-record result JSONs for both models.
 
 \item {\bf Experimental details}
     \item[] Question: Does the paper specify all the training and test details necessary to understand the results?
@@ -1992,7 +2014,7 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 \item {\bf Licenses}
     \item[] Question: Are the creators of assets used in the paper properly credited and are the license and terms of use explicitly mentioned and properly respected?
     \item[] Answer: \answerYes{}
-    \item[] Justification: All five benchmark suites are cited (Rodinia~\cite{Rodinia2009}, XSBench, RSBench, mixbench, HeCBench). Repository URLs and commit hashes are recorded in kernel specifications. LLM providers (Together AI, Azure OpenAI) are identified.
+    \item[] Justification: All five benchmark suites are cited (Rodinia~\cite{Rodinia2009}, XSBench, RSBench, mixbench, HeCBench). Repository URLs and commit hashes are recorded in kernel specifications. LLM providers (Together AI, Azure OpenAI) are identified. Rodinia is distributed under the Rodinia license (BSD-like); XSBench and RSBench under MIT; HeCBench under MIT; mixbench under GPL-3.0. All are compatible with academic use and redistribution.
 
 \item {\bf New assets}
     \item[] Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?

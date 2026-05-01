@@ -1,0 +1,38 @@
+% F2: Repository-level vs kernel-level API pair counts
+\begin{tikzpicture}
+\begin{axis}[
+  parbench compact,
+  ybar,
+  bar width=25pt,
+  ymode=log,
+  ymin=1, ymax=5000,
+  ytick={1,10,100,1000},
+  yticklabels={1,10,100,1{,}000},
+  log ticks with fixed point,
+  xtick={0,1,2},
+  xticklabels={CUDA--OpenMP, CUDA--HIP, CUDA--SYCL},
+  xticklabel style={font=\footnotesize},
+  ylabel={Count (log scale)},
+  xmin=-0.6, xmax=2.6,
+  legend style={at={(0.5,-0.22)}, anchor=north, legend columns=2},
+  ymajorgrids=true, xmajorgrids=false,
+  grid style={dashed, draw=gray!40},
+  title={Repository vs.\ Kernel Translation Pair Counts},
+]
+  \addplot[fill=pbOrange!70, draw=pbOrange!80!black, line width=0.8pt, nodes near coords, point meta=explicit symbolic, every node near coord/.style={
+  font=\small\bfseries, anchor=south, xshift=-14pt, yshift=1pt, color=pbOrange!80!black}] coordinates {(0,6)[6] (1,3)[3] (2,2)[2]};
+  \addlegendentry{Repository Count}
+  
+  \addplot[fill=pbRodinia, draw=pbRodinia!70!black, line width=0.8pt, nodes near coords, point meta=explicit symbolic, every node near coord/.style={font=\small\bfseries, anchor=south, xshift=12pt, yshift=1pt, color=black}]
+  coordinates {(0,472)[472] (1,633)[633] (2,616)[616]};
+  \addlegendentry{Kernel Count}
+
+  % Multiplier annotations
+  \node[font=\small\bfseries, color=pbRose, anchor=south]
+    at (axis cs:0,1500) {79\texttimes};
+  \node[font=\small\bfseries, color=pbRose, anchor=south]
+    at (axis cs:1,2000) {211\texttimes};
+  \node[font=\small\bfseries, color=pbRose, anchor=south]
+    at (axis cs:2,2000) {308\texttimes};
+\end{axis}
+\end{tikzpicture}

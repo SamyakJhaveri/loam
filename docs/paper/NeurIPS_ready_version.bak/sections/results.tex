@@ -1,0 +1,125 @@
+% §5.1 Kernel Isolation Reveals Real Capability
+%   - First: headline comparison — ParEval-Repo = 0% on >133 SLoC;
+%     ParBench = 37–76% on same-size code. The gap quantifies how much
+%     of repository-level failure is build reconstruction, not translation.
+%   - Then: per-suite heterogeneity — HeCBench 65% to RSBench 0%.
+%   - Finally: cross-model discrimination — McNemar test on 142 shared
+%     tasks (GPT 62.7% vs Qwen 23.9%, h=0.80). Caveat: unmatched sampling.
+%
+% §5.2 Build-Stage Adaptation Is the Dominant Bottleneck
+%   - First: the ACTIONABLE finding — BUILD_FAIL = 39.1% of all outcomes,
+%     61.9% of failures. These are API-surface mapping errors, not
+%     reasoning failures.
+%   - Then: why other failure modes matter — VERIFY_FAIL (4.6%) proves
+%     compile-only verification is insufficient; RUN_FAIL (19.3%) includes
+%     OpenCL JIT errors.
+%   - Finally: cross-model comparison of failure distribution — GPT-5.4
+%     reduces build failures from 39% to 15%.
+%
+% §5.3 Strong Direction Dependence
+%   - First: direction table — CUDA→OMP (40–83%) vs OCL→CUDA (0–19%).
+%   - Then: INTERPRET the asymmetry — removing explicit constructs is
+%     easier than introducing them. Consistent across both models.
+%   - Then: OMP-target case studies reinforce the gradient (stripping
+%     directives = 100%, generating them = 0–96%).
+%   - Then: McNemar tests on direction asymmetry — underpowered, inconclusive.
+%   - Finally: per-kernel heterogeneity — easiest (stencils) vs hardest
+%     (irregular access, multi-file, complex data structures). Full table
+%     in appendix.
+%
+% §5.4 Limited Rescue from Repeated Sampling
+%   - First: pass@k table — pass@1-to-pass@3 gap is modest (11 pp Qwen,
+%     7 pp GPT).
+%   - Then: INTERPRET — 65% of Qwen tasks are hard-fail (0/3); 54% of
+%     GPT tasks pass deterministically (3/3). Low within-task variance.
+%   - Finally: implication — failures are systematic (wrong API mapping),
+%     not stochastic. Resampling cannot rescue them.
+%
+% §5.5 Augmentation Robustness
+%   - First: if memorization drove success, augmentation should degrade
+%     pass rates. State the result: 75–83% at L1–L4 vs 81% at L0.
+%   - Then: explain the survivorship bias (L0-conditional filter).
+%   - Finally: caveats — small sample (n=12), one direction, cannot rule
+%     out deeper memorization.
+\section{Results}
+\label{sec:results}
+
+\subsection{Overall Performance}
+\label{sec:overall-pass}
+
+\begin{table*}[t]
+\centering
+% src: quantitative_findings_qwen.json, quantitative_findings_gpt54.json > canonical > failure_taxonomy
+\caption{Overall pass rates. \qwenshort{} covers 626 valid records (426 L0 + 200 ablation) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} covers 822 valid records (426 L0 + 396 ablation); \knownfail{} specs were pre-excluded from the evaluation batch.}
+\label{tab:overall-pass}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrrrrl@{}}
+\toprule
+Model & \pass{} & \buildfail{} & \runfail{} & \verifyfail{} & \extractionfail{} & Total & Rate [95\% Wilson CI] \\
+\midrule
+% src: quantitative_findings_qwen.json > canonical > failure_taxonomy > status_counts
+\qwen{} & 230 & 245 & 121 & 29 & 1 & 626 & 36.7\% [33.1\%, 40.6\%] \\
+% src: quantitative_findings_gpt54.json > canonical > failure_taxonomy > status_counts (all 822 valid records)
+\gptnew{} & 621 & 123 & 43 & 32 & 3 & 822 & 75.5\% [72.5\%, 78.4\%] \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+% src: quantitative_findings_qwen.json > canonical > aggregate_pass_rates > overall: value=0.3674, ci=[0.3306, 0.4059], n=626
+Kernel-centric evaluation isolates executable kernel translation from repository reconstruction. As shown in Table~\ref{tab:overall-pass}, \qwenshort{} passes 36.7\% of its valid records, while \gptnew{} passes 75.5\%.
+Prior work such as ParEval-Repo reports 0\% pass@1 on repository-level applications larger than 133 SLoC \cite{ParEvalRepo2025}. While 87\% of our evaluated kernels exceed that length, \parbench{}'s kernel isolation reveals baseline translation capability independent of full-repository integration errors. For example, \qwenshort{} achieves 40.3\% on CUDA-to-OpenMP at L0.
+
+\subsection{pass@$k$ Analysis}
+\label{sec:passk-analysis}
+
+Restricting to the 142 L0 tasks to estimate single-sample vs. multi-sample success, \qwenshort{} achieves 23.9\% pass@1 and 35.2\% pass@3 (detailed in Appendix~\ref{sec:appendix-c-extended}). Additional stochastic samples provide diminishing returns. Of the 142 tasks, 64.8\% produce no passing sample across three independent attempts, and 13.4\% pass in all three. Failures are largely systematic (incorrect API mapping) rather than stochastic; resampling is insufficient to recover most failing pairs.
+
+\subsection{Direction Dependence}
+\label{sec:direction-analysis}
+
+\begin{table*}[t]
+\centering
+\caption{Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes total L0 records. Wilson 95\% CIs in brackets.}
+\label{tab:direction-rates}
+\small
+\begin{tabular}{@{}lrrc@{}}
+\toprule
+Direction & \qwenshort{} & \gptnew{} & $n$ \\
+\midrule
+% src: quantitative_findings_qwen.json + quantitative_findings_gpt54.json > canonical > direction_pass_rates > standard
+CUDA$\to$OMP & 40.3\% [29.7\%, 51.8\%] & 83.3\% [73.1\%, 90.2\%] & 72 \\
+OMP$\to$OpenCL & 33.3\% [22.0\%, 47.0\%] & 72.5\% [59.1\%, 82.9\%] & 51 \\
+OMP$\to$CUDA & 25.0\% [16.4\%, 36.1\%] & 55.6\% [44.1\%, 66.5\%] & 72 \\
+OpenCL$\to$OMP & 9.8\% [4.3\%, 21.0\%] & 41.2\% [28.8\%, 54.8\%] & 51 \\
+CUDA$\to$OpenCL & 7.0\% [2.8\%, 16.7\%] & 59.7\% [46.7\%, 71.4\%] & 57 \\
+OpenCL$\to$CUDA & 0.0\% [0.0\%, 6.3\%] & 19.3\% [11.1\%, 31.3\%] & 57 \\
+\midrule
+% src: quantitative_findings_qwen.json + quantitative_findings_gpt54.json > canonical > direction_pass_rates > standard (omp_target) + case_study
+OMP-target$\to$OMP ($m{=}3$) & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 9 \\
+OMP-target$\to$CUDA ($m{=}8$) & 66.7\% [46.7\%, 82.0\%] & 95.8\% [79.8\%, 99.3\%] & 24 \\
+OMP$\to$OMP-target ($m{=}3$) & 44.4\% [18.9\%, 73.3\%] & 100\% [70.1\%, 100\%] & 9 \\
+CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 95.8\% [79.8\%, 99.3\%] & 24 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Per-record pass rates vary strongly across directions (Table~\ref{tab:direction-rates}), reflecting structural API asymmetries. Translating from CUDA to OpenMP replaces explicit device memory and launch configuration with compiler directives. The reverse requires introducing explicit synchronization and memory management. OpenCL translations introduce further complexity with separate host/kernel source and JIT compilation, leading to 0\% success for OpenCL-to-CUDA under \qwenshort{}.
+At the kernel level, performance is highly heterogeneous (full breakdown in Appendix~\ref{sec:appendix-c-extended}). Simple kernels pass at high rates, while those with irregular memory access or multi-file dependencies frequently fail entirely.
+
+\subsection{Failure Taxonomy}
+\label{sec:failure-taxonomy}
+
+\begin{figure}[t]
+\centering
+\input{figures/f4_failure_taxonomy_qwen.tex}
+\caption{\qwenshort{} outcome taxonomy across 626 valid records. Build-stage failures are the largest non-pass category. \gptnew{} taxonomy (822 records) is in Appendix~\ref{sec:appendix-gpt-figures}.}
+\label{fig:failure-taxonomy}
+\end{figure}
+
+Build-stage adaptation is the dominant failure mode, accounting for 39.1\% of all records and 61.9\% of failures for \qwenshort{} (Figure~\ref{fig:failure-taxonomy}). These indicate incomplete API-surface adaptation (e.g., retained CUDA identifiers in OpenMP targets). \verifyfail{} accounts for 4.6\% of records, proving that compile-only or zero-exit-code checks are insufficient for rigorous evaluation. \runfail{} represents 19.3\% of records, frequently driven by OpenCL JIT compilation errors occurring at runtime.
+
+\subsection{Augmentation Robustness}
+\label{sec:augmentation-robustness}
+
+To assess whether baseline success is driven primarily by surface-form memorization, we evaluated augmented source variants (L1--L4) on a balanced 12-kernel CUDA-to-OpenMP subset. Pass rates remained stable between 75\% and 83\% across augmentation levels (detailed in Appendix~\ref{sec:appendix-c-extended}). This stability is compatible with some robustness to surface-form perturbation, though small sample sizes and survivorship bias (due to L0-conditional filtering) prevent ruling out deeper structural memorization entirely.

@@ -1,0 +1,57 @@
+% §4.1 Models
+%   - First: state selection rationale — provider diversity + reasoning
+%     capability range.
+%   - Then: describe each model (Qwen 3.5 397B MoE, GPT-5.4).
+%   - Finally: caveat — different reasoning modes mean performance gaps
+%     may reflect mode differences, not just model capability. The
+%     contribution is the harness, not a controlled model comparison.
+%
+% §4.2 Translation Protocol
+%   - First: KNOWN_FAIL exclusion — 9 specs excluded, state valid counts.
+%   - Then: direction matrix — 6 standard (CUDA/OMP/OCL bidirectional) +
+%     4 OMP-target = 10 directions, 142 unique tasks.
+%   - Finally: kernel-centric protocol — LLM gets only kernel files;
+%     host/build/verification remain fixed.
+%
+% §4.3 Sampling Configuration
+%   - First: temperature settings per provider (0.7 for Qwen; provider-
+%     controlled for GPT-5.4). Flag the confound explicitly.
+%   - Then: n=3 samples per task for pass@k. Deterministic seeds (advisory).
+%   - Finally: self-repair disabled — single-attempt evaluation.
+%
+% §4.4 Canonical Evaluation and Augmentation Ablation
+%   - First: canonical campaign — 142 pairs × 3 = 426 L0 records.
+%   - Then: augmentation ablation design — L0-conditional filter
+%     (Qwen 50 qualifying, GPT 99). Single sample at L1–L4.
+%   - Finally: caveat — single-sample trades precision for budget.
+%
+% §4.5 Metrics
+%   - pass@k (macro-averaged, Chen et al. estimator) with normal-approx CIs.
+%   - Per-record pass rates with Wilson CIs.
+%   - Performance explicitly out of scope.
+
+\section{Experimental Setup}
+\label{sec:experimental-setup}
+
+% ============================================================================
+% Ground truth sources for every claim in this section:
+%   Model IDs/params:  scripts/evaluation/llm_evaluate.py MODEL_REGISTRY (lines 74-139)
+%   Result JSONs:      results/evaluation/{together-qwen-3.5-397b-a17b,azure-gpt-5.4}/
+%   Pair counts:       142 unique pairs (verified: find + python3 groupby on result JSONs)
+%   Direction counts:  10 directions (verified: spec-ID suffix extraction across 426 L0 files)
+%   KNOWN_FAIL:        harness/constants.py EXCLUDED_SPECS (9 specs)
+%   Ablation filter:   pass@1-of-any (memory: project_neurips_experiment_design.md)
+%   Metrics:           quantitative_findings_qwen.json, quantitative_findings_gpt54.json
+%   Temperature gate:  llm_evaluate.py lines 946-948 (Azure reasoning omits temp/top_p)
+% ============================================================================
+
+\textbf{Models:} We evaluate two models: \qwen{}, a 397B-parameter MoE open weight and open-source model accessed via Together AI, and \gptnew{}, a proprietary model accessed via \gptprovider{}. Both expose provider-specific reasoning modes, configured at recommended settings (\texttt{enable\_thinking} for \qwenshort{} and \texttt{reasoning\_effort=medium} for \gptnew{}). Because these thinking modes differ in mechanism, observed performance differences reflect both base capability and reasoning-mode effects. Detailed model configurations, hardware specs, and cost accounting are provided in Appendix~\ref{sec:appendix-framework-extended}.
+
+\textbf{Translation Protocol and Scope:} The evaluation covers ten translation directions (142 unique tasks), primarily focusing on CUDA, OpenMP, and OpenCL bidirectional pairs. We exclude 9 specifications classified as \knownfail{} due to pre-existing toolchain incompatibilities (detailed in Appendix~\ref{sec:appendix-framework-extended}). Translations follow the kernel-centric protocol (Section~\ref{sec:framework}), where only kernel source files are translated while host and build infrastructure remain fixed. Performance speedup is explicitly out of scope; we focus purely on functional correctness.
+
+\textbf{Evaluation Phases:} The canonical campaign (L0) evaluates all 142 unique pairs from unmodified source code, using $n=3$ independent samples per task (temperature 0.7 for \qwenshort{}; internally controlled for \gptnew{}). The augmentation ablation phase isolates source-code robustness by applying an L0-conditional filter (testing only pairs that pass at L0) and evaluating single samples at augmentation levels L1--L4. Extended sampling configurations are in Appendix~\ref{sec:appendix-framework-extended}.
+
+\textbf{Metrics:} The primary metric is \textbf{pass@$k$}, using the unbiased estimator from \citet{HumanEval2021} with normal-approximation confidence intervals on the task-level mean. Separately, we report \textbf{per-record pass rates} treating each record as an independent Bernoulli trial, computed with Wilson 95\% confidence intervals. Full metric derivations are in Appendix~\ref{sec:appendix-framework-extended}.
+
+With the methodology established, Section~\ref{sec:results} presents the pass rates, failure taxonomy, direction asymmetry, and augmentation robustness results.
+

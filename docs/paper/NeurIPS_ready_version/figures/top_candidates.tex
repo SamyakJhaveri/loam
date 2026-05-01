@@ -1,0 +1,52 @@
+% Top Rosetta Stone Candidates: Kernels vs APIs
+% Grouped bar chart: 8 top repositories by (scaled kernel count, API count)
+% Kernel counts in parentheses are true values; blue bars are scaled to fit axis.
+% Data from top_candidates.png:
+%   HeCBench: 513 kernels (→30 scaled), 4 APIs
+%   BabelStream: 5 kernels, 16 APIs
+%   RAJAPerf: 80 kernels (→8 scaled), 7 APIs
+%   miniBUDE: 1 kernel, 14 APIs
+%   CloverLeaf: 23 kernels (→2 scaled), 13 APIs
+%   Kokkos: 50 kernels (→5 scaled), 7 APIs
+%   PRK: 12 kernels (→1 scaled), 25 APIs
+%   Rodinia: 24 kernels (→2 scaled), 3 APIs
+\begin{tikzpicture}
+\begin{axis}[
+  parbench compact,
+  ybar,
+  bar width=8pt,
+  height=6cm,
+  ylabel={Count},
+  xtick={0,1,2,3,4,5,6,7},
+  xticklabels={HeCBench, BabelStream, RAJAPerf, miniBUDE, CloverLeaf, Kokkos, PRK, Rodinia},
+  xticklabel style={font=\tiny, rotate=45, anchor=east},
+  xmin=-0.6, xmax=7.6,
+  ymin=0, ymax=32,
+  ytick={0,5,10,15,20,25,30},
+  legend style={at={(0.5,0.98)}, anchor=north, font=\footnotesize}, legend columns=2,
+  ymajorgrids=true,
+  grid style={dashed, draw=gray!20},
+  title={Top Multi-API Repository Candidates},
+  clip=false,
+]
+  % Kernels (scaled: true count / scaling factor)
+  \addplot[fill=pbRodinia, draw=pbRodinia!70!black, line width=0.6pt]
+    coordinates {(0,30) (1,0.5) (2,8) (3,0.1) (4,2) (5,5) (6,1) (7,2)};
+  \addlegendentry{Kernels (scaled)}
+
+  % APIs
+  \addplot[fill=pbOrange, draw=pbOrange!70!black, line width=0.6pt]
+    coordinates {(0,4) (1,16) (2,7) (3,14) (4,13) (5,7) (6,25) (7,3)};
+  \addlegendentry{APIs}
+
+  % Annotate true kernel counts above blue bars
+  \node[above, font=\tiny\bfseries, color=pbRodinia!80!black] at (axis cs:-0.13,29.5) {513};
+  \node[above, font=\tiny\bfseries, color=pbRodinia!80!black] at (axis cs:0.87,0.5) {5};
+  \node[above, font=\tiny\bfseries, color=pbRodinia!80!black] at (axis cs:1.87,8) {80};
+  \node[above, font=\tiny\bfseries, color=pbRodinia!80!black] at (axis cs:2.87,0.1) {1};
+  \node[above, font=\tiny\bfseries, color=pbRodinia!80!black] at (axis cs:3.87,2) {23};
+  \node[above, font=\tiny\bfseries, color=pbRodinia!80!black] at (axis cs:4.87,5) {50};
+  \node[above, font=\tiny\bfseries, color=pbRodinia!80!black] at (axis cs:5.87,1) {12};
+  \node[above, font=\tiny\bfseries, color=pbRodinia!80!black] at (axis cs:6.87,2) {24};
+\end{axis}
+\end{tikzpicture}

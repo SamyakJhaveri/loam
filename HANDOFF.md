@@ -1,376 +1,149 @@
-# HANDOFF: NeurIPS 2026 Paper Completion
+# HANDOFF: GPT-5.3-codex Analysis + 3-Model Comparison
 
-**Date:** 2026-04-28 (updated after Phase 6 execution session)
-**Deadline:** NeurIPS 2026 E&D Track — **Team deadline: May 1, 2026.** (NeurIPS official: abstract May 4, full paper May 6 AoE — but team ships by May 1.)
-**Status:** Phases 0-6 COMPLETE. Phase 7 (validate + commit) ready. Phase 8 (submission) remains.
-
----
-
-## What Is This Document?
-
-Single execution plan for completing the NeurIPS 2026 paper. Every path is absolute, every command is copy-paste ready, every number is verified against raw data files.
+**Date:** 2026-04-30
+**Status:** Ready for execution — no code was changed in the planning session
+**Plan file:** `/home/samyak/.claude/plans/i-got-the-the-greedy-quiche.md`
 
 ---
 
-## What Has Been Done
+## Goal
 
-### Prior Session (2026-04-25): Structural Rewrite
-- Modularized LaTeX into 9 section files via `\input{}`
-- All numbers corrected from purged dataset to canonical evaluation data
-- Model swap from GPT-4.1 mini to GPT-5.4 (with `\tbd{}` placeholders)
-- Self-repair narrative removed
-- KNOWN_FAIL counts corrected (9 not 8, 87 PASS not 88)
+Run the existing analysis scripts for GPT-5.3-codex (the third model), make `cross_model_comparison.py` work with any two models (currently hardcoded for "qwen" and "gpt"), run comparisons for all 3 pairs, and re-run `statistical_analysis.py`.
 
-### Phase 0: Overleaf Sync — DONE (2026-04-27)
-User replaced local folder with Overleaf version containing Erel's review changes. Erel's edits addressed in Phase 2 below.
-
-### Phase 1: GPT-5.4 Analysis Pipeline — DONE (2026-04-27)
-All analysis scripts run, all output files model-specific (no ambiguous unsuffixed files):
-
-| File | Model | Verified |
-|------|-------|----------|
-| `results/analysis/paper_data_together-qwen-3.5-397b-a17b.json` | Qwen — 102/426 L0 PASS = 23.9% | Yes |
-| `results/analysis/paper_data_azure_gpt54.json` | GPT-5.4 — 267/426 L0 PASS = 62.7% | Yes |
-| `results/analysis/quantitative_findings_qwen.json` + `.md` | Qwen — 708 total, 626 valid | Yes |
-| `results/analysis/quantitative_findings_gpt54.json` + `.md` | GPT-5.4 — 822 total, 822 valid | Yes |
-| `results/analysis/augmentation_per_kernel_matrix_together-qwen-3.5-397b-a17b.json` + `.md` | Qwen | Yes |
-| `results/analysis/augmentation_per_kernel_matrix_azure-gpt-5.4.json` + `.md` | GPT-5.4 | Yes |
-| `results/analysis/cross_model_comparison.json` | Both | Yes |
-| `docs/paper/.../figures/f{3,4,5,6}_*_gpt.pdf` | GPT-5.4 figures | Yes |
-| `docs/paper/.../figures/f7_augmentation_robustness.pdf` | Both models | Yes |
-| `docs/paper/.../figures/t2_model_comparison.tex` | LaTeX table | Yes |
-
-**IMPORTANT:** Ambiguous unsuffixed files (`quantitative_findings.json`, `paper_data.json`) were DELETED. All analysis files now have model names. Scripts updated:
-- `quantitative_findings.py` now outputs `quantitative_findings_{model_slug}.json`
-- `generate_paper_data.py` now requires `--output` (no default)
-- `cross_model_comparison.py` default `--qwen-data` updated to model-specific filename
-- `cross_model_comparison.py` reads `passk_campaign` (not empty `primary_campaign`)
-
-### Phase 2: Update Main Body Sections — DONE (2026-04-27)
-All `\tbd{}` and "in progress" removed from main body sections. Paper-claim-audit PASSED (79 claims, 0 mismatches).
-
-| Section | Changes Made |
-|---------|-------------|
-| `abstract.tex` | GPT-5.4 L0 pass rate (62.7%), pass@1/pass@3 filled; "OF" caps fixed; 39.1%/4.6% attributed to Qwen; "overall" → "L0 pass rate" for GPT-5.4 clarity |
-| `1-introduction.tex` | Contribution #1 truncation fixed; #3 updated with both models' pass@1; "in progress" removed; 1,448 total records |
-| `experimental-setup.tex` | "in progress" → "complete"; source comments updated to model-specific filenames |
-| `results.tex` | GPT-5.4 Table 1 row filled (621/822 PASS, 75.5%); direction summary row (62.7%); failure taxonomy caption updated |
-| `discussion.tex` | Cross-model comparison with Chi² (128.6), Cohen's h (0.80); build fail reduction (50.0%→22.8%); limitations updated; "in progress" removed |
-| `related-work.tex` | No changes needed; all 12 citations verified against references.bib |
-| `framework.tex` | Erel added response extraction paragraph and updated figure caption; empty `\textbf{}.` still needs fix (Phase 3.5) |
+**Analysis data only — no paper/LaTeX updates.**
 
 ---
 
-## Skills to Load at Session Start
+## Background
 
-```
-Skill("andrej-karpathy-skills:karpathy-guidelines")  -- Think before coding, surgical changes
-Skill("ml-paper-writing")                              -- NeurIPS paper conventions
-Skill("deslop")                                        -- Remove AI writing patterns
-Skill("paper-claim-audit")                             -- Verify every number traces to data
-Skill("paper-review-sim")                              -- Simulate NeurIPS 5-reviewer panel
-Skill("cite-check")                                    -- Verify citations match references.bib
-Skill("validate")                                      -- Run waves 1-3 before any git commit
+ParBench evaluates LLM parallel code translation (CUDA/OpenMP/OpenCL). Three models were evaluated:
+
+| Model | Result dir | Files |
+|-------|-----------|-------|
+| Qwen 3.5 397B | `results/evaluation/together-qwen-3.5-397b-a17b/` | 708 |
+| GPT-5.4 | `results/evaluation/azure-gpt-5.4/` | 822 |
+| GPT-5.3-codex | `results/evaluation/azure-gpt-5.3-codex/` | 814 |
+
+Qwen and GPT-5.4 already have analysis files. GPT-5.3-codex does not yet.
+
+---
+
+## Gotchas (found during adversarial plan review — don't repeat these)
+
+### 1. `augmentation_analysis.py` — single-model clobbers output
+Passing ONE `--model-dir` produces an unsuffixed filename that overwrites existing files. **Always pass all 3 models together** to get per-model suffixed output.
+
+### 2. `quantitative_findings.py` — hardcoded model name
+Line 1758 hardcodes `"model": "together-qwen-3.5-397b-a17b"`. Fix to `"model": args.model_dir,` before running for codex.
+
+### 3. `generate_paper_claims.py` — skip it
+Entirely Qwen-only (hardcoded model name, reads unsuffixed files that don't exist). Not part of this task.
+
+### 4. `compute_mcnemar` — crashes on task key mismatch
+Line 60-63 raises `ValueError` if task key sets differ between models. Replace with intersection + warning.
+
+---
+
+## The Work (3 parts)
+
+### Part A — Run existing scripts for GPT-5.3-codex
+
+No code changes except the 1-line fix in `quantitative_findings.py`.
+
+**A1.** Generate paper data:
+```bash
+cd /home/samyak/Desktop/parbench_sam && source env_parbench/bin/activate
+python3 scripts/analysis/generate_paper_data.py \
+  --results-dir results/evaluation/azure-gpt-5.3-codex \
+  --output results/analysis/paper_data_azure-gpt-5.3-codex.json -v
 ```
 
----
-
-## Absolute Path Reference
-
-| Short Name | Path |
-|------------|------|
-| PROJECT_ROOT | `/home/samyak/Desktop/parbench_sam` |
-| PAPER_DIR | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version` |
-| SECTIONS | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections` |
-| FIGURES | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/figures` |
-| MAIN_TEX | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/main_neurips.tex` |
-| APPENDIX | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex` |
-| REFS_BIB | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/references.bib` |
-| QF_QWEN | `/home/samyak/Desktop/parbench_sam/results/analysis/quantitative_findings_qwen.json` |
-| QF_GPT | `/home/samyak/Desktop/parbench_sam/results/analysis/quantitative_findings_gpt54.json` |
-| PD_QWEN | `/home/samyak/Desktop/parbench_sam/results/analysis/paper_data_together-qwen-3.5-397b-a17b.json` |
-| PD_GPT | `/home/samyak/Desktop/parbench_sam/results/analysis/paper_data_azure_gpt54.json` |
-| CROSS_MODEL | `/home/samyak/Desktop/parbench_sam/results/analysis/cross_model_comparison.json` |
-
----
-
-## Data Ground Truth
-
-ALL numbers verified 2026-04-27 against raw result files.
-
-### Qwen 3.5 397B (source: QF_QWEN, PD_QWEN)
-
-| Metric | Value |
-|--------|-------|
-| Files on disk | 708 |
-| KNOWN_FAIL excluded | 82 |
-| Valid after exclusion | 626 (426 L0 + 200 ablation) |
-| L0 PASS | 102/426 = 23.9% |
-| Overall (all 626) | 230/626 = 36.7% [33.1%, 40.6%] |
-| pass@1 | 23.9% [17.9%, 30.0%] |
-| pass@3 | 35.2% [27.3%, 43.1%] |
-| Always pass (3/3) | 19 tasks (13.4%) |
-| Hard fail (0/3) | 92 tasks (64.8%) |
-| Noisy (1-2/3) | 31 tasks (21.8%) |
-| BUILD_FAIL | 245 (39.1%) |
-| RUN_FAIL | 121 (19.3%) |
-| VERIFY_FAIL | 29 (4.6%) |
-| EXTRACTION_FAIL | 1 (0.2%) |
-| L0 BUILD_FAIL | 213/426 = 50.0% |
-| Ablation qualifying pairs | 50 (35%) |
-
-### GPT-5.4 (source: QF_GPT, PD_GPT)
-
-| Metric | Value |
-|--------|-------|
-| Files on disk | 822 |
-| KNOWN_FAIL excluded | 0 (pre-excluded from eval batch) |
-| Valid after exclusion | 822 (426 L0 + 396 ablation) |
-| L0 PASS | 267/426 = 62.7% [58.0%, 67.1%] |
-| Overall (all 822) | 621/822 = 75.5% [72.5%, 78.4%] |
-| pass@1 | 62.7% [55.3%, 70.0%] |
-| pass@3 | 69.7% [62.1%, 77.3%] |
-| Always pass (3/3) | 76 tasks (53.5%) |
-| Hard fail (0/3) | 43 tasks (30.3%) |
-| Noisy (1-2/3) | 23 tasks (16.2%) |
-| BUILD_FAIL (all 822) | 123 (15.0%) |
-| RUN_FAIL (all 822) | 43 (5.2%) |
-| VERIFY_FAIL (all 822) | 32 (3.9%) |
-| EXTRACTION_FAIL (all 822) | 3 (0.4%) |
-| L0 BUILD_FAIL | 97/426 = 22.8% |
-| Ablation qualifying pairs | 99 (69.7%) |
-
-### Cross-Model (source: CROSS_MODEL)
-
-| Metric | Value |
-|--------|-------|
-| Chi-squared | 128.6, p < 10⁻⁶ |
-| Cohen's h | 0.80 (large) |
-| Best GPT-5.4 direction | cuda-to-omp_target: 95.8% (Qwen 0%) |
-| Hardest direction (both) | opencl-to-cuda: GPT 19.3%, Qwen 0% |
-
-### GPT-5.4 Direction Pass Rates (L0, from PD_GPT)
-
-| Direction | Rate | n |
-|-----------|------|---|
-| omp_target-to-omp | 100.0% | 9 |
-| cuda-to-omp_target | 95.8% | 24 |
-| omp_target-to-cuda | 95.8% | 24 |
-| cuda-to-omp | 83.3% | 72 |
-| omp-to-opencl | 72.5% | 51 |
-| cuda-to-opencl | 59.7% | 57 |
-| omp-to-cuda | 55.6% | 72 |
-| omp-to-omp_target | 100.0% | 9 |
-| opencl-to-omp | 41.2% | 51 |
-| opencl-to-cuda | 19.3% | 57 |
-
-### IMPORTANT: QF "overall" ≠ L0-only
-- `QF_GPT > canonical > aggregate_pass_rates > overall` = 75.5% (all 822 records, L0+ablation)
-- `PD_GPT > passk_campaign > overall` = 62.7% (426 L0 records only)
-- For paper headline/abstract, use L0-only (62.7%). For Table 1 (which includes ablation), use 75.5%.
-- Same distinction applies to failure taxonomy: QF covers all records, PD covers L0 only.
-
----
-
-### Session 2026-04-27 Evening: Phases 3–5 Execution
-
-**Phase 3 (Appendix Fixes) — DONE:**
-- Pass@k table: replaced stale 38.3%/19.7%/27.5% with Qwen 23.9%/35.2% + GPT-5.4 62.7%/69.7%; added Noisy column
-- Augmentation table: replaced stale rates with ablation data (Qwen L1=74%, GPT L1=88.9%); updated caption for L0-conditional design
-- Per-kernel table: replaced all 31 rows from raw result files (230/626, not 272/710); verified Wilson CIs
-- Source comments: all `paper_data.json` / `quantitative_findings.json` → model-specific filenames (15+ occurrences across 4 files)
-- GPT-5.4 cost table added (14.9M tokens, 27.4h wall time, 822 tasks)
-- framework.tex: `\textbf{}.` → `\textbf{ParBench system architecture.}`
-- HeCBench 513→516 inconsistency harmonized (4 occurrences)
-
-**Phase 4 (NeurIPS Checklist) — DONE:**
-- 16-item checklist added to appendices_neurips.tex using `\answerYes`/`\answerNA` macros
-- All `\ref{}` targets verified
-
-**Phase 5 (Final Pass) — DONE:**
-- Stale-data sweep: 0 hits across all sections
-- TBD/in-progress: 0 (only macros.tex definition)
-- Citation check: 18/18 OK (added RSBench2014 to references.bib)
-- Dangling refs: fixed `sec:curation` → `sec:benchmark-curation` in results.tex
-- Paper-claim-audit: 78 claims, 0 mismatches, verdict PASS
-- Paper-review-sim: 5-reviewer panel, avg 67.6/100, BORDERLINE
-  Full report: `docs/paper/NeurIPS_ready_version/REVIEW_SIM_2026-04-27.md`
-
-**Files changed (6 paper + 1 bib):**
-- `appendices_neurips.tex` — pass@k table, augmentation table, per-kernel table, cost table, checklist, HeCBench count
-- `references.bib` — added RSBench2014
-- `sections/framework.tex` — figure caption fix
-- `sections/results.tex` — dangling ref fix, source comment updates (13 occurrences)
-- `sections/benchmark-curation.tex` — source comment updates (2 occurrences)
-- `sections/experimental-setup.tex` — source comment update (1 occurrence)
-
----
-
-## Remaining Work
-
-### Phase 5.5: Address Review Sim P0 Findings — DONE (2026-04-27)
-
-Full details in `docs/paper/NeurIPS_ready_version/REVIEW_SIM_2026-04-27.md`.
-Commit: `f15763a`
-
-**P0-1: DONE.** Replaced unpaired chi-squared (128.6) with Yates-corrected McNemar (chi²=45.2, p<10⁻¹⁰). Concordance: 49 both-pass, 42 both-fail, 50 GPT-only, 1 Qwen-only. Added `compute_mcnemar()` to `cross_model_comparison.py` with Yates correction matching codebase convention. Added "task-level paired" clarifier per Codex review (unit-of-analysis transparency). 12 tests pass.
-
-**P0-2: DONE.** Replaced "observed gap reflects both model capability and uncontrolled provider differences" with "cannot be fully attributed to model capability given unmatched sampling conditions." Abstract unchanged (no chi-squared cited there).
-
-**P0-3: DONE.** Added to limitations: "Ten specs across six kernels were downgraded from strong or medium oracles to weak: six due to cross-API floating-point reduction-order divergence (cfd, hotspot, myocyte) and four due to synthesis asymmetry (bfs, nw, nn)." Corrected HANDOFF count from 8 to 10 (verified against known-issues.md).
-
-**Files changed:** `discussion.tex`, `cross_model_comparison.py`, `test_cross_model_comparison.py`, `cross_model_comparison.json`.
-
-### Phase 5.6: Address P1 Findings — DONE (2026-04-27)
-
-**P1-1: DONE.** Abstract augmentation claim scoped: removed specific range "(75–83%)", replaced with "no evidence of memorization-dependent degradation on the tested subset."
-
-**P1-2: DONE.** Table 3 (tab:direction-rates) expanded from 1 to 2 model columns. All 10 GPT-5.4 direction rates with Wilson CIs added. Summary row removed (redundant with per-direction data). All numbers verified against `quantitative_findings_gpt54.json > canonical > direction_pass_rates`.
-
-**P1-3: DONE.** Within-task variance added to discussion opening paragraph. GPT-5.4: 53.5% always-pass, 30.3% hard-fail; Qwen: 13.4% always-pass, 64.8% hard-fail. pass@1→pass@3 gap: 7.0pp vs 11.3pp. All numbers verified against `paper_data_*.json > passk_campaign > passk_estimates`.
-
-**P1-4: DONE.** Benchmark longevity paragraph added to Future work. Three extension mechanisms: corpus expansion via declarative specs, augmentation beyond L4, oracle upgrades. 3 sentences.
-
-**Files changed:** `abstract.tex`, `results.tex`, `discussion.tex`.
-
-### Phase 5.7: Address Review Sim 2 Findings — DONE (2026-04-27)
-
-Second review-sim (5-reviewer NeurIPS panel, avg 68/100) produced new P0/P1 items distinct from Phase 5.5/5.6. All addressed as prose edits.
-
-**New-P0-1: DONE.** Discussion opening reframed: leads with three benchmark findings (direction dependence, build-stage bottleneck, augmentation stability), then presents cross-model gap as evidence the benchmark discriminates. Sampling caveat moved adjacent to McNemar result. Commits: `5e0e4bd`, `51e2b25`.
-
-**New-P0-2: DONE.** LASSI differentiation sharpened in related-work.tex: explicit delta (10 kernels/2 dirs vs 35 kernels/6 standard + 4 OMP-target dirs, augmentation, declarative spec format). Contribution #3 softened from "first systematic" to "first multi-suite, multi-direction."
-
-**New-P1-1: DONE.** Memory consistency model note added to direction asymmetry paragraph (CUDA weak model + explicit fences vs OpenMP barrier + acquire-release semantics).
-
-**New-P1-2: DONE.** Sampling caveat moved adjacent to McNemar result (covered by New-P0-1).
-
-**New-P1-3: DONE.** Supplemental data availability sentence added to conclusion paragraph.
-
-**Deslop fixes:** "landscape of" removed (benchmark-curation), "sits at the intersection" → "draws on" (related-work), "indicating that" filler cut (results).
-
-**Paper-claim-audit:** 62 claims verified, 0 mismatches, verdict PASS.
-
-**Files changed:** `discussion.tex`, `related-work.tex`, `1-introduction.tex`, `results.tex`, `benchmark-curation.tex`.
-
-### Phase 6: Figures, Diagram, Data Integrity & NeurIPS Compliance — DONE (2026-04-28)
-
-**Deadline:** Team deadline May 1. NeurIPS official: abstract May 4, full paper May 6 (AoE). Source: https://neurips.cc/Conferences/2026/CallForEvaluationsDatasets. Track renamed to "Evaluations & Datasets (E&D)."
-
-**Figure verification (DONE):** All 14 figure PDFs regenerated April 27 from latest data. Both Qwen + GPT-5.4 variants exist. No figures need regeneration.
-
-**Appendix verification (DONE):** All tables verified correct against raw data files.
-
-#### Task 1: Architecture Diagram Fixes — DONE (2026-04-28)
-
-**File:** `docs/paper/NeurIPS_ready_version/figures/parbench_architecture.drawio`
-
-User edited in draw.io locally. Claude Code verified all changes via grep checks on the XML.
-
-**Original 8 fixes (all applied and verified):**
-1.1 Removed `(T=0, greedy decode)` from LLM box (Qwen uses T=0.7; GPT-5.4 is provider-controlled).
-1.2 Changed `96 eval-eligible` → `96 curated, 87 eval-eligible`.
-1.3 Changed `142 pairs x 5 levels x 2 models = 1,420 tasks` → `142 pairs × 2 models L0-conditional ablation = 1,448 records`.
-1.4 Fixed typos `Heterogenous` → `Heterogeneous`, `Qualidtatively` → `Qualitatively`.
-1.5 Removed `self-repair rate` from Metrics; changed `Fisher` → `McNemar`.
-1.6 Changed `6 Translation Directions` → `10 Translation Directions`.
-1.7 Deleted `Multi-Attempt Self-Repair` box entirely (was Fix 1.7 + 1.8 combined).
-1.8 Deleted `self_repair_label` arrow and label entirely.
-
-**Additional fixes found during code-grounded review:**
-- Changed `+2 OpenMP Offload dirs` → listed all 5 bidirectional pairs explicitly (CUDA↔OpenMP, CUDA↔OpenCL, OpenMP↔OpenCL, CUDA↔OpenMP Offload, OpenMP↔OpenMP Offload).
-- Fixed second green label from `✓BUILD PASS` → `✓RUN PASS` after Run stage.
-- Changed HeCBench `× 3 APIs` → `2–3 APIs` (5 kernels have 3 APIs, 5 have 2).
-- Changed Rodinia `× 3 APIs` → `× 2-3 APIs` (22 cuda + 18 omp + 20 opencl = 60 specs, not 66).
-- Removed k=1/k=3 feedback loop arrows; replaced with `× 3 translated samples` forward label.
-- Added dashed extensibility box `+ New Suites via JSON Spec` inside Benchmark Corpus.
-
-**Self-critic session fixes (3 additional):**
-- Changed `JSON Schema` → `JSON Spec` in extensibility box (correct terminology).
-- Changed transform names from Helvetica back to Courier New (monospace for code identifiers).
-- Fixed `coverage(3/35` → `coverage (3/35` and `renaming.` → `renaming;` in Excluded text.
-
-**All verified via grep: 0 matches for T=0, 1420, Qualidtatively, Heterogenous, self-repair, Fisher, 6 Translation, Multi-Attempt, ≤3 attempts, BUILD PASS (only 1), JSON Schema.**
-
-#### Task 2: Data Integrity Fix — DONE (2026-04-28)
-
-**File:** `results/analysis/quantitative_findings_gpt54.json`
-
-The `metadata.model` field was `"together-qwen-3.5-397b-a17b"` — wrong model ID. Fixed to `"azure-gpt-5.4"`. Data content (822 records) was already correct; only the metadata label was wrong.
-
-**Verification PASSED:** `python3 -c "import json; d=json.load(open('results/analysis/quantitative_findings_gpt54.json')); assert d['metadata']['model'] == 'azure-gpt-5.4'"`
-
-#### Task 3: NeurIPS Compliance Fixes — DONE (2026-04-28, applied on Overleaf)
-
-**3.1 — E&D track option** (`main_neurips.tex`): `\usepackage{neurips_2026}` → `\usepackage[eandd]{neurips_2026}`. Applied on Overleaf.
-
-**3.2 — Code availability** (`appendices_neurips.tex`, checklist item 5): Changed future-tense to present-tense ("is submitted as supplementary material"). Applied on Overleaf.
-
-**3.3 — Statistical test name** (`appendices_neurips.tex`, checklist item 7): `$\chi^2$ test` → `Yates-corrected McNemar test`. Applied on Overleaf.
-
-#### Task 4: Self-Repair Removal — DONE (2026-04-28, applied on Overleaf)
-
-Decision: self-repair was never exercised and was removed from the diagram. All paper references removed for consistency.
-
-**7 Overleaf edits applied:**
-- S1: Deleted dashed-arrow sentence from Figure 1 caption (`framework.tex`).
-- S2: Deleted `\textbf{Optional self-repair.}` paragraph (`framework.tex`).
-- S3: Rewrote single-attempt sentence without self-repair reference (`experimental-setup.tex`).
-- S4: Removed self-repair clause from limitations (`discussion.tex`).
-- S5: Removed self-repair phrase from future work (`discussion.tex`).
-- S6: Changed `no self-repair` → `single-attempt` in pass@k table caption (`appendices_neurips.tex`).
-- S7: Deleted self-repair comment (`appendices_neurips.tex`).
-
-**Kept:** LASSI self-correction reference in `related-work.tex` (describes their work, not ours).
-
-### Phase 7: Validate, Commit, Prepare for Overleaf
+**A2.** Fix line 1758 in `quantitative_findings.py`, then:
+```bash
+python3 scripts/analysis/quantitative_findings.py \
+  --project-root /home/samyak/Desktop/parbench_sam --model-dir azure-gpt-5.3-codex -v
+```
+
+**A3.** Augmentation analysis (all 3 models to avoid suffix bug):
+```bash
+python3 scripts/analysis/augmentation_analysis.py \
+  --project-root /home/samyak/Desktop/parbench_sam \
+  --model-dir together-qwen-3.5-397b-a17b azure-gpt-5.4 azure-gpt-5.3-codex -v
+```
+
+### Part B — Make `cross_model_comparison.py` model-agnostic
+
+Simple changes — no new output schema, no N-model orchestrator. Just make it work with any two models instead of hardcoded qwen/gpt.
+
+**Files:**
+- `/home/samyak/Desktop/parbench_sam/scripts/analysis/cross_model_comparison.py`
+- `/home/samyak/Desktop/parbench_sam/scripts/analysis/test_cross_model_comparison.py`
+
+**5 changes:**
+1. **CLI args:** Rename `--qwen-data`/`--gpt-data` → `--model-a`/`--model-b` (keep same defaults)
+2. **`compute_mcnemar`:** Rename params to generic names, replace `ValueError` on key mismatch with intersection + warning
+3. **`build_comparison`:** Derive model names from `data["model"]` field, use those as dict keys instead of hardcoded `"qwen"`/`"gpt"`
+4. **Verbose output:** Use dynamic model names instead of hardcoded "Qwen"/"GPT"
+5. **Tests:** Update hardcoded `"qwen"`/`"gpt"` key checks to match test data's model names
+
+Load `/andrej-karpathy-skills:karpathy-guidelines` before coding. Run `pytest scripts/analysis/test_cross_model_comparison.py -v` before and after.
+
+### Part C — Run comparisons for all 3 pairs + re-run stats
 
 ```bash
-# 1. Run /validate (waves 1-3 required by pre-commit hook)
-# 2. Stage files:
-git add results/analysis/paper_data_azure_gpt54.json
-git add results/analysis/paper_data_together-qwen-3.5-397b-a17b.json
-git add results/analysis/quantitative_findings_gpt54.json results/analysis/quantitative_findings_gpt54.md
-git add results/analysis/quantitative_findings_qwen.json results/analysis/quantitative_findings_qwen.md
-git add results/analysis/cross_model_comparison.json
-git add results/analysis/augmentation_per_kernel_matrix_azure-gpt-5.4.json
-git add results/analysis/augmentation_per_kernel_matrix_azure-gpt-5.4.md
-git add results/analysis/augmentation_per_kernel_matrix_together-qwen-3.5-397b-a17b.json
-git add results/analysis/augmentation_per_kernel_matrix_together-qwen-3.5-397b-a17b.md
-git add docs/paper/NeurIPS_ready_version/sections/*.tex
-git add docs/paper/NeurIPS_ready_version/appendices_neurips.tex
-git add docs/paper/NeurIPS_ready_version/references.bib
-git add docs/paper/NeurIPS_ready_version/figures/*.pdf
-git add docs/paper/NeurIPS_ready_version/figures/*.png
-git add docs/paper/NeurIPS_ready_version/figures/*.drawio
-git add scripts/analysis/cross_model_comparison.py
-git add scripts/analysis/quantitative_findings.py
-git add scripts/analysis/generate_paper_data.py
-# 3. Commit
-# 4. Copy docs/paper/NeurIPS_ready_version/ to Overleaf for compilation
-```
+# Pair 1: Qwen vs GPT-5.4
+python3 scripts/analysis/cross_model_comparison.py \
+  --model-a results/analysis/paper_data_together-qwen-3.5-397b-a17b.json \
+  --model-b results/analysis/paper_data_azure_gpt54.json \
+  --output results/analysis/cross_model_comparison_qwen_vs_gpt54.json -v
 
-### Phase 8: Submission Readiness (User's Responsibility)
-1. **Compile on Overleaf** — no LaTeX compiler locally
-2. **Page count** — 9 pages max (to end of Conclusion), references + appendices unlimited
-3. **Anonymous mode** — `\usepackage[eandd]{neurips_2026}` (double-blind is E&D default)
-4. **Supplementary material** — ZIP of code/data **required at submission** (E&D track). Must include: specs, harness, eval pipeline, result JSONs
-5. **Author information form** — separate NeurIPS requirement
-6. **Teammate review** — final PDF review on Overleaf
-7. **Abstract deadline** — May 4 AoE (separate from full paper May 6 AoE)
+# Pair 2: Qwen vs codex
+python3 scripts/analysis/cross_model_comparison.py \
+  --model-a results/analysis/paper_data_together-qwen-3.5-397b-a17b.json \
+  --model-b results/analysis/paper_data_azure-gpt-5.3-codex.json \
+  --output results/analysis/cross_model_comparison_qwen_vs_codex.json -v
+
+# Pair 3: GPT-5.4 vs codex
+python3 scripts/analysis/cross_model_comparison.py \
+  --model-a results/analysis/paper_data_azure_gpt54.json \
+  --model-b results/analysis/paper_data_azure-gpt-5.3-codex.json \
+  --output results/analysis/cross_model_comparison_gpt54_vs_codex.json -v
+
+# Re-run statistical analysis (auto-discovers all 3 models)
+python3 scripts/analysis/statistical_analysis.py \
+  --project-root /home/samyak/Desktop/parbench_sam -v
+```
 
 ---
 
-## Traps to Avoid
+## Output Files (10 total)
 
-- **Don't use unsuffixed `quantitative_findings.json` or `paper_data.json`** — they were deleted. All files are model-specific now.
-- **Don't trust QF "overall" as L0-only** — QF overall = L0+ablation combined. Use `paper_data_*.json > passk_campaign > overall` for L0-only.
-- **Don't use QF failure_taxonomy for L0-only counts** — it covers all records. Use `paper_data_*.json > passk_campaign > overall > by_status` for L0 breakdown.
-- **Don't use the Cochran-Armitage z=7.65 from QF** — Simpson's paradox artifact.
-- **Don't add file-coordination analysis** — data not precomputed for canonical evaluation.
-- **Don't add self-repair results** — no data exists.
-- **Don't confuse `appendices.tex` with `appendices_neurips.tex`** — only the latter is active.
-- **Don't run `humanizer_academic`** — user found it ineffective. Use `deslop` principles inline.
-- **`quantitative_findings_gpt54.json` metadata.model was WRONG** — was `together-qwen-3.5-397b-a17b`, fixed to `azure-gpt-5.4` in Phase 6 Task 2 (2026-04-28). Not yet committed. Verify: `python3 -c "import json; d=json.load(open('results/analysis/quantitative_findings_gpt54.json')); print(d['metadata']['model'])"`
-- **`eandd` option has no visible effect in submission mode** — don't debug why the PDF looks the same after adding `[eandd]`. The track name only appears in camera-ready `[final]` mode.
-- **Overleaf may have diverged from local copy** — teammates edited on Overleaf. Use exact text search, not line numbers, for any edits.
+| File | Source |
+|------|--------|
+| `paper_data_azure-gpt-5.3-codex.json` | A1 |
+| `quantitative_findings_azure-gpt-5.3-codex.json` + `.md` | A2 |
+| `augmentation_per_kernel_matrix_azure-gpt-5.3-codex.json` + `.md` | A3 |
+| `cross_model_comparison_qwen_vs_gpt54.json` | C1 |
+| `cross_model_comparison_qwen_vs_codex.json` | C1 |
+| `cross_model_comparison_gpt54_vs_codex.json` | C1 |
+| `statistical_analysis.json` + `.md` | C2 |
+
+All in `results/analysis/`.
+
+---
+
+## Environment
+
+```bash
+cd /home/samyak/Desktop/parbench_sam
+source env_parbench/bin/activate
+# Always python3, never python
+```
+
+## Skills
+
+| Skill | When |
+|-------|------|
+| `/andrej-karpathy-skills:karpathy-guidelines` | Before Part B code changes |
+| `/validate` | Before any commit |
+| `/interpret-results` | After all data is ready (optional) |

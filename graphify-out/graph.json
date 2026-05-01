@@ -2644,7 +2644,7 @@
       "label": "compute_sample_size_flags()",
       "file_type": "code",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L947",
+      "source_location": "L953",
       "id": "generate_paper_data_compute_sample_size_flags",
       "community": 19,
       "norm_label": "compute_sample_size_flags()"
@@ -2653,7 +2653,7 @@
       "label": "main()",
       "file_type": "code",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L996",
+      "source_location": "L1002",
       "id": "generate_paper_data_main",
       "community": 19,
       "norm_label": "main()"
@@ -2851,10 +2851,10 @@
       "label": "Flag any subsets with sample sizes too small for reliable inference.",
       "file_type": "rationale",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L948",
+      "source_location": "L954",
       "community": 19,
       "norm_label": "flag any subsets with sample sizes too small for reliable inference.",
-      "id": "generate_paper_data_rationale_948"
+      "id": "generate_paper_data_rationale_954"
     },
     {
       "label": "test_cross_consistency_audit.py",
@@ -3247,7 +3247,7 @@
       "label": "build_comparison()",
       "file_type": "code",
       "source_file": "scripts/analysis/cross_model_comparison.py",
-      "source_location": "L103",
+      "source_location": "L102",
       "id": "cross_model_comparison_build_comparison",
       "community": 21,
       "norm_label": "build_comparison()"
@@ -3256,7 +3256,7 @@
       "label": "main()",
       "file_type": "code",
       "source_file": "scripts/analysis/cross_model_comparison.py",
-      "source_location": "L253",
+      "source_location": "L254",
       "id": "cross_model_comparison_main",
       "community": 21,
       "norm_label": "main()"
@@ -3280,13 +3280,13 @@
       "id": "cross_model_comparison_rationale_40"
     },
     {
-      "label": "Build the full cross-model comparison dict.      Args:         qwen_data: Parsed",
+      "label": "Build the full cross-model comparison dict.      Args:         data_a: Parsed pa",
       "file_type": "rationale",
       "source_file": "scripts/analysis/cross_model_comparison.py",
-      "source_location": "L104",
+      "source_location": "L103",
       "community": 21,
-      "norm_label": "build the full cross-model comparison dict.      args:         qwen_data: parsed",
-      "id": "cross_model_comparison_rationale_104"
+      "norm_label": "build the full cross-model comparison dict.      args:         data_a: parsed pa",
+      "id": "cross_model_comparison_rationale_103"
     },
     {
       "label": "test_build_error_taxonomy.py",
@@ -6469,7 +6469,7 @@
       "label": "test_common_directions_count()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L75",
+      "source_location": "L76",
       "id": "test_cross_model_comparison_test_common_directions_count",
       "community": 21,
       "norm_label": "test_common_directions_count()"
@@ -6478,7 +6478,7 @@
       "label": "test_missing_directions()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L85",
+      "source_location": "L86",
       "id": "test_cross_model_comparison_test_missing_directions",
       "community": 21,
       "norm_label": "test_missing_directions()"
@@ -6487,7 +6487,7 @@
       "label": "test_kernel_matrix_counts_sum()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L96",
+      "source_location": "L97",
       "id": "test_cross_model_comparison_test_kernel_matrix_counts_sum",
       "community": 21,
       "norm_label": "test_kernel_matrix_counts_sum()"
@@ -6496,7 +6496,7 @@
       "label": "_make_dir_data()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L111",
+      "source_location": "L113",
       "id": "test_cross_model_comparison_make_dir_data",
       "community": 21,
       "norm_label": "_make_dir_data()"
@@ -6505,7 +6505,7 @@
       "label": "_make_test_data()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L122",
+      "source_location": "L124",
       "id": "test_cross_model_comparison_make_test_data",
       "community": 21,
       "norm_label": "_make_test_data()"
@@ -6514,7 +6514,7 @@
       "label": "_make_test_data_full_directions()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L167",
+      "source_location": "L169",
       "id": "test_cross_model_comparison_make_test_data_full_directions",
       "community": 21,
       "norm_label": "_make_test_data_full_directions()"
@@ -6523,7 +6523,7 @@
       "label": "test_build_comparison_has_mcnemar()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L213",
+      "source_location": "L215",
       "id": "test_cross_model_comparison_test_build_comparison_has_mcnemar",
       "community": 21,
       "norm_label": "test_build_comparison_has_mcnemar()"
@@ -6532,7 +6532,7 @@
       "label": "_make_test_data_with_estimates()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L233",
+      "source_location": "L235",
       "id": "test_cross_model_comparison_make_test_data_with_estimates",
       "community": 21,
       "norm_label": "_make_test_data_with_estimates()"
@@ -6541,7 +6541,7 @@
       "label": "test_compute_mcnemar_basic()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L256",
+      "source_location": "L258",
       "id": "test_cross_model_comparison_test_compute_mcnemar_basic",
       "community": 21,
       "norm_label": "test_compute_mcnemar_basic()"
@@ -6550,7 +6550,7 @@
       "label": "test_build_comparison_fallback_chi_squared()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L286",
+      "source_location": "L288",
       "id": "test_cross_model_comparison_test_build_comparison_fallback_chi_squared",
       "community": 21,
       "norm_label": "test_build_comparison_fallback_chi_squared()"
@@ -6613,82 +6613,82 @@
       "label": "Test 7: common_directions has exactly 7 entries (GPT missing omp_target-to-cuda)",
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L76",
+      "source_location": "L77",
       "community": 21,
       "norm_label": "test 7: common_directions has exactly 7 entries (gpt missing omp_target-to-cuda)",
-      "id": "test_cross_model_comparison_rationale_76"
+      "id": "test_cross_model_comparison_rationale_77"
     },
     {
       "label": "Test 8: missing_directions contains omp_target-to-cuda for GPT.",
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L86",
+      "source_location": "L87",
       "community": 21,
       "norm_label": "test 8: missing_directions contains omp_target-to-cuda for gpt.",
-      "id": "test_cross_model_comparison_rationale_86"
+      "id": "test_cross_model_comparison_rationale_87"
     },
     {
       "label": "per_kernel_matrix counts sum to total_common_kernels.",
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L97",
+      "source_location": "L98",
       "community": 21,
       "norm_label": "per_kernel_matrix counts sum to total_common_kernels.",
-      "id": "test_cross_model_comparison_rationale_97"
+      "id": "test_cross_model_comparison_rationale_98"
     },
     {
       "label": "Create minimal test data with 2 common directions and 3 kernels.",
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L123",
+      "source_location": "L125",
       "community": 21,
       "norm_label": "create minimal test data with 2 common directions and 3 kernels.",
-      "id": "test_cross_model_comparison_rationale_123"
+      "id": "test_cross_model_comparison_rationale_125"
     },
     {
       "label": "Create test data with 8 Qwen directions and 7 GPT directions.",
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L168",
+      "source_location": "L170",
       "community": 21,
       "norm_label": "create test data with 8 qwen directions and 7 gpt directions.",
-      "id": "test_cross_model_comparison_rationale_168"
+      "id": "test_cross_model_comparison_rationale_170"
     },
     {
       "label": "build_comparison output contains mcnemar (not chi_squared) when passk_estimates",
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L214",
+      "source_location": "L216",
       "community": 21,
       "norm_label": "build_comparison output contains mcnemar (not chi_squared) when passk_estimates",
-      "id": "test_cross_model_comparison_rationale_214"
+      "id": "test_cross_model_comparison_rationale_216"
     },
     {
       "label": "Extend _make_test_data with passk_campaign including passk_estimates.",
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L234",
+      "source_location": "L236",
       "community": 21,
       "norm_label": "extend _make_test_data with passk_campaign including passk_estimates.",
-      "id": "test_cross_model_comparison_rationale_234"
+      "id": "test_cross_model_comparison_rationale_236"
     },
     {
       "label": "McNemar concordance table and chi\u00b2 on synthetic paired data.",
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L257",
+      "source_location": "L259",
       "community": 21,
       "norm_label": "mcnemar concordance table and chi2 on synthetic paired data.",
-      "id": "test_cross_model_comparison_rationale_257"
+      "id": "test_cross_model_comparison_rationale_259"
     },
     {
       "label": "build_comparison uses chi_squared when passk_estimates is absent.",
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L287",
+      "source_location": "L289",
       "community": 21,
       "norm_label": "build_comparison uses chi_squared when passk_estimates is absent.",
-      "id": "test_cross_model_comparison_rationale_287"
+      "id": "test_cross_model_comparison_rationale_289"
     },
     {
       "label": "classify_translation_pairs.py",
@@ -20443,6 +20443,105 @@
       "id": "reporter_rationale_133"
     },
     {
+      "label": "Flag any subsets with sample sizes too small for reliable inference.",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/generate_paper_data.py",
+      "source_location": "L948",
+      "community": 104,
+      "norm_label": "flag any subsets with sample sizes too small for reliable inference.",
+      "id": "generate_paper_data_rationale_948"
+    },
+    {
+      "label": "Build the full cross-model comparison dict.      Args:         qwen_data: Parsed",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/cross_model_comparison.py",
+      "source_location": "L104",
+      "community": 105,
+      "norm_label": "build the full cross-model comparison dict.      args:         qwen_data: parsed",
+      "id": "cross_model_comparison_rationale_104"
+    },
+    {
+      "label": "Test 7: common_directions has exactly 7 entries (GPT missing omp_target-to-cuda)",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/test_cross_model_comparison.py",
+      "source_location": "L76",
+      "community": 106,
+      "norm_label": "test 7: common_directions has exactly 7 entries (gpt missing omp_target-to-cuda)",
+      "id": "test_cross_model_comparison_rationale_76"
+    },
+    {
+      "label": "Test 8: missing_directions contains omp_target-to-cuda for GPT.",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/test_cross_model_comparison.py",
+      "source_location": "L86",
+      "community": 107,
+      "norm_label": "test 8: missing_directions contains omp_target-to-cuda for gpt.",
+      "id": "test_cross_model_comparison_rationale_86"
+    },
+    {
+      "label": "per_kernel_matrix counts sum to total_common_kernels.",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/test_cross_model_comparison.py",
+      "source_location": "L97",
+      "community": 108,
+      "norm_label": "per_kernel_matrix counts sum to total_common_kernels.",
+      "id": "test_cross_model_comparison_rationale_97"
+    },
+    {
+      "label": "Create minimal test data with 2 common directions and 3 kernels.",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/test_cross_model_comparison.py",
+      "source_location": "L123",
+      "community": 109,
+      "norm_label": "create minimal test data with 2 common directions and 3 kernels.",
+      "id": "test_cross_model_comparison_rationale_123"
+    },
+    {
+      "label": "Create test data with 8 Qwen directions and 7 GPT directions.",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/test_cross_model_comparison.py",
+      "source_location": "L168",
+      "community": 110,
+      "norm_label": "create test data with 8 qwen directions and 7 gpt directions.",
+      "id": "test_cross_model_comparison_rationale_168"
+    },
+    {
+      "label": "build_comparison output contains mcnemar (not chi_squared) when passk_estimates",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/test_cross_model_comparison.py",
+      "source_location": "L214",
+      "community": 111,
+      "norm_label": "build_comparison output contains mcnemar (not chi_squared) when passk_estimates",
+      "id": "test_cross_model_comparison_rationale_214"
+    },
+    {
+      "label": "Extend _make_test_data with passk_campaign including passk_estimates.",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/test_cross_model_comparison.py",
+      "source_location": "L234",
+      "community": 112,
+      "norm_label": "extend _make_test_data with passk_campaign including passk_estimates.",
+      "id": "test_cross_model_comparison_rationale_234"
+    },
+    {
+      "label": "McNemar concordance table and chi\u00b2 on synthetic paired data.",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/test_cross_model_comparison.py",
+      "source_location": "L257",
+      "community": 113,
+      "norm_label": "mcnemar concordance table and chi2 on synthetic paired data.",
+      "id": "test_cross_model_comparison_rationale_257"
+    },
+    {
+      "label": "build_comparison uses chi_squared when passk_estimates is absent.",
+      "file_type": "rationale",
+      "source_file": "scripts/analysis/test_cross_model_comparison.py",
+      "source_location": "L287",
+      "community": 114,
+      "norm_label": "build_comparison uses chi_squared when passk_estimates is absent.",
+      "id": "test_cross_model_comparison_rationale_287"
+    },
+    {
       "label": "Load source code files from the source spec for linker symbol search.      Reads",
       "file_type": "rationale",
       "source_file": "scripts/evaluation/llm_evaluate.py",
@@ -20681,7 +20780,7 @@
       "file_type": "rationale",
       "source_file": "tests/test_model_registry.py",
       "source_location": "L48",
-      "community": 104,
+      "community": 115,
       "norm_label": "every expected thinker must be in the registry and set true.     every other reg",
       "id": "test_model_registry_rationale_48"
     },
@@ -20690,7 +20789,7 @@
       "file_type": "rationale",
       "source_file": "tests/test_model_registry.py",
       "source_location": "L65",
-      "community": 105,
+      "community": 116,
       "norm_label": "d-05: thinking-capability branches must query model_registry[model]['supports_th",
       "id": "test_model_registry_rationale_65"
     },
@@ -20699,7 +20798,7 @@
       "file_type": "rationale",
       "source_file": "tests/test_model_registry.py",
       "source_location": "L89",
-      "community": 106,
+      "community": 117,
       "norm_label": "2026-04-19: azure-gpt-5.3-chat (never deployed) must not be in registry.",
       "id": "test_model_registry_rationale_89"
     },
@@ -20708,7 +20807,7 @@
       "file_type": "rationale",
       "source_file": "tests/test_model_registry.py",
       "source_location": "L95",
-      "community": 107,
+      "community": 118,
       "norm_label": "azure-gpt-5.4 is the live azure reasoning model (2026-04-19).",
       "id": "test_model_registry_rationale_95"
     },
@@ -20717,7 +20816,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/cross_model_comparison.py",
       "source_location": "L28",
-      "community": 108,
+      "community": 119,
       "norm_label": "cohen's h effect size for two proportions.      clamp inputs to [0, 1] to handle",
       "id": "cross_model_comparison_rationale_28"
     },
@@ -20726,7 +20825,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/cross_model_comparison.py",
       "source_location": "L39",
-      "community": 109,
+      "community": 120,
       "norm_label": "classify |h| per cohen's conventions.      |h| < 0.2: negligible     0.2 <= |h|",
       "id": "cross_model_comparison_rationale_39"
     },
@@ -20735,7 +20834,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/cross_model_comparison.py",
       "source_location": "L58",
-      "community": 110,
+      "community": 121,
       "norm_label": "build the full cross-model comparison dict.      args:         qwen_data: parsed",
       "id": "cross_model_comparison_rationale_58"
     },
@@ -20744,7 +20843,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
       "source_location": "L63",
-      "community": 111,
+      "community": 122,
       "norm_label": "test 6: per_kernel_matrix has exactly 4 classification keys.",
       "id": "test_cross_model_comparison_rationale_63"
     },
@@ -20753,7 +20852,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
       "source_location": "L75",
-      "community": 112,
+      "community": 123,
       "norm_label": "test 7: common_directions has exactly 7 entries (gpt missing omp_target-to-cuda)",
       "id": "test_cross_model_comparison_rationale_75"
     },
@@ -20762,7 +20861,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
       "source_location": "L85",
-      "community": 113,
+      "community": 124,
       "norm_label": "test 8: missing_directions contains omp_target-to-cuda for gpt.",
       "id": "test_cross_model_comparison_rationale_85"
     },
@@ -20771,7 +20870,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
       "source_location": "L96",
-      "community": 114,
+      "community": 125,
       "norm_label": "per_kernel_matrix counts sum to total_common_kernels.",
       "id": "test_cross_model_comparison_rationale_96"
     },
@@ -20780,7 +20879,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
       "source_location": "L122",
-      "community": 115,
+      "community": 126,
       "norm_label": "create minimal test data with 2 common directions and 3 kernels.",
       "id": "test_cross_model_comparison_rationale_122"
     },
@@ -20789,7 +20888,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
       "source_location": "L167",
-      "community": 116,
+      "community": 127,
       "norm_label": "create test data with 8 qwen directions and 7 gpt directions.",
       "id": "test_cross_model_comparison_rationale_167"
     },
@@ -20798,7 +20897,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/generate_paper_data.py",
       "source_location": "L638",
-      "community": 117,
+      "community": 128,
       "norm_label": "classify failures of a given status using the provided classifier.",
       "id": "generate_paper_data_rationale_638"
     },
@@ -20807,7 +20906,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/generate_paper_data.py",
       "source_location": "L652",
-      "community": 118,
+      "community": 129,
       "norm_label": "augmentation curve and cochran-armitage trend test.",
       "id": "generate_paper_data_rationale_652"
     },
@@ -20816,7 +20915,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/generate_paper_data.py",
       "source_location": "L747",
-      "community": 119,
+      "community": 130,
       "norm_label": "mcnemar's exact test for direction asymmetry at l0 only.",
       "id": "generate_paper_data_rationale_747"
     },
@@ -20825,7 +20924,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/generate_paper_data.py",
       "source_location": "L801",
-      "community": 120,
+      "community": 131,
       "norm_label": "determine the effective status of a single attempt record.      maps the per-fie",
       "id": "generate_paper_data_rationale_801"
     },
@@ -20834,7 +20933,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/generate_paper_data.py",
       "source_location": "L824",
-      "community": 121,
+      "community": 132,
       "norm_label": "analyze self-repair from attempts[] arrays.",
       "id": "generate_paper_data_rationale_824"
     },
@@ -20843,7 +20942,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/generate_paper_data.py",
       "source_location": "L939",
-      "community": 122,
+      "community": 133,
       "norm_label": "aggregate token usage and timing metrics.",
       "id": "generate_paper_data_rationale_939"
     },
@@ -20852,7 +20951,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/generate_paper_data.py",
       "source_location": "L1007",
-      "community": 123,
+      "community": 134,
       "norm_label": "analyze pass@k campaign (temp=0.7 samples).",
       "id": "generate_paper_data_rationale_1007"
     },
@@ -20861,7 +20960,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/generate_paper_data.py",
       "source_location": "L1084",
-      "community": 124,
+      "community": 135,
       "norm_label": "flag any subsets with sample sizes too small for reliable inference.",
       "id": "generate_paper_data_rationale_1084"
     },
@@ -20870,7 +20969,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L131",
-      "community": 125,
+      "community": 136,
       "norm_label": "create a minimal quantitative_findings.json.",
       "id": "test_cross_consistency_audit_rationale_131"
     },
@@ -20879,7 +20978,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L156",
-      "community": 126,
+      "community": 137,
       "norm_label": "extract_numbers_from_tex finds all xx.x% patterns in a sample tex string.",
       "id": "test_cross_consistency_audit_rationale_156"
     },
@@ -20888,7 +20987,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L175",
-      "community": 127,
+      "community": 138,
       "norm_label": "extract_numbers_from_tex finds ci patterns like [xx.x%, yy.y%].",
       "id": "test_cross_consistency_audit_rationale_175"
     },
@@ -20897,7 +20996,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L191",
-      "community": 128,
+      "community": 139,
       "norm_label": "load_ground_truth loads paper_data.json and quantitative_findings.json.",
       "id": "test_cross_consistency_audit_rationale_191"
     },
@@ -20906,7 +21005,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L206",
-      "community": 129,
+      "community": 140,
       "norm_label": "match_claims correctly matches '38.3%' to paper_data.json overall pass_rate.",
       "id": "test_cross_consistency_audit_rationale_206"
     },
@@ -20915,7 +21014,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L231",
-      "community": 130,
+      "community": 141,
       "norm_label": "match_claims flags a mismatch when tex contains wrong percentage.",
       "id": "test_cross_consistency_audit_rationale_231"
     },
@@ -20924,7 +21023,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L256",
-      "community": 131,
+      "community": 142,
       "norm_label": "whitelisted numbers (external citations, params) are not flagged.",
       "id": "test_cross_consistency_audit_rationale_256"
     },
@@ -20933,7 +21032,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L281",
-      "community": 132,
+      "community": 143,
       "norm_label": "script exits 0 when all critical claims match.",
       "id": "test_cross_consistency_audit_rationale_281"
     },
@@ -20942,7 +21041,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L303",
-      "community": 133,
+      "community": 144,
       "norm_label": "script exits 1 when mismatches found.",
       "id": "test_cross_consistency_audit_rationale_303"
     },
@@ -20951,7 +21050,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L328",
-      "community": 134,
+      "community": 145,
       "norm_label": "check_provenance_comments flags a % src: reference to a nonexistent key.",
       "id": "test_cross_consistency_audit_rationale_328"
     },
@@ -20960,7 +21059,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L352",
-      "community": 135,
+      "community": 146,
       "norm_label": "check_provenance_comments does not flag valid json path references.",
       "id": "test_cross_consistency_audit_rationale_352"
     },
@@ -20969,7 +21068,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L375",
-      "community": 136,
+      "community": 147,
       "norm_label": "check_provenance_comments ignores % src: lines without json filenames.",
       "id": "test_cross_consistency_audit_rationale_375"
     },
@@ -20978,7 +21077,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L398",
-      "community": 137,
+      "community": 148,
       "norm_label": "numbers inside verbatim/lstlisting environments are not extracted.",
       "id": "test_cross_consistency_audit_rationale_398"
     },
@@ -20987,7 +21086,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L427",
-      "community": 138,
+      "community": 149,
       "norm_label": "extract_numbers_from_tex finds integer counts near data keywords.",
       "id": "test_cross_consistency_audit_rationale_427"
     },
@@ -20996,7 +21095,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L449",
-      "community": 139,
+      "community": 150,
       "norm_label": "ci bracket values are extracted as ci type only, not also as percentage.",
       "id": "test_cross_consistency_audit_rationale_449"
     },
@@ -21005,7 +21104,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_cross_consistency_audit.py",
       "source_location": "L477",
-      "community": 140,
+      "community": 151,
       "norm_label": "check_provenance_comments resolves paths via primary_campaign fallback.",
       "id": "test_cross_consistency_audit_rationale_477"
     },
@@ -21014,7 +21113,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L21",
-      "community": 141,
+      "community": 152,
       "norm_label": "verify_status='fail' with non-empty stdout -> wrong_numerical_output.",
       "id": "test_build_error_taxonomy_rationale_21"
     },
@@ -21023,7 +21122,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L33",
-      "community": 142,
+      "community": 153,
       "norm_label": "verify_status='fail' with empty stdout -> missing_output.",
       "id": "test_build_error_taxonomy_rationale_33"
     },
@@ -21032,7 +21131,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L45",
-      "community": 143,
+      "community": 154,
       "norm_label": "verify_status='fail' with none stdout -> missing_output.",
       "id": "test_build_error_taxonomy_rationale_45"
     },
@@ -21041,7 +21140,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L57",
-      "community": 144,
+      "community": 155,
       "norm_label": "verify_status='error' -> verification_error.",
       "id": "test_build_error_taxonomy_rationale_57"
     },
@@ -21050,7 +21149,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L69",
-      "community": 145,
+      "community": 156,
       "norm_label": "verify_status='pass' but overall_status is verify_fail -> pass_overall_mislabel.",
       "id": "test_build_error_taxonomy_rationale_69"
     },
@@ -21059,7 +21158,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L81",
-      "community": 146,
+      "community": 157,
       "norm_label": "unknown verify_status -> other_verify.",
       "id": "test_build_error_taxonomy_rationale_81"
     },
@@ -21068,7 +21167,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L93",
-      "community": 147,
+      "community": 158,
       "norm_label": "missing verify_status entirely -> other_verify.",
       "id": "test_build_error_taxonomy_rationale_93"
     },
@@ -21077,7 +21176,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L104",
-      "community": 148,
+      "community": 159,
       "norm_label": "verify_status='error' with data file error in stdout -> data_file_error secondar",
       "id": "test_build_error_taxonomy_rationale_104"
     },
@@ -21086,7 +21185,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L123",
-      "community": 149,
+      "community": 160,
       "norm_label": "create a minimal verify_fail result dict.",
       "id": "test_build_error_taxonomy_rationale_123"
     },
@@ -21095,7 +21194,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L139",
-      "community": 150,
+      "community": 161,
       "norm_label": "build_taxonomy should populate verify_fail_categories for verify_fail results.",
       "id": "test_build_error_taxonomy_rationale_139"
     },
@@ -21104,7 +21203,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L166",
-      "community": 151,
+      "community": 162,
       "norm_label": "verify that per_kernel tracking includes verify_fail.",
       "id": "test_build_error_taxonomy_rationale_166"
     },
@@ -21113,7 +21212,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L179",
-      "community": 152,
+      "community": 163,
       "norm_label": "verify that per_model tracking includes verify_fail.",
       "id": "test_build_error_taxonomy_rationale_179"
     },
@@ -21122,7 +21221,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L191",
-      "community": 153,
+      "community": 164,
       "norm_label": "verify that classified_results have non-none primary_category for verify_fail.",
       "id": "test_build_error_taxonomy_rationale_191"
     },
@@ -21131,7 +21230,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L204",
-      "community": 154,
+      "community": 165,
       "norm_label": "verify_fail_categories constant should exist and have entries.",
       "id": "test_build_error_taxonomy_rationale_204"
     },
@@ -21140,7 +21239,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L214",
-      "community": 155,
+      "community": 166,
       "norm_label": "verify_fail should coexist with other failure statuses.",
       "id": "test_build_error_taxonomy_rationale_214"
     },
@@ -21149,7 +21248,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L44",
-      "community": 156,
+      "community": 167,
       "norm_label": "load the output json, skipping if it does not exist.",
       "id": "test_augmentation_analysis_rationale_44"
     },
@@ -21158,7 +21257,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L51",
-      "community": 157,
+      "community": 168,
       "norm_label": "independently count unique cuda-to-omp kernel pairs from raw files.",
       "id": "test_augmentation_analysis_rationale_51"
     },
@@ -21167,7 +21266,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L95",
-      "community": 158,
+      "community": 169,
       "norm_label": "verify the json output has the required top-level and nested structure.",
       "id": "test_augmentation_analysis_rationale_95"
     },
@@ -21176,7 +21275,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L120",
-      "community": 159,
+      "community": 170,
       "norm_label": "spot-check 3 kernels x 2 levels against independently loaded raw data.",
       "id": "test_augmentation_analysis_rationale_120"
     },
@@ -21185,7 +21284,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L133",
-      "community": 160,
+      "community": 171,
       "norm_label": "no kernel should have more than 5 level entries (l0-l4 only).",
       "id": "test_augmentation_analysis_rationale_133"
     },
@@ -21194,7 +21293,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L143",
-      "community": 161,
+      "community": 172,
       "norm_label": "no kernel in primary_matrix has omp_target in its target spec name.",
       "id": "test_augmentation_analysis_rationale_143"
     },
@@ -21203,7 +21302,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L153",
-      "community": 162,
+      "community": 173,
       "norm_label": "kmeans and mummergpu should have known_fail=true.",
       "id": "test_augmentation_analysis_rationale_153"
     },
@@ -21212,7 +21311,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L160",
-      "community": 163,
+      "community": 174,
       "norm_label": "each level in aggregate has rate, ci_lower, ci_upper, n keys.",
       "id": "test_augmentation_analysis_rationale_160"
     },
@@ -21221,7 +21320,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L169",
-      "community": 164,
+      "community": 175,
       "norm_label": "secondary_matrix contains per_direction_aggregate with at least 7 directions.",
       "id": "test_augmentation_analysis_rationale_169"
     },
@@ -21230,7 +21329,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L184",
-      "community": 165,
+      "community": 176,
       "norm_label": "verify pattern classification matches independently observed patterns.",
       "id": "test_augmentation_analysis_rationale_184"
     },
@@ -21239,7 +21338,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L211",
-      "community": 166,
+      "community": 177,
       "norm_label": "verify augmentation figures exist and meet quality criteria.",
       "id": "test_augmentation_analysis_rationale_211"
     },
@@ -21248,7 +21347,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L214",
-      "community": 167,
+      "community": 178,
       "norm_label": "aug-04: all 4 figure files exist after generation.",
       "id": "test_augmentation_analysis_rationale_214"
     },
@@ -21257,7 +21356,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_augmentation_analysis.py",
       "source_location": "L231",
-      "community": 168,
+      "community": 179,
       "norm_label": "aug-04: script defines correct okabe-ito status_colors.",
       "id": "test_augmentation_analysis_rationale_231"
     },
@@ -21266,7 +21365,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/cross_consistency_audit.py",
       "source_location": "L439",
-      "community": 169,
+      "community": 180,
       "norm_label": "return set of whitelisted values that should not be flagged as mismatches.",
       "id": "cross_consistency_audit_rationale_439"
     },
@@ -21275,7 +21374,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/cross_consistency_audit.py",
       "source_location": "L497",
-      "community": 170,
+      "community": 181,
       "norm_label": "match extracted numbers against known values.      returns (verified_list, unver",
       "id": "cross_consistency_audit_rationale_497"
     },
@@ -21284,7 +21383,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/cross_consistency_audit.py",
       "source_location": "L619",
-      "community": 171,
+      "community": 182,
       "norm_label": "scan for % src: comments and verify json path references resolve.      only veri",
       "id": "cross_consistency_audit_rationale_619"
     },
@@ -21293,7 +21392,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/cross_consistency_audit.py",
       "source_location": "L721",
-      "community": 172,
+      "community": 183,
       "norm_label": "run cross-consistency audit.",
       "id": "cross_consistency_audit_rationale_721"
     },
@@ -21302,7 +21401,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/selfrepair_analysis.py",
       "source_location": "L54",
-      "community": 173,
+      "community": 184,
       "norm_label": "determine the status of a single attempt.",
       "id": "selfrepair_analysis_rationale_54"
     },
@@ -21311,7 +21410,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/selfrepair_analysis.py",
       "source_location": "L77",
-      "community": 174,
+      "community": 185,
       "norm_label": "classify the repair outcome.",
       "id": "selfrepair_analysis_rationale_77"
     },
@@ -21320,7 +21419,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/selfrepair_analysis.py",
       "source_location": "L90",
-      "community": 175,
+      "community": 186,
       "norm_label": "load all result jsons.",
       "id": "selfrepair_analysis_rationale_90"
     },
@@ -21329,7 +21428,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L476",
-      "community": 176,
+      "community": 187,
       "norm_label": "compute_pass_at_k computes pass@1 and pass@3 from seed variants.",
       "id": "test_quantitative_findings_rationale_476"
     },
@@ -21338,7 +21437,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L524",
-      "community": 177,
+      "community": 188,
       "norm_label": "compute_pass_at_k ignores augment_level>0 records (ablation, not seeds).",
       "id": "test_quantitative_findings_rationale_524"
     },
@@ -21347,7 +21446,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L574",
-      "community": 178,
+      "community": 189,
       "norm_label": "compute_per_kernel_tiers ranks kernels by pass rate with quartile tiers.",
       "id": "test_quantitative_findings_rationale_574"
     },
@@ -21356,7 +21455,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L627",
-      "community": 179,
+      "community": 190,
       "norm_label": "compute_complexity_correlation classifies 4 complexity classes from specs.",
       "id": "test_quantitative_findings_rationale_627"
     },
@@ -21365,7 +21464,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L687",
-      "community": 180,
+      "community": 191,
       "norm_label": "compute_cross_suite aggregates per-suite pass rates at l0.",
       "id": "test_quantitative_findings_rationale_687"
     },
@@ -21374,7 +21473,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L743",
-      "community": 181,
+      "community": 192,
       "norm_label": "compute_token_cost sums tokens and computes cost with together ai pricing.",
       "id": "test_quantitative_findings_rationale_743"
     },
@@ -21383,7 +21482,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L787",
-      "community": 182,
+      "community": 193,
       "norm_label": "compute_sloc_correlation computes spearman and pearson with rho/r and p_value.",
       "id": "test_quantitative_findings_rationale_787"
     },
@@ -21392,7 +21491,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L187",
-      "community": 183,
+      "community": 194,
       "norm_label": "build per-kernel x per-level status matrix for cuda-to-omp direction.      reads",
       "id": "augmentation_analysis_rationale_187"
     },
@@ -21401,7 +21500,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L280",
-      "community": 184,
+      "community": 195,
       "norm_label": "classify each kernel into a pattern category based on l0-l4 statuses.      categ",
       "id": "augmentation_analysis_rationale_280"
     },
@@ -21410,7 +21509,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L329",
-      "community": 185,
+      "community": 196,
       "norm_label": "compute aggregate pass rates with wilson 95% cis for each level.      args:",
       "id": "augmentation_analysis_rationale_329"
     },
@@ -21419,7 +21518,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L362",
-      "community": 186,
+      "community": 197,
       "norm_label": "identify and document exception kernels (degradation + improvement).      for ea",
       "id": "augmentation_analysis_rationale_362"
     },
@@ -21428,7 +21527,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L422",
-      "community": 187,
+      "community": 198,
       "norm_label": "build aggregate pass rates for all directions (not just cuda-to-omp).      for e",
       "id": "augmentation_analysis_rationale_422"
     },
@@ -21437,7 +21536,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L497",
-      "community": 188,
+      "community": 199,
       "norm_label": "save figure as both pdf and png (300 dpi for png).",
       "id": "augmentation_analysis_rationale_497"
     },
@@ -21446,7 +21545,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L507",
-      "community": 189,
+      "community": 200,
       "norm_label": "return 'white' for dark backgrounds, 'black' for light ones.      uses itu-r bt.",
       "id": "augmentation_analysis_rationale_507"
     },
@@ -21455,7 +21554,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L523",
-      "community": 190,
+      "community": 201,
       "norm_label": "generate per-kernel x per-level status heatmap (cuda-to-omp).      rows = kernel",
       "id": "augmentation_analysis_rationale_523"
     },
@@ -21464,7 +21563,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L613",
-      "community": 191,
+      "community": 202,
       "norm_label": "generate aggregate pass rate trend line (l0-l4) with wilson 95% ci error bars.",
       "id": "augmentation_analysis_rationale_613"
     },
@@ -21473,7 +21572,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L660",
-      "community": 192,
+      "community": 203,
       "norm_label": "produce a markdown summary of the augmentation analysis.",
       "id": "augmentation_analysis_rationale_660"
     },
@@ -21482,7 +21581,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/augmentation_analysis.py",
       "source_location": "L783",
-      "community": 193,
+      "community": 204,
       "norm_label": "orchestrate augmentation analysis: build matrices, classify, write output.",
       "id": "augmentation_analysis_rationale_783"
     },
@@ -21491,7 +21590,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L162",
-      "community": 194,
+      "community": 205,
       "norm_label": "all self-repair categories must sum to total_tasks.",
       "id": "test_generate_paper_data_rationale_162"
     },
@@ -21500,7 +21599,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L182",
-      "community": 195,
+      "community": 206,
       "norm_label": "z ~ -0.0, p ~ 1.0, significant=false.",
       "id": "test_generate_paper_data_rationale_182"
     },
@@ -21509,7 +21608,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L195",
-      "community": 196,
+      "community": 207,
       "norm_label": "pass@1 macro avg ~ 0.197, pass@3 macro avg ~ 0.275 (all suites).",
       "id": "test_generate_paper_data_rationale_195"
     },
@@ -21518,7 +21617,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L206",
-      "community": 197,
+      "community": 208,
       "norm_label": "every rate dict in primary_campaign overall and by_direction has ci keys.",
       "id": "test_generate_paper_data_rationale_206"
     },
@@ -21527,7 +21626,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L229",
-      "community": 198,
+      "community": 209,
       "norm_label": "exactly 6 specs excluded, all are known known_fail specs.",
       "id": "test_generate_paper_data_rationale_229"
     },
@@ -21536,7 +21635,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L249",
-      "community": 199,
+      "community": 210,
       "norm_label": "cochran-armitage uses 24 kernels, each with 5 levels = 120 total.",
       "id": "test_generate_paper_data_rationale_249"
     },
@@ -21545,7 +21644,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L265",
-      "community": 200,
+      "community": 211,
       "norm_label": "all rates and ci bounds must be in [0.0, 1.0].",
       "id": "test_generate_paper_data_rationale_265"
     },
@@ -21554,7 +21653,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L303",
-      "community": 201,
+      "community": 212,
       "norm_label": "l0 all-directions: 57/142 = 0.4014...",
       "id": "test_generate_paper_data_rationale_303"
     },
@@ -21563,7 +21662,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L315",
-      "community": 202,
+      "community": 213,
       "norm_label": "sum of all direction totals must equal primary campaign total.",
       "id": "test_generate_paper_data_rationale_315"
     },
@@ -21572,7 +21671,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L326",
-      "community": 203,
+      "community": 214,
       "norm_label": "sum of all level totals must equal primary campaign total.",
       "id": "test_generate_paper_data_rationale_326"
     },
@@ -21581,7 +21680,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L337",
-      "community": 204,
+      "community": 215,
       "norm_label": "build fail subcategory counts must sum to total build_fail.",
       "id": "test_generate_paper_data_rationale_337"
     },
@@ -21590,7 +21689,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L349",
-      "community": 205,
+      "community": 216,
       "norm_label": "run fail subcategory counts must sum to total run_fail.",
       "id": "test_generate_paper_data_rationale_349"
     },
@@ -21599,7 +21698,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L361",
-      "community": 206,
+      "community": 217,
       "norm_label": "verify fail subcategory counts must sum to total verify_fail.",
       "id": "test_generate_paper_data_rationale_361"
     },
@@ -21608,7 +21707,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L373",
-      "community": 207,
+      "community": 218,
       "norm_label": "each pass@k estimate entry has n, c, pass@1, pass@3 keys with valid values.",
       "id": "test_generate_paper_data_rationale_373"
     },
@@ -21617,7 +21716,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L396",
-      "community": 208,
+      "community": 219,
       "norm_label": "direction asymmetry section has 4 pairs with valid mcnemar results.",
       "id": "test_generate_paper_data_rationale_396"
     },
@@ -21626,7 +21725,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L420",
-      "community": 209,
+      "community": 220,
       "norm_label": "token metrics contain expected keys with non-negative values.",
       "id": "test_generate_paper_data_rationale_420"
     },
@@ -21635,7 +21734,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L437",
-      "community": 210,
+      "community": 221,
       "norm_label": "sum of all kernel totals must equal primary campaign total.",
       "id": "test_generate_paper_data_rationale_437"
     },
@@ -21644,7 +21743,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L448",
-      "community": 211,
+      "community": 222,
       "norm_label": "pass@k aggregate total_samples matches passk campaign total (all suites).",
       "id": "test_generate_paper_data_rationale_448"
     },
@@ -21653,7 +21752,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L459",
-      "community": 212,
+      "community": 223,
       "norm_label": "import generate_paper_data as a module (scripts/ has no __init__.py).",
       "id": "test_generate_paper_data_rationale_459"
     },
@@ -21662,7 +21761,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L470",
-      "community": 213,
+      "community": 224,
       "norm_label": "extracted helper returns pass for a passing first attempt.",
       "id": "test_generate_paper_data_rationale_470"
     },
@@ -21671,7 +21770,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L477",
-      "community": 214,
+      "community": 225,
       "norm_label": "extracted helper returns build_fail when build_status is 'fail'.",
       "id": "test_generate_paper_data_rationale_477"
     },
@@ -21680,7 +21779,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L484",
-      "community": 215,
+      "community": 226,
       "norm_label": "module-level constants exist with correct values.",
       "id": "test_generate_paper_data_rationale_484"
     },
@@ -21689,7 +21788,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_generate_paper_data.py",
       "source_location": "L492",
-      "community": 216,
+      "community": 227,
       "norm_label": "passk_k_values constant is [1, 3].",
       "id": "test_generate_paper_data_rationale_492"
     },
@@ -21698,7 +21797,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L985",
-      "community": 217,
+      "community": 228,
       "norm_label": "determine the status of a single attempt (mirrors selfrepair_analysis.py).",
       "id": "quantitative_findings_rationale_985"
     },
@@ -21707,7 +21806,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1005",
-      "community": 218,
+      "community": 229,
       "norm_label": "classify repair outcome (mirrors selfrepair_analysis.py).",
       "id": "quantitative_findings_rationale_1005"
     },
@@ -21716,7 +21815,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1022",
-      "community": 219,
+      "community": 230,
       "norm_label": "compute self-repair effectiveness from attempts[] arrays.      campaign 1 only (",
       "id": "quantitative_findings_rationale_1022"
     },
@@ -21725,7 +21824,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1177",
-      "community": 220,
+      "community": 231,
       "norm_label": "compute pass@k from campaign 2 seed variants.      campaign 2 only. groups by ta",
       "id": "quantitative_findings_rationale_1177"
     },
@@ -21734,7 +21833,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1315",
-      "community": 221,
+      "community": 232,
       "norm_label": "per-kernel difficulty tiers from l0 campaign 1 records.      ranks kernels by pa",
       "id": "quantitative_findings_rationale_1315"
     },
@@ -21743,7 +21842,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1434",
-      "community": 222,
+      "community": 233,
       "norm_label": "compute correlation between translation complexity and pass rate.      complexit",
       "id": "quantitative_findings_rationale_1434"
     },
@@ -21752,7 +21851,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1584",
-      "community": 223,
+      "community": 234,
       "norm_label": "cross-suite aggregate comparison with sloc and multi-file characteristics.",
       "id": "quantitative_findings_rationale_1584"
     },
@@ -21761,7 +21860,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1667",
-      "community": 224,
+      "community": 235,
       "norm_label": "token cost analysis using together ai pricing.      uses top-level prompt_tokens",
       "id": "quantitative_findings_rationale_1667"
     },
@@ -21770,7 +21869,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1757",
-      "community": 225,
+      "community": 236,
       "norm_label": "compute spearman and pearson correlation between sloc and pass rate.      uses p",
       "id": "quantitative_findings_rationale_1757"
     },
@@ -21779,7 +21878,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1839",
-      "community": 226,
+      "community": 237,
       "norm_label": "compare x-to-opencl (kernel-only) vs x-to-omp (full program) pass rates.      l0",
       "id": "quantitative_findings_rationale_1839"
     },
@@ -21788,7 +21887,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1907",
-      "community": 227,
+      "community": 238,
       "norm_label": "compute key metrics for rodinia-only subset (for paper_claims scope matching).",
       "id": "quantitative_findings_rationale_1907"
     },
@@ -21797,7 +21896,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1935",
-      "community": 228,
+      "community": 239,
       "norm_label": "build metadata section with file counts, timestamps, git hash.",
       "id": "quantitative_findings_rationale_1935"
     },
@@ -21806,7 +21905,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1964",
-      "community": 229,
+      "community": 240,
       "norm_label": "map paper.tex claims to json field paths with scope annotations.      each claim",
       "id": "quantitative_findings_rationale_1964"
     },
@@ -21815,7 +21914,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2256",
-      "community": 230,
+      "community": 241,
       "norm_label": "cross-check computed values against existing analysis jsons.      compares again",
       "id": "quantitative_findings_rationale_2256"
     },
@@ -21824,7 +21923,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2443",
-      "community": 231,
+      "community": 242,
       "norm_label": "write quantitative findings as markdown.",
       "id": "quantitative_findings_rationale_2443"
     },
@@ -21833,7 +21932,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2920",
-      "community": 232,
+      "community": 243,
       "norm_label": "format a decimal as percentage string.",
       "id": "quantitative_findings_rationale_2920"
     },
@@ -21842,7 +21941,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2932",
-      "community": 233,
+      "community": 244,
       "norm_label": "validate computed findings via spot-checks, cross-checks, consistency, and paper",
       "id": "quantitative_findings_rationale_2932"
     },
@@ -21851,7 +21950,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L3611",
-      "community": 234,
+      "community": 245,
       "norm_label": "build regex patterns to search for a claim value in paper.tex.      returns a li",
       "id": "quantitative_findings_rationale_3611"
     },
@@ -21986,7 +22085,7 @@
       "file_type": "rationale",
       "source_file": "tests/test_no_error_results_qwen_canonical.py",
       "source_location": "L37",
-      "community": 235,
+      "community": 246,
       "norm_label": "no result file may have overall_status == 'error' after the re-run.",
       "id": "test_no_error_results_qwen_canonical_rationale_37"
     },
@@ -21995,7 +22094,7 @@
       "file_type": "rationale",
       "source_file": "tests/test_no_error_results_qwen_canonical.py",
       "source_location": "L50",
-      "community": 236,
+      "community": 247,
       "norm_label": "canonical run must have exactly 504 results (168 pairs \u00d7 3 samples).",
       "id": "test_no_error_results_qwen_canonical_rationale_50"
     },
@@ -22040,7 +22139,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1736",
-      "community": 237,
+      "community": 248,
       "norm_label": "normalize user input to a figure registry key, or none if unknown.",
       "id": "generate_paper_figures_rationale_1736"
     },
@@ -22049,7 +22148,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1966",
-      "community": 238,
+      "community": 249,
       "norm_label": "map paper.tex claims to json field paths with scope annotations.      each claim",
       "id": "quantitative_findings_rationale_1966"
     },
@@ -22058,7 +22157,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2258",
-      "community": 239,
+      "community": 250,
       "norm_label": "cross-check computed values against existing analysis jsons.      compares again",
       "id": "quantitative_findings_rationale_2258"
     },
@@ -22067,7 +22166,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2445",
-      "community": 240,
+      "community": 251,
       "norm_label": "write quantitative findings as markdown.",
       "id": "quantitative_findings_rationale_2445"
     },
@@ -22076,7 +22175,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2923",
-      "community": 241,
+      "community": 252,
       "norm_label": "format a decimal as percentage string.",
       "id": "quantitative_findings_rationale_2923"
     },
@@ -22085,7 +22184,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2935",
-      "community": 242,
+      "community": 253,
       "norm_label": "validate computed findings via spot-checks, cross-checks, consistency, and paper",
       "id": "quantitative_findings_rationale_2935"
     },
@@ -22094,7 +22193,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L3616",
-      "community": 243,
+      "community": 254,
       "norm_label": "build regex patterns to search for a claim value in paper.tex.      returns a li",
       "id": "quantitative_findings_rationale_3616"
     },
@@ -22166,7 +22265,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L117",
-      "community": 244,
+      "community": 255,
       "norm_label": "campaign split: c1=temp 0.0, c2=temp 0.7, no overlap.",
       "id": "test_quantitative_findings_rationale_117"
     },
@@ -22175,7 +22274,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L135",
-      "community": 245,
+      "community": 256,
       "norm_label": "wilson ci dict has value, ci_lower, ci_upper, ci_level, n.",
       "id": "test_quantitative_findings_rationale_135"
     },
@@ -22184,7 +22283,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L148",
-      "community": 246,
+      "community": 257,
       "norm_label": "wilson ci with zero total returns zeros.",
       "id": "test_quantitative_findings_rationale_148"
     },
@@ -22193,7 +22292,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L159",
-      "community": 247,
+      "community": 258,
       "norm_label": "provenance wrapper returns dict with required fields.",
       "id": "test_quantitative_findings_rationale_159"
     },
@@ -22202,7 +22301,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L173",
-      "community": 248,
+      "community": 259,
       "norm_label": "provenance wrapper with ci fields.",
       "id": "test_quantitative_findings_rationale_173"
     },
@@ -22211,7 +22310,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L194",
-      "community": 249,
+      "community": 260,
       "norm_label": "suite extraction parses all 5 suites correctly.",
       "id": "test_quantitative_findings_rationale_194"
     },
@@ -22220,7 +22319,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L207",
-      "community": 250,
+      "community": 261,
       "norm_label": "omp_target directions are distinct from omp.",
       "id": "test_quantitative_findings_rationale_207"
     },
@@ -22229,7 +22328,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L216",
-      "community": 251,
+      "community": 262,
       "norm_label": "standard directions parse correctly.",
       "id": "test_quantitative_findings_rationale_216"
     },
@@ -22238,7 +22337,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L226",
-      "community": 252,
+      "community": 263,
       "norm_label": "augment level parsing from filename stems.",
       "id": "test_quantitative_findings_rationale_226"
     },
@@ -22247,7 +22346,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L240",
-      "community": 253,
+      "community": 264,
       "norm_label": "failure taxonomy counts build_fail, run_fail, verify_fail, extraction_fail.",
       "id": "test_quantitative_findings_rationale_240"
     },
@@ -22256,7 +22355,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L264",
-      "community": 254,
+      "community": 265,
       "norm_label": "mcnemar pairs on (suite, kernel) to avoid cross-suite false pairs.",
       "id": "test_quantitative_findings_rationale_264"
     },
@@ -22265,7 +22364,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L293",
-      "community": 255,
+      "community": 266,
       "norm_label": "cochran-armitage trend computed per-direction and aggregate.",
       "id": "test_quantitative_findings_rationale_293"
     },
@@ -22274,7 +22373,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L322",
-      "community": 256,
+      "community": 267,
       "norm_label": "compute_aggregate_pass_rates computes overall + per-suite rates with wilson_ci.",
       "id": "test_quantitative_findings_rationale_322"
     },
@@ -22283,7 +22382,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L363",
-      "community": 257,
+      "community": 268,
       "norm_label": "compute_direction_pass_rates filters l0, separates standard vs case_study.",
       "id": "test_quantitative_findings_rationale_363"
     },
@@ -22292,7 +22391,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L406",
-      "community": 258,
+      "community": 269,
       "norm_label": "compute_self_repair classifies repair outcomes from attempts[] arrays.",
       "id": "test_quantitative_findings_rationale_406"
     },
@@ -22301,7 +22400,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L474",
-      "community": 259,
+      "community": 270,
       "norm_label": "compute_pass_at_k computes pass@1 and pass@3 from seed variants.",
       "id": "test_quantitative_findings_rationale_474"
     },
@@ -22310,7 +22409,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L522",
-      "community": 260,
+      "community": 271,
       "norm_label": "compute_pass_at_k ignores augment_level>0 records (ablation, not seeds).",
       "id": "test_quantitative_findings_rationale_522"
     },
@@ -22319,7 +22418,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L572",
-      "community": 261,
+      "community": 272,
       "norm_label": "compute_per_kernel_tiers ranks kernels by pass rate with quartile tiers.",
       "id": "test_quantitative_findings_rationale_572"
     },
@@ -22328,7 +22427,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L625",
-      "community": 262,
+      "community": 273,
       "norm_label": "compute_complexity_correlation classifies 4 complexity classes from specs.",
       "id": "test_quantitative_findings_rationale_625"
     },
@@ -22337,7 +22436,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L685",
-      "community": 263,
+      "community": 274,
       "norm_label": "compute_cross_suite aggregates per-suite pass rates at l0.",
       "id": "test_quantitative_findings_rationale_685"
     },
@@ -22346,7 +22445,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L741",
-      "community": 264,
+      "community": 275,
       "norm_label": "compute_token_cost sums tokens and computes cost with together ai pricing.",
       "id": "test_quantitative_findings_rationale_741"
     },
@@ -22355,7 +22454,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L785",
-      "community": 265,
+      "community": 276,
       "norm_label": "compute_sloc_correlation computes spearman and pearson with rho/r and p_value.",
       "id": "test_quantitative_findings_rationale_785"
     },
@@ -22364,7 +22463,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L857",
-      "community": 266,
+      "community": 277,
       "norm_label": "compute_opencl_kernel_only_effect separates kernel-only vs full-program.",
       "id": "test_quantitative_findings_rationale_857"
     },
@@ -22427,7 +22526,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L526",
-      "community": 267,
+      "community": 278,
       "norm_label": "compute_per_kernel_tiers ranks kernels by pass rate with quartile tiers.",
       "id": "test_quantitative_findings_rationale_526"
     },
@@ -22436,7 +22535,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L579",
-      "community": 268,
+      "community": 279,
       "norm_label": "compute_complexity_correlation classifies 4 complexity classes from specs.",
       "id": "test_quantitative_findings_rationale_579"
     },
@@ -22445,7 +22544,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L639",
-      "community": 269,
+      "community": 280,
       "norm_label": "compute_cross_suite aggregates per-suite pass rates at l0.",
       "id": "test_quantitative_findings_rationale_639"
     },
@@ -22454,7 +22553,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L695",
-      "community": 270,
+      "community": 281,
       "norm_label": "compute_token_cost sums tokens and computes cost with together ai pricing.",
       "id": "test_quantitative_findings_rationale_695"
     },
@@ -22463,7 +22562,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L739",
-      "community": 271,
+      "community": 282,
       "norm_label": "compute_sloc_correlation computes spearman and pearson with rho/r and p_value.",
       "id": "test_quantitative_findings_rationale_739"
     },
@@ -22472,7 +22571,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L811",
-      "community": 272,
+      "community": 283,
       "norm_label": "compute_opencl_kernel_only_effect separates kernel-only vs full-program.",
       "id": "test_quantitative_findings_rationale_811"
     },
@@ -22481,7 +22580,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1311",
-      "community": 273,
+      "community": 284,
       "norm_label": "per-kernel difficulty tiers from l0 campaign 1 records.      ranks kernels by pa",
       "id": "quantitative_findings_rationale_1311"
     },
@@ -22490,7 +22589,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1430",
-      "community": 274,
+      "community": 285,
       "norm_label": "compute correlation between translation complexity and pass rate.      complexit",
       "id": "quantitative_findings_rationale_1430"
     },
@@ -22499,7 +22598,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1580",
-      "community": 275,
+      "community": 286,
       "norm_label": "cross-suite aggregate comparison with sloc and multi-file characteristics.",
       "id": "quantitative_findings_rationale_1580"
     },
@@ -22508,7 +22607,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1663",
-      "community": 276,
+      "community": 287,
       "norm_label": "token cost analysis using together ai pricing.      uses top-level prompt_tokens",
       "id": "quantitative_findings_rationale_1663"
     },
@@ -22517,7 +22616,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1753",
-      "community": 277,
+      "community": 288,
       "norm_label": "compute spearman and pearson correlation between sloc and pass rate.      uses p",
       "id": "quantitative_findings_rationale_1753"
     },
@@ -22526,7 +22625,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1835",
-      "community": 278,
+      "community": 289,
       "norm_label": "compare x-to-opencl (kernel-only) vs x-to-omp (full program) pass rates.      l0",
       "id": "quantitative_findings_rationale_1835"
     },
@@ -22535,7 +22634,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1903",
-      "community": 279,
+      "community": 290,
       "norm_label": "compute key metrics for rodinia-only subset (for paper_claims scope matching).",
       "id": "quantitative_findings_rationale_1903"
     },
@@ -22544,7 +22643,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1931",
-      "community": 280,
+      "community": 291,
       "norm_label": "build metadata section with file counts, timestamps, git hash.",
       "id": "quantitative_findings_rationale_1931"
     },
@@ -22553,7 +22652,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L1962",
-      "community": 281,
+      "community": 292,
       "norm_label": "map paper.tex claims to json field paths with scope annotations.      each claim",
       "id": "quantitative_findings_rationale_1962"
     },
@@ -22562,7 +22661,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2254",
-      "community": 282,
+      "community": 293,
       "norm_label": "cross-check computed values against existing analysis jsons.      compares again",
       "id": "quantitative_findings_rationale_2254"
     },
@@ -22571,7 +22670,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2441",
-      "community": 283,
+      "community": 294,
       "norm_label": "write quantitative findings as markdown.",
       "id": "quantitative_findings_rationale_2441"
     },
@@ -22580,7 +22679,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2919",
-      "community": 284,
+      "community": 295,
       "norm_label": "format a decimal as percentage string.",
       "id": "quantitative_findings_rationale_2919"
     },
@@ -22589,7 +22688,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L2931",
-      "community": 285,
+      "community": 296,
       "norm_label": "validate computed findings via spot-checks, cross-checks, consistency, and paper",
       "id": "quantitative_findings_rationale_2931"
     },
@@ -22598,7 +22697,7 @@
       "file_type": "rationale",
       "source_file": "scripts/analysis/quantitative_findings.py",
       "source_location": "L3612",
-      "community": 286,
+      "community": 297,
       "norm_label": "build regex patterns to search for a claim value in paper.tex.      returns a li",
       "id": "quantitative_findings_rationale_3612"
     },
@@ -22607,7 +22706,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L411",
-      "community": 287,
+      "community": 298,
       "norm_label": "build (kernel, model) -> overall_status lookup.      returns:         kernels: s",
       "id": "generate_paper_figures_rationale_411"
     },
@@ -22616,7 +22715,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L454",
-      "community": 288,
+      "community": 299,
       "norm_label": "f2: grouped bar chart comparing repo-level vs kernel-level counts.",
       "id": "generate_paper_figures_rationale_454"
     },
@@ -22625,7 +22724,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L540",
-      "community": 289,
+      "community": 300,
       "norm_label": "f3: single-panel heatmap of all benchmark kernels x directions, grouped by suite",
       "id": "generate_paper_figures_rationale_540"
     },
@@ -22634,7 +22733,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L807",
-      "community": 290,
+      "community": 301,
       "norm_label": "f4: failure taxonomy -- status distribution by direction (per model).",
       "id": "generate_paper_figures_rationale_807"
     },
@@ -22643,7 +22742,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L899",
-      "community": 291,
+      "community": 302,
       "norm_label": "f5: pass@k by translation direction (per model).      critical: filters to true",
       "id": "generate_paper_figures_rationale_899"
     },
@@ -22652,7 +22751,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L999",
-      "community": 292,
+      "community": 303,
       "norm_label": "wilson score 95% confidence interval for a binomial proportion.",
       "id": "generate_paper_figures_rationale_999"
     },
@@ -22661,7 +22760,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1026",
-      "community": 293,
+      "community": 304,
       "norm_label": "f6: cross-suite aggregate pass rate comparison bar chart (per model).",
       "id": "generate_paper_figures_rationale_1026"
     },
@@ -22670,7 +22769,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1172",
-      "community": 294,
+      "community": 305,
       "norm_label": "f7: augmentation robustness -- pass rate vs. augmentation level (dual-model).",
       "id": "generate_paper_figures_rationale_1172"
     },
@@ -22679,7 +22778,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1285",
-      "community": 295,
+      "community": 306,
       "norm_label": "c.1: transition matrix -- initial failure -> final outcome.",
       "id": "generate_paper_figures_rationale_1285"
     },
@@ -22688,7 +22787,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1364",
-      "community": 296,
+      "community": 307,
       "norm_label": "c.2: self-repair rate by translation direction.",
       "id": "generate_paper_figures_rationale_1364"
     },
@@ -22697,7 +22796,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1442",
-      "community": 297,
+      "community": 308,
       "norm_label": "c.3: heatmap of transform frequency per kernel.",
       "id": "generate_paper_figures_rationale_1442"
     },
@@ -22706,7 +22805,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1531",
-      "community": 298,
+      "community": 309,
       "norm_label": "c.4: hecbench kernel selection pipeline funnel diagram.",
       "id": "generate_paper_figures_rationale_1531"
     },
@@ -22715,7 +22814,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1616",
-      "community": 299,
+      "community": 310,
       "norm_label": "t2: model comparison latex table -- 2-model layout, all suites.",
       "id": "generate_paper_figures_rationale_1616"
     },
@@ -22724,7 +22823,7 @@
       "file_type": "rationale",
       "source_file": "scripts/generate_paper_figures.py",
       "source_location": "L1723",
-      "community": 300,
+      "community": 311,
       "norm_label": "normalize user input to a figure registry key, or none if unknown.",
       "id": "generate_paper_figures_rationale_1723"
     },
@@ -23296,7 +23395,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 301,
+      "community": 312,
       "norm_label": "invariants: manifest append-only, result jsons immutable, no evals in worktrees, check argc before changing run args",
       "id": "claude_md_invariants"
     },
@@ -23335,7 +23434,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 302,
+      "community": 313,
       "norm_label": "project skills table: catchup, eval-run, overnight-eval, post-eval, gen-spec, validate, etc.",
       "id": "claude_md_skills_table"
     },
@@ -23374,7 +23473,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 303,
+      "community": 314,
       "norm_label": "requirements.txt analysis deps: matplotlib>=3.9, numpy>=1.26",
       "id": "requirements_analysis_deps"
     },
@@ -23439,7 +23538,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 304,
+      "community": 315,
       "norm_label": "budget: ~$627-848 total (gpt-5.4 + qwen), refreshed after pricing correction",
       "id": "neurips_exp_plan_budget"
     },
@@ -25116,7 +25215,7 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "community": 305,
+      "community": 316,
       "norm_label": "decision to omit long build times from final report",
       "id": "concept_build_time_omission"
     },
@@ -31757,7 +31856,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L947",
+      "source_location": "L953",
       "weight": 1.0,
       "_src": "scripts_analysis_generate_paper_data_py",
       "_tgt": "generate_paper_data_compute_sample_size_flags",
@@ -31769,7 +31868,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L996",
+      "source_location": "L1002",
       "weight": 1.0,
       "_src": "scripts_analysis_generate_paper_data_py",
       "_tgt": "generate_paper_data_main",
@@ -31901,7 +32000,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L1123",
+      "source_location": "L1129",
       "weight": 1.0,
       "_src": "generate_paper_data_main",
       "_tgt": "generate_paper_data_wilson_ci",
@@ -32117,7 +32216,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L1041",
+      "source_location": "L1047",
       "weight": 1.0,
       "_src": "generate_paper_data_main",
       "_tgt": "generate_paper_data_load_results",
@@ -32141,7 +32240,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L1042",
+      "source_location": "L1048",
       "weight": 1.0,
       "_src": "generate_paper_data_main",
       "_tgt": "generate_paper_data_exclude_known_fail",
@@ -32165,7 +32264,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L1044",
+      "source_location": "L1050",
       "weight": 1.0,
       "_src": "generate_paper_data_main",
       "_tgt": "generate_paper_data_split_campaigns",
@@ -32273,7 +32372,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L1068",
+      "source_location": "L1074",
       "weight": 1.0,
       "_src": "generate_paper_data_main",
       "_tgt": "generate_paper_data_analyze_primary",
@@ -32345,7 +32444,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L1072",
+      "source_location": "L1078",
       "weight": 1.0,
       "_src": "generate_paper_data_main",
       "_tgt": "generate_paper_data_analyze_passk",
@@ -32369,7 +32468,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L1075",
+      "source_location": "L1081",
       "weight": 1.0,
       "_src": "generate_paper_data_main",
       "_tgt": "generate_paper_data_compute_sample_size_flags",
@@ -32381,12 +32480,12 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/generate_paper_data.py",
-      "source_location": "L948",
+      "source_location": "L954",
       "weight": 1.0,
-      "_src": "generate_paper_data_rationale_948",
+      "_src": "generate_paper_data_rationale_954",
       "_tgt": "generate_paper_data_compute_sample_size_flags",
       "source": "generate_paper_data_compute_sample_size_flags",
-      "target": "generate_paper_data_rationale_948",
+      "target": "generate_paper_data_rationale_954",
       "confidence_score": 1.0
     },
     {
@@ -33233,7 +33332,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/cross_model_comparison.py",
-      "source_location": "L103",
+      "source_location": "L102",
       "weight": 1.0,
       "_src": "scripts_analysis_cross_model_comparison_py",
       "_tgt": "cross_model_comparison_build_comparison",
@@ -33245,7 +33344,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/cross_model_comparison.py",
-      "source_location": "L253",
+      "source_location": "L254",
       "weight": 1.0,
       "_src": "scripts_analysis_cross_model_comparison_py",
       "_tgt": "cross_model_comparison_main",
@@ -33257,7 +33356,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/cross_model_comparison.py",
-      "source_location": "L142",
+      "source_location": "L144",
       "weight": 1.0,
       "_src": "cross_model_comparison_build_comparison",
       "_tgt": "cross_model_comparison_cohens_h",
@@ -33281,7 +33380,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/cross_model_comparison.py",
-      "source_location": "L175",
+      "source_location": "L177",
       "weight": 1.0,
       "_src": "cross_model_comparison_build_comparison",
       "_tgt": "cross_model_comparison_classify_effect_size",
@@ -33317,7 +33416,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/cross_model_comparison.py",
-      "source_location": "L148",
+      "source_location": "L150",
       "weight": 1.0,
       "_src": "cross_model_comparison_build_comparison",
       "_tgt": "cross_model_comparison_compute_mcnemar",
@@ -33341,7 +33440,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/cross_model_comparison.py",
-      "source_location": "L298",
+      "source_location": "L299",
       "weight": 1.0,
       "_src": "cross_model_comparison_main",
       "_tgt": "cross_model_comparison_build_comparison",
@@ -33353,12 +33452,12 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/cross_model_comparison.py",
-      "source_location": "L104",
+      "source_location": "L103",
       "weight": 1.0,
-      "_src": "cross_model_comparison_rationale_104",
+      "_src": "cross_model_comparison_rationale_103",
       "_tgt": "cross_model_comparison_build_comparison",
       "source": "cross_model_comparison_build_comparison",
-      "target": "cross_model_comparison_rationale_104",
+      "target": "cross_model_comparison_rationale_103",
       "confidence_score": 1.0
     },
     {
@@ -39353,7 +39452,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L75",
+      "source_location": "L76",
       "weight": 1.0,
       "_src": "scripts_analysis_test_cross_model_comparison_py",
       "_tgt": "test_cross_model_comparison_test_common_directions_count",
@@ -39365,7 +39464,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L85",
+      "source_location": "L86",
       "weight": 1.0,
       "_src": "scripts_analysis_test_cross_model_comparison_py",
       "_tgt": "test_cross_model_comparison_test_missing_directions",
@@ -39377,7 +39476,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L96",
+      "source_location": "L97",
       "weight": 1.0,
       "_src": "scripts_analysis_test_cross_model_comparison_py",
       "_tgt": "test_cross_model_comparison_test_kernel_matrix_counts_sum",
@@ -39389,7 +39488,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L111",
+      "source_location": "L113",
       "weight": 1.0,
       "_src": "scripts_analysis_test_cross_model_comparison_py",
       "_tgt": "test_cross_model_comparison_make_dir_data",
@@ -39401,7 +39500,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L122",
+      "source_location": "L124",
       "weight": 1.0,
       "_src": "scripts_analysis_test_cross_model_comparison_py",
       "_tgt": "test_cross_model_comparison_make_test_data",
@@ -39413,7 +39512,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L167",
+      "source_location": "L169",
       "weight": 1.0,
       "_src": "scripts_analysis_test_cross_model_comparison_py",
       "_tgt": "test_cross_model_comparison_make_test_data_full_directions",
@@ -39425,7 +39524,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L213",
+      "source_location": "L215",
       "weight": 1.0,
       "_src": "scripts_analysis_test_cross_model_comparison_py",
       "_tgt": "test_cross_model_comparison_test_build_comparison_has_mcnemar",
@@ -39437,7 +39536,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L233",
+      "source_location": "L235",
       "weight": 1.0,
       "_src": "scripts_analysis_test_cross_model_comparison_py",
       "_tgt": "test_cross_model_comparison_make_test_data_with_estimates",
@@ -39449,7 +39548,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L256",
+      "source_location": "L258",
       "weight": 1.0,
       "_src": "scripts_analysis_test_cross_model_comparison_py",
       "_tgt": "test_cross_model_comparison_test_compute_mcnemar_basic",
@@ -39461,7 +39560,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L286",
+      "source_location": "L288",
       "weight": 1.0,
       "_src": "scripts_analysis_test_cross_model_comparison_py",
       "_tgt": "test_cross_model_comparison_test_build_comparison_fallback_chi_squared",
@@ -39605,7 +39704,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L79",
+      "source_location": "L80",
       "weight": 1.0,
       "_src": "test_cross_model_comparison_test_common_directions_count",
       "_tgt": "test_cross_model_comparison_make_test_data_full_directions",
@@ -39617,19 +39716,19 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L76",
+      "source_location": "L77",
       "weight": 1.0,
-      "_src": "test_cross_model_comparison_rationale_76",
+      "_src": "test_cross_model_comparison_rationale_77",
       "_tgt": "test_cross_model_comparison_test_common_directions_count",
       "source": "test_cross_model_comparison_test_common_directions_count",
-      "target": "test_cross_model_comparison_rationale_76",
+      "target": "test_cross_model_comparison_rationale_77",
       "confidence_score": 1.0
     },
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L89",
+      "source_location": "L90",
       "weight": 1.0,
       "_src": "test_cross_model_comparison_test_missing_directions",
       "_tgt": "test_cross_model_comparison_make_test_data_full_directions",
@@ -39641,19 +39740,19 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L86",
+      "source_location": "L87",
       "weight": 1.0,
-      "_src": "test_cross_model_comparison_rationale_86",
+      "_src": "test_cross_model_comparison_rationale_87",
       "_tgt": "test_cross_model_comparison_test_missing_directions",
       "source": "test_cross_model_comparison_test_missing_directions",
-      "target": "test_cross_model_comparison_rationale_86",
+      "target": "test_cross_model_comparison_rationale_87",
       "confidence_score": 1.0
     },
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L100",
+      "source_location": "L101",
       "weight": 1.0,
       "_src": "test_cross_model_comparison_test_kernel_matrix_counts_sum",
       "_tgt": "test_cross_model_comparison_make_test_data",
@@ -39665,19 +39764,19 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L97",
+      "source_location": "L98",
       "weight": 1.0,
-      "_src": "test_cross_model_comparison_rationale_97",
+      "_src": "test_cross_model_comparison_rationale_98",
       "_tgt": "test_cross_model_comparison_test_kernel_matrix_counts_sum",
       "source": "test_cross_model_comparison_test_kernel_matrix_counts_sum",
-      "target": "test_cross_model_comparison_rationale_97",
+      "target": "test_cross_model_comparison_rationale_98",
       "confidence_score": 1.0
     },
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L134",
+      "source_location": "L136",
       "weight": 1.0,
       "_src": "test_cross_model_comparison_make_test_data",
       "_tgt": "test_cross_model_comparison_make_dir_data",
@@ -39689,7 +39788,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L175",
+      "source_location": "L177",
       "weight": 1.0,
       "_src": "test_cross_model_comparison_make_test_data_full_directions",
       "_tgt": "test_cross_model_comparison_make_dir_data",
@@ -39701,7 +39800,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L235",
+      "source_location": "L237",
       "weight": 1.0,
       "_src": "test_cross_model_comparison_make_test_data_with_estimates",
       "_tgt": "test_cross_model_comparison_make_test_data",
@@ -39713,7 +39812,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L290",
+      "source_location": "L292",
       "weight": 1.0,
       "_src": "test_cross_model_comparison_test_build_comparison_fallback_chi_squared",
       "_tgt": "test_cross_model_comparison_make_test_data",
@@ -39725,31 +39824,31 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L123",
+      "source_location": "L125",
       "weight": 1.0,
-      "_src": "test_cross_model_comparison_rationale_123",
+      "_src": "test_cross_model_comparison_rationale_125",
       "_tgt": "test_cross_model_comparison_make_test_data",
       "source": "test_cross_model_comparison_make_test_data",
-      "target": "test_cross_model_comparison_rationale_123",
+      "target": "test_cross_model_comparison_rationale_125",
       "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L168",
+      "source_location": "L170",
       "weight": 1.0,
-      "_src": "test_cross_model_comparison_rationale_168",
+      "_src": "test_cross_model_comparison_rationale_170",
       "_tgt": "test_cross_model_comparison_make_test_data_full_directions",
       "source": "test_cross_model_comparison_make_test_data_full_directions",
-      "target": "test_cross_model_comparison_rationale_168",
+      "target": "test_cross_model_comparison_rationale_170",
       "confidence_score": 1.0
     },
     {
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L217",
+      "source_location": "L219",
       "weight": 1.0,
       "_src": "test_cross_model_comparison_test_build_comparison_has_mcnemar",
       "_tgt": "test_cross_model_comparison_make_test_data_with_estimates",
@@ -39761,48 +39860,48 @@
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L214",
+      "source_location": "L216",
       "weight": 1.0,
-      "_src": "test_cross_model_comparison_rationale_214",
+      "_src": "test_cross_model_comparison_rationale_216",
       "_tgt": "test_cross_model_comparison_test_build_comparison_has_mcnemar",
       "source": "test_cross_model_comparison_test_build_comparison_has_mcnemar",
-      "target": "test_cross_model_comparison_rationale_214",
+      "target": "test_cross_model_comparison_rationale_216",
       "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L234",
+      "source_location": "L236",
       "weight": 1.0,
-      "_src": "test_cross_model_comparison_rationale_234",
+      "_src": "test_cross_model_comparison_rationale_236",
       "_tgt": "test_cross_model_comparison_make_test_data_with_estimates",
       "source": "test_cross_model_comparison_make_test_data_with_estimates",
-      "target": "test_cross_model_comparison_rationale_234",
+      "target": "test_cross_model_comparison_rationale_236",
       "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L257",
+      "source_location": "L259",
       "weight": 1.0,
-      "_src": "test_cross_model_comparison_rationale_257",
+      "_src": "test_cross_model_comparison_rationale_259",
       "_tgt": "test_cross_model_comparison_test_compute_mcnemar_basic",
       "source": "test_cross_model_comparison_test_compute_mcnemar_basic",
-      "target": "test_cross_model_comparison_rationale_257",
+      "target": "test_cross_model_comparison_rationale_259",
       "confidence_score": 1.0
     },
     {
       "relation": "rationale_for",
       "confidence": "EXTRACTED",
       "source_file": "scripts/analysis/test_cross_model_comparison.py",
-      "source_location": "L287",
+      "source_location": "L289",
       "weight": 1.0,
-      "_src": "test_cross_model_comparison_rationale_287",
+      "_src": "test_cross_model_comparison_rationale_289",
       "_tgt": "test_cross_model_comparison_test_build_comparison_fallback_chi_squared",
       "source": "test_cross_model_comparison_test_build_comparison_fallback_chi_squared",
-      "target": "test_cross_model_comparison_rationale_287",
+      "target": "test_cross_model_comparison_rationale_289",
       "confidence_score": 1.0
     },
     {

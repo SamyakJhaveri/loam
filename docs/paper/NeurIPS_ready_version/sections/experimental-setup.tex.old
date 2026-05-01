@@ -1,0 +1,135 @@
+% §4.1 Models
+%   - First: state selection rationale — provider diversity + reasoning
+%     capability range.
+%   - Then: describe each model (Qwen 3.5 397B MoE, GPT-5.4).
+%   - Finally: caveat — different reasoning modes mean performance gaps
+%     may reflect mode differences, not just model capability. The
+%     contribution is the harness, not a controlled model comparison.
+%
+% §4.2 Translation Protocol
+%   - First: KNOWN_FAIL exclusion — 9 specs excluded, state valid counts.
+%   - Then: direction matrix — 6 standard (CUDA/OMP/OCL bidirectional) +
+%     4 OMP-target = 10 directions, 142 unique tasks.
+%   - Finally: kernel-centric protocol — LLM gets only kernel files;
+%     host/build/verification remain fixed.
+%
+% §4.3 Sampling Configuration
+%   - First: temperature settings per provider (0.7 for Qwen; provider-
+%     controlled for GPT-5.4). Flag the confound explicitly.
+%   - Then: n=3 samples per task for pass@k. Deterministic seeds (advisory).
+%   - Finally: self-repair disabled — single-attempt evaluation.
+%
+% §4.4 Canonical Evaluation and Augmentation Ablation
+%   - First: canonical campaign — 142 pairs × 3 = 426 L0 records.
+%   - Then: augmentation ablation design — L0-conditional filter
+%     (Qwen 50 qualifying, GPT 99). Single sample at L1–L4.
+%   - Finally: caveat — single-sample trades precision for budget.
+%
+% §4.5 Metrics
+%   - pass@k (macro-averaged, Chen et al. estimator) with normal-approx CIs.
+%   - Per-record pass rates with Wilson CIs.
+%   - Performance explicitly out of scope.
+
+\section{Experimental Setup}
+\label{sec:experimental-setup}
+
+% ============================================================================
+% Ground truth sources for every claim in this section:
+%   Model IDs/params:  scripts/evaluation/llm_evaluate.py MODEL_REGISTRY (lines 74-139)
+%   Result JSONs:      results/evaluation/{together-qwen-3.5-397b-a17b,azure-gpt-5.4}/
+%   Pair counts:       142 unique pairs (verified: find + python3 groupby on result JSONs)
+%   Direction counts:  10 directions (verified: spec-ID suffix extraction across 426 L0 files)
+%   KNOWN_FAIL:        harness/constants.py EXCLUDED_SPECS (9 specs)
+%   Ablation filter:   pass@1-of-any (memory: project_neurips_experiment_design.md)
+%   Metrics:           quantitative_findings_qwen.json, quantitative_findings_gpt54.json
+%   Temperature gate:  llm_evaluate.py lines 946-948 (Azure reasoning omits temp/top_p)
+% ============================================================================
+
+\subsection{Models}
+\label{sec:models}
+
+We evaluate two models selected for provider diversity and reasoning capability:
+
+\paragraph{\qwen{}.}
+% src: MODEL_REGISTRY key "together-qwen-3.5-397b-a17b", provider="together", api_model="Qwen/Qwen3.5-397B-A17B"
+A 397B-parameter mixture-of-experts model (17B active) accessed through the Together AI inference API. Extended thinking is enabled via the provider's \texttt{enable\_thinking} template flag (binary toggle).
+
+\paragraph{\gptnew{}.}
+% src: MODEL_REGISTRY key "azure-gpt-5.4", provider="azure", supports_thinking=True
+% src: notes: "Microsoft Foundry GA 2026-03-17"
+A proprietary model accessed through \gptprovider{} (Microsoft Foundry deployment, GA 2026-03-17). Extended thinking is enabled with \texttt{reasoning\_effort=medium}, a provider-specific parameter controlling internal reasoning depth before code generation.
+
+% src: llm_evaluate.py lines 946-948 — Azure reasoning rejects temperature; Together uses enable_thinking
+Both models expose provider-specific reasoning modes; we configure each at its provider's recommended settings. The benchmark is designed so that future users can evaluate any model at any configuration. the contribution is the evaluation harness and corpus, not a controlled comparison of reasoning mechanisms. Because the two thinking modes differ in mechanism and granularity, observed performance differences may reflect both base-model capability and reasoning-mode effects; we cannot disentangle these factors in the current design. Model details are in Appendix Table~\ref{tab:model-config}; hardware is in Appendix Table~\ref{tab:hardware}; cost accounting is in Appendix~\ref{sec:appendix-cost}.
+
+\subsection{\knownfail{} Exclusion Policy}
+\label{sec:known-fail-policy}
+
+% src: harness/constants.py EXCLUDED_SPECS — 9 specs listed
+% NOTE: moved before Translation Protocol per reviewer feedback (defines 142 denominator)
+Nine specs are classified as \knownfail{} due to toolchain incompatibilities or pre-existing runtime failures unrelated to LLM translation quality: seven Rodinia specs affected by deprecated CUDA~12 texture APIs, missing system libraries, pre-existing segmentation faults, or silent OpenCL runtime failures, and two HeCBench \texttt{omp\_target} specs with build or verification failures on the evaluation platform. The full list is in Appendix~\ref{sec:appendix-framework}.
+
+% src: Exclusion policy from known-issues.md: exclude where EITHER source OR target is KF
+A record is excluded when \emph{either} the source or the target spec is \knownfail{}. Source-side exclusion is necessary because source correctness is unverified on the failing platform; target-side exclusion is necessary because the target build or verification infrastructure is broken. For \qwenshort{}, this policy excludes 82~of 708~total records, leaving 626~valid records (426~L0 + 200~ablation). The \gptnew{} evaluation batch pre-excludes \knownfail{} specs, so all on-disk records are valid.
+
+\subsection{Translation Protocol}
+\label{sec:translation-protocol}
+
+% src: 10 directions verified from GPT-5.4 L0 result JSONs (spec-ID suffix extraction)
+% src: 120 standard + 22 omp_target = 142 unique pairs
+The evaluation matrix covers ten translation directions organized into two tiers. Six \emph{standard} directions form bidirectional pairs among CUDA, OpenMP, and OpenCL - the three APIs with the broadest kernel coverage in the corpus (Section~\ref{sec:eval-corpus}). Four additional directions involve OpenMP Target Offload (\texttt{omp\_target}), available for a subset of kernels that provide target-offload implementations (10 of 87~non-\knownfail{} specs across HeCBench, XSBench, and RSBench). Two of these directions (OMP$\leftrightarrow$\texttt{omp\_target}) have only 3~unique kernel pairs each; we report them in the appendix rather than the main results due to insufficient sample size.
+
+% src: 120 pairs across 6 standard dirs, 22 across 4 omp_target dirs (python3 groupby on GPT-5.4 L0)
+The standard directions yield 120~unique source--target pairs; the four \texttt{omp\_target} directions contribute 22~additional pairs, for a total of 142~unique translation tasks.
+
+All translations use the kernel-centric protocol described in Section~\ref{sec:framework}: the LLM receives only the parallel kernel source files (e.g., CUDA \texttt{.cu} files or OpenMP-annotated \texttt{.cpp} files) and must produce functionally equivalent target-API files. Host code, build infrastructure, I/O routines, and verification logic remain fixed, isolating the model's ability to map parallel programming patterns across APIs. The full prompt template is in Appendix~\ref{sec:appendix-prompt}.
+
+\subsection{Sampling Configuration}
+\label{sec:sampling-config}
+
+% src: Verified from result JSONs: temperature=0.7, top_p=1.0, thinking_enabled=True,
+%      max_retries=1 (=zero-shot), seed=deterministic, num_samples=3
+% src: llm_evaluate.py lines 946-948: Azure reasoning models reject temperature != 1; top_p also omitted
+For \qwenshort{}, we set temperature~0.7 with top-$p$~=~1.0 (full-distribution sampling). For \gptnew{}, the Azure reasoning API does not accept explicit temperature or top-$p$ parameters - these are controlled internally by the provider and cannot be set by the caller. The result files record the \emph{requested} temperature (0.7) for uniformity, but the effective sampling distribution for \gptnew{} is provider-determined. Cross-model differences in pass rates may therefore partly reflect unmatched sampling conditions rather than model capability alone.
+
+Each source--target pair is evaluated with $n$~=~3 independent samples, enabling pass@$k$ estimation. A deterministic seed derived from SHA-256 of the concatenation \texttt{source\_spec|target\_spec|sample\_id} (pipe-delimited, truncated to 31 bits) is passed to both providers. Seeds are recorded for auditing but do not guarantee bitwise-identical outputs: Together AI treats seeds as advisory for MoE inference, and Azure provides no determinism guarantee for reasoning models.
+
+Each sample receives one LLM call with no iterative feedback, isolating first-attempt translation capability.  
+
+%Self-repair is disabled (single attempt, no iterative feedback): each sample receives one LLM call. This isolates first-attempt translation capability from confounding repair strategies.
+
+\subsection{Canonical Evaluation (L0)}
+\label{sec:canonical-eval}
+
+% src: 142 pairs × 3 samples = 426 L0 records (verified for both models)
+% src: Qwen: 708 total on disk, 82 KF excluded, 626 valid (426 L0 + 200 ablation)
+% src: GPT-5.4: 426 L0 on disk (batch pre-excluded KF), 267 PASS = 62.7%
+The canonical campaign evaluates all 142 unique pairs at augmentation level L0 (unmodified source code) with three samples each, producing 426 L0 records per model and 852 total. Each record passes through the full build--run--verify pipeline with conjunction semantics: all declared verification strategies must pass for a record to receive PASS status. Most specs verify via exit-code and stdout-pattern checks that rely on each benchmark's self-checkin output; a subset additionally declare numeric-comparison or file-hash oracles for quantitative output verification (Section~\ref{sec:harness}).
+
+\subsection{Augmentation Ablation (L1--L4)}
+\label{sec:augmentation-ablation}
+
+% src: project_neurips_experiment_design.md — L0-conditional, pass@1-of-any filter
+% src: Qwen: 50 qualifying pairs × 4 levels = 200 records; GPT-5.4: 99 qualifying pairs
+The augmentation ablation isolates source-code robustness from baseline translation capability. We apply an L0-conditional filter: a pair is included in the ablation only if any of its three canonical L0 samples passes. This filter avoids spending budget on pairs the model cannot translate even from unmodified source; however, it restricts the ablation to pairs with at least one L0 canonical success, and the resulting robustness conclusions apply only to that subset. For \qwenshort{}, 50~of the 142~pairs qualify (35\%); for \gptnew{}, 99~pairs qualify (70\%). The qualifying subset is determined independently per model; cross-model ablation comparisons therefore operate on different (though overlapping) pair sets.
+
+% src: Qwen ablation: 50 per level × 4 levels = 200 (quantitative_findings_qwen.json: L1 n=50, L2 n=50, etc.)
+% src: GPT-5.4 ablation: 99 qualifying pairs × 4 levels = 396 records (complete)
+Each qualifying pair is evaluated once ($k$~=~1) at each of levels L1 through L4, with the same thinking settings as the canonical campaign. The single-sample ablation trades statistical precision for budget efficiency: apparent failures at augmented levels may reflect stochastic noise rather than augmentation-induced difficulty, particularly for pairs that passed L0 marginally (1 of 3 samples).
+
+\subsection{Metrics}
+\label{sec:metrics}
+
+% src: Chen et al. 2021 (HumanEval) pass@k formula; quantitative_findings.py lines 973-1068
+% src: pass@k CI = normal-approximation on macro-averaged per-task values (_macro_avg_ci, line 1053)
+% src: per-record CI = Wilson (computed in aggregate_pass_rates section of quantitative_findings.py)
+The primary metric is \textbf{pass@$k$} \citep{HumanEval2021}. We draw $n$~=~3 independent samples per task. Following \citet{HumanEval2021}, pass@$k$ is the unbiased estimator $1 - \binom{n-c}{k}/\binom{n}{k}$, where $c$ is the number of correct samples out of $n$~total. We report pass@1 (expected single-sample success rate, equivalent to $c/n$ averaged across tasks) and pass@3 (which, since $n = k = 3$, reduces to the fraction of tasks where any sample passes). Both pass@$k$ metrics are macro-averaged over the 142~tasks; confidence intervals are normal-approximation intervals on the task-level mean ($\pm$1.96 standard errors).
+
+Separately, we report \textbf{per-record pass rates} with Wilson 95\%~confidence intervals. Wilson intervals are preferred over the Wald interval for their superior coverage at extreme proportions. The per-record rate treats each record as an independent Bernoulli trial (e.g., 626~valid records for \qwenshort{}); since three samples per task share the same kernel and direction, the independence assumption is anti-conservative and the Wilson CI understates the true uncertainty. For augmentation analysis, we report descriptive per-level pass rates on the L0-conditional subset and apply the Cochran--Armitage trend test where per-level sample sizes are adequate, with Cohen's~$h$ for adjacent-level effect sizes.
+
+\subsection{Scope and Limitations}
+\label{sec:scope}
+
+Performance speedup is intentionally out of scope. The current harness measures wall-clock time, which conflates kernel execution with I/O, memory allocation, launch overhead, and OS scheduling noise. Meaningful performance comparison would require kernel-level profiling (\texttt{ncu}/\texttt{nsys} for CUDA, \texttt{omp\_get\_wtime} for OpenMP), which we leave to future work. All evaluations for both models run on the same local machine--the same GPU, compilers, OS, and verification harness (Appendix Table~\ref{tab:hardware}); only the remote LLM inference providers differ.
+
+With the experimental methodology established, Section~\ref{sec:results} presents the pass rates, failure taxonomy, direction asymmetry, and augmentation robustness results.
