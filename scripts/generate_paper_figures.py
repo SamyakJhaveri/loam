@@ -84,26 +84,31 @@ NA_COLOR = "#E0E0E0"
 MODEL_COLORS: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": OKABE_ITO["orange"],
     "azure-gpt-5.4":          OKABE_ITO["sky_blue"],
+    "azure-gpt-5.3-codex":    OKABE_ITO["green"],
 }
 
 MODEL_DISPLAY: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "Qwen 3.5\n397B",
     "azure-gpt-5.4":          "GPT-5.4",
+    "azure-gpt-5.3-codex":    "GPT-5.3\nCodex",
 }
 
 MODEL_DISPLAY_SHORT: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "Qwen 3.5 397B-A17B",
     "azure-gpt-5.4":          "Azure GPT-5.4",
+    "azure-gpt-5.3-codex":    "Azure GPT-5.3-codex",
 }
 
 MODEL_LINESTYLE: dict[str, tuple[str, str]] = {
     "together-qwen-3.5-397b-a17b": ("D-.", "dashdot"),
     "azure-gpt-5.4":          ("v-", "solid"),
+    "azure-gpt-5.3-codex":    ("s--", "dashed"),
 }
 
 MODEL_SLUG: dict[str, str] = {
     "together-qwen-3.5-397b-a17b": "qwen",
     "azure-gpt-5.4": "gpt",
+    "azure-gpt-5.3-codex": "codex",
 }
 
 # Legacy palette references for survey figures (F2, C.4)
@@ -1627,25 +1632,10 @@ def generate_t2_model_table(
     output_dir: Path,
     verbose: bool,
 ) -> None:
-    """T2: Model comparison LaTeX table -- 2-model layout, all suites."""
+    """T2: Model comparison LaTeX table -- per-model rows, all suites."""
     l0_records = get_canonical_l0(records)
     std_records = [r for r in l0_records if r["direction"] in DIRECTIONS]
 
-    # Compute Qwen overall stats
-    qwen_records = [r for r in std_records if "qwen" in r["model"].lower()]
-    qwen_total = len(qwen_records)
-    qwen_pass = sum(1 for r in qwen_records if r["overall_status"] == "PASS")
-    qwen_rate = qwen_pass / qwen_total * 100 if qwen_total > 0 else 0
-
-    # Per-direction for Qwen
-    dir_stats: dict[str, tuple[int, int]] = {}
-    for d in DIRECTIONS:
-        d_recs = [r for r in qwen_records if r["direction"] == d]
-        d_total = len(d_recs)
-        d_pass = sum(1 for r in d_recs if r["overall_status"] == "PASS")
-        dir_stats[d] = (d_pass, d_total)
-
-    # Build LaTeX table
     dir_headers = [
         DIRECTION_LABELS.get(d, d).replace("\u2192", r"$\to$")
         for d in DIRECTIONS
@@ -1658,43 +1648,21 @@ def generate_t2_model_table(
         r"\midrule",
     ]
 
-    # Qwen row (fully populated)
-    qwen_cells = [f"{qwen_pass}/{qwen_total} ({qwen_rate:.1f}\\%)"]
-    for d in DIRECTIONS:
-        p, t = dir_stats[d]
-        rate = p / t * 100 if t > 0 else 0
-        qwen_cells.append(f"{p}/{t} ({rate:.1f}\\%)")
-    lines.append(
-        "Qwen 3.5 397B & " + " & ".join(qwen_cells) + r" \\"
-    )
-
-    # GPT row (computed from records, like Qwen row above)
-    gpt_records = [r for r in std_records if "gpt" in r["model"].lower()]
-    gpt_total = len(gpt_records)
-    gpt_pass = sum(1 for r in gpt_records if r["overall_status"] == "PASS")
-    gpt_rate = gpt_pass / gpt_total * 100 if gpt_total > 0 else 0
-
-    gpt_dir_stats: dict[str, tuple[int, int]] = {}
-    for d in DIRECTIONS:
-        d_recs = [r for r in gpt_records if r["direction"] == d]
-        d_total = len(d_recs)
-        d_pass = sum(1 for r in d_recs if r["overall_status"] == "PASS")
-        gpt_dir_stats[d] = (d_pass, d_total)
-
-    if gpt_total == 0:
-        gpt_cells = ["---"] * (1 + len(DIRECTIONS))
-        lines.append(
-            r"Azure GPT-5.4 & " + " & ".join(gpt_cells) + r" \\  % pending data"
-        )
-    else:
-        gpt_cells = [f"{gpt_pass}/{gpt_total} ({gpt_rate:.1f}\\%)"]
+    for model_id, display in MODEL_DISPLAY_SHORT.items():
+        m_records = [r for r in std_records if r["model"] == model_id]
+        m_total = len(m_records)
+        if m_total == 0:
+            continue
+        m_pass = sum(1 for r in m_records if r["overall_status"] == "PASS")
+        m_rate = m_pass / m_total * 100
+        cells = [f"{m_pass}/{m_total} ({m_rate:.1f}\\%)"]
         for d in DIRECTIONS:
-            p, t = gpt_dir_stats[d]
-            rate = p / t * 100 if t > 0 else 0
-            gpt_cells.append(f"{p}/{t} ({rate:.1f}\\%)")
-        lines.append(
-            "Azure GPT-5.4 & " + " & ".join(gpt_cells) + r" \\"
-        )
+            d_recs = [r for r in m_records if r["direction"] == d]
+            d_total = len(d_recs)
+            d_pass = sum(1 for r in d_recs if r["overall_status"] == "PASS")
+            rate = d_pass / d_total * 100 if d_total > 0 else 0
+            cells.append(f"{d_pass}/{d_total} ({rate:.1f}\\%)")
+        lines.append(f"{display} & " + " & ".join(cells) + r" \\")
 
     lines.append(r"\bottomrule")
     lines.append(r"\end{tabular}")
@@ -1702,18 +1670,6 @@ def generate_t2_model_table(
     path = output_dir / "t2_model_comparison.tex"
     path.write_text("\n".join(lines) + "\n")
     print(f"  Saved: {path}")
-
-    if verbose:
-        print(f"  Qwen overall: {qwen_pass}/{qwen_total} ({qwen_rate:.1f}%)")
-        for d in DIRECTIONS:
-            p, t = dir_stats[d]
-            rate = p / t * 100 if t > 0 else 0
-            print(f"  Qwen {d}: {p}/{t} ({rate:.1f}%)")
-        print(f"  GPT overall: {gpt_pass}/{gpt_total} ({gpt_rate:.1f}%)")
-        for d in DIRECTIONS:
-            p, t = gpt_dir_stats[d]
-            rate = p / t * 100 if t > 0 else 0
-            print(f"  GPT {d}: {p}/{t} ({rate:.1f}%)")
 
 
 # ===================================================================

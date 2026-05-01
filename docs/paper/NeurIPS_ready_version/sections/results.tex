@@ -50,7 +50,7 @@
 \begin{table*}[t]
 \centering
 % src: quantitative_findings_qwen.json, quantitative_findings_gpt54.json > canonical > failure_taxonomy
-\caption{Overall pass rates. \qwenshort{} covers 626 valid records (426 L0 + 200 ablation) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} covers 822 valid records (426 L0 + 396 ablation); \knownfail{} specs were pre-excluded from the evaluation batch.}
+\caption{Overall pass rates across three models and 2,262 valid translation records. \qwenshort{} covers 626 valid records (426 L0 + 200 ablation) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} covers 822 valid records (426 L0 + 396 ablation) and \codexshort{} covers 814 valid records (426 L0 + 388 ablation); \knownfail{} specs were pre-excluded from both GPT evaluation batches.}
 \label{tab:overall-pass}
 \small
 \resizebox{\textwidth}{!}{%
@@ -62,18 +62,24 @@ Model & \pass{} & \buildfail{} & \runfail{} & \verifyfail{} & \extractionfail{} 
 \qwen{} & 230 & 245 & 121 & 29 & 1 & 626 & 36.7\% [33.1\%, 40.6\%] \\
 % src: quantitative_findings_gpt54.json > canonical > failure_taxonomy > status_counts (all 822 valid records)
 \gptnew{} & 621 & 123 & 43 & 32 & 3 & 822 & 75.5\% [72.5\%, 78.4\%] \\
+% src: quantitative_findings_azure-gpt-5.3-codex.json > canonical > failure_taxonomy > status_counts
+\codex{} & 604 & 139 & 44 & 27 & 0 & 814 & 74.2\% [71.1\%, 77.1\%] \\
 \bottomrule
 \end{tabular}%
 }
 \end{table*}
 % src: quantitative_findings_qwen.json > canonical > aggregate_pass_rates > overall: value=0.3674, ci=[0.3306, 0.4059], n=626
 Kernel-centric evaluation isolates executable kernel translation from repository reconstruction. As shown in Table~\ref{tab:overall-pass}, \qwenshort{} passes 36.7\% of its valid records, while \gptnew{} passes 75.5\%.
+% src: statistical_analysis.json > model_comparison > pairwise[0] (Bonferroni-corrected p)
+\codexshort{}, a code-specialized model, passes 74.2\% of its valid records---statistically indistinguishable from \gptnew{} (Fisher's exact $p = 1.0$, OR\,=\,0.93 [0.74, 1.16], Cohen's $h = -0.031$). Code-specialized reinforcement learning training does not measurably improve parallel translation success at this task difficulty.
 Prior work such as ParEval-Repo reports 0\% pass@1 on repository-level applications larger than 133 SLoC \cite{ParEvalRepo2025}. While 87\% of our evaluated kernels exceed that length, \parbench{}'s kernel isolation reveals baseline translation capability independent of full-repository integration errors. For example, \qwenshort{} achieves 40.3\% on CUDA-to-OpenMP at L0.
 
 \subsection{pass@$k$ Analysis}
 \label{sec:passk-analysis}
 
-Restricting to the 142 L0 tasks to estimate single-sample vs. multi-sample success, \qwenshort{} achieves 23.9\% pass@1 and 35.2\% pass@3 (detailed in Appendix~\ref{sec:appendix-c-extended}). Additional stochastic samples provide diminishing returns. Of the 142 tasks, 64.8\% produce no passing sample across three independent attempts, and 13.4\% pass in all three. Failures are largely systematic (incorrect API mapping) rather than stochastic; resampling is insufficient to recover most failing pairs.
+Restricting to the 142 L0 tasks to estimate single-sample vs. multi-sample success, \qwenshort{} achieves 23.9\% pass@1 and 35.2\% pass@3 (detailed in Appendix~\ref{sec:appendix-c-extended}).
+% src: paper_data_azure-gpt-5.3-codex.json > passk_campaign > aggregate_passk
+\codexshort{} achieves pass@1\,=\,62.7\% and pass@3\,=\,68.3\%, matching \gptnew{}'s pass@1 exactly with a slightly narrower pass@1-to-pass@3 gap (5.6\,pp versus 7.0\,pp). Additional stochastic samples provide diminishing returns. Of the 142 tasks, 64.8\% produce no passing sample across three independent attempts, and 13.4\% pass in all three. Failures are largely systematic (incorrect API mapping) rather than stochastic; resampling is insufficient to recover most failing pairs.
 
 \subsection{Direction Dependence}
 \label{sec:direction-analysis}
@@ -83,28 +89,30 @@ Restricting to the 142 L0 tasks to estimate single-sample vs. multi-sample succe
 \caption{Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes total L0 records. Wilson 95\% CIs in brackets.}
 \label{tab:direction-rates}
 \small
-\begin{tabular}{@{}lrrc@{}}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrc@{}}
 \toprule
-Direction & \qwenshort{} & \gptnew{} & $n$ \\
+Direction & \qwenshort{} & \gptnew{} & \codexshort{} & $n$ \\
 \midrule
-% src: quantitative_findings_qwen.json + quantitative_findings_gpt54.json > canonical > direction_pass_rates > standard
-CUDA$\to$OMP & 40.3\% [29.7\%, 51.8\%] & 83.3\% [73.1\%, 90.2\%] & 72 \\
-OMP$\to$OpenCL & 33.3\% [22.0\%, 47.0\%] & 72.5\% [59.1\%, 82.9\%] & 51 \\
-OMP$\to$CUDA & 25.0\% [16.4\%, 36.1\%] & 55.6\% [44.1\%, 66.5\%] & 72 \\
-OpenCL$\to$OMP & 9.8\% [4.3\%, 21.0\%] & 41.2\% [28.8\%, 54.8\%] & 51 \\
-CUDA$\to$OpenCL & 7.0\% [2.8\%, 16.7\%] & 59.7\% [46.7\%, 71.4\%] & 57 \\
-OpenCL$\to$CUDA & 0.0\% [0.0\%, 6.3\%] & 19.3\% [11.1\%, 31.3\%] & 57 \\
+% src: quantitative_findings_*.json > canonical > direction_pass_rates > standard
+CUDA$\to$OMP & 40.3\% [29.7\%, 51.8\%] & 83.3\% [73.1\%, 90.2\%] & 76.4\% [65.4\%, 84.7\%] & 72 \\
+OMP$\to$OpenCL & 33.3\% [22.0\%, 47.0\%] & 72.5\% [59.1\%, 82.9\%] & 82.3\% [69.8\%, 90.4\%] & 51 \\
+OMP$\to$CUDA & 25.0\% [16.4\%, 36.1\%] & 55.6\% [44.1\%, 66.5\%] & 55.6\% [44.1\%, 66.5\%] & 72 \\
+OpenCL$\to$OMP & 9.8\% [4.3\%, 21.0\%] & 41.2\% [28.8\%, 54.8\%] & 39.2\% [27.0\%, 52.9\%] & 51 \\
+CUDA$\to$OpenCL & 7.0\% [2.8\%, 16.7\%] & 59.7\% [46.7\%, 71.4\%] & 57.9\% [45.0\%, 69.8\%] & 57 \\
+OpenCL$\to$CUDA & 0.0\% [0.0\%, 6.3\%] & 19.3\% [11.1\%, 31.3\%] & 19.3\% [11.1\%, 31.3\%] & 57 \\
 \midrule
-% src: quantitative_findings_qwen.json + quantitative_findings_gpt54.json > canonical > direction_pass_rates > standard (omp_target) + case_study
-OMP-target$\to$OMP ($m{=}3$) & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 9 \\
-OMP-target$\to$CUDA ($m{=}8$) & 66.7\% [46.7\%, 82.0\%] & 95.8\% [79.8\%, 99.3\%] & 24 \\
-OMP$\to$OMP-target ($m{=}3$) & 44.4\% [18.9\%, 73.3\%] & 100\% [70.1\%, 100\%] & 9 \\
-CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 95.8\% [79.8\%, 99.3\%] & 24 \\
+% src: quantitative_findings_*.json > canonical > direction_pass_rates > standard (omp_target) + case_study
+OMP-target$\to$OMP ($m{=}3$) & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 9 \\
+OMP-target$\to$CUDA ($m{=}8$) & 66.7\% [46.7\%, 82.0\%] & 95.8\% [79.8\%, 99.3\%] & 100\% [86.2\%, 100\%] & 24 \\
+OMP$\to$OMP-target ($m{=}3$) & 44.4\% [18.9\%, 73.3\%] & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 9 \\
+CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 95.8\% [79.8\%, 99.3\%] & 100\% [86.2\%, 100\%] & 24 \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table*}
 
-Per-record pass rates vary strongly across directions (Table~\ref{tab:direction-rates}), reflecting structural API asymmetries. Translating from CUDA to OpenMP replaces explicit device memory and launch configuration with compiler directives. The reverse requires introducing explicit synchronization and memory management. OpenCL translations introduce further complexity with separate host/kernel source and JIT compilation, leading to 0\% success for OpenCL-to-CUDA under \qwenshort{}.
+Per-record pass rates vary strongly across directions (Table~\ref{tab:direction-rates}), reflecting structural API asymmetries. Translating from CUDA to OpenMP replaces explicit device memory and launch configuration with compiler directives. The reverse requires introducing explicit synchronization and memory management. OpenCL translations introduce further complexity with separate host/kernel source and JIT compilation, leading to 0\% success for OpenCL-to-CUDA under \qwenshort{}. \codexshort{}'s direction profile nearly mirrors \gptnew{} across all six standard directions (within 2--10\,pp), reinforcing that direction difficulty is a property of the task, not the model.
 At the kernel level, performance is highly heterogeneous (full breakdown in Appendix~\ref{sec:appendix-c-extended}). Simple kernels pass at high rates, while those with irregular memory access or multi-file dependencies frequently fail entirely.
 
 \subsection{Failure Taxonomy}
@@ -113,13 +121,17 @@ At the kernel level, performance is highly heterogeneous (full breakdown in Appe
 \begin{figure}[t]
 \centering
 \input{figures/f4_failure_taxonomy_qwen.tex}
-\caption{\qwenshort{} outcome taxonomy across 626 valid records. Build-stage failures are the largest non-pass category. \gptnew{} taxonomy (822 records) is in Appendix~\ref{sec:appendix-gpt-figures}.}
+\caption{\qwenshort{} outcome taxonomy across 626 valid records. Build-stage failures are the largest non-pass category. \gptnew{} taxonomy (822 records) is in Appendix~\ref{sec:appendix-gpt-figures}; \codexshort{} taxonomy (814 records) is in Appendix~\ref{sec:appendix-codex-figures}.}
 \label{fig:failure-taxonomy}
 \end{figure}
 
 Build-stage adaptation is the dominant failure mode, accounting for 39.1\% of all records and 61.9\% of failures for \qwenshort{} (Figure~\ref{fig:failure-taxonomy}). These indicate incomplete API-surface adaptation (e.g., retained CUDA identifiers in OpenMP targets). \verifyfail{} accounts for 4.6\% of records, proving that compile-only or zero-exit-code checks are insufficient for rigorous evaluation. \runfail{} represents 19.3\% of records, frequently driven by OpenCL JIT compilation errors occurring at runtime.
+% src: quantitative_findings_azure-gpt-5.3-codex.json > canonical > failure_taxonomy > status_counts
+\codexshort{}'s failure distribution is intermediate: \buildfail{} accounts for 17.1\% of records, between \qwenshort{}'s 39.1\% and \gptnew{}'s 15.0\%.
 
 \subsection{Augmentation Robustness}
 \label{sec:augmentation-robustness}
 
-To assess whether baseline success is driven primarily by surface-form memorization, we evaluated augmented source variants (L1--L4) on a balanced 12-kernel CUDA-to-OpenMP subset. Pass rates remained stable between 75\% and 83\% across augmentation levels (detailed in Appendix~\ref{sec:appendix-c-extended}). This stability is compatible with some robustness to surface-form perturbation, though small sample sizes and survivorship bias (due to L0-conditional filtering) prevent ruling out deeper structural memorization entirely.
+To assess whether baseline success is driven primarily by surface-form memorization, we evaluated augmented source variants (L1--L4) on L0-conditional subsets (detailed in Appendix~\ref{sec:appendix-c-extended}).
+% src: statistical_analysis.json > augmentation_curves > azure-gpt-5.3-codex; azure-gpt-5.4; together-qwen-3.5-397b-a17b
+\codexshort{} shows the same plateau pattern as \gptnew{}: 86.6\%--88.7\% at L1--L4 ($\chi^2$ independence test, $p = 1.0$ after Bonferroni correction), in contrast to \qwenshort{}'s peak-then-decline (74.0\% at L1 to 56.0\% at L4, $p = 0.005$). This stability across both GPT models is compatible with robustness to surface-form perturbation, though survivorship bias (L0-conditional filtering) prevents ruling out deeper structural memorization entirely.
