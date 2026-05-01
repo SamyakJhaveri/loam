@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Cross-model comparison: Qwen 3.5 397B vs azure-gpt-5.4.
+"""Cross-model pairwise comparison for any two models.
 
 Produces statistical comparison for NeurIPS 2026 paper using Phase 3 canonical+ablation corpus.
-Reads paper_data.json (Qwen) and paper_data_azure_gpt54.json (GPT).
+Accepts any two paper_data JSON files via --model-a / --model-b.
 
-Output: results/analysis/cross_model_comparison.json
+Output: results/analysis/cross_model_comparison.json (default)
 
 Statistical tests:
   - McNemar's test with Yates correction on paired task-level pass/fail (when passk_estimates available)
@@ -55,35 +55,34 @@ def classify_effect_size(h: float) -> str:
         return "large"
 
 
-def compute_mcnemar(qwen_estimates: dict, gpt_estimates: dict) -> dict:
-    common_tasks = sorted(set(qwen_estimates) & set(gpt_estimates))
-    if set(qwen_estimates) != set(gpt_estimates):
-        raise ValueError(
-            f"Task key mismatch: {len(set(qwen_estimates) - set(gpt_estimates))} qwen-only, "
-            f"{len(set(gpt_estimates) - set(qwen_estimates))} gpt-only"
-        )
+def compute_mcnemar(est_a: dict, est_b: dict) -> dict:
+    common_tasks = sorted(set(est_a) & set(est_b))
+    a_extra = len(set(est_a) - set(est_b))
+    b_extra = len(set(est_b) - set(est_a))
+    if a_extra or b_extra:
+        print(f"WARNING: Task key mismatch: {a_extra} a-only, {b_extra} b-only. Using {len(common_tasks)} common tasks.", file=sys.stderr)
 
     both_pass = 0
     both_fail = 0
-    qwen_only = 0
-    gpt_only = 0
+    a_only = 0
+    b_only = 0
 
     for task in common_tasks:
-        q_pass = qwen_estimates[task]["c"] >= 1
-        g_pass = gpt_estimates[task]["c"] >= 1
-        if q_pass and g_pass:
+        a_pass = est_a[task]["c"] >= 1
+        b_pass = est_b[task]["c"] >= 1
+        if a_pass and b_pass:
             both_pass += 1
-        elif not q_pass and not g_pass:
+        elif not a_pass and not b_pass:
             both_fail += 1
-        elif q_pass:
-            qwen_only += 1
+        elif a_pass:
+            a_only += 1
         else:
-            gpt_only += 1
+            b_only += 1
 
-    discordant = qwen_only + gpt_only
+    discordant = a_only + b_only
     if discordant > 0:
         # Yates continuity correction (matches statistical_analysis.py convention)
-        mcnemar_chi2 = (abs(qwen_only - gpt_only) - 1) ** 2 / discordant
+        mcnemar_chi2 = (abs(a_only - b_only) - 1) ** 2 / discordant
         p_value = float(1 - sp_stats.chi2.cdf(mcnemar_chi2, df=1))
     else:
         mcnemar_chi2 = 0.0
@@ -92,65 +91,68 @@ def compute_mcnemar(qwen_estimates: dict, gpt_estimates: dict) -> dict:
     return {
         "both_pass": both_pass,
         "both_fail": both_fail,
-        "qwen_only": qwen_only,
-        "gpt_only": gpt_only,
-        "total": both_pass + both_fail + qwen_only + gpt_only,
+        "a_only": a_only,
+        "b_only": b_only,
+        "total": both_pass + both_fail + a_only + b_only,
         "mcnemar_chi2": round(mcnemar_chi2, 4),
         "p_value": round(p_value, 6),
     }
 
 
-def build_comparison(qwen_data: dict, gpt_data: dict) -> dict:
+def build_comparison(data_a: dict, data_b: dict) -> dict:
     """Build the full cross-model comparison dict.
 
     Args:
-        qwen_data: Parsed paper_data.json (Qwen model)
-        gpt_data: Parsed paper_data_azure_gpt54.json (GPT model)
+        data_a: Parsed paper_data JSON for first model
+        data_b: Parsed paper_data JSON for second model
 
     Returns:
         Dict with overall, per_direction, per_kernel_matrix sections.
     """
-    qwen_pc = qwen_data.get("passk_campaign") or qwen_data["primary_campaign"]
-    gpt_pc = gpt_data.get("passk_campaign") or gpt_data["primary_campaign"]
+    name_a = data_a["model"]
+    name_b = data_b["model"]
+
+    pc_a = data_a.get("passk_campaign") or data_a["primary_campaign"]
+    pc_b = data_b.get("passk_campaign") or data_b["primary_campaign"]
 
     # --- Determine common directions (intersection) ---
-    qwen_dirs = set(qwen_pc["by_direction"].keys())
-    gpt_dirs = set(gpt_pc["by_direction"].keys())
-    common_dirs = sorted(qwen_dirs & gpt_dirs)
+    dirs_a = set(pc_a["by_direction"].keys())
+    dirs_b = set(pc_b["by_direction"].keys())
+    common_dirs = sorted(dirs_a & dirs_b)
 
     missing = {}
-    qwen_only = sorted(qwen_dirs - gpt_dirs)
-    gpt_only = sorted(gpt_dirs - qwen_dirs)
-    if qwen_only:
-        missing[gpt_data["model"]] = qwen_only  # GPT is missing these directions
-    if gpt_only:
-        missing[qwen_data["model"]] = gpt_only
+    a_only_dirs = sorted(dirs_a - dirs_b)
+    b_only_dirs = sorted(dirs_b - dirs_a)
+    if a_only_dirs:
+        missing[name_b] = a_only_dirs
+    if b_only_dirs:
+        missing[name_a] = b_only_dirs
 
     # --- Overall comparison ---
-    qwen_overall = qwen_pc["overall"]
-    gpt_overall = gpt_pc["overall"]
+    overall_a = pc_a["overall"]
+    overall_b = pc_b["overall"]
 
-    qwen_pass = qwen_overall["pass"]
-    qwen_total = qwen_overall["total"]
-    qwen_fail = qwen_total - qwen_pass
-    gpt_pass = gpt_overall["pass"]
-    gpt_total = gpt_overall["total"]
-    gpt_fail = gpt_total - gpt_pass
+    pass_a = overall_a["pass"]
+    total_a = overall_a["total"]
+    fail_a = total_a - pass_a
+    pass_b = overall_b["pass"]
+    total_b = overall_b["total"]
+    fail_b = total_b - pass_b
 
-    qwen_rate = qwen_overall["pass_rate"]
-    gpt_rate = gpt_overall["pass_rate"]
-    h_overall = cohens_h(qwen_rate, gpt_rate)
+    rate_a = overall_a["pass_rate"]
+    rate_b = overall_b["pass_rate"]
+    h_overall = cohens_h(rate_a, rate_b)
 
     # McNemar on paired task-level data when passk_estimates available
-    qwen_est = qwen_pc.get("passk_estimates")
-    gpt_est = gpt_pc.get("passk_estimates")
-    if qwen_est and gpt_est:
-        mcnemar_result = compute_mcnemar(qwen_est, gpt_est)
+    est_a = pc_a.get("passk_estimates")
+    est_b = pc_b.get("passk_estimates")
+    if est_a and est_b:
+        mcnemar_result = compute_mcnemar(est_a, est_b)
         stat_key = "mcnemar"
         stat_value = mcnemar_result
     else:
-        table = np.array([[qwen_pass, qwen_fail],
-                          [gpt_pass, gpt_fail]])
+        table = np.array([[pass_a, fail_a],
+                          [pass_b, fail_b]])
         chi2, p_value_val, dof, _ = sp_stats.chi2_contingency(table)
         stat_key = "chi_squared"
         stat_value = {
@@ -161,15 +163,15 @@ def build_comparison(qwen_data: dict, gpt_data: dict) -> dict:
 
     overall = {
         stat_key: stat_value,
-        "qwen": {
-            "pass": int(qwen_pass),
-            "total": int(qwen_total),
-            "rate": round(float(qwen_rate), 4),
+        name_a: {
+            "pass": int(pass_a),
+            "total": int(total_a),
+            "rate": round(float(rate_a), 4),
         },
-        "gpt": {
-            "pass": int(gpt_pass),
-            "total": int(gpt_total),
-            "rate": round(float(gpt_rate), 4),
+        name_b: {
+            "pass": int(pass_b),
+            "total": int(total_b),
+            "rate": round(float(rate_b), 4),
         },
         "cohens_h": round(float(h_overall), 4),
         "effect_size": classify_effect_size(h_overall),
@@ -178,70 +180,69 @@ def build_comparison(qwen_data: dict, gpt_data: dict) -> dict:
     # --- Per-direction comparison (common directions only) ---
     per_direction = {}
     for d in common_dirs:
-        qd = qwen_pc["by_direction"][d]
-        gd = gpt_pc["by_direction"][d]
-        qr = qd["pass_rate"]
-        gr = gd["pass_rate"]
-        h = cohens_h(qr, gr)
+        da = pc_a["by_direction"][d]
+        db = pc_b["by_direction"][d]
+        ra = da["pass_rate"]
+        rb = db["pass_rate"]
+        h = cohens_h(ra, rb)
         per_direction[d] = {
-            "qwen": {
-                "pass": int(qd["pass"]),
-                "total": int(qd["total"]),
-                "rate": round(float(qr), 4),
+            name_a: {
+                "pass": int(da["pass"]),
+                "total": int(da["total"]),
+                "rate": round(float(ra), 4),
             },
-            "gpt": {
-                "pass": int(gd["pass"]),
-                "total": int(gd["total"]),
-                "rate": round(float(gr), 4),
+            name_b: {
+                "pass": int(db["pass"]),
+                "total": int(db["total"]),
+                "rate": round(float(rb), 4),
             },
             "cohens_h": round(float(h), 4),
             "effect_size": classify_effect_size(h),
         }
 
     # --- Per-kernel agreement matrix (four-way per D-04) ---
-    # A kernel "passes" for a model if it has any passing task (pass > 0)
-    qwen_bk = qwen_pc.get("by_kernel", {})
-    gpt_bk = gpt_pc.get("by_kernel", {})
-    qwen_kernels = set(qwen_bk.keys())
-    gpt_kernels = set(gpt_bk.keys())
-    common_kernels = sorted(qwen_kernels & gpt_kernels)
+    bk_a = pc_a.get("by_kernel", {})
+    bk_b = pc_b.get("by_kernel", {})
+    kernels_a = set(bk_a.keys())
+    kernels_b = set(bk_b.keys())
+    common_kernels = sorted(kernels_a & kernels_b)
 
     both_pass = []
     both_fail = []
-    qwen_only_pass = []
-    gpt_only_pass = []
+    a_only_pass = []
+    b_only_pass = []
 
     for kernel in common_kernels:
-        qk = qwen_bk[kernel]
-        gk = gpt_bk[kernel]
-        q_passes = qk["pass"] > 0
-        g_passes = gk["pass"] > 0
-        if q_passes and g_passes:
+        ka = bk_a[kernel]
+        kb = bk_b[kernel]
+        a_passes = ka["pass"] > 0
+        b_passes = kb["pass"] > 0
+        if a_passes and b_passes:
             both_pass.append(kernel)
-        elif not q_passes and not g_passes:
+        elif not a_passes and not b_passes:
             both_fail.append(kernel)
-        elif q_passes and not g_passes:
-            qwen_only_pass.append(kernel)
+        elif a_passes and not b_passes:
+            a_only_pass.append(kernel)
         else:
-            gpt_only_pass.append(kernel)
+            b_only_pass.append(kernel)
 
     per_kernel_matrix = {
         "total_common_kernels": len(common_kernels),
         "both_pass": sorted(both_pass),
         "both_fail": sorted(both_fail),
-        "qwen_only_pass": sorted(qwen_only_pass),
-        "gpt_only_pass": sorted(gpt_only_pass),
+        f"{name_a}_only_pass": sorted(a_only_pass),
+        f"{name_b}_only_pass": sorted(b_only_pass),
         "counts": {
             "both_pass": len(both_pass),
             "both_fail": len(both_fail),
-            "qwen_only_pass": len(qwen_only_pass),
-            "gpt_only_pass": len(gpt_only_pass),
+            f"{name_a}_only_pass": len(a_only_pass),
+            f"{name_b}_only_pass": len(b_only_pass),
         },
     }
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "models": [qwen_data["model"], gpt_data["model"]],
+        "models": [name_a, name_b],
         "common_directions": common_dirs,
         "missing_directions": missing,
         "overall": overall,
@@ -255,16 +256,16 @@ def main() -> None:
         description="Cross-model comparison for NeurIPS 2026 paper (Phase 3 canonical+ablation corpus).",
     )
     parser.add_argument(
-        "--qwen-data",
+        "--model-a",
         type=Path,
         default=Path("results/analysis/paper_data_together-qwen-3.5-397b-a17b.json"),
-        help="Path to Qwen paper_data JSON",
+        help="Path to first model's paper_data JSON",
     )
     parser.add_argument(
-        "--gpt-data",
+        "--model-b",
         type=Path,
         default=Path("results/analysis/paper_data_azure_gpt54.json"),
-        help="Path to azure-gpt-5.4 paper_data.json",
+        help="Path to second model's paper_data JSON",
     )
     parser.add_argument(
         "--output",
@@ -279,23 +280,23 @@ def main() -> None:
     args = parser.parse_args()
 
     # Resolve paths
-    qwen_path = args.qwen_data if args.qwen_data.is_absolute() else Path.cwd() / args.qwen_data
-    gpt_path = args.gpt_data if args.gpt_data.is_absolute() else Path.cwd() / args.gpt_data
+    path_a = args.model_a if args.model_a.is_absolute() else Path.cwd() / args.model_a
+    path_b = args.model_b if args.model_b.is_absolute() else Path.cwd() / args.model_b
     output_path = args.output if args.output.is_absolute() else Path.cwd() / args.output
 
     # Load data
-    if not qwen_path.exists():
-        print(f"ERROR: Qwen data not found: {qwen_path}", file=sys.stderr)
+    if not path_a.exists():
+        print(f"ERROR: Model A data not found: {path_a}", file=sys.stderr)
         sys.exit(1)
-    if not gpt_path.exists():
-        print(f"ERROR: GPT data not found: {gpt_path}", file=sys.stderr)
+    if not path_b.exists():
+        print(f"ERROR: Model B data not found: {path_b}", file=sys.stderr)
         sys.exit(1)
 
-    qwen_data = json.loads(qwen_path.read_text())
-    gpt_data = json.loads(gpt_path.read_text())
+    data_a = json.loads(path_a.read_text())
+    data_b = json.loads(path_b.read_text())
 
     # Build comparison
-    result = build_comparison(qwen_data, gpt_data)
+    result = build_comparison(data_a, data_b)
 
     # Write output
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -305,14 +306,15 @@ def main() -> None:
 
     if args.verbose:
         o = result["overall"]
+        name_a, name_b = result["models"]
         print(f"\n=== Cross-Model Comparison ===")
-        print(f"Qwen: {o['qwen']['pass']}/{o['qwen']['total']} ({o['qwen']['rate']:.1%})")
-        print(f"GPT:  {o['gpt']['pass']}/{o['gpt']['total']} ({o['gpt']['rate']:.1%})")
+        print(f"{name_a}: {o[name_a]['pass']}/{o[name_a]['total']} ({o[name_a]['rate']:.1%})")
+        print(f"{name_b}: {o[name_b]['pass']}/{o[name_b]['total']} ({o[name_b]['rate']:.1%})")
         if "mcnemar" in o:
             mcn = o["mcnemar"]
             print(f"McNemar: chi2={mcn['mcnemar_chi2']:.4f}, p={mcn['p_value']:.6f}")
             print(f"  Concordance: both_pass={mcn['both_pass']}, both_fail={mcn['both_fail']}, "
-                  f"qwen_only={mcn['qwen_only']}, gpt_only={mcn['gpt_only']}")
+                  f"a_only={mcn['a_only']}, b_only={mcn['b_only']}")
         else:
             print(f"Chi-squared: chi2={o['chi_squared']['chi2']:.4f}, "
                   f"p={o['chi_squared']['p_value']:.6f}")
@@ -323,12 +325,12 @@ def main() -> None:
         print(f"\nPer-kernel matrix ({km['total_common_kernels']} kernels):")
         print(f"  Both pass: {km['counts']['both_pass']}")
         print(f"  Both fail: {km['counts']['both_fail']}")
-        print(f"  Qwen only: {km['counts']['qwen_only_pass']}")
-        print(f"  GPT only:  {km['counts']['gpt_only_pass']}")
+        print(f"  {name_a} only: {km['counts'][f'{name_a}_only_pass']}")
+        print(f"  {name_b} only: {km['counts'][f'{name_b}_only_pass']}")
         print(f"\nPer-direction breakdown:")
         for d in result["common_directions"]:
             dd = result["per_direction"][d]
-            print(f"  {d}: Qwen {dd['qwen']['rate']:.1%} vs GPT {dd['gpt']['rate']:.1%} "
+            print(f"  {d}: {name_a} {dd[name_a]['rate']:.1%} vs {name_b} {dd[name_b]['rate']:.1%} "
                   f"(h={dd['cohens_h']:.4f}, {dd['effect_size']})")
 
 

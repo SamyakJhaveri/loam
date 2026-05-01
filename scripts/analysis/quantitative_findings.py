@@ -1755,7 +1755,7 @@ def build_metadata(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "git_hash": git_hash,
         "project_root": str(args.project_root),
-        "model": "together-qwen-3.5-397b-a17b",
+        "model": args.model_dir,
         "excluded_specs": sorted(EXCLUDED_SPECS),
         "excluded_specs_count": len(EXCLUDED_SPECS),
         "file_counts": {

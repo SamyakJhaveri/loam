@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-27T19:46:14.923629+00:00",
+  "generated_at": "2026-05-01T07:01:43.776206+00:00",
   "model": "azure-gpt-5.4",
   "results_dir": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-5.4",
   "suite_filter": null,
@@ -222,6 +222,357 @@
           "BUILD_FAIL": 21,
           "PASS": 21,
           "VERIFY_FAIL": 6,
+          "RUN_FAIL": 3
+        }
+      }
+    },
+    "by_kernel": {
+      "backprop": {
+        "total": 6,
+        "pass": 3,
+        "pass_rate": 0.5,
+        "ci_lower": 0.1876,
+        "ci_upper": 0.8124,
+        "by_status": {
+          "PASS": 3,
+          "BUILD_FAIL": 3
+        }
+      },
+      "bfs": {
+        "total": 18,
+        "pass": 15,
+        "pass_rate": 0.8333,
+        "ci_lower": 0.6078,
+        "ci_upper": 0.9416,
+        "by_status": {
+          "PASS": 15,
+          "BUILD_FAIL": 3
+        }
+      },
+      "bptree": {
+        "total": 18,
+        "pass": 5,
+        "pass_rate": 0.2778,
+        "ci_lower": 0.125,
+        "ci_upper": 0.5087,
+        "by_status": {
+          "BUILD_FAIL": 11,
+          "PASS": 5,
+          "RUN_FAIL": 1,
+          "VERIFY_FAIL": 1
+        }
+      },
+      "cfd": {
+        "total": 18,
+        "pass": 12,
+        "pass_rate": 0.6667,
+        "ci_lower": 0.4375,
+        "ci_upper": 0.8372,
+        "by_status": {
+          "PASS": 12,
+          "VERIFY_FAIL": 6
+        }
+      },
+      "convolution1d": {
+        "total": 6,
+        "pass": 6,
+        "pass_rate": 1.0,
+        "ci_lower": 0.6097,
+        "ci_upper": 1.0,
+        "by_status": {
+          "PASS": 6
+        }
+      },
+      "dwt2d": {
+        "total": 6,
+        "pass": 3,
+        "pass_rate": 0.5,
+        "ci_lower": 0.1876,
+        "ci_upper": 0.8124,
+        "by_status": {
+          "PASS": 3,
+          "BUILD_FAIL": 3
+        }
+      },
+      "floydwarshall": {
+        "total": 18,
+        "pass": 18,
+        "pass_rate": 1.0,
+        "ci_lower": 0.8241,
+        "ci_upper": 1.0,
+        "by_status": {
+          "PASS": 18
+        }
+      },
+      "gaussian": {
+        "total": 6,
+        "pass": 0,
+        "pass_rate": 0.0,
+        "ci_lower": 0.0,
+        "ci_upper": 0.3903,
+        "by_status": {
+          "RUN_FAIL": 3,
+          "VERIFY_FAIL": 3
+        }
+      },
+      "heartwall": {
+        "total": 18,
+        "pass": 2,
+        "pass_rate": 0.1111,
+        "ci_lower": 0.031,
+        "ci_upper": 0.328,
+        "by_status": {
+          "PASS": 2,
+          "BUILD_FAIL": 10,
+          "RUN_FAIL": 6
+        }
+      },
+      "heat2d": {
+        "total": 18,
+        "pass": 18,
+        "pass_rate": 1.0,
+        "ci_lower": 0.8241,
+        "ci_upper": 1.0,
+        "by_status": {
+          "PASS": 18
+        }
+      },
+      "hotspot": {
+        "total": 18,
+        "pass": 12,
+        "pass_rate": 0.6667,
+        "ci_lower": 0.4375,
+        "ci_upper": 0.8372,
+        "by_status": {
+          "PASS": 12,
+          "VERIFY_FAIL": 6
+        }
+      },
+      "hotspot3d": {
+        "total": 18,
+        "pass": 12,
+        "pass_rate": 0.6667,
+        "ci_lower": 0.4375,
+        "ci_upper": 0.8372,
+        "by_status": {
+          "PASS": 12,
+          "BUILD_FAIL": 4,
+          "VERIFY_FAIL": 2
+        }
+      },
+      "iso2dfd": {
+        "total": 18,
+        "pass": 18,
+        "pass_rate": 1.0,
+        "ci_lower": 0.8241,
+        "ci_upper": 1.0,
+        "by_status": {
+          "PASS": 18
+        }
+      },
+      "jacobi": {
+        "total": 6,
+        "pass": 6,
+        "pass_rate": 1.0,
+        "ci_lower": 0.6097,
+        "ci_upper": 1.0,
+        "by_status": {
+          "PASS": 6
+        }
+      },
+      "lavamd": {
+        "total": 18,
+        "pass": 5,
+        "pass_rate": 0.2778,
+        "ci_lower": 0.125,
+        "ci_upper": 0.5087,
+        "by_status": {
+          "PASS": 5,
+          "VERIFY_FAIL": 1,
+          "RUN_FAIL": 3,
+          "BUILD_FAIL": 9
+        }
+      },
+      "lud": {
+        "total": 18,
+        "pass": 12,
+        "pass_rate": 0.6667,
+        "ci_lower": 0.4375,
+        "ci_upper": 0.8372,
+        "by_status": {
+          "PASS": 12,
+          "BUILD_FAIL": 6
+        }
+      },
+      "md": {
+        "total": 6,
+        "pass": 5,
+        "pass_rate": 0.8333,
+        "ci_lower": 0.4365,
+        "ci_upper": 0.9699,
+        "by_status": {
+          "PASS": 5,
+          "BUILD_FAIL": 1
+        }
+      },
+      "mixbench": {
+        "total": 18,
+        "pass": 12,
+        "pass_rate": 0.6667,
+        "ci_lower": 0.4375,
+        "ci_upper": 0.8372,
+        "by_status": {
+          "PASS": 12,
+          "RUN_FAIL": 2,
+          "BUILD_FAIL": 4
+        }
+      },
+      "myocyte": {
+        "total": 18,
+        "pass": 3,
+        "pass_rate": 0.1667,
+        "ci_lower": 0.0584,
+        "ci_upper": 0.3922,
+        "by_status": {
+          "BUILD_FAIL": 9,
+          "EXTRACTION_FAIL": 3,
+          "RUN_FAIL": 3,
+          "PASS": 3
+        }
+      },
+      "nn": {
+        "total": 6,
+        "pass": 6,
+        "pass_rate": 1.0,
+        "ci_lower": 0.6097,
+        "ci_upper": 1.0,
+        "by_status": {
+          "PASS": 6
+        }
+      },
+      "nqueen": {
+        "total": 6,
+        "pass": 6,
+        "pass_rate": 1.0,
+        "ci_lower": 0.6097,
+        "ci_upper": 1.0,
+        "by_status": {
+          "PASS": 6
+        }
+      },
+      "nw": {
+        "total": 18,
+        "pass": 10,
+        "pass_rate": 0.5556,
+        "ci_lower": 0.3372,
+        "ci_upper": 0.7544,
+        "by_status": {
+          "PASS": 10,
+          "BUILD_FAIL": 5,
+          "RUN_FAIL": 3
+        }
+      },
+      "page-rank": {
+        "total": 6,
+        "pass": 5,
+        "pass_rate": 0.8333,
+        "ci_lower": 0.4365,
+        "ci_upper": 0.9699,
+        "by_status": {
+          "BUILD_FAIL": 1,
+          "PASS": 5
+        }
+      },
+      "particlefilter": {
+        "total": 18,
+        "pass": 14,
+        "pass_rate": 0.7778,
+        "ci_lower": 0.5479,
+        "ci_upper": 0.91,
+        "by_status": {
+          "PASS": 14,
+          "VERIFY_FAIL": 3,
+          "BUILD_FAIL": 1
+        }
+      },
+      "pathfinder": {
+        "total": 18,
+        "pass": 11,
+        "pass_rate": 0.6111,
+        "ci_lower": 0.3862,
+        "ci_upper": 0.7969,
+        "by_status": {
+          "PASS": 11,
+          "RUN_FAIL": 1,
+          "BUILD_FAIL": 6
+        }
+      },
+      "rsbench": {
+        "total": 18,
+        "pass": 11,
+        "pass_rate": 0.6111,
+        "ci_lower": 0.3862,
+        "ci_upper": 0.7969,
+        "by_status": {
+          "BUILD_FAIL": 4,
+          "PASS": 11,
+          "RUN_FAIL": 3
+        }
+      },
+      "scan": {
+        "total": 6,
+        "pass": 6,
+        "pass_rate": 1.0,
+        "ci_lower": 0.6097,
+        "ci_upper": 1.0,
+        "by_status": {
+          "PASS": 6
+        }
+      },
+      "srad": {
+        "total": 18,
+        "pass": 11,
+        "pass_rate": 0.6111,
+        "ci_lower": 0.3862,
+        "ci_upper": 0.7969,
+        "by_status": {
+          "PASS": 11,
+          "BUILD_FAIL": 6,
+          "RUN_FAIL": 1
+        }
+      },
+      "stencil1d": {
+        "total": 6,
+        "pass": 6,
+        "pass_rate": 1.0,
+        "ci_lower": 0.6097,
+        "ci_upper": 1.0,
+        "by_status": {
+          "PASS": 6
+        }
+      },
+      "streamcluster": {
+        "total": 18,
+        "pass": 3,
+        "pass_rate": 0.1667,
+        "ci_lower": 0.0584,
+        "ci_upper": 0.3922,
+        "by_status": {
+          "PASS": 3,
+          "RUN_FAIL": 6,
+          "BUILD_FAIL": 7,
+          "VERIFY_FAIL": 2
+        }
+      },
+      "xsbench": {
+        "total": 18,
+        "pass": 11,
+        "pass_rate": 0.6111,
+        "ci_lower": 0.3862,
+        "ci_upper": 0.7969,
+        "by_status": {
+          "PASS": 11,
+          "BUILD_FAIL": 4,
           "RUN_FAIL": 3
         }
       }

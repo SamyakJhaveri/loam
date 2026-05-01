@@ -68,7 +68,8 @@ def test_per_kernel_matrix_four_keys():
     result = build_comparison(qwen_data, gpt_data)
 
     km = result["per_kernel_matrix"]
-    for key in ["both_pass", "both_fail", "qwen_only_pass", "gpt_only_pass"]:
+    name_a, name_b = result["models"]
+    for key in ["both_pass", "both_fail", f"{name_a}_only_pass", f"{name_b}_only_pass"]:
         assert key in km, f"Missing key: {key}"
 
 
@@ -101,8 +102,9 @@ def test_kernel_matrix_counts_sum():
     result = build_comparison(qwen_data, gpt_data)
 
     km = result["per_kernel_matrix"]
+    name_a, name_b = result["models"]
     total = (km["counts"]["both_pass"] + km["counts"]["both_fail"]
-             + km["counts"]["qwen_only_pass"] + km["counts"]["gpt_only_pass"])
+             + km["counts"][f"{name_a}_only_pass"] + km["counts"][f"{name_b}_only_pass"])
     assert total == km["total_common_kernels"]
 
 
@@ -222,11 +224,11 @@ def test_build_comparison_has_mcnemar():
     mcn = result["overall"]["mcnemar"]
     assert "both_pass" in mcn
     assert "both_fail" in mcn
-    assert "qwen_only" in mcn
-    assert "gpt_only" in mcn
+    assert "a_only" in mcn
+    assert "b_only" in mcn
     assert "mcnemar_chi2" in mcn
     assert "p_value" in mcn
-    assert mcn["both_pass"] + mcn["both_fail"] + mcn["qwen_only"] + mcn["gpt_only"] == mcn["total"]
+    assert mcn["both_pass"] + mcn["both_fail"] + mcn["a_only"] + mcn["b_only"] == mcn["total"]
     assert "cohens_h" in result["overall"]
 
 
@@ -275,8 +277,8 @@ def test_compute_mcnemar_basic():
 
     assert result["both_pass"] == 2
     assert result["both_fail"] == 2
-    assert result["qwen_only"] == 1
-    assert result["gpt_only"] == 2
+    assert result["a_only"] == 1
+    assert result["b_only"] == 2
     assert result["total"] == 7
     # Yates-corrected McNemar chi2 = (|1-2| - 1)^2 / (1+2) = 0/3 = 0
     assert result["mcnemar_chi2"] == 0.0

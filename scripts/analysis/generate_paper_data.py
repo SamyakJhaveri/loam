@@ -879,6 +879,12 @@ def analyze_passk(records: list[dict], verbose: bool = False) -> dict:
         by_dir[r.get("direction", "unknown")].append(r)
     result["by_direction"] = {d: status_breakdown(recs) for d, recs in sorted(by_dir.items())}
 
+    # By kernel
+    by_kernel: dict[str, list[dict]] = defaultdict(list)
+    for r in records:
+        by_kernel[r.get("kernel", "unknown")].append(r)
+    result["by_kernel"] = {k: status_breakdown(recs) for k, recs in sorted(by_kernel.items())}
+
     # pass@k estimates grouped by (kernel, direction)
     # Group by task identity (kernel + direction) and collect samples
     task_samples: dict[tuple[str, str], list[dict]] = defaultdict(list)
