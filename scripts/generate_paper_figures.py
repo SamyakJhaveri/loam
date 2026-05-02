@@ -1673,6 +1673,245 @@ def generate_t2_model_table(
 
 
 # ===================================================================
+# T1: Overall Pass Rates LaTeX Table
+# ===================================================================
+
+
+def generate_t1_overall_pass(
+    project_root: Path,
+    output_dir: Path,
+    verbose: bool,
+) -> None:
+    """T1: Overall pass rates with status breakdown and 95% Wilson CIs."""
+    findings_dir = project_root / "results" / "analysis"
+    statuses = ["PASS", "BUILD_FAIL", "RUN_FAIL", "VERIFY_FAIL", "EXTRACTION_FAIL"]
+    status_headers = ["PASS", "Build", "Run", "Verify", "Extract"]
+
+    lines = [
+        r"\begin{tabular}{l" + "r" * len(statuses) + "rr}",
+        r"\toprule",
+        r"Model & " + " & ".join(status_headers) + r" & Total & Rate [95\% CI] \\",
+        r"\midrule",
+    ]
+
+    for model_id, display in MODEL_DISPLAY_SHORT.items():
+        path = findings_dir / f"quantitative_findings_{model_id}.json"
+        if not path.exists():
+            continue
+        data = json.loads(path.read_text())
+        canon = data["canonical"]
+        sc = canon["failure_taxonomy"]["status_counts"]
+        total = canon["failure_taxonomy"]["total_records"]
+        agg = canon["aggregate_pass_rates"]["overall"]
+        rate = agg["value"] * 100
+        ci_lo = agg["ci_lower"] * 100
+        ci_hi = agg["ci_upper"] * 100
+
+        cells = [str(sc.get(s, 0)) for s in statuses]
+        cells.append(str(total))
+        cells.append(f"{rate:.1f}\\% [{ci_lo:.1f}, {ci_hi:.1f}]")
+        lines.append(f"{display} & " + " & ".join(cells) + r" \\")
+
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+
+    path = output_dir / "t1_overall_pass.tex"
+    path.write_text("\n".join(lines) + "\n")
+    print(f"  Saved: {path}")
+
+
+# Mapping from model_id to paper_data filename stem (inconsistent naming convention)
+PAPER_DATA_STEMS: dict[str, str] = {
+    "together-qwen-3.5-397b-a17b": "paper_data_together-qwen-3.5-397b-a17b",
+    "azure-gpt-5.4": "paper_data_azure_gpt54",
+    "azure-gpt-5.3-codex": "paper_data_azure-gpt-5.3-codex",
+}
+
+
+# ===================================================================
+# T3: Pass@k Rates LaTeX Table
+# ===================================================================
+
+
+def generate_t3_passk(
+    project_root: Path,
+    output_dir: Path,
+    verbose: bool,
+) -> None:
+    """T3: Pass@k rates and task classification per model."""
+    findings_dir = project_root / "results" / "analysis"
+
+    lines = [
+        r"\begin{tabular}{lrrrrrrr}",
+        r"\toprule",
+        r"Model & Tasks & pass@1 & pass@3 & Always-pass & Noisy & Hard-fail \\",
+        r"\midrule",
+    ]
+
+    for model_id, display in MODEL_DISPLAY_SHORT.items():
+        stem = PAPER_DATA_STEMS.get(model_id)
+        if stem is None:
+            continue
+        pd_path = findings_dir / f"{stem}.json"
+        qf_path = findings_dir / f"quantitative_findings_{model_id}.json"
+        if not pd_path.exists() or not qf_path.exists():
+            continue
+
+        pd = json.loads(pd_path.read_text())
+        qf = json.loads(qf_path.read_text())
+
+        agg = pd["passk_campaign"]["aggregate_passk"]
+        tc = qf["canonical"]["pass_at_k"]["task_classification"]
+
+        n_tasks = agg["n_tasks"]
+        p1 = agg["pass@1_macro_avg"] * 100
+        p3 = agg["pass@3_macro_avg"] * 100
+        always_pass = tc["always_pass"]
+        hard_fail = tc["hard_fail"]
+        noisy = tc["noisy_fail"]
+
+        cells = [
+            str(n_tasks),
+            f"{p1:.1f}\\%",
+            f"{p3:.1f}\\%",
+            str(always_pass),
+            str(noisy),
+            str(hard_fail),
+        ]
+        lines.append(f"{display} & " + " & ".join(cells) + r" \\")
+
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+
+    path = output_dir / "t3_passk.tex"
+    path.write_text("\n".join(lines) + "\n")
+    print(f"  Saved: {path}")
+
+
+# ===================================================================
+# T4: Augmentation Rates LaTeX Table
+# ===================================================================
+
+
+def generate_t4_augmentation(
+    project_root: Path,
+    output_dir: Path,
+    verbose: bool,
+) -> None:
+    """T4: Augmentation level pass rates with chi-squared p-values."""
+    findings_dir = project_root / "results" / "analysis"
+    stats_path = findings_dir / "statistical_analysis.json"
+    if not stats_path.exists():
+        return
+    stats = json.loads(stats_path.read_text())
+    curves = stats["augmentation_curves"]
+    chi2_list = stats["chi2_augmentation_by_model"]
+    chi2_by_model = {entry["group"]: entry for entry in chi2_list}
+
+    levels = ["L0", "L1", "L2", "L3", "L4"]
+
+    lines = [
+        r"\begin{tabular}{l" + "r" * len(levels) + "r}",
+        r"\toprule",
+        r"Model & " + " & ".join(levels) + r" & $\chi^2$ $p$ (Bonf.) \\",
+        r"\midrule",
+    ]
+
+    for model_id, display in MODEL_DISPLAY_SHORT.items():
+        if model_id not in curves:
+            continue
+        mc = curves[model_id]
+        chi2_entry = chi2_by_model.get(model_id, {})
+        p_corr = chi2_entry.get("p_corrected_bonferroni", float("nan"))
+
+        cells = []
+        for lv in levels:
+            if lv in mc:
+                cells.append(f"{mc[lv]['rate'] * 100:.1f}\\%")
+            else:
+                cells.append("--")
+        if p_corr >= 0.001:
+            cells.append(f"{p_corr:.3f}")
+        else:
+            cells.append(f"{p_corr:.2e}")
+        lines.append(f"{display} & " + " & ".join(cells) + r" \\")
+
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+
+    path = output_dir / "t4_augmentation.tex"
+    path.write_text("\n".join(lines) + "\n")
+    print(f"  Saved: {path}")
+
+
+# ===================================================================
+# T5: Statistical Tests Summary LaTeX Table
+# ===================================================================
+
+
+def generate_t5_stats(
+    project_root: Path,
+    output_dir: Path,
+    verbose: bool,
+) -> None:
+    """T5: Pairwise McNemar tests with OR, CI, Cohen's h."""
+    findings_dir = project_root / "results" / "analysis"
+    stats_path = findings_dir / "statistical_analysis.json"
+    if not stats_path.exists():
+        return
+    stats = json.loads(stats_path.read_text())
+    mc = stats["model_comparison"]
+
+    lines = [
+        r"\begin{tabular}{lrrrrl}",
+        r"\toprule",
+        r"Pair & OR & 95\% CI & $p$ (Bonf.) & Cohen's $h$ & Interpretation \\",
+        r"\midrule",
+    ]
+
+    for entry in mc["pairwise"]:
+        pair = entry["pair"]
+        or_val = entry["odds_ratio"]
+        ci_lo = entry["or_ci_lower"]
+        ci_hi = entry["or_ci_upper"]
+        p_corr = entry["p_corrected"]
+        h = entry["cohens_h"]
+        effect = entry["effect_size"]
+
+        if p_corr >= 0.001:
+            p_str = f"{p_corr:.3f}"
+        else:
+            p_str = f"$<$0.001"
+
+        cells = [
+            f"{or_val:.3f}",
+            f"[{ci_lo:.3f}, {ci_hi:.3f}]",
+            p_str,
+            f"{h:.3f}",
+            effect,
+        ]
+        lines.append(f"{pair} & " + " & ".join(cells) + r" \\")
+
+    lines.append(r"\midrule")
+    omnibus_chi2 = mc["omnibus_chi2"]
+    omnibus_p = mc["omnibus_p"]
+    cramers_v = mc["cramers_v"]
+    interp = mc["cramers_v_interpretation"]
+    p_str = f"{omnibus_p:.3f}" if omnibus_p >= 0.001 else "$<$0.001"
+    lines.append(
+        f"Omnibus ($\\chi^2$) & {omnibus_chi2:.2f} & -- & {p_str} & "
+        f"$V$={cramers_v:.3f} & {interp}" + r" \\"
+    )
+
+    lines.append(r"\bottomrule")
+    lines.append(r"\end{tabular}")
+
+    path = output_dir / "t5_stats.tex"
+    path.write_text("\n".join(lines) + "\n")
+    print(f"  Saved: {path}")
+
+
+# ===================================================================
 # Figure registry and CLI
 # ===================================================================
 
@@ -1687,7 +1926,11 @@ FIGURE_REGISTRY: dict[str, str] = {
     "C.2": "c2_repair_rate",
     "C.3": "c3_transform_frequency",
     "C.4": "c4_selection_funnel",
+    "T1":  "t1_overall_pass",
     "T2":  "t2_model_table",
+    "T3":  "t3_passk",
+    "T4":  "t4_augmentation",
+    "T5":  "t5_stats",
 }
 
 # Which figures need eval data loaded
@@ -1836,11 +2079,31 @@ def main() -> None:
         generate_c4_selection_funnel(output_dir, v)
         print()
 
-    # --- Table ---
+    # --- Tables ---
+
+    if "T1" in requested:
+        print("Generating T1: Overall Pass Rates LaTeX Table...")
+        generate_t1_overall_pass(project_root, output_dir, v)
+        print()
 
     if "T2" in requested:
         print("Generating T2: Model Comparison LaTeX Table...")
         generate_t2_model_table(records, output_dir, v)
+        print()
+
+    if "T3" in requested:
+        print("Generating T3: Pass@k Rates LaTeX Table...")
+        generate_t3_passk(project_root, output_dir, v)
+        print()
+
+    if "T4" in requested:
+        print("Generating T4: Augmentation Rates LaTeX Table...")
+        generate_t4_augmentation(project_root, output_dir, v)
+        print()
+
+    if "T5" in requested:
+        print("Generating T5: Statistical Tests Summary LaTeX Table...")
+        generate_t5_stats(project_root, output_dir, v)
         print()
 
     print("Done.")

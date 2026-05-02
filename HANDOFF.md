@@ -1,58 +1,60 @@
-# HANDOFF: Integrate GPT-5.3-codex into the NeurIPS 2026 Paper
+# HANDOFF: Build Anonymous Executable Artifact for NeurIPS 2026
 
 **Date:** 2026-05-01
-**Status:** Ready for execution — all data exists, no code changes made yet
-**Previous handoff (COMPLETED):** Data analysis pipeline for codex (Parts A-C) — all 10 output files exist in `results/analysis/`
+**Status:** Ready for execution — all research and design complete, no code changes made yet
+**Previous handoff (COMPLETED):** GPT-5.3-codex paper integration (Steps 1-9)
 
 ---
 
 ## What This Task Is About (Plain English)
 
-We have a research paper about **ParBench**, a benchmark that tests whether AI models can translate parallel code between different programming languages (CUDA, OpenMP, OpenCL). The paper currently reports results for **two models** (Qwen 3.5 and GPT-5.4). We just ran the same experiments on a **third model** (GPT-5.3-codex) and need to add it to the paper.
+ParBench is a benchmark that tests whether AI models can translate parallel code between different GPU/CPU programming languages (CUDA, OpenMP, OpenCL). We have a research paper being submitted to NeurIPS 2026 that reports results from 3 AI models on 2,262 translation tasks.
 
-The twist: GPT-5.3-codex (a code-specialized model) performs almost identically to GPT-5.4 (a general-purpose model). This is actually an interesting finding — code-specialized training doesn't help with parallel code translation.
+**Your job:** Build an anonymous, self-contained package (a "tarball") that a paper reviewer can download, run one Docker command, and get all the paper's tables and figures regenerated from the raw data. The reviewer needs no GPU, no API keys, and no special hardware — just Docker on any machine.
 
-**Your job:** Update every section of the LaTeX paper to include the third model as a co-equal participant, update the figures, and make sure every number traces back to its data file.
+**Why this matters:** NeurIPS requires a reproducibility artifact. If a reviewer can't reproduce the numbers, the paper gets rejected.
+
+**The end product:** A file called `parbench-artifact-v1.tar.gz` (~40-60 MB compressed) that gets uploaded to Zenodo (a scientific data hosting service) and linked in the paper via a DOI.
+
+**Scope of "reproduce":** The artifact programmatically regenerates 5 key tables (T1: overall pass, T2: direction rates, T3: pass@k, T4: augmentation rates, T5: statistical tests) and all 11 figures (F2-F7, C.1-C.4) from raw evaluation data. The paper LaTeX source is also bundled so reviewers can trace every number in every table (including hand-written appendix tables) back to its `% src:` JSON annotation.
 
 ---
 
 ## What's Already Done
 
-1. All evaluation results exist: 814 result JSONs in `results/evaluation/azure-gpt-5.3-codex/`
-2. All analysis files exist in `results/analysis/` (quantitative findings, cross-model comparisons, augmentation data, paper data)
-3. The three-model findings document exists at `docs/eval-findings/2026-05-01-three-model-comparison.md` with 9 key findings and 7 paper-ready claims
-4. The L0 passers file exists at `.planning/eval-selections/l0_passers_azure_gpt_5_3_codex.json`
-5. Three marker files confirm canonical, ablation, and derive stages are complete
+1. **Design spec written and reviewed:** `docs/superpowers/specs/2026-05-01-artifact-packaging-design.md`
+2. **Detailed plan with adversarial review:** `/home/samyak/.claude/plans/lets-work-on-this-sleepy-platypus.md`
+3. **All evaluation data exists:** 2,262 result JSONs across 3 model directories in `results/evaluation/`
+4. **Analysis pipeline exists and works:** All scripts in `scripts/analysis/` and `scripts/generate_paper_figures.py`
+5. **Existing CPU-only Dockerfile:** At repo root `/home/samyak/Desktop/parbench_sam/Dockerfile`
+6. **3 critical blockers + 4 flags identified** via adversarial Claude + Codex cross-model review (see below)
 
-**Nothing was changed in the paper yet. All LaTeX files are untouched.**
+**Nothing has been created yet. All artifact files are new.**
 
 ---
 
 ## What You Must NOT Do
 
-1. **Never delete or modify result JSONs** in `results/evaluation/` — they are immutable
-2. **Never remove `{\color{green}...}` markers** from teammate edits (but you CAN edit text inside them)
-3. **Never cite numbers without a `% src:` comment** tracing them to the exact JSON field
-4. **Never add a figure reference** (`\ref{fig:X}`) unless the figure file exists on disk
+1. **Never delete or modify result JSONs** in `results/evaluation/` — they are immutable research data
+2. **Never modify the existing `Dockerfile`** at repo root — create a new one in `artifact/`
+3. **Never skip anonymization checks** — a single leaked path like `/home/samyak/...` could de-anonymize the paper
+4. **Never claim binary PNG diffs as a verification** — cross-platform font rendering makes PNGs non-deterministic; verify LaTeX tables (text) and check figure existence + non-zero size
 5. **Never bypass validation** — run `/validate` before any commit
+6. **Do NOT use GSD commands** (per project convention)
 
 ---
 
 ## Skills to Invoke (in order)
 
-Before you begin ANY work, invoke these skills:
+Before you begin ANY work, invoke these skills using the Skill tool:
 
-| When | Skill | Why |
-|------|-------|-----|
-| Session start | `andrej-karpathy-skills:karpathy-guidelines` | Prevents over-engineering, ensures surgical changes |
-| Before editing `generate_paper_figures.py` | `test-driven-development` | Run existing tests first, write tests for new model entries, then make changes |
-| Before committing | `validate` | 4-wave validation loop (waves 1-3 required for commit) |
-| After all edits | `superpowers:verification-before-completion` | Verify all claims are grounded |
-| End of session | Run `/codex:rescue review the uncommitted changes` | Cross-model second opinion (mandatory per CLAUDE.md) |
-
-**Do NOT use GSD commands** (per project memory `feedback_no_gsd.md`).
-
-**Commit strategy:** Commit ONCE after all Steps 1-9 are verified, not after each step. Running `/validate` takes ~90s and is required before each commit.
+| When | Skill Name | How to Invoke | Why |
+|------|-----------|---------------|-----|
+| Before writing any code | `andrej-karpathy-skills:karpathy-guidelines` | `Skill(skill: "andrej-karpathy-skills:karpathy-guidelines")` | Prevents over-engineering; ensures surgical, minimal changes |
+| Before writing `reproduce.sh` and `build_artifact.sh` | `superpowers:test-driven-development` | `Skill(skill: "superpowers:test-driven-development")` | Write tests first; verify each script works before moving on |
+| Before claiming any step done | `superpowers:verification-before-completion` | `Skill(skill: "superpowers:verification-before-completion")` | Run the verification commands listed in each step; confirm output matches expectation |
+| Before any git commit | `validate` | `Skill(skill: "validate")` | 4-wave validation loop (waves 1-3 required for commit gate) |
+| End of session | Run `/codex:rescue review the uncommitted changes` | Type it as a command | Cross-model second opinion (mandatory per project rules) |
 
 ---
 
@@ -64,642 +66,572 @@ source env_parbench/bin/activate
 # Always use python3, never bare python
 ```
 
-## Pre-Implementation Scan (run before touching any file)
+---
 
-```bash
-# Find every place "two models" appears — these ALL need updating to "three models"
-grep -rn "two models" docs/paper/NeurIPS_ready_version/sections/ docs/paper/NeurIPS_ready_version/appendices_neurips.tex
+## Critical Blockers Found During Plan Review
 
-# Find every place "1,448" or "1448" appears — these ALL need updating to "2,262"
-grep -rn '1,448\|1448' docs/paper/NeurIPS_ready_version/
+These are bugs/gaps that the adversarial plan review discovered. They are **already remediated in the step-by-step plan below**, but you need to know WHY certain choices were made.
 
-# Check for stale TBD placeholders
-grep -rn '\\tbd' docs/paper/NeurIPS_ready_version/
+### BLOCK-1: Missing Python Dependencies
 
-# Verify codex data files exist
-ls results/analysis/quantitative_findings_azure-gpt-5.3-codex.json \
-   results/analysis/cross_model_comparison_gpt54_vs_codex.json \
-   results/analysis/statistical_analysis.json \
-   results/analysis/paper_data_azure-gpt-5.3-codex.json
+**Problem:** `scienceplots==2.2.1` and `scipy==1.17.1` are installed in the project's virtual environment but are **missing from `requirements-lock.txt`** (the file that Docker uses to install dependencies). Without them, the Docker container will build fine but crash when `reproduce.sh` tries to import `scienceplots` (needed by `scripts/generate_paper_figures.py` line 36) or `scipy.stats` (needed by 4 analysis scripts).
 
-# Verify codex failure taxonomy sums to 814
-python3 -c "
-import json
-with open('results/analysis/quantitative_findings_azure-gpt-5.3-codex.json') as f:
-    d = json.load(f)
-t = d['canonical']['failure_taxonomy']['status_counts']
-print(t)
-print('Sum:', sum(t.values()))
-assert sum(t.values()) == 814, 'MISMATCH!'
-print('OK')
-"
+**Fix:** Step 1 adds them to `requirements-lock.txt`.
+
+### BLOCK-2: `generate_paper_data.py` Processes ONE Model at a Time
+
+**Problem:** `scripts/analysis/generate_paper_data.py` takes `--results-dir` pointing to a single model's directory and `--output` for a single JSON. The artifact has 3 models. If `reproduce.sh` only calls it once, it only processes one model and the remaining analysis steps fail.
+
+**Fix:** Step 2b's `reproduce.sh` loops over all 3 model directories.
+
+### BLOCK-3: Hidden Cross-Module Import
+
+**Problem:** `scripts/analysis/statistical_analysis.py` (line 46) does:
+```python
+from scripts.evaluation.analyze_eval import (_kernel_from_spec, load_results)
 ```
+This means the artifact needs `scripts/evaluation/analyze_eval.py` and `scripts/evaluation/__init__.py`, not just `scripts/analysis/`. If you only copy the analysis directory, `statistical_analysis.py` will crash with `ModuleNotFoundError`.
 
----
+**Fix:** The Dockerfile and `build_artifact.sh` include `scripts/evaluation/` in the copy list.
 
-## The Paper Structure
+### FLAG-1: Path Leaks in Analysis JSONs
 
-All paper files are in `docs/paper/NeurIPS_ready_version/`. Here's the exact map:
+**Problem:** Files in `results/analysis/*.json` contain metadata like `"results_dir": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-5.3-codex"`. The file `error_taxonomy.json` has **1,024** such path references. If these ship in the artifact, a reviewer could identify the author.
 
-| File | Path | Needs Changes? |
-|------|------|---------------|
-| Main file | `docs/paper/NeurIPS_ready_version/main_neurips.tex` | NO |
-| Macros | `docs/paper/NeurIPS_ready_version/sections/macros.tex` | YES — add codex macros |
-| Abstract | `docs/paper/NeurIPS_ready_version/sections/abstract.tex` | YES — add codex numbers |
-| Introduction | `docs/paper/NeurIPS_ready_version/sections/1-introduction.tex` | YES — update contribution #3 |
-| Framework | `docs/paper/NeurIPS_ready_version/sections/framework.tex` | NO — model-independent |
-| Benchmark Curation | `docs/paper/NeurIPS_ready_version/sections/benchmark-curation.tex` | NO — model-independent |
-| Experimental Setup | `docs/paper/NeurIPS_ready_version/sections/experimental-setup.tex` | YES — add codex model description |
-| Results | `docs/paper/NeurIPS_ready_version/sections/results.tex` | YES — HEAVIEST changes |
-| Related Work | `docs/paper/NeurIPS_ready_version/sections/related-work.tex` | NO — model-independent |
-| Discussion | `docs/paper/NeurIPS_ready_version/sections/discussion.tex` | YES — update stats + findings |
-| Appendices | `docs/paper/NeurIPS_ready_version/appendices_neurips.tex` | YES — add codex figures/tables |
-| Bibliography | `docs/paper/NeurIPS_ready_version/references.bib` | YES — add codex system card citation |
-| Figures dir | `docs/paper/NeurIPS_ready_version/figures/` | YES — new codex figures |
-| Figure script | `scripts/generate_paper_figures.py` | YES — add codex to model dicts |
+**Fix:** Step 4 runs `sed` to replace all `/home/samyak/Desktop/parbench_sam` with `/app` in the staged copies. A final `grep` check catches any remaining leaks.
 
----
+### FLAG-2: Binary Figure Diff Won't Work Cross-Platform
 
-## Data Sources (Ground Truth)
+**Problem:** The plan originally said "bit-for-bit match" for expected_outputs/. But PNG files rendered by matplotlib differ across platforms (different fonts, library versions, x86 vs ARM). A reviewer on macOS or ARM Linux will get different PNG bytes even with identical data.
 
-Every number in the paper must trace to one of these files. Read them before writing any prose.
+**Fix:** Verification diffs LaTeX tables (text, deterministic) and checks figure file existence + non-zero size, not binary PNG comparison.
 
-| File | Full Path | What It Contains |
-|------|-----------|-----------------|
-| Codex quant findings | `results/analysis/quantitative_findings_azure-gpt-5.3-codex.json` | Overall rates, direction rates, pass@k, failure taxonomy |
-| GPT-5.4 quant findings | `results/analysis/quantitative_findings_azure-gpt-5.4.json` | Same for GPT-5.4 |
-| Qwen quant findings | `results/analysis/quantitative_findings_together-qwen-3.5-397b-a17b.json` | Same for Qwen |
-| Statistical analysis | `results/analysis/statistical_analysis.json` | Augmentation curves (all 3 models), chi-squared tests, omnibus test |
-| Codex vs GPT-5.4 | `results/analysis/cross_model_comparison_gpt54_vs_codex.json` | Fisher, McNemar, OR for this pair |
-| Qwen vs Codex | `results/analysis/cross_model_comparison_qwen_vs_codex.json` | Fisher, McNemar, OR for this pair |
-| Qwen vs GPT-5.4 | `results/analysis/cross_model_comparison_qwen_vs_gpt54.json` | Fisher, McNemar, OR for this pair |
-| Codex paper data | `results/analysis/paper_data_azure-gpt-5.3-codex.json` | Paper-ready data extract |
-| Codex augmentation | `results/analysis/augmentation_per_kernel_matrix_azure-gpt-5.3-codex.json` | Per-kernel augmentation matrix |
-| 3-model findings | `docs/eval-findings/2026-05-01-three-model-comparison.md` | 9 findings, 7 paper-ready claims |
+### BLOCK-4: Only T2 is Programmatically Generated (Codex review B1)
 
----
+**Problem:** The original task says "reproduce Tables 2-5" but `generate_paper_figures.py` only generates T2 (model comparison table). The paper has 2 main-body tables and ~20 appendix tables, all hand-written LaTeX. An implementer can complete the plan without generating or validating any table beyond T2.
 
-## Key Numbers Reference Table
+**Fix:** Step 2d adds 4 new table generators to `generate_paper_figures.py`: T1 (overall pass rates), T3 (pass@k), T4 (augmentation rates), T5 (statistical tests summary). All data for these exists in the analysis JSONs.
 
-Use these numbers. Every one has been verified against the JSON data files. The `Source` column tells you exactly which JSON file and field path to cite in the `% src:` comment.
+### BLOCK-5: Verification is Artifact-Against-Itself (Codex review B2)
 
-### Overall Performance
+**Problem:** `expected_outputs/` is generated by running the same `reproduce.sh` that the reviewer runs. There's no check that generated outputs match the tables/figures in the actual submitted paper. A systematic bug could pass artifact validation unchanged.
 
-| Metric | Qwen 3.5 | GPT-5.4 | GPT-5.3-codex | Source (JSON path) |
-|--------|----------|---------|---------------|-------------------|
-| Overall pass rate | 36.7% [33.1, 40.6] | 75.5% [72.5, 78.4] | 74.2% [71.1, 77.1] | `quantitative_findings_*.json > canonical > aggregate_pass_rates > overall` |
-| n (valid records) | 626 | 822 | 814 | `quantitative_findings_*.json > metadata > file_counts > valid_after_exclusion` |
-| **Total records** | **2,262** | | | Sum of all three n values |
-| pass@1 (142 tasks) | 23.9% | 62.7% | 62.7% | `paper_data_*.json > passk_campaign > aggregate_passk` |
-| pass@3 (142 tasks) | 35.2% | 69.7% | 68.3% | same |
-| PASS count | 230 | 621 | 604 | `quantitative_findings_*.json > canonical > failure_taxonomy > status_counts` |
-| BUILD_FAIL | 245 (39.1%) | 123 (15.0%) | 139 (17.1%) | same |
-| RUN_FAIL | 121 (19.3%) | 43 (5.2%) | 44 (5.4%) | same |
-| VERIFY_FAIL | 29 (4.6%) | 32 (3.9%) | 27 (3.3%) | same |
-| EXTRACTION_FAIL | 1 | 3 | 0 | same |
-| BF:VF ratio | 8.4:1 | 3.8:1 | 5.1:1 | Computed: BUILD_FAIL / VERIFY_FAIL |
+**Fix:** Bundle the paper LaTeX source (anonymized) in the artifact. Reviewers can trace every `% src:` comment to its JSON. Step 5 verification includes diffing generated T1-T5 LaTeX against the paper's actual table content.
 
-### Pairwise Statistical Tests
+### FLAG-3: Spec Count is 206, Not 207 (Codex review F2)
 
-| Pair | OR [95% CI] | p (Bonferroni) | Cohen's h | Source |
-|------|-------------|----------------|-----------|--------|
-| Codex vs GPT-5.4 | 0.93 [0.74, 1.16] | 1.0 | -0.031 (negligible) | `statistical_analysis.json > model_comparison > pairwise[0]` |
-| Codex vs Qwen | 4.95 [3.95, 6.21] | 0.0 | +0.774 (medium) | `statistical_analysis.json > model_comparison > pairwise[1]` |
-| GPT-5.4 vs Qwen | 5.32 [4.24, 6.68] | 0.0 | +0.805 (large) | `statistical_analysis.json > model_comparison > pairwise[2]` |
+The repo has 206 spec JSONs in `specs/` (run `ls specs/*.json | wc -l` to confirm). Both earlier docs said 207. Use 206 in README and sanity checks.
 
-Omnibus: chi2(2) = 287.27, p < 0.001, Cramer's V = 0.356. Source: `statistical_analysis.json`
+### FLAG-4: LICENSE File Missing from Copy List (Codex review F3)
 
-### Codex Direction Rates (L0 only, per-model)
+`build_artifact.sh` must copy a LICENSE file. Check if one exists at repo root; if not, create a minimal one (MIT or Apache 2.0 — ask user).
 
-| Direction | Codex Rate | CI | n | Source |
-|-----------|-----------|----|----|--------|
-| CUDA→OMP | 76.4% | [65.4, 84.7] | 72 | `quantitative_findings_azure-gpt-5.3-codex.json > canonical > direction_pass_rates > standard > cuda-to-omp` |
-| OMP→OCL | 82.3% | [69.7, 90.4] | 51 | same path, key `omp-to-opencl` |
-| OMP→CUDA | 55.6% | [44.1, 66.5] | 72 | same path, key `omp-to-cuda` |
-| OCL→OMP | 39.2% | [27.0, 52.9] | 51 | same path, key `opencl-to-omp` |
-| CUDA→OCL | 57.9% | [45.0, 69.8] | 57 | same path, key `cuda-to-opencl` |
-| OCL→CUDA | 19.3% | [11.1, 31.3] | 57 | same path, key `opencl-to-cuda` |
-| OMP-tgt→OMP | 100% | [70.1, 100] | 9 | same path, key `omp_target-to-omp` |
-| OMP-tgt→CUDA | 100% | [86.2, 100] | 24 | same path, key `omp_target-to-cuda` |
-| OMP→OMP-tgt | 100% | [70.1, 100] | 9 | same path, key `omp-to-omp_target` |
-| CUDA→OMP-tgt | 100% | [86.2, 100] | 24 | same path (case_study), key `cuda-to-omp_target` |
+### FLAG-5: ARM/macOS Docker Portability (Codex review F4)
 
-### Augmentation Curves
-
-| Model | L0 | L1 | L2 | L3 | L4 | Chi2 p (Bonf) | Source |
-|-------|----|----|----|----|-----|--------------|--------|
-| Codex | 62.7% (267/426) | 86.6% (84/97) | 88.7% (86/97) | 86.6% (84/97) | 85.6% (83/97) | 1.0 | `statistical_analysis.json > augmentation_curves > azure-gpt-5.3-codex` |
-| GPT-5.4 | 62.7% (267/426) | 88.9% (88/99) | 90.9% (90/99) | 86.9% (86/99) | 90.9% (90/99) | 1.0 | same, key `azure-gpt-5.4` |
-| Qwen | 23.9% (102/426) | 74.0% (37/50) | 64.0% (32/50) | 62.0% (31/50) | 56.0% (28/50) | 0.005 | same, key `together-qwen-3.5-397b-a17b` |
-
-Chi-squared p-values source: `statistical_analysis.json > chi2_augmentation_by_model > [model] > p_corrected_bonferroni`
-
----
-
-## About GPT-5.3-codex (For Paper Prose)
-
-This model is definitively code-specialized. Use this information for the experimental-setup section:
-
-- **Released:** February 5, 2026 by OpenAI
-- **What it is:** A code-specialized model optimized via reinforcement learning on real-world software engineering tasks
-- **Context window:** 400K tokens (vs GPT-5.4's 1M tokens)
-- **API pricing:** $1.75/$14.00 per 1M tokens (vs GPT-5.4's $2.50/$15.00)
-- **Benchmark comparison:** Wins Terminal-Bench 2.0 (77.3% vs 75.1%); GPT-5.4 edges ahead on SWE-Bench Pro (57.7% vs 56.8%)
-- **Key differentiator:** GPT-5.4 is general-purpose with computer-use capability; Codex is purpose-built for code
-- **Citation:** OpenAI GPT-5.3-codex System Card (2026). URL: `https://openai.com/index/gpt-5-3-codex-system-card/`
-- **Azure deployment ID in project:** `gpt-5.3-codex` via Azure OpenAI, Responses API
-
----
-
-## Writing Style Rules
-
-The paper has a specific style. Follow it exactly:
-
-1. **Every number needs a `% src:` comment** — Example: `% src: quantitative_findings_azure-gpt-5.3-codex.json > canonical > failure_taxonomy > status_counts`
-2. **Wilson 95% CIs** for per-record pass rates — format: `74.2\% [71.1\%, 77.1\%]`
-3. **Chen et al. estimator** for pass@k — these are different from per-record rates
-4. **Effect sizes always named** — Cohen's h for pairwise, OR with CI for Fisher's, McNemar for paired tests
-5. **Use macros** — `\codexshort{}` not "Codex", `\gptnew{}` not "GPT-5.4"
-6. **One paragraph = one rhetorical purpose** — don't mix findings in a single paragraph
-7. **Concise** — no filler, no hedging beyond what's necessary
-8. **Green text** — `{\color{green}...}` marks teammate edits from Overleaf. You can edit inside them.
+The Quick Start in README must include `--platform linux/amd64` for ARM Mac users. The base image `python:3.12-slim` is multi-arch but matplotlib's font rendering differs per arch.
 
 ---
 
 ## Step-by-Step Execution Plan
 
-### STEP 1: Add Codex Macros
+### STEP 1: Fix `requirements-lock.txt` (addresses BLOCK-1)
 
-**File:** `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/macros.tex`
+**File to edit:** `/home/samyak/Desktop/parbench_sam/requirements-lock.txt`
 
-**What to do:** Add two new LaTeX macros after line 8 (after the `\gptprovider` macro):
-
-```latex
-\newcommand{\codex}{GPT-5.3-codex}
-\newcommand{\codexshort}{Codex}
+**What to do:** Add these two lines in alphabetical order within the file:
+```
+scienceplots==2.2.1
+scipy==1.17.1
 ```
 
-**Verify:** `grep codex docs/paper/NeurIPS_ready_version/sections/macros.tex` should return both lines.
+**Why these exact versions:** They match what's installed in the working venv (verified via `pip show`). Using different versions could produce different floating-point results in the analysis.
+
+**Verification:**
+```bash
+source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
+python3 -c "import scienceplots; print('scienceplots OK')"
+python3 -c "from scipy import stats; print('scipy OK')"
+grep -E "scienceplots|scipy" /home/samyak/Desktop/parbench_sam/requirements-lock.txt
+# Expected: both lines appear
+```
 
 ---
 
-### STEP 2: Update the Figure Generation Script
+### STEP 2: Create `artifact/` Directory with 3 Files
 
-**File:** `/home/samyak/Desktop/parbench_sam/scripts/generate_paper_figures.py`
+**What:** Create a new directory `artifact/` at the project root with 3 files: a Dockerfile, a reproduce script, and a README.
 
-**Invoke skill first:** `andrej-karpathy-skills:karpathy-guidelines` and `test-driven-development`
+#### 2a: Create `artifact/Dockerfile`
 
-**What to do:** The script has 5 dictionaries (lines 84-107) that define which models to include. Each needs a new codex entry. Here are the exact changes:
+**File:** `/home/samyak/Desktop/parbench_sam/artifact/Dockerfile`
 
-**In `MODEL_COLORS` (line 84-87):** Add after `"azure-gpt-5.4"` entry:
-```python
-    "azure-gpt-5.3-codex":    OKABE_ITO["green"],
+**Based on:** The existing `/home/samyak/Desktop/parbench_sam/Dockerfile` (read it first — 44 lines)
+
+**Key differences from the existing Dockerfile:**
+- Add `COPY results/ results/` after line 36 (bundles evaluation data + analysis summaries)
+- Add `COPY reproduce.sh .` and `RUN chmod +x reproduce.sh`
+- Keep the `pip install -e .` line (it registers the `harness` and `c_augmentation` packages, which analysis scripts import from)
+- Keep the `paths.json` generation line (line 38 of existing)
+- Change `CMD` to print usage instructions instead of running schema validation
+
+**Why `pip install -e .` matters:** Three analysis scripts import `harness.constants.EXCLUDED_SPECS`:
+- `scripts/analysis/quantitative_findings.py` (line 39)
+- `scripts/analysis/generate_paper_data.py` (line 30)
+- `scripts/analysis/token_analysis.py` (line 32)
+
+Without the editable install, these imports fail with `ModuleNotFoundError`.
+
+#### 2b: Create `artifact/reproduce.sh`
+
+**File:** `/home/samyak/Desktop/parbench_sam/artifact/reproduce.sh`
+
+This is the single command a reviewer runs. It calls 5 scripts in order:
+
+1. `generate_paper_data.py` — called **3 times** (once per model: `together-qwen-3.5-397b-a17b`, `azure-gpt-5.4`, `azure-gpt-5.3-codex`). Each call reads raw result JSONs from one model directory and produces one `paper_data_*.json` summary.
+
+2. `quantitative_findings.py` — called **3 times** (once per model). Each call reads raw results and produces `quantitative_findings_*.json`.
+
+3. `statistical_analysis.py` — called **once**. Reads ALL model results from `results/evaluation/`, runs McNemar tests, Cohen's h, chi-squared. Imports from `scripts.evaluation.analyze_eval` (BLOCK-3).
+
+4. `cross_model_comparison.py` — called **3 times** (one per model pair). Reads `paper_data_*.json` files from step 1.
+
+5. `generate_paper_figures.py` — called **once** with `--figure all`. Reads raw results directly from `results/evaluation/` via `load_eval_results()`. Produces all figures (F2-F7, C.1-C.4) and all 5 tables (T1-T5). T1/T3/T4/T5 are new generators added in Step 2d.
+
+**CRITICAL filename matching issue:** `generate_paper_data.py` step 1 output filenames must match what `cross_model_comparison.py` step 4 expects as `--model-a`/`--model-b` defaults. The defaults in `cross_model_comparison.py` (lines 258-268) are:
+- `results/analysis/paper_data_together-qwen-3.5-397b-a17b.json`
+- `results/analysis/paper_data_azure_gpt54.json`
+
+The slug transform `tr '.-' '_'` will convert:
+- `together-qwen-3.5-397b-a17b` → `together_qwen_3_5_397b_a17b` (WRONG — default expects `together-qwen-3.5-397b-a17b`)
+- `azure-gpt-5.4` → `azure_gpt_5_4` (different from default `azure_gpt54`)
+
+**Solution:** Don't use slug transforms. Hard-code the output filenames to match what already exists in `results/analysis/`:
+```bash
+# Model 1: Qwen
+python3 scripts/analysis/generate_paper_data.py \
+    --results-dir results/evaluation/together-qwen-3.5-397b-a17b \
+    --output results/analysis/paper_data_together-qwen-3.5-397b-a17b.json -v
+
+# Model 2: GPT-5.4
+python3 scripts/analysis/generate_paper_data.py \
+    --results-dir results/evaluation/azure-gpt-5.4 \
+    --output results/analysis/paper_data_azure_gpt54.json -v
+
+# Model 3: Codex
+python3 scripts/analysis/generate_paper_data.py \
+    --results-dir results/evaluation/azure-gpt-5.3-codex \
+    --output results/analysis/paper_data_azure-gpt-5.3-codex.json -v
 ```
 
-**In `MODEL_DISPLAY` (line 89-92):** Add:
-```python
-    "azure-gpt-5.3-codex":    "GPT-5.3\nCodex",
+**Verify these filenames match** by running:
+```bash
+ls results/analysis/paper_data_*.json
+# Should show: paper_data_together-qwen-3.5-397b-a17b.json, paper_data_azure_gpt54.json, paper_data_azure-gpt-5.3-codex.json
 ```
 
-**In `MODEL_DISPLAY_SHORT` (line 94-97):** Add:
+#### 2d: Add Table Generators to `generate_paper_figures.py` (addresses BLOCK-4)
+
+**File to edit:** `/home/samyak/Desktop/parbench_sam/scripts/generate_paper_figures.py`
+
+**What:** Add 4 new table-generation functions (T1, T3, T4, T5) alongside the existing T2 generator (`generate_t2_model_table` at line 1626). Each writes a `.tex` file to the output directory.
+
+**T1: Overall Pass Rates** (`generate_t1_overall_pass`)
+- Data source: `quantitative_findings_*.json > canonical > failure_taxonomy > status_counts` for each model
+- Output: LaTeX tabular with columns: Model | PASS | BUILD_FAIL | RUN_FAIL | VERIFY_FAIL | EXTRACTION_FAIL | Total | Rate [95% Wilson CI]
+- The data loading is already done by `load_eval_results()` — group by model, count statuses, compute Wilson CIs
+- Wilson CI formula: already used in `quantitative_findings.py` line ~200 — you can import `scipy.stats.binom` or compute inline
+
+**T3: Pass@k Rates** (`generate_t3_passk`)
+- Data source: `paper_data_*.json > passk_campaign > aggregate_passk` for each model
+- Output: LaTeX tabular with columns: Model | n tasks | pass@1 | pass@3 | Always-fail | Noisy | Always-pass
+- Task classification from: `quantitative_findings_*.json > canonical > pass_at_k > task_classification`
+
+**T4: Augmentation Rates** (`generate_t4_augmentation`)
+- Data source: `statistical_analysis.json > augmentation_curves > {model}` for each model
+- Output: LaTeX tabular with columns: Model | L0 | L1 | L2 | L3 | L4 | Chi2 p (Bonf)
+- Chi-squared p from: `statistical_analysis.json > chi2_augmentation_by_model > {model} > p_corrected_bonferroni`
+
+**T5: Statistical Tests Summary** (`generate_t5_stats`)
+- Data source: `statistical_analysis.json > model_comparison > pairwise` for each pair
+- Output: LaTeX tabular with columns: Pair | OR [95% CI] | p (Bonferroni) | Cohen's h | Interpretation
+- Omnibus row from: `statistical_analysis.json > model_comparison > omnibus`
+
+**Implementation approach:**
+1. Read the existing `generate_t2_model_table` function (line 1626-1670) as the pattern to follow
+2. Each new function: loads data from analysis JSONs (not raw results), formats as LaTeX `\begin{tabular}...\end{tabular}`, writes to `output_dir / "t{N}_{name}.tex"`
+3. Register each in `FIGURE_REGISTRY` dict (line 1679): `"T1": "t1_overall_pass"`, etc.
+4. Add T1, T3, T4, T5 to the `EVAL_FIGURES` set (line 1694) since they need eval data loaded
+5. Add generation calls in `main()` after the existing T2 block (line 1841)
+
+**How T1-T5 load their data:** T2 loads from raw `records` (the `load_eval_results()` output). For T3-T5, the analysis JSONs are simpler to use. The function should load the JSON files directly from `project_root / "results" / "analysis"` rather than recomputing from raw records. Pattern:
 ```python
-    "azure-gpt-5.3-codex":    "Azure GPT-5.3-codex",
+import json
+findings_dir = project_root / "results" / "analysis"
+# For each model, load quantitative_findings_{model}.json
 ```
 
-**In `MODEL_LINESTYLE` (line 99-102):** Add:
-```python
-    "azure-gpt-5.3-codex":    ("s--", "dashed"),
-```
-
-**In `MODEL_SLUG` (line 104-107):** Add:
-```python
-    "azure-gpt-5.3-codex": "codex",
-```
-
-**Verify:** Run the script and check that it produces codex figures:
+**Verification:**
 ```bash
 source env_parbench/bin/activate
 python3 scripts/generate_paper_figures.py \
-  --project-root /home/samyak/Desktop/parbench_sam \
-  --figure all \
-  --output-dir docs/paper/NeurIPS_ready_version/figures
+    --project-root /home/samyak/Desktop/parbench_sam \
+    --figure T1 --output-dir /tmp/test-tables -v
+# Repeat for T3, T4, T5
+ls /tmp/test-tables/t*.tex
+# Expected: 4 new .tex files
+# Diff against paper content:
+grep -A 10 'label{tab:overall-pass}' docs/paper/NeurIPS_ready_version/sections/results.tex
+cat /tmp/test-tables/t1_overall_pass.tex
+# Numbers should match
 ```
 
-**Expected new files:**
-- `f3_kernel_model_heatmap_codex.{pdf,png}` — per-kernel heatmap
-- `f4_failure_taxonomy_codex.{pdf,png}` — failure distribution
-- `f5_pass_at_k_by_direction_codex.{pdf,png}` — pass@k by direction
-- `f6_cross_suite_comparison_codex.{pdf,png}` — suite comparison
-- `f7_augmentation_robustness.{pdf,png}` — UPDATED with 3 lines (combined figure)
+#### 2c: Create `artifact/README.md`
 
-**Verify:** `ls docs/paper/NeurIPS_ready_version/figures/f*codex* | wc -l` should be ≥ 4
+**File:** `/home/samyak/Desktop/parbench_sam/artifact/README.md`
 
-**If any figure fails to generate:** Don't reference it in the paper. Use a `\tbd{codex figure}` placeholder and move on. The script iterates over all models in `MODEL_COLORS`, so adding the entry should be sufficient.
+Structure:
+1. **Quick Start** — 4 commands: `tar xf`, `cd`, `docker build -t parbench .`, `docker run --rm -v $(pwd)/output:/app/output parbench ./reproduce.sh`. Include note: **ARM Mac users:** add `--platform linux/amd64` to `docker build` (FLAG-5).
+2. **What This Reproduces** — table: Figure/Table ID → Script → Data Source. Include all 5 tables (T1-T5) and 11 figures (F2-F7, C.1-C.4).
+3. **Directory Structure** — annotated file tree including `paper/` for traceability
+4. **What's Included** — raw eval results (97 MB), analysis scripts, spec JSONs, Docker env, paper LaTeX (for `% src:` traceability)
+5. **What's NOT Included** — GPU, API keys, benchmark source trees
+6. **Hardware Requirements** — any x86_64 machine with Docker (~4 GB RAM, ~15 min). ARM (Apple Silicon) works with `--platform linux/amd64` but figures may differ slightly due to font rendering.
+7. **Verifying Outputs** — diff `.tex` tables (text, deterministic), check `.pdf`/`.png` existence + non-zero size. Also: trace `% src:` comments in `paper/sections/*.tex` to their JSON files in `results/analysis/`.
+8. **Table/Figure Registry**:
+   - T1 (overall pass rates), T2 (direction rates), T3 (pass@k), T4 (augmentation), T5 (statistical tests)
+   - F2 (repo vs kernel), F3 (heatmap), F4 (failure taxonomy), F5 (pass@k), F6 (cross-suite), F7 (augmentation)
+   - C.1-C.4 (appendix figures)
 
----
-
-### STEP 3: Update `results.tex` — The Heaviest Section
-
-**File:** `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex`
-
-Read the file first. The current structure is:
-- Lines ~50-68: Table 1 (Overall Pass Rates) — 2 model rows
-- Lines ~70-71: §5.1 Overall Performance prose
-- Lines ~73-76: §5.2 pass@k Analysis
-- Lines ~81-105: Direction Table (Table 2) — 2 model columns
-- Lines ~107-108: §5.3 Direction Dependence prose
-- Lines ~110-120: §5.4 Failure Taxonomy
-- Lines ~122-125: §5.5 Augmentation Robustness
-
-#### 3A: Table 1 — Add codex row
-
-Find the line with `\gptnew{}` in the table (currently the last data row before `\bottomrule`). Add a new row after it:
-
-```latex
-% src: quantitative_findings_azure-gpt-5.3-codex.json > canonical > failure_taxonomy > status_counts
-\codex{} & 604 & 139 & 44 & 27 & 0 & 814 & 74.2\% [71.1\%, 77.1\%] \\
-```
-
-Update the caption: change `"two models"` → `"three models"`. Update the total record count. The caption currently mentions 626 and 822 — add 814.
-
-**Verify:** `grep -c '\\\\$' docs/paper/NeurIPS_ready_version/sections/results.tex` in the table area — should show 3 data rows now.
-
-#### 3B: §5.1 Overall Performance
-
-After the sentence about GPT-5.4 passing 75.5%, add:
-
-```latex
-% src: statistical_analysis.json > model_comparison > pairwise[0] (Bonferroni-corrected p)
-\codexshort{}, a code-specialized model, passes 74.2\% of its valid records---statistically indistinguishable from \gptnew{} (Fisher's exact $p = 1.0$, OR\,=\,0.93 [0.74, 1.16], Cohen's $h = -0.031$). This indicates that code-specialized reinforcement learning training does not measurably improve parallel translation success at this task difficulty.
-```
-
-#### 3C: §5.2 pass@k Analysis
-
-After the existing Qwen pass@k sentence, add codex data:
-
-```latex
-% src: paper_data_azure-gpt-5.3-codex.json > passk_campaign > aggregate_passk
-\codexshort{} achieves pass@1\,=\,62.7\% and pass@3\,=\,68.3\%, matching \gptnew{}'s pass@1 exactly with a slightly narrower pass@1-to-pass@3 gap (5.6\,pp versus 7.0\,pp).
-```
-
-#### 3D: Direction Table — Add codex column
-
-The current table has columns: Direction | Qwen | GPT-5.4 | n. Add a `\codexshort{}` column between GPT-5.4 and n. Use the direction rates from the "Codex Direction Rates" table above.
-
-The table will now have 4 data columns — wrap it with `\resizebox{\textwidth}{!}{...}` if not already wrapped.
-
-**Verify:** Check that every codex rate in the table matches the JSON. Run:
+**Verification:**
 ```bash
-python3 -c "
-import json
-with open('results/analysis/quantitative_findings_azure-gpt-5.3-codex.json') as f:
-    d = json.load(f)
-for dir, data in d['canonical']['direction_pass_rates']['standard'].items():
-    print(f'{dir}: {data[\"value\"]*100:.1f}%')
-"
-```
-
-#### 3E: §5.3 Direction Dependence prose
-
-Add codex to the cross-model comparison. Note that codex's direction pattern nearly mirrors GPT-5.4 across all 6 standard directions.
-
-#### 3F: §5.4 Failure Taxonomy
-
-Add a sentence with codex failure numbers:
-
-```latex
-% src: quantitative_findings_azure-gpt-5.3-codex.json > canonical > failure_taxonomy > status_counts
-\codexshort{}'s failure distribution is intermediate: \buildfail{} accounts for 17.1\% of records (ratio \buildfail{}:\verifyfail{} = 5.1:1), between \qwenshort{}'s 39.1\% (8.4:1) and \gptnew{}'s 15.0\% (3.8:1). \codexshort{} taxonomy (814 records) is in Appendix~\ref{sec:appendix-codex-figures}.
-```
-
-#### 3G: §5.5 Augmentation Robustness
-
-Add codex augmentation data:
-
-```latex
-% src: statistical_analysis.json > augmentation_curves > azure-gpt-5.3-codex
-\codexshort{} shows the same plateau pattern as \gptnew{}: 86.6\%--88.7\% at L1--L4 (chi-squared independence test, $p = 1.0$ after Bonferroni correction), in contrast to \qwenshort{}'s peak-then-decline (74.0\% at L1 to 56.0\% at L4, $p = 0.005$).
-```
-
-**Verify after all results.tex changes:**
-```bash
-grep -c 'codex\|\\codex' docs/paper/NeurIPS_ready_version/sections/results.tex
-# Should be >= 10 occurrences
+ls -la /home/samyak/Desktop/parbench_sam/artifact/
+# Expected: 3 files (Dockerfile, reproduce.sh, README.md)
 ```
 
 ---
 
-### STEP 4: Update `experimental-setup.tex`
+### STEP 3: Create `scripts/build_artifact.sh`
 
-**File:** `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/experimental-setup.tex`
+**File:** `/home/samyak/Desktop/parbench_sam/scripts/build_artifact.sh`
 
-#### 4A: Models paragraph (starts with `\textbf{Models:}` at line ~48)
+**What this script does:** Automates the entire artifact packaging process — copies files, anonymizes paths, builds Docker, generates expected outputs, creates tarball.
 
-After the GPT-5.4 description, add codex:
+**Pseudocode:**
+```
+1. Parse args (--dry-run flag skips Docker steps)
+2. Set STAGING=/tmp/parbench-artifact-staging/parbench-artifact
+3. rm -rf $STAGING && mkdir -p $STAGING
+4. Copy files (see file list below)
+5. Run anonymization (sed + grep check)
+6. If not --dry-run:
+   a. docker build -t parbench-artifact $STAGING
+   b. docker run --rm -v $STAGING/expected_outputs:/app/output parbench-artifact ./reproduce.sh
+7. tar czf parbench-artifact-v1.tar.gz -C /tmp/parbench-artifact-staging parbench-artifact
+8. Print size and file count
+```
+
+**Exact file copy list** (all paths relative to `/home/samyak/Desktop/parbench_sam/`):
+
+| Source | Destination in staging | Notes |
+|--------|----------------------|-------|
+| `specs/` | `specs/` | All 206 JSONs (2.2 MB) — verify: `ls specs/*.json \| wc -l` |
+| `manifest.jsonl` | `manifest.jsonl` | Kernel registry |
+| `schema/` | `schema/` | JSON schemas |
+| `results/evaluation/together-qwen-3.5-397b-a17b/*.json` | `results/evaluation/together-qwen-3.5-397b-a17b/` | Raw results ONLY (exclude `*.log`, `*.marker`) |
+| `results/evaluation/azure-gpt-5.4/*.json` | `results/evaluation/azure-gpt-5.4/` | Same |
+| `results/evaluation/azure-gpt-5.3-codex/*.json` | `results/evaluation/azure-gpt-5.3-codex/` | Same |
+| `results/analysis/*.json` | `results/analysis/` | Pre-computed summaries (will be regenerated) |
+| `scripts/analysis/*.py` | `scripts/analysis/` | Exclude `__pycache__/` |
+| `scripts/evaluation/analyze_eval.py` | `scripts/evaluation/analyze_eval.py` | BLOCK-3 dependency |
+| `scripts/evaluation/__init__.py` | `scripts/evaluation/__init__.py` | Package init for import |
+| `scripts/generate_paper_figures.py` | `scripts/generate_paper_figures.py` | Primary figure/table generator |
+| `scripts/validate_schema.py` | `scripts/validate_schema.py` | Optional validation |
+| `scripts/__init__.py` | `scripts/__init__.py` | If it exists (check first) |
+| `harness/*.py` | `harness/` | All `.py` files (needed for `pip install -e .`) |
+| `c_augmentation/*.py` | `c_augmentation/` | All `.py` files (same reason) |
+| `config/` | `config/` | Template will be regenerated by Dockerfile |
+| `pyproject.toml` | `pyproject.toml` | Package definition |
+| `requirements-lock.txt` | `requirements-lock.txt` | Exact pins (with scienceplots + scipy added in Step 1) |
+| `artifact/Dockerfile` | `Dockerfile` | Root of staging (not in artifact/ subdir) |
+| `artifact/reproduce.sh` | `reproduce.sh` | Root of staging |
+| `artifact/README.md` | `README.md` | Root of staging |
+| `LICENSE` | `LICENSE` | Check if exists at repo root; if not, create MIT (FLAG-4) |
+| `docs/paper/NeurIPS_ready_version/sections/*.tex` | `paper/sections/` | Anonymized paper LaTeX for traceability (BLOCK-5) |
+| `docs/paper/NeurIPS_ready_version/appendices_neurips.tex` | `paper/` | Appendix tables with `% src:` annotations |
+
+**Files explicitly EXCLUDED:**
+- `.git/` — no commit history (de-anonymization risk)
+- `.claude/`, `.planning/` — development artifacts
+- `docs/` (EXCEPT `sections/*.tex` and `appendices_neurips.tex` which ARE included for traceability)
+- `graphify-out/` — knowledge graph (development tool)
+- `env_parbench/` — virtual environment
+- `*.log`, `*.marker` — eval campaign logs (may contain timestamps/paths)
+- `__pycache__/`, `*.pyc` — Python cache
+- `HeCBench-master/`, `rodinia/` — benchmark source trees (licensed separately, ~10 GB)
+- `results/augmentation/` — not needed for table reproduction
+
+**Verification:**
+```bash
+chmod +x /home/samyak/Desktop/parbench_sam/scripts/build_artifact.sh
+bash /home/samyak/Desktop/parbench_sam/scripts/build_artifact.sh --dry-run
+# Expected: staging directory created, anonymization check passes, no Docker steps
+echo "Exit code: $?"  # Must be 0
+```
+
+---
+
+### STEP 4: Anonymization Pass (addresses FLAG-1)
+
+**What:** Ensure no author-identifying information leaks into the artifact.
+
+**Known leaks (verified by grep during this session):**
+
+| File(s) | Leak | Count |
+|---------|------|-------|
+| `results/analysis/paper_data_*.json` (3 files) | `"results_dir": "/home/samyak/..."` | 1 per file |
+| `results/analysis/quantitative_findings_*.json` (5 files) | Same | 1 per file |
+| `results/analysis/error_taxonomy.json` | Path references in error snippets | 1,024 |
+| `results/analysis/benchmark_characterization.json` | Path reference | 1 |
+| `scripts/analysis/statistical_analysis.py` line 1087 | `/home/samyak` in argparse epilog example | 1 |
+| `pyproject.toml` | Clean — no author fields | 0 |
+| `results/evaluation/**/*.json` | Clean — no path leaks | 0 |
+
+**The fix in `build_artifact.sh`:**
+```bash
+# Replace all absolute paths in analysis JSONs
+find "$STAGING/results/analysis/" -name "*.json" -exec \
+    sed -i 's|/home/samyak/Desktop/parbench_sam|/app|g' {} +
+
+# Replace path in statistical_analysis.py epilog
+sed -i 's|/home/samyak/Desktop/parbench_sam|/app|g' "$STAGING/scripts/analysis/statistical_analysis.py"
+
+# Final check — MUST return zero hits or ABORT
+if grep -ri "samyak\|jhaveri\|/home/samyak\|/Users/samyak\|@.*\.edu" "$STAGING/"; then
+    echo "FAIL: De-anonymization leak detected. Fix before proceeding."
+    exit 1
+fi
+```
+
+**Verification:**
+```bash
+# After build_artifact.sh runs, this must return exit code 1 (no matches):
+grep -ri "samyak\|jhaveri\|/home/samyak\|/Users/" /tmp/parbench-artifact-staging/
+echo "Exit code: $?"  # MUST be 1
+```
+
+---
+
+### STEP 5: Build and Test the Full Artifact
+
+**What:** Build the Docker image from the staged artifact, run reproduce.sh, verify all outputs exist.
+
+```bash
+cd /tmp/parbench-artifact-staging/parbench-artifact
+
+# Build Docker image
+docker build -t parbench-artifact .
+
+# Run reproduce.sh, mount output to host
+mkdir -p /tmp/artifact-test-output
+docker run --rm -v /tmp/artifact-test-output:/app/output parbench-artifact ./reproduce.sh
+```
+
+**What success looks like:**
+- Docker build completes without errors (~3-5 min for pip install)
+- `reproduce.sh` prints 5 steps with no Python tracebacks
+- Output directory contains:
+  - T1-T5 table files (`.tex`) — 5 LaTeX tables
+  - F2-F7 main body figures (`.pdf` and/or `.png`)
+  - C.1-C.4 appendix figures
+  - At least 20 output files total
+
+**Verification:**
+```bash
+# Count output files
+echo "Total outputs: $(find /tmp/artifact-test-output -type f | wc -l)"
+# Expected: >= 20
+
+# Check all 5 tables exist
+for t in t1_overall_pass t2_model_table t3_passk t4_augmentation t5_stats; do
+    [ -s "/tmp/artifact-test-output/${t}.tex" ] && echo "OK: ${t}.tex" || echo "FAIL: ${t}.tex missing"
+done
+
+# Check key figures exist and are non-empty
+for f in /tmp/artifact-test-output/*.pdf /tmp/artifact-test-output/*.png; do
+    [ -s "$f" ] && echo "OK: $(basename $f)" || echo "FAIL: $f"
+done
+
+# PAPER-ANCHORED VALIDATION (addresses BLOCK-5):
+# Diff generated T1 numbers against paper's actual Table 1
+echo "--- Paper-anchored check: T1 numbers ---"
+# Extract PASS counts from generated T1
+grep -o '[0-9]\+ &' /tmp/artifact-test-output/t1_overall_pass.tex | head -6
+# Compare against paper's Table 1
+grep -A 3 'label{tab:overall-pass}' docs/paper/NeurIPS_ready_version/sections/results.tex | grep '&'
+# These MUST show the same numbers (230, 621, 604 for PASS column)
+```
+
+---
+
+### STEP 6: Package as Tarball
+
+**What:** Copy verified outputs into `expected_outputs/`, create the final tarball.
+
+```bash
+# Copy verified outputs as reference
+cp -r /tmp/artifact-test-output /tmp/parbench-artifact-staging/parbench-artifact/expected_outputs
+
+# Create compressed tarball
+cd /tmp/parbench-artifact-staging
+tar czf /home/samyak/Desktop/parbench_sam/parbench-artifact-v1.tar.gz parbench-artifact
+
+# Report
+du -sh /home/samyak/Desktop/parbench_sam/parbench-artifact-v1.tar.gz
+tar tzf /home/samyak/Desktop/parbench_sam/parbench-artifact-v1.tar.gz | wc -l
+```
+
+**Expected:** ~40-60 MB compressed, ~2500-3000 files.
+
+**Final verification — fresh unpack test:**
+```bash
+mkdir -p /tmp/artifact-final-test && cd /tmp/artifact-final-test
+tar xf /home/samyak/Desktop/parbench_sam/parbench-artifact-v1.tar.gz
+cd parbench-artifact
+docker build -t parbench-final-test .
+docker run --rm -v $(pwd)/test-output:/app/output parbench-final-test ./reproduce.sh
+
+# Diff LaTeX tables (text-based, deterministic)
+diff <(find test-output -name "*.tex" -exec cat {} +) \
+     <(find expected_outputs -name "*.tex" -exec cat {} +)
+echo "Table diff exit code: $?"  # MUST be 0
+
+# Check figure existence (NOT binary diff — see FLAG-2)
+for f in expected_outputs/*.pdf expected_outputs/*.png; do
+    base=$(basename "$f")
+    [ -s "test-output/$base" ] && echo "OK: $base" || echo "FAIL: $base missing"
+done
+```
+
+---
+
+### STEP 7: Add Zenodo DOI Placeholder to Paper
+
+**File:** `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/main_neurips.tex`
+
+**What:** Add a footnote with placeholder Zenodo DOI. The actual DOI gets filled in after upload.
+
+Find a suitable location (Introduction section, near the end of the first paragraph, or a dedicated Reproducibility statement) and add:
 
 ```latex
-and \codex{}, a code-specialized model optimized via reinforcement learning on software engineering tasks~\cite{GPT53Codex2026}, also accessed via \gptprovider{} with a 400K context window.
+\footnote{Artifact available at \url{https://doi.org/10.5281/zenodo.XXXXXXX}. Includes evaluation data, analysis scripts, and Docker environment to reproduce all tables and figures.}
 ```
 
-Change "two models" → "three models" in this paragraph.
+**Overleaf sync:** Per project convention, apply the edit locally AND give the user exact copy-paste text for Overleaf. The user syncs manually.
 
-#### 4B: Translation Protocol
-
-Change "two models" → "three models" if it appears.
-
-#### 4C: Evaluation Phases
-
-Note codex uses same protocol. Add: "Total L0 records across three models: 1,278 (3 × 426)."
-
-**Verify:**
+**Verification:**
 ```bash
-grep -c "three models" docs/paper/NeurIPS_ready_version/sections/experimental-setup.tex  # should be >= 1
-grep "codex\|\\\\codex" docs/paper/NeurIPS_ready_version/sections/experimental-setup.tex  # should show codex model description
-grep "GPT53Codex" docs/paper/NeurIPS_ready_version/sections/experimental-setup.tex  # should show citation
+grep -n "zenodo" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/main_neurips.tex
+# Expected: one line with the footnote
 ```
 
 ---
 
-### STEP 5: Update `abstract.tex`
+## Import Chain Diagram
 
-**File:** `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/abstract.tex`
+This is why certain files must be included. If you see `ModuleNotFoundError`, trace it here:
 
-This is a compact section (~4 lines of content). Integrate codex WITHOUT adding a full sentence per model. Replace the per-model pass@k sentences with a combined version:
-
-Find: the two separate sentences about Qwen and GPT-5.4 pass rates.
-
-Replace with something like:
-```latex
-Under stochastic sampling (temperature~0.7, three independent attempts per task), pass@1 ranges from 23.9\% (\qwenshort{}) to 62.7\% (\gptnew{} and \codexshort{}) over 142~unique source-target pairs, with the code-specialized \codexshort{} performing indistinguishably from the general-purpose \gptnew{}.
 ```
+generate_paper_figures.py (the primary output generator)
+  └── matplotlib, numpy, scienceplots ← BLOCK-1 fix (add to requirements-lock.txt)
+  └── NO project imports (self-contained for figure generation)
+  └── load_eval_results() reads results/evaluation/{model}/*.json directly
 
-**Verify:**
-```bash
-# Word count should be < 260
-cat docs/paper/NeurIPS_ready_version/sections/abstract.tex | wc -w
-# Codex should appear
-grep "codex\|\\\\codex" docs/paper/NeurIPS_ready_version/sections/abstract.tex
-# "two models" should NOT appear
-grep "two models" docs/paper/NeurIPS_ready_version/sections/abstract.tex && echo "FAIL: still says two models" || echo "OK"
-```
+quantitative_findings.py
+  └── harness.constants.EXCLUDED_SPECS ← needs pip install -e . (harness package)
+  └── scipy.stats ← BLOCK-1 fix
 
----
+statistical_analysis.py
+  └── scripts.evaluation.analyze_eval._kernel_from_spec ← BLOCK-3 (need analyze_eval.py)
+  └── scripts.evaluation.analyze_eval.load_results ← BLOCK-3
+  └── harness.constants.EXCLUDED_SPECS ← needs pip install -e .
+  └── scipy.stats ← BLOCK-1 fix
 
-### STEP 6: Update `1-introduction.tex`
+generate_paper_data.py
+  └── harness.constants.EXCLUDED_SPECS ← needs pip install -e .
+  └── scipy.stats ← BLOCK-1 fix
 
-**File:** `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/1-introduction.tex`
-
-#### 6A: Contribution #3 (lines ~53-56, inside a `{\color{green}...}` block — OK to edit)
-
-Find: `1,448 valid translation records` → Replace with `2,262 valid translation records`
-Find: `two models` → Replace with `three models`
-
-Add codex pass@1 alongside existing numbers. Add a new key finding about code-specialized training.
-
-**Verify:**
-```bash
-grep "2,262" docs/paper/NeurIPS_ready_version/sections/1-introduction.tex  # should match
-grep "three models" docs/paper/NeurIPS_ready_version/sections/1-introduction.tex  # should match
-grep "1,448\|two models" docs/paper/NeurIPS_ready_version/sections/1-introduction.tex && echo "FAIL: stale references" || echo "OK"
+cross_model_comparison.py
+  └── scipy.stats ← BLOCK-1 fix
+  └── reads paper_data_*.json (output of generate_paper_data.py)
 ```
 
 ---
 
-### STEP 7: Update `discussion.tex`
+## File Sizes (for sanity checks)
 
-**File:** `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/discussion.tex`
+| Component | Size | In artifact? |
+|-----------|------|-------------|
+| `results/evaluation/` (3 model dirs, JSON only) | ~97 MB | YES |
+| `results/analysis/` | ~1.9 MB | YES |
+| `specs/` | ~2.2 MB | YES |
+| `scripts/` (relevant subset) | ~3 MB | YES |
+| `harness/` + `c_augmentation/` | ~1 MB | YES |
+| `expected_outputs/` | ~2 MB | YES (generated in Step 6) |
+| **Total uncompressed** | **~107 MB** | |
+| **Compressed (.tar.gz)** | **~40-60 MB** | (JSON compresses well) |
 
-#### 7A: Opening paragraph (line ~5)
-
-Add the three-way statistical comparison:
-```latex
-% src: statistical_analysis.json > omnibus_chi2; cross_model_comparison_gpt54_vs_codex.json > mcnemar
-An omnibus chi-squared test across all 2,262 records confirms significant model differences ($\chi^2(2) = 287.27$, $p < 10^{-10}$, Cram\'{e}r's $V = 0.356$). However, pairwise McNemar analysis on the 142 balanced L0 tasks shows \codexshort{} and \gptnew{} are indistinguishable ($\chi^2 = 0.125$, $p = 0.724$; concordance: 94 both-pass, 40 both-fail, 5 \gptnew{}-only, 3 \codexshort{}-only).
-```
-
-Change "two models" → "three models" throughout.
-
-#### 7B: Limitations
-
-Add: codex and GPT-5.4 share the same provider (Azure OpenAI), making within-provider comparison more controlled but limiting generalizability.
-
-#### 7C: Future work
-
-Change "GPT-5.4 passes 62.7%" → "Both GPT models pass 62.7% at L0"
-
-**Verify:**
-```bash
-grep -c "codex" docs/paper/NeurIPS_ready_version/sections/discussion.tex  # should be >= 3
-grep "two models" docs/paper/NeurIPS_ready_version/sections/discussion.tex && echo "FAIL: stale" || echo "OK"
-grep "287.27" docs/paper/NeurIPS_ready_version/sections/discussion.tex  # should show omnibus chi2
-```
-
----
-
-### STEP 8: Update Appendices
-
-**File:** `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex`
-
-#### 8A: Add codex figures section
-
-After line 1473 (after the GPT-5.4 figures section, before `\section{Evaluation Cost Summary}`), add a new section:
-
-```latex
-\section{GPT-5.3-codex Per-Model Figures}
-\label{sec:appendix-codex-figures}
-
-The following figures present GPT-5.3-codex evaluation results using the same visualization format as the main-body counterparts.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\columnwidth]{f3_kernel_model_heatmap_codex.pdf}
-\caption{Per-kernel pass rates across all translation directions (GPT-5.3-codex).}
-\label{fig:f3-codex}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\columnwidth]{f4_failure_taxonomy_codex.pdf}
-\caption{Failure taxonomy distribution (GPT-5.3-codex). Compare with Figure~\ref{fig:failure-taxonomy} in main body (Qwen~3.5 397B).}
-\label{fig:f4-codex}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction_codex.pdf}
-\caption{Pass@$k$ rates by translation direction (GPT-5.3-codex).}
-\label{fig:f5-codex}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\columnwidth]{f6_cross_suite_comparison_codex.pdf}
-\caption{Cross-suite pass rate comparison (GPT-5.3-codex).}
-\label{fig:f6-codex}
-\end{figure}
-```
-
-#### 8B: Add codex cost table
-
-After the existing GPT-5.4 cost table (line ~1510), add a codex cost table. Extract cost data from result JSONs:
-```bash
-python3 -c "
-import json, glob
-total_tokens = 0
-files = glob.glob('results/evaluation/azure-gpt-5.3-codex/*.json')
-for f in files:
-    with open(f) as fh:
-        d = json.load(fh)
-        total_tokens += d.get('prompt_tokens', 0) + d.get('completion_tokens', 0)
-print(f'Total files: {len(files)}')
-print(f'Total tokens: {total_tokens:,}')
-"
-```
-
-#### 8C: Update model-config table (line ~1180, `\label{tab:model-config}`)
-
-Add a codex row after the GPT-5.4 row:
-```latex
-GPT-5.3-codex & Azure OpenAI & undisclosed & undisclosed & N/A$^\dagger$ \\
-```
-
-#### 8D: Update pass@k table (line ~1262, `\label{tab:pass-at-k}`)
-
-Add a codex row after the GPT-5.4 row:
-```latex
-% src: paper_data_azure-gpt-5.3-codex.json > passk_campaign > aggregate_passk + task_classification
-GPT-5.3-codex & 142 & 62.7\% & 68.3\% & 45/142 (31.7\%) & 16/142 (11.3\%) & 81/142 (57.0\%) \\
-```
-
-Source for task classification: `quantitative_findings_azure-gpt-5.3-codex.json > canonical > pass_at_k > task_classification` (always_pass: 81, hard_fail: 45, noisy_fail: 16).
-
-#### 8E: Update augmentation-rates table (line ~1224, `\label{tab:augmentation-rates}`)
-
-Add two new columns for codex (`\codexshort{} (all dirs)` and `\codexshort{} (C→OMP)`). Codex augmentation data from `statistical_analysis.json > augmentation_curves > azure-gpt-5.3-codex`:
-- Codex has 97 qualifying ablation pairs (all dirs), vs GPT-5.4's 99 and Qwen's 50
-- L0: 62.7% (n=426), L1: 86.6% (n=97), L2: 88.7% (n=97), L3: 86.6% (n=97), L4: 85.6% (n=97)
-- For C→OMP specifically, extract from `augmentation_per_kernel_matrix_azure-gpt-5.3-codex.json > primary_matrix > per_kernel` (aggregate the per-kernel PASS/total at each level)
-
-Also update the caption to mention three models and codex's n=97.
-
-#### 8F: Add codex eval-cost table (after line ~1510, after GPT-5.4 cost table)
-
-Extract cost data:
-```bash
-python3 -c "
-import json, glob
-files = glob.glob('results/evaluation/azure-gpt-5.3-codex/*.json')
-total_prompt = sum(json.load(open(f)).get('prompt_tokens', 0) for f in files)
-total_comp = sum(json.load(open(f)).get('completion_tokens', 0) for f in files)
-print(f'Files: {len(files)}')
-print(f'Tokens: {(total_prompt+total_comp)/1e6:.1f}M ({total_prompt/1e6:.1f}M in, {total_comp/1e6:.1f}M out)')
-"
-```
-
-Add the table using the same format as the existing GPT-5.4 cost table.
-
-**Verify:** `grep -c "codex" docs/paper/NeurIPS_ready_version/appendices_neurips.tex` should be ≥ 15.
-
----
-
-### STEP 9: Add Bibliography Entry
-
-**File:** `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/references.bib`
-
-Add at the end of the file:
-
-```bibtex
-@misc{GPT53Codex2026,
-  title   = {{GPT}-5.3-Codex System Card},
-  author  = {{OpenAI}},
-  year    = {2026},
-  url     = {https://openai.com/index/gpt-5-3-codex-system-card/},
-  note    = {Accessed 2026-05-01}
-}
-```
-
-**Verify:** `grep GPT53Codex references.bib` should return the entry.
-
----
-
-### STEP 10: Final Verification
-
-Run all of these checks:
-
-```bash
-cd /home/samyak/Desktop/parbench_sam
-
-# 1. Check no stale TBD placeholders
-grep -rn '\\tbd' docs/paper/NeurIPS_ready_version/sections/ docs/paper/NeurIPS_ready_version/appendices_neurips.tex
-
-# 2. Check all codex figure files exist
-ls docs/paper/NeurIPS_ready_version/figures/f*codex*
-
-# 3. Check codex macro is defined
-grep 'codex' docs/paper/NeurIPS_ready_version/sections/macros.tex
-
-# 4. Check "three models" appears in key sections
-grep -l "three models" docs/paper/NeurIPS_ready_version/sections/*.tex
-
-# 5. Check "two models" is fully replaced (should return 0)
-grep -rn "two models" docs/paper/NeurIPS_ready_version/sections/*.tex
-
-# 6. Check all % src: comments reference real files
-grep '% src:' docs/paper/NeurIPS_ready_version/sections/results.tex | head -20
-
-# 7. Verify total record count
-python3 -c "print(626 + 822 + 814)"  # Should print 2262
-
-# 8. Verify the codex PASS+BF+RF+VF+EF = 814
-python3 -c "print(604 + 139 + 44 + 27 + 0)"  # Should print 814
-```
-
----
-
-## Summary of the New Findings to Weave In
-
-These are the paper-ready claims from `docs/eval-findings/2026-05-01-three-model-comparison.md`:
-
-1. **GPT-5.4 and codex are statistically indistinguishable** (p=1.0, OR=0.93), differing on only 8/142 tasks
-2. **Both GPT models surpass Qwen by ~5x odds ratio** (Cohen's h ≈ 0.8, large effect)
-3. **Direction is the strongest predictor** of difficulty (74.7pp spread), stronger than model choice (38.8pp)
-4. **OpenCL as source is dramatically harder** than as target (opencl→cuda = 23.7% vs cuda→opencl = 60.1%)
-5. **Augmentation compensates for capability gaps**: Qwen gains +50pp at L1 then declines; GPT models plateau
-6. **ParBench's kernel difficulty spans 0%–95.1%**, with 9 kernels discriminating model tiers
-7. **Performance gaps are driven by compile/runtime robustness** (BF:VF ratio), not semantic correctness
+Zenodo limit is 50 GB. We're well within it.
 
 ---
 
 ## What Could Go Wrong
 
-| Risk | Mitigation |
-|------|-----------|
-| Direction table too wide with 3 columns + CIs | Use `\resizebox{\textwidth}{!}{...}` or move CIs to appendix |
-| Paper exceeds 9-page NeurIPS limit | Move detailed comparison to appendix, keep main body concise |
-| Figure script crashes on codex data | Check error output carefully; the script auto-discovers models from result dirs |
-| LaTeX compile error from new macros | Test compile after Step 1 before proceeding |
-| Overleaf merge conflict | User will sync manually after all changes are done locally |
-| Augmentation section mentions "12-kernel subset" | Codex uses 97 L0-conditional pairs (not 12); clarify the denominator matches the analysis method |
+| Risk | Symptom | Fix |
+|------|---------|-----|
+| Missing `scienceplots` | `ModuleNotFoundError: No module named 'scienceplots'` | Step 1 not applied — check requirements-lock.txt |
+| Missing `scipy` | `ModuleNotFoundError: No module named 'scipy'` | Same as above |
+| Missing `analyze_eval.py` | `ModuleNotFoundError: No module named 'scripts.evaluation'` | BLOCK-3 — Dockerfile must COPY `scripts/evaluation/` |
+| Filename mismatch in `cross_model_comparison.py` | `FileNotFoundError: paper_data_azure_gpt54.json` | Output filenames in reproduce.sh don't match defaults — hard-code them |
+| Docker build fails on ARM Mac | `platform mismatch` | Add `--platform linux/amd64` to docker build |
+| Path leak in final tarball | `grep samyak` returns hits | Step 4 sed patterns incomplete — add more patterns |
+| `reproduce.sh` permission denied | `bash: ./reproduce.sh: Permission denied` | Dockerfile must `RUN chmod +x reproduce.sh` |
 
 ---
 
 ## Dependencies Between Steps
 
 ```
-Step 1 (macros) ──────────────────────────────── Must be first (all other steps use \codex{})
-       │
-Step 2 (figures) ─────────────────────────────── Must complete before Steps 3F, 8A (figure refs)
-       │
-Steps 3-7 (paper sections) ──────────────────── Can be done in any order after Steps 1-2
-       │
-Step 8 (appendices) ──────────────────────────── After Step 2 (needs figure files)
-       │
-Step 9 (bibliography) ────────────────────────── Any time (no dependencies)
-       │
-Step 10 (verification) ───────────────────────── Last step always
-       │
-/validate ────────────────────────────────────── Before any git commit
+Step 1 (fix requirements-lock.txt) ← Must be first (Docker build depends on it)
+    │
+Step 2 (create artifact/ files) ← Must be after Step 1 (Dockerfile copies requirements-lock.txt)
+    │
+Step 3 (create build_artifact.sh) ← Can be parallel with Step 2
+    │
+Step 4 (anonymization) ← Runs inside build_artifact.sh
+    │
+Step 5 (build + test) ← After Steps 1-4
+    │
+Step 6 (tarball) ← After Step 5 succeeds
+    │
+Step 7 (paper DOI) ← Independent; can be done anytime
 ```
+
+---
+
+## Summary Checklist
+
+| Step | What It Creates | How to Verify It Worked |
+|------|----------------|------------------------|
+| 1 | Updated `requirements-lock.txt` | `grep scienceplots requirements-lock.txt` returns a line |
+| 2a | `artifact/Dockerfile` | File exists, references `COPY results/` |
+| 2b | `artifact/reproduce.sh` | File exists, calls all 5 scripts with correct filenames |
+| 2c | `artifact/README.md` | File exists, includes ARM guidance, table registry T1-T5 |
+| 2d | T1/T3/T4/T5 generators in `generate_paper_figures.py` | `python3 scripts/generate_paper_figures.py --figure T1 ...` produces `.tex` |
+| 3 | `scripts/build_artifact.sh` | `bash scripts/build_artifact.sh --dry-run` exits 0 |
+| 4 | Anonymized staging directory | `grep -ri samyak staging/` returns empty (exit 1) |
+| 5 | Docker image + reproduced outputs | `reproduce.sh` exits 0; ≥20 output files; T1 numbers match paper |
+| 6 | `parbench-artifact-v1.tar.gz` | Fresh unpack + rebuild + run matches expected |
+| 7 | Zenodo DOI footnote in paper | `grep zenodo main_neurips.tex` returns a line |
 
 ---
 
@@ -708,6 +640,7 @@ Step 10 (verification) ───────────────────
 ```
 Open a new Claude Code session, then:
 1. Read this file: /home/samyak/Desktop/parbench_sam/HANDOFF.md
-2. Invoke: andrej-karpathy-skills:karpathy-guidelines
-3. Start with Step 1
+2. Invoke skill: andrej-karpathy-skills:karpathy-guidelines
+3. Invoke skill: superpowers:test-driven-development
+4. Start with Step 1
 ```

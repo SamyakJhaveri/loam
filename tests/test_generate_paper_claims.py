@@ -90,10 +90,10 @@ def test_claim_values_match_source(claims_data):
 
 
 def test_overall_pass_at_1(claims_data):
-    """Specific claim 'overall_pass_at_1' must have value ~0.3521."""
+    """Specific claim 'overall_pass_at_1' must have value ~0.2394 (Qwen pass@1)."""
     matches = [c for c in claims_data["claims"] if c["claim_id"] == "overall_pass_at_1"]
     assert len(matches) == 1, "Expected exactly one overall_pass_at_1 claim"
-    assert abs(matches[0]["value"] - 0.3521) < 0.001
+    assert abs(matches[0]["value"] - 0.2394) < 0.001
 
 
 def test_known_fail_count(claims_data):

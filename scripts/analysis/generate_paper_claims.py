@@ -90,8 +90,8 @@ def _make_claim(
 
 def build_claims(project_root: Path, verbose: bool = False) -> dict:
     analysis = project_root / "results" / "analysis"
-    qf_path = analysis / "quantitative_findings.json"
-    pd_path = analysis / "paper_data.json"
+    qf_path = analysis / f"quantitative_findings_{MODEL}.json"
+    pd_path = analysis / f"paper_data_{MODEL}.json"
     et_path = analysis / "error_taxonomy.json"
     sl_path = analysis / "sloc_analysis.json"
     ta_path = analysis / "token_analysis.json"
@@ -121,7 +121,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
         f"Qwen 3.5 397B achieves pass@1 of {p1['value']*100:.1f}% "
         f"[{p1['ci_lower']*100:.1f}%, {p1['ci_upper']*100:.1f}%] across {pk['total_tasks']['value']} tasks",
         p1["value"],
-        [_rp("quantitative_findings.json")],
+        [_rp(f"quantitative_findings_{MODEL}.json")],
         "canonical.pass_at_k.pass_at_1",
         ci_lower=p1["ci_lower"], ci_upper=p1["ci_upper"],
         ci_level=0.95, n=pk["total_tasks"]["value"], unit="fraction",
@@ -133,7 +133,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
         "overall_pass_at_3", "S6.1",
         f"pass@3 of {p3['value']*100:.1f}% [{p3['ci_lower']*100:.1f}%, {p3['ci_upper']*100:.1f}%]",
         p3["value"],
-        [_rp("quantitative_findings.json")],
+        [_rp(f"quantitative_findings_{MODEL}.json")],
         "canonical.pass_at_k.pass_at_3",
         ci_lower=p3["ci_lower"], ci_upper=p3["ci_upper"],
         ci_level=0.95, n=pk["total_tasks"]["value"], unit="fraction",
@@ -146,7 +146,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
         f"Sample-level pass rate {ov['value']*100:.1f}% "
         f"[{ov['ci_lower']*100:.1f}%, {ov['ci_upper']*100:.1f}%] (n={ov['n']})",
         ov["value"],
-        [_rp("quantitative_findings.json")],
+        [_rp(f"quantitative_findings_{MODEL}.json")],
         "canonical.aggregate_pass_rates.overall",
         ci_lower=ov["ci_lower"], ci_upper=ov["ci_upper"],
         ci_level=0.95, n=ov["n"], unit="fraction",
@@ -162,7 +162,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
             f"{d} pass rate: {dv['value']*100:.1f}% "
             f"[{dv['ci_lower']*100:.1f}%, {dv['ci_upper']*100:.1f}%] (n={dv['n']})",
             dv["value"],
-            [_rp("quantitative_findings.json")],
+            [_rp(f"quantitative_findings_{MODEL}.json")],
             f"canonical.direction_pass_rates.standard.{d}",
             ci_lower=dv["ci_lower"], ci_upper=dv["ci_upper"],
             ci_level=0.95, n=dv["n"], unit="fraction",
@@ -176,7 +176,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
             f"{suite} pass@1: {sv['value']*100:.1f}% "
             f"[{sv['ci_lower']*100:.1f}%, {sv['ci_upper']*100:.1f}%] (n={sv['n']})",
             sv["value"],
-            [_rp("quantitative_findings.json")],
+            [_rp(f"quantitative_findings_{MODEL}.json")],
             f"canonical.pass_at_k.per_suite.pass_at_1.{suite}",
             ci_lower=sv["ci_lower"], ci_upper=sv["ci_upper"],
             ci_level=0.95, n=sv["n"], unit="fraction",
@@ -205,7 +205,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
         f"BUILD_FAIL: {bf}/{ft['total_records']} "
         f"({bf/ft['total_records']*100:.1f}%)",
         bf,
-        [_rp("quantitative_findings.json")],
+        [_rp(f"quantitative_findings_{MODEL}.json")],
         "canonical.failure_taxonomy.status_counts.BUILD_FAIL",
         unit="count",
     ))
@@ -217,7 +217,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
         f"RUN_FAIL: {rf}/{ft['total_records']} "
         f"({rf/ft['total_records']*100:.1f}%)",
         rf,
-        [_rp("quantitative_findings.json")],
+        [_rp(f"quantitative_findings_{MODEL}.json")],
         "canonical.failure_taxonomy.status_counts.RUN_FAIL",
         unit="count",
     ))
@@ -229,7 +229,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
         f"VERIFY_FAIL: {vf}/{ft['total_records']} "
         f"({vf/ft['total_records']*100:.1f}%)",
         vf,
-        [_rp("quantitative_findings.json")],
+        [_rp(f"quantitative_findings_{MODEL}.json")],
         "canonical.failure_taxonomy.status_counts.VERIFY_FAIL",
         unit="count",
     ))
@@ -249,7 +249,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
         "build_fail_subcategories", "S6.4",
         f"Top BUILD_FAIL subcategories: {desc}",
         len(ft["by_status"]["BUILD_FAIL"]["subcategories"]),
-        [_rp("quantitative_findings.json")],
+        [_rp(f"quantitative_findings_{MODEL}.json")],
         "canonical.failure_taxonomy.by_status.BUILD_FAIL.subcategories",
         unit="count_of_categories",
     ))
@@ -263,7 +263,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
         f"{excluded_count} KNOWN_FAIL specs excluded; "
         f"206 total specs; {total_on_disk} result files on disk",
         excluded_count,
-        [_rp("quantitative_findings.json")],
+        [_rp(f"quantitative_findings_{MODEL}.json")],
         "metadata.excluded_specs_count",
         unit="count",
     ))
@@ -313,7 +313,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
             f"Augmentation degradation L0→L4: "
             f"{l0_val*100:.1f}% → {l4_val*100:.1f}%",
             l4_val - l0_val,
-            [_rp("quantitative_findings.json")],
+            [_rp(f"quantitative_findings_{MODEL}.json")],
             "canonical.augmentation_trends.aggregate.per_level",
             notes="Value is L4-L0 difference (negative = degradation)",
             unit="fraction_difference",
@@ -353,7 +353,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
         f"{fc.get('total_on_disk', 708)} result files on disk, "
         f"{fc.get('valid_after_exclusion', 626)} valid after KNOWN_FAIL exclusion",
         fc.get("total_on_disk", 708),
-        [_rp("quantitative_findings.json")],
+        [_rp(f"quantitative_findings_{MODEL}.json")],
         "metadata.file_counts.total_on_disk",
         unit="count",
     ))
@@ -366,7 +366,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
             "best_direction", "S6.2",
             f"Best direction: {best_d} ({dir_values[best_d]*100:.1f}%)",
             dir_values[best_d],
-            [_rp("quantitative_findings.json")],
+            [_rp(f"quantitative_findings_{MODEL}.json")],
             f"canonical.direction_pass_rates.standard.{best_d}",
             notes="Derived: highest pass rate among 6 standard directions",
             unit="fraction",
@@ -379,7 +379,7 @@ def build_claims(project_root: Path, verbose: bool = False) -> dict:
             "worst_direction", "S6.2",
             f"Worst direction: {worst_d} ({dir_values[worst_d]*100:.1f}%)",
             dir_values[worst_d],
-            [_rp("quantitative_findings.json")],
+            [_rp(f"quantitative_findings_{MODEL}.json")],
             f"canonical.direction_pass_rates.standard.{worst_d}",
             notes="Derived: lowest pass rate among 6 standard directions",
             unit="fraction",
