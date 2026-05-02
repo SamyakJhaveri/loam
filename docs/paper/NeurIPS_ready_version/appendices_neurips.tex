@@ -1,4 +1,4 @@
-% appendices_neurips.tex -- ParBench NeurIPS-oriented appendix
+% appendices_neurips.tex -- \parbench{} NeurIPS-oriented appendix
 % This file is \input{} from main_neurips.tex -- NO preamble, NO \begin{document}.
 
 % \appendices
@@ -8,29 +8,21 @@
 %% ============================================================================
 
 \section{Framework and Evaluation Details}
-\label{sec:appendix-framework}
+\label{sec:appendix-a}
 
-This appendix expands the compact framework description in
-Section~\ref{sec:framework}. It records the spec structure, augmentation level
-definitions, and implementation details that are useful for reproducing the
-benchmark but too detailed for the main narrative.
+This appendix expands the framework description in Section~\ref{sec:framework}. It records the spec structure, augmentation level definitions, and implementation details that are useful for reproducing the benchmark but too detailed for the main narrative.
 
 \subsection{Specification Schema}
-\label{sec:appendix-framework-schema}
+\label{sec:appendix-a-schema}
 
-Each benchmark/API variant is encoded by a JSON specification. The schema
-defines five primary field groups (with additional \texttt{implementation}, \texttt{hardware}, \texttt{metadata}, \texttt{baseline\_results}, and \texttt{performance} fields defined in the schema):
+Each benchmark/API variant is encoded by a JSON specification. The schema defines five primary field groups (with additional \texttt{implementation}, \texttt{hardware}, \texttt{metadata}, \texttt{baseline\_results}, and \texttt{performance} fields defined in the schema):
 
 \begin{itemize}
-  \item \textbf{Identity and provenance}: globally unique identifier, source
-  suite, kernel name, parallel API, repository URL, and commit.
-  \item \textbf{File partitioning}: prompt payload files, translation targets,
-  support files, and verification-only files.
-  \item \textbf{Build}: build system, clean/configure/build commands,
-  environment variables, and expected executable path.
-  \item \textbf{Run}: executable, input configuration, command-line arguments,
-  timeouts, and optional environment variables.
-  \item \textbf{Verification}: ordered correctness strategies applied conjunctively. Five types are implemented: \texttt{exit\_code}, \texttt{stdout\_pattern}, \texttt{stdout\_exclude\_pattern}, \texttt{numeric\_comparison}, and \texttt{file\_hash}.
+    \item \textbf{Identity and provenance}: globally unique identifier, source suite, kernel name, target API, repository URL, and commit.
+    \item \textbf{File partitioning}: prompt payload files, translation targets, support files, and verification-only files.
+    \item \textbf{Build}: build system, clean/configure/build commands, environment variables, and expected executable path.
+    \item \textbf{Run}: executable, input configuration, command-line arguments, timeouts, and optional environment variables.
+    \item \textbf{Verification}: ordered correctness strategies applied conjunctively. Five types are implemented: \texttt{exit\_code}, \texttt{stdout\_pattern}, \texttt{stdout\_exclude\_pattern}, \texttt{numeric\_comparison}, and \texttt{file\_hash}.
 \end{itemize}
 
 \begin{lstlisting}[
@@ -66,27 +58,23 @@ defines five primary field groups (with additional \texttt{implementation}, \tex
   },
   "verification": {
     "strategies": [
-      {"type": "stdout_pattern",
-       "pattern": "Result stored in result\\.txt"},
-      {"type": "exit_code", "expected": 0}
-    ]
-  }
+        {"type": "stdout_pattern",
+        "pattern": "Result stored in result\\.txt"},
+        {"type": "exit_code", "expected": 0}
+        ]
+    }
 }
 \end{lstlisting}
 
 \subsection{Augmentation Levels}
-\label{sec:appendix-framework-augmentation}
+\label{sec:appendix-a-augmentation}
 
-Table~\ref{tab:augmentation-levels} gives the exact L0--L4 augmentation
-definitions. L1 selects one transform and one eligible candidate site. L2--L4
-select increasing fractions of transforms and candidate sites, using a minimum
-of one site when a selected transform has at least one eligible candidate.
+Table~\ref{tab:augmentation-levels} gives the exact L0--L4 augmentation definitions.
 
 \begin{table}[htbp]
 \centering
 \caption{Augmentation level definitions.}
 \label{tab:augmentation-levels}
-\small
 \begin{tabular}{@{}cccp{4.2cm}@{}}
 \toprule
 Level & Transform selection & Candidate fraction & Description \\
@@ -101,31 +89,26 @@ L4 & All transforms & 100\% of candidates & Maximum configured perturbation \\
 \end{table}
 
 \subsection{Prompt Anonymization}
-\label{sec:appendix-framework-anonymization}
+\label{sec:appendix-a-anonymization}
 
-Before prompt construction, ParBench strips source comments, removes the kernel
-name and description, replaces source and target filenames with generic labels,
-genericizes support-file names, and anonymizes kernel identifiers in build
-commands. These measures complement source augmentation: anonymization reduces
-benchmark identity leakage, while augmentation changes the source surface form.
-The complete prompt template is reproduced in Appendix~\ref{sec:appendix-prompt}.
+Before prompt construction, \parbench{} strips source comments, removes the kernel name and description, replaces source and target filenames with generic labels, genericizes support-file names, and anonymizes kernel identifiers in build commands. These measures complement source augmentation as anonymization reduces benchmark identity leakage, while augmentation changes the source surface form. The complete prompt template is reproduced in Appendix~\ref{sec:appendix-g}.
 
 \subsection{Extended Experimental Setup Details}
-\label{sec:appendix-framework-extended}
+\label{sec:appendix-a-extended}
 
 This section expands on the experimental setup described in Section~\ref{sec:experimental-setup}.
 
-\paragraph{\knownfail{} Exclusion Policy.}
-Nine specs are classified as \knownfail{} due to toolchain incompatibilities or pre-existing runtime failures unrelated to LLM translation quality: seven Rodinia specs affected by deprecated CUDA~12 texture APIs, missing system libraries, pre-existing segmentation faults, or silent OpenCL runtime failures, and two HeCBench \texttt{omp\_target} specs with build or verification failures on the evaluation platform. 
-A record is excluded when \emph{either} the source or the target spec is \knownfail{}. Source-side exclusion is necessary because source correctness is unverified on the failing platform; target-side exclusion is necessary because the target build or verification infrastructure is broken. For \qwenshort{}, this policy excludes 82~of 708~total records, leaving 626~valid records (426~L0 + 200~ablation). The \gptnew{} and \codexshort{} evaluation batches pre-exclude \knownfail{} specs, so all 822~\gptnew{} and 814~\codexshort{} on-disk records are valid.
+\paragraph{\knownfail{} Exclusion Policy.} Nine specs are classified as \knownfail{} due to toolchain incompatibilities or pre-existing runtime failures unrelated to LLM translation quality: seven Rodinia specs affected by deprecated CUDA~12 texture APIs, missing system libraries, pre-existing segmentation faults, or silent OpenCL runtime failures, and two HeCBench \texttt{omp\_target} specs with build or verification failures on the evaluation platform.
+A record is excluded when \emph{either} the source or the target spec is \knownfail{}. Source-side exclusion is necessary because source correctness is unverified on the failing platform; target-side exclusion is necessary because the target build or verification infrastructure is broken. For \qwenshort{}, this policy excludes 82~of 708~total records, leaving 626~valid records (426~L0 + 200~ablation). The \gptnew{} and \codex{} evaluation batches pre-exclude \knownfail{} specs, so all 822~\gptnew{} and 814~\codex{} on-disk records are valid.
 
-\paragraph{Sampling Configuration.}\label{sec:sampling-config}
-For \qwenshort{}, we set temperature~0.7 with top-$p$~=~1.0 (full-distribution sampling). For \gptnew{} and \codexshort{}, the Azure reasoning API does not accept explicit temperature or top-$p$ parameters---these are controlled internally by the provider and cannot be set by the caller. Cross-model differences in pass rates may therefore partly reflect unmatched sampling conditions rather than model capability alone; the confound is between \qwenshort{} (explicit temperature) and both Azure models (provider-controlled).
-A deterministic seed derived from SHA-256 of the concatenation \texttt{source\_spec|target\_spec|sample\_id} (pipe-delimited, truncated to 31~bits) is passed to \qwenshort{} (Together~AI) and \gptnew{} (Azure Chat Completions). The Responses API used by \codexshort{} does not accept a seed parameter. Seeds are recorded for auditing but do not guarantee bitwise-identical outputs: Together~AI treats seeds as advisory for MoE inference, and Azure provides no determinism guarantee for reasoning models. Each sample receives one LLM call with no iterative feedback, isolating first-attempt translation capability.
+\paragraph{Sampling Configuration.}
+\label{sec:sampling-config}
+For \qwenshort{}, we set temperature~0.7 with top-$p$~=~1.0 (full-distribution sampling). For \gptnew{} and \codex{}, the Azure reasoning API does not accept explicit temperature or top-$p$ parameters---these are controlled internally by the provider and cannot be set by the caller. Cross-model differences in pass rates may therefore partly reflect unmatched sampling conditions rather than model capability alone; the confound is between \qwenshort{} (explicit temperature) and both Azure models (provider-controlled).
+A deterministic seed derived from SHA-256 of the concatenation \texttt{source\_spec|target\_spec|sample\_id} (pipe-delimited, truncated to 31~bits) is passed to \qwenshort{} (Together~AI) and \gptnew{} (Azure Chat Completions). The Responses API used by \codex{} does not accept a seed parameter. Seeds are recorded for auditing but do not guarantee bitwise-identical outputs: Together~AI treats seeds as advisory for MoE inference, and Azure provides no determinism guarantee for reasoning models. Each sample receives one LLM call with no iterative feedback, isolating first-attempt translation capability.
 
 \paragraph{Canonical Evaluation and Augmentation Ablation.}
-The canonical campaign evaluates all 142 unique pairs at augmentation level L0 (unmodified source code) with three samples each, producing 426 L0 records per model and 1,278 total. Each record passes through the full build--run--verify pipeline with conjunction semantics. Most specs verify via exit-code and stdout-pattern checks; a subset additionally declare numeric-comparison or file-hash oracles.
-For the augmentation ablation, an L0-conditional filter is applied: a pair is included only if any of its three canonical L0 samples passes. This avoids spending budget on pairs the model cannot translate even from unmodified source. For \qwenshort{}, 50~of the 142~pairs qualify (35\%); for \gptnew{}, 99~pairs qualify (70\%); for \codexshort{}, 97~pairs qualify (68\%). Each qualifying pair is evaluated once ($k$~=~1) at each of levels L1 through L4.
+The canonical campaign evaluates all 142 unique pairs at augmentation level L0 (unmodified source code) with three samples each, producing 426 L0 records per model and 1{,}278 total. Each record passes through the full build--run--verify pipeline with conjunction semantics. Most specs verify via exit-code and stdout-pattern checks; a subset additionally declare numeric-comparison or file-hash oracles.
+For the augmentation ablation, an L0-conditional filter is applied: a pair is included only if any of its three canonical L0 samples passes. This avoids spending budget on pairs the model cannot translate even from unmodified source. For \qwenshort{}, 50~of the 142~pairs qualify (35\%); for \gptnew{}, 99~pairs qualify (70\%); for \codex{}, 97~pairs qualify (68\%). Each qualifying pair is evaluated once ($k$~=~1) at each of levels L1 through L4.
 
 \paragraph{Metrics Details.}
 For pass@$k$, following \citet{HumanEval2021}, we use the unbiased estimator $1 - \binom{n-c}{k}/\binom{n}{k}$, where $c$ is the number of correct samples out of $n$~total. We report pass@1 (expected single-sample success rate, equivalent to $c/n$ averaged across tasks) and pass@3 (fraction of tasks where any sample passes).
@@ -136,78 +119,45 @@ Separately, we report per-record pass rates with Wilson 95\%~confidence interval
 %% ============================================================================
 
 \section{API Selection Rationale}
-\label{sec:appendix-a}
+\label{sec:appendix-b}
 
-This appendix provides the complete quantitative evidence underlying ParBench's
+This appendix provides the complete quantitative evidence underlying \parbench{}'s
 selection of CUDA, OpenMP, and OpenCL as target parallel programming APIs.
 Section~\ref{sec:suite-selection} in the main paper summarizes the corpus
 selection process; here we present the expanded survey data and kernel-level
 analysis that informed the final selection.
 
 \subsection{Full API Co-Occurrence Data}
-\label{sec:appendix-a1}
+\label{sec:appendix-b1}
 
-The benchmark landscape survey evaluated 40 candidate repositories spanning
-benchmark suites, mini-applications, proxy applications, libraries, and full
-applications across 29 distinct parallel programming APIs. Five were excluded
-during the survey phase (Section~\ref{sec:appendix-b1}), leaving the 35
-repositories analyzed in detail.
+The benchmark landscape survey covered 71 repositories spanning benchmark suites, mini-applications, proxy applications, libraries, and full applications across 29 distinct parallel programming APIs. Of these, 35 met the inclusion criteria described in Section~\ref{sec:appendix-c2}.
 
 \begin{figure}[htbp]
   \centering
-  \includegraphics[width=\columnwidth]{api_cooccurrence_heatmap_v5.png}
-  \caption{API co-occurrence heatmap across all surveyed repositories.
-    Cell values indicate the number of repositories providing implementations in
-    both the row and column APIs.}
+  \includegraphics[width=\columnwidth]{api_cooccurrence_heatmap.png}
+  \caption{API co-occurrence heatmap across all 71 surveyed repositories.Cell values indicate the number of repositories providing implementations in both the row and column APIs.}
   \label{fig:api-heatmap}
 \end{figure}
 
-Figure~\ref{fig:api-heatmap} shows the full survey. The dominant
-pattern is a dense co-occurrence cluster among MPI, OpenMP, CUDA, and HIP,
-with sparser connectivity among directive-based (OpenACC, OpenMP Target) and
-portability (Kokkos, RAJA, SYCL) APIs. Peripheral APIs such as Chapel,
-STM/TM, HLS, and Python show near-zero co-occurrence.
+Figure~\ref{fig:api-heatmap} shows the full survey. The dominant pattern is a dense co-occurrence cluster among MPI, OpenMP, CUDA, and HIP, with sparser connectivity among directive-based (OpenACC, OpenMP Target) and portability (Kokkos, RAJA, SYCL) APIs. Peripheral APIs such as Chapel, STM/TM, HLS, and Python show near-zero co-occurrence.
 
-We classify the co-occurrence structure into three groupings.
-
+We classify the co-occurrence structure into three groupings:
 \begin{description}
-  \item[Core cluster.] MPI, OpenMP, CUDA, HIP, and OpenACC co-occur frequently
-    across the suites with the richest multi-API material (HeCBench, Rodinia,
-    RAJAPerf, BabelStream). OpenCL co-occurs with fewer core APIs (appearing in
-    13 of 40 repositories, versus 38--50 for the top three) but is included in
-    ParBench's target API set because it exercises a qualitatively distinct
-    programming model (Section~\ref{sec:appendix-a3}).
-
-  \item[Portability periphery.] SYCL, Kokkos, RAJA, OpenMP Target, and
-    MPI+OpenMP connect to the core cluster with moderate co-occurrence,
-    concentrated in a smaller number of suites (primarily RAJAPerf, BabelStream,
-    and HeCBench). Pthreads, TBB, and C++ PSTL appear in 3--4 repositories each
-    and occupy a similar peripheral role.
-
-  \item[Isolated APIs.] OCCA, Thrust, Chapel, C++ AMP, HMPP, Python, HLS,
-    GSParLib, STM/TM, Serial, and UPC++ have maximum pairwise co-occurrence at
-    most~2. Coarray Fortran, Charm++, UPC, and OpenSHMEM reach co-occurrence of
-    3--4 with MPI or with each other but remain disconnected from the GPU-centric
-    core.
+    \item[Core cluster.] MPI, OpenMP, CUDA, HIP, and OpenACC co-occur frequently across the suites with the richest multi-API material (HeCBench, Rodinia, RAJAPerf, BabelStream). OpenCL co-occurs with fewer core APIs (appearing in 13 of 40 repositories, versus 38--50 for the top three) but is included in \parbench{}'s target API set because it exercises a qualitatively distinct programming model (Section~\ref{sec:appendix-b3}).
+    \item[Portability periphery.] SYCL, Kokkos, RAJA, OpenMP Target, and MPI+OpenMP connect to the core cluster with moderate co-occurrence, concentrated in a smaller number of suites (primarily RAJAPerf, BabelStream, and HeCBench). Pthreads, TBB, and C++ PSTL appear in 3--4 repositories each and occupy a similar peripheral role.
+    \item[Isolated APIs.] OCCA, Thrust, Chapel, C++ AMP, HMPP, Python, HLS, GSParLib, STM/TM, Serial, and UPC++ have maximum pairwise co-occurrence at most~2. Coarray Fortran, Charm++, UPC, and OpenSHMEM reach co-occurrence of 3--4 with MPI or with each other but remain disconnected from the GPU-centric core.
 \end{description}
 
-Figure~\ref{fig:api-coverage} presents the per-API coverage in a ranked bar
-chart, making the quantitative dominance of the top-3 APIs clear.
+Figure~\ref{fig:api-coverage} presents the per-API coverage in a ranked bar chart, making the quantitative dominance of the top-3 APIs clear.
 
 \begin{figure}[htbp]
   \centering
-  % \includegraphics[width=\columnwidth]{api_coverage_bar_v5.png}
-  \input{NeurIPS_ready_version/figures/api_coverage_bar_v5}
-  \caption{API coverage across the benchmark survey. OpenMP (${\sim}50$
-    benchmarks), MPI (${\sim}45$), and CUDA (${\sim}38$) dominate, with OpenACC
-    (${\sim}17$), HIP (${\sim}15$), and MPI+OpenMP (${\sim}15$) forming a second
-    tier. OpenMP Target (${\sim}8$), SYCL (${\sim}7$), Kokkos (${\sim}7$), and
-    RAJA (${\sim}7$) form a third tier.}
+  \input{NeurIPS_ready_version/figures/figures_tek_version/api_coverage_bar}
+  \caption{API coverage across the benchmark survey. OpenMP (50 benchmarks), MPI (45), and CUDA (38) dominate, with OpenACC(17), HIP (15), and MPI+OpenMP (15) forming a second tier. OpenCL (13) and Kokkos (12) bridge the second and third tiers. OpenMP Target (8), SYCL (7), and RAJA (7) form a third tier.}
   \label{fig:api-coverage}
 \end{figure}
 
-APIs below 5 benchmarks were excluded from evaluation consideration due to
-insufficient benchmark material for statistical evaluation.
+APIs below 5 benchmarks were excluded from evaluation consideration due to insufficient benchmark material for statistical evaluation.
 
 \subsubsection*{Kernel-Level Co-Occurrence}
 
@@ -222,22 +172,12 @@ available per direction.
 
 \begin{figure}[htbp]
   \centering
-  % \includegraphics[width=\columnwidth]{kernel_level_cooccurrence_heatmap.png}
-  \input{NeurIPS_ready_version/figures/kernel_level_cooccurrence_heatmap}
-  \caption{Kernel-level API co-occurrence matrix. Each cell counts the number of
-    individual kernels with verified equivalent implementations in both the row
-    and column APIs. The CUDA--HIP pair leads with 633 shared kernels, followed
-    by CUDA--SYCL (616), CUDA--OpenMP (472), and HIP--SYCL (615). OpenCL has
-    dramatically lower kernel-level coverage: only 27 kernels share
-    implementations with CUDA, and 24 with OpenMP. OpenMP Target provides 106
-    shared kernels with each of CUDA, HIP, SYCL, and OpenMP, concentrated
-    entirely in HeCBench. Sequential reference implementations exist for 106
-    kernels.}
+  \input{NeurIPS_ready_version/figures/figures_tek_version/kernel_level_cooccurrence_heatmap}
+  \caption{Kernel-level API co-occurrence matrix. Each cell counts the number of individual kernels with implementations in both the row and column APIs. The CUDA--HIP pair leads with 633 shared kernels, followed by CUDA--SYCL (616), HIP--SYCL (615), and CUDA--OpenMP (472). OpenCL has dramatically lower kernel-level coverage: only 27 kernels share implementations with CUDA, and 24 with OpenMP. OpenMP Target provides 106 shared kernels with each of CUDA, HIP, SYCL, and OpenMP, concentrated predominantly in HeCBench. Sequential reference implementations exist for 106 kernels.}
   \label{fig:kernel-cooccurrence}
 \end{figure}
 
-Figure~\ref{fig:kernel-cooccurrence} provides the strongest quantitative
-evidence for API selection. The kernel-level data reveals a clear hierarchy:
+Figure~\ref{fig:kernel-cooccurrence} provides the strongest quantitative evidence for API selection. The kernel-level data reveals a clear hierarchy:
 
 \begin{itemize}
   \item \textbf{Tier~1 ($>$600 kernel pairs):} CUDA--HIP (633), CUDA--SYCL
@@ -269,18 +209,12 @@ structure visually apparent.
 \end{figure}
 
 \subsection{Translation Difficulty Taxonomy}
-\label{sec:appendix-a2}
+\label{sec:appendix-b2}
+The preceding analysis establishes which translation directions are feasible at scale; this section classifies those directions by structural complexity.
 
-The choice of API pairs for evaluation is motivated not only by data
-availability (Section~\ref{sec:appendix-a1}) but by the \emph{structural
-transformation complexity} each translation direction demands. We classify
-translation directions into four categories:
+The choice of API pairs for evaluation is motivated not only by data availability (Section~\ref{sec:appendix-b1}) but by the \emph{structural transformation complexity} each translation direction demands. We classify translation directions into four categories:
 
-\textbf{Syntactic renaming} (e.g., CUDA to HIP): Near-1:1 API call mapping.
-\texttt{cudaMalloc} becomes \texttt{hipMalloc}; kernel launch syntax is
-preserved verbatim; thread-index arithmetic (\texttt{threadIdx.x},
-\texttt{blockIdx.x}) maps directly to HIP equivalents. This category tests API
-name lookup, not parallel reasoning.
+\textbf{Syntactic renaming} (e.g., CUDA to HIP): Near-1:1 API call mapping. \texttt{cudaMalloc} becomes \texttt{hipMalloc}; kernel launch semantics are preserved with minor syntax changes; thread-index arithmetic (\texttt{threadIdx.x}, \texttt{blockIdx.x}) maps directly to HIP equivalents. This category primarily tests API surface adaptation rather than parallel reasoning.
 
 \begin{lstlisting}[language=C, caption={CUDA to HIP: syntactic renaming.}]
 // CUDA                          // HIP (syntactic rename)
@@ -308,30 +242,14 @@ __global__ void kern(float* a, int n) {  void kern(float* a, int n) {
                                          }
 \end{lstlisting}
 
-\textbf{Architecture split} (e.g., CUDA to OpenCL): Unified single-source CUDA
-must be split into separate host code (OpenCL runtime API calls for
-platform/device/context/queue management) and kernel source (\texttt{.cl} files
-with OpenCL~C syntax). The memory model changes from CUDA's unified virtual
-addressing to OpenCL's explicit buffer objects. Kernel launch syntax transforms
-from \texttt{<<<grid, block>>>} to \texttt{clEnqueueNDRangeKernel} with explicit
-work-group sizing.
+\textbf{Architecture split} (e.g., CUDA to OpenCL): CUDA's single-source compilation model (host and device code in one \texttt{.cu} file) must be split into separate host code (OpenCL runtime API calls for platform/device/context/queue management) and kernel source (\texttt{.cl} files with OpenCL~C syntax). The memory model changes from CUDA's unified virtual addressing to OpenCL's explicit buffer objects. Kernel launch syntax transforms from \texttt{<<<grid, block>>>} to \texttt{clEnqueueNDRangeKernel} with explicit work-group sizing.
 
-\textbf{Directive insertion} (e.g., sequential~C to OpenMP): Adding parallelism
-to sequential code by identifying parallelizable loops and inserting appropriate
-\texttt{\#pragma omp} directives with correct data-sharing clauses
-(\texttt{shared}, \texttt{private}, \texttt{reduction}). This is the inverse of
-the paradigm translation direction and tests whether the LLM can \emph{discover}
-parallelism rather than \emph{translate} it.
+\textbf{Directive insertion} (e.g., sequential~C to OpenMP): Adding parallelism to sequential code by identifying parallelizable loops and inserting appropriate \texttt{\#pragma omp} directives with correct data-sharing clauses (\texttt{shared}, \texttt{private}, \texttt{reduction}). This is the inverse of the paradigm translation direction and tests whether the LLM can \emph{discover} parallelism rather than \emph{translate} it. 
 
-ParBench focuses on paradigm translation (CUDA/OpenMP/OpenCL
-cross-translations) because this category maximizes the semantic challenge while
-remaining tractable for automated verification. Syntactic renaming (CUDA to HIP)
-is too easy to be informative; architecture split (CUDA to OpenCL) combines
-paradigm translation with source-file restructuring, adding confounding
-complexity.
+\parbench{} targets the middle of this difficulty spectrum: paradigm translation and architecture split (CUDA/OpenMP/OpenCL cross-translations). Syntactic renaming (CUDA to HIP) is too easy to be informative, while directive insertion requires sequential baselines outside the current corpus. The six directions among CUDA, OpenMP, and OpenCL span paradigm translation (CUDA$\leftrightarrow$OpenMP) and architecture split (CUDA$\leftrightarrow$OpenCL, OpenMP$\leftrightarrow$OpenCL), maximizing the semantic challenge while remaining tractable for automated verification.
 
 \subsection{HIP and SYCL Exclusion Rationale}
-\label{sec:appendix-a3}
+\label{sec:appendix-b3}
 
 Despite the large kernel-level co-occurrence counts for CUDA--HIP (633) and
 CUDA--SYCL (616), these pairs were excluded from the primary evaluation for
@@ -343,7 +261,7 @@ for CUDA, preserving the SPMD programming model, kernel launch syntax, and
 memory management API. Automated tools such as \texttt{hipify-perl} and
 \texttt{hipify-clang} achieve near-perfect conversion rates. Evaluating LLMs on
 CUDA-to-HIP translation would measure API name lookup ability rather than
-parallel programming reasoning---the core capability ParBench is designed to
+parallel programming reasoning---the core capability \parbench{} is designed to
 assess.
 
 \textbf{SYCL exclusion:} While SYCL introduces a genuinely different programming
@@ -357,7 +275,7 @@ crossing (GPU SPMD to CPU fork-join) with better benchmark diversity across
 Rodinia, HeCBench, XSBench, and RSBench.
 
 \subsection{OpenACC Exclusion}
-\label{sec:appendix-a4}
+\label{sec:appendix-b4}
 
 OpenACC was excluded despite appearing in approximately 17 benchmarks in the
 expanded survey (Figure~\ref{fig:api-coverage}). Three factors motivated this
@@ -383,7 +301,7 @@ decision:
 \end{enumerate}
 
 \subsection{OpenMP Target as Case Study}
-\label{sec:appendix-a5}
+\label{sec:appendix-b5}
 
 OpenMP target offload (\texttt{\#pragma omp target}) occupies a middle ground
 between CPU OpenMP and GPU-native APIs. It uses the OpenMP directive model but
@@ -391,7 +309,7 @@ targets GPU execution, requiring the programmer to specify data mapping
 (\texttt{\#pragma omp target data map(...)}) and work distribution
 (\texttt{\#pragma omp teams distribute parallel for}) explicitly.
 
-ParBench evaluates OpenMP target as a case study rather than a primary direction
+\parbench{} evaluates OpenMP target as a case study rather than a primary direction
 for three reasons:
 
 \begin{enumerate}
@@ -424,19 +342,19 @@ rates.
 
 
 %% ============================================================================
-%% APPENDIX B: Benchmark Kernel Survey
+%% APPENDIX C: Benchmark Kernel Survey
 %% ============================================================================
 
 \section{Benchmark Kernel Survey}
-\label{sec:appendix-b}
+\label{sec:appendix-c}
 
 This appendix documents the systematic survey and multi-stage selection process
-that produced ParBench's evaluation corpus. The main paper (Section~\ref{sec:benchmark-curation})
+that produced \parbench{}'s evaluation corpus. The main paper (Section~\ref{sec:benchmark-curation})
 summarizes this process; here we provide the complete data, selection criteria,
 and exclusion rationale.
 
 \subsection{Full Repository Inventory}
-\label{sec:appendix-b1}
+\label{sec:appendix-c1}
 
 The survey identified 35 benchmark repositories spanning five categories of HPC
 benchmark software. Figure~\ref{fig:benchmark-types} shows the distribution
@@ -444,8 +362,7 @@ across categories.
 
 \begin{figure}[htbp]
   \centering
-  % \includegraphics[width=\columnwidth]{benchmark_types.png}
-  \input{NeurIPS_ready_version/figures/benchmark_types}
+  \input{NeurIPS_ready_version/figures/figures_tek_version/benchmark_types}
   \caption{Distribution of benchmark types across the 35 surveyed repositories.
     Suites (13, 37\%) and mini-applications (12, 34\%) dominate, together
     accounting for 71\% of the survey. Proxy applications (4, 11\%), libraries
@@ -488,8 +405,7 @@ the surveyed benchmarks.
 
 \begin{figure}[htbp]
   \centering
-  % \includegraphics[width=\columnwidth]{benchmark_api_count_hist_v5.png}
-  \input{NeurIPS_ready_version/figures/benchmark_api_count_hist_v5}
+  \input{NeurIPS_ready_version/figures/figures_tek_version/benchmark_api_count_hist}
   \caption{Distribution of API breadth (number of parallel APIs supported)
     across surveyed benchmarks. The modal benchmark supports 3~APIs, with a peak
     of approximately 18 benchmarks in the 3-API bin. A long tail extends to 12+
@@ -508,7 +424,7 @@ targeted mini-applications (XSBench, RSBench, mixbench) to ensure domain
 diversity.
 
 \subsection{Quality Tier Classification}
-\label{sec:appendix-b2}
+\label{sec:appendix-c2}
 
 All 35 surveyed repositories were classified into two quality tiers based on
 three criteria: build documentation, verification capability, and maintenance
@@ -538,9 +454,9 @@ kernel selection. Their kernels were considered only when no Tier~A alternative
 existed for a given computational domain.
 
 \subsection{Candidate Ranking and HeCBench Selection Funnel}
-\label{sec:appendix-b3}
+\label{sec:appendix-c3}
 
-The selection of individual kernels for ParBench's evaluation corpus required
+The selection of individual kernels for \parbench{}'s evaluation corpus required
 balancing two competing objectives: \emph{kernel richness} (maximizing the
 number of independent evaluation instances) and \emph{API breadth} (maximizing
 the number of translation directions per kernel). Figure~\ref{fig:kernel-api-bubble}
@@ -566,8 +482,7 @@ in corpus construction.
 
 \begin{figure}[htbp]
   \centering
-  % \includegraphics[width=\columnwidth]{top_candidates.png}
-  \input{NeurIPS_ready_version/figures/top_candidates}
+  \input{NeurIPS_ready_version/figures/figures_tek_version/top_candidates}
   \caption{Top ``Rosetta Stone'' candidates ranked by kernel count (blue bars,
     scaled for readability; true counts annotated above) and API breadth (red
     bars). HeCBench provides the largest kernel pool (522 kernels) but with
@@ -604,68 +519,62 @@ the curated evaluation set:
   \item \textbf{Stage~4 (Curation):} The 60-kernel working set was narrowed to a
     final curated set of 20 kernels based on manual inspection of build
     reliability, output determinism, and domain representativeness. Of these, 10
-    kernels were included in the current ParBench evaluation corpus, with the
+    kernels were included in the current \parbench{} evaluation corpus, with the
     remaining~10 reserved for future expansion.
 \end{itemize}
 
-The final 20 curated HeCBench kernels span diverse computational domains and
-algorithmic patterns, ensuring that the evaluation corpus tests LLM translation
-capability across a representative sample of real HPC workloads.
+The final 20 curated HeCBench kernels span diverse computational domains and algorithmic patterns. Of these, 10 are included in the current evaluation corpus (25~specs); the remaining~10 are reserved for future expansion (Section~\ref{sec:appendix-c3}).
 
 \subsection{Rodinia Kernel Inventory}
-\label{sec:appendix-b4}
+\label{sec:appendix-c4}
 
-Rodinia provides the foundation of ParBench's evaluation corpus. As one of the
-most widely cited HPC benchmark suites (originally published at IISWC
-2009~\cite{Rodinia2009}), it offers strong community recognition and
-well-understood computational characteristics. ParBench uses 22 Rodinia kernels
-across three APIs (CUDA, OpenMP, OpenCL), yielding 60 total specs (some kernels
-lack one or more API variants).
-
-Of these 60 specs:
+Rodinia~\cite{Rodinia2009} provides the foundation of \parbench{}'s evaluation corpus. As one of the most widely cited heterogeneous computing benchmark suites (IISWC 2009), it offers well-understood computational characteristics across CUDA, OpenMP, and OpenCL. \parbench{} includes all 22 Rodinia kernels, yielding 60~total specs; six kernels lack one or more API variants because the upstream repository does not provide implementations for all three APIs. Of these 60 specs:
 \begin{itemize}
-  \item \textbf{53 TRUE PASS}: Verified correct output with exit code~0 and
-    stdout pattern matching using conjunction verification (both conditions must
-    hold).
-  % src: harness/constants.py EXCLUDED_SPECS — 7 Rodinia specs (60-7=53)
-  \item \textbf{7 KNOWN\_FAIL}: Excluded from evaluation batches due to
-    pre-existing build or runtime failures unrelated to LLM translation. These
-    include 2~kernels using deprecated CUDA \texttt{texture<>} references
-    removed in CUDA~12 (\texttt{kmeans-cuda}, \texttt{mummergpu-cuda}),
-    1~kernel requiring OpenGL dependencies (\texttt{hybridsort-cuda}), 1~kernel
-    with CUDA API dependencies in its OpenMP variant (\texttt{mummergpu-omp}),
-    2~kernels with pre-existing OpenCL runtime issues (\texttt{nn-opencl},
-    \texttt{kmeans-opencl}), and 1~kernel with a silent OpenCL runtime failure
-    (\texttt{backprop-opencl}).
+    \item \textbf{53 \pass{}}: Verified via conjunctive verification---exit code~0 \emph{and} stdout pattern match must both hold.
+    \item \textbf{7 \knownfail{}}: Excluded from evaluation due to pre-existing
+      platform failures unrelated to LLM translation quality:
+      2~specs use deprecated CUDA \texttt{texture<>} references removed in
+      CUDA~12 (\texttt{kmeans-cuda}, \texttt{mummergpu-cuda});
+      1~requires OpenGL (\texttt{hybridsort-cuda});
+      1~has CUDA API dependencies in its OpenMP variant (\texttt{mummergpu-omp});
+      2~exhibit pre-existing OpenCL segmentation faults (\texttt{nn-opencl},
+      \texttt{kmeans-opencl}); and
+      1~has a silent \texttt{clEnqueueReadBuffer} error masked by exit code~0
+      (\texttt{backprop-opencl}).
 \end{itemize}
 
 \subsection{XSBench, RSBench, and mixbench Profiles}
-\label{sec:appendix-b5}
+\label{sec:appendix-c5}
 
 Three additional benchmark suites complement Rodinia and HeCBench in the
 evaluation corpus:
 
-\textbf{XSBench} (4 specs: CUDA, OpenMP, OpenCL, OpenMP Target): A Monte Carlo
-neutron cross-section lookup proxy application from Argonne National Laboratory.
-XSBench implements a hash-based unionized energy grid algorithm that is
-representative of nuclear reactor simulation workloads. All 4 API variants pass
-baseline verification. The OpenMP variant produces a history-based checksum
-(941535); the CUDA, OpenCL, and OpenMP Target variants produce an event-based
-checksum (945990). This asymmetry reflects algorithmic differences between the
-CPU and GPU implementations rather than correctness issues.
+\textbf{XSBench}~\cite{XSBench2014} (4~specs: CUDA, OpenMP, OpenCL, OpenMP
+Target): A Monte Carlo neutron cross-section lookup proxy application
+representative of nuclear reactor simulation workloads. XSBench implements a
+unionized energy grid algorithm; the OpenMP variant runs in history-based mode
+(checksum 941{,}535) while the CUDA, OpenCL, and OpenMP Target variants run in
+event-based mode (checksum 945{,}990). Both checksums are self-verified as valid
+by XSBench's built-in verification. This mode asymmetry reflects algorithmic
+differences between CPU and GPU scheduling strategies rather than correctness
+issues. All 4~API variants pass baseline verification.
 
-\textbf{RSBench} (4 specs: CUDA, OpenMP, OpenCL, OpenMP Target): A simplified
-variant of XSBench that isolates the multipole cross-section lookup kernel.
-RSBench was added to ParBench to enable controlled comparison with XSBench on
-the same algorithmic family at different complexity levels.
+\textbf{RSBench}~\cite{RSBench2014} (4~specs: CUDA, OpenMP, OpenCL, OpenMP
+Target): A proxy application for the multipole method of computing neutron
+cross sections on-the-fly, representing a complementary algorithm to XSBench's
+unionized energy grid approach. Including both suites enables controlled
+comparison within the same computational domain (Monte Carlo neutron transport)
+at different algorithmic complexity levels. All 4~API variants pass baseline
+verification.
 
-\textbf{mixbench} (3 specs: CUDA, OpenMP, OpenCL): A micro-benchmark designed to
-measure GPU arithmetic throughput at varying compute-to-memory ratios. mixbench
-exercises the roofline boundary, making it valuable for evaluating whether LLM
-translations preserve performance-critical arithmetic intensity.
+\textbf{mixbench}~\cite{mixbench2017} (3~specs: CUDA, OpenMP, OpenCL): A
+micro-benchmark that sweeps a range of compute-to-memory operation ratios,
+mapping the practical roofline boundary of a compute device. Its parameterized
+kernel structure tests whether LLM translations preserve arithmetic intensity
+across API boundaries. All 3~API variants pass baseline verification.
 
 \subsection{Exclusion Log and Verification Methods}
-\label{sec:appendix-b6}
+\label{sec:appendix-c6}
 
 Figure~\ref{fig:verification-network} groups the surveyed benchmarks by their
 verification approach, illustrating the diversity of correctness checking
@@ -674,14 +583,7 @@ methods across the survey and the basis for exclusion decisions.
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{verification_network.png}
-  \caption{Benchmarks grouped by verification method. Large colored nodes
-    represent verification approaches: checksum comparison, convergence testing,
-    reference output file comparison, output-to-standard comparison, and
-    self-validation. Benchmark nodes (smaller, colored by type) are connected to
-    their verification method(s). Benchmarks without automated verification
-    appear as weakly connected or isolated nodes and were excluded or downgraded
-    to Tier~B. The checksum and reference output clusters contain the majority
-    of Tier~A benchmarks.}
+  \caption{Benchmarks grouped by verification method. Large nodes represent verification approaches; benchmark nodes are connected to their method(s). Benchmarks without automated verification were excluded or downgraded to Tier~B (Section~\ref{sec:appendix-c2}). The checksum and reference output clusters contain the majority of Tier~A benchmarks.}
   \label{fig:verification-network}
 \end{figure}
 
@@ -718,25 +620,23 @@ reasons:
     method.
 \end{itemize}
 
-The complete exclusion log with per-kernel justifications is maintained in
-ParBench's specification metadata (\texttt{specs/*.json}) and the project's
-known-issues documentation.
+The complete exclusion log with per-kernel justifications is recorded in \parbench{}'s specification metadata (\texttt{specs/*.json}).
 
 %% ============================================================================
 %% APPENDIX D: Extended Related Work
 %% ============================================================================
 
 \section{Extended Related Work}
-\label{sec:appendix-related}
+\label{sec:appendix-d}
 
-The main text positions ParBench through the evaluation gap it addresses. This
+The main text positions \parbench{} through the evaluation gap it addresses. This
 appendix records the longer comparison across granularity, verification rigor,
 and robustness testing.
 
 \begin{table*}[htbp]
 \centering
 \caption{Related work comparison along granularity and verification axes.
-ParBench combines kernel-level HPC translation, build-run-verify correctness,
+\parbench{} combines kernel-level HPC translation, build-run-verify correctness,
 and augmentation-based robustness evaluation.}
 \label{tab:related-work}
 \small
@@ -755,7 +655,7 @@ ParEval~\cite{ParEval2024} & HPDC'24 & Task & Correctness check & Yes & -- & 420
 ParEval-Repo~\cite{ParEvalRepo2025} & ICPP'25 & Repository & Build + functional & Yes & -- & 6 apps \\
 HPC-Coder-V2~\cite{HPCCoderV2} & arXiv'24 & Task & pass@$k$ & Yes & -- & ParEval tasks \\
 TRACY~\cite{TRACY2025} & arXiv'25 & Function & Tests + efficiency & -- & Stress tests & 1{,}000 tasks \\
-\textbf{ParBench} & -- & \textbf{Kernel} & \textbf{Build+run+verify} & \textbf{Yes} & \textbf{L0--L4} & \textbf{96 specs} \\
+\textbf{\parbench{}} & -- & \textbf{Kernel} & \textbf{Build+run+verify} & \textbf{Yes} & \textbf{L0--L4} & \textbf{96 specs} \\
 \bottomrule
 \end{tabular}
 }
@@ -767,7 +667,7 @@ some settings, but source-to-source translation requires preserving existing
 program structure and API semantics rather than inventing a solution from a
 description. ParEval-Repo~\cite{ParEvalRepo2025} evaluates full repositories
 and therefore captures realistic integration work, but it also shows that
-build-system generation can dominate the result. ParBench occupies the kernel
+build-system generation can dominate the result. \parbench{} occupies the kernel
 level between these extremes.
 
 LASSI~\cite{LASSI2024} is the closest prior system in granularity and
@@ -777,19 +677,19 @@ iterative debugging. \parbench{} instead emphasizes raw translation capability, 
 coverage, survey-grounded corpus construction, and augmentation robustness.
 
 CodeRosetta~\cite{CodeRosetta2024} and HPC-Coder-V2~\cite{HPCCoderV2} show the
-value of specialized modeling and fine-tuning for HPC code. ParBench is
+value of specialized modeling and fine-tuning for HPC code. \parbench{} is
 complementary: it provides an execution-based substrate on which such models can
 be evaluated, including cases where compile or text-similarity metrics would
 miss functional errors. TRACY~\cite{TRACY2025} highlights efficiency as a
-separate axis from correctness; ParBench currently measures correctness only.
+separate axis from correctness; \parbench{} currently measures correctness only.
 
 
 %% ============================================================================
-%% APPENDIX C: Detailed Evaluation Findings
+%% APPENDIX E: Detailed Evaluation Findings
 %% ============================================================================
 
 \section{Detailed Evaluation Findings}
-\label{sec:appendix-c}
+\label{sec:appendix-e}
 
 This appendix provides per-kernel and per-direction breakdowns of the evaluation
 results summarized in Section~\ref{sec:results} of the main paper, including
@@ -797,9 +697,9 @@ augmentation transform statistics, the HeCBench selection funnel, and
 a detailed case study of multi-file translation consistency failures.
 
 \subsection{Augmentation Transform Frequency Per Kernel}
-\label{sec:appendix-c3}
+\label{sec:appendix-e1}
 
-ParBench's code augmentation pipeline applies six AST-level transforms at four
+\parbench{}'s code augmentation pipeline applies six AST-level transforms at four
 intensity levels (L1--L4). The transforms do not apply uniformly: some kernels
 have many candidate sites for a given transform, while others have few or none.
 Figure~\ref{fig:transform-freq} presents the per-kernel, per-transform frequency
@@ -814,7 +714,7 @@ heatmap.
     transforms. Cell values give the total number of times each transform was
     applied to files belonging to that kernel, aggregated across all
     augmentation levels and API variants. The distribution is highly
-    non-uniform: multi-file kernels such as \texttt{myocyte} (16 source files)
+    non-uniform: multi-file kernels such as \texttt{myocyte} (15 source files)
     and \texttt{bptree} accumulate many SwapCondition applications, while
     smaller kernels (e.g., \texttt{pathfinder}, \texttt{hotspot}) show lower
     counts. ChangeFunctionNames applies to only two kernels
@@ -822,74 +722,28 @@ heatmap.
   \label{fig:transform-freq}
 \end{figure}
 
-Aggregate transform frequencies across the corpus reveal a clear dominance
-hierarchy. We report the number of Rodinia specs (out of 60) to which each
-transform applies at L4 (full intensity), followed by the total application
-count across all 240 augmentation tasks (60~specs $\times$ 4~levels):
-
+Table~\ref{tab:transform-coverage} summarizes the coverage and application frequency of each transform. Aggregate transform frequencies across the corpus reveal a clear dominance hierarchy. We report the number of Rodinia specs (out of 60) to which each transform applies at L4 (full intensity), followed by the total application count across all 240 augmentation tasks (60~specs $\times$ 4~levels):
+  
 \begin{itemize}
-  \item \textbf{SwapCondition} (59/60 specs at L4; 162 applications across all
-    levels): The most broadly applicable transform. Swaps operands of
-    comparison operators (e.g., \texttt{a < b} $\rightarrow$ \texttt{b > a}),
-    with guards against expressions containing side effects. Its near-universal
-    coverage reflects the ubiquity of comparison-based control flow in HPC
-    kernels---boundary checks, convergence tests, and branch-based algorithm
-    selection all contribute candidate sites.
-
-  \item \textbf{ArithmeticTransform} (45/60 specs at L4; 69 applications):
-    Converts compound assignment operators to their expanded forms and vice
-    versa (e.g., \texttt{x += expr} $\leftrightarrow$ \texttt{x = x + (expr)}).
-    Applies only to integer-typed scalar targets and excludes for-loop
-    incrementors to avoid disrupting iteration patterns. Less broadly applicable
-    than SwapCondition because it requires compound-assignment or
-    assignment-with-matching-LHS patterns that not all kernels exhibit.
-
-  \item \textbf{ChangeNames} (32/60 specs at L4; 55 applications): Consistently
-    renames local variables and function parameters using symbol-aware reference
-    collection, preserving semantic equivalence. Coverage is bounded by the
-    number of renameable local declarations per kernel.
-
-  \item \textbf{TypedefExpansion} (3/60 specs at L4; 7 applications): Inlines
-    \texttt{typedef} aliases to their underlying types. Rare because most
-    Rodinia kernels use primitive types directly rather than defining
-    type aliases.
-
-  \item \textbf{PointerArithmeticToArrayIndex} (3/60 specs at L4; 6
-    applications): Rewrites \texttt{*(ptr + i)} to \texttt{ptr[i]} and vice
-    versa, with precedence-aware handling of struct member access. Limited
-    by the prevalence of pointer arithmetic in the corpus---most kernels use
-    array indexing natively.
-
-  \item \textbf{ChangeFunctionNames} (2/60 specs at L4; 2 applications): Renames
-    user-defined functions and updates all call sites, skipping
-    \texttt{main}, GPU kernel entry points, and identifiers appearing in
-    string literals. The rarest transform, reflecting the small number of
-    user-defined functions in single-kernel files.
+  \item \textbf{SwapCondition} (59/60 specs at L4; 162 applications across all levels): The most broadly applicable transform. Swaps operands of comparison operators (e.g., \texttt{a < b} $\rightarrow$ \texttt{b > a}), with guards against expressions containing side effects. Its near-universal coverage reflects the ubiquity of comparison-based control flow in HPC kernels---boundary checks, convergence tests, and branch-based algorithm selection all contribute candidate sites.
+  
+  \item \textbf{ArithmeticTransform} (45/60 specs at L4; 69 applications): Converts compound assignment operators to their expanded forms and vice versa (e.g., \texttt{x += expr} $\leftrightarrow$ \texttt{x = x + (expr)}). Applies only to integer-typed scalar targets and excludes for-loop incrementors to avoid disrupting iteration patterns. Less broadly applicable than SwapCondition because it requires compound-assignment or assignment-with-matching-LHS patterns that not all kernels exhibit.
+  
+  \item \textbf{ChangeNames} (32/60 specs at L4; 55 applications): Consistently renames local variables and function parameters using symbol-aware reference collection, preserving semantic equivalence. Coverage is bounded by the number of renameable local declarations per kernel.
+  
+  \item \textbf{TypedefExpansion} (3/60 specs at L4; 7 applications): Inlines \texttt{typedef} aliases to their underlying types. Rare because most Rodinia kernels use primitive types directly rather than defining type aliases.
+  
+  \item \textbf{PointerArithmeticToArrayIndex} (3/60 specs at L4; 6 applications): Rewrites \texttt{*(ptr + i)} to \texttt{ptr[i]} and vice versa, with precedence-aware handling of struct member access. Limited by the prevalence of pointer arithmetic in the corpus---most kernels use array indexing natively.
+  
+  \item \textbf{ChangeFunctionNames} (2/60 specs at L4; 2 applications): Renames user-defined functions and updates all call sites, skipping \texttt{main}, GPU kernel entry points, and identifiers appearing in string literals. The rarest transform, reflecting the small number of user-defined functions in single-kernel files.
 \end{itemize}
 
-The level-invariance property (all 53 non-\knownfail{} Rodinia specs pass at all
-levels L1--L4) confirms that augmentation introduces no new correctness failures
-to the benchmark baseline. This is expected: all transforms are designed to
-preserve semantic equivalence, verified by 15~unit tests covering each transform
-in isolation and by the end-to-end augmentation sweep across the full Rodinia
-corpus. Across all five suites, 80 of 87 non-\knownfail{} specs pass at all
-levels L1--L4, with the 7~failures confined to \texttt{omp\_target} variants
-where aggressive variable renaming interferes with OpenMP target data-mapping
-clauses (a known limitation of the current transform guards; all 87 specs pass
-at L1--L2).
+The level-invariance property (all 53 non-\knownfail{} Rodinia specs pass at all levels L1--L4) confirms that augmentation introduces no new correctness failures to the benchmark baseline. This is expected: all transforms are designed to preserve semantic equivalence, verified by 15~unit tests covering each transform in isolation and by the end-to-end augmentation sweep across the full Rodinia corpus. Across all five suites, 80 of 87 non-\knownfail{} specs pass at all levels L1--L4, with the 7~failures confined to \texttt{omp\_target} variants where aggressive variable renaming interferes with OpenMP target data-mapping clauses (a known limitation of the current transform guards; all 87 specs pass at L1--L2).
 
-From an evaluation perspective, augmentation levels serve as a robustness
-probe rather than as independent samples that inflate the effective sample size.
-The L0-conditional ablation (Section~\ref{sec:results}) confirms this
-discriminative role across all three models: \gptnew{} and \codexshort{}
-maintain high pass rates under augmentation (87--91\% and 86--89\% at L1--L4
-among their respective L0-passing tasks), while \qwenshort{} degrades from
-74.5\% at L1 to 54.9\% at L4. This monotonic decline is consistent with
-augmentation functioning as a robustness discriminator: stronger models maintain
-translation quality under source perturbation, while weaker models do not.
+From an evaluation perspective, augmentation levels serve as a robustness probe rather than as independent samples that inflate the effective sample size. The L0-conditional ablation (Section~\ref{sec:results}) confirms this discriminative role across all three models: \gptnew{} and \codex{} maintain high pass rates under augmentation (87--91\% and 85--89\% at L1--L4 among their respective L0-passing tasks), while \qwenshort{} degrades from 74.0\% at L1 to 56.0\% at L4. The monotonic decline for \qwenshort{} suggests that semantics-preserving source perturbations expose fragility in weaker models' translation capabilities---exactly the behavior a robustness probe should surface.
 
 \subsection{HeCBench Kernel Selection Funnel}
-\label{sec:appendix-c4}
+\label{sec:appendix-e2}
 
 \begin{figure}[htbp]
   \centering
@@ -946,100 +800,111 @@ full selection pipeline, highlighting the gap between ``available parallel code'
 and ``evaluable parallel code.''
 
 \subsection{Case Study: Multi-File Translation Consistency Failure}
-\label{sec:appendix-c5}
+\label{sec:appendix-e3}
 
 Full-program translations---where the LLM must rewrite both kernel code and host
 code---expose a class of errors absent from kernel-only translations. We
 document this failure class through a detailed case study of the
-\texttt{rodinia-lavamd} kernel translated from OpenCL to CUDA.
+\texttt{rodinia-lavamd} kernel, a molecular dynamics simulation with a
+multi-file build structure (kernel, wrapper, and supporting headers).
 
 \subsubsection*{Observation}
 
-Across all 5~augmentation levels (L0--L4), the model (Qwen~3.5 397B) translates
-OpenCL kernel computational patterns to CUDA correctly (\texttt{\_\_global\_\_},
-\texttt{blockIdx.x}, \texttt{threadIdx.x}, \texttt{\_\_syncthreads()}) but
-\textbf{fails to produce a compilable multi-file CUDA program} in all 15
-attempts (5~levels $\times$ 3~retries). The failure modes vary across
-augmentation levels---this is not a single consistent bug, but a family of
-related multi-file consistency errors.
+Across all six standard translation directions, \qwenshort{} fails every
+\texttt{lavamd} translation: 0 of 18~records (6~directions $\times$
+3~independent samples at temperature~0.7) produce a correct program.
+The failure mode is not uniform---it varies systematically by translation
+direction rather than by stochastic sample, revealing direction-dependent
+structural barriers in multi-file coordination.
 
-\subsubsection*{Per-Level Error Taxonomy}
+\subsubsection*{Per-Direction Error Taxonomy}
 
 \begin{table}[htbp]
   \centering
-  \caption{Multi-file translation error taxonomy for \texttt{lavamd}
-    OpenCL-to-CUDA across augmentation levels. The failure mode varies by level,
-    demonstrating that augmentation perturbs \emph{which} errors the model makes
-    without changing the outcome (BUILD\_FAIL at all levels).}
+  \caption{Multi-file translation error taxonomy for \texttt{lavamd} across all
+    six standard directions (\qwenshort{}, L0, 3~samples each). The failure mode
+    varies by direction, demonstrating that multi-file coordination errors are
+    structurally determined by the source--target API pairing rather than
+    stochastic.}
   \label{tab:lavamd-errors}
   \small
-  \begin{tabular}{@{}clp{4.2cm}@{}}
+  \begin{tabular}{@{}llp{4.5cm}@{}}
     \toprule
-    Level & Naming Correct? & Primary Failure Mode \\
+    Direction & Status ($\times$3) & Primary Failure Mode \\
     \midrule
-    L0 & No  & Identifier renaming failure (retained \texttt{kernel\_gpu\_opencl}) \\
-    L1 & Yes & Phantom dependencies (\texttt{timing.h}, \texttt{checkCUDAError}) \\
-    L2 & No  & Identifier renaming failure (retained source name) \\
-    L3 & Yes & Undefined helpers (\texttt{setdevice}, \texttt{checkCUDAError}) \\
-    L4 & Yes & Undefined helpers + missing kernel launch syntax \\
+    OpenCL$\to$CUDA & \buildfail{} & Phantom include (\texttt{timing.h}) \\
+    OMP$\to$CUDA    & \buildfail{} & Phantom include (\texttt{main.h} path) \\
+    CUDA$\to$OMP    & \buildfail{} & Phantom include (\texttt{./main.h}) \\
+    CUDA$\to$OpenCL & \runfail{}   & Runtime crash (exit code 245) \\
+    OMP$\to$OpenCL  & \runfail{}   & Runtime crash (exit code 245) \\
+    OpenCL$\to$OMP  & Mixed        & 2~\buildfail{} + 1~\verifyfail{} \\
     \bottomrule
   \end{tabular}
 \end{table}
 
-Table~\ref{tab:lavamd-errors} reveals that the ``semantic renaming failure''
-(keeping \texttt{kernel\_gpu\_opencl} in CUDA code) only occurs at L0 and L2. At
-L1, L3, and L4, the model correctly renames the function but fails on different
-issues: phantom include paths, undefined helper functions, and missing
-\texttt{<<<>>>} kernel launch syntax.
+Table~\ref{tab:lavamd-errors} reveals two structural patterns. First, all
+directions targeting CUDA fail at build time due to phantom include paths: the
+model hallucinates headers (\texttt{timing.h}, \texttt{./main.h},
+\texttt{./util/timer/timer.h}) that exist in the source program's directory
+tree but are unavailable in the translated program's build context. All three
+samples within each CUDA-targeting direction fail on the same phantom header,
+indicating a deterministic error rather than stochastic variation. Second,
+directions targeting OpenCL compile successfully but crash at runtime (exit
+code~245), suggesting that the model produces syntactically valid OpenCL
+host code but fails to correctly translate memory management or kernel
+argument binding.
 
-\subsubsection*{Retry Behavior}
+\subsubsection*{Cross-Model Persistence}
 
-All 5~levels share the same first-attempt error: the model hallucinates a
-non-existent header (\texttt{timing.h}). Subsequent attempts diverge by level,
-introducing \emph{new} error categories without converging toward a fix. This
-pattern---where each attempt produces qualitatively
-different errors rather than incrementally correcting the previous
-attempt---illustrates a fundamental limitation of iterative correction
-for multi-file consistency errors. The error messages are locally
-informative (``undefined reference to \texttt{checkCUDAError}'') but do not
-convey the systemic issue: the model must generate a coherent program scaffold,
-not just fix individual compilation errors.
+The direction-dependent failure pattern persists across models. For the
+OpenCL$\to$CUDA and OMP$\to$CUDA directions, all three evaluated models
+(\qwenshort{}, \gptnew{}, \codexshort{}) fail on every sample
+(9/9~\buildfail{} per direction). In contrast, for OMP$\to$OpenCL, \gptnew{}
+and \codexshort{} each achieve 3/3~\pass{} while \qwenshort{} fails 3/3, and
+for CUDA$\to$OMP, \gptnew{} achieves 2/3~\pass{} while \qwenshort{} and
+\codexshort{} achieve 0/3. These asymmetries indicate that multi-file
+coordination difficulty is a property of the translation direction---not solely
+of the kernel complexity or the model.
 
 \subsubsection*{Implications}
 
-This case study identifies four distinct error subcategories within the
+This case study identifies three distinct error subcategories within the
 ``multi-file translation consistency failure'' class:
 
 \begin{enumerate}
   \item \textbf{Phantom dependencies}: The model hallucinates include files
-    (\texttt{timing.h}) or helper functions (\texttt{checkCUDAError},
-    \texttt{setdevice}) that exist in the model's training data but not in the
-    target program's file structure.
+    (\texttt{timing.h}, \texttt{./main.h}) or helper functions
+    (\texttt{checkCUDAError}, \texttt{setdevice}) that may exist in the
+    model's training data but are absent from the target program's file
+    structure. This is the dominant build-time failure mode for
+    CUDA-targeting directions across all three models.
 
-  \item \textbf{Cross-file identifier inconsistency}: The kernel file uses the
-    target API's naming convention (\texttt{kernel\_gpu\_cuda}) while the wrapper
-    file retains the source API's name (\texttt{kernel\_gpu\_opencl}), causing
-    linker errors.
+  \item \textbf{Cross-file identifier inconsistency}: In some translations
+    (observed in \codexshort{} and \gptnew{} OpenCL$\to$CUDA attempts), the
+    kernel file uses the target API's naming convention while the wrapper file
+    retains the source API's function name, producing linker errors
+    (\texttt{undefined reference to `kernel\_gpu\_cuda'}).
 
-  \item \textbf{Missing host-side launch syntax}: The wrapper calls the kernel
-    as a regular C function (\texttt{kernel\_gpu\_cuda(...)}) rather than using
-    CUDA kernel launch syntax (\texttt{kernel\_gpu\_cuda<<<grid, block>>>(...)}).
-
-  \item \textbf{Scaffold generation failure}: The model cannot synthesize the
-    boilerplate infrastructure (device selection, error checking, memory
-    allocation/deallocation) needed for a complete CUDA program, instead relying
-    on non-existent helper functions.
+  \item \textbf{Host-side runtime failures}: For OpenCL-targeting directions
+    across all three models, the translated code compiles but crashes at
+    runtime, suggesting incorrect host-side buffer management or kernel
+    argument binding---errors that static analysis and build systems cannot
+    catch.
 \end{enumerate}
 
-These findings suggest that a hybrid pipeline---combining LLM translation for
-computational kernels with template-based scaffold generation for host
-infrastructure---may outperform end-to-end LLM translation for multi-file
-programs. However, the varying failure modes across augmentation levels indicate
-that a simple post-processing pass (e.g., find-and-replace renaming) would only
-address subcategory~2, leaving subcategories 1, 3, and~4 unresolved.
+These findings suggest that multi-file translation failures are not uniformly
+distributed across directions. Directions requiring the model to generate
+host-side boilerplate for a fundamentally different runtime (e.g., CUDA driver
+API, OpenCL \texttt{cl*} calls) are systematically harder than directions where
+the host code structure is similar between source and target. A hybrid
+pipeline---combining LLM translation for computational kernels with
+template-based scaffold generation for host infrastructure---may address
+subcategories~1 and~2 but would not resolve the runtime failures in
+subcategory~3, which require correct semantic translation of memory management
+and synchronization patterns.
 
 \subsection{Extended Results Details}
-\label{sec:appendix-c-extended}
+\label{sec:appendix-e4}
 
 This section expands on the results presented in Section~\ref{sec:results}.
 
@@ -1112,16 +977,16 @@ L4 & 10/12 & 83.3\% & 10/12 \phantom{0}(83\%) \\
 If baseline success were driven primarily by surface-form memorization, augmented source variants should degrade pass rates. On a balanced 12-kernel CUDA-to-OpenMP subset present at all five augmentation levels, pass rates remain between 75\% and 83\% at L1--L4. The L0 rate on this subset (80.6\%) exceeds the overall CUDA-to-OpenMP L0 rate (40.3\%) because the ablation filter selects kernels that already pass at L0, creating a survivorship bias toward easier kernels. We computed Cochran-Armitage trend tests, but two confounds undermine their interpretability: the 3:1 ratio of L0 to L1--L4 sample sizes on this subset, and the survivorship selection inherent in L0-conditional ablation. The observed stability is compatible with some robustness to surface-form perturbation, though it does not rule out memorization at other levels of abstraction.
 
 %% ============================================================================
-%% APPENDIX D: Supplementary Tables and Figures
+%% APPENDIX F: Supplementary Tables and Figures
 %% ============================================================================
 
 \section{Supplementary Tables and Figures}
-\label{sec:appendix-d}
+\label{sec:appendix-f}
 
 This appendix contains detailed evidence tables and figures referenced from the main text.
 Floats are ordered by their original section appearance.
 
-% --- From Section 3 (ParBench Framework) ---
+% --- From Section 3 (\parbench{} Framework) ---
 
 % src: tab:augmentation-levels verified against LEVEL_FRACTIONS = {1: 0.0, 2: 0.33, 3: 0.66, 4: 1.0} (01-01 verified 2026-04-03)
 % src: in c_augmentation/augment_dataset.py line 111 (LEVEL_FRACTIONS dict)
@@ -1151,8 +1016,7 @@ Floats are ordered by their original section appearance.
 
 \begin{figure}[htbp]
 \centering
-% \includegraphics[width=\columnwidth]{f2_repo_vs_kernel.pdf}
-\input{NeurIPS_ready_version/figures/f2_repo_vs_kernel}
+\input{NeurIPS_ready_version/figures/figures_tek_version/f2_repo_vs_kernel}
 \caption{Repository-level vs.\ kernel-level translation pair counts. Left bars show the number of repositories containing both APIs; right bars show the number of independent kernel-level translation pairs. The multipliers (78$\times$--308$\times$) demonstrate that repository-level counting substantially underestimates the translation evaluation opportunity.}
 \label{fig:repo-vs-kernel}
 \end{figure}
@@ -1251,19 +1115,16 @@ Python & 3.12.3 \\
 
 % --- From Section 6 (Results) ---
 
-% src: quantitative_findings_qwen.json > canonical > augmentation_trends > aggregate > per_level
-% src: quantitative_findings_gpt54.json > canonical > augmentation_trends > aggregate > per_level
-% src: L0 = all 426 tasks (142 pairs x 3 samples); L1-L4 = ablation qualifying pairs only (Qwen n=50, GPT n=99)
 \begin{table}[htbp]
 \centering
 % src: statistical_analysis.json > augmentation_curves > *; augmentation_per_kernel_matrix_*.json
-\caption{LLM pass rates across augmentation levels. L0 covers all 142 direction--kernel pairs ($n=426$ tasks). L1--L4 are evaluated only for pairs where $\geq$1 of 3 L0 samples passed (Qwen: 50 pairs, GPT-5.4: 99 pairs, Codex: 97 pairs).}
+\caption{LLM pass rates across augmentation levels. L0 covers all 142 direction--kernel pairs ($n=426$ tasks). L1--L4 are evaluated only for pairs where $\geq$1 of 3 L0 samples passed (Qwen: 50 pairs, GPT-5.4: 99 pairs, GPT-5.3-Codex: 97 pairs).}
 \label{tab:augmentation-rates}
 \small
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}ccccccc@{}}
 \toprule
-Level & \makecell{Qwen 3.5\\(all dirs)} & \makecell{Qwen 3.5\\(C$\to$OMP)} & \makecell{GPT-5.4\\(all dirs)} & \makecell{GPT-5.4\\(C$\to$OMP)} & \makecell{Codex\\(all dirs)} & \makecell{Codex\\(C$\to$OMP)} \\
+Level & \makecell{Qwen 3.5\\(all dirs)} & \makecell{Qwen 3.5\\(C$\to$OMP)} & \makecell{GPT-5.4\\(all dirs)} & \makecell{GPT-5.4\\(C$\to$OMP)} & \makecell{GPT-5.3-Codex\\(all dirs)} & \makecell{GPT-5.3-Codex\\(C$\to$OMP)} \\
 \midrule
 L0 & 23.9\% ($n$=426) & 40.3\% ($n$=72) & 62.7\% ($n$=426) & 83.3\% ($n$=72) & 62.7\% ($n$=426) & 76.4\% ($n$=72) \\
 L1 & 74.0\% ($n$=50) & 75.0\% ($n$=12) & 88.9\% ($n$=99) & 90.9\% ($n$=22) & 86.6\% ($n$=97) & 85.0\% ($n$=20) \\
@@ -1278,14 +1139,16 @@ L4 & 56.0\% ($n$=50) & 83.3\% ($n$=12) & 90.9\% ($n$=99) & 90.9\% ($n$=22) & 85.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f7_augmentation_robustness.pdf}
+% \includegraphics[width=\columnwidth]{f7_augmentation_robustness.pdf}
+\input{NeurIPS_ready_version/figures/figures_tek_version/f7_augmentation_robustness}
 \caption{Augmentation robustness. X-axis: augmentation levels L0--L4. Y-axis: pass rate (\%). Lines per model. Rodinia CUDA-to-OpenMP, seed=42.}
 \label{fig:augmentation}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{aug_heatmap.pdf}
+% \includegraphics[width=\columnwidth]{aug_heatmap.pdf}
+\input{NeurIPS_ready_version/figures/figures_tek_version/aug_heatmap}
 \caption{Per-kernel augmentation status across levels L0--L4 (CUDA-to-OMP, Qwen~3.5). Cell color: pass/fail status.}
 \label{fig:aug-heatmap}
 \end{figure}
@@ -1307,7 +1170,6 @@ Model & Pairs & pass@1 & pass@3 & Hard Fail & Noisy & Always Pass \\
 \midrule
 Qwen~3.5 397B-A17B & 142 & 23.9\% & 35.2\% & 92/142 (64.8\%) & 31/142 (21.8\%) & 19/142 (13.4\%) \\
 GPT-5.4 & 142 & 62.7\% & 69.7\% & 43/142 (30.3\%) & 23/142 (16.2\%) & 76/142 (53.5\%) \\
-% src: paper_data_azure-gpt-5.3-codex.json > passk_campaign > aggregate_passk + task_classification
 GPT-5.3-codex & 142 & 62.7\% & 68.3\% & 45/142 (31.7\%) & 16/142 (11.3\%) & 81/142 (57.0\%) \\
 \bottomrule
 \end{tabular}
@@ -1317,7 +1179,8 @@ GPT-5.3-codex & 142 & 62.7\% & 68.3\% & 45/142 (31.7\%) & 16/142 (11.3\%) & 81/1
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction_qwen.pdf}
+% \includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction_qwen.pdf}
+\input{NeurIPS_ready_version/figures/figures_tek_version/f5_pass_at_k_by_direction_qwen}
 \caption{pass@$k$ by translation direction.}
 \label{fig:pass-at-k}
 \end{figure}
@@ -1407,11 +1270,11 @@ HeCBench & scan & 6 & 0 & 6 & 0.0\% & [0.0\%, 39.0\%] \\
 \end{table*}
 
 %% ============================================================================
-%% APPENDIX E: Translation Prompt Template
+%% APPENDIX G: Translation Prompt Template
 %% ============================================================================
 
 \section{Translation Prompt Template}
-\label{sec:appendix-prompt}
+\label{sec:appendix-g}
 
 This appendix reproduces the full translation prompt template used by the
 evaluation pipeline. All prompts follow this structure; only the source code
@@ -1480,74 +1343,91 @@ Three anonymization steps are applied before prompt construction:
   stripped from the build command string.
 \end{itemize}
 
+% ------------------------------------------------------
+% APPENDIX H FPT-5.4 PER MODEL FIGURES
+% ---------------------------------------------------------
 \section{GPT-5.4 Per-Model Figures}
-\label{sec:appendix-gpt-figures}
+\label{sec:appendix-h}
 
 The following figures present GPT-5.4 evaluation results, complementing the Qwen~3.5 397B figures in the main body. Each figure uses the same visualization format as its main-body counterpart to enable direct visual comparison.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f3_kernel_model_heatmap_gpt.pdf}
+% \includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/f3_kernel_model_heatmap_gpt_5-4.pdf}
+\input{NeurIPS_ready_version/figures/figures_tek_version/f3_kernel_model_heatmap_gpt_5-4}
 \caption{Per-kernel pass rates across all translation directions (GPT-5.4).}
 \label{fig:f3-gpt}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f4_failure_taxonomy_gpt.pdf}
+% \includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/f4_failure_taxonomy_gpt_5-4.pdf}
+\input{NeurIPS_ready_version/figures/figures_tek_version/f4_failure_taxonomy_gpt_5-4}
 \caption{Failure taxonomy distribution (GPT-5.4). Compare with Figure~\ref{fig:failure-taxonomy} in main body (Qwen~3.5 397B).}
 \label{fig:f4-gpt}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction_gpt.pdf}
+% \includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/f5_pass_at_k_by_direction_gpt_5-4.pdf}
+\input{NeurIPS_ready_version/figures/figures_tek_version/f5_pass_at_k_by_direction_gpt_5-4}
 \caption{Pass@$k$ rates by translation direction (GPT-5.4).}
 \label{fig:f5-gpt}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f6_cross_suite_comparison_gpt.pdf}
+\includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/f6_cross_suite_comparison_gpt_5-4.pdf}
 \caption{Cross-suite pass rate comparison (GPT-5.4).}
 \label{fig:f6-gpt}
 \end{figure}
 
+% -------------------------------------------
+% APPENDIX I GPT-5.3-CODEX FIGURES
+% -----------------------------------------
+
 \section{GPT-5.3-codex Per-Model Figures}
-\label{sec:appendix-codex-figures}
+\label{sec:appendix-i}
 
 The following figures present GPT-5.3-codex evaluation results using the same visualization format as the main-body counterparts.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f3_kernel_model_heatmap_codex.pdf}
+% \includegraphics[width=\columnwidth]{f3_kernel_model_heatmap_codex.pdf}
+\input{NeurIPS_ready_version/figures/figures_tek_version/f3_kernel_model_heatmap_gpt_5-3_codex}
 \caption{Per-kernel pass rates across all translation directions (GPT-5.3-codex).}
 \label{fig:f3-codex}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f4_failure_taxonomy_codex.pdf}
+% \includegraphics[width=\columnwidth]{f4_failure_taxonomy_codex.pdf}
+\input{NeurIPS_ready_version/figures/figures_tek_version/f4_failure_taxonomy_gpt_5-3_codex}
 \caption{Failure taxonomy distribution (GPT-5.3-codex). Compare with Figure~\ref{fig:failure-taxonomy} in main body (Qwen~3.5 397B).}
 \label{fig:f4-codex}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction_codex.pdf}
+% \includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction_codex.pdf}
+\input{NeurIPS_ready_version/figures/figures_tek_version/f5_pass_at_k_by_direction_gpt_5-3_codex}
 \caption{Pass@$k$ rates by translation direction (GPT-5.3-codex).}
 \label{fig:f5-codex}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\columnwidth]{f6_cross_suite_comparison_codex.pdf}
+% \includegraphics[width=\columnwidth]{f6_cross_suite_comparison_codex.pdf}
+\input{NeurIPS_ready_version/figures/figures_tek_version/f6_cross_suite_comparison_gpt_5-3_codex}
 \caption{Cross-suite pass rate comparison (GPT-5.3-codex).}
 \label{fig:f6-codex}
 \end{figure}
 
+% ------------------------------------------------
+% APPENDIX J EVALUATION COST SUMMARY
+%---------------------------------------------------
 \section{Evaluation Cost Summary}
-\label{sec:appendix-cost}
+\label{sec:appendix-j}
 
 % src: token_analysis.json > actual_billing; SF-1: API cost and evaluation time
 \begin{table}[h]
@@ -1600,12 +1480,13 @@ Campaign duration & 2 days (814 tasks) \\
 \end{tabular}
 \end{table}
 
+
 %% ============================================================================
-%% APPENDIX: Evaluation Card
+%% APPENDIX K: Evaluation Card
 %% ============================================================================
 
 \section{Evaluation Card}
-\label{sec:eval-card}
+\label{sec:appendix-k}
 
 Following Model Cards~\cite{ModelCards2019} and Datasheets~\cite{Datasheets2021},
 we provide an \emph{Evaluation Card} for \parbench{} that states what it
@@ -1624,13 +1505,13 @@ measurement scope. Detailed discussion appears in the referenced subsection.}
 \toprule
 Dimension & Key Points & Ref. \\
 \midrule
-\multicolumn{3}{l}{\textit{What ParBench measures}} \\
+\multicolumn{3}{l}{\textit{What \parbench{} measures}} \\
 Functional correctness & Binary pass/fail via conjunctive build$\to$run$\to$verify pipeline & \S\ref{sec:ec-measures} \\
 Failure taxonomy & Five classifications: \extractionfail{}, \buildfail{}, \runfail{}, \verifyfail{}, \pass{} & \S\ref{sec:ec-measures} \\
 Direction asymmetry & Pass-rate variation across 10 translation directions (3 APIs + OMP target) & \S\ref{sec:ec-measures} \\
 Augmentation robustness & Stability under six AST-level semantics-preserving transforms at four levels & \S\ref{sec:ec-measures} \\
 \midrule
-\multicolumn{3}{l}{\textit{What ParBench does not measure}} \\
+\multicolumn{3}{l}{\textit{What \parbench{} does not measure}} \\
 Performance & No speedup, throughput, occupancy, memory, or energy measurement & \S\ref{sec:ec-not-measures} \\
 Numerical accuracy & 80 of 87 non-\knownfail{} specs use weak oracles (exit code + stdout pattern) & \S\ref{sec:ec-not-measures} \\
 Code quality & No readability, maintainability, or style assessment of translations & \S\ref{sec:ec-not-measures} \\
@@ -1650,7 +1531,7 @@ Reporting protocol & Required and recommended items for publications using \parb
 \end{table*}
 
 % --------------------------------------------------------------------------
-\subsection{What ParBench Measures}
+\subsection{What \parbench{} Measures}
 \label{sec:ec-measures}
 
 \parbench{} measures the following properties of LLM-based parallel code
@@ -1704,7 +1585,7 @@ translation:
 \end{enumerate}
 
 % --------------------------------------------------------------------------
-\subsection{What ParBench Does Not Measure}
+\subsection{What \parbench{} Does Not Measure}
 \label{sec:ec-not-measures}
 
 The following properties are explicitly outside \parbench{}'s measurement scope:
@@ -1937,7 +1818,7 @@ the evaluation pipeline handles prompt construction, LLM calls, and file
 extraction, and the harness handles build/run/verify.
 
 \textbf{Adding new kernels.} Write a spec JSON following the schema documented
-in Appendix~\ref{sec:appendix-framework-schema}. The spec must define identity
+in Appendix~\ref{sec:appendix-a-schema}. The spec must define identity
 (unique ID, API, suite), file partitioning (prompt payload, translation targets,
 support files), build commands, run configuration, and verification strategies.
 Validate the baseline by running the harness verify command. Append to the
@@ -2037,20 +1918,14 @@ CUDA-to-OpenMP is the most tractable direction (A\%~[CI]); OpenCL-to-CUDA is
 the hardest (B\%~[CI]). Augmentation analysis on [K]~qualifying kernels shows
 pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 
-
-
-%% ============================================================================
-%% NeurIPS Paper Checklist (REQUIRED)
-%% ============================================================================
-
-\section*{NeurIPS Paper Checklist}
+\newpage
 
 \begin{enumerate}
 
 \item {\bf Claims}
     \item[] Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
     \item[] Answer: \answerYes{}
-    \item[] Justification: The abstract states L0 pass rates (Qwen 23.9\%, GPT-5.4 62.7\%, Codex 62.7\%), failure taxonomy percentages, and augmentation robustness findings, all verified against raw result files (Section~\ref{sec:results}). Claims are scoped to the three models evaluated.
+    \item[] Justification: The abstract states L0 pass rates (Qwen 23.9\%, GPT-5.4 62.7\%, GPT-5.3-Codex 62.7\%), failure taxonomy percentages, and augmentation robustness findings, all verified against raw result files (Section~\ref{sec:results}). Claims are scoped to the two models evaluated.
 
 \item {\bf Limitations}
     \item[] Question: Does the paper discuss the limitations of the work performed by the authors?
@@ -2065,12 +1940,12 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 \item {\bf Experiments}
     \item[] Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper?
     \item[] Answer: \answerYes{}
-    \item[] Justification: Section~\ref{sec:experimental-setup} and Appendix~\ref{sec:appendix-framework} provide model configurations (Table~\ref{tab:model-config}), hardware specifications (Table~\ref{tab:hardware}), the complete prompt template (Appendix~\ref{sec:appendix-prompt}), and augmentation level definitions (Table~\ref{tab:augmentation-levels}). The evaluation pipeline is deterministic given a fixed spec and model response.
+    \item[] Justification: Section~\ref{sec:experimental-setup} and Appendix~\ref{sec:appendix-a} provide model configurations (Table~\ref{tab:model-config}), hardware specifications (Table~\ref{tab:hardware}), the complete prompt template (Appendix~\ref{sec:appendix-g}), and augmentation level definitions (Table~\ref{tab:augmentation-levels}). The evaluation pipeline is deterministic given a fixed spec and model response.
 
 \item {\bf Code and data}
     \item[] Question: Does the paper provide instructions for reproducing the main experimental results, including code and data?
     \item[] Answer: \answerYes{}
-    \item[] Justification: ParBench is included as anonymized supplementary material containing all 206 kernel specifications, the build-run-verify harness, the evaluation pipeline, augmentation engine, and per-record result JSONs for both models.
+    \item[] Justification: \parbench{} is included as anonymized supplementary material containing all 206 kernel specifications, the build-run-verify harness, the evaluation pipeline, augmentation engine, and per-record result JSONs for both models.
 
 \item {\bf Experimental details}
     \item[] Question: Does the paper specify all the training and test details necessary to understand the results?
@@ -2085,7 +1960,7 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 \item {\bf Compute}
     \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources used?
     \item[] Answer: \answerYes{}
-    \item[] Justification: Table~\ref{tab:hardware} specifies the evaluation platform (RTX 4070, Ryzen 9 7900X, Ubuntu 24.04, HPC SDK 24.3). Appendix~\ref{sec:appendix-cost} reports token usage and wall-clock time for both model campaigns.
+    \item[] Justification: Table~\ref{tab:hardware} specifies the evaluation platform (RTX 4070, Ryzen 9 7900X, Ubuntu 24.04, HPC SDK 24.3). Appendix~\ref{sec:appendix-j} reports token usage and wall-clock time for both model campaigns.
 
 \item {\bf NeurIPS code of ethics}
     \item[] Question: Does the research conform to the NeurIPS Code of Ethics?
@@ -2100,7 +1975,7 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 \item {\bf Safeguards}
     \item[] Question: Does the paper describe safeguards that have been put in place for responsible release of data or models?
     \item[] Answer: \answerNA{}
-    \item[] Justification: ParBench releases benchmark specifications and evaluation infrastructure, not trained models or generated datasets. The benchmark code originates from established open-source HPC suites.
+    \item[] Justification: \parbench{} releases benchmark specifications and evaluation infrastructure, not trained models or generated datasets. The benchmark code originates from established open-source HPC suites.
 
 \item {\bf Licenses}
     \item[] Question: Are the creators of assets used in the paper properly credited and are the license and terms of use explicitly mentioned and properly respected?
@@ -2110,8 +1985,8 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 \item {\bf New assets}
     \item[] Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?
     \item[] Answer: \answerYes{}
-    \item[] Justification: ParBench's specification schema is documented (Section~\ref{sec:spec-schema}, Appendix~\ref{sec:appendix-framework-schema}). The augmentation engine, evaluation pipeline, and harness are described in Section~\ref{sec:framework}. A datasheet will accompany the code release.
-
+    \item[] Justification:\parbench{}'s specification schema is documented (Section~\ref{sec:spec-schema}, Appendix~\ref{sec:appendix-a-schema}). The augmentation engine, evaluation pipeline, and harness are described in Section~\ref{sec:framework}. A datasheet following \citet{Datasheets2021} will accompany the code release. The availability plan, hosting, and license summary are provided in Section~\ref{sec:discussion}.
+ 
 \item {\bf Crowdsourcing and human subjects}
     \item[] Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants?
     \item[] Answer: \answerNA{}

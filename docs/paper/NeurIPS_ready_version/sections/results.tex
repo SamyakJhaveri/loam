@@ -77,7 +77,7 @@ Prior work such as ParEval-Repo reports 0\% pass@1 on repository-level applicati
 \subsection{pass@$k$ Analysis}
 \label{sec:passk-analysis}
 
-Restricting to the 142 L0 tasks to estimate single-sample vs. multi-sample success, \qwenshort{} achieves 23.9\% pass@1 and 35.2\% pass@3 (detailed in Appendix~\ref{sec:appendix-c-extended}).
+Restricting to the 142 L0 tasks to estimate single-sample vs. multi-sample success, \qwenshort{} achieves 23.9\% pass@1 and 35.2\% pass@3 (detailed in Appendix~\ref{sec:appendix-e4}).
 % src: paper_data_azure-gpt-5.3-codex.json > passk_campaign > aggregate_passk
 \codexshort{} achieves pass@1\,=\,62.7\% and pass@3\,=\,68.3\%, matching \gptnew{}'s pass@1 exactly with a slightly narrower pass@1-to-pass@3 gap (5.6\,pp versus 7.0\,pp). Additional stochastic samples provide diminishing returns. Of the 142 tasks, 64.8\% produce no passing sample across three independent attempts, and 13.4\% pass in all three. Failures are largely systematic (incorrect API mapping) rather than stochastic; resampling is insufficient to recover most failing pairs.
 
@@ -113,7 +113,7 @@ CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 95.8\% [79.8\%, 99.3\%] 
 \end{table*}
 
 Per-record pass rates vary strongly across directions (Table~\ref{tab:direction-rates}), reflecting structural API asymmetries. Translating from CUDA to OpenMP replaces explicit device memory and launch configuration with compiler directives. The reverse requires introducing explicit synchronization and memory management. OpenCL translations introduce further complexity with separate host/kernel source and JIT compilation, leading to 0\% success for OpenCL-to-CUDA under \qwenshort{}. \codexshort{}'s direction profile nearly mirrors \gptnew{} across all six standard directions (within 2--10\,pp), reinforcing that direction difficulty is a property of the task, not the model.
-At the kernel level, performance is highly heterogeneous (full breakdown in Appendix~\ref{sec:appendix-c-extended}). Simple kernels pass at high rates, while those with irregular memory access or multi-file dependencies frequently fail entirely.
+At the kernel level, performance is highly heterogeneous (full breakdown in Appendix~\ref{sec:appendix-e4}). Simple kernels pass at high rates, while those with irregular memory access or multi-file dependencies frequently fail entirely.
 
 \subsection{Failure Taxonomy}
 \label{sec:failure-taxonomy}
@@ -121,7 +121,7 @@ At the kernel level, performance is highly heterogeneous (full breakdown in Appe
 \begin{figure}[t]
 \centering
 \input{figures/f4_failure_taxonomy_qwen.tex}
-\caption{\qwenshort{} outcome taxonomy across 626 valid records. Build-stage failures are the largest non-pass category. \gptnew{} taxonomy (822 records) is in Appendix~\ref{sec:appendix-gpt-figures}; \codexshort{} taxonomy (814 records) is in Appendix~\ref{sec:appendix-codex-figures}.}
+\caption{\qwenshort{} outcome taxonomy across 626 valid records. Build-stage failures are the largest non-pass category. \gptnew{} taxonomy (822 records) is in Appendix~\ref{sec:appendix-h}; \codexshort{} taxonomy (814 records) is in Appendix~\ref{sec:appendix-i}.}
 \label{fig:failure-taxonomy}
 \end{figure}
 
@@ -132,7 +132,7 @@ Build-stage adaptation is the dominant failure mode, accounting for 39.1\% of al
 \subsection{Augmentation Robustness}
 \label{sec:augmentation-robustness}
 
-To assess whether baseline success is driven primarily by surface-form memorization, we evaluated augmented source variants (L1--L4) on L0-conditional subsets (detailed in Appendix~\ref{sec:appendix-c-extended}).
+To assess whether baseline success is driven primarily by surface-form memorization, we evaluated augmented source variants (L1--L4) on L0-conditional subsets (detailed in Appendix~\ref{sec:appendix-e4}).
 % src: statistical_analysis.json > augmentation_curves > azure-gpt-5.3-codex; azure-gpt-5.4; together-qwen-3.5-397b-a17b
 \codexshort{} shows the same plateau pattern as \gptnew{}: 86.6\%--88.7\% at L1--L4 ($\chi^2$ independence test, $p = 1.0$ after Bonferroni correction), in contrast to \qwenshort{}'s peak-then-decline (74.0\% at L1 to 56.0\% at L4, $p = 0.005$). This stability across both GPT models is compatible with robustness to surface-form perturbation, though survivorship bias (L0-conditional filtering) prevents ruling out deeper structural memorization entirely.
 % src: results/evaluation/together-qwen-3.5-397b-a17b/hecbench-stencil1d-cuda-to-hecbench-stencil1d-omp-{s0,L2,L4}.json
