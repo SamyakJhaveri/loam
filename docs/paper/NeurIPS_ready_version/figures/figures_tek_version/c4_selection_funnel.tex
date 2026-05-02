@@ -1,0 +1,29 @@
+% C4: HeCBench kernel selection funnel (data-driven)
+% Stages 0-2: automated survey of HeCBench-master/src at commit 22785cdd
+% Stages 3-4: manually curated (carried from paper — human judgment)
+\begin{tikzpicture}[x=1cm, y=1cm]
+\node[font=\small\bfseries, anchor=south] at (2.5,7.50) {HeCBench Kernel Selection Pipeline};
+  \fill[pbTealLight, draw=black, line width=0.5pt] (0.00,6.00) rectangle (5.00,6.90);
+  \node[font=\footnotesize\bfseries, text=black] at (2.50,6.45) {522};
+  \node[font=\scriptsize, anchor=east, align=right, text width=3.0cm] at (-0.10,6.45) {HeCBench total};
+  \draw[->, >=stealth, color=pbGray, line width=1pt] (2.50,6.00) -- (2.50,5.40);
+  \fill[pbTealLight, draw=black, line width=0.5pt] (0.92,4.50) rectangle (4.08,5.40);
+  \node[font=\footnotesize\bfseries, text=black] at (2.50,4.95) {329};
+  \node[font=\scriptsize, anchor=east, align=right, text width=3.0cm] at (0.82,4.95) {All 4 API variants};
+  \node[font=\scriptsize, anchor=west, color=pbRose, align=left, text width=3.0cm] at (4.18,4.95) {$-$193: missing API variants};
+  \draw[->, >=stealth, color=pbGray, line width=1pt] (2.50,4.50) -- (2.50,3.90);
+  \fill[pbTeal, draw=black, line width=0.5pt] (0.93,3.00) rectangle (4.07,3.90);
+  \node[font=\footnotesize\bfseries, text=white] at (2.50,3.45) {327};
+  \node[font=\scriptsize, anchor=east, align=right, text width=3.0cm] at (0.83,3.45) {With Makefiles};
+  \node[font=\scriptsize, anchor=west, color=pbRose, align=left, text width=3.0cm] at (4.17,3.45) {$-$2: no Makefile};
+  \draw[->, >=stealth, color=pbGray, line width=1pt] (2.50,3.00) -- (2.50,2.40);
+  \fill[pbTeal, draw=black, line width=0.5pt] (1.34,1.50) rectangle (3.66,2.40);
+  \node[font=\footnotesize\bfseries, text=white] at (2.50,1.95) {242};
+  \node[font=\scriptsize, anchor=east, align=right, text width=3.0cm] at (1.24,1.95) {With self-checking};
+  \node[font=\scriptsize, anchor=west, color=pbRose, align=left, text width=3.0cm] at (3.76,1.95) {$-$85: no verification};
+  \draw[->, >=stealth, color=pbGray, line width=1pt] (2.50,1.50) -- (2.50,0.90);
+  \fill[pbTealDark, draw=black, line width=0.5pt] (2.21,0.00) rectangle (2.79,0.90);
+  \node[font=\footnotesize\bfseries, text=white] at (2.50,0.45) {60};
+  \node[font=\scriptsize, anchor=east, align=right, text width=3.0cm] at (2.11,0.45) {Final selected};
+  \node[font=\scriptsize, anchor=west, color=pbRose, align=left, text width=3.0cm] at (2.89,0.45) {$-$182: complexity/deps/diversity};
+\end{tikzpicture}

@@ -172,11 +172,13 @@ REPO_KERNEL_PAIRS: list[tuple[str, int, int]] = [
 ]
 
 # C.4: HeCBench kernel selection pipeline funnel stages (survey data)
+# Stages 0-2: automated survey of HeCBench-master/src at commit 22785cdd
+# Stages 3-4: manually curated (human judgment \u2014 self-checking strictness, domain diversity)
 HECBENCH_FUNNEL_STAGES: list[tuple[str, int, str | None]] = [
-    ("HeCBench kernels total", 506, None),
-    ("All 4 API variants\n(CUDA, HIP, SYCL, OMP)", 327, "\u2212179: missing API variants"),
-    ("With Makefiles", 325, "\u22122: no Makefile"),
-    ("With self-checking\n(PASS/FAIL/verify patterns)", 242, "\u221283: no verification"),
+    ("HeCBench kernels total", 522, None),
+    ("All 4 API variants\n(CUDA, HIP, SYCL, OMP)", 329, "\u2212193: missing API variants"),
+    ("With Makefiles", 327, "\u22122: no Makefile"),
+    ("With self-checking\n(PASS/FAIL/verify patterns)", 242, "\u221285: no verification"),
     ("Final selected\n(complexity, deps, diversity)", 60, "\u2212182: complexity/deps/diversity"),
 ]
 

@@ -214,7 +214,7 @@ insufficient benchmark material for statistical evaluation.
 The repository-level analysis in Figures~\ref{fig:api-heatmap}--\ref{fig:api-coverage}
 counts how many \emph{repositories} provide implementations in a given API pair,
 but does not capture the depth of coverage within each repository. A suite like
-HeCBench provides 516 individual kernels, each potentially implemented in
+HeCBench provides 522 individual kernels, each potentially implemented in
 multiple APIs, while a single-kernel mini-application like miniBUDE provides
 only~1 kernel across 12+ APIs. For translation evaluation, the kernel count is
 the relevant unit: it determines how many independent evaluation instances are
@@ -551,7 +551,7 @@ plots these two dimensions for all surveyed repositories.
   \includegraphics[width=\columnwidth]{kernel_api_bubble.png}
   \caption{Benchmark kernel richness (y-axis, capped at 100 for readability) vs.\
     API breadth (x-axis, number of APIs supported). Bubble size proportional to
-    total kernel count; color indicates benchmark type. HeCBench (516 kernels,
+    total kernel count; color indicates benchmark type. HeCBench (522 kernels,
     4~APIs) dominates the upper region. RAJAPerf (80 kernels, 5~APIs) is the
     second-largest. CloverLeaf (23 kernels, 9~APIs) and BabelStream (5 kernels,
     12~APIs) occupy the high-API-breadth region but with far fewer kernels. The
@@ -570,7 +570,7 @@ in corpus construction.
   \input{NeurIPS_ready_version/figures/top_candidates}
   \caption{Top ``Rosetta Stone'' candidates ranked by kernel count (blue bars,
     scaled for readability; true counts annotated above) and API breadth (red
-    bars). HeCBench provides the largest kernel pool (516 kernels) but with
+    bars). HeCBench provides the largest kernel pool (522 kernels) but with
     only~4 primary APIs (CUDA, HIP, SYCL, OpenMP). BabelStream provides the
     broadest API coverage (12~APIs) but with only 5~kernels. RAJAPerf (80
     kernels, 7~APIs) offers a balanced middle ground. Rodinia (24 kernels, 3
@@ -581,12 +581,12 @@ in corpus construction.
 
 \subsubsection*{HeCBench Selection Funnel}
 
-HeCBench's 516 kernels were filtered through a multi-stage funnel to identify
+HeCBench's 522 kernels were filtered through a multi-stage funnel to identify
 the curated evaluation set:
 
 \begin{itemize}
-  \item \textbf{Stage~1 (API and infrastructure filter):} Of 516 total kernels in the HeCBench
-    repository, 327 provide implementations in all 4~primary APIs
+  \item \textbf{Stage~1 (API and infrastructure filter):} Of 522 total kernels in the HeCBench
+    repository, 329 provide implementations in all 4~primary APIs
     (CUDA, HIP, SYCL, OpenMP). After excluding 2~without Makefiles and retaining only the 242 with self-checking output patterns, 242~candidates remain.
 
   \item \textbf{Stage~2 (Complexity filter):} The 242 candidates were filtered
@@ -808,62 +808,85 @@ heatmap.
 \begin{figure}[htbp]
   \centering
   % \includegraphics[width=\columnwidth]{figures/c3_transform_frequency.pdf}
-  \input{NeurIPS_ready_version/figures/c3_transform_frequency}
-  \caption{Transform frequency heatmap showing candidate sites per kernel per
-    transform type. Rows represent kernels; columns represent the six AST-level
-    transforms. Cell intensity indicates the number of candidate sites
-    identified by the augmentation pipeline. The distribution is highly
-    non-uniform: control-flow-heavy kernels (e.g., \texttt{bfs},
-    \texttt{particlefilter}) have many SwapCondition sites, while
-    compute-intensive kernels (e.g., \texttt{hotspot}, \texttt{lud}) are
-    dominated by ArithmeticTransform sites.}
+  \input{NeurIPS_ready_version/figures/figures_tek_version/c3_transform_frequency}
+  \caption{Per-kernel transform application frequency across the Rodinia corpus.
+    Rows represent the 22~Rodinia kernels; columns represent the six AST-level
+    transforms. Cell values give the total number of times each transform was
+    applied to files belonging to that kernel, aggregated across all
+    augmentation levels and API variants. The distribution is highly
+    non-uniform: multi-file kernels such as \texttt{myocyte} (16 source files)
+    and \texttt{bptree} accumulate many SwapCondition applications, while
+    smaller kernels (e.g., \texttt{pathfinder}, \texttt{hotspot}) show lower
+    counts. ChangeFunctionNames applies to only two kernels
+    (\texttt{huffman}, \texttt{streamcluster}).}
   \label{fig:transform-freq}
 \end{figure}
 
 Aggregate transform frequencies across the corpus reveal a clear dominance
-hierarchy:
+hierarchy. We report the number of Rodinia specs (out of 60) to which each
+transform applies at L4 (full intensity), followed by the total application
+count across all 240 augmentation tasks (60~specs $\times$ 4~levels):
 
 \begin{itemize}
-  \item \textbf{SwapCondition}: 162 candidate sites (most common). Targets
-    \texttt{if/else} branches and ternary expressions. Its prevalence reflects
-    the ubiquity of conditional logic in HPC kernels---boundary checks, loop
-    guards, and branch-based algorithm selection all contribute candidate sites.
+  \item \textbf{SwapCondition} (59/60 specs at L4; 162 applications across all
+    levels): The most broadly applicable transform. Swaps operands of
+    comparison operators (e.g., \texttt{a < b} $\rightarrow$ \texttt{b > a}),
+    with guards against expressions containing side effects. Its near-universal
+    coverage reflects the ubiquity of comparison-based control flow in HPC
+    kernels---boundary checks, convergence tests, and branch-based algorithm
+    selection all contribute candidate sites.
 
-  \item \textbf{ArithmeticTransform}: 69 candidate sites. Applies commutative
-    rewriting of arithmetic expressions (e.g., $a + b \rightarrow b + a$,
-    $a \times (b + c) \rightarrow a \times b + a \times c$). Less common than
-    SwapCondition because many arithmetic expressions in HPC code involve
-    non-commutative operations (subtraction, division) or are too simple
-    (single-operand) to transform meaningfully.
+  \item \textbf{ArithmeticTransform} (45/60 specs at L4; 69 applications):
+    Converts compound assignment operators to their expanded forms and vice
+    versa (e.g., \texttt{x += expr} $\leftrightarrow$ \texttt{x = x + (expr)}).
+    Applies only to integer-typed scalar targets and excludes for-loop
+    incrementors to avoid disrupting iteration patterns. Less broadly applicable
+    than SwapCondition because it requires compound-assignment or
+    assignment-with-matching-LHS patterns that not all kernels exhibit.
 
-  \item \textbf{ChangeNames}: 55 candidate sites. Performs variable and
-    parameter renaming while preserving semantic equivalence. The count is
-    bounded by the number of local variables and parameters per kernel, which is
-    typically 10--30 for Rodinia kernels.
+  \item \textbf{ChangeNames} (32/60 specs at L4; 55 applications): Consistently
+    renames local variables and function parameters using symbol-aware reference
+    collection, preserving semantic equivalence. Coverage is bounded by the
+    number of renameable local declarations per kernel.
 
-  \item \textbf{TypedefExpansion}: 7 candidate sites. Inlines
+  \item \textbf{TypedefExpansion} (3/60 specs at L4; 7 applications): Inlines
     \texttt{typedef} aliases to their underlying types. Rare because most
-    Rodinia kernels use primitive types directly rather than defining aliases.
+    Rodinia kernels use primitive types directly rather than defining
+    type aliases.
 
-  \item \textbf{PointerArithmeticToArrayIndex}: 6 candidate sites. Rewrites
-    \texttt{*(ptr + i)} to \texttt{ptr[i]} and vice versa. Limited by the
-    prevalence of pointer arithmetic in the corpus---most kernels use array
-    indexing by default.
+  \item \textbf{PointerArithmeticToArrayIndex} (3/60 specs at L4; 6
+    applications): Rewrites \texttt{*(ptr + i)} to \texttt{ptr[i]} and vice
+    versa, with precedence-aware handling of struct member access. Limited
+    by the prevalence of pointer arithmetic in the corpus---most kernels use
+    array indexing natively.
 
-  \item \textbf{ChangeFunctionNames}: 2 candidate sites (least common). Limited
-    by the function definition count in single-kernel files, which typically
-    contain only 1--3 user-defined functions.
+  \item \textbf{ChangeFunctionNames} (2/60 specs at L4; 2 applications): Renames
+    user-defined functions and updates all call sites, skipping
+    \texttt{main}, GPU kernel entry points, and identifiers appearing in
+    string literals. The rarest transform, reflecting the small number of
+    user-defined functions in single-kernel files.
 \end{itemize}
 
-The level-invariance property (all 53 non-\knownfail{} Rodinia specs pass at all levels L1--L4)
-confirms that augmentation introduces no new correctness failures. This is
-expected: all transforms preserve semantic equivalence by construction, and the
-augmentation unit tests (\texttt{c\_augmentation/test\_transforms.py}, 15~tests)
-verify this property for each transform in isolation. From an evaluation
-perspective, augmentation levels serve as a robustness probe---demonstrating
-that LLM translation quality is stable under semantics-preserving source
-perturbations---rather than as independent samples that inflate the effective
-sample size.
+The level-invariance property (all 53 non-\knownfail{} Rodinia specs pass at all
+levels L1--L4) confirms that augmentation introduces no new correctness failures
+to the benchmark baseline. This is expected: all transforms are designed to
+preserve semantic equivalence, verified by 15~unit tests covering each transform
+in isolation and by the end-to-end augmentation sweep across the full Rodinia
+corpus. Across all five suites, 80 of 87 non-\knownfail{} specs pass at all
+levels L1--L4, with the 7~failures confined to \texttt{omp\_target} variants
+where aggressive variable renaming interferes with OpenMP target data-mapping
+clauses (a known limitation of the current transform guards; all 87 specs pass
+at L1--L2).
+
+From an evaluation perspective, augmentation levels serve as a robustness
+probe rather than as independent samples that inflate the effective sample size.
+The L0-conditional ablation (Section~\ref{sec:results}) confirms this
+discriminative role across all three models: \gptnew{} and \codexshort{}
+maintain high pass rates under augmentation (87--91\% and 86--89\% at L1--L4
+among their respective L0-passing tasks), while \qwenshort{} degrades from
+74.5\% at L1 to 54.9\% at L4. This monotonic decline is consistent with
+augmentation functioning as a robustness discriminator: stronger models maintain
+translation quality under source perturbation, while weaker models do not.
 
 \subsection{HeCBench Kernel Selection Funnel}
 \label{sec:appendix-c4}
@@ -871,32 +894,33 @@ sample size.
 \begin{figure}[htbp]
   \centering
   % \includegraphics[width=\columnwidth]{figures/c4_selection_funnel.pdf}
-  \input{NeurIPS_ready_version/figures/c4_selection_funnel}
-  \caption{HeCBench kernel selection funnel. Starting from 516 kernels spanning
-    CUDA, HIP, SYCL, and OpenMP, successive filters for API completeness (327
-    with all 4~variants), build infrastructure (325), self-checking output
-    patterns (242), complexity bounds, and domain diversity yield the 60-kernel
-    working set and final 20-kernel curated evaluation corpus.}
+  \input{NeurIPS_ready_version/figures/figures_tek_version/c4_selection_funnel}
+  \caption{HeCBench kernel selection funnel. Starting from 522 kernels spanning
+    CUDA, HIP, SYCL, and OpenMP at commit \texttt{22785cdd}, successive filters
+    for API completeness (329 with all 4~variants), build infrastructure (327),
+    self-checking output patterns (242), and complexity bounds yield a 60-kernel
+    working set. Manual curation further narrows this to 10~evaluation kernels
+    (25~specs; see Section~\ref{sec:benchmark-curation}).}
   \label{fig:selection-funnel}
 \end{figure}
 
 HeCBench is the largest source of multi-API kernel implementations in the
-benchmark survey, with 516 kernels spanning CUDA, HIP, SYCL, and
+benchmark survey, with 522 kernels spanning CUDA, HIP, SYCL, and
 OpenMP (Figure~\ref{fig:selection-funnel}). Its scale necessitated a structured
 selection funnel to identify kernels suitable for automated evaluation:
 
 \begin{enumerate}
-  \item \textbf{API completeness} (516 $\rightarrow$ 327): Retained only kernels
+  \item \textbf{API completeness} (522 $\rightarrow$ 329): Retained only kernels
     providing implementations in all 4~primary APIs. Kernels missing one or more
     API variants cannot support the full matrix of cross-API translation
-    directions that ParBench evaluates.
+    directions that \parbench{} evaluates.
 
-  \item \textbf{Build infrastructure} (327 $\rightarrow$ 325): Excluded 2~kernels
+  \item \textbf{Build infrastructure} (329 $\rightarrow$ 327): Excluded 2~kernels
     whose CUDA variants lacked Makefiles or had broken build configurations.
     All retained kernels build successfully with \texttt{make} on the evaluation
     platform (NVIDIA HPC SDK~24.3, CUDA~12.3).
 
-  \item \textbf{Self-checking output} (325 $\rightarrow$ 242): Excluded kernels
+  \item \textbf{Self-checking output} (327 $\rightarrow$ 242): Excluded kernels
     without deterministic, machine-parseable output. Retained kernels print
     checksums, PASS/FAIL indicators, or numerical results that can be matched
     against regular expression patterns for automated verification.
@@ -917,7 +941,7 @@ selection funnel to identify kernels suitable for automated evaluation:
 This funnel illustrates a general challenge in constructing LLM code translation
 benchmarks: the vast majority of available HPC kernels are unsuitable for
 automated evaluation due to missing API variants, non-deterministic output, or
-excessive complexity. Only 3.9\% of HeCBench's 516 kernels (20/516) survive the
+excessive complexity. Only 3.8\% of HeCBench's 522 kernels (20/522) survive the
 full selection pipeline, highlighting the gap between ``available parallel code''
 and ``evaluable parallel code.''
 
