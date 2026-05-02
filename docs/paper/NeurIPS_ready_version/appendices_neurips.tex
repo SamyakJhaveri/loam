@@ -277,24 +277,31 @@ Rodinia, HeCBench, XSBench, and RSBench.
 \subsection{OpenACC Exclusion}
 \label{sec:appendix-b4}
 
-OpenACC was excluded despite appearing in approximately 17 benchmarks in the
-expanded survey (Figure~\ref{fig:api-coverage}). Three factors motivated this
-decision:
+OpenACC was excluded despite appearing in 17 benchmarks in the
+repository-level survey (Figure~\ref{fig:api-coverage}), of which 12
+also provide both CUDA and OpenMP implementations.
+Three factors motivated this decision:
 
 \begin{enumerate}
-  \item \textbf{Limited co-occurrence with CUDA/OpenMP}: Of the 17 benchmarks
-    with OpenACC, only~3 also provide both CUDA and OpenMP implementations. This
-    yields insufficient material for statistically meaningful cross-API
-    evaluation.
+  \item \textbf{Low kernel-level coverage}: At the kernel level, only 22
+    kernels provide OpenACC implementations across the surveyed repositories
+    (Figure~\ref{fig:kernel-cooccurrence})---fewer than OpenCL (27) and
+    substantially fewer than the primary APIs (CUDA: 656, OpenMP: 472). While
+    repository-level co-occurrence with CUDA and OpenMP is high, the kernel-level
+    material is insufficient for the multi-direction evaluation design that
+    \parbench{} requires.
 
-  \item \textbf{Paradigm overlap with OpenMP}: OpenACC's directive-based model
-    (\texttt{\#pragma acc parallel loop}) occupies a similar conceptual niche to
-    OpenMP's target offload directives (\texttt{\#pragma omp target teams
-    distribute}). Including both would provide diminishing returns in
-    programming-model diversity.
+  \item \textbf{Paradigm overlap with OpenMP target}: OpenACC's directive-based
+    model (\texttt{\#pragma acc parallel loop}) occupies a similar conceptual
+    niche to OpenMP's target offload directives (\texttt{\#pragma omp target
+    teams distribute}). Including both would provide diminishing returns in
+    programming-model diversity. OpenCL, despite comparable kernel counts, is
+    retained because it exercises a qualitatively distinct programming model
+    (explicit host/kernel separation and JIT compilation) not covered by any
+    other included API.
 
   \item \textbf{Compiler availability}: OpenACC compilation requires the NVIDIA
-    HPC SDK (\texttt{nvc}) or GCC with \texttt{-fopenacc}. This is a less
+    HPC SDK (\texttt{nvc/nvc++}) or GCC with \texttt{-fopenacc}. This is a less
     universally available toolchain than CUDA (\texttt{nvcc}) or OpenMP (any
     modern C/C++ compiler), introducing a confounding variable between compiler
     availability and LLM translation capability.
@@ -314,17 +321,18 @@ for three reasons:
 
 \begin{enumerate}
   \item \textbf{Compiler requirement}: OpenMP target compilation for NVIDIA GPUs
-    requires the NVIDIA HPC compiler \texttt{nvc} (part of the NVIDIA HPC
-    SDK~24.3), which is not universally available. Standard GCC/Clang OpenMP
-    support targets only CPU threading. This introduces a confounding variable: a
-    failed build may indicate compiler unavailability rather than translation
-    quality.
+    requires the NVIDIA HPC compiler (\texttt{nvc/nvc++}, part of the NVIDIA HPC
+    SDK~24.3). Default GCC and Clang installations support only CPU-threaded
+    OpenMP; GPU offloading requires custom builds with target-offload support
+    enabled. This introduces a confounding variable: a failed build may indicate
+    compiler unavailability rather than translation quality.
 
-  \item \textbf{Limited benchmark coverage}: OpenMP target implementations are
-    available for XSBench, RSBench, and a subset of HeCBench curated kernels
-    (106 kernel-level co-occurrences with CUDA, as shown in
-    Figure~\ref{fig:kernel-cooccurrence}). Rodinia does not provide OpenMP target
-    variants.
+  \item \textbf{Limited benchmark coverage}: The kernel-level survey identifies
+    106 kernels with both OpenMP target and CUDA implementations
+    (Figure~\ref{fig:kernel-cooccurrence}), concentrated predominantly in
+    HeCBench. Within \parbench{}'s curated corpus, OpenMP target
+    implementations are available for 12~kernels: 10 from HeCBench, 1 from
+    XSBench, and 1 from RSBench. Rodinia does not provide OpenMP target variants.
 
   \item \textbf{Compilation model difference}: OpenMP target generates GPU
     offload code through the compiler, while CPU OpenMP generates threaded CPU
@@ -336,9 +344,9 @@ for three reasons:
 \end{enumerate}
 
 The case study results for OpenMP target are reported separately in the
-evaluation (Section~\ref{sec:results} of the main paper) to enable direct comparison with the
-primary CUDA/OpenMP/OpenCL directions without confounding the aggregate pass
-rates.
+direction analysis (Table~\ref{tab:direction-rates}) to enable direct
+comparison with the primary CUDA/OpenMP/OpenCL directions without confounding
+the aggregate pass rates.
 
 
 %% ============================================================================
@@ -356,27 +364,28 @@ and exclusion rationale.
 \subsection{Full Repository Inventory}
 \label{sec:appendix-c1}
 
-The survey identified 35 benchmark repositories spanning five categories of HPC
-benchmark software. Figure~\ref{fig:benchmark-types} shows the distribution
-across categories.
+The benchmark landscape survey covered 71 open-source HPC repositories
+(Appendix~\ref{sec:appendix-b1}). After applying the inclusion criteria
+described in Section~\ref{sec:appendix-c2}, 35 repositories remained as
+candidates for kernel extraction, spanning five categories of HPC benchmark
+software (Figure~\ref{fig:benchmark-types}).
 
 \begin{figure}[htbp]
   \centering
   \input{NeurIPS_ready_version/figures/figures_tek_version/benchmark_types}
-  \caption{Distribution of benchmark types across the 35 surveyed repositories.
-    Suites (13, 37\%) and mini-applications (12, 34\%) dominate, together
-    accounting for 71\% of the survey. Proxy applications (4, 11\%), libraries
-    (4, 11\%), and full applications (2, 6\%) complete the distribution. Suites
-    and mini-applications provide the richest kernel-level material for
-    translation evaluation because they contain multiple independent
-    computational kernels with self-checking verification.}
+  \caption{Distribution of benchmark types across the 35 repositories that met
+  inclusion criteria. Suites (13, 37\%) and mini-applications (12, 34\%)
+  dominate, accounting for 71\% of included repositories. Proxy applications
+  (4, 11\%), libraries (4, 11\%), and full applications (2, 6\%) complete the
+  distribution. Suites and mini-applications yield the richest kernel-level
+  material for translation evaluation: they contain multiple independent
+  computational kernels with self-checking verification.}
   \label{fig:benchmark-types}
 \end{figure}
 
-The relationship between benchmarks and APIs is not uniform: some repositories
-implement a single API (e.g., SPEC OMP, PARSEC, LonestarGPU), while others
-provide implementations across 10+ APIs (BabelStream with~12, miniBUDE
-with~14).
+API coverage varies widely across repositories: some implement a single API
+(e.g., SPEC OMP, PARSEC, LonestarGPU), while others provide implementations
+across 10+ APIs (BabelStream and miniBUDE each with~12).
 
 \begin{table*}[!htbp]
 \centering
@@ -400,33 +409,31 @@ mixbench           &       312          &  -- &  0/3~~~(0\%) & C++11 \\
 \bottomrule
 \end{tabular}
 \end{table*}
-Figure~\ref{fig:api-count-hist} quantifies the API breadth distribution across
-the surveyed benchmarks.
+
+The API breadth distribution across the full 71-repository survey reveals the selection opportunity (Figure~\ref{fig:api-count-hist}).
 
 \begin{figure}[htbp]
   \centering
   \input{NeurIPS_ready_version/figures/figures_tek_version/benchmark_api_count_hist}
-  \caption{Distribution of API breadth (number of parallel APIs supported)
-    across surveyed benchmarks. The modal benchmark supports 3~APIs, with a peak
-    of approximately 18 benchmarks in the 3-API bin. A long tail extends to 12+
-    APIs, occupied by BabelStream and miniBUDE. Approximately 13 benchmarks
-    support only 1--2 APIs (single-paradigm implementations). Benchmarks
-    supporting 3 or more APIs are the primary candidates for multi-direction
-    translation evaluation.}
+  \caption{Distribution of API breadth across all 71 surveyed repositories.
+  The mode is 3~APIs (18~repositories); a long tail extends to 12~APIs
+  (BabelStream and miniBUDE). 24~repositories support only 1--2~APIs and are
+  unsuitable for cross-API translation evaluation. Repositories supporting
+  $\geq$3~APIs constitute the candidate pool for multi-direction evaluation.}
   \label{fig:api-count-hist}
 \end{figure}
 
-The combination of Figures~\ref{fig:benchmark-types}--\ref{fig:api-count-hist}
-establishes that the benchmark ecosystem is dominated by a small number of large
-suites with broad API coverage. This Pareto distribution motivated the selection
-strategy: focus on the richest suites (HeCBench, Rodinia) supplemented by
-targeted mini-applications (XSBench, RSBench, mixbench) to ensure domain
-diversity.
+Taken together, these distributions show that kernel-level translation material
+is concentrated in a small number of large suites with broad API coverage---a
+Pareto distribution that guided suite selection. HeCBench and Rodinia were
+selected as the primary contributors due to their kernel richness and
+three-API coverage; XSBench, RSBench, and mixbench were added to extend domain
+coverage to nuclear physics simulation and GPU roofline characterization.
 
 \subsection{Quality Tier Classification}
 \label{sec:appendix-c2}
 
-All 35 surveyed repositories were classified into two quality tiers based on
+The 35 included repositories were classified into two quality tiers based on
 three criteria: build documentation, verification capability, and maintenance
 status.
 
@@ -466,13 +473,7 @@ plots these two dimensions for all surveyed repositories.
   \centering
   \includegraphics[width=\columnwidth]{kernel_api_bubble.png}
   \caption{Benchmark kernel richness (y-axis, capped at 100 for readability) vs.\
-    API breadth (x-axis, number of APIs supported). Bubble size proportional to
-    total kernel count; color indicates benchmark type. HeCBench (522 kernels,
-    4~APIs) dominates the upper region. RAJAPerf (80 kernels, 5~APIs) is the
-    second-largest. CloverLeaf (23 kernels, 9~APIs) and BabelStream (5 kernels,
-    12~APIs) occupy the high-API-breadth region but with far fewer kernels. The
-    optimal candidates for corpus construction lie in the high-kernel,
-    moderate-API quadrant (upper-center).}
+    API breadth (x-axis, number of APIs supported). Bubble size proportional to total kernel count; color indicates benchmark type. HeCBench (522 kernels, 6~APIs) dominates the upper region. RAJAPerf (80 kernels, 5~APIs) is the second-largest. CloverLeaf (23 kernels, 11~APIs) and BabelStream (5 kernels, 12~APIs) occupy the high-API-breadth region but with far fewer kernels. The optimal candidates for corpus construction lie in the high-kernel, moderate-API quadrant (upper-center).}
   \label{fig:kernel-api-bubble}
 \end{figure}
 
@@ -483,14 +484,7 @@ in corpus construction.
 \begin{figure}[htbp]
   \centering
   \input{NeurIPS_ready_version/figures/figures_tek_version/top_candidates}
-  \caption{Top ``Rosetta Stone'' candidates ranked by kernel count (blue bars,
-    scaled for readability; true counts annotated above) and API breadth (red
-    bars). HeCBench provides the largest kernel pool (522 kernels) but with
-    only~4 primary APIs (CUDA, HIP, SYCL, OpenMP). BabelStream provides the
-    broadest API coverage (12~APIs) but with only 5~kernels. RAJAPerf (80
-    kernels, 7~APIs) offers a balanced middle ground. Rodinia (24 kernels, 3
-    primary APIs) provides established, well-understood benchmarks with strong
-    community recognition.}
+  \caption{Top ``Rosetta Stone'' candidates ranked by kernel count (blue bars, scaled for readability; true counts annotated above) and API breadth (red bars). HeCBench provides the largest kernel pool (522 kernels, 6~APIs including CUDA, HIP, SYCL, and OpenMP). BabelStream and miniBUDE provide the broadest API coverage (12~APIs each) but with few kernels. RAJAPerf (80 kernels, 5~APIs) offers a balanced middle ground. Rodinia (22 kernels, 3 APIs) provides established, well-understood benchmarks with strong community recognition.}
   \label{fig:top-candidates}
 \end{figure}
 
@@ -523,12 +517,12 @@ the curated evaluation set:
     remaining~10 reserved for future expansion.
 \end{itemize}
 
-The final 20 curated HeCBench kernels span diverse computational domains and algorithmic patterns. Of these, 10 are included in the current evaluation corpus (25~specs); the remaining~10 are reserved for future expansion (Section~\ref{sec:appendix-c3}).
+The final 20 curated HeCBench kernels span diverse computational domains and algorithmic patterns. Of these, 10 are included in the current evaluation corpus (25~specs); the remaining~10 are reserved for future expansion.
 
 \subsection{Rodinia Kernel Inventory}
 \label{sec:appendix-c4}
 
-Rodinia~\cite{Rodinia2009} provides the foundation of \parbench{}'s evaluation corpus. As one of the most widely cited heterogeneous computing benchmark suites (IISWC 2009), it offers well-understood computational characteristics across CUDA, OpenMP, and OpenCL. \parbench{} includes all 22 Rodinia kernels, yielding 60~total specs; six kernels lack one or more API variants because the upstream repository does not provide implementations for all three APIs. Of these 60 specs:
+Rodinia~\cite{Rodinia2009} provides the foundation of \parbench{}'s evaluation corpus. As one of the most widely cited heterogeneous computing benchmark suites, it offers well-understood computational characteristics across CUDA, OpenMP, and OpenCL. \parbench{} includes all 22 Rodinia kernels, yielding 60~total specs; six kernels lack one or more API variants because the upstream repository does not provide implementations for all three APIs. Of these 60 specs:
 \begin{itemize}
     \item \textbf{53 \pass{}}: Verified via conjunctive verification---exit code~0 \emph{and} stdout pattern match must both hold.
     \item \textbf{7 \knownfail{}}: Excluded from evaluation due to pre-existing
@@ -589,8 +583,8 @@ methods across the survey and the basis for exclusion decisions.
 
 \subsubsection*{Repository-Level Exclusions}
 
-Five of the initial 40 candidate repositories were excluded during the survey
-phase:
+Of the 71 surveyed repositories, 31 were excluded during initial screening (single-API only, no HPC kernel content, or outside the CUDA/OpenMP/OpenCL scope). Of the remaining 40, five were excluded during detailed evaluation:
+
 \begin{itemize}
   \item \textbf{Download failures} (2): Repository URLs were dead or
     access-restricted at the time of survey.
@@ -822,9 +816,9 @@ structural barriers in multi-file coordination.
 \begin{table}[htbp]
   \centering
   \caption{Multi-file translation error taxonomy for \texttt{lavamd} across all
-    six standard directions (\qwenshort{}, L0, 3~samples each). The failure mode
-    varies by direction, demonstrating that multi-file coordination errors are
-    structurally determined by the source--target API pairing rather than
+    six standard directions (\qwenshort{}, L0, 3~samples each). The failure
+    mode varies by direction, demonstrating that multi-file coordination errors
+    are structurally determined by the source--target API pairing rather than
     stochastic.}
   \label{tab:lavamd-errors}
   \small
@@ -835,12 +829,13 @@ structural barriers in multi-file coordination.
     OpenCL$\to$CUDA & \buildfail{} & Phantom include (\texttt{timing.h}) \\
     OMP$\to$CUDA    & \buildfail{} & Phantom include (\texttt{main.h} path) \\
     CUDA$\to$OMP    & \buildfail{} & Phantom include (\texttt{./main.h}) \\
-    CUDA$\to$OpenCL & \runfail{}   & Runtime crash (exit code 245) \\
-    OMP$\to$OpenCL  & \runfail{}   & Runtime crash (exit code 245) \\
+    CUDA$\to$OpenCL & \runfail{}   & OpenCL kernel compilation failure \\
+    OMP$\to$OpenCL  & \runfail{}   & OpenCL kernel compilation failure \\
     OpenCL$\to$OMP  & Mixed        & 2~\buildfail{} + 1~\verifyfail{} \\
     \bottomrule
   \end{tabular}
 \end{table}
+% src: results/evaluation/together-qwen-3.5-397b-a17b/rodinia-lavamd-*; verified 2026-05-02
 
 Table~\ref{tab:lavamd-errors} reveals two structural patterns. First, all
 directions targeting CUDA fail at build time due to phantom include paths: the
@@ -849,25 +844,29 @@ model hallucinates headers (\texttt{timing.h}, \texttt{./main.h},
 tree but are unavailable in the translated program's build context. All three
 samples within each CUDA-targeting direction fail on the same phantom header,
 indicating a deterministic error rather than stochastic variation. Second,
-directions targeting OpenCL compile successfully but crash at runtime (exit
-code~245), suggesting that the model produces syntactically valid OpenCL
-host code but fails to correctly translate memory management or kernel
-argument binding.
+directions targeting OpenCL pass host-code compilation but fail at runtime when
+\texttt{clBuildProgram} attempts to compile the translated OpenCL kernel source
+(exit code~245 = \texttt{CL\_BUILD\_PROGRAM\_FAILURE}). The runtime compilation
+errors include incorrect \texttt{\_\_local} variable scoping and undeclared
+identifiers---API-specific constraints that the model fails to satisfy in the
+translated kernel.
 
 \subsubsection*{Cross-Model Persistence}
-
-The direction-dependent failure pattern persists across models. For the
-OpenCL$\to$CUDA and OMP$\to$CUDA directions, all three evaluated models
-(\qwenshort{}, \gptnew{}, \codexshort{}) fail on every sample
-(9/9~\buildfail{} per direction). In contrast, for OMP$\to$OpenCL, \gptnew{}
-and \codexshort{} each achieve 3/3~\pass{} while \qwenshort{} fails 3/3, and
-for CUDA$\to$OMP, \gptnew{} achieves 2/3~\pass{} while \qwenshort{} and
-\codexshort{} achieve 0/3. These asymmetries indicate that multi-file
-coordination difficulty is a property of the translation direction---not solely
-of the kernel complexity or the model.
+The direction-dependent failure pattern persists across models. Only two of
+six directions yield any \pass{} outcomes across the three models:
+OMP$\to$OpenCL (\gptnew{} and \codexshort{} each 3/3~\pass{}, \qwenshort{}
+0/3) and CUDA$\to$OMP (\gptnew{} 2/3~\pass{}, \qwenshort{} and \codexshort{}
+0/3). The remaining four directions are universally failed across all models
+and samples (0/36~\pass{}). OpenCL$\to$CUDA and OMP$\to$CUDA fail at build
+time due to phantom includes (18/18~\buildfail{}), CUDA$\to$OpenCL fails at
+runtime due to OpenCL kernel compilation errors (9/9~\runfail{}), and
+OpenCL$\to$OMP fails with a mix of phantom includes and output mismatches.
+These asymmetries indicate that multi-file coordination difficulty is a
+property of the translation direction---not solely of the kernel complexity
+or the model.
+% src: results/evaluation/{together-qwen-3.5-397b-a17b,azure-gpt-5.4,azure-gpt-5.3-codex}/rodinia-lavamd-*
 
 \subsubsection*{Implications}
-
 This case study identifies three distinct error subcategories within the
 ``multi-file translation consistency failure'' class:
 
@@ -885,11 +884,14 @@ This case study identifies three distinct error subcategories within the
     retains the source API's function name, producing linker errors
     (\texttt{undefined reference to `kernel\_gpu\_cuda'}).
 
-  \item \textbf{Host-side runtime failures}: For OpenCL-targeting directions
-    across all three models, the translated code compiles but crashes at
-    runtime, suggesting incorrect host-side buffer management or kernel
-    argument binding---errors that static analysis and build systems cannot
-    catch.
+  \item \textbf{Runtime kernel compilation failure}: For OpenCL-targeting
+    directions, the host C/C++ code compiles successfully, but the OpenCL
+    kernel source---compiled at runtime by \texttt{clBuildProgram}---contains
+    errors such as incorrect \texttt{\_\_local} variable scoping and
+    undeclared type aliases. This represents a disconnect between the C/C++
+    compiler's view of the host code and the OpenCL runtime compiler's
+    requirements for device code, a failure mode invisible to static build
+    checks.
 \end{enumerate}
 
 These findings suggest that multi-file translation failures are not uniformly
@@ -899,9 +901,9 @@ API, OpenCL \texttt{cl*} calls) are systematically harder than directions where
 the host code structure is similar between source and target. A hybrid
 pipeline---combining LLM translation for computational kernels with
 template-based scaffold generation for host infrastructure---may address
-subcategories~1 and~2 but would not resolve the runtime failures in
-subcategory~3, which require correct semantic translation of memory management
-and synchronization patterns.
+subcategories~1 and~2 but would not resolve the runtime compilation failures in
+subcategory~3, which require correct translation of API-specific device-code
+constraints.
 
 \subsection{Extended Results Details}
 \label{sec:appendix-e4}
@@ -911,7 +913,7 @@ This section expands on the results presented in Section~\ref{sec:results}.
 \paragraph{pass@k Analysis.}
 \begin{table}[h]
 \centering
-\caption{pass@$k$ results for \qwenshort{} (L0 only, temperature~0.7, three independent samples per task, 142 unique source-target pairs). CIs are normal-approximation intervals on the macro-averaged Chen et al.\ estimator.}
+\caption{pass@$k$ results for \qwenshort{} (L0 only, temperature~0.7, three independent samples per task, 142 unique source-target pairs). CIs are normal-approximation intervals on the macro-averaged Chen et al.\ estimator (distinct from the Wilson binomial CIs used for per-record pass rates in Table~\ref{tab:overall-pass})}
 \label{tab:pass-at-k-main}
 \small
 \begin{tabular}{@{}lr@{}}
@@ -927,12 +929,12 @@ Hard fail (0/3) & 92 tasks (64.8\%) \\
 \bottomrule
 \end{tabular}
 \end{table}
-The 36.7\% per-record rate treats each sample and augmentation level independently. The pass@$k$ analysis restricts to the 142 L0 tasks and macro-averages to estimate single-sample and three-sample success probabilities. Each of the 142 tasks generates three independent samples at temperature~0.7. Additional stochastic samples partially recover only 31 of 142 tasks and none of the 92 hard failures. The gap between pass@1 (23.9\%) and pass@3 (35.2\%) is modest; additional samples yield diminishing returns.
+The 36.7\% per-record rate treats each sample and augmentation level independently. The pass@$k$ analysis restricts to the 142 L0 tasks and macro-averages to estimate single-sample and three-sample success probabilities. Each of the 142 tasks generates three independent samples at temperature~0.7. Only 31 of 142 tasks show within-task variability (1 or 2 of 3 samples pass); none of the 92 hard failures (0/3) benefit from resampling. The gap between pass@1 (23.9\%) and pass@3 (35.2\%) is modest, confirming that additional samples yield diminishing returns.
 
 \paragraph{Representative Per-Kernel Pass Rates.}
 \begin{table}[h]
 \centering
-\caption{Representative per-kernel pass rates for \qwenshort{} across all directions and augmentation levels (626 records, 31 evaluated kernels -- 4 curated kernels with no evaluable translation pairs).}
+\caption{Representative per-kernel pass rates for \qwenshort{} across all directions and augmentation levels (626 records, 31~evaluated kernels---4~curated kernels have no evaluable translation pairs).}
 \label{tab:per-kernel-main}
 \small
 \begin{tabular}{@{}llrrrr@{}}
@@ -959,7 +961,7 @@ Rodinia & lavamd & 18 & 0 & 18 & 0.0\% \\
 \paragraph{Augmentation Pass Rates.}
 \begin{table}[h]
 \centering
-\caption{Augmentation pass rates on the balanced 12-kernel CUDA-to-OpenMP subset present at all five levels. These 12 kernels were selected by the L0-conditional ablation filter ($\geq$1 of 3 L0 samples passes), so L0 rates exceed the overall CUDA-to-OpenMP rate of 40.3\%.}
+\caption{Augmentation pass rates on the common 12-kernel CUDA-to-OpenMP subset present at all five levels. These 12 kernels were selected by the L0-conditional ablation filter ($\geq$1 of 3 L0 samples passes), so L0 rates exceed the overall CUDA-to-OpenMP rate of 40.3\%.}
 \label{tab:aug-balanced}
 \small
 \begin{tabular}{@{}lrrl@{}}

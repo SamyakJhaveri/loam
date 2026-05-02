@@ -1,0 +1,30 @@
+% Benchmark types distribution (35 surveyed repositories)
+% Vertical bar chart matching api_coverage_bar_v5 style
+% Data: Suite=13, Miniapp=12, Library=4, Proxy App=4, Application=2
+\begin{tikzpicture}
+\begin{axis}[
+  ybar,
+  bar width=18pt,
+  height=5.5cm,
+  width=\columnwidth,
+  xmin=-0.6, xmax=4.6,
+  ylabel={\#Repositories},
+  ymin=0, ymax=15,
+  ytick={0,5,10,15},
+  xtick={0,1,2,3,4},
+  xticklabels={Suite, Miniapp, Library, {Proxy App}, Application},
+  xticklabel style={font=\small},
+  tick label style={font=\small},
+  label style={font=\small},
+  title style={font=\normalsize\bfseries},
+  ymajorgrids=true,
+  major grid style={dashed, draw=gray!40},
+  title={Distribution of Benchmark Types (35 Repositories)},
+  nodes near coords,
+  nodes near coords style={font=\small\bfseries, anchor=south},
+  clip=false,
+]
+  \addplot[fill=pbTealDark, draw=pbTealDark!70!black, line width=0.5pt]
+    coordinates {(0,13) (1,12) (2,4) (3,4) (4,2)};
+\end{axis}
+\end{tikzpicture}
