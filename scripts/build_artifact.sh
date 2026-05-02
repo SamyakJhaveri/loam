@@ -15,6 +15,10 @@ for arg in "$@"; do
     esac
 done
 
+TOTAL_STEPS=5
+STEP=0
+step() { STEP=$((STEP + 1)); echo "[$STEP/$TOTAL_STEPS] $1"; }
+
 echo "=== ParBench Artifact Builder ==="
 echo "Project root: $PROJECT_ROOT"
 echo "Staging dir:  $STAGING"
@@ -26,7 +30,7 @@ rm -rf /tmp/parbench-artifact-staging
 mkdir -p "$STAGING"
 
 # ── 2. Copy files ───────────────────────────────────────────────────
-echo "[1/5] Copying files to staging..."
+step "Copying files to staging..."
 
 # Specs, manifest, schema
 cp -r "$PROJECT_ROOT/specs" "$STAGING/specs"
@@ -80,7 +84,7 @@ cp "$PROJECT_ROOT/docs/paper/NeurIPS_ready_version/appendices_neurips.tex" "$STA
 echo "  Done."
 
 # ── 3. Anonymize paths (FLAG-1) ────────────────────────────────────
-echo "[2/5] Anonymizing paths..."
+step "Anonymizing paths..."
 
 # Two-pass scrub: first replace exact project path, then replace remaining
 # /home/samyak occurrences (truncated paths, downloads dir) without consuming
@@ -103,19 +107,19 @@ echo "  Specs: $SPEC_COUNT, Result JSONs: $RESULT_COUNT"
 
 # ── 5. Docker build + run (skip if --dry-run) ──────────────────────
 if [ "$DRY_RUN" = true ]; then
-    echo "[3/5] Skipping Docker build (--dry-run)"
-    echo "[4/5] Skipping Docker run (--dry-run)"
+    step "Skipping Docker build (--dry-run)"
+    step "Skipping Docker run (--dry-run)"
 else
-    echo "[3/5] Building Docker image..."
+    step "Building Docker image..."
     docker build -t parbench-artifact "$STAGING"
 
-    echo "[4/5] Running reproduce.sh in Docker..."
+    step "Running reproduce.sh in Docker..."
     mkdir -p "$STAGING/expected_outputs"
     docker run --rm -v "$STAGING/expected_outputs:/app/output" parbench-artifact ./reproduce.sh
 fi
 
 # ── 6. Create tarball ──────────────────────────────────────────────
-echo "[5/5] Creating tarball..."
+step "Creating tarball..."
 TARBALL="$PROJECT_ROOT/parbench-artifact-v1.tar.gz"
 tar czf "$TARBALL" -C /tmp/parbench-artifact-staging parbench-artifact
 

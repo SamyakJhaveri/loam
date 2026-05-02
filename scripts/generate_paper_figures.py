@@ -1672,6 +1672,28 @@ def generate_t2_model_table(
     print(f"  Saved: {path}")
 
 
+def _fmt_pval(p: float) -> str:
+    """Format a p-value for LaTeX tables."""
+    return f"{p:.3f}" if p >= 0.001 else "$<$0.001"
+
+
+def _write_tex_table(
+    path: Path, col_spec: str, header: str, body_lines: list[str],
+) -> None:
+    """Write a LaTeX tabular environment to a .tex file."""
+    rows = [
+        rf"\begin{{tabular}}{{{col_spec}}}",
+        r"\toprule",
+        header,
+        r"\midrule",
+        *body_lines,
+        r"\bottomrule",
+        r"\end{tabular}",
+    ]
+    path.write_text("\n".join(rows) + "\n")
+    print(f"  Saved: {path}")
+
+
 # ===================================================================
 # T1: Overall Pass Rates LaTeX Table
 # ===================================================================
@@ -1687,13 +1709,7 @@ def generate_t1_overall_pass(
     statuses = ["PASS", "BUILD_FAIL", "RUN_FAIL", "VERIFY_FAIL", "EXTRACTION_FAIL"]
     status_headers = ["PASS", "Build", "Run", "Verify", "Extract"]
 
-    lines = [
-        r"\begin{tabular}{l" + "r" * len(statuses) + "rr}",
-        r"\toprule",
-        r"Model & " + " & ".join(status_headers) + r" & Total & Rate [95\% CI] \\",
-        r"\midrule",
-    ]
-
+    body = []
     for model_id, display in MODEL_DISPLAY_SHORT.items():
         path = findings_dir / f"quantitative_findings_{model_id}.json"
         if not path.exists():
@@ -1710,14 +1726,14 @@ def generate_t1_overall_pass(
         cells = [str(sc.get(s, 0)) for s in statuses]
         cells.append(str(total))
         cells.append(f"{rate:.1f}\\% [{ci_lo:.1f}, {ci_hi:.1f}]")
-        lines.append(f"{display} & " + " & ".join(cells) + r" \\")
+        body.append(f"{display} & " + " & ".join(cells) + r" \\")
 
-    lines.append(r"\bottomrule")
-    lines.append(r"\end{tabular}")
-
-    path = output_dir / "t1_overall_pass.tex"
-    path.write_text("\n".join(lines) + "\n")
-    print(f"  Saved: {path}")
+    _write_tex_table(
+        output_dir / "t1_overall_pass.tex",
+        "l" + "r" * len(statuses) + "rr",
+        r"Model & " + " & ".join(status_headers) + r" & Total & Rate [95\% CI] \\",
+        body,
+    )
 
 
 # Mapping from model_id to paper_data filename stem (inconsistent naming convention)
@@ -1741,13 +1757,7 @@ def generate_t3_passk(
     """T3: Pass@k rates and task classification per model."""
     findings_dir = project_root / "results" / "analysis"
 
-    lines = [
-        r"\begin{tabular}{lrrrrrrr}",
-        r"\toprule",
-        r"Model & Tasks & pass@1 & pass@3 & Always-pass & Noisy & Hard-fail \\",
-        r"\midrule",
-    ]
-
+    body = []
     for model_id, display in MODEL_DISPLAY_SHORT.items():
         stem = PAPER_DATA_STEMS.get(model_id)
         if stem is None:
@@ -1757,35 +1767,28 @@ def generate_t3_passk(
         if not pd_path.exists() or not qf_path.exists():
             continue
 
-        pd = json.loads(pd_path.read_text())
+        paper_data = json.loads(pd_path.read_text())
         qf = json.loads(qf_path.read_text())
 
-        agg = pd["passk_campaign"]["aggregate_passk"]
+        agg = paper_data["passk_campaign"]["aggregate_passk"]
         tc = qf["canonical"]["pass_at_k"]["task_classification"]
 
-        n_tasks = agg["n_tasks"]
-        p1 = agg["pass@1_macro_avg"] * 100
-        p3 = agg["pass@3_macro_avg"] * 100
-        always_pass = tc["always_pass"]
-        hard_fail = tc["hard_fail"]
-        noisy = tc["noisy_fail"]
-
         cells = [
-            str(n_tasks),
-            f"{p1:.1f}\\%",
-            f"{p3:.1f}\\%",
-            str(always_pass),
-            str(noisy),
-            str(hard_fail),
+            str(agg["n_tasks"]),
+            f"{agg['pass@1_macro_avg'] * 100:.1f}\\%",
+            f"{agg['pass@3_macro_avg'] * 100:.1f}\\%",
+            str(tc["always_pass"]),
+            str(tc["noisy_fail"]),
+            str(tc["hard_fail"]),
         ]
-        lines.append(f"{display} & " + " & ".join(cells) + r" \\")
+        body.append(f"{display} & " + " & ".join(cells) + r" \\")
 
-    lines.append(r"\bottomrule")
-    lines.append(r"\end{tabular}")
-
-    path = output_dir / "t3_passk.tex"
-    path.write_text("\n".join(lines) + "\n")
-    print(f"  Saved: {path}")
+    _write_tex_table(
+        output_dir / "t3_passk.tex",
+        "lrrrrrrr",
+        r"Model & Tasks & pass@1 & pass@3 & Always-pass & Noisy & Hard-fail \\",
+        body,
+    )
 
 
 # ===================================================================
@@ -1810,13 +1813,7 @@ def generate_t4_augmentation(
 
     levels = ["L0", "L1", "L2", "L3", "L4"]
 
-    lines = [
-        r"\begin{tabular}{l" + "r" * len(levels) + "r}",
-        r"\toprule",
-        r"Model & " + " & ".join(levels) + r" & $\chi^2$ $p$ (Bonf.) \\",
-        r"\midrule",
-    ]
-
+    body = []
     for model_id, display in MODEL_DISPLAY_SHORT.items():
         if model_id not in curves:
             continue
@@ -1830,18 +1827,15 @@ def generate_t4_augmentation(
                 cells.append(f"{mc[lv]['rate'] * 100:.1f}\\%")
             else:
                 cells.append("--")
-        if p_corr >= 0.001:
-            cells.append(f"{p_corr:.3f}")
-        else:
-            cells.append(f"{p_corr:.2e}")
-        lines.append(f"{display} & " + " & ".join(cells) + r" \\")
+        cells.append(_fmt_pval(p_corr))
+        body.append(f"{display} & " + " & ".join(cells) + r" \\")
 
-    lines.append(r"\bottomrule")
-    lines.append(r"\end{tabular}")
-
-    path = output_dir / "t4_augmentation.tex"
-    path.write_text("\n".join(lines) + "\n")
-    print(f"  Saved: {path}")
+    _write_tex_table(
+        output_dir / "t4_augmentation.tex",
+        "l" + "r" * len(levels) + "r",
+        r"Model & " + " & ".join(levels) + r" & $\chi^2$ $p$ (Bonf.) \\",
+        body,
+    )
 
 
 # ===================================================================
@@ -1862,13 +1856,7 @@ def generate_t5_stats(
     stats = json.loads(stats_path.read_text())
     mc = stats["model_comparison"]
 
-    lines = [
-        r"\begin{tabular}{lrrrrl}",
-        r"\toprule",
-        r"Pair & OR & 95\% CI & $p$ (Bonf.) & Cohen's $h$ & Interpretation \\",
-        r"\midrule",
-    ]
-
+    body = []
     for entry in mc["pairwise"]:
         pair = entry["pair"]
         or_val = entry["odds_ratio"]
@@ -1878,37 +1866,31 @@ def generate_t5_stats(
         h = entry["cohens_h"]
         effect = entry["effect_size"]
 
-        if p_corr >= 0.001:
-            p_str = f"{p_corr:.3f}"
-        else:
-            p_str = f"$<$0.001"
-
         cells = [
             f"{or_val:.3f}",
             f"[{ci_lo:.3f}, {ci_hi:.3f}]",
-            p_str,
+            _fmt_pval(p_corr),
             f"{h:.3f}",
             effect,
         ]
-        lines.append(f"{pair} & " + " & ".join(cells) + r" \\")
+        body.append(f"{pair} & " + " & ".join(cells) + r" \\")
 
-    lines.append(r"\midrule")
     omnibus_chi2 = mc["omnibus_chi2"]
     omnibus_p = mc["omnibus_p"]
     cramers_v = mc["cramers_v"]
     interp = mc["cramers_v_interpretation"]
-    p_str = f"{omnibus_p:.3f}" if omnibus_p >= 0.001 else "$<$0.001"
-    lines.append(
-        f"Omnibus ($\\chi^2$) & {omnibus_chi2:.2f} & -- & {p_str} & "
+    body.append(r"\midrule")
+    body.append(
+        f"Omnibus ($\\chi^2$) & {omnibus_chi2:.2f} & -- & {_fmt_pval(omnibus_p)} & "
         f"$V$={cramers_v:.3f} & {interp}" + r" \\"
     )
 
-    lines.append(r"\bottomrule")
-    lines.append(r"\end{tabular}")
-
-    path = output_dir / "t5_stats.tex"
-    path.write_text("\n".join(lines) + "\n")
-    print(f"  Saved: {path}")
+    _write_tex_table(
+        output_dir / "t5_stats.tex",
+        "lrrrrl",
+        r"Pair & OR & 95\% CI & $p$ (Bonf.) & Cohen's $h$ & Interpretation \\",
+        body,
+    )
 
 
 # ===================================================================
