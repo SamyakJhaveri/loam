@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-02T17:57:02.188903+00:00",
+  "generated_at": "2026-05-02T18:30:00.284999+00:00",
   "model": "together-qwen-3.5-397b-a17b",
   "terminology_note": "All json_path values use 'canonical' as the top-level key in the source analysis JSONs.",
   "claims": [

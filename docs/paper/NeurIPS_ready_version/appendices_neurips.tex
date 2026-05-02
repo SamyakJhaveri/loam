@@ -19,19 +19,18 @@ benchmark but too detailed for the main narrative.
 \label{sec:appendix-framework-schema}
 
 Each benchmark/API variant is encoded by a JSON specification. The schema
-defines five field groups:
+defines five primary field groups (with additional \texttt{implementation}, \texttt{hardware}, \texttt{metadata}, \texttt{baseline\_results}, and \texttt{performance} fields defined in the schema):
 
 \begin{itemize}
   \item \textbf{Identity and provenance}: globally unique identifier, source
-  suite, kernel name, target API, repository URL, and commit.
+  suite, kernel name, parallel API, repository URL, and commit.
   \item \textbf{File partitioning}: prompt payload files, translation targets,
   support files, and verification-only files.
   \item \textbf{Build}: build system, clean/configure/build commands,
   environment variables, and expected executable path.
   \item \textbf{Run}: executable, input configuration, command-line arguments,
   timeouts, and optional environment variables.
-  \item \textbf{Verification}: ordered correctness strategies, currently
-  exit-code and stdout-pattern checks applied conjunctively.
+  \item \textbf{Verification}: ordered correctness strategies applied conjunctively. Five types are implemented: \texttt{exit\_code}, \texttt{stdout\_pattern}, \texttt{stdout\_exclude\_pattern}, \texttt{numeric\_comparison}, and \texttt{file\_hash}.
 \end{itemize}
 
 \begin{lstlisting}[
@@ -67,6 +66,8 @@ defines five field groups:
   },
   "verification": {
     "strategies": [
+      {"type": "stdout_pattern",
+       "pattern": "Result stored in result\\.txt"},
       {"type": "exit_code", "expected": 0}
     ]
   }
@@ -116,11 +117,11 @@ This section expands on the experimental setup described in Section~\ref{sec:exp
 
 \paragraph{\knownfail{} Exclusion Policy.}
 Nine specs are classified as \knownfail{} due to toolchain incompatibilities or pre-existing runtime failures unrelated to LLM translation quality: seven Rodinia specs affected by deprecated CUDA~12 texture APIs, missing system libraries, pre-existing segmentation faults, or silent OpenCL runtime failures, and two HeCBench \texttt{omp\_target} specs with build or verification failures on the evaluation platform. 
-A record is excluded when \emph{either} the source or the target spec is \knownfail{}. Source-side exclusion is necessary because source correctness is unverified on the failing platform; target-side exclusion is necessary because the target build or verification infrastructure is broken. For \qwenshort{}, this policy excludes 82~of 708~total records, leaving 626~valid records (426~L0 + 200~ablation). The \gptnew{} evaluation batch pre-excludes \knownfail{} specs, so all on-disk records are valid.
+A record is excluded when \emph{either} the source or the target spec is \knownfail{}. Source-side exclusion is necessary because source correctness is unverified on the failing platform; target-side exclusion is necessary because the target build or verification infrastructure is broken. For \qwenshort{}, this policy excludes 82~of 708~total records, leaving 626~valid records (426~L0 + 200~ablation). The \gptnew{} and \codexshort{} evaluation batches pre-exclude \knownfail{} specs, so all 822~\gptnew{} and 814~\codexshort{} on-disk records are valid.
 
 \paragraph{Sampling Configuration.}\label{sec:sampling-config}
-For \qwenshort{}, we set temperature~0.7 with top-$p$~=~1.0 (full-distribution sampling). For \gptnew{}, the Azure reasoning API does not accept explicit temperature or top-$p$ parameters - these are controlled internally by the provider and cannot be set by the caller. Cross-model differences in pass rates may therefore partly reflect unmatched sampling conditions rather than model capability alone.
-A deterministic seed derived from SHA-256 of the concatenation \texttt{source\_spec|target\_spec|sample\_id} (pipe-delimited, truncated to 31 bits) is passed to both providers. Seeds are recorded for auditing but do not guarantee bitwise-identical outputs: Together AI treats seeds as advisory for MoE inference, and Azure provides no determinism guarantee for reasoning models. Each sample receives one LLM call with no iterative feedback, isolating first-attempt translation capability.
+For \qwenshort{}, we set temperature~0.7 with top-$p$~=~1.0 (full-distribution sampling). For \gptnew{} and \codexshort{}, the Azure reasoning API does not accept explicit temperature or top-$p$ parameters---these are controlled internally by the provider and cannot be set by the caller. Cross-model differences in pass rates may therefore partly reflect unmatched sampling conditions rather than model capability alone; the confound is between \qwenshort{} (explicit temperature) and both Azure models (provider-controlled).
+A deterministic seed derived from SHA-256 of the concatenation \texttt{source\_spec|target\_spec|sample\_id} (pipe-delimited, truncated to 31~bits) is passed to \qwenshort{} (Together~AI) and \gptnew{} (Azure Chat Completions). The Responses API used by \codexshort{} does not accept a seed parameter. Seeds are recorded for auditing but do not guarantee bitwise-identical outputs: Together~AI treats seeds as advisory for MoE inference, and Azure provides no determinism guarantee for reasoning models. Each sample receives one LLM call with no iterative feedback, isolating first-attempt translation capability.
 
 \paragraph{Canonical Evaluation and Augmentation Ablation.}
 The canonical campaign evaluates all 142 unique pairs at augmentation level L0 (unmodified source code) with three samples each, producing 426 L0 records per model and 1,278 total. Each record passes through the full build--run--verify pipeline with conjunction semantics. Most specs verify via exit-code and stdout-pattern checks; a subset additionally declare numeric-comparison or file-hash oracles.
@@ -146,40 +147,49 @@ analysis that informed the final selection.
 \subsection{Full API Co-Occurrence Data}
 \label{sec:appendix-a1}
 
-The benchmark landscape survey progressed through multiple iterations, expanding
-from an initial seed of 21 repositories to a comprehensive survey of over 80
+The benchmark landscape survey evaluated 40 candidate repositories spanning
 benchmark suites, mini-applications, proxy applications, libraries, and full
-applications. This broader survey captured 30+ distinct parallel programming
-APIs, spanning the HPC benchmarking ecosystem.
+applications across 29 distinct parallel programming APIs. Five were excluded
+during the survey phase (Section~\ref{sec:appendix-b1}), leaving the 35
+repositories analyzed in detail.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{api_cooccurrence_heatmap_v5.png}
-  \caption{Expanded API co-occurrence heatmap across all surveyed repositories.
+  \caption{API co-occurrence heatmap across all surveyed repositories.
     Cell values indicate the number of repositories providing implementations in
-    both the row and column APIs. The concentrated cluster of high co-occurrence
-    among MPI, OpenMP, CUDA, HIP, and OpenACC in the upper-left quadrant reveals
-    the core API ecosystem that dominates multi-API benchmark suites. Peripheral
-    APIs such as Chapel, STM/TM, HLS, and Python show near-zero co-occurrence,
-    reflecting their niche status in HPC benchmarking.}
+    both the row and column APIs.}
   \label{fig:api-heatmap}
 \end{figure}
 
-Figure~\ref{fig:api-heatmap} shows the full expanded survey. The dominant
-pattern is a dense co-occurrence cluster centered on MPI, OpenMP, CUDA, and HIP,
-with sparser connectivity among directive-based (OpenACC, OpenMP Target),
-portability (Kokkos, RAJA, SYCL), and niche APIs.
+Figure~\ref{fig:api-heatmap} shows the full survey. The dominant
+pattern is a dense co-occurrence cluster among MPI, OpenMP, CUDA, and HIP,
+with sparser connectivity among directive-based (OpenACC, OpenMP Target) and
+portability (Kokkos, RAJA, SYCL) APIs. Peripheral APIs such as Chapel,
+STM/TM, HLS, and Python show near-zero co-occurrence.
 
-The co-occurrence structure reveals three natural groupings.
-\textbf{Core cluster}: MPI, OpenMP, CUDA, HIP, OpenACC, and OpenCL form a tightly
-interconnected group, co-occurring frequently across the benchmark suites with the
-richest multi-API material (HeCBench, Rodinia, RAJAPerf, BabelStream).
-\textbf{Portability periphery}: SYCL, Kokkos, RAJA, and OpenMP Target connect to the
-core cluster with weaker co-occurrence, concentrated in a smaller number of suites
-(primarily RAJAPerf, BabelStream, and HeCBench).
-\textbf{Isolated APIs}: OCCA, Thrust, Chapel, Coarray Fortran, Charm++, C++ AMP, UPC,
-OpenSHMEM, HMPP, Python, HLS, GSParLib, STM/TM, and Serial have co-occurrence below~3
-with all other APIs.
+We classify the co-occurrence structure into three groupings.
+
+\begin{description}
+  \item[Core cluster.] MPI, OpenMP, CUDA, HIP, and OpenACC co-occur frequently
+    across the suites with the richest multi-API material (HeCBench, Rodinia,
+    RAJAPerf, BabelStream). OpenCL co-occurs with fewer core APIs (appearing in
+    13 of 40 repositories, versus 38--50 for the top three) but is included in
+    ParBench's target API set because it exercises a qualitatively distinct
+    programming model (Section~\ref{sec:appendix-a3}).
+
+  \item[Portability periphery.] SYCL, Kokkos, RAJA, OpenMP Target, and
+    MPI+OpenMP connect to the core cluster with moderate co-occurrence,
+    concentrated in a smaller number of suites (primarily RAJAPerf, BabelStream,
+    and HeCBench). Pthreads, TBB, and C++ PSTL appear in 3--4 repositories each
+    and occupy a similar peripheral role.
+
+  \item[Isolated APIs.] OCCA, Thrust, Chapel, C++ AMP, HMPP, Python, HLS,
+    GSParLib, STM/TM, Serial, and UPC++ have maximum pairwise co-occurrence at
+    most~2. Coarray Fortran, Charm++, UPC, and OpenSHMEM reach co-occurrence of
+    3--4 with MPI or with each other but remain disconnected from the GPU-centric
+    core.
+\end{description}
 
 Figure~\ref{fig:api-coverage} presents the per-API coverage in a ranked bar
 chart, making the quantitative dominance of the top-3 APIs clear.
@@ -188,15 +198,16 @@ chart, making the quantitative dominance of the top-3 APIs clear.
   \centering
   % \includegraphics[width=\columnwidth]{api_coverage_bar_v5.png}
   \input{NeurIPS_ready_version/figures/api_coverage_bar_v5}
-  \caption{API coverage across the expanded benchmark survey. OpenMP (${\sim}50$
+  \caption{API coverage across the benchmark survey. OpenMP (${\sim}50$
     benchmarks), MPI (${\sim}45$), and CUDA (${\sim}38$) dominate, with OpenACC
     (${\sim}17$), HIP (${\sim}15$), and MPI+OpenMP (${\sim}15$) forming a second
     tier. OpenMP Target (${\sim}8$), SYCL (${\sim}7$), Kokkos (${\sim}7$), and
-    RAJA (${\sim}7$) form a third tier. APIs below 5 benchmarks were excluded
-    from evaluation consideration due to insufficient benchmark material for
-    statistical evaluation.}
+    RAJA (${\sim}7$) form a third tier.}
   \label{fig:api-coverage}
 \end{figure}
+
+APIs below 5 benchmarks were excluded from evaluation consideration due to
+insufficient benchmark material for statistical evaluation.
 
 \subsubsection*{Kernel-Level Co-Occurrence}
 
