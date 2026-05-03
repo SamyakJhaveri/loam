@@ -91,7 +91,28 @@ L4 & All transforms & 100\% of candidates & Maximum configured perturbation \\
 \subsection{Prompt Anonymization}
 \label{sec:appendix-a-anonymization}
 
-Before prompt construction, \parbench{} strips source comments, removes the kernel name and description, replaces source and target filenames with generic labels, genericizes support-file names, and anonymizes kernel identifiers in build commands. These measures complement source augmentation as anonymization reduces benchmark identity leakage, while augmentation changes the source surface form. The complete prompt template is reproduced in Appendix~\ref{sec:appendix-g}.
+Before prompt construction, \parbench{} strips source comments, removes the kernel name and description, replaces source and target filenames with generic labels, genericizes support-file names, and anonymizes kernel identifiers in build commands. These measures complement source augmentation: anonymization reduces benchmark identity leakage, while augmentation changes the source surface form. The complete prompt template is reproduced in Appendix~\ref{sec:appendix-g}.
+
+
+{
+\color{blue}
+\subsection{Response Extraction Strategy}
+\label{sec:appendix-a-extraction}
+
+Each LLM response is parsed to recover the translated source files using a multi-tier extraction strategy that progressively relaxes matching criteria. The tiers are applied in order until all expected target files are recovered:
+
+\begin{enumerate}
+  \item \textbf{Explicit filename match.} The parser searches for markdown code fences annotated with the expected target filename (e.g., \texttt{```cpp filename=translated\_0.cpp}). This is the highest-confidence tier.
+  \item \textbf{Extension-based match.} If explicit filenames are absent, the parser matches code fences by file extension (e.g., \texttt{.cu}, \texttt{.cl}, \texttt{.cpp}) against the expected target file types.
+  \item \textbf{Fuzzy match.} Partial filename matches and common naming variants are attempted (e.g., matching \texttt{kernel.cu} to an expected \texttt{translated\_0.cu}).
+  \item \textbf{Elimination-based assignment.} When multiple code blocks remain unmatched, they are assigned to the remaining expected files by elimination order.
+\end{enumerate}
+
+If any expected target file cannot be recovered or the extracted content is empty after all tiers, the task is classified as \extractionfail{}. Across the 2{,}262 valid records, extraction failures are rare (1 for \qwenshort{}, 3 for \gptnew{}, 0 for \codex{}), indicating that the structured prompt format (Appendix~\ref{sec:appendix-g}) effectively guides models to produce parseable output.
+
+}
+
+
 
 \subsection{Extended Experimental Setup Details}
 \label{sec:appendix-a-extended}
@@ -132,10 +153,13 @@ analysis that informed the final selection.
 
 The benchmark landscape survey covered 71 repositories spanning benchmark suites, mini-applications, proxy applications, libraries, and full applications across 29 distinct parallel programming APIs. Of these, 35 met the inclusion criteria described in Section~\ref{sec:appendix-c2}.
 
+{\color{blue}
+The benchmark landscape survey initially covered 71 repositories spanning benchmark suites, mini-applications, proxy applications, libraries, and full applications across 29 distinct parallel programming APIs. Of these, 35 met the inclusion criteria for detailed analysis (Section~\ref{sec:appendix-c2}). The main paper (Section~\ref{sec:suite-selection}) reports statistics for these 35 qualifying repositories.}
+
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\columnwidth]{api_cooccurrence_heatmap.png}
-  \caption{API co-occurrence heatmap across all 71 surveyed repositories.Cell values indicate the number of repositories providing implementations in both the row and column APIs.}
+  \caption{API co-occurrence heatmap across all 71 surveyed repositories. Cell values indicate the number of repositories providing implementations in both the row and column APIs.}
   \label{fig:api-heatmap}
 \end{figure}
 
@@ -213,6 +237,9 @@ structure visually apparent.
 The preceding analysis establishes which translation directions are feasible at scale; this section classifies those directions by structural complexity.
 
 The choice of API pairs for evaluation is motivated not only by data availability (Section~\ref{sec:appendix-b1}) but by the \emph{structural transformation complexity} each translation direction demands. We classify translation directions into four categories:
+
+{\color{blue}The preceding analysis establishes which translation directions are feasible at scale. The choice of API pairs for evaluation is motivated not only by data availability (Section~\ref{sec:appendix-b1}) but also by the \emph{structural transformation complexity} each direction demands. We classify translation directions into four categories:
+}
 
 \textbf{Syntactic renaming} (e.g., CUDA to HIP): Near-1:1 API call mapping. \texttt{cudaMalloc} becomes \texttt{hipMalloc}; kernel launch semantics are preserved with minor syntax changes; thread-index arithmetic (\texttt{threadIdx.x}, \texttt{blockIdx.x}) maps directly to HIP equivalents. This category primarily tests API surface adaptation rather than parallel reasoning.
 
@@ -433,8 +460,7 @@ coverage to nuclear physics simulation and GPU roofline characterization.
 \subsection{Quality Tier Classification}
 \label{sec:appendix-c2}
 
-The 35 included repositories were classified into two quality tiers based on
-three criteria: build documentation, verification capability, and maintenance
+All 35 repositories that met inclusion criteria were classified into two quality tiers based on three criteria: build documentation, verification capability, and maintenance
 status.
 
 \textbf{Tier~A criteria} (all three required):
@@ -447,7 +473,7 @@ status.
     release with no known build failures on modern toolchains
 \end{itemize}
 
-\textbf{Tier~B criteria} (any one sufficient for downgrade):
+\textbf{Tier~B criteria} (any one triggers downgrade):
 \begin{itemize}
   \item Partial verification only (e.g., visual output inspection, manual
     comparison)
@@ -473,7 +499,7 @@ plots these two dimensions for all surveyed repositories.
   \centering
   \includegraphics[width=\columnwidth]{kernel_api_bubble.png}
   \caption{Benchmark kernel richness (y-axis, capped at 100 for readability) vs.\
-    API breadth (x-axis, number of APIs supported). Bubble size proportional to total kernel count; color indicates benchmark type. HeCBench (522 kernels, 6~APIs) dominates the upper region. RAJAPerf (80 kernels, 5~APIs) is the second-largest. CloverLeaf (23 kernels, 11~APIs) and BabelStream (5 kernels, 12~APIs) occupy the high-API-breadth region but with far fewer kernels. The optimal candidates for corpus construction lie in the high-kernel, moderate-API quadrant (upper-center).}
+    API breadth (x-axis, number of APIs supported). Bubble size proportional to total kernel count; color indicates benchmark type. HeCBench (522 kernels, 6~APIs\protect\footnote{HeCBench's 6-API count treats OpenMP threading and OpenMP-target offloading as distinct APIs and includes limited MPI support; the four primary implementation directories are CUDA, HIP, SYCL, and OpenMP.}) dominates the upper region. RAJAPerf (80 kernels, 5~APIs) is the second-largest. CloverLeaf (23 kernels, 11~APIs) and BabelStream (5 kernels, 12~APIs) occupy the high-API-breadth region but with far fewer kernels. The optimal candidates for corpus construction lie in the high-kernel, moderate-API quadrant (upper-center).}
   \label{fig:kernel-api-bubble}
 \end{figure}
 
@@ -484,47 +510,30 @@ in corpus construction.
 \begin{figure}[htbp]
   \centering
   \input{NeurIPS_ready_version/figures/figures_tek_version/top_candidates}
-  \caption{Top ``Rosetta Stone'' candidates ranked by kernel count (blue bars, scaled for readability; true counts annotated above) and API breadth (red bars). HeCBench provides the largest kernel pool (522 kernels, 6~APIs including CUDA, HIP, SYCL, and OpenMP). BabelStream and miniBUDE provide the broadest API coverage (12~APIs each) but with few kernels. RAJAPerf (80 kernels, 5~APIs) offers a balanced middle ground. Rodinia (22 kernels, 3 APIs) provides established, well-understood benchmarks with strong community recognition.}
+  \caption{Top multi-API repository candidates ranked by kernel count (blue bars, scaled for readability; true counts annotated above) and API breadth (red bars). HeCBench provides the largest kernel pool (522 kernels, 6~APIs spanning CUDA, HIP, SYCL, OpenMP, OpenMP-target offloading, and MPI). BabelStream and miniBUDE provide the broadest API coverage (12~APIs each) but with few kernels. RAJAPerf (80 kernels, 5~APIs) offers a balanced middle ground. Rodinia (22 kernels, 3 APIs) provides established, well-understood benchmarks with strong community recognition.}
   \label{fig:top-candidates}
 \end{figure}
 
 \subsubsection*{HeCBench Selection Funnel}
 
-HeCBench's 522 kernels were filtered through a multi-stage funnel to identify
-the curated evaluation set:
+HeCBench's 522 kernels were filtered through a five-stage funnel to identify the curated evaluation set:
 
 \begin{itemize}
-  \item \textbf{Stage~1 (API and infrastructure filter):} Of 522 total kernels in the HeCBench
-    repository, 329 provide implementations in all 4~primary APIs
-    (CUDA, HIP, SYCL, OpenMP). After excluding 2~without Makefiles and retaining only the 242 with self-checking output patterns, 242~candidates remain.
-
-  \item \textbf{Stage~2 (Complexity filter):} The 242 candidates were filtered
-    for evaluation tractability. Kernels with more than 15 source files or fewer
-    than 2 were excluded (the former are too complex for single-prompt
-    translation; the latter are trivial boilerplate). Kernels requiring external
-    input data files were also excluded to ensure self-contained evaluation.
-
-  \item \textbf{Stage~3 (Domain diversity):} From the complexity-filtered set,
-    60 kernels were selected to maximize domain diversity across computational
-    categories: linear algebra, stencil computation, graph algorithms, machine
-    learning, physics simulation, sorting, reduction, scan, image processing,
-    and cryptography.
-
-  \item \textbf{Stage~4 (Curation):} The 60-kernel working set was narrowed to a
-    final curated set of 20 kernels based on manual inspection of build
-    reliability, output determinism, and domain representativeness. Of these, 10
-    kernels were included in the current \parbench{} evaluation corpus, with the
-    remaining~10 reserved for future expansion.
+  \item \textbf{Stage~1 (API completeness):} Of 522 total kernels in the HeCBench repository, 329 provide implementations in all 4~primary APIs (CUDA, HIP, SYCL, OpenMP).
+  \item \textbf{Stage~2 (Build infrastructure and verification):} Of these 329 kernels, 2~lack Makefiles and were excluded. Of the remaining 327, only 242 produce self-checking output (printing PASS/FAIL, computing checksums, or comparing against reference values). These 242 candidates proceed to complexity filtering.
+  \item \textbf{Stage~3 (Complexity filter):} The 242 candidates were filtered for evaluation tractability. Kernels with more than 15 source files or fewer than 2 were excluded (the former are too complex for single-prompt translation; the latter are trivial boilerplate). Kernels requiring external input data files were also excluded to ensure self-contained evaluation.
+  \item \textbf{Stage~4 (Domain diversity):} From the complexity-filtered set, 60 kernels were manually selected to ensure coverage across 10 computational categories: linear algebra, stencil computation, graph algorithms, machine learning, physics simulation, sorting, reduction, scan, image processing, and cryptography.
+  \item \textbf{Stage~5 (Curation):} The 60-kernel working set was narrowed to a final curated set of 20 kernels based on manual inspection of build reliability, output determinism, and domain representativeness. Of these, 10 kernels were included in the current \parbench{} evaluation corpus, with the remaining~10 reserved for future expansion.
 \end{itemize}
 
-The final 20 curated HeCBench kernels span diverse computational domains and algorithmic patterns. Of these, 10 are included in the current evaluation corpus (25~specs); the remaining~10 are reserved for future expansion.
+The 10 curated kernels included in the current corpus are: \texttt{convolution1d}, \texttt{floydwarshall}, \texttt{heat2d}, \texttt{iso2dfd}, \texttt{jacobi}, \texttt{md}, \texttt{nqueen}, \texttt{page-rank}, \texttt{scan}, and \texttt{stencil1d}. Each provides a CUDA implementation paired with one or more OpenMP/OpenMP-target variants, totaling 25~specs. Two of these are \knownfail{}: \texttt{stencil1d-omp\_target} (build failure due to target-offloading compilation) and \texttt{scan-omp\_target} (output mismatch on the CPU offload target), leaving 23 in the active evaluation corpus.
 
 \subsection{Rodinia Kernel Inventory}
 \label{sec:appendix-c4}
 
-Rodinia~\cite{Rodinia2009} provides the foundation of \parbench{}'s evaluation corpus. As one of the most widely cited heterogeneous computing benchmark suites, it offers well-understood computational characteristics across CUDA, OpenMP, and OpenCL. \parbench{} includes all 22 Rodinia kernels, yielding 60~total specs; six kernels lack one or more API variants because the upstream repository does not provide implementations for all three APIs. Of these 60 specs:
+Rodinia~\cite{Rodinia2009} provides the foundation of \parbench{}'s evaluation corpus. As one of the most widely cited heterogeneous computing benchmark suites, it offers well-understood computational characteristics across CUDA, OpenMP, and OpenCL. \parbench{} includes all 22 Rodinia kernels, yielding 60~total specs; five kernels lack one or more API variants because the upstream repository does not provide implementations for all three APIs (six API variants absent in total, as one kernel---\texttt{huffman}---lacks both OpenMP and OpenCL). Of these 60 specs:
 \begin{itemize}
-    \item \textbf{53 \pass{}}: Verified via conjunctive verification---exit code~0 \emph{and} stdout pattern match must both hold.
+    \item \textbf{53 \pass{}}: Verified via conjunctive verification---exit code~0 \emph{and} stdout pattern match must both hold. Five of these employ stronger oracle methods: three (\texttt{hotspot3d}) use numeric comparison against baseline output within a fixed tolerance, and two (\texttt{bptree}) use cryptographic file hashing for bitwise-exact output matching.
     \item \textbf{7 \knownfail{}}: Excluded from evaluation due to pre-existing
       platform failures unrelated to LLM translation quality:
       2~specs use deprecated CUDA \texttt{texture<>} references removed in
@@ -583,7 +592,7 @@ methods across the survey and the basis for exclusion decisions.
 
 \subsubsection*{Repository-Level Exclusions}
 
-Of the 71 surveyed repositories, 31 were excluded during initial screening (single-API only, no HPC kernel content, or outside the CUDA/OpenMP/OpenCL scope). Of the remaining 40, five were excluded during detailed evaluation:
+Of the 71 surveyed repositories, 36 were excluded in two stages. First, 31 were removed during initial screening (single-API only, no HPC kernel content, or outside the CUDA/OpenMP/OpenCL scope), leaving 40~candidates. Of these, five were excluded during detailed evaluation:
 
 \begin{itemize}
   \item \textbf{Download failures} (2): Repository URLs were dead or
@@ -854,8 +863,8 @@ translated kernel.
 \subsubsection*{Cross-Model Persistence}
 The direction-dependent failure pattern persists across models. Only two of
 six directions yield any \pass{} outcomes across the three models:
-OMP$\to$OpenCL (\gptnew{} and \codexshort{} each 3/3~\pass{}, \qwenshort{}
-0/3) and CUDA$\to$OMP (\gptnew{} 2/3~\pass{}, \qwenshort{} and \codexshort{}
+OMP$\to$OpenCL (\gptnew{} and \codex{} each 3/3~\pass{}, \qwenshort{}
+0/3) and CUDA$\to$OMP (\gptnew{} 2/3~\pass{}, \qwenshort{} and \codex{}
 0/3). The remaining four directions are universally failed across all models
 and samples (0/36~\pass{}). OpenCL$\to$CUDA and OMP$\to$CUDA fail at build
 time due to phantom includes (18/18~\buildfail{}), CUDA$\to$OpenCL fails at
@@ -879,7 +888,7 @@ This case study identifies three distinct error subcategories within the
     CUDA-targeting directions across all three models.
 
   \item \textbf{Cross-file identifier inconsistency}: In some translations
-    (observed in \codexshort{} and \gptnew{} OpenCL$\to$CUDA attempts), the
+    (observed in \codex{} and \gptnew{} OpenCL$\to$CUDA attempts), the
     kernel file uses the target API's naming convention while the wrapper file
     retains the source API's function name, producing linker errors
     (\texttt{undefined reference to `kernel\_gpu\_cuda'}).
