@@ -9,7 +9,7 @@
 %   CloverLeaf:   23 kernels (→0.66),       11 APIs
 %   Kokkos:       50 kernels (→1.4),         4 APIs (OMP, CUDA, HIP, Kokkos)
 %   PRK:          12 kernels (→0.34),        9 APIs (MPI, MPI+OMP, OMP, Fortran, Chapel, Charm++, UPC, OpenSHMEM, Serial)
-%   Rodinia:      22 kernels (→0.63),        3 APIs (OMP, CUDA, OCL) — CSV says 4 (SYCL=1) but repo has no SYCL
+%   Rodinia:      22 kernels (→0.63),        4 APIs (OMP, CUDA, SYCL, OCL)
 \begin{tikzpicture}
 \begin{axis}[
   parbench compact,
@@ -36,7 +36,7 @@
 
   % APIs (unscaled, from CSV n_apis)
   \addplot[fill=pbOrange, draw=pbOrange!70!black, line width=0.6pt]
-    coordinates {(0,6) (1,12) (2,5) (3,12) (4,11) (5,4) (6,9) (7,3)};
+    coordinates {(0,6) (1,12) (2,5) (3,12) (4,11) (5,4) (6,9) (7,4)};
   \addlegendentry{APIs}
 
   % Annotate true kernel counts above blue bars

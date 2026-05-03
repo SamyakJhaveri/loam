@@ -16,16 +16,16 @@
 %     (80–3,304), 89% exceed ParEval-Repo's 133 SLoC threshold.
 %   - Finally: multi-file fraction (25%) — sets up the finding in Results
 %     that file-boundary coordination is an independent difficulty axis.
-{\color{green}
+
 \section{Benchmark Curation}
 \label{sec:benchmark-curation}
 
-The benchmark corpus was assembled through a four-stage systematic process: surveying open-source HPC benchmark repositories, quantifying kernel-level translation opportunities across parallel APIs, filtering candidate kernels through automated build-run-verify checks, and verifying each selected kernel through the complete pipeline on the evaluation platform. This curation populates the Source Code component of the ParBench architecture (Figure~\ref{fig:architecture}, orange) with kernel files from five benchmark suites that collectively span the CUDA--OpenMP--OpenCL API triple.
+The benchmark corpus was assembled through a four-stage systematic process: surveying open-source HPC benchmark repositories, quantifying kernel-level translation opportunities across parallel APIs, filtering candidate kernels through automated build-run-verify checks, and verifying each selected kernel through the complete pipeline on the evaluation platform. This curation populates the Source Code component of the \parbench{} architecture (Figure~\ref{fig:architecture}, orange) with kernel files from five benchmark suites that collectively span the CUDA--OpenMP--OpenCL API triple.
 
 \subsection{Suite and Kernel Selection}
 \label{sec:suite-selection}
 
-We surveyed 35 open-source HPC benchmark repositories spanning suites, mini-applications, proxy applications, full-applications, libraries, and microbenchmarks (Appendix~\ref{sec:appendix-b1}). A central finding is that \textbf{repository-level counting dramatically understates the available material for parallel translation evaluation}: although only 6~repositories contain both CUDA and OpenMP implementations, kernel-level analysis reveals 472~independent CUDA--OpenMP translation pairs---a 79$\times$ multiplier (Appendix Figure~\ref{fig:repo-vs-kernel}). This gap motivates ParBench's individual kernel-centric evaluation design, rather than evaluating repository-level translation.
+We surveyed 35 open-source HPC benchmark repositories spanning suites, mini-applications, proxy applications, full-applications, libraries, and microbenchmarks (Appendix~\ref{sec:appendix-b1}). A central finding is that \textbf{repository-level counting dramatically understates the available material for parallel translation evaluation}: although only 6~repositories contain both CUDA and OpenMP implementations, kernel-level analysis reveals 472~independent CUDA--OpenMP translation pairs---a 79$\times$ multiplier (Appendix Figure~\ref{fig:repo-vs-kernel}). This gap motivates \parbench{}'s individual kernel-centric evaluation design, rather than evaluating repository-level translation.
 
 Five suites were selected based on their open-source availability, multi-API kernel equivalence, build-run-verify automation, self-checking correctness labels, and domain diversity; detailed criteria and exclusion rationale are provided in Appendix~\ref{sec:appendix-c2}--\ref{sec:appendix-c6}. \textbf{Rodinia}~\cite{Rodinia2009}\footnote{Commit \texttt{9c10d3ea}} is the largest contributor, providing 60~specs across 22~kernels over CUDA, OpenMP, and OpenCL; 53 pass baseline verification and 7 are \knownfail{}. \textbf{HeCBench}~\cite{HeCBench2023}\footnote{Commit \texttt{22785cdd}} provides the largest initial multi-API pool: from 522~kernels, a structured funnel yields 10 curated kernels with CUDA, OpenMP, and OMP-target variants, totaling 25~specs. \textbf{XSBench}~\cite{XSBench2014}\footnote{Commit \texttt{ba08e522}} and \textbf{RSBench}~\cite{RSBench2014}\footnote{Commit \texttt{34b64478}} contribute nuclear-physics proxy kernels, each with 4~specs, while \textbf{mixbench}~\cite{mixbench2017}\footnote{Commit \texttt{32edeca9}} contributes 3~GPU roofline micro-benchmark specs. All XSBench, RSBench, and mixbench specs pass baseline verification.
 
@@ -55,7 +55,7 @@ mixbench  & 1  & 3  & 3  & 0 & CUDA, OMP, OCL & 312 & -- & 0/3 (0\%) \\
 \end{table*}
 
 The 87 verified-\pass{} specs constitute the evaluation corpus (Table~\ref{tab:suite-summary}). Kernel complexity spans more than an order of magnitude, from 80 to 3{,}304~SLoC with a median of 271. Overall, 31 of 35 kernels (89\%) exceed 133~SLoC, the scale beyond which prior repository-level translation evaluation reports 0\% pass@$k$~\cite{ParEvalRepo2025}. Multi-file translations account for 25\% of specs, with CUDA exhibiting the highest rate due to kernel/host code separation. These properties make the corpus substantially more complex than single-function code-generation benchmarks while preserving fixed infrastructure for controlled kernel-level evaluation. A full quantitative characterization by suite is provided in Appendix Table~\ref{tab:benchmark-characterization}.
-}
+
 
 %However, Rodinia's wide adoption raises a data contamination concern; the AST-driven augmentation engine (Section~\ref{sec:augmentation-engine}) mitigates this by generating structurally novel variants that preserve semantics while defeating memorization.
 
@@ -89,7 +89,7 @@ The 87 verified-\pass{} specs constitute the evaluation corpus (Table~\ref{tab:s
 % \end{tabular}
 % \end{table*}
 
-% The survey data directly inform ParBench's API selection. CUDA serves as the primary source language, reflecting its dominant position in GPU programming. OpenMP is the primary translation target: the kernel-level survey identified CUDA-to-OpenMP as the largest translation opportunity among CPU-targeting APIs, with 472 kernel pairs across 6 repositories (Table~\ref{tab:kernel-pairs}).
+% The survey data directly inform \parbench{}'s API selection. CUDA serves as the primary source language, reflecting its dominant position in GPU programming. OpenMP is the primary translation target: the kernel-level survey identified CUDA-to-OpenMP as the largest translation opportunity among CPU-targeting APIs, with 472 kernel pairs across 6 repositories (Table~\ref{tab:kernel-pairs}).
 
 % Although CUDA--HIP and CUDA--SYCL yield higher raw kernel-pair counts (633 and 616 respectively; Table~\ref{tab:kernel-pairs}), these pairs represent a qualitatively different---and substantially easier---translation challenge. HIP is designed as a near-syntactic mirror of CUDA: \texttt{cudaMalloc} maps to \texttt{hipMalloc}, kernel launch syntax is preserved verbatim, and thread-index arithmetic transfers unchanged. In contrast, CUDA-to-OpenMP translation requires structural program transformation: SPMD thread-index arithmetic must be refactored into fork-join loop parallelism, explicit GPU memory management must be eliminated entirely, and synchronization primitives (\texttt{\_\_syncthreads()}) must be replaced with implicit OpenMP barrier semantics or explicit \texttt{critical}/\texttt{atomic} sections. This paradigm gap makes CUDA--OpenMP the most scientifically informative translation direction for evaluating whether LLMs reason about parallel structure rather than performing surface-level API renaming.
 % % [Float moved to Appendix D]

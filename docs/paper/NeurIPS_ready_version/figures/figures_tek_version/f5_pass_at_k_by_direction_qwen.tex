@@ -1,0 +1,78 @@
+% pass@k by translation direction — Qwen 3.5 397B-A17B
+% Styled to match f2_repo_vs_kernel: shared ParBench compact axis, palette,
+% outlined grouped bars, and bold numeric annotations.
+% 8 directions (6 canonical + 2 OMP-T).
+
+\pgfplotstableread{
+dir  p1    p3
+0    0.37  0.46
+1    0.23  0.31
+2    0.06  0.13
+3    0.01  0.04
+4    0.32  0.50
+5    0.08  0.20
+6    0      0
+7    0.63  0.90
+}\fvpassqwen
+
+\begin{tikzpicture}
+\begin{axis}[
+  parbench compact,
+  ybar,
+  bar width=9pt,
+  ymin=0, ymax=1.12,
+  xmin=-0.65, xmax=7.65,
+  xtick={0,1,2,3,4,5,6,7},
+  xticklabels={
+    {CUDA--OMP},
+    {OMP--CUDA},
+    {CUDA--OCL},
+    {OCL--CUDA},
+    {OMP--OCL},
+    {OCL--OMP},
+    {CUDA--OMP-T},
+    {OMP-T--CUDA}
+  },
+  xticklabel style={font=\tiny, rotate=35, anchor=east},
+  ytick={0,0.25,0.5,0.75,1.0},
+  yticklabels={0.00,0.25,0.50,0.75,1.00},
+  ylabel={Average pass@$k$},
+  grid style={dashed, draw=gray!40},
+  title={pass@$k$ by Translation Direction\\(Qwen~3.5 397B-A17B)},
+  legend style={
+    at={(0.5,-0.32)}, anchor=north,
+    legend columns=2,
+  },
+  nodes near coords={\pgfmathprintnumber[fixed,fixed zerofill,precision=2]{\pgfplotspointmeta}},
+]
+
+\addplot[
+  fill=pbOrange!70,
+  draw=pbOrange!80!black,
+  line width=0.8pt,
+  every node near coord/.style={
+    font=\tiny\bfseries,
+    anchor=south,
+    xshift=-7.5pt,
+    yshift=1pt,
+    color=pbOrange!80!black
+  },
+] table[x=dir, y=p1] {\fvpassqwen};
+\addlegendentry{pass@1}
+
+\addplot[
+  fill=pbRodinia,
+  draw=pbRodinia!70!black,
+  line width=0.8pt,
+  every node near coord/.style={
+    font=\tiny\bfseries,
+    anchor=south,
+    xshift=6pt,
+    yshift=1pt,
+    color=black
+  },
+] table[x=dir, y=p3] {\fvpassqwen};
+\addlegendentry{pass@3}
+
+\end{axis}
+\end{tikzpicture}

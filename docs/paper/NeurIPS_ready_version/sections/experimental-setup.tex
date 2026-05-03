@@ -29,10 +29,6 @@
 %   - pass@k (macro-averaged, Chen et al. estimator) with normal-approx CIs.
 %   - Per-record pass rates with Wilson CIs.
 %   - Performance explicitly out of scope.
-
-\section{Experimental Setup}
-\label{sec:experimental-setup}
-
 % ============================================================================
 % Ground truth sources for every claim in this section:
 %   Model IDs/params:  scripts/evaluation/llm_evaluate.py MODEL_REGISTRY (lines 74-139)
@@ -45,13 +41,15 @@
 %   Temperature gate:  llm_evaluate.py lines 946-948 (Azure reasoning omits temp/top_p)
 % ============================================================================
 
-\textbf{Models:} We evaluate three models: \qwen{}, a 397B-parameter MoE open weights and open-source model accessed via Together AI; \gptnew{}, a general-purpose proprietary model accessed via \gptprovider{}; and \codex{}, a code-specialized model optimized via reinforcement learning on software engineering tasks~\cite{GPT53Codex2026}, also accessed via \gptprovider{}. All three expose provider-specific reasoning modes, configured at recommended settings (\texttt{enable\_thinking} for \qwenshort{}, \texttt{reasoning\_effort=medium} for \gptnew{} and \codexshort{}). Because these thinking modes differ in mechanism, observed performance differences reflect both base capability and reasoning-mode effects. Detailed model configurations, hardware specs, and cost accounting are provided in Appendix~\ref{sec:appendix-a-extended}.
+\section{Experimental Setup}
+\label{sec:experimental-setup}
+
+\textbf{Models:} We evaluate three models: \qwen{}, a 397B-parameter MoE open weights and open-source model accessed via Together AI; \gptnew{}, a general-purpose proprietary model accessed via \gptprovider{}; and \codex{}, a code-specialized model optimized via reinforcement learning on software engineering tasks~\cite{GPT53Codex2026}, also accessed via \gptprovider{}. All three expose provider-specific reasoning modes, configured at recommended settings (\texttt{enable\_thinking} for \qwenshort{}, \texttt{reasoning\_effort=medium} for \gptnew{} and \codex{}). Because these thinking modes differ in mechanism, observed performance differences reflect both base capability and reasoning-mode effects. Detailed model configurations, hardware specs, and cost accounting are provided in Appendix~\ref{sec:appendix-a-extended}.
 
 \textbf{Translation Protocol and Scope:} The evaluation covers ten translation directions (142 unique tasks), primarily focusing on CUDA, OpenMP, and OpenCL bidirectional pairs. We exclude 9 specifications classified as \knownfail{} due to pre-existing toolchain incompatibilities (detailed in Appendix~\ref{sec:appendix-a-extended}). Translations follow the kernel-centric protocol (Section~\ref{sec:framework}), where only kernel source files are translated while host and build infrastructure remain fixed. Performance speedup is explicitly out of scope; we focus purely on functional correctness.
 
-\textbf{Evaluation Phases:} The canonical campaign (L0) evaluates all 142 unique pairs from unmodified source code for each of the three models (1,278 total L0 records), using $n=3$ independent samples per task (temperature 0.7 for \qwenshort{}; internally controlled for \gptnew{} and \codexshort{}). The augmentation ablation phase isolates source-code robustness by applying an L0-conditional filter (testing only pairs that pass at L0) and evaluating single samples at augmentation levels L1--L4. Extended sampling configurations are in Appendix~\ref{sec:appendix-a-extended}.
+\textbf{Evaluation Phases:} The canonical campaign (L0) evaluates all 142 unique pairs from unmodified source code for each of the three models (1,278 total L0 records), using $n=3$ independent samples per task (temperature 0.7 for \qwenshort{}; internally controlled for \gptnew{} and \codex{}). The augmentation ablation phase isolates source-code robustness by applying an L0-conditional filter (testing only pairs that pass at L0) and evaluating single samples at augmentation levels L1--L4. Extended sampling configurations are in Appendix~\ref{sec:appendix-a-extended}.
 
 \textbf{Metrics:} The primary metric is \textbf{pass@$k$}, using the unbiased estimator from \citet{HumanEval2021} with normal-approximation confidence intervals on the task-level mean. Separately, we report \textbf{per-record pass rates} treating each record as an independent Bernoulli trial, computed with Wilson 95\% confidence intervals. Full metric derivations are in Appendix~\ref{sec:appendix-a-extended}.
 
 With the methodology established, Section~\ref{sec:results} presents the pass rates, failure taxonomy, direction asymmetry, and augmentation robustness results.
-

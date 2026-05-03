@@ -1,30 +1,30 @@
-% Benchmark API-count histogram — style matches api_coverage_bar_v5
-% Data: #benchmarks supporting exactly N distinct APIs
-% Bins: 1=13, 2=11, 3=18, 4=8, 5=8, 6=6, 7=2, 8=1, 9=0, 10=0, 11=2, 12=2
+% Benchmark types distribution (35 surveyed repositories)
+% Vertical bar chart matching api_coverage_bar_v5 style
+% Data: Suite=13, Miniapp=12, Library=4, Proxy App=4, Application=2
 \begin{tikzpicture}
 \begin{axis}[
   ybar,
-  bar width=12pt,
-  height=6cm,
+  bar width=18pt,
+  height=5.5cm,
   width=\columnwidth,
-  xmin=0, xmax=13,
-  ylabel={\#Benchmarks},
-  ymin=0, ymax=21,
-  ytick={0,5,10,15,20},
-  xtick={1,2,3,4,5,6,7,8,9,10,11,12},
+  xmin=-0.6, xmax=4.6,
+  ylabel={\#Repositories},
+  ymin=0, ymax=15,
+  ytick={0,5,10,15},
+  xtick={0,1,2,3,4},
+  xticklabels={Suite, Miniapp, Library, {Proxy App}, Application},
   xticklabel style={font=\small},
   tick label style={font=\small},
   label style={font=\small},
   title style={font=\normalsize\bfseries},
-  xlabel={\#Parallel APIs per Benchmark},
   ymajorgrids=true,
   major grid style={dashed, draw=gray!40},
-  title={API Breadth Distribution Across Benchmarks},
+  title={Distribution of Benchmark Types (35 Repositories)},
   nodes near coords,
   nodes near coords style={font=\small\bfseries, anchor=south},
   clip=false,
 ]
   \addplot[fill=pbTealDark, draw=pbTealDark!70!black, line width=0.5pt]
-    coordinates {(1,13) (2,11) (3,18) (4,8) (5,8) (6,6) (7,2) (8,0) (9,1) (10,0) (11,2) (12,2)};
+    coordinates {(0,13) (1,12) (2,4) (3,4) (4,2)};
 \end{axis}
 \end{tikzpicture}

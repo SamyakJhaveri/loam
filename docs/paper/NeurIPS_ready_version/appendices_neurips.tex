@@ -3,7 +3,7 @@
 
 % \appendices
 
-%% ============================================================================
+%% ==============\codex{==============================================================
 %% APPENDIX A: Framework Details
 %% ============================================================================
 
@@ -534,16 +534,12 @@ The 10 curated kernels included in the current corpus are: \texttt{convolution1d
 Rodinia~\cite{Rodinia2009} provides the foundation of \parbench{}'s evaluation corpus. As one of the most widely cited heterogeneous computing benchmark suites, it offers well-understood computational characteristics across CUDA, OpenMP, and OpenCL. \parbench{} includes all 22 Rodinia kernels, yielding 60~total specs; five kernels lack one or more API variants because the upstream repository does not provide implementations for all three APIs (six API variants absent in total, as one kernel---\texttt{huffman}---lacks both OpenMP and OpenCL). Of these 60 specs:
 \begin{itemize}
     \item \textbf{53 \pass{}}: Verified via conjunctive verification---exit code~0 \emph{and} stdout pattern match must both hold. Five of these employ stronger oracle methods: three (\texttt{hotspot3d}) use numeric comparison against baseline output within a fixed tolerance, and two (\texttt{bptree}) use cryptographic file hashing for bitwise-exact output matching.
-    \item \textbf{7 \knownfail{}}: Excluded from evaluation due to pre-existing
-      platform failures unrelated to LLM translation quality:
-      2~specs use deprecated CUDA \texttt{texture<>} references removed in
-      CUDA~12 (\texttt{kmeans-cuda}, \texttt{mummergpu-cuda});
-      1~requires OpenGL (\texttt{hybridsort-cuda});
-      1~has CUDA API dependencies in its OpenMP variant (\texttt{mummergpu-omp});
-      2~exhibit pre-existing OpenCL segmentation faults (\texttt{nn-opencl},
-      \texttt{kmeans-opencl}); and
-      1~has a silent \texttt{clEnqueueReadBuffer} error masked by exit code~0
-      (\texttt{backprop-opencl}).
+    \item \textbf{7 \knownfail{}}: Excluded from evaluation due to pre-existing platform failures unrelated to LLM translation quality:
+    2~specs use deprecated CUDA \texttt{texture<>} references removed in CUDA~12 (\texttt{kmeans-cuda}, \texttt{mummergpu-cuda}); 
+    1~requires OpenGL (\texttt{hybridsort-cuda});
+    1~has CUDA API dependencies in its OpenMP variant (\texttt{mummergpu-omp});
+    2~exhibit pre-existing OpenCL segmentation faults (\texttt{nn-opencl}, \texttt{kmeans-opencl}); and
+    1~has a silent \texttt{clEnqueueReadBuffer} error masked by exit code~0 (\texttt{backprop-opencl}).
 \end{itemize}
 
 \subsection{XSBench, RSBench, and mixbench Profiles}
@@ -628,64 +624,51 @@ The complete exclusion log with per-kernel justifications is recorded in \parben
 %% ============================================================================
 %% APPENDIX D: Extended Related Work
 %% ============================================================================
-
 \section{Extended Related Work}
 \label{sec:appendix-d}
 
-The main text positions \parbench{} through the evaluation gap it addresses. This
-appendix records the longer comparison across granularity, verification rigor,
-and robustness testing.
+The main text positions \parbench{} through the evaluation gap it addresses. This appendix provides a structured comparison across five dimensions---granularity, verification method, HPC coverage, robustness testing, and corpus scale---and discusses design trade-offs that space constraints preclude from the main text.
 
 \begin{table*}[htbp]
 \centering
-\caption{Related work comparison along granularity and verification axes.
-\parbench{} combines kernel-level HPC translation, build-run-verify correctness,
-and augmentation-based robustness evaluation.}
+\caption{Related work comparison along granularity, verification, and robustness axes. \parbench{} is the only system combining kernel-level HPC translation, conjunctive build-run-verify correctness, and AST-driven augmentation robustness evaluation.}
 \label{tab:related-work}
-\small
 \resizebox{\textwidth}{!}{%
 \begin{tabular}{@{}llllccl@{}}
 \toprule
-Paper & Venue & Granularity & Verification & HPC parallel & Augmentation & Scale \\
-\midrule
-HumanEval~\cite{HumanEval2021} & arXiv'21 & Function & Unit tests & -- & -- & 164 functions \\
-SWE-bench~\cite{SWEbench2024} & ICLR'24 & Repository & Test suite & -- & -- & 2{,}294 issues \\
-TransCoder~\cite{TransCoder2020} & NeurIPS'20 & Function & Unit tests & -- & -- & 852 functions \\
-CodeRosetta~\cite{CodeRosetta2024} & NeurIPS'24 & Function & BLEU + compile & Yes & -- & C++/CUDA corpus \\
-OMPify~\cite{OMPify2023} & IWOMP'23 & Loop & Pragma accuracy & Partial & -- & 54K snippets \\
-LASSI~\cite{LASSI2024} & CLUSTER'24 & Kernel & Build+run+verify & Yes & -- & 10 HeCBench \\
-ParEval~\cite{ParEval2024} & HPDC'24 & Task & Correctness check & Yes & -- & 420 tasks \\
-ParEval-Repo~\cite{ParEvalRepo2025} & ICPP'25 & Repository & Build + functional & Yes & -- & 6 apps \\
-HPC-Coder-V2~\cite{HPCCoderV2} & arXiv'24 & Task & pass@$k$ & Yes & -- & ParEval tasks \\
-TRACY~\cite{TRACY2025} & arXiv'25 & Function & Tests + efficiency & -- & Stress tests & 1{,}000 tasks \\
-\textbf{\parbench{}} & -- & \textbf{Kernel} & \textbf{Build+run+verify} & \textbf{Yes} & \textbf{L0--L4} & \textbf{96 specs} \\
+  Paper & Venue & Granularity & Verification & HPC parallel & Robustness & Scale \\
+  \midrule
+  HumanEval~\cite{HumanEval2021} & arXiv'21 & Function & Unit tests & -- & -- & 164 problems \\
+  SWE-bench~\cite{SWEbench2024} & ICLR'24 & Repository & Test suite & -- & -- & 2{,}294 issues \\
+  TransCoder~\cite{TransCoder2020} & NeurIPS'20 & Function & Unit tests & -- & -- & 852 functions \\
+  CodeRosetta~\cite{CodeRosetta2024} & NeurIPS'24 & Function & Compile + match & Yes & -- & C++/CUDA corpus \\
+  OMPify~\cite{OMPify2023} & IWOMP'23 & Loop & Pragma accuracy & Partial & -- & 54K loops \\
+  LASSI~\cite{LASSI2024} & CLUSTER-W'24 & Kernel & Build+run+verify & Yes & -- & 10 kernels \\
+  ParEval~\cite{ParEval2024} & HPDC'24 & Task & Correctness check & Yes & -- & 420 tasks \\
+  ParEval-Repo~\cite{ParEvalRepo2025} & ICPP'25 & Repository & Build + functional & Yes & -- & 6 applications \\
+  HPC-Coder-V2~\cite{HPCCoderV2} & arXiv'24 & Task & pass@$k$ & Yes & -- & ParEval tasks \\
+  CodeMorph~\cite{CodeMorph2025} & ICSE'25 & Function & Unit tests & -- & 26 transforms & HumanEval/MBPP \\
+  VibeCodeHPC~\cite{VibeCodeHPC2025} & arXiv'25 & Application & Build+run & Yes & -- & 2 benchmarks \\
+  TRACY~\cite{TRACY2025} & arXiv'25 & Function & Tests + efficiency & -- & -- & 1{,}000 tasks \\
+  \textbf{\parbench{}} & \textbf{This work} & \textbf{Kernel} & \textbf{Build+run+verify} & \textbf{Yes} & \textbf{L0--L4 AST} & \textbf{96 specs / 35 kernels} \\
 \bottomrule
 \end{tabular}
 }
 \end{table*}
 
-ParEval~\cite{ParEval2024} evaluates parallel code generation from natural
-language descriptions. It establishes that LLMs can synthesize parallel code in
-some settings, but source-to-source translation requires preserving existing
-program structure and API semantics rather than inventing a solution from a
-description. ParEval-Repo~\cite{ParEvalRepo2025} evaluates full repositories
-and therefore captures realistic integration work, but it also shows that
-build-system generation can dominate the result. \parbench{} occupies the kernel
-level between these extremes.
+\paragraph{Granularity trade-offs.} ParEval~\cite{ParEval2024} evaluates parallel code generation from natural language descriptions, testing whether a model can synthesize a correct parallel solution. Source-to-source translation imposes additional constraints absent from generation: the model must preserve an existing program's decomposition, variable naming, and API-specific data-flow patterns rather than inventing a new solution. ParEval-Repo~\cite{ParEvalRepo2025} captures realistic repository-level integration complexity, but its 0\% pass@1 above 133~SLoC indicates that build-system and scaffolding failures dominate the signal.
 
-LASSI~\cite{LASSI2024} is the closest prior system in granularity and
-verification style. It evaluates an agentic self-correction pipeline on
-10 HeCBench kernels and two API directions, reporting high pass rates after
-iterative debugging. \parbench{} instead emphasizes raw translation capability, direction
-coverage, survey-grounded corpus construction, and augmentation robustness.
+\parbench{} occupies the kernel level between these extremes: complex enough to exercise real parallel patterns (median 271~SLoC, max 3{,}304) while isolating translation capability from repository-integration noise by fixing host code and build infrastructure. VibeCodeHPC~\cite{VibeCodeHPC2025} demonstrates agentic iterative prompting for HPC code generation, but evaluates on two kernels and measures generation from scratch rather than translation of existing parallel implementations across APIs.
 
-CodeRosetta~\cite{CodeRosetta2024} and HPC-Coder-V2~\cite{HPCCoderV2} show the
-value of specialized modeling and fine-tuning for HPC code. \parbench{} is
-complementary: it provides an execution-based substrate on which such models can
-be evaluated, including cases where compile or text-similarity metrics would
-miss functional errors. TRACY~\cite{TRACY2025} highlights efficiency as a
-separate axis from correctness; \parbench{} currently measures correctness only.
+\paragraph{Verification rigor.} LASSI~\cite{LASSI2024} shares \parbench{}'s conjunctive build-run-verify pipeline and kernel granularity. The key design difference is evaluation protocol: LASSI measures ceiling performance under iterative LLM self-correction, while \parbench{} measures first-attempt translation capability with controlled augmentation. The two are complementary---LASSI answers ``how good can agentic repair get?'' while \parbench{} answers ``what does the model know before repair?'' \parbench{} further differs in scope (35 kernels across 5 suites vs.\ 10 HeCBench kernels, 10 translation directions vs.\ 2) and in its augmentation-based robustness dimension.
 
+CodeRosetta~\cite{CodeRosetta2024} and HPC-Coder-V2~\cite{HPCCoderV2} demonstrate that specialized fine-tuning improves HPC translation, but evaluate primarily via compilation rate and similarity metrics. \parbench{} provides the execution-based substrate needed to determine whether such models produce functionally correct translations, not merely compilable ones.
+
+\paragraph{Robustness methodology.} CodeMorph~\cite{CodeMorph2025} applies 26 semantic-preserving transformations to standard code benchmarks (HumanEval, MBPP) to detect data leakage in LLM evaluation. \parbench{}'s augmentation engine shares this principle but applies it to the HPC domain with transforms tailored to C/C++ parallel code: identifier renaming across translation-unit scope, arithmetic rewriting, pointer/array interchange, and typedef expansion. The motivation also differs: CodeMorph primarily diagnoses contamination, while \parbench{} uses augmentation as a robustness probe within the evaluation itself (L0--L4 ablation measures pass-rate degradation under increasing surface-form perturbation).
+
+TRACY~\cite{TRACY2025} evaluates a complementary axis---execution efficiency of translated code---demonstrating that functional correctness and performance are separable concerns.
+
+\parbench{} deliberately scopes to correctness, which isolates the translation-capability question from performance tuning and enables clean attribution of failures to API-adaptation gaps rather than optimization deficits.
 
 %% ============================================================================
 %% APPENDIX E: Detailed Evaluation Findings
@@ -726,6 +709,8 @@ heatmap.
 \end{figure}
 
 Table~\ref{tab:transform-coverage} summarizes the coverage and application frequency of each transform. Aggregate transform frequencies across the corpus reveal a clear dominance hierarchy. We report the number of Rodinia specs (out of 60) to which each transform applies at L4 (full intensity), followed by the total application count across all 240 augmentation tasks (60~specs $\times$ 4~levels):
+
+{\color{blue}Aggregate transform frequencies across the corpus reveal a clear dominance hierarchy. Below we report the number of Rodinia specs (out of 60) to which each transform applies at L4 (full intensity), followed by the total application count across all 240 augmentation tasks (60~specs $\times$ 4~levels):}
   
 \begin{itemize}
   \item \textbf{SwapCondition} (59/60 specs at L4; 162 applications across all levels): The most broadly applicable transform. Swaps operands of comparison operators (e.g., \texttt{a < b} $\rightarrow$ \texttt{b > a}), with guards against expressions containing side effects. Its near-universal coverage reflects the ubiquity of comparison-based control flow in HPC kernels---boundary checks, convergence tests, and branch-based algorithm selection all contribute candidate sites.
@@ -742,6 +727,10 @@ Table~\ref{tab:transform-coverage} summarizes the coverage and application frequ
 \end{itemize}
 
 The level-invariance property (all 53 non-\knownfail{} Rodinia specs pass at all levels L1--L4) confirms that augmentation introduces no new correctness failures to the benchmark baseline. This is expected: all transforms are designed to preserve semantic equivalence, verified by 15~unit tests covering each transform in isolation and by the end-to-end augmentation sweep across the full Rodinia corpus. Across all five suites, 80 of 87 non-\knownfail{} specs pass at all levels L1--L4, with the 7~failures confined to \texttt{omp\_target} variants where aggressive variable renaming interferes with OpenMP target data-mapping clauses (a known limitation of the current transform guards; all 87 specs pass at L1--L2).
+
+{\color{blue}
+The level-invariance property confirms that augmentation introduces no new correctness failures to the benchmark baseline: all 53 non-\knownfail{} Rodinia specs pass at every augmentation level L1--L4. (Note that the per-transform applicability fractions above, e.g., 59/60 for SwapCondition, are computed over all 60~Rodinia specs including the 7~\knownfail{} specs, since augmentation is applied to source files regardless of baseline status; the correctness validation uses only the 53 non-\knownfail{} specs.) All transforms are designed to preserve semantic equivalence, verified by 15~unit tests covering each transform in isolation and by the end-to-end augmentation sweep across the full Rodinia corpus. Across all five suites, 80 of 87 non-\knownfail{} specs pass at all levels L1--L4, with the 7~failures confined to \texttt{omp\_target} variants where aggressive variable renaming interferes with OpenMP target data-mapping clauses (a known limitation of the current transform guards; all 87 specs pass at L1--L2).
+}
 
 From an evaluation perspective, augmentation levels serve as a robustness probe rather than as independent samples that inflate the effective sample size. The L0-conditional ablation (Section~\ref{sec:results}) confirms this discriminative role across all three models: \gptnew{} and \codex{} maintain high pass rates under augmentation (87--91\% and 85--89\% at L1--L4 among their respective L0-passing tasks), while \qwenshort{} degrades from 74.0\% at L1 to 56.0\% at L4. The monotonic decline for \qwenshort{} suggests that semantics-preserving source perturbations expose fragility in weaker models' translation capabilities---exactly the behavior a robustness probe should surface.
 
@@ -939,6 +928,8 @@ Hard fail (0/3) & 92 tasks (64.8\%) \\
 \end{tabular}
 \end{table}
 The 36.7\% per-record rate treats each sample and augmentation level independently. The pass@$k$ analysis restricts to the 142 L0 tasks and macro-averages to estimate single-sample and three-sample success probabilities. Each of the 142 tasks generates three independent samples at temperature~0.7. Only 31 of 142 tasks show within-task variability (1 or 2 of 3 samples pass); none of the 92 hard failures (0/3) benefit from resampling. The gap between pass@1 (23.9\%) and pass@3 (35.2\%) is modest, confirming that additional samples yield diminishing returns.
+{\color{blue}The 36.7\% per-record rate (Table~\ref{tab:overall-pass}) treats each sample and augmentation level independently. The pass@$k$ analysis (Table~\ref{tab:pass-at-k-main}) restricts to the 142~L0 tasks and macro-averages over tasks to estimate single-sample and three-sample success probabilities, with each task generating three independent samples at temperature~0.7. The gap between pass@1 (23.9\%) and pass@3 (35.2\%) is modest: additional stochastic samples partially recover only 31 of 142 tasks and none of the 92 hard failures. This confirms that failures are predominantly systematic rather than stochastic.
+}
 
 \paragraph{Representative Per-Kernel Pass Rates.}
 \begin{table}[h]
@@ -986,7 +977,8 @@ L4 & 10/12 & 83.3\% & 10/12 \phantom{0}(83\%) \\
 \end{tabular}
 \end{table}
 If baseline success were driven primarily by surface-form memorization, augmented source variants should degrade pass rates. On a balanced 12-kernel CUDA-to-OpenMP subset present at all five augmentation levels, pass rates remain between 75\% and 83\% at L1--L4. The L0 rate on this subset (80.6\%) exceeds the overall CUDA-to-OpenMP L0 rate (40.3\%) because the ablation filter selects kernels that already pass at L0, creating a survivorship bias toward easier kernels. We computed Cochran-Armitage trend tests, but two confounds undermine their interpretability: the 3:1 ratio of L0 to L1--L4 sample sizes on this subset, and the survivorship selection inherent in L0-conditional ablation. The observed stability is compatible with some robustness to surface-form perturbation, though it does not rule out memorization at other levels of abstraction.
-
+{\color{blue}If baseline success were driven primarily by surface-form memorization, augmented source variants should degrade pass rates. On a balanced 12-kernel CUDA-to-OpenMP subset present at all five augmentation levels, pass rates remain between 75\% and 83\% at L1--L4. The L0 rate on this subset (80.6\%) exceeds the overall CUDA-to-OpenMP L0 rate (40.3\%) because the ablation filter selects kernels that already pass at L0, creating a survivorship bias toward easier kernels. We computed Cochran--Armitage trend tests, but two confounds undermine their interpretability: the 3:1 ratio of L0 to L1--L4 sample sizes on this subset, and the survivorship selection inherent in L0-conditional ablation. The observed stability is compatible with some robustness to surface-form perturbation, though it does not rule out memorization at other levels of abstraction.
+}
 %% ============================================================================
 %% APPENDIX F: Supplementary Tables and Figures
 %% ============================================================================
@@ -997,38 +989,12 @@ If baseline success were driven primarily by surface-form memorization, augmente
 This appendix contains detailed evidence tables and figures referenced from the main text.
 Floats are ordered by their original section appearance.
 
-% --- From Section 3 (\parbench{} Framework) ---
-
-% src: tab:augmentation-levels verified against LEVEL_FRACTIONS = {1: 0.0, 2: 0.33, 3: 0.66, 4: 1.0} (01-01 verified 2026-04-03)
-% src: in c_augmentation/augment_dataset.py line 111 (LEVEL_FRACTIONS dict)
-% src: Transform selection (L1: 1 of 6, L2: max(1,int(6*0.33))=1, L3: max(1,int(6*0.66))=3, L4: all 6) verified against augment_code() lines 1796-1803
-% src: Candidate fraction within each transform verified against _select_fraction() lines 152-167: max(1, floor(n*fraction))
-
-% \begin{table}[htbp]
-% \centering
-% \caption{Augmentation level definitions.}
-% \label{tab:augmentation-levels}
-% \small
-% \begin{tabular}{@{}cccp{3.8cm}@{}}
-% \toprule
-% Level & Transform selection & Candidate fraction & Description \\
-% \midrule
-% L0 & None (original) & 0\% & Unmodified source code (baseline) \\
-% L1 & 1 transform & 1 site per transform & Minimal surface perturbation \\
-% L2 & 33\% of transforms & 33\% of candidates & Moderate obfuscation \\
-% L3 & 66\% of transforms & 66\% of candidates & Heavy obfuscation \\
-% L4 & All transforms & 100\% of candidates & Maximum obfuscation \\
-% \bottomrule
-% \end{tabular}
-% \end{table}
-
 % --- From Section 4 (Benchmark Curation) ---
-
 
 \begin{figure}[htbp]
 \centering
 \input{NeurIPS_ready_version/figures/figures_tek_version/f2_repo_vs_kernel}
-\caption{Repository-level vs.\ kernel-level translation pair counts. Left bars show the number of repositories containing both APIs; right bars show the number of independent kernel-level translation pairs. The multipliers (78$\times$--308$\times$) demonstrate that repository-level counting substantially underestimates the translation evaluation opportunity.}
+\caption{Repository-level vs.\ kernel-level translation pair counts. Left bars show the number of repositories containing both APIs; right bars show the number of independent kernel-level translation pairs. The multipliers (79$\times$--308$\times$) demonstrate that repository-level counting substantially underestimates the translation evaluation opportunity.}
 \label{fig:repo-vs-kernel}
 \end{figure}
 
@@ -1046,7 +1012,7 @@ Property & CUDA & OpenMP & OpenCL \\
 Execution model & SIMT (warps of 32 threads) & Fork-join thread teams & NDRange work-groups \\
 Memory management & Explicit device allocation and copies & Implicit shared CPU memory & Explicit buffer objects and command queues \\
 Kernel specification & Compiled with host code & Pragma directives over loops & Runtime string compilation \\
-Source structure & Single or multi-file (51\% multi-file in corpus) & Single file (directives annotate sequential code) & Separate host program + \texttt{.cl} kernel files \\
+Source structure & Single or multi-file (18 of 35 kernels are multi-file) & Single file (directives annotate sequential code) & Separate host program + \texttt{.cl} kernel files \\
 Thread indexing & Block/thread indices & Loop variable or thread query & Global/local ID queries \\
 \bottomrule
 \end{tabular}
@@ -1081,9 +1047,9 @@ Thread indexing & Block/thread indices & Loop variable or thread query & Global/
 
 % --- From Section 5 (Experimental Setup) ---
 
+% src: MODEL_REGISTRY in scripts/evaluation/llm_evaluate.py (lines 77-153)
+% src: Azure reasoning API rejects explicit temperature (llm_evaluate.py lines 986-988)
 
-% src: MODEL_REGISTRY in scripts/evaluation/llm_evaluate.py (lines 74-139)
-% src: Azure reasoning API rejects explicit temperature (llm_evaluate.py lines 946-948)
 \begin{table}[htbp]
 \centering
 \caption{Model configurations. $^\dagger$Azure reasoning models do not accept explicit temperature or top-$p$ parameters; sampling is controlled internally by the provider.}
@@ -1094,8 +1060,8 @@ Thread indexing & Block/thread indices & Loop variable or thread query & Global/
 Model & Provider & Arch. & Parameters & Temp. \\
 \midrule
 Qwen 3.5 397B-A17B & Together AI & MoE & 397B / 17B active & 0.7 \\
-GPT-5.4 & Azure OpenAI & undisclosed & undisclosed & N/A$^\dagger$ \\
-GPT-5.3-codex & Azure OpenAI & undisclosed & undisclosed & N/A$^\dagger$ \\
+GPT-5.4 & Azure OpenAI & proprietary & proprietary & N/A$^\dagger$ \\
+GPT-5.3-codex & Azure OpenAI & proprietary & proprietary & N/A$^\dagger$ \\ 
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1123,13 +1089,13 @@ Python & 3.12.3 \\
 \bottomrule
 \end{tabular}
 \end{table}
-
+++++++++++++
 % --- From Section 6 (Results) ---
 
 \begin{table}[htbp]
 \centering
 % src: statistical_analysis.json > augmentation_curves > *; augmentation_per_kernel_matrix_*.json
-\caption{LLM pass rates across augmentation levels. L0 covers all 142 direction--kernel pairs ($n=426$ tasks). L1--L4 are evaluated only for pairs where $\geq$1 of 3 L0 samples passed (Qwen: 50 pairs, GPT-5.4: 99 pairs, GPT-5.3-Codex: 97 pairs).}
+\caption{LLM pass rates across augmentation levels. L0 covers all 142 direction--kernel pairs ($n=426$ tasks). L1--L4 are evaluated only for pairs where $\geq$1 of 3 L0 samples passed (\qwenshort{}: 50 pairs, \gptnew{}: 99 pairs, \codex{}: 97 pairs).}
 \label{tab:augmentation-rates}
 \small
 \resizebox{\textwidth}{!}{%
@@ -1152,7 +1118,7 @@ L4 & 56.0\% ($n$=50) & 83.3\% ($n$=12) & 90.9\% ($n$=99) & 90.9\% ($n$=22) & 85.
 \centering
 % \includegraphics[width=\columnwidth]{f7_augmentation_robustness.pdf}
 \input{NeurIPS_ready_version/figures/figures_tek_version/f7_augmentation_robustness}
-\caption{Augmentation robustness. X-axis: augmentation levels L0--L4. Y-axis: pass rate (\%). Lines per model. Rodinia CUDA-to-OpenMP, seed=42.}
+\caption{Augmentation robustness. X-axis: augmentation levels L0--L4. Y-axis: pass rate (\%). Lines per model. Rodinia CUDA-to-OpenMP, seed=42.{\color{blue}Augmentation robustness across all three models. Pass rate (\%) at each augmentation level (L0--L4) on the L0-conditional subset for CUDA-to-OpenMP.}}
 \label{fig:augmentation}
 \end{figure}
 
@@ -1192,7 +1158,7 @@ GPT-5.3-codex & 142 & 62.7\% & 68.3\% & 45/142 (31.7\%) & 16/142 (11.3\%) & 81/1
 \centering
 % \includegraphics[width=\columnwidth]{f5_pass_at_k_by_direction_qwen.pdf}
 \input{NeurIPS_ready_version/figures/figures_tek_version/f5_pass_at_k_by_direction_qwen}
-\caption{pass@$k$ by translation direction.}
+\caption{pass@$k$ by translation direction.{\color{blue} Pass@$k$ by translation direction (\qwenshort{}, L0, three samples per task.}}
 \label{fig:pass-at-k}
 \end{figure}
 
@@ -1200,7 +1166,7 @@ GPT-5.3-codex & 142 & 62.7\% & 68.3\% & 45/142 (31.7\%) & 16/142 (11.3\%) & 81/1
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\columnwidth]{f6_cross_suite_comparison_qwen.pdf}
-\caption{Cross-suite pass rate comparison (L0, Qwen~3.5). Per-suite aggregate pass rates with Wilson 95\% CIs across all 5 benchmark suites.}
+\caption{Cross-suite pass rate comparison (L0, \qwenshort{}). Per-suite aggregate pass rates with Wilson 95\% CIs across all 5 benchmark suites.}
 \label{fig:cross-suite}
 \end{figure}
 
@@ -1360,13 +1326,13 @@ Three anonymization steps are applied before prompt construction:
 \section{GPT-5.4 Per-Model Figures}
 \label{sec:appendix-h}
 
-The following figures present GPT-5.4 evaluation results, complementing the Qwen~3.5 397B figures in the main body. Each figure uses the same visualization format as its main-body counterpart to enable direct visual comparison.
+The following figures present \gptnew{} evaluation results, complementing the \qwenshort{} figures in the main body. Each figure uses the same visualization format as its main-body counterpart to enable direct visual comparison.
 
 \begin{figure}[htbp]
 \centering
 % \includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/f3_kernel_model_heatmap_gpt_5-4.pdf}
 \input{NeurIPS_ready_version/figures/figures_tek_version/f3_kernel_model_heatmap_gpt_5-4}
-\caption{Per-kernel pass rates across all translation directions (GPT-5.4).}
+\caption{Per-kernel pass rates across all translation directions (\gptnew{}).}
 \label{fig:f3-gpt}
 \end{figure}
 
@@ -1374,7 +1340,7 @@ The following figures present GPT-5.4 evaluation results, complementing the Qwen
 \centering
 % \includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/f4_failure_taxonomy_gpt_5-4.pdf}
 \input{NeurIPS_ready_version/figures/figures_tek_version/f4_failure_taxonomy_gpt_5-4}
-\caption{Failure taxonomy distribution (GPT-5.4). Compare with Figure~\ref{fig:failure-taxonomy} in main body (Qwen~3.5 397B).}
+\caption{Failure taxonomy distribution (\gptnew{}). Compare with Figure~\ref{fig:failure-taxonomy} in main body (\qwenshort{}).}
 \label{fig:f4-gpt}
 \end{figure}
 
@@ -1382,14 +1348,14 @@ The following figures present GPT-5.4 evaluation results, complementing the Qwen
 \centering
 % \includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/f5_pass_at_k_by_direction_gpt_5-4.pdf}
 \input{NeurIPS_ready_version/figures/figures_tek_version/f5_pass_at_k_by_direction_gpt_5-4}
-\caption{Pass@$k$ rates by translation direction (GPT-5.4).}
+\caption{Pass@$k$ rates by translation direction (\gptnew{}).}
 \label{fig:f5-gpt}
 \end{figure}
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/f6_cross_suite_comparison_gpt_5-4.pdf}
-\caption{Cross-suite pass rate comparison (GPT-5.4).}
+\caption{Cross-suite pass rate comparison (\gptnew{}).}
 \label{fig:f6-gpt}
 \end{figure}
 
@@ -1400,13 +1366,13 @@ The following figures present GPT-5.4 evaluation results, complementing the Qwen
 \section{GPT-5.3-codex Per-Model Figures}
 \label{sec:appendix-i}
 
-The following figures present GPT-5.3-codex evaluation results using the same visualization format as the main-body counterparts.
+The following figures present GPT-5.3-codex evaluation results using the same visualization format as the main-body counterparts.{\color{blue}The following figures present \codex{} evaluation results using the same visualization format as the main-body counterparts.}
 
 \begin{figure}[htbp]
 \centering
 % \includegraphics[width=\columnwidth]{f3_kernel_model_heatmap_codex.pdf}
 \input{NeurIPS_ready_version/figures/figures_tek_version/f3_kernel_model_heatmap_gpt_5-3_codex}
-\caption{Per-kernel pass rates across all translation directions (GPT-5.3-codex).}
+\caption{Per-kernel pass rates across all translation directions (GPT-5.3-codex).{\color{blue}Failure taxonomy distribution (\codex{}). Compare with Figure~\ref{fig:failure-taxonomy} in the main body (\qwenshort{}).}}
 \label{fig:f3-codex}
 \end{figure}
 
@@ -1440,10 +1406,12 @@ The following figures present GPT-5.3-codex evaluation results using the same vi
 \section{Evaluation Cost Summary}
 \label{sec:appendix-j}
 
+{\color{blue}Tables~\ref{tab:eval-cost-qwen}--\ref{tab:eval-cost-codex} report the computational cost of each evaluation campaign, including token consumption, wall-clock time, and campaign duration.}
+
 % src: token_analysis.json > actual_billing; SF-1: API cost and evaluation time
 \begin{table}[h]
 \centering
-\caption{Qwen~3.5 evaluation campaign cost summary (March 27--April 2, 2026).}
+\caption{\qwenshort{} evaluation campaign cost summary (March 27--April 2, 2026).}
 \label{tab:eval-cost-qwen}
 \begin{tabular}{lr}
 \toprule
@@ -1460,7 +1428,7 @@ Campaign duration & 7 days (1{,}136 tasks, 4{,}600 requests) \\
 % src: raw result files in results/evaluation/azure-gpt-5.4/ (822 files, verified 2026-04-27)
 \begin{table}[h]
 \centering
-\caption{GPT-5.4 evaluation campaign cost summary (April 25--27, 2026).}
+\caption{\gptnew{} evaluation campaign cost summary (April 25--27, 2026).}
 \label{tab:eval-cost-gpt}
 \begin{tabular}{lr}
 \toprule
@@ -1477,7 +1445,7 @@ Campaign duration & 3 days (822 tasks) \\
 % src: raw result files in results/evaluation/azure-gpt-5.3-codex/ (814 files, verified 2026-05-01)
 \begin{table}[h]
 \centering
-\caption{GPT-5.3-codex evaluation campaign cost summary (April 30 -- May 1, 2026).}
+\caption{\codex{} evaluation campaign cost summary (April 30 -- May 1, 2026).}
 \label{tab:eval-cost-codex}
 \begin{tabular}{lr}
 \toprule
@@ -1595,6 +1563,55 @@ translation:
     (Appendix Table~\ref{tab:per-kernel-full}).
 \end{enumerate}
 
+{\color{blue}
+\begin{enumerate}
+  \item \textbf{Binary functional correctness of kernel-level translation.}
+    The harness evaluates whether LLM-translated code compiles, executes, and
+    produces output matching the spec's verification strategies. Verification
+    applies a conjunction of strategies: all declared checks (exit code, stdout
+    pattern, and optionally numeric comparison or file hash) must pass for a
+    record to receive \pass{} status. The result is \pass{} or one of four
+    failure statuses (\extractionfail{}, \buildfail{}, \runfail{},
+    \verifyfail{}); timeouts are classified as \runfail{}.
+
+  \item \textbf{Translation capability across three primary APIs and ten
+    directions.} CUDA, OpenMP, and OpenCL form six bidirectional standard
+    directions; OpenMP Target adds four case-study directions. The evaluation
+    matrix covers 142~unique source--target pairs
+    (Section~\ref{sec:eval-pipeline}).
+
+  \item \textbf{Failure mode taxonomy.} Five failure classifications enable
+    diagnostic analysis of \emph{where} in the pipeline translations fail.
+    Build failures indicate incomplete API-surface adaptation; run failures
+    indicate runtime errors or timeouts; verify failures indicate incorrect
+    output from otherwise executable code. This granularity distinguishes
+    \parbench{} from compile-only or text-similarity evaluations.
+
+  \item \textbf{Robustness to source-code surface-form perturbation.} Six
+    AST-level transforms (SwapCondition, ArithmeticTransform, ChangeNames,
+    TypedefExpansion, PointerArithmeticToArrayIndex, ChangeFunctionNames) at
+    four intensity levels (L1--L4) test whether pass/fail status is stable
+    under semantics-preserving code changes
+    (Section~\ref{sec:augmentation-engine}).
+
+  \item \textbf{Direction asymmetry.} Pass-rate variation across translation
+    directions quantifies structural difficulty differences between API pairs.
+    CUDA-to-OpenMP consistently passes at higher rates than OpenCL-to-CUDA
+    across all three evaluated models (Section~\ref{sec:direction-analysis}).
+
+  \item \textbf{Cross-model discrimination.} The benchmark distinguishes
+    models that differ in translation capability, subject to sampling-condition
+    caveats (Section~\ref{sec:ec-assumptions}). In the current evaluation,
+    paired McNemar analysis on 142~shared tasks yields Cohen's $h = 0.80$
+    between \qwenshort{} and the GPT models, while \gptnew{} and \codex{} are
+    statistically indistinguishable ($h = -0.031$).
+
+  \item \textbf{Per-kernel difficulty heterogeneity.} Pass rates range from
+    84.2\% (iso2dfd) to 0\% (10~kernels), enabling fine-grained analysis of
+    which computational patterns---stencils, graph traversal, ODE integration,
+    pointer-heavy data structures---are harder to translate
+    (Appendix Table~\ref{tab:per-kernel-full}).
+\end{enumerate}}
 % --------------------------------------------------------------------------
 \subsection{What \parbench{} Does Not Measure}
 \label{sec:ec-not-measures}
@@ -2014,3 +2031,90 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
     \item[] Justification: LLMs (Qwen~3.5 397B-A17B, GPT-5.4, and GPT-5.3-codex) are the primary subjects of evaluation. Model identifiers, providers, and configurations are fully disclosed in Table~\ref{tab:model-config} and Section~\ref{sec:experimental-setup}.
 
 \end{enumerate}
+
+{
+\color{blue}
+\begin{enumerate}
+
+\item {\bf Claims}
+    \item[] Question: Do the main claims made in the abstract and introduction accurately reflect the paper's contributions and scope?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: The abstract states L0 pass rates (Qwen 23.9\%, GPT-5.4 62.7\%, GPT-5.3-Codex 62.7\%), failure taxonomy percentages, and augmentation robustness findings, all verified against raw result files (Section~\ref{sec:results}). Claims are scoped to the three models evaluated.
+
+\item {\bf Limitations}
+    \item[] Question: Does the paper discuss the limitations of the work performed by the authors?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Section~\ref{sec:discussion} includes a dedicated limitations subsection addressing: corpus scope, single-GPU evaluation platform, weak oracle coverage, unmatched sampling conditions, and the absence of performance (runtime) evaluation.
+
+\item {\bf Theory}
+    \item[] Question: For each theoretical result, does the paper provide the full set of assumptions and a complete proof?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: This is an empirical benchmark paper with no theoretical results.
+
+\item {\bf Experiments}
+    \item[] Question: Does the paper fully disclose all the information needed to reproduce the main experimental results of the paper to the extent that it affects the main claims and/or conclusions of the paper?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Section~\ref{sec:experimental-setup} and Appendix~\ref{sec:appendix-a} provide model configurations (Table~\ref{tab:model-config}), hardware specifications (Table~\ref{tab:hardware}), the complete prompt template (Appendix~\ref{sec:appendix-g}), and augmentation level definitions (Table~\ref{tab:augmentation-levels}). The evaluation pipeline is deterministic given a fixed spec and model response.
+
+\item {\bf Code and data}
+    \item[] Question: Does the paper provide instructions for reproducing the main experimental results, including code and data?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: \parbench{} is included as anonymized supplementary material containing all 206 kernel specifications, the build-run-verify harness, the evaluation pipeline, augmentation engine, and per-record result JSONs for all three models.
+
+\item {\bf Experimental details}
+    \item[] Question: Does the paper specify all the training and test details necessary to understand the results?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: No training is performed. Evaluation details are specified: temperature (0.7 for \qwenshort{}; provider-controlled for \gptnew{} and \codex{}), number of samples (3), augmentation levels (L0--L4), \knownfail{} exclusion policy (9 specs), and the L0-conditional ablation design.
+
+\item {\bf Error bars}
+    \item[] Question: Does the paper report error bars suitably and correctly?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: All pass rates include Wilson 95\% confidence intervals. Direction asymmetry uses McNemar's exact test with Bonferroni correction ($\alpha=0.01$). Effect sizes reported via Cohen's $h$. Cross-model comparison uses $\chi^2$ test.
+
+\item {\bf Compute}
+    \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources used?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Table~\ref{tab:hardware} specifies the evaluation platform (RTX 4070, Ryzen 9 7900X, Ubuntu 24.04, HPC SDK 24.3). Appendix~\ref{sec:appendix-j} reports token usage and wall-clock time for all three model campaigns.
+
+\item {\bf NeurIPS code of ethics}
+    \item[] Question: Does the research conform to the NeurIPS Code of Ethics?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: The work evaluates publicly available benchmark code using commercial LLM APIs. No human subjects, private data, or dual-use concerns.
+
+\item {\bf Broader impacts}
+    \item[] Question: Does the paper discuss both potential positive societal impacts and negative societal impacts of the work?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Section~\ref{sec:discussion} discusses implications for HPC code migration and identifies the limitation that LLM-generated parallel code should not be trusted without verification. The benchmark itself enables systematic measurement of translation quality, which supports responsible deployment.
+
+\item {\bf Safeguards}
+    \item[] Question: Does the paper describe safeguards that have been put in place for responsible release of data or models?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: \parbench{} releases benchmark specifications and evaluation infrastructure, not trained models or generated datasets. The benchmark code originates from established open-source HPC suites.
+
+\item {\bf Licenses}
+    \item[] Question: Are the creators of assets used in the paper properly credited and are the license and terms of use explicitly mentioned and properly respected?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: All five benchmark suites are cited (Rodinia~\cite{Rodinia2009}, XSBench, RSBench, mixbench, HeCBench). Repository URLs and commit hashes are recorded in kernel specifications. LLM providers (Together AI, Azure OpenAI) are identified. Rodinia is distributed under the Rodinia license (BSD-like); XSBench and RSBench under MIT; HeCBench under MIT; mixbench under GPL-3.0. All are compatible with academic use and redistribution.
+
+\item {\bf New assets}
+    \item[] Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: \parbench{}'s specification schema is documented (Section~\ref{sec:spec-schema}, Appendix~\ref{sec:appendix-a-schema}). The augmentation engine, evaluation pipeline, and harness are described in Section~\ref{sec:framework}. A datasheet following \citet{Datasheets2021} will accompany the code release. The availability plan, hosting, and license summary are provided in Section~\ref{sec:discussion}.
+ 
+\item {\bf Crowdsourcing and human subjects}
+    \item[] Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: No crowdsourcing or human subjects research.
+
+\item {\bf IRB approvals}
+    \item[] Question: Does the paper describe potential risks incurred by study participants?
+    \item[] Answer: \answerNA{}
+    \item[] Justification: No human subjects research.
+
+\item {\bf LLM usage declaration}
+    \item[] Question: Does the paper disclose the use of LLMs in the core methodology?
+    \item[] Answer: \answerYes{}
+    \item[] Justification: Three LLMs (\qwen{}, \gptnew{}, and \codex{}) are the primary subjects of evaluation. Model identifiers, providers, and configurations are fully disclosed in Table~\ref{tab:model-config} and Section~\ref{sec:experimental-setup}.
+
+\end{enumerate}
+}
