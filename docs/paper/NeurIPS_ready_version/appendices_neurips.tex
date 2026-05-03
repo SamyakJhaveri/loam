@@ -559,9 +559,7 @@ heatmap.
   \label{fig:transform-freq}
 \end{figure}
 
-Table~\ref{tab:transform-coverage} summarizes the coverage and application frequency of each transform. Aggregate transform frequencies across the corpus reveal a clear dominance hierarchy. We report the number of Rodinia specs (out of 60) to which each transform applies at L4 (full intensity), followed by the total application count across all 240 augmentation tasks (60~specs $\times$ 4~levels):
-
-{\color{blue}Aggregate transform frequencies across the corpus reveal a clear dominance hierarchy. Below we report the number of Rodinia specs (out of 60) to which each transform applies at L4 (full intensity), followed by the total application count across all 240 augmentation tasks (60~specs $\times$ 4~levels):}
+Aggregate transform frequencies across the corpus reveal a clear dominance hierarchy. We report the number of Rodinia specs (out of 60) to which each transform applies at L4 (full intensity), followed by the total application count across all 240 augmentation tasks (60~specs $\times$ 4~levels):
   
 \begin{itemize}
   \item \textbf{SwapCondition} (59/60 specs at L4; 162 applications across all levels): The most broadly applicable transform. Swaps operands of comparison operators (e.g., \texttt{a < b} $\rightarrow$ \texttt{b > a}), with guards against expressions containing side effects. Its near-universal coverage reflects the ubiquity of comparison-based control flow in HPC kernels---boundary checks, convergence tests, and branch-based algorithm selection all contribute candidate sites.
@@ -722,9 +720,7 @@ These findings suggest that multi-file translation failures are not uniformly di
 \label{sec:appendix-e4}
 
 This section expands on the results presented in Section~\ref{sec:results}.
-{\color{blue}
 Across all three models, we collected 2,262 valid translation records: 626 for \qwenshort{} (426~L0 + 200~ablation, after excluding 82 records involving 9~\knownfail{} specs\footnote{The \qwenshort{} canonical total is 626, not 630, because four \texttt{rodinia-backprop-opencl} L1--L4 augmentation records are excluded via the \knownfail{} policy (the OpenCL baseline is broken).}), 822 for \gptnew{} (426~L0 + 396~ablation), and 814 for \codex{} (426~L0 + 388~ablation). \knownfail{} specs were pre-excluded from both GPT evaluation batches.
-}
 
 \paragraph{pass@k Analysis.}
 \begin{table}[h]
@@ -932,7 +928,7 @@ Python & 3.12.3 \\
   }
 \end{table}
 
-\gptnew{} and \codex{} both maintain $>$85\% pass rates across L1--L4 on all directions, while \qwenshort{} shows a monotonic decline from 74.0\% at L1 to 56.0\% at L4 ($\chi^2$ trend $p = 0.005$). On CUDA-to-OMP specifically, both GPT models sustain 81--96\% across augmentation levels, whereas \qwenshort{} fluctuates between 75\% and 83\% on a smaller conditional subset ($n=12$). This pattern suggests that weaker models are more sensitive to surface-form perturbation, though the small L0-conditional sample sizes---particularly for \qwenshort{}---limit the strength of this conclusion.
+\gptnew{} and \codex{} both maintain $>$85\% pass rates across L1--L4 on all directions, while \qwenshort{} shows a monotonic decline from 74.0\% at L1 to 56.0\% at L4 (Cochran--Armitage $z = -1.84$, $p = 0.065$; trend directionally consistent but not significant at $\alpha = 0.05$ given $n = 50$ per level). On CUDA-to-OMP specifically, both GPT models sustain 81--96\% across augmentation levels, whereas \qwenshort{} fluctuates between 75\% and 83\% on a smaller conditional subset ($n=12$). This pattern suggests that weaker models are more sensitive to surface-form perturbation, though the small L0-conditional sample sizes---particularly for \qwenshort{}---limit the strength of this conclusion.
 
 \begin{figure}[t]
 \centering
@@ -1763,7 +1759,6 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 
 \section*{NeurIPS Paper Checklist}
 {
-\color{blue}
 \begin{enumerate}
 
 \item {\bf Claims}
@@ -1801,7 +1796,7 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 \item {\bf Error bars}
     \item[] Question: Does the paper report error bars suitably and correctly?
     \item[] Answer: \answerYes{}
-    \item[] Justification: All pass rates include Wilson 95\% confidence intervals. Direction asymmetry uses McNemar's exact test with Bonferroni correction ($\alpha=0.01$). Effect sizes reported via Cohen's $h$. Cross-model comparison uses $\chi^2$ test.
+    \item[] Justification: All pass rates include Wilson 95\% confidence intervals. Direction asymmetry uses McNemar's exact test with Bonferroni correction ($\alpha=0.01$). Effect sizes reported via Cohen's $h$. Cross-model comparison uses McNemar's paired exact test.
 
 \item {\bf Compute}
     \item[] Question: For each experiment, does the paper provide sufficient information on the computer resources used?
