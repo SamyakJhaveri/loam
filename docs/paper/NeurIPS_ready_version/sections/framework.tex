@@ -26,8 +26,6 @@
 %   - Finally: five failure classifications → enables Section 5.2 analysis.
 
 
-
-
 \section{\parbench{} Framework}
 \label{sec:framework}
 
@@ -35,7 +33,6 @@
 To better evaluate LLM-based translation of parallel programming APIs, \parbench{} defines a controlled, kernel-centric setting that separates parallel kernel translation from repository-level challenges such as build-system reconstruction. The framework realizes this setting through four components: (1)~declarative specifications, (2)~an AST-driven augmentation engine, (3)~an evaluation pipeline that orchestrates LLM translation and records diagnostic failure categories, and (4)~a build-run-verify harness. Together, these components enable direct measurement of parallel API translation capability under end-to-end executability constraints while supporting controlled robustness analysis. Figure~\ref{fig:architecture} shows the overall architecture.
 
 % \parbench{} evaluates LLM-based parallel code translation through automated, end-to-end correctness assessment. The framework has four components: (1)~declarative specifications that define correct execution for each kernel, (2)~a build-run-verify harness, (3)~an AST-driven augmentation engine for robustness testing, and (4)~an evaluation pipeline that orchestrates LLM translation and records failure categories. Figure~\ref{fig:architecture} shows the overall architecture.
-
 
 
 \subsection{Declarative Specifications and Kernel-Centric Translation}
@@ -47,6 +44,7 @@ Each benchmark instance in \parbench{} is encoded as a JSON specification (spec)
 \textbf{Baseline results.} The \texttt{baseline\_results} block records the expected output from running the original implementation on a reference platform, providing ground truth for correctness evaluation.
 
 We have defined 96 such specs spanning five benchmark suites: 60 from Rodinia~\cite{Rodinia2009}, 4 from XSBench~\cite{XSBench2014}, 4 from RSBench, 3 from mixbench, and 25 from a curated subset of HeCBench~\cite{HeCBench2023}. Of these, 87 pass the baseline build-run-verify pipeline; the remaining 9 (\knownfail{} specs) fail due to platform-specific issues, such as CUDA~12 API deprecations, missing system libraries, or pre-existing runtime errors, and are excluded from evaluation (Section~\ref{sec:benchmark-curation}). Listing~\ref{lst:bfs_spec_appendix} in Appendix~\ref{sec:appendix-a} illustrates the spec structure using Rodinia's BFS kernel.
+
 
 \subsection{Evaluation Pipeline: Kernel-Centric Translation}
 \label{sec:eval-pipeline}
@@ -78,8 +76,7 @@ Five augmentation levels (L0--L4) control density of applied transforms. L0 is u
 
 The harness is a three-stage pipeline where failure at any stage short-circuits subsequent stages. The \textbf{build stage} resolves the spec's working directory, substitutes platform-specific paths, and invokes compilation. The \textbf{run stage} executes the compiled binary with spec-defined arguments and timeout. The \textbf{verify stage} applies an ordered list of verification strategies in conjunction---all must pass for a \pass{} verdict. Five strategy types are implemented: \texttt{exit\_code}, \texttt{stdout\_pattern}, \texttt{stdout\_exclude\_pattern}, \texttt{numeric\_comparison}, and \texttt{file\_hash}(Section~\ref{sec:eval-pipeline}).
 
-Conjunctive verification is essential. For example, a CUDA translation of Gaussian elimination compiles, runs to completion with exit code zero, and produces partial stdout---but omits the expected timing summary. This indicates a systematic translation defect rather than a transient failure. Compile-only~\cite{CodeRosetta2024} or exit-code-only verification would misclassify this as successful. Each outcome receives one of five failure classifications---\buildfail{}, \runfail{}, \verifyfail{}, \extractionfail{}, or \pass{}---enabling systematic failure-mode analysis (Section~\ref{sec:failure-taxonomy})(Section~\ref{sec:eval-pipeline}).
-
+Conjunctive verification is essential. For example, a CUDA translation of Gaussian elimination compiles, runs to completion with exit code zero, and produces partial stdout---but omits the expected timing summary. This indicates a systematic translation defect rather than a transient failure. Compile-only~\cite{CodeRosetta2024} or exit-code-only verification would misclassify this as successful. Each outcome receives one of four failure classifications---\buildfail{}, \runfail{}, \verifyfail{}, or \extractionfail{}---or \pass{}, enabling systematic failure-mode analysis (Section~\ref{sec:failure-taxonomy})(Section~\ref{sec:eval-pipeline}).
 
 For kernels that produce quantitative output, stronger verification is available: \texttt{numeric\_comparison} extracts a scalar from stdout via a configurable regex and compares it against a reference value within a per-spec tolerance, while \texttt{file\_hash} verifies that a designated output file matches a reference SHA-256 digest. Of the 87 non-\knownfail{} specs, 7 use these stronger oracle; the remaining 80 rely on exit-code and stdout-pattern checks that capture each benchmark's own self-checking output (e.g., printed \texttt{PASS}/\texttt{FAIL} verdicts or expected timing summaries). Because the dominant failure mode is build-stage API adaptation (Section~\ref{sec:results}), the current oracle distribution is sufficient to classify the majority of outcomes; upgrading weak oracles to numeric verification for remaining specs is identified as future work (Section~\ref{sec:discussion}).
 

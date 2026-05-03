@@ -47,26 +47,6 @@
 \subsection{Overall Performance}
 \label{sec:overall-pass}
 
-\begin{table*}[t]
-\centering
-% src: quantitative_findings_qwen.json, quantitative_findings_gpt54.json > canonical > failure_taxonomy
-\caption{Overall pass rates across three models and 2,262 valid translation records. \qwenshort{} covers 626 valid records (426 L0 + 200 ablation) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} covers 822 valid records (426 L0 + 396 ablation) and \codex{} covers 814 valid records (426 L0 + 388 ablation); \knownfail{} specs were pre-excluded from both GPT evaluation batches.}
-\label{tab:overall-pass}
-\small
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{@{}lrrrrrrl@{}}
-\toprule
-Model & \pass{} & \buildfail{} & \runfail{} & \verifyfail{} & \extractionfail{} & Total & Rate [95\% Wilson CI] \\
-\midrule
-% src: quantitative_findings_qwen.json > canonical > failure_taxonomy > status_counts
-\qwen{} & 230 & 245 & 121 & 29 & 1 & 626 & 36.7\% [33.1\%, 40.6\%] \\
-% src: quantitative_findings_gpt54.json > canonical > failure_taxonomy > status_counts (all 822 valid records)
-\gptnew{} & 621 & 123 & 43 & 32 & 3 & 822 & 75.5\% [72.5\%, 78.4\%] \\
-\bottomrule
-\codex{} & 604 & 139 & 44 & 27 & 0 & 814 & 74.2\% [71.1\%, 77.1\%] \\
-\end{tabular}%
-}
-\end{table*}
 % src: quantitative_findings_qwen.json > canonical > aggregate_pass_rates > overall: value=0.3674, ci=[0.3306, 0.4059], n=626
 % src: statistical_analysis.json > model_comparison > pairwise[0] (Bonferroni-corrected p)
 Kernel-centric evaluation isolates executable kernel translation from repository reconstruction. As shown in Table~\ref{tab:overall-pass}, \qwenshort{} passes 36.7\% of its valid records, while \gptnew{} passes 75.5\%. \codex{} passes 74.2\% of its valid records, making it statistically indistinguishable from \gptnew{} (Fisher's exact $p = 1.0$, OR\,=\,0.93 [0.74, 1.16], Cohen's $h = -0.031$). Code-specialized reinforcement learning training does not measurably improve parallel translation success at this task difficulty.
@@ -79,6 +59,27 @@ Restricting to the 142 L0 tasks to estimate single-sample vs. multi-sample succe
 
 \subsection{Direction Dependence}
 \label{sec:direction-analysis}
+
+\begin{table*}[t]
+\centering
+% src: quantitative_findings_qwen.json, quantitative_findings_gpt54.json > canonical > failure_taxonomy
+\caption{Overall pass rates across three models and 2,262 valid translation records. \qwenshort{} covers 626 valid records (426 L0 + 200 augmentations) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} covers 822 valid records (426 L0 + 396 augmentations) and \codex{} covers 814 valid records (426 L0 + 388 augmentations); \knownfail{} specs were pre-excluded from both GPT evaluation batches.}
+\label{tab:overall-pass}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrrrrl@{}}
+\toprule
+Model & \pass{} & \buildfail{} & \runfail{} & \verifyfail{} & \extractionfail{} & Total & Rate [95\% Wilson CI] \\
+\midrule
+% src: quantitative_findings_qwen.json > canonical > failure_taxonomy > status_counts
+\qwen{} & 230 & 245 & 121 & 29 & 1 & 626 & 36.7\% [33.1\%, 40.6\%] \\
+% src: quantitative_findings_gpt54.json > canonical > failure_taxonomy > status_counts (all 822 valid records)
+\gptnew{} & 621 & 123 & 43 & 32 & 3 & 822 & 75.5\% [72.5\%, 78.4\%] \\
+\codex{} & 604 & 139 & 44 & 27 & 0 & 814 & 74.2\% [71.1\%, 77.1\%] \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
 
 \begin{table*}[t]
 \centering
@@ -116,7 +117,7 @@ Per-record pass rates vary strongly across directions (Table~\ref{tab:direction-
 \begin{figure}[t]
 \centering
 \input{figures/figures_tek_version/f4_failure_taxonomy_qwen}
-\caption{\qwenshort{} outcome taxonomy across 626 valid records. Build-stage failures are the largest non-pass category. \gptnew{} taxonomy (822 records) is in Appendix~\ref{sec:appendix-h}; \codex{} taxonomy (814 records) is in Appendix~\ref{sec:appendix-i}.}
+\caption{\qwenshort{} outcome taxonomy (L0, first sample per task, 6 standard directions, 137~tasks drawn from 626 valid records). Build-stage failures are the largest non-pass category. \gptnew{} and \codex{} taxonomies appear in Appendices~\ref{sec:appendix-h} and~\ref{sec:appendix-i}, respectively.}
 \label{fig:failure-taxonomy}
 \end{figure}
 
