@@ -19,6 +19,7 @@
 \usepackage{makecell}
 \usepackage{listings}
 \usepackage{hyperref}
+\hypersetup{hidelinks}
 \usepackage{array}
 \usepackage{float}
 \usepackage{pgfplots}
@@ -32,7 +33,7 @@
 \usepackage{tabularx}
 \usepackage{array}
 \usepackage{ragged2e}
-
+\usepackage{enumitem}
 % ParBench colour palette
 \definecolor{pbPass}{RGB}{44,160,44}
 \definecolor{pbBuildFail}{RGB}{214,39,40}
@@ -134,7 +135,7 @@
 
 \input{sections/abstract}
 \input{sections/1-introduction}
-\input{sections/related-work}
+% \input{sections/related-work}
 \input{sections/framework}
 \input{sections/benchmark-curation}
 \input{sections/experimental-setup}

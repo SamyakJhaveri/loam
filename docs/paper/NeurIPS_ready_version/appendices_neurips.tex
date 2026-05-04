@@ -9,8 +9,8 @@
 
 % \input{sections/related-work}
 
-
-\section{Extended Related Work}
+\newpage
+\section{Related Work}
 \label{sec:appendix-d}
 
 The main text positions \parbench{} through the evaluation gap it addresses. 
@@ -276,7 +276,7 @@ CodeMorph~\cite{CodeMorph2025}
 & Existing benchmarks with transformed variants and unit tests
 & Provides the source-perturbation principle adapted by \parbench{} to HPC translation. \\
 
-Semantic Code Rewrite~\cite{SemanticCodeRewrite2025}
+Semantic Code Rewrite~\cite{MemorizeOrGeneralize2025}
 & Memorization versus generalization under code rewriting; function level
 & Rewritten code benchmarks with unit tests
 & Motivates source rewriting as a contamination and robustness probe. \\
@@ -314,7 +314,7 @@ Verification practices vary substantially across the literature. Some works repo
 A separate line of work evaluates whether generated or translated code is efficient rather than merely correct. TRACY, KernelBench, Mercury, and related GPU-kernel or efficiency benchmarks study runtime, kernel quality, optimization, or resource behavior~\cite{TRACY2025,KernelBench2025,Mercury2024}. These works are complementary because functional correctness and performance are separable objectives: a translation can be correct but slow, or fast but semantically wrong. \parbench{} deliberately scopes to correctness in order to isolate the translation-capability question before adding performance tuning as a second axis.
 
 \paragraph{Robustness and benchmark validity.}
-Public code benchmarks face contamination and memorization risks, and recent work shows that surface-form perturbations can reveal brittle pattern matching~\cite{SWEbenchIllusion2025,CodeMorph2025,SemanticCodeRewrite2025}. CodeMorph applies semantics-preserving transformations to standard code benchmarks to diagnose leakage and robustness. \parbench{} applies the same principle to HPC translation, where contamination risk is especially plausible because suites such as Rodinia and HeCBench appear in public repositories and prior papers. Its AST-driven augmentation engine creates L0--L4 source variants using semantics-preserving transformations such as identifier renaming, arithmetic rewriting, pointer/array interchange, typedef expansion, and condition rewriting. The goal is not only to detect possible memorization, but to measure whether translation success survives controlled perturbations of the source surface form.
+Public code benchmarks face contamination and memorization risks, and recent work shows that surface-form perturbations can reveal brittle pattern matching~\cite{SWEbenchIllusion2025,CodeMorph2025,MemorizeOrGeneralize2025}. CodeMorph applies semantics-preserving transformations to standard code benchmarks to diagnose leakage and robustness. \parbench{} applies the same principle to HPC translation, where contamination risk is especially plausible because suites such as Rodinia and HeCBench appear in public repositories and prior papers. Its AST-driven augmentation engine creates L0--L4 source variants using semantics-preserving transformations such as identifier renaming, arithmetic rewriting, pointer/array interchange, typedef expansion, and condition rewriting. The goal is not only to detect possible memorization, but to measure whether translation success survives controlled perturbations of the source surface form.
 
 
 \section{Future Work}
@@ -444,7 +444,7 @@ For \qwenshort{}, we set temperature~0.7 with top-$p$~=~1.0 (full-distribution s
 A deterministic seed derived from SHA-256 of the concatenation \texttt{source\_spec|target\_spec|sample\_id} (pipe-delimited, truncated to 31~bits) is passed to \qwenshort{} (Together~AI) and \gptnew{} (Azure Chat Completions). The Responses API used by \codex{} does not accept a seed parameter. Seeds are recorded for auditing but do not guarantee bitwise-identical outputs: Together~AI treats seeds as advisory for MoE inference, and Azure provides no determinism guarantee for reasoning models. Each sample receives one LLM call with no iterative feedback, isolating first-attempt translation capability.
 
 \paragraph{Canonical Evaluation and Augmentation.}
-The canonical campaign evaluates all 142 unique pairs at augmentation level L0 (unmodified source code) with three samples each, producing 426 L0 records per model and 1{,}278 total. Each record passes through the full build--run--verify pipeline with conjunction semantics. Most specs verify via exit-code and stdout-pattern checks; a subset additionally declare numeric-comparison or file-hash oracles. 
+The canonical campaign evaluates all 142 unique pairs at augmentation level L0 (unmodified source code) with three samples each, producing 426 L0 records per model and 1{,}278 total. Each record passes through the full build--run--verify pipeline with conjunction semantics. Most specs verify via exit-code and stdout-pattern checks; a subset additionally declares numeric-comparison or file-hash oracles. 
 For the augmentation, an L0-conditional filter is applied: a pair is included only if any of its three canonical L0 samples passes. This avoids spending budget on pairs the model cannot translate even from unmodified source. For \qwenshort{}, 50~of the 142~pairs qualify (35\%); for \gptnew{}, 99~pairs qualify (70\%); for \codex{}, 97~pairs qualify (68\%). Each qualifying pair is evaluated once ($k$~=~1) at each of levels L1 through L4.
 
 \paragraph{Metrics Details.}
@@ -515,7 +515,7 @@ structure visually apparent.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/api_cooccurrence_network_color_v7.png}
+    \includegraphics[width=\columnwidth]{NeurIPS_ready_version/figures/api_cooccurrence_network_color.png}
     \caption{Kernel-level API co-occurrence network. Edges shown for $\geq 20$ kernel pairs; edge width proportional to count. The tight CUDA/HIP/SYCL/OpenMP cluster reflects HeCBench and RAJAPerf's uniform multi-API coverage. OpenCL appears as a peripheral node with weak connections (27 CUDA--OpenCL kernel pairs, just above the 20-kernel threshold). RAJA, stdpar, and Thrust appear as isolated nodes with fewer than 20 kernel-level pairs.}
     \label{fig:kernel-network}
 \end{figure}
@@ -699,7 +699,7 @@ Figure~\ref{fig:top-candidates} presents the top candidates ranked by their comb
 \begin{figure}[htbp]
     \centering
     \input{NeurIPS_ready_version/figures/figures_tek_version/top_candidates}
-    \caption{Top multi-API repository candidates ranked by kernel count (blue bars, scaled for readability; true counts annotated above) and API breadth (red bars). HeCBench provides the largest kernel pool (522 kernels, 6~APIs spanning CUDA, HIP, SYCL, OpenMP, OpenMP-target offloading, and MPI). BabelStream and miniBUDE provide the broadest API coverage (12~APIs each) but with few kernels. RAJAPerf (80 kernels, 5~APIs) offers a balanced middle ground. Rodinia (22 kernels, 3 APIs) provides established, well-understood benchmarks with strong community recognition.}
+    \caption{Top multi-API repository candidates ranked by kernel count (blue bars, scaled for readability; true counts annotated above) and API breadth (orange bars). HeCBench provides the largest kernel pool (522 kernels, 6~APIs spanning CUDA, HIP, SYCL, OpenMP, OpenMP-target offloading, and MPI). BabelStream and miniBUDE provide the broadest API coverage (12~APIs each) but with few kernels. RAJAPerf (80 kernels, 5~APIs) offers a balanced middle ground. Rodinia (22 kernels, 3 APIs) provides established, well-understood benchmarks with strong community recognition.}
     \label{fig:top-candidates}
 \end{figure}
 
@@ -1074,8 +1074,7 @@ Hard fail (0/3) & 92 tasks (64.8\%) \\
 \end{table}
 The 36.7\% per-record rate (Table~\ref{tab:overall-pass}) treats each sample and augmentation level independently. The pass@$k$ analysis (Table~\ref{tab:pass-at-k-main}) restricts to the 142~L0 tasks and macro-averages over tasks to estimate single-sample and three-sample success probabilities, with each task generating three independent samples at temperature~0.7. The gap between pass@1 (23.9\%) and pass@3 (35.2\%) is 11.3\%: only 31 of 142 tasks show within-task variability (1 or 2 of 3 samples pass); none of the 92 hard failures (0/3) benefit from resampling. This confirms that failures are predominantly systematic rather than stochastic.
 
-
-\paragraph{Representative Per-Kernel Pass Rates.}\label{par:per-kernel-main}
+\paragraph{Representative Per-Kernel Pass Rates.}
 Table~\ref{tab:per-kernel-main} highlights the easiest and hardest kernels for \qwenshort{}.
 \begin{table}[h]
 \centering
@@ -1132,8 +1131,8 @@ If baseline success were driven primarily by surface-form memorization, augmente
 \section{Supplementary Tables and Figures}
 \label{sec:appendix-f}
 
-This appendix contains detailed evidence tables and figures referenced from the main text.
-Floats are ordered by their original section appearance. Per-kernel translation heatmaps appear in Figure~\ref{fig:f3-qwen} (\qwenshort{}), Figure~\ref{fig:f3-gpt} (\gptnew{}), and Figure~\ref{fig:f3-codex} (\codex{}). Pass@$k$ by direction appears in Figures~\ref{fig:pass-at-k-qwen}, \ref{fig:pass-at-k-gpt54}, and~\ref{fig:pass-at-k-codex}. Cross-suite comparisons appear in Figures~\ref{fig:cross-suite-qwen}, \ref{fig:cross-suite-gpt54}, and~\ref{fig:cross-suite-codex}. Table~\ref{tab:stats-summary} summarizes the direction asymmetry and augmentation trend tests for \qwenshort{}.
+This appendix contains detailed evidence tables and figures referenced from the main text. Floats are ordered by their original section appearance.
+Per-kernel translation heatmaps appear in Figures~\ref{fig:f3-qwen}, \ref{fig:f3-gpt}, and~\ref{fig:f3-codex}. Pass@$k$ by direction appears in Figures~\ref{fig:pass-at-k-qwen}, \ref{fig:pass-at-k-gpt54}, and~\ref{fig:pass-at-k-codex}. Cross-suite comparisons appear in Figures~\ref{fig:cross-suite-qwen}, \ref{fig:cross-suite-gpt54}, and~\ref{fig:cross-suite-codex}. Table~\ref{tab:stats-summary} summarizes the direction asymmetry and augmentation trend tests for \qwenshort{}.
 
 % --- From Section 4 (Benchmark Curation) ---
 
@@ -1200,7 +1199,7 @@ Thread indexing & Block/thread indices & Loop variable or thread query & Global/
 \centering
 \caption{Model configurations. $^\dagger$Azure reasoning models do not accept explicit temperature or top-$p$ parameters; sampling is controlled internally by the provider.}
 \label{tab:model-config}
-\small
+\footnotesize
 \begin{tabular}{@{}lllllc@{}}
 \toprule
 Model & Provider & Arch. & Parameters & Reasoning & Temp. \\
@@ -1523,6 +1522,7 @@ XSBench & xsbench & 34 & 19 & 15 & 55.9\% \\
 %% APPENDIX G: Translation Prompt Template
 %% ============================================================================
 
+\clearpage % <--- Forces all pending tables/figures to print before continuing
 \section{Translation Prompt Template}
 \label{sec:appendix-g}
 
@@ -1532,7 +1532,11 @@ This appendix reproduces the translation prompt template used by the evaluation 
 
 The system message is identical for all translation tasks:
 
-\begin{lstlisting}[language={},caption={System message template. \texttt{\{src\_api\}} and \texttt{\{tgt\_api\}} are replaced with API display names (e.g., ``CUDA'', ``OpenMP''). \texttt{\{tgt\_lang\}} is the target language hint for the code fence (e.g., ``cuda'', ``cpp'', ``c'').}, label={lst:system-msg}]
+\begin{lstlisting}[
+  language={},
+  caption={System message template. \texttt{\{src\_api\}} and \texttt{\{tgt\_api\}} are replaced with API display names (e.g., ``CUDA'', ``OpenMP''). \texttt{\{tgt\_lang\}} is the target language hint for the code fence (e.g., ``cuda'', ``cpp'', ``c'').},
+  label={lst:system-msg}
+]
 You are a parallel programming expert
 specializing in {src_api} to {tgt_api}
 translation. Translate the provided source
@@ -1611,7 +1615,7 @@ Compared with \qwenshort{}, the most salient differences are: (i)~overall pass r
 \section{\codex{} Per-Model Figures}
 \label{sec:appendix-i}
 
-The following figures present per-kernel and per-direction breakdowns for \codex{} (814 valid records: 426~L0 + 388~augmentation across 31~evaluated kernels). Both use L0 first-sample outcomes, matching the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-codex} and~\ref{fig:cross-suite-codex}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-codex}. The failure taxonomy appears in Figure~\ref{fig:f4-codex}.
+The following figures present per-kernel and per-direction breakdowns for \codex{} (814 valid records: 426~L0 + 388~augmentation across 31~evaluated kernels). Both use L0 first-sample outcomes, matching the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-codex} and~\ref{fig:cross-suite-codex}).The full per-kernel table is in Table~\ref{tab:per-kernel-full-codex}. The failure taxonomy appears in Figure~\ref{fig:f4-codex}.
 
 \codex{} achieves a 74.2\% overall pass rate with a failure profile intermediate between \qwenshort{} and \gptnew{}: \buildfail{} accounts for 17.1\% of records (vs.\ 39.1\% for \qwenshort{} and 15.0\% for \gptnew{}). Compared with \gptnew{}, \codex{} shows higher kernel-level consistency---13 of 31~kernels achieve ${\geq}$80\% pass rate (vs.\ 11 for \gptnew{})---despite identical macro pass@1 rates (62.7\%).
 
@@ -1684,7 +1688,7 @@ justify each point.
 measurement scope. Detailed discussion appears in the referenced subsection.}
 \label{tab:eval-card-summary}
 \small
-\begin{tabular}{@{}p{2.8cm}p{10.5cm}r@{}}
+\begin{tabularx}{\textwidth}{@{}p{2.8cm}Xr@{}}
 \toprule
 Dimension & Key Points & Ref. \\
 \midrule
@@ -1710,7 +1714,7 @@ Key assumptions & Source correctness, oracle sufficiency (weakest), single-platf
 User guidance & Adding models/kernels, interpreting results, comparing models, common pitfalls & \S\ref{sec:ec-guidance} \\
 Reporting protocol & Required and recommended items for publications using \parbench{} & \S\ref{sec:ec-reporting} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table*}
 
 % --------------------------------------------------------------------------
@@ -1862,7 +1866,7 @@ accompanied by the stated conditions:
     memorization.
 
   \item \textbf{``Model~X discriminates from Model~Y on \parbench{}.''} Valid
-    when: (a)~both models are evaluated on the same task set, (b)~McNemar's
+    when: (a)~all compared models are evaluated on the same task set, (b)~McNemar's
     paired test is reported with effect size and concordance table,
     (c)~sampling-configuration differences are explicitly disclosed if
     temperatures or reasoning modes differ, and (d)~the claim is scoped to
@@ -2038,7 +2042,7 @@ Table~\ref{tab:reporting-recommended} strengthen interpretability.
 \caption{Required reporting items for \parbench{} results.}
 \label{tab:reporting-required}
 \small
-\begin{tabular}{@{}p{2.3cm}p{5.2cm}@{}}
+\begin{tabularx}{\columnwidth}{@{}p{2.3cm}X@{}}
 \toprule
 Item & What to report \\
 \midrule
@@ -2051,15 +2055,16 @@ Denominator & Total valid records after \knownfail{} exclusion \\
 Augmentation scope & Levels evaluated, filter criterion, subset size \\
 Platform & GPU, CPU, OS, compiler versions \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
+
 
 \begin{table}[htbp]
 \centering
 \caption{Recommended additional reporting items.}
 \label{tab:reporting-recommended}
 \small
-\begin{tabular}{@{}p{2.3cm}p{5.2cm}@{}}
+\begin{tabularx}{\columnwidth}{@{}p{2.3cm}X@{}}
 \toprule
 Item & What to report \\
 \midrule
@@ -2075,7 +2080,7 @@ Filter disclosure & ``$X$ of 142 pairs qualify ($Y$\%)'' \\
 Direction scope & Which direction(s) the analysis covers \\
 Power analysis & Detectable effect size at 80\% power \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \textbf{Example minimal results paragraph.} ``We evaluated [Model] on
@@ -2158,7 +2163,7 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 \item {\bf New assets}
     \item[] Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?
     \item[] Answer: \answerYes{}
-    \item[] Justification: \parbench{}'s specification schema is documented (Section~\ref{sec:spec-schema}, Appendix~\ref{sec:appendix-a-schema}). The augmentation engine, evaluation pipeline, and harness are described in Section~\ref{sec:framework}. A datasheet following \citet{Datasheets2021} accompanies the submitted artifact. The availability plan, hosting, and license summary are provided in Appendix~A (Artifact Availability).
+    \item[] Justification: \parbench{}'s specification schema is documented (Section~\ref{sec:spec-schema}, Appendix~\ref{sec:appendix-a-schema}). The augmentation engine, evaluation pipeline, and harness are described in Section~\ref{sec:framework}. A datasheet following \citet{Datasheets2021} will accompany the camera-ready release The availability plan, hosting, and license summary are provided in Appendix~A (Artifact Availability).
  
 \item {\bf Crowdsourcing and human subjects}
     \item[] Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants?
