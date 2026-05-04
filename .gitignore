@@ -56,6 +56,10 @@ env_parbench/
 .claude/.local-paths
 # User-local settings (generated from .claude/settings.local.json.template)
 .claude/settings.local.json
+# TikZ figure preview artifacts (local only, not for Overleaf)
+docs/paper/NeurIPS_ready_version/figures/figures_tek_version/parbench_preamble.tex
+docs/paper/NeurIPS_ready_version/figures/figures_tek_version/preview_*.tex
+docs/paper/NeurIPS_ready_version/figures/figures_tek_version/out/
 # Codex CLI local state (config lives at ~/.codex/config.toml)
 .codex/
 # File ownership tracking (session-ephemeral, written by file-ownership.sh hook)

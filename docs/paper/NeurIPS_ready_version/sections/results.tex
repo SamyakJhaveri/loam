@@ -111,9 +111,7 @@ CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 95.8\% [79.8\%, 99.3\%] 
 }
 \end{table*}
 
-Per-record pass rates vary strongly across directions (Table~\ref{tab:direction-rates}), reflecting structural API asymmetries. Translating from CUDA to OpenMP replaces explicit device memory and launch configuration with compiler directives. The reverse requires introducing explicit synchronization and memory management. OpenCL translations introduce further complexity with separate host/kernel source and JIT compilation, leading to 0\% success for OpenCL-to-CUDA under \qwenshort{}. \codex{}'s direction profile nearly mirrors \gptnew{} across all six standard directions (within 2--10\,pp), reinforcing that direction difficulty is a property of the task, not the model. At the kernel level, performance is highly heterogeneous (full breakdown in Appendix~\ref{sec:appendix-e4}). Simple kernels pass at high rates, while those with irregular memory access or multi-file dependencies frequently fail entirely.
-
-\codex{}'s direction profile closely tracks \gptnew{} across five of six standard directions (maximum gap 7\,pp, with two directions matching exactly). The exception is OMP-to-OpenCL, where \codex{} outperforms \gptnew{} by 9.8\,pp (82.3\% versus 72.5\%). Overall, direction difficulty is predominantly a property of the translation task, not the model.
+Per-record pass rates vary strongly across directions (Table~\ref{tab:direction-rates}), reflecting structural API asymmetries. Translating from CUDA to OpenMP replaces explicit device memory and launch configuration with compiler directives. The reverse requires introducing explicit synchronization and memory management. OpenCL translations introduce further complexity with separate host/kernel source and JIT compilation, leading to 0\% success for OpenCL-to-CUDA under \qwenshort{}. \codex{}'s direction profile closely tracks \gptnew{} across five of six standard directions (maximum gap 7\,pp, with two directions matching exactly). The exception is OMP-to-OpenCL, where \codex{} outperforms \gptnew{} by 9.8\,pp (82.3\% versus 72.5\%). Overall, direction difficulty is predominantly a property of the translation task, not the model. At the kernel level, performance is highly heterogeneous (full breakdown in Appendix~\ref{sec:appendix-e4}). Simple kernels pass at high rates, while those with irregular memory access or multi-file dependencies frequently fail entirely.
 
 
 \subsection{Failure Taxonomy}
@@ -122,7 +120,7 @@ Per-record pass rates vary strongly across directions (Table~\ref{tab:direction-
 \begin{figure}[t]
 \centering
 \input{figures/figures_tek_version/f4_failure_taxonomy_qwen}
-\caption{\qwenshort{} outcome taxonomy (L0, first sample per task, 6 standard directions, 137~tasks drawn from 626 valid records). Build-stage failures are the largest non-pass category. \gptnew{} and \codex{} taxonomies appear in Appendices~\ref{sec:appendix-h} and~\ref{sec:appendix-i}, respectively.}
+\caption{\qwenshort{} outcome taxonomy (L0, first sample per task, 6 standard directions, 120~non-\knownfail{} tasks). Build-stage failures are the largest non-pass category. \gptnew{} and \codex{} taxonomies appear in Appendices~\ref{sec:appendix-h} and~\ref{sec:appendix-i}, respectively.}
 \label{fig:failure-taxonomy}
 \end{figure}
 
@@ -133,7 +131,7 @@ Build-stage adaptation is the dominant failure mode, accounting for 39.1\% of al
 \label{sec:augmentation-robustness}
 % src: statistical_analysis.json > augmentation_curves > azure-gpt-5.3-codex; azure-gpt-5.4; together-qwen-3.5-397b-a17b
 
-To assess whether baseline success is driven primarily by surface-form memorization, we evaluated augmented source variants (L1--L4) on L0-conditional subsets (detailed in Appendix~\ref{sec:appendix-e4}). \codex{} shows the same plateau pattern as \gptnew{}: 85.6\%--88.7\% at L1--L4 ($\chi^2$ independence test, $p = 1.0$ after Bonferroni correction), in contrast to \qwenshort{}'s peak-then-decline (74.0\% at L1 to 56.0\% at L4, $p = 0.005$). This stability across both GPT models is compatible with robustness to surface-form perturbation, though survivorship bias (L0-conditional filtering) prevents ruling out deeper structural memorization entirely.
+To assess whether baseline success is driven primarily by surface-form memorization, we evaluated augmented source variants (L1--L4) on L0-conditional subsets (detailed in Appendix~\ref{sec:appendix-e4}). \codex{} shows the same plateau pattern as \gptnew{}: 85.6\%--88.7\% at L1--L4 ($\chi^2$ independence across L1--L4, $p = 0.93$), in contrast to \qwenshort{}'s monotonic decline from 74.0\% at L1 to 56.0\% at L4 (Cochran--Armitage $z = -1.84$, $p = 0.065$; Appendix~\ref{sec:appendix-e4}). This stability across both GPT models is compatible with robustness to surface-form perturbation, though survivorship bias (L0-conditional filtering) prevents ruling out deeper structural memorization entirely.
 
 % src: results/evaluation/together-qwen-3.5-397b-a17b/hecbench-stencil1d-cuda-to-hecbench-stencil1d-omp-{s0,L2,L4}.json 
 % src: results/evaluation/together-qwen-3.5-397b-a17b/hecbench-stencil1d-cuda-to-hecbench-stencil1d-omp-{s0,L1,L2,L3,L4}.json
