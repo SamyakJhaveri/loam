@@ -26,13 +26,8 @@
 \section*{Appendix Contents}
 \label{sec:appendix-contents}
 
-This appendix provides supporting material for reproducing and interpreting
-\parbench{}. Appendix~A expands the related-work positioning. Appendices~B--D
-document the framework, API-selection rationale, and benchmark curation process.
-Appendices~E--H provide extended evaluation details, the translation prompt, and
-per-model figures. Appendices~I--K report evaluation cost, define the benchmark's
-measurement scope, and describe artifact availability. Appendix~L collects the
-remaining supplementary tables and figures.
+This appendix provides supporting material for reproducing and interpreting \parbench{}. Appendix~A expands the related-work positioning. Appendices~B--D document the framework, API-selection rationale, and benchmark curation process. 
+Appendices~E--F provide extended evaluation details and the translation prompt. Appendices~G--H report evaluation cost and define the benchmark's measurement scope. Appendix~I describes artifact availability. Appendix~J collects the remaining supplementary tables and figures.
 
 \vspace{0.75em}
 
@@ -42,7 +37,7 @@ remaining supplementary tables and figures.
 \setlength{\tabcolsep}{5pt}
 
 \newlength{\appendixsectionwidth}
-\settowidth{\appendixsectionwidth}{GPT-5.3-codex Per-Model Figures\quad}
+\settowidth{\appendixsectionwidth}{Supplementary Tables and Figures\quad}
 
 \begin{tabularx}{0.98\textwidth}{@{}
 >{\bfseries}p{0.035\textwidth}
@@ -85,35 +80,25 @@ direction-level results, and additional statistical details. \\
 & Full system and user prompt templates used for kernel-centric translation, including output-format
 requirements and anonymization details. \\
 
-\hyperref[sec:appendix-h]{G}
-& \hyperref[sec:appendix-h]{GPT-5.4 Per-Model Figures}
-& Per-kernel and per-direction visualizations for the GPT-5.4 evaluation campaign. \\
-
-\hyperref[sec:appendix-i]{H}
-& \hyperref[sec:appendix-i]{GPT-5.3-codex Per-Model Figures}
-& Per-kernel and per-direction visualizations for the GPT-5.3-codex evaluation campaign. \\
-
-\hyperref[sec:appendix-j]{I}
+\hyperref[sec:appendix-j]{G}
 & \hyperref[sec:appendix-j]{Evaluation Cost Summary}
 & Token usage, task counts, wall-clock evaluation time, and practical budgeting notes for reproducing
 the three model campaigns. \\
 
-\hyperref[sec:appendix-k]{J}
+\hyperref[sec:appendix-k]{H}
 & \hyperref[sec:appendix-k]{Evaluation Card}
 & Structured benchmark card defining what \parbench{} measures, what it does not measure,
 valid and invalid claims, assumptions, user guidance, and recommended reporting protocol. \\
 
-\hyperref[sec:artifact-availability]{K}
+\hyperref[sec:artifact-availability]{I}
 & \hyperref[sec:artifact-availability]{Artifact Availability}
 & Description of the anonymized supplementary release, including curated specifications,
 the build-run-verify harness, augmentation and evaluation pipelines, per-record result files,
 licensing, and planned de-anonymized release. \\
 
-\hyperref[sec:appendix-f]{L}
+\hyperref[sec:appendix-f]{J}
 & \hyperref[sec:appendix-f]{Supplementary Tables and Figures}
-& Consolidated supplementary evidence tables and figures, including API characteristics,
-model and hardware configuration, augmentation rates, pass@$k$ analyses, statistical tests,
-per-kernel tables, and cross-suite comparisons. \\
+& Consolidated supplementary evidence tables and figures, including API characteristics, model and hardware configuration, augmentation rates, pass@$k$ analyses, statistical tests, per-kernel tables, and cross-suite comparisons. \\
 
 \bottomrule
 \end{tabularx}
@@ -177,7 +162,7 @@ API-selection evidence
 &
 Appendix~C:
 Figures~\ref{fig:api-heatmap}--\ref{fig:kernel-network};
-Appendix~L:
+Appendix~J:
 Table~\ref{tab:api-characteristics}
 &
 These floats justify the choice of CUDA, OpenMP, OpenCL, and OpenMP Target. They
@@ -201,7 +186,7 @@ Augmentation and memorization probes
 Appendix~E:
 Figure~\ref{fig:transform-freq};
 Table~\ref{tab:aug-balanced};
-Appendix~L:
+Appendix~J:
 Figures~\ref{fig:augmentation}--\ref{fig:aug-heatmap};
 Table~\ref{tab:augmentation-rates}
 &
@@ -221,7 +206,7 @@ model capability from prompt-format differences. \\
 
 Overall evaluation setup
 &
-Appendix~L:
+Appendix~J:
 Tables~\ref{tab:model-config} and~\ref{tab:hardware}
 &
 These tables record the model, provider, reasoning-mode, hardware, compiler, and
@@ -232,7 +217,7 @@ Pass-rate and sampling behavior
 &
 Appendix~E:
 Table~\ref{tab:pass-at-k-main};
-Appendix~L:
+Appendix~J:
 Table~\ref{tab:pass-at-k};
 Figures~\ref{fig:pass-at-k-qwen}--\ref{fig:pass-at-k-codex}
 &
@@ -244,12 +229,7 @@ Kernel-level difficulty
 &
 Appendix~E:
 Table~\ref{tab:per-kernel-main};
-Appendices~G--H:
-Figures~\ref{fig:f3-gpt} and~\ref{fig:f3-codex};
-Appendix~L:
-Tables~\ref{tab:per-kernel-full},
-\ref{tab:per-kernel-full-gpt54}, and~\ref{tab:per-kernel-full-codex};
-Figure~\ref{fig:f3-qwen}
+Main body: Figure~\ref{fig:kernel-heatmap-unified}; Appendix~J: Tables~\ref{tab:per-kernel-full}, \ref{tab:per-kernel-full-gpt54}, and~\ref{tab:per-kernel-full-codex}
 &
 These floats show that translation difficulty is highly uneven across kernels.
 They are included to prevent the aggregate pass rates from hiding hard kernels,
@@ -259,9 +239,7 @@ Failure taxonomy and direction asymmetry
 &
 Appendix~E:
 Table~\ref{tab:lavamd-errors};
-Appendices~G--H:
-Figures~\ref{fig:f4-gpt} and~\ref{fig:f4-codex};
-Appendix~L:
+Appendix~J:
 Table~\ref{tab:stats-summary}
 &
 These floats diagnose where translation breaks. They separate build, runtime,
@@ -271,7 +249,7 @@ difficulty. \\
 
 Cross-suite generality
 &
-Appendix~L:
+Appendix~J:
 Figures~\ref{fig:cross-suite-qwen}--\ref{fig:cross-suite-codex}
 &
 These figures show whether results are concentrated in one benchmark suite or
@@ -280,7 +258,7 @@ support claims about suite-level generality and domain variation. \\
 
 Repository-level versus kernel-level opportunity
 &
-Appendix~L:
+Appendix~J:
 Figure~\ref{fig:repo-vs-kernel}
 &
 This figure explains one of the benchmark-design motivations: repository-level API
@@ -1255,9 +1233,6 @@ Aggregate transform frequencies across the corpus reveal a clear dominance hiera
 
 The level-invariance property confirms that augmentation introduces no new correctness failures to the benchmark baseline: all 53 non-\knownfail{} Rodinia specs pass at every augmentation level L1--L4. (Note that the per-transform applicability fractions above, e.g., 59/60 for SwapCondition, are computed over all 60~Rodinia specs including the 7~\knownfail{} specs, since augmentation is applied to source files regardless of baseline status; the correctness validation uses only the 53 non-\knownfail{} specs.) All transforms are designed to preserve semantic equivalence, verified by 15~unit tests covering each transform in isolation and by the end-to-end augmentation sweep across the full Rodinia corpus.
 
-
-% Across all five suites, 80 of 87 non-\knownfail{} specs pass at all levels L1--L4, with the 7~failures confined to \texttt{omp\_target} variants where aggressive variable renaming interferes with OpenMP target data-mapping clauses (a known limitation of the current transform guards; all 87 specs pass at L1--L2).
-
 Across all five suites, 80 of 87 non-\knownfail{} specs pass at all levels L1--L4, with the 7~failures confined to \texttt{omp\_target} variants. Five of these (all HeCBench kernels) fail at Level~3 with SwapCondition as the sole active transform, directly implicating condition operand swapping (e.g., \texttt{a~<~b}~$\to$~\texttt{b~>~a}) in causing the GPU-offloading compiler to generate numerically divergent device code. The remaining two (\texttt{rsbench}, \texttt{xsbench}) fail only at Level~4 where both increased SwapCondition intensity and the addition of ArithmeticTransform coincide, making precise attribution ambiguous. Variable renaming is separately disabled for any file containing \texttt{\#pragma~omp} directives, so it plays no role in these failures. All 87 specs pass at L1--L2. Because the augmentation baseline failure is specific to the \texttt{omp\_target} device compiler (the transforms remain semantics-preserving under standard compilation), augmented source from these 7~specs still serves as valid LLM input when translating to other targets; only the \texttt{omp\_target} verification baseline itself is affected.
 
 
@@ -1383,7 +1358,7 @@ Rodinia & lavamd & 18 & 0 & 18 & 0.0\% \\
 \paragraph{Augmentation Pass Rates.}
 \begin{table}[h]
 \centering
-\caption{Augmentation pass rates on the common 12-kernel CUDA-to-OpenMP subset present at all five levels. These 12 kernels were selected by the L0-conditional ablation filter ($\geq$1 of 3 L0 samples passes), so L0 rates exceed the overall CUDA-to-OpenMP rate of 40.3\%.}
+\caption{Augmentation pass rates on the common 12-kernel CUDA-to-OpenMP subset present at all five levels. These 12 kernels were selected by the L0-conditional filter ($\geq$1 of 3 L0 samples passes), so L0 rates exceed the overall CUDA-to-OpenMP rate of 40.3\%.}
 \label{tab:aug-balanced}
 \small
 \begin{tabular}{@{}lrrl@{}}
@@ -1399,7 +1374,7 @@ L4 & 10/12 & 83.3\% & 10/12 \phantom{0}(83\%) \\
 \end{tabular}
 \end{table}
 
-If baseline success were driven primarily by surface-form memorization, augmented source variants should degrade pass rates. On a balanced 12-kernel CUDA-to-OpenMP subset present at all five augmentation levels (Table~\ref{tab:aug-balanced}), pass rates remain between 75\% and 83\% at L1--L4. The L0 rate on this subset (80.6\%) exceeds the overall CUDA-to-OpenMP L0 rate (40.3\%) because the ablation filter selects kernels that already pass at L0, creating a survivorship bias toward easier kernels. We considered Cochran--Armitage trend tests, but two confounds limit their interpretability on this subset: the 3:1 ratio of L0 to L1--L4 sample sizes, and the survivorship selection inherent in L0-conditional ablation. The observed stability provides evidence that successful translations rely on structural understanding of the parallel programming patterns rather than surface-form memorization, though it does not rule out memorization at higher levels of abstraction (e.g., algorithmic templates).
+If baseline success were driven primarily by surface-form memorization, augmented source variants should degrade pass rates. On a balanced 12-kernel CUDA-to-OpenMP subset present at all five augmentation levels (Table~\ref{tab:aug-balanced}), pass rates remain between 75\% and 83\% at L1--L4. The L0 rate on this subset (80.6\%) exceeds the overall CUDA-to-OpenMP L0 rate (40.3\%) because the L0-conditional filter selects kernels that already pass at L0, creating a survivorship bias toward easier kernels. We considered Cochran--Armitage trend tests, but two confounds limit their interpretability on this subset: the 3:1 ratio of L0 to L1--L4 sample sizes, and the survivorship selection inherent in L0-conditional filtering. The observed stability provides evidence that successful translations rely on structural understanding of the parallel programming patterns rather than surface-form memorization, though it does not rule out memorization at higher levels of abstraction (e.g., algorithmic templates).
 
 
 
@@ -1472,50 +1447,50 @@ Six anonymization measures are applied during prompt construction to reduce the 
 % ------------------------------------------------------
 % APPENDIX H GPT-5.4 PER MODEL FIGURES
 % ---------------------------------------------------------
-\section{GPT-5.4 Per-Model Figures}
-\label{sec:appendix-h}
+%\section{GPT-5.4 Per-Model Figures}
+%\label{sec:appendix-h}
 
-The following figures present per-kernel and per-direction breakdowns for \gptnew{} (822 valid records: 426~L0 + 396~augmentation across 31~evaluated kernels). Both use L0 first-sample outcomes to match the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-gpt54} and~\ref{fig:cross-suite-gpt54}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-gpt54}.
+%The following figures present per-kernel and per-direction breakdowns for \gptnew{} (822 valid records: 426~L0 + 396~augmentation across 31~evaluated kernels). Both use L0 first-sample outcomes to match the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-gpt54} and~\ref{fig:cross-suite-gpt54}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-gpt54}.
 
-Compared with \qwenshort{}, the most salient differences are: (i)~overall pass rate rises from 36.7\% to 75.5\%; (ii)~\buildfail{} drops from 39.1\% to 15.0\% of records, indicating substantially better API-surface adaptation; and (iii)~11 of 31~kernels achieve ${\geq}$80\% pass rate across their evaluable directions (vs.\ 0 for \qwenshort{}).
+%Compared with \qwenshort{}, the most salient differences are: (i)~overall pass rate rises from 36.7\% to 75.5\%; (ii)~\buildfail{} drops from 39.1\% to 15.0\% of records, indicating substantially better API-surface adaptation; and (iii)~11 of 31~kernels achieve ${\geq}$80\% pass rate across their evaluable directions (vs.\ 0 for \qwenshort{}).
 
-\begin{figure}[htbp]
-\centering
-\input{NeurIPS_ready_version/figures/figures_tek_version/f3_kernel_model_heatmap_gpt_5-4}
-\caption{Per-kernel translation status across all directions (\gptnew{}, L0, first sample per task, 31~evaluated kernels $\times$ up to 8~directions). The corresponding \qwenshort{} data is reported in Table~\ref{tab:per-kernel-full}; \codex{} heatmap in Figure~\ref{fig:f3-codex}.}
-\label{fig:f3-gpt}
-\end{figure}
+%\begin{figure}[htbp]
+%\centering
+%\input{NeurIPS_ready_version/figures/figures_tek_version/f3_kernel_model_heatmap_gpt_5-4}
+%\caption{Per-kernel translation status across all directions (\gptnew{}, L0, first sample per task, 31~evaluated kernels $\times$ up to 8~directions). The corresponding \qwenshort{} data is reported in Table~\ref{tab:per-kernel-full}; \codex{} heatmap in Figure~\ref{fig:f3-codex}.}
+%\label{fig:f3-gpt}
+%\end{figure}
 
-\begin{figure}[htbp]
-\centering
-\input{NeurIPS_ready_version/figures/figures_tek_version/f4_failure_taxonomy_gpt_5-4}
-\caption{Failure taxonomy by translation direction (\gptnew{}, L0, first sample per task, 136~tasks across 8~directions including case-study pairs). Compare with Figure~\ref{fig:failure-taxonomy} (\qwenshort{}, 120~tasks across 6~standard directions; the 16-task difference reflects the two additional \texttt{omp\_target} case-study directions in the GPT batch). \buildfail{} concentrates in OCL$\to$CUDA, OMP$\to$CUDA, and OCL$\to$OMP directions, consistent with the cross-file identifier inconsistency pattern documented in Appendix~\ref{sec:appendix-e3}.}
-\label{fig:f4-gpt}
-\end{figure}
+%\begin{figure}[htbp]
+%\centering
+%\input{NeurIPS_ready_version/figures/figures_tek_version/f4_failure_taxonomy_gpt_5-4}
+%\caption{Failure taxonomy by translation direction (\gptnew{}, L0, first sample per task, 136~tasks across 8~directions including case-study pairs). Compare with Figure~\ref{fig:failure-taxonomy} (\qwenshort{}, 120~tasks across 6~standard directions; the 16-task difference reflects the two additional \texttt{omp\_target} case-study directions in the GPT batch). \buildfail{} concentrates in OCL$\to$CUDA, OMP$\to$CUDA, and OCL$\to$OMP directions, consistent with the cross-file identifier inconsistency pattern documented in Appendix~\ref{sec:appendix-e3}.}
+%\label{fig:f4-gpt}
+%\end{figure}
 % =================================================
 % APPENDIX I GPT-5.3-CODEX FIGURES
 % =================================================
 
-\section{\codex{} Per-Model Figures}
-\label{sec:appendix-i}
+%\section{\codex{} Per-Model Figures}
+%\label{sec:appendix-i}
 
-The following figures present per-kernel and per-direction breakdowns for \codex{} (814 valid records: 426~L0 + 388~augmentation across 31~evaluated kernels). Both use L0 first-sample outcomes, matching the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-codex} and~\ref{fig:cross-suite-codex}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-codex}. The failure taxonomy appears in Figure~\ref{fig:f4-codex}.
+%The following figures present per-kernel and per-direction breakdowns for \codex{} (814 valid records: 426~L0 + 388~augmentation across 31~evaluated kernels). Both use L0 first-sample outcomes, matching the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-codex} and~\ref{fig:cross-suite-codex}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-codex}. The failure taxonomy appears in Figure~\ref{fig:f4-codex}.
 
-\codex{} achieves a 74.2\% overall pass rate with a failure profile intermediate between \qwenshort{} and \gptnew{}: \buildfail{} accounts for 17.1\% of records (vs.\ 39.1\% for \qwenshort{} and 15.0\% for \gptnew{}). Compared with \gptnew{}, \codex{} shows higher kernel-level consistency---13 of 31~kernels achieve ${\geq}$80\% L0 first-sample pass rate (vs.\ 11 for \gptnew{})---despite identical L0 first-sample pass rates (62.7\%).
+%\codex{} achieves a 74.2\% overall pass rate with a failure profile intermediate between \qwenshort{} and \gptnew{}: \buildfail{} accounts for 17.1\% of records (vs.\ 39.1\% for \qwenshort{} and 15.0\% for \gptnew{}). Compared with \gptnew{}, \codex{} shows higher kernel-level consistency---13 of 31~kernels achieve ${\geq}$80\% L0 first-sample pass rate (vs.\ 11 for \gptnew{})---despite identical L0 first-sample pass rates (62.7\%).
 
-\begin{figure}[htbp]
-\centering
-\input{NeurIPS_ready_version/figures/figures_tek_version/f3_kernel_model_heatmap_gpt_5-3_codex}
-\caption{Per-kernel translation status across all directions (\codex{}, L0, first sample per task, 31~evaluated kernels $\times$ up to 8~directions). The corresponding \qwenshort{} data is reported in Table~\ref{tab:per-kernel-full}; \gptnew{} heatmap in Figure~\ref{fig:f3-gpt}.}
-\label{fig:f3-codex}
-\end{figure}
+%\begin{figure}[htbp]
+%\centering
+%\input{NeurIPS_ready_version/figures/figures_tek_version/f3_kernel_model_heatmap_gpt_5-3_codex}
+%\caption{Per-kernel translation status across all directions (\codex{}, L0, first sample per task, 31~evaluated kernels $\times$ up to 8~directions). The corresponding \qwenshort{} data is reported in Table~\ref{tab:per-kernel-full}; \gptnew{} heatmap in Figure~\ref{fig:f3-gpt}.}
+%\label{fig:f3-codex}
+%\end{figure}
 
-\begin{figure}[htbp]
-\centering
-\input{NeurIPS_ready_version/figures/figures_tek_version/f4_failure_taxonomy_gpt_5-3_codex}
-\caption{Failure taxonomy by translation direction (\codex{}, L0, first sample per task, 136~tasks across 8~directions). Compare with Figure~\ref{fig:failure-taxonomy} (\qwenshort{}) and Figure~\ref{fig:f4-gpt} (\gptnew{}).}
-  \label{fig:f4-codex}
-\end{figure}
+%\begin{figure}[htbp]
+%\centering
+%\input{NeurIPS_ready_version/figures/figures_tek_version/f4_failure_taxonomy_gpt_5-3_codex}
+%\caption{Failure taxonomy by translation direction (\codex{}, L0, first sample per task, 136~tasks across 8~directions). Compare with Figure~\ref{fig:failure-taxonomy} (\qwenshort{}) and Figure~\ref{fig:f4-gpt} (\gptnew{}).}
+%  \label{fig:f4-codex}
+%\end{figure}
 
 % ------------------------------------------------
 % APPENDIX J EVALUATION COST SUMMARY
@@ -1860,17 +1835,10 @@ We note mitigations and residual risks for each.
     multi-physics coupling, and modern GPU programming idioms (tensor cores,
     cooperative groups).
 
-  \item \textbf{Augmentation transforms preserve semantics.} Each transform is
-    backed by \texttt{libclang} AST analysis and validated by 15~unit tests.
-    80~of 87~specs pass all L1--L4 levels. The 7~failures at L3--L4 are
-    % \texttt{omp\_target}-specific (aggressive variable renaming interferes with
-    % data-mapping clauses), a known limitation.
-    \texttt{omp\_target}-specific: condition operand swapping (e.g., \texttt{a < b} $\to$ \texttt{b > a}) causes the GPU-offloading compiler to generate device code that crashes or produces divergent output, even though the transform is semantics-preserving in standard C (variable renaming is disabled for OpenMP-pragma files and plays no role in these failures). These augmented variants fail baseline verification and are excluded from LLM evaluation.
+    \item \textbf{Augmentation transforms preserve semantics.} Each transform is backed by \texttt{libclang} AST analysis and validated by 15~unit tests. 80~of 87~specs pass all L1--L4 augmented baseline verification. The 7~failures are \texttt{omp\_target}-specific: condition operand swapping (e.g., \texttt{a < b} $\to$ \texttt{b > a}) causes the GPU-offloading compiler to generate device code that crashes or produces divergent output, even though the transform is semantics-preserving in standard~C. Variable renaming is disabled for files containing OpenMP pragmas; the 5~HeCBench failures involve only condition swapping, while the 2~remaining failures (RSBench, XSBench at L4) co-occur with additional transforms on non-pragma helper files. These 7~augmented variants fail their own baseline verification, meaning the semantics-preservation guarantee cannot be confirmed at those levels; they are flagged in analysis but still participate as source text in LLM evaluation (since the source is used as prompt input, not compiled).
     
     \item \textbf{Prompt anonymization does not change task difficulty.}
-    Stripping comments, genericizing filenames, and removing kernel names
-    reduce memorization cues but might also remove helpful context, potentially
-    making \parbench{} results conservative relative to non-anonymized use.
+    Stripping comments, genericizing filenames, and removing kernel names reduce memorization cues but might also remove helpful context, potentially making \parbench{} results conservative relative to non-anonymized use.
 \end{enumerate}
 
 % --------------------------------------------------------------------------
@@ -1897,11 +1865,7 @@ essential---aggregate rates conceal strong direction asymmetry.
 
 \textbf{Comparing models.} Use paired tests on task outcomes (same tasks, same direction--kernel pairs): Fisher's exact test for pairwise comparisons, McNemar's test for concordance analysis. Report concordance tables (both-pass, both-fail, discordant). Always disclose temperature, reasoning mode, and any provider-side sampling controls. If sampling conditions are unmatched, state this explicitly and scope the comparison accordingly.
 
-\textbf{Augmentation analysis.} Use the L0-conditional filter: include a pair
-in the ablation only if $\geq$1 of its L0 samples passes. Report the filter
-rate (fraction of pairs qualifying). Results apply only to the qualifying
-subset. Single samples per augmentation level (L1--L4) trade statistical
-precision for budget efficiency.
+\textbf{Augmentation analysis.} Use the L0-conditional filter: include a pair in the augmentation campaign only if $\geq$1 of its L0 samples passes. Report the filter rate (fraction of pairs qualifying). Results apply only to the qualifying subset. Single samples per augmentation level (L1--L4) trade statistical precision for budget efficiency.
 
 \textbf{Common pitfalls.}
 \begin{itemize}
@@ -1997,7 +1961,7 @@ An anonymized artifact snapshot is submitted with this paper and contains the cu
 \label{sec:appendix-f}
 
 This appendix contains detailed evidence tables and figures referenced from the main text. Floats are ordered by their original section appearance.
-Per-kernel translation heatmaps appear in Figures~\ref{fig:f3-qwen}, \ref{fig:f3-gpt}, and~\ref{fig:f3-codex}. Pass@$k$ by direction appears in Figures~\ref{fig:pass-at-k-qwen}, \ref{fig:pass-at-k-gpt54}, and~\ref{fig:pass-at-k-codex}. Cross-suite comparisons appear in Figures~\ref{fig:cross-suite-qwen}, \ref{fig:cross-suite-gpt54}, and~\ref{fig:cross-suite-codex}. Table~\ref{tab:stats-summary} summarizes the direction asymmetry and augmentation trend tests for \qwenshort{}.
+Per-kernel translation heatmaps appear in Figure~\ref{fig:kernel-heatmap-unified} (main body). Pass@$k$ by direction appears in Figures~\ref{fig:pass-at-k-qwen}, \ref{fig:pass-at-k-gpt54}, and~\ref{fig:pass-at-k-codex}. Cross-suite comparisons appear in Figures~\ref{fig:cross-suite-qwen}, \ref{fig:cross-suite-gpt54}, and~\ref{fig:cross-suite-codex}. Table~\ref{tab:stats-summary} summarizes the direction asymmetry and augmentation trend tests for \qwenshort{}.
 
 % --- From Section 4 (Benchmark Curation) ---
 
@@ -2164,12 +2128,12 @@ Model & Pairs & pass@1 & pass@3 & Hard Fail & Noisy & Always Pass \\
 
 The full pass@$k$ estimates appear in Table~\ref{tab:pass-at-k}. \gptnew{} and \codex{} share identical pass@1 rates (62.7\%) but differ in consistency: \codex{} has more deterministic behavior, with 57.0\% of pairs always passing (vs.\ 53.5\% for \gptnew{}) and fewer noisy pairs (11.3\% vs.\ 16.2\%). The pass@1-to-pass@3 gap is correspondingly narrower for \codex{} (5.6\,pp vs.\ 7.0\,pp). This pattern suggests code-specialized training yields more consistent but not more capable translations at this task difficulty. Across all three models, the majority of failures are hard failures (0/3 samples pass), confirming that incorrect translations are systematic---typically wrong API mappings---rather than stochastic errors recoverable by resampling.
 
-\begin{figure}[htbp]
-\centering
-\input{NeurIPS_ready_version/figures/figures_tek_version/f3_kernel_model_heatmap_qwen}
-\caption{Per-kernel translation status across all directions (\qwenshort{}, L0, first sample per task, 31~evaluated kernels $\times$ up to 8~directions). Rows with all grey cells correspond to kernels whose specs are entirely \knownfail{} or phantom. \gptnew{} and \codex{} heatmaps appear in Figures~\ref{fig:f3-gpt} and~\ref{fig:f3-codex}.}
-\label{fig:f3-qwen}
-\end{figure}
+%\begin{figure}[htbp]
+%\centering
+%\input{NeurIPS_ready_version/figures/figures_tek_version/f3_kernel_model_heatmap_qwen}
+%\caption{Per-kernel translation status across all directions (\qwenshort{}, L0, first sample per task, 31~evaluated kernels $\times$ up to 8~directions). Rows with all grey cells correspond to kernels whose specs are entirely \knownfail{} or phantom. \gptnew{} and \codex{} heatmaps appear in Figures~\ref{fig:f3-gpt} and~\ref{fig:f3-codex}.}
+%\label{fig:f3-qwen}
+%\end{figure}
 
 \begin{figure}[t]
 \centering
@@ -2239,7 +2203,7 @@ Direction: OMP$\leftrightarrow$OMP-target (McNemar) & $n_{\text{paired}}=3$, exa
 % --- Full Per-Kernel Table (complete 31-row version of condensed main-text table) ---
 
 % src: raw result files in results/evaluation/together-qwen-3.5-397b-a17b/ (verified 2026-04-27)
-% src: 31 kernels, total PASS = 230, total tasks = 626 (426 L0 + 200 ablation, KNOWN_FAIL excluded)
+% src: 31 kernels, total PASS = 230, total tasks = 626 (426 L0 + 200 augmentation, KNOWN_FAIL excluded)
 % src: 31 evaluated kernels = 35 corpus kernels - 4 with all specs KNOWN_FAIL/phantom (kmeans, mummergpu, hybridsort, huffman)
 \begin{table*}[t]
 \centering
@@ -2420,7 +2384,7 @@ XSBench & xsbench & 34 & 19 & 15 & 55.9\% & [39.5\%, 71.1\%] \\
 \item {\bf Experimental details}
     \item[] Question: Does the paper specify all the training and test details necessary to understand the results?
     \item[] Answer: \answerYes{}
-    \item[] Justification: No training is performed. Evaluation details are specified: temperature (0.7 for \qwenshort{}; provider-controlled for \gptnew{} and \codex{}), number of samples (3), augmentation levels (L0--L4), \knownfail{} exclusion policy (9 specs), and the L0-conditional ablation design.
+    \item[] Justification: No training is performed. Evaluation details are specified: temperature (0.7 for \qwenshort{}; provider-controlled for \gptnew{} and \codex{}), number of samples (3), augmentation levels (L0--L4), \knownfail{} exclusion policy (9 specs), and the L0-conditional augmentation campaign design.
 
 \item {\bf Error bars}
     \item[] Question: Does the paper report error bars suitably and correctly?

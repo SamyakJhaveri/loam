@@ -137,7 +137,7 @@ class TestMatrixStructure:
         assert data["primary_matrix"]["kernel_count"] == disk_count
 
     def test_status_values_match_raw(self) -> None:
-        """Spot-check kernels at L0 (consensus) and L2 (ablation) against raw data."""
+        """Spot-check kernels at L0 (consensus) and L2 (augmentation) against raw data."""
         data = _load_output()
         pm = data["primary_matrix"]["per_kernel"]
 
@@ -149,7 +149,7 @@ class TestMatrixStructure:
                 f"{kernel} L0: matrix={matrix_val}, raw={raw}"
             )
 
-        # L2 ablation check (only kernels with ablation data)
+        # L2 augmentation check (only kernels with augmentation data)
         for kernel in ["bfs"]:
             raw = _load_raw_status(kernel, 2)
             matrix_val = pm[kernel]["L2"]
@@ -265,19 +265,19 @@ class TestFigureGeneration:
         assert '"#0072B2"' in src, "Missing VERIFY_FAIL blue"
 
     def test_heatmap_dimensions(self) -> None:
-        """AUG-04: Heatmap data has 26 kernels, L0 for all, L1-L4 for ablation kernels."""
+        """AUG-04: Heatmap data has 26 kernels, L0 for all, L1-L4 for augmentation kernels."""
         data = _load_output()
         pm = data["primary_matrix"]
         assert pm["kernel_count"] == 26, f"Expected 26 kernels, got {pm['kernel_count']}"
         assert len(pm["levels"]) == 5, f"Expected 5 levels, got {len(pm['levels'])}"
         for kernel, entry in pm["per_kernel"].items():
             assert "L0" in entry, f"{kernel} missing L0"
-        # Kernels with ablation data must have L1-L4
+        # Kernels with augmentation data must have L1-L4
         for kernel in ["bfs", "lud", "nw"]:
             if kernel in pm["per_kernel"]:
                 entry = pm["per_kernel"][kernel]
                 for lvl in ["L1", "L2", "L3", "L4"]:
-                    assert lvl in entry, f"{kernel} missing {lvl} (ablation data expected)"
+                    assert lvl in entry, f"{kernel} missing {lvl} (augmentation data expected)"
 
 
 # ---------------------------------------------------------------------------

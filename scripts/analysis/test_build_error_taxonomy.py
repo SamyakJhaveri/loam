@@ -262,7 +262,7 @@ def test_safe_percentage_full():
     assert safe_percentage(20, 20) == 100.0
 
 
-# --- Change 2: omp_target parsing and canonical/ablation split ---
+# --- Change 2: omp_target parsing and canonical/augmentation split ---
 
 
 def test_extract_direction_omp_target():
@@ -283,8 +283,8 @@ def test_extract_direction_opencl():
     assert extract_direction(data) == "opencl-to-cuda"
 
 
-def test_taxonomy_canonical_ablation_split():
-    """Output JSON should have canonical and ablation sections with correct counts."""
+def test_taxonomy_canonical_augmentation_split():
+    """Output JSON should have canonical and augmentation sections with correct counts."""
     import json
     taxonomy_path = Path(__file__).parent.parent.parent / "results" / "analysis" / "error_taxonomy.json"
     if not taxonomy_path.exists():
@@ -292,13 +292,13 @@ def test_taxonomy_canonical_ablation_split():
         pytest.skip("Run build_error_taxonomy.py first")
     data = json.loads(taxonomy_path.read_text())
     assert "canonical" in data, "Missing canonical section"
-    assert "ablation" in data, "Missing ablation section"
+    assert "augmentation" in data, "Missing augmentation section"
     can_total = data["canonical"]["total_results"]
-    abl_total = data["ablation"]["total_results"]
+    aug_total = data["augmentation"]["total_results"]
     combined_total = data["total_results"]
-    assert can_total + abl_total == combined_total, (
-        f"Partition mismatch: {can_total} + {abl_total} != {combined_total}"
+    assert can_total + aug_total == combined_total, (
+        f"Partition mismatch: {can_total} + {aug_total} != {combined_total}"
     )
     assert can_total > 0, "Canonical should have results"
-    assert abl_total > 0, "Ablation should have results"
-    assert can_total > abl_total, "Canonical should have more results than ablation"
+    assert aug_total > 0, "Augmentation should have results"
+    assert can_total > aug_total, "Canonical should have more results than augmentation"

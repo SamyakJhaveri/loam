@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Quantitative Findings — NeurIPS 2026 ParBench paper.
 
-Computes all 14 quantitative dimensions from the Phase 3 canonical+ablation corpus:
+Computes all 14 quantitative dimensions from the Phase 3 canonical+augmentation corpus:
   D1: Aggregate pass rates          D8: Per-kernel difficulty tiers
   D2: Per-direction rates            D9: Translation complexity correlation
   D3: Direction asymmetry           D10: Cross-suite comparison
@@ -981,7 +981,7 @@ def compute_pass_at_k(records: list[dict]) -> dict:
     Monotonicity: pass@1 <= pass@3 always.
     """
     # Only canonical (augment_level=0) records are seeds;
-    # ablation L1-L4 are different augmentation levels, not samples.
+    # L1-L4 are different augmentation levels, not samples.
     canonical = [r for r in records if r.get("augment_level", 0) == 0]
 
     # Group by task
@@ -3346,7 +3346,7 @@ def _build_claim_search_patterns(claim_id: str, current_value, display_value: st
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Quantitative findings for NeurIPS 2026 ParBench paper (Phase 3 canonical+ablation corpus)"
+        description="Quantitative findings for NeurIPS 2026 ParBench paper (Phase 3 canonical+augmentation corpus)"
     )
     parser.add_argument(
         "--project-root",

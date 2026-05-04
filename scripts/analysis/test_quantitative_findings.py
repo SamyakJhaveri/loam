@@ -459,8 +459,8 @@ def test_pass_at_k():
     assert "per_suite" in result
 
 
-def test_pass_at_k_excludes_ablation_levels():
-    """compute_pass_at_k ignores augment_level>0 records (ablation, not seeds)."""
+def test_pass_at_k_excludes_augmentation_levels():
+    """compute_pass_at_k ignores augment_level>0 records (augmentation, not seeds)."""
     records = [
         # Task 1: 3 canonical seeds all PASS (augment_level=0)
         _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
@@ -469,7 +469,7 @@ def test_pass_at_k_excludes_ablation_levels():
                      overall_status="PASS", temperature=0.7, sample_id=1, augment_level=0),
         _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
                      overall_status="PASS", temperature=0.7, sample_id=2, augment_level=0),
-        # Task 1: 4 ablation records (augment_level 1-4) — some FAIL
+        # Task 1: 4 augmentation records (augment_level 1-4) — some FAIL
         _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
                      overall_status="PASS", temperature=0.7, augment_level=1),
         _make_record(source_spec="rodinia-bfs-cuda", target_spec="rodinia-bfs-omp",
@@ -488,10 +488,10 @@ def test_pass_at_k_excludes_ablation_levels():
     ]
     result = qf.compute_pass_at_k(records)
 
-    # Only 2 tasks (ablation records excluded from task-set)
+    # Only 2 tasks (augmentation records excluded from task-set)
     assert result["total_tasks"]["value"] == 2
 
-    # Chen formula (ablation excluded, only canonical L0 seeds):
+    # Chen formula (augmentation excluded, only canonical L0 seeds):
     # Task 1: c=3 → pass@1=1.0, pass@3=1.0
     # Task 2: c=1 → pass@1=1/3, pass@3=1.0
     # Macro-avg: pass@1 = (1 + 1/3)/2 = 2/3, pass@3 = (1+1)/2 = 1.0

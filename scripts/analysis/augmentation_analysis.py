@@ -4,7 +4,7 @@ scripts/analysis/augmentation_analysis.py
 
 Complete augmentation analysis for the NeurIPS 2026 ParBench paper.
 Builds per-kernel x per-level status matrices from raw eval result JSONs
-(Phase 3 canonical+ablation corpus), classifies kernel patterns, computes
+(Phase 3 canonical+augmentation corpus), classifies kernel patterns, computes
 aggregate statistics with Wilson CIs, and writes JSON + MD output artifacts.
 
 Metrics:
@@ -165,7 +165,7 @@ def _is_stochastic(stem: str) -> bool:
 def _consensus_status(statuses: list[str]) -> str:
     """Compute consensus status from multiple seed results.
 
-    PASS if any seed passes (pass@1-of-any), matching ablation filter.
+    PASS if any seed passes (pass@1-of-any), matching L0-conditional filter.
     Otherwise, return the most common failure status.
     """
     if any(s == "PASS" for s in statuses):
@@ -201,7 +201,7 @@ def build_primary_matrix(results_dir: Path, verbose: bool = False,
     """Build per-kernel x per-level status matrix for a specific direction.
 
     For L0: collects all seed results and applies consensus (PASS if any passes).
-    For L1-L4: uses single result per kernel (ablation files are not seeded).
+    For L1-L4: uses single result per kernel (augmentation files are not seeded).
 
     Returns:
         dict with keys: direction, levels, kernel_count, per_kernel, aggregate,
@@ -810,7 +810,7 @@ def generate_markdown(data: dict) -> str:
 def main() -> int:
     """Orchestrate augmentation analysis: build matrices, classify, write output."""
     parser = argparse.ArgumentParser(
-        description="Augmentation analysis for NeurIPS 2026 ParBench paper (Phase 3 canonical+ablation corpus)"
+        description="Augmentation analysis for NeurIPS 2026 ParBench paper (Phase 3 canonical+augmentation corpus)"
     )
     parser.add_argument(
         "--project-root",
@@ -882,7 +882,7 @@ def main() -> int:
         print(f"  Found {primary['kernel_count']} kernels")
         print(f"  Patterns: {', '.join(f'{k}={len(v)}' for k, v in primary['pattern_summary'].items())}")
 
-        # Build per-direction matrices for all ablation directions
+        # Build per-direction matrices for all augmentation directions
         per_direction_matrices = {}
         for direction in sorted(all_directions):
             print(f"[{model_dir_name}] Building matrix for {direction}...")

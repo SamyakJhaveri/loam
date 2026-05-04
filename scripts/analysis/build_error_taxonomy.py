@@ -992,8 +992,8 @@ def generate_markdown(taxonomy, output_path):
             lines.append(f"| {combo} | {count} |")
     lines.append("")
 
-    # Canonical vs Ablation split (if present)
-    if "canonical" in taxonomy and "ablation" in taxonomy:
+    # Canonical vs Augmentation split (if present)
+    if "canonical" in taxonomy and "augmentation" in taxonomy:
         lines.append("---")
         lines.append("")
         lines.append("## Canonical Taxonomy (L0)")
@@ -1011,19 +1011,19 @@ def generate_markdown(taxonomy, output_path):
                 lines.append(f"| {status} | {count} | {safe_percentage(count, can['total_results']):.1f}% |")
         lines.append("")
 
-        lines.append("## Ablation Taxonomy (L1-L4)")
+        lines.append("## Augmentation Taxonomy (L1-L4)")
         lines.append("")
-        abl = taxonomy["ablation"]
-        lines.append(f"**Total:** {abl['total_results']}  ")
-        lines.append(f"**PASS:** {abl['total_pass']} ({safe_percentage(abl['total_pass'], abl['total_results']):.1f}%)  ")
-        lines.append(f"**Failures:** {abl['total_failures']} ({safe_percentage(abl['total_failures'], abl['total_results']):.1f}%)")
+        aug = taxonomy["augmentation"]
+        lines.append(f"**Total:** {aug['total_results']}  ")
+        lines.append(f"**PASS:** {aug['total_pass']} ({safe_percentage(aug['total_pass'], aug['total_results']):.1f}%)  ")
+        lines.append(f"**Failures:** {aug['total_failures']} ({safe_percentage(aug['total_failures'], aug['total_results']):.1f}%)")
         lines.append("")
 
-        if "ablation_by_level" in taxonomy:
+        if "augmentation_by_level" in taxonomy:
             lines.append("| Level | Total | PASS | Pass Rate |")
             lines.append("|-------|------:|-----:|----------:|")
             for lvl in ["L1", "L2", "L3", "L4"]:
-                lvl_data = taxonomy["ablation_by_level"].get(lvl, {})
+                lvl_data = taxonomy["augmentation_by_level"].get(lvl, {})
                 lt = lvl_data.get("total_results", 0)
                 lp = lvl_data.get("total_pass", 0)
                 lines.append(f"| {lvl} | {lt} | {lp} | {safe_percentage(lp, lt):.1f}% |")
@@ -1031,10 +1031,10 @@ def generate_markdown(taxonomy, output_path):
 
         if "comparison" in taxonomy:
             comp = taxonomy["comparison"]
-            lines.append("## Comparison: Canonical vs Ablation")
+            lines.append("## Comparison: Canonical vs Augmentation")
             lines.append("")
             lines.append(f"- Canonical pass rate: {comp.get('canonical_pass_rate', 0)}%")
-            lines.append(f"- Ablation pass rate: {comp.get('ablation_pass_rate', 0)}%")
+            lines.append(f"- Augmentation pass rate: {comp.get('augmentation_pass_rate', 0)}%")
             lines.append(f"- Delta: {comp.get('delta_pp', 0):+.1f} pp")
             lines.append(f"- *{comp.get('note', '')}*")
             lines.append("")
@@ -1060,32 +1060,32 @@ def main():
     results = load_results(project_root)
     print(f"Loaded {len(results)} result JSONs")
 
-    # Partition into canonical (L0) and ablation (L1-L4)
+    # Partition into canonical (L0) and augmentation (L1-L4)
     canonical_results = [r for r in results if r.get("augment_level", 0) == 0]
-    ablation_results = [r for r in results if r.get("augment_level", 0) > 0]
-    print(f"  Canonical (L0): {len(canonical_results)}, Ablation (L1-L4): {len(ablation_results)}")
+    augmentation_results = [r for r in results if r.get("augment_level", 0) > 0]
+    print(f"  Canonical (L0): {len(canonical_results)}, Augmentation (L1-L4): {len(augmentation_results)}")
 
     print("Classifying canonical failures...")
     canonical_taxonomy = build_taxonomy(canonical_results)
 
-    print("Classifying ablation failures...")
-    ablation_taxonomy = build_taxonomy(ablation_results)
+    print("Classifying augmentation failures...")
+    augmentation_taxonomy = build_taxonomy(augmentation_results)
 
-    # Per-level ablation breakdowns
-    ablation_by_level = {}
+    # Per-level augmentation breakdowns
+    augmentation_by_level = {}
     for level in [1, 2, 3, 4]:
-        level_results = [r for r in ablation_results if r.get("augment_level") == level]
+        level_results = [r for r in augmentation_results if r.get("augment_level") == level]
         if level_results:
-            ablation_by_level[f"L{level}"] = serialize_taxonomy(build_taxonomy(level_results))
+            augmentation_by_level[f"L{level}"] = serialize_taxonomy(build_taxonomy(level_results))
 
     # Comparison
     can_pass_rate = safe_percentage(canonical_taxonomy["total_pass"], canonical_taxonomy["total_results"])
-    abl_pass_rate = safe_percentage(ablation_taxonomy["total_pass"], ablation_taxonomy["total_results"])
+    aug_pass_rate = safe_percentage(augmentation_taxonomy["total_pass"], augmentation_taxonomy["total_results"])
     comparison = {
         "canonical_pass_rate": round(can_pass_rate, 1),
-        "ablation_pass_rate": round(abl_pass_rate, 1),
-        "delta_pp": round(abl_pass_rate - can_pass_rate, 1),
-        "note": "Ablation runs only on tasks that passed canonical, so higher pass rate is expected",
+        "augmentation_pass_rate": round(aug_pass_rate, 1),
+        "delta_pp": round(aug_pass_rate - can_pass_rate, 1),
+        "note": "Augmentation runs only on tasks that passed canonical, so higher pass rate is expected",
     }
 
     # Also build combined taxonomy for backward compatibility
@@ -1096,8 +1096,8 @@ def main():
     json_path = output_dir / "error_taxonomy.json"
     serialized = serialize_taxonomy(taxonomy)
     serialized["canonical"] = serialize_taxonomy(canonical_taxonomy)
-    serialized["ablation"] = serialize_taxonomy(ablation_taxonomy)
-    serialized["ablation_by_level"] = ablation_by_level
+    serialized["augmentation"] = serialize_taxonomy(augmentation_taxonomy)
+    serialized["augmentation_by_level"] = augmentation_by_level
     serialized["comparison"] = comparison
     with open(json_path, "w") as f:
         json.dump(serialized, f, indent=2)

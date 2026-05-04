@@ -1,449 +1,415 @@
-# HANDOFF: Fix NeurIPS Paper Audit Issues
+# HANDOFF: Replace "ablation" → "augmentation" Terminology
 
 **Date:** 2026-05-04
-**Status:** Plan complete with exact text patches. Ready for execution.
-**Previous handoff (superseded):** Artifact packaging task (2026-05-01)
+**Status:** Research complete. Ready for execution.
+**Supersedes:** Previous figure-unification handoff (that task may or may not be complete — check git log).
 
 ---
 
 ## What This Task Is About (Plain English)
 
-ParBench is a benchmark that tests whether AI models can translate parallel code between GPU/CPU programming languages (CUDA, OpenMP, OpenCL). We wrote a research paper for NeurIPS 2026 Evaluations & Datasets track.
+ParBench is a benchmark for testing whether AI models can translate parallel code (CUDA ↔ OpenMP ↔ OpenCL). We wrote a NeurIPS 2026 paper about it.
 
-An external reviewer audited the paper PDF and found ~20 issues: text errors, statistical overclaims, compliance risks with the NeurIPS submission rules, and polish defects. We spent a session verifying EVERY finding against the actual LaTeX source code, raw result data (2,344 JSON files), and analysis scripts.
+**The terminology problem:** The paper and scripts use the word "ablation" to label the L1-L4 augmentation experiments. In ML, "ablation" means "removing components to test their contribution." In our paper, it's being used as shorthand for "the experiment phase where augmented source code (L1-L4) is tested." This confuses readers — Niranjan (co-author) flagged it: *"can we just call it augmentations? 426 L0 + 200 augmentations makes more sense than calling it ablation."*
 
-**Your job:** Apply 8 specific, verified text fixes to the LaTeX paper source. Every fix has exact "old text" and "new text" ready to paste. No new experiments, no code changes, no data re-analysis needed.
+**What needs to happen:** Replace every occurrence of "ablation" with either "augmentation" (for the experiment/data) or "L0-conditional filter" (for the filtering mechanism). The word "ablation" should not appear anywhere in the published paper or analysis scripts.
 
-**Why this matters:** The NeurIPS submission deadline is May 6, 2026 (AoE). These fixes prevent desk-rejection and reduce reviewer objections.
+**Important:** Nobody has done this yet. Erel's recent changes to the paper were content rewrites for clarity — NOT ablation→augmentation replacements. No broken find-replace to fix.
 
 ---
 
 ## Skills to Load First
 
-Before doing ANY work, load these two skills:
+Before doing ANY work, invoke these skills:
 
-1. **`andrej-karpathy-skills:karpathy-guidelines`** — Surgical changes, think before editing, simplicity first.
-2. **`test-driven-development`** — Adapted for LaTeX: write the grep "test" first, confirm it shows the bug, apply the fix, confirm the bug is gone.
+1. **`andrej-karpathy-skills:karpathy-guidelines`** — Think before coding. Simplicity first. Surgical changes. Goal-driven execution.
+2. **`superpowers:test-driven-development`** — For each file change: write a grep "test" showing current state → apply change → verify new state. Gated checkpoints.
 
 ---
 
-## Critical Context You Must Know
+## Critical Context
 
 ### Project Root
-`/home/samyak/Desktop/parbench_sam`
+```
+/home/samyak/Desktop/parbench_sam
+```
 
-### Paper Directory
-`/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/`
+### Paper Directory (NRV/)
+```
+/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/
+```
 
 ### How to Compile the Paper
 ```bash
-cd /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version && latexmk -pdf main_neurips.tex
-```
-
-### How to Undo Everything If Something Goes Wrong
-```bash
-cd /home/samyak/Desktop/parbench_sam && git checkout -- docs/paper/NeurIPS_ready_version/
-```
-
-### Which Files Are Compiled Into the PDF
-
-`main_neurips.tex` includes these files in this order:
-
-| Include Order | File | Contains |
-|---------------|------|----------|
-| 1 | `sections/macros.tex` | Macro definitions (`\qwenshort` = Qwen 3.5, `\gptnew` = GPT-5.4, `\codex` = GPT-5.3-codex, `\parbench` = ParBench) |
-| 2 | `sections/abstract.tex` | Abstract |
-| 3 | `sections/1-introduction.tex` | Introduction + contributions |
-| 4 | `sections/framework.tex` | Spec design, augmentation engine, harness |
-| 5 | `sections/benchmark-curation.tex` | Survey-based curation |
-| 6 | `sections/experimental-setup.tex` | Models, protocol, metrics |
-| 7 | `sections/results.tex` | All results subsections + tables + figures |
-| 8 | `sections/discussion.tex` | Discussion, limitations |
-| 9 | `references.bib` | Bibliography |
-| 10 | `appendices_neurips.tex` | All appendices + NeurIPS checklist |
-
-### DEAD CODE FILE — DO NOT EDIT
-**`sections/related-work.tex` is NOT compiled.** Line 138 of `main_neurips.tex` says `% \input{sections/related-work}` (commented out). The related-work section lives inline in `appendices_neurips.tex:13-20`. Several audit findings target this dead file. **Ignore them.**
-
-### Page Budget
-NeurIPS E&D allows 9 pages main content + unlimited references/appendix. The paper is already at the limit. Be word-conscious when adding text.
-
----
-
-## What Was Already Verified (Don't Re-Check)
-
-### All Paper Numbers Are Correct
-
-| Claim in Paper | Verified Against Raw Data | Status |
-|----------------|--------------------------|--------|
-| Qwen pass@1 = 23.9% | 142 tasks after KNOWN_FAIL exclusion from 504 raw L0 records | CORRECT |
-| GPT-5.4 pass@1 = 62.7% | 267/426 L0 records | CORRECT |
-| Codex pass@1 = 62.7% | 267/426 L0 records | CORRECT |
-| Table 1 totals: 626/822/814 records | File counts in `results/evaluation/{model}/` | CORRECT |
-| Figure caption: "120 non-KNOWN_FAIL tasks" | 120 std-direction tasks after KF exclusion | CORRECT |
-| Oracle strength: 2 strong, 5 medium, 46 weak | `grep oracle_strength specs/*.json` | CORRECT |
-| SwapCondition code: `<` maps to `>` | `c_augmentation/augment_dataset.py:733` SWAP_MAP | CORRECT |
-
-### Audit Issues Already Resolved (No Action Needed)
-
-| Audit Finding | Why It's Not a Problem |
-|---------------|----------------------|
-| Hyperref colored link boxes | Already fixed: `main_neurips.tex:22` has `\hypersetup{hidelinks}` |
-| "Appendix 2" reference | Not in any compiled file |
-| Figure says "137 tasks" | Current caption correctly says "120" |
-| "Chen et al. Chen et al." text | Not in any compiled file |
-| Kadosh IWOMP duplicate bib entry | OMPify2023 and LearningToParallelize2023 are different papers with different titles |
-| Orphan "extension beyond" related-work text | Only in `related-work.tex` which is NOT COMPILED (dead code) |
-| "Demonstrate more robust parallel reasoning" | Only in `related-work.tex` (dead code); not in any compiled file |
-| Duplicate PCEBench bib key `chen2025pcebench` | Only cited in dead code; active key is `PCEBench2025` |
-
-### NeurIPS Croissant Requirement — Researched
-Per the [NeurIPS 2026 E&D Hosting Guidelines](https://neurips.cc/Conferences/2026/EvaluationsDatasetsHosting): Croissant metadata is required ONLY for dataset submissions. The guidelines explicitly state: "If your contribution is an executable environment/codebase rather than a static dataset, there is no need for dataset hosting." ParBench is an executable benchmark tool, so Croissant is not required.
-
----
-
-## The 8 Fixes to Apply
-
-### User Decision Already Made
-- **Abstract**: Add pass@1 numbers to the abstract (Option A chosen by user)
-
-### Edit Ordering Rule
-Within each file, apply fixes from the **highest line number first** (bottom-up) so earlier edits don't shift line numbers of later fixes.
-
----
-
-### Fix A: Correct condition-swap math error
-
-| Field | Value |
-|-------|-------|
-| **File** | `sections/framework.tex` |
-| **Line** | 69 |
-| **Priority** | P0 (technical error visible to reviewers) |
-| **Problem** | Says `a < b` is equivalent to `b >= a`. Mathematically wrong: `a < b` is equivalent to `b > a` (they differ when `a == b`). The correct form already appears on line 71. The code (`c_augmentation/augment_dataset.py:733`) correctly maps `<` to `>`. |
-
-**Before-test** (should find the bug):
-```bash
-grep "b >= a" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/framework.tex
-```
-
-**Old text:**
-```
-\texttt{b >= a}
-```
-
-**New text:**
-```
-\texttt{b > a}
-```
-
-**After-test** (should return nothing):
-```bash
-grep "b >= a" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/framework.tex
-```
-
----
-
-### Fix B: Soften "demonstrating" overclaim + add diagnostic note to Table 1 caption
-
-| Field | Value |
-|-------|-------|
-| **File** | `sections/results.tex` |
-| **Lines** | 53 and 68 |
-| **Priority** | P1 (overclaim + misleading framing) |
-| **Problem** | Line 53 uses "demonstrating that repository reconstruction...is the primary obstacle" — too causal without a controlled ablation. Table 1 caption (line 68) should clarify it's a diagnostic summary, not the primary balanced comparison. |
-
-**Apply patch 2 FIRST (line 68, higher line number), then patch 1 (line 53).**
-
-**Patch 2 — Table 1 caption (line 68):**
-
-**Old text:**
-```
-\knownfail{} specs were pre-excluded from both GPT evaluation batches.}
-```
-
-**New text:**
-```
-\knownfail{} specs were pre-excluded from both GPT evaluation batches. Because augmentation subsets differ by model, this table is a diagnostic summary; the balanced task-level comparison is Table~\ref{tab:direction-rates} and pass@$k$ in Section~\ref{sec:passk-analysis}.}
-```
-
-**Patch 1 — Overclaim (line 53):**
-
-**Old text:**
-```
----demonstrating that repository reconstruction, not translation itself, is the primary obstacle in full-application benchmarks.
-```
-
-**New text:**
-```
----supporting the interpretation that repository reconstruction, not translation itself, is a major obstacle in full-application benchmarks.
-```
-
-**After-test:**
-```bash
-grep "supporting the interpretation" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-grep "diagnostic summary" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-```
-
----
-
-### Fix C: Qualify augmentation p-values as descriptive
-
-| Field | Value |
-|-------|-------|
-| **File** | `sections/results.tex` |
-| **Line** | 134 |
-| **Priority** | P1 (statistical overclaim under survivorship-biased design) |
-| **Problem** | Uses formal p-values for a design with acknowledged survivorship bias. Should label as descriptive. |
-
-**Old text:**
-```
-This stability across both GPT models is compatible with robustness to surface-form perturbation, though survivorship bias (L0-conditional filtering) prevents ruling out deeper structural memorization entirely.
-```
-
-**New text:**
-```
-This stability across both GPT models is compatible with robustness to surface-form perturbation. These tests are descriptive rather than confirmatory given the L0-conditional design; survivorship bias prevents ruling out deeper structural memorization entirely.
-```
-
-**After-test:**
-```bash
-grep "descriptive rather than confirmatory" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-```
-
----
-
-### Fix D: Add oracle-strength caveat to main text
-
-| Field | Value |
-|-------|-------|
-| **File** | `sections/experimental-setup.tex` |
-| **Insert after** | Line 94 (end of "Metrics" paragraph, after `Full metric derivations are in Appendix~\ref{sec:appendix-a-extended}.`) |
-| **Priority** | P1 (oracle weakness buried in appendix) |
-| **Problem** | Oracle limitations are only in Discussion/Appendix L. Reviewers may not see the caveat. |
-
-**Before-test** (should find nothing — caveat doesn't exist yet):
-```bash
-grep "Oracle strength" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/experimental-setup.tex
-```
-
-**Text to INSERT after line 94:**
-```latex
-
-\textbf{Oracle strength.}
-\pass{} denotes successful build, execution, and satisfaction of the declared
-verification oracle---not a proof of full semantic equivalence. Of the 87 eval-eligible
-specs, 2 use file-hash verification, 5 use numeric comparison, and 46 use
-stdout-pattern plus exit-code checks; the remainder are untagged. We therefore
-interpret pass rates as \emph{declared-oracle correctness} and report oracle
-limitations explicitly in Section~\ref{sec:discussion} and
-Appendix~\ref{sec:appendix-k}.
-```
-
-**After-test:**
-```bash
-grep "Oracle strength" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/experimental-setup.tex
-```
-
-**PAGE CHECK:** This adds ~55 words. After applying, recompile and verify the main body still fits in 9 pages. If it overflows, shorten the last sentence of the existing Metrics paragraph (line 94) to compensate.
-
----
-
-### Fix E: Add pass@1 numbers to abstract
-
-| Field | Value |
-|-------|-------|
-| **File** | `sections/abstract.tex` |
-| **Line** | 4 (last sentence of abstract) |
-| **Priority** | P0 (checklist claims abstract has numbers; it currently doesn't) |
-| **Decision** | User chose Option A — add numbers to abstract |
-
-**Old text** (the last sentence, starting with "We further"):
-```
-We further evaluate \parbench{} on state-of-the-art open and proprietary LLMs, showing that it exposes persistent barriers to reliable parallel code translation, including direction asymmetry, multi-file coordination, incomplete API adaptation, and uneven robustness to source-level perturbations.
-```
-
-**New text:**
-```
-We evaluate \parbench{} on three state-of-the-art LLMs: pass@1 ranges from 23.9\% (\qwenshort{}) to 62.7\% (\gptnew{} and \codex{}) across 142 L0 translation tasks under stochastic sampling, exposing persistent barriers including direction asymmetry, multi-file coordination, incomplete API adaptation, and uneven robustness to source-level perturbations.
-```
-
-**After-test:**
-```bash
-grep "23.9" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/abstract.tex
-```
-
----
-
-### Fix F: Fix Croissant/artifact language
-
-| Field | Value |
-|-------|-------|
-| **File** | `appendices_neurips.tex` |
-| **Line** | 326 |
-| **Priority** | P0 (compliance risk for E&D track) |
-| **Problem** | Says "Croissant export...is planned as a post-acceptance extension." Per NeurIPS 2026 hosting guidelines, Croissant is not required for executable tools. |
-
-**Old text:**
-```
-A datasheet following \citet{Datasheets2021} and a JSON schema accompany the release; Croissant export for ML dataset registries is planned as a post-acceptance extension.
-```
-
-**New text:**
-```
-A datasheet following \citet{Datasheets2021} and a JSON schema accompany the release. Because \parbench{} is an executable evaluation tool rather than a static dataset, Croissant metadata is not applicable per the NeurIPS 2026 hosting guidelines; structured metadata is instead provided via the JSON specification schema and the accompanying datasheet.
-```
-
-**After-test:**
-```bash
-grep "post-acceptance extension" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex
-# Should return nothing
-grep "not applicable per" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex
-# Should match
-```
-
----
-
-### Fix G: Fix NeurIPS checklist claims
-
-| Field | Value |
-|-------|-------|
-| **File** | `appendices_neurips.tex` |
-| **Lines** | 2116 and 2126 |
-| **Priority** | P1 |
-
-**Apply from highest line first.**
-
-**Fix G1 — Line 2126 (ethics):**
-
-**Old text:**
-```
-The work evaluates publicly available benchmark code using commercial LLM APIs. No human subjects, private data, or dual-use concerns.
-```
-
-**New text:**
-```
-The work evaluates publicly available benchmark code using commercial LLM APIs. No human subjects or private data are involved. No immediate high-risk dual-use concern beyond general automated coding capabilities; all benchmarks are public HPC kernels under open-source licenses.
-```
-
-**Fix G2 — Line 2116 (error bars):**
-
-**Old text:**
-```
-All pass rates include Wilson 95\% confidence intervals.
-```
-
-**New text:**
-```
-Per-record pass rates include Wilson 95\% confidence intervals; task-level pass@$k$ uses normal-approximation CIs on macro-averaged per-task probabilities.
-```
-
----
-
-### Fix H (OPTIONAL, P2): Remove orphan bib entry
-
-| Field | Value |
-|-------|-------|
-| **File** | `references.bib` |
-| **Lines** | 34-41 |
-| **Priority** | P2 (dead code cleanup, zero risk) |
-| **Problem** | `chen2025pcebench` entry is only cited in the dead `related-work.tex`. Harmless but cluttered. |
-
-Delete lines 34-41 (the entire `@inproceedings{chen2025pcebench,...}` block). Verify it's not cited in any compiled file first:
-
-```bash
-grep -rn "chen2025pcebench" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/abstract.tex \
-  /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/1-introduction.tex \
-  /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/framework.tex \
-  /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/benchmark-curation.tex \
-  /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/experimental-setup.tex \
-  /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex \
-  /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/discussion.tex \
-  /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex
-# Must return 0 results before deleting
-```
-
----
-
-## Recommended Execution Order
-
-1. Fix A (framework.tex) — standalone, no dependencies
-2. Fix C (results.tex:134) — higher line, do before Fix B
-3. Fix B (results.tex:53 and :68) — two patches, apply :68 first
-4. Fix D (experimental-setup.tex) — new text insertion
-5. Fix E (abstract.tex) — new numbers
-6. Fix F (appendices_neurips.tex:326) — Croissant language
-7. Fix G (appendices_neurips.tex:2126 then :2116) — checklist
-8. Fix H (references.bib) — optional cleanup
-
-After ALL fixes: **full compilation + verification checklist** (below).
-
----
-
-## Final Verification Checklist
-
-Run this AFTER all fixes are applied:
-
-```bash
 cd /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version
-
-# 1. Compile
-latexmk -pdf main_neurips.tex 2>&1 | tail -5
-
-# 2. Check for warnings
-grep "multiply defined\|undefined reference\|Overfull" main_neurips.log | head -10
-
-# 3. Page count
-pdfinfo main_neurips.pdf | grep Pages
-
-# 4. All bugs gone
-grep "b >= a" sections/framework.tex                         # EMPTY
-grep "demonstrating that repository" sections/results.tex    # EMPTY
-grep "post-acceptance extension" appendices_neurips.tex      # EMPTY
-
-# 5. All fixes present
-grep "b > a" sections/framework.tex                          # 2 matches
-grep "supporting the interpretation" sections/results.tex    # 1 match
-grep "diagnostic summary" sections/results.tex               # 1 match
-grep "descriptive rather than confirmatory" sections/results.tex  # 1 match
-grep "Oracle strength" sections/experimental-setup.tex       # 1 match
-grep "23.9" sections/abstract.tex                            # 1 match
-grep "not applicable per" appendices_neurips.tex             # 1 match
-
-# 6. Visual spot-check: open main_neurips.pdf and verify:
-#    - Abstract has pass@1 numbers
-#    - Section 4 has "Oracle strength" paragraph
-#    - Table 1 caption ends with "diagnostic summary"
-#    - No colored link boxes anywhere
-#    - Main body fits in 9 pages
+pdflatex -interaction=nonstopmode main_neurips.tex
 ```
+
+### How to Activate Python Env
+```bash
+source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate
+```
+
+### How to Undo Everything
+```bash
+cd /home/samyak/Desktop/parbench_sam && git checkout -- docs/paper/ scripts/ results/analysis/
+```
+
+---
+
+## The Replacement Rules
+
+There are exactly TWO patterns to replace:
+
+| Current text | Replacement | Reason |
+|---|---|---|
+| "ablation" meaning the L1-L4 experiment phase or records | "augmentation" or "augmentation campaign" | The experiment applies augmentations, so call it that |
+| "ablation filter" or "L0-conditional ablation filter" | "L0-conditional filter" | The filter is self-explanatory without "ablation" |
+
+**DO NOT** blindly find-replace. Some occurrences need "augmentation", others need "augmentation campaign", and the filter references just drop "ablation." Each file section below specifies the exact replacement.
+
+---
+
+## STEP 1: Paper — `sections/experimental-setup.tex`
+
+**File:** `docs/paper/NeurIPS_ready_version/sections/experimental-setup.tex`
+
+### 1A: Comments (3 changes)
+
+| Line | Current text | New text |
+|------|---|---|
+| 22 | `% §4.4 Canonical Evaluation and Augmentation Ablation` | `% §4.4 Canonical Evaluation and Augmentation Campaign` |
+| 24 | `%   - Then: augmentation ablation design — L0-conditional filter` | `%   - Then: augmentation campaign design — L0-conditional filter` |
+| 39 | `%   Ablation filter:   pass@1-of-any (memory: project_neurips_experiment_design.md)` | `%   L0-conditional filter:   pass@1-of-any (memory: project_neurips_experiment_design.md)` |
+
+### 1B: Body text (1 change)
+
+| Line | Current text | New text |
+|------|---|---|
+| 83 | `The augmentation applies an L0-conditional filter, retaining` | `The augmentation campaign applies an L0-conditional filter, retaining` |
+
+### Verification after Step 1:
+```bash
+grep -ni "ablation" docs/paper/NeurIPS_ready_version/sections/experimental-setup.tex
+# Expected: zero results
+```
+
+---
+
+## STEP 2: Paper — `appendices_neurips.tex`
+
+**File:** `docs/paper/NeurIPS_ready_version/appendices_neurips.tex`
+
+### 2A: Table caption (line 1364)
+
+**Current:**
+```
+These 12 kernels were selected by the L0-conditional ablation filter ($\geq$1 of 3 L0 samples passes)
+```
+**New:**
+```
+These 12 kernels were selected by the L0-conditional filter ($\geq$1 of 3 L0 samples passes)
+```
+
+### 2B: Running text (line 1380) — THREE replacements in one paragraph
+
+**Replacement 1:** `because the ablation filter selects kernels` → `because the L0-conditional filter selects kernels`
+
+**Replacement 2:** `the survivorship selection inherent in L0-conditional ablation` → `the survivorship selection inherent in L0-conditional filtering`
+
+(Note: There are exactly 2 occurrences of "ablation" on this line. Both change.)
+
+### 2C: Evaluation card text (line 1879)
+
+**Current:** `in the ablation only if $\geq$1 of its L0 samples passes`
+**New:** `in the augmentation campaign only if $\geq$1 of its L0 samples passes`
+
+### 2D: Source comments (lines 2220, 2269, 2318)
+
+| Line | Current | New |
+|------|---|---|
+| 2220 | `(426 L0 + 200 ablation, KNOWN_FAIL excluded)` | `(426 L0 + 200 augmentation, KNOWN_FAIL excluded)` |
+| 2269 | `(426 L0 + 396 ablation, KNOWN_FAIL pre-excluded)` | `(426 L0 + 396 augmentation, KNOWN_FAIL pre-excluded)` |
+| 2318 | `(426 L0 + 388 ablation, KNOWN_FAIL pre-excluded)` | `(426 L0 + 388 augmentation, KNOWN_FAIL pre-excluded)` |
+
+### 2E: Evaluation card checklist item (line 2401)
+
+**Current:** `and the L0-conditional ablation design`
+**New:** `and the L0-conditional augmentation design`
+
+### Verification after Step 2:
+```bash
+grep -ni "ablation" docs/paper/NeurIPS_ready_version/appendices_neurips.tex
+# Expected: zero results
+
+# Also verify paper still compiles:
+cd docs/paper/NeurIPS_ready_version && pdflatex -interaction=nonstopmode main_neurips.tex
+# Expected: no errors (warnings are OK)
+```
+
+---
+
+## STEP 3: Scripts — `scripts/analysis/build_error_taxonomy.py`
+
+**File:** `scripts/analysis/build_error_taxonomy.py`
+
+This is the biggest script change. There are **18 occurrences** across lines 996-1100.
+
+### Exact replacements (use find-replace carefully):
+
+| Old | New | Type |
+|---|---|---|
+| `ablation_results` | `augmentation_results` | variable name (4 occurrences) |
+| `ablation_taxonomy` | `augmentation_taxonomy` | variable name (3 occurrences) |
+| `ablation_by_level` | `augmentation_by_level` | variable name AND dict key (4 occurrences) |
+| `abl_pass_rate` | `aug_pass_rate` | variable name (2 occurrences) |
+| `"ablation_pass_rate"` | `"augmentation_pass_rate"` | JSON output key (1 occurrence) |
+| `"ablation"` (as JSON key, line 1099) | `"augmentation"` | JSON output key (2 occurrences: line 996 check + line 1099 assignment) |
+| `Ablation (L1-L4)` | `Augmentation (L1-L4)` | print string (1 occurrence) |
+| `Classifying ablation failures` | `Classifying augmentation failures` | print string (1 occurrence) |
+| `Ablation runs only on tasks` | `Augmentation runs only on tasks` | print string (1 occurrence) |
+| `# Partition into canonical (L0) and ablation (L1-L4)` | `# Partition into canonical (L0) and augmentation (L1-L4)` | comment (1 occurrence) |
+| `# Per-level ablation breakdowns` | `# Per-level augmentation breakdowns` | comment (1 occurrence) |
+| `- Ablation pass rate:` | `- Augmentation pass rate:` | f-string (1 occurrence, line 1037) |
+
+**IMPORTANT:** Line 996 has a conditional: `if "canonical" in taxonomy and "ablation" in taxonomy:` — this reads from the JSON file it previously wrote. Since we're changing the output key from "ablation" to "augmentation", this line must become: `if "canonical" in taxonomy and "augmentation" in taxonomy:`
+
+Similarly line 1016: `abl = taxonomy["ablation"]` → `abl = taxonomy["augmentation"]` (or better: rename the local var to `aug = taxonomy["augmentation"]`)
+
+And line 1022: `if "ablation_by_level" in taxonomy:` → `if "augmentation_by_level" in taxonomy:`
+Line 1026: `taxonomy["ablation_by_level"].get(lvl, {})` → `taxonomy["augmentation_by_level"].get(lvl, {})`
+
+### Verification after Step 3:
+```bash
+grep -n "ablation" scripts/analysis/build_error_taxonomy.py
+# Expected: zero results
+```
+
+---
+
+## STEP 4: Scripts — `scripts/audit_eval_consistency.py`
+
+**File:** `scripts/audit_eval_consistency.py`
+
+**13 occurrences.** This file has BOTH comments AND variable names AND dict keys.
+
+| Line | Old | New |
+|------|---|---|
+| 9 | `check ablation)` | `check augmentation)` |
+| 13 | `1 for ablation)` | `1 for augmentation)` |
+| 30 | `ablation_count = 0` | `augmentation_count = 0` |
+| 62 | `ablation_count += 1` | `augmentation_count += 1` |
+| 127 | `issues["max_retries_ablation"]` | `issues["max_retries_augmentation"]` |
+| 128 | `for ablation (expected 1)` | `for augmentation (expected 1)` |
+| 173 | `issues["num_samples_ablation"]` | `issues["num_samples_augmentation"]` |
+| 174 | `for ablation, got` | `for augmentation, got` |
+| 220 | `Ablation (L1-L4): {ablation_count}` | `Augmentation (L1-L4): {augmentation_count}` |
+| 236 | `"max_retries_ablation"` (both key + value string) | `"max_retries_augmentation"` + `"augmentation"` in value |
+| 243 | `"num_samples_ablation"` (both key + value string) | `"num_samples_augmentation"` + `"augmentation"` in value |
+| 252 | `"max_retries_ablation"` | `"max_retries_augmentation"` |
+| 256 | `"num_samples_ablation"` | `"num_samples_augmentation"` |
+
+### Verification:
+```bash
+grep -n "ablation" scripts/audit_eval_consistency.py
+# Expected: zero results
+```
+
+---
+
+## STEP 5: Scripts — `scripts/analysis/augmentation_analysis.py`
+
+**File:** `scripts/analysis/augmentation_analysis.py`
+
+**5 occurrences** (docstrings and comments):
+
+| Line | Old | New |
+|------|---|---|
+| 7 | `canonical+ablation corpus` | `canonical+augmentation corpus` |
+| 168 | `matching ablation filter` | `matching L0-conditional filter` |
+| 204 | `ablation files are not seeded` | `augmentation files are not seeded` |
+| 813 | `canonical+ablation corpus` | `canonical+augmentation corpus` |
+| 885 | `all ablation directions` | `all augmentation directions` |
+
+### Verification:
+```bash
+grep -n "ablation" scripts/analysis/augmentation_analysis.py
+# Expected: zero results
+```
+
+---
+
+## STEP 6: Scripts — Remaining files (comments/docstrings only)
+
+### `scripts/analysis/generate_paper_data.py` (1 occurrence)
+- **Line 868:** `ablation L1-L4 are different augmentation` → `L1-L4 records use augmented source variants`
+
+### `scripts/analysis/quantitative_findings.py` (3 occurrences)
+- **Line 4:** `canonical+ablation corpus` → `canonical+augmentation corpus`
+- **Line 984:** `# ablation L1-L4 are different augmentation levels` → `# L1-L4 are different augmentation levels`
+- **Line 3349:** `canonical+ablation corpus` → `canonical+augmentation corpus`
+
+### `scripts/analysis/cross_model_comparison.py` (2 occurrences)
+- **Line 4:** `canonical+ablation corpus` → `canonical+augmentation corpus`
+- **Line 256:** `canonical+ablation corpus` → `canonical+augmentation corpus`
+
+### `scripts/evaluation/analyze_eval.py` (1 occurrence)
+- **Line 350:** `conditional ablation — \`derive_l0_passers.py\`` → `L0-conditional filter — \`derive_l0_passers.py\``
+
+### Verification:
+```bash
+grep -rn "ablation" scripts/ --include="*.py" | grep -v "test_"
+# Expected: zero results (test files handled in Step 7)
+```
+
+---
+
+## STEP 7: Test Files (CRITICAL — these assert on the old JSON keys)
+
+**If you change production code without updating these tests, they will FAIL.**
+
+### `scripts/analysis/test_build_error_taxonomy.py` (6 occurrences)
+
+| Line | Old | New |
+|------|---|---|
+| 265 | `canonical/ablation split` | `canonical/augmentation split` |
+| 286 | `def test_taxonomy_canonical_ablation_split():` | `def test_taxonomy_canonical_augmentation_split():` |
+| 287 | `canonical and ablation sections` | `canonical and augmentation sections` |
+| 295 | `assert "ablation" in data, "Missing ablation section"` | `assert "augmentation" in data, "Missing augmentation section"` |
+| 297 | `data["ablation"]["total_results"]` | `data["augmentation"]["total_results"]` |
+| 304 | `Canonical should have more results than ablation` | `Canonical should have more results than augmentation` |
+
+### `scripts/analysis/test_augmentation_analysis.py` (6 occurrences)
+
+| Line | Old | New |
+|------|---|---|
+| 140 | `L2 (ablation) against raw data` | `L2 (augmentation) against raw data` |
+| 152 | `# L2 ablation check (only kernels with ablation data)` | `# L2 augmentation check (only kernels with augmentation data)` |
+| 268 | `L1-L4 for ablation kernels` | `L1-L4 for augmentation kernels` |
+| 275 | `# Kernels with ablation data must have L1-L4` | `# Kernels with augmentation data must have L1-L4` |
+| 280 | `(ablation data expected)` | `(augmentation data expected)` |
+
+### `scripts/analysis/test_quantitative_findings.py` (5 occurrences)
+
+| Line | Old | New |
+|------|---|---|
+| 462 | `def test_pass_at_k_excludes_ablation_levels():` | `def test_pass_at_k_excludes_augmentation_levels():` |
+| 463 | `augment_level>0 records (ablation, not seeds)` | `augment_level>0 records (augmentation, not seeds)` |
+| 472 | `# Task 1: 4 ablation records` | `# Task 1: 4 augmentation records` |
+| 491 | `# Only 2 tasks (ablation records excluded` | `# Only 2 tasks (augmentation records excluded` |
+| 494 | `# Chen formula (ablation excluded` | `# Chen formula (augmentation excluded` |
+
+### Verification:
+```bash
+grep -rn "ablation" scripts/ --include="*.py"
+# Expected: zero results TOTAL
+
+# Run tests to confirm nothing broke:
+cd /home/samyak/Desktop/parbench_sam
+python3 -m pytest scripts/analysis/test_build_error_taxonomy.py -v
+python3 -m pytest scripts/analysis/test_augmentation_analysis.py -v
+python3 -m pytest scripts/analysis/test_quantitative_findings.py -v
+```
+
+---
+
+## STEP 8: Regenerate Analysis JSON
+
+The file `results/analysis/error_taxonomy.json` contains keys `"ablation"`, `"ablation_by_level"`, and `"ablation_pass_rate"` from a previous run of `build_error_taxonomy.py`. After Step 3's changes, regenerate:
+
+```bash
+source env_parbench/bin/activate
+cd /home/samyak/Desktop/parbench_sam
+python3 scripts/analysis/build_error_taxonomy.py --project-root .
+```
+
+### Verification:
+```bash
+grep "ablation" results/analysis/error_taxonomy.json
+# Expected: zero results
+
+# Confirm the new keys exist:
+grep "augmentation" results/analysis/error_taxonomy.json | head -5
+# Expected: "augmentation": {, "augmentation_by_level": {, "augmentation_pass_rate":
+```
+
+---
+
+## STEP 9: Final Sweep
+
+```bash
+# Paper sweep:
+grep -rni "ablation" docs/paper/NeurIPS_ready_version/ --include="*.tex"
+# Expected: zero
+
+# Scripts sweep:
+grep -rni "ablation" scripts/ --include="*.py"
+# Expected: zero
+
+# Analysis output sweep:
+grep -rni "ablation" results/analysis/
+# Expected: zero
+
+# Paper compiles cleanly:
+cd docs/paper/NeurIPS_ready_version && pdflatex -interaction=nonstopmode main_neurips.tex
+# Expected: no errors
+
+# All tests pass:
+cd /home/samyak/Desktop/parbench_sam
+python3 -m pytest scripts/analysis/test_build_error_taxonomy.py scripts/analysis/test_augmentation_analysis.py scripts/analysis/test_quantitative_findings.py -v
+# Expected: all PASS
+```
+
+---
+
+## Execution Order (Strict)
+
+1. Steps 1-2: Paper .tex files (independent of each other)
+2. Steps 3-6: Production Python scripts (3 depends on nothing; 4-6 independent of each other)
+3. Step 7: Test files (MUST be done after or simultaneously with Steps 3-6)
+4. Step 8: Regenerate JSON (MUST be after Step 3)
+5. Step 9: Final verification (MUST be last)
+
+**Parallelization opportunity:** Steps 1+2 can run in parallel with Steps 3-7. Step 8 depends on Step 3 only.
+
+---
+
+## What NOT to Change (Explicitly Out of Scope)
+
+| Location | Why |
+|---|---|
+| `.planning/` directory (145 occurrences) | Internal planning docs, not published |
+| `CLAUDE.md`, `.claude/rules/known-issues.md` | Internal project docs |
+| `results/evaluation/**/*.json` | These use `augment_level` (already correct) |
+| `harness/` code | Doesn't use "ablation" anywhere |
+| `c_augmentation/` code | Doesn't use "ablation" anywhere |
+| `visualizations/` | Zero occurrences (verified) |
 
 ---
 
 ## What Worked in This Research Session
 
-- **Cross-checking audit claims against raw data**: Every number was verified by loading result JSONs and computing independently. All paper numbers are correct.
-- **Checking which files are actually compiled**: The plan-reviewer agent caught that `related-work.tex` is dead code, saving the new session from editing a file that doesn't affect the PDF.
-- **Web-searching NeurIPS 2026 requirements**: Discovered Croissant is NOT required for executable benchmark tools, which changes the Croissant fix from "include it now" to "explain why it's not applicable."
-- **Adversarial plan review**: The plan-reviewer agent found 6 critical issues in the first draft of the plan (dead code fixes marked as P0, missing concrete patches, no edit ordering, no page-count check).
+- **Full grep sweep found 10 Python files** (not the 4 originally planned) — the critical catch was 3 test files that assert on `"ablation"` JSON keys
+- **Verified Erel's changes are NOT relevant** — diffs show content rewrites, not terminology fixes
+- **Confirmed `results.tex:71` table caption is already correct** — says "426 L0 + 200 augmentation"
+- **Confirmed zero occurrences in visualizations/** — no JS/HTML/CSS changes needed
 
 ## What Didn't Work / Traps to Avoid
 
-- **Don't trust the audit's file references blindly**: The audit was based on a PDF version. Several issues (orphan related-work text, "137 tasks", duplicate references) were either already fixed or target files that aren't compiled.
-- **Don't edit `sections/related-work.tex`**: It's dead code. The audit flagged 3 issues in this file. All are phantom.
-- **Don't search for "Chen et al. Chen et al."**: This duplicate text doesn't exist in the current compiled source.
-- **Don't change the Safeguards checklist from N/A to Yes**: The NeurIPS question specifically asks about "responsible release of data or models." ParBench releases neither a model nor a novel dataset; N/A is defensible. Just strengthen the justification.
+- **Don't just `sed -i 's/ablation/augmentation/g'`** — some places need "augmentation campaign", some need "L0-conditional filter", some need "augmentation" alone. Each replacement is specified above.
+- **Don't change production scripts without updating test assertions** — `test_build_error_taxonomy.py:295` literally asserts `"ablation" in data`. If you change the script but not the test, pytest will fail.
+- **Don't regenerate JSON before changing the script** — Step 8 depends on Step 3.
+- **Line numbers may drift slightly** — if the previous HANDOFF's figure changes were applied, line numbers in `appendices_neurips.tex` may have shifted. Use the TEXT ANCHORS (quoted strings) to locate each change, not just line numbers.
 
 ---
 
-## Summary Table
+## Summary Statistics
 
-| Fix | File | Line(s) | Priority | What Changes |
-|-----|------|---------|----------|--------------|
-| A | framework.tex | 69 | P0 | `b >= a` → `b > a` |
-| B | results.tex | 53, 68 | P1 | "demonstrating" → "supporting the interpretation" + "diagnostic summary" in caption |
-| C | results.tex | 134 | P1 | Add "descriptive rather than confirmatory" |
-| D | experimental-setup.tex | after 94 | P1 | Insert oracle-strength paragraph (~55 words) |
-| E | abstract.tex | 4 | P0 | Add pass@1 numbers to abstract |
-| F | appendices_neurips.tex | 326 | P0 | Replace Croissant "planned" with NeurIPS exemption |
-| G | appendices_neurips.tex | 2126, 2116 | P1 | Fix ethics + error-bars checklist |
-| H | references.bib | 34-41 | P2 | Delete orphan bib entry (optional) |
+| Category | Count | Effort |
+|---|---|---|
+| Paper .tex changes | 12 replacements across 2 files | ~15 min |
+| Production script changes | ~45 replacements across 7 files | ~30 min |
+| Test file changes | ~17 replacements across 3 files | ~15 min |
+| JSON regeneration | 1 script run | ~2 min |
+| Verification | grep + compile + pytest | ~5 min |
+| **Total** | **~74 replacements** | **~60-90 min** |

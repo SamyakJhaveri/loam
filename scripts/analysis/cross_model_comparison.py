@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Cross-model pairwise comparison for any two models.
 
-Produces statistical comparison for NeurIPS 2026 paper using Phase 3 canonical+ablation corpus.
+Produces statistical comparison for NeurIPS 2026 paper using Phase 3 canonical+augmentation corpus.
 Accepts any two paper_data JSON files via --model-a / --model-b.
 
 Output: results/analysis/cross_model_comparison.json (default)
@@ -253,7 +253,7 @@ def build_comparison(data_a: dict, data_b: dict) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Cross-model comparison for NeurIPS 2026 paper (Phase 3 canonical+ablation corpus).",
+        description="Cross-model comparison for NeurIPS 2026 paper (Phase 3 canonical+augmentation corpus).",
     )
     parser.add_argument(
         "--model-a",

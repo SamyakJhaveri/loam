@@ -865,8 +865,8 @@ def _analyze_tokens(records: list[dict]) -> dict:
 def analyze_passk(records: list[dict], verbose: bool = False) -> dict:
     """Analyze pass@k campaign (temp=0.7 samples).
 
-    Filters to L0-only records: ablation L1-L4 are different augmentation
-    levels, not i.i.d. samples, so they must not inflate n for pass@k.
+    Filters to L0-only records: L1-L4 records use augmented source variants,
+    not i.i.d. samples, so they must not inflate n for pass@k.
     """
     records = [r for r in records if r.get("augment_level", 0) == 0]
     result: dict = {}

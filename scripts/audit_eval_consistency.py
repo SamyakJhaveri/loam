@@ -6,11 +6,11 @@ Checks:
 1. attempts[] → top-level sync (last attempt must match top-level statuses/snippets)
 2. total_attempts == len(attempts)
 3. Self-repair logic (multi-attempt: first attempt failed, error_feedback_sent non-null)
-4. max_retries consistency (1 for canonical, check ablation)
+4. max_retries consistency (1 for canonical, check augmentation)
 5. sample_id vs filename suffix (s0→0, s1→1, s2→2; L1-L4 → augment_level 1-4)
 6. Seed uniqueness per kernel pair (canonical s0/s1/s2 should differ)
 7. Temperature consistency (all 0.7)
-8. num_samples (3 for canonical, 1 for ablation)
+8. num_samples (3 for canonical, 1 for augmentation)
 9. thinking_enabled (true for all)
 """
 
@@ -27,7 +27,7 @@ def main():
     issues = defaultdict(list)  # category -> list of (filename, detail)
     total_checked = 0
     canonical_count = 0
-    ablation_count = 0
+    augmentation_count = 0
     multi_attempt_count = 0
 
     # For seed uniqueness check: group canonical files by kernel pair
@@ -59,7 +59,7 @@ def main():
             canonical_count += 1
             expected_sample_id = int(suffix_match.group(2))
         else:
-            ablation_count += 1
+            augmentation_count += 1
             expected_augment_level = int(suffix_match.group(3))
 
         attempts = data.get("attempts", [])
@@ -124,8 +124,8 @@ def main():
                 )
         else:
             if max_retries != 1:
-                issues["max_retries_ablation"].append(
-                    (fname, f"max_retries={max_retries} for ablation (expected 1)")
+                issues["max_retries_augmentation"].append(
+                    (fname, f"max_retries={max_retries} for augmentation (expected 1)")
                 )
 
         # ── CHECK 5: sample_id vs filename / augment_level vs filename ──
@@ -170,8 +170,8 @@ def main():
                 )
         else:
             if num_samples != 1:
-                issues["num_samples_ablation"].append(
-                    (fname, f"Expected num_samples=1 for ablation, got {num_samples}")
+                issues["num_samples_augmentation"].append(
+                    (fname, f"Expected num_samples=1 for augmentation, got {num_samples}")
                 )
 
         # ── CHECK 9: thinking_enabled ──
@@ -217,7 +217,7 @@ def main():
     print(f"\nDirectory: {RESULTS_DIR}")
     print(f"Total files checked: {total_checked}")
     print(f"  Canonical (s0/s1/s2): {canonical_count}")
-    print(f"  Ablation (L1-L4): {ablation_count}")
+    print(f"  Augmentation (L1-L4): {augmentation_count}")
     print(f"  Multi-attempt files: {multi_attempt_count}")
     print(f"  Unique canonical pairs checked for seed uniqueness: {len(pair_seeds)}")
 
@@ -233,14 +233,14 @@ def main():
         "self_repair_first_not_failed": "CHECK 3: Self-repair first attempt didn't fail",
         "self_repair_no_feedback": "CHECK 3: Self-repair no error_feedback_sent",
         "max_retries_canonical": "CHECK 4: max_retries != 1 (canonical)",
-        "max_retries_ablation": "CHECK 4: max_retries != 1 (ablation)",
+        "max_retries_augmentation": "CHECK 4: max_retries != 1 (augmentation)",
         "sample_id_mismatch": "CHECK 5: sample_id doesn't match filename suffix",
         "canonical_augment_level": "CHECK 5: Canonical file has non-zero augment_level",
-        "augment_level_mismatch": "CHECK 5: Ablation augment_level doesn't match suffix",
+        "augment_level_mismatch": "CHECK 5: Augmentation augment_level doesn't match suffix",
         "seed_duplicate_in_pair": "CHECK 6: Duplicate seeds within a canonical pair",
         "temperature_wrong": "CHECK 7: Temperature != 0.7",
         "num_samples_canonical": "CHECK 8: num_samples != 3 (canonical)",
-        "num_samples_ablation": "CHECK 8: num_samples != 1 (ablation)",
+        "num_samples_augmentation": "CHECK 8: num_samples != 1 (augmentation)",
         "thinking_disabled": "CHECK 9: thinking_enabled != true",
         "single_attempt_has_feedback": "BONUS: Single attempt with error_feedback_sent",
     }
@@ -249,11 +249,11 @@ def main():
         "json_parse_error", "filename_format",
         "attempt_toplevel_sync", "total_attempts_mismatch",
         "self_repair_first_not_failed", "self_repair_no_feedback",
-        "max_retries_canonical", "max_retries_ablation",
+        "max_retries_canonical", "max_retries_augmentation",
         "sample_id_mismatch", "canonical_augment_level", "augment_level_mismatch",
         "seed_duplicate_in_pair",
         "temperature_wrong",
-        "num_samples_canonical", "num_samples_ablation",
+        "num_samples_canonical", "num_samples_augmentation",
         "thinking_disabled",
         "single_attempt_has_feedback",
     ]

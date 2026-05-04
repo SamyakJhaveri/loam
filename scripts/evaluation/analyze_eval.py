@@ -347,7 +347,7 @@ def build_markdown(summary: dict, records: list[dict], complexity_lookup: dict |
     # Plan 02-10 Step 3 (A4, finding F-4.1): level-invariance scope note.
     lines += [
         "> **Scope note (level-invariance claim).** L1–L4 results reflect only "
-        "kernels that passed L0 (conditional ablation — `derive_l0_passers.py` "
+        "kernels that passed L0 (L0-conditional filter — `derive_l0_passers.py` "
         "filter at `:79` uses pass@1-of-any on the canonical L0 cells). Any "
         "level-invariance observation here is scoped to the **L0-passer subset** "
         "by construction; it is NOT an unconditional statement about augmentation "
