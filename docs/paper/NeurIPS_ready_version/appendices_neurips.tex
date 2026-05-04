@@ -7,7 +7,326 @@
 %% APPENDIX A: Framework Details
 %% ============================================================================
 
-\input{sections/related-work}
+% \input{sections/related-work}
+
+
+\section{Extended Related Work}
+\label{sec:appendix-d}
+
+The main text positions \parbench{} through the evaluation gap it addresses. 
+This appendix expands that comparison in Tables~\ref{tab:related-work-a}--\ref{tab:related-work-d}, which organize prior work by evaluation level and role: general code and repository-level benchmarks, OpenMP/MPI and local parallel-code corpora, LLM-based parallel-code translation and porting systems, and efficiency or robustness benchmarks. 
+The comparison separates five questions that are often conflated in prior work: whether the task is generation, parallelization, porting, or translation; what unit of code is evaluated; whether the corpus is a reusable benchmark or a paper-specific local evaluation set; whether correctness is checked by execution; and whether robustness to surface-form variation is measured. 
+This distinction is important because recent LLM-for-parallel-programming work has produced many useful local corpora, benchmark subsets, and task-specific evaluation protocols, but comparatively few reusable executable frameworks for controlled cross-API translation of existing parallel kernels.
+
+\begin{table*}[p]
+\centering
+\caption{
+Representative related work, Part I-a. General code benchmarks and repository-level translation benchmarks.
+}
+\label{tab:related-work-a}
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabularx}{\textwidth}{@{}
+>{\RaggedRight\arraybackslash}p{0.19\textwidth}
+>{\RaggedRight\arraybackslash}p{0.24\textwidth}
+>{\RaggedRight\arraybackslash}p{0.25\textwidth}
+>{\RaggedRight\arraybackslash}X
+@{}}
+\toprule
+Work & Primary task / granularity & Corpus and verification basis & Relation to \parbench{} \\
+\midrule
+
+HumanEval~\cite{HumanEval2021}
+& General code generation; function level
+& Public benchmark with unit tests
+& Establishes execution-based evaluation, but does not exercise parallel API semantics. \\
+
+TransCoder~\cite{TransCoder2020}
+& General source-to-source translation; function level
+& Public multilingual corpus with unit tests
+& Provides a code-translation precedent, but not for HPC or parallel APIs. \\
+
+SWE-bench~\cite{SWEbench2024}
+& Repository issue repair; repository level
+& Public GitHub-issue benchmark with repository tests
+& Demonstrates executable repository evaluation, but is mostly non-HPC and non-parallel. \\
+
+RepoTransBench~\cite{Wang2026RepoTransBench}
+& Repository-level code translation
+& Public repository benchmark with build/test signals
+& Shows repository translation complexity, but confounds kernel translation with scaffolding. \\
+
+AlphaTrans~\cite{AlphaTrans2025}
+& Repository translation and validation
+& Repository-scale translation tasks with validation/tests
+& Adjacent repository-level translation work, but not focused on parallel API semantics. \\
+
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\begin{table*}[p]
+\centering
+\caption{
+Representative related work, Part I-b. OpenMP/MPI/local parallel-code corpora and generation benchmarks.
+}
+\label{tab:related-work-b}
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabularx}{\textwidth}{@{}
+>{\RaggedRight\arraybackslash}p{0.19\textwidth}
+>{\RaggedRight\arraybackslash}p{0.24\textwidth}
+>{\RaggedRight\arraybackslash}p{0.25\textwidth}
+>{\RaggedRight\arraybackslash}X
+@{}}
+\toprule
+Work & Primary task / granularity & Corpus and verification basis & Relation to \parbench{} \\
+\midrule
+
+Learning to Parallelize~\cite{LearningToParallelize2023}
+& OpenMP parallelization prediction; loop/region level
+& Curated OpenMP training and evaluation corpus
+& Shows local corpus construction for OpenMP assistance, not executable cross-API translation. \\
+
+MPI-RICAL~\cite{MPIRICAL2023}
+& MPI assistance; function/region level
+& Curated MPI-focused corpus with recommendation metrics
+& Relevant as MPI-specific parallel-code assistance using a local dataset. \\
+
+OpenMP Graph Transformer~\cite{OpenMPGraphTransformer2023}
+& OpenMP parallelization advice; loop/region level
+& Curated OpenMP corpus with recommendation/classification metrics
+& Relevant to pragma advice, but not translation evaluation. \\
+
+OMPGPT~\cite{OMPGPT2024}
+& OpenMP-oriented code modeling; function/task level
+& OpenMP-oriented model corpus and generation metrics
+& Domain-specific modeling work, but not reusable translation infrastructure. \\
+
+MPIrigen~\cite{MPIrigen2024}
+& MPI code generation; function/task level
+& MPI-specific curated corpus with generation checks
+& Generation-oriented MPI work, not API-to-API kernel translation. \\
+
+MonoCoder~\cite{MonoCoder2024}
+& HPC code modeling; task/function level
+& HPC-oriented model corpus and task metrics
+& Relevant HPC specialization work, but method/corpus-specific. \\
+
+PragFormer~\cite{PragFormer2025}
+& Parallel-code classification; loop/region level
+& Curated classification corpus
+& Relevant representation work, but not executable translation. \\
+
+OMPar~\cite{OMPar2024}
+& AI-driven OpenMP source-to-source parallelization; program/loop level
+& Paper-specific OpenMP evaluation set
+& Automatic parallelization rather than translation of existing parallel kernels. \\
+
+AutoParLLM~\cite{AutoParLLM2025}
+& Zero-shot code parallelization; loop/function level
+& Local parallelization evaluation set
+& Measures introducing parallelism, not preserving existing parallel semantics across APIs. \\
+
+OpenMP Assessment~\cite{OpenMPAssessment2024}
+& LLMs for OpenMP parallelization; snippet/program level
+& Paper-specific assessment set
+& Shows the need for OpenMP-specific evaluation, but not cross-API translation. \\
+
+ParEval~\cite{ParEval2024}
+& Parallel code generation from natural language; task level
+& Public benchmark with correctness checks
+& Strong parallel generation benchmark, but evaluates synthesis rather than source translation. \\
+
+PCEBench~\cite{PCEBench2025}
+& Multi-dimensional parallel code generation; task level
+& Public benchmark with correctness/task metrics
+& Complements \parbench{} by evaluating generation rather than existing-kernel translation. \\
+
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\begin{table*}[p]
+\centering
+\caption{
+Representative related work, Part II. LLM-based parallel-code translation, porting, and HPC-code modeling systems.
+}
+\label{tab:related-work-c}
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabularx}{\textwidth}{@{}
+>{\RaggedRight\arraybackslash}p{0.19\textwidth}
+>{\RaggedRight\arraybackslash}p{0.24\textwidth}
+>{\RaggedRight\arraybackslash}p{0.25\textwidth}
+>{\RaggedRight\arraybackslash}X
+@{}}
+\toprule
+Work & Primary task / granularity & Corpus and verification basis & Relation to \parbench{} \\
+\midrule
+
+LASSI~\cite{LASSI2024}
+& Agentic parallel-code translation; kernel level
+& Curated HeCBench subset with build-run-verify
+& Closest in verification style, but smaller in scope and focused on iterative repair. \\
+
+CodeRosetta~\cite{CodeRosetta2024}
+& Parallel code translation and fine-tuning; function/kernel level
+& Model-specific C++/CUDA corpus with compile/similarity/local checks
+& Relevant translation work, but lacks fixed multi-API executable specifications. \\
+
+HPC-Coder~\cite{HPCCoder2024}
+& HPC code modeling; task/function level
+& HPC-oriented corpus and model-evaluation metrics
+& Domain-specific HPC modeling, not benchmark-infrastructure focused. \\
+
+HPC-Coder-V2~\cite{HPCCoderV2}
+& Code LLMs across low-resource parallel languages; task level
+& Parallel-language tasks with pass@$k$ and task checks
+& Relevant to parallel-code LLMs, but not controlled executable kernel translation. \\
+
+ParEval-Repo~\cite{ParEvalRepo2025}
+& Repository-level HPC translation
+& Public HPC repository benchmark with build and functional tests
+& Motivates \parbench{} by showing that repository integration can dominate failures. \\
+
+UniPar~\cite{UniPar2025}
+& Parallel and accelerated code translation; task/program level
+& System-specific evaluation corpus with local correctness checks
+& Relevant multi-paradigm translation, but not primarily a reusable benchmark substrate. \\
+
+QiMeng-MuPa~\cite{QiMengMuPa2025}
+& Sequential-to-parallel translation; task/program level
+& Curated training/evaluation corpus with local correctness checks
+& Related parallelization/translation work, but different from API-to-API translation of existing kernels. \\
+
+ChatPORT~\cite{ChatPORT2025}
+& LLM-assisted code porting; kernel/program level
+& Local porting evaluation with build/run checks
+& Relevant porting work, but method-specific. \\
+
+ChatPORT CUDA-to-SYCL~\cite{ChatPORTSYCL2025}
+& CUDA-to-SYCL translation; kernel level
+& Local CUDA-to-SYCL evaluation with build/run checks
+& Directly relevant API migration, but narrower in direction and scope. \\
+
+ChatMPI~\cite{ChatMPI2026}
+& MPI code generation; function/workload level
+& MPI-focused local evaluation with functional checks
+& Distributed-parallel generation, not cross-API kernel translation. \\
+
+Large LLM Evaluation for HPC~\cite{LargeLLMEvalHPC2024}
+& Evaluating LLMs for HPC software development; task/program level
+& HPC-oriented evaluation suite with task-specific checks
+& Broad HPC LLM context, but not controlled cross-API translation. \\
+
+VibeCodeHPC~\cite{VibeCodeHPC2025}
+& Agentic HPC code generation/tuning; application/kernel level
+& Small local HPC benchmark set with build/run/performance signals
+& Agentic generation and optimization, not existing-kernel API translation. \\
+
+ParaCodex~\cite{ParaCodex2026}
+& Profiling-guided agentic parallel generation/translation; kernel/program level
+& Curated suite mixture with build-run-verify and profiling feedback
+& Directly relevant method-side work; \parbench{} can evaluate such systems under fixed specs. \\
+
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\begin{table*}[p]
+\centering
+\caption{
+Representative related work, Part III. Efficiency, robustness, and benchmark-validity studies relevant to \parbench{}.
+}
+\label{tab:related-work-d}
+\scriptsize
+\setlength{\tabcolsep}{3.2pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabularx}{\textwidth}{@{}
+>{\RaggedRight\arraybackslash}p{0.19\textwidth}
+>{\RaggedRight\arraybackslash}p{0.24\textwidth}
+>{\RaggedRight\arraybackslash}p{0.25\textwidth}
+>{\RaggedRight\arraybackslash}X
+@{}}
+\toprule
+Work & Primary task / granularity & Corpus and verification basis & Relation to \parbench{} \\
+\midrule
+
+TRACY~\cite{TRACY2025}
+& Efficiency of LLM-based code translation; function/task level
+& Efficiency benchmark with correctness and runtime
+& Complementary performance axis; \parbench{} focuses first on correctness. \\
+
+KernelBench~\cite{KernelBench2025}
+& Efficient GPU-kernel generation; kernel level
+& GPU-kernel benchmark with correctness and speed
+& Accelerator-kernel generation, not translation of existing parallel APIs. \\
+
+Mercury~\cite{Mercury2024}
+& Efficiency of LLM code synthesis; function/task level
+& Efficiency benchmark with runtime/resource metrics
+& Evaluates efficiency rather than parallel API semantic preservation. \\
+
+CodeMorph~\cite{CodeMorph2025}
+& Robustness and leakage via code transformation; function level
+& Existing benchmarks with transformed variants and unit tests
+& Provides the source-perturbation principle adapted by \parbench{} to HPC translation. \\
+
+Semantic Code Rewrite~\cite{SemanticCodeRewrite2025}
+& Memorization versus generalization under code rewriting; function level
+& Rewritten code benchmarks with unit tests
+& Motivates source rewriting as a contamination and robustness probe. \\
+
+SWE-bench Illusion~\cite{SWEbenchIllusion2025}
+& Benchmark memorization analysis; repository level
+& SWE-bench-style evaluation
+& Supports robustness checks for public code benchmarks. \\
+
+\textbf{\parbench{}}
+& \textbf{Cross-API translation of existing parallel kernels; kernel level}
+& \textbf{Reusable executable specs with conjunctive build-run-verify}
+& \textbf{Fixes infrastructure, isolates parallel API translation, and adds L0--L4 AST augmentation.} \\
+
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\paragraph{Local parallel-code corpora and paper-specific benchmarks.}
+A recurring pattern in recent LLM-assisted parallel-programming work is that evaluation is often built around a corpus or benchmark subset introduced for the specific paper. Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OpenMPGraphTransformer2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}. Prior corpus studies also show that OpenMP usage itself has been systematically characterized at scale~\cite{QuantifyingOpenMP2023}, reinforcing that parallel-programming corpora are valuable but do not by themselves define a controlled LLM translation benchmark. Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}. These studies are directly relevant because they show sustained demand for parallel-code evaluation, but they do not provide a shared measurement substrate for controlled cross-API translation of existing parallel kernels.
+
+\paragraph{Generation, parallelization, porting, and translation measure different capabilities.}
+Parallel code generation benchmarks such as ParEval and PCEBench ask whether a model can synthesize a parallel program from a natural-language description~\cite{ParEval2024,PCEBench2025}. This is an important capability, but it differs from source-to-source API translation. In generation, the model may choose its own decomposition, data layout, and implementation strategy; in translation, it must preserve the structure and behavior of an existing implementation while adapting thread indexing, synchronization, memory movement, host--device coordination, and API-specific launch structure. Automatic-parallelization systems such as OMPar, AutoParLLM, and related OpenMP-focused assessments measure yet another capability: identifying and introducing parallelism into serial or partially parallel code~\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024}. Porting frameworks such as ChatPORT and CUDA-to-SYCL translation work are closer to \parbench{} in spirit, but are typically narrower in API direction, corpus scope, or evaluation protocol~\cite{ChatPORT2025,ChatPORTSYCL2025}. \parbench{} instead targets cross-API translation of already-parallel kernels, where correctness depends on maintaining the semantics of the original parallel implementation rather than merely producing some correct parallel solution.
+
+\paragraph{Repository-level realism versus kernel-level attribution.}
+Repository-level benchmarks expose realistic integration barriers. SWE-bench and RepoTransBench demonstrate the importance of repository-level executable evaluation in general software settings~\cite{SWEbench2024,Wang2026RepoTransBench}, while ParEval-Repo shows that full-repository HPC translation can be dominated by build-system and scaffolding failures~\cite{ParEvalRepo2025}. Those barriers matter for deployment, but they can obscure the narrower scientific question of whether the model can translate the computational kernel itself. \parbench{} occupies the intermediate granularity between single-function benchmarks and full repositories. It uses real kernels from established HPC suites, but fixes the surrounding build, run, and verification infrastructure through declarative specifications. This design preserves executable evaluation while making failure attribution sharper: a failed task is more directly tied to API adaptation, multi-file kernel coordination, or semantic preservation, rather than to missing scaffolding or repository reconstruction.
+
+\paragraph{Agentic repair and specialized models are complementary to benchmark design.}
+Several systems improve parallel-code generation or translation through fine-tuning, prompting, or iterative agentic repair. CodeRosetta and HPC-Coder-style models demonstrate the value of domain-specific corpora and model adaptation for HPC and parallel code~\cite{CodeRosetta2024,HPCCoder2024,HPCCoderV2}. LASSI evaluates an automated self-correcting pipeline for parallel scientific-code translation on a curated HeCBench subset~\cite{LASSI2024}. UniPar, QiMeng-MuPa, VibeCodeHPC, and ParaCodex similarly explore multi-paradigm generation, sequential-to-parallel transformation, agentic HPC code generation, or profiling-guided repair using local or mixed benchmark suites~\cite{UniPar2025,QiMengMuPa2025,VibeCodeHPC2025,ParaCodex2026}. These systems answer questions about method design: how far can feedback, fine-tuning, or agentic iteration push performance? \parbench{} is complementary: it provides an evaluation substrate on which such methods can be compared under a controlled kernel-centric translation protocol, including first-attempt evaluation, fixed infrastructure, and uniform failure taxonomy.
+
+\paragraph{Verification rigor.}
+Verification practices vary substantially across the literature. Some works report prediction accuracy, pragma classification, compilation success, similarity, or pass@$k$ on task-specific checks~\cite{LearningToParallelize2023,OMPify2023,CodeRosetta2024,HPCCoderV2}. Others incorporate build, run, and functional validation, especially in agentic or repository-level settings~\cite{LASSI2024,ParEvalRepo2025,ParaCodex2026}. \parbench{} adopts conjunctive build-run-verify evaluation at the kernel level: a translation must compile, execute, and satisfy all declared correctness checks. This matters because parallel translations can compile and even terminate successfully while still violating output constraints, omitting required host--device transfers, mishandling reductions, or preserving only superficial API structure. Compile-only or exit-code-only evaluation would therefore overestimate translation capability.
+
+\paragraph{Efficiency, performance reasoning, and correctness.}
+A separate line of work evaluates whether generated or translated code is efficient rather than merely correct. TRACY, KernelBench, Mercury, and related GPU-kernel or efficiency benchmarks study runtime, kernel quality, optimization, or resource behavior~\cite{TRACY2025,KernelBench2025,Mercury2024}. These works are complementary because functional correctness and performance are separable objectives: a translation can be correct but slow, or fast but semantically wrong. \parbench{} deliberately scopes to correctness in order to isolate the translation-capability question before adding performance tuning as a second axis.
+
+\paragraph{Robustness and benchmark validity.}
+Public code benchmarks face contamination and memorization risks, and recent work shows that surface-form perturbations can reveal brittle pattern matching~\cite{SWEbenchIllusion2025,CodeMorph2025,SemanticCodeRewrite2025}. CodeMorph applies semantics-preserving transformations to standard code benchmarks to diagnose leakage and robustness. \parbench{} applies the same principle to HPC translation, where contamination risk is especially plausible because suites such as Rodinia and HeCBench appear in public repositories and prior papers. Its AST-driven augmentation engine creates L0--L4 source variants using semantics-preserving transformations such as identifier renaming, arithmetic rewriting, pointer/array interchange, typedef expansion, and condition rewriting. The goal is not only to detect possible memorization, but to measure whether translation success survives controlled perturbations of the source surface form.
+
+
+\section{Future Work}
+ Benchmark longevity depends on headroom. Both GPT models achieve pass@1\,=\,62.7\% at L0, so the current 142-task corpus is not yet saturated, but rapid model improvement will narrow that margin. Three extension mechanisms are available: adding kernels through the declarative spec format (JSON plus build recipe, no framework code), composing augmentation transformations beyond L4, and upgrading weak oracles to numeric verification to catch currently undetected semantic errors.
+
+Additional directions include self-repair experiments using the framework's built-in feedback loop, evaluation of agentic systems such as LASSI~\cite{LASSI2024} and ParaCodex~\cite{ParaCodex2026}, fine-tuned HPC models~\cite{HPCCoderV2}, efficiency-aware evaluation following TRACY~\cite{TRACY2025}, and expansion of the augmentation campaign to more kernels and directions.
+
+\textbf{Artifact Availability.} An anonymized artifact snapshot is submitted with this paper and contains the curated \parbench{} specifications, the build-run-verify harness, the evaluation and augmentation pipelines, and per-record result JSONs for all three evaluated models. The release contains 206 generated JSON specifications, including the 96 curated specifications used in the paper and the 87 eval-eligible specifications that pass the baseline build-run-verify pipeline. Each kernel specification embeds its provenance: the upstream suite, repository URL, pinned commit hash, license, build recipe, run configuration, and verification oracle (Section~\ref{sec:suite-selection}). Upon acceptance, the artifact will be de-anonymized, mirrored to GitHub under the MIT license for the \parbench{} framework, and archived on Zenodo to provide a persistent DOI; upstream suites retain their original licenses: Rodinia (BSD-like), XSBench (MIT), RSBench (MIT), HeCBench (MIT), and mixbench (GPL-3.0). A datasheet following \citet{Datasheets2021} and a JSON schema accompany the release; Croissant export for ML dataset registries is planned as a post-acceptance extension.
+
+Appendix~\ref{sec:appendix-k} provides a structured Evaluation Card declaring \parbench{}'s measurement scope, assumptions, valid and invalid claims, and a recommended reporting protocol for future users. 
+
+\parbench{} is evaluation infrastructure rather than a new translation method. Its contribution is to make the measurement problem sharper: kernel-centric isolation avoids repository-level build confounds, declarative specs make correctness reproducible, augmentation probes robustness, and the harness exposes where translations fail. The initial results show that current LLMs have real but uneven parallel translation capability, with build adaptation, direction asymmetry, and multi-file coordination as central barriers to reliable use. The benchmark code, all 96 curated JSON specs (87 eval-eligible), and per-record result files for all three models are included in the supplementary material to enable independent verification and extension.
 
 \section{Framework and Evaluation Details}
 \label{sec:appendix-a}
@@ -117,16 +436,16 @@ If any expected target file cannot be recovered or the extracted content is empt
 This section expands on the experimental setup described in Section~\ref{sec:experimental-setup}.
 
 \paragraph{\knownfail{} Exclusion Policy.} Nine specs are classified as \knownfail{} due to toolchain incompatibilities or pre-existing runtime failures unrelated to LLM translation quality: seven Rodinia specs affected by deprecated CUDA~12 texture APIs, missing system libraries, pre-existing segmentation faults, or silent OpenCL runtime failures, and two HeCBench \texttt{omp\_target} specs with build or verification failures on the evaluation platform.
-A record is excluded when \emph{either} the source or the target spec is \knownfail{}. Source-side exclusion is necessary because source correctness is unverified on the failing platform; target-side exclusion is necessary because the target build or verification infrastructure is broken. For \qwenshort{}, this policy excludes 82~of 708~total records, leaving 626~valid records (426~L0 + 200~ablation). The \gptnew{} and \codex{} evaluation batches pre-exclude \knownfail{} specs, so all 822~\gptnew{} and 814~\codex{} on-disk records are valid.
+A record is excluded when \emph{either} the source or the target spec is \knownfail{}. Source-side exclusion is necessary because source correctness is unverified on the failing platform; target-side exclusion is necessary because the target build or verification infrastructure is broken. For \qwenshort{}, this policy excludes 82~of 708~total records, leaving 626~valid records (426~L0 + 200~augmentations). The \gptnew{} and \codex{} evaluation batches pre-exclude \knownfail{} specs, so all 822~\gptnew{} and 814~\codex{} on-disk records are valid.
 
 \paragraph{Sampling Configuration.}
 \label{sec:sampling-config}
 For \qwenshort{}, we set temperature~0.7 with top-$p$~=~1.0 (full-distribution sampling). For \gptnew{} and \codex{}, the Azure reasoning API does not accept explicit temperature or top-$p$ parameters---these are controlled internally by the provider and cannot be set by the caller. Cross-model differences in pass rates may therefore partly reflect unmatched sampling conditions rather than model capability alone; the confound is between \qwenshort{} (explicit temperature) and both Azure models (provider-controlled). 
 A deterministic seed derived from SHA-256 of the concatenation \texttt{source\_spec|target\_spec|sample\_id} (pipe-delimited, truncated to 31~bits) is passed to \qwenshort{} (Together~AI) and \gptnew{} (Azure Chat Completions). The Responses API used by \codex{} does not accept a seed parameter. Seeds are recorded for auditing but do not guarantee bitwise-identical outputs: Together~AI treats seeds as advisory for MoE inference, and Azure provides no determinism guarantee for reasoning models. Each sample receives one LLM call with no iterative feedback, isolating first-attempt translation capability.
 
-\paragraph{Canonical Evaluation and Augmentation Ablation.}
+\paragraph{Canonical Evaluation and Augmentation.}
 The canonical campaign evaluates all 142 unique pairs at augmentation level L0 (unmodified source code) with three samples each, producing 426 L0 records per model and 1{,}278 total. Each record passes through the full build--run--verify pipeline with conjunction semantics. Most specs verify via exit-code and stdout-pattern checks; a subset additionally declare numeric-comparison or file-hash oracles. 
-For the augmentation ablation, an L0-conditional filter is applied: a pair is included only if any of its three canonical L0 samples passes. This avoids spending budget on pairs the model cannot translate even from unmodified source. For \qwenshort{}, 50~of the 142~pairs qualify (35\%); for \gptnew{}, 99~pairs qualify (70\%); for \codex{}, 97~pairs qualify (68\%). Each qualifying pair is evaluated once ($k$~=~1) at each of levels L1 through L4.
+For the augmentation, an L0-conditional filter is applied: a pair is included only if any of its three canonical L0 samples passes. This avoids spending budget on pairs the model cannot translate even from unmodified source. For \qwenshort{}, 50~of the 142~pairs qualify (35\%); for \gptnew{}, 99~pairs qualify (70\%); for \codex{}, 97~pairs qualify (68\%). Each qualifying pair is evaluated once ($k$~=~1) at each of levels L1 through L4.
 
 \paragraph{Metrics Details.}
 For pass@$k$, following \citet{HumanEval2021}, we use the unbiased estimator $1 - \binom{n-c}{k}/\binom{n}{k}$, where $c$ is the number of correct samples out of $n$~total. We report pass@1 (expected single-sample success rate, equivalent to $c/n$ averaged across tasks) and pass@3 (fraction of tasks where any sample passes).
@@ -166,7 +485,7 @@ Figure~\ref{fig:api-coverage} presents the per-API coverage in a ranked bar char
 \begin{figure}[htbp]
     \centering
     \input{NeurIPS_ready_version/figures/figures_tek_version/api_coverage_bar}
-    \caption{API coverage across the benchmark survey. OpenMP (50 benchmarks), MPI (45), and CUDA (38) dominate, with OpenACC(17), HIP (15), and MPI+OpenMP (15) forming a second tier. OpenCL (13) and Kokkos (12) bridge the second and third tiers. OpenMP Target (8), SYCL (7), and RAJA (7) form a third tier.}
+    \caption{API coverage across the benchmark survey. OpenMP (50 benchmarks), MPI (45), and CUDA (38) dominate, with OpenACC (17), HIP (15), and MPI+OpenMP (15) forming a second tier. OpenCL (13) and Kokkos (12) bridge the second and third tiers. OpenMP Target (8), SYCL (7), and RAJA (7) form a third tier.}
     \label{fig:api-coverage}
 \end{figure}
 
@@ -475,51 +794,62 @@ The complete exclusion log with per-kernel justifications is recorded in \parben
 %% ============================================================================
 %% APPENDIX D: Extended Related Work
 %% ============================================================================
-\section{Extended Related Work}
-\label{sec:appendix-d}
 
-The main text positions \parbench{} through the evaluation gap it addresses. This appendix provides a structured comparison across five dimensions---granularity, verification method, HPC coverage, robustness testing, and corpus scale---and discusses design trade-offs that space constraints preclude from the main text.
+% Required packages, add to preamble if not already included:
+% \usepackage{tabularx}
+% \usepackage{array}
+% \usepackage{ragged2e}
 
-\begin{table*}[htbp]
-\centering
-\caption{Related work comparison along granularity, verification, and robustness axes. \parbench{} is the only system combining kernel-level HPC translation, conjunctive build-run-verify correctness, and AST-driven augmentation robustness evaluation.}
-\label{tab:related-work}
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{@{}llllccl@{}}
-\toprule
-  Paper & Venue & Granularity & Verification & HPC parallel & Robustness & Scale \\
-  \midrule
-  HumanEval~\cite{HumanEval2021} & arXiv'21 & Function & Unit tests & -- & -- & 164 problems \\
-  SWE-bench~\cite{SWEbench2024} & ICLR'24 & Repository & Test suite & -- & -- & 2{,}294 issues \\
-  TransCoder~\cite{TransCoder2020} & NeurIPS'20 & Function & Unit tests & -- & -- & 852 functions \\
-  CodeRosetta~\cite{CodeRosetta2024} & NeurIPS'24 & Function & Compile + match & Yes & -- & C++/CUDA corpus \\
-  OMPify~\cite{OMPify2023} & IWOMP'23 & Loop & Pragma accuracy & Partial & -- & 54K loops \\
-  LASSI~\cite{LASSI2024} & CLUSTER-W'24 & Kernel & Build+run+verify & Yes & -- & 10 kernels \\
-  ParEval~\cite{ParEval2024} & HPDC'24 & Task & Correctness check & Yes & -- & 420 tasks \\
-  ParEval-Repo~\cite{ParEvalRepo2025} & ICPP'25 & Repository & Build + functional & Yes & -- & 6 applications \\
-  HPC-Coder-V2~\cite{HPCCoderV2} & arXiv'24 & Task & pass@$k$ & Yes & -- & ParEval tasks \\
-  CodeMorph~\cite{CodeMorph2025} & ICSE'25 & Function & Unit tests & -- & 26 transforms & HumanEval/MBPP \\
-  VibeCodeHPC~\cite{VibeCodeHPC2025} & arXiv'25 & Application & Build+run & Yes & -- & 2 benchmarks \\
-  TRACY~\cite{TRACY2025} & arXiv'25 & Function & Tests + efficiency & -- & -- & 1{,}000 tasks \\
-  \textbf{\parbench{}} & \textbf{This work} & \textbf{Kernel} & \textbf{Build+run+verify} & \textbf{Yes} & \textbf{L0--L4 AST} & \textbf{96 specs / 35 kernels} \\
-\bottomrule
-\end{tabular}
-}
-\end{table*}
+% Required packages, add to preamble if not already included:
+% \usepackage{tabularx}
+% \usepackage{array}
+% \usepackage{ragged2e}
 
-\paragraph{Granularity trade-offs.} ParEval~\cite{ParEval2024} evaluates parallel code generation from natural language descriptions, testing whether a model can synthesize a correct parallel solution. Source-to-source translation imposes additional constraints absent from generation: the model must preserve an existing program's decomposition, variable naming, and API-specific data-flow patterns rather than inventing a new solution. ParEval-Repo~\cite{ParEvalRepo2025} captures realistic repository-level integration complexity, but its 0\% pass@1 above 133~SLoC indicates that build-system and scaffolding failures dominate the signal.
+% \section{Extended Related Work}
+% \label{sec:appendix-d}
 
-\parbench{} occupies the kernel level between these extremes: complex enough to exercise real parallel patterns (median 271~SLoC, max 3{,}304) while isolating translation capability from repository-integration noise by fixing host code and build infrastructure. VibeCodeHPC~\cite{VibeCodeHPC2025} demonstrates agentic iterative prompting for HPC code generation, but evaluates on two kernels and measures generation from scratch rather than translation of existing parallel implementations across APIs.
+% The main text positions \parbench{} through the evaluation gap it addresses. This appendix provides a structured comparison across five dimensions---granularity, verification method, HPC coverage, robustness testing, and corpus scale---and discusses design trade-offs that space constraints preclude from the main text.
 
-\paragraph{Verification rigor.} LASSI~\cite{LASSI2024} shares \parbench{}'s conjunctive build-run-verify pipeline and kernel granularity. The key design difference is evaluation protocol: LASSI measures ceiling performance under iterative LLM self-correction, while \parbench{} measures first-attempt translation capability with controlled augmentation. The two are complementary---LASSI answers ``how good can agentic repair get?'' while \parbench{} answers ``what does the model know before repair?'' \parbench{} further differs in scope (35 kernels across 5 suites vs.\ 10 HeCBench kernels, 10 translation directions vs.\ 2) and in its augmentation-based robustness dimension.
+% \begin{table*}[htbp]
+% \centering
+% \caption{Related work comparison along granularity, verification, and robustness axes. \parbench{} is the only system combining kernel-level HPC translation, conjunctive build-run-verify correctness, and AST-driven augmentation robustness evaluation.}
+% \label{tab:related-work}
+% \resizebox{\textwidth}{!}{%
+% \begin{tabular}{@{}llllccl@{}}
+% \toprule
+%   Paper & Venue & Granularity & Verification & HPC parallel & Robustness & Scale \\
+%   \midrule
+%   HumanEval~\cite{HumanEval2021} & arXiv'21 & Function & Unit tests & -- & -- & 164 problems \\
+%   SWE-bench~\cite{SWEbench2024} & ICLR'24 & Repository & Test suite & -- & -- & 2{,}294 issues \\
+%   TransCoder~\cite{TransCoder2020} & NeurIPS'20 & Function & Unit tests & -- & -- & 852 functions \\
+%   CodeRosetta~\cite{CodeRosetta2024} & NeurIPS'24 & Function & Compile + match & Yes & -- & C++/CUDA corpus \\
+%   OMPify~\cite{OMPify2023} & IWOMP'23 & Loop & Pragma accuracy & Partial & -- & 54K loops \\
+%   LASSI~\cite{LASSI2024} & CLUSTER-W'24 & Kernel & Build+run+verify & Yes & -- & 10 kernels \\
+%   ParEval~\cite{ParEval2024} & HPDC'24 & Task & Correctness check & Yes & -- & 420 tasks \\
+%   ParEval-Repo~\cite{ParEvalRepo2025} & ICPP'25 & Repository & Build + functional & Yes & -- & 6 applications \\
+%   HPC-Coder-V2~\cite{HPCCoderV2} & arXiv'24 & Task & pass@$k$ & Yes & -- & ParEval tasks \\
+%   CodeMorph~\cite{CodeMorph2025} & ICSE'25 & Function & Unit tests & -- & 26 transforms & HumanEval/MBPP \\
+%   VibeCodeHPC~\cite{VibeCodeHPC2025} & arXiv'25 & Application & Build+run & Yes & -- & 2 benchmarks \\
+%   TRACY~\cite{TRACY2025} & arXiv'25 & Function & Tests + efficiency & -- & -- & 1{,}000 tasks \\
+%   \textbf{\parbench{}} & \textbf{This work} & \textbf{Kernel} & \textbf{Build+run+verify} & \textbf{Yes} & \textbf{L0--L4 AST} & \textbf{96 specs / 35 kernels} \\
+% \bottomrule
+% \end{tabular}
+% }
+% \end{table*}
 
-CodeRosetta~\cite{CodeRosetta2024} and HPC-Coder-V2~\cite{HPCCoderV2} demonstrate that specialized fine-tuning improves HPC translation, but evaluate primarily via compilation rate and similarity metrics. \parbench{} provides the execution-based substrate needed to determine whether such models produce functionally correct translations, not merely compilable ones.
+% \paragraph{Granularity trade-offs.} ParEval~\cite{ParEval2024} evaluates parallel code generation from natural language descriptions, testing whether a model can synthesize a correct parallel solution. Source-to-source translation imposes additional constraints absent from generation: the model must preserve an existing program's decomposition, variable naming, and API-specific data-flow patterns rather than inventing a new solution. ParEval-Repo~\cite{ParEvalRepo2025} captures realistic repository-level integration complexity, but its 0\% pass@1 above 133~SLoC indicates that build-system and scaffolding failures dominate the signal.
 
-\paragraph{Robustness methodology.} CodeMorph~\cite{CodeMorph2025} applies 26 semantic-preserving transformations to standard code benchmarks (HumanEval, MBPP) to detect data leakage in LLM evaluation. \parbench{}'s augmentation engine shares this principle but applies it to the HPC domain with transforms tailored to C/C++ parallel code: identifier renaming across translation-unit scope, arithmetic rewriting, pointer/array interchange, and typedef expansion. The motivation also differs: CodeMorph primarily diagnoses contamination, while \parbench{} uses augmentation as a robustness probe within the evaluation itself (L0--L4 ablation measures pass-rate degradation under increasing surface-form perturbation).
+% \parbench{} occupies the kernel level between these extremes: complex enough to exercise real parallel patterns (median 271~SLoC, max 3{,}304) while isolating translation capability from repository-integration noise by fixing host code and build infrastructure. VibeCodeHPC~\cite{VibeCodeHPC2025} demonstrates agentic iterative prompting for HPC code generation, but evaluates on two kernels and measures generation from scratch rather than translation of existing parallel implementations across APIs.
 
-TRACY~\cite{TRACY2025} evaluates a complementary axis---execution efficiency of translated code---demonstrating that functional correctness and performance are separable concerns.
+% \paragraph{Verification rigor.} LASSI~\cite{LASSI2024} shares \parbench{}'s conjunctive build-run-verify pipeline and kernel granularity. The key design difference is evaluation protocol: LASSI measures ceiling performance under iterative LLM self-correction, while \parbench{} measures first-attempt translation capability with controlled augmentation. The two are complementary---LASSI answers ``how good can agentic repair get?'' while \parbench{} answers ``what does the model know before repair?'' \parbench{} further differs in scope (35 kernels across 5 suites vs.\ 10 HeCBench kernels, 10 translation directions vs.\ 2) and in its augmentation-based robustness dimension.
 
-\parbench{} deliberately scopes to correctness, which isolates the translation-capability question from performance tuning and enables clean attribution of failures to API-adaptation gaps rather than optimization deficits.
+% CodeRosetta~\cite{CodeRosetta2024} and HPC-Coder-V2~\cite{HPCCoderV2} demonstrate that specialized fine-tuning improves HPC translation, but evaluate primarily via compilation rate and similarity metrics. \parbench{} provides the execution-based substrate needed to determine whether such models produce functionally correct translations, not merely compilable ones.
+
+% \paragraph{Robustness methodology.} CodeMorph~\cite{CodeMorph2025} applies 26 semantic-preserving transformations to standard code benchmarks (HumanEval, MBPP) to detect data leakage in LLM evaluation. \parbench{}'s augmentation engine shares this principle but applies it to the HPC domain with transforms tailored to C/C++ parallel code: identifier renaming across translation-unit scope, arithmetic rewriting, pointer/array interchange, and typedef expansion. The motivation also differs: CodeMorph primarily diagnoses contamination, while \parbench{} uses augmentation as a robustness probe within the evaluation itself (L0--L4 measures pass-rate degradation under increasing surface-form perturbation).
+
+% TRACY~\cite{TRACY2025} evaluates a complementary axis---execution efficiency of translated code---demonstrating that functional correctness and performance are separable concerns.
+
+% \parbench{} deliberately scopes to correctness, which isolates the translation-capability question from performance tuning and enables clean attribution of failures to API-adaptation gaps rather than optimization deficits.
 
 %% ============================================================================
 %% APPENDIX E: Detailed Evaluation Findings
@@ -559,7 +889,7 @@ heatmap.
   \label{fig:transform-freq}
 \end{figure}
 
-Aggregate transform frequencies across the corpus reveal a clear dominance hierarchy. We report the number of Rodinia specs (out of 60) to which each transform applies at L4 (full intensity), followed by the total application count across all 240 augmentation tasks (60~specs $\times$ 4~levels):
+Aggregate transform frequencies across the corpus reveal a clear dominance hierarchy. Below we report the number of Rodinia specs (out of 60) to which each transform applies at L4 (full intensity), followed by the total application count across all 240 augmentation tasks (60~specs $\times$ 4~levels):
   
 \begin{itemize}
   \item \textbf{SwapCondition} (59/60 specs at L4; 162 applications across all levels): The most broadly applicable transform. Swaps operands of comparison operators (e.g., \texttt{a < b} $\rightarrow$ \texttt{b > a}), with guards against expressions containing side effects. Its near-universal coverage reflects the ubiquity of comparison-based control flow in HPC kernels---boundary checks, convergence tests, and branch-based algorithm selection all contribute candidate sites.
@@ -720,7 +1050,8 @@ These findings suggest that multi-file translation failures are not uniformly di
 \label{sec:appendix-e4}
 
 This section expands on the results presented in Section~\ref{sec:results}.
-Across all three models, we collected 2,262 valid translation records: 626 for \qwenshort{} (426~L0 + 200~ablation, after excluding 82 records involving 9~\knownfail{} specs\footnote{The \qwenshort{} canonical total is 626, not 630, because four \texttt{rodinia-backprop-opencl} L1--L4 augmentation records are excluded via the \knownfail{} policy (the OpenCL baseline is broken).}), 822 for \gptnew{} (426~L0 + 396~ablation), and 814 for \codex{} (426~L0 + 388~ablation). \knownfail{} specs were pre-excluded from both GPT evaluation batches.
+Across all three models, we collected 2,262 valid translation records: 626 for \qwenshort{} (426~L0 + 200~augmentations, after excluding 82 records involving 9~\knownfail{} specs\footnote{The \qwenshort{} canonical total is 626, not 630, because four \texttt{rodinia-backprop-opencl} L1--L4 augmentation records are excluded via the \knownfail{} policy (the OpenCL baseline is broken).}), 822 for \gptnew{} (426~L0 + 396~augmentations), and 814 for \codex{} (426~L0 + 388~augmentations). \knownfail{} specs were pre-excluded from both GPT evaluation batches.
+
 
 \paragraph{pass@k Analysis.}
 \begin{table}[h]
@@ -928,7 +1259,7 @@ Python & 3.12.3 \\
   }
 \end{table}
 
-\gptnew{} and \codex{} both maintain $>$85\% pass rates across L1--L4 on all directions, while \qwenshort{} shows a monotonic decline from 74.0\% at L1 to 56.0\% at L4 (Cochran--Armitage $z = -1.84$, $p = 0.065$; trend directionally consistent but not significant at $\alpha = 0.05$ given $n = 50$ per level). On CUDA-to-OMP specifically, both GPT models sustain 81--96\% across augmentation levels, whereas \qwenshort{} fluctuates between 75\% and 83\% on a smaller conditional subset ($n=12$). This pattern suggests that weaker models are more sensitive to surface-form perturbation, though the small L0-conditional sample sizes---particularly for \qwenshort{}---limit the strength of this conclusion.
+\gptnew{} and \codex{} both maintain $>$85\% pass rates across L1--L4 on all directions, while \qwenshort{} shows a monotonic decline from 74.0\% at L1 to 56.0\% at L4 (Cochran--Armitage $z = -1.84$, $p = 0.065$). On CUDA-to-OMP specifically, both GPT models sustain 81--96\% across augmentation levels, whereas \qwenshort{} fluctuates between 75\% and 83\% on a smaller conditional subset ($n=12$). This pattern suggests that weaker models are more sensitive to surface-form perturbation, though the small L0-conditional sample sizes---particularly for \qwenshort{}---limit the strength of this conclusion.
 
 \begin{figure}[t]
 \centering
@@ -1048,7 +1379,7 @@ Direction: OMP$\leftrightarrow$OMP-target (McNemar) & $n_{\text{paired}}=3$, exa
 % src: 31 evaluated kernels = 35 corpus kernels - 4 with all specs KNOWN_FAIL/phantom (kmeans, mummergpu, hybridsort, huffman)
 \begin{table*}[t]
 \centering
-\caption{Full per-kernel pass rates across all 31 evaluated kernels (\qwenshort{}, 626 valid records including L0 and ablation levels, 31~kernels across 5~suites). \knownfail{} source specs excluded.}
+\caption{Full per-kernel pass rates across all 31 evaluated kernels (\qwenshort{}, 626 valid records including L0 and augmentation levels, 31~kernels across 5~suites). \knownfail{} source specs excluded.}
 \label{tab:per-kernel-full}
 \footnotesize
 \begin{tabular}{@{}llrrrrl@{}}
@@ -1095,7 +1426,7 @@ HeCBench & scan & 6 & 0 & 6 & 0.0\% & [0.0\%, 39.0\%] \\
 % src: 31 kernels, total PASS = 621, total tasks = 822 (426 L0 + 396 ablation, KNOWN_FAIL pre-excluded)
 \begin{table*}[t]
 \centering
-\caption{Full per-kernel pass rates across all 31 evaluated kernels (\gptnew{}, 822 valid records including L0 and ablation levels, 31~kernels across 5~suites). \knownfail{} specs pre-excluded from evaluation batch.}
+\caption{Full per-kernel pass rates across all 31 evaluated kernels (\gptnew{}, 822 valid records including L0 and augmentation levels, 31~kernels across 5~suites). \knownfail{} specs pre-excluded from evaluation batch.}
 \label{tab:per-kernel-full-gpt54}
 \footnotesize
 \begin{tabular}{@{}llrrrr@{}}
@@ -1143,7 +1474,7 @@ XSBench & xsbench & 38 & 25 & 13 & 65.8\% \\
 % src: 31 kernels, total PASS = 604, total tasks = 814 (426 L0 + 388 ablation, KNOWN_FAIL pre-excluded)
 \begin{table*}[t]
 \centering
-\caption{Full per-kernel pass rates across all 31 evaluated kernels (\codex{}, 814 valid records including L0 and ablation levels, 31~kernels across 5~suites). \knownfail{} specs pre-excluded from evaluation batch.}
+\caption{Full per-kernel pass rates across all 31 evaluated kernels (\codex{}, 814 valid records including L0 and augmentation levels, 31~kernels across 5~suites). \knownfail{} specs pre-excluded from evaluation batch.}
 \label{tab:per-kernel-full-codex}
 \footnotesize
 \begin{tabular}{@{}llrrrr@{}}
@@ -1254,7 +1585,7 @@ Six anonymization measures are applied during prompt construction to reduce the 
 \section{GPT-5.4 Per-Model Figures}
 \label{sec:appendix-h}
 
-The following figures present per-kernel and per-direction breakdowns for \gptnew{} (822 valid records: 426~L0 + 396~ablation across 31~evaluated kernels). Both use L0 first-sample outcomes to match the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-gpt54} and~\ref{fig:cross-suite-gpt54}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-gpt54}.
+The following figures present per-kernel and per-direction breakdowns for \gptnew{} (822 valid records: 426~L0 + 396~augmentation across 31~evaluated kernels). Both use L0 first-sample outcomes to match the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-gpt54} and~\ref{fig:cross-suite-gpt54}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-gpt54}.
 
 Compared with \qwenshort{}, the most salient differences are: (i)~overall pass rate rises from 36.7\% to 75.5\%; (ii)~\buildfail{} drops from 39.1\% to 15.0\% of records, indicating substantially better API-surface adaptation; and (iii)~11 of 31~kernels achieve ${\geq}$80\% pass rate across their evaluable directions (vs.\ 0 for \qwenshort{}).
 
@@ -1279,7 +1610,7 @@ Compared with \qwenshort{}, the most salient differences are: (i)~overall pass r
 \section{\codex{} Per-Model Figures}
 \label{sec:appendix-i}
 
-The following figures present per-kernel and per-direction breakdowns for \codex{} (814 valid records: 426~L0 + 388~ablation across 31~evaluated kernels). Both use L0 first-sample outcomes, matching the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-codex} and~\ref{fig:cross-suite-codex}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-codex}.
+The following figures present per-kernel and per-direction breakdowns for \codex{} (814 valid records: 426~L0 + 388~augmentation across 31~evaluated kernels). Both use L0 first-sample outcomes, matching the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-codex} and~\ref{fig:cross-suite-codex}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-codex}.
 
 \codex{} achieves a 74.2\% overall pass rate with a failure profile intermediate between \qwenshort{} and \gptnew{}: \buildfail{} accounts for 17.1\% of records (vs.\ 39.1\% for \qwenshort{} and 15.0\% for \gptnew{}). Compared with \gptnew{}, \codex{} shows higher kernel-level consistency---13 of 31~kernels achieve ${\geq}$80\% pass rate (vs.\ 11 for \gptnew{})---despite identical macro pass@1 rates (62.7\%).
 
@@ -1304,7 +1635,7 @@ The following figures present per-kernel and per-direction breakdowns for \codex
 \section{Evaluation Cost Summary}
 \label{sec:appendix-j}
 
-Table~\ref{tab:eval-cost} reports the computational cost of each evaluation campaign. Token counts and response times are aggregated from per-result metadata recorded during evaluation; task counts include all records (canonical L0 and augmentation ablation). The three campaigns ran sequentially on a single GPU workstation over a nine-day window.
+Table~\ref{tab:eval-cost} reports the computational cost of each evaluation campaign. Token counts and response times are aggregated from per-result metadata recorded during evaluation; task counts include all records (canonical L0 and augmentation). The three campaigns ran sequentially on a single GPU workstation over a nine-day window.
 
 % src: per-result JSON metadata in results/evaluation/{together-qwen-3.5-397b-a17b,azure-gpt-5.4,azure-gpt-5.3-codex}/
 % Qwen: 708 files (Apr 21-24), GPT-5.4: 822 files (Apr 25-27), Codex: 814 files (Apr 30-May 1)
@@ -1826,7 +2157,7 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
 \item {\bf New assets}
     \item[] Question: Are new assets introduced in the paper well documented and is the documentation provided alongside the assets?
     \item[] Answer: \answerYes{}
-    \item[] Justification: \parbench{}'s specification schema is documented (Section~\ref{sec:spec-schema}, Appendix~\ref{sec:appendix-a-schema}). The augmentation engine, evaluation pipeline, and harness are described in Section~\ref{sec:framework}. A datasheet following \citet{Datasheets2021} will accompany the code release. The availability plan, hosting, and license summary are provided in Section~\ref{sec:discussion}.
+    \item[] Justification: \parbench{}'s specification schema is documented (Section~\ref{sec:spec-schema}, Appendix~\ref{sec:appendix-a-schema}). The augmentation engine, evaluation pipeline, and harness are described in Section~\ref{sec:framework}. A datasheet following \citet{Datasheets2021} accompanies the submitted artifact. The availability plan, hosting, and license summary are provided in Appendix~A (Artifact Availability).
  
 \item {\bf Crowdsourcing and human subjects}
     \item[] Question: For crowdsourcing experiments and research with human subjects, does the paper include the full text of instructions given to participants?
@@ -1844,4 +2175,3 @@ pass rates of [range]\% at L1--L4 versus [L0~rate]\% at L0.''
     \item[] Justification: Three LLMs (\qwen{}, \gptnew{}, and \codex{}) are the primary subjects of evaluation. Model identifiers, providers, and configurations are fully disclosed in Table~\ref{tab:model-config} and Section~\ref{sec:experimental-setup}.
 
 \end{enumerate}
-}

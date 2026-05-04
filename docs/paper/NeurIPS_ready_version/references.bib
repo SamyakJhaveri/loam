@@ -4,18 +4,6 @@
 %% per SC26 IEEEtran.bst requirement (doi field alone is not rendered; url field required).
 %% Also corrected SWEbenchIllusion2025 author list and title (wrong in original draft).
 
-@inproceedings{Davis2025ParEvalRepo,
-  author    = {Joshua H. Davis and Daniel Nichols and Ishan Khillan and Abhinav Bhatele},
-  title     = {{ParEval-Repo}: A Benchmark Suite for Evaluating {LLMs} with Repository-Level {HPC} Translation Tasks},
-  booktitle = {Proceedings of the 54th International Conference on Parallel Processing},
-  series    = {ICPP '25},
-  pages     = {94--103},
-  year      = {2025},
-  publisher = {Association for Computing Machinery},
-  address   = {New York, NY, USA},
-  doi       = {10.1145/3754598.3754669}
-}
-
 @article{Wang2026RepoTransBench,
   author  = {Yanli Wang and Yanlin Wang and Suiquan Wang and Daya Guo and Jiachi Chen and John Grundy and Xilin Liu and Yuchi Ma and Mingzhi Mao and Hongyu Zhang and Zibin Zheng},
   title   = {{RepoTransBench}: A Real-World Multilingual Benchmark for Repository-Level Code Translation},
@@ -183,21 +171,6 @@
   url       = {https://doi.org/10.1145/3754598.3754669},
 }
 
-@article{RepoTransBench2025,
-  author    = {Yanli Wang and Yanlin Wang and Suiquan Wang and Daya Guo and
-               Jiachi Chen and John Grundy and Xilin Liu and Yuchi Ma and
-               Mingzhi Mao and Hongyu Zhang and Zibin Zheng},
-  title     = {{RepoTransBench}: A Real-World Multilingual Benchmark for
-               Repository-Level Code Translation},
-  journal   = {IEEE Transactions on Software Engineering},
-  volume    = {52},
-  number    = {2},
-  pages     = {675--690},
-  year      = {2026},
-  doi       = {https://doi.org/10.1109/tse.2025.3645056},
-  url       = {https://doi.org/10.1109/TSE.2025.3645056},
-}
-
 @inproceedings{Rodinia2009,
   author    = {Shuai Che and Michael Boyer and Jiayuan Meng and David Tarjan and
                Jeremy W. Sheaffer and Sang-Ha Lee and Kevin Skadron},
@@ -230,7 +203,6 @@
   title     = {Unsupervised Translation of Programming Languages},
   booktitle = {Advances in Neural Information Processing Systems 33 ({NeurIPS})},
   year      = {2020},
-  doi       = {https://dl.acm.org/doi/10.5555/3495724.3497454},
   url       = {https://proceedings.neurips.cc/paper/2020/hash/ed23fbf18c2cd35f8c7f8de44f85c08d-Abstract.html},
 }
 
@@ -243,7 +215,7 @@
                Reactors ({PHYSOR})},
   year      = {2014},
   address   = {Kyoto, Japan},
-  doi       = {https://www.mcs.anl.gov/papers/P5064-0114.pdf},
+  url       = {https://www.mcs.anl.gov/papers/P5064-0114.pdf},
 }
 
 @techreport{RSBench2014,
@@ -409,4 +381,247 @@ year      = {2025},
 eprint    = {2503.02296},
 archivePrefix = {arXiv},
 url       = {https://arxiv.org/abs/2503.02296}
+}
+
+
+%%%%%%%%% RELATED %%%%%%%%%%
+
+@inproceedings{ComPar2020,
+  title = {{ComPar}: Optimized Multi-Compiler for Automatic {OpenMP} {S2S} Parallelization},
+  author = {Mosseri, Idan and Alon, Lee-or and Harel, Re'em and Oren, Gal},
+  booktitle = {OpenMP: Portable Multi-Level Parallelism on Modern Systems},
+  series = {Lecture Notes in Computer Science},
+  volume = {12295},
+  pages = {247--262},
+  publisher = {Springer},
+  year = {2020},
+  doi = {10.1007/978-3-030-58144-2_16},
+  url = {https://doi.org/10.1007/978-3-030-58144-2_16}
+}
+
+@inproceedings{LearningToParallelize2023,
+  title = {Learning to Parallelize in a Shared-Memory Environment with Transformers},
+  author = {Harel, Re'em and Pinter, Yuval and Oren, Gal},
+  booktitle = {Proceedings of the 28th ACM SIGPLAN Annual Symposium on Principles and Practice of Parallel Programming},
+  pages = {450--452},
+  publisher = {ACM},
+  year = {2023},
+  doi = {10.1145/3572848.3582565},
+  url = {https://doi.org/10.1145/3572848.3582565}
+}
+
+@inproceedings{MPIRICAL2023,
+  title = {{MPI-RICAL}: Data-Driven {MPI} Distributed Parallelism Assistance with Transformers},
+  author = {Schneider, Nadav and Kadosh, Tal and Hasabnis, Niranjan and Mattson, Timothy and Pinter, Yuval and Oren, Gal},
+  booktitle = {Proceedings of the SC '23 Workshops of the International Conference on High Performance Computing, Network, Storage, and Analysis},
+  pages = {2--10},
+  publisher = {ACM},
+  year = {2023},
+  doi = {10.1145/3624062.3624063},
+  url = {https://doi.org/10.1145/3624062.3624063}
+}
+
+@inproceedings{OpenMPGraphTransformer2023,
+  title = {Advising {OpenMP} Parallelization via a Graph-Based Approach with Transformers},
+  author = {Kadosh, Tal and Schneider, Nadav and Hasabnis, Niranjan and Mattson, Timothy G. and Pinter, Yuval and Oren, Gal},
+  booktitle = {OpenMP: Advanced Task-Based, Device and Compiler Programming},
+  series = {Lecture Notes in Computer Science},
+  volume = {14114},
+  pages = {3--17},
+  publisher = {Springer},
+  year = {2023},
+  doi = {10.1007/978-3-031-40744-4_1},
+  url = {https://doi.org/10.1007/978-3-031-40744-4_1}
+}
+
+@inproceedings{QuantifyingOpenMP2023,
+  title = {Quantifying {OpenMP}: Statistical Insights into Usage and Adoption},
+  author = {Kadosh, Tal and Hasabnis, Niranjan and Mattson, Timothy and Pinter, Yuval and Oren, Gal},
+  booktitle = {2023 IEEE High Performance Extreme Computing Conference},
+  pages = {1--7},
+  publisher = {IEEE},
+  year = {2023},
+  doi = {10.1109/HPEC58863.2023.10363459},
+  url = {https://doi.org/10.1109/HPEC58863.2023.10363459}
+}
+
+@inproceedings{MPIrigen2024,
+  title = {{MPIrigen}: {MPI} Code Generation through Domain-Specific Language Models},
+  author = {Schneider, Nadav and Hasabnis, Niranjan and Vo, Vy A. and Kadosh, Tal and Krien, Neva and Capot{\u{a}}, Mihai and Tamir, Guy and Willke, Theodore L. and Ahmed, Nesreen K. and Pinter, Yuval and Mattson, Timothy G. and Oren, Gal},
+  booktitle = {Proceedings of the 2024 Workshop on AI for Systems},
+  pages = {1--6},
+  publisher = {ACM},
+  year = {2024},
+  doi = {10.1145/3660605.3660944},
+  url = {https://doi.org/10.1145/3660605.3660944}
+}
+
+@inproceedings{MonoCoder2024,
+  title = {{MonoCoder}: Domain-Specific Code Language Model for {HPC} Codes and Tasks},
+  author = {Kadosh, Tal and Hasabnis, Niranjan and Vo, Vy A. and Schneider, Nadav and Krien, Neva and Capot{\u{a}}, Mihai and Wasay, Abdul and Tamir, Guy and Willke, Ted and Ahmed, Nesreen K. and Pinter, Yuval and Mattson, Timothy G. and Oren, Gal},
+  booktitle = {2024 IEEE High Performance Extreme Computing Conference},
+  pages = {1--7},
+  publisher = {IEEE},
+  year = {2024},
+  doi = {10.1109/HPEC62836.2024.10938441},
+  url = {https://doi.org/10.1109/HPEC62836.2024.10938441}
+}
+
+@article{PragFormer2025,
+  title = {{PragFormer}: Data-Driven Parallel Source Code Classification with Transformers},
+  author = {Harel, Re'em and Kadosh, Tal and Hasabnis, Niranjan and Mattson, Timothy G. and Pinter, Yuval and Oren, Gal},
+  journal = {International Journal of Parallel Programming},
+  volume = {53},
+  number = {1},
+  pages = {2},
+  year = {2025},
+  doi = {10.1007/s10766-024-00778-9},
+  url = {https://doi.org/10.1007/s10766-024-00778-9}
+}
+
+@article{OMPar2024,
+  title = {{OMPar}: Automatic Parallelization with AI-Driven Source-to-Source Compilation},
+  author = {Kadosh, Tal and Hasabnis, Niranjan and Soundararajan, Prema and Vo, Vy A. and Capot{\u{a}}, Mihai and Ahmed, Nesreen K. and Pinter, Yuval and Oren, Gal},
+  journal = {arXiv preprint arXiv:2409.14771},
+  year = {2024},
+  doi = {10.48550/arXiv.2409.14771},
+  url = {https://arxiv.org/abs/2409.14771}
+}
+
+@inproceedings{AutoParLLM2025,
+  title = {{AutoParLLM}: {GNN}-guided Context Generation for Zero-Shot Code Parallelization using {LLM}s},
+  author = {Mahmud, Quazi Ishtiaque and TehraniJamsaz, Ali and Phan, Hung D. and Chen, Le and Capot{\u{a}}, Mihai and Willke, Theodore L. and Ahmed, Nesreen K. and Jannesari, Ali},
+  booktitle = {Proceedings of the 2025 Conference of the Nations of the Americas Chapter of the Association for Computational Linguistics: Human Language Technologies (Volume 1: Long Papers)},
+  pages = {11821--11841},
+  publisher = {Association for Computational Linguistics},
+  year = {2025},
+  doi = {10.18653/v1/2025.naacl-long.593},
+  url = {https://aclanthology.org/2025.naacl-long.593/}
+}
+
+@article{OpenMPAssessment2024,
+  title = {An Assessment of Large Language Models for {OpenMP}-Based Code Parallelization: A User Perspective},
+  author = {Mi{\v{s}}i{\'c}, Marko and Dodovi{\'c}, Matija},
+  journal = {Journal of Big Data},
+  volume = {11},
+  pages = {161},
+  year = {2024},
+  doi = {10.1186/s40537-024-01019-z},
+  url = {https://doi.org/10.1186/s40537-024-01019-z}
+}
+
+@inproceedings{PCEBench2025,
+  title = {{PCEBench}: A Multi-Dimensional Benchmark for Evaluating Large Language Models in Parallel Code Generation},
+  author = {Chen, Le and Ahmed, Nesreen K. and Capot{\u{a}}, Mihai and Willke, Ted and Hasabnis, Niranjan and Jannesari, Ali},
+  booktitle = {2025 IEEE International Parallel and Distributed Processing Symposium},
+  pages = {546--557},
+  publisher = {IEEE},
+  year = {2025},
+  doi = {10.1109/IPDPS64566.2025.00055},
+  url = {https://doi.org/10.1109/IPDPS64566.2025.00055}
+}
+
+@inproceedings{HPCCoder2024,
+  title = {{HPC-Coder}: Modeling Parallel Programs Using Large Language Models},
+  author = {Nichols, Daniel and Marathe, Aniruddha and Menon, Harshitha and Gamblin, Todd and Bhatele, Abhinav},
+  booktitle = {ISC High Performance 2024 Research Paper Proceedings},
+  pages = {1--12},
+  publisher = {IEEE},
+  year = {2024},
+  doi = {10.23919/ISC.2024.10528929},
+  url = {https://doi.org/10.23919/ISC.2024.10528929}
+}
+
+@article{UniPar2025,
+  title = {{UniPar}: A Unified {LLM}-Based Framework for Parallel and Accelerated Code Translation in {HPC}},
+  author = {Bitan, Tomer and Kadosh, Tal and Kaplan, Erel and Meiri, Shira and Chen, Le and Morales, Peter and Hasabnis, Niranjan and Oren, Gal},
+  journal = {arXiv preprint arXiv:2509.12136},
+  year = {2025},
+  doi = {10.48550/arXiv.2509.12136},
+  url = {https://arxiv.org/abs/2509.12136}
+}
+
+@inproceedings{ChatPORT2025,
+  title = {{ChatPORT}: Fine-Tuned {LLM} for Easy Code {PORT}ing},
+  author = {Pophale, Swaroop and Jin, Zheming and Teranishi, Keita},
+  booktitle = {OpenMP: Balancing Productivity and Performance Portability},
+  series = {Lecture Notes in Computer Science},
+  volume = {16123},
+  pages = {197--211},
+  publisher = {Springer},
+  year = {2025},
+  doi = {10.1007/978-3-032-06343-4_13},
+  url = {https://doi.org/10.1007/978-3-032-06343-4_13}
+}
+
+@inproceedings{ChatPORTSYCL2025,
+  title = {Enhancing {ChatPORT} with {CUDA}-to-{SYCL} Kernel Translation Capability},
+  author = {Jin, Zheming and Pophale, Swaroop and Teranishi, Keita},
+  booktitle = {Proceedings of the SC '25 Workshops of the International Conference for High Performance Computing, Networking, Storage and Analysis},
+  pages = {524--533},
+  publisher = {ACM},
+  year = {2025},
+  doi = {10.1145/3731599.3767398},
+  url = {https://doi.org/10.1145/3731599.3767398}
+}
+
+@inproceedings{ChatMPI2026,
+  title = {{ChatMPI}: {LLM}-Driven {MPI} Code Generation for {HPC} Workloads},
+  author = {Valero-Lara, Pedro and Young, Aaron and Naughton, Thomas III and Engelmann, Christian and Geist, Al and Vetter, Jeffrey S. and Teranishi, Keita and Godoy, William F.},
+  booktitle = {Proceedings of Supercomputing Asia and International Conference on High Performance Computing in Asia Pacific Region},
+  pages = {19--30},
+  publisher = {ACM},
+  year = {2026},
+  doi = {10.1145/3773656.3773659},
+  url = {https://doi.org/10.1145/3773656.3773659}
+}
+
+@article{LargeLLMEvalHPC2024,
+  title = {Large Language Model Evaluation for High-Performance Computing Software Development},
+  author = {Godoy, William F. and Valero-Lara, Pedro and Teranishi, Keita and Balaprakash, Prasanna and Vetter, Jeffrey S.},
+  journal = {Concurrency and Computation: Practice and Experience},
+  volume = {36},
+  number = {26},
+  pages = {e8269},
+  year = {2024},
+  doi = {10.1002/cpe.8269},
+  url = {https://doi.org/10.1002/cpe.8269}
+}
+
+@inproceedings{KernelBench2025,
+  title = {{KernelBench}: Can {LLM}s Write Efficient {GPU} Kernels?},
+  author = {Ouyang, Anne and Guo, Simon and Arora, Simran and Zhang, Alex L. and Hu, William and R{\'e}, Christopher and Mirhoseini, Azalia},
+  booktitle = {Proceedings of the 42nd International Conference on Machine Learning},
+  year = {2025},
+  doi = {10.48550/arXiv.2502.10517},
+  url = {https://arxiv.org/abs/2502.10517}
+}
+
+@article{Mercury2024,
+  title = {Mercury: An Efficiency Benchmark for {LLM} Code Synthesis},
+  author = {Du, Mingzhe and Luu, Anh Tuan and Ji, Bin and Ng, See-Kiong},
+  journal = {arXiv preprint arXiv:2402.07844},
+  year = {2024},
+  doi = {10.48550/arXiv.2402.07844},
+  url = {https://arxiv.org/abs/2402.07844}
+}
+
+@article{SemanticCodeRewrite2025,
+  title = {Memorize or Generalize? Evaluating {LLM} Code Generation with Code Rewriting},
+  author = {Zhang, Lizhe and Chen, Wentao and Zhong, Li and Peng, Letian and Wang, Zilong and Shang, Jingbo},
+  journal = {arXiv preprint arXiv:2503.02296},
+  year = {2025},
+  doi = {10.48550/arXiv.2503.02296},
+  url = {https://arxiv.org/abs/2503.02296}
+}
+
+@article{CuratedOpenMPDataset2026,
+  author  = {Etienne, Nichole and Garcia de Gonzalo, Simon and Arnold, Dorian},
+  title   = {OpenMP-Annotated Code Dataset for Large Language Model Fine-Tuning on Parallel Programming Tasks},
+  journal = {Frontiers in High Performance Computing},
+  volume  = {4},
+  pages   = {1771927},
+  year    = {2026},
+  doi     = {10.3389/fhpcp.2026.1771927},
+  url     = {https://doi.org/10.3389/fhpcp.2026.1771927}
 }

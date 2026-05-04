@@ -1,6 +1,6 @@
 \documentclass{article}
 
-\usepackage{neurips_2026}
+\usepackage[eandd]{neurips_2026} 
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -25,6 +25,13 @@
 \pgfplotsset{compat=1.18}
 \usepgfplotslibrary{statistics,colorbrewer}
 \usetikzlibrary{patterns,positioning,calc}
+\usepackage{longtable}
+\usepackage{pdflscape}
+\usepackage{array}
+\usepackage{ragged2e}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{ragged2e}
 
 % ParBench colour palette
 \definecolor{pbPass}{RGB}{44,160,44}
@@ -127,6 +134,7 @@
 
 \input{sections/abstract}
 \input{sections/1-introduction}
+\input{sections/related-work}
 \input{sections/framework}
 \input{sections/benchmark-curation}
 \input{sections/experimental-setup}
