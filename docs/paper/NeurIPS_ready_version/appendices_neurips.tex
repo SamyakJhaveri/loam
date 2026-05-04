@@ -466,7 +466,7 @@ The benchmark landscape survey initially covered 71 repositories spanning benchm
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{api_cooccurrence_heatmap.png}
+    \input{NeurIPS_ready_version/figures/figures_tek_version/api_cooccurrence_heatmap}
     \caption{API co-occurrence heatmap across all 71 surveyed repositories. Cell values indicate the number of repositories providing implementations in both the row and column APIs.}
     \label{fig:api-heatmap}
 \end{figure}
@@ -688,7 +688,7 @@ The selection of individual kernels for \parbench{}'s evaluation corpus required
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{kernel_api_bubble.png}
+    \input{NeurIPS_ready_version/figures/figures_tek_version/kernel_api_bubble}
     \caption{Benchmark kernel richness (y-axis, capped at 100 for readability) vs.\
     API breadth (x-axis, number of APIs supported). Bubble size proportional to total kernel count; color indicates benchmark type. HeCBench (522 kernels, 6~APIs\protect\footnote{HeCBench's 6-API count treats OpenMP threading and OpenMP-target offloading as distinct APIs and includes limited MPI support; the four primary implementation directories are CUDA, HIP, SYCL, and OpenMP.}) dominates the upper region. RAJAPerf (80 kernels, 5~APIs) is the second-largest. CloverLeaf (23 kernels, 11~APIs) and BabelStream (5 kernels, 12~APIs) occupy the high-API-breadth region but with far fewer kernels. The optimal candidates for corpus construction lie in the high-kernel, moderate-API quadrant (upper-center).}
   \label{fig:kernel-api-bubble}
@@ -1075,7 +1075,8 @@ Hard fail (0/3) & 92 tasks (64.8\%) \\
 The 36.7\% per-record rate (Table~\ref{tab:overall-pass}) treats each sample and augmentation level independently. The pass@$k$ analysis (Table~\ref{tab:pass-at-k-main}) restricts to the 142~L0 tasks and macro-averages over tasks to estimate single-sample and three-sample success probabilities, with each task generating three independent samples at temperature~0.7. The gap between pass@1 (23.9\%) and pass@3 (35.2\%) is 11.3\%: only 31 of 142 tasks show within-task variability (1 or 2 of 3 samples pass); none of the 92 hard failures (0/3) benefit from resampling. This confirms that failures are predominantly systematic rather than stochastic.
 
 
-\paragraph{Representative Per-Kernel Pass Rates.}
+\paragraph{Representative Per-Kernel Pass Rates.}\label{par:per-kernel-main}
+Table~\ref{tab:per-kernel-main} highlights the easiest and hardest kernels for \qwenshort{}.
 \begin{table}[h]
 \centering
 \caption{Representative per-kernel pass rates for \qwenshort{} across all directions and augmentation levels (626 records, 31~evaluated kernels---4~curated kernels have no evaluable translation pairs).}
@@ -1121,7 +1122,7 @@ L4 & 10/12 & 83.3\% & 10/12 \phantom{0}(83\%) \\
 \end{tabular}
 \end{table}
 
-If baseline success were driven primarily by surface-form memorization, augmented source variants should degrade pass rates. On a balanced 12-kernel CUDA-to-OpenMP subset present at all five augmentation levels, pass rates remain between 75\% and 83\% at L1--L4. The L0 rate on this subset (80.6\%) exceeds the overall CUDA-to-OpenMP L0 rate (40.3\%) because the ablation filter selects kernels that already pass at L0, creating a survivorship bias toward easier kernels. We computed Cochran--Armitage trend tests, but two confounds undermine their interpretability: the 3:1 ratio of L0 to L1--L4 sample sizes on this subset, and the survivorship selection inherent in L0-conditional ablation. The observed stability is compatible with some robustness to surface-form perturbation, though it does not rule out memorization at other levels of abstraction.
+If baseline success were driven primarily by surface-form memorization, augmented source variants should degrade pass rates. On a balanced 12-kernel CUDA-to-OpenMP subset present at all five augmentation levels (Table~\ref{tab:aug-balanced}), pass rates remain between 75\% and 83\% at L1--L4. The L0 rate on this subset (80.6\%) exceeds the overall CUDA-to-OpenMP L0 rate (40.3\%) because the ablation filter selects kernels that already pass at L0, creating a survivorship bias toward easier kernels. We computed Cochran--Armitage trend tests, but two confounds undermine their interpretability: the 3:1 ratio of L0 to L1--L4 sample sizes on this subset, and the survivorship selection inherent in L0-conditional ablation. The observed stability is compatible with some robustness to surface-form perturbation, though it does not rule out memorization at other levels of abstraction.
 
 
 %% ============================================================================
@@ -1132,7 +1133,7 @@ If baseline success were driven primarily by surface-form memorization, augmente
 \label{sec:appendix-f}
 
 This appendix contains detailed evidence tables and figures referenced from the main text.
-Floats are ordered by their original section appearance.
+Floats are ordered by their original section appearance. Per-kernel translation heatmaps appear in Figure~\ref{fig:f3-qwen} (\qwenshort{}), Figure~\ref{fig:f3-gpt} (\gptnew{}), and Figure~\ref{fig:f3-codex} (\codex{}). Pass@$k$ by direction appears in Figures~\ref{fig:pass-at-k-qwen}, \ref{fig:pass-at-k-gpt54}, and~\ref{fig:pass-at-k-codex}. Cross-suite comparisons appear in Figures~\ref{fig:cross-suite-qwen}, \ref{fig:cross-suite-gpt54}, and~\ref{fig:cross-suite-codex}. Table~\ref{tab:stats-summary} summarizes the direction asymmetry and augmentation trend tests for \qwenshort{}.
 
 % --- From Section 4 (Benchmark Curation) ---
 
@@ -1259,7 +1260,7 @@ Python & 3.12.3 \\
   }
 \end{table}
 
-\gptnew{} and \codex{} both maintain $>$85\% pass rates across L1--L4 on all directions, while \qwenshort{} shows a monotonic decline from 74.0\% at L1 to 56.0\% at L4 (Cochran--Armitage $z = -1.84$, $p = 0.065$). On CUDA-to-OMP specifically, both GPT models sustain 81--96\% across augmentation levels, whereas \qwenshort{} fluctuates between 75\% and 83\% on a smaller conditional subset ($n=12$). This pattern suggests that weaker models are more sensitive to surface-form perturbation, though the small L0-conditional sample sizes---particularly for \qwenshort{}---limit the strength of this conclusion.
+Table~\ref{tab:augmentation-rates} reports pass rates across all augmentation levels. \gptnew{} and \codex{} both maintain $>$85\% pass rates across L1--L4 on all directions, while \qwenshort{} shows a monotonic decline from 74.0\% at L1 to 56.0\% at L4 (Cochran--Armitage $z = -1.84$, $p = 0.065$). On CUDA-to-OMP specifically, both GPT models sustain 81--96\% across augmentation levels, whereas \qwenshort{} fluctuates between 75\% and 83\% on a smaller conditional subset ($n=12$). This pattern suggests that weaker models are more sensitive to surface-form perturbation, though the small L0-conditional sample sizes---particularly for \qwenshort{}---limit the strength of this conclusion. Figure~\ref{fig:augmentation} plots the augmentation robustness trend across all three models; Figure~\ref{fig:aug-heatmap} shows the per-kernel augmentation status for the CUDA-to-OMP subset under \qwenshort{}.
 
 \begin{figure}[t]
 \centering
@@ -1297,7 +1298,7 @@ Model & Pairs & pass@1 & pass@3 & Hard Fail & Noisy & Always Pass \\
 \end{tabular}
 \end{table*}
 
-\gptnew{} and \codex{} share identical pass@1 rates (62.7\%) but differ in consistency: \codex{} has more deterministic behavior, with 57.0\% of pairs always passing (vs.\ 53.5\% for \gptnew{}) and fewer noisy pairs (11.3\% vs.\ 16.2\%). The pass@1-to-pass@3 gap is correspondingly narrower for \codex{} (5.6\,pp vs.\ 7.0\,pp). This pattern suggests code-specialized training yields more consistent but not more capable translations at this task difficulty. Across all three models, the majority of failures are hard failures (0/3 samples pass), confirming that incorrect translations are systematic---typically wrong API mappings---rather than stochastic errors recoverable by resampling.
+The full pass@$k$ estimates appear in Table~\ref{tab:pass-at-k}. \gptnew{} and \codex{} share identical pass@1 rates (62.7\%) but differ in consistency: \codex{} has more deterministic behavior, with 57.0\% of pairs always passing (vs.\ 53.5\% for \gptnew{}) and fewer noisy pairs (11.3\% vs.\ 16.2\%). The pass@1-to-pass@3 gap is correspondingly narrower for \codex{} (5.6\,pp vs.\ 7.0\,pp). This pattern suggests code-specialized training yields more consistent but not more capable translations at this task difficulty. Across all three models, the majority of failures are hard failures (0/3 samples pass), confirming that incorrect translations are systematic---typically wrong API mappings---rather than stochastic errors recoverable by resampling.
 
 \begin{figure}[htbp]
 \centering
@@ -1610,7 +1611,7 @@ Compared with \qwenshort{}, the most salient differences are: (i)~overall pass r
 \section{\codex{} Per-Model Figures}
 \label{sec:appendix-i}
 
-The following figures present per-kernel and per-direction breakdowns for \codex{} (814 valid records: 426~L0 + 388~augmentation across 31~evaluated kernels). Both use L0 first-sample outcomes, matching the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-codex} and~\ref{fig:cross-suite-codex}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-codex}.
+The following figures present per-kernel and per-direction breakdowns for \codex{} (814 valid records: 426~L0 + 388~augmentation across 31~evaluated kernels). Both use L0 first-sample outcomes, matching the visualization convention in Figure~\ref{fig:failure-taxonomy}. Pass@$k$ by direction and cross-suite comparisons appear in Appendix~\ref{sec:appendix-f} (Figures~\ref{fig:pass-at-k-codex} and~\ref{fig:cross-suite-codex}). The full per-kernel table is in Table~\ref{tab:per-kernel-full-codex}. The failure taxonomy appears in Figure~\ref{fig:f4-codex}.
 
 \codex{} achieves a 74.2\% overall pass rate with a failure profile intermediate between \qwenshort{} and \gptnew{}: \buildfail{} accounts for 17.1\% of records (vs.\ 39.1\% for \qwenshort{} and 15.0\% for \gptnew{}). Compared with \gptnew{}, \codex{} shows higher kernel-level consistency---13 of 31~kernels achieve ${\geq}$80\% pass rate (vs.\ 11 for \gptnew{})---despite identical macro pass@1 rates (62.7\%).
 

@@ -352,17 +352,14 @@
 \TranslationStatusCell{5}{34}{--}
 \TranslationStatusCell{6}{34}{--}
 \TranslationStatusCell{7}{34}{--}
-% Legend
-\addlegendimage{area legend, fill=pbPass!85, draw=black, line width=0.3pt}
-\addlegendentry{Pass}
-\addlegendimage{area legend, fill=pbBuildFail!85, draw=black, line width=0.3pt}
-\addlegendentry{Build Fail}
-\addlegendimage{area legend, fill=pbRunFail!85, draw=black, line width=0.3pt}
-\addlegendentry{Run Fail}
-\addlegendimage{area legend, fill=pbVerifyFail!85, draw=black, line width=0.3pt}
-\addlegendentry{Verify Fail}
-\addlegendimage{area legend, fill=pbNA!55, draw=black, line width=0.3pt}
-\addlegendentry{N/A}
+\draw[white, line width=0.45pt] (axis cs:-0.5,-0.5) grid[xstep=1, ystep=1] (axis cs:7.5,34.5);
+\draw[black, line width=1.0pt] (axis cs:-0.5,22.5) -- (axis cs:7.5,22.5);
+\draw[black, line width=1.0pt] (axis cs:-0.5,24.5) -- (axis cs:7.5,24.5);
+\addlegendimage{area legend, fill=pbPass!85, draw=none} \addlegendentry{PASS}
+\addlegendimage{area legend, fill=pbBuildFail!85, draw=none} \addlegendentry{BUILD FAIL}
+\addlegendimage{area legend, fill=pbRunFail!85, draw=none} \addlegendentry{RUN FAIL}
+\addlegendimage{area legend, fill=pbVerifyFail!85, draw=none} \addlegendentry{VERIFY FAIL}
+\addlegendimage{area legend, fill=pbNA!55, draw=none} \addlegendentry{NO EVAL}
 \end{axis}
 \end{tikzpicture}
 \endgroup
