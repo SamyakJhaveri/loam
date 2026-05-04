@@ -36,7 +36,7 @@
 \includegraphics[width=\textwidth]{parbench_architecture}
 \caption{
 \textbf{\textsc{\parbench{}} isolates parallel API translation from repository-level confounds.}
-The benchmark pipeline starts by selecting representative parallel APIs and curating executable kernel specifications from multi-API HPC suites. Each specification fixes the build, run, and verification context, while the model is asked to translate only the computational kernel code. Semantics-preserving AST augmentations create surface-varied source variants for robustness testing, and translated outputs are evaluated through an end-to-end build--run--verify harness with conjunctive correctness checks. The final outcome taxonomy separates successful translations from extraction, build, runtime, and verification failures, enabling both aggregate scoring and diagnostic analysis of where parallel translation breaks.
+The benchmark pipeline starts by selecting representative parallel APIs and curating executable kernel specifications from multi-API HPC suites. Each specification fixes the build, run, and verification context, while the model is asked to translate only the computational kernel code. Semantics-preserving AST augmentations create surface-varied source variants for robustness testing, and translated outputs are evaluated through an end-to-end build--run--verify harness with conjunctive correctness checks. The final outcome taxonomy separates harness-passing translations (oracle \pass{}: compiled, ran, and satisfied the spec's declared correctness oracle) successful translations from extraction, build, runtime, and verification failures, enabling both aggregate scoring and diagnostic analysis of where parallel translation breaks.
 }
 \label{fig:architecture}
 \end{figure*}
@@ -52,13 +52,13 @@ We present \textsc{\parbench{}}, a benchmark framework designed to answer these 
 
 This paper makes three contributions:
 
-\begin{itemize}[leftmargin=1.2em, labelsep=0.45em, itemsep=0.35em, topsep=0.30em]
+\begin{itemize}%[leftmargin=1.2em, labelsep=0.45em, itemsep=0.35em, topsep=0.30em]
 \item \textbf{Parallel code translation benchmark.} We introduce \textsc{\parbench{}}, a benchmark for LLM-based parallel code translation that provides executable kernel specifications spanning five HPC benchmark suites, six standard translation directions among CUDA, OpenMP, and OpenCL, and four OpenMP-target case-study directions. By fixing the surrounding build infrastructure as context, \textsc{\parbench{}} enables direct build-run-verify evaluation of kernel translation without the build-system-generation confound identified by repository-level work.
 
 \item \textbf{AST-driven augmentation engine.} We develop an augmentation engine with six semantics-preserving source-level transformations applied at four intensity levels (L1--L4). The engine produces structurally varied but functionally equivalent source variants, allowing us to test whether models preserve parallel semantics beyond surface similarity to widely circulated benchmark code.
 
 % src: quantitative_findings_*.json > metadata > file_counts > valid_after_exclusion (626+822+814=2262)
-\item \textbf{Empirical characterization.} Across three models and 2{,}262 valid translation records, we report a multi-suite, multi-direction evaluation of LLM-based parallel code translation under stochastic sampling with pass@$k$ analysis. Pass@1 ranges from 23.9\% (\qwenshort{}) to 62.7\% (\gptnew{} and \codex{}) on 142 unique no-augmentation (L0) tasks, with the code-specialized \codex{} statistically indistinguishable from the general-purpose \gptnew{}. Key findings include build-stage API adaptation as the main bottleneck, strong direction and file-boundary effects, broad stability under augmentation, and limited gains from repeated sampling.
+\item \textbf{Empirical characterization.} Across three models and 2{,}262 valid translation records, we report a multi-suite, multi-direction evaluation of LLM-based parallel code translation under stochastic sampling with pass@$k$ analysis. Pass@1 ranges from 23.9\% (\qwenshort{}) to 62.7\% (\gptnew{} and \codex{}) on 142 unique no-augmentation (L0) tasks, with the code-specialized \codex{} statistically indistinguishable from the general-purpose \gptnew{}. Key findings include build-stage API adaptation as the main bottleneck, strong direction and file-boundary effects, generally stable performance under augmentation with model-dependent variation at higher levels, and limited gains from repeated sampling (with $n{=}3$ samples, most failures remain hard failures across all attempts).
 \end{itemize}
 
 % \section{Introduction}

@@ -1,0 +1,132 @@
+% F4-unified: Failure taxonomy across three models (side-by-side, figure* layout)
+% Data: L0, first sample per task, 6 standard directions, KNOWN_FAIL excluded
+% Qwen: 120 tasks (24+24+19+19+17+17)
+% GPT-5.4 / GPT-5.3-Codex: 120 tasks (same 6 standard dirs; OMP-target omitted for comparability)
+%
+% Include inside \begin{figure*}[t] ... \end{figure*} in the parent file.
+%
+
+% F4-unified: Failure taxonomy across three models.
+% Data: L0, first sample per task, 6 standard directions, KNOWN_FAIL excluded.
+% Direction totals per model: 24, 24, 19, 19, 17, 17 (120 tasks).
+% OMP-target directions are omitted for cross-model comparability.
+%
+% Include inside \begin{figure*}[t] ... \end{figure*} in the parent file.
+
+\begingroup
+\pgfplotsset{
+  ffour failure axis/.style={
+    width=\linewidth,
+    height=4.9cm,
+    ybar stacked,
+    bar width=0.34cm,
+    enlarge x limits=0.07,
+    xtick={0,...,5},
+    xticklabels={
+        {\ensuremath{\mathrm{CUDA}{\to}\mathrm{OMP}}},
+        {\ensuremath{\mathrm{OMP}{\to}\mathrm{CUDA}}},
+        {\ensuremath{\mathrm{CUDA}{\to}\mathrm{OCL}}},
+        {\ensuremath{\mathrm{OCL}{\to}\mathrm{CUDA}}},
+        {\ensuremath{\mathrm{OMP}{\to}\mathrm{OCL}}},
+       {\ensuremath{\mathrm{OCL}{\to}\mathrm{OMP}}}},
+    xticklabel style={font=\scriptsize, rotate=45, anchor=north east},
+    yticklabel style={font=\footnotesize},
+    xmin=-0.55,
+    xmax=5.55,
+    ymin=0,
+    ymax=26,
+    ytick={0,5,10,15,20,25},
+    title style={font=\small\bfseries, align=center},
+    ymajorgrids=true,
+    xmajorgrids=false,
+    major grid style={dashed, draw=gray!40},
+    tick pos=left,
+    clip=false,
+  },
+  ffour segment/.style={
+    ybar stacked,
+    draw=black,
+    line width=0.3pt,
+    fill opacity=0.9,
+    nodes near coords={
+      \pgfmathfloattoint{\pgfplotspointmeta}%
+      \ifnum\pgfmathresult>1\relax\pgfmathresult\fi},
+    nodes near coords align={center},
+    every node near coord/.style={
+      font=\tiny\bfseries,
+      text=white,
+      inner sep=1pt,
+    },
+  },
+}
+
+\newcommand{\ffourpanel}[7]{%
+  \begin{minipage}[t]{0.315\textwidth}
+  \centering
+  \begin{tikzpicture}
+  \begin{axis}[
+    ffour failure axis,
+    title={#1},
+    #2
+  ]
+    \addplot[ffour segment, fill=pbPass]
+      coordinates {#3};
+    \addplot[ffour segment, fill=pbBuildFail]
+      coordinates {#4};
+    \addplot[ffour segment, fill=pbRunFail]
+      coordinates {#5};
+    \addplot[ffour segment, fill=pbExtractionFail]
+      coordinates {#6};
+    \addplot[ffour segment, fill=pbVerifyFail]
+      coordinates {#7};
+  \end{axis}
+  \end{tikzpicture}
+  \end{minipage}%
+}
+
+\ffourpanel{\qwenshort{}}%
+  {ylabel={Tasks}, ylabel style={font=\footnotesize}}%
+  {(0,9) (1,5) (2,1) (3,0) (4,4) (5,1)}%
+  {(0,12) (1,18) (2,0) (3,17) (4,0) (5,12)}%
+  {(0,1) (1,0) (2,16) (3,2) (4,11) (5,1)}%
+  {(0,0) (1,0) (2,0) (3,0) (4,0) (5,0)}%
+  {(0,2) (1,1) (2,2) (3,0) (4,2) (5,3)}%
+\hfill
+\ffourpanel{\gptnew{}}%
+  {yticklabels={,,,,,,}}%
+  {(0,21) (1,14) (2,11) (3,5) (4,12) (5,6)}%
+  {(0,3) (1,8) (2,0) (3,12) (4,0) (5,8)}%
+  {(0,0) (1,2) (2,6) (3,0) (4,3) (5,1)}%
+  {(0,0) (1,0) (2,0) (3,0) (4,0) (5,0)}%
+  {(0,0) (1,0) (2,2) (3,2) (4,2) (5,2)}%
+\hfill
+\ffourpanel{\codex{}}%
+  {yticklabels={,,,,,,}}%
+  {(0,18) (1,14) (2,11) (3,3) (4,14) (5,7)}%
+  {(0,6) (1,10) (2,0) (3,14) (4,0) (5,7)}%
+  {(0,0) (1,0) (2,6) (3,0) (4,2) (5,1)}%
+  {(0,0) (1,0) (2,0) (3,0) (4,0) (5,0)}%
+  {(0,0) (1,0) (2,2) (3,2) (4,1) (5,2)}%
+
+\vspace{0.35ex}
+\begin{center}
+\begin{tikzpicture}[font=\footnotesize, every node/.style={inner sep=1.5pt}]
+  \def\sw{10pt}\def\sh{7pt}\def\gap{7pt}\def\textoff{3pt}
+  \node[fill=pbPass, draw=black, line width=0.3pt, minimum width=\sw, minimum height=\sh,
+        fill opacity=0.9, anchor=west] (b0) at (0,0) {};
+  \node[anchor=west] at ([xshift=\textoff]b0.east) (t0) {Pass};
+  \node[fill=pbBuildFail, draw=black, line width=0.3pt, minimum width=\sw, minimum height=\sh,
+        fill opacity=0.9, anchor=west] (b1) at ([xshift=\gap]t0.east) {};
+  \node[anchor=west] at ([xshift=\textoff]b1.east) (t1) {Build Fail};
+  \node[fill=pbRunFail, draw=black, line width=0.3pt, minimum width=\sw, minimum height=\sh,
+        fill opacity=0.9, anchor=west] (b2) at ([xshift=\gap]t1.east) {};
+  \node[anchor=west] at ([xshift=\textoff]b2.east) (t2) {Run Fail};
+  \node[fill=pbExtractionFail, draw=black, line width=0.3pt, minimum width=\sw, minimum height=\sh,
+        fill opacity=0.9, anchor=west] (b3) at ([xshift=\gap]t2.east) {};
+  \node[anchor=west] at ([xshift=\textoff]b3.east) (t3) {Extract Fail};
+  \node[fill=pbVerifyFail, draw=black, line width=0.3pt, minimum width=\sw, minimum height=\sh,
+        fill opacity=0.9, anchor=west] (b4) at ([xshift=\gap]t3.east) {};
+  \node[anchor=west] at ([xshift=\textoff]b4.east) (t4) {Verify Fail};
+\end{tikzpicture}
+\end{center}
+\endgroup

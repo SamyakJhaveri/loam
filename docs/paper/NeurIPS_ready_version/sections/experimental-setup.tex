@@ -69,7 +69,9 @@ and OpenCL, plus four OMP-target case-study directions.
 Translations follow the kernel-centric protocol
 (Section~\ref{sec:framework}): only kernel source files are translated
 while host and build infrastructure remain fixed.
-We evaluate functional correctness only; performance speedup is out of scope.
+% We evaluate functional correctness only; performance speedup is out of scope.
+
+We evaluate oracle-defined translation correctness only (Section~\ref{sec:harness}); performance speedup is out of scope.
 
 \textbf{Evaluation Phases.}
 The canonical campaign~(L0) evaluates the 142 non-\knownfail{} pairs from
@@ -85,12 +87,10 @@ Extended sampling configurations and deterministic seed derivation are
 described in Appendix~\ref{sec:appendix-a-extended}.
 
 \textbf{Metrics.}
-The primary metric is \textbf{pass@$k$}, using the unbiased estimator
-from \citet{HumanEval2021} with normal-approximation confidence intervals
-on the task-level mean.
-Separately, we report \textbf{per-record pass rates} treating each record
-as an independent Bernoulli trial, computed with Wilson 95\% confidence
-intervals.
-Full metric derivations are in Appendix~\ref{sec:appendix-a-extended}.
+The primary metric is \textbf{pass@$k$}, using the unbiased estimator from \citet{HumanEval2021} with normal-approximation confidence intervals on the task-level mean. 
+Separately, we report \textbf{per-record pass rates} treating each record as an independent Bernoulli trial, computed with Wilson 95\% confidence intervals. Full metric derivations are in Appendix~\ref{sec:appendix-a-extended}.
+
+\textbf{Oracle strength.} 
+\pass{} denotes successful build, execution, and satisfaction of the declared verification oracle---not a proof of full semantic equivalence. Of the 87 eval-eligible specs, 2 use file-hash verification, 5 use numeric comparison, and the remaining 80 use stdout-pattern plus exit-code checks. We therefore interpret pass rates as \emph{declared-oracle correctness} and report oracle limitations explicitly in Section~\ref{sec:discussion} and Appendix~\ref{sec:appendix-k}.
 
 With the methodology established, Section~\ref{sec:results} presents the pass rates, failure taxonomy, direction asymmetry, and augmentation robustness results.
