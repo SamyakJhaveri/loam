@@ -41,6 +41,7 @@
 %   - Then: explain the survivorship bias (L0-conditional filter).
 %   - Finally: caveats — small sample (n=12), one direction, cannot rule
 %     out deeper memorization.
+\FloatBarrier
 \section{Results}
 \label{sec:results}
 
@@ -67,7 +68,7 @@ Kernel-centric evaluation isolates executable kernel translation from repository
 % src: quantitative_findings_qwen.json, quantitative_findings_gpt54.json > canonical > failure_taxonomy
 % \caption{Overall pass rates across three models and 2,262 valid translation records. \qwenshort{} covers 626 valid records (426 L0 + 200 augmentations) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} covers 822 valid records (426 L0 + 396 augmentations) and \codex{} covers 814 valid records (426 L0 + 388 augmentations); \knownfail{} specs were pre-excluded from both GPT evaluation batches.}
 %\caption{Overall pass rates across three models and 2,262 valid translation records. Record counts are built as follows: (i)~87 non-\knownfail{} specs yield 142 unique L0 evaluation pairs (source--target combinations); (ii)~each pair is sampled $n{=}3$ times at L0, giving 426 L0 records per model; (iii)~pairs where at least one L0 sample passes enter the L0-conditional augmentation campaign at $n{=}1$ per level (L1--L4). \qwenshort{} covers 626 records (426 L0 + 200 augmentation) after post-hoc exclusion of 82 records involving \knownfail{} specs. \gptnew{} covers 822 records (426 L0 + 396 augmentation) and \codex{} covers 814 records (426 L0 + 388 augmentation); \knownfail{} specs were pre-excluded from both GPT batches. Rates are descriptive; inferential comparison uses the 142 balanced L0 pairs (Section~\ref{sec:passk-analysis}).}
-\caption{Record-level diagnostic pass rates across three models and 2,262 valid translation records. Records include L0 samples and L1--L4 augmentation runs for L0-passing pairs, so this table mixes canonical L0 records with model-specific L0-conditional augmentation records. Wilson intervals are descriptive because records are clustered by task; inferential comparison uses the balanced 142 L0 pairs in Section~\ref{sec:passk-analysis}.}
+\caption{Record-level diagnostic pass rates across three models and 2,262 valid translation records. Records include L0 samples and L1--L4 augmentation runs for L0-passing pairs, so this table mixes canonical L0 records with model-specific L0-conditional augmentation records. Wilson intervals are descriptive because records are clustered by task; inferential comparison uses the balanced 142 L0 pairs in Section~\ref{sec:passk-analysis}. The 2,262 total reflects valid analysis records after excluding 82 \qwenshort{} records involving \knownfail{} specs; the Appendix~\ref{sec:appendix-j} cost table reports 2,344 API calls including those subsequently excluded.}
 \label{tab:overall-pass}
 \small
 \resizebox{\textwidth}{!}{%
@@ -87,7 +88,7 @@ Model & \pass{} & \buildfail{} & \runfail{} & \verifyfail{} & \extractionfail{} 
 
 \begin{table*}[t]
 \centering
-\caption{Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes total L0 records. Wilson 95\% CIs in brackets.}
+\caption{Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes L0 records per model for that direction. Wilson 95\% CIs in brackets.}
 \label{tab:direction-rates}
 \small
 \resizebox{\textwidth}{!}{%
@@ -118,7 +119,7 @@ Per-record pass rates vary strongly across directions (Table~\ref{tab:direction-
 \begin{figure}[t]
   \centering
   \input{figures/figures_tek_version/f3_kernel_model_heatmap_unified}
-  \caption{Per-kernel translation status across all directions and three models (L0, first sample per task, 35~kernels $\times$ up to 8~directions). All-grey rows denote kernels with only \knownfail{} or phantom specs.}
+  \caption{Per-kernel translation status across the eight displayed directions and three models (L0, first sample per task). The two remaining OMP-target case-study directions (OMP$\to$OMP-target, OMP-target$\to$OMP) are omitted from this heatmap for readability. All-grey rows denote kernels with only \knownfail{} or phantom specs.}
   % Colors: \textcolor{pbPass}{\rule{6pt}{6pt}}~Pass, \textcolor{pbBuildFail}{\rule{6pt}{6pt}}~Build Fail, \textcolor{pbRunFail}{\rule{6pt}{6pt}}~Run Fail, \textcolor{pbVerifyFail}{\rule{6pt}{6pt}}~Verify Fail, \textcolor{pbExtractionFail}{\rule{6pt}{6pt}}~Extract Fail, \textcolor{pbNA}{\rule{6pt}{6pt}}~N/A.}
   \label{fig:kernel-heatmap-unified}
 \end{figure}
@@ -145,7 +146,7 @@ Figure~\ref{fig:failure-taxonomy} places all three models side-by-side on the sa
 \label{sec:augmentation-robustness}
 % src: statistical_analysis.json > augmentation_curves > azure-gpt-5.3-codex; azure-gpt-5.4; together-qwen-3.5-397b-a17b
 
-To assess whether baseline success is driven primarily by surface-form memorization, we evaluated augmented source variants (L1--L4) on L0-conditional subsets (detailed in Appendix~\ref{sec:appendix-e4}). \codex{} shows the same plateau pattern as \gptnew{}: 85.6\%--88.7\% at L1--L4, in contrast to \qwenshort{}'s monotonic decline from 74.0\% at L1 to 56.0\% at L4 on the same L0-conditional design. This stability across both GPT models is compatible with robustness to the tested surface-form perturbations. These results are descriptive rather than confirmatory given the L0-conditional design; survivorship bias prevents ruling out deeper structural memorization entirely.
+To assess sensitivity to surface-form perturbation, we evaluated L1--L4 augmented variants on model-specific L0-conditional subsets: \qwenshort{} $n{=}50/142$, \gptnew{} $n{=}99/142$, \codex{} $n{=}97/142$ (detailed in Appendix~\ref{sec:appendix-e4}). \gptnew{} maintains 86.9\%--90.9\% across L1--L4; \codex{} shows a similar plateau at 85.6\%--88.7\%. In contrast, \qwenshort{} declines monotonically from 74.0\% at L1 to 56.0\% at L4. This stability in the GPT-family models indicates lower sensitivity to the tested source-level perturbations. These results are descriptive because the filter depends on L0 success and each augmented level uses one sample per qualifying pair; survivorship bias prevents ruling out deeper structural memorization.
 
 % src: results/evaluation/together-qwen-3.5-397b-a17b/hecbench-stencil1d-cuda-to-hecbench-stencil1d-omp-{s0,L2,L4}.json 
 % src: results/evaluation/together-qwen-3.5-397b-a17b/hecbench-stencil1d-cuda-to-hecbench-stencil1d-omp-{s0,L1,L2,L3,L4}.json

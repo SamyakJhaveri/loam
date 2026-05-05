@@ -13,6 +13,31 @@ docker run --rm -v $(pwd)/output:/app/output parbench ./reproduce.sh
 
 **ARM Mac users (Apple Silicon):** Add `--platform linux/amd64` to the `docker build` command. Figures may differ slightly due to cross-platform font rendering, but table values will be identical.
 
+## Without Docker
+
+If you prefer running without Docker (or are reviewing from a cloned repository):
+
+```bash
+# 1. Enter the project root
+cd <repo-directory>
+
+# 2. Create and activate a Python 3.12+ virtual environment
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. Install pinned dependencies and the project package
+pip install -r requirements-lock.txt
+pip install -e .
+
+# 4. Run reproduction (~10-15 minutes)
+bash artifact/reproduce.sh
+
+# 5. Check output
+ls output/   # expect 35 files: 5 .tex tables + 15 figures × (PNG + PDF)
+```
+
+**Note:** Table values (`.tex` files) are deterministic across platforms. Figure appearance may vary slightly due to font availability and matplotlib backend differences.
+
 ## What This Reproduces
 
 ### Tables (LaTeX, deterministic)
@@ -89,7 +114,7 @@ parbench-artifact/
 
 ## Hardware Requirements
 
-- Any x86_64 machine with Docker installed
+- Any x86_64 machine with Docker installed (or Python 3.12+ for non-Docker path)
 - ~4 GB RAM, ~200 MB disk for Docker image
 - ~15 minutes runtime
 - ARM (Apple Silicon) works with `--platform linux/amd64` but figures may differ slightly due to font rendering
