@@ -110,23 +110,13 @@
 
 \vspace{0.35ex}
 \begin{center}
-\begin{tikzpicture}[font=\footnotesize, every node/.style={inner sep=1.5pt}]
-  \def\sw{10pt}\def\sh{7pt}\def\gap{7pt}\def\textoff{3pt}
-  \node[fill=pbPass, draw=black, line width=0.3pt, minimum width=\sw, minimum height=\sh,
-        fill opacity=0.9, anchor=west] (b0) at (0,0) {};
-  \node[anchor=west] at ([xshift=\textoff]b0.east) (t0) {Pass};
-  \node[fill=pbBuildFail, draw=black, line width=0.3pt, minimum width=\sw, minimum height=\sh,
-        fill opacity=0.9, anchor=west] (b1) at ([xshift=\gap]t0.east) {};
-  \node[anchor=west] at ([xshift=\textoff]b1.east) (t1) {Build Fail};
-  \node[fill=pbRunFail, draw=black, line width=0.3pt, minimum width=\sw, minimum height=\sh,
-        fill opacity=0.9, anchor=west] (b2) at ([xshift=\gap]t1.east) {};
-  \node[anchor=west] at ([xshift=\textoff]b2.east) (t2) {Run Fail};
-  \node[fill=pbExtractionFail, draw=black, line width=0.3pt, minimum width=\sw, minimum height=\sh,
-        fill opacity=0.9, anchor=west] (b3) at ([xshift=\gap]t2.east) {};
-  \node[anchor=west] at ([xshift=\textoff]b3.east) (t3) {Extract Fail};
-  \node[fill=pbVerifyFail, draw=black, line width=0.3pt, minimum width=\sw, minimum height=\sh,
-        fill opacity=0.9, anchor=west] (b4) at ([xshift=\gap]t3.east) {};
-  \node[anchor=west] at ([xshift=\textoff]b4.east) (t4) {Verify Fail};
-\end{tikzpicture}
+\footnotesize
+\begin{tabular}{@{}llllll@{}}
+\fcolorbox{black}{pbPass}{\rule{0pt}{7pt}\rule{10pt}{0pt}} & Pass &
+\fcolorbox{black}{pbBuildFail}{\rule{0pt}{7pt}\rule{10pt}{0pt}} & Build Fail &
+\fcolorbox{black}{pbRunFail}{\rule{0pt}{7pt}\rule{10pt}{0pt}} & Run Fail \\
+\fcolorbox{black}{pbExtractionFail}{\rule{0pt}{7pt}\rule{10pt}{0pt}} & Extract Fail &
+\fcolorbox{black}{pbVerifyFail}{\rule{0pt}{7pt}\rule{10pt}{0pt}} & Verify Fail & & \\
+\end{tabular}
 \end{center}
 \endgroup

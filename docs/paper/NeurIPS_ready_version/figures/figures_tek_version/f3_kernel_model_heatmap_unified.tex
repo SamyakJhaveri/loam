@@ -10,12 +10,11 @@
   \ifstrequal{#3}{EF}{\fill[pbExtractionFail!85] (axis cs:#1-0.5,#2-0.5) rectangle (axis cs:#1+0.5,#2+0.5);}{}%
   \ifstrequal{#3}{--}{\fill[pbNA!55] (axis cs:#1-0.5,#2-0.5) rectangle (axis cs:#1+0.5,#2+0.5);}{}%
 }
-\begin{minipage}[t]{0.38\textwidth}
+\begin{minipage}[t]{0.30\textwidth}
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-  width=4.0cm, height=8cm,
-  scale only axis,
+  width=\textwidth, height=8cm,
   enlargelimits=false, axis on top,
   xmin=-0.5, xmax=7.5, ymin=-0.5, ymax=34.5,
   y dir=reverse,
@@ -315,12 +314,11 @@
 \end{tikzpicture}
 \end{minipage}%
 \hfill
-\begin{minipage}[t]{0.29\textwidth}
+\begin{minipage}[t]{0.30\textwidth}
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-  width=4.0cm, height=8cm,
-  scale only axis,
+  width=\textwidth, height=8cm,
   enlargelimits=false, axis on top,
   xmin=-0.5, xmax=7.5, ymin=-0.5, ymax=34.5,
   y dir=reverse,
@@ -619,12 +617,11 @@
 \end{tikzpicture}
 \end{minipage}%
 \hfill
-\begin{minipage}[t]{0.29\textwidth}
+\begin{minipage}[t]{0.30\textwidth}
 \centering
 \begin{tikzpicture}
 \begin{axis}[
-  width=4.0cm, height=8cm,
-  scale only axis,
+  width=\textwidth, height=8cm,
   enlargelimits=false, axis on top,
   xmin=-0.5, xmax=7.5, ymin=-0.5, ymax=34.5,
   y dir=reverse,
@@ -925,26 +922,14 @@
 
 \vspace{0.3em}
 \begin{center}
-\begin{tikzpicture}[font=\tiny, every node/.style={inner sep=1.5pt}]
-  \def\sw{8pt}\def\sh{6pt}\def\gap{5pt}\def\textoff{2pt}
-  \node[fill=pbPass!85, draw=black, line width=0.2pt, minimum width=\sw, minimum height=\sh,
-        anchor=west] (b0) at (0,0) {};
-  \node[anchor=west] at ([xshift=\textoff]b0.east) (t0) {Pass};
-  \node[fill=pbBuildFail!85, draw=black, line width=0.2pt, minimum width=\sw, minimum height=\sh,
-        anchor=west] (b1) at ([xshift=\gap]t0.east) {};
-  \node[anchor=west] at ([xshift=\textoff]b1.east) (t1) {Build Fail};
-  \node[fill=pbRunFail!85, draw=black, line width=0.2pt, minimum width=\sw, minimum height=\sh,
-        anchor=west] (b2) at ([xshift=\gap]t1.east) {};
-  \node[anchor=west] at ([xshift=\textoff]b2.east) (t2) {Run Fail};
-  \node[fill=pbExtractionFail!85, draw=black, line width=0.2pt, minimum width=\sw, minimum height=\sh,
-        anchor=west] (b3) at ([xshift=\gap]t2.east) {};
-  \node[anchor=west] at ([xshift=\textoff]b3.east) (t3) {Extract Fail};
-  \node[fill=pbVerifyFail!85, draw=black, line width=0.2pt, minimum width=\sw, minimum height=\sh,
-        anchor=west] (b4) at ([xshift=\gap]t3.east) {};
-  \node[anchor=west] at ([xshift=\textoff]b4.east) (t4) {Verify Fail};
-  \node[fill=pbNA!55, draw=black, line width=0.2pt, minimum width=\sw, minimum height=\sh,
-        anchor=west] (b5) at ([xshift=\gap]t4.east) {};
-  \node[anchor=west] at ([xshift=\textoff]b5.east) (t5) {N/A};
-\end{tikzpicture}
+\tiny
+\begin{tabular}{@{}llllll@{}}
+\fcolorbox{black}{pbPass!85}{\rule{0pt}{6pt}\rule{8pt}{0pt}} & Pass &
+\fcolorbox{black}{pbBuildFail!85}{\rule{0pt}{6pt}\rule{8pt}{0pt}} & Build Fail &
+\fcolorbox{black}{pbRunFail!85}{\rule{0pt}{6pt}\rule{8pt}{0pt}} & Run Fail \\
+\fcolorbox{black}{pbExtractionFail!85}{\rule{0pt}{6pt}\rule{8pt}{0pt}} & Extract Fail &
+\fcolorbox{black}{pbVerifyFail!85}{\rule{0pt}{6pt}\rule{8pt}{0pt}} & Verify Fail &
+\fcolorbox{black}{pbNA!55}{\rule{0pt}{6pt}\rule{8pt}{0pt}} & N/A \\
+\end{tabular}
 \end{center}
 \endgroup

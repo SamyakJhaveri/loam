@@ -3595,13 +3595,13 @@
       "norm_label": "test_extract_direction_opencl()"
     },
     {
-      "label": "test_taxonomy_canonical_ablation_split()",
+      "label": "test_taxonomy_canonical_augmentation_split()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_build_error_taxonomy.py",
       "source_location": "L286",
-      "id": "test_build_error_taxonomy_test_taxonomy_canonical_ablation_split",
+      "id": "test_build_error_taxonomy_test_taxonomy_canonical_augmentation_split",
       "community": 11,
-      "norm_label": "test_taxonomy_canonical_ablation_split()"
+      "norm_label": "test_taxonomy_canonical_augmentation_split()"
     },
     {
       "label": "verify_status='fail' with non-empty stdout -> wrong_numerical_output.",
@@ -6196,13 +6196,13 @@
       "norm_label": "test_pass_at_k()"
     },
     {
-      "label": "test_pass_at_k_excludes_ablation_levels()",
+      "label": "test_pass_at_k_excludes_augmentation_levels()",
       "file_type": "code",
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L462",
-      "id": "test_quantitative_findings_test_pass_at_k_excludes_ablation_levels",
+      "id": "test_quantitative_findings_test_pass_at_k_excludes_augmentation_levels",
       "community": 2,
-      "norm_label": "test_pass_at_k_excludes_ablation_levels()"
+      "norm_label": "test_pass_at_k_excludes_augmentation_levels()"
     },
     {
       "label": "test_per_kernel_tiers()",
@@ -34889,9 +34889,9 @@
       "source_location": "L286",
       "weight": 1.0,
       "_src": "scripts_analysis_test_build_error_taxonomy_py",
-      "_tgt": "test_build_error_taxonomy_test_taxonomy_canonical_ablation_split",
+      "_tgt": "test_build_error_taxonomy_test_taxonomy_canonical_augmentation_split",
       "source": "scripts_analysis_test_build_error_taxonomy_py",
-      "target": "test_build_error_taxonomy_test_taxonomy_canonical_ablation_split",
+      "target": "test_build_error_taxonomy_test_taxonomy_canonical_augmentation_split",
       "confidence_score": 1.0
     },
     {
@@ -35177,8 +35177,8 @@
       "source_location": "L287",
       "weight": 1.0,
       "_src": "test_build_error_taxonomy_rationale_287",
-      "_tgt": "test_build_error_taxonomy_test_taxonomy_canonical_ablation_split",
-      "source": "test_build_error_taxonomy_test_taxonomy_canonical_ablation_split",
+      "_tgt": "test_build_error_taxonomy_test_taxonomy_canonical_augmentation_split",
+      "source": "test_build_error_taxonomy_test_taxonomy_canonical_augmentation_split",
       "target": "test_build_error_taxonomy_rationale_287",
       "confidence_score": 1.0
     },
@@ -39557,9 +39557,9 @@
       "source_location": "L462",
       "weight": 1.0,
       "_src": "scripts_analysis_test_quantitative_findings_py",
-      "_tgt": "test_quantitative_findings_test_pass_at_k_excludes_ablation_levels",
+      "_tgt": "test_quantitative_findings_test_pass_at_k_excludes_augmentation_levels",
       "source": "scripts_analysis_test_quantitative_findings_py",
-      "target": "test_quantitative_findings_test_pass_at_k_excludes_ablation_levels",
+      "target": "test_quantitative_findings_test_pass_at_k_excludes_augmentation_levels",
       "confidence_score": 1.0
     },
     {
@@ -39760,10 +39760,10 @@
       "source_file": "scripts/analysis/test_quantitative_findings.py",
       "source_location": "L466",
       "weight": 1.0,
-      "_src": "test_quantitative_findings_test_pass_at_k_excludes_ablation_levels",
+      "_src": "test_quantitative_findings_test_pass_at_k_excludes_augmentation_levels",
       "_tgt": "test_quantitative_findings_make_record",
       "source": "test_quantitative_findings_make_record",
-      "target": "test_quantitative_findings_test_pass_at_k_excludes_ablation_levels",
+      "target": "test_quantitative_findings_test_pass_at_k_excludes_augmentation_levels",
       "confidence_score": 1.0
     },
     {
@@ -40277,8 +40277,8 @@
       "source_location": "L463",
       "weight": 1.0,
       "_src": "test_quantitative_findings_rationale_463",
-      "_tgt": "test_quantitative_findings_test_pass_at_k_excludes_ablation_levels",
-      "source": "test_quantitative_findings_test_pass_at_k_excludes_ablation_levels",
+      "_tgt": "test_quantitative_findings_test_pass_at_k_excludes_augmentation_levels",
+      "source": "test_quantitative_findings_test_pass_at_k_excludes_augmentation_levels",
       "target": "test_quantitative_findings_rationale_463",
       "confidence_score": 1.0
     },
@@ -40287,11 +40287,11 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "scripts/analysis/test_quantitative_findings.py",
-      "source_location": "L548",
+      "source_location": "L489",
       "weight": 1.0,
-      "_src": "test_quantitative_findings_test_pass_at_k_excludes_ablation_levels",
+      "_src": "test_quantitative_findings_test_pass_at_k_excludes_augmentation_levels",
       "_tgt": "quantitative_findings_compute_pass_at_k",
-      "source": "test_quantitative_findings_test_pass_at_k_excludes_ablation_levels",
+      "source": "test_quantitative_findings_test_pass_at_k_excludes_augmentation_levels",
       "target": "quantitative_findings_compute_pass_at_k"
     },
     {
