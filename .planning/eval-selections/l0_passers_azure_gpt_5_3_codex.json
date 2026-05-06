@@ -1,0 +1,487 @@
+[
+  {
+    "source_spec": "hecbench-convolution1d-cuda",
+    "target_spec": "hecbench-convolution1d-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-convolution1d-omp_target",
+    "target_spec": "hecbench-convolution1d-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-floydwarshall-cuda",
+    "target_spec": "hecbench-floydwarshall-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-floydwarshall-cuda",
+    "target_spec": "hecbench-floydwarshall-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-floydwarshall-omp",
+    "target_spec": "hecbench-floydwarshall-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-floydwarshall-omp",
+    "target_spec": "hecbench-floydwarshall-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-floydwarshall-omp_target",
+    "target_spec": "hecbench-floydwarshall-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-floydwarshall-omp_target",
+    "target_spec": "hecbench-floydwarshall-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-heat2d-cuda",
+    "target_spec": "hecbench-heat2d-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-heat2d-cuda",
+    "target_spec": "hecbench-heat2d-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-heat2d-omp",
+    "target_spec": "hecbench-heat2d-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-heat2d-omp",
+    "target_spec": "hecbench-heat2d-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-heat2d-omp_target",
+    "target_spec": "hecbench-heat2d-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-heat2d-omp_target",
+    "target_spec": "hecbench-heat2d-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-iso2dfd-cuda",
+    "target_spec": "hecbench-iso2dfd-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-iso2dfd-cuda",
+    "target_spec": "hecbench-iso2dfd-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-iso2dfd-omp",
+    "target_spec": "hecbench-iso2dfd-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-iso2dfd-omp",
+    "target_spec": "hecbench-iso2dfd-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-iso2dfd-omp_target",
+    "target_spec": "hecbench-iso2dfd-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-iso2dfd-omp_target",
+    "target_spec": "hecbench-iso2dfd-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-jacobi-cuda",
+    "target_spec": "hecbench-jacobi-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-jacobi-omp_target",
+    "target_spec": "hecbench-jacobi-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-md-cuda",
+    "target_spec": "hecbench-md-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-md-omp_target",
+    "target_spec": "hecbench-md-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-nqueen-cuda",
+    "target_spec": "hecbench-nqueen-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-nqueen-omp_target",
+    "target_spec": "hecbench-nqueen-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-page-rank-cuda",
+    "target_spec": "hecbench-page-rank-omp_target",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-page-rank-omp_target",
+    "target_spec": "hecbench-page-rank-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-scan-cuda",
+    "target_spec": "hecbench-scan-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-scan-omp",
+    "target_spec": "hecbench-scan-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-stencil1d-cuda",
+    "target_spec": "hecbench-stencil1d-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "hecbench-stencil1d-omp",
+    "target_spec": "hecbench-stencil1d-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "mixbench-mixbench-cuda",
+    "target_spec": "mixbench-mixbench-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "mixbench-mixbench-cuda",
+    "target_spec": "mixbench-mixbench-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "mixbench-mixbench-omp",
+    "target_spec": "mixbench-mixbench-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "mixbench-mixbench-omp",
+    "target_spec": "mixbench-mixbench-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "mixbench-mixbench-opencl",
+    "target_spec": "mixbench-mixbench-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "mixbench-mixbench-opencl",
+    "target_spec": "mixbench-mixbench-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-bfs-cuda",
+    "target_spec": "rodinia-bfs-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-bfs-cuda",
+    "target_spec": "rodinia-bfs-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-bfs-omp",
+    "target_spec": "rodinia-bfs-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-bfs-omp",
+    "target_spec": "rodinia-bfs-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-bfs-opencl",
+    "target_spec": "rodinia-bfs-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-bptree-cuda",
+    "target_spec": "rodinia-bptree-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-bptree-omp",
+    "target_spec": "rodinia-bptree-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-bptree-omp",
+    "target_spec": "rodinia-bptree-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-cfd-cuda",
+    "target_spec": "rodinia-cfd-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-cfd-omp",
+    "target_spec": "rodinia-cfd-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-cfd-opencl",
+    "target_spec": "rodinia-cfd-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-cfd-opencl",
+    "target_spec": "rodinia-cfd-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-dwt2d-cuda",
+    "target_spec": "rodinia-dwt2d-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-heartwall-cuda",
+    "target_spec": "rodinia-heartwall-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-hotspot-cuda",
+    "target_spec": "rodinia-hotspot-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-hotspot-cuda",
+    "target_spec": "rodinia-hotspot-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-hotspot-omp",
+    "target_spec": "rodinia-hotspot-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-hotspot-omp",
+    "target_spec": "rodinia-hotspot-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-hotspot3d-cuda",
+    "target_spec": "rodinia-hotspot3d-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-hotspot3d-cuda",
+    "target_spec": "rodinia-hotspot3d-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-hotspot3d-omp",
+    "target_spec": "rodinia-hotspot3d-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-hotspot3d-omp",
+    "target_spec": "rodinia-hotspot3d-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-hotspot3d-opencl",
+    "target_spec": "rodinia-hotspot3d-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-lavamd-omp",
+    "target_spec": "rodinia-lavamd-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-lud-cuda",
+    "target_spec": "rodinia-lud-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-lud-cuda",
+    "target_spec": "rodinia-lud-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-lud-omp",
+    "target_spec": "rodinia-lud-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-lud-opencl",
+    "target_spec": "rodinia-lud-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-myocyte-omp",
+    "target_spec": "rodinia-myocyte-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-nn-cuda",
+    "target_spec": "rodinia-nn-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-nn-omp",
+    "target_spec": "rodinia-nn-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-nw-cuda",
+    "target_spec": "rodinia-nw-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-nw-cuda",
+    "target_spec": "rodinia-nw-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-nw-omp",
+    "target_spec": "rodinia-nw-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-nw-omp",
+    "target_spec": "rodinia-nw-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-nw-opencl",
+    "target_spec": "rodinia-nw-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-particlefilter-cuda",
+    "target_spec": "rodinia-particlefilter-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-particlefilter-omp",
+    "target_spec": "rodinia-particlefilter-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-particlefilter-omp",
+    "target_spec": "rodinia-particlefilter-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-particlefilter-opencl",
+    "target_spec": "rodinia-particlefilter-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-particlefilter-opencl",
+    "target_spec": "rodinia-particlefilter-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-pathfinder-cuda",
+    "target_spec": "rodinia-pathfinder-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-pathfinder-cuda",
+    "target_spec": "rodinia-pathfinder-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-pathfinder-omp",
+    "target_spec": "rodinia-pathfinder-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-pathfinder-omp",
+    "target_spec": "rodinia-pathfinder-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-srad-cuda",
+    "target_spec": "rodinia-srad-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-srad-cuda",
+    "target_spec": "rodinia-srad-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-srad-omp",
+    "target_spec": "rodinia-srad-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-srad-opencl",
+    "target_spec": "rodinia-srad-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rodinia-streamcluster-cuda",
+    "target_spec": "rodinia-streamcluster-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rsbench-rsbench-cuda",
+    "target_spec": "rsbench-rsbench-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rsbench-rsbench-cuda",
+    "target_spec": "rsbench-rsbench-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rsbench-rsbench-omp",
+    "target_spec": "rsbench-rsbench-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rsbench-rsbench-opencl",
+    "target_spec": "rsbench-rsbench-cuda",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "rsbench-rsbench-opencl",
+    "target_spec": "rsbench-rsbench-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "xsbench-xsbench-cuda",
+    "target_spec": "xsbench-xsbench-omp",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "xsbench-xsbench-cuda",
+    "target_spec": "xsbench-xsbench-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "xsbench-xsbench-omp",
+    "target_spec": "xsbench-xsbench-opencl",
+    "augment_level": 0
+  },
+  {
+    "source_spec": "xsbench-xsbench-opencl",
+    "target_spec": "xsbench-xsbench-cuda",
+    "augment_level": 0
+  }
+]

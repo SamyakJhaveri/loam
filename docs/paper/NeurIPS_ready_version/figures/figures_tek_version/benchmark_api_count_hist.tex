@@ -1,0 +1,29 @@
+% Distribution of API breadth across all 71 surveyed repositories
+% src: benchmarks_api_matrix_v6_with_links.xlsx column "n_apis"
+% Data: 1-API=13, 2=11, 3=18, 4=8, 5=8, 6=6, 7=2, 8=0, 9=1, 10=0, 11=2, 12=2
+\begin{tikzpicture}
+\begin{axis}[
+  ybar,
+  bar width=12pt,
+  height=5.5cm,
+  width=\columnwidth,
+  xmin=0.4, xmax=12.6,
+  ylabel={\#Repositories},                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+  xlabel={Number of APIs Supported},
+  ymin=0, ymax=21,
+  ytick={0,5,10,15,20},
+  xtick={1,2,3,4,5,6,7,8,9,10,11,12},
+  tick label style={font=\small},
+  label style={font=\small},
+  title style={font=\normalsize\bfseries},
+  ymajorgrids=true,
+  major grid style={dashed, draw=gray!40},
+  title={Distribution of API Breadth (71 Repositories)},
+  nodes near coords,
+  nodes near coords style={font=\small\bfseries, anchor=south},
+  clip=false,
+]
+  \addplot[fill=pbTealDark, draw=pbTealDark!70!black, line width=0.5pt]
+    coordinates {(1,13) (2,11) (3,18) (4,8) (5,8) (6,6) (7,2) (8,0) (9,1) (10,0) (11,2) (12,2)};
+\end{axis}
+\end{tikzpicture}

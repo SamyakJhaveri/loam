@@ -1,0 +1,12 @@
+env_parbench/
+venv*/
+HeCBench-master/
+rodinia/
+.git/
+.planning/
+__pycache__/
+*.egg-info/
+graphify-out/
+node_modules/
+.claude/
+results/

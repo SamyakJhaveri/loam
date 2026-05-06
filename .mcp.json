@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "graphify": {
+      "command": "/home/samyak/Desktop/parbench_sam/env_parbench/bin/python3",
+      "args": ["-m", "graphify.serve", "/home/samyak/Desktop/parbench_sam/graphify-out/graph.json"]
+    }
+  }
+}
