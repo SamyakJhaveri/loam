@@ -1,0 +1,373 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{HumanEval2021,SWEbench2024}
+\citation{ParEval2024}
+\citation{ParEvalRepo2025,Wang2026RepoTransBench}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:introduction}{{1}{1}{Introduction}{section.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces  \textbf  {\textsc  {\textsc  {ParBench}{}} isolates parallel API translation from repository-level confounds.} The benchmark pipeline starts by selecting representative parallel APIs and curating executable kernel specifications from multi-API HPC suites. Each specification fixes the build, run, and verification context, while the model is asked to translate only the computational kernel code. AST-driven source augmentations create surface-varied source variants for robustness testing, and translated outputs are evaluated through an end-to-end build--run--verify harness with conjunctive correctness checks. The final outcome taxonomy separates harness-passing translations (oracle \textsc  {Pass}{}: compiled, ran, and satisfied the spec's declared correctness oracle) from extraction, build, runtime, and verification failures, enabling both aggregate scoring and diagnostic analysis of where parallel translation breaks. }}{2}{figure.caption.2}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:architecture}{{1}{2}{\textbf {\textsc {\parbench {}} isolates parallel API translation from repository-level confounds.} The benchmark pipeline starts by selecting representative parallel APIs and curating executable kernel specifications from multi-API HPC suites. Each specification fixes the build, run, and verification context, while the model is asked to translate only the computational kernel code. AST-driven source augmentations create surface-varied source variants for robustness testing, and translated outputs are evaluated through an end-to-end build--run--verify harness with conjunctive correctness checks. The final outcome taxonomy separates harness-passing translations (oracle \pass {}: compiled, ran, and satisfied the spec's declared correctness oracle) from extraction, build, runtime, and verification failures, enabling both aggregate scoring and diagnostic analysis of where parallel translation breaks}{figure.caption.2}{}}
+\citation{Rodinia2009}
+\@writefile{toc}{\contentsline {section}{\numberline {2}\textsc  {ParBench}{} Framework}{3}{section.2}\protected@file@percent }
+\newlabel{sec:framework}{{2}{3}{\parbench {} Framework}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Declarative Specifications and Kernel-Centric Translation}{3}{subsection.2.1}\protected@file@percent }
+\newlabel{sec:spec-schema}{{2.1}{3}{Declarative Specifications and Kernel-Centric Translation}{subsection.2.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Augmentation Engine: Probing Robustness via Code Perturbations}{3}{subsection.2.2}\protected@file@percent }
+\newlabel{sec:augmentation-engine}{{2.2}{3}{Augmentation Engine: Probing Robustness via Code Perturbations}{subsection.2.2}{}}
+\citation{ParEvalRepo2025}
+\citation{CodeRosetta2024}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Evaluation Pipeline: Kernel-Centric Translation}{4}{subsection.2.3}\protected@file@percent }
+\newlabel{sec:eval-pipeline}{{2.3}{4}{Evaluation Pipeline: Kernel-Centric Translation}{subsection.2.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Harness: Build, Run, Verify}{4}{subsection.2.4}\protected@file@percent }
+\newlabel{sec:harness}{{2.4}{4}{Harness: Build, Run, Verify}{subsection.2.4}{}}
+\citation{Rodinia2009}
+\citation{HeCBench2023}
+\citation{XSBench2014}
+\citation{RSBench2014}
+\citation{mixbench2017}
+\citation{ParEvalRepo2025}
+\citation{GPT53Codex2026}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Benchmark Curation}{5}{section.3}\protected@file@percent }
+\newlabel{sec:benchmark-curation}{{3}{5}{Benchmark Curation}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Suite and Kernel Selection}{5}{subsection.3.1}\protected@file@percent }
+\newlabel{sec:suite-selection}{{3.1}{5}{Suite and Kernel Selection}{subsection.3.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Evaluation Corpus}{5}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:eval-corpus}{{3.2}{5}{Evaluation Corpus}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experimental Setup}{5}{section.4}\protected@file@percent }
+\newlabel{sec:experimental-setup}{{4}{5}{Experimental Setup}{section.4}{}}
+\citation{HumanEval2021}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Evaluation corpus. SLoC is measured on the CUDA source variant when available. Multi-File denotes specs requiring more than one translated source file. KF = \textsc  {Known\_Fail}{}.}}{6}{table.caption.3}\protected@file@percent }
+\newlabel{tab:suite-summary}{{1}{6}{Evaluation corpus. SLoC is measured on the CUDA source variant when available. Multi-File denotes specs requiring more than one translated source file. KF = \knownfail {}}{table.caption.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Results}{6}{section.5}\protected@file@percent }
+\newlabel{sec:results}{{5}{6}{Results}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}pass@$k$ Analysis}{6}{subsection.5.1}\protected@file@percent }
+\newlabel{sec:passk-analysis}{{5.1}{6}{pass@$k$ Analysis}{subsection.5.1}{}}
+\citation{ParEvalRepo2025}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Record-Level Diagnostic Outcomes}{7}{subsection.5.2}\protected@file@percent }
+\newlabel{sec:overall-pass}{{5.2}{7}{Record-Level Diagnostic Outcomes}{subsection.5.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Direction Dependence}{7}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:direction-analysis}{{5.3}{7}{Direction Dependence}{subsection.5.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Failure Taxonomy}{7}{subsection.5.4}\protected@file@percent }
+\newlabel{sec:failure-taxonomy}{{5.4}{7}{Failure Taxonomy}{subsection.5.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Augmentation Robustness}{7}{subsection.5.5}\protected@file@percent }
+\newlabel{sec:augmentation-robustness}{{5.5}{7}{Augmentation Robustness}{subsection.5.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Per-kernel translation status across all directions and three models (L0, first sample per task, 35~kernels $\times $ up to 8~directions). All-grey rows denote kernels with only \textsc  {Known\_Fail}{} or phantom specs.}}{8}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:kernel-heatmap-unified}{{2}{8}{Per-kernel translation status across all directions and three models (L0, first sample per task, 35~kernels $\times $ up to 8~directions). All-grey rows denote kernels with only \knownfail {} or phantom specs}{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Failure taxonomy by translation direction across all three models (L0, first sample per task). The figure includes only the six standard directions, spanning 120~non-\textsc  {Known\_Fail}{} tasks in total (24, 24, 19, 19, 17, and 17 tasks by direction), with OMP-target case-study directions omitted for cross-model comparability. Build-stage failures dominate Qwen~3.5{} across nearly all directions; GPT-5.4{} and GPT-5.3-codex{} show substantially higher pass counts with residual build failures concentrated in OpenCL$\to $CUDA and OMP$\to $CUDA.}}{8}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:failure-taxonomy}{{3}{8}{Failure taxonomy by translation direction across all three models (L0, first sample per task). The figure includes only the six standard directions, spanning 120~non-\knownfail {} tasks in total (24, 24, 19, 19, 17, and 17 tasks by direction), with OMP-target case-study directions omitted for cross-model comparability. Build-stage failures dominate \qwenshort {} across nearly all directions; \gptnew {} and \codex {} show substantially higher pass counts with residual build failures concentrated in OpenCL$\to $CUDA and OMP$\to $CUDA}{figure.caption.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Discussion, Limitations, and Conclusion}{8}{section.6}\protected@file@percent }
+\newlabel{sec:discussion}{{6}{8}{Discussion, Limitations, and Conclusion}{section.6}{}}
+\citation{TRACY2025}
+\bibstyle{plainnat}
+\bibdata{references}
+\bibcite{UniPar2025}{{1}{2025}{{Bitan et~al.}}{{Bitan, Kadosh, Kaplan, Meiri, Chen, Morales, Hasabnis, and Oren}}}
+\bibcite{HPCCoderV2}{{2}{2025}{{Chaturvedi et~al.}}{{Chaturvedi, Nichols, Singh, and Bhatele}}}
+\bibcite{Rodinia2009}{{3}{2009}{{Che et~al.}}{{Che, Boyer, Meng, Tarjan, Sheaffer, Lee, and Skadron}}}
+\bibcite{MemorizeOrGeneralize2025}{{4}{2025{a}}{{Chen et~al.}}{{Chen, Liu, and Ming}}}
+\bibcite{OMPGPT2024}{{5}{2024}{{Chen et~al.}}{{Chen, Bhattacharjee, Ahmed, Hasabnis, Oren, Kadosh, and Jannesari}}}
+\bibcite{PCEBench2025}{{6}{2025{b}}{{Chen et~al.}}{{Chen, Ahmed, Capot{\u {a}}, Willke, Hasabnis, and Jannesari}}}
+\bibcite{HumanEval2021}{{7}{2021}{{Chen et~al.}}{{Chen, Tworek, Jun, Yuan, de~Oliveira~Pinto, Kaplan, Edwards, Burda, Joseph, Brockman, Ray, Puri, Krueger, Petrov, Khlaaf, Sastry, Mishkin, Chan, Gray, Ryder, Pavlov, Power, Kaiser, Bavarian, Winter, Tillet, Such, Cummings, Plappert, Chantzis, Barnes, Herbert-Voss, Guss, Nichol, Paino, Tezak, Tang, Babuschkin, Balaji, Jain, Saunders, Hesse, Carr, Leike, Achiam, Misra, Morikawa, Radford, Knight, Brundage, Murati, Mayer, Welinder, McGrew, Amodei, McCandlish, Sutskever, and Zaremba}}}
+\bibcite{ParEvalRepo2025}{{8}{2025}{{Davis et~al.}}{{Davis, Nichols, Khillan, and Bhatele}}}
+\bibcite{LASSI2024}{{9}{2024}{{Dearing et~al.}}{{Dearing, Tao, Wu, Lan, and Taylor}}}
+\bibcite{Mercury2024}{{10}{2024}{{Du et~al.}}{{Du, Luu, Ji, and Ng}}}
+\bibcite{CuratedOpenMPDataset2026}{{11}{2026}{{Etienne et~al.}}{{Etienne, Garcia~de Gonzalo, and Arnold}}}
+\bibcite{Datasheets2021}{{12}{2021}{{Gebru et~al.}}{{Gebru, Morgenstern, Vecchione, Vaughan, Wallach, Daum{\'e}~III, and Crawford}}}
+\bibcite{VibeCodeHPC2025}{{13}{2025}{{Godoy et~al.}}{{Godoy, Valero-Lara, Teranishi, and Vetter}}}
+\bibcite{LargeLLMEvalHPC2024}{{14}{2024}{{Godoy et~al.}}{{Godoy, Valero-Lara, Teranishi, Balaprakash, and Vetter}}}
+\bibcite{TRACY2025}{{15}{2025}{{Gong et~al.}}{{Gong, Sun, Huang, Liang, Zhang, and Hao}}}
+\bibcite{LearningToParallelize2023}{{16}{2023}{{Harel et~al.}}{{Harel, Pinter, and Oren}}}
+\bibcite{PragFormer2025}{{17}{2025}{{Harel et~al.}}{{Harel, Kadosh, Hasabnis, Mattson, Pinter, and Oren}}}
+\bibcite{AlphaTrans2025}{{18}{2025}{{Ibrahimzada et~al.}}{{Ibrahimzada, Ke, Pawagi, Abid, Pan, Sinha, and Jabbarvand}}}
+\bibcite{SWEbench2024}{{19}{2024}{{Jimenez et~al.}}{{Jimenez, Yang, Wettig, Yao, Pei, Press, and Narasimhan}}}
+\bibcite{HeCBench2023}{{20}{2023}{{Jin and Vetter}}{{}}}
+\bibcite{ChatPORTSYCL2025}{{21}{2025}{{Jin et~al.}}{{Jin, Pophale, and Teranishi}}}
+\bibcite{HPCorpus2023}{{22}{2023{a}}{{Kadosh et~al.}}{{Kadosh, Hasabnis, Mattson, Pinter, and Oren}}}
+\bibcite{OMPify2023}{{23}{2023{b}}{{Kadosh et~al.}}{{Kadosh, Schneider, Hasabnis, Mattson, Pinter, and Oren}}}
+\bibcite{OMPar2024}{{24}{2024{a}}{{Kadosh et~al.}}{{Kadosh, Hasabnis, Soundararajan, Vo, Capot{\u {a}}, Ahmed, Pinter, and Oren}}}
+\bibcite{MonoCoder2024}{{25}{2024{b}}{{Kadosh et~al.}}{{Kadosh, Hasabnis, Vo, Schneider, Krien, Capot{\u {a}}, Wasay, Tamir, Willke, Ahmed, Pinter, Mattson, and Oren}}}
+\bibcite{ParaCodex2026}{{26}{2026}{{Kaplan et~al.}}{{Kaplan, Bitan, Ghrayeb, Chen, Yotam, Hasabnis, and Oren}}}
+\bibcite{mixbench2017}{{27}{2017}{{Konstantinidis and Cotronis}}{{}}}
+\bibcite{SWEbenchIllusion2025}{{28}{2025}{{Liang et~al.}}{{Liang, Garg, and Moghaddam}}}
+\bibcite{AutoParLLM2025}{{29}{2025}{{Mahmud et~al.}}{{Mahmud, TehraniJamsaz, Phan, Chen, Capot{\u {a}}, Willke, Ahmed, and Jannesari}}}
+\bibcite{OpenMPAssessment2024}{{30}{2024}{{Mi{\v {s}}i{\'c} and Dodovi{\'c}}}{{}}}
+\bibcite{ModelCards2019}{{31}{2019}{{Mitchell et~al.}}{{Mitchell, Wu, Zaldivar, Barnes, Vasserman, Hutchinson, Spitzer, Raji, and Gebru}}}
+\bibcite{QiMengMuPa2025}{{32}{2025}{{Mu et~al.}}{{Mu, Zhu, Ma, and Shen}}}
+\bibcite{ParEval2024}{{33}{2024{a}}{{Nichols et~al.}}{{Nichols, Davis, Xie, Rajaram, and Bhatele}}}
+\bibcite{HPCCoder2024}{{34}{2024{b}}{{Nichols et~al.}}{{Nichols, Marathe, Menon, Gamblin, and Bhatele}}}
+\bibcite{GPT53Codex2026}{{35}{2026}{{OpenAI}}{{}}}
+\bibcite{KernelBench2025}{{36}{2025}{{Ouyang et~al.}}{{Ouyang, Guo, Arora, Zhang, Hu, R{\'e}, and Mirhoseini}}}
+\bibcite{ChatPORT2025}{{37}{2025}{{Pophale et~al.}}{{Pophale, Jin, and Teranishi}}}
+\bibcite{TransCoder2020}{{38}{2020}{{Rozi{\`e}re et~al.}}{{Rozi{\`e}re, Lachaux, Chanussot, and Lample}}}
+\bibcite{MPIRICAL2023}{{39}{2023}{{Schneider et~al.}}{{Schneider, Kadosh, Hasabnis, Mattson, Pinter, and Oren}}}
+\bibcite{MPIrigen2024}{{40}{2024}{{Schneider et~al.}}{{Schneider, Hasabnis, Vo, Kadosh, Krien, Capot{\u {a}}, Tamir, Willke, Ahmed, Pinter, Mattson, and Oren}}}
+\bibcite{CodeRosetta2024}{{41}{2024}{{TehraniJamsaz et~al.}}{{TehraniJamsaz, Bhattacharjee, Chen, Ahmed, Yazdanbakhsh, and Jannesari}}}
+\bibcite{RSBench2014}{{42}{2014}{{Tramm and Siegel}}{{}}}
+\bibcite{XSBench2014}{{43}{2014}{{Tramm et~al.}}{{Tramm, Siegel, Islam, and Schulz}}}
+\bibcite{ChatMPI2026}{{44}{2026}{{Valero-Lara et~al.}}{{Valero-Lara, Young, Naughton, Engelmann, Geist, Vetter, Teranishi, and Godoy}}}
+\bibcite{Wang2026RepoTransBench}{{45}{2026}{{Wang et~al.}}{{Wang, Wang, Wang, Guo, Chen, Grundy, Liu, Ma, Mao, Zhang, and Zheng}}}
+\bibcite{CodeMorph2025}{{46}{2025}{{Zhang et~al.}}{{Zhang, Zhu, Liu, Liu, Li, and Jin}}}
+\newlabel{sec:appendix-contents}{{6}{14}{Appendix Contents}{section*.8}{}}
+\newlabel{sec:appendix-float-roadmap}{{6}{15}{Figures and Tables Roadmap}{section*.10}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Related Work}{15}{appendix.A}\protected@file@percent }
+\newlabel{sec:appendix-d}{{A}{15}{Related Work}{appendix.A}{}}
+\citation{HumanEval2021}
+\citation{TransCoder2020}
+\citation{SWEbench2024}
+\citation{Wang2026RepoTransBench}
+\citation{AlphaTrans2025}
+\citation{LearningToParallelize2023}
+\citation{MPIRICAL2023}
+\citation{OMPify2023}
+\citation{OMPGPT2024}
+\citation{MPIrigen2024}
+\citation{MonoCoder2024}
+\citation{PragFormer2025}
+\citation{OMPar2024}
+\citation{AutoParLLM2025}
+\citation{OpenMPAssessment2024}
+\citation{ParEval2024}
+\citation{PCEBench2025}
+\citation{LASSI2024}
+\citation{CodeRosetta2024}
+\citation{HPCCoder2024}
+\citation{HPCCoderV2}
+\citation{ParEvalRepo2025}
+\citation{UniPar2025}
+\citation{QiMengMuPa2025}
+\citation{ChatPORT2025}
+\citation{ChatPORTSYCL2025}
+\citation{ChatMPI2026}
+\citation{LargeLLMEvalHPC2024}
+\citation{VibeCodeHPC2025}
+\citation{ParaCodex2026}
+\citation{TRACY2025}
+\citation{KernelBench2025}
+\citation{Mercury2024}
+\citation{CodeMorph2025}
+\citation{MemorizeOrGeneralize2025}
+\citation{SWEbenchIllusion2025}
+\citation{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}
+\citation{HPCorpus2023}
+\citation{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}
+\citation{ParEval2024,PCEBench2025}
+\citation{OMPar2024,AutoParLLM2025,OpenMPAssessment2024}
+\citation{ChatPORT2025,ChatPORTSYCL2025}
+\citation{SWEbench2024,Wang2026RepoTransBench}
+\citation{ParEvalRepo2025}
+\citation{CodeRosetta2024,HPCCoder2024,HPCCoderV2}
+\citation{LASSI2024}
+\citation{UniPar2025,QiMengMuPa2025,VibeCodeHPC2025,ParaCodex2026}
+\@writefile{toc}{\contentsline {paragraph}{Local parallel-code corpora and paper-specific benchmarks.}{16}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Generation, parallelization, porting, and translation measure different capabilities.}{16}{section*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Repository-level realism versus kernel-level attribution.}{16}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Agentic repair and specialized models are complementary to benchmark design.}{16}{section*.18}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces  Representative related work, Part I-a. General code benchmarks and repository-level translation benchmarks. }}{17}{table.caption.11}\protected@file@percent }
+\newlabel{tab:related-work-a}{{2}{17}{Representative related work, Part I-a. General code benchmarks and repository-level translation benchmarks}{table.caption.11}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces  Representative related work, Part I-b. OpenMP/MPI/local parallel-code corpora and generation benchmarks. }}{17}{table.caption.12}\protected@file@percent }
+\newlabel{tab:related-work-b}{{3}{17}{Representative related work, Part I-b. OpenMP/MPI/local parallel-code corpora and generation benchmarks}{table.caption.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces  Representative related work, Part II. LLM-based parallel-code translation, porting, and HPC-code modeling systems. }}{18}{table.caption.13}\protected@file@percent }
+\newlabel{tab:related-work-c}{{4}{18}{Representative related work, Part II. LLM-based parallel-code translation, porting, and HPC-code modeling systems}{table.caption.13}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces  Representative related work, Part III. Efficiency, robustness, and benchmark-validity studies relevant to \textsc  {ParBench}{}. }}{18}{table.caption.14}\protected@file@percent }
+\newlabel{tab:related-work-d}{{5}{18}{Representative related work, Part III. Efficiency, robustness, and benchmark-validity studies relevant to \parbench {}}{table.caption.14}{}}
+\citation{LearningToParallelize2023,OMPify2023,CodeRosetta2024,HPCCoderV2}
+\citation{LASSI2024,ParEvalRepo2025,ParaCodex2026}
+\citation{TRACY2025,KernelBench2025,Mercury2024}
+\citation{SWEbenchIllusion2025,CodeMorph2025,MemorizeOrGeneralize2025}
+\@writefile{toc}{\contentsline {paragraph}{Verification rigor.}{19}{section*.19}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Efficiency, performance reasoning, and executable validity.}{19}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Robustness and benchmark validity.}{19}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {B}Framework and Evaluation Details}{19}{appendix.B}\protected@file@percent }
+\newlabel{sec:appendix-a}{{B}{19}{Framework and Evaluation Details}{appendix.B}{}}
+\newlabel{lst:bfs_spec_appendix}{{1}{20}{Condensed specification structure for \texttt {rodinia-bfs-cuda}}{lstlisting.1}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {1}{\ignorespaces Condensed specification structure for \texttt  {rodinia-bfs-cuda}.}}{20}{lstlisting.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.1}Specification Schema}{20}{subsection.B.1}\protected@file@percent }
+\newlabel{sec:appendix-a-schema}{{B.1}{20}{Specification Schema}{subsection.B.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.2}Prompt Anonymization}{20}{subsection.B.2}\protected@file@percent }
+\newlabel{sec:appendix-a-anonymization}{{B.2}{20}{Prompt Anonymization}{subsection.B.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.3}Response Extraction Strategy}{21}{subsection.B.3}\protected@file@percent }
+\newlabel{sec:appendix-a-extraction}{{B.3}{21}{Response Extraction Strategy}{subsection.B.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {B.4}Extended Experimental Setup Details}{21}{subsection.B.4}\protected@file@percent }
+\newlabel{sec:appendix-a-extended}{{B.4}{21}{Extended Experimental Setup Details}{subsection.B.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{\textsc  {Known\_Fail}{} Exclusion Policy.}{21}{section*.23}\protected@file@percent }
+\newlabel{sec:sampling-config}{{B.4}{21}{Sampling Configuration}{section*.24}{}}
+\@writefile{toc}{\contentsline {paragraph}{Sampling Configuration.}{21}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Canonical Evaluation and Augmentation.}{21}{section*.25}\protected@file@percent }
+\citation{HumanEval2021}
+\@writefile{toc}{\contentsline {paragraph}{Metrics Details.}{22}{section*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {C}API Selection Rationale}{22}{appendix.C}\protected@file@percent }
+\newlabel{sec:appendix-b}{{C}{22}{API Selection Rationale}{appendix.C}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {C.1}Full API Co-Occurrence Data}{22}{subsection.C.1}\protected@file@percent }
+\newlabel{sec:appendix-b1}{{C.1}{22}{Full API Co-Occurrence Data}{subsection.C.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces API co-occurrence heatmap across all 71 surveyed repositories. Cell values indicate the number of repositories providing implementations in both the row and column APIs.}}{23}{figure.caption.27}\protected@file@percent }
+\newlabel{fig:api-heatmap}{{4}{23}{API co-occurrence heatmap across all 71 surveyed repositories. Cell values indicate the number of repositories providing implementations in both the row and column APIs}{figure.caption.27}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces API coverage across the benchmark survey. OpenMP (50 benchmarks), MPI (45), and CUDA (38) dominate, with OpenACC (17), HIP (15), and MPI+OpenMP (15) forming a second tier. OpenCL (13) and Kokkos (12) bridge the second and third tiers. OpenMP Target (8), SYCL (7), and RAJA (7) form a third tier.}}{24}{figure.caption.28}\protected@file@percent }
+\newlabel{fig:api-coverage}{{5}{24}{API coverage across the benchmark survey. OpenMP (50 benchmarks), MPI (45), and CUDA (38) dominate, with OpenACC (17), HIP (15), and MPI+OpenMP (15) forming a second tier. OpenCL (13) and Kokkos (12) bridge the second and third tiers. OpenMP Target (8), SYCL (7), and RAJA (7) form a third tier}{figure.caption.28}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {C.2}Translation Difficulty Taxonomy}{24}{subsection.C.2}\protected@file@percent }
+\newlabel{sec:appendix-b2}{{C.2}{24}{Translation Difficulty Taxonomy}{subsection.C.2}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {2}{\ignorespaces CUDA to HIP: syntactic renaming.}}{24}{lstlisting.2}\protected@file@percent }
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {3}{\ignorespaces CUDA to OpenMP: paradigm translation.}}{24}{lstlisting.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Kernel-level API co-occurrence matrix. Each cell counts the number of individual kernels with implementations in both the row and column APIs. The CUDA--HIP pair leads with 633 shared kernels, followed by CUDA--SYCL (616), HIP--SYCL (615), and CUDA--OpenMP (472). OpenCL has dramatically lower kernel-level coverage: only 27 kernels share implementations with CUDA, and 24 with OpenMP. OpenMP Target provides 106 shared kernels with each of CUDA, HIP, SYCL, and OpenMP, concentrated entirely in RAJAPerf. Sequential reference implementations exist for 106 kernels.}}{25}{figure.caption.30}\protected@file@percent }
+\newlabel{fig:kernel-cooccurrence}{{6}{25}{Kernel-level API co-occurrence matrix. Each cell counts the number of individual kernels with implementations in both the row and column APIs. The CUDA--HIP pair leads with 633 shared kernels, followed by CUDA--SYCL (616), HIP--SYCL (615), and CUDA--OpenMP (472). OpenCL has dramatically lower kernel-level coverage: only 27 kernels share implementations with CUDA, and 24 with OpenMP. OpenMP Target provides 106 shared kernels with each of CUDA, HIP, SYCL, and OpenMP, concentrated entirely in RAJAPerf. Sequential reference implementations exist for 106 kernels}{figure.caption.30}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Kernel-level API co-occurrence network. Edges shown for $\geq 20$ kernel pairs; edge width proportional to count. The tight CUDA/HIP/SYCL/OpenMP cluster reflects HeCBench and RAJAPerf's uniform multi-API coverage. OpenCL appears as a peripheral node with weak connections (27 CUDA--OpenCL kernel pairs, just above the 20-kernel threshold). RAJA, stdpar, and Thrust appear as isolated nodes with fewer than 20 kernel-level pairs.}}{26}{figure.caption.31}\protected@file@percent }
+\newlabel{fig:kernel-network}{{7}{26}{Kernel-level API co-occurrence network. Edges shown for $\geq 20$ kernel pairs; edge width proportional to count. The tight CUDA/HIP/SYCL/OpenMP cluster reflects HeCBench and RAJAPerf's uniform multi-API coverage. OpenCL appears as a peripheral node with weak connections (27 CUDA--OpenCL kernel pairs, just above the 20-kernel threshold). RAJA, stdpar, and Thrust appear as isolated nodes with fewer than 20 kernel-level pairs}{figure.caption.31}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Repository-level vs.\ kernel-level translation pair counts. Left bars show the number of repositories containing both APIs; right bars show the number of independent kernel-level translation pairs. The multipliers (79$\times $--308$\times $) show why \textsc  {ParBench}{} counts kernels rather than repositories when estimating evaluation opportunity.}}{26}{figure.caption.32}\protected@file@percent }
+\newlabel{fig:repo-vs-kernel}{{8}{26}{Repository-level vs.\ kernel-level translation pair counts. Left bars show the number of repositories containing both APIs; right bars show the number of independent kernel-level translation pairs. The multipliers (79$\times $--308$\times $) show why \parbench {} counts kernels rather than repositories when estimating evaluation opportunity}{figure.caption.32}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Programming model characteristics of the three primary translation APIs. These differences define the structural transformation challenges that LLM-based translation must address.}}{27}{table.caption.33}\protected@file@percent }
+\newlabel{tab:api-characteristics}{{6}{27}{Programming model characteristics of the three primary translation APIs. These differences define the structural transformation challenges that LLM-based translation must address}{table.caption.33}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {C.3}HIP and SYCL Exclusion Rationale}{27}{subsection.C.3}\protected@file@percent }
+\newlabel{sec:appendix-b3}{{C.3}{27}{HIP and SYCL Exclusion Rationale}{subsection.C.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {C.4}OpenACC Exclusion}{28}{subsection.C.4}\protected@file@percent }
+\newlabel{sec:appendix-b4}{{C.4}{28}{OpenACC Exclusion}{subsection.C.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {C.5}OpenMP Target as Case Study}{28}{subsection.C.5}\protected@file@percent }
+\newlabel{sec:appendix-b5}{{C.5}{28}{OpenMP Target as Case Study}{subsection.C.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {D}Benchmark Kernel Survey}{29}{appendix.D}\protected@file@percent }
+\newlabel{sec:appendix-c}{{D}{29}{Benchmark Kernel Survey}{appendix.D}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.1}Full Repository Inventory}{29}{subsection.D.1}\protected@file@percent }
+\newlabel{sec:appendix-c1}{{D.1}{29}{Full Repository Inventory}{subsection.D.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Distribution of benchmark types across the 35 repositories that met inclusion criteria. Suites (13, 37\%) and mini-applications (12, 34\%) dominate, accounting for 71\% of included repositories. Proxy applications (4, 11\%), libraries (4, 11\%), and full applications (2, 6\%) complete the distribution. Suites and mini-applications yield the richest kernel-level material for translation evaluation: they contain multiple independent computational kernels with self-checking verification.}}{29}{figure.caption.34}\protected@file@percent }
+\newlabel{fig:benchmark-types}{{9}{29}{Distribution of benchmark types across the 35 repositories that met inclusion criteria. Suites (13, 37\%) and mini-applications (12, 34\%) dominate, accounting for 71\% of included repositories. Proxy applications (4, 11\%), libraries (4, 11\%), and full applications (2, 6\%) complete the distribution. Suites and mini-applications yield the richest kernel-level material for translation evaluation: they contain multiple independent computational kernels with self-checking verification}{figure.caption.34}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Quantitative characterization of the evaluation corpus (35 kernels, 96 specs across 5 suites). SLoC counts physical source lines (non-blank, non-comment) in each kernel's CUDA prompt payload, the code provided to the LLM as translation input. Multi-File gives specs requiring translation of $>$1 source file. Std.\ shows the dominant language standard per suite.}}{29}{table.caption.35}\protected@file@percent }
+\newlabel{tab:benchmark-characterization}{{7}{29}{Quantitative characterization of the evaluation corpus (35 kernels, 96 specs across 5 suites). SLoC counts physical source lines (non-blank, non-comment) in each kernel's CUDA prompt payload, the code provided to the LLM as translation input. Multi-File gives specs requiring translation of $>$1 source file. Std.\ shows the dominant language standard per suite}{table.caption.35}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Distribution of API breadth across all 71 surveyed repositories. The mode is 3~APIs (18~repositories); a long tail extends to 12~APIs (BabelStream and miniBUDE). 24~repositories support only 1--2~APIs and are unsuitable for cross-API translation evaluation. Repositories supporting $\geq $3~APIs constitute the candidate pool for multi-direction evaluation.}}{30}{figure.caption.36}\protected@file@percent }
+\newlabel{fig:api-count-hist}{{10}{30}{Distribution of API breadth across all 71 surveyed repositories. The mode is 3~APIs (18~repositories); a long tail extends to 12~APIs (BabelStream and miniBUDE). 24~repositories support only 1--2~APIs and are unsuitable for cross-API translation evaluation. Repositories supporting $\geq $3~APIs constitute the candidate pool for multi-direction evaluation}{figure.caption.36}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.2}Quality Tier Classification}{30}{subsection.D.2}\protected@file@percent }
+\newlabel{sec:appendix-c2}{{D.2}{30}{Quality Tier Classification}{subsection.D.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.3}Candidate Ranking and HeCBench Selection Funnel}{30}{subsection.D.3}\protected@file@percent }
+\newlabel{sec:appendix-c3}{{D.3}{30}{Candidate Ranking and HeCBench Selection Funnel}{subsection.D.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Benchmark kernel richness (y-axis, capped at 100 for readability) vs.\ API breadth (x-axis, number of APIs supported). Bubble size proportional to total kernel count; color indicates benchmark type. HeCBench (522 kernels, 6~APIs\footnote {HeCBench's 6-API count treats OpenMP threading and OpenMP-target offloading as distinct APIs and includes limited MPI support; the four primary implementation directories are CUDA, HIP, SYCL, and OpenMP.}) dominates the upper region. RAJAPerf (80 kernels, 5~APIs) is the second-largest. CloverLeaf (23 kernels, 11~APIs) and BabelStream (5 kernels, 12~APIs) occupy the high-API-breadth region but with far fewer kernels. The optimal candidates for corpus construction lie in the high-kernel, moderate-API quadrant (upper-center).}}{31}{figure.caption.37}\protected@file@percent }
+\newlabel{fig:kernel-api-bubble}{{11}{31}{Benchmark kernel richness (y-axis, capped at 100 for readability) vs.\^^MAPI breadth (x-axis, number of APIs supported). Bubble size proportional to total kernel count; color indicates benchmark type. HeCBench (522 kernels, 6~APIs\protect \footnote {HeCBench's 6-API count treats OpenMP threading and OpenMP-target offloading as distinct APIs and includes limited MPI support; the four primary implementation directories are CUDA, HIP, SYCL, and OpenMP.}) dominates the upper region. RAJAPerf (80 kernels, 5~APIs) is the second-largest. CloverLeaf (23 kernels, 11~APIs) and BabelStream (5 kernels, 12~APIs) occupy the high-API-breadth region but with far fewer kernels. The optimal candidates for corpus construction lie in the high-kernel, moderate-API quadrant (upper-center)}{figure.caption.37}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Top multi-API repository candidates ranked by kernel count (blue bars, scaled for readability; true counts annotated above) and API breadth (orange bars). HeCBench provides the largest kernel pool (522 kernels, 6~APIs spanning CUDA, HIP, SYCL, OpenMP, OpenMP-target offloading, and MPI). BabelStream and miniBUDE provide the broadest API coverage (12~APIs each) but with few kernels. RAJAPerf (80 kernels, 5~APIs) offers a balanced middle ground. Rodinia (22 kernels, 4~APIs including a community SYCL port) provides established, well-understood benchmarks with strong community recognition.}}{31}{figure.caption.38}\protected@file@percent }
+\newlabel{fig:top-candidates}{{12}{31}{Top multi-API repository candidates ranked by kernel count (blue bars, scaled for readability; true counts annotated above) and API breadth (orange bars). HeCBench provides the largest kernel pool (522 kernels, 6~APIs spanning CUDA, HIP, SYCL, OpenMP, OpenMP-target offloading, and MPI). BabelStream and miniBUDE provide the broadest API coverage (12~APIs each) but with few kernels. RAJAPerf (80 kernels, 5~APIs) offers a balanced middle ground. Rodinia (22 kernels, 4~APIs including a community SYCL port) provides established, well-understood benchmarks with strong community recognition}{figure.caption.38}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.4}HeCBench Selection Funnel}{32}{subsection.D.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces HeCBench kernel selection funnel. Starting from 522 kernels spanning CUDA, HIP, SYCL, and OpenMP at commit \texttt  {22785cdd}, successive filters for API completeness (329 with all 4~variants), build infrastructure (327), self-checking output patterns (242), and complexity bounds yield a 60-kernel working set. Manual curation further narrows this to 10~evaluation kernels (25~specs; see Section~\ref {sec:benchmark-curation}).}}{32}{figure.caption.39}\protected@file@percent }
+\newlabel{fig:selection-funnel}{{13}{32}{HeCBench kernel selection funnel. Starting from 522 kernels spanning CUDA, HIP, SYCL, and OpenMP at commit \texttt {22785cdd}, successive filters for API completeness (329 with all 4~variants), build infrastructure (327), self-checking output patterns (242), and complexity bounds yield a 60-kernel working set. Manual curation further narrows this to 10~evaluation kernels (25~specs; see Section~\ref {sec:benchmark-curation})}{figure.caption.39}{}}
+\citation{Rodinia2009}
+\citation{XSBench2014}
+\citation{RSBench2014}
+\citation{mixbench2017}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.5}Rodinia Kernel Inventory}{33}{subsection.D.5}\protected@file@percent }
+\newlabel{sec:appendix-c4}{{D.5}{33}{Rodinia Kernel Inventory}{subsection.D.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.6}XSBench, RSBench, and mixbench Profiles}{33}{subsection.D.6}\protected@file@percent }
+\newlabel{sec:appendix-c5}{{D.6}{33}{XSBench, RSBench, and mixbench Profiles}{subsection.D.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {D.7}Exclusion Log and Verification Methods}{33}{subsection.D.7}\protected@file@percent }
+\newlabel{sec:appendix-c6}{{D.7}{33}{Exclusion Log and Verification Methods}{subsection.D.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Benchmarks grouped by verification method. Large nodes represent verification approaches; benchmark nodes are connected to their method(s). Benchmarks without automated verification were excluded or downgraded to Tier~B (Section~\ref {sec:appendix-c2}). The checksum and reference output clusters contain the majority of Tier~A benchmarks.}}{34}{figure.caption.40}\protected@file@percent }
+\newlabel{fig:verification-network}{{14}{34}{Benchmarks grouped by verification method. Large nodes represent verification approaches; benchmark nodes are connected to their method(s). Benchmarks without automated verification were excluded or downgraded to Tier~B (Section~\ref {sec:appendix-c2}). The checksum and reference output clusters contain the majority of Tier~A benchmarks}{figure.caption.40}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {E}Augmentation Protocol and Extended Evaluation Results}{35}{appendix.E}\protected@file@percent }
+\newlabel{sec:appendix-e}{{E}{35}{Augmentation Protocol and Extended Evaluation Results}{appendix.E}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {E.1}Augmentation Levels}{35}{subsection.E.1}\protected@file@percent }
+\newlabel{sec:appendix-a-augmentation}{{E.1}{35}{Augmentation Levels}{subsection.E.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Augmentation level definitions.}}{35}{table.caption.43}\protected@file@percent }
+\newlabel{tab:augmentation-levels}{{8}{35}{Augmentation level definitions}{table.caption.43}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {E.2}Augmentation Transform Frequency And Baseline Validation}{35}{subsection.E.2}\protected@file@percent }
+\newlabel{sec:appendix-e1}{{E.2}{35}{Augmentation Transform Frequency And Baseline Validation}{subsection.E.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces Per-kernel transform application frequency across the Rodinia corpus. Rows represent the 22~Rodinia kernels; columns represent the six AST-level transforms. Cell values give the total number of times each transform was applied to files belonging to that kernel, aggregated across all augmentation levels and API variants. The distribution is highly non-uniform: multi-file kernels such as \texttt  {myocyte} (16 source files) and \texttt  {bptree} accumulate many SwapCondition applications, while smaller kernels (e.g., \texttt  {pathfinder}, \texttt  {hotspot}) show lower counts. ChangeFunctionNames applies to only two kernels (\texttt  {huffman}, \texttt  {streamcluster}).}}{36}{figure.caption.44}\protected@file@percent }
+\newlabel{fig:transform-freq}{{15}{36}{Per-kernel transform application frequency across the Rodinia corpus. Rows represent the 22~Rodinia kernels; columns represent the six AST-level transforms. Cell values give the total number of times each transform was applied to files belonging to that kernel, aggregated across all augmentation levels and API variants. The distribution is highly non-uniform: multi-file kernels such as \texttt {myocyte} (16 source files) and \texttt {bptree} accumulate many SwapCondition applications, while smaller kernels (e.g., \texttt {pathfinder}, \texttt {hotspot}) show lower counts. ChangeFunctionNames applies to only two kernels (\texttt {huffman}, \texttt {streamcluster})}{figure.caption.44}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {E.3}Case Study: Multi-File Translation Consistency Failure}{37}{subsection.E.3}\protected@file@percent }
+\newlabel{sec:appendix-e3}{{E.3}{37}{Case Study: Multi-File Translation Consistency Failure}{subsection.E.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Translation error taxonomy for \texttt  {lavamd} across all six standard directions (Qwen~3.5{}, L0, 3~samples each). Full-program directions (CUDA/OMP targets) fail deterministically at build time; kernel-only directions (OpenCL targets) fail at runtime. Five of six directions produce identical failure modes across all three samples.}}{37}{table.caption.47}\protected@file@percent }
+\newlabel{tab:lavamd-errors}{{9}{37}{Translation error taxonomy for \texttt {lavamd} across all six standard directions (\qwenshort {}, L0, 3~samples each). Full-program directions (CUDA/OMP targets) fail deterministically at build time; kernel-only directions (OpenCL targets) fail at runtime. Five of six directions produce identical failure modes across all three samples}{table.caption.47}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {E.4}Extended Results Details}{38}{subsection.E.4}\protected@file@percent }
+\newlabel{sec:appendix-e4}{{E.4}{38}{Extended Results Details}{subsection.E.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Record-level diagnostic pass rates across three models and 2,262 valid translation records. Records include L0 samples and L1--L4 augmentation runs for L0-passing pairs, so this table mixes canonical L0 records with model-specific L0-conditional augmentation records. Wilson intervals are descriptive because records are clustered by task; inferential comparison uses the balanced 142 L0 pairs in Section~\ref {sec:passk-analysis}.}}{39}{table.caption.51}\protected@file@percent }
+\newlabel{tab:overall-pass}{{10}{39}{Record-level diagnostic pass rates across three models and 2,262 valid translation records. Records include L0 samples and L1--L4 augmentation runs for L0-passing pairs, so this table mixes canonical L0 records with model-specific L0-conditional augmentation records. Wilson intervals are descriptive because records are clustered by task; inferential comparison uses the balanced 142 L0 pairs in Section~\ref {sec:passk-analysis}}{table.caption.51}{}}
+\@writefile{toc}{\contentsline {paragraph}{Record-Level Diagnostic Summary.}{39}{table.caption.51}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes L0 records per model for that direction. Wilson 95\% CIs in brackets.}}{39}{table.caption.53}\protected@file@percent }
+\newlabel{tab:direction-rates}{{11}{39}{Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes L0 records per model for that direction. Wilson 95\% CIs in brackets}{table.caption.53}{}}
+\@writefile{toc}{\contentsline {paragraph}{Direction-Level Pass Rates.}{39}{table.caption.53}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces pass@$k$ results for Qwen~3.5{} (L0 only, temperature~0.7, three independent samples per task, 142 unique source-target pairs). CIs are normal-approximation intervals on the macro-averaged Chen et al.\ estimator (distinct from the Wilson binomial CIs used for per-record pass rates in Table~\ref {tab:overall-pass})}}{39}{table.caption.55}\protected@file@percent }
+\newlabel{tab:pass-at-k-main}{{12}{39}{pass@$k$ results for \qwenshort {} (L0 only, temperature~0.7, three independent samples per task, 142 unique source-target pairs). CIs are normal-approximation intervals on the macro-averaged Chen et al.\ estimator (distinct from the Wilson binomial CIs used for per-record pass rates in Table~\ref {tab:overall-pass})}{table.caption.55}{}}
+\@writefile{toc}{\contentsline {paragraph}{pass@k Analysis.}{39}{table.caption.55}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {13}{\ignorespaces Pass@$k$ estimates for the shared L0 task set (142 evaluation-eligible direction--kernel pairs, three independent samples per pair). Hard Fail = 0/3 samples pass; Always Pass = 3/3; Noisy = 1--2/3.}}{40}{table.caption.57}\protected@file@percent }
+\newlabel{tab:pass-at-k}{{13}{40}{Pass@$k$ estimates for the shared L0 task set (142 evaluation-eligible direction--kernel pairs, three independent samples per pair). Hard Fail = 0/3 samples pass; Always Pass = 3/3; Noisy = 1--2/3}{table.caption.57}{}}
+\@writefile{toc}{\contentsline {paragraph}{Cross-Model pass@$k$ Summary.}{40}{section*.56}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Representative Per-Kernel Pass Rates.}{40}{section*.58}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {14}{\ignorespaces Representative per-kernel pass rates for Qwen~3.5{} across all directions and augmentation levels (626 records, 31~evaluated kernels---4~curated kernels have no evaluable translation pairs). \texttt  {nqueen} is tied with \texttt  {page-rank} at 60.0\%.}}{40}{table.caption.59}\protected@file@percent }
+\newlabel{tab:per-kernel-main}{{14}{40}{Representative per-kernel pass rates for \qwenshort {} across all directions and augmentation levels (626 records, 31~evaluated kernels---4~curated kernels have no evaluable translation pairs). \texttt {nqueen} is tied with \texttt {page-rank} at 60.0\%}{table.caption.59}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {15}{\ignorespaces Augmentation pass rates on the common 12-kernel CUDA-to-OpenMP subset present at all five levels. These 12 kernels were selected by the L0-conditional filter ($\geq $1 of 3 L0 samples passes), so L0 rates exceed the overall CUDA-to-OpenMP rate of 40.3\%.}}{40}{table.caption.61}\protected@file@percent }
+\newlabel{tab:aug-balanced}{{15}{40}{Augmentation pass rates on the common 12-kernel CUDA-to-OpenMP subset present at all five levels. These 12 kernels were selected by the L0-conditional filter ($\geq $1 of 3 L0 samples passes), so L0 rates exceed the overall CUDA-to-OpenMP rate of 40.3\%}{table.caption.61}{}}
+\@writefile{toc}{\contentsline {paragraph}{Augmentation Pass Rates.}{40}{table.caption.61}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {16}{\ignorespaces Declared-oracle pass rates across augmentation levels. L0 covers all 142 evaluation-eligible direction--kernel pairs ($n=426$ L0 records, three samples each). L1--L4 use one augmentation record per qualifying pair on model-specific L0-conditional subsets: pairs where at least one of three L0 samples passes (Qwen~3.5{}: 50 pairs, GPT-5.4{}: 99 pairs, GPT-5.3-codex{}: 97 pairs).}}{41}{table.caption.63}\protected@file@percent }
+\newlabel{tab:augmentation-rates}{{16}{41}{Declared-oracle pass rates across augmentation levels. L0 covers all 142 evaluation-eligible direction--kernel pairs ($n=426$ L0 records, three samples each). L1--L4 use one augmentation record per qualifying pair on model-specific L0-conditional subsets: pairs where at least one of three L0 samples passes (\qwenshort {}: 50 pairs, \gptnew {}: 99 pairs, \codex {}: 97 pairs)}{table.caption.63}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces L0-conditional augmentation outcomes across all three models for the CUDA-to-OpenMP direction. L0 uses first-sample results across all kernels; L1--L4 are restricted to each model's qualifying subset. Error bars show Wilson 95\% intervals and are descriptive because the subset differs by model.}}{41}{figure.caption.64}\protected@file@percent }
+\newlabel{fig:augmentation}{{16}{41}{L0-conditional augmentation outcomes across all three models for the CUDA-to-OpenMP direction. L0 uses first-sample results across all kernels; L1--L4 are restricted to each model's qualifying subset. Error bars show Wilson 95\% intervals and are descriptive because the subset differs by model}{figure.caption.64}{}}
+\@writefile{toc}{\contentsline {paragraph}{All-Model Augmentation Summary.}{41}{section*.62}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Direction Asymmetry And Test Summary.}{41}{section*.66}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {17}{\ignorespaces Per-kernel L0/L1--L4 outcomes for the CUDA-to-OpenMP subset under Qwen~3.5{}. Cell color indicates whether the corresponding analysis record receives declared-oracle \textsc  {Pass}{} or a failure outcome at that level.}}{42}{figure.caption.65}\protected@file@percent }
+\newlabel{fig:aug-heatmap}{{17}{42}{Per-kernel L0/L1--L4 outcomes for the CUDA-to-OpenMP subset under \qwenshort {}. Cell color indicates whether the corresponding analysis record receives declared-oracle \pass {} or a failure outcome at that level}{figure.caption.65}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {17}{\ignorespaces Statistical summary (Qwen~3.5{} canonical evaluation). All confidence intervals are Wilson 95\% intervals. McNemar tests in the direction asymmetry family use Bonferroni correction ($\alpha = 0.05/5 = 0.01$). Augmentation results are summarized descriptively because the L0-conditional design changes the denominator across phases.}}{42}{table.caption.67}\protected@file@percent }
+\newlabel{tab:stats-summary}{{17}{42}{Statistical summary (\qwenshort {} canonical evaluation). All confidence intervals are Wilson 95\% intervals. McNemar tests in the direction asymmetry family use Bonferroni correction ($\alpha = 0.05/5 = 0.01$). Augmentation results are summarized descriptively because the L0-conditional design changes the denominator across phases}{table.caption.67}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {F}Translation Prompt Template}{43}{appendix.F}\protected@file@percent }
+\newlabel{sec:appendix-g}{{F}{43}{Translation Prompt Template}{appendix.F}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {F.1}System Message}{43}{subsection.F.1}\protected@file@percent }
+\newlabel{lst:system-msg}{{4}{43}{System message template. \texttt {\{src\_api\}} and \texttt {\{tgt\_api\}} are replaced with API display names (e.g., ``CUDA'', ``OpenMP''). \texttt {\{tgt\_lang\}} is the target language hint for the code fence (e.g., ``cuda'', ``cpp'', ``c'')}{lstlisting.4}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {4}{\ignorespaces System message template. \texttt  {\{src\_api\}} and \texttt  {\{tgt\_api\}} are replaced with API display names (e.g., ``CUDA'', ``OpenMP''). \texttt  {\{tgt\_lang\}} is the target language hint for the code fence (e.g., ``cuda'', ``cpp'', ``c'').}}{43}{lstlisting.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {F.2}User Message Structure}{43}{subsection.F.2}\protected@file@percent }
+\newlabel{lst:user-msg}{{5}{44}{User message template. Sections marked \emph {(conditional)} appear only when the translation task includes the relevant files. \texttt {\{src\_api\}} and \texttt {\{tgt\_api\}} are API display names; \texttt {\{src\_lang\}} and \texttt {\{tgt\_lang\}} are language hints for code fences. All source code has C/C++ comments stripped before inclusion}{lstlisting.5}{}}
+\@writefile{lol}{\contentsline {lstlisting}{\numberline {5}{\ignorespaces User message template. Sections marked \emph  {(conditional)} appear only when the translation task includes the relevant files. \texttt  {\{src\_api\}} and \texttt  {\{tgt\_api\}} are API display names; \texttt  {\{src\_lang\}} and \texttt  {\{tgt\_lang\}} are language hints for code fences. All source code has C/C++ comments stripped before inclusion.}}{44}{lstlisting.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {F.3}Anonymization Details}{44}{subsection.F.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {G}Evaluation Cost and Reproducibility}{45}{appendix.G}\protected@file@percent }
+\newlabel{sec:appendix-j}{{G}{45}{Evaluation Cost and Reproducibility}{appendix.G}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {18}{\ignorespaces Model configurations. $^\dagger $Azure reasoning models do not accept explicit temperature or top-$p$ parameters; sampling is controlled internally by the provider.}}{45}{table.caption.68}\protected@file@percent }
+\newlabel{tab:model-config}{{18}{45}{Model configurations. $^\dagger $Azure reasoning models do not accept explicit temperature or top-$p$ parameters; sampling is controlled internally by the provider}{table.caption.68}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {19}{\ignorespaces Hardware and software configuration shared across all three model campaigns.}}{45}{table.caption.69}\protected@file@percent }
+\newlabel{tab:hardware}{{19}{45}{Hardware and software configuration shared across all three model campaigns}{table.caption.69}{}}
+\citation{ModelCards2019}
+\citation{Datasheets2021}
+\@writefile{lot}{\contentsline {table}{\numberline {20}{\ignorespaces Evaluation campaign cost summary. All metrics are aggregated from per-result JSON metadata. Token counts reflect only the tokens recorded per evaluation call (see text).}}{46}{table.caption.70}\protected@file@percent }
+\newlabel{tab:eval-cost}{{20}{46}{Evaluation campaign cost summary. All metrics are aggregated from per-result JSON metadata. Token counts reflect only the tokens recorded per evaluation call (see text)}{table.caption.70}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {H}Evaluation Card}{46}{appendix.H}\protected@file@percent }
+\newlabel{sec:appendix-k}{{H}{46}{Evaluation Card}{appendix.H}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {21}{\ignorespaces Evaluation Card summary. Each row states a key property of \textsc  {ParBench}{}'s measurement scope. Detailed discussion appears in the referenced subsection.}}{46}{table.caption.71}\protected@file@percent }
+\newlabel{tab:eval-card-summary}{{21}{46}{Evaluation Card summary. Each row states a key property of \parbench {}'s measurement scope. Detailed discussion appears in the referenced subsection}{table.caption.71}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {H.1}What \textsc  {ParBench}{} Measures}{46}{subsection.H.1}\protected@file@percent }
+\newlabel{sec:ec-measures}{{H.1}{46}{What \parbench {} Measures}{subsection.H.1}{}}
+\citation{TRACY2025}
+\@writefile{toc}{\contentsline {subsection}{\numberline {H.2}What \textsc  {ParBench}{} Does Not Measure}{47}{subsection.H.2}\protected@file@percent }
+\newlabel{sec:ec-not-measures}{{H.2}{47}{What \parbench {} Does Not Measure}{subsection.H.2}{}}
+\citation{ParEvalRepo2025}
+\@writefile{toc}{\contentsline {subsection}{\numberline {H.3}Valid Claims}{48}{subsection.H.3}\protected@file@percent }
+\newlabel{sec:ec-valid}{{H.3}{48}{Valid Claims}{subsection.H.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {H.4}Invalid Claims}{48}{subsection.H.4}\protected@file@percent }
+\newlabel{sec:ec-invalid}{{H.4}{48}{Invalid Claims}{subsection.H.4}{}}
+\citation{ParEvalRepo2025}
+\citation{Rodinia2009}
+\citation{HeCBench2023}
+\citation{XSBench2014}
+\@writefile{toc}{\contentsline {subsection}{\numberline {H.5}Assumptions}{49}{subsection.H.5}\protected@file@percent }
+\newlabel{sec:ec-assumptions}{{H.5}{49}{Assumptions}{subsection.H.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {H.6}User Guidance}{50}{subsection.H.6}\protected@file@percent }
+\newlabel{sec:ec-guidance}{{H.6}{50}{User Guidance}{subsection.H.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {H.7}Recommended Reporting Protocol}{51}{subsection.H.7}\protected@file@percent }
+\newlabel{sec:ec-reporting}{{H.7}{51}{Recommended Reporting Protocol}{subsection.H.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {22}{\ignorespaces Required reporting items for \textsc  {ParBench}{} results.}}{51}{table.caption.72}\protected@file@percent }
+\newlabel{tab:reporting-required}{{22}{51}{Required reporting items for \parbench {} results}{table.caption.72}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {23}{\ignorespaces Recommended additional reporting items.}}{51}{table.caption.73}\protected@file@percent }
+\newlabel{tab:reporting-recommended}{{23}{51}{Recommended additional reporting items}{table.caption.73}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Artifact Availability}{51}{appendix.I}\protected@file@percent }
+\newlabel{sec:artifact-availability}{{I}{51}{Artifact Availability}{appendix.I}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {J}Supplementary Tables and Figures}{51}{appendix.J}\protected@file@percent }
+\newlabel{sec:appendix-f}{{J}{51}{Supplementary Tables and Figures}{appendix.J}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {18}{\ignorespaces Pass@$k$ by translation direction (Qwen~3.5{}, L0, three samples per task).}}{52}{figure.caption.74}\protected@file@percent }
+\newlabel{fig:pass-at-k-qwen}{{18}{52}{Pass@$k$ by translation direction (\qwenshort {}, L0, three samples per task)}{figure.caption.74}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {19}{\ignorespaces Pass@$k$ by translation direction (GPT-5.4{}, L0, three samples per task).}}{52}{figure.caption.75}\protected@file@percent }
+\newlabel{fig:pass-at-k-gpt54}{{19}{52}{Pass@$k$ by translation direction (\gptnew {}, L0, three samples per task)}{figure.caption.75}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {20}{\ignorespaces Pass@$k$ by translation direction (GPT-5.3-codex{}, L0, three samples per task).}}{53}{figure.caption.76}\protected@file@percent }
+\newlabel{fig:pass-at-k-codex}{{20}{53}{Pass@$k$ by translation direction (\codex {}, L0, three samples per task)}{figure.caption.76}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {21}{\ignorespaces Cross-suite pass rate comparison (L0, Qwen~3.5{}). Per-suite aggregate pass rates with Wilson 95\% CIs across all five benchmark suites.}}{53}{figure.caption.77}\protected@file@percent }
+\newlabel{fig:cross-suite-qwen}{{21}{53}{Cross-suite pass rate comparison (L0, \qwenshort {}). Per-suite aggregate pass rates with Wilson 95\% CIs across all five benchmark suites}{figure.caption.77}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {22}{\ignorespaces Cross-suite pass rate comparison (L0, GPT-5.4{}). Per-suite aggregate pass rates with Wilson 95\% CIs across all five benchmark suites.}}{53}{figure.caption.78}\protected@file@percent }
+\newlabel{fig:cross-suite-gpt54}{{22}{53}{Cross-suite pass rate comparison (L0, \gptnew {}). Per-suite aggregate pass rates with Wilson 95\% CIs across all five benchmark suites}{figure.caption.78}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {23}{\ignorespaces Cross-suite pass rate comparison (L0, GPT-5.3-codex{}). Per-suite aggregate pass rates with Wilson 95\% CIs across all five benchmark suites.}}{54}{figure.caption.79}\protected@file@percent }
+\newlabel{fig:cross-suite-codex}{{23}{54}{Cross-suite pass rate comparison (L0, \codex {}). Per-suite aggregate pass rates with Wilson 95\% CIs across all five benchmark suites}{figure.caption.79}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {24}{\ignorespaces Full per-kernel pass rates across all 31 evaluated kernels (Qwen~3.5{}, 626 evaluation-eligible records including L0 and augmentation levels, 31~kernels across 5~suites). Results involving \textsc  {Known\_Fail}{} specs excluded.}}{54}{table.caption.80}\protected@file@percent }
+\newlabel{tab:per-kernel-full}{{24}{54}{Full per-kernel pass rates across all 31 evaluated kernels (\qwenshort {}, 626 evaluation-eligible records including L0 and augmentation levels, 31~kernels across 5~suites). Results involving \knownfail {} specs excluded}{table.caption.80}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {25}{\ignorespaces Full per-kernel pass rates across all 31 evaluated kernels (GPT-5.4{}, 822 evaluation-eligible records including L0 and augmentation levels, 31~kernels across 5~suites). \textsc  {Known\_Fail}{} specs pre-excluded from evaluation batch.}}{55}{table.caption.81}\protected@file@percent }
+\newlabel{tab:per-kernel-full-gpt54}{{25}{55}{Full per-kernel pass rates across all 31 evaluated kernels (\gptnew {}, 822 evaluation-eligible records including L0 and augmentation levels, 31~kernels across 5~suites). \knownfail {} specs pre-excluded from evaluation batch}{table.caption.81}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {26}{\ignorespaces Full per-kernel pass rates across all 31 evaluated kernels (GPT-5.3-codex{}, 814 evaluation-eligible records including L0 and augmentation levels, 31~kernels across 5~suites). \textsc  {Known\_Fail}{} specs pre-excluded from evaluation batch.}}{56}{table.caption.82}\protected@file@percent }
+\newlabel{tab:per-kernel-full-codex}{{26}{56}{Full per-kernel pass rates across all 31 evaluated kernels (\codex {}, 814 evaluation-eligible records including L0 and augmentation levels, 31~kernels across 5~suites). \knownfail {} specs pre-excluded from evaluation batch}{table.caption.82}{}}
+\citation{Rodinia2009}
+\gdef \@abspage@last{59}
