@@ -31,14 +31,7 @@
   url       = {https://doi.org/10.1145/3729379},
 }
 
-@inproceedings{chen2025pcebench,
-  title={Pcebench: A multi-dimensional benchmark for evaluating large language models in parallel code generation},
-  author={Chen, Le and Ahmed, Nesreen and Capot{\u{a}}, Mihai and Willke, Ted and Hasabnis, Niranjan and Jannesari, Ali},
-  booktitle={2025 IEEE International Parallel and Distributed Processing Symposium (IPDPS)},
-  pages={546--557},
-  year={2025},
-  organization={IEEE}
-}
+% chen2025pcebench DELETED — duplicate of PCEBench2025. Citations updated to \cite{PCEBench2025}.
 
 @inproceedings{CodeRosetta2024,
   author    = {Ali TehraniJamsaz and Arijit Bhattacharjee and Le Chen and
@@ -185,7 +178,6 @@
   booktitle = {Proceedings of the Twelfth International Conference on
                Learning Representations ({ICLR})},
   year      = {2024},
-  doi       = {10.48550/arXiv.2310.06770},
   url       = {https://openreview.net/forum?id=VTF8yNQM66},
 }
 
@@ -221,10 +213,10 @@
 }
 
 
-@misc{TRACY2025,
+@misc{TRACE2025,
   author    = {Zhihao Gong and Zeyu Sun and Dong Huang and Qingyuan Liang and
                Jie M. Zhang and Dan Hao},
-  title     = {{TRACY}: Benchmarking Execution Efficiency of {LLM}-Based
+  title     = {{TRACE}: Evaluating Execution Efficiency of {LLM}-Based
                Code Translation},
   year      = {2025},
   eprint    = {2508.11468},
@@ -282,24 +274,31 @@
 }
 
 @misc{VibeCodeHPC2025,
-  author    = {William Godoy and Pedro Valero-Lara and
-               Keita Teranishi and Jeffrey S. Vetter},
+  author    = {Shun-ichiro Hayashi and Koki Morita and Daichi Mukunoki and
+               Tetsuya Hoshino and Takahiro Katagiri},
   title     = {{VibeCodeHPC}: An Agent-Based Iterative Prompting Auto-Tuner for {HPC} Code Generation Using {LLMs}},
   year      = {2025},
   eprint    = {2510.00031},
   archivePrefix = {arXiv},
   primaryClass  = {cs.SE},
+  howpublished = {arXiv preprint arXiv:2510.00031},
+  doi       = {10.48550/arXiv.2510.00031},
   url       = {https://arxiv.org/abs/2510.00031},
 }
 
 @misc{QiMengMuPa2025,
-  author    = {Pei Mu and Yifan Zhu and Dongning Ma and Xipeng Shen},
-  title     = {{QiMeng-MuPa}: Multi-Paradigm Parallel Code Generation
-               with Large Language Models},
+  author    = {Changxin Ke and Rui Zhang and Shuo Wang and Li Ding and
+               Guangli Li and Yuanbo Wen and Shuoming Zhang and Ruiyuan Xu and
+               Jin Qin and Jiaming Guo and Chenxi Wang and Ling Li and
+               Qi Guo and Yunji Chen},
+  title     = {{QiMeng-MuPa}: Mutual-Supervised Learning for Sequential-to-Parallel
+               Code Translation},
   year      = {2025},
   eprint    = {2506.11153},
   archivePrefix = {arXiv},
-  primaryClass  = {cs.PL},
+  primaryClass  = {cs.SE},
+  howpublished = {arXiv preprint arXiv:2506.11153},
+  doi       = {10.48550/arXiv.2506.11153},
   url       = {https://arxiv.org/abs/2506.11153},
 }
 
@@ -339,19 +338,22 @@
 }
 
 @inproceedings{CodeMorph2025,
-author    = {Yifan Zhang and Yuqi Zhu and Yibo Liu and Jiawei Liu and Ge Li and Zhi Jin},
-title     = {{CodeMorph}: Semantic-Preserving Code Transformation for Data Leakage Mitigation in Code {LLM} Evaluation}, 
-booktitle = {Proceedings of the 47th International Conference on Software Engineering (ICSE), Industry Track},
+author    = {Hongzhou Rao and Yanjie Zhao and Wenjie Zhu and Ling Xiao and Meizhen Wang and Haoyu Wang},
+title     = {{CodeMorph}: Mitigating Data Leakage in Large Language Model Assessment},
+booktitle = {Proceedings of the 47th International Conference on Software Engineering (ICSE), Industry Challenge Track},
 year      = {2025},
-url       = {https://arxiv.org/abs/2506.17627}
+doi       = {10.1109/ICSE-Companion66252.2025.00081},
+url       = {https://doi.org/10.1109/ICSE-Companion66252.2025.00081}
 }
 
 @misc{MemorizeOrGeneralize2025,
-author    = {Hao Chen and Qian Liu and Zhong Ming},
-title     = {Memorize or Generalize? An Empirical Study on Code {LLMs} with Semantic-Preserving Code Rewriting},
+author    = {Lizhe Zhang and Wentao Chen and Li Zhong and Letian Peng and Zilong Wang and Jingbo Shang},
+title     = {Memorize or Generalize? Evaluating {LLM} Code Generation with Code Rewriting},
 year      = {2025},
 eprint    = {2503.02296},
 archivePrefix = {arXiv},
+primaryClass = {cs.AI},
+howpublished = {arXiv preprint arXiv:2503.02296},
 doi       = {10.48550/arXiv.2503.02296},
 url       = {https://arxiv.org/abs/2503.02296}
 }
@@ -364,7 +366,7 @@ url       = {https://arxiv.org/abs/2503.02296}
 
 
 @inproceedings{LearningToParallelize2023,
-  title = {Learning to Parallelize in a Shared-Memory Environment with Transformers},
+  title = {{POSTER}: Learning to Parallelize in a Shared-Memory Environment with Transformers},
   author = {Harel, Re'em and Pinter, Yuval and Oren, Gal},
   booktitle = {Proceedings of the 28th ACM SIGPLAN Annual Symposium on Principles and Practice of Parallel Programming},
   pages = {450--452},
@@ -419,11 +421,14 @@ url       = {https://arxiv.org/abs/2503.02296}
   url = {https://doi.org/10.1007/s10766-024-00778-9}
 }
 
-@article{OMPar2024,
+@misc{OMPar2024,
   title = {{OMPar}: Automatic Parallelization with AI-Driven Source-to-Source Compilation},
   author = {Kadosh, Tal and Hasabnis, Niranjan and Soundararajan, Prema and Vo, Vy A. and Capot{\u{a}}, Mihai and Ahmed, Nesreen K. and Pinter, Yuval and Oren, Gal},
-  journal = {arXiv preprint arXiv:2409.14771},
   year = {2024},
+  eprint = {2409.14771},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.SE},
+  howpublished = {arXiv preprint arXiv:2409.14771},
   doi = {10.48550/arXiv.2409.14771},
   url = {https://arxiv.org/abs/2409.14771}
 }
@@ -486,25 +491,27 @@ url       = {https://arxiv.org/abs/2503.02296}
   url = {https://doi.org/10.23919/ISC.2025.11017585}
 }
 
-@article{UniPar2025,
+@inproceedings{UniPar2025,
   title = {{UniPar}: A Unified {LLM}-Based Framework for Parallel and Accelerated Code Translation in {HPC}},
   author = {Bitan, Tomer and Kadosh, Tal and Kaplan, Erel and Meiri, Shira and Chen, Le and Morales, Peter and Hasabnis, Niranjan and Oren, Gal},
-  journal = {arXiv preprint arXiv:2509.12136},
+  booktitle = {2025 IEEE High Performance Extreme Computing Conference (HPEC)},
+  pages = {1--8},
+  publisher = {IEEE},
   year = {2025},
-  doi = {10.48550/arXiv.2509.12136},
-  url = {https://arxiv.org/abs/2509.12136}
+  doi = {10.1109/HPEC67600.2025.11196677},
+  url = {https://doi.org/10.1109/HPEC67600.2025.11196677}
 }
 
 
 @inproceedings{ChatPORT2025,
   title = {{ChatPORT}: Fine-Tuned {LLM} for Easy Code {PORT}ing},
   author = {Pophale, Swaroop and Jin, Zheming and Teranishi, Keita},
-  booktitle = {OpenMP: Balancing Productivity and Performance Portability},
+  booktitle = {OpenMP: Balancing Productivity and Performance Portability - 21st International Workshop on OpenMP, IWOMP 2025, Proceedings},
   series = {Lecture Notes in Computer Science},
   volume = {16123},
   pages = {197--211},
   publisher = {Springer},
-  year = {2025},
+  year = {2026},
   doi = {10.1007/978-3-032-06343-4_13},
   url = {https://doi.org/10.1007/978-3-032-06343-4_13}
 }
@@ -550,24 +557,27 @@ url       = {https://arxiv.org/abs/2503.02296}
   author = {Ouyang, Anne and Guo, Simon and Arora, Simran and Zhang, Alex L. and Hu, William and R{\'e}, Christopher and Mirhoseini, Azalia},
   booktitle = {Proceedings of the 42nd International Conference on Machine Learning},
   year = {2025},
-  doi = {10.48550/arXiv.2502.10517},
-  url = {https://arxiv.org/abs/2502.10517}
+  url = {https://proceedings.mlr.press/v267/ouyang25a.html}
 }
 
-@article{Mercury2024,
-  title = {Mercury: An Efficiency Benchmark for {LLM} Code Synthesis},
-  author = {Du, Mingzhe and Luu, Anh Tuan and Ji, Bin and Ng, See-Kiong},
-  journal = {arXiv preprint arXiv:2402.07844},
+@inproceedings{Mercury2024,
+  title = {Mercury: A Code Efficiency Benchmark for Code Large Language Models},
+  author = {Du, Mingzhe and Luu, Anh Tuan and Ji, Bin and Liu, Qian and Ng, See-Kiong},
+  booktitle = {Advances in Neural Information Processing Systems 37 ({NeurIPS})},
+  pages = {16601--16622},
   year = {2024},
-  doi = {10.48550/arXiv.2402.07844},
-  url = {https://arxiv.org/abs/2402.07844}
+  doi = {10.52202/079017-0529},
+  url = {https://doi.org/10.52202/079017-0529}
 }
 
-@article{ParaCodex2026,
+@misc{ParaCodex2026,
   title = {{ParaCodex}: A Profiling-Guided Autonomous Coding Agent for Reliable Parallel Code Generation and Translation},
   author = {Kaplan, Erel and Bitan, Tomer and Ghrayeb, Lian and Chen, Le and Yotam, Tom and Hasabnis, Niranjan and Oren, Gal},
-  journal = {arXiv preprint arXiv:2601.04327},
   year = {2026},
+  eprint = {2601.04327},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.SE},
+  howpublished = {arXiv preprint arXiv:2601.04327},
   doi = {10.48550/arXiv.2601.04327},
   url = {https://arxiv.org/abs/2601.04327}
 }

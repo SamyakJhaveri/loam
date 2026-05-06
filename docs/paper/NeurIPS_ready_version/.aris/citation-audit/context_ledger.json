@@ -1,0 +1,1706 @@
+{
+  "paper_dir": "/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version",
+  "bib_file": "references.bib",
+  "tex_files_scanned": [
+    "main_neurips.tex",
+    "appendices_neurips.tex",
+    "sections/1-introduction.tex",
+    "sections/abstract.tex",
+    "sections/benchmark-curation.tex",
+    "sections/discussion.tex",
+    "sections/experimental-setup.tex",
+    "sections/framework.tex",
+    "sections/macros.tex",
+    "sections/related-work.tex",
+    "sections/results.tex"
+  ],
+  "tex_files_with_cites": [
+    "appendices_neurips.tex",
+    "sections/1-introduction.tex",
+    "sections/benchmark-curation.tex",
+    "sections/discussion.tex",
+    "sections/experimental-setup.tex",
+    "sections/framework.tex",
+    "sections/related-work.tex",
+    "sections/results.tex"
+  ],
+  "bib_keys": [
+    "AlphaTrans2025",
+    "AutoParLLM2025",
+    "ChatMPI2026",
+    "ChatPORT2025",
+    "ChatPORTSYCL2025",
+    "CodeMorph2025",
+    "CodeRosetta2024",
+    "CuratedOpenMPDataset2026",
+    "Datasheets2021",
+    "GPT53Codex2026",
+    "HPCCoder2024",
+    "HPCCoderV2",
+    "HPCorpus2023",
+    "HeCBench2023",
+    "HumanEval2021",
+    "KernelBench2025",
+    "LASSI2024",
+    "LargeLLMEvalHPC2024",
+    "LearningToParallelize2023",
+    "MPIRICAL2023",
+    "MPIrigen2024",
+    "MemorizeOrGeneralize2025",
+    "Mercury2024",
+    "ModelCards2019",
+    "MonoCoder2024",
+    "OMPGPT2024",
+    "OMPar2024",
+    "OMPify2023",
+    "OpenMPAssessment2024",
+    "PCEBench2025",
+    "ParEval2024",
+    "ParEvalRepo2025",
+    "ParaCodex2026",
+    "PragFormer2025",
+    "QiMengMuPa2025",
+    "RSBench2014",
+    "Rodinia2009",
+    "SWEbench2024",
+    "SWEbenchIllusion2025",
+    "TRACE2025",
+    "TransCoder2020",
+    "UniPar2025",
+    "VibeCodeHPC2025",
+    "Wang2026RepoTransBench",
+    "XSBench2014",
+    "mixbench2017"
+  ],
+  "used_keys": [
+    "AlphaTrans2025",
+    "AutoParLLM2025",
+    "ChatMPI2026",
+    "ChatPORT2025",
+    "ChatPORTSYCL2025",
+    "CodeMorph2025",
+    "CodeRosetta2024",
+    "CuratedOpenMPDataset2026",
+    "Datasheets2021",
+    "GPT53Codex2026",
+    "HPCCoder2024",
+    "HPCCoderV2",
+    "HPCorpus2023",
+    "HeCBench2023",
+    "HumanEval2021",
+    "KernelBench2025",
+    "LASSI2024",
+    "LargeLLMEvalHPC2024",
+    "LearningToParallelize2023",
+    "MPIRICAL2023",
+    "MPIrigen2024",
+    "MemorizeOrGeneralize2025",
+    "Mercury2024",
+    "ModelCards2019",
+    "MonoCoder2024",
+    "OMPGPT2024",
+    "OMPar2024",
+    "OMPify2023",
+    "OpenMPAssessment2024",
+    "PCEBench2025",
+    "ParEval2024",
+    "ParEvalRepo2025",
+    "ParaCodex2026",
+    "PragFormer2025",
+    "QiMengMuPa2025",
+    "RSBench2014",
+    "Rodinia2009",
+    "SWEbench2024",
+    "SWEbenchIllusion2025",
+    "TRACE2025",
+    "TransCoder2020",
+    "UniPar2025",
+    "VibeCodeHPC2025",
+    "Wang2026RepoTransBench",
+    "XSBench2014",
+    "mixbench2017"
+  ],
+  "unused_bib_keys": [],
+  "missing_bib_keys": [],
+  "entries": [
+    {
+      "key": "HumanEval2021",
+      "file": "appendices_neurips.tex",
+      "line": 309,
+      "context": "HumanEval~\\cite{HumanEval2021} & General code generation; function level & Public benchmark with unit tests & Establishes execution-based evaluation, but does not exercise parallel API semantics."
+    },
+    {
+      "key": "TransCoder2020",
+      "file": "appendices_neurips.tex",
+      "line": 314,
+      "context": "TransCoder~\\cite{TransCoder2020} & General source-to-source translation; function level & Public multilingual corpus with unit tests & Provides a code-translation precedent, but not for HPC or parallel APIs."
+    },
+    {
+      "key": "SWEbench2024",
+      "file": "appendices_neurips.tex",
+      "line": 319,
+      "context": "SWE-bench~\\cite{SWEbench2024} & Repository issue repair; repository level & Public GitHub-issue benchmark with repository tests & Demonstrates executable repository evaluation, but is mostly non-HPC and non-parallel."
+    },
+    {
+      "key": "Wang2026RepoTransBench",
+      "file": "appendices_neurips.tex",
+      "line": 324,
+      "context": "RepoTransBench~\\cite{Wang2026RepoTransBench} & Repository-level code translation & Public repository benchmark with build/test signals & Shows repository translation complexity, but confounds kernel translation with scaffolding."
+    },
+    {
+      "key": "AlphaTrans2025",
+      "file": "appendices_neurips.tex",
+      "line": 329,
+      "context": "AlphaTrans~\\cite{AlphaTrans2025} & Repository translation and validation & Repository-scale translation tasks with validation/tests & Adjacent repository-level translation work, but not focused on parallel API semantics."
+    },
+    {
+      "key": "LearningToParallelize2023",
+      "file": "appendices_neurips.tex",
+      "line": 357,
+      "context": "Learning to Parallelize~\\cite{LearningToParallelize2023} & OpenMP parallelization prediction; loop/region level & Curated OpenMP training and evaluation corpus & Shows local corpus construction for OpenMP assistance, not executable cross-API translation."
+    },
+    {
+      "key": "MPIRICAL2023",
+      "file": "appendices_neurips.tex",
+      "line": 362,
+      "context": "MPI-RICAL~\\cite{MPIRICAL2023} & MPI assistance; function/region level & Curated MPI-focused corpus with recommendation metrics & Relevant as MPI-specific parallel-code assistance using a local dataset."
+    },
+    {
+      "key": "OMPify2023",
+      "file": "appendices_neurips.tex",
+      "line": 367,
+      "context": "OpenMP Graph Transformer~\\cite{OMPify2023} & OpenMP parallelization advice; loop/region level & Curated OpenMP corpus with recommendation/classification metrics & Relevant to pragma advice, but not translation evaluation."
+    },
+    {
+      "key": "OMPGPT2024",
+      "file": "appendices_neurips.tex",
+      "line": 372,
+      "context": "OMPGPT~\\cite{OMPGPT2024} & OpenMP-oriented code modeling; function/task level & OpenMP-oriented model corpus and generation metrics & Domain-specific modeling work, but not reusable translation infrastructure."
+    },
+    {
+      "key": "MPIrigen2024",
+      "file": "appendices_neurips.tex",
+      "line": 377,
+      "context": "MPIrigen~\\cite{MPIrigen2024} & MPI code generation; function/task level & MPI-specific curated corpus with generation checks & Generation-oriented MPI work, not API-to-API kernel translation."
+    },
+    {
+      "key": "MonoCoder2024",
+      "file": "appendices_neurips.tex",
+      "line": 382,
+      "context": "MonoCoder~\\cite{MonoCoder2024} & HPC code modeling; task/function level & HPC-oriented model corpus and task metrics & Relevant HPC specialization work, but method/corpus-specific."
+    },
+    {
+      "key": "PragFormer2025",
+      "file": "appendices_neurips.tex",
+      "line": 387,
+      "context": "PragFormer~\\cite{PragFormer2025} & Parallel-code classification; loop/region level & Curated classification corpus & Relevant representation work, but not executable translation."
+    },
+    {
+      "key": "OMPar2024",
+      "file": "appendices_neurips.tex",
+      "line": 392,
+      "context": "OMPar~\\cite{OMPar2024} & AI-driven OpenMP source-to-source parallelization; program/loop level & Paper-specific OpenMP evaluation set & Automatic parallelization rather than translation of existing parallel kernels."
+    },
+    {
+      "key": "AutoParLLM2025",
+      "file": "appendices_neurips.tex",
+      "line": 397,
+      "context": "AutoParLLM~\\cite{AutoParLLM2025} & Zero-shot code parallelization; loop/function level & Local parallelization evaluation set & Measures introducing parallelism, not preserving existing parallel semantics across APIs."
+    },
+    {
+      "key": "OpenMPAssessment2024",
+      "file": "appendices_neurips.tex",
+      "line": 402,
+      "context": "OpenMP Assessment~\\cite{OpenMPAssessment2024} & LLMs for OpenMP parallelization; snippet/program level & Paper-specific assessment set & Shows the need for OpenMP-specific evaluation, but not cross-API translation."
+    },
+    {
+      "key": "ParEval2024",
+      "file": "appendices_neurips.tex",
+      "line": 407,
+      "context": "ParEval~\\cite{ParEval2024} & Parallel code generation with limited translation settings; task level & Public benchmark with correctness checks & Includes generation and some translation settings, but not \\parbench{}'s fixed executable kernel corpus or broader cross-API direction coverage."
+    },
+    {
+      "key": "PCEBench2025",
+      "file": "appendices_neurips.tex",
+      "line": 412,
+      "context": "PCEBench~\\cite{PCEBench2025} & Multi-dimensional parallel code generation; task level & Public benchmark with correctness/task metrics & Complements \\parbench{} by evaluating generation rather than existing-kernel translation."
+    },
+    {
+      "key": "LASSI2024",
+      "file": "appendices_neurips.tex",
+      "line": 440,
+      "context": "LASSI~\\cite{LASSI2024} & Agentic parallel-code translation; kernel level & Curated HeCBench subset with build-run-verify & Closest in verification style, but smaller in scope and focused on iterative repair."
+    },
+    {
+      "key": "CodeRosetta2024",
+      "file": "appendices_neurips.tex",
+      "line": 445,
+      "context": "CodeRosetta~\\cite{CodeRosetta2024} & Parallel code translation and fine-tuning; function/kernel level & Model-specific C++/CUDA corpus with compile/similarity/local checks & Relevant translation work, but lacks fixed multi-API executable specifications."
+    },
+    {
+      "key": "HPCCoder2024",
+      "file": "appendices_neurips.tex",
+      "line": 450,
+      "context": "HPC-Coder~\\cite{HPCCoder2024} & HPC code modeling; task/function level & HPC-oriented corpus and model-evaluation metrics & Domain-specific HPC modeling, not benchmark-infrastructure focused."
+    },
+    {
+      "key": "HPCCoderV2",
+      "file": "appendices_neurips.tex",
+      "line": 455,
+      "context": "HPC-Coder-V2~\\cite{HPCCoderV2} & Code LLMs across low-resource parallel languages; task level & Parallel-language tasks with pass@$k$ and task checks & Relevant to parallel-code LLMs, but not controlled executable kernel translation."
+    },
+    {
+      "key": "ParEvalRepo2025",
+      "file": "appendices_neurips.tex",
+      "line": 460,
+      "context": "ParEval-Repo~\\cite{ParEvalRepo2025} & Repository-level HPC translation & Public HPC repository benchmark with build and functional tests & Motivates \\parbench{} by showing that repository integration can dominate failures."
+    },
+    {
+      "key": "UniPar2025",
+      "file": "appendices_neurips.tex",
+      "line": 465,
+      "context": "UniPar~\\cite{UniPar2025} & Parallel and accelerated code translation; task/program level & System-specific evaluation corpus with local correctness checks & Relevant multi-paradigm translation, but not primarily a reusable benchmark substrate."
+    },
+    {
+      "key": "QiMengMuPa2025",
+      "file": "appendices_neurips.tex",
+      "line": 470,
+      "context": "QiMeng-MuPa~\\cite{QiMengMuPa2025} & Sequential-to-parallel translation; task/program level & Curated training/evaluation corpus with local correctness checks & Related parallelization/translation work, but different from API-to-API translation of existing kernels."
+    },
+    {
+      "key": "ChatPORT2025",
+      "file": "appendices_neurips.tex",
+      "line": 475,
+      "context": "ChatPORT~\\cite{ChatPORT2025} & LLM-assisted code porting; kernel/program level & Local porting evaluation with build/run checks & Relevant porting work, but method-specific."
+    },
+    {
+      "key": "ChatPORTSYCL2025",
+      "file": "appendices_neurips.tex",
+      "line": 480,
+      "context": "ChatPORT CUDA-to-SYCL~\\cite{ChatPORTSYCL2025} & CUDA-to-SYCL translation; kernel level & Local CUDA-to-SYCL evaluation with build/run checks & Directly relevant API migration, but narrower in direction and scope."
+    },
+    {
+      "key": "ChatMPI2026",
+      "file": "appendices_neurips.tex",
+      "line": 485,
+      "context": "ChatMPI~\\cite{ChatMPI2026} & MPI code generation; function/workload level & MPI-focused local evaluation with functional checks & Distributed-parallel generation, not cross-API kernel translation."
+    },
+    {
+      "key": "LargeLLMEvalHPC2024",
+      "file": "appendices_neurips.tex",
+      "line": 490,
+      "context": "Large LLM Evaluation for HPC~\\cite{LargeLLMEvalHPC2024} & Evaluating LLMs for HPC software development; task/program level & HPC-oriented evaluation suite with task-specific checks & Broad HPC LLM context, but not controlled cross-API translation."
+    },
+    {
+      "key": "VibeCodeHPC2025",
+      "file": "appendices_neurips.tex",
+      "line": 495,
+      "context": "VibeCodeHPC~\\cite{VibeCodeHPC2025} & Agentic HPC code generation/tuning; application/kernel level & Small local HPC benchmark set with build/run/performance signals & Agentic generation and optimization, not existing-kernel API translation."
+    },
+    {
+      "key": "ParaCodex2026",
+      "file": "appendices_neurips.tex",
+      "line": 500,
+      "context": "ParaCodex~\\cite{ParaCodex2026} & Profiling-guided agentic parallel generation/translation; kernel/program level & Curated suite mixture with build-run-verify and profiling feedback & Directly relevant method-side work; \\parbench{} can evaluate such systems under fixed specs."
+    },
+    {
+      "key": "TRACE2025",
+      "file": "appendices_neurips.tex",
+      "line": 528,
+      "context": "TRACE~\\cite{TRACE2025} & Efficiency of LLM-based code translation; function/task level & Efficiency benchmark with correctness and runtime & Complementary performance axis; \\parbench{} focuses first on correctness."
+    },
+    {
+      "key": "KernelBench2025",
+      "file": "appendices_neurips.tex",
+      "line": 533,
+      "context": "KernelBench~\\cite{KernelBench2025} & Efficient GPU-kernel generation; kernel level & GPU-kernel benchmark with correctness and speed & Accelerator-kernel generation, not translation of existing parallel APIs."
+    },
+    {
+      "key": "Mercury2024",
+      "file": "appendices_neurips.tex",
+      "line": 538,
+      "context": "Mercury~\\cite{Mercury2024} & Efficiency of LLM code synthesis; function/task level & Efficiency benchmark with runtime/resource metrics & Evaluates efficiency rather than parallel API semantic preservation."
+    },
+    {
+      "key": "CodeMorph2025",
+      "file": "appendices_neurips.tex",
+      "line": 543,
+      "context": "CodeMorph~\\cite{CodeMorph2025} & Robustness and leakage via code transformation; function level & Existing benchmarks with transformed variants and unit tests & Provides the source-perturbation principle adapted by \\parbench{} to HPC translation."
+    },
+    {
+      "key": "MemorizeOrGeneralize2025",
+      "file": "appendices_neurips.tex",
+      "line": 548,
+      "context": "Semantic Code Rewrite~\\cite{MemorizeOrGeneralize2025} & Memorization versus generalization under code rewriting; function level & Rewritten code benchmarks with unit tests & Motivates source rewriting as a contamination and robustness probe."
+    },
+    {
+      "key": "SWEbenchIllusion2025",
+      "file": "appendices_neurips.tex",
+      "line": 553,
+      "context": "SWE-bench Illusion~\\cite{SWEbenchIllusion2025} & Benchmark memorization analysis; repository level & SWE-bench-style evaluation & Supports robustness checks for public code benchmarks."
+    },
+    {
+      "key": "LearningToParallelize2023",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+    },
+    {
+      "key": "MPIRICAL2023",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+    },
+    {
+      "key": "OMPify2023",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+    },
+    {
+      "key": "OMPGPT2024",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+    },
+    {
+      "key": "MPIrigen2024",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+    },
+    {
+      "key": "MonoCoder2024",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+    },
+    {
+      "key": "PragFormer2025",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+    },
+    {
+      "key": "CuratedOpenMPDataset2026",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+    },
+    {
+      "key": "HPCorpus2023",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Prior corpus studies also show that OpenMP usage itself has been systematically characterized at scale~\\cite{HPCorpus2023}, reinforcing that parallel-programming corpora are valuable but do not by themselves define a controlled LLM translation benchmark."
+    },
+    {
+      "key": "OMPar2024",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+    },
+    {
+      "key": "AutoParLLM2025",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+    },
+    {
+      "key": "OpenMPAssessment2024",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+    },
+    {
+      "key": "HPCCoder2024",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+    },
+    {
+      "key": "HPCCoderV2",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+    },
+    {
+      "key": "LargeLLMEvalHPC2024",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+    },
+    {
+      "key": "ChatMPI2026",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+    },
+    {
+      "key": "VibeCodeHPC2025",
+      "file": "appendices_neurips.tex",
+      "line": 568,
+      "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+    },
+    {
+      "key": "ParEval2024",
+      "file": "appendices_neurips.tex",
+      "line": 571,
+      "context": "} Parallel code generation benchmarks such as ParEval and PCEBench ask whether a model can synthesize a parallel program from a natural-language description, and ParEval also includes limited translation settings~\\cite{ParEval2024,PCEBench2025}."
+    },
+    {
+      "key": "PCEBench2025",
+      "file": "appendices_neurips.tex",
+      "line": 571,
+      "context": "} Parallel code generation benchmarks such as ParEval and PCEBench ask whether a model can synthesize a parallel program from a natural-language description, and ParEval also includes limited translation settings~\\cite{ParEval2024,PCEBench2025}."
+    },
+    {
+      "key": "OMPar2024",
+      "file": "appendices_neurips.tex",
+      "line": 571,
+      "context": "Automatic-parallelization systems such as OMPar, AutoParLLM, and related OpenMP-focused assessments measure yet another capability: identifying and introducing parallelism into serial or partially parallel code~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024}."
+    },
+    {
+      "key": "AutoParLLM2025",
+      "file": "appendices_neurips.tex",
+      "line": 571,
+      "context": "Automatic-parallelization systems such as OMPar, AutoParLLM, and related OpenMP-focused assessments measure yet another capability: identifying and introducing parallelism into serial or partially parallel code~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024}."
+    },
+    {
+      "key": "OpenMPAssessment2024",
+      "file": "appendices_neurips.tex",
+      "line": 571,
+      "context": "Automatic-parallelization systems such as OMPar, AutoParLLM, and related OpenMP-focused assessments measure yet another capability: identifying and introducing parallelism into serial or partially parallel code~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024}."
+    },
+    {
+      "key": "ChatPORT2025",
+      "file": "appendices_neurips.tex",
+      "line": 571,
+      "context": "Porting frameworks such as ChatPORT and CUDA-to-SYCL translation work are closer to \\parbench{} in spirit, but are typically narrower in API direction, corpus scope, or evaluation protocol~\\cite{ChatPORT2025,ChatPORTSYCL2025}."
+    },
+    {
+      "key": "ChatPORTSYCL2025",
+      "file": "appendices_neurips.tex",
+      "line": 571,
+      "context": "Porting frameworks such as ChatPORT and CUDA-to-SYCL translation work are closer to \\parbench{} in spirit, but are typically narrower in API direction, corpus scope, or evaluation protocol~\\cite{ChatPORT2025,ChatPORTSYCL2025}."
+    },
+    {
+      "key": "SWEbench2024",
+      "file": "appendices_neurips.tex",
+      "line": 574,
+      "context": "SWE-bench and RepoTransBench demonstrate the importance of repository-level executable evaluation in general software settings~\\cite{SWEbench2024,Wang2026RepoTransBench}, while ParEval-Repo shows that full-repository HPC translation can be dominated by build-system and scaffolding failures~\\cite{ParEvalRepo2025}."
+    },
+    {
+      "key": "Wang2026RepoTransBench",
+      "file": "appendices_neurips.tex",
+      "line": 574,
+      "context": "SWE-bench and RepoTransBench demonstrate the importance of repository-level executable evaluation in general software settings~\\cite{SWEbench2024,Wang2026RepoTransBench}, while ParEval-Repo shows that full-repository HPC translation can be dominated by build-system and scaffolding failures~\\cite{ParEvalRepo2025}."
+    },
+    {
+      "key": "ParEvalRepo2025",
+      "file": "appendices_neurips.tex",
+      "line": 574,
+      "context": "SWE-bench and RepoTransBench demonstrate the importance of repository-level executable evaluation in general software settings~\\cite{SWEbench2024,Wang2026RepoTransBench}, while ParEval-Repo shows that full-repository HPC translation can be dominated by build-system and scaffolding failures~\\cite{ParEvalRepo2025}."
+    },
+    {
+      "key": "CodeRosetta2024",
+      "file": "appendices_neurips.tex",
+      "line": 577,
+      "context": "CodeRosetta and HPC-Coder-style models demonstrate the value of domain-specific corpora and model adaptation for HPC and parallel code~\\cite{CodeRosetta2024,HPCCoder2024,HPCCoderV2}."
+    },
+    {
+      "key": "HPCCoder2024",
+      "file": "appendices_neurips.tex",
+      "line": 577,
+      "context": "CodeRosetta and HPC-Coder-style models demonstrate the value of domain-specific corpora and model adaptation for HPC and parallel code~\\cite{CodeRosetta2024,HPCCoder2024,HPCCoderV2}."
+    },
+    {
+      "key": "HPCCoderV2",
+      "file": "appendices_neurips.tex",
+      "line": 577,
+      "context": "CodeRosetta and HPC-Coder-style models demonstrate the value of domain-specific corpora and model adaptation for HPC and parallel code~\\cite{CodeRosetta2024,HPCCoder2024,HPCCoderV2}."
+    },
+    {
+      "key": "LASSI2024",
+      "file": "appendices_neurips.tex",
+      "line": 577,
+      "context": "LASSI evaluates an automated self-correcting pipeline for parallel scientific-code translation on a curated HeCBench subset~\\cite{LASSI2024}."
+    },
+    {
+      "key": "UniPar2025",
+      "file": "appendices_neurips.tex",
+      "line": 577,
+      "context": "UniPar, QiMeng-MuPa, VibeCodeHPC, and ParaCodex similarly explore multi-paradigm generation, sequential-to-parallel transformation, agentic HPC code generation, or profiling-guided repair using local or mixed benchmark suites~\\cite{UniPar2025,QiMengMuPa2025,VibeCodeHPC2025,ParaCodex2026}."
+    },
+    {
+      "key": "QiMengMuPa2025",
+      "file": "appendices_neurips.tex",
+      "line": 577,
+      "context": "UniPar, QiMeng-MuPa, VibeCodeHPC, and ParaCodex similarly explore multi-paradigm generation, sequential-to-parallel transformation, agentic HPC code generation, or profiling-guided repair using local or mixed benchmark suites~\\cite{UniPar2025,QiMengMuPa2025,VibeCodeHPC2025,ParaCodex2026}."
+    },
+    {
+      "key": "VibeCodeHPC2025",
+      "file": "appendices_neurips.tex",
+      "line": 577,
+      "context": "UniPar, QiMeng-MuPa, VibeCodeHPC, and ParaCodex similarly explore multi-paradigm generation, sequential-to-parallel transformation, agentic HPC code generation, or profiling-guided repair using local or mixed benchmark suites~\\cite{UniPar2025,QiMengMuPa2025,VibeCodeHPC2025,ParaCodex2026}."
+    },
+    {
+      "key": "ParaCodex2026",
+      "file": "appendices_neurips.tex",
+      "line": 577,
+      "context": "UniPar, QiMeng-MuPa, VibeCodeHPC, and ParaCodex similarly explore multi-paradigm generation, sequential-to-parallel transformation, agentic HPC code generation, or profiling-guided repair using local or mixed benchmark suites~\\cite{UniPar2025,QiMengMuPa2025,VibeCodeHPC2025,ParaCodex2026}."
+    },
+    {
+      "key": "LearningToParallelize2023",
+      "file": "appendices_neurips.tex",
+      "line": 580,
+      "context": "Some works report prediction accuracy, pragma classification, compilation success, similarity, or pass@$k$ on task-specific checks~\\cite{LearningToParallelize2023,OMPify2023,CodeRosetta2024,HPCCoderV2}."
+    },
+    {
+      "key": "OMPify2023",
+      "file": "appendices_neurips.tex",
+      "line": 580,
+      "context": "Some works report prediction accuracy, pragma classification, compilation success, similarity, or pass@$k$ on task-specific checks~\\cite{LearningToParallelize2023,OMPify2023,CodeRosetta2024,HPCCoderV2}."
+    },
+    {
+      "key": "CodeRosetta2024",
+      "file": "appendices_neurips.tex",
+      "line": 580,
+      "context": "Some works report prediction accuracy, pragma classification, compilation success, similarity, or pass@$k$ on task-specific checks~\\cite{LearningToParallelize2023,OMPify2023,CodeRosetta2024,HPCCoderV2}."
+    },
+    {
+      "key": "HPCCoderV2",
+      "file": "appendices_neurips.tex",
+      "line": 580,
+      "context": "Some works report prediction accuracy, pragma classification, compilation success, similarity, or pass@$k$ on task-specific checks~\\cite{LearningToParallelize2023,OMPify2023,CodeRosetta2024,HPCCoderV2}."
+    },
+    {
+      "key": "LASSI2024",
+      "file": "appendices_neurips.tex",
+      "line": 580,
+      "context": "Others incorporate build, run, and functional validation, especially in agentic or repository-level settings~\\cite{LASSI2024,ParEvalRepo2025,ParaCodex2026}."
+    },
+    {
+      "key": "ParEvalRepo2025",
+      "file": "appendices_neurips.tex",
+      "line": 580,
+      "context": "Others incorporate build, run, and functional validation, especially in agentic or repository-level settings~\\cite{LASSI2024,ParEvalRepo2025,ParaCodex2026}."
+    },
+    {
+      "key": "ParaCodex2026",
+      "file": "appendices_neurips.tex",
+      "line": 580,
+      "context": "Others incorporate build, run, and functional validation, especially in agentic or repository-level settings~\\cite{LASSI2024,ParEvalRepo2025,ParaCodex2026}."
+    },
+    {
+      "key": "TRACE2025",
+      "file": "appendices_neurips.tex",
+      "line": 583,
+      "context": "TRACE, KernelBench, Mercury, and related GPU-kernel or efficiency benchmarks study runtime, kernel quality, optimization, or resource behavior~\\cite{TRACE2025,KernelBench2025,Mercury2024}."
+    },
+    {
+      "key": "KernelBench2025",
+      "file": "appendices_neurips.tex",
+      "line": 583,
+      "context": "TRACE, KernelBench, Mercury, and related GPU-kernel or efficiency benchmarks study runtime, kernel quality, optimization, or resource behavior~\\cite{TRACE2025,KernelBench2025,Mercury2024}."
+    },
+    {
+      "key": "Mercury2024",
+      "file": "appendices_neurips.tex",
+      "line": 583,
+      "context": "TRACE, KernelBench, Mercury, and related GPU-kernel or efficiency benchmarks study runtime, kernel quality, optimization, or resource behavior~\\cite{TRACE2025,KernelBench2025,Mercury2024}."
+    },
+    {
+      "key": "SWEbenchIllusion2025",
+      "file": "appendices_neurips.tex",
+      "line": 586,
+      "context": "} Public code benchmarks face contamination and memorization risks, and recent work shows that surface-form perturbations can reveal brittle pattern matching~\\cite{SWEbenchIllusion2025,CodeMorph2025,MemorizeOrGeneralize2025}."
+    },
+    {
+      "key": "CodeMorph2025",
+      "file": "appendices_neurips.tex",
+      "line": 586,
+      "context": "} Public code benchmarks face contamination and memorization risks, and recent work shows that surface-form perturbations can reveal brittle pattern matching~\\cite{SWEbenchIllusion2025,CodeMorph2025,MemorizeOrGeneralize2025}."
+    },
+    {
+      "key": "MemorizeOrGeneralize2025",
+      "file": "appendices_neurips.tex",
+      "line": 586,
+      "context": "} Public code benchmarks face contamination and memorization risks, and recent work shows that surface-form perturbations can reveal brittle pattern matching~\\cite{SWEbenchIllusion2025,CodeMorph2025,MemorizeOrGeneralize2025}."
+    },
+    {
+      "key": "HumanEval2021",
+      "file": "appendices_neurips.tex",
+      "line": 698,
+      "context": "} For pass@$k$, following \\citet{HumanEval2021}, we use the unbiased estimator $1 - \\binom{n-c}{k}/\\binom{n}{k}$, where $c$ is the number of passing samples out of $n$~total."
+    },
+    {
+      "key": "Rodinia2009",
+      "file": "appendices_neurips.tex",
+      "line": 1031,
+      "context": "Rodinia~\\cite{Rodinia2009} provides the foundation of \\parbench{}'s evaluation corpus."
+    },
+    {
+      "key": "XSBench2014",
+      "file": "appendices_neurips.tex",
+      "line": 1048,
+      "context": "\\textbf{XSBench}~\\cite{XSBench2014} (4~specs: CUDA, OpenMP, OpenCL, OpenMP Target): A Monte Carlo neutron cross-section lookup proxy application representative of nuclear reactor simulation workloads."
+    },
+    {
+      "key": "RSBench2014",
+      "file": "appendices_neurips.tex",
+      "line": 1051,
+      "context": "\\textbf{RSBench}~\\cite{RSBench2014} (4~specs: CUDA, OpenMP, OpenCL, OpenMP Target): A proxy application for the multipole method of computing neutron cross sections on-the-fly, representing a complementary algorithm to XSBench's unionized energy grid approach."
+    },
+    {
+      "key": "mixbench2017",
+      "file": "appendices_neurips.tex",
+      "line": 1053,
+      "context": "\\textbf{mixbench}~\\cite{mixbench2017} (3~specs: CUDA, OpenMP, OpenCL): A micro-benchmark that sweeps a range of compute-to-memory operation ratios, mapping the practical roofline boundary of a compute device."
+    },
+    {
+      "key": "ModelCards2019",
+      "file": "appendices_neurips.tex",
+      "line": 1851,
+      "context": "Following Model Cards~\\cite{ModelCards2019} and Datasheets~\\cite{Datasheets2021}, we provide an \\emph{Evaluation Card} for \\parbench{} that states what it measures, what it does not measure, the claims it supports, the assumptions it relies on, and how results should be reported."
+    },
+    {
+      "key": "Datasheets2021",
+      "file": "appendices_neurips.tex",
+      "line": 1851,
+      "context": "Following Model Cards~\\cite{ModelCards2019} and Datasheets~\\cite{Datasheets2021}, we provide an \\emph{Evaluation Card} for \\parbench{} that states what it measures, what it does not measure, the claims it supports, the assumptions it relies on, and how results should be reported."
+    },
+    {
+      "key": "TRACE2025",
+      "file": "appendices_neurips.tex",
+      "line": 1955,
+      "context": "TRACE~\\cite{TRACE2025} addresses this gap."
+    },
+    {
+      "key": "ParEvalRepo2025",
+      "file": "appendices_neurips.tex",
+      "line": 1982,
+      "context": "\\ ParEval-Repo~\\cite{ParEvalRepo2025})."
+    },
+    {
+      "key": "ParEvalRepo2025",
+      "file": "appendices_neurips.tex",
+      "line": 2104,
+      "context": "\\ ParEval-Repo's 0\\% at $>$133~SLoC~\\cite{ParEvalRepo2025})."
+    },
+    {
+      "key": "Rodinia2009",
+      "file": "appendices_neurips.tex",
+      "line": 2113,
+      "context": "} The five suites are well-established in HPC research (Rodinia: IISWC 2009~\\cite{Rodinia2009}, HeCBench: 2023~\\cite{HeCBench2023}, XSBench: ANL~\\cite{XSBench2014})."
+    },
+    {
+      "key": "HeCBench2023",
+      "file": "appendices_neurips.tex",
+      "line": 2113,
+      "context": "} The five suites are well-established in HPC research (Rodinia: IISWC 2009~\\cite{Rodinia2009}, HeCBench: 2023~\\cite{HeCBench2023}, XSBench: ANL~\\cite{XSBench2014})."
+    },
+    {
+      "key": "XSBench2014",
+      "file": "appendices_neurips.tex",
+      "line": 2114,
+      "context": "} The five suites are well-established in HPC research (Rodinia: IISWC 2009~\\cite{Rodinia2009}, HeCBench: 2023~\\cite{HeCBench2023}, XSBench: ANL~\\cite{XSBench2014})."
+    },
+    {
+      "key": "Rodinia2009",
+      "file": "appendices_neurips.tex",
+      "line": 2521,
+      "context": "\\item[] Answer: \\answerYes{} \\item[] Justification: All five benchmark suites are cited (Rodinia~\\cite{Rodinia2009}, XSBench, RSBench, mixbench, HeCBench)."
+    },
+    {
+      "key": "HumanEval2021",
+      "file": "sections/1-introduction.tex",
+      "line": 49,
+      "context": "Widely adopted code-generation benchmarks such as HumanEval and SWE-bench~\\cite{HumanEval2021, SWEbench2024} are predominantly sequential and therefore do not exercise parallel programming semantics."
+    },
+    {
+      "key": "SWEbench2024",
+      "file": "sections/1-introduction.tex",
+      "line": 49,
+      "context": "Widely adopted code-generation benchmarks such as HumanEval and SWE-bench~\\cite{HumanEval2021, SWEbench2024} are predominantly sequential and therefore do not exercise parallel programming semantics."
+    },
+    {
+      "key": "ParEval2024",
+      "file": "sections/1-introduction.tex",
+      "line": 49,
+      "context": "Parallel code-generation benchmarks such as ParEval~\\cite{ParEval2024} primarily evaluate synthesis from natural-language descriptions, rather than translation of existing implementations across APIs."
+    },
+    {
+      "key": "ParEvalRepo2025",
+      "file": "sections/1-introduction.tex",
+      "line": 49,
+      "context": "Repository-level translation work exposes important integration challenges, but it also entangles kernel translation with build-system reconstruction, file organization, dependency management, and execution setup~\\cite{ParEvalRepo2025,Wang2026RepoTransBench}\\footnote{An extended comparison with code-generation benchmarks, repository-level translation studies, HPC-specific LLM evaluation, and robustness benchmarks in Appendix~\\ref{sec:appendix-d}."
+    },
+    {
+      "key": "Wang2026RepoTransBench",
+      "file": "sections/1-introduction.tex",
+      "line": 49,
+      "context": "Repository-level translation work exposes important integration challenges, but it also entangles kernel translation with build-system reconstruction, file organization, dependency management, and execution setup~\\cite{ParEvalRepo2025,Wang2026RepoTransBench}\\footnote{An extended comparison with code-generation benchmarks, repository-level translation studies, HPC-specific LLM evaluation, and robustness benchmarks in Appendix~\\ref{sec:appendix-d}."
+    },
+    {
+      "key": "Rodinia2009",
+      "file": "sections/benchmark-curation.tex",
+      "line": 34,
+      "context": "\\textbf{Rodinia}~\\cite{Rodinia2009} is the largest contributor, providing 60~specs across 22~kernels over CUDA, OpenMP, and OpenCL; 53 pass baseline verification and 7 are \\knownfail{}."
+    },
+    {
+      "key": "HeCBench2023",
+      "file": "sections/benchmark-curation.tex",
+      "line": 34,
+      "context": "\\textbf{HeCBench}~\\cite{HeCBench2023} provides the largest initial multi-API pool: from 522~kernels, a structured funnel yields 10 curated kernels---five with CUDA, OpenMP, and OMP-target variants, and five with CUDA and OMP-target only---totaling 25~specs."
+    },
+    {
+      "key": "XSBench2014",
+      "file": "sections/benchmark-curation.tex",
+      "line": 35,
+      "context": "\\textbf{XSBench}~\\cite{XSBench2014} and \\textbf{RSBench}~\\cite{RSBench2014} contribute nuclear-physics proxy kernels, each with 4~specs, while \\textbf{mixbench}~\\cite{mixbench2017} contributes 3~GPU roofline micro-benchmark specs."
+    },
+    {
+      "key": "RSBench2014",
+      "file": "sections/benchmark-curation.tex",
+      "line": 35,
+      "context": "\\textbf{XSBench}~\\cite{XSBench2014} and \\textbf{RSBench}~\\cite{RSBench2014} contribute nuclear-physics proxy kernels, each with 4~specs, while \\textbf{mixbench}~\\cite{mixbench2017} contributes 3~GPU roofline micro-benchmark specs."
+    },
+    {
+      "key": "mixbench2017",
+      "file": "sections/benchmark-curation.tex",
+      "line": 35,
+      "context": "\\textbf{XSBench}~\\cite{XSBench2014} and \\textbf{RSBench}~\\cite{RSBench2014} contribute nuclear-physics proxy kernels, each with 4~specs, while \\textbf{mixbench}~\\cite{mixbench2017} contributes 3~GPU roofline micro-benchmark specs."
+    },
+    {
+      "key": "ParEvalRepo2025",
+      "file": "sections/benchmark-curation.tex",
+      "line": 40,
+      "context": "Kernel complexity spans more than an order of magnitude---80 to 3{,}304~SLoC, median 271---and 31 of 35 kernels (89\\%) exceed the 133-SLoC scale at which prior repository-level translation reports 0\\% pass@1~\\cite{ParEvalRepo2025}."
+    },
+    {
+      "key": "TRACE2025",
+      "file": "sections/discussion.tex",
+      "line": 10,
+      "context": "A harness-passing translation may still be unusably slow, a concern also raised by TRACE~\\cite{TRACE2025}."
+    },
+    {
+      "key": "GPT53Codex2026",
+      "file": "sections/experimental-setup.tex",
+      "line": 92,
+      "context": "} We evaluate three models: \\qwen{}, a 397B-parameter MoE open-weight model accessed via Together~AI; \\gptnew{}, a general-purpose proprietary model accessed via \\gptprovider{}; and \\codex{}, a code-specialized model optimized via reinforcement learning on software engineering tasks~\\cite{GPT53Codex2026}, also accessed via \\gptprovider{}."
+    },
+    {
+      "key": "HumanEval2021",
+      "file": "sections/experimental-setup.tex",
+      "line": 107,
+      "context": "} The primary metric is \\textbf{pass@$k$}, using the unbiased estimator from \\citet{HumanEval2021} with normal-approximation confidence intervals on the task-level mean."
+    },
+    {
+      "key": "Rodinia2009",
+      "file": "sections/framework.tex",
+      "line": 48,
+      "context": "Widely used suites such as Rodinia~\\cite{Rodinia2009} are likely present in LLM training data, so success on unmodified source may reflect memorization."
+    },
+    {
+      "key": "ParEvalRepo2025",
+      "file": "sections/framework.tex",
+      "line": 56,
+      "context": "This separation isolates parallel API translation from repository reconstruction---the confound that drives ParEval-Repo's 0\\% pass rate on applications above 133~SLoC~\\cite{ParEvalRepo2025}."
+    },
+    {
+      "key": "CodeRosetta2024",
+      "file": "sections/framework.tex",
+      "line": 77,
+      "context": "For example, a CUDA translation of Gaussian elimination compiles, runs to completion with exit code zero, and produces partial stdout---but omits the expected timing summary, indicating a systematic translation defect that compile-only (\\cite{CodeRosetta2024}) or exit-code-only verification would miss."
+    },
+    {
+      "key": "HumanEval2021",
+      "file": "sections/related-work.tex",
+      "line": 8,
+      "context": "HumanEval~\\cite{HumanEval2021} and TransCoder~\\cite{TransCoder2020} operate at function granularity, while SWE-bench~\\cite{SWEbench2024} targets repository-level issue resolution\u2014neither exercises GPU memory models, thread synchronization, or host-device coordination."
+    },
+    {
+      "key": "TransCoder2020",
+      "file": "sections/related-work.tex",
+      "line": 8,
+      "context": "HumanEval~\\cite{HumanEval2021} and TransCoder~\\cite{TransCoder2020} operate at function granularity, while SWE-bench~\\cite{SWEbench2024} targets repository-level issue resolution\u2014neither exercises GPU memory models, thread synchronization, or host-device coordination."
+    },
+    {
+      "key": "SWEbench2024",
+      "file": "sections/related-work.tex",
+      "line": 8,
+      "context": "HumanEval~\\cite{HumanEval2021} and TransCoder~\\cite{TransCoder2020} operate at function granularity, while SWE-bench~\\cite{SWEbench2024} targets repository-level issue resolution\u2014neither exercises GPU memory models, thread synchronization, or host-device coordination."
+    },
+    {
+      "key": "SWEbenchIllusion2025",
+      "file": "sections/related-work.tex",
+      "line": 8,
+      "context": "SWE-bench Illusion~\\cite{SWEbenchIllusion2025} further shows that static scores can overstate capability when evaluation methodology is not carefully controlled, motivating \\parbench{}'s conjunctive build-run-verify pipeline and augmentation robustness probes."
+    },
+    {
+      "key": "ParEval2024",
+      "file": "sections/related-work.tex",
+      "line": 14,
+      "context": "} ParEval~\\cite{ParEval2024} combines parallel code generation with limited translation settings, while PCEBench~\\cite{PCEBench2025} emphasizes synthesis from natural-language descriptions."
+    },
+    {
+      "key": "PCEBench2025",
+      "file": "sections/related-work.tex",
+      "line": 14,
+      "context": "} ParEval~\\cite{ParEval2024} combines parallel code generation with limited translation settings, while PCEBench~\\cite{PCEBench2025} emphasizes synthesis from natural-language descriptions."
+    },
+    {
+      "key": "ParEvalRepo2025",
+      "file": "sections/related-work.tex",
+      "line": 14,
+      "context": "ParEval-Repo~\\cite{ParEvalRepo2025} and RepoTransBench~\\cite{Wang2026RepoTransBench} study full-repository translation and reveal a severe integration bottleneck at build systems and scaffolding."
+    },
+    {
+      "key": "Wang2026RepoTransBench",
+      "file": "sections/related-work.tex",
+      "line": 14,
+      "context": "ParEval-Repo~\\cite{ParEvalRepo2025} and RepoTransBench~\\cite{Wang2026RepoTransBench} study full-repository translation and reveal a severe integration bottleneck at build systems and scaffolding."
+    },
+    {
+      "key": "AlphaTrans2025",
+      "file": "sections/related-work.tex",
+      "line": 14,
+      "context": "AlphaTrans~\\cite{AlphaTrans2025} introduces compositional neuro-symbolic translation at repository scale but does not target parallel APIs."
+    },
+    {
+      "key": "VibeCodeHPC2025",
+      "file": "sections/related-work.tex",
+      "line": 14,
+      "context": "VibeCodeHPC~\\cite{VibeCodeHPC2025} focuses on HPC code generation, while QiMeng-MuPa~\\cite{QiMengMuPa2025} addresses sequential-to-parallel translation via mutual-supervised learning; neither targets cross-API translation of existing parallel implementations."
+    },
+    {
+      "key": "QiMengMuPa2025",
+      "file": "sections/related-work.tex",
+      "line": 14,
+      "context": "VibeCodeHPC~\\cite{VibeCodeHPC2025} focuses on HPC code generation, while QiMeng-MuPa~\\cite{QiMengMuPa2025} addresses sequential-to-parallel translation via mutual-supervised learning; neither targets cross-API translation of existing parallel implementations."
+    },
+    {
+      "key": "LASSI2024",
+      "file": "sections/related-work.tex",
+      "line": 20,
+      "context": "} LASSI~\\cite{LASSI2024} is the nearest prior work in granularity and verification, evaluating an agentic self-correction pipeline on 10 HeCBench kernels across two translation directions."
+    },
+    {
+      "key": "CodeRosetta2024",
+      "file": "sections/related-work.tex",
+      "line": 20,
+      "context": "CodeRosetta~\\cite{CodeRosetta2024} and HPC-Coder-V2~\\cite{HPCCoderV2} demonstrate specialized fine-tuning for parallel code; ParaCodex~\\cite{ParaCodex2026} introduces profiling-guided agentic translation."
+    },
+    {
+      "key": "HPCCoderV2",
+      "file": "sections/related-work.tex",
+      "line": 20,
+      "context": "CodeRosetta~\\cite{CodeRosetta2024} and HPC-Coder-V2~\\cite{HPCCoderV2} demonstrate specialized fine-tuning for parallel code; ParaCodex~\\cite{ParaCodex2026} introduces profiling-guided agentic translation."
+    },
+    {
+      "key": "ParaCodex2026",
+      "file": "sections/related-work.tex",
+      "line": 20,
+      "context": "CodeRosetta~\\cite{CodeRosetta2024} and HPC-Coder-V2~\\cite{HPCCoderV2} demonstrate specialized fine-tuning for parallel code; ParaCodex~\\cite{ParaCodex2026} introduces profiling-guided agentic translation."
+    },
+    {
+      "key": "SWEbenchIllusion2025",
+      "file": "sections/related-work.tex",
+      "line": 23,
+      "context": "} Public benchmarks can be memorized, and surface-form perturbations reveal brittle pattern matching~\\cite{SWEbenchIllusion2025}."
+    },
+    {
+      "key": "CodeMorph2025",
+      "file": "sections/related-work.tex",
+      "line": 23,
+      "context": "CodeMorph~\\cite{CodeMorph2025} applies 26~semantics-preserving transformations to detect data leakage, and Zhang et al."
+    },
+    {
+      "key": "MemorizeOrGeneralize2025",
+      "file": "sections/related-work.tex",
+      "line": 23,
+      "context": "~\\cite{MemorizeOrGeneralize2025} measure memorization risk through code rewriting."
+    },
+    {
+      "key": "TRACE2025",
+      "file": "sections/related-work.tex",
+      "line": 23,
+      "context": "\\parbench{} evaluates correctness only; efficiency-oriented work such as TRACE~\\cite{TRACE2025} shows that functional correctness and runtime performance are separable objectives, making performance-aware evaluation a natural extension."
+    },
+    {
+      "key": "ParEvalRepo2025",
+      "file": "sections/results.tex",
+      "line": 60,
+      "context": "Prior work such as ParEval-Repo reports 0\\% pass@1 on repository-level applications larger than 133~SLoC~\\cite{ParEvalRepo2025}; 89\\% of our kernels exceed that threshold, yet \\parbench{}'s kernel isolation enables \\qwenshort{} to achieve 40."
+    }
+  ],
+  "by_key": {
+    "HumanEval2021": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 309,
+        "context": "HumanEval~\\cite{HumanEval2021} & General code generation; function level & Public benchmark with unit tests & Establishes execution-based evaluation, but does not exercise parallel API semantics."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 698,
+        "context": "} For pass@$k$, following \\citet{HumanEval2021}, we use the unbiased estimator $1 - \\binom{n-c}{k}/\\binom{n}{k}$, where $c$ is the number of passing samples out of $n$~total."
+      },
+      {
+        "file": "sections/1-introduction.tex",
+        "line": 49,
+        "context": "Widely adopted code-generation benchmarks such as HumanEval and SWE-bench~\\cite{HumanEval2021, SWEbench2024} are predominantly sequential and therefore do not exercise parallel programming semantics."
+      },
+      {
+        "file": "sections/experimental-setup.tex",
+        "line": 107,
+        "context": "} The primary metric is \\textbf{pass@$k$}, using the unbiased estimator from \\citet{HumanEval2021} with normal-approximation confidence intervals on the task-level mean."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 8,
+        "context": "HumanEval~\\cite{HumanEval2021} and TransCoder~\\cite{TransCoder2020} operate at function granularity, while SWE-bench~\\cite{SWEbench2024} targets repository-level issue resolution\u2014neither exercises GPU memory models, thread synchronization, or host-device coordination."
+      }
+    ],
+    "TransCoder2020": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 314,
+        "context": "TransCoder~\\cite{TransCoder2020} & General source-to-source translation; function level & Public multilingual corpus with unit tests & Provides a code-translation precedent, but not for HPC or parallel APIs."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 8,
+        "context": "HumanEval~\\cite{HumanEval2021} and TransCoder~\\cite{TransCoder2020} operate at function granularity, while SWE-bench~\\cite{SWEbench2024} targets repository-level issue resolution\u2014neither exercises GPU memory models, thread synchronization, or host-device coordination."
+      }
+    ],
+    "SWEbench2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 319,
+        "context": "SWE-bench~\\cite{SWEbench2024} & Repository issue repair; repository level & Public GitHub-issue benchmark with repository tests & Demonstrates executable repository evaluation, but is mostly non-HPC and non-parallel."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 574,
+        "context": "SWE-bench and RepoTransBench demonstrate the importance of repository-level executable evaluation in general software settings~\\cite{SWEbench2024,Wang2026RepoTransBench}, while ParEval-Repo shows that full-repository HPC translation can be dominated by build-system and scaffolding failures~\\cite{ParEvalRepo2025}."
+      },
+      {
+        "file": "sections/1-introduction.tex",
+        "line": 49,
+        "context": "Widely adopted code-generation benchmarks such as HumanEval and SWE-bench~\\cite{HumanEval2021, SWEbench2024} are predominantly sequential and therefore do not exercise parallel programming semantics."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 8,
+        "context": "HumanEval~\\cite{HumanEval2021} and TransCoder~\\cite{TransCoder2020} operate at function granularity, while SWE-bench~\\cite{SWEbench2024} targets repository-level issue resolution\u2014neither exercises GPU memory models, thread synchronization, or host-device coordination."
+      }
+    ],
+    "Wang2026RepoTransBench": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 324,
+        "context": "RepoTransBench~\\cite{Wang2026RepoTransBench} & Repository-level code translation & Public repository benchmark with build/test signals & Shows repository translation complexity, but confounds kernel translation with scaffolding."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 574,
+        "context": "SWE-bench and RepoTransBench demonstrate the importance of repository-level executable evaluation in general software settings~\\cite{SWEbench2024,Wang2026RepoTransBench}, while ParEval-Repo shows that full-repository HPC translation can be dominated by build-system and scaffolding failures~\\cite{ParEvalRepo2025}."
+      },
+      {
+        "file": "sections/1-introduction.tex",
+        "line": 49,
+        "context": "Repository-level translation work exposes important integration challenges, but it also entangles kernel translation with build-system reconstruction, file organization, dependency management, and execution setup~\\cite{ParEvalRepo2025,Wang2026RepoTransBench}\\footnote{An extended comparison with code-generation benchmarks, repository-level translation studies, HPC-specific LLM evaluation, and robustness benchmarks in Appendix~\\ref{sec:appendix-d}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 14,
+        "context": "ParEval-Repo~\\cite{ParEvalRepo2025} and RepoTransBench~\\cite{Wang2026RepoTransBench} study full-repository translation and reveal a severe integration bottleneck at build systems and scaffolding."
+      }
+    ],
+    "AlphaTrans2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 329,
+        "context": "AlphaTrans~\\cite{AlphaTrans2025} & Repository translation and validation & Repository-scale translation tasks with validation/tests & Adjacent repository-level translation work, but not focused on parallel API semantics."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 14,
+        "context": "AlphaTrans~\\cite{AlphaTrans2025} introduces compositional neuro-symbolic translation at repository scale but does not target parallel APIs."
+      }
+    ],
+    "LearningToParallelize2023": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 357,
+        "context": "Learning to Parallelize~\\cite{LearningToParallelize2023} & OpenMP parallelization prediction; loop/region level & Curated OpenMP training and evaluation corpus & Shows local corpus construction for OpenMP assistance, not executable cross-API translation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 580,
+        "context": "Some works report prediction accuracy, pragma classification, compilation success, similarity, or pass@$k$ on task-specific checks~\\cite{LearningToParallelize2023,OMPify2023,CodeRosetta2024,HPCCoderV2}."
+      }
+    ],
+    "MPIRICAL2023": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 362,
+        "context": "MPI-RICAL~\\cite{MPIRICAL2023} & MPI assistance; function/region level & Curated MPI-focused corpus with recommendation metrics & Relevant as MPI-specific parallel-code assistance using a local dataset."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+      }
+    ],
+    "OMPify2023": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 367,
+        "context": "OpenMP Graph Transformer~\\cite{OMPify2023} & OpenMP parallelization advice; loop/region level & Curated OpenMP corpus with recommendation/classification metrics & Relevant to pragma advice, but not translation evaluation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 580,
+        "context": "Some works report prediction accuracy, pragma classification, compilation success, similarity, or pass@$k$ on task-specific checks~\\cite{LearningToParallelize2023,OMPify2023,CodeRosetta2024,HPCCoderV2}."
+      }
+    ],
+    "OMPGPT2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 372,
+        "context": "OMPGPT~\\cite{OMPGPT2024} & OpenMP-oriented code modeling; function/task level & OpenMP-oriented model corpus and generation metrics & Domain-specific modeling work, but not reusable translation infrastructure."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+      }
+    ],
+    "MPIrigen2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 377,
+        "context": "MPIrigen~\\cite{MPIrigen2024} & MPI code generation; function/task level & MPI-specific curated corpus with generation checks & Generation-oriented MPI work, not API-to-API kernel translation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+      }
+    ],
+    "MonoCoder2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 382,
+        "context": "MonoCoder~\\cite{MonoCoder2024} & HPC code modeling; task/function level & HPC-oriented model corpus and task metrics & Relevant HPC specialization work, but method/corpus-specific."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+      }
+    ],
+    "PragFormer2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 387,
+        "context": "PragFormer~\\cite{PragFormer2025} & Parallel-code classification; loop/region level & Curated classification corpus & Relevant representation work, but not executable translation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+      }
+    ],
+    "OMPar2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 392,
+        "context": "OMPar~\\cite{OMPar2024} & AI-driven OpenMP source-to-source parallelization; program/loop level & Paper-specific OpenMP evaluation set & Automatic parallelization rather than translation of existing parallel kernels."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 571,
+        "context": "Automatic-parallelization systems such as OMPar, AutoParLLM, and related OpenMP-focused assessments measure yet another capability: identifying and introducing parallelism into serial or partially parallel code~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024}."
+      }
+    ],
+    "AutoParLLM2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 397,
+        "context": "AutoParLLM~\\cite{AutoParLLM2025} & Zero-shot code parallelization; loop/function level & Local parallelization evaluation set & Measures introducing parallelism, not preserving existing parallel semantics across APIs."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 571,
+        "context": "Automatic-parallelization systems such as OMPar, AutoParLLM, and related OpenMP-focused assessments measure yet another capability: identifying and introducing parallelism into serial or partially parallel code~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024}."
+      }
+    ],
+    "OpenMPAssessment2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 402,
+        "context": "OpenMP Assessment~\\cite{OpenMPAssessment2024} & LLMs for OpenMP parallelization; snippet/program level & Paper-specific assessment set & Shows the need for OpenMP-specific evaluation, but not cross-API translation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 571,
+        "context": "Automatic-parallelization systems such as OMPar, AutoParLLM, and related OpenMP-focused assessments measure yet another capability: identifying and introducing parallelism into serial or partially parallel code~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024}."
+      }
+    ],
+    "ParEval2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 407,
+        "context": "ParEval~\\cite{ParEval2024} & Parallel code generation with limited translation settings; task level & Public benchmark with correctness checks & Includes generation and some translation settings, but not \\parbench{}'s fixed executable kernel corpus or broader cross-API direction coverage."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 571,
+        "context": "} Parallel code generation benchmarks such as ParEval and PCEBench ask whether a model can synthesize a parallel program from a natural-language description, and ParEval also includes limited translation settings~\\cite{ParEval2024,PCEBench2025}."
+      },
+      {
+        "file": "sections/1-introduction.tex",
+        "line": 49,
+        "context": "Parallel code-generation benchmarks such as ParEval~\\cite{ParEval2024} primarily evaluate synthesis from natural-language descriptions, rather than translation of existing implementations across APIs."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 14,
+        "context": "} ParEval~\\cite{ParEval2024} combines parallel code generation with limited translation settings, while PCEBench~\\cite{PCEBench2025} emphasizes synthesis from natural-language descriptions."
+      }
+    ],
+    "PCEBench2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 412,
+        "context": "PCEBench~\\cite{PCEBench2025} & Multi-dimensional parallel code generation; task level & Public benchmark with correctness/task metrics & Complements \\parbench{} by evaluating generation rather than existing-kernel translation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 571,
+        "context": "} Parallel code generation benchmarks such as ParEval and PCEBench ask whether a model can synthesize a parallel program from a natural-language description, and ParEval also includes limited translation settings~\\cite{ParEval2024,PCEBench2025}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 14,
+        "context": "} ParEval~\\cite{ParEval2024} combines parallel code generation with limited translation settings, while PCEBench~\\cite{PCEBench2025} emphasizes synthesis from natural-language descriptions."
+      }
+    ],
+    "LASSI2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 440,
+        "context": "LASSI~\\cite{LASSI2024} & Agentic parallel-code translation; kernel level & Curated HeCBench subset with build-run-verify & Closest in verification style, but smaller in scope and focused on iterative repair."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 577,
+        "context": "LASSI evaluates an automated self-correcting pipeline for parallel scientific-code translation on a curated HeCBench subset~\\cite{LASSI2024}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 580,
+        "context": "Others incorporate build, run, and functional validation, especially in agentic or repository-level settings~\\cite{LASSI2024,ParEvalRepo2025,ParaCodex2026}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 20,
+        "context": "} LASSI~\\cite{LASSI2024} is the nearest prior work in granularity and verification, evaluating an agentic self-correction pipeline on 10 HeCBench kernels across two translation directions."
+      }
+    ],
+    "CodeRosetta2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 445,
+        "context": "CodeRosetta~\\cite{CodeRosetta2024} & Parallel code translation and fine-tuning; function/kernel level & Model-specific C++/CUDA corpus with compile/similarity/local checks & Relevant translation work, but lacks fixed multi-API executable specifications."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 577,
+        "context": "CodeRosetta and HPC-Coder-style models demonstrate the value of domain-specific corpora and model adaptation for HPC and parallel code~\\cite{CodeRosetta2024,HPCCoder2024,HPCCoderV2}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 580,
+        "context": "Some works report prediction accuracy, pragma classification, compilation success, similarity, or pass@$k$ on task-specific checks~\\cite{LearningToParallelize2023,OMPify2023,CodeRosetta2024,HPCCoderV2}."
+      },
+      {
+        "file": "sections/framework.tex",
+        "line": 77,
+        "context": "For example, a CUDA translation of Gaussian elimination compiles, runs to completion with exit code zero, and produces partial stdout---but omits the expected timing summary, indicating a systematic translation defect that compile-only (\\cite{CodeRosetta2024}) or exit-code-only verification would miss."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 20,
+        "context": "CodeRosetta~\\cite{CodeRosetta2024} and HPC-Coder-V2~\\cite{HPCCoderV2} demonstrate specialized fine-tuning for parallel code; ParaCodex~\\cite{ParaCodex2026} introduces profiling-guided agentic translation."
+      }
+    ],
+    "HPCCoder2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 450,
+        "context": "HPC-Coder~\\cite{HPCCoder2024} & HPC code modeling; task/function level & HPC-oriented corpus and model-evaluation metrics & Domain-specific HPC modeling, not benchmark-infrastructure focused."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 577,
+        "context": "CodeRosetta and HPC-Coder-style models demonstrate the value of domain-specific corpora and model adaptation for HPC and parallel code~\\cite{CodeRosetta2024,HPCCoder2024,HPCCoderV2}."
+      }
+    ],
+    "HPCCoderV2": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 455,
+        "context": "HPC-Coder-V2~\\cite{HPCCoderV2} & Code LLMs across low-resource parallel languages; task level & Parallel-language tasks with pass@$k$ and task checks & Relevant to parallel-code LLMs, but not controlled executable kernel translation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 577,
+        "context": "CodeRosetta and HPC-Coder-style models demonstrate the value of domain-specific corpora and model adaptation for HPC and parallel code~\\cite{CodeRosetta2024,HPCCoder2024,HPCCoderV2}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 580,
+        "context": "Some works report prediction accuracy, pragma classification, compilation success, similarity, or pass@$k$ on task-specific checks~\\cite{LearningToParallelize2023,OMPify2023,CodeRosetta2024,HPCCoderV2}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 20,
+        "context": "CodeRosetta~\\cite{CodeRosetta2024} and HPC-Coder-V2~\\cite{HPCCoderV2} demonstrate specialized fine-tuning for parallel code; ParaCodex~\\cite{ParaCodex2026} introduces profiling-guided agentic translation."
+      }
+    ],
+    "ParEvalRepo2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 460,
+        "context": "ParEval-Repo~\\cite{ParEvalRepo2025} & Repository-level HPC translation & Public HPC repository benchmark with build and functional tests & Motivates \\parbench{} by showing that repository integration can dominate failures."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 574,
+        "context": "SWE-bench and RepoTransBench demonstrate the importance of repository-level executable evaluation in general software settings~\\cite{SWEbench2024,Wang2026RepoTransBench}, while ParEval-Repo shows that full-repository HPC translation can be dominated by build-system and scaffolding failures~\\cite{ParEvalRepo2025}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 580,
+        "context": "Others incorporate build, run, and functional validation, especially in agentic or repository-level settings~\\cite{LASSI2024,ParEvalRepo2025,ParaCodex2026}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 1982,
+        "context": "\\ ParEval-Repo~\\cite{ParEvalRepo2025})."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 2104,
+        "context": "\\ ParEval-Repo's 0\\% at $>$133~SLoC~\\cite{ParEvalRepo2025})."
+      },
+      {
+        "file": "sections/1-introduction.tex",
+        "line": 49,
+        "context": "Repository-level translation work exposes important integration challenges, but it also entangles kernel translation with build-system reconstruction, file organization, dependency management, and execution setup~\\cite{ParEvalRepo2025,Wang2026RepoTransBench}\\footnote{An extended comparison with code-generation benchmarks, repository-level translation studies, HPC-specific LLM evaluation, and robustness benchmarks in Appendix~\\ref{sec:appendix-d}."
+      },
+      {
+        "file": "sections/benchmark-curation.tex",
+        "line": 40,
+        "context": "Kernel complexity spans more than an order of magnitude---80 to 3{,}304~SLoC, median 271---and 31 of 35 kernels (89\\%) exceed the 133-SLoC scale at which prior repository-level translation reports 0\\% pass@1~\\cite{ParEvalRepo2025}."
+      },
+      {
+        "file": "sections/framework.tex",
+        "line": 56,
+        "context": "This separation isolates parallel API translation from repository reconstruction---the confound that drives ParEval-Repo's 0\\% pass rate on applications above 133~SLoC~\\cite{ParEvalRepo2025}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 14,
+        "context": "ParEval-Repo~\\cite{ParEvalRepo2025} and RepoTransBench~\\cite{Wang2026RepoTransBench} study full-repository translation and reveal a severe integration bottleneck at build systems and scaffolding."
+      },
+      {
+        "file": "sections/results.tex",
+        "line": 60,
+        "context": "Prior work such as ParEval-Repo reports 0\\% pass@1 on repository-level applications larger than 133~SLoC~\\cite{ParEvalRepo2025}; 89\\% of our kernels exceed that threshold, yet \\parbench{}'s kernel isolation enables \\qwenshort{} to achieve 40."
+      }
+    ],
+    "UniPar2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 465,
+        "context": "UniPar~\\cite{UniPar2025} & Parallel and accelerated code translation; task/program level & System-specific evaluation corpus with local correctness checks & Relevant multi-paradigm translation, but not primarily a reusable benchmark substrate."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 577,
+        "context": "UniPar, QiMeng-MuPa, VibeCodeHPC, and ParaCodex similarly explore multi-paradigm generation, sequential-to-parallel transformation, agentic HPC code generation, or profiling-guided repair using local or mixed benchmark suites~\\cite{UniPar2025,QiMengMuPa2025,VibeCodeHPC2025,ParaCodex2026}."
+      }
+    ],
+    "QiMengMuPa2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 470,
+        "context": "QiMeng-MuPa~\\cite{QiMengMuPa2025} & Sequential-to-parallel translation; task/program level & Curated training/evaluation corpus with local correctness checks & Related parallelization/translation work, but different from API-to-API translation of existing kernels."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 577,
+        "context": "UniPar, QiMeng-MuPa, VibeCodeHPC, and ParaCodex similarly explore multi-paradigm generation, sequential-to-parallel transformation, agentic HPC code generation, or profiling-guided repair using local or mixed benchmark suites~\\cite{UniPar2025,QiMengMuPa2025,VibeCodeHPC2025,ParaCodex2026}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 14,
+        "context": "VibeCodeHPC~\\cite{VibeCodeHPC2025} focuses on HPC code generation, while QiMeng-MuPa~\\cite{QiMengMuPa2025} addresses sequential-to-parallel translation via mutual-supervised learning; neither targets cross-API translation of existing parallel implementations."
+      }
+    ],
+    "ChatPORT2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 475,
+        "context": "ChatPORT~\\cite{ChatPORT2025} & LLM-assisted code porting; kernel/program level & Local porting evaluation with build/run checks & Relevant porting work, but method-specific."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 571,
+        "context": "Porting frameworks such as ChatPORT and CUDA-to-SYCL translation work are closer to \\parbench{} in spirit, but are typically narrower in API direction, corpus scope, or evaluation protocol~\\cite{ChatPORT2025,ChatPORTSYCL2025}."
+      }
+    ],
+    "ChatPORTSYCL2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 480,
+        "context": "ChatPORT CUDA-to-SYCL~\\cite{ChatPORTSYCL2025} & CUDA-to-SYCL translation; kernel level & Local CUDA-to-SYCL evaluation with build/run checks & Directly relevant API migration, but narrower in direction and scope."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 571,
+        "context": "Porting frameworks such as ChatPORT and CUDA-to-SYCL translation work are closer to \\parbench{} in spirit, but are typically narrower in API direction, corpus scope, or evaluation protocol~\\cite{ChatPORT2025,ChatPORTSYCL2025}."
+      }
+    ],
+    "ChatMPI2026": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 485,
+        "context": "ChatMPI~\\cite{ChatMPI2026} & MPI code generation; function/workload level & MPI-focused local evaluation with functional checks & Distributed-parallel generation, not cross-API kernel translation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+      }
+    ],
+    "LargeLLMEvalHPC2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 490,
+        "context": "Large LLM Evaluation for HPC~\\cite{LargeLLMEvalHPC2024} & Evaluating LLMs for HPC software development; task/program level & HPC-oriented evaluation suite with task-specific checks & Broad HPC LLM context, but not controlled cross-API translation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+      }
+    ],
+    "VibeCodeHPC2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 495,
+        "context": "VibeCodeHPC~\\cite{VibeCodeHPC2025} & Agentic HPC code generation/tuning; application/kernel level & Small local HPC benchmark set with build/run/performance signals & Agentic generation and optimization, not existing-kernel API translation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Later LLM-based systems for automatic parallelization, porting, and HPC code modeling continued this pattern, evaluating on paper-specific mixtures of OpenMP, MPI, CUDA, mini-applications, or benchmark-suite kernels~\\cite{OMPar2024,AutoParLLM2025,OpenMPAssessment2024,HPCCoder2024,HPCCoderV2,LargeLLMEvalHPC2024,ChatMPI2026,VibeCodeHPC2025}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 577,
+        "context": "UniPar, QiMeng-MuPa, VibeCodeHPC, and ParaCodex similarly explore multi-paradigm generation, sequential-to-parallel transformation, agentic HPC code generation, or profiling-guided repair using local or mixed benchmark suites~\\cite{UniPar2025,QiMengMuPa2025,VibeCodeHPC2025,ParaCodex2026}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 14,
+        "context": "VibeCodeHPC~\\cite{VibeCodeHPC2025} focuses on HPC code generation, while QiMeng-MuPa~\\cite{QiMengMuPa2025} addresses sequential-to-parallel translation via mutual-supervised learning; neither targets cross-API translation of existing parallel implementations."
+      }
+    ],
+    "ParaCodex2026": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 500,
+        "context": "ParaCodex~\\cite{ParaCodex2026} & Profiling-guided agentic parallel generation/translation; kernel/program level & Curated suite mixture with build-run-verify and profiling feedback & Directly relevant method-side work; \\parbench{} can evaluate such systems under fixed specs."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 577,
+        "context": "UniPar, QiMeng-MuPa, VibeCodeHPC, and ParaCodex similarly explore multi-paradigm generation, sequential-to-parallel transformation, agentic HPC code generation, or profiling-guided repair using local or mixed benchmark suites~\\cite{UniPar2025,QiMengMuPa2025,VibeCodeHPC2025,ParaCodex2026}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 580,
+        "context": "Others incorporate build, run, and functional validation, especially in agentic or repository-level settings~\\cite{LASSI2024,ParEvalRepo2025,ParaCodex2026}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 20,
+        "context": "CodeRosetta~\\cite{CodeRosetta2024} and HPC-Coder-V2~\\cite{HPCCoderV2} demonstrate specialized fine-tuning for parallel code; ParaCodex~\\cite{ParaCodex2026} introduces profiling-guided agentic translation."
+      }
+    ],
+    "TRACE2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 528,
+        "context": "TRACE~\\cite{TRACE2025} & Efficiency of LLM-based code translation; function/task level & Efficiency benchmark with correctness and runtime & Complementary performance axis; \\parbench{} focuses first on correctness."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 583,
+        "context": "TRACE, KernelBench, Mercury, and related GPU-kernel or efficiency benchmarks study runtime, kernel quality, optimization, or resource behavior~\\cite{TRACE2025,KernelBench2025,Mercury2024}."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 1955,
+        "context": "TRACE~\\cite{TRACE2025} addresses this gap."
+      },
+      {
+        "file": "sections/discussion.tex",
+        "line": 10,
+        "context": "A harness-passing translation may still be unusably slow, a concern also raised by TRACE~\\cite{TRACE2025}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 23,
+        "context": "\\parbench{} evaluates correctness only; efficiency-oriented work such as TRACE~\\cite{TRACE2025} shows that functional correctness and runtime performance are separable objectives, making performance-aware evaluation a natural extension."
+      }
+    ],
+    "KernelBench2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 533,
+        "context": "KernelBench~\\cite{KernelBench2025} & Efficient GPU-kernel generation; kernel level & GPU-kernel benchmark with correctness and speed & Accelerator-kernel generation, not translation of existing parallel APIs."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 583,
+        "context": "TRACE, KernelBench, Mercury, and related GPU-kernel or efficiency benchmarks study runtime, kernel quality, optimization, or resource behavior~\\cite{TRACE2025,KernelBench2025,Mercury2024}."
+      }
+    ],
+    "Mercury2024": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 538,
+        "context": "Mercury~\\cite{Mercury2024} & Efficiency of LLM code synthesis; function/task level & Efficiency benchmark with runtime/resource metrics & Evaluates efficiency rather than parallel API semantic preservation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 583,
+        "context": "TRACE, KernelBench, Mercury, and related GPU-kernel or efficiency benchmarks study runtime, kernel quality, optimization, or resource behavior~\\cite{TRACE2025,KernelBench2025,Mercury2024}."
+      }
+    ],
+    "CodeMorph2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 543,
+        "context": "CodeMorph~\\cite{CodeMorph2025} & Robustness and leakage via code transformation; function level & Existing benchmarks with transformed variants and unit tests & Provides the source-perturbation principle adapted by \\parbench{} to HPC translation."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 586,
+        "context": "} Public code benchmarks face contamination and memorization risks, and recent work shows that surface-form perturbations can reveal brittle pattern matching~\\cite{SWEbenchIllusion2025,CodeMorph2025,MemorizeOrGeneralize2025}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 23,
+        "context": "CodeMorph~\\cite{CodeMorph2025} applies 26~semantics-preserving transformations to detect data leakage, and Zhang et al."
+      }
+    ],
+    "MemorizeOrGeneralize2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 548,
+        "context": "Semantic Code Rewrite~\\cite{MemorizeOrGeneralize2025} & Memorization versus generalization under code rewriting; function level & Rewritten code benchmarks with unit tests & Motivates source rewriting as a contamination and robustness probe."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 586,
+        "context": "} Public code benchmarks face contamination and memorization risks, and recent work shows that surface-form perturbations can reveal brittle pattern matching~\\cite{SWEbenchIllusion2025,CodeMorph2025,MemorizeOrGeneralize2025}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 23,
+        "context": "~\\cite{MemorizeOrGeneralize2025} measure memorization risk through code rewriting."
+      }
+    ],
+    "SWEbenchIllusion2025": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 553,
+        "context": "SWE-bench Illusion~\\cite{SWEbenchIllusion2025} & Benchmark memorization analysis; repository level & SWE-bench-style evaluation & Supports robustness checks for public code benchmarks."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 586,
+        "context": "} Public code benchmarks face contamination and memorization risks, and recent work shows that surface-form perturbations can reveal brittle pattern matching~\\cite{SWEbenchIllusion2025,CodeMorph2025,MemorizeOrGeneralize2025}."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 8,
+        "context": "SWE-bench Illusion~\\cite{SWEbenchIllusion2025} further shows that static scores can overstate capability when evaluation methodology is not carefully controlled, motivating \\parbench{}'s conjunctive build-run-verify pipeline and augmentation robustness probes."
+      },
+      {
+        "file": "sections/related-work.tex",
+        "line": 23,
+        "context": "} Public benchmarks can be memorized, and surface-form perturbations reveal brittle pattern matching~\\cite{SWEbenchIllusion2025}."
+      }
+    ],
+    "CuratedOpenMPDataset2026": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Earlier OpenMP and MPI work constructed curated datasets for source-to-source parallelization, pragma recommendation, parallel-region classification, MPI API assistance, and domain-specific model training~\\cite{LearningToParallelize2023,MPIRICAL2023,OMPify2023,OMPGPT2024,MPIrigen2024,MonoCoder2024,PragFormer2025,CuratedOpenMPDataset2026}."
+      }
+    ],
+    "HPCorpus2023": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 568,
+        "context": "Prior corpus studies also show that OpenMP usage itself has been systematically characterized at scale~\\cite{HPCorpus2023}, reinforcing that parallel-programming corpora are valuable but do not by themselves define a controlled LLM translation benchmark."
+      }
+    ],
+    "Rodinia2009": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 1031,
+        "context": "Rodinia~\\cite{Rodinia2009} provides the foundation of \\parbench{}'s evaluation corpus."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 2113,
+        "context": "} The five suites are well-established in HPC research (Rodinia: IISWC 2009~\\cite{Rodinia2009}, HeCBench: 2023~\\cite{HeCBench2023}, XSBench: ANL~\\cite{XSBench2014})."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 2521,
+        "context": "\\item[] Answer: \\answerYes{} \\item[] Justification: All five benchmark suites are cited (Rodinia~\\cite{Rodinia2009}, XSBench, RSBench, mixbench, HeCBench)."
+      },
+      {
+        "file": "sections/benchmark-curation.tex",
+        "line": 34,
+        "context": "\\textbf{Rodinia}~\\cite{Rodinia2009} is the largest contributor, providing 60~specs across 22~kernels over CUDA, OpenMP, and OpenCL; 53 pass baseline verification and 7 are \\knownfail{}."
+      },
+      {
+        "file": "sections/framework.tex",
+        "line": 48,
+        "context": "Widely used suites such as Rodinia~\\cite{Rodinia2009} are likely present in LLM training data, so success on unmodified source may reflect memorization."
+      }
+    ],
+    "XSBench2014": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 1048,
+        "context": "\\textbf{XSBench}~\\cite{XSBench2014} (4~specs: CUDA, OpenMP, OpenCL, OpenMP Target): A Monte Carlo neutron cross-section lookup proxy application representative of nuclear reactor simulation workloads."
+      },
+      {
+        "file": "appendices_neurips.tex",
+        "line": 2114,
+        "context": "} The five suites are well-established in HPC research (Rodinia: IISWC 2009~\\cite{Rodinia2009}, HeCBench: 2023~\\cite{HeCBench2023}, XSBench: ANL~\\cite{XSBench2014})."
+      },
+      {
+        "file": "sections/benchmark-curation.tex",
+        "line": 35,
+        "context": "\\textbf{XSBench}~\\cite{XSBench2014} and \\textbf{RSBench}~\\cite{RSBench2014} contribute nuclear-physics proxy kernels, each with 4~specs, while \\textbf{mixbench}~\\cite{mixbench2017} contributes 3~GPU roofline micro-benchmark specs."
+      }
+    ],
+    "RSBench2014": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 1051,
+        "context": "\\textbf{RSBench}~\\cite{RSBench2014} (4~specs: CUDA, OpenMP, OpenCL, OpenMP Target): A proxy application for the multipole method of computing neutron cross sections on-the-fly, representing a complementary algorithm to XSBench's unionized energy grid approach."
+      },
+      {
+        "file": "sections/benchmark-curation.tex",
+        "line": 35,
+        "context": "\\textbf{XSBench}~\\cite{XSBench2014} and \\textbf{RSBench}~\\cite{RSBench2014} contribute nuclear-physics proxy kernels, each with 4~specs, while \\textbf{mixbench}~\\cite{mixbench2017} contributes 3~GPU roofline micro-benchmark specs."
+      }
+    ],
+    "mixbench2017": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 1053,
+        "context": "\\textbf{mixbench}~\\cite{mixbench2017} (3~specs: CUDA, OpenMP, OpenCL): A micro-benchmark that sweeps a range of compute-to-memory operation ratios, mapping the practical roofline boundary of a compute device."
+      },
+      {
+        "file": "sections/benchmark-curation.tex",
+        "line": 35,
+        "context": "\\textbf{XSBench}~\\cite{XSBench2014} and \\textbf{RSBench}~\\cite{RSBench2014} contribute nuclear-physics proxy kernels, each with 4~specs, while \\textbf{mixbench}~\\cite{mixbench2017} contributes 3~GPU roofline micro-benchmark specs."
+      }
+    ],
+    "ModelCards2019": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 1851,
+        "context": "Following Model Cards~\\cite{ModelCards2019} and Datasheets~\\cite{Datasheets2021}, we provide an \\emph{Evaluation Card} for \\parbench{} that states what it measures, what it does not measure, the claims it supports, the assumptions it relies on, and how results should be reported."
+      }
+    ],
+    "Datasheets2021": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 1851,
+        "context": "Following Model Cards~\\cite{ModelCards2019} and Datasheets~\\cite{Datasheets2021}, we provide an \\emph{Evaluation Card} for \\parbench{} that states what it measures, what it does not measure, the claims it supports, the assumptions it relies on, and how results should be reported."
+      }
+    ],
+    "HeCBench2023": [
+      {
+        "file": "appendices_neurips.tex",
+        "line": 2113,
+        "context": "} The five suites are well-established in HPC research (Rodinia: IISWC 2009~\\cite{Rodinia2009}, HeCBench: 2023~\\cite{HeCBench2023}, XSBench: ANL~\\cite{XSBench2014})."
+      },
+      {
+        "file": "sections/benchmark-curation.tex",
+        "line": 34,
+        "context": "\\textbf{HeCBench}~\\cite{HeCBench2023} provides the largest initial multi-API pool: from 522~kernels, a structured funnel yields 10 curated kernels---five with CUDA, OpenMP, and OMP-target variants, and five with CUDA and OMP-target only---totaling 25~specs."
+      }
+    ],
+    "GPT53Codex2026": [
+      {
+        "file": "sections/experimental-setup.tex",
+        "line": 92,
+        "context": "} We evaluate three models: \\qwen{}, a 397B-parameter MoE open-weight model accessed via Together~AI; \\gptnew{}, a general-purpose proprietary model accessed via \\gptprovider{}; and \\codex{}, a code-specialized model optimized via reinforcement learning on software engineering tasks~\\cite{GPT53Codex2026}, also accessed via \\gptprovider{}."
+      }
+    ]
+  }
+}

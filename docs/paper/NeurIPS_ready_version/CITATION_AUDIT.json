@@ -1,0 +1,1134 @@
+{
+  "audit_skill": "citation-audit",
+  "verdict": "PASS",
+  "reason_code": "all_entries_keep",
+  "summary": "46 cited entries audited: 46 KEEP, 0 FIX, 0 REPLACE, 0 REMOVE. Published venue records are used wherever verified; 8 entries remain arXiv-only because no verified journal or conference record was found in this pass.",
+  "audited_input_hashes": {
+    "references.bib": "sha256:93bb1990e7f51fe921104740ca93eeeb6c8765eff0cf7d96957aea9a8410f613",
+    "main_neurips.tex": "sha256:65fb5b56858afbc0f498ae2bd3d5723f03331c2418e6f464869747ed2a65c021",
+    "appendices_neurips.tex": "sha256:818cd5057a445952d9dbafe6b37a3e94474af8f69466df029aee8df3fdeb0214",
+    "sections/1-introduction.tex": "sha256:412c2be424c9a8a11a4585e6824a05587b596e0bfafa2c2ba0de42ff2ee91abf",
+    "sections/benchmark-curation.tex": "sha256:b482fc4285f6bd0941603e78d291244044d43b87aed4daad170d59d8c567e142",
+    "sections/discussion.tex": "sha256:eff4cbec35ce197ea8cdc8e478f61f9f9b4c3ce7d9f1014a3591c25599e7728e",
+    "sections/experimental-setup.tex": "sha256:e18c787175163f6aa48bdd4e842fa9a4fbc3f2b0842672e95efb9db2f39d790a",
+    "sections/framework.tex": "sha256:a1f96a01bbd8be8c24e82ff61cdb787e05e16be9af3d13104fd0990a55aecd84",
+    "sections/related-work.tex": "sha256:29f61b0076db8f77a889e60d8a72faaf646fea916598fb7ea2b2bde619194c8c",
+    "sections/results.tex": "sha256:aa85153553589d0ba11390997776f93f30d9ddb8bb5f9ec34f2a7014051b4b52",
+    ".aris/citation-audit/contexts.txt": "sha256:a7504917480b654fa904f0dac6922a6da4c2eec90a1a29ee949f6da74af06f61"
+  },
+  "trace_path": ".aris/traces/citation-audit/2026-05-06_run03/",
+  "thread_id": "local-web-audit-no-mcp",
+  "reviewer_model": "gpt-5",
+  "reviewer_reasoning": "high",
+  "generated_at": "2026-05-06T17:58:23Z",
+  "details": {
+    "total_entries": 46,
+    "counts": {
+      "KEEP": 46,
+      "FIX": 0,
+      "REPLACE": 0,
+      "REMOVE": 0
+    },
+    "remaining_arxiv_only": [
+      "HumanEval2021",
+      "MemorizeOrGeneralize2025",
+      "OMPar2024",
+      "ParaCodex2026",
+      "QiMengMuPa2025",
+      "SWEbenchIllusion2025",
+      "TRACE2025",
+      "VibeCodeHPC2025"
+    ],
+    "per_entry": [
+      {
+        "key": "AlphaTrans2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1145/3729379",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 329,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 14,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "AutoParLLM2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://aclanthology.org/2025.naacl-long.593/",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 397,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 571,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "ChatMPI2026",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1145/3773656.3773659",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 485,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "ChatPORT2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1007/978-3-032-06343-4_13",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 475,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 571,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "ChatPORTSYCL2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1145/3731599.3767398",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 480,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 571,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "CodeMorph2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1109/ICSE-Companion66252.2025.00081",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 543,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 586,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 23,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "CodeRosetta2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://openreview.net/forum?id=V6hrg4O9gg",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 445,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 577,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 580,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/framework.tex",
+            "line": 77,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 20,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "CuratedOpenMPDataset2026",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.3389/fhpcp.2026.1771927",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "Datasheets2021",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1145/3458723",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 1851,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "GPT53Codex2026",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://openai.com/index/gpt-5-3-codex-system-card/",
+        "uses": [
+          {
+            "file": "sections/experimental-setup.tex",
+            "line": 92,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "HPCCoder2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.23919/ISC.2024.10528929",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 450,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 577,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "HPCCoderV2",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.23919/ISC.2025.11017585",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 455,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 577,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 580,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 20,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "HPCorpus2023",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1109/HPEC58863.2023.10363459",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "HeCBench2023",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1109/ISPASS57527.2023.00041",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 2113,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/benchmark-curation.tex",
+            "line": 34,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "HumanEval2021",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://arxiv.org/abs/2107.03374",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 309,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 698,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/1-introduction.tex",
+            "line": 49,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/experimental-setup.tex",
+            "line": 107,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 8,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "KernelBench2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://proceedings.mlr.press/v267/ouyang25a.html",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 533,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 583,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "LASSI2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1109/CLUSTERWorkshops61563.2024.00029",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 440,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 577,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 580,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 20,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "LargeLLMEvalHPC2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1002/cpe.8269",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 490,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "LearningToParallelize2023",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1145/3572848.3582565",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 357,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 580,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "MPIRICAL2023",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1145/3624062.3624063",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 362,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "MPIrigen2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1145/3660605.3660944",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 377,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "MemorizeOrGeneralize2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://arxiv.org/abs/2503.02296",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 548,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 586,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 23,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "Mercury2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.52202/079017-0529",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 538,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 583,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "ModelCards2019",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1145/3287560.3287596",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 1851,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "MonoCoder2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1109/HPEC62836.2024.10938441",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 382,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "OMPGPT2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1007/978-3-031-69577-3_9",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 372,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "OMPar2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://arxiv.org/abs/2409.14771",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 392,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 571,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "OMPify2023",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1007/978-3-031-40744-4_1",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 367,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 580,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "OpenMPAssessment2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1186/s40537-024-01019-z",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 402,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 571,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "PCEBench2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1109/IPDPS64566.2025.00055",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 412,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 571,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 14,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "ParEval2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1145/3625549.3658689",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 407,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 571,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/1-introduction.tex",
+            "line": 49,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 14,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "ParEvalRepo2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1145/3754598.3754669",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 460,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 574,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 580,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 1982,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 2104,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/1-introduction.tex",
+            "line": 49,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/benchmark-curation.tex",
+            "line": 40,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/framework.tex",
+            "line": 56,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 14,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/results.tex",
+            "line": 60,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "ParaCodex2026",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://arxiv.org/abs/2601.04327",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 500,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 577,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 580,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 20,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "PragFormer2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1007/s10766-024-00778-9",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 387,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "QiMengMuPa2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://arxiv.org/abs/2506.11153",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 470,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 577,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 14,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "RSBench2014",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 1051,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/benchmark-curation.tex",
+            "line": 35,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "Rodinia2009",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1109/IISWC.2009.5306797",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 1031,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 2113,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 2521,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/benchmark-curation.tex",
+            "line": 34,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/framework.tex",
+            "line": 48,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "SWEbench2024",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://openreview.net/forum?id=VTF8yNQM66",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 319,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 574,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/1-introduction.tex",
+            "line": 49,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 8,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "SWEbenchIllusion2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://arxiv.org/abs/2506.12286",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 553,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 586,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 8,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 23,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "TRACE2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://arxiv.org/abs/2508.11468",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 528,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 583,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 1955,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/discussion.tex",
+            "line": 10,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 23,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "TransCoder2020",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://proceedings.neurips.cc/paper/2020/hash/ed23fbf18c2cd35f8c7f8de44f85c08d-Abstract.html",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 314,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 8,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "UniPar2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1109/HPEC67600.2025.11196677",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 465,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 577,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "VibeCodeHPC2025",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://arxiv.org/abs/2510.00031",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 495,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 568,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 577,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 14,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "Wang2026RepoTransBench",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1109/TSE.2025.3645056",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 324,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 574,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/1-introduction.tex",
+            "line": 49,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/related-work.tex",
+            "line": 14,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "XSBench2014",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://www.mcs.anl.gov/papers/P5064-0114.pdf",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 1048,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "appendices_neurips.tex",
+            "line": 2114,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/benchmark-curation.tex",
+            "line": 35,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      },
+      {
+        "key": "mixbench2017",
+        "verdict": "KEEP",
+        "axis_failures": [],
+        "note": "",
+        "verify_url": "https://doi.org/10.1016/j.jpdc.2017.04.002",
+        "uses": [
+          {
+            "file": "appendices_neurips.tex",
+            "line": 1053,
+            "verdict": "SUPPORTS"
+          },
+          {
+            "file": "sections/benchmark-curation.tex",
+            "line": 35,
+            "verdict": "SUPPORTS"
+          }
+        ]
+      }
+    ]
+  }
+}
