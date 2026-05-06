@@ -41,7 +41,7 @@
 %   - Then: explain the survivorship bias (L0-conditional filter).
 %   - Finally: caveats — small sample (n=12), one direction, cannot rule
 %     out deeper memorization.
-\FloatBarrier
+
 \section{Results}
 \label{sec:results}
 
@@ -52,79 +52,25 @@ We first report the primary task-level pass@$k$ results on the balanced L0 task 
 % src: paper_data_azure-gpt-5.3-codex.json > passk_campaign > aggregate_passk
 Restricting to the 142 L0 tasks, \qwenshort{} achieves pass@1\,=\,23.9\% and pass@3\,=\,35.2\%, while \gptnew{} achieves pass@1\,=\,62.7\% and pass@3\,=\,69.7\%. \codex{} matches \gptnew{}'s pass@1 exactly (62.7\%) with a slightly narrower pass@1-to-pass@3 gap (5.6\,pp versus 7.0\,pp for \gptnew{}; Appendix~\ref{sec:appendix-e4}). Stochastic resampling provides diminishing returns: for \qwenshort{}, 64.8\% of tasks produce no passing sample across three attempts, while only 13.4\% pass all three. \gptnew{} and \codex{} show the inverse profile---53.5\% and 57.0\% pass deterministically---yet 30.3\% and 31.7\% still hard-fail on every attempt. Across all models, failures are predominantly systematic (incorrect API-surface mapping) rather than stochastic; resampling cannot rescue them.
 
-\subsection{Overall Performance}
+\subsection{Record-Level Diagnostic Outcomes}
 \label{sec:overall-pass}
 % src: quantitative_findings_qwen.json > canonical > aggregate_pass_rates > overall: value=0.3674, ci=[0.3306, 0.4059], n=626
 % src: statistical_analysis.json > model_comparison > pairwise[0] (Bonferroni-corrected p)
 
-Kernel-centric evaluation isolates executable kernel translation from repository reconstruction. Table~\ref{tab:overall-pass} is a record-level diagnostic summary rather than the primary balanced model ranking: it aggregates all valid records, including L0 and L0-conditional augmentation records. As shown in Table~\ref{tab:overall-pass}, \qwenshort{} passes 36.7\% of its valid records, while \gptnew{} passes 75.5\%. \codex{} passes 74.2\% of its valid records, making it statistically indistinguishable from \gptnew{} on the balanced L0 task comparison (Bonferroni-corrected $p = 1.0$, OR\,=\,0.93 [0.74, 1.16], Cohen's $h = -0.031$). Under the tested \gptprovider{} configuration, \codex{} does not measurably outperform \gptnew{} on \parbench{} L0 tasks; this should not be interpreted as evidence that HPC-specific or parallel-code fine-tuning is unnecessary. Prior work such as ParEval-Repo reports 0\% pass@1 on repository-level applications larger than 133~SLoC~\cite{ParEvalRepo2025}; 89\% of our kernels exceed that threshold, yet \parbench{}'s kernel isolation enables \qwenshort{} to achieve 40.3\% on CUDA-to-OpenMP. This contrast suggests that repository reconstruction is a major confound in full-application benchmarks, though the different corpora, oracles, and models used in each study mean it does not by itself demonstrate that reconstruction is the primary obstacle across all repository-level translation tasks.
-% demonstrating that repository reconstruction, not translation itself, is the primary obstacle in full-application benchmarks.
+Kernel-centric evaluation isolates executable kernel translation from repository reconstruction. Across all valid records (L0 and L0-conditional augmentation), \qwenshort{} passes 36.7\% (230/626), \gptnew{} passes 75.5\% (621/822), and \codex{} passes 74.2\% (604/814; full breakdown in Appendix Table~\ref{tab:overall-pass}). \codex{} is statistically indistinguishable from \gptnew{} on the balanced L0 task comparison (Bonferroni-corrected $p = 1.0$, OR\,=\,0.93 [0.74, 1.16], Cohen's $h = -0.031$); this should not be interpreted as evidence that HPC-specific fine-tuning is unnecessary. Prior work such as ParEval-Repo reports 0\% pass@1 on repository-level applications larger than 133~SLoC~\cite{ParEvalRepo2025}; 89\% of our kernels exceed that threshold, yet \parbench{}'s kernel isolation enables \qwenshort{} to achieve 40.3\% on CUDA-to-OpenMP. This contrast suggests that repository reconstruction is a major confound in full-application benchmarks, though the different corpora, oracles, and models used in each study preclude a direct comparison.
 
 \subsection{Direction Dependence}
 \label{sec:direction-analysis}
 
-\begin{table*}[t]
-\centering
-% src: quantitative_findings_qwen.json, quantitative_findings_gpt54.json > canonical > failure_taxonomy
-% \caption{Overall pass rates across three models and 2,262 valid translation records. \qwenshort{} covers 626 valid records (426 L0 + 200 augmentations) after excluding 82 records involving 9 \knownfail{} specs. \gptnew{} covers 822 valid records (426 L0 + 396 augmentations) and \codex{} covers 814 valid records (426 L0 + 388 augmentations); \knownfail{} specs were pre-excluded from both GPT evaluation batches.}
-%\caption{Overall pass rates across three models and 2,262 valid translation records. Record counts are built as follows: (i)~87 non-\knownfail{} specs yield 142 unique L0 evaluation pairs (source--target combinations); (ii)~each pair is sampled $n{=}3$ times at L0, giving 426 L0 records per model; (iii)~pairs where at least one L0 sample passes enter the L0-conditional augmentation campaign at $n{=}1$ per level (L1--L4). \qwenshort{} covers 626 records (426 L0 + 200 augmentation) after post-hoc exclusion of 82 records involving \knownfail{} specs. \gptnew{} covers 822 records (426 L0 + 396 augmentation) and \codex{} covers 814 records (426 L0 + 388 augmentation); \knownfail{} specs were pre-excluded from both GPT batches. Rates are descriptive; inferential comparison uses the 142 balanced L0 pairs (Section~\ref{sec:passk-analysis}).}
-\caption{Record-level diagnostic pass rates across three models and 2,262 valid translation records. Records include L0 samples and L1--L4 augmentation runs for L0-passing pairs, so this table mixes canonical L0 records with model-specific L0-conditional augmentation records. Wilson intervals are descriptive because records are clustered by task; inferential comparison uses the balanced 142 L0 pairs in Section~\ref{sec:passk-analysis}. The 2,262 total reflects valid analysis records after excluding 82 \qwenshort{} records involving \knownfail{} specs; the Appendix~\ref{sec:appendix-j} cost table reports 2,344 API calls including those subsequently excluded.}
-\label{tab:overall-pass}
-\small
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{@{}lrrrrrrl@{}}
-\toprule
-Model & \pass{} & \buildfail{} & \runfail{} & \verifyfail{} & \extractionfail{} & Total & Rate [95\% Wilson CI] \\
-\midrule
-% src: quantitative_findings_qwen.json > canonical > failure_taxonomy > status_counts
-\qwen{} & 230 & 245 & 121 & 29 & 1 & 626 & 36.7\% [33.1\%, 40.6\%] \\
-% src: quantitative_findings_gpt54.json > canonical > failure_taxonomy > status_counts (all 822 valid records)
-\gptnew{} & 621 & 123 & 43 & 32 & 3 & 822 & 75.5\% [72.5\%, 78.4\%] \\
-\codex{} & 604 & 139 & 44 & 27 & 0 & 814 & 74.2\% [71.1\%, 77.1\%] \\
-\bottomrule
-\end{tabular}%
-}
-\end{table*}
-
-\begin{table*}[t]
-\centering
-\caption{Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes L0 records per model for that direction. Wilson 95\% CIs in brackets.}
-\label{tab:direction-rates}
-\small
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{@{}lrrrc@{}}
-\toprule
-Direction & \qwenshort{} & \gptnew{} & \codex{} & $n$ \\
-\midrule
-% src: quantitative_findings_*.json > canonical > direction_pass_rates > standard
-CUDA$\to$OMP & 40.3\% [29.7\%, 51.8\%] & 83.3\% [73.1\%, 90.2\%] & 76.4\% [65.4\%, 84.7\%] & 72 \\
-OMP$\to$OpenCL & 33.3\% [22.0\%, 47.0\%] & 72.5\% [59.1\%, 82.9\%] & 82.4\% [69.8\%, 90.4\%] & 51 \\
-OMP$\to$CUDA & 25.0\% [16.4\%, 36.1\%] & 55.6\% [44.1\%, 66.5\%] & 55.6\% [44.1\%, 66.5\%] & 72 \\
-OpenCL$\to$OMP & 9.8\% [4.3\%, 21.0\%] & 41.2\% [28.8\%, 54.8\%] & 39.2\% [27.0\%, 52.9\%] & 51 \\
-CUDA$\to$OpenCL & 7.0\% [2.8\%, 16.7\%] & 59.7\% [46.7\%, 71.4\%] & 57.9\% [45.0\%, 69.8\%] & 57 \\
-OpenCL$\to$CUDA & 0.0\% [0.0\%, 6.3\%] & 19.3\% [11.1\%, 31.3\%] & 19.3\% [11.1\%, 31.3\%] & 57 \\
-\midrule
-% src: quantitative_findings_*.json > canonical > direction_pass_rates > standard (omp_target) + case_study
-OMP-target$\to$OMP ($m{=}3$) & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 9 \\
-OMP-target$\to$CUDA ($m{=}8$) & 66.7\% [46.7\%, 82.0\%] & 95.8\% [79.8\%, 99.3\%] & 100\% [86.2\%, 100\%] & 24 \\
-OMP$\to$OMP-target ($m{=}3$) & 44.4\% [18.9\%, 73.3\%] & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 9 \\
-CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 95.8\% [79.8\%, 99.3\%] & 100\% [86.2\%, 100\%] & 24 \\
-\bottomrule
-\end{tabular}%
-}
-\end{table*}
-
-Per-record pass rates vary strongly across directions (Table~\ref{tab:direction-rates}), reflecting structural API asymmetries. The four OMP-target rows are exploratory case studies ($m \leq 8$ kernels, $n \leq 24$ records) and should not be compared directly to the six standard directions; their wide confidence intervals preclude strong conclusions about OMP-target translation in general. Translating from CUDA to OpenMP replaces explicit device memory and launch configuration with compiler directives. The reverse requires introducing explicit synchronization and memory management. OpenCL translations introduce further complexity with separate host/kernel source and JIT compilation, leading to 0\% success for OpenCL-to-CUDA under \qwenshort{}. \codex{}'s direction profile closely tracks \gptnew{} across five of six standard directions (maximum gap 7\,pp, with two directions matching exactly). The exception is OMP-to-OpenCL, where \codex{} outperforms \gptnew{} by 9.9\,pp (82.4\% versus 72.5\%). Overall, direction difficulty is predominantly a property of the translation task, not the model. At the kernel level, performance is highly heterogeneous (full breakdown in Appendix~\ref{sec:appendix-e4}). Simple kernels pass at high rates, while those with irregular memory access or multi-file dependencies frequently fail entirely.
+Per-record pass rates vary strongly across directions (Appendix Table~\ref{tab:direction-rates}), reflecting structural API asymmetries. The four OMP-target rows are exploratory case studies ($m \leq 8$ kernels, $n \leq 24$ records) and should not be compared directly to the six standard directions; their wide confidence intervals preclude strong conclusions about OMP-target translation in general. Translating from CUDA to OpenMP replaces explicit device memory and launch configuration with compiler directives. The reverse requires introducing explicit synchronization and memory management. OpenCL translations introduce further complexity with separate host/kernel source and JIT compilation, leading to 0\% success for OpenCL-to-CUDA under \qwenshort{}. \codex{}'s direction profile closely tracks \gptnew{} across five of six standard directions (maximum gap 7\,pp, with two directions matching exactly). The exception is OMP-to-OpenCL, where \codex{} outperforms \gptnew{} by 9.9\,pp (82.4\% versus 72.5\%). Overall, direction difficulty is predominantly a property of the translation task, not the model. At the kernel level, performance is highly heterogeneous (full breakdown in Appendix~\ref{sec:appendix-e4}). Simple kernels pass at high rates, while those with irregular memory access or multi-file dependencies frequently fail entirely.
 
 \begin{figure}[t]
   \centering
   \input{figures/figures_tek_version/f3_kernel_model_heatmap_unified}
-  \caption{Per-kernel translation status across the eight displayed directions and three models (L0, first sample per task). The two remaining OMP-target case-study directions (OMP$\to$OMP-target, OMP-target$\to$OMP) are omitted from this heatmap for readability. All-grey rows denote kernels with only \knownfail{} or phantom specs.}
+  \caption{Per-kernel translation status across all directions and three models (L0, first sample per task, 35~kernels $\times$ up to 8~directions). All-grey rows denote kernels with only \knownfail{} or phantom specs.}
   % Colors: \textcolor{pbPass}{\rule{6pt}{6pt}}~Pass, \textcolor{pbBuildFail}{\rule{6pt}{6pt}}~Build Fail, \textcolor{pbRunFail}{\rule{6pt}{6pt}}~Run Fail, \textcolor{pbVerifyFail}{\rule{6pt}{6pt}}~Verify Fail, \textcolor{pbExtractionFail}{\rule{6pt}{6pt}}~Extract Fail, \textcolor{pbNA}{\rule{6pt}{6pt}}~N/A.}
   \label{fig:kernel-heatmap-unified}
 \end{figure}
-
-  % \caption{Per-kernel translation status across all directions and three models (L0, first sample per task, 35~kernels $\times$ up to 8~directions). Rows with all grey cells correspond to kernels whose specs are entirely \knownfail{} or phantom. Colors: \textcolor{pbPass}{\rule{6pt}{6pt}}~Pass, \textcolor{pbBuildFail}{\rule{6pt}{6pt}}~Build Fail, \textcolor{pbRunFail}{\rule{6pt}{6pt}}~Run Fail, \textcolor{pbVerifyFail}{\rule{6pt}{6pt}}~Verify Fail, \textcolor{pbExtractionFail}{\rule{6pt}{6pt}}~Extract Fail, \textcolor{pbNA}{\rule{6pt}{6pt}}~N/A.}
 
 \subsection{Failure Taxonomy}
 \label{sec:failure-taxonomy}
@@ -146,7 +92,7 @@ Figure~\ref{fig:failure-taxonomy} places all three models side-by-side on the sa
 \label{sec:augmentation-robustness}
 % src: statistical_analysis.json > augmentation_curves > azure-gpt-5.3-codex; azure-gpt-5.4; together-qwen-3.5-397b-a17b
 
-To assess sensitivity to surface-form perturbation, we evaluated L1--L4 augmented variants on model-specific L0-conditional subsets: \qwenshort{} $n{=}50/142$, \gptnew{} $n{=}99/142$, \codex{} $n{=}97/142$ (detailed in Appendix~\ref{sec:appendix-e4}). \gptnew{} maintains 86.9\%--90.9\% across L1--L4; \codex{} shows a similar plateau at 85.6\%--88.7\%. In contrast, \qwenshort{} declines monotonically from 74.0\% at L1 to 56.0\% at L4. This stability in the GPT-family models indicates lower sensitivity to the tested source-level perturbations. These results are descriptive because the filter depends on L0 success and each augmented level uses one sample per qualifying pair; survivorship bias prevents ruling out deeper structural memorization.
+To assess whether baseline success is driven primarily by surface-form memorization, we evaluated augmented source variants (L1--L4) on L0-conditional subsets (detailed in Appendix~\ref{sec:appendix-e4}). \codex{} shows the same plateau pattern as \gptnew{}: 85.6\%--88.7\% at L1--L4, in contrast to \qwenshort{}'s monotonic decline from 74.0\% at L1 to 56.0\% at L4 on the same L0-conditional design. This stability across both GPT models is compatible with robustness to the tested surface-form perturbations. These results are descriptive rather than confirmatory given the L0-conditional design; survivorship bias prevents ruling out deeper structural memorization entirely.
 
 % src: results/evaluation/together-qwen-3.5-397b-a17b/hecbench-stencil1d-cuda-to-hecbench-stencil1d-omp-{s0,L2,L4}.json 
 % src: results/evaluation/together-qwen-3.5-397b-a17b/hecbench-stencil1d-cuda-to-hecbench-stencil1d-omp-{s0,L1,L2,L3,L4}.json

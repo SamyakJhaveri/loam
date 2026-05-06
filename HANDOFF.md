@@ -1,456 +1,603 @@
-# HANDOFF: ParBench NeurIPS Paper — Final Pre-Submission Audit Corrections
+# HANDOFF: NeurIPS 2026 E&D Track — Artifact Compliance Fixes
 
 **Date:** 2026-05-05
-**Status:** Research & verification COMPLETE. Ready for execution.
-**Supersedes:** Previous ablation→augmentation handoff (check if that was completed via `grep -rn "ablation" scripts/ docs/paper/`; if occurrences remain, do that first).
+**Status:** Fully planned, Codex-reviewed, ready for implementation.
+**Deadline:** May 6, 2026 AoE (Abstract due May 4 — already past; full paper + artifact due May 6)
+**Priority:** CRITICAL — submission deadline is tomorrow.
+
+**Previous handoff (Architecture Diagram Fixes):** The prior HANDOFF.md content about Figure 1 drawio edits is in git history. Check `git show HEAD:HANDOFF.md` if you need it. That task is independent of this one.
 
 ---
 
-## What This Task Is About (Plain English)
+## What This Is About (Plain English)
 
-ParBench is a benchmark framework that tests whether AI models (like GPT-5.4, Codex, Qwen) can correctly translate parallel code between CUDA, OpenMP, and OpenCL. We wrote a paper about it for NeurIPS 2026.
+You're submitting a paper + code artifact to NeurIPS 2026's "Evaluations & Datasets" track. Think of it like submitting a homework assignment that has strict formatting rules — if you break them, the teacher won't even read your paper (that's called "desk rejection").
 
-**The problem:** An external reviewer (Gal, advisor) did a final audit of the PDF and found several issues that must be fixed before we can upload to OpenReview. None require new experiments — they are all text corrections, caption fixes, bibliography cleanup, and a factual error in the augmentation section where two models' numbers were conflated.
+We audited the artifact against NeurIPS's rules and found **6 problems in the README**, **1 missing file**, **1 paper sentence to update**, and **several anonymization leaks**. None are hard to fix, but ALL must be fixed before upload.
 
-**What you must do:** Apply exactly 10 corrections to LaTeX source files. The corrections are pre-verified against raw data (every number was recomputed from the actual result JSON files). You just need to make the text edits and verify each one.
-
-**Where the user applies them:** The user copies the corrected text from local files into Overleaf (their online LaTeX editor). Do NOT attempt to compile the PDF locally — just make the source edits and verify via grep.
+**The big picture:** NeurIPS uses "double-blind" review — reviewers don't know who wrote the paper. If your GitHub username (`samyakjhaveri`) appears anywhere in the artifact, you've blown your cover. That's an instant desk rejection.
 
 ---
 
-## Skills to Load FIRST (Mandatory)
+## What Was Found (The Audit)
 
-Before doing ANY work, invoke these skills in order:
+We compared the artifact (hosted at `anonymous.4open.science/r/parbench-artifact-EE29/`) against the official NeurIPS 2026 E&D track requirements. Here's what's wrong:
 
-```
-1. Skill tool → skill: "andrej-karpathy-skills:karpathy-guidelines"
-   WHY: Think before coding. Surgical changes only. Don't touch adjacent text.
+### CRITICAL (desk rejection risk)
 
-2. Skill tool → skill: "superpowers:test-driven-development"  
-   WHY: For each edit — grep to confirm current state → apply edit → grep to confirm new state.
-```
+| # | Problem | Where | Fix |
+|---|---------|-------|-----|
+| 1 | **GitHub Pages links expose your identity** | README.md `## Visualizations` section | Remove entire section |
+| 2 | **config/paths.json has `/home/samyak/...`** | `config/paths.json` lines 2-4 | Replace with relative `"."` |
 
----
+### HIGH (reviewer will notice, may downgrade)
 
-## File Paths (All Absolute — Copy-Paste Ready)
+| # | Problem | Where | Fix |
+|---|---------|-------|-----|
+| 3 | **Citation says "SC26" (wrong venue)** | README.md bottom | Change to "NeurIPS 2026 (Evaluations & Datasets Track)" |
+| 4 | **No reproduction instructions in README** | README.md | Add tiered recipe pointing to `artifact/reproduce.sh` |
+| 5 | **Result data not described** | README.md | Add paragraph explaining `results/evaluation/` |
+| 6 | **No hardware requirements stated** | README.md | Add what GPU you need (and don't need for Tier 2) |
+| 7 | **No Croissant metadata file** | Project root | Create minimal `croissant.json` (conditional — see below) |
 
-| Short name | Full path |
-|---|---|
-| **results.tex** | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex` |
-| **discussion.tex** | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/discussion.tex` |
-| **abstract.tex** | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/abstract.tex` |
-| **appendices.tex** | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex` |
-| **references.bib** | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/references.bib` |
-| **main.tex** | `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/main_neurips.tex` |
-| **Project root** | `/home/samyak/Desktop/parbench_sam` |
-| **Python venv** | `source /home/samyak/Desktop/parbench_sam/env_parbench/bin/activate` |
+### MEDIUM (good practice)
 
----
-
-## Critical Context: Verified Ground-Truth Numbers
-
-These numbers were computed on 2026-05-05 by parsing every JSON file in `results/evaluation/{model}/*.json` using the `EXCLUDED_SPECS` filter from `harness/constants.py` and the Chen et al. (2021) pass@k estimator. They are CORRECT:
-
-| Metric | Qwen 3.5 | GPT-5.4 | Codex |
-|--------|-----------|---------|-------|
-| L0 tasks | 142 | 142 | 142 |
-| L0 records (3 samples/task) | 426 | 426 | 426 |
-| pass@1 (macro-avg) | 23.9% | 62.7% | 62.7% |
-| pass@3 (macro-avg) | 35.2% | 69.7% | 68.3% |
-| Hard-fail tasks (0/3 PASS) | 64.8% | 30.3% | 31.7% |
-| All-pass tasks (3/3 PASS) | 13.4% | 53.5% | 57.0% |
-| L0-conditional subset size | 50/142 | 99/142 | 97/142 |
-| Augmentation L1 | 74.0% (37/50) | 88.9% (88/99) | 86.6% (84/97) |
-| Augmentation L2 | 64.0% (32/50) | 90.9% (90/99) | 88.7% (86/97) |
-| Augmentation L3 | 62.0% (31/50) | 86.9% (86/99) | 86.6% (84/97) |
-| Augmentation L4 | 56.0% (28/50) | 90.9% (90/99) | 85.6% (83/97) |
-| Augmentation range L1–L4 | 56.0%–74.0% | **86.9%–90.9%** | 85.6%–88.7% |
-
-**KEY FINDING:** The paper INCORRECTLY claims "85.6%–88.7%" applies to BOTH GPT-5.4 and Codex. In reality, that range is Codex-only. GPT-5.4's actual range is 86.9%–90.9% (higher).
+| # | Problem | Where | Fix |
+|---|---------|-------|-----|
+| 8 | **Paper says "Croissant not applicable"** | `appendices_neurips.tex` line ~2232 | Update to reference new Croissant file (or strengthen opt-out) |
+| 9 | **No artifact ZIP for OpenReview upload** | — | Build sanitized ZIP ≤100MB |
+| 10 | **Numbers may be inconsistent** | README vs paper vs artifact/README | Verify 206/96/87/9/2344/2262 match everywhere |
 
 ---
 
-## EXECUTION PLAN: 10 Corrections in Order
+## What You Need to Know Before Starting
 
-### Correction 1: Section 5.5 — Augmentation Wording (FACTUAL ERROR + Missing Sizes)
+### The Artifact Structure
 
-**Priority:** P1-4 (high — factual inaccuracy + causal overstatement + missing data)
-
-**File:** `results.tex` line 148
-
-**What's wrong:**
-1. Opens with "To assess whether baseline success is driven primarily by surface-form memorization" — this is causal language but the design is descriptive
-2. Claims "85.6%–88.7%" for both Codex AND GPT-5.4 — but GPT-5.4 is actually 86.9%–90.9%
-3. Missing the L0-conditional subset sizes (n=50, 99, 97)
-
-**FIND this exact text (it is one paragraph starting at line 148):**
 ```
-To assess whether baseline success is driven primarily by surface-form memorization, we evaluated augmented source variants (L1--L4) on L0-conditional subsets (detailed in Appendix~\ref{sec:appendix-e4}). \codex{} shows the same plateau pattern as \gptnew{}: 85.6\%--88.7\% at L1--L4, in contrast to \qwenshort{}'s monotonic decline from 74.0\% at L1 to 56.0\% at L4 on the same L0-conditional design. This stability across both GPT models is compatible with robustness to the tested surface-form perturbations. These results are descriptive rather than confirmatory given the L0-conditional design; survivorship bias prevents ruling out deeper structural memorization entirely.
-```
-
-**REPLACE WITH:**
-```
-To assess sensitivity to surface-form perturbation, we evaluated L1--L4 augmented variants on model-specific L0-conditional subsets: \qwenshort{} $n{=}50/142$, \gptnew{} $n{=}99/142$, \codex{} $n{=}97/142$ (detailed in Appendix~\ref{sec:appendix-e4}). \gptnew{} maintains 86.9\%--90.9\% across L1--L4; \codex{} shows a similar plateau at 85.6\%--88.7\%. In contrast, \qwenshort{} declines monotonically from 74.0\% at L1 to 56.0\% at L4. This stability in the GPT-family models indicates lower sensitivity to the tested source-level perturbations. These results are descriptive because the filter depends on L0 success and each augmented level uses one sample per qualifying pair; survivorship bias prevents ruling out deeper structural memorization.
+parbench_sam/
+├── README.md                  ← THE FILE WITH MOST PROBLEMS (public-facing on anonymous site)
+├── artifact/
+│   ├── README.md              ← This one is GOOD (detailed reproduction docs)
+│   ├── reproduce.sh           ← Already works (5-step pipeline, tested)
+│   └── Dockerfile             ← Already works (containerized reproduction)
+├── config/paths.json          ← LEAKS YOUR IDENTITY (has /home/samyak/...)
+├── results/evaluation/        ← 97MB of result JSONs (2,344 files)
+├── specs/                     ← 206 kernel spec JSONs
+├── docs/paper/NeurIPS_ready_version/
+│   └── appendices_neurips.tex ← Paper appendix (Croissant claim on line ~2232)
+└── croissant.json             ← DOESN'T EXIST YET (you'll create it)
 ```
 
-**Verification:**
+### Key NeurIPS Rules You Must Not Violate
+
+1. **Double-blind:** No author names, usernames, emails, or personal URLs anywhere reviewers can see
+2. **Code release required:** ParBench is a benchmark tool, so code MUST be provided
+3. **Supplementary ZIP ≤ 100MB:** If uploading to OpenReview directly (the anonymous URL is also fine)
+4. **Croissant metadata:** Required for datasets, BUT the FAQ says "If your submission does not introduce new data, data-hosting guidelines do not apply." ParBench is an eval tool using existing public benchmarks — so it's arguably exempt. We're providing a Croissant anyway as belt-and-suspenders.
+
+---
+
+## The Plan (12 Tasks, Ordered by Dependencies)
+
+### Phase A: README Content Fixes (Tasks 1-5, independent, do in any order)
+
+---
+
+#### Task 1: Remove Visualizations Section
+
+**File:** `/home/samyak/Desktop/parbench_sam/README.md`
+
+**What to do:** Find the `## Visualizations` section (it has ~10 lines with `samyakjhaveri.github.io` links) and delete the entire section including the heading.
+
+**Why:** Those URLs contain your GitHub username → breaks double-blind → desk rejection.
+
+**Verify:**
 ```bash
-grep -n "driven primarily by surface-form memorization" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-# Expected: zero results (old text gone)
-
-grep -n "86.9" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-# Expected: one result at line 148 (new text present)
+grep -n "samyakjhaveri\|github.io" README.md
+# Expected: NO output (zero matches)
 ```
 
 ---
 
-### Correction 2: Figure 2 Caption — "all directions" → "eight displayed"
+#### Task 2: Fix Citation Section
 
-**Priority:** P1-2
+**File:** `/home/samyak/Desktop/parbench_sam/README.md`
 
-**File:** `results.tex` line 121
-
-**What's wrong:** Caption says "across all directions" but the heatmap shows only 8 of 10 total directions (missing OMP→OMP-target and OMP-target→OMP).
-
-**FIND:**
+**What to do:** Find the `## Citation` section at the very bottom. Replace:
 ```
-\caption{Per-kernel translation status across all directions and three models (L0, first sample per task, 35~kernels $\times$ up to 8~directions). All-grey rows denote kernels with only \knownfail{} or phantom specs.}
+ParBench is being prepared for submission to SC26 (International Conference for High
+Performance Computing, Networking, Storage, and Analysis). Citation guidance will be
+added once the paper is published. <!-- VERIFY: SC26 submission status and citation details -->
 ```
 
-**REPLACE WITH:**
+With:
 ```
-\caption{Per-kernel translation status across the eight displayed directions and three models (L0, first sample per task). The two remaining OMP-target case-study directions (OMP$\to$OMP-target, OMP-target$\to$OMP) are omitted from this heatmap for readability. All-grey rows denote kernels with only \knownfail{} or phantom specs.}
+ParBench is under review at NeurIPS 2026 (Evaluations & Datasets Track). Citation
+guidance will be added upon publication.
 ```
 
-**Verification:**
+**Why:** Wrong venue name + leftover comment.
+
+**Verify:**
 ```bash
-grep -n "across all directions" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-# Expected: zero results
+grep -n "SC26\|VERIFY" README.md
+# Expected: NO output
 ```
 
 ---
 
-### Correction 3: Table 3 Caption — "n" Ambiguity
+#### Task 3: Add Reproduction Recipe
 
-**Priority:** P1-3
+**File:** `/home/samyak/Desktop/parbench_sam/README.md`
 
-**File:** `results.tex` line 90
+**What to do:** Add a new section `## Reproducing Paper Results` AFTER the existing `## Quick start` section. Insert this content:
 
-**What's wrong:** "Here $n$ denotes total L0 records" is ambiguous — reader might think it's total across all 3 models. It's actually per model (e.g., n=72 means 24 tasks × 3 samples for ONE model).
+```markdown
+## Reproducing Paper Results
 
-**FIND:**
+Results reproduction is tiered by what you want to verify:
+
+### Tier 1: Pipeline Verification (free, ~5 min, no GPU needed)
+
+Confirm the harness and analysis pipeline work on your machine:
+
+\```bash
+source env_parbench/bin/activate
+python3 scripts/validate_schema.py --all             # Schema validation (expect ~15 known errors from phantom specs)
+python3 -m harness info specs/rodinia-bfs-cuda.json  # Inspect a spec
+\```
+
+### Tier 2: Reproduce Tables & Figures from Bundled Results (free, ~15 min, no GPU needed)
+
+All 2,344 per-task result JSONs are included in `results/evaluation/`. Regenerate every
+table and figure in the paper from these raw results:
+
+\```bash
+# Docker (recommended — exact environment):
+cd artifact && docker build -t parbench . && docker run --rm -v $(pwd)/../output:/app/output parbench ./reproduce.sh
+
+# Or without Docker:
+bash artifact/reproduce.sh
+\```
+
+Output lands in `output/` — 5 LaTeX tables (T1–T5) and 15 figures (F2–F7, C.1–C.4).
+Deterministic table values can be diffed against `expected_outputs/` for bit-exact verification.
+See `artifact/README.md` for full details.
+
+### Tier 3: Full Re-Evaluation (paid, ~8 hours, requires API keys + NVIDIA GPU)
+
+Re-run all 2,262 LLM evaluations from scratch. Requires:
+- NVIDIA GPU (CUDA 12.x) for build-run-verify of CUDA/OpenCL specs
+- API keys: Together AI (Qwen), Azure OpenAI (GPT-5.4, GPT-5.3-Codex)
+- Estimated cost: ~$150–200 in API credits (as of May 2026)
+
+\```bash
+# Example: re-run Qwen on CUDA-to-OpenMP direction
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia --direction cuda-to-omp \
+  --models together-qwen-3.5-397b-a17b \
+  --project-root . --resume -v
+\```
+
+See `scripts/evaluation/README.md` and the paper's Appendix J for full campaign details.
 ```
-Here $n$ denotes total L0 records. Wilson 95\% CIs in brackets.}
-```
 
-**REPLACE WITH:**
-```
-Here $n$ denotes L0 records per model for that direction. Wilson 95\% CIs in brackets.}
-```
+**Why:** NeurIPS checklist asks "Does the paper provide instructions for reproducing the main experimental results?" Your checklist says Yes, but the README didn't deliver on that promise until now.
 
-**Verification:**
+**Verify:**
 ```bash
-grep -n "denotes.*L0 records" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-# Expected: shows "L0 records per model"
+grep -c "Tier 1\|Tier 2\|Tier 3" README.md
+# Expected: 3
 ```
 
 ---
 
-### Correction 4: Checklist Item 1 — False Attestation About Abstract
+#### Task 4: Add Evaluation Results Section
 
-**Priority:** P0-3 (CRITICAL — the checklist is a formal author attestation)
+**File:** `/home/samyak/Desktop/parbench_sam/README.md`
 
-**File:** `appendices.tex` line 2374
+**What to do:** Add a new section `## Evaluation Results` AFTER the reproduction section:
 
-**What's wrong:** Says "The abstract states L0 pass rates..." but the current abstract contains NO numbers. This is a false claim in a formal NeurIPS checklist.
+```markdown
+## Evaluation Results
 
-**FIND:**
+Pre-computed evaluation results for all three models are in `results/evaluation/`:
+
+\```
+results/evaluation/
+├── together-qwen-3.5-397b-a17b/   # 780 result JSONs
+├── azure-gpt-5.4/                  # 782 result JSONs
+└── azure-gpt-5.3-codex/            # 782 result JSONs
+\```
+
+Each JSON file represents one translation task and contains:
+- `overall_status`: PASS, BUILD_FAIL, RUN_FAIL, VERIFY_FAIL, or EXTRACTION_FAIL
+- `translation_code`: The LLM-generated translated source code
+- `build_result`, `run_result`, `verification_result`: Per-stage outcomes with stdout/stderr
+- `model`, `direction`, `source_spec`, `target_spec`: Task metadata
+- `augmentation_level`, `sample_id`: Experiment design coordinates
+
+After KNOWN_FAIL exclusion, 2,262 records are eval-eligible (the denominator for all paper statistics).
 ```
-\item[] Justification: The abstract states L0 pass rates (Qwen 23.9\%, GPT-5.4 62.7\%, \codex{} 62.7\%), failure taxonomy percentages, and augmentation robustness findings, all verified against raw result files (Section~\ref{sec:results}). Claims are scoped to the three models evaluated.
-```
 
-**REPLACE WITH:**
-```
-\item[] Justification: The abstract and introduction define the benchmark contribution and scope, while Section~\ref{sec:results} reports L0 pass@1/pass@3 results (Qwen 23.9\%/35.2\%, GPT-5.4 62.7\%/69.7\%, \codex{} 62.7\%/68.3\%), failure taxonomy, direction asymmetry, and augmentation findings. All numerical claims are verified against raw result JSONs. Claims are scoped to the three evaluated models, declared-oracle PASS, and the tested L0/L0-conditional protocols.
-```
+**Why:** Reviewers who look at `results/` need to know what those JSON files mean.
 
-**Verification:**
+**Verify:**
 ```bash
-grep -n "The abstract states L0 pass rates" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex
-# Expected: zero results (old text gone)
-
-grep -n "abstract and introduction define" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex
-# Expected: one result (new text present)
+grep -c "overall_status" README.md
+# Expected: 1
 ```
 
 ---
 
-### Correction 5: Discussion — Compact Synthesis + Fix Anti-Conservative Phrasing
+#### Task 5: Add Hardware Requirements
 
-**Priority:** P0-1 (page budget) + P1-5 (statistics-heavy) + P1-6 (anti-conservative chi-squared)
+**File:** `/home/samyak/Desktop/parbench_sam/README.md`
 
-**File:** `discussion.tex` line 6
+**What to do:** Find the `## Requirements` section. After the existing bullet about `jsonschema`, add:
 
-**What's wrong:**
-1. The discussion's first paragraph is too dense with statistics (contributes to page overrun)
-2. "confirms significant model differences" is too strong — records share tasks (3 samples/task), making chi-squared anti-conservative
-3. Full McNemar/Fisher/effect-size detail belongs in appendix, not main text
+```markdown
+### Hardware
 
-**FIND (this is a single long line in the file — line 6):**
-```
-\parbench{} establishes that LLMs can perform non-trivial parallel code translation when evaluation isolates the kernel and uses executable declared-oracle checks, surfacing three structural properties: strong direction dependence (CUDA-to-OpenMP passes at 40--83\% while OpenCL-to-CUDA yields 0--19.3\%), build-stage API adaptation as the dominant failure mode, and preliminary robustness to surface-form augmentation. An omnibus chi-squared test on 1,278 balanced L0 records confirms significant model differences ($\chi^2(2) = 170.43$, $p < 10^{-37}$, Cram\'{e}r's $V = 0.365$), with pairwise analysis revealing two tiers: \gptnew{} and \codex{} achieve identical pass rates (267/426; Fisher's $p = 1.0$, Cohen's $h = 0.00$; McNemar: 94 both-pass, 40 both-fail, 5/3 discordant), while both surpass \qwenshort{} by $5.3\times$ odds (Cohen's $h = 0.80$). Because the providers use unmatched sampling conditions (Section~\ref{sec:sampling-config}), the Qwen--GPT gap cannot be causally attributed to model capability alone; the within-provider comparison controls for this confound.
-```
-
-**REPLACE WITH:**
-```
-\parbench{} shows that, when repository reconstruction is fixed, current LLMs can produce declared-oracle-passing translations for a non-trivial fraction of kernel-level parallel API tasks, but success remains highly structured by API direction, failure stage, and model tier. The primary bottleneck is build-stage API adaptation, especially when translations must introduce explicit device-memory and runtime structure. A record-level descriptive omnibus test on 1,278 balanced L0 records ($\chi^2(2) = 170.43$, $p < 10^{-37}$) detects significant heterogeneity; pairwise analysis reveals two tiers: \gptnew{} and \codex{} achieve identical pass rates (267/426; Fisher's $p = 1.0$), while both surpass \qwenshort{} by $5.3\times$ odds (Cohen's $h = 0.80$). Because the providers use unmatched sampling conditions (Section~\ref{sec:sampling-config}), the Qwen--GPT gap cannot be causally attributed to model capability alone; the within-provider comparison controls for this confound. Full pairwise statistical details appear in Appendix~\ref{sec:appendix-e4}.
+- **For reproducing paper tables/figures (Tier 2):** Any x86_64 machine, no GPU needed (~4 GB RAM)
+- **For running CUDA/OpenCL specs (Tier 3):** NVIDIA GPU (compute capability ≥ 7.0, e.g., RTX 3060+)
+- **For OpenMP-only specs:** Any multi-core x86_64 CPU (no GPU required)
+- **Tested platform:** NVIDIA RTX 4070, AMD Ryzen 9 7900X, Ubuntu 24.04, NVIDIA HPC SDK 24.3
 ```
 
-**Verification:**
+**Why:** Reviewer without GPU needs to know they can still reproduce your tables.
+
+**Verify:**
 ```bash
-grep -n "establishes that LLMs can perform" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/discussion.tex
-# Expected: zero results
-
-grep -n "detects significant heterogeneity" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/discussion.tex
-# Expected: one result at line 6
+grep "RTX 4070" README.md
+# Expected: 1 match
 ```
 
 ---
 
-### Correction 6: Discussion — Wrong Appendix Pointer (P1-7)
-
-**Priority:** P1-7
-
-**File:** `discussion.tex` line 10 (in the Limitations paragraph)
-
-**What's wrong:** Text says `Appendix~\ref{sec:appendix-k}` provides "per-record model outputs" — but `sec:appendix-k` is the Evaluation Card. The per-record outputs are described in the artifact section (`sec:artifact-availability`).
-
-**FIND:**
-```
-Appendix~\ref{sec:appendix-k} provides a structured Evaluation Card, reporting protocol, and per-record model outputs that support reproduction and extension of the benchmark.
-```
-
-**REPLACE WITH:**
-```
-Appendix~\ref{sec:appendix-k} provides a structured Evaluation Card and reporting protocol; the artifact (Section~\ref{sec:artifact-availability}) documents per-record outputs that support reproduction and extension.
-```
-
-**Verification:**
-```bash
-grep -n "per-record model outputs" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/discussion.tex
-# Expected: zero results (old text gone)
-```
+### Phase B: Croissant File (Task 6, has validation gate)
 
 ---
 
-### Correction 7: Bibliography Duplicates (P1-8)
+#### Task 6: Create Croissant Metadata
 
-**Priority:** P1-8
+**File to create:** `/home/samyak/Desktop/parbench_sam/croissant.json`
 
-**File:** `references.bib` AND `appendices.tex`
+**What to do:** Create a minimal Croissant JSON-LD file. Here's a template:
 
-**What's wrong:** Two pairs of duplicate bibliography entries:
-- `OMPify2023` and `OpenMPGraphTransformer2023` = same IWOMP 2023 paper
-- `HPCorpus2023` and `QuantifyingOpenMP2023` = same IEEE HPEC 2023 paper (same DOI)
-
-**STEP 7A — Replace citations FIRST (before deleting bib entries):**
-
-In `appendices.tex`:
-- Line 369: `\cite{OpenMPGraphTransformer2023}` → `\cite{OMPify2023}`
-- Line 570: In the citation list `...,OMPify2023,OpenMPGraphTransformer2023,...` → remove `,OpenMPGraphTransformer2023`
-- Line 570: `\cite{QuantifyingOpenMP2023}` → `\cite{HPCorpus2023}`
-
-**Verification after citation replacement:**
-```bash
-grep -rn "OpenMPGraphTransformer2023\|QuantifyingOpenMP2023" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/*.tex /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex
-# Expected: zero results
+```json
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "cr": "http://mlcommons.org/croissant/",
+    "rai": "http://mlcommons.org/croissant/RAI/"
+  },
+  "@type": "Dataset",
+  "name": "ParBench Kernel Specifications",
+  "description": "206 JSON specification files defining parallel code translation tasks across CUDA, OpenMP, OpenCL, and OpenMP target offload APIs, sourced from 5 HPC benchmark suites.",
+  "license": "https://opensource.org/licenses/MIT",
+  "url": "https://anonymous.4open.science/r/parbench-artifact-EE29/",
+  "version": "1.0.0",
+  "keywords": ["parallel computing", "code translation", "CUDA", "OpenMP", "OpenCL", "benchmark", "LLM evaluation"],
+  "datePublished": "2026-05-06",
+  "cr:conformsTo": "http://mlcommons.org/croissant/1.0",
+  "distribution": [
+    {
+      "@type": "cr:FileObject",
+      "name": "kernel-specs",
+      "description": "JSON specification files, one per kernel variant",
+      "contentUrl": "specs/",
+      "encodingFormat": "application/json"
+    },
+    {
+      "@type": "cr:FileObject",
+      "name": "spec-schema",
+      "description": "JSON Schema (draft-07) defining the spec file structure",
+      "contentUrl": "schema/spec_schema.json",
+      "encodingFormat": "application/schema+json"
+    }
+  ],
+  "rai:dataCollection": "Specifications curated from existing open-source HPC benchmark suites (Rodinia, HeCBench, XSBench, RSBench, mixbench). No personal or sensitive data.",
+  "rai:dataCollectionType": "Curated from existing sources"
+}
 ```
 
-**STEP 7B — Delete duplicate bib entries:**
-
-In `references.bib`, delete the entire `@inproceedings{OpenMPGraphTransformer2023,...}` block AND the entire `@inproceedings{QuantifyingOpenMP2023,...}` block.
-
-**Verification:**
+**CRITICAL VALIDATION GATE:** After creating the file, run:
 ```bash
-grep -n "OpenMPGraphTransformer2023\|QuantifyingOpenMP2023" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/references.bib
-# Expected: zero results
+pip install mlcroissant
+python3 -c "from mlcroissant import Dataset; d = Dataset('croissant.json'); print('VALID')"
 ```
+
+**Decision point:**
+- If it prints `VALID` → keep the file, proceed to Task 7 (success path)
+- If it errors → try to fix the error (usually a missing field or wrong structure)
+- If you can't fix it in ~15 minutes → DELETE `croissant.json` and use the FALLBACK path in Task 7
+
+**Why this is conditional:** A malformed Croissant file draws MORE reviewer scrutiny than having no file at all. The NeurIPS FAQ explicitly exempts evaluation tools from Croissant requirements. We're only providing one as extra credit — it must not hurt us.
 
 ---
 
-### Correction 8: Abstract — "semantics-preserving" Qualifier (P2-3)
-
-**Priority:** P2-3
-
-**File:** `abstract.tex` line 4
-
-**What's wrong:** Says "AST-driven semantics-preserving source augmentation" without qualifier, but 7 omp_target augmented variants fail baseline validation at high intensity. "Baseline-validated" is the factually precise term.
-
-**FIND:**
-```
-AST-driven semantics-preserving source augmentation
-```
-
-**REPLACE WITH:**
-```
-AST-driven, baseline-validated source augmentation
-```
-
-**Verification:**
-```bash
-grep -n "semantics-preserving" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/abstract.tex
-# Expected: zero results
-```
+### Phase C: Paper Update (Task 7, depends on Task 6 outcome)
 
 ---
 
-### Correction 9: Table 2 Float Placement (P1-1)
+#### Task 7: Update Paper Appendix I
 
-**Priority:** P1-1
+**File:** `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex`
 
-**File:** `main.tex` line 27 (preamble) AND `results.tex` line 44
-
-**What's wrong:** Table 2 (tab:overall-pass) floats above the "Results" heading in the PDF, contradicting the narrative order where pass@k should come first.
-
-**STEP 9A — Add package to preamble:**
-
-In `main.tex`, insert after line 27 (`\usepackage{pdflscape}`):
+**What to do:** Find the line (around line 2232) that says:
 ```latex
-\usepackage{placeins}
+Because \parbench{} is an executable evaluation benchmark rather than a model-training dataset, Croissant metadata is not applicable here.
 ```
 
-**STEP 9B — Add float barrier:**
-
-In `results.tex`, insert a new line immediately BEFORE line 44 (`\section{Results}`):
+**If Task 6 SUCCEEDED (Croissant validates),** replace with:
 ```latex
-\FloatBarrier
+A minimal Croissant metadata file (\texttt{croissant.json}) is provided at the repository root, describing the spec corpus structure for machine-readable discovery. Because \parbench{} is an executable evaluation benchmark rather than a model-training dataset, the full Croissant data-hosting requirements do not apply per the track FAQ; the JSON Schema (draft-07) documentation in \texttt{schema/spec\_schema.json} serves as the primary machine-readable contract.
 ```
 
-**Verification:**
-```bash
-grep -n "placeins" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/main_neurips.tex
-# Expected: one result
-
-grep -n "FloatBarrier" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-# Expected: one result, immediately before \section{Results}
+**If Task 6 FAILED (couldn't validate Croissant),** replace with:
+```latex
+Because \parbench{} is an executable evaluation benchmark rather than a model-training dataset, Croissant data-hosting requirements do not apply per the track FAQ. Machine-readable structure is provided through the JSON Schema (draft-07) definitions in \texttt{schema/spec\_schema.json} and the per-spec provenance fields (repository URL, pinned commit, license), which serve an equivalent discovery and documentation purpose for tool artifacts.
 ```
+
+**Why:** Either way you're strengthening the justification from a bare assertion to one that cites the FAQ and explains what DOES provide machine-readability.
+
+**Verify:** Compile the paper (`pdflatex` + `bibtex` cycle) and check Appendix I renders.
 
 ---
 
-### Correction 10: Table 2 vs Cost Table Denominator Note (P2-5)
-
-**Priority:** P2-5
-
-**File:** `results.tex` line 70 (the `\caption{...}` of `tab:overall-pass`)
-
-**What's wrong:** Table 2 totals 2,262 valid records; Appendix J cost table reports 2,344 tasks evaluated. No explanation for the discrepancy (82 Qwen KNOWN_FAIL records were excluded post-hoc).
-
-**FIND (end of the existing caption, just before the closing `}`):**
-```
-inferential comparison uses the balanced 142 L0 pairs in Section~\ref{sec:passk-analysis}.}
-```
-
-**REPLACE WITH:**
-```
-inferential comparison uses the balanced 142 L0 pairs in Section~\ref{sec:passk-analysis}. The 2,262 total reflects valid analysis records after excluding 82 \qwenshort{} records involving \knownfail{} specs; the Appendix~\ref{sec:appendix-j} cost table reports 2,344 API calls including those subsequently excluded.}
-```
-
-**Verification:**
-```bash
-grep -n "2,344" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-# Expected: one result in the Table 2 caption
-```
+### Phase D: Anonymization & Packaging (Tasks 8-9, depend on Phase A-C being complete)
 
 ---
 
-## Corrections NOT Needed (Verified Correct in Current Paper)
+#### Task 8: Full Anonymization Sweep
 
-These were checked against raw data and are already accurate — do NOT change them:
-
-- pass@1 = 23.9% / 62.7% / 62.7% ✓
-- pass@3 = 35.2% / 69.7% / 68.3% ✓
-- Table 2 totals: 230/626, 621/822, 604/814 ✓
-- Table 3 all 10 direction rows ✓
-- Hard-fail / all-pass percentages ✓
-- OR = 5.3×, Cohen's h = 0.80 ✓
-- 142 tasks, 426 records per model ✓
-- Qwen augmentation decline 74.0% → 56.0% ✓
-- Figure 3 failure taxonomy caption (6 standard directions, 120 tasks) ✓
-- Section 5.1 pass@k paragraph — all numbers correct ✓
-
----
-
-## What Was NOT Fixed Here (User Must Handle Separately)
-
-| Issue | Why it's deferred |
-|---|---|
-| P0-2: Unresolved "??" references (page 16, page 46) | Requires Overleaf compilation to diagnose which `\label{}` is missing. After applying all edits, do a clean build and search for "??" in the PDF. |
-| P0-1: Full page budget (need to fit in 9 pages) | The Discussion edit (Correction 5) saves ~2 lines. The remaining ~0.5 page cut likely requires shortening Figure 1 caption and/or moving more text to appendix. User must visually check after compilation. |
-| P0-4: ED style option verification | User must confirm `\usepackage[eandd]{neurips_2026}` is in the preamble (NOT `[final]` or `[preprint]`). |
-| P2-6: ParBench/PARBENCH capitalization | Currently mixed (title = "ParBench", body = `\parbench{}` macro). Acceptable as-is. |
-| P1-9: Artifact archive testing | Cannot be done in code — user must unzip and smoke-test the archive before upload. |
-
----
-
-## Execution Order (Strict Dependencies)
-
-```
-Correction 7A (replace citations) ──→ Correction 7B (delete bib entries)
-                                        ↑ must be sequential
-All other corrections (1-6, 8-10) are INDEPENDENT of each other
-```
-
-**Recommended order for a single-pass session:**
-1. Corrections 1, 2, 3 (all in results.tex — do together)
-2. Correction 4 (appendices.tex)
-3. Corrections 5, 6 (discussion.tex — do together)
-4. Correction 7A then 7B (appendices.tex + references.bib)
-5. Correction 8 (abstract.tex)
-6. Correction 9A, 9B (main.tex + results.tex)
-7. Correction 10 (results.tex)
-
----
-
-## Final Verification (Run After All Edits)
+**What to do:** Run this grep across the entire project:
 
 ```bash
-# 1. Check no old text remains
-grep -n "driven primarily by surface-form memorization" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-grep -n "across all directions" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-grep -n "The abstract states L0 pass rates" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex
-grep -n "establishes that LLMs can perform" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/discussion.tex
-grep -n "per-record model outputs" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/discussion.tex
-grep -n "OpenMPGraphTransformer2023\|QuantifyingOpenMP2023" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/references.bib
-grep -n "semantics-preserving" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/abstract.tex
-# ALL of the above must return zero results
-
-# 2. Check new text is present
-grep -n "86.9" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-grep -n "eight displayed directions" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-grep -n "records per model" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-grep -n "abstract and introduction define" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/appendices_neurips.tex
-grep -n "detects significant heterogeneity" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/discussion.tex
-grep -n "baseline-validated" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/abstract.tex
-grep -n "FloatBarrier" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-grep -n "2,344" /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/sections/results.tex
-# ALL must return exactly one result each
+cd /home/samyak/Desktop/parbench_sam
+grep -rn "samyak\|jhaveri\|samyakjhaveri\|2799@gmail" \
+  --include="*.py" --include="*.json" --include="*.md" --include="*.tex" \
+  --include="*.toml" --include="*.cfg" --include="*.sh" --include="*.txt" \
+  . | grep -v ".git/" | grep -v "env_parbench/" | grep -v "node_modules/" | grep -v ".claude/"
 ```
+
+**Known hit that MUST be fixed:**
+- `config/paths.json` — replace all `/home/samyak/Desktop/parbench_sam` with `"."`
+
+**Fix `config/paths.json`:** Replace its entire content with:
+```json
+{
+    "project_root": ".",
+    "downloads_root": ".",
+    "hecbench_root": "."
+}
+```
+
+**Any other hits:** Fix them case-by-case (delete personal info, replace with generic text).
+
+**Also check PDF metadata:**
+```bash
+cd docs/paper/NeurIPS_ready_version
+pdflatex main_neurips && bibtex main_neurips && pdflatex main_neurips && pdflatex main_neurips
+pdfinfo main_neurips.pdf | grep -i "author\|creator"
+# Author field should be empty or "Anonymous"
+```
+
+**Verify:** The grep command returns ZERO lines.
+
+---
+
+#### Task 9: Build Sanitized Artifact ZIP
+
+**What to do:** Create a script `scripts/build_artifact_zip.sh`:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+# Build anonymized artifact ZIP for NeurIPS supplementary upload
+
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ARTIFACT_DIR=$(mktemp -d)
+
+echo "Building sanitized artifact in $ARTIFACT_DIR..."
+
+# Copy only artifact-relevant files (no .git, no dev tools, no benchmark sources)
+rsync -a \
+  --exclude='.git' --exclude='.git*' --exclude='.gitmodules' \
+  --exclude='env_parbench/' --exclude='.claude/' --exclude='docs/' \
+  --exclude='node_modules/' --exclude='HeCBench-master/' \
+  --exclude='rodinia/' --exclude='xsbench-src/' --exclude='rsbench-src/' \
+  --exclude='mixbench-src/' --exclude='graphify-out/' --exclude='.planning/' \
+  --exclude='*.pyc' --exclude='__pycache__/' \
+  --exclude='Screenshot*' --exclude='*.png' \
+  --exclude='HANDOFF.md' --exclude='CLAUDE.md' --exclude='AGENTS.md' \
+  "$PROJECT_ROOT/" "$ARTIFACT_DIR/parbench-artifact/"
+
+# Sanitize config/paths.json
+cat > "$ARTIFACT_DIR/parbench-artifact/config/paths.json" << 'EOF'
+{
+    "project_root": ".",
+    "downloads_root": ".",
+    "hecbench_root": "."
+}
+EOF
+
+# Identity check (MUST pass)
+if grep -rn "samyak\|jhaveri" "$ARTIFACT_DIR/parbench-artifact/" \
+   --include="*.py" --include="*.json" --include="*.md" \
+   --include="*.toml" --include="*.sh" --include="*.txt" \
+   --include="*.tex" 2>/dev/null; then
+    echo "ERROR: Identity leak found! Aborting."
+    rm -rf "$ARTIFACT_DIR"
+    exit 1
+fi
+
+# Build ZIP
+cd "$ARTIFACT_DIR"
+zip -r "$PROJECT_ROOT/parbench-artifact-neurips2026.zip" parbench-artifact/
+SIZE=$(du -sh "$PROJECT_ROOT/parbench-artifact-neurips2026.zip" | cut -f1)
+echo ""
+echo "=== Artifact ZIP built: parbench-artifact-neurips2026.zip ($SIZE) ==="
+
+# Size check (OpenReview limit: 100MB)
+BYTES=$(stat -c%s "$PROJECT_ROOT/parbench-artifact-neurips2026.zip" 2>/dev/null || stat -f%z "$PROJECT_ROOT/parbench-artifact-neurips2026.zip")
+if [ "$BYTES" -gt 104857600 ]; then
+    echo "WARNING: ZIP exceeds 100MB!"
+    echo "Options:"
+    echo "  a) Exclude results/evaluation/ from ZIP, rely on anonymous URL for full data"
+    echo "  b) Compress results/ more aggressively (gzip individual JSONs)"
+    echo "  c) Upload ZIP with just code + specs, link to anonymous URL for results"
+fi
+
+rm -rf "$ARTIFACT_DIR"
+```
+
+**If ZIP exceeds 100MB:** The most likely culprit is `results/evaluation/` (97MB). Best option: exclude it from the ZIP and add a note in the ZIP's README saying "Full evaluation results available at the anonymous repository URL." The anonymous.4open.science link provides the complete artifact; the ZIP is just for OpenReview's supplementary upload requirement.
+
+**Verify:**
+```bash
+bash scripts/build_artifact_zip.sh
+# Should complete without "ERROR" and report size < 100MB
+```
+
+---
+
+### Phase E: Consistency & Final Checks (Tasks 10-12, run after everything else)
+
+---
+
+#### Task 10: Number Consistency Sweep
+
+**What to do:** Verify these numbers match across all documents:
+
+```bash
+cd /home/samyak/Desktop/parbench_sam
+
+# Ground truth (file system counts)
+echo "Spec files on disk: $(ls specs/*.json | wc -l)"
+echo "Result JSONs on disk: $(find results/evaluation -name '*.json' | wc -l)"
+echo "Model dirs: $(ls results/evaluation/)"
+
+# Check each document mentions correct numbers
+echo "--- README.md ---"
+grep -on "206\|2,344\|2,262\|87\|96" README.md | head -20
+
+echo "--- artifact/README.md ---"
+grep -on "206\|2,344\|2,262\|87\|96" artifact/README.md | head -20
+```
+
+| Number | What it means | Ground truth |
+|--------|---------------|--------------|
+| 206 | Total spec JSON files | `ls specs/*.json \| wc -l` |
+| 96 | Curated specs (used in paper) | 87 eval-eligible + 9 KNOWN_FAIL |
+| 87 | Eval-eligible (non-KNOWN_FAIL) | Paper denominator |
+| 9 | KNOWN_FAIL specs | Listed in `known-issues.md` |
+| 2,344 | Total result files on disk | `find results/evaluation -name "*.json" \| wc -l` |
+| 2,262 | Eval-eligible records (after exclusion) | Paper statistics denominator |
+
+**If any number doesn't match between README, artifact/README, and the paper — fix it.** The file system count is always the ground truth.
+
+---
+
+#### Task 11: Re-push to anonymous.4open.science
+
+**MUST BE THE VERY LAST THING YOU DO.** Only after Tasks 1-10 all pass.
+
+**Steps:**
+1. Commit all changes locally
+2. Push to anonymous.4open.science:
+   - If using git: `git push anonymous main` (or whatever the remote is named)
+   - If manual upload: use the platform's update mechanism
+3. **Cold-start test in incognito browser:**
+   - Open `https://anonymous.4open.science/r/parbench-artifact-EE29/`
+   - Verify README renders correctly (no GitHub Pages links, correct venue)
+   - Click into `config/paths.json` — should show `"."` not `/home/samyak/...`
+   - Click into `artifact/README.md` — should render normally
+   - Verify NO login is required to browse
+   - Check that `.git` internals aren't exposed (the platform should handle this)
+
+---
+
+#### Task 12: Final PDF Metadata Check
+
+**What to do:**
+```bash
+cd /home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version
+pdflatex main_neurips && bibtex main_neurips && pdflatex main_neurips && pdflatex main_neurips
+pdfinfo main_neurips.pdf | grep -i "author\|creator\|producer\|title"
+```
+
+**Check:**
+- Author field: should be empty, "Anonymous", or absent
+- No acknowledgments section visible in the PDF
+- Main content (before References) ≤ 9 pages
+- Appendix I (Artifact Availability) reflects your Task 7 changes
+
+---
+
+## Execution Order Diagram
+
+```
+Phase A (Tasks 1-5)  ←── Independent, do in any order
+       ↓
+Phase B (Task 6)     ←── Croissant creation + validation gate
+       ↓
+Phase C (Task 7)     ←── Depends on Task 6 outcome (two paths)
+       ↓
+Phase D (Tasks 8-9)  ←��─ Anonymization sweep + ZIP build
+       ↓
+Phase E (Tasks 10-12) ←── Final checks, push LAST
+```
+
+**Total estimated time:** 1-2 hours for a focused session.
 
 ---
 
 ## What Worked in This Research Session
 
-- Parsed ALL 2,262 result JSONs directly (no reliance on summary files)
-- Used the exact same `EXCLUDED_SPECS` filter and Chen estimator as the official analysis script
-- Confirmed 142 tasks per model after exclusion
-- Caught the GPT-5.4 augmentation range error (86.9%–90.9% ≠ 85.6%–88.7%)
-- Verified correct LaTeX labels by grepping appendices_neurips.tex: `sec:appendix-k` = Eval Card, `sec:appendix-j` = Cost/Config, `sec:artifact-availability` = Artifact section
-- Confirmed the Figure 2 heatmap shows 8 directions (not "all" 10)
+- Fetched and compared both the artifact README and the full NeurIPS 2026 E&D CFP + FAQ
+- Identified that `artifact/` subdirectory already has excellent reproduction infrastructure (`reproduce.sh`, Dockerfile, detailed README) — the top-level README just needs to POINT to it
+- Codex adversarial review caught 4 issues the initial audit missed: config/paths.json leak, ZIP size risk, Tier 2 inaccuracy, and the need for a cold-start reviewer simulation
+- Confirmed `pyproject.toml` and `LICENSE` are already anonymous ("ParBench Authors", no author field)
+- Verified the paper already has `\usepackage[eandd]{neurips_2026}` and the mandatory checklist
 
 ## What Didn't Work / Traps to Avoid
 
-- Do NOT try to compile LaTeX locally — user uses Overleaf
-- Do NOT change numbers that are already correct (see the "Verified Correct" list)
-- Do NOT delete bib entries before updating their citations in .tex files
-- Do NOT use `sed -i` for multi-line replacements in LaTeX — use the Edit tool with exact string matching
-- Line numbers may have shifted if the previous ablation→augmentation handoff was executed — use TEXT ANCHORS (the exact strings in FIND blocks) to locate edits, not line numbers alone
+- **anonymous.4open.science blocks automated access (403)** — WebFetch can't retrieve content from the anonymous URL. You must verify it manually in a browser.
+- **Don't assume `analyze_eval.py` reproduces paper figures** — it's a helper script. The real pipeline is `artifact/reproduce.sh` (5 steps: `generate_paper_data.py` → `quantitative_findings.py` → `statistical_analysis.py` → `cross_model_comparison.py` → `generate_paper_figures.py`)
+- **Don't create Croissant without validating** — a malformed file is WORSE than no file. The `mlcroissant` Python package is the official validator. If it fails, use the fallback opt-out path.
+- **Don't push to anonymous site before ALL fixes are done** — partial pushes could briefly expose identifying content to anyone monitoring the URL
+- **config/paths.json uses absolute paths** — this is gitignored in normal development but WILL be in the artifact if you don't sanitize it. The `config/paths.json.template` with `{{PROJECT_ROOT}}` exists but isn't the file that ships.
+- **ZIP may exceed 100MB** — `results/evaluation/` alone is 97MB. If so, exclude results from ZIP and note that full data is at the anonymous URL. OpenReview supplement is for code; the data can live externally.
+
+---
+
+## Skills to Load
+
+No special Claude Code skills needed for this task — it's all file editing + shell commands.
+
+If using Claude Code: just Read/Edit/Write/Bash tools are sufficient.
+
+---
+
+## Quick Decision Reference
+
+| If you encounter... | Do this... |
+|---|---|
+| Croissant validation fails | Delete `croissant.json`, use fallback text in Task 7 |
+| ZIP > 100MB | Exclude `results/evaluation/` from ZIP, add note linking to anonymous URL |
+| New identity leak found by grep | Fix it (replace with generic text or delete) |
+| PDF shows author in metadata | Add `\pdfinfo{/Author {}}` to LaTeX preamble |
+| Number mismatch between documents | Trust the file system count, update the document |
+| anonymous.4open.science won't let you push | Try the platform's web upload interface; if blocked, document the issue and submit via OpenReview ZIP only |
+
+---
+
+## Detailed Plan File
+
+The full 12-task plan with exact file paths, text anchors, and verification commands is at:
+**`/home/samyak/.claude/plans/check-out-the-https-anonymous-4open-scie-groovy-moler.md`**
+
+That file has the same content as above but in a more structured format suitable for step-by-step execution.

@@ -44,6 +44,50 @@
 \section{Experimental Setup}
 \label{sec:experimental-setup}
 
+\begin{table*}[!tbp]
+\centering
+\caption{Evaluation corpus. SLoC is measured on the CUDA source variant when available. Multi-File denotes specs requiring more than one translated source file. KF = \knownfail{}.}
+\label{tab:suite-summary}
+\small
+\setlength{\tabcolsep}{3.5pt}
+\renewcommand{\arraystretch}{1.08}
+\begin{tabularx}{\textwidth}{@{}lcccc>{\raggedright\arraybackslash}Xrcr@{}}
+\toprule
+Suite & Kernels & Specs & PASS & KF & APIs & SLoC Range & Med. & Multi-File \\
+\midrule
+Rodinia   & 22 & 60 & 53 & 7 & CUDA, OMP, OCL & 195--3{,}304 & 334 & 21/60 (35\%) \\
+HeCBench  & 10 & 25 & 23 & 2 & CUDA, OMP, OMP-tgt & 80--235 & 180 & 0/25 (0\%) \\
+XSBench   & 1  & 4  & 4  & 0 & CUDA, OMP, OCL, OMP-tgt & 1{,}390 & -- & 2/4 (50\%) \\
+RSBench   & 1  & 4  & 4  & 0 & CUDA, OMP, OCL, OMP-tgt & 1{,}016 & -- & 1/4 (25\%) \\
+mixbench  & 1  & 3  & 3  & 0 & CUDA, OMP, OCL & 312 & -- & 0/3 (0\%) \\
+\midrule
+\textbf{Total} & \textbf{35} & \textbf{96} & \textbf{87} & \textbf{9} & & \textbf{80--3{,}304} & \textbf{271} & \textbf{24/96 (25\%)} \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+% \begin{table*}[!tbp]
+% \centering
+% \caption{Evaluation corpus. SLoC is measured on the CUDA source variant when available. Multi-File denotes specs requiring more than one translated source file. KF = \knownfail{}.}
+% \label{tab:suite-summary}
+% \small
+% \resizebox{\textwidth}{!}{%
+% \begin{tabular}{@{}lcccclcrc@{}}
+% \toprule
+% Suite & Kernels & Specs & PASS & KF & APIs & SLoC Range & Med. & Multi-File \\
+% \midrule
+% Rodinia   & 22 & 60 & 53 & 7 & CUDA, OMP, OCL & 195--3{,}304 & 334 & 21/60 (35\%) \\
+% HeCBench  & 10 & 25 & 23 & 2 & CUDA, OMP, OMP-tgt & 80--235 & 180 & 0/25 (0\%) \\
+% XSBench   & 1  & 4  & 4  & 0 & CUDA, OMP, OCL, OMP-tgt & 1{,}390 & -- & 2/4 (50\%) \\
+% RSBench   & 1  & 4  & 4  & 0 & CUDA, OMP, OCL, OMP-tgt & 1{,}016 & -- & 1/4 (25\%) \\
+% mixbench  & 1  & 3  & 3  & 0 & CUDA, OMP, OCL & 312 & -- & 0/3 (0\%) \\
+% \midrule
+% \textbf{Total} & \textbf{35} & \textbf{96} & \textbf{87} & \textbf{9} & & \textbf{80--3{,}304} & \textbf{271} & \textbf{24/96 (25\%)} \\
+% \bottomrule
+% \end{tabular}%
+% }
+% \end{table*}
+
 \textbf{Models.}
 We evaluate three models: \qwen{}, a 397B-parameter MoE open-weight model accessed via Together~AI; \gptnew{}, a general-purpose proprietary model accessed via \gptprovider{}; and \codex{}, a code-specialized model optimized via reinforcement learning on software engineering tasks~\cite{GPT53Codex2026}, also accessed via \gptprovider{}.
 

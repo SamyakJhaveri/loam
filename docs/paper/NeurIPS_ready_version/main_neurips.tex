@@ -6,6 +6,7 @@
 \usepackage[T1]{fontenc}
 \usepackage{url}
 \usepackage{multirow}
+\usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{textcomp}
 \usepackage{capt-of}
@@ -25,7 +26,6 @@
 \pgfplotsset{compat=1.18}
 \usepackage{longtable}
 \usepackage{pdflscape}
-\usepackage{placeins}
 \usepackage{array}
 \usepackage{tabularx}
 \usepackage{array}
@@ -50,6 +50,10 @@
 \definecolor{pbRSBench}{RGB}{44,160,44}
 \definecolor{pbMixbench}{RGB}{214,39,40}
 \definecolor{pbHeCBench}{RGB}{148,103,189}
+
+% Tighten vertical space after figure captions.
+\usepackage{caption}
+\captionsetup[figure]{belowskip=-0.3cm}
 
 \pgfplotsset{
   parbench compact/.style={

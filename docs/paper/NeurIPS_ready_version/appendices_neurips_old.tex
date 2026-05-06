@@ -195,14 +195,10 @@ transforms were applied, how often they appear, and whether model success persis
 under L1--L4 perturbations. Their role is to support the robustness and
 surface-form-memorization analysis. \\
 
-Prompt and anonymization protocol
-&
 Appendix~F:
-Listing~\ref{lst:system-msg}
+Listings~\ref{lst:system-msg} and~\ref{lst:user-msg}
 &
-This listing documents the actual translation prompt template. It is included so
-that the benchmark protocol is auditable, and so that future users can distinguish
-model capability from prompt-format differences. \\
+These listings document the actual translation prompt templates (system and user messages). They are included so that the benchmark protocol is auditable, and so that future users can distinguish model capability from prompt-format differences. \\
 
 Overall evaluation setup
 &
@@ -618,7 +614,7 @@ This appendix expands the framework description in Section~\ref{sec:framework}. 
 \subsection{Specification Schema}
 \label{sec:appendix-a-schema}
 
-Each benchmark/API variant is encoded by a JSON specification. The schema defines five primary field groups (with additional \texttt{implementation}, \texttt{hardware}, \texttt{metadata}, \texttt{baseline\_results}, and \texttt{performance} fields defined in the schema):
+Each benchmark kernel–API variant is encoded by a JSON specification. The schema defines five primary field groups (with additional \texttt{implementation}, \texttt{hardware}, \texttt{metadata}, \texttt{baseline\_results}, and \texttt{performance} fields defined in the schema):
 
 \begin{itemize}
     \item \textbf{Identity and provenance}: globally unique identifier, source suite, kernel name, target API, repository URL, and commit.
@@ -795,7 +791,7 @@ structure visually apparent.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{figures/kernel_level_cooccurrence_network.png}
+    \includegraphics[width=\columnwidth]{figures/api_cooccurrence_network.png}
     \caption{Kernel-level API co-occurrence network. Edges shown for $\geq 20$ kernel pairs; edge width proportional to count. The tight CUDA/HIP/SYCL/OpenMP cluster reflects HeCBench and RAJAPerf's uniform multi-API coverage. OpenCL appears as a peripheral node with weak connections (27 CUDA--OpenCL kernel pairs, just above the 20-kernel threshold). RAJA, stdpar, and Thrust appear as isolated nodes with fewer than 20 kernel-level pairs.}
     \label{fig:kernel-network}
 \end{figure}
@@ -1306,7 +1302,7 @@ This section expands on the results presented in Section~\ref{sec:results}.
 Across all three models, we collected 2,262 valid translation records: 626 for \qwenshort{} (426~L0 + 200~augmentations, after excluding 82 records involving 9~\knownfail{} specs\footnote{The \qwenshort{} total is 626 rather than 630 because four \texttt{rodinia-backprop-opencl} L1--L4 augmentation records are also excluded via the \knownfail{} policy (the OpenCL baseline is silently broken).}), 822 for \gptnew{} (426~L0 + 396~augmentations), and 814 for \codex{} (426~L0 + 388~augmentations). \knownfail{} specs were pre-excluded from the \gptnew{} and \codex{} evaluation batches.
 
 \paragraph{pass@k Analysis.}
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering
 \caption{pass@$k$ results for \qwenshort{} (L0 only, temperature~0.7, three independent samples per task, 142 unique source-target pairs). CIs are normal-approximation intervals on the macro-averaged Chen et al.\ estimator (distinct from the Wilson binomial CIs used for per-record pass rates in Table~\ref{tab:overall-pass})}
 \label{tab:pass-at-k-main}
@@ -1427,6 +1423,66 @@ The user message is assembled from the following sections, in order:
   \item \textbf{Support / Header Files} (optional) --- source-directory headers and code files, genericized as \texttt{Header File~$N$} and \texttt{Code File~$N$}, with an instruction to inline definitions rather than emit unresolvable \texttt{\#include} directives. Code files are included up to a cumulative 50{,}000-character limit.
   \item \textbf{Target Infrastructure Context} (optional) --- non-kernel target files (prompt payload entries not in \texttt{translation\_targets}, plus target support headers) provided as read-only reference so the LLM can match expected function signatures and data structures. Headed ``DO NOT MODIFY~--- for reference only'' and genericized as \texttt{Infrastructure File~$N$}. Omitted when no non-kernel target files or target support headers remain after filtering.
 \end{enumerate}
+
+\noindent Listing~\ref{lst:user-msg} shows the complete user message template with placeholders matching the system message convention
+(Listing~\ref{lst:system-msg}).
+
+\begin{lstlisting}[
+  language={},
+  caption={User message template. Sections marked \emph{(conditional)} appear only when the translation task includes the relevant files. \texttt{\{src\_api\}} and \texttt{\{tgt\_api\}} are API display names; \texttt{\{src\_lang\}} and \texttt{\{tgt\_lang\}} are language hints for code fences. All source code has C/C++ comments stripped before inclusion.},
+  label={lst:user-msg}
+]
+## Translation Task
+Source API: {src_api} -> Target API: {tgt_api}
+
+## Target Files to Produce
+- translated_0.{ext}
+- translated_1.{ext}
+  [... one entry per translation target]
+
+_These files will replace the corresponding
+files in the target project directory. All other
+project files (Makefile, headers, utilities)
+remain unchanged._
+
+## Build Command (your code must work with this)
+{anonymized_build_command}
+
+## Build Environment
+- {dependency_1}
+- {dependency_2}
+
+## Source Code ({src_api})
+### Source File 1
+```{src_lang}
+{source_code_comments_stripped}
+Source File 2
+
+{source_code_comments_stripped}
+
+Support / Header Files  (conditional)
+
+These files exist in the source build directory
+but may NOT exist in the target directory. If
+your translated code needs definitions from them,
+inline the definitions directly rather than
+using #include.
+
+Header File 1
+
+{header_contents_comments_stripped}
+
+Target Infrastructure Context  (conditional)
+
+(DO NOT MODIFY -- for reference only)
+These files exist in the target build directory
+and will NOT be modified. Your translated code
+must be compatible with them.
+
+Infrastructure File 1
+
+{infrastructure_code_comments_stripped}
+\end{lstlisting}
 
 
 \subsection{Anonymization Details}

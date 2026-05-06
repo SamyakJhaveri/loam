@@ -190,11 +190,9 @@ surface-form-memorization analysis. \\
 Prompt and anonymization protocol
 &
 Appendix~F:
-Listing~\ref{lst:system-msg}
+Listings~\ref{lst:system-msg} and~\ref{lst:user-msg}
 &
-This listing documents the actual translation prompt template. It is included so
-that the benchmark protocol is auditable, and so that future users can distinguish
-model capability from prompt-format differences. \\
+These listings document the actual translation prompt templates (system and user messages). They are included so that future users can distinguish model capability from prompt-format differences. \\
 
 Overall evaluation setup
 &
@@ -205,17 +203,17 @@ These tables record the model, provider, reasoning-mode, hardware, compiler, and
 software configuration details needed to interpret the empirical results. They also
 make explicit where sampling conditions differ across providers. \\
 
-Pass-rate and sampling behavior
+Pass-rate, direction analysis, and sampling behavior
 &
 Appendix~E:
+Table~\ref{tab:overall-pass};
+Table~\ref{tab:direction-rates};
 Table~\ref{tab:pass-at-k-main};
 Table~\ref{tab:pass-at-k};
 Appendix~J:
 Figures~\ref{fig:pass-at-k-qwen}--\ref{fig:pass-at-k-codex}
 &
-These floats support the pass@$k$ analysis. They distinguish single-sample success
-from repeated-sampling success and show whether failures are stochastic or
-systematic across directions and models. \\
+These floats support the record-level pass-rate summary, direction-level analysis, and pass@$k$ analysis. They distinguish single-sample success from repeated-sampling success and show whether failures are stochastic or systematic across directions and models. \\
 
 Kernel-level difficulty
 &
@@ -609,7 +607,7 @@ This appendix expands the framework description in Section~\ref{sec:framework}. 
 \subsection{Specification Schema}
 \label{sec:appendix-a-schema}
 
-Each benchmark/API variant is encoded by a JSON specification. The schema defines five primary field groups (with additional \texttt{implementation}, \texttt{hardware}, \texttt{metadata}, \texttt{baseline\_results}, and \texttt{performance} fields defined in the schema):
+Each benchmark kernel–API is encoded by a JSON specification. The schema defines five primary field groups (with additional \texttt{implementation}, \texttt{hardware}, \texttt{metadata}, \texttt{baseline\_results}, and \texttt{performance} fields defined in the schema):
 
 \begin{itemize}
     \item \textbf{Identity and provenance}: globally unique identifier, source suite, kernel name, target API, repository URL, and commit.
@@ -764,7 +762,7 @@ structure visually apparent.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{figures/kernel_level_cooccurrence_network.png}
+    \includegraphics[width=\columnwidth]{figures/api_cooccurrence_network.png}
     \caption{Kernel-level API co-occurrence network. Edges shown for $\geq 20$ kernel pairs; edge width proportional to count. The tight CUDA/HIP/SYCL/OpenMP cluster reflects HeCBench and RAJAPerf's uniform multi-API coverage. OpenCL appears as a peripheral node with weak connections (27 CUDA--OpenCL kernel pairs, just above the 20-kernel threshold). RAJA, stdpar, and Thrust appear as isolated nodes with fewer than 20 kernel-level pairs.}
     \label{fig:kernel-network}
 \end{figure}
@@ -888,9 +886,8 @@ for three reasons:
     aggregate statistics.
 \end{enumerate}
 
-The case study results for OpenMP target are reported separately in the direction analysis (Table~\ref{tab:direction-rates}) to enable direct comparison with the primary CUDA/OpenMP/OpenCL directions without confounding the aggregate pass rates.
-
-
+The case study results for OpenMP target are reported separately in the direction analysis (Appendix Table~\ref{tab:direction-rates}) to enable direct comparison with the primary CUDA/OpenMP/OpenCL directions without confounding the aggregate pass rates.
+  
 %% ============================================================================
 %% APPENDIX C: Benchmark Kernel Survey
 %% ============================================================================
@@ -1342,8 +1339,55 @@ These findings suggest that multi-file translation failures are not uniformly di
 This section expands on the results presented in Section~\ref{sec:results}.
 Across all three models, we collected 2,262 valid translation records: 626 for \qwenshort{} (426~L0 + 200~augmentations, after excluding 82 records involving 9~\knownfail{} specs\footnote{The \qwenshort{} total is 626 rather than 630 because four \texttt{rodinia-backprop-opencl} L1--L4 augmentation records are also excluded via the \knownfail{} policy (the OpenCL baseline is silently broken).}), 822 for \gptnew{} (426~L0 + 396~augmentations), and 814 for \codex{} (426~L0 + 388~augmentations). \knownfail{} specs were pre-excluded from the \gptnew{} and \codex{} evaluation batches.
 
+\paragraph{Record-Level Diagnostic Summary.}
+\begin{table*}[h]
+\centering
+\caption{Record-level diagnostic pass rates across three models and 2,262 valid translation records. Records include L0 samples and L1--L4 augmentation runs for L0-passing pairs, so this table mixes canonical L0 records with model-specific L0-conditional augmentation records. Wilson intervals are descriptive because records are clustered by task; inferential comparison uses the balanced 142 L0 pairs in Section~\ref{sec:passk-analysis}.}
+\label{tab:overall-pass}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrrrrl@{}}
+\toprule
+Model & \pass{} & \buildfail{} & \runfail{} & \verifyfail{} & \extractionfail{} & Total & Rate [95\% Wilson CI] \\
+\midrule
+\qwen{} & 230 & 245 & 121 & 29 & 1 & 626 & 36.7\% [33.1\%, 40.6\%] \\
+\gptnew{} & 621 & 123 & 43 & 32 & 3 & 822 & 75.5\% [72.5\%, 78.4\%] \\
+\codex{} & 604 & 139 & 44 & 27 & 0 & 814 & 74.2\% [71.1\%, 77.1\%] \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\paragraph{Direction-Level Pass Rates.}
+\begin{table*}[h]
+\centering
+\caption{Pass rates by translation direction (L0 records, all three samples per task). Six standard directions form the core matrix; four OMP-target directions are case studies with fewer participating kernels ($m$). Here $n$ denotes L0 records per model for that direction. Wilson 95\% CIs in brackets.}
+\label{tab:direction-rates}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrc@{}}
+\toprule
+Direction & \qwenshort{} & \gptnew{} & \codex{} & $n$ \\
+\midrule
+CUDA$\to$OMP & 40.3\% [29.7\%, 51.8\%] & 83.3\% [73.1\%, 90.2\%] & 76.4\% [65.4\%, 84.7\%] & 72 \\
+OMP$\to$OpenCL & 33.3\% [22.0\%, 47.0\%] & 72.5\% [59.1\%, 82.9\%] & 82.4\% [69.8\%, 90.4\%] & 51 \\
+OMP$\to$CUDA & 25.0\% [16.4\%, 36.1\%] & 55.6\% [44.1\%, 66.5\%] & 55.6\% [44.1\%, 66.5\%] & 72 \\
+OpenCL$\to$OMP & 9.8\% [4.3\%, 21.0\%] & 41.2\% [28.8\%, 54.8\%] & 39.2\% [27.0\%, 52.9\%] & 51 \\
+CUDA$\to$OpenCL & 7.0\% [2.8\%, 16.7\%] & 59.7\% [46.7\%, 71.4\%] & 57.9\% [45.0\%, 69.8\%] & 57 \\
+OpenCL$\to$CUDA & 0.0\% [0.0\%, 6.3\%] & 19.3\% [11.1\%, 31.3\%] & 19.3\% [11.1\%, 31.3\%] & 57 \\
+\midrule
+OMP-target$\to$OMP ($m{=}3$) & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 9 \\
+OMP-target$\to$CUDA ($m{=}8$) & 66.7\% [46.7\%, 82.0\%] & 95.8\% [79.8\%, 99.3\%] & 100\% [86.2\%, 100\%] & 24 \\
+OMP$\to$OMP-target ($m{=}3$) & 44.4\% [18.9\%, 73.3\%] & 100\% [70.1\%, 100\%] & 100\% [70.1\%, 100\%] & 9 \\
+CUDA$\to$OMP-target ($m{=}8$) & 0.0\% [0.0\%, 13.8\%] & 95.8\% [79.8\%, 99.3\%] & 100\% [86.2\%, 100\%] & 24 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+
 \paragraph{pass@k Analysis.}
-\begin{table}[h]
+\begin{table}[!htbp]
 \centering
 \caption{pass@$k$ results for \qwenshort{} (L0 only, temperature~0.7, three independent samples per task, 142 unique source-target pairs). CIs are normal-approximation intervals on the macro-averaged Chen et al.\ estimator (distinct from the Wilson binomial CIs used for per-record pass rates in Table~\ref{tab:overall-pass})}
 \label{tab:pass-at-k-main}
@@ -1577,6 +1621,66 @@ The user message is assembled from the following sections, in order:
   \item \textbf{Support / Header Files} (optional) --- source-directory headers and code files, genericized as \texttt{Header File~$N$} and \texttt{Code File~$N$}, with an instruction to inline definitions rather than emit unresolvable \texttt{\#include} directives. Code files are included up to a cumulative 50{,}000-character limit.
   \item \textbf{Target Infrastructure Context} (optional) --- non-kernel target files (prompt payload entries not in \texttt{translation\_targets}, plus target support headers) provided as read-only reference so the LLM can match expected function signatures and data structures. Headed ``DO NOT MODIFY~--- for reference only'' and genericized as \texttt{Infrastructure File~$N$}. Omitted when no non-kernel target files or target support headers remain after filtering.
 \end{enumerate}
+
+\noindent Listing~\ref{lst:user-msg} shows the complete user message template with placeholders matching the system message convention
+(Listing~\ref{lst:system-msg}).
+
+\begin{lstlisting}[
+  language={},
+  caption={User message template. Sections marked \emph{(conditional)} appear only when the translation task includes the relevant files. \texttt{\{src\_api\}} and \texttt{\{tgt\_api\}} are API display names; \texttt{\{src\_lang\}} and \texttt{\{tgt\_lang\}} are language hints for code fences. All source code has C/C++ comments stripped before inclusion.},
+  label={lst:user-msg}
+]
+## Translation Task
+Source API: {src_api} -> Target API: {tgt_api}
+
+## Target Files to Produce
+- translated_0.{ext}
+- translated_1.{ext}
+  [... one entry per translation target]
+
+_These files will replace the corresponding
+files in the target project directory. All other
+project files (Makefile, headers, utilities)
+remain unchanged._
+
+## Build Command (your code must work with this)
+{anonymized_build_command}
+
+## Build Environment
+- {dependency_1}
+- {dependency_2}
+
+## Source Code ({src_api})
+### Source File 1
+```{src_lang}
+{source_code_comments_stripped}
+Source File 2
+
+{source_code_comments_stripped}
+
+Support / Header Files  (conditional)
+
+These files exist in the source build directory
+but may NOT exist in the target directory. If
+your translated code needs definitions from them,
+inline the definitions directly rather than
+using #include.
+
+Header File 1
+
+{header_contents_comments_stripped}
+
+Target Infrastructure Context  (conditional)
+
+(DO NOT MODIFY -- for reference only)
+These files exist in the target build directory
+and will NOT be modified. Your translated code
+must be compatible with them.
+
+Infrastructure File 1
+
+{infrastructure_code_comments_stripped}
+\end{lstlisting}
 
 
 \subsection{Anonymization Details}
@@ -1860,24 +1964,10 @@ The following properties are explicitly outside \parbench{}'s measurement scope:
     beyond the configured tolerance receives \verifyfail{}, identical to a
     completely wrong output. There is no partial-credit classification.
 
-  \item \textbf{Numerical accuracy for most specs.} Only 7 of 87
-    non-\knownfail{} specs (8\%) have medium or strong oracles
-    (\texttt{numeric\_comparison} or \texttt{file\_hash}). The remaining 80
-    specs (92\%) rely on \texttt{exit\_code} and \texttt{stdout\_pattern},
-    which verify that the program runs and prints expected banners but do not
-    independently validate numerical results. A translation that computes wrong
-    numbers but prints the expected completion message would receive \pass{} on
-    those specs. The oracle strength distribution across all 206~specs is: 2
-    strong (\texttt{file\_hash}), 5 medium (\texttt{numeric\_comparison}), 46
-    weak (\texttt{stdout\_pattern} + \texttt{exit\_code}), and 153 untagged
-    (effectively weak).
-
-  \item \textbf{Iterative self-repair or agentic translation.} Each sample is
-    a single LLM call with no feedback loop. The framework architecture
-    supports self-repair (Figure~\ref{fig:architecture}), but this capability
-    is not exercised in the current evaluation
-    (Section~\ref{sec:sampling-config}).
-
+  \item \textbf{Numerical accuracy for most specs.} Only 7 of 87 non-\knownfail{} specs (8\%) have medium or strong oracles (\texttt{numeric\_comparison} or \texttt{file\_hash}). The remaining 80 specs (92\%) rely on \texttt{exit\_code} and \texttt{stdout\_pattern}, which verify that the program runs and prints expected banners but do not independently validate numerical results. A translation that computes wrong numbers but prints the expected completion message would receive \pass{} on those specs. The oracle strength distribution across all 206~specs is: 2 strong (\texttt{file\_hash}), 5 medium (\texttt{numeric\_comparison}), 46 weak (\texttt{stdout\_pattern} + \texttt{exit\_code}), and 153 untagged (effectively weak). Upgrading weak oracles to numeric comparison requires per-kernel reference-output engineering; we prioritize this in future work.
+  
+  \item \textbf{Iterative self-repair or agentic translation.} Each sample is a single LLM call with no feedback loop. The evaluation pipeline implements iterative repair (multi-turn error feedback with linker analysis via \texttt{-{}-max-retries}), but all reported results use \texttt{max\_retries=1} (zero-shot). Evaluating multi-turn repair strategies---where build or verification failures are fed back to the model for corrected attempts---and agentic translation pipelines that combine planning, tool use, and iterative refinement remain future work.
+  
   \item \textbf{Cross-platform portability.} All evaluations run on a single
     platform: NVIDIA RTX~4070 (sm\_89), AMD Ryzen~9~7900X, Ubuntu~24.04, HPC
     SDK~24.3 (Appendix Table~\ref{tab:hardware}). No testing on other GPU
@@ -2169,21 +2259,21 @@ cross-suite comparisons, and full per-kernel rate tables.
 %\end{figure}
 
 % \paragraph{Direction-Level Reference Figures.}
-\begin{figure}[H]
+\begin{figure}[!htbp]
 \centering
 \input{figures/figures_tek_version/f5_pass_at_k_by_direction_qwen}
 \caption{Pass@$k$ by translation direction (\qwenshort{}, L0, three samples per task).}
 \label{fig:pass-at-k-qwen}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
 \centering
 \input{figures/figures_tek_version/f5_pass_at_k_by_direction_gpt_5-4}
 \caption{Pass@$k$ by translation direction (\gptnew{}, L0, three samples per task).}
 \label{fig:pass-at-k-gpt54}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
 \centering
 \input{figures/figures_tek_version/f5_pass_at_k_by_direction_gpt_5-3_codex}
 \caption{Pass@$k$ by translation direction (\codex{}, L0, three samples per task).}
@@ -2191,21 +2281,21 @@ cross-suite comparisons, and full per-kernel rate tables.
 \end{figure}
 
 % \paragraph{Cross-Suite Reference Figures.}
-\begin{figure}[H]
+\begin{figure}[!htbp]
 \centering
 \input{figures/figures_tek_version/f6_cross_suite_comparison_qwen}
 \caption{Cross-suite pass rate comparison (L0, \qwenshort{}). Per-suite aggregate pass rates with Wilson 95\% CIs across all five benchmark suites.}
 \label{fig:cross-suite-qwen}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
 \centering
 \input{figures/figures_tek_version/f6_cross_suite_comparison_gpt_5-4}
 \caption{Cross-suite pass rate comparison (L0, \gptnew{}). Per-suite aggregate pass rates with Wilson 95\% CIs across all five benchmark suites.}
 \label{fig:cross-suite-gpt54}
 \end{figure}
 
-\begin{figure}[H]
+\begin{figure}[!htbp]
 \centering
 \input{figures/figures_tek_version/f6_cross_suite_comparison_gpt_5-3_codex}
 \caption{Cross-suite pass rate comparison (L0, \codex{}). Per-suite aggregate pass rates with Wilson 95\% CIs across all five benchmark suites.}
@@ -2218,7 +2308,7 @@ cross-suite comparisons, and full per-kernel rate tables.
 % src: 31 kernels, total PASS = 230, total tasks = 626 (426 L0 + 200 augmentation, KNOWN_FAIL excluded)
 % src: 31 evaluated kernels = 35 corpus kernels - 4 with all specs KNOWN_FAIL/phantom (kmeans, mummergpu, hybridsort, huffman)
 % \paragraph{Full Per-Kernel Reference Tables.}
-\begin{table*}[H]
+\begin{table*}[!htbp]
 \centering
 \caption{Full per-kernel pass rates across all 31 evaluated kernels (\qwenshort{}, 626 evaluation-eligible records including L0 and augmentation levels, 31~kernels across 5~suites). Results involving \knownfail{} specs excluded.}
 \label{tab:per-kernel-full}
@@ -2266,7 +2356,7 @@ XSBench & xsbench & 22 & 1 & 21 & 4.5\% & [0.8\%, 21.8\%] \\
 
 % src: raw result files in results/evaluation/azure-gpt-5.4/ (verified 2026-05-02)
 % src: 31 kernels, total PASS = 621, total tasks = 822 (426 L0 + 396 ablation, KNOWN_FAIL pre-excluded)
-\begin{table*}[H]
+\begin{table*}[!htbp]
 \centering
 \caption{Full per-kernel pass rates across all 31 evaluated kernels (\gptnew{}, 822 evaluation-eligible records including L0 and augmentation levels, 31~kernels across 5~suites). \knownfail{} specs pre-excluded from evaluation batch.}
 \label{tab:per-kernel-full-gpt54}
@@ -2315,7 +2405,7 @@ XSBench & xsbench & 38 & 25 & 13 & 65.8\% & [49.9\%, 78.8\%] \\
 
 % src: raw result files in results/evaluation/azure-gpt-5.3-codex/ (verified 2026-05-02)
 % src: 31 kernels, total PASS = 604, total tasks = 814 (426 L0 + 388 ablation, KNOWN_FAIL pre-excluded)
-\begin{table*}[H]
+\begin{table*}[!htbp]
 \centering
 \caption{Full per-kernel pass rates across all 31 evaluated kernels (\codex{}, 814 evaluation-eligible records including L0 and augmentation levels, 31~kernels across 5~suites). \knownfail{} specs pre-excluded from evaluation batch.}
 \label{tab:per-kernel-full-codex}

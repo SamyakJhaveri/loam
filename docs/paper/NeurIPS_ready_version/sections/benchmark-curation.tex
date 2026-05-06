@@ -19,7 +19,7 @@
 
 \section{Benchmark Curation}
 \label{sec:benchmark-curation}
-The benchmark corpus was assembled through a four-stage systematic process: surveying open-source HPC benchmark repositories, quantifying kernel-level translation opportunities across parallel APIs, filtering candidate kernels through automated build-run-verify checks, and verifying each selected kernel through the complete pipeline on the evaluation platform. This curation populates the Source Code component of the \parbench{} architecture (Figure~\ref{fig:architecture}, orange) with kernel files from five benchmark suites spanning four parallel APIs---CUDA, OpenMP, OpenCL, and OpenMP target offload---with the first three serving as standard translation directions and OMP-target as a case-study extension (Section~\ref{sec:experimental-setup}).
+The benchmark corpus was assembled through a four-stage systematic process: surveying open-source HPC benchmark repositories, quantifying kernel-level translation opportunities across parallel APIs, filtering candidate kernels through automated build-run-verify checks, and verifying each selected kernel through the complete pipeline on the evaluation platform. This curation populates the Source Code component of the \parbench{} architecture (Figure~\ref{fig:architecture}) with kernel files from five benchmark suites spanning four parallel APIs---CUDA, OpenMP, OpenCL, and OpenMP target offload---with the first three serving as standard translation directions and OMP-target as a case-study extension (Section~\ref{sec:experimental-setup}).
 
 \subsection{Suite and Kernel Selection}
 \label{sec:suite-selection}
@@ -28,33 +28,15 @@ We screened 71 open-source HPC repositories spanning benchmark suites, mini-appl
 
 A central finding is that \textbf{repository-level counting dramatically understates the available material for parallel translation evaluation}: although only 6~repositories contain both CUDA and OpenMP implementations, kernel-level analysis reveals 472~independent CUDA--OpenMP translation pairs---a 79$\times$ multiplier (Appendix Figure~\ref{fig:repo-vs-kernel}). This gap motivates \parbench{}'s individual kernel-centric evaluation design, rather than evaluating repository-level translation.
 
-Five suites were selected based on their open-source availability, multi-API kernel equivalence, build-run-verify automation, self-checking correctness labels, and domain diversity; detailed criteria and exclusion rationale are provided in Appendix~\ref{sec:appendix-c2}--\ref{sec:appendix-c6}. \textbf{Rodinia}~\cite{Rodinia2009}\footnote{Commit \texttt{9c10d3ea}} is the largest contributor, providing 60~specs across 22~kernels over CUDA, OpenMP, and OpenCL; 53 pass baseline verification and 7 are \knownfail{}. \textbf{HeCBench}~\cite{HeCBench2023}\footnote{Commit \texttt{22785cdd}} provides the largest initial multi-API pool: from 522~kernels, a structured funnel yields 10 curated kernels---five with CUDA, OpenMP, and OMP-target variants, and five with CUDA and OMP-target only---totaling 25~specs.
-\textbf{XSBench}~\cite{XSBench2014}\footnote{Commit \texttt{ba08e522}} and \textbf{RSBench}~\cite{RSBench2014}\footnote{Commit \texttt{34b64478}} contribute nuclear-physics proxy kernels, each with 4~specs, while \textbf{mixbench}~\cite{mixbench2017}\footnote{Commit \texttt{32edeca9}} contributes 3~GPU roofline micro-benchmark specs. All XSBench, RSBench, and mixbench specs pass baseline verification.
+% Five suites were selected based on their open-source availability, multi-API kernel equivalence, build-run-verify automation, self-checking correctness labels, and domain diversity; detailed criteria and exclusion rationale are provided in Appendix~\ref{sec:appendix-c2}--\ref{sec:appendix-c6}. \textbf{Rodinia}~\cite{Rodinia2009}\footnote{Commit \texttt{9c10d3ea}} is the largest contributor, providing 60~specs across 22~kernels over CUDA, OpenMP, and OpenCL; 53 pass baseline verification and 7 are \knownfail{}. \textbf{HeCBench}~\cite{HeCBench2023}\footnote{Commit \texttt{22785cdd}} provides the largest initial multi-API pool: from 522~kernels, a structured funnel yields 10 curated kernels---five with CUDA, OpenMP, and OMP-target variants, and five with CUDA and OMP-target only---totaling 25~specs.
+% \textbf{XSBench}~\cite{XSBench2014}\footnote{Commit \texttt{ba08e522}} and \textbf{RSBench}~\cite{RSBench2014}\footnote{Commit \texttt{34b64478}} contribute nuclear-physics proxy kernels, each with 4~specs, while \textbf{mixbench}~\cite{mixbench2017}\footnote{Commit \texttt{32edeca9}} contributes 3~GPU roofline micro-benchmark specs. All XSBench, RSBench, and mixbench specs pass baseline verification.
+
+Five suites were selected based on their open-source availability, multi-API kernel equivalence, build-run-verify automation, self-checking correctness labels, and domain diversity; detailed criteria and exclusion rationale are provided in Appendix~\ref{sec:appendix-c2}--\ref{sec:appendix-c6}. \textbf{Rodinia}~\cite{Rodinia2009} is the largest contributor, providing 60~specs across 22~kernels over CUDA, OpenMP, and OpenCL; 53 pass baseline verification and 7 are \knownfail{}. \textbf{HeCBench}~\cite{HeCBench2023} provides the largest initial multi-API pool: from 522~kernels, a structured funnel yields 10 curated kernels---five with CUDA, OpenMP, and OMP-target variants, and five with CUDA and OMP-target only---totaling 25~specs.
+\textbf{XSBench}~\cite{XSBench2014} and \textbf{RSBench}~\cite{RSBench2014} contribute nuclear-physics proxy kernels, each with 4~specs, while \textbf{mixbench}~\cite{mixbench2017} contributes 3~GPU roofline micro-benchmark specs. All XSBench, RSBench, and mixbench specs pass baseline verification.\footnote{Corpus commits: Rodinia \texttt{9c10d3ea}; HeCBench \texttt{22785cdd}; XSBench \texttt{ba08e522}; RSBench \texttt{34b64478}; mixbench \texttt{32edeca9}.}
 
 \subsection{Evaluation Corpus}
 \label{sec:eval-corpus}
 
-\begin{table*}[!tbp]
-\centering
-\caption{Evaluation corpus. SLoC is measured on the CUDA source variant when available. Multi-File denotes specs requiring more than one translated source file. KF = \knownfail{}.}
-\label{tab:suite-summary}
-\small
-\resizebox{\textwidth}{!}{%
-\begin{tabular}{@{}lcccclcrc@{}}
-\toprule
-Suite & Kernels & Specs & PASS & KF & APIs & SLoC Range & Med. & Multi-File \\
-\midrule
-Rodinia   & 22 & 60 & 53 & 7 & CUDA, OMP, OCL & 195--3{,}304 & 334 & 21/60 (35\%) \\
-HeCBench  & 10 & 25 & 23 & 2 & CUDA, OMP, OMP-tgt & 80--235 & 180 & 0/25 (0\%) \\
-XSBench   & 1  & 4  & 4  & 0 & CUDA, OMP, OCL, OMP-tgt & 1{,}390 & -- & 2/4 (50\%) \\
-RSBench   & 1  & 4  & 4  & 0 & CUDA, OMP, OCL, OMP-tgt & 1{,}016 & -- & 1/4 (25\%) \\
-mixbench  & 1  & 3  & 3  & 0 & CUDA, OMP, OCL & 312 & -- & 0/3 (0\%) \\
-\midrule
-\textbf{Total} & \textbf{35} & \textbf{96} & \textbf{87} & \textbf{9} & & \textbf{80--3{,}304} & \textbf{271} & \textbf{24/96 (25\%)} \\
-\bottomrule
-\end{tabular}%
-}
-\end{table*}
 The 87 verified-\pass{} specs constitute the evaluation corpus (Table~\ref{tab:suite-summary}). Kernel complexity spans more than an order of magnitude---80 to 3{,}304~SLoC, median 271---and 31 of 35 kernels (89\%) exceed the 133-SLoC scale at which prior repository-level translation reports 0\% pass@1~\cite{ParEvalRepo2025}. Of the 96 curated specs (87~\pass{} plus 9~\knownfail{}), 25\% require multi-file translation; CUDA has the highest multi-file rate (51\%) owing to separate host and kernel sources, versus 12\% for OpenMP and 13\% for OpenCL (Appendix Table~\ref{tab:benchmark-characterization}). These properties place the corpus well beyond single-function benchmarks while retaining fixed build--run--verify infrastructure. The corpus draws predominantly from Rodinia (53 of 87 non-\knownfail{} specs, 61\%), so aggregate pass rates partly reflect its characteristic stencil, graph-traversal, and simulation-loop kernels.
 
 %However, Rodinia's wide adoption raises a data contamination concern; the AST-driven augmentation engine (Section~\ref{sec:augmentation-engine}) mitigates this by generating structurally novel variants that preserve semantics while defeating memorization.
