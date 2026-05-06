@@ -41,7 +41,7 @@
   "name": "ParBench Kernel Specifications",
   "description": "206 JSON specification files defining parallel code translation tasks across CUDA, OpenMP, OpenCL, and OpenMP target offload APIs, sourced from 5 HPC benchmark suites (Rodinia, HeCBench, XSBench, RSBench, mixbench).",
   "license": "https://opensource.org/licenses/MIT",
-  "url": "https://anonymous.4open.science/r/parbench-623F/",
+  "url": "https://anonymous.4open.science/r/parbench-D5FD/",
   "version": "1.0.0",
   "keywords": ["parallel computing", "code translation", "CUDA", "OpenMP", "OpenCL", "benchmark", "LLM evaluation"],
   "datePublished": "2026-05-06",
