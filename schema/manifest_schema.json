@@ -44,11 +44,11 @@
         },
         "spec_file": {
             "type": "string",
-            "description": "Relative path from parbench_sam/ to the Level 2 spec JSON file (e.g., 'specs/rodinia-bfs-cuda.json')."
+            "description": "Relative path from parbench/ to the Level 2 spec JSON file (e.g., 'specs/rodinia-bfs-cuda.json')."
         },
         "source_dir": {
             "type": "string",
-            "description": "Relative path from parbench_sam/ to the directory containing all relevant source files."
+            "description": "Relative path from parbench/ to the directory containing all relevant source files."
         },
         "category": {
             "type": "string",

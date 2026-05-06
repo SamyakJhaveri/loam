@@ -8,7 +8,7 @@ into the spec by hand; commit the reference file + spec edit together.
 USAGE
 -----
     python3 scripts/spec_tools/_capture_baseline.py specs/<spec>.json \\
-        --project-root /home/samyak/Desktop/parbench_sam
+        --project-root .
 
 CRITICAL — same-args invariant
 -----------------------------

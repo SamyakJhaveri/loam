@@ -26,7 +26,7 @@ from harness.spec_loader import (
 )
 
 
-PROJECT_ROOT = Path("/home/samyak/Desktop/parbench_sam")
+PROJECT_ROOT = Path(".")
 SPECS_DIR = PROJECT_ROOT / "specs"
 MANIFEST_PATH = PROJECT_ROOT / "manifest.jsonl"
 

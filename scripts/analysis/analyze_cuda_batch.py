@@ -5,7 +5,7 @@ Reads individual .json files from results/phase3/cuda_batch3_logs/
 and produces a comprehensive analysis report.
 
 Usage:
-    cd /home/samyak/Desktop/parbench_sam
+    cd .
     source env_parbench/bin/activate
     python scripts/analyze_cuda_batch.py
 """
@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-PROJECT_ROOT = Path("/home/samyak/Desktop/parbench_sam")
+PROJECT_ROOT = Path(".")
 LOG_DIR = PROJECT_ROOT / "results" / "phase3" / "cuda_batch3_logs"
 REPORT_PATH = PROJECT_ROOT / "results" / "phase3" / "cuda_batch3_analysis.md"
 REPORT_JSON = PROJECT_ROOT / "results" / "phase3" / "cuda_batch3_results.json"

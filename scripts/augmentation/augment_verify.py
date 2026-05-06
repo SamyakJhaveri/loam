@@ -262,7 +262,7 @@ def main() -> int:
     )
     parser.add_argument("--seed", "-s", type=int, default=None, help="Random seed for reproducibility")
     parser.add_argument("--config", default="correctness", help="Run configuration name (default: correctness)")
-    parser.add_argument("--project-root", default=None, help="Path to parbench_sam/ root (default: auto-detected)")
+    parser.add_argument("--project-root", default=None, help="Path to parbench/ root (default: auto-detected)")
     parser.add_argument("--keep-temp", action="store_true", help="Keep the temporary build directory")
     parser.add_argument("-v", "--verbose", action="store_true", help="Show subprocess stdout/stderr")
     parser.add_argument("--json", action="store_true", help="Also print machine-readable JSON result")

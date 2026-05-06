@@ -16,7 +16,7 @@ Produces:
 
 Usage:
     python3 scripts/analysis/quantitative_findings.py \\
-        --project-root /home/samyak/Desktop/parbench_sam -v
+        --project-root . -v
     python3 scripts/analysis/quantitative_findings.py \\
         --project-root . --validate
 """

@@ -2,7 +2,7 @@
   "metadata": {
     "generated_at": "2026-05-06T03:37:02.713401+00:00",
     "git_hash": "10a1901",
-    "project_root": "/home/samyak/Desktop/parbench_sam",
+    "project_root": ".",
     "model": "together-qwen-3.5-397b-a17b",
     "excluded_specs": [
       "hecbench-scan-omp_target",

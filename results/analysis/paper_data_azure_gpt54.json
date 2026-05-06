@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-05-06T03:37:01.693112+00:00",
   "model": "azure-gpt-5.4",
-  "results_dir": "/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-5.4",
+  "results_dir": "./results/evaluation/azure-gpt-5.4",
   "suite_filter": null,
   "excluded_specs": [
     "hecbench-scan-omp_target",

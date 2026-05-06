@@ -19,7 +19,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-PROJECT_ROOT = Path("/home/samyak/Desktop/parbench_sam")
+PROJECT_ROOT = Path(".")
 APIS = ["cuda", "omp", "opencl"]
 
 

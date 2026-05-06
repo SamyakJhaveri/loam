@@ -18,7 +18,7 @@ Output: results/analysis/benchmark_characterization.json + .md
 
 Usage:
     python3 scripts/analysis/benchmark_characterization.py \\
-        --project-root /home/samyak/Desktop/parbench_sam
+        --project-root .
 """
 
 from __future__ import annotations

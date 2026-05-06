@@ -17,7 +17,7 @@ Output: results/evaluation/translation_complexity.csv
 
 Usage:
     python3 scripts/analysis/classify_translation_pairs.py \\
-        --project-root /home/samyak/Desktop/parbench_sam
+        --project-root .
 """
 
 from __future__ import annotations

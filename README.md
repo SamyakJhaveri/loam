@@ -9,7 +9,7 @@ run, verification, and LLM evaluation workflows.
 ## Project Structure
 
 ```
-parbench_sam/
+parbench/
 ├── README.md                       # This file
 ├── GUIDE.md                        # Complete guide: pipeline, commands, adding benchmarks
 ├── manifest.jsonl                  # Level 1: Master index (one JSON object per line)
@@ -127,7 +127,7 @@ The validator checks:
 
 ## Paths
 
-- All paths in specs and the manifest are **relative to `parbench_sam/`** (the project root).
+- All paths in specs and the manifest are **relative to `parbench/`** (the project root).
 - `downloads_root` equals `project_root` — downloaded benchmark repos live inside the project directory itself.
 - Machine-specific path configuration lives in `config/paths.json` (git-ignored).
 
@@ -149,7 +149,7 @@ Python 3.12 or later is required. Clone the repository, create a virtual environ
 
 ```bash
 git clone <repository-url>
-cd parbench_sam
+cd parbench
 
 python3 -m venv env_parbench
 source env_parbench/bin/activate
@@ -300,7 +300,7 @@ python3 scripts/evaluation/run_eval_batch.py \
   --suite rodinia \
   --direction cuda-to-omp \
   --models <model-name> \
-  --project-root /path/to/parbench_sam \
+  --project-root /path/to/parbench \
   --resume -v
 ```
 
@@ -308,7 +308,7 @@ python3 scripts/evaluation/run_eval_batch.py \
 
 ```bash
 python3 scripts/evaluation/analyze_eval.py \
-  --project-root /path/to/parbench_sam \
+  --project-root /path/to/parbench \
   --results-dir results/evaluation
 ```
 
@@ -354,7 +354,7 @@ original source.
 
 ```bash
 python3 scripts/augmentation/augment_verify.py specs/rodinia-bfs-cuda.json \
-  --augment_level 2 --seed 42 --project-root /path/to/parbench_sam
+  --augment_level 2 --seed 42 --project-root /path/to/parbench
 ```
 
 **Run augmentation unit tests (15 tests, all must pass before commit):**

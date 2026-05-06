@@ -1881,28 +1881,28 @@
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/gaussian"
+    "details": "Working directory not found: ./rodinia/openmp/gaussian"
   },
   {
     "spec_id": "rodinia-gaussian-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/gaussian"
+    "details": "Working directory not found: ./rodinia/openmp/gaussian"
   },
   {
     "spec_id": "rodinia-gaussian-omp",
     "augment_level": 3,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/gaussian"
+    "details": "Working directory not found: ./rodinia/openmp/gaussian"
   },
   {
     "spec_id": "rodinia-gaussian-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/gaussian"
+    "details": "Working directory not found: ./rodinia/openmp/gaussian"
   },
   {
     "spec_id": "rodinia-gaussian-opencl",
@@ -3211,56 +3211,56 @@
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/huffman"
+    "details": "Working directory not found: ./rodinia/openmp/huffman"
   },
   {
     "spec_id": "rodinia-huffman-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/huffman"
+    "details": "Working directory not found: ./rodinia/openmp/huffman"
   },
   {
     "spec_id": "rodinia-huffman-omp",
     "augment_level": 3,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/huffman"
+    "details": "Working directory not found: ./rodinia/openmp/huffman"
   },
   {
     "spec_id": "rodinia-huffman-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/huffman"
+    "details": "Working directory not found: ./rodinia/openmp/huffman"
   },
   {
     "spec_id": "rodinia-huffman-opencl",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/opencl/huffman"
+    "details": "Working directory not found: ./rodinia/opencl/huffman"
   },
   {
     "spec_id": "rodinia-huffman-opencl",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/opencl/huffman"
+    "details": "Working directory not found: ./rodinia/opencl/huffman"
   },
   {
     "spec_id": "rodinia-huffman-opencl",
     "augment_level": 3,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/opencl/huffman"
+    "details": "Working directory not found: ./rodinia/opencl/huffman"
   },
   {
     "spec_id": "rodinia-huffman-opencl",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/opencl/huffman"
+    "details": "Working directory not found: ./rodinia/opencl/huffman"
   },
   {
     "spec_id": "rodinia-hybridsort-cuda",
@@ -3434,28 +3434,28 @@
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/hybridsort"
+    "details": "Working directory not found: ./rodinia/openmp/hybridsort"
   },
   {
     "spec_id": "rodinia-hybridsort-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/hybridsort"
+    "details": "Working directory not found: ./rodinia/openmp/hybridsort"
   },
   {
     "spec_id": "rodinia-hybridsort-omp",
     "augment_level": 3,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/hybridsort"
+    "details": "Working directory not found: ./rodinia/openmp/hybridsort"
   },
   {
     "spec_id": "rodinia-hybridsort-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/openmp/hybridsort"
+    "details": "Working directory not found: ./rodinia/openmp/hybridsort"
   },
   {
     "spec_id": "rodinia-hybridsort-opencl",
@@ -5126,28 +5126,28 @@
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/opencl/mummergpu"
+    "details": "Working directory not found: ./rodinia/opencl/mummergpu"
   },
   {
     "spec_id": "rodinia-mummergpu-opencl",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/opencl/mummergpu"
+    "details": "Working directory not found: ./rodinia/opencl/mummergpu"
   },
   {
     "spec_id": "rodinia-mummergpu-opencl",
     "augment_level": 3,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/opencl/mummergpu"
+    "details": "Working directory not found: ./rodinia/opencl/mummergpu"
   },
   {
     "spec_id": "rodinia-mummergpu-opencl",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/rodinia/opencl/mummergpu"
+    "details": "Working directory not found: ./rodinia/opencl/mummergpu"
   },
   {
     "spec_id": "rodinia-myocyte-cuda",

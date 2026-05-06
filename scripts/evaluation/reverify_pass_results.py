@@ -7,7 +7,7 @@ Records TRUE_PASS vs FALSE_PASS for each result.
 
 Usage:
     python3 scripts/evaluation/reverify_pass_results.py \
-        --project-root /home/samyak/Desktop/parbench_sam -v
+        --project-root . -v
 """
 
 from __future__ import annotations
@@ -243,7 +243,7 @@ def main():
         "--project-root",
         type=Path,
         default=_PROJECT_ROOT_DEFAULT,
-        help="Path to parbench_sam project root",
+        help="Path to parbench project root",
     )
     parser.add_argument(
         "--model",

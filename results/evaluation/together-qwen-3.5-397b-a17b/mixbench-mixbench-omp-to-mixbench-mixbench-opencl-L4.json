@@ -25,7 +25,7 @@
   "run_status": "fail",
   "run_time_seconds": 3.172,
   "run_exit_code": 1,
-  "run_stderr_snippet": "OpenCL error in file '/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-opencl/mix_kernels_ocl.cpp' in line 178 : Code -51.\n",
+  "run_stderr_snippet": "OpenCL error in file './mixbench/mixbench-src/mixbench-opencl/mix_kernels_ocl.cpp' in line 178 : Code -51.\n",
   "run_stdout_snippet": "/\b>\\\b|\b/\b>\\\b|\b/\b>\n----------------------------------------------------------------------------- CSV data -----------------------------------------------------------------------------\nExperiment ID, Single Precision ops,,,,              Double precision ops,,,,              Half precision ops,,,,                Integer operations,,, \nCompute iters, Flops/byte, ex.time,  GFLOPS, GB/sec, Flops/byte, ex.time,  GFLOPS, GB/sec, Flops/byte, ex.time,  GFLOPS, GB/sec, Iops/byte, ex.time,   GIOPS, GB/sec\n",
   "verify_status": null,
   "verify_strategy": null,
@@ -61,7 +61,7 @@
       "verify_status": null,
       "error_feedback_sent": null,
       "build_error_snippet": null,
-      "run_stderr_snippet": "OpenCL error in file '/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-opencl/mix_kernels_ocl.cpp' in line 178 : Code -51.\n",
+      "run_stderr_snippet": "OpenCL error in file './mixbench/mixbench-src/mixbench-opencl/mix_kernels_ocl.cpp' in line 178 : Code -51.\n",
       "run_stdout_snippet": "/\b>\\\b|\b/\b>\\\b|\b/\b>\n----------------------------------------------------------------------------- CSV data -----------------------------------------------------------------------------\nExperiment ID, Single Precision ops,,,,              Double precision ops,,,,              Half precision ops,,,,                Integer operations,,, \nCompute iters, Flops/byte, ex.time,  GFLOPS, GB/sec, Flops/byte, ex.time,  GFLOPS, GB/sec, Flops/byte, ex.time,  GFLOPS, GB/sec, Iops/byte, ex.time,   GIOPS, GB/sec\n",
       "extraction_fail": null
     }

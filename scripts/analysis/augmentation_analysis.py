@@ -16,7 +16,7 @@ Output: results/analysis/augmentation_per_kernel_matrix.json + .md
 
 Usage:
     python3 scripts/analysis/augmentation_analysis.py \\
-        --project-root /home/samyak/Desktop/parbench_sam
+        --project-root .
 """
 
 from __future__ import annotations

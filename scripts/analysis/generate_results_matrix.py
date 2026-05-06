@@ -15,7 +15,7 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-PROJECT_ROOT = Path("/home/samyak/Desktop/parbench_sam")
+PROJECT_ROOT = Path(".")
 RESULTS_DIR = PROJECT_ROOT / "results" / "phase3"
 
 CUDA_JSON = RESULTS_DIR / "cuda_batch3_results.json"

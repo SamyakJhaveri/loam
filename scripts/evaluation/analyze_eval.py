@@ -8,7 +8,7 @@ Reads all per-task result JSONs under results/evaluation/{model}/*.json and prod
 
 Usage:
     python3 scripts/evaluation/analyze_eval.py \\
-      --project-root /home/samyak/Desktop/parbench_sam
+      --project-root .
 
     # Show which (kernel, model, direction, level) combos are missing
     python3 scripts/evaluation/analyze_eval.py --show-gaps --project-root ...
@@ -557,7 +557,7 @@ def main() -> None:
         "--project-root",
         type=Path,
         default=PROJECT_ROOT,
-        help="Path to parbench_sam root (default: auto-detected).",
+        help="Path to parbench root (default: auto-detected).",
     )
     parser.add_argument(
         "--results-dir",

@@ -2,7 +2,7 @@
   "metadata": {
     "generated_at": "2026-05-06T03:37:03.242336+00:00",
     "git_hash": "10a1901",
-    "project_root": "/home/samyak/Desktop/parbench_sam",
+    "project_root": ".",
     "model": "azure-gpt-5.4",
     "excluded_specs": [
       "hecbench-scan-omp_target",

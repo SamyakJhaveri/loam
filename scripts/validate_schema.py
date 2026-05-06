@@ -30,7 +30,7 @@ except ImportError:
     sys.exit(1)
 
 # ---------------------------------------------------------------------------
-# Paths — everything is relative to this project root (parbench_sam/)
+# Paths — everything is relative to this project root (parbench/)
 # ---------------------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_DIR = PROJECT_ROOT / "schema"

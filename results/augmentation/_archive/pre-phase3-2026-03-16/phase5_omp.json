@@ -4,1260 +4,1260 @@
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/aes-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/aes-omp"
   },
   {
     "spec_id": "hecbench-aes-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/aes-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/aes-omp"
   },
   {
     "spec_id": "hecbench-aes-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/aes-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/aes-omp"
   },
   {
     "spec_id": "hecbench-babelstream-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/babelstream-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/babelstream-omp"
   },
   {
     "spec_id": "hecbench-babelstream-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/babelstream-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/babelstream-omp"
   },
   {
     "spec_id": "hecbench-babelstream-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/babelstream-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/babelstream-omp"
   },
   {
     "spec_id": "hecbench-backprop-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/backprop-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/backprop-omp"
   },
   {
     "spec_id": "hecbench-backprop-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/backprop-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/backprop-omp"
   },
   {
     "spec_id": "hecbench-backprop-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/backprop-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/backprop-omp"
   },
   {
     "spec_id": "hecbench-bezier-surface-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/bezier-surface-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/bezier-surface-omp"
   },
   {
     "spec_id": "hecbench-bezier-surface-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/bezier-surface-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/bezier-surface-omp"
   },
   {
     "spec_id": "hecbench-bezier-surface-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/bezier-surface-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/bezier-surface-omp"
   },
   {
     "spec_id": "hecbench-bilateral-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/bilateral-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/bilateral-omp"
   },
   {
     "spec_id": "hecbench-bilateral-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/bilateral-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/bilateral-omp"
   },
   {
     "spec_id": "hecbench-bilateral-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/bilateral-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/bilateral-omp"
   },
   {
     "spec_id": "hecbench-binomial-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/binomial-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/binomial-omp"
   },
   {
     "spec_id": "hecbench-binomial-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/binomial-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/binomial-omp"
   },
   {
     "spec_id": "hecbench-binomial-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/binomial-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/binomial-omp"
   },
   {
     "spec_id": "hecbench-ccsd-trpdrv-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/ccsd-trpdrv-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/ccsd-trpdrv-omp"
   },
   {
     "spec_id": "hecbench-ccsd-trpdrv-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/ccsd-trpdrv-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/ccsd-trpdrv-omp"
   },
   {
     "spec_id": "hecbench-ccsd-trpdrv-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/ccsd-trpdrv-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/ccsd-trpdrv-omp"
   },
   {
     "spec_id": "hecbench-chacha20-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/chacha20-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/chacha20-omp"
   },
   {
     "spec_id": "hecbench-chacha20-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/chacha20-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/chacha20-omp"
   },
   {
     "spec_id": "hecbench-chacha20-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/chacha20-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/chacha20-omp"
   },
   {
     "spec_id": "hecbench-chi2-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/chi2-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/chi2-omp"
   },
   {
     "spec_id": "hecbench-chi2-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/chi2-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/chi2-omp"
   },
   {
     "spec_id": "hecbench-chi2-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/chi2-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/chi2-omp"
   },
   {
     "spec_id": "hecbench-convolution3d-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/convolution3D-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/convolution3D-omp"
   },
   {
     "spec_id": "hecbench-convolution3d-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/convolution3D-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/convolution3D-omp"
   },
   {
     "spec_id": "hecbench-convolution3d-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/convolution3D-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/convolution3D-omp"
   },
   {
     "spec_id": "hecbench-convolutionseparable-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/convolutionSeparable-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/convolutionSeparable-omp"
   },
   {
     "spec_id": "hecbench-convolutionseparable-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/convolutionSeparable-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/convolutionSeparable-omp"
   },
   {
     "spec_id": "hecbench-convolutionseparable-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/convolutionSeparable-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/convolutionSeparable-omp"
   },
   {
     "spec_id": "hecbench-crc64-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/crc64-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/crc64-omp"
   },
   {
     "spec_id": "hecbench-crc64-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/crc64-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/crc64-omp"
   },
   {
     "spec_id": "hecbench-crc64-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/crc64-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/crc64-omp"
   },
   {
     "spec_id": "hecbench-dct8x8-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/dct8x8-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/dct8x8-omp"
   },
   {
     "spec_id": "hecbench-dct8x8-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/dct8x8-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/dct8x8-omp"
   },
   {
     "spec_id": "hecbench-dct8x8-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/dct8x8-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/dct8x8-omp"
   },
   {
     "spec_id": "hecbench-deredundancy-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/deredundancy-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/deredundancy-omp"
   },
   {
     "spec_id": "hecbench-deredundancy-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/deredundancy-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/deredundancy-omp"
   },
   {
     "spec_id": "hecbench-deredundancy-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/deredundancy-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/deredundancy-omp"
   },
   {
     "spec_id": "hecbench-eigenvalue-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/eigenvalue-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/eigenvalue-omp"
   },
   {
     "spec_id": "hecbench-eigenvalue-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/eigenvalue-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/eigenvalue-omp"
   },
   {
     "spec_id": "hecbench-eigenvalue-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/eigenvalue-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/eigenvalue-omp"
   },
   {
     "spec_id": "hecbench-feynman-kac-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/feynman-kac-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/feynman-kac-omp"
   },
   {
     "spec_id": "hecbench-feynman-kac-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/feynman-kac-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/feynman-kac-omp"
   },
   {
     "spec_id": "hecbench-feynman-kac-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/feynman-kac-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/feynman-kac-omp"
   },
   {
     "spec_id": "hecbench-fft-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/fft-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/fft-omp"
   },
   {
     "spec_id": "hecbench-fft-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/fft-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/fft-omp"
   },
   {
     "spec_id": "hecbench-fft-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/fft-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/fft-omp"
   },
   {
     "spec_id": "hecbench-floydwarshall-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/floydwarshall-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/floydwarshall-omp"
   },
   {
     "spec_id": "hecbench-floydwarshall-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/floydwarshall-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/floydwarshall-omp"
   },
   {
     "spec_id": "hecbench-floydwarshall-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/floydwarshall-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/floydwarshall-omp"
   },
   {
     "spec_id": "hecbench-fpc-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/fpc-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/fpc-omp"
   },
   {
     "spec_id": "hecbench-fpc-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/fpc-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/fpc-omp"
   },
   {
     "spec_id": "hecbench-fpc-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/fpc-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/fpc-omp"
   },
   {
     "spec_id": "hecbench-fwt-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/fwt-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/fwt-omp"
   },
   {
     "spec_id": "hecbench-fwt-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/fwt-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/fwt-omp"
   },
   {
     "spec_id": "hecbench-fwt-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/fwt-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/fwt-omp"
   },
   {
     "spec_id": "hecbench-ga-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/ga-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/ga-omp"
   },
   {
     "spec_id": "hecbench-ga-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/ga-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/ga-omp"
   },
   {
     "spec_id": "hecbench-ga-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/ga-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/ga-omp"
   },
   {
     "spec_id": "hecbench-gaussian-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/gaussian-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/gaussian-omp"
   },
   {
     "spec_id": "hecbench-gaussian-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/gaussian-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/gaussian-omp"
   },
   {
     "spec_id": "hecbench-gaussian-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/gaussian-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/gaussian-omp"
   },
   {
     "spec_id": "hecbench-geglu-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/geglu-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/geglu-omp"
   },
   {
     "spec_id": "hecbench-geglu-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/geglu-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/geglu-omp"
   },
   {
     "spec_id": "hecbench-geglu-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/geglu-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/geglu-omp"
   },
   {
     "spec_id": "hecbench-heat2d-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/heat2d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/heat2d-omp"
   },
   {
     "spec_id": "hecbench-heat2d-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/heat2d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/heat2d-omp"
   },
   {
     "spec_id": "hecbench-heat2d-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/heat2d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/heat2d-omp"
   },
   {
     "spec_id": "hecbench-ising-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/ising-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/ising-omp"
   },
   {
     "spec_id": "hecbench-ising-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/ising-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/ising-omp"
   },
   {
     "spec_id": "hecbench-ising-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/ising-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/ising-omp"
   },
   {
     "spec_id": "hecbench-iso2dfd-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/iso2dfd-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/iso2dfd-omp"
   },
   {
     "spec_id": "hecbench-iso2dfd-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/iso2dfd-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/iso2dfd-omp"
   },
   {
     "spec_id": "hecbench-iso2dfd-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/iso2dfd-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/iso2dfd-omp"
   },
   {
     "spec_id": "hecbench-jenkins-hash-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/jenkins-hash-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/jenkins-hash-omp"
   },
   {
     "spec_id": "hecbench-jenkins-hash-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/jenkins-hash-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/jenkins-hash-omp"
   },
   {
     "spec_id": "hecbench-jenkins-hash-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/jenkins-hash-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/jenkins-hash-omp"
   },
   {
     "spec_id": "hecbench-keccaktreehash-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/keccaktreehash-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/keccaktreehash-omp"
   },
   {
     "spec_id": "hecbench-keccaktreehash-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/keccaktreehash-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/keccaktreehash-omp"
   },
   {
     "spec_id": "hecbench-keccaktreehash-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/keccaktreehash-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/keccaktreehash-omp"
   },
   {
     "spec_id": "hecbench-knn-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/knn-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/knn-omp"
   },
   {
     "spec_id": "hecbench-knn-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/knn-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/knn-omp"
   },
   {
     "spec_id": "hecbench-knn-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/knn-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/knn-omp"
   },
   {
     "spec_id": "hecbench-laplace3d-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/laplace3d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/laplace3d-omp"
   },
   {
     "spec_id": "hecbench-laplace3d-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/laplace3d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/laplace3d-omp"
   },
   {
     "spec_id": "hecbench-laplace3d-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/laplace3d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/laplace3d-omp"
   },
   {
     "spec_id": "hecbench-lud-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/lud-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/lud-omp"
   },
   {
     "spec_id": "hecbench-lud-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/lud-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/lud-omp"
   },
   {
     "spec_id": "hecbench-lud-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/lud-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/lud-omp"
   },
   {
     "spec_id": "hecbench-lulesh-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/lulesh-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/lulesh-omp"
   },
   {
     "spec_id": "hecbench-lulesh-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/lulesh-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/lulesh-omp"
   },
   {
     "spec_id": "hecbench-lulesh-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/lulesh-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/lulesh-omp"
   },
   {
     "spec_id": "hecbench-mandelbrot-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/mandelbrot-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/mandelbrot-omp"
   },
   {
     "spec_id": "hecbench-mandelbrot-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/mandelbrot-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/mandelbrot-omp"
   },
   {
     "spec_id": "hecbench-mandelbrot-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/mandelbrot-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/mandelbrot-omp"
   },
   {
     "spec_id": "hecbench-maxpool3d-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/maxpool3d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/maxpool3d-omp"
   },
   {
     "spec_id": "hecbench-maxpool3d-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/maxpool3d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/maxpool3d-omp"
   },
   {
     "spec_id": "hecbench-maxpool3d-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/maxpool3d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/maxpool3d-omp"
   },
   {
     "spec_id": "hecbench-md5hash-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/md5hash-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/md5hash-omp"
   },
   {
     "spec_id": "hecbench-md5hash-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/md5hash-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/md5hash-omp"
   },
   {
     "spec_id": "hecbench-md5hash-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/md5hash-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/md5hash-omp"
   },
   {
     "spec_id": "hecbench-merge-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/merge-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/merge-omp"
   },
   {
     "spec_id": "hecbench-merge-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/merge-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/merge-omp"
   },
   {
     "spec_id": "hecbench-merge-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/merge-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/merge-omp"
   },
   {
     "spec_id": "hecbench-mis-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/mis-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/mis-omp"
   },
   {
     "spec_id": "hecbench-mis-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/mis-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/mis-omp"
   },
   {
     "spec_id": "hecbench-mis-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/mis-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/mis-omp"
   },
   {
     "spec_id": "hecbench-murmurhash3-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/murmurhash3-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/murmurhash3-omp"
   },
   {
     "spec_id": "hecbench-murmurhash3-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/murmurhash3-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/murmurhash3-omp"
   },
   {
     "spec_id": "hecbench-murmurhash3-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/murmurhash3-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/murmurhash3-omp"
   },
   {
     "spec_id": "hecbench-myocyte-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/myocyte-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/myocyte-omp"
   },
   {
     "spec_id": "hecbench-myocyte-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/myocyte-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/myocyte-omp"
   },
   {
     "spec_id": "hecbench-myocyte-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/myocyte-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/myocyte-omp"
   },
   {
     "spec_id": "hecbench-nbody-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nbody-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/nbody-omp"
   },
   {
     "spec_id": "hecbench-nbody-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nbody-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/nbody-omp"
   },
   {
     "spec_id": "hecbench-nbody-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nbody-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/nbody-omp"
   },
   {
     "spec_id": "hecbench-nn-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nn-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/nn-omp"
   },
   {
     "spec_id": "hecbench-nn-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nn-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/nn-omp"
   },
   {
     "spec_id": "hecbench-nn-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nn-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/nn-omp"
   },
   {
     "spec_id": "hecbench-nw-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nw-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/nw-omp"
   },
   {
     "spec_id": "hecbench-nw-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nw-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/nw-omp"
   },
   {
     "spec_id": "hecbench-nw-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/nw-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/nw-omp"
   },
   {
     "spec_id": "hecbench-particle-diffusion-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/particle-diffusion-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/particle-diffusion-omp"
   },
   {
     "spec_id": "hecbench-particle-diffusion-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/particle-diffusion-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/particle-diffusion-omp"
   },
   {
     "spec_id": "hecbench-particle-diffusion-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/particle-diffusion-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/particle-diffusion-omp"
   },
   {
     "spec_id": "hecbench-pathfinder-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/pathfinder-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/pathfinder-omp"
   },
   {
     "spec_id": "hecbench-pathfinder-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/pathfinder-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/pathfinder-omp"
   },
   {
     "spec_id": "hecbench-pathfinder-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/pathfinder-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/pathfinder-omp"
   },
   {
     "spec_id": "hecbench-perplexity-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/perplexity-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/perplexity-omp"
   },
   {
     "spec_id": "hecbench-perplexity-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/perplexity-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/perplexity-omp"
   },
   {
     "spec_id": "hecbench-perplexity-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/perplexity-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/perplexity-omp"
   },
   {
     "spec_id": "hecbench-popcount-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/popcount-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/popcount-omp"
   },
   {
     "spec_id": "hecbench-popcount-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/popcount-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/popcount-omp"
   },
   {
     "spec_id": "hecbench-popcount-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/popcount-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/popcount-omp"
   },
   {
     "spec_id": "hecbench-pso-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/pso-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/pso-omp"
   },
   {
     "spec_id": "hecbench-pso-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/pso-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/pso-omp"
   },
   {
     "spec_id": "hecbench-pso-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/pso-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/pso-omp"
   },
   {
     "spec_id": "hecbench-radixsort-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/radixsort-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/radixsort-omp"
   },
   {
     "spec_id": "hecbench-radixsort-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/radixsort-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/radixsort-omp"
   },
   {
     "spec_id": "hecbench-radixsort-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/radixsort-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/radixsort-omp"
   },
   {
     "spec_id": "hecbench-rmsnorm-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/rmsnorm-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/rmsnorm-omp"
   },
   {
     "spec_id": "hecbench-rmsnorm-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/rmsnorm-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/rmsnorm-omp"
   },
   {
     "spec_id": "hecbench-rmsnorm-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/rmsnorm-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/rmsnorm-omp"
   },
   {
     "spec_id": "hecbench-scan-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/scan-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/scan-omp"
   },
   {
     "spec_id": "hecbench-scan-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/scan-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/scan-omp"
   },
   {
     "spec_id": "hecbench-scan-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/scan-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/scan-omp"
   },
   {
     "spec_id": "hecbench-secp256k1-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/secp256k1-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/secp256k1-omp"
   },
   {
     "spec_id": "hecbench-secp256k1-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/secp256k1-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/secp256k1-omp"
   },
   {
     "spec_id": "hecbench-secp256k1-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/secp256k1-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/secp256k1-omp"
   },
   {
     "spec_id": "hecbench-simplespmv-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/simpleSpmv-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/simpleSpmv-omp"
   },
   {
     "spec_id": "hecbench-simplespmv-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/simpleSpmv-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/simpleSpmv-omp"
   },
   {
     "spec_id": "hecbench-simplespmv-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/simpleSpmv-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/simpleSpmv-omp"
   },
   {
     "spec_id": "hecbench-sobel-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/sobel-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/sobel-omp"
   },
   {
     "spec_id": "hecbench-sobel-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/sobel-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/sobel-omp"
   },
   {
     "spec_id": "hecbench-sobel-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/sobel-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/sobel-omp"
   },
   {
     "spec_id": "hecbench-sobol-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/sobol-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/sobol-omp"
   },
   {
     "spec_id": "hecbench-sobol-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/sobol-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/sobol-omp"
   },
   {
     "spec_id": "hecbench-sobol-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/sobol-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/sobol-omp"
   },
   {
     "spec_id": "hecbench-softmax-online-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/softmax-online-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/softmax-online-omp"
   },
   {
     "spec_id": "hecbench-softmax-online-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/softmax-online-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/softmax-online-omp"
   },
   {
     "spec_id": "hecbench-softmax-online-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/softmax-online-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/softmax-online-omp"
   },
   {
     "spec_id": "hecbench-stencil1d-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/stencil1d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/stencil1d-omp"
   },
   {
     "spec_id": "hecbench-stencil1d-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/stencil1d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/stencil1d-omp"
   },
   {
     "spec_id": "hecbench-stencil1d-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/stencil1d-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/stencil1d-omp"
   },
   {
     "spec_id": "hecbench-thomas-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/thomas-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/thomas-omp"
   },
   {
     "spec_id": "hecbench-thomas-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/thomas-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/thomas-omp"
   },
   {
     "spec_id": "hecbench-thomas-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/thomas-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/thomas-omp"
   },
   {
     "spec_id": "hecbench-tissue-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/tissue-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/tissue-omp"
   },
   {
     "spec_id": "hecbench-tissue-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/tissue-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/tissue-omp"
   },
   {
     "spec_id": "hecbench-tissue-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/tissue-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/tissue-omp"
   },
   {
     "spec_id": "hecbench-triad-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/triad-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/triad-omp"
   },
   {
     "spec_id": "hecbench-triad-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/triad-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/triad-omp"
   },
   {
     "spec_id": "hecbench-triad-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/triad-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/triad-omp"
   },
   {
     "spec_id": "hecbench-tsp-omp",
     "augment_level": 1,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/tsp-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/tsp-omp"
   },
   {
     "spec_id": "hecbench-tsp-omp",
     "augment_level": 2,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/tsp-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/tsp-omp"
   },
   {
     "spec_id": "hecbench-tsp-omp",
     "augment_level": 4,
     "seed": 42,
     "overall_status": "ERROR",
-    "details": "Working directory not found: /home/samyak/Desktop/parbench_sam/HeCBench-master/src/tsp-omp"
+    "details": "Working directory not found: ./HeCBench-master/src/tsp-omp"
   },
   {
     "spec_id": "rodinia-backprop-omp",

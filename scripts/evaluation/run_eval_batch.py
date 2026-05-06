@@ -8,7 +8,7 @@ Usage:
     python3 scripts/evaluation/run_eval_batch.py \\
       --suite rodinia --direction cuda-to-omp \\
       --models claude-sonnet-4-20250514 azure-gpt-5.4 \\
-      --project-root /home/samyak/Desktop/parbench_sam \\
+      --project-root . \\
       --resume -v
 
     # Test resume behaviour (all 5 pilot results already exist):
@@ -16,7 +16,7 @@ Usage:
       --kernels bfs hotspot backprop nw srad \\
       --direction cuda-to-omp \\
       --models claude-sonnet-4-20250514 \\
-      --project-root /home/samyak/Desktop/parbench_sam -v
+      --project-root . -v
 """
 
 from __future__ import annotations
@@ -524,7 +524,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--project-root",
         type=Path,
         default=PROJECT_ROOT,
-        help="Absolute path to the parbench_sam project root.",
+        help="Absolute path to the parbench project root.",
     )
     parser.add_argument(
         "--resume",

@@ -16,7 +16,7 @@ Usage:
         --source specs/rodinia-bfs-cuda.json \\
         --target specs/rodinia-bfs-omp.json \\
         --model claude-sonnet-4-20250514 \\
-        --project-root /home/samyak/Desktop/parbench_sam -v
+        --project-root . -v
 
     python3 scripts/evaluation/llm_evaluate.py --list-models
 
@@ -24,7 +24,7 @@ Usage:
         --source specs/rodinia-bfs-cuda.json \\
         --target specs/rodinia-bfs-omp.json \\
         --model claude-sonnet-4-20250514 \\
-        --project-root /home/samyak/Desktop/parbench_sam \\
+        --project-root . \\
         --dry-run -v
 """
 
@@ -1503,7 +1503,7 @@ def evaluate_translation(
         source_path: Path to source spec JSON.
         target_path: Path to target spec JSON.
         model: LLM model ID string.
-        project_root: Absolute path to parbench_sam root.
+        project_root: Absolute path to parbench root.
         augment_level: Augmentation level for source code (0 = no transforms).
         max_retries: Max LLM call attempts. 1 = zero-shot. >1 = iterative repair.
         verbose: Log verbose output.
@@ -2176,7 +2176,7 @@ def main() -> None:
         "--project-root",
         type=Path,
         required=False,
-        help="Absolute path to parbench_sam root directory (required for harness)",
+        help="Absolute path to parbench root directory (required for harness)",
     )
     parser.add_argument(
         "--augment-level",

@@ -67,7 +67,7 @@ if [ "$BYTES" -gt 104857600 ]; then
 # Evaluation Results
 
 Full evaluation results (2,344 per-task JSONs across 3 models) are available at the
-anonymous artifact repository: https://anonymous.4open.science/r/parbench-artifact-EE29/
+anonymous artifact repository: https://anonymous.4open.science/r/parbench-623F/
 
 This ZIP contains only code and specifications due to OpenReview's 100MB size limit.
 EOF

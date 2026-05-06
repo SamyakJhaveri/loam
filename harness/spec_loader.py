@@ -84,7 +84,7 @@ def resolve_paths(spec: dict[str, Any], project_root: Path) -> dict[str, Any]:
     spec:
         Parsed spec dict (unmodified).
     project_root:
-        Absolute path to the *parbench_sam/* project root.
+        Absolute path to the *parbench/* project root.
 
     Returns
     -------

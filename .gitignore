@@ -7,7 +7,7 @@ ParBench/downloads/
 # PDFs are tracked — meeting transcripts & reference papers are project assets
 # (conversation transcripts with research team are essential for progress tracking)
 # HeCBench downloads (1.4 GB source tree — re-download via wget script)
-parbench_sam/downloads/
+downloads/
 # XSBench source (regular clone, not submodule — commit pinned in spec provenance)
 xsbench/xsbench-src/
 # RSBench source (regular clone — commit pinned in spec provenance)

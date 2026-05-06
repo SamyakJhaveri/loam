@@ -21,7 +21,7 @@
   "llm_response_time_seconds": 30.014,
   "build_status": "fail",
   "build_time_seconds": 0.493,
-  "build_error_snippet": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:8:10: fatal error: lcutil.h: No such file or directory\n    8 | #include \"lcutil.h\"\n      |          ^~~~~~~~~~\ncompilation terminated.\ngmake[2]: *** [CMakeFiles/mixbench-cpu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
+  "build_error_snippet": "./mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:8:10: fatal error: lcutil.h: No such file or directory\n    8 | #include \"lcutil.h\"\n      |          ^~~~~~~~~~\ncompilation terminated.\ngmake[2]: *** [CMakeFiles/mixbench-cpu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -60,7 +60,7 @@
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:8:10: fatal error: lcutil.h: No such file or directory\n    8 | #include \"lcutil.h\"\n      |          ^~~~~~~~~~\ncompilation terminated.\ngmake[2]: *** [CMakeFiles/mixbench-cpu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
+      "build_error_snippet": "./mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:8:10: fatal error: lcutil.h: No such file or directory\n    8 | #include \"lcutil.h\"\n      |          ^~~~~~~~~~\ncompilation terminated.\ngmake[2]: *** [CMakeFiles/mixbench-cpu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null

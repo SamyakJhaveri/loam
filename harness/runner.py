@@ -66,7 +66,7 @@ def run_spec(
     spec:
         Parsed spec dict.
     project_root:
-        Absolute path to the *parbench_sam/* project root.
+        Absolute path to the *parbench/* project root.
     configuration:
         Name of the entry in ``run.input_configurations`` to use
         (e.g. ``"correctness"`` or ``"performance"``).

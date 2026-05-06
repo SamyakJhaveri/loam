@@ -21,7 +21,7 @@
   "llm_response_time_seconds": 100.029,
   "build_status": "fail",
   "build_time_seconds": 0.528,
-  "build_error_snippet": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp: In function \u2018double {anonymous}::run_kernel(T*, long int, int, unsigned int, unsigned int, bool, std::size_t)\u2019:\n/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:86:35: error: \u2018j\u2019 was not declared in this scope\n   86 |       sink += static_cast<double>(j = 0, 1);  // keeps loop side-effects alive\n      |                                   ^\ngmake[2]: *** [CMakeFiles/mixbench-cpu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
+  "build_error_snippet": "./mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp: In function \u2018double {anonymous}::run_kernel(T*, long int, int, unsigned int, unsigned int, bool, std::size_t)\u2019:\n./mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:86:35: error: \u2018j\u2019 was not declared in this scope\n   86 |       sink += static_cast<double>(j = 0, 1);  // keeps loop side-effects alive\n      |                                   ^\ngmake[2]: *** [CMakeFiles/mixbench-cpu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -60,7 +60,7 @@
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp: In function \u2018double {anonymous}::run_kernel(T*, long int, int, unsigned int, unsigned int, bool, std::size_t)\u2019:\n/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:86:35: error: \u2018j\u2019 was not declared in this scope\n   86 |       sink += static_cast<double>(j = 0, 1);  // keeps loop side-effects alive\n      |                                   ^\ngmake[2]: *** [CMakeFiles/mixbench-cpu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
+      "build_error_snippet": "./mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp: In function \u2018double {anonymous}::run_kernel(T*, long int, int, unsigned int, unsigned int, bool, std::size_t)\u2019:\n./mixbench/mixbench-src/mixbench-cpu/mix_kernels_cpu.cpp:86:35: error: \u2018j\u2019 was not declared in this scope\n   86 |       sink += static_cast<double>(j = 0, 1);  // keeps loop side-effects alive\n      |                                   ^\ngmake[2]: *** [CMakeFiles/mixbench-cpu.dir/build.make:90: CMakeFiles/mixbench-cpu.dir/mix_kernels_cpu.cpp.o] Error 1\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cpu.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null

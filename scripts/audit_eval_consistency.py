@@ -21,7 +21,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-RESULTS_DIR = Path("/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b")
+RESULTS_DIR = Path("./results/evaluation/together-qwen-3.5-397b-a17b")
 
 def main():
     issues = defaultdict(list)  # category -> list of (filename, detail)

@@ -24,7 +24,7 @@ from harness.spec_loader import load_spec
 from harness.verifier import verify_run
 
 
-PROJECT_ROOT = Path("/home/samyak/Desktop/parbench_sam")
+PROJECT_ROOT = Path(".")
 SPECS_DIR = PROJECT_ROOT / "specs"
 
 # One known-PASS spec per suite -- avoids KNOWN_FAIL specs.

@@ -17,7 +17,7 @@ Checks:
 
 Usage:
     python3 scripts/analysis/validate_characterization.py \\
-        --project-root /home/samyak/Desktop/parbench_sam
+        --project-root .
 """
 
 from __future__ import annotations

@@ -6,13 +6,13 @@ Unified script combining main-body figures (F2--F7), appendix figures
 
 Usage:
     python3 scripts/generate_paper_figures.py \
-      --project-root /home/samyak/Desktop/parbench_sam \
+      --project-root . \
       --figure all \
       --output-dir docs/paper/figures
 
     # Single figure:
     python3 scripts/generate_paper_figures.py \
-      --project-root /home/samyak/Desktop/parbench_sam \
+      --project-root . \
       --figure F3 \
       --output-dir docs/paper/figures
 """

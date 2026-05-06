@@ -225,7 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--project-root",
         default=".",
-        help="Path to parbench_sam/ project root (default: cwd)",
+        help="Path to parbench/ project root (default: cwd)",
     )
     parser.add_argument(
         "--manifest",

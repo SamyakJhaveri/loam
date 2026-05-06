@@ -23,7 +23,7 @@ Dependencies: scipy, numpy (install via pip in venv)
 
 Usage:
     python3 scripts/analysis/statistical_analysis.py \\
-        --project-root /home/samyak/Desktop/parbench_sam
+        --project-root .
 """
 
 from __future__ import annotations
@@ -1084,7 +1084,7 @@ def main():
         epilog=(
             "Examples:\n"
             "  python3 scripts/analysis/statistical_analysis.py \\\n"
-            "      --project-root /home/samyak/Desktop/parbench_sam\n"
+            "      --project-root .\n"
             "\n"
             "  python3 scripts/analysis/statistical_analysis.py --alpha 0.01\n"
         ),

@@ -1,7 +1,7 @@
 {
   "metadata": {
     "generated": "2026-05-04T19:49:31.429678+00:00",
-    "project_root": "/home/samyak/Desktop/parbench_sam",
+    "project_root": ".",
     "script": "benchmark_characterization.py",
     "corpus_size": 35
   },

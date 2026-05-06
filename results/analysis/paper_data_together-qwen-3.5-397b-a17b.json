@@ -1,7 +1,7 @@
 {
   "generated_at": "2026-05-06T03:37:01.222957+00:00",
   "model": "together-qwen-3.5-397b-a17b",
-  "results_dir": "/home/samyak/Desktop/parbench_sam/results/evaluation/together-qwen-3.5-397b-a17b",
+  "results_dir": "./results/evaluation/together-qwen-3.5-397b-a17b",
   "suite_filter": null,
   "excluded_specs": [
     "hecbench-scan-omp_target",

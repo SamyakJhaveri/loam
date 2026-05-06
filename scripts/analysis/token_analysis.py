@@ -17,7 +17,7 @@ Output: results/analysis/token_analysis.json + .md (5 tables)
 
 Usage:
     python3 scripts/analysis/token_analysis.py \\
-        --project-root /home/samyak/Desktop/parbench_sam
+        --project-root .
 """
 
 from __future__ import annotations

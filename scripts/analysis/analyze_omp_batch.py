@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
-PROJECT_ROOT = Path("/home/samyak/Desktop/parbench_sam")
+PROJECT_ROOT = Path(".")
 LOG_DIR = PROJECT_ROOT / "results" / "phase3" / "omp_batch_logs"
 REPORT_PATH = PROJECT_ROOT / "results" / "phase3" / "omp_batch_analysis.md"
 REPORT_JSON = PROJECT_ROOT / "results" / "phase3" / "omp_batch_results.json"

@@ -21,7 +21,7 @@
   "llm_response_time_seconds": 71.52,
   "build_status": "fail",
   "build_time_seconds": 1.725,
-  "build_error_snippet": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu(13): error: name followed by \"::\" must be a class or namespace name\n  using benchmark_clock = std::chrono::steady_clock;\n                               ^\n\n1 error detected in the compilation of \"/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu\".\ngmake[2]: *** [CMakeFiles/mixbench-cuda.dir/build.make:90: CMakeFiles/mixbench-cuda.dir/mix_kernels_cuda.cu.o] Error 2\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cuda.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
+  "build_error_snippet": "./mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu(13): error: name followed by \"::\" must be a class or namespace name\n  using benchmark_clock = std::chrono::steady_clock;\n                               ^\n\n1 error detected in the compilation of \"./mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu\".\ngmake[2]: *** [CMakeFiles/mixbench-cuda.dir/build.make:90: CMakeFiles/mixbench-cuda.dir/mix_kernels_cuda.cu.o] Error 2\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cuda.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
   "run_status": null,
   "run_time_seconds": null,
   "run_exit_code": null,
@@ -60,7 +60,7 @@
       "run_status": null,
       "verify_status": null,
       "error_feedback_sent": null,
-      "build_error_snippet": "/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu(13): error: name followed by \"::\" must be a class or namespace name\n  using benchmark_clock = std::chrono::steady_clock;\n                               ^\n\n1 error detected in the compilation of \"/home/samyak/Desktop/parbench_sam/mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu\".\ngmake[2]: *** [CMakeFiles/mixbench-cuda.dir/build.make:90: CMakeFiles/mixbench-cuda.dir/mix_kernels_cuda.cu.o] Error 2\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cuda.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
+      "build_error_snippet": "./mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu(13): error: name followed by \"::\" must be a class or namespace name\n  using benchmark_clock = std::chrono::steady_clock;\n                               ^\n\n1 error detected in the compilation of \"./mixbench/mixbench-src/mixbench-cuda/mix_kernels_cuda.cu\".\ngmake[2]: *** [CMakeFiles/mixbench-cuda.dir/build.make:90: CMakeFiles/mixbench-cuda.dir/mix_kernels_cuda.cu.o] Error 2\ngmake[1]: *** [CMakeFiles/Makefile2:83: CMakeFiles/mixbench-cuda.dir/all] Error 2\ngmake: *** [Makefile:91: all] Error 2\n",
       "run_stderr_snippet": null,
       "run_stdout_snippet": null,
       "extraction_fail": null

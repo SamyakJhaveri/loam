@@ -164,7 +164,7 @@
       "correctness": {
         "status": "pass",
         "exit_code": 0,
-        "stdout_snippet": "[/home/samyak/Desktop/downloads/HeCBench-master/src/binomial-cuda/main] - Starting...\nGenerating input data...\nRunning GPU binomial tree...\nAverage kernel execution time : 773.060913 (us)\nOptions count            : 1024     \nTime steps               : 2048     \nTotal binomialOptionsGPU() time: 819.367859 msec\nOptions per second       : 1249.743896     \nRunning CPU binomial tree...\nComparing the results...\nGPU binomial vs. Black-Scholes\nL1 norm: 2.220214E-04\nCPU binomial vs. Black-Scholes\nL1 norm",
+        "stdout_snippet": "[./HeCBench-master/src/binomial-cuda/main] - Starting...\nGenerating input data...\nRunning GPU binomial tree...\nAverage kernel execution time : 773.060913 (us)\nOptions count            : 1024     \nTime steps               : 2048     \nTotal binomialOptionsGPU() time: 819.367859 msec\nOptions per second       : 1249.743896     \nRunning CPU binomial tree...\nComparing the results...\nGPU binomial vs. Black-Scholes\nL1 norm: 2.220214E-04\nCPU binomial vs. Black-Scholes\nL1 norm",
         "wall_time_seconds": null
       },
       "performance": {

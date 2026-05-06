@@ -71,7 +71,7 @@ def build_spec(
     spec:
         Parsed spec dict.
     project_root:
-        Absolute path to the *parbench_sam/* project root.
+        Absolute path to the *parbench/* project root.
     timeout:
         Max seconds for each subprocess call.
     verbose:
