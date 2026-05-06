@@ -71,7 +71,7 @@ No record sets found to validate.
   "name": "ParBench Kernel Specifications",
   "description": "206 JSON specification files defining parallel code translation tasks across CUDA, OpenMP, OpenCL, and OpenMP target offload APIs, sourced from 5 HPC benchmark suites (Rodinia, HeCBench, XSBench, RSBench, mixbench).",
   "license": "https://opensource.org/licenses/MIT",
-  "url": "https://anonymous.4open.science/r/parbench-artifact-EE29/",
+  "url": "https://anonymous.4open.science/r/parbench_artifact_neurips/",
   "version": "1.0.0",
   "keywords": [
     "parallel computing",

@@ -62483,18 +62483,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L183",
-      "weight": 1.0,
-      "_src": "augment_dataset_arithmetictransform",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_arithmetictransform",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -62577,6 +62565,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_arithmetictransform",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L183",
+      "weight": 1.0,
+      "_src": "augment_dataset_arithmetictransform",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_arithmetictransform",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -62687,18 +62687,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L184",
-      "weight": 1.0,
-      "_src": "augment_dataset_swapcondition",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_swapcondition",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -62781,6 +62769,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_swapcondition",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L184",
+      "weight": 1.0,
+      "_src": "augment_dataset_swapcondition",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_swapcondition",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -62855,18 +62855,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L185",
-      "weight": 1.0,
-      "_src": "augment_dataset_pointerarithmetictoarrayindex",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_pointerarithmetictoarrayindex",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -62949,6 +62937,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_pointerarithmetictoarrayindex",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L185",
+      "weight": 1.0,
+      "_src": "augment_dataset_pointerarithmetictoarrayindex",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_pointerarithmetictoarrayindex",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -63011,18 +63011,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L186",
-      "weight": 1.0,
-      "_src": "augment_dataset_typedefexpansion",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_typedefexpansion",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -63105,6 +63093,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_typedefexpansion",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L186",
+      "weight": 1.0,
+      "_src": "augment_dataset_typedefexpansion",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_typedefexpansion",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -63287,18 +63287,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L187",
-      "weight": 1.0,
-      "_src": "augment_dataset_changenames",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_changenames",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -63381,6 +63369,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_changenames",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L187",
+      "weight": 1.0,
+      "_src": "augment_dataset_changenames",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_changenames",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -63743,18 +63743,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L188",
-      "weight": 1.0,
-      "_src": "augment_dataset_changefunctionnames",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_changefunctionnames",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -63837,6 +63825,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_changefunctionnames",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L188",
+      "weight": 1.0,
+      "_src": "augment_dataset_changefunctionnames",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_changefunctionnames",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -64055,18 +64055,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/spec_loader.py",
-      "source_location": "L180",
-      "weight": 1.0,
-      "_src": "augment_dataset_augmentationconfig",
-      "_tgt": "spec_loader_get_prompt_payload",
-      "source": "augment_dataset_augmentationconfig",
-      "target": "spec_loader_get_prompt_payload"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/spec_loader.py",
@@ -64149,6 +64137,18 @@
       "confidence_score": 0.5,
       "source": "augment_dataset_augmentationconfig",
       "target": "spec_loader_rationale_210"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/spec_loader.py",
+      "source_location": "L180",
+      "weight": 1.0,
+      "_src": "augment_dataset_augmentationconfig",
+      "_tgt": "spec_loader_get_prompt_payload",
+      "source": "augment_dataset_augmentationconfig",
+      "target": "spec_loader_get_prompt_payload"
     },
     {
       "relation": "calls",
@@ -74641,114 +74641,6 @@
     {
       "relation": "uses",
       "confidence": "INFERRED",
-      "source_file": "harness/verifier.py",
-      "source_location": "L11",
-      "weight": 0.8,
-      "_src": "models_status",
-      "_tgt": "verifier_rationale_1",
-      "confidence_score": 0.5,
-      "source": "models_status",
-      "target": "verifier_rationale_1"
-    },
-    {
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "harness/verifier.py",
-      "source_location": "L11",
-      "weight": 0.8,
-      "_src": "models_status",
-      "_tgt": "verifier_rationale_22",
-      "confidence_score": 0.5,
-      "source": "models_status",
-      "target": "verifier_rationale_22"
-    },
-    {
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "harness/verifier.py",
-      "source_location": "L11",
-      "weight": 0.8,
-      "_src": "models_status",
-      "_tgt": "verifier_rationale_113",
-      "confidence_score": 0.5,
-      "source": "models_status",
-      "target": "verifier_rationale_113"
-    },
-    {
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "harness/verifier.py",
-      "source_location": "L11",
-      "weight": 0.8,
-      "_src": "models_status",
-      "_tgt": "verifier_rationale_164",
-      "confidence_score": 0.5,
-      "source": "models_status",
-      "target": "verifier_rationale_164"
-    },
-    {
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "harness/verifier.py",
-      "source_location": "L11",
-      "weight": 0.8,
-      "_src": "models_status",
-      "_tgt": "verifier_rationale_185",
-      "confidence_score": 0.5,
-      "source": "models_status",
-      "target": "verifier_rationale_185"
-    },
-    {
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "harness/verifier.py",
-      "source_location": "L11",
-      "weight": 0.8,
-      "_src": "models_status",
-      "_tgt": "verifier_rationale_222",
-      "confidence_score": 0.5,
-      "source": "models_status",
-      "target": "verifier_rationale_222"
-    },
-    {
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "harness/verifier.py",
-      "source_location": "L11",
-      "weight": 0.8,
-      "_src": "models_status",
-      "_tgt": "verifier_rationale_259",
-      "confidence_score": 0.5,
-      "source": "models_status",
-      "target": "verifier_rationale_259"
-    },
-    {
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "harness/verifier.py",
-      "source_location": "L11",
-      "weight": 0.8,
-      "_src": "models_status",
-      "_tgt": "verifier_rationale_337",
-      "confidence_score": 0.5,
-      "source": "models_status",
-      "target": "verifier_rationale_337"
-    },
-    {
-      "relation": "uses",
-      "confidence": "INFERRED",
-      "source_file": "harness/verifier.py",
-      "source_location": "L11",
-      "weight": 0.8,
-      "_src": "models_status",
-      "_tgt": "verifier_rationale_387",
-      "confidence_score": 0.5,
-      "source": "models_status",
-      "target": "verifier_rationale_387"
-    },
-    {
-      "relation": "uses",
-      "confidence": "INFERRED",
       "source_file": "harness/builder.py",
       "source_location": "L12",
       "weight": 0.8,
@@ -74889,6 +74781,114 @@
       "confidence_score": 0.5,
       "source": "models_status",
       "target": "cli_rationale_220"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "harness/verifier.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "_src": "models_status",
+      "_tgt": "verifier_rationale_1",
+      "confidence_score": 0.5,
+      "source": "models_status",
+      "target": "verifier_rationale_1"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "harness/verifier.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "_src": "models_status",
+      "_tgt": "verifier_rationale_22",
+      "confidence_score": 0.5,
+      "source": "models_status",
+      "target": "verifier_rationale_22"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "harness/verifier.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "_src": "models_status",
+      "_tgt": "verifier_rationale_113",
+      "confidence_score": 0.5,
+      "source": "models_status",
+      "target": "verifier_rationale_113"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "harness/verifier.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "_src": "models_status",
+      "_tgt": "verifier_rationale_164",
+      "confidence_score": 0.5,
+      "source": "models_status",
+      "target": "verifier_rationale_164"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "harness/verifier.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "_src": "models_status",
+      "_tgt": "verifier_rationale_185",
+      "confidence_score": 0.5,
+      "source": "models_status",
+      "target": "verifier_rationale_185"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "harness/verifier.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "_src": "models_status",
+      "_tgt": "verifier_rationale_222",
+      "confidence_score": 0.5,
+      "source": "models_status",
+      "target": "verifier_rationale_222"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "harness/verifier.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "_src": "models_status",
+      "_tgt": "verifier_rationale_259",
+      "confidence_score": 0.5,
+      "source": "models_status",
+      "target": "verifier_rationale_259"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "harness/verifier.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "_src": "models_status",
+      "_tgt": "verifier_rationale_337",
+      "confidence_score": 0.5,
+      "source": "models_status",
+      "target": "verifier_rationale_337"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "harness/verifier.py",
+      "source_location": "L11",
+      "weight": 0.8,
+      "_src": "models_status",
+      "_tgt": "verifier_rationale_387",
+      "confidence_score": 0.5,
+      "source": "models_status",
+      "target": "verifier_rationale_387"
     },
     {
       "relation": "uses",
@@ -75659,30 +75659,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/builder.py",
-      "source_location": "L99",
-      "weight": 1.0,
-      "_src": "models_buildresult",
-      "_tgt": "builder_build_spec",
-      "source": "models_buildresult",
-      "target": "builder_build_spec"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/cli.py",
-      "source_location": "L206",
-      "weight": 1.0,
-      "_src": "models_buildresult",
-      "_tgt": "cli_dummy_build",
-      "source": "models_buildresult",
-      "target": "cli_dummy_build"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/builder.py",
@@ -75825,6 +75801,30 @@
       "confidence_score": 0.5,
       "source": "models_buildresult",
       "target": "cli_rationale_220"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/builder.py",
+      "source_location": "L99",
+      "weight": 1.0,
+      "_src": "models_buildresult",
+      "_tgt": "builder_build_spec",
+      "source": "models_buildresult",
+      "target": "builder_build_spec"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/cli.py",
+      "source_location": "L206",
+      "weight": 1.0,
+      "_src": "models_buildresult",
+      "_tgt": "cli_dummy_build",
+      "source": "models_buildresult",
+      "target": "cli_dummy_build"
     },
     {
       "relation": "rationale_for",
@@ -77795,42 +77795,6 @@
       "confidence_score": 1.0
     },
     {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/cli.py",
-      "source_location": "L78",
-      "weight": 1.0,
-      "_src": "models_specresult",
-      "_tgt": "cli_cmd_build",
-      "source": "models_specresult",
-      "target": "cli_cmd_build"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/cli.py",
-      "source_location": "L101",
-      "weight": 1.0,
-      "_src": "models_specresult",
-      "_tgt": "cli_cmd_run",
-      "source": "models_specresult",
-      "target": "cli_cmd_run"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "harness/cli.py",
-      "source_location": "L127",
-      "weight": 1.0,
-      "_src": "models_specresult",
-      "_tgt": "cli_cmd_verify",
-      "source": "models_specresult",
-      "target": "cli_cmd_verify"
-    },
-    {
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "harness/cli.py",
@@ -77925,6 +77889,42 @@
       "confidence_score": 0.5,
       "source": "models_specresult",
       "target": "cli_rationale_220"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/cli.py",
+      "source_location": "L78",
+      "weight": 1.0,
+      "_src": "models_specresult",
+      "_tgt": "cli_cmd_build",
+      "source": "models_specresult",
+      "target": "cli_cmd_build"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/cli.py",
+      "source_location": "L101",
+      "weight": 1.0,
+      "_src": "models_specresult",
+      "_tgt": "cli_cmd_run",
+      "source": "models_specresult",
+      "target": "cli_cmd_run"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "harness/cli.py",
+      "source_location": "L127",
+      "weight": 1.0,
+      "_src": "models_specresult",
+      "_tgt": "cli_cmd_verify",
+      "source": "models_specresult",
+      "target": "cli_cmd_verify"
     },
     {
       "relation": "uses",
