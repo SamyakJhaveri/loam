@@ -1,6 +1,6 @@
 # Augmentation Integration — Status Report
 **Date:** 2026-03-10
-**Branch:** `main` (post `Merge branch 'erel/aug'`, commit `8efe990`)
+**Branch:** `main` (post `Merge branch 'feature/aug'`, commit `8efe990`)
 **Author:** Automated via Claude Code + subagent batch runs
 **Seed:** 42 for all tests
 
@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The augmentation pipeline (`erel/aug`) is **merged into `main`** and the end-to-end
+The augmentation pipeline (`feature/aug`) is **merged into `main`** and the end-to-end
 integration (`augment → build → run → verify`) works correctly at levels 1 and 2.
 Of the 49 Rodinia specs confirmed passing at baseline, **43/49 (88%) pass augmentation
 at level 2**. The 6 failures are all caused by fixable bugs in the transform implementations.
@@ -21,7 +21,7 @@ higher aggressiveness. No HeCBench specs could be tested because their source is
 
 | Question | Answer |
 |----------|--------|
-| Is `erel/aug` merged into `main`? | **YES** — commit `8efe990 "Merge branch 'erel/aug'"` |
+| Is `feature/aug` merged into `main`? | **YES** — commit `8efe990 "Merge branch 'feature/aug'"` |
 | Current branch | `main` |
 | What the merge brought in | `c_augmentation/` module (5 AST transforms + unit tests), `harness/spec_loader.py` augmentation wiring, `harness/cli.py --augment_level` flag, `scripts/augment_verify.py` |
 | Any outstanding changes to merge? | None — branch is fully integrated |
