@@ -6,20 +6,6 @@ OpenMP, etc.). It aggregates kernels from multiple existing benchmark suites and
 wraps each one in a machine-readable specification that drives automated build,
 run, verification, and LLM evaluation workflows.
 
-## Visualizations
-
-Interactive dashboards for ParBench results are hosted on GitHub Pages:
-
-**[https://samyakjhaveri.github.io/parbench_sam/](https://samyakjhaveri.github.io/parbench_sam/)**
-
-Available dashboards:
-- [Project Overview](https://samyakjhaveri.github.io/parbench_sam/overview.html)
-- [Build Results](https://samyakjhaveri.github.io/parbench_sam/build_results.html)
-- [Augmentation Results](https://samyakjhaveri.github.io/parbench_sam/results.html)
-- [Benchmark Landscape](https://samyakjhaveri.github.io/parbench_sam/benchmark_landscape.html)
-- [Architecture](https://samyakjhaveri.github.io/parbench_sam/architecture.html)
-- [Pipeline](https://samyakjhaveri.github.io/parbench_sam/pipeline.html)
-
 ## Project Structure
 
 ```
@@ -150,6 +136,13 @@ The validator checks:
 - Python 3.12+
 - `jsonschema` (`python3 -m pip install jsonschema`)
 
+### Hardware
+
+- **For reproducing paper tables/figures (Tier 2):** Any x86_64 machine, no GPU needed (~4 GB RAM)
+- **For running CUDA/OpenCL specs (Tier 3):** NVIDIA GPU (compute capability ≥ 7.0, e.g., RTX 3060+)
+- **For OpenMP-only specs:** Any multi-core x86_64 CPU (no GPU required)
+- **Tested platform:** NVIDIA RTX 4070, AMD Ryzen 9 7900X, Ubuntu 24.04, NVIDIA HPC SDK 24.3
+
 ## Installation
 
 Python 3.12 or later is required. Clone the repository, create a virtual environment, and install dependencies:
@@ -211,6 +204,74 @@ The build-run-verify harness also requires compilers for the target parallel API
    ```bash
    python3 -m harness pairs
    ```
+
+## Reproducing Paper Results
+
+Results reproduction is tiered by what you want to verify:
+
+### Tier 1: Pipeline Verification (free, ~5 min, no GPU needed)
+
+Confirm the harness and analysis pipeline work on your machine:
+
+```bash
+source env_parbench/bin/activate
+python3 scripts/validate_schema.py --all             # Schema validation (expect ~15 known errors from phantom specs)
+python3 -m harness info specs/rodinia-bfs-cuda.json  # Inspect a spec
+```
+
+### Tier 2: Reproduce Tables & Figures from Bundled Results (free, ~15 min, no GPU needed)
+
+All 2,344 per-task result JSONs are included in `results/evaluation/`. Regenerate every
+table and figure in the paper from these raw results:
+
+```bash
+# Docker (recommended — exact environment):
+cd artifact && docker build -t parbench . && docker run --rm -v $(pwd)/../output:/app/output parbench ./reproduce.sh
+
+# Or without Docker:
+bash artifact/reproduce.sh
+```
+
+Output lands in `output/` — 5 LaTeX tables (T1–T5) and 15 figures (F2–F7, C.1–C.4).
+Deterministic table values can be diffed against `expected_outputs/` for bit-exact verification.
+See `artifact/README.md` for full details.
+
+### Tier 3: Full Re-Evaluation (paid, ~8 hours, requires API keys + NVIDIA GPU)
+
+Re-run all 2,262 LLM evaluations from scratch. Requires:
+- NVIDIA GPU (CUDA 12.x) for build-run-verify of CUDA/OpenCL specs
+- API keys: Together AI (Qwen), Azure OpenAI (GPT-5.4, GPT-5.3-Codex)
+- Estimated cost: ~$150–200 in API credits (as of May 2026)
+
+```bash
+# Example: re-run Qwen on CUDA-to-OpenMP direction
+python3 scripts/evaluation/run_eval_batch.py \
+  --suite rodinia --direction cuda-to-omp \
+  --models together-qwen-3.5-397b-a17b \
+  --project-root . --resume -v
+```
+
+See `scripts/evaluation/README.md` and the paper's Appendix J for full campaign details.
+
+## Evaluation Results
+
+Pre-computed evaluation results for all three models are in `results/evaluation/`:
+
+```
+results/evaluation/
+├── together-qwen-3.5-397b-a17b/   # 708 result JSONs
+├── azure-gpt-5.4/                  # 822 result JSONs
+└── azure-gpt-5.3-codex/            # 814 result JSONs
+```
+
+Each JSON file represents one translation task and contains:
+- `overall_status`: PASS, BUILD_FAIL, RUN_FAIL, VERIFY_FAIL, or EXTRACTION_FAIL
+- `translation_code`: The LLM-generated translated source code
+- `build_result`, `run_result`, `verification_result`: Per-stage outcomes with stdout/stderr
+- `model`, `direction`, `source_spec`, `target_spec`: Task metadata
+- `augmentation_level`, `sample_id`: Experiment design coordinates
+
+After KNOWN_FAIL exclusion, 2,262 records are eval-eligible (the denominator for all paper statistics).
 
 ## Usage examples
 
@@ -320,6 +381,5 @@ append-only manifest -- these are not bugs. See `GUIDE.md` for details.
 
 ## Citation
 
-ParBench is being prepared for submission to SC26 (International Conference for High
-Performance Computing, Networking, Storage, and Analysis). Citation guidance will be
-added once the paper is published. <!-- VERIFY: SC26 submission status and citation details -->
+ParBench is under review at NeurIPS 2026 (Evaluations & Datasets Track). Citation
+guidance will be added upon publication.

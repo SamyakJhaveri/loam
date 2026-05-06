@@ -1,5 +1,5 @@
 {
-    "project_root": "/home/samyak/Desktop/parbench_sam",
-    "downloads_root": "/home/samyak/Desktop/parbench_sam",
-    "hecbench_root": "/home/samyak/Desktop/parbench_sam"
+    "project_root": ".",
+    "downloads_root": ".",
+    "hecbench_root": "."
 }
