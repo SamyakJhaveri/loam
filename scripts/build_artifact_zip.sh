@@ -15,8 +15,9 @@ rsync -a \
   --exclude='rodinia/' --exclude='xsbench-src/' --exclude='rsbench-src/' \
   --exclude='mixbench-src/' --exclude='graphify-out/' --exclude='.planning/' \
   --exclude='*.pyc' --exclude='__pycache__/' \
-  --exclude='Screenshot*' --exclude='*.png' \
+  --exclude='Screenshot*' --exclude='*.png' --exclude='*.zip' \
   --exclude='HANDOFF*.md' --exclude='CLAUDE.md' --exclude='AGENTS.md' \
+  --exclude='neeruipds*' \
   --exclude='.mcp.json' --exclude='meeting_notes/' \
   --exclude='analysis/' --exclude='.validation_passed' \
   --exclude='.codex_review_done' \
@@ -41,13 +42,14 @@ find "$ARTIFACT_DIR/parbench-artifact" -type f \( -name "*.json" -o -name "*.py"
 if grep -rn "samyak\|jhaveri" "$ARTIFACT_DIR/parbench-artifact/" \
    --include="*.py" --include="*.json" --include="*.md" \
    --include="*.toml" --include="*.sh" --include="*.txt" \
-   --include="*.tex" 2>/dev/null; then
+   --include="*.tex" --include="*.cfg" 2>/dev/null; then
     echo "ERROR: Identity leak found! Aborting."
     rm -rf "$ARTIFACT_DIR"
     exit 1
 fi
 
-# Build ZIP
+# Build ZIP (remove stale archive first — zip -r only adds/updates, never removes)
+rm -f "$PROJECT_ROOT/parbench-artifact-neurips2026.zip"
 cd "$ARTIFACT_DIR"
 zip -r "$PROJECT_ROOT/parbench-artifact-neurips2026.zip" parbench-artifact/
 SIZE=$(du -sh "$PROJECT_ROOT/parbench-artifact-neurips2026.zip" | cut -f1)

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-01T00:18:07.519773",
+  "generated_at": "2026-05-05T20:37:04.307677",
   "alpha": 0.05,
   "total_records": 2262,
   "wilson_cis": {
@@ -597,48 +597,6 @@
   },
   "direction_asymmetry": [
     {
-      "pair": "cuda-to-omp vs omp-to-cuda",
-      "forward_direction": "cuda-to-omp",
-      "reverse_direction": "omp-to-cuda",
-      "n_paired": 72,
-      "forward_pass_rate": 0.7083,
-      "reverse_pass_rate": 0.4306,
-      "table": {
-        "both_pass": 29,
-        "reverse_only": 2,
-        "forward_only": 22,
-        "both_fail": 19
-      },
-      "discordant": 24,
-      "method": "exact",
-      "p_value": 3.6e-05,
-      "alpha_corrected": 0.01,
-      "significant": true,
-      "cohens_h": 0.5691,
-      "effect_size": "medium"
-    },
-    {
-      "pair": "cuda-to-opencl vs opencl-to-cuda",
-      "forward_direction": "cuda-to-opencl",
-      "reverse_direction": "opencl-to-cuda",
-      "n_paired": 57,
-      "forward_pass_rate": 0.4386,
-      "reverse_pass_rate": 0.1228,
-      "table": {
-        "both_pass": 3,
-        "reverse_only": 4,
-        "forward_only": 22,
-        "both_fail": 28
-      },
-      "discordant": 26,
-      "method": "chi-squared",
-      "p_value": 0.000856,
-      "alpha_corrected": 0.01,
-      "significant": true,
-      "cohens_h": 0.7316,
-      "effect_size": "medium"
-    },
-    {
       "pair": "opencl-to-omp vs omp-to-opencl",
       "forward_direction": "opencl-to-omp",
       "reverse_direction": "omp-to-opencl",
@@ -657,6 +615,48 @@
       "alpha_corrected": 0.01,
       "significant": true,
       "cohens_h": -0.7635,
+      "effect_size": "medium"
+    },
+    {
+      "pair": "opencl-to-cuda vs cuda-to-opencl",
+      "forward_direction": "opencl-to-cuda",
+      "reverse_direction": "cuda-to-opencl",
+      "n_paired": 57,
+      "forward_pass_rate": 0.1228,
+      "reverse_pass_rate": 0.4386,
+      "table": {
+        "both_pass": 3,
+        "reverse_only": 22,
+        "forward_only": 4,
+        "both_fail": 28
+      },
+      "discordant": 26,
+      "method": "chi-squared",
+      "p_value": 0.000856,
+      "alpha_corrected": 0.01,
+      "significant": true,
+      "cohens_h": -0.7316,
+      "effect_size": "medium"
+    },
+    {
+      "pair": "omp-to-cuda vs cuda-to-omp",
+      "forward_direction": "omp-to-cuda",
+      "reverse_direction": "cuda-to-omp",
+      "n_paired": 72,
+      "forward_pass_rate": 0.4306,
+      "reverse_pass_rate": 0.7083,
+      "table": {
+        "both_pass": 29,
+        "reverse_only": 22,
+        "forward_only": 2,
+        "both_fail": 19
+      },
+      "discordant": 24,
+      "method": "exact",
+      "p_value": 3.6e-05,
+      "alpha_corrected": 0.01,
+      "significant": true,
+      "cohens_h": -0.5691,
       "effect_size": "medium"
     },
     {
@@ -681,16 +681,16 @@
       "effect_size": "medium"
     },
     {
-      "pair": "omp_target-to-omp vs omp-to-omp_target",
-      "forward_direction": "omp_target-to-omp",
-      "reverse_direction": "omp-to-omp_target",
+      "pair": "omp-to-omp_target vs omp_target-to-omp",
+      "forward_direction": "omp-to-omp_target",
+      "reverse_direction": "omp_target-to-omp",
       "n_paired": 9,
-      "forward_pass_rate": 1.0,
-      "reverse_pass_rate": 0.8889,
+      "forward_pass_rate": 0.8889,
+      "reverse_pass_rate": 1.0,
       "table": {
         "both_pass": 8,
-        "reverse_only": 0,
-        "forward_only": 1,
+        "reverse_only": 1,
+        "forward_only": 0,
         "both_fail": 0
       },
       "discordant": 1,
@@ -698,7 +698,7 @@
       "p_value": 1.0,
       "alpha_corrected": 0.01,
       "significant": false,
-      "cohens_h": 0.6797,
+      "cohens_h": -0.6797,
       "effect_size": "medium"
     }
   ],

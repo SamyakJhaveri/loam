@@ -1,7 +1,7 @@
 {
   "metadata": {
-    "generated_at": "2026-05-01T07:17:46.712827+00:00",
-    "git_hash": "a895759",
+    "generated_at": "2026-05-06T03:37:03.242336+00:00",
+    "git_hash": "10a1901",
     "project_root": "/home/samyak/Desktop/parbench_sam",
     "model": "azure-gpt-5.4",
     "excluded_specs": [
@@ -223,6 +223,33 @@
         "files_matched": 16,
         "derivation": "mcnemar_exact paired on (suite, kernel) for cuda-to-omp_target vs omp_target-to-cuda, L0 only"
       },
+      "cuda-to-omp vs omp-to-cuda": {
+        "value": {
+          "forward": "cuda-to-omp",
+          "reverse": "omp-to-cuda",
+          "test_result": {
+            "n_paired": 24,
+            "forward_pass_rate": 0.8333,
+            "reverse_pass_rate": 0.5,
+            "table": {
+              "both_pass": 12,
+              "reverse_only": 0,
+              "forward_only": 8,
+              "both_fail": 4
+            },
+            "discordant": 8,
+            "method": "exact",
+            "p_value": 0.007812,
+            "cohens_h": 0.7297,
+            "effect_size": "medium",
+            "alpha_corrected": 0.01,
+            "significant": true
+          }
+        },
+        "source": "computed",
+        "files_matched": 48,
+        "derivation": "mcnemar_exact paired on (suite, kernel) for cuda-to-omp vs omp-to-cuda, L0 only"
+      },
       "omp-to-opencl vs opencl-to-omp": {
         "value": {
           "forward": "omp-to-opencl",
@@ -303,33 +330,6 @@
         "source": "computed",
         "files_matched": 6,
         "derivation": "mcnemar_exact paired on (suite, kernel) for omp-to-omp_target vs omp_target-to-omp, L0 only"
-      },
-      "cuda-to-omp vs omp-to-cuda": {
-        "value": {
-          "forward": "cuda-to-omp",
-          "reverse": "omp-to-cuda",
-          "test_result": {
-            "n_paired": 24,
-            "forward_pass_rate": 0.8333,
-            "reverse_pass_rate": 0.5,
-            "table": {
-              "both_pass": 12,
-              "reverse_only": 0,
-              "forward_only": 8,
-              "both_fail": 4
-            },
-            "discordant": 8,
-            "method": "exact",
-            "p_value": 0.007812,
-            "cohens_h": 0.7297,
-            "effect_size": "medium",
-            "alpha_corrected": 0.01,
-            "significant": true
-          }
-        },
-        "source": "computed",
-        "files_matched": 48,
-        "derivation": "mcnemar_exact paired on (suite, kernel) for cuda-to-omp vs omp-to-cuda, L0 only"
       }
     },
     "augmentation_trends": {

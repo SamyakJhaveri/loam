@@ -232,7 +232,7 @@ cd artifact && docker build -t parbench . && docker run --rm -v $(pwd)/../output
 bash artifact/reproduce.sh
 ```
 
-Output lands in `output/` — 5 LaTeX tables (T1–T5) and 15 figures (F2–F7, C.1–C.4).
+Output lands in `output/` — 5 LaTeX tables (T1–T5) and 16 figures (F2–F7, C.3–C.4, per-model variants).
 Deterministic table values can be diffed against `expected_outputs/` for bit-exact verification.
 See `artifact/README.md` for full details.
 
@@ -251,7 +251,7 @@ python3 scripts/evaluation/run_eval_batch.py \
   --project-root . --resume -v
 ```
 
-See `scripts/evaluation/README.md` and the paper's Appendix J for full campaign details.
+See the paper's Appendix J for full campaign configuration and cost details.
 
 ## Evaluation Results
 
