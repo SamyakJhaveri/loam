@@ -1,0 +1,49 @@
+# CLAUDE.md — {{PROJECT_NAME}}
+
+> Bootstrapped from project-template on {{DATE}}. Flavors: {{FLAVORS}}.
+
+## What this project is
+
+(One paragraph. The reader of this file is Claude — frame the sentence as "what should I keep in mind when working on this codebase?")
+
+## Environment
+
+- `python3` always, never `python`. Venv: (path to venv if any).
+- Platform: (macOS / Linux / both).
+- (Any non-standard toolchain paths.)
+
+## Key Architecture
+
+| Path | Purpose |
+|------|---------|
+| (Add the few paths a fresh agent needs to know.) | |
+
+## Invariants
+
+(Things that must NEVER be violated. Hard rules with one-line justifications. Examples:)
+1. (e.g., "Never modify files under `results/` — they are immutable")
+2. (e.g., "Never push directly to `main` — always via PR")
+
+## Quality
+
+- Read before editing. No partial implementations. Verify before reporting done.
+- `/validate` before every commit (waves 1-3 enforced by pre-commit hook).
+- If unsure, say so explicitly — never guess silently.
+
+## Conditional Rules (`.claude/rules/`)
+
+| File | Triggers on | Key content |
+|------|-------------|-------------|
+| `workflow.md`        | Always           | 6-stage workflow + anti-patterns |
+| `validation-loop.md` | Always           | 4-wave validation protocol |
+| `python.md`          | `*.py`           | Python style and CLI conventions |
+
+(Add project-specific conditional rules here as you write them.)
+
+## Project skills
+
+See `.claude/skills/`. The `template-sync` skill is for moving Claude Code assets between this project and the project-template buffer.
+
+## Date
+
+Today's date is {{DATE}}.

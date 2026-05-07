@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/samyakjhaveri/project-template/template-manifest.schema.json",
+  "title": "template-manifest.json",
+  "description": "Records the relationship between a project and the project-template it was bootstrapped from. Lives at the project root. Used by template-sync to classify assets as generic / flavor / project-local.",
+  "type": "object",
+  "required": ["template", "flavors", "created_at", "schema_version"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "description": "Bumped when the manifest format changes incompatibly.",
+      "const": 1
+    },
+    "template": {
+      "type": "object",
+      "required": ["repo", "commit", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "repo": {
+          "type": "string",
+          "description": "GitHub repo of the template, e.g. 'samyakjhaveri/project-template'."
+        },
+        "commit": {
+          "type": "string",
+          "description": "SHA of the template commit at bootstrap time.",
+          "pattern": "^[0-9a-f]{7,40}$"
+        },
+        "path": {
+          "type": "string",
+          "description": "Local path to the template clone at bootstrap time. Used as a fallback when $TEMPLATE_PATH is unset."
+        }
+      }
+    },
+    "flavors": {
+      "type": "array",
+      "description": "Ordered list of flavors applied (init-project.sh + any add-flavor.sh calls).",
+      "items": {
+        "type": "string",
+        "enum": ["research", "paper-writing", "software-eng", "ml", "hpc"]
+      },
+      "uniqueItems": true
+    },
+    "project_name": {
+      "type": "string",
+      "description": "The project's short name, used in promote-branch naming and seed-doc placeholders."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp of bootstrap."
+    },
+    "asset_overrides": {
+      "type": "object",
+      "description": "Map of asset relpaths to layer overrides. Used when a project asset's layer differs from its origin (e.g., a generic-core skill that the user has localized and explicitly does NOT want promoted).",
+      "additionalProperties": {
+        "type": "string",
+        "enum": ["generic", "flavor:research", "flavor:paper-writing", "flavor:software-eng", "flavor:ml", "flavor:hpc", "project-local"]
+      }
+    }
+  }
+}
