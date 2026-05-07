@@ -5,7 +5,7 @@
 \parbench{} draws on three lines of work: code translation benchmarks, LLM-for-HPC evaluation, and robustness testing.
 
 \paragraph{General-purpose code benchmarks.}
-Execution-based evaluation is the standard for measuring functional correctness, but existing benchmarks do not cover parallel HPC translation. HumanEval~\cite{HumanEval2021} and TransCoder~\cite{TransCoder2020} operate at function granularity, while SWE-bench~\cite{SWEbench2024} targets repository-level issue resolution—neither exercises GPU memory models, thread synchronization, or host-device coordination. SWE-bench Illusion~\cite{SWEbenchIllusion2025} further shows that static scores can overstate capability when evaluation methodology is not carefully controlled, motivating \parbench{}'s conjunctive build-run-verify pipeline and augmentation robustness probes.
+Execution-based evaluation is the standard for measuring functional correctness, but existing benchmarks do not cover parallel HPC translation. HumanEval~\cite{HumanEval2021} and TransCoder~\cite{TransCoder2020} operate at function granularity, while SWE-bench~\cite{SWEbench2024} targets repository-level issue resolution—neither exercises GPU memory models, thread synchronization, or host-device coordination. SWE-bench Illusion~\cite{SWEbenchIllusion2025} further shows that high benchmark scores can reflect training-data memorization rather than genuine reasoning ability, motivating \parbench{}'s augmentation robustness probes. 
 
 
 \paragraph{Parallel-code benchmarks.}

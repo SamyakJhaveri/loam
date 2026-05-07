@@ -1,131 +1,156 @@
-# HANDOFF: Fix 2 Anonymization Leaks in Anonymous Artifact
+# HANDOFF: Create RESULTS.md for Anonymous Branch
 
 **Date:** 2026-05-06
-**Priority:** HIGH — blocks NeurIPS double-blind compliance
+**Priority:** HIGH — reviewers currently have no top-level results summary
 **Project root:** `/home/samyak/Desktop/parbench_sam`
-
----
-
-## What Is This?
-
-Erel reviewed the anonymous GitHub mirror at `anonymous.4open.science` (synced from the `anonymous` branch) and found **2 identity leaks** that break NeurIPS double-blind compliance. This handoff contains the complete, adversarially-reviewed plan to fix both leaks on main, cherry-pick to anonymous, push, and verify.
-
-The full audit report is at `/home/samyak/Desktop/parbench_sam/anon_audit_report.md`.
 
 ---
 
 ## Goal
 
-Fix 2 identity leaks in result files, commit on main, cherry-pick to the `anonymous` branch with a sanitized commit message, push anonymous, and have the user re-sync the `anonymous.4open.science` mirror.
+Create `RESULTS.md` at the project root so NeurIPS reviewers landing on the anonymous GitHub can immediately see evaluation results. Link it at the top of `README.md`. Cherry-pick to the `anonymous` branch.
+
+Every number must be read from existing data files (listed below). Do not copy numbers from memory or documentation.
 
 ---
 
 ## What's Done (DO NOT REDO)
 
-| Item | Status |
-|------|--------|
-| Erel's full audit of the anonymous artifact | Done |
-| Audit report written to `anon_audit_report.md` | Done |
-| Confirmed scope: searched entire anonymous branch for `erel` and `/home/sam` | Done — exactly 2 files |
-| Confirmed `.bak` files already clean on anonymous branch | Done |
-| Confirmed `meeting_notes/`, `docs/`, `run.log` NOT on anonymous branch | Done |
-| Adversarial plan review by `plan-reviewer` agent | Done — 3 BLOCKs fixed, 7 FLAGs addressed |
-| Detailed execution plan written | Done — at `.claude/plans/i-got-erel-to-majestic-globe.md` |
+- Brainstorming, plan-reviewer critique (18 concerns fixed), CLI flag verification, branch comparison — all done
+- Data is current (verified 2026-05-06 — `expected_outputs/` matches `eval_summary.json`)
+- No data regeneration needed
 
 ---
 
-## What Needs Doing — 2 Issues, 6 Steps
+## Skills to Load
 
-### The 2 Issues
-
-**Issue 1 (HIGH):** `erel/aug` branch name in archived augmentation status report
-- **File:** `/home/samyak/Desktop/parbench_sam/results/augmentation/_archive/pre-phase3-2026-03-16/augmentation_status_report_2026-03-10.md`
-- **What:** 4 occurrences of `erel/aug` across lines 3, 11, 24 → replace with `feature/aug`
-- **Tool:** Edit tool (`.md` file — not blocked by hooks)
-
-**Issue 2 (MEDIUM):** `/home/sam` path fragment in evaluation result JSON
-- **File:** `/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-5.4/mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-s1.json`
-- **What:** 2 occurrences of `/home/sam\n` in `build_error_snippet` fields (lines 24, 63) → replace with `/home/user\n`
-- **Tool:** `sed -i` via Bash (**NOT Edit tool** — see Hook Warnings below)
-
-### The 6 Steps (detailed plan at `.claude/plans/i-got-erel-to-majestic-globe.md`)
-
-1. **Fix Issue 1** — 3 Edit calls on the `.md` file, verify with grep
-2. **Fix Issue 2** — 1 `sed -i` command on the JSON file, verify with grep + JSON parse
-3. **Broad re-scan** — grep for `\berel\b`, `/home/sam`, `samyak`, `jhaveri`, `@*.edu` in `results/`
-4. **Commit on main** — ask user to skip `/validate` (data-only fix) or run it after edits
-5. **Cherry-pick to anonymous** — `--no-commit` + sanitized commit message (no personal names)
-6. **Push anonymous** — `git push origin anonymous`, tell user to push main and re-sync mirror
+1. `andrej-karpathy-skills:karpathy-guidelines` — before code changes
+2. `/validate` — before commit
 
 ---
 
-## Hook Warnings (CRITICAL)
+## Data Sources (all paths relative to project root)
 
-Three hooks will interfere if you don't follow the plan:
+| Source | Path | What it has |
+|--------|------|-------------|
+| T1 | `expected_outputs/t1_overall_pass.tex` | Per-model pass rates with Wilson 95% CIs |
+| T2 | `expected_outputs/t2_model_comparison.tex` | Per-model per-direction (L0, s0, 6 standard dirs) |
+| T3 | `expected_outputs/t3_passk.tex` | pass@k, always-pass/noisy/hard-fail |
+| T4 | `expected_outputs/t4_augmentation.tex` | L0-L4 augmentation robustness |
+| T5 | `expected_outputs/t5_stats.tex` | McNemar, Cohen's h, odds ratios |
+| JSON | `results/evaluation/eval_summary.json` | Failure taxonomy, by_direction (aggregate), by_complexity, total_tasks |
+| MD | `results/evaluation/eval_summary.md` | Per-kernel heatmap (cuda→omp, L0) |
 
-| Hook | Trigger | Effect | Workaround |
-|------|---------|--------|------------|
-| `result-immutability.sh` | Edit/Write on `results/evaluation/*.json` | BLOCKS the edit | Use `sed -i` via Bash for the JSON file |
-| `pre-commit-gate.sh` | `git commit` without `.validation_passed` | BLOCKS the commit | Either run `/validate` after ALL edits, or ask user to skip (create sentinel manually) |
-| `sentinel-cleanup.sh` | Any Edit/Write | Deletes `.validation_passed` | Run `/validate` AFTER all edits, BEFORE commit |
-
----
-
-## What Worked (from the research session)
-
-- **Searching the anonymous branch directly** (`git show origin/anonymous:<path>`) was the most reliable way to confirm which files are actually exposed
-- **`grep -o | wc -l`** counts total string occurrences (not lines) — important because line 24 has 2 occurrences of `erel/aug`
-- **plan-reviewer agent** caught 3 blockers and 7 flags that would have caused the executing session to fail
-- **Hook research** was critical — 3 hooks actively interfere with this task
-
-## What Didn't Work / Traps to Avoid
-
-- **Don't use Edit tool on `results/evaluation/*.json`** — `result-immutability.sh` hook hard-blocks it (exit code 2). Use `sed -i` via Bash.
-- **Don't skip the validation sentinel** — the pre-commit gate checks for `.validation_passed` even for data-only changes. Either run `/validate` or create the sentinel manually with user approval.
-- **Don't run `/validate` before edits** — `sentinel-cleanup.sh` deletes the sentinel after every Edit/Write. Order must be: edits → validate → commit.
-- **Don't cherry-pick with the original commit message** — it contains "Erel's audit" which leaks a collaborator name on the anonymous branch. Use `git cherry-pick --no-commit` + write a sanitized message.
-- **Don't merge main↔anonymous** — they've diverged. Cherry-pick only.
-- **Don't `git push origin main`** — Bash permissions block it. User must run `! git push origin main`.
-- **`grep -c` counts LINES, not occurrences** — `erel/aug` appears on 3 lines but 4 times. Use `grep -o | wc -l` for occurrence count.
+**Denominator warning:** T1 = full corpus (Qwen 626, GPT 822, Codex 814). T2 = L0 + sample_id=0 + 6 dirs only (Qwen 138, GPT 120, Codex 120). Always footnote which slice a table uses.
 
 ---
 
-## Detailed Execution Plan
+## 4 Steps
 
-The full step-by-step plan with exact edit strings, exact commands, exact verification checks, and exact expected outputs is at:
+### Step 1: Create RESULTS.md
 
-**`/home/samyak/Desktop/parbench_sam/.claude/plans/i-got-erel-to-majestic-globe.md`**
+**File:** `/home/samyak/Desktop/parbench_sam/RESULTS.md`
 
-Read that file and execute it top to bottom. It is self-contained — no exploration or research needed.
+Read each source file above and convert LaTeX tables to markdown.
+
+**Core sections (always visible):**
+
+1. **Title + Intro** — "ParBench — Evaluation Results". State: 5 suites, 206 specs, 4 APIs, 3 models. Read `total_tasks` from `eval_summary.json`.
+2. **Overall Pass Rates** — Convert `t1_overall_pass.tex` to markdown. Include Wilson CIs.
+3. **Per-Direction Pass Rates** — Convert `t2_model_comparison.tex` to markdown. Footnote: "L0 canonical (first sample, 6 standard directions). Totals differ from Table 1."
+4. **Failure Taxonomy** — From `eval_summary.json > failure_taxonomy`. Compute each as % of total failures.
+5. **Key Findings** — 5 bullets, each number extracted from data:
+   - BUILD_FAIL dominance → `eval_summary.json > failure_taxonomy`
+   - Direction asymmetry → `eval_summary.json > by_direction` (cuda-to-omp vs opencl-to-cuda)
+   - GPT-5.4 ≈ Codex → `t5_stats.tex`
+   - Augmentation robust → `t4_augmentation.tex`
+   - Systematic failures → `t3_passk.tex` hard-fail counts
+6. **Reproduction** — Docker one-liner + link to `artifact/README.md`
+
+**Deep-dive (single collapsible `<details>` block):**
+
+7. **Detailed Analysis** containing:
+   - pass@k table (from `t3_passk.tex`)
+   - Augmentation robustness table (from `t4_augmentation.tex`)
+   - Statistical tests table (from `t5_stats.tex`)
+   - Translation complexity (from `eval_summary.json > by_complexity`)
+   - Per-kernel heatmap (from `eval_summary.md` kernel matrix)
+
+**Verification:**
+```bash
+python3 -c "
+import json
+with open('results/evaluation/eval_summary.json') as f:
+    data = json.load(f)
+print('Total tasks:', data['total_tasks'])
+for m, s in data['by_model'].items():
+    print(f'{m}: {s[\"pass\"]}/{s[\"total\"]} = {s[\"rate\"]:.1%}')
+print('BUILD_FAIL:', data['failure_taxonomy']['BUILD_FAIL'])
+"
+# Grep RESULTS.md for these numbers — they must match
+```
+
+### Step 2: Edit README.md
+
+**File:** `/home/samyak/Desktop/parbench_sam/README.md`
+
+Insert after line 1 (H1 title), before line 3 (description):
+
+```markdown
+
+> **[Evaluation Results](RESULTS.md)** — Full results for three LLMs across 2,262 parallel code translation tasks, including pass rates, direction analysis, failure taxonomy, and per-kernel breakdowns.
+
+```
+
+Verify: `head -5 README.md` — title, blank, blockquote, blank, description.
+
+### Step 3: Identity Leak Check + Commit
+
+All must return empty:
+```bash
+grep -iE '(samyak|jhaveri|gal|erel|niranjan|erkap|university|institution)' RESULTS.md
+grep -E '@' RESULTS.md
+grep -E '/home/samyak|/Users/samyakjhaveri|parbench_sam' RESULTS.md
+grep -E 'github\.com/' RESULTS.md
+```
+
+Run `/validate`, then commit:
+```bash
+git add RESULTS.md README.md
+git commit -m "docs: add RESULTS.md with full evaluation summary for reviewer access"
+```
+
+### Step 4: Cherry-Pick to Anonymous
+
+```bash
+git checkout anonymous
+git cherry-pick <hash>
+# If conflicts: abort, create both files manually on anonymous, commit directly
+grep -iE '(samyak|jhaveri|gal|erel|niranjan|erkap)' RESULTS.md  # must be empty
+git checkout main
+```
+
+Ask user to push: `! git push origin main` and `! git push origin anonymous`
 
 ---
 
-## Key Files
+## Traps to Avoid
 
-| File | Role |
-|------|------|
-| `/home/samyak/Desktop/parbench_sam/anon_audit_report.md` | Erel's original audit report |
-| `/home/samyak/Desktop/parbench_sam/.claude/plans/i-got-erel-to-majestic-globe.md` | Detailed execution plan (read and follow) |
-| `/home/samyak/Desktop/parbench_sam/results/augmentation/_archive/pre-phase3-2026-03-16/augmentation_status_report_2026-03-10.md` | File to fix (Issue 1) |
-| `/home/samyak/Desktop/parbench_sam/results/evaluation/azure-gpt-5.4/mixbench-mixbench-opencl-to-mixbench-mixbench-cuda-s1.json` | File to fix (Issue 2) |
-| `/home/samyak/Desktop/parbench_sam/.claude/hooks/result-immutability.sh` | Hook that blocks Edit on JSON (read if blocked) |
-| `/home/samyak/Desktop/parbench_sam/.claude/hooks/pre-commit-gate.sh` | Hook that blocks commit without sentinel |
-| `/home/samyak/Desktop/parbench_sam/.claude/hooks/sentinel-cleanup.sh` | Hook that deletes sentinel after edits |
+- **`analyze_eval.py --output-dir`** does NOT exist — use `--out-json`/`--out-md` if needed
+- **Don't mix denominators** — T1 (full corpus) vs T2 (L0-s0-6dir) have different totals
+- **`eval_summary.json > by_direction`** is aggregate across ALL models — per-model breakdown is ONLY in `t2_model_comparison.tex`
+- **Wilson CIs** are ONLY in `t1_overall_pass.tex`, not in the JSON
+- **Don't `git push origin main`** — blocked. User runs `! git push origin main`
 
 ---
 
-## Skills / Agents
+## Detailed Plan
 
-- **No skills or agent teams needed** — this is a 2-file, 4-edit task with verification
-- **Skip GSD kickoff** — GSD commands are no longer used in this project
-- If the pre-commit gate blocks you, read the Hook Warnings section above
+Full section-by-section instructions at:
+**`.claude/plans/lets-think-about-the-magical-popcorn.md`**
 
 ---
 
-## Other Pending Task (SEPARATE — do not combine)
+## Other Tasks (SEPARATE)
 
-There is a separate citation audit task that was previously in this HANDOFF.md. The full details of that task (16 bib fixes + 2 prose fixes) are preserved in git history at commit `6115df4` and in:
-- `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/CITATION_AUDIT.md`
-- `/home/samyak/Desktop/parbench_sam/docs/paper/NeurIPS_ready_version/CITATION_AUDIT.json`
-
-Do NOT combine the citation audit with this anonymization fix. They are independent tasks.
+Citation audit details in `docs/paper/NeurIPS_ready_version/CITATION_AUDIT.md`. Do NOT combine with this task.

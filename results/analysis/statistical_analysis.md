@@ -1,6 +1,6 @@
 # ParBench Statistical Analysis
 
-**Generated:** 2026-05-05T20:37:04.307677  |  **Records:** 2262  |  **Alpha:** 0.05
+**Generated:** 2026-05-06T19:01:09.788309  |  **Records:** 2262  |  **Alpha:** 0.05
 
 ## 1. Pass Rates with 95% Wilson Score CIs
 
@@ -97,11 +97,11 @@
 
 | Direction Pair | n paired | Fwd Rate | Rev Rate | Cohen's h | p-value | Significant? |
 |----------------|--------:|--------:|--------:|----------:|--------:|:------------:|
-| opencl-to-omp vs omp-to-opencl | 51 | 31.4% | 68.6% | -0.763 | 0.0005 | Yes |
-| opencl-to-cuda vs cuda-to-opencl | 57 | 12.3% | 43.9% | -0.732 | 0.0009 | Yes |
+| omp-to-opencl vs opencl-to-omp | 51 | 68.6% | 31.4% | 0.763 | 0.0005 | Yes |
 | omp-to-cuda vs cuda-to-omp | 72 | 43.1% | 70.8% | -0.569 | 0.0000 | Yes |
+| opencl-to-cuda vs cuda-to-opencl | 57 | 12.3% | 43.9% | -0.732 | 0.0009 | Yes |
+| omp_target-to-omp vs omp-to-omp_target | 9 | 100.0% | 88.9% | 0.680 | 1.0000 | No |
 | omp_target-to-cuda vs cuda-to-omp_target | 24 | 91.7% | 66.7% | 0.645 | 0.0312 | No |
-| omp-to-omp_target vs omp_target-to-omp | 9 | 88.9% | 100.0% | -0.680 | 1.0000 | No |
 
 ## 6. Augmentation Curves with CIs
 

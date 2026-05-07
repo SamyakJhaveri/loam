@@ -225,6 +225,102 @@ def test_model_comparison(
     }
 
 
+def test_model_comparison_task_level(
+    records: list[dict], alpha: float = 0.05
+) -> dict:
+    """Task-level omnibus chi-squared + pairwise Fisher's exact.
+
+    Within each task, 3 samples share the same kernel and direction, producing
+    high intra-task correlation (79-89% deterministic outcomes).  Treating
+    individual records as independent inflates the effective N.  This function
+    classifies each L0 task as pass-any (>=1 sample passes) or all-fail, then
+    runs the omnibus and pairwise tests on 142 tasks per model.
+    """
+    l0 = [r for r in records if r.get("augment_level") in (0, None)]
+    if not l0:
+        return {"error": "No L0 records found"}
+
+    # Build per-(model, task_id) pass counts.  task_id = source_spec→target_spec.
+    task_pass: dict[tuple[str, str], int] = defaultdict(int)
+    task_total: dict[tuple[str, str], int] = defaultdict(int)
+    for r in l0:
+        m = r.get("model", "unknown")
+        tid = f"{r.get('source_spec', '?')}->{r.get('target_spec', '?')}"
+        task_total[(m, tid)] += 1
+        if r.get("overall_status") == "PASS":
+            task_pass[(m, tid)] += 1
+
+    # Aggregate to per-model pass-any counts
+    model_pass_any: dict[str, int] = defaultdict(int)
+    model_tasks: dict[str, int] = defaultdict(int)
+    for (m, tid), total in task_total.items():
+        model_tasks[m] += 1
+        if task_pass[(m, tid)] > 0:
+            model_pass_any[m] += 1
+
+    models = sorted(model_tasks.keys())
+    if len(models) < 2:
+        return {"error": "Need at least 2 models"}
+
+    # Omnibus chi-squared: rows = [pass-any, all-fail], cols = models
+    pass_row = [model_pass_any[m] for m in models]
+    fail_row = [model_tasks[m] - model_pass_any[m] for m in models]
+    table = np.array([pass_row, fail_row])
+
+    chi2, p_omni, dof, expected = sp_stats.chi2_contingency(table)
+    n_total = int(table.sum())
+    min_expected = float(expected.min())
+
+    df_star = min(table.shape) - 1
+    cramers_v = math.sqrt(chi2 / (n_total * df_star)) if df_star > 0 and n_total > 0 else 0.0
+
+    # Pairwise Fisher's exact with Bonferroni
+    n_pairs = len(models) * (len(models) - 1) // 2
+    alpha_pair = alpha / n_pairs if n_pairs > 0 else alpha
+    pairwise = []
+    for i in range(len(models)):
+        for j in range(i + 1, len(models)):
+            m1, m2 = models[i], models[j]
+            pair_table = np.array([
+                [model_pass_any[m1], model_pass_any[m2]],
+                [model_tasks[m1] - model_pass_any[m1],
+                 model_tasks[m2] - model_pass_any[m2]],
+            ])
+            odds_ratio, p_fisher = sp_stats.fisher_exact(pair_table)
+            or_ci = _odds_ratio_ci(pair_table, alpha=alpha)
+            p1 = model_pass_any[m1] / max(model_tasks[m1], 1)
+            p2 = model_pass_any[m2] / max(model_tasks[m2], 1)
+            h = cohens_h(p1, p2)
+            pairwise.append({
+                "pair": f"{m1} vs {m2}",
+                "odds_ratio": round(odds_ratio, 4) if np.isfinite(odds_ratio) else "inf",
+                "or_ci_lower": or_ci["ci_lower"],
+                "or_ci_upper": or_ci["ci_upper"],
+                "p_value": round(p_fisher, 6),
+                "p_corrected": round(min(p_fisher * n_pairs, 1.0), 6),
+                "significant": p_fisher < alpha_pair,
+                "cohens_h": round(h, 4),
+                "effect_size": _interpret_h(h),
+            })
+
+    return {
+        "level": "task",
+        "unit": "pass-any (>=1 of n samples passes) vs all-fail",
+        "omnibus_chi2": round(chi2, 4),
+        "omnibus_p": round(p_omni, 6),
+        "dof": dof,
+        "cramers_v": round(cramers_v, 4),
+        "cramers_v_interpretation": _interpret_v(cramers_v, df_star),
+        "min_expected_count": round(min_expected, 1),
+        "low_expected_counts": min_expected < MIN_EXPECTED_CELL_COUNT,
+        "n_total": n_total,
+        "per_model": {m: {"pass_any": model_pass_any[m], "tasks": model_tasks[m]}
+                      for m in models},
+        "alpha_pairwise": round(alpha_pair, 6),
+        "pairwise": pairwise,
+    }
+
+
 # --------------------------------------------------------------------------- #
 # Augmentation level independence: chi-squared per group                       #
 # --------------------------------------------------------------------------- #
@@ -482,6 +578,67 @@ def compute_augmentation_trends(records: list[dict], alpha: float = 0.05) -> dic
         trend["levels"] = lvs
         trend["pass_counts"] = pc
         trend["total_counts"] = tc
+        results[model] = trend
+
+    return results
+
+
+def compute_augmentation_trend_l1_l4(
+    records: list[dict], alpha: float = 0.05
+) -> dict:
+    """Cochran-Armitage trend test on L1-L4 augmentation records only.
+
+    The existing compute_augmentation_trends() requires deterministic (temp=0)
+    records, which don't exist when all runs used temp>0.  L1-L4 augmentation
+    records have n=1 per task per level, so there is no within-task correlation
+    to inflate N.  This function also computes Fisher exact L1-vs-L4 per model.
+    """
+    aug = [r for r in records if r.get("augment_level", 0) >= 1]
+    if not aug:
+        return {"error": "No L1-L4 augmentation records found"}
+
+    by_model_level: dict[str, dict[int, dict[str, int]]] = defaultdict(
+        lambda: defaultdict(lambda: {"pass": 0, "total": 0})
+    )
+    for r in aug:
+        m = r.get("model", "unknown")
+        lv = r.get("augment_level", 0)
+        by_model_level[m][lv]["total"] += 1
+        if r.get("overall_status") == "PASS":
+            by_model_level[m][lv]["pass"] += 1
+
+    n_tests = len(by_model_level)
+    alpha_corrected = alpha / max(n_tests, 1)
+    results: dict[str, dict] = {}
+
+    for model in sorted(by_model_level.keys()):
+        level_data = by_model_level[model]
+        lvs = sorted(level_data.keys())
+        if len(lvs) < 2:
+            results[model] = {"error": "Fewer than 2 augmentation levels"}
+            continue
+
+        pc = [level_data[lv]["pass"] for lv in lvs]
+        tc = [level_data[lv]["total"] for lv in lvs]
+        trend = cochran_armitage_trend(pc, tc)
+        trend["alpha_corrected"] = round(alpha_corrected, 6)
+        trend["significant"] = trend["p_value"] < alpha_corrected
+        trend["levels"] = lvs
+        trend["pass_counts"] = pc
+        trend["total_counts"] = tc
+
+        # Fisher exact: L1 vs L4 (first vs last level)
+        l_first, l_last = lvs[0], lvs[-1]
+        p1, n1 = level_data[l_first]["pass"], level_data[l_first]["total"]
+        p4, n4 = level_data[l_last]["pass"], level_data[l_last]["total"]
+        fisher_table = np.array([[p1, p4], [n1 - p1, n4 - p4]])
+        fisher_or, fisher_p = sp_stats.fisher_exact(fisher_table)
+        trend["fisher_l1_vs_l4"] = {
+            "levels_compared": [l_first, l_last],
+            "odds_ratio": round(fisher_or, 4) if np.isfinite(fisher_or) else "inf",
+            "p_value": round(fisher_p, 6),
+        }
+
         results[model] = trend
 
     return results
@@ -1147,10 +1304,20 @@ def main():
     chi2_by_model = test_augmentation_independence(aug_records, group_key="model")
     chi2_by_direction = test_augmentation_independence(aug_records, group_key="direction")
 
-    # 4. Cochran-Armitage trend (cuda-to-omp)
+    # 4. Cochran-Armitage trend (cuda-to-omp, deterministic only — may be empty)
     if args.verbose:
         print("Running Cochran-Armitage trend tests...")
     aug_trends = compute_augmentation_trends(records, args.alpha)
+
+    # 4b. Task-level model comparison (pass-any vs all-fail on L0 tasks)
+    if args.verbose:
+        print("Running task-level model comparison...")
+    model_comp_task = test_model_comparison_task_level(records, args.alpha)
+
+    # 4c. Cochran-Armitage on L1-L4 stochastic augmentation records
+    if args.verbose:
+        print("Running L1-L4 augmentation trend tests...")
+    aug_trend_l1_l4 = compute_augmentation_trend_l1_l4(records, args.alpha)
 
     # 5. Direction asymmetry (McNemar's)
     if args.verbose:
@@ -1184,9 +1351,11 @@ def main():
         "total_records": len(records),
         "wilson_cis": all_cis,
         "model_comparison": model_comp,
+        "model_comparison_task_level": model_comp_task,
         "chi2_augmentation_by_model": chi2_by_model,
         "chi2_augmentation_by_direction": chi2_by_direction,
         "augmentation_trends": aug_trends,
+        "augmentation_trend_l1_l4": aug_trend_l1_l4,
         "direction_asymmetry": dir_asymmetry,
         "augmentation_curves": aug_curves,
         "sample_size_flags": size_flags,
