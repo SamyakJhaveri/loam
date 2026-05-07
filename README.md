@@ -1,5 +1,7 @@
 # ParBench — Meta-Benchmark for LLM-Based Parallel Code Translation
 
+> **[Evaluation Results](RESULTS.md)** — Full results for three LLMs across 2,262 parallel code translation tasks, including pass rates, direction analysis, failure taxonomy, and per-kernel breakdowns.
+
 ParBench is a curated meta-benchmark for evaluating how well large language models
 translate parallel source code across different programming APIs (CUDA, HIP, SYCL,
 OpenMP, etc.). It aggregates kernels from multiple existing benchmark suites and
