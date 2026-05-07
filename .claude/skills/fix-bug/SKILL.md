@@ -1,11 +1,11 @@
 ---
 name: fix-bug
-description: Bug fix workflow — reproduce, diagnose, plan, fix, verify, record. Use when a test fails, a spec breaks, a harness step fails, or eval results show an unexpected pattern. Mandates reproduction before diagnosis. Integrates with /validate on exit.
+description: Bug fix workflow — reproduce, diagnose, plan, fix, verify, record. Use when a test fails, a build step fails, or results show an unexpected pattern. Mandates reproduction before diagnosis. Integrates with /validate on exit.
 ---
 
 # Bug Fix Workflow
 
-Structured workflow for diagnosing and fixing a bug in ParBench.
+Structured workflow for diagnosing and fixing a bug.
 
 ## Arguments
 - `$ARGUMENTS` — bug description or spec name
@@ -39,9 +39,8 @@ Present the plan and **wait for user approval**.
 
 ### Phase 5: Verify
 - Reproduce the original error — confirm it's fixed
-- Run full validation: `python3 scripts/validate_schema.py --all`
-- Run unit tests: `python3 -m pytest c_augmentation/test_transforms.py -v`
-- Check for regressions in related specs
+- Run project test suite (e.g., `python3 -m pytest tests/ -v`)
+- Check for regressions in related areas
 
 ### Phase 6: Record
 - Update `.claude/rules/known-issues.md` if this was a known bug (mark as fixed)

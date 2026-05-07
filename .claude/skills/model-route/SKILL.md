@@ -16,14 +16,12 @@ opportunities to suggest the best model allocation.
 - `$ARGUMENTS` — optional task description in quotes. If omitted, prompt the user
   to describe what they want to do.
 
-## ParBench Policy Context
+## Policy Context
 
-**This project uses Opus everywhere** (see CLAUDE.md and workflow.md). The routing
+Check your project's CLAUDE.md for any model selection policy. The routing
 recommendation is advisory — it shows what the optimal allocation WOULD be under a
-cost-optimized policy. The user decides whether to follow it or stick with Opus.
-
-Exception: Haiku is used for commit/push operations per project policy (CLAUDE.md
-"Model selection" section).
+cost-optimized policy. The user decides whether to follow it or stick with their
+preferred model.
 
 ## Routing Matrix
 
@@ -96,7 +94,7 @@ Reasoning:
 Token estimate: ~<N>K tokens
 Cost estimate: ~$<X.XX> (at current pricing)
 
-ParBench policy: Opus everywhere (this recommendation is advisory)
+Project policy: see CLAUDE.md (this recommendation is advisory)
 ```
 
 ### Step 3: Suggest Parallelization (if applicable)
@@ -125,20 +123,18 @@ Alternative approaches:
   c) <Split>: <tradeoff> (e.g., "Opus for planning + Sonnet for implementation")
 ```
 
-## ParBench-Specific Routing Rules
+## Project-Specific Routing Rules
 
-These override the general matrix for this project:
+Override the general matrix based on your project's needs. Examples:
 
-| Task | Always Use | Reason |
-|------|-----------|--------|
-| Eval pipeline changes (`llm_evaluate.py`) | Opus | Wrong changes invalidate all results |
-| Spec arg verification | Opus | Requires reading source argc + understanding semantics |
-| Paper section writing | Opus | Scientific argumentation requires deep reasoning |
-| Dashboard refresh | Sonnet/subagent | Mechanical: read JSON, update HTML numbers |
-| Commit + push | Haiku | Per project policy (CLAUDE.md) |
+| Task | Suggested Model | Reason |
+|------|----------------|--------|
+| Architecture decisions | Opus | Wrong decisions are expensive to fix |
+| Paper / scientific writing | Opus | Deep reasoning required |
+| Commit + push | Haiku | Mechanical git operations |
 | `/validate` waves | Opus | Self-critic requires adversarial reasoning |
-| Augmentation transforms | Opus | AST manipulation requires precise reasoning |
 | `/catchup` briefing | Haiku | Mechanical: run git commands, format output |
+| Boilerplate generation | Sonnet | Pattern-following, no deep reasoning |
 
 ## Context Management
 

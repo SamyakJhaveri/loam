@@ -14,7 +14,7 @@
 #   0 = allow the command
 #   2 = BLOCK the command (stderr shown to Claude as error)
 #
-# Written by: ParBench post-session validation loop
+# Written by: post-session validation loop
 # Pattern from: Trail of Bits claude-code-config, disler/claude-code-hooks-mastery
 
 set -euo pipefail

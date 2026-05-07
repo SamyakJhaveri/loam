@@ -33,7 +33,7 @@ has articulated what result would DISPROVE their expectation.
 | "The hypothesis is obvious" | Obvious hypotheses are the ones most likely to be wrong. State it anyway. |
 | "I'll figure out the analysis later" | Post-hoc analysis is p-hacking. Define metrics before running. |
 | "It's a small experiment" | Small experiments with wrong methodology produce small, wrong results. |
-| "The reviewers won't care about this detail" | SC26 reviewers have rejected papers for exactly this. 30 seconds to verify. |
+| "The reviewers won't care about this detail" | Reviewers have rejected papers for exactly this. 30 seconds to verify. |
 
 ## Red Flags --- STOP
 
@@ -107,10 +107,7 @@ Cross-check against:
 - `results/augmentation/` --- augmentation results
 - Spec files in `specs/` --- verify spec counts and KNOWN_FAIL exclusions
 
-**KNOWN_FAIL specs (8 --- always excluded from eval):**
-rodinia-kmeans-cuda, rodinia-mummergpu-cuda, rodinia-mummergpu-omp,
-rodinia-hybridsort-cuda, rodinia-nn-opencl, rodinia-kmeans-opencl,
-hecbench-stencil1d-omp_target, hecbench-scan-omp_target
+**Check `.claude/rules/known-issues.md` for any KNOWN_FAIL items to exclude.**
 
 **Do NOT accept any claimed number without tracing it to data on disk.**
 
@@ -163,10 +160,7 @@ Do not allow the user to launch an eval batch or make a paper claim until READY.
 ## Project Context (Self-Contained)
 
 - **Project root:** `{{PROJECT_ROOT}}`
-- **Eval results:** `results/evaluation/{model}/` directories
-- **Models:** claude-sonnet, gemini-2.5-flash-lite, groq-llama-3.3-70b, together-qwen-3.5
-- **Suites:** rodinia (54 TRUE PASS, 6 KNOWN_FAIL), xsbench (4 PASS)
-- **Translation directions:** cuda-to-omp, omp-to-cuda, cuda-to-opencl, opencl-to-cuda, omp-to-opencl, opencl-to-omp (+ omp_target variants)
-- **Augmentation levels:** L0 (unaugmented) through L4
-- **Timing caveat:** Wall-clock times in result JSONs are unreliable for speedup claims. Kernel-level profiling (`nvprof`/`ncu` for CUDA, `omp_get_wtime` for OMP) required for performance numbers.
-- **Result JSON truth:** Use `overall_status` field (not top-level `run_status`) as authoritative verdict. `attempts[]` array is canonical per-attempt record.
+- **Results directory:** `results/` (check CLAUDE.md for structure)
+- Check CLAUDE.md and `.claude/rules/known-issues.md` for project-specific counts, models, and exclusions
+- **Timing caveat:** Wall-clock times are often unreliable for performance claims. Use proper profiling tools for performance numbers.
+- **Result truth:** Check CLAUDE.md for which fields/files are authoritative in your result format.

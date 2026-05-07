@@ -2,12 +2,11 @@
 
 Flavors are opt-in packs that layer additional skills/agents/hooks/rules and seed-docs onto the generic core at bootstrap time. They stack — pass multiple `--flavor` flags.
 
-## The five flavors
+## The four flavors
 
 | Flavor | Adds | Pick when |
 |--------|------|-----------|
-| `research`     | Hypothesis-driven workflow skills, results discipline | Research projects, applied investigations |
-| `paper-writing`| Drafting / citation audit / rebuttal skills          | Submitting a paper or technical report |
+| `research`     | Hypothesis workflow, paper-writing, citation audit, result protection | Research projects, papers, technical reports |
 | `software-eng` | Design records, architecture docs                    | Building software products |
 | `ml`           | ML run ledger, results index                         | Training models, ML pipelines |
 | `hpc`          | CUDA/OpenMP/OpenCL pattern guides, parallel review   | Parallel-computing work |
@@ -16,18 +15,16 @@ Flavors are opt-in packs that layer additional skills/agents/hooks/rules and see
 
 | Project type | Recommended flavors |
 |--------------|---------------------|
-| ML research with paper          | `research --flavor ml --flavor paper-writing` |
-| HPC research with paper         | `research --flavor hpc --flavor paper-writing` |
+| ML research with paper          | `research --flavor ml` |
+| HPC research with paper         | `research --flavor hpc` |
 | Greenfield SaaS                 | `software-eng` |
 | ML-powered product              | `software-eng --flavor ml` |
-| Pure paper / rebuttal cycle     | `paper-writing` |
 
 ## What each flavor adds
 
 See each flavor's `README.md`:
 
 - `flavors/research/README.md`
-- `flavors/paper-writing/README.md`
 - `flavors/software-eng/README.md`
 - `flavors/ml/README.md`
 - `flavors/hpc/README.md`

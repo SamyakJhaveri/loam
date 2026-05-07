@@ -59,8 +59,7 @@ This is the 10-step flow. **Never skip the questions.**
 
 4. **Suggest target layer.** Based on what the asset references, propose one of:
    - `generic` — domain-neutral, every project benefits
-   - `flavor:research` — applies when doing research projects
-   - `flavor:paper-writing` — paper drafting / submission / rebuttal workflows
+   - `flavor:research` — applies when doing research projects (includes paper-writing tools)
    - `flavor:software-eng` — building software products
    - `flavor:ml` — ML training / experiment management
    - `flavor:hpc` — CUDA / OpenMP / OpenCL / MPI / parallel-perf work

@@ -44,11 +44,9 @@ the normal status report.
 ## Project Context
 
 - **Project root:** `{{PROJECT_ROOT}}`
-- **Venv:** `source {{PROJECT_ROOT}}/env_parbench/bin/activate`
-- **Memory directory:** `/home/samyak/.claude/projects/-home-samyak-Desktop-parbench-sam/memory/`
-- **Results directory:** `results/evaluation/` — eval campaign results by model
-- **Spec counts:** 60 Rodinia (54 PASS, 6 KNOWN_FAIL), 4 XSBench (4 PASS)
-- **Models:** claude-sonnet, gemini-2.5-flash-lite, groq-llama-3.3-70b, together-qwen-3.5
+- **Venv:** auto-detect (`.venv/`, `venv/`, `env/`)
+- **Memory directory:** auto-detect from `~/.claude/projects/` (based on project root path)
+- Check CLAUDE.md for project-specific context (key counts, models, etc.)
 
 ## Workflow
 
@@ -89,8 +87,11 @@ eval batch running that should not be interrupted.
 Read the memory index at the memory directory path and check dates:
 
 ```bash
-# List memory files with modification times
-ls -lt /home/samyak/.claude/projects/-home-samyak-Desktop-parbench-sam/memory/*.md 2>/dev/null | head -10
+# Auto-detect memory directory from project root
+PROJECT_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+ENCODED_PATH=$(echo "$PROJECT_ROOT" | sed 's|/|-|g')
+MEMORY_DIR="$HOME/.claude/projects/$ENCODED_PATH/memory"
+ls -lt "$MEMORY_DIR"/*.md 2>/dev/null | head -10
 ```
 
 Flag any memory file not modified in 14+ days as potentially stale.

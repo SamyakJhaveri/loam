@@ -17,7 +17,7 @@ cat > /dev/null
 
 # Use a session-stable counter file. PPID is the Claude Code process (stable across
 # tool calls within a session, unlike $$ which changes per hook invocation).
-COUNTER_FILE="/tmp/parbench_context_counter_${PPID}"
+COUNTER_FILE="/tmp/claude_context_counter_${PPID}"
 
 # Initialize counter if missing
 if [ ! -f "$COUNTER_FILE" ]; then

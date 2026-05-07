@@ -1,11 +1,11 @@
 ---
 name: feature-dev
-description: Feature development workflow — explore, plan, implement, verify. Use when adding a new feature to harness, scripts, visualizations, or any non-trivial code change. NOT for single-file bug fixes (use fix-bug) or trivial edits (use gsd-quick).
+description: Feature development workflow — explore, plan, implement, verify. Use when adding a non-trivial feature. NOT for single-file bug fixes (use fix-bug).
 ---
 
 # Feature Development Workflow
 
-Structured workflow for implementing a new feature in ParBench.
+Structured workflow for implementing a new feature.
 
 ## Arguments
 - `$ARGUMENTS` — feature name/description

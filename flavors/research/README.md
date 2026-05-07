@@ -1,34 +1,45 @@
 # Flavor: research
 
-Adds tooling for research-style projects: hypothesis-driven investigation, experiment tracking, results discipline.
+Adds tooling for research-style projects: hypothesis-driven investigation, experiment tracking, results discipline, and paper writing.
 
 ## Adds to `.claude/`
 
-- `skills/grill-research/`        — adversarial pre-experiment interrogation
-- `skills/hypothesis-tree/`       — branching hypothesis manager
-- `skills/interpret-results/`     — hypothesis-first interpretation of results
-- `skills/mentoring/`             — research/HPC/SE teaching framework
-- `agents/regression-checker.md`  — baseline regression detector
-- `hooks/protect-results.sh`      — guards `results/` from accidental mutation
+### Skills
+- `skills/hypothesis-tree/`              — branching hypothesis manager
+- `skills/interpret-results/`            — hypothesis-first interpretation of results
+- `skills/paper-write/`                  — LaTeX section drafting with citation fetching
+- `skills/citation-audit/`              — bibliographic verification
+- `skills/cite-check/`                  — numeric claim tracing to raw results
+- `skills/paper-claim-audit/`           — paper numbers vs raw result verification
+- `skills/paper-review-sim/`            — conference-style peer review simulation
+- `skills/rebuttal/`                    — reviewer rebuttal pipeline
+- `skills/auto-paper-improvement-loop/` — iterative review-fix-recompile loop
+- `skills/aris-shared-references/`      — academic writing standards and protocols
+
+### Agents
+- `agents/paper-assembly-team.md` — multi-agent paper drafting team
+
+### Hooks
+- `hooks/protect-results.sh` — guards `results/` from accidental mutation
 
 ## Seeds at project root
 
 - `EXPERIMENTS.md` — running ledger of experiments
 - `FINDINGS.md`    — distilled insights from experiments
 - `RESULTS.md`     — index of result artifacts (immutable)
+- `REFERENCES.md`  — bibliography and reference tracking
 
 ## When to pick
 
-- ML research projects, applied research, exploratory analysis.
+- Research projects, applied research, exploratory analysis.
+- Any project producing a paper or technical report.
 - Any project where "what experiment have I run?" and "what did it tell me?" are recurring questions.
 
 ## When NOT to pick
 
-- A pure paper-writing or rebuttal effort with no new experiments — pick `paper-writing` instead.
 - A standard SaaS feature build — pick `software-eng` instead.
 
 ## Stacks well with
 
-- `paper-writing` (research project that's also producing a paper)
 - `ml` (ML research specifically)
 - `hpc` (HPC research / parallel computing experiments)

@@ -15,9 +15,8 @@ state, and teammate lifecycle management.
 - `$ARGUMENTS` — Free-text task description. If omitted, ask the user.
 - `--scenario <name>` — Use a pre-built template from [scenarios.md](scenarios.md).
   Skips Phase 2 (team design). Still requires user approval before launching.
-  Valid: `multi-model-eval`, `paper-assembly`, `failure-investigation`,
-  `cross-model-taxonomy`, `post-batch-analysis`, `augmentation-audit`,
-  `advisor-guided-implementation`.
+  Valid: `advisor-guided-implementation`, `failure-investigation`,
+  `research-analysis`, `codebase-migration`.
 - `--teammates N` — Override default teammate count.
 - `--all-opus` — Use Opus for all teammates (no advisor pattern). For tasks where
   Sonnet workers aren't sufficient (complex architecture, deep reasoning).
@@ -193,16 +192,14 @@ Teammates should reuse these rather than building from scratch:
 
 | Agent/Skill | Use for |
 |------------|---------|
-| `explorer` agent | Read-only codebase exploration |
-| `paper-drafter` agent | Writing paper sections (always reads data first) |
-| `eval-batcher` agent | Running LLM evaluation batches |
-| `spec-auditor` agent | Auditing spec JSON files |
 | `plan-reviewer` agent | Adversarial plan review |
 | `self-critic` agent | Adversarial self-review |
-| `consistency-checker` agent | Cross-checking docs vs code |
+| `code-simplifier` agent | Post-implementation cleanup |
 | `/writing-plans` skill | Creating implementation plans |
 | `/validate` skill | Post-session validation |
 | `/review` skill | Multi-agent code review |
+
+Check `.claude/agents/` for project-specific agents added by flavors.
 
 ## `--all-opus` Behavior
 
@@ -240,8 +237,8 @@ only, no file editing). Ranges account for varying advisor utilization.
 
 - **Delegate mode bug:** Teammates may not receive all tool results. Workaround:
   `claude --teammate-mode in-process`.
-- **Worktrees + submodules:** Teammates in worktrees can't access benchmark sources.
-  Never run eval-related teammates in worktrees.
+- **Worktrees + submodules:** Teammates in worktrees can't access git submodules.
+  Keep this in mind for tasks that depend on submodule content.
 - **File conflicts:** Two teammates editing the same file causes overwrites. Assign
   explicit file ownership in Phase 2.
 - **Context exhaustion:** Large directories (160+ files) fill context fast. Teammates
@@ -260,28 +257,29 @@ only, no file editing). Ranges account for varying advisor utilization.
 | Clean up entire team | Tell lead: "Clean up the team" |
 | Force in-process mode | `claude --teammate-mode in-process` |
 
-## Example: Appendix Figures Team
+## Example: API Refactor Team
 
-**Task:** "Add figures from `analysis/visualizations/` into the paper appendix,
-using data from `analysis/data/`, with `/writing-plans` and `paper-drafter` agent."
+**Task:** "Refactor the REST API layer to use a new router pattern,
+updating handlers and tests."
 
 **Phase 2 output:**
 ```
-## Proposed Team: appendix-figures
+## Proposed Team: api-refactor
 
-| Teammate    | Model  | Role                    | Scope                              | Skills/Agents    |
+| Teammate    | Model  | Role                    | Scope                                | Skills/Agents    |
 |-------------|--------|-------------------------|--------------------------------------|------------------|
 | advisor     | opus   | Strategic reviewer      | All areas (read-only)                | —                |
-| planner     | sonnet | Plan appendix structure | analysis/visualizations/, analysis/data/, docs/paper/appendix_*.md | /writing-plans |
-| writer      | sonnet | Draft appendix content  | docs/paper/appendix_*.md             | paper-drafter    |
-| critic      | sonnet | Review accuracy         | All teammate outputs (read-only)     | self-critic      |
+| planner     | sonnet | Plan migration order    | src/api/, src/routes/, tests/api/    | /writing-plans   |
+| implementer | sonnet | Apply refactoring       | src/api/, src/routes/                | —                |
+| critic      | sonnet | Review correctness      | All teammate outputs (read-only)     | self-critic      |
 
 Estimated cost: ~35-45% of all-Opus equivalent
 ```
 
 **Phase 3:** TeamCreate -> TaskCreate (3 tasks) -> Spawn advisor (Opus), wait for
 READY -> Spawn planner (Sonnet) with filled teammate-prompt.md -> Planner consults
-advisor on structure -> Planner produces plan -> Samyak approves -> Spawn writer
-(Sonnet) with plan + teammate-prompt.md -> Writer drafts appendix sections, sends
-milestones to lead -> Lead forwards to advisor -> Spawn critic (Sonnet) -> Critic
-reviews, escalates ambiguities to advisor -> Advisor signs off -> Present findings -> Done.
+advisor on migration order -> Planner produces plan -> User approves -> Spawn
+implementer (Sonnet) with plan + teammate-prompt.md -> Implementer applies changes,
+sends milestones to lead -> Lead forwards to advisor -> Spawn critic (Sonnet) ->
+Critic reviews, escalates ambiguities to advisor -> Advisor signs off -> Present
+findings -> Done.

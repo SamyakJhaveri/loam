@@ -16,7 +16,15 @@ set -euo pipefail
 cat > /dev/null
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
-VENV="$PROJECT_ROOT/env_parbench/bin/activate"
+
+# Try common venv locations
+for VENV_PATH in "$PROJECT_ROOT/.venv/bin/activate" "$PROJECT_ROOT/venv/bin/activate" "$PROJECT_ROOT/env/bin/activate"; do
+    if [ -f "$VENV_PATH" ]; then
+        # shellcheck disable=SC1090
+        source "$VENV_PATH"
+        break
+    fi
+done
 
 # Extract file_path from tool input
 FILE_PATH=$(python3 -c "
@@ -33,37 +41,12 @@ if [ -z "$FILE_PATH" ]; then
     exit 0
 fi
 
-# Activate venv for test commands
-if [ -f "$VENV" ]; then
-    # shellcheck disable=SC1090
-    source "$VENV"
-fi
-
-# Route to appropriate test based on file path
-if echo "$FILE_PATH" | grep -q "c_augmentation/"; then
-    echo "[post-edit-test] Running augmentation transform tests..."
-    timeout 30 python3 -m pytest "$PROJECT_ROOT/c_augmentation/test_transforms.py" -x -q --tb=line 2>&1 | tail -5 || true
-
-elif echo "$FILE_PATH" | grep -q "harness/"; then
-    echo "[post-edit-test] Smoke-testing harness import..."
-    timeout 30 python3 -m harness --help >/dev/null 2>&1 && echo "[post-edit-test] harness import OK" || echo "[post-edit-test] WARNING: harness import failed"
-
-elif echo "$FILE_PATH" | grep -q "scripts/evaluation/"; then
-    echo "[post-edit-test] Smoke-testing evaluation module import..."
-    timeout 30 python3 -c "
-import importlib, sys
-sys.path.insert(0, '$PROJECT_ROOT')
-importlib.import_module('scripts.evaluation.llm_evaluate')
-print('[post-edit-test] llm_evaluate import OK')
-" 2>&1 || echo "[post-edit-test] WARNING: llm_evaluate import failed"
-
-elif echo "$FILE_PATH" | grep -q "specs/"; then
-    echo "[post-edit-test] Validating spec schema..."
-    timeout 30 python3 "$PROJECT_ROOT/scripts/validate_schema.py" --spec "$FILE_PATH" 2>&1 | tail -5 || true
-
-else
-    # No test needed for other files
-    exit 0
+# Run pytest if the edited file is a Python file and a tests/ directory exists
+if echo "$FILE_PATH" | grep -qE '\.py$'; then
+    if [ -d "$PROJECT_ROOT/tests" ]; then
+        echo "[post-edit-test] Running tests..."
+        timeout 30 python3 -m pytest "$PROJECT_ROOT/tests/" -x -q --tb=line 2>&1 | tail -5 || true
+    fi
 fi
 
 exit 0

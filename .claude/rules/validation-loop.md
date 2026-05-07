@@ -2,20 +2,19 @@
 paths:
   - ".claude/hooks/**"
   - ".claude/skills/validate/**"
-  - ".claude/agents/verify-app.md"
   - ".claude/agents/self-critic.md"
 ---
 
 # Post-Session Validation Loop
 
 > Loads when working on validation hooks, skills, or agents.
-> Run `/validate` after implementation. Pre-commit hook requires waves 1-3 to pass.
+> Run `/validate` after implementation. Pre-commit hook requires validation to pass.
 
 ## Quick Reference
 
 ```bash
-/validate          # Full 4-wave validation (~3 min, 10+ agents)
-/validate quick    # Wave 1 only (~30s: schema + diff + security)
+/validate          # Full validation (~2 min)
+/validate quick    # Wave 1 only (~30s: code quality + diff review + self-critic)
 /validate fix      # Re-run failed waves after implementing fixes
 ```
 
@@ -23,14 +22,10 @@ paths:
 
 | Wave | Agents (parallel) | Gate | ~Time |
 |------|-------------------|------|-------|
-| 1 | verify-app, diff-reviewer, security-scanner | All must PASS | 30s |
-| 2 | test-synthesizer, regression-checker, spec-auditor* | All must PASS | 60s |
-| 3 | consistency-checker, code-simplifier† | consistency must PASS | 45s |
-| 4 | self-critic, plan-reviewer‡ | **Optional for commits** | 30s |
+| 1 | code-simplifier†, plan-reviewer, self-critic | self-critic or plan-reviewer FAIL blocks | 30s |
+| 2 | project tests, linter, shell syntax checks | Test failures or syntax errors block | 60s |
 
-*spec-auditor: only when `specs/` files changed
 †code-simplifier: advisory — WARN, not blocking
-‡Wave 4 uses Opus model. Not required by pre-commit gate — run manually as needed.
 
 ## Fix Loop Protocol
 
@@ -46,7 +41,6 @@ paths:
 `.validation_passed` sentinel in project root:
 - Written by `/validate` after waves pass
 - Checked by `.claude/hooks/pre-commit-gate.sh` before `git commit`
-- **Requires waves 1-3** — wave 4 (self-critic/opus) is optional for commits
 - **Invalidated** (deleted) by `.claude/hooks/sentinel-cleanup.sh` whenever any file is edited
 - TTL: 30 minutes — re-validate if sentinel is older than that
 - Listed in `.gitignore` (never committed)

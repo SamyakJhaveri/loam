@@ -1,5 +1,0 @@
-{
-    "project_root": "{{PROJECT_ROOT}}",
-    "downloads_root": "{{PROJECT_ROOT}}",
-    "hecbench_root": "{{PROJECT_ROOT}}"
-}

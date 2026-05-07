@@ -12,7 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_ROOT="$(dirname "$SCRIPT_DIR")"
 
-readonly VALID_FLAVORS=(research paper-writing software-eng ml hpc)
+readonly VALID_FLAVORS=(research software-eng ml hpc)
 
 die()  { printf 'add-flavor: %s\n' "$*" >&2; exit 1; }
 info() { printf '\033[36m[add-flavor]\033[0m %s\n' "$*"; }

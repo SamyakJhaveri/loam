@@ -74,7 +74,7 @@ echo "Files in diff: $CHANGED_COUNT unstaged, $STAGED_COUNT staged"
 if [ "$CHANGED_COUNT" -eq 0 ] && [ "$STAGED_COUNT" -eq 0 ]; then
     echo "WARNING: No files in git diff — this session has no changes to validate"
 fi
-# Note: test-synthesizer (Wave 2) cleans up /tmp/parbench_validate_* on exit.
+# Note: test-synthesizer (Wave 2) cleans up /tmp/validate_* on exit.
 # By Wave 4, those files are always gone. Do not check /tmp for evidence.
 ```
 

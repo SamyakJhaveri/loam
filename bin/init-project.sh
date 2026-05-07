@@ -14,7 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_ROOT="$(dirname "$SCRIPT_DIR")"
 
-readonly VALID_FLAVORS=(research paper-writing software-eng ml hpc)
+readonly VALID_FLAVORS=(research software-eng ml hpc)
 readonly TEMPLATE_REPO_DEFAULT="samyakjhaveri/project-template"
 
 # ----- Helpers --------------------------------------------------------------
@@ -136,6 +136,14 @@ info "copying generic core (.claude/)"
 mkdir -p "$PROJECT_PATH/.claude"
 cp -R "$TEMPLATE_ROOT/.claude/." "$PROJECT_PATH/.claude/"
 rm -rf "$PROJECT_PATH/.claude/worktrees" 2>/dev/null || true
+# Remove transient/machine-local files that shouldn't propagate
+rm -f "$PROJECT_PATH/.claude/.local-paths" \
+      "$PROJECT_PATH/.claude/.venv-name" \
+      "$PROJECT_PATH/.claude/.DS_Store" \
+      "$PROJECT_PATH/.claude/audit.log" \
+      "$PROJECT_PATH/.claude/settings.json.bak-codex-hook" \
+      "$PROJECT_PATH/.claude/settings.local.json" \
+      2>/dev/null || true
 
 # 2. seed-folders (empty dirs with .gitkeep)
 if [[ -d "$TEMPLATE_ROOT/seed-folders" ]]; then

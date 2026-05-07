@@ -24,7 +24,7 @@ Reference: github.com/grandamenium/dream-skill
 ## Configuration
 
 ```
-MEMORY_DIR=~/.claude/projects/-home-samyak-Desktop-parbench-sam/memory
+MEMORY_DIR=~/.claude/projects/<project-path-slug>/memory  # Auto-detect: encode project root path
 INDEX_FILE=MEMORY.md
 INDEX_MAX_LINES=200
 INDEX_MAX_SIZE=25KB
