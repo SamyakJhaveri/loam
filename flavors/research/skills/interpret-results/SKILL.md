@@ -202,14 +202,14 @@ Propose 2-3 concrete next experiments that would strengthen or weaken the hypoth
 Recommended experiments:
 1. [Experiment]: <description>
    [Tests]: <which hypothesis element this addresses>
-   [Command]: <actual ParBench command to run, if applicable>
+   [Command]: <actual command to run, if applicable>
 
 2. [Experiment]: <description>
    ...
 ```
 
 **Verification gate:** Every recommended experiment must be actionable with the current
-ParBench infrastructure. Do not suggest experiments that require new tools or data sources
+project infrastructure. Do not suggest experiments that require new tools or data sources
 not already in the project.
 
 ### Phase 4: Summary Verdict

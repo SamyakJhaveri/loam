@@ -1,6 +1,6 @@
 ---
 name: regression-checker
-description: "Compares current project metrics against known baselines to detect regressions: Rodinia spec count (60), unit test count (15), key infrastructure files present, manifest append-only. Use in post-session validation Wave 2. Returns structured PASS/FAIL in 50 lines or less."
+description: "Compares current project metrics against known baselines to detect regressions: test count, key infrastructure files present, data file counts. Use in post-session validation. Returns structured PASS/FAIL in 50 lines or less."
 tools: Bash, Read, Glob
 model: sonnet
 permissionMode: dontAsk
@@ -12,77 +12,66 @@ maxTurns: 15
 You compare current project metrics against established baselines to detect
 regressions introduced by the current session's changes.
 
-Baselines are canonical values from known-issues.md and the verification history:
-- Rodinia specs: 60 (54 PASS-target + 6 KNOWN_FAIL)
-- XSBench specs: 4 (cuda, omp, opencl, omp-target)
-- Unit tests: 15 (all must pass, in c_augmentation/test_transforms.py)
-- Schema errors: ~135 (120 HeCBench + 15 phantom spec entries — expected, not bugs)
-- Manifest lines: monotonically non-decreasing (append-only)
-
 ## Setup
 ```bash
-source {{PROJECT_ROOT}}/env_parbench/bin/activate
 cd {{PROJECT_ROOT}}
+
+# Activate venv if present
+for venv in .venv venv env; do
+    [ -f "$venv/bin/activate" ] && source "$venv/bin/activate" && break
+done
 ```
 
-## Metric 1: Spec Counts
+## Metric 1: Test Count
 ```bash
-RODINIA_COUNT=$(ls specs/rodinia-*.json 2>/dev/null | wc -l | tr -d ' ')
-XSBENCH_COUNT=$(ls specs/xsbench-*.json 2>/dev/null | wc -l | tr -d ' ')
-TOTAL_COUNT=$(ls specs/*.json 2>/dev/null | wc -l | tr -d ' ')
-echo "Rodinia specs: $RODINIA_COUNT (baseline: 60)"
-echo "XSBench specs: $XSBENCH_COUNT (baseline: 4)"
-echo "Total specs:   $TOTAL_COUNT"
+# Count tests without running them
+if [ -d tests ]; then
+    TEST_COUNT=$(python3 -m pytest tests/ --collect-only -q 2>/dev/null | grep -cE 'test_[a-z]' || echo "0")
+    echo "Unit tests collected: $TEST_COUNT"
+fi
 ```
 
-Rodinia spec count must be exactly 60. Any decrease = FAIL.
-XSBench spec count must be ≥ 4. Decrease = FAIL.
+Test count should not decrease between sessions. A decrease suggests tests were
+accidentally deleted.
 
-## Metric 2: Unit Test Count (collection only — execution done by verify-app in Wave 1)
+## Metric 2: Key Infrastructure Files Present
 ```bash
-# Count tests without re-running them (verify-app already ran pytest)
-TEST_COUNT=$(python3 -m pytest c_augmentation/test_transforms.py --collect-only -q 2>/dev/null | grep -cE 'test_[a-z]' || echo "0")
-echo "Unit tests collected: $TEST_COUNT (baseline: >=15)"
+# Check for critical project files. Adapt this list to your project.
+# Read CLAUDE.md for the project's key file list.
+CRITICAL_FILES=""
+if [ -f CLAUDE.md ]; then
+    echo "CLAUDE.md present"
+fi
+if [ -f .claude/settings.json ]; then
+    echo "settings.json present"
+fi
+if [ -d .claude/hooks ]; then
+    HOOK_COUNT=$(ls .claude/hooks/*.sh 2>/dev/null | wc -l | tr -d ' ')
+    echo "Hooks: $HOOK_COUNT"
+fi
 ```
 
-Test count must be ≥ 15. Any decrease = FAIL.
-Note: Actual pass/fail is verified by verify-app (Wave 1) — no need to re-run here.
+Any missing critical file = FAIL.
 
-## Metric 3: Key Infrastructure Files Present
+## Metric 3: Data/Result File Counts
 ```bash
-# Verify harness and validator are still present (not accidentally deleted)
-for f in harness/__main__.py harness/cli.py scripts/validate_schema.py \
-          c_augmentation/test_transforms.py; do
-    if [ ! -f "$f" ]; then
-        echo "MISSING KEY FILE: $f"
-    else
-        echo "OK: $f"
+# Check key data directories haven't lost files
+for dir in results data specs; do
+    if [ -d "$dir" ]; then
+        count=$(find "$dir" -type f | wc -l | tr -d ' ')
+        echo "$dir/: $count files"
     fi
 done
 ```
 
-Any missing file = FAIL. These are the core pipeline files — their absence is a critical regression.
-Note: schema validation error count is checked by verify-app (Wave 1) — not repeated here.
+File counts in data directories should be monotonically non-decreasing.
 
-## Metric 4: Manifest Entry Count
+## Metric 4: Unexpected Changes to Core Files
+If key files are NOT in the current git diff scope, verify they haven't changed unexpectedly:
 ```bash
-MANIFEST_COUNT=$(wc -l < manifest.jsonl | tr -d ' ')
-echo "Manifest entries: $MANIFEST_COUNT"
+# Check if any files outside the task scope were modified
+git diff HEAD --name-only | head -20
 ```
-
-Manifest is append-only. Count must be ≥ previous count.
-Since we don't have the previous count, check git diff:
-```bash
-git diff HEAD -- manifest.jsonl | grep '^-[^-]' | wc -l
-```
-If any lines were deleted from manifest.jsonl → FAIL (append-only violation, diff-reviewer also catches this).
-
-## Metric 5: Key Infrastructure Files Unchanged (if not in scope)
-If the following files are NOT in the current git diff, verify they haven't changed unexpectedly:
-```bash
-git diff HEAD -- harness/__main__.py harness/cli.py scripts/validate_schema.py
-```
-If any of these appear in the diff without being part of the current task scope → WARN.
 
 ## Output Format (max 50 lines)
 
@@ -91,12 +80,10 @@ REGRESSION CHECK: PASS/FAIL
 
 | Metric                    | Baseline | Current | Status  |
 |---------------------------|----------|---------|---------|
-| Rodinia specs             | 60       | N       | OK/FAIL |
-| XSBench specs             | 4        | N       | OK/FAIL |
-| Unit tests collected      | ≥15      | N       | OK/FAIL |
-| Key infra files present   | 4/4      | N/4     | OK/FAIL |
-| Manifest lines deleted    | 0        | N       | OK/FAIL |
-| Unexpected infra changes  | 0        | N       | OK/WARN |
+| Test count                | ≥N       | N       | OK/FAIL |
+| Key infra files present   | N/N      | N/N     | OK/FAIL |
+| Data file counts          | ≥N       | N       | OK/FAIL |
+| Unexpected core changes   | 0        | N       | OK/WARN |
 
 [For each FAIL:]
   REGRESSION: <metric> — <current> vs baseline <expected>
@@ -104,7 +91,6 @@ REGRESSION CHECK: PASS/FAIL
   LIKELY CAUSE: <which changed file probably caused it>
 
 VERDICT: PASS/FAIL
-(FAIL on: spec count decrease, test count decrease, missing infra files, manifest deletions)
-(WARN on: unexpected changes to harness/validator files outside task scope)
-Note: schema validation errors and test pass/fail are checked by verify-app (Wave 1).
+(FAIL on: test count decrease, missing infra files, data file loss)
+(WARN on: unexpected changes outside task scope)
 ```

@@ -5,7 +5,7 @@ description: Paper citation and claims verifier. Use before submitting a paper, 
 
 # Paper Citation and Claims Verifier
 
-Use when auditing the SC26 paper draft for numerical accuracy, stale references, and
+Use when auditing a paper draft for numerical accuracy, stale references, and
 unsubstantiated claims. Traces every number and assertion back to actual result files
 on disk.
 
@@ -62,13 +62,9 @@ Claims are checked against 5 categories:
   - `results/evaluation/groq-llama-3.3-70b/` — Groq Llama results
   - `results/evaluation/together-qwen-3.5-397b-a17b/` — Qwen results (newest)
 - **Analysis outputs:** `analysis/data/`, `analysis/reports/`
-- **Augmentation results:** `results/augmentation/`
-- **Eval summary:** `results/evaluation/eval_summary.json` (if generated)
-- **Dropped model:** azure-gpt-4.1 was dropped — zero result files on disk. Any reference is STALE_REF.
-- **Timing caveat:** All eval results use `wall_time` timing. `speedup_ratio` values are
-  unreliable. Any paper claim citing speedup from these results is FAIL.
-- **Spec counts (canonical):** 60 Rodinia (54 PASS, 6 KNOWN_FAIL), 4 XSBench (4 PASS)
-- **Overall pass rate (canonical):** 105/468 = 22.44% (as of 2026-03-27, 3-model campaign)
+- **Results:** `results/` directory (check CLAUDE.md for structure)
+- Check CLAUDE.md for canonical counts, baselines, and known caveats
+- Check `.claude/rules/known-issues.md` for exclusions and known failures
 
 ## Workflow
 

@@ -5,8 +5,8 @@ description: Structured hypothesis tree manager for multi-step research investig
 
 # Hypothesis Tree Manager
 
-Use when building, updating, or reviewing the persistent hypothesis tree for the SC26
-paper. Maintains a structured markdown file at `docs/hypothesis_tree.md` where each
+Use when building, updating, or reviewing the persistent hypothesis tree for your
+research project. Maintains a structured markdown file at `docs/hypothesis_tree.md` where each
 hypothesis has falsifiable criteria, linked evidence, and a next experiment.
 
 **Trigger:** When user types `/hypothesis-tree` with a subcommand.
@@ -67,11 +67,10 @@ Each hypothesis in `docs/hypothesis_tree.md` follows this structure:
 
 - **Result directories:** `results/evaluation/{model}/` contains per-kernel JSON files
 - **Models:** claude-sonnet, gemini-2.5-flash-lite, groq-llama-3.3-70b, together-qwen-3.5
-- **Augmentation results:** `results/augmentation/` contains level-variant test data
-- **Analysis outputs:** `analysis/data/` and `analysis/reports/`
-- **Key known anomaly:** backprop tier inversion — Gemini (weakest overall) passes where
-  Groq (stronger overall) fails. See `.claude/rules/known-issues.md` for details.
-- **Spec counts:** 60 Rodinia (54 PASS, 6 KNOWN_FAIL), 4 XSBench (4 PASS)
+- **Results:** `results/` directory (check CLAUDE.md for structure)
+- **Analysis outputs:** `analysis/` directory (if present)
+- Check `.claude/rules/known-issues.md` for known anomalies
+- Check CLAUDE.md for project-specific counts and baselines
 
 ## Workflow
 

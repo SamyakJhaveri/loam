@@ -123,8 +123,8 @@ When an eval result shows BUILD_FAIL or VERIFY_FAIL for a CUDA↔OMP pair:
    - Floating-point reduction order differences (inherent — not a bug, see known-issues.md)
    - Uninitialized variables that CUDA zero-initializes but OpenMP doesn't
 
-## ParBench-Specific Notes
+## Project-Specific Notes
 
-- FP reduction-order divergence is documented for cfd, hotspot, myocyte specs — these have weak oracles precisely because faithful translations produce different bit-exact results
-- `rodinia-nw-omp` has a synthesis asymmetry (`TRACEBACK` macro) — see known-issues.md
+- FP reduction-order divergence is common in parallel code — faithful translations may produce different bit-exact results due to floating-point associativity
 - Always check `known-issues.md` KNOWN_FAIL list before investigating a failed translation
+- Some synthesis asymmetries exist where macros or preprocessor directives differ between source and target paradigms

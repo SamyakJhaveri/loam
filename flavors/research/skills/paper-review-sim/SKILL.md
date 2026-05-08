@@ -7,7 +7,7 @@ description: Simulate a NeurIPS/SC/ICSE-style peer review with 5 reviewer person
 
 Use when preparing a paper draft for submission, stress-testing claims before
 writing, or wanting structured feedback on methodology, presentation, or rigor.
-Simulates a 5-reviewer SC26 panel.
+Simulates a 5-reviewer conference panel.
 
 **Trigger:** When user types `/paper-review-sim` with optional arguments.
 
@@ -31,8 +31,8 @@ verified against actual files in results/evaluation/ or results/augmentation/.
 |--------|---------|
 | "The numbers are from a previous session" | Previous sessions can have bugs. Verify against current disk state. |
 | "This is just a rough draft" | Rough drafts with wrong numbers become final drafts with wrong numbers. |
-| "I'll verify during camera-ready" | Camera-ready is too late. SC26 reviewers see the submitted version. |
-| "The reviewer personas are too harsh" | SC26 acceptance rate is ~25%. Real reviewers ARE this harsh. |
+| "I'll verify during camera-ready" | Camera-ready is too late. conference reviewers see the submitted version. |
+| "The reviewer personas are too harsh" | conference acceptance rate is ~25%. Real reviewers ARE this harsh. |
 | "One reviewer disagreeing is fine" | One dissenting reviewer can sink a paper. Address all concerns. |
 
 ## Red Flags --- STOP
@@ -127,11 +127,11 @@ Score: 0-100. Must cite specific paper sections and result files.
 Review checklist:
 - Is sample size (N specs x M models x K directions) sufficient for claims?
 - Are results reported with appropriate statistical measures (not just percentages)?
-- Is the baseline clearly defined (Rodinia reference implementations)?
-- Are KNOWN_FAIL specs excluded consistently across all analyses?
-- Is augmentation level-invariance claim (54/60 at L1-L4) verified?
-- Are per-kernel anomalies (backprop tier inversion) addressed as noise vs signal?
-- Is the failure taxonomy (BUILD_FAIL/RUN_FAIL/VERIFY_FAIL) consistently applied?
+- Is the baseline clearly defined?
+- Are known-fail items excluded consistently across all analyses?
+- Are invariance claims verified against data?
+- Are per-item anomalies addressed as noise vs signal?
+- Is the failure taxonomy consistently applied?
 
 Score: 0-100. Must cite specific paper sections and result files.
 
@@ -142,7 +142,7 @@ Score: 0-100. Must cite specific paper sections and result files.
 Review checklist:
 - Can the full pipeline be re-run from a fresh clone?
 - Are all dependencies documented (Python version, CUDA SDK, compiler flags)?
-- Is the Rodinia submodule version (commit `9c10d3ea`) recorded?
+- Are all data source versions (submodule commits, dataset versions) recorded?
 - Are API keys the only external dependency? Are they documented?
 - Is `--project-root` documented as required (auto-detection broken)?
 - Are result JSONs committed and version-controlled?
@@ -174,7 +174,7 @@ Score: 0-100. Must cite specific paper sections and result files.
 Collect all reviews and produce a unified panel report:
 
 ```
-=== SC26 SIMULATED REVIEW PANEL ===
+=== conference SIMULATED REVIEW PANEL ===
 
 PAPER: <title>
 DATE:  <date>
@@ -191,7 +191,7 @@ DATE:  <date>
 │ AVERAGE  │  XX   │                                          │
 └─────────┴───────┴──────────────────────────────────────────┘
 
-SC26 CRITERIA:
+conference CRITERIA:
   Novelty:          [1-5] <justification>
   Reproducibility:  [1-5] <justification>
   Significance:     [1-5] <justification>
@@ -242,10 +242,6 @@ numbers from `speedup_ratio` in result JSONs. Valid performance measurement requ
 
 - **Project root:** `{{PROJECT_ROOT}}`
 - **Paper draft:** `docs/paper_draft.md` (or as specified in arguments)
-- **Eval results:** `results/evaluation/{model}/` directories
-- **Augmentation results:** `results/augmentation/`
-- **Models:** claude-sonnet, gemini-2.5-flash-lite, groq-llama-3.3-70b, together-qwen-3.5
-- **Suites:** rodinia (54 TRUE PASS, 6 KNOWN_FAIL), xsbench (4 PASS)
-- **SC26 target:** Supercomputing 2026 conference
-- **Key related work gaps:** LASSI, CodeRosetta, HPC-Coder-v2, OMPify, HPCorpus, TransCoder
-- **Result JSON truth:** Use `overall_status` field as authoritative verdict
+- **Results:** `results/` directory (check CLAUDE.md for structure)
+- Check CLAUDE.md for: models, dataset counts, conference target, related work gaps
+- Check `.claude/rules/known-issues.md` for exclusions and known failures
