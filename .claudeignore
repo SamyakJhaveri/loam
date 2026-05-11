@@ -8,3 +8,11 @@
 
 # Git internals
 .git/
+
+# Template-local cruft (audit Session A, 2026-05-11)
+.DS_Store
+**/.DS_Store
+.claude/audit.log
+**/audit.log
+internal_docs/
+skills-to-integrate/
