@@ -2,6 +2,9 @@
 
 Reusable Claude Code template: bootstrap source + sync buffer for all projects.
 
+- challenge assumptions or offer corrections anytime you get a chance
+- point out any flaws in the questions or solutions I suggest
+
 ## What this is
 
 This is NOT a project — it's the **template** that bootstraps new projects. It contains:
