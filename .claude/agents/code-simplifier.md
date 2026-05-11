@@ -2,7 +2,7 @@
 name: code-simplifier
 description: "Post-implementation code cleanup. Finds duplication, dead code, unclear names, over-engineering, and long functions. Only suggests behavior-preserving changes — never changes interfaces or adds features. Use after completing any implementation."
 tools: Read, Glob, Grep
-model: sonnet
+model: opus
 maxTurns: 15
 ---
 

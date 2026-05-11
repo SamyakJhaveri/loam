@@ -2,8 +2,7 @@
 # Bash audit log — appends every Bash command to timestamped log
 #
 # Triggered by: PreToolUse on Bash
-# Purpose: Experiment reproducibility — every shell command is logged with timestamp
-#          so eval runs, build commands, and debug sessions can be replayed later.
+# Purpose: Experiment reproducibility — every shell command is logged with timestamp so eval runs, build commands, and debug sessions can be replayed later.
 #
 # Exit codes:
 #   0 = always (logging hook, never blocks)

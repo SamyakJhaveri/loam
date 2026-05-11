@@ -1,23 +1,3 @@
-# Large files & archives (exceed GitHub limits)
-ParBench.zip
-ParBench/downloads/
-
-# Personal/temporary documents (not project deliverables)
-*.docx
-# PDFs are tracked — meeting transcripts & reference papers are project assets
-# (conversation transcripts with research team are essential for progress tracking)
-# HeCBench downloads (1.4 GB source tree — re-download via wget script)
-downloads/
-# XSBench source (regular clone, not submodule — commit pinned in spec provenance)
-xsbench/xsbench-src/
-# RSBench source (regular clone — commit pinned in spec provenance)
-rsbench/rsbench-src/
-# mixbench source (regular clone — commit pinned in spec provenance)
-mixbench/mixbench-src/
-# HeCBench source tree (1.4 GB — re-download via wget)
-HeCBench-master/
-# Evaluation result backups (large, not tracked)
-results/evaluation_backup*/
 # Local machine-specific config (generated from config/paths.json.template by setup script)
 config/paths.json
 # macOS
@@ -35,7 +15,7 @@ build/
 .venv/
 venv/
 env/
-env_parbench/
+.pytest_cache/
 # IDE
 .idea/
 .vscode/
@@ -56,10 +36,6 @@ env_parbench/
 .claude/.local-paths
 # User-local settings (generated from .claude/settings.local.json.template)
 .claude/settings.local.json
-# TikZ figure preview artifacts (local only, not for Overleaf)
-docs/paper/NeurIPS_ready_version/figures/figures_tek_version/parbench_preamble.tex
-docs/paper/NeurIPS_ready_version/figures/figures_tek_version/preview_*.tex
-docs/paper/NeurIPS_ready_version/figures/figures_tek_version/out/
 # Codex CLI local state (config lives at ~/.codex/config.toml)
 .codex/
 # File ownership tracking (session-ephemeral, written by file-ownership.sh hook)
