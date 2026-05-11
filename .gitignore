@@ -54,3 +54,6 @@ env/
 *_secret*
 *credentials*
 graphify-out/cache/
+
+# Personal reference docs — not part of the template (audit Session C)
+internal_docs/
