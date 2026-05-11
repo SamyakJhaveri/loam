@@ -2,6 +2,9 @@
 
 Reusable Claude Code template: bootstrap source + sync buffer for all projects.
 
+- challenge assumptions or offer corrections anytime you get a chance
+- point out any flaws in the questions or solutions I suggest
+
 ## What this is
 
 This is NOT a project — it's the **template** that bootstraps new projects. It contains:
@@ -44,9 +47,30 @@ bin/add-flavor.sh ml --project ~/code/my-project
 | `bin/` | Bootstrap + sync scripts |
 | `docs/` | Template documentation |
 
+## Reference Docs (Read When Relevant)
+
+Path-scoped rules in `.claude/rules/` load only when matching files are touched.
+Read these on demand:
+
+- Workflow + anti-patterns: `.claude/rules/workflow.md` *(always loaded)*
+- Known gotchas: `.claude/rules/known-issues.md` *(always loaded)*
+- Validation protocol: `.claude/rules/validation-loop.md` *(when working on hooks/validate skill)*
+- Asset layering: `docs/ASSET-LAYERS.md` *(when adding or moving template assets)*
+- Bootstrap mechanics: `docs/BOOTSTRAP.md` *(when editing `bin/init-project.sh`)*
+- Sync mechanics: `docs/SYNC.md` *(when promoting an asset)*
+- Operational playbook: `.claude/reference/Claude Code Operational Playbook.md` *(when designing new skills/agents)*
+
 ## Rules when editing this template
 
 - **Don't add project-specific content.** Everything here must be generic or scoped to a flavor.
 - **Don't push to main directly.** Use feature branches + PRs.
 - **Test changes** by bootstrapping a test project: `bin/init-project.sh /tmp/test --flavor research`
 - Detailed rules in `.claude/rules/workflow.md`
+
+## Verify
+
+```bash
+bin/verify-template.sh
+# Expected: ALL OK (bootstraps all 4 flavors, validates JSON, shellchecks if available)
+# Run before any PR that touches bin/, .claude/, flavors/, or seed-*/.
+```
