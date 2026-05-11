@@ -9,10 +9,11 @@
 
 set -euo pipefail
 
-# Consume stdin (PreToolUse hooks receive JSON on stdin; prevent SIGPIPE)
-cat > /dev/null
+# Read stdin JSON (Claude Code passes hook payload as JSON on stdin)
+PAYLOAD="$(cat)"
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 LOG="$PROJECT_ROOT/.claude/audit.log"
-echo "$(date -Iseconds) | ${CLAUDE_TOOL_INPUT:-unknown}" >> "$LOG"
+COMMAND="$(printf '%s' "$PAYLOAD" | python3 -c 'import sys, json; d=json.load(sys.stdin); print(d.get("tool_input",{}).get("command","unparseable"))' 2>/dev/null || echo "unparseable")"
+echo "$(date -Iseconds) | $COMMAND" >> "$LOG"
 exit 0
