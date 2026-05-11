@@ -20,7 +20,10 @@ allowed-tools:
 1. Push: `git push -u origin HEAD`.
 2. Write PR title: type + concise description (under 72 chars).
 3. Write PR body: what changed, why, how to test, risks.
-4. Run: `gh pr create --title "<title>" --body "<body>"`.
+4. For multi-line bodies, use a HEREDOC: `gh pr create --title "<title>" --body "$(cat <<'EOF'
+<body>
+EOF
+)"`.
 5. Output PR URL.
 
 If push fails: stop and report the exact error. Do NOT force push.

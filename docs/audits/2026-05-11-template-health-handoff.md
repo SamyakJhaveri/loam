@@ -49,7 +49,7 @@ into bootstrapped projects.
 - Wrote a v1 plan, dispatched the `plan-reviewer` agent for adversarial review (verdict: **REVISE** with 5 critical flaws).
 - Rewrote into v2 — the plan file you should now read.
 
-**Phase 2 — Remediation (NOT STARTED).** No code or asset changes have been made to the repo. The plan defines 11 sessions; you (or the user) will execute one at a time, in suggested order: A → B → C → E → F → G first wave; D and H second wave; I, J, K last.
+**Phase 2 — Remediation (IN PROGRESS).** First wave complete (Sessions A, B, C, E, F, G on branch `audit/first-wave`). Session-critique review completed with fixes applied. Remaining: D, H (second wave), I, J, K (third wave).
 
 **Phase 3 — Handoff (this file).** This document exists so a fresh session can pick up Phase 2 cleanly.
 
@@ -68,26 +68,7 @@ test -f /Users/samyakjhaveri/.claude/plans/ultrathink-brainstorming-read-quiet-w
 
 If the file is missing, regenerate it from the conversation history — but it should be there.
 
-### 4.2 Install the Karpathy skills plugin
-
-The plan references "Karpathy-check" — a discipline of "minimum change, surgical edits, no overcomplication" — derived from Andrej Karpathy's observations on LLM coding pitfalls. Install:
-
-```bash
-# From within Claude Code, in the target repo:
-cd /Users/samyakjhaveri/Desktop/project_template
-/plugin marketplace add forrestchang/andrej-karpathy-skills
-/plugin install karpathy-skills@andrej-karpathy-skills
-/plugin list | grep -i karpathy
-# Expected: a line containing "karpathy-skills" with status "enabled"
-```
-
-Source: `https://github.com/forrestchang/andrej-karpathy-skills` — the repo provides 4 principles:
-1. **Think Before Coding** — state assumptions, don't pick interpretations silently
-2. **Simplicity First** — minimum code, no speculative abstractions
-3. **Surgical Changes** — touch only what the user asked for
-4. **Goal-Driven Execution** — define success criteria, loop until verified
-
-### 4.3 Confirm the other required skills are loaded
+### 4.2 Confirm the other required skills are loaded
 
 ```bash
 ls /Users/samyakjhaveri/Desktop/project_template/.claude/skills/
@@ -191,7 +172,12 @@ After every completed session, append a one-line entry to the **"Sessions comple
 
 | Date | Session | Branch | Verdict | Commit |
 |------|---------|--------|---------|--------|
-| (none yet) | — | — | — | — |
+| 2026-05-11 | A — Gitignore/claudeignore hygiene | audit/first-wave | PASS | f254637a |
+| 2026-05-11 | B — Fix bash-audit-log.sh (TDD) | audit/first-wave | PASS | 45fe9b1a |
+| 2026-05-11 | C — Gitignore internal_docs/ in place | audit/first-wave | PASS | e6505eb9 |
+| 2026-05-11 | E — CLAUDE.md pointer pattern | audit/first-wave | PASS | 3f564ccc |
+| 2026-05-11 | F — verify-template.sh + test (TDD) | audit/first-wave | PASS | 767f8e6f |
+| 2026-05-11 | G — /commit and /pr skills | audit/first-wave | PASS | 60d0eadb |
 
 ---
 

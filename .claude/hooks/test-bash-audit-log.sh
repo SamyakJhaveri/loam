@@ -8,7 +8,8 @@ mkdir -p .claude
 
 INPUT='{"tool_name":"Bash","tool_input":{"command":"ls -la /tmp"}}'
 
-echo "$INPUT" | /Users/samyakjhaveri/Desktop/project_template/.claude/hooks/bash-audit-log.sh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+echo "$INPUT" | "$SCRIPT_DIR/bash-audit-log.sh"
 
 grep -q "ls -la /tmp" .claude/audit.log || { echo "FAIL: command not logged"; exit 1; }
 ! grep -q "| unknown" .claude/audit.log || { echo "FAIL: still logging 'unknown'"; exit 1; }

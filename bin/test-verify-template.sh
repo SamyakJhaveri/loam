@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Test: verify-template.sh exits 0 on a clean template, exits 1 if bootstrap is broken.
 set -euo pipefail
+cd "$(dirname "$0")/.."
 EXPECTED_FLAVORS=(research software-eng ml hpc)
+LOGFILE=$(mktemp)
+trap 'rm -f "$LOGFILE"' EXIT
 
-bash bin/verify-template.sh > /tmp/verify-out.log 2>&1 || { cat /tmp/verify-out.log; exit 1; }
+bash bin/verify-template.sh > "$LOGFILE" 2>&1 || { cat "$LOGFILE"; exit 1; }
 
 for f in "${EXPECTED_FLAVORS[@]}"; do
-  grep -q "OK: flavor $f" /tmp/verify-out.log || { echo "FAIL: flavor $f not verified"; exit 1; }
+  grep -q "OK: flavor $f" "$LOGFILE" || { echo "FAIL: flavor $f not verified"; exit 1; }
 done
 echo "PASS"

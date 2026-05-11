@@ -122,6 +122,7 @@ TEMPLATE_SHA="$(git -C "$TEMPLATE_ROOT" rev-parse --short HEAD 2>/dev/null || ec
 DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 YEAR="$(date -u +"%Y")"
 # ${FLAVORS[@]} with nounset safe for bash 3.2 (macOS default)
+# Same fix applied on the for-loop at line ~170: ${FLAVORS[@]+"${FLAVORS[@]}"}
 if [[ ${#FLAVORS[@]} -eq 0 ]]; then FLAVORS_CSV=""; else FLAVORS_CSV="$(IFS=,; echo "${FLAVORS[*]}")"; fi
 
 info "template:      $TEMPLATE_ROOT @ $TEMPLATE_SHA"
