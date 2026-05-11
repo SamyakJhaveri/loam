@@ -121,7 +121,8 @@ command -v python3 >/dev/null || die "python3 not found on PATH"
 TEMPLATE_SHA="$(git -C "$TEMPLATE_ROOT" rev-parse --short HEAD 2>/dev/null || echo "unknown")"
 DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 YEAR="$(date -u +"%Y")"
-FLAVORS_CSV="$( [[ ${#FLAVORS[@]} -eq 0 ]] && echo "" || (IFS=,; echo "${FLAVORS[*]}") )"
+# ${FLAVORS[@]} with nounset safe for bash 3.2 (macOS default)
+if [[ ${#FLAVORS[@]} -eq 0 ]]; then FLAVORS_CSV=""; else FLAVORS_CSV="$(IFS=,; echo "${FLAVORS[*]}")"; fi
 
 info "template:      $TEMPLATE_ROOT @ $TEMPLATE_SHA"
 info "project path:  $PROJECT_PATH"
@@ -166,7 +167,7 @@ render_tmpl_dir_into "$TEMPLATE_ROOT/seed-config" "$PROJECT_PATH"
 copy_plain_files_into "$TEMPLATE_ROOT/seed-config" "$PROJECT_PATH"
 
 # 5. Flavors (overlay each in order)
-for flavor in "${FLAVORS[@]}"; do
+for flavor in ${FLAVORS[@]+"${FLAVORS[@]}"}; do
   flavor_root="$TEMPLATE_ROOT/flavors/$flavor"
   [[ -d "$flavor_root" ]] || die "flavor '$flavor' has no folder at $flavor_root"
   info "applying flavor: $flavor"

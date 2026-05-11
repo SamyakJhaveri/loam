@@ -66,3 +66,11 @@ Read these on demand:
 - **Don't push to main directly.** Use feature branches + PRs.
 - **Test changes** by bootstrapping a test project: `bin/init-project.sh /tmp/test --flavor research`
 - Detailed rules in `.claude/rules/workflow.md`
+
+## Verify
+
+```bash
+bin/verify-template.sh
+# Expected: ALL OK (bootstraps all 4 flavors, validates JSON, shellchecks if available)
+# Run before any PR that touches bin/, .claude/, flavors/, or seed-*/.
+```
