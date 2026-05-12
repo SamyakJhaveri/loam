@@ -10,24 +10,24 @@ Manual `git clone` is unsupported because it preserves the template's git identi
 cd ~/code/my-new-project
 ```
 
-For a research project that's also producing a paper:
+For a software engineering project:
 
 ```bash
-~/Desktop/project_template/bin/init-project.sh ~/code/my-paper --flavor research --flavor paper-writing
+~/Desktop/project_template/bin/init-project.sh ~/code/my-app --flavor software-eng
 ```
 
-For an HPC research project with paper:
+For a project that combines both:
 
 ```bash
-~/Desktop/project_template/bin/init-project.sh ~/code/my-hpc-paper \
-  --flavor research --flavor hpc --flavor paper-writing
+~/Desktop/project_template/bin/init-project.sh ~/code/my-research-tool \
+  --flavor research --flavor software-eng
 ```
 
 ## Flags
 
 | Flag | Effect |
 |------|--------|
-| `--flavor <name>` | Apply a flavor pack. Repeatable. Valid: `research`, `paper-writing`, `software-eng`, `ml`, `hpc`. |
+| `--flavor <name>` | Apply a flavor pack. Repeatable. Valid: `research`, `software-eng`. |
 | `--name <name>`   | Override the project name (defaults to basename of `<project-path>`). |
 | `--github <owner/repo>` | Create a GitHub repo and set it as `origin` via `gh repo create`. Requires `gh` CLI. |
 | `-h`, `--help`    | Show usage. |
@@ -51,7 +51,7 @@ For an HPC research project with paper:
 ## Adding a flavor later
 
 ```bash
-~/Desktop/project_template/bin/add-flavor.sh paper-writing --project ~/code/my-project
+~/Desktop/project_template/bin/add-flavor.sh software-eng --project ~/code/my-project
 ```
 
 Refuses to overlay onto locally modified files unless `--force`.

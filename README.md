@@ -11,9 +11,9 @@ Reusable Claude Code template that serves as both a **bootstrap source** for new
 # Bootstrap a software engineering project
 ~/Desktop/project_template/bin/init-project.sh ~/code/my-app --flavor software-eng
 
-# Stack multiple flavors
-~/Desktop/project_template/bin/init-project.sh ~/code/my-hpc-paper \
-  --flavor research --flavor hpc
+# Stack both flavors
+~/Desktop/project_template/bin/init-project.sh ~/code/my-tool \
+  --flavor research --flavor software-eng
 ```
 
 ## What you get
@@ -30,10 +30,8 @@ Every new project bootstrapped from this template includes:
 
 | Flavor | Adds | Pick when |
 |--------|------|-----------|
-| `research` | Hypothesis workflow, paper-writing skills, result protection hooks | Research projects, papers |
-| `software-eng` | Design records, architecture docs | Building software products |
-| `ml` | ML run ledger, experiment tracking | Training models, ML pipelines |
-| `hpc` | CUDA/OpenMP translation guides, parallel review | Parallel-computing work |
+| `research` | Hypothesis workflow, paper-writing, citation audit, HPC/CUDA guides, result protection | Research, papers, ML experiments, HPC work |
+| `software-eng` | Design records, architecture docs, frontend rules | Building software products, tools, websites |
 
 Flavors stack — pass multiple `--flavor` flags.
 

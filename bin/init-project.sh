@@ -14,7 +14,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_ROOT="$(dirname "$SCRIPT_DIR")"
 
-readonly VALID_FLAVORS=(research software-eng ml hpc)
+readonly VALID_FLAVORS=(research software-eng)
 readonly TEMPLATE_REPO_DEFAULT="samyakjhaveri/project-template"
 
 # ----- Helpers --------------------------------------------------------------

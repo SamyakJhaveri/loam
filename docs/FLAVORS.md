@@ -2,23 +2,20 @@
 
 Flavors are opt-in packs that layer additional skills/agents/hooks/rules and seed-docs onto the generic core at bootstrap time. They stack — pass multiple `--flavor` flags.
 
-## The four flavors
+## Available flavors
 
 | Flavor | Adds | Pick when |
 |--------|------|-----------|
-| `research`     | Hypothesis workflow, paper-writing, citation audit, result protection | Research projects, papers, technical reports |
-| `software-eng` | Design records, architecture docs                    | Building software products |
-| `ml`           | ML run ledger, results index                         | Training models, ML pipelines |
-| `hpc`          | CUDA/OpenMP/OpenCL pattern guides, parallel review   | Parallel-computing work |
+| `research`     | Hypothesis workflow, paper-writing, citation audit, result protection, CUDA/OpenMP guides, HPC code review | Research projects, papers, ML experiments, HPC work |
+| `software-eng` | Design records, architecture docs, frontend rules | Building software products, tools, websites |
 
-## Stack examples
+## Usage examples
 
 | Project type | Recommended flavors |
 |--------------|---------------------|
-| ML research with paper          | `research --flavor ml` |
-| HPC research with paper         | `research --flavor hpc` |
-| Greenfield SaaS                 | `software-eng` |
-| ML-powered product              | `software-eng --flavor ml` |
+| ML/HPC research with paper    | `research` |
+| Greenfield SaaS               | `software-eng` |
+| Personal tool with research   | `research --flavor software-eng` |
 
 ## What each flavor adds
 
@@ -26,12 +23,10 @@ See each flavor's `README.md`:
 
 - `flavors/research/README.md`
 - `flavors/software-eng/README.md`
-- `flavors/ml/README.md`
-- `flavors/hpc/README.md`
 
 ## Layering semantics
 
-When `init-project.sh` applies multiple flavors, they're overlaid in the order passed. Same-path collisions: later overlays win, with a warning. In practice, flavors don't collide today (they touch disjoint skill/agent/hook names).
+When `init-project.sh` applies multiple flavors, they're overlaid in the order passed. Same-path collisions: later overlays win, with a warning. In practice, the two flavors don't collide today (they touch disjoint skill/agent/hook names).
 
 If you discover a collision while developing flavors, prefer renaming over silently letting one win — overlap usually means a skill should live in `generic` instead of any specific flavor.
 

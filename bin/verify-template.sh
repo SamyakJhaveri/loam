@@ -26,14 +26,14 @@ for rule in python.md tech-stack.md architecture.md frontend-design.md; do
 done
 echo "OK: flavor (none)"
 
-for flavor in research software-eng ml hpc; do
+for flavor in research software-eng; do
   bin/init-project.sh "$TMP/$flavor" --flavor "$flavor" >/dev/null
   test -f "$TMP/$flavor/.claude/settings.json"   || { echo "FAIL: $flavor missing settings.json"; exit 1; }
   python3 -m json.tool "$TMP/$flavor/.claude/settings.json" >/dev/null || { echo "FAIL: $flavor invalid settings.json"; exit 1; }
   echo "OK: flavor $flavor"
 done
 
-# Rule placement assertions (Session D — P0-3)
+# Rule placement assertions
 test -f "$TMP/research/.claude/rules/python.md"          || { echo "FAIL: research missing python.md"; exit 1; }
 test -f "$TMP/research/.claude/rules/tech-stack.md"       || { echo "FAIL: research missing tech-stack.md"; exit 1; }
 test ! -f "$TMP/research/.claude/rules/architecture.md"   || { echo "FAIL: research has architecture.md"; exit 1; }
@@ -45,27 +45,16 @@ for rule in python.md tech-stack.md architecture.md frontend-design.md; do
 done
 echo "OK: software-eng rules"
 
-test -f "$TMP/ml/.claude/rules/python.md"                  || { echo "FAIL: ml missing python.md"; exit 1; }
-test -f "$TMP/ml/.claude/rules/tech-stack.md"               || { echo "FAIL: ml missing tech-stack.md"; exit 1; }
-test ! -f "$TMP/ml/.claude/rules/architecture.md"           || { echo "FAIL: ml has architecture.md"; exit 1; }
-test ! -f "$TMP/ml/.claude/rules/frontend-design.md"        || { echo "FAIL: ml has frontend-design.md"; exit 1; }
-echo "OK: ml rules"
+# HPC skills are now part of research
+test -f "$TMP/research/.claude/skills/cuda-omp-translator/SKILL.md" || { echo "FAIL: research missing cuda-omp-translator"; exit 1; }
+test -f "$TMP/research/.claude/skills/hpc-code-reviewer/SKILL.md"   || { echo "FAIL: research missing hpc-code-reviewer"; exit 1; }
+echo "OK: research HPC skills"
 
-test -f "$TMP/hpc/.claude/rules/python.md"                 || { echo "FAIL: hpc missing python.md"; exit 1; }
-test -f "$TMP/hpc/.claude/rules/tech-stack.md"              || { echo "FAIL: hpc missing tech-stack.md"; exit 1; }
-test ! -f "$TMP/hpc/.claude/rules/architecture.md"          || { echo "FAIL: hpc has architecture.md"; exit 1; }
-test ! -f "$TMP/hpc/.claude/rules/frontend-design.md"       || { echo "FAIL: hpc has frontend-design.md"; exit 1; }
-echo "OK: hpc rules"
-
-# Duplication guard — all copies of python.md and tech-stack.md must be identical
-test -f "$TEMPLATE_ROOT/flavors/research/rules/python.md"    || { echo "FAIL: reference python.md missing from template"; exit 1; }
-test -f "$TEMPLATE_ROOT/flavors/research/rules/tech-stack.md" || { echo "FAIL: reference tech-stack.md missing from template"; exit 1; }
-for f in software-eng ml hpc; do
-  cmp --silent "$TEMPLATE_ROOT/flavors/research/rules/python.md" "$TEMPLATE_ROOT/flavors/$f/rules/python.md" \
-    || { echo "FAIL: python.md diverged in $f"; exit 1; }
-  cmp --silent "$TEMPLATE_ROOT/flavors/research/rules/tech-stack.md" "$TEMPLATE_ROOT/flavors/$f/rules/tech-stack.md" \
-    || { echo "FAIL: tech-stack.md diverged in $f"; exit 1; }
-done
+# Duplication guard — python.md and tech-stack.md must be identical across flavors
+cmp --silent "$TEMPLATE_ROOT/flavors/research/rules/python.md" "$TEMPLATE_ROOT/flavors/software-eng/rules/python.md" \
+  || { echo "FAIL: python.md diverged between research and software-eng"; exit 1; }
+cmp --silent "$TEMPLATE_ROOT/flavors/research/rules/tech-stack.md" "$TEMPLATE_ROOT/flavors/software-eng/rules/tech-stack.md" \
+  || { echo "FAIL: tech-stack.md diverged between research and software-eng"; exit 1; }
 echo "OK: duplicated rules identical"
 
 echo "ALL OK"

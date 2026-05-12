@@ -59,12 +59,10 @@ This is the 10-step flow. **Never skip the questions.**
 
 4. **Suggest target layer.** Based on what the asset references, propose one of:
    - `generic` — domain-neutral, every project benefits
-   - `flavor:research` — applies when doing research projects (includes paper-writing tools)
+   - `flavor:research` — research projects (paper-writing, ML experiments, HPC/parallel work)
    - `flavor:software-eng` — building software products
-   - `flavor:ml` — ML training / experiment management
-   - `flavor:hpc` — CUDA / OpenMP / OpenCL / MPI / parallel-perf work
 
-   Explain the reasoning ("This skill mentions LaTeX and bibtex → suggests `paper-writing`"). Ask user to confirm or override.
+   Explain the reasoning ("This skill mentions LaTeX and bibtex → suggests `flavor:research`"). Ask user to confirm or override.
 
 5. **Confirm template repo is clean.** If `git -C <tpl> status --porcelain` shows uncommitted changes, refuse to proceed and tell the user to clean up the template repo first.
 

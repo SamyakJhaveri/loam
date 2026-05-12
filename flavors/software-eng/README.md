@@ -27,4 +27,4 @@ Adds scaffolding for building software products: design records, architecture do
 
 ## Stacks well with
 
-- `ml` (ML-powered product feature)
+- `research` (product with research/ML component)

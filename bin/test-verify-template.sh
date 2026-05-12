@@ -2,7 +2,7 @@
 # Test: verify-template.sh exits 0 on a clean template, exits 1 if bootstrap is broken.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-EXPECTED_FLAVORS=(research software-eng ml hpc)
+EXPECTED_FLAVORS=(research software-eng)
 LOGFILE=$(mktemp)
 trap 'rm -f "$LOGFILE"' EXIT
 
