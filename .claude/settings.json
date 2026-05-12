@@ -26,7 +26,6 @@
       "Edit(.env*)"
     ],
     "ask": [
-
       "Bash(mkdir:*)",
       "Bash(git push:*)"
     ]

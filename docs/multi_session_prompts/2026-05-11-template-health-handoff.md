@@ -51,8 +51,8 @@ sessions executed over 2 days. The template bootstraps correctly for all flavors
 | E | CLAUDE.md pointer pattern + workflow.md model rewrite | audit/first-wave | 3f564ccc |
 | F | verify-template.sh + test (TDD) | audit/first-wave | 767f8e6f |
 | G | /commit and /pr skills | audit/first-wave | 60d0eadb |
-| H | Triage skills-to-integrate/ (agent team) | audit/session-h-skills-triage | e188a00e, 11ecfa92, b3dadd98, f8b1eb2f (merged 6dc820d2) |
-| I | Skill description-budget audit + tiering | main (direct) | e28b7a3e, 7e33b64c, 1649591e, fc33fe5d, c1f35f2a |
+| H | Triage skills-to-integrate/ (agent team) | audit/session-h-skills-triage | e188a00e, 11ecfa92, b3dadd98, f8b1eb2f (merged 6dc820d2), fa4bf7ab |
+| I | Skill description-budget audit + tiering | main (direct) | c1f35f2a, e28b7a3e, 7e33b64c, 1649591e, fc33fe5d |
 | J | P2 judgment calls (dream hooks, validation docs) | audit/session-j-p2-judgment-calls | 87eff3b9, 302bb215, cef8b093 |
 | T1/T2 | Bootstrap smoke tests (research, software-eng, no-flavor) | (no branch — read-only) | No commits |
 | K | This completion report | audit/session-j-p2-judgment-calls | (this commit) |
@@ -73,6 +73,7 @@ Each session had user-facing STOP gates requiring explicit decisions. Decisions 
 | F | Verify-script scope? | Confirmed: bootstrap all flavors, validate JSON, shellcheck |
 | G | /commit and /pr: both, one, neither? Local or user-level? | Both, project-local |
 | H | 16 skills triage approach? | Approach 1 (agent team, 4 teammates, advisor pattern) |
+| H (post-team) | Review agent-team triage table; confirm deletes and escalations | Approved: 14 to generic, 1 deleted (skill-builder), 1 deleted (empty) |
 | I | Overlap candidates: keep/fold/delete? | Kept grill-research + plan-reviewer; deleted reflect; renamed review → multi-review; added auto-activate tiering |
 | J-P2-2 | Dream skill: keep+wire, keep only, delete, or move? | Keep + wire hooks |
 | J-P2-3 | Add validation-gate to CLAUDE.md.tmpl? | Yes |
