@@ -58,16 +58,14 @@ test ! -f "$TMP/hpc/.claude/rules/frontend-design.md"       || { echo "FAIL: hpc
 echo "OK: hpc rules"
 
 # Duplication guard — all copies of python.md and tech-stack.md must be identical
-ref_py=$(md5 -q "$TEMPLATE_ROOT/flavors/research/rules/python.md" 2>/dev/null || echo "MISSING")
-ref_ts=$(md5 -q "$TEMPLATE_ROOT/flavors/research/rules/tech-stack.md" 2>/dev/null || echo "MISSING")
-if [[ "$ref_py" != "MISSING" ]]; then
-  for f in software-eng ml hpc; do
-    cmp_py=$(md5 -q "$TEMPLATE_ROOT/flavors/$f/rules/python.md")
-    cmp_ts=$(md5 -q "$TEMPLATE_ROOT/flavors/$f/rules/tech-stack.md")
-    [[ "$ref_py" == "$cmp_py" ]] || { echo "FAIL: python.md diverged in $f"; exit 1; }
-    [[ "$ref_ts" == "$cmp_ts" ]] || { echo "FAIL: tech-stack.md diverged in $f"; exit 1; }
-  done
-  echo "OK: duplicated rules identical"
-fi
+test -f "$TEMPLATE_ROOT/flavors/research/rules/python.md"    || { echo "FAIL: reference python.md missing from template"; exit 1; }
+test -f "$TEMPLATE_ROOT/flavors/research/rules/tech-stack.md" || { echo "FAIL: reference tech-stack.md missing from template"; exit 1; }
+for f in software-eng ml hpc; do
+  cmp --silent "$TEMPLATE_ROOT/flavors/research/rules/python.md" "$TEMPLATE_ROOT/flavors/$f/rules/python.md" \
+    || { echo "FAIL: python.md diverged in $f"; exit 1; }
+  cmp --silent "$TEMPLATE_ROOT/flavors/research/rules/tech-stack.md" "$TEMPLATE_ROOT/flavors/$f/rules/tech-stack.md" \
+    || { echo "FAIL: tech-stack.md diverged in $f"; exit 1; }
+done
+echo "OK: duplicated rules identical"
 
 echo "ALL OK"
