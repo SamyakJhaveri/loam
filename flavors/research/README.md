@@ -4,6 +4,10 @@ Adds tooling for research-style projects: hypothesis-driven investigation, exper
 
 ## Adds to `.claude/`
 
+### Rules
+- `rules/python.md`     — Python style, testing, naming (loads on `*.py`)
+- `rules/tech-stack.md` — Python 3.12+, pip, pyproject.toml (loads on Python/build files)
+
 ### Skills
 - `skills/hypothesis-tree/`              — branching hypothesis manager
 - `skills/interpret-results/`            — hypothesis-first interpretation of results

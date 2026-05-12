@@ -39,6 +39,8 @@ Examples of correctly-flavor assets:
 - Paper rebuttal pipeline → `paper-writing` (most projects don't write papers)
 - Hypothesis tree → `research` (most projects don't track hypotheses)
 - CUDA/OpenMP translator → `hpc` (most projects aren't HPC)
+- Python style rules (`python.md`, `tech-stack.md`) → all Python-using flavors
+- Architecture/frontend rules → `software-eng` (formal architecture is a product concern)
 
 ## Project-local assets
 
