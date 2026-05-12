@@ -5,23 +5,15 @@
   },
   "permissions": {
     "allow": [
-      "Bash(date:*)",
-      "Bash(echo:*)",
       "Bash(cat:*)",
       "Bash(ls:*)",
-      "Bash(mkdir:*)",
-      "Bash(wc:*)",
+      "Bash(grep:*)",
       "Bash(head:*)",
       "Bash(tail:*)",
-      "Bash(sort:*)",
-      "Bash(grep:*)",
-      "Bash(tr:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
+      "Bash(wc:*)",
       "Bash(git status:*)",
       "Bash(git log:*)",
-      "Bash(git diff:*)",
-      "Bash(git tag:*)"
+      "Bash(git diff:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -30,6 +22,12 @@
       "Bash(git reset --hard:*)",
       "Read(.env*)",
       "Edit(.env*)"
+    ],
+    "ask": [
+      "Bash(sed:*)",
+      "Bash(echo:*)",
+      "Bash(mkdir:*)",
+      "Bash(git push:*)"
     ]
   },
   "hooks": {
