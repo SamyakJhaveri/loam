@@ -2,7 +2,7 @@
 name: creating-agent-teams
 description: Creates and launches coordinated agent teams using TeamCreate for multi-teammate tasks requiring cross-talk, shared task lists, and lifecycle management. Use when 2+ workers need to communicate findings to each other, not just report to parent. NOT for independent parallel tasks (use dispatching-parallel-agents instead).
 ---
-
+ultrathink
 # Creating Agent Teams
 
 Launch coordinated agent teams for tasks requiring persistent cross-talk, shared

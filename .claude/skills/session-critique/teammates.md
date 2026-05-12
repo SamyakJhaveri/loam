@@ -20,7 +20,7 @@ decisions to user via lead. Does NOT make final calls — the user does.
 
 ---
 
-## self-critic (Sonnet)
+## self-critic (Opus)
 
 **Role:** Adversarial self-review. Finds rationalization patterns, incomplete
 implementations, unverified claims, description inaccuracies, quality bar

@@ -6,7 +6,7 @@ model: sonnet
 permissionMode: dontAsk
 maxTurns: 15
 ---
-
+ultrathink
 # Regression Checker Agent
 
 You compare current project metrics against established baselines to detect

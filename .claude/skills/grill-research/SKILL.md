@@ -2,7 +2,7 @@
 name: grill-research
 description: Adversarial research interrogation before launching an eval or making a published claim. Use before /overnight-eval, before adding a claim to the paper, or when a reviewer-style stress test is needed. 4 waves: basics, clarifications, deep probes, assessment. Stops you from running expensive batches on shaky premises.
 ---
-
+ultrathink
 # Research Interrogation
 
 Use when designing experiments, preparing for paper review, defending methodology,

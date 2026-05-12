@@ -6,7 +6,7 @@ model: opus
 effort: max
 maxTurns: 30
 ---
-
+ultrathink
 # Paper Assembly Team Agent
 
 You coordinate three parallel data-gathering sub-agents to produce structured findings
