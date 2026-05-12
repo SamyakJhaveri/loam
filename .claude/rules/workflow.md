@@ -61,7 +61,7 @@ then NOT available for implementation quality. The user reviews all output line-
 - On PASS → `.validation_passed` sentinel written → `git commit` unblocked
 - See `.claude/rules/validation-loop.md` for full protocol
 
-**Critical ordering:** Implement → `/review` → `/validate` → commit → push
+**Critical ordering:** Implement → `/multi-review` → `/validate` → commit → push
 
 ## Context Management
 

@@ -561,9 +561,9 @@ Use ultrathink.
 ### Code Review Skill
 
 ```markdown
-# .claude/skills/review/SKILL.md
+# .claude/skills/multi-review/SKILL.md
 ---
-name: review
+name: multi-review
 description: >
   Multi-agent code review. Use when user says "review",
   "check this", "is this ready to merge", or "PR review".
@@ -771,7 +771,7 @@ claude --resume        # Pick from all sessions
 /techdebt              # Session-end cleanup scan
 /feature-dev [name]    # Structured feature development
 /fix-bug [desc]        # Structured bug fixing
-/review                # Multi-agent code review
+/multi-review           # Multi-agent code review
 
 # ── MODEL & THINKING ─────────────────────────────────────
 /model                 # Switch model (use Opus + High)

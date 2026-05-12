@@ -1,6 +1,7 @@
 ---
 name: session-critique
-description: Use when a session's implementation work is complete and needs adversarial critique and code quality review before committing. Triggers — after multi-file changes, after feature implementation, before final commit on significant work, when independent review of own work is needed. NOT for single-file trivial edits (use /validate directly) or standard code review without fixes (use /review).
+description: Use when a session's implementation work is complete and needs adversarial critique and code quality review before committing. Triggers — after multi-file changes, after feature implementation, before final commit on significant work, when independent review of own work is needed. NOT for single-file trivial edits (use /validate directly) or standard code review without fixes (use /multi-review).
+auto-activate: false
 ---
 ultrathink
 # Session Critique: Adversarial Review via Agent Team
@@ -19,7 +20,7 @@ only the fixes the user authorizes.
 ## When NOT to use
 
 - Single-file trivial edit — run `/validate` directly
-- Standard code review without fix authority — use `/review`
+- Standard code review without fix authority — use `/multi-review`
 - Only need diff/security/schema checks — use `/validate quick`
 - Work is not yet complete — finish implementation first
 

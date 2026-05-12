@@ -1,6 +1,7 @@
 ---
 name: creating-agent-teams
 description: Creates and launches coordinated agent teams using TeamCreate for multi-teammate tasks requiring cross-talk, shared task lists, and lifecycle management. Use when 2+ workers need to communicate findings to each other, not just report to parent. NOT for independent parallel tasks (use dispatching-parallel-agents instead).
+auto-activate: false
 ---
 ultrathink
 # Creating Agent Teams
@@ -197,7 +198,7 @@ Teammates should reuse these rather than building from scratch:
 | `code-simplifier` agent | Post-implementation cleanup |
 | `/writing-plans` skill | Creating implementation plans |
 | `/validate` skill | Post-session validation |
-| `/review` skill | Multi-agent code review |
+| `/multi-review` skill | Multi-agent code review |
 
 Check `.claude/agents/` for project-specific agents added by flavors.
 
