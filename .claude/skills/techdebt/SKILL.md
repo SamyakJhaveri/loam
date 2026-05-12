@@ -1,9 +1,10 @@
-# .claude/skills/techdebt/SKILL.md
 ---
 name: techdebt
 description: >
-  Scan for tech debt: duplicated logic, dead code, magic numbers.
-  Run at end of every session before final commit.
+  Scan codebase for tech debt: duplicated logic, dead code, magic numbers.
+  Use at end of session before final commit for a broad codebase sweep.
+  NOT for reviewing only recently changed code (use /simplify).
+auto-activate: false
 model: opus
 allowed-tools: [Read, Grep, Glob, Edit, Bash(bun run typecheck:*)]
 ---
