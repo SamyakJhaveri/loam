@@ -89,6 +89,17 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/dream-hook.sh",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
