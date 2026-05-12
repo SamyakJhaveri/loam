@@ -66,4 +66,11 @@ for skill in $SESSION_H_SKILLS; do
 done
 echo "OK: Session H skills in generic core"
 
+# Skill description quality (Session I) — warn-only, does not block
+if bash "$SCRIPT_DIR/lint-skill-descriptions.sh" >/dev/null 2>&1; then
+  echo "OK: skill descriptions"
+else
+  echo "WARN: skill description lint has warnings (run bin/lint-skill-descriptions.sh for details)"
+fi
+
 echo "ALL OK"

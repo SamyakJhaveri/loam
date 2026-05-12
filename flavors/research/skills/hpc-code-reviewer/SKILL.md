@@ -1,6 +1,7 @@
 ---
 name: hpc-code-reviewer
 description: "Code review checklist for parallel code correctness in CUDA, OpenMP, and OpenCL. Use when reviewing LLM-generated parallel code translations, when auditing benchmark source code for correctness issues, when writing the paper's 'common failure modes' section, or when a translated kernel has a subtle VERIFY_FAIL that needs root cause analysis. Covers data races, memory model violations, synchronization bugs, numerical precision issues, and API-specific pitfalls."
+auto-activate: false
 ---
 
 # HPC Code Reviewer

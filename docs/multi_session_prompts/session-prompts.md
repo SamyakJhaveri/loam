@@ -76,10 +76,10 @@ skill's description: field for overlap, vagueness, and missing negative
 triggers ("NOT for...").
 
 Check these overlap candidates specifically:
-  - grill-research vs plan-reviewer agent
-  - reflect vs CLAUDE.md self-update loop
-  - session-critique vs review + validate
-  - dream vs reflect
+  - grill-research vs plan-reviewer agent [RESOLVED: kept both, narrowed grill-research description]
+  - reflect vs CLAUDE.md self-update loop [RESOLVED: reflect deleted in Session I]
+  - session-critique vs review + validate [RESOLVED: kept both as-is; review renamed to multi-review]
+  - dream vs reflect [RESOLVED: kept dream as-is; reflect deleted]
 
 For each overlap: ASK the user — keep both (narrow descriptions), fold
 A into B, or delete A. Edit SKILL.md description fields to be more

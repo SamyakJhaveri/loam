@@ -771,7 +771,7 @@ claude --resume        # Pick from all sessions
 /techdebt              # Session-end cleanup scan
 /feature-dev [name]    # Structured feature development
 /fix-bug [desc]        # Structured bug fixing
-/multi-review           # Multi-agent code review
+/multi-review          # Multi-agent code review
 
 # ── MODEL & THINKING ─────────────────────────────────────
 /model                 # Switch model (use Opus + High)

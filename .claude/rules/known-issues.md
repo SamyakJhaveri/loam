@@ -10,9 +10,9 @@
 **Do:** Core workflow skills (commit, validate, fix-bug, feature-dev, catchup, navigate, karpathy-guidelines, security, scalability, frontend-design, handoff, pr, multi-review, know-me) keep default. Specialized skills use `auto-activate: false` — user invokes with `/skill-name`.
 **Why:** With 60+ skills competing for auto-invocation, false positives waste tokens and confuse sessions. See `.claude/skills/create-skill/reference.md:19-31` for the invocation control matrix.
 
-## agent-team directory/name mismatch
+## YAML colons in skill descriptions
 
-**What:** `.claude/skills/agent-team/` directory contains `name: creating-agent-teams` in SKILL.md.
-**Don't:** Assume directory name = skill name.
-**Do:** Fix this by renaming the `name:` field to `agent-team` (matching directory per convention in `reference.md:9`).
-**Why:** Convention says name must match directory name. This is a pre-existing inconsistency.
+**What:** Unquoted colons in description strings (e.g., `4 waves: basics`) break YAML parsers.
+**Don't:** Write single-line descriptions containing colons without quoting.
+**Do:** Use folded scalar (`description: >`) for multi-sentence descriptions containing colons, or quote the string.
+**Why:** Claude Code may use regex matching (tolerant), but strict YAML parsers (linter, CI tools) will reject the file.

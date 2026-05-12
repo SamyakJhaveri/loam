@@ -1,5 +1,5 @@
 ---
-name: creating-agent-teams
+name: agent-team
 description: Creates and launches coordinated agent teams using TeamCreate for multi-teammate tasks requiring cross-talk, shared task lists, and lifecycle management. Use when 2+ workers need to communicate findings to each other, not just report to parent. NOT for independent parallel tasks (use dispatching-parallel-agents instead).
 auto-activate: false
 ---

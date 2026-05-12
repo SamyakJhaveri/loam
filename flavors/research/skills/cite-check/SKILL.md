@@ -1,6 +1,7 @@
 ---
 name: cite-check
 description: Paper citation and claims verifier. Use before submitting a paper, after major eval runs that change numbers, or when reviewing a paper draft. Traces every numeric claim in the paper to a result JSON on disk; flags UNTRACED, MISMATCH, STALE_REF, MISSING_CITE, PHANTOM categories.
+auto-activate: false
 ---
 
 # Paper Citation and Claims Verifier

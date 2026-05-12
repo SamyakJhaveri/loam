@@ -7,11 +7,11 @@ ROOT="$(dirname "$SCRIPT_DIR")"
 WARN=0
 
 extract_frontmatter() {
-  # Extract content between first and second --- delimiters
-  sed -n '/^---$/,/^---$/p' "$1" | sed '1d;$d'
+  # Extract content between first and second --- delimiters only
+  awk 'BEGIN{in_fm=0; count=0} /^---$/{count++; if(count==1){in_fm=1; next} if(count==2){exit}} in_fm{print}' "$1"
 }
 
-for skill_file in $(find "$ROOT/.claude/skills" "$ROOT/flavors" -name "SKILL.md" 2>/dev/null | sort); do
+while IFS= read -r skill_file; do
   frontmatter=$(extract_frontmatter "$skill_file")
   name=$(echo "$frontmatter" | grep -m1 '^name:' | sed 's/name: *//' | tr -d '"' || true)
   if [ -z "$name" ]; then
@@ -19,6 +19,21 @@ for skill_file in $(find "$ROOT/.claude/skills" "$ROOT/flavors" -name "SKILL.md"
     echo "WARN [$rel_path]: could not parse name from frontmatter"
     WARN=$((WARN + 1))
     continue
+  fi
+
+  # Check 0: YAML frontmatter is valid (catches unquoted colons, bad indentation)
+  if command -v python3 >/dev/null 2>&1; then
+    if ! python3 -c "
+import yaml, sys
+with open(sys.argv[1]) as f:
+    content = f.read()
+parts = content.split('---', 2)
+if len(parts) >= 3:
+    yaml.safe_load(parts[1])
+" "$skill_file" 2>/dev/null; then
+      echo "WARN [$name]: YAML frontmatter is not valid (parse error)"
+      WARN=$((WARN + 1))
+    fi
   fi
 
   # Extract description (handles both single-line and multi-line YAML)
@@ -36,7 +51,7 @@ for skill_file in $(find "$ROOT/.claude/skills" "$ROOT/flavors" -name "SKILL.md"
     WARN=$((WARN + 1))
   fi
 
-  # Check 2: Auto-activate skills missing negative triggers (skip Tier 2 skills)
+  # Check 2: Auto-activate skills (auto-activate: true or unset) missing negative triggers
   if [ "$auto_activate" != "false" ]; then
     if ! echo "$desc" | grep -qi "NOT for\|Do NOT\|Do not use\|NOT when"; then
       echo "WARN [$name]: auto-activate skill missing 'NOT for...' negative trigger"
@@ -50,7 +65,7 @@ for skill_file in $(find "$ROOT/.claude/skills" "$ROOT/flavors" -name "SKILL.md"
     echo "WARN [$name]: description under 30 chars ($desc_len)"
     WARN=$((WARN + 1))
   fi
-done
+done < <(find "$ROOT/.claude/skills" "$ROOT/flavors" -name "SKILL.md" 2>/dev/null | sort)
 
 echo ""
 echo "Total warnings: $WARN"

@@ -1,6 +1,7 @@
 ---
 name: cuda-omp-translator
 description: "CUDA↔OpenMP translation pattern guide for evaluating and reviewing LLM-generated parallel code translations. Use when reviewing eval results that involve CUDA-to-OpenMP or OpenMP-to-CUDA translation pairs, when writing paper sections about translation patterns, when diagnosing why a specific translation failed to build or verify, or when creating new specs for CUDA/OpenMP kernel pairs. Covers memory model mapping, kernel launch → parallel region patterns, shared memory → threadprivate, atomic operations, and common pitfalls that cause BUILD_FAIL or VERIFY_FAIL."
+auto-activate: false
 ---
 
 # CUDA ↔ OpenMP Translation Guide

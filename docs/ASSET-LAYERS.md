@@ -31,7 +31,7 @@ Examples of correctly-`generic` assets:
 - Bug-fix workflow (`fix-bug`)
 - Plan reviewer (adversarial review of plans)
 - Validation loop (`validate`)
-- Code review (`review`)
+- Code review (`multi-review`)
 - Memory consolidation (`dream`)
 
 Examples of correctly-flavor assets:

@@ -1,6 +1,12 @@
 ---
 name: grill-research
-description: Adversarial research interrogation before launching an eval or making a published claim. Use before /overnight-eval, before adding a claim to the paper, or when a reviewer-style stress test is needed. 4 waves: basics, clarifications, deep probes, assessment. Stops you from running expensive batches on shaky premises. NOT for implementation plan review (use plan-reviewer agent) or general topic research (use /researcher).
+description: >
+  Adversarial research interrogation before launching an eval or making a
+  published claim. Use before /overnight-eval, before adding a claim to the
+  paper, or when a reviewer-style stress test is needed. 4 waves — basics,
+  clarifications, deep probes, assessment. Stops you from running expensive
+  batches on shaky premises. NOT for implementation plan review (use
+  plan-reviewer agent) or general topic research (use /researcher).
 auto-activate: false
 ---
 ultrathink
