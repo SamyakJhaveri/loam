@@ -57,4 +57,12 @@ cmp --silent "$TEMPLATE_ROOT/flavors/research/rules/tech-stack.md" "$TEMPLATE_RO
   || { echo "FAIL: tech-stack.md diverged between research and software-eng"; exit 1; }
 echo "OK: duplicated rules identical"
 
+# Skill placement assertions (Session H) — skills distributed to both flavors
+SESSION_H_SKILLS="council create-skill decision-matrix frontend-design know-me process-optimizer prompt-improver researcher scalability security self-healing sop-writer weekly-review workflow-mapper"
+for skill in $SESSION_H_SKILLS; do
+  test -d "$TMP/research/.claude/skills/$skill"     || { echo "FAIL: research missing skill $skill"; exit 1; }
+  test -d "$TMP/software-eng/.claude/skills/$skill"  || { echo "FAIL: software-eng missing skill $skill"; exit 1; }
+done
+echo "OK: Session H skills in both flavors"
+
 echo "ALL OK"
