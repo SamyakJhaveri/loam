@@ -4,6 +4,11 @@ Adds tooling for parallel-computing work: CUDA / OpenMP / OpenCL / MPI / paralle
 
 ## Adds to `.claude/`
 
+### Rules
+- `rules/python.md`     — Python style, testing, naming (loads on `*.py`)
+- `rules/tech-stack.md` — Python 3.12+, pip, pyproject.toml (loads on Python/build files)
+
+### Skills
 - `skills/cuda-omp-translator/`  — CUDA↔OpenMP translation pattern guide
 - `skills/hpc-code-reviewer/`    — parallel-correctness checklist (data races, memory model, atomics)
 

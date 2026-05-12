@@ -4,7 +4,11 @@ Adds scaffolding for building software products: design records, architecture do
 
 ## Adds to `.claude/`
 
-- (skills and agents to be promoted in over time — currently empty)
+### Rules
+- `rules/python.md`          — Python style, testing, naming (loads on `*.py`)
+- `rules/tech-stack.md`      — Python 3.12+, pip, pyproject.toml (loads on Python/build files)
+- `rules/architecture.md`    — Layered architecture template (loads on `src/**`, `lib/**`, `scripts/**`)
+- `rules/frontend-design.md` — Frontend/UI design standards (loads on `frontend/**`, `*.html`, `*.css`, `*.js`)
 
 ## Seeds at project root
 

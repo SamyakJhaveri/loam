@@ -4,7 +4,9 @@ Adds scaffolding for ML training and evaluation work.
 
 ## Adds to `.claude/`
 
-- (skills and agents to be promoted in over time — currently empty)
+### Rules
+- `rules/python.md`     — Python style, testing, naming (loads on `*.py`)
+- `rules/tech-stack.md` — Python 3.12+, pip, pyproject.toml (loads on Python/build files)
 
 ## Seeds at project root
 

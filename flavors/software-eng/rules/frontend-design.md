@@ -1,6 +1,5 @@
 ---
 paths:
-  - "visualizations/**"
   - "frontend/**"
   - "**/*.html"
   - "**/*.css"
