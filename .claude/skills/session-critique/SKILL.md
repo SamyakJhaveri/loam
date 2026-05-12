@@ -2,7 +2,7 @@
 name: session-critique
 description: Use when a session's implementation work is complete and needs adversarial critique and code quality review before committing. Triggers — after multi-file changes, after feature implementation, before final commit on significant work, when independent review of own work is needed. NOT for single-file trivial edits (use /validate directly) or standard code review without fixes (use /review).
 ---
-
+ultrathink
 # Session Critique: Adversarial Review via Agent Team
 
 Spawns an advisor-pattern agent team that adversarially reviews all work done
@@ -58,7 +58,7 @@ Present team design table to user. **WAIT for approval before launching.**
 | Teammate      | Model  | Role                           | Owns        |
 |---------------|--------|--------------------------------|-------------|
 | advisor       | opus   | Strategic direction, read-only | All (read)  |
-| self-critic   | sonnet | Adversarial self-review        | Bucket A    |
+| self-critic   | opus | Adversarial self-review        | Bucket A    |
 | code-reviewer | sonnet | Code quality + structural      | Bucket B    |
 
 Cost: ~45-55% of all-Opus equivalent
@@ -70,7 +70,7 @@ Cost: ~45-55% of all-Opus equivalent
 2. Create tasks with `TaskCreate` for each work unit
 3. Spawn advisor (Opus) FIRST — use `advisor-prompt.md` from `/agent-team` skill
 4. Wait for "ADVISOR READY"
-5. Spawn workers (Sonnet) with filled prompts from [teammates.md](teammates.md)
+5. Spawn workers with filled prompts from [teammates.md](teammates.md)
 6. Every `Agent` call MUST include `team_name`
 
 ### Phase A: Analysis (parallel, no edits)

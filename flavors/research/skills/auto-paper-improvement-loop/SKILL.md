@@ -4,7 +4,7 @@ description: "Autonomously improve a generated paper via GPT-5.4 xhigh review �
 argument-hint: [paper-directory]
 allowed-tools: Bash(*), Read, Write, Edit, Grep, Glob, Agent, mcp__codex__codex, mcp__codex__codex-reply
 ---
-
+ultrathink
 # Auto Paper Improvement Loop: Review → Fix → Recompile
 
 Autonomously improve the paper at: **$ARGUMENTS**

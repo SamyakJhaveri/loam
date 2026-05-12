@@ -9,7 +9,7 @@ Reusable Claude Code template: bootstrap source + sync buffer for all projects.
 
 This is NOT a project — it's the **template** that bootstraps new projects. It contains:
 - Generic Claude Code agents, skills, hooks, and rules (`.claude/`)
-- Stackable flavor packs (`flavors/research/`, `flavors/software-eng/`, `flavors/ml/`, `flavors/hpc/`)
+- Stackable flavor packs (`flavors/research/`, `flavors/software-eng/`)
 - Seed docs and folder skeletons (`seed-docs/`, `seed-folders/`, `seed-config/`)
 - Bootstrap + sync scripts (`bin/`)
 
@@ -20,7 +20,7 @@ This is NOT a project — it's the **template** that bootstraps new projects. It
 bin/init-project.sh ~/code/my-project --flavor research
 
 # Add a flavor to an existing project
-bin/add-flavor.sh ml --project ~/code/my-project
+bin/add-flavor.sh research --project ~/code/my-project
 
 # Promote a reusable asset back to this template (from inside a project)
 /template-sync promote <asset>

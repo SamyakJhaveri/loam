@@ -15,10 +15,10 @@ Every Claude Code asset (agent / skill / hook / rule) belongs to exactly one of 
 But the skill suggests a layer based on what the asset references:
 
 - Mentions `--api`, `requests.post`, web frameworks → likely `generic` or `software-eng`
-- Mentions LaTeX, `bibtex`, citations → likely `flavor:paper-writing`
+- Mentions LaTeX, `bibtex`, citations → likely `flavor:research`
 - Mentions experiments, hypothesis, ablation → likely `flavor:research`
-- Mentions training loops, eval, model checkpoints → likely `flavor:ml`
-- Mentions CUDA, OpenMP, MPI, kernel → likely `flavor:hpc`
+- Mentions training loops, eval, model checkpoints → likely `flavor:research`
+- Mentions CUDA, OpenMP, MPI, kernel → likely `flavor:research`
 - References the project name from `template-manifest.json` → likely `project-local` (don't promote)
 
 ## When to promote into `generic` vs a flavor
@@ -36,10 +36,10 @@ Examples of correctly-`generic` assets:
 
 Examples of correctly-flavor assets:
 
-- Paper rebuttal pipeline → `paper-writing` (most projects don't write papers)
+- Paper rebuttal pipeline → `research` (most projects don't write papers)
 - Hypothesis tree → `research` (most projects don't track hypotheses)
-- CUDA/OpenMP translator → `hpc` (most projects aren't HPC)
-- Python style rules (`python.md`, `tech-stack.md`) → all Python-using flavors
+- CUDA/OpenMP translator → `research` (HPC work is research in this context)
+- Python style rules (`python.md`, `tech-stack.md`) → both flavors (research + software-eng)
 - Architecture/frontend rules → `software-eng` (formal architecture is a product concern)
 
 ## Project-local assets

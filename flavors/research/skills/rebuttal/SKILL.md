@@ -4,7 +4,7 @@ description: "Workflow 4: Submission rebuttal pipeline. Parses external reviews,
 argument-hint: [paper-path-or-review-bundle]
 allowed-tools: Bash(*), Read, Grep, Glob, Write, Edit, Agent, Skill, mcp__codex__codex, mcp__codex__codex-reply
 ---
-
+ultrathink
 # Workflow 4: Rebuttal
 
 Prepare and maintain a grounded, venue-compliant rebuttal for: **$ARGUMENTS**

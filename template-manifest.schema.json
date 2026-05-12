@@ -37,7 +37,7 @@
       "description": "Ordered list of flavors applied (init-project.sh + any add-flavor.sh calls).",
       "items": {
         "type": "string",
-        "enum": ["research", "software-eng", "ml", "hpc"]
+        "enum": ["research", "software-eng"]
       },
       "uniqueItems": true
     },
@@ -55,7 +55,7 @@
       "description": "Map of asset relpaths to layer overrides. Used when a project asset's layer differs from its origin (e.g., a generic-core skill that the user has localized and explicitly does NOT want promoted).",
       "additionalProperties": {
         "type": "string",
-        "enum": ["generic", "flavor:research", "flavor:software-eng", "flavor:ml", "flavor:hpc", "project-local"]
+        "enum": ["generic", "flavor:research", "flavor:software-eng", "project-local"]
       }
     }
   }
