@@ -65,12 +65,13 @@ Read these on demand:
 - **Don't add project-specific content.** Everything here must be generic or scoped to a flavor.
 - **Don't push to main directly.** Use feature branches + PRs.
 - **Test changes** by bootstrapping a test project: `bin/init-project.sh /tmp/test --flavor research`
+- **Generic vs flavor skills:** If a skill is useful in ANY project (regardless of domain), put it in `.claude/skills/` (generic core). Do NOT duplicate it across flavor directories — that creates drift risk. Only put a skill in `flavors/<name>/skills/` if it's truly domain-specific to that flavor. See `docs/ASSET-LAYERS.md`.
 - Detailed rules in `.claude/rules/workflow.md`
 
 ## Verify
 
 ```bash
 bin/verify-template.sh
-# Expected: ALL OK (bootstraps all 4 flavors, validates JSON, shellchecks if available)
+# Expected: ALL OK (bootstraps all flavors, validates JSON, shellchecks if available)
 # Run before any PR that touches bin/, .claude/, flavors/, or seed-*/.
 ```
