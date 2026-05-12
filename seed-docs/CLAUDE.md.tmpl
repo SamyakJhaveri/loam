@@ -28,6 +28,7 @@
 
 - Read before editing. No partial implementations. Verify before reporting done.
 - `/validate` before every commit (waves 1-3 enforced by pre-commit hook).
+- The pre-commit hook checks for a `.validation_passed` sentinel file (created by `/validate`, deleted on any file edit). If missing, commit is blocked. See `.claude/rules/validation-loop.md` for the full protocol.
 - If unsure, say so explicitly — never guess silently.
 
 ## Conditional Rules (`.claude/rules/`)

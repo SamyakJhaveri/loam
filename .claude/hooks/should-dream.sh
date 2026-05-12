@@ -22,7 +22,7 @@ if [ ! -f "$LAST_DREAM" ]; then
 fi
 
 LAST_TS=$(head -1 "$LAST_DREAM")
-LAST_EPOCH=$(date -d "$LAST_TS" +%s 2>/dev/null || echo 0)
+LAST_EPOCH=$(python3 -c "from datetime import datetime; print(int(datetime.fromisoformat('$LAST_TS'.replace('Z','+00:00')).timestamp()))" 2>/dev/null || echo 0)
 NOW_EPOCH=$(date +%s)
 HOURS_SINCE=$(( (NOW_EPOCH - LAST_EPOCH) / 3600 ))
 
