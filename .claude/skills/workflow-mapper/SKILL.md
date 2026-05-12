@@ -5,6 +5,7 @@ description: >
   identifies automation opportunities using the GREEN/YELLOW/RED framework, and generates
   visual workflow diagrams. Use when user says "map my workflow", "describe my process",
   "where should I automate", "workflow audit", or describes any business process.
+auto-activate: false
 ---
 
 # Workflow Mapper — Map Any Business Process & Find Automation Opportunities

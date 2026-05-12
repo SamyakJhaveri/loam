@@ -1,6 +1,7 @@
 ---
 name: template-sync
 description: Sync Claude Code assets between this project and the project-template buffer. Use when promoting a generally-useful agent/skill/hook/rule from this project back to the template, when pulling a template-side update down into this project, or when checking what has diverged. Subcommands - status, diff, pull, promote, sync-from-buffer. Refuses to operate without template-manifest.json. Promotion is always opt-in - never automatic.
+auto-activate: false
 ---
 
 # template-sync

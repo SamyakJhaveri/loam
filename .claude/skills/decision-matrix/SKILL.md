@@ -5,6 +5,7 @@ description: >
   weighted scoring, criteria analysis, and practical recommendations. Use when user says
   "decision matrix", "help me decide", "compare options", "which should I choose",
   "evaluate options", "pros and cons", or "decision framework".
+auto-activate: false
 ---
 
 # Decision Matrix — Evaluate Options and Make Better Decisions

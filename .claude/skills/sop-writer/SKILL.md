@@ -5,6 +5,7 @@ description: >
   with numbered steps, decision points, checklists, and troubleshooting guidance. Use when
   user says "write an SOP", "create SOP", "standard operating procedure", "document this
   process", "write a procedure for", or asks to formalize any business process.
+auto-activate: false
 ---
 
 # SOP Writer — Turn Any Process Into a Complete Standard Operating Procedure

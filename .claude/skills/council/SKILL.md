@@ -7,6 +7,7 @@ description: >
   through structured disagreement and debate. Use when user says "council",
   "deliberate", "multi-agent", "debate this", "think deeply about", "I want
   multiple perspectives on", or when a task clearly benefits from adversarial analysis.
+auto-activate: false
 argument-hint: "<task description>"
 allowed-tools:
   - Read

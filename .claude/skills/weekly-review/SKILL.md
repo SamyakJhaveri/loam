@@ -5,6 +5,7 @@ description: >
   measure progress against stated goals, and plan the next week with clarity. Use when
   user says "weekly review", "review my week", "what did I accomplish", "plan next week",
   "week in review", "how did my week go", or asks to reflect on recent work.
+auto-activate: false
 ---
 
 # Weekly Review — Reflect, Recalibrate, Refocus

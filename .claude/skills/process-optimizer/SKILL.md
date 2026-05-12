@@ -5,6 +5,7 @@ description: >
   optimization opportunities. Goes beyond automation to improve the process itself.
   Use when user says "optimize my process", "find bottlenecks", "why is this slow",
   "improve this workflow", "process audit", or "efficiency review".
+auto-activate: false
 ---
 
 # Process Optimizer — Find and Fix Bottlenecks

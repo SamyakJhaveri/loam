@@ -1,6 +1,7 @@
 ---
 name: model-route
 description: Advisor for selecting optimal Claude model tier (Opus/Sonnet/Haiku) for a specific task. Use before launching an agent team, before a multi-file refactor, or when deciding whether to switch from Opus to Haiku for transactional work (commits, formatting). Analyzes reasoning depth, blast radius, domain expertise, output length, correctness cost.
+auto-activate: false
 ---
 
 # Model Route Advisor
