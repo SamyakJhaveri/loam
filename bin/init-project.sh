@@ -69,6 +69,43 @@ copy_plain_files_into() {
   done < <(find "$src" -maxdepth 1 -type f ! -name '*.tmpl' -print0)
 }
 
+# Deep-merge a flavor's settings-hooks.json into the project's .claude/settings.json.
+# Appends hook entries to existing arrays (does not replace).
+merge_flavor_hooks() {
+  local fragment="$1" target="$2"
+  [[ -f "$fragment" ]] || return 0
+  [[ -f "$target" ]] || { warn "settings.json not found at $target; skipping hook merge"; return 0; }
+  python3 - "$fragment" "$target" <<'PY'
+import json, sys
+
+fragment_path, target_path = sys.argv[1], sys.argv[2]
+with open(fragment_path) as f:
+    fragment = json.load(f)
+with open(target_path) as f:
+    target = json.load(f)
+
+for event, entries in fragment.get("hooks", {}).items():
+    if event not in target.setdefault("hooks", {}):
+        target["hooks"][event] = entries
+    else:
+        existing = target["hooks"][event]
+        for entry in entries:
+            matcher = entry.get("matcher", "")
+            match = next((e for e in existing if e.get("matcher") == matcher), None)
+            if match is None:
+                existing.append(entry)
+            else:
+                existing_cmds = {h.get("command") for h in match.get("hooks", [])}
+                for hook in entry.get("hooks", []):
+                    if hook.get("command") not in existing_cmds:
+                        match["hooks"].append(hook)
+
+with open(target_path, "w") as f:
+    json.dump(target, f, indent=2)
+    f.write("\n")
+PY
+}
+
 # ----- Argument parsing -----------------------------------------------------
 PROJECT_PATH=""
 declare -a FLAVORS=()
@@ -180,6 +217,11 @@ for flavor in ${FLAVORS[@]+"${FLAVORS[@]}"}; do
   done
   render_tmpl_dir_into "$flavor_root/seed-docs" "$PROJECT_PATH"
   copy_plain_files_into "$flavor_root/seed-docs" "$PROJECT_PATH"
+  # Merge flavor hook registrations into settings.json
+  if [[ -f "$flavor_root/seed-config/settings-hooks.json" ]]; then
+    info "merging $flavor hook registrations"
+    merge_flavor_hooks "$flavor_root/seed-config/settings-hooks.json" "$PROJECT_PATH/.claude/settings.json"
+  fi
 done
 
 # 6. Write template-manifest.json (template repo is hard-coded; --github is for the PROJECT's own remote)

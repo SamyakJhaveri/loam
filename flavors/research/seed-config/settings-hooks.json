@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/validate-experiment-config.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -38,7 +38,7 @@ For a project that combines both:
 2. Copies the generic core (`.claude/`).
 3. Materialises empty `seed-folders/` (archive, config, internal_docs, meeting_notes, presentations, results, scripts, submission_artifacts, submission_docs, files_from_team) with `.gitkeep` files.
 4. Renders `seed-docs/*.tmpl` and `seed-config/*.tmpl` into the project root, substituting `{{PROJECT_NAME}}`, `{{DATE}}`, `{{YEAR}}`, `{{FLAVORS}}`.
-5. Overlays each `--flavor` (skills/agents/hooks/rules merged into `.claude/`; flavor seed-docs added to root).
+5. Overlays each `--flavor` (skills/agents/hooks/rules merged into `.claude/`; flavor `seed-config/settings-hooks.json` deep-merged into settings; flavor seed-docs added to root).
 6. Writes `template-manifest.json` recording the template's commit SHA + applied flavors.
 7. `git init`, makes the initial commit.
 8. Optionally creates a GitHub repo as `origin` if `--github` is passed.
