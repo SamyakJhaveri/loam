@@ -5,6 +5,15 @@ The buffer pattern: when you build a generally-useful agent/skill/hook/rule in a
 ## The two flows
 
 ```
+                    copier update (primary)
+project/.claude/  ◀────────────────────  template (git tags)
+                  ────────────────────▶
+                    template-sync promote (manual, PR-based)
+```
+
+For shell-bootstrapped projects (no Copier), the downstream flow uses `pull` / `sync-from-buffer` instead:
+
+```
                        promote (explicit)
    project/.claude/  ────────────────────▶  template/.claude/  or  flavors/<name>/
                      ◀────────────────────
@@ -19,7 +28,7 @@ Auto-deciding what deserves promotion is exactly how a buffer rots into a dump f
 
 ## How to promote
 
-Inside Claude Code, in a project bootstrapped via `init-project.sh`:
+Inside Claude Code, in a project bootstrapped via Copier or `init-project.sh`:
 
 ```
 template-sync promote <relpath>
@@ -27,7 +36,7 @@ template-sync promote <relpath>
 
 The skill walks the 10-step flow:
 
-1. Validates `template-manifest.json` exists.
+1. Validates `template-manifest.json` or `.copier-answers.yml` exists.
 2. Locates the template (`$TEMPLATE_PATH` → manifest → `~/Desktop/project_template`).
 3. Verifies the template's working tree is clean.
 4. Scans the asset for project-specific names, hardcoded paths, secrets, and legacy references.
@@ -74,11 +83,19 @@ For each hit, it stops and asks: abort / generalise / promote anyway. You decide
 - Promote as a side effect of any other skill (validate, fix-bug, etc.).
 - Push to template `main` directly.
 - Promote `.env`, `secrets/`, or matching files without explicit override.
-- Run from a project without `template-manifest.json`.
+- Run from a project without `template-manifest.json` or `.copier-answers.yml`.
 
 ## After a PR is merged into template main
 
-If you have other projects that should pick up the change, run inside each:
+For Copier-bootstrapped projects:
+
+```bash
+cd my-project
+uvx copier update           # interactive, shows diffs for conflicts
+uvx copier update --defaults # non-interactive, accepts defaults
+```
+
+For shell-bootstrapped projects:
 
 ```
 template-sync sync-from-buffer

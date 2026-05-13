@@ -20,6 +20,7 @@ set -euo pipefail
 
 PROJECT_DIR="$PWD"
 MANIFEST="$PROJECT_DIR/template-manifest.json"
+COPIER_ANSWERS="$PROJECT_DIR/.copier-answers.yml"
 
 die()  { printf 'template-sync: %s\n' "$*" >&2; exit 1; }
 info() { printf '\033[36m[sync]\033[0m %s\n' "$*"; }
@@ -27,12 +28,22 @@ warn() { printf '\033[33m[warn]\033[0m %s\n' "$*"; }
 ok()   { printf '\033[32m[ok]\033[0m   %s\n' "$*"; }
 
 require_manifest() {
-  [[ -f "$MANIFEST" ]] || die "no template-manifest.json at $MANIFEST. Are you in a project bootstrapped via init-project.sh?"
+  [[ -f "$MANIFEST" || -f "$COPIER_ANSWERS" ]] ||
+    die "no template-manifest.json or .copier-answers.yml found. Is this a bootstrapped project?"
 }
 
 resolve_template_path() {
   if [[ -n "${TEMPLATE_PATH:-}" ]]; then
     echo "$TEMPLATE_PATH"; return
+  fi
+  if [[ -f "$COPIER_ANSWERS" ]]; then
+    local p
+    p=$(grep '^_src_path:' "$COPIER_ANSWERS" | sed 's/^_src_path: *//' | tr -d "'" | tr -d '"')
+    if [[ -n "$p" && -d "$p" ]]; then
+      echo "$p"; return
+    elif [[ -n "$p" ]]; then
+      warn "_src_path '$p' is not a local directory (remote URL?). Set TEMPLATE_PATH manually."
+    fi
   fi
   if [[ -f "$MANIFEST" ]]; then
     local p
@@ -42,18 +53,38 @@ resolve_template_path() {
   echo "$HOME/Desktop/project_template"
 }
 
+# Resolve the .claude/ comparison root inside the template repo.
+# After the Copier split, the generic core lives at template/.claude/
+# (not .claude/ at repo root, which is the template-dev config).
+resolve_template_claude_root() {
+  local tpl="$1"
+  if [[ -d "$tpl/template/.claude" ]]; then
+    echo "$tpl/template"
+  else
+    echo "$tpl"
+  fi
+}
+
 project_name() {
-  python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("project_name","unknown"))' "$MANIFEST"
+  if [[ -f "$COPIER_ANSWERS" ]]; then
+    grep '^project_name:' "$COPIER_ANSWERS" | sed 's/^project_name: *//' | tr -d "'" | tr -d '"'
+  else
+    python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("project_name","unknown"))' "$MANIFEST"
+  fi
 }
 
 # Map (layer, relpath-relative-to-project-root) → template-relpath.
 # Project relpath is e.g. ".claude/skills/handoff/SKILL.md".
 template_path_for() {
-  local layer="$1" relpath="$2"
+  local layer="$1" relpath="$2" tpl="$3"
   case "$layer" in
     generic)
       [[ "$relpath" == .claude/* ]] || die "generic layer expects path under .claude/, got: $relpath"
-      echo "$relpath";;
+      if [[ -d "$tpl/template/.claude" ]]; then
+        echo "template/$relpath"
+      else
+        echo "$relpath"
+      fi;;
     flavor:*)
       local flavor="${layer#flavor:}"
       local stripped="${relpath#.claude/}"
@@ -67,15 +98,16 @@ cmd_status() {
   require_manifest
   local tpl; tpl="$(resolve_template_path)"
   [[ -d "$tpl" ]] || die "template not found at $tpl"
+  local tpl_root; tpl_root="$(resolve_template_claude_root "$tpl")"
 
-  printf 'Comparing %s/.claude  ↔  %s/.claude\n\n' "$PROJECT_DIR" "$tpl"
+  printf 'Comparing %s/.claude  ↔  %s/.claude\n\n' "$PROJECT_DIR" "$tpl_root"
   printf '%-12s  %s\n' "STATUS" "PATH"
   printf '%-12s  %s\n' "------" "----"
 
   # Files in project's .claude/
   while IFS= read -r -d '' f; do
     rel=".claude/${f#"$PROJECT_DIR/.claude/"}"
-    tpl_path="$tpl/$rel"
+    tpl_path="$tpl_root/$rel"
     if [[ -f "$tpl_path" ]]; then
       if cmp -s "$f" "$tpl_path"; then
         printf '%-12s  %s\n' "unchanged" "$rel"
@@ -89,9 +121,9 @@ cmd_status() {
 
   # Files in template's .claude/ not in project
   while IFS= read -r -d '' f; do
-    rel=".claude/${f#"$tpl/.claude/"}"
+    rel=".claude/${f#"$tpl_root/.claude/"}"
     [[ -f "$PROJECT_DIR/$rel" ]] || printf '%-12s  %s\n' "template-only" "$rel"
-  done < <(find "$tpl/.claude" -type f -print0 2>/dev/null)
+  done < <(find "$tpl_root/.claude" -type f -print0 2>/dev/null)
 }
 
 # ----- Subcommand: diff -----------------------------------------------------
@@ -100,7 +132,8 @@ cmd_diff() {
   [[ -n "$relpath" ]] || die "usage: template-sync.sh diff <relpath>"
   require_manifest
   local tpl; tpl="$(resolve_template_path)"
-  diff -u "$tpl/$relpath" "$PROJECT_DIR/$relpath" || true
+  local tpl_root; tpl_root="$(resolve_template_claude_root "$tpl")"
+  diff -u "$tpl_root/$relpath" "$PROJECT_DIR/$relpath" || true
 }
 
 # ----- Subcommand: pull -----------------------------------------------------
@@ -109,7 +142,8 @@ cmd_pull() {
   [[ -n "$relpath" ]] || die "usage: template-sync.sh pull <relpath>"
   require_manifest
   local tpl; tpl="$(resolve_template_path)"
-  local src="$tpl/$relpath" dst="$PROJECT_DIR/$relpath"
+  local tpl_root; tpl_root="$(resolve_template_claude_root "$tpl")"
+  local src="$tpl_root/$relpath" dst="$PROJECT_DIR/$relpath"
   [[ -f "$src" ]] || die "no such file in template: $relpath"
   if [[ -f "$dst" ]] && ! cmp -s "$src" "$dst"; then
     warn "local file $relpath differs from template; overwriting"
@@ -142,7 +176,7 @@ cmd_promote() {
   [[ -f "$src" ]] || die "project file does not exist: $relpath"
 
   local tpl_relpath
-  tpl_relpath="$(template_path_for "$layer" "$relpath")"
+  tpl_relpath="$(template_path_for "$layer" "$relpath" "$tpl")"
   local dst="$tpl/$tpl_relpath"
 
   # Verify template clean before mutating it
@@ -197,7 +231,11 @@ cmd_promote() {
 
   # Print PR command
   local repo
-  repo=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("template",{}).get("repo","<owner>/project-template"))' "$MANIFEST")
+  if [[ -f "$MANIFEST" ]]; then
+    repo=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("template",{}).get("repo","<owner>/project-template"))' "$MANIFEST")
+  else
+    repo="samyakjhaveri/project-seed-framework"
+  fi
   cat <<EOF
 
 Open PR:
@@ -216,12 +254,13 @@ cmd_sync_from_buffer() {
   require_manifest
   local tpl; tpl="$(resolve_template_path)"
   [[ -d "$tpl" ]] || die "template not found at $tpl"
+  local tpl_root; tpl_root="$(resolve_template_claude_root "$tpl")"
   info "fetching template main"
   (cd "$tpl" && git fetch origin main --quiet 2>/dev/null) || warn "fetch failed (offline?)"
   info "scanning for template-side updates not yet in this project"
   local updated=0
   while IFS= read -r -d '' f; do
-    rel=".claude/${f#"$tpl/.claude/"}"
+    rel=".claude/${f#"$tpl_root/.claude/"}"
     if [[ ! -f "$PROJECT_DIR/$rel" ]]; then
       mkdir -p "$PROJECT_DIR/$(dirname "$rel")"
       cp "$f" "$PROJECT_DIR/$rel"
@@ -230,8 +269,19 @@ cmd_sync_from_buffer() {
     elif ! cmp -s "$f" "$PROJECT_DIR/$rel"; then
       printf '  conflict (skipped): %s — local differs; resolve manually with: template-sync diff %s\n' "$rel" "$rel"
     fi
-  done < <(find "$tpl/.claude" -type f -print0 2>/dev/null)
+  done < <(find "$tpl_root/.claude" -type f -print0 2>/dev/null)
   ok "sync-from-buffer complete; $updated file(s) pulled"
+}
+
+# ----- Subcommand: update (Copier wrapper) ---------------------------------
+cmd_update() {
+  if command -v copier >/dev/null 2>&1; then
+    copier update "$@"
+  elif command -v uvx >/dev/null 2>&1; then
+    uvx copier update "$@"
+  else
+    die "copier not found. Install with: pip install copier (or use: uvx copier update)"
+  fi
 }
 
 # ----- Dispatch -------------------------------------------------------------
@@ -242,6 +292,7 @@ case "$sub" in
   pull)              cmd_pull "$@";;
   promote)           cmd_promote "$@";;
   sync-from-buffer)  cmd_sync_from_buffer "$@";;
+  update)            cmd_update "$@";;
   ""|-h|--help)
     sed -n '2,16p' "$0" | sed 's/^# *//'
     exit 0;;

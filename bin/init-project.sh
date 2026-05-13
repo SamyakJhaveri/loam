@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TEMPLATE_ROOT="$(dirname "$SCRIPT_DIR")"
 
 readonly VALID_FLAVORS=(research software-eng)
-readonly TEMPLATE_REPO_DEFAULT="samyakjhaveri/project-template"
+readonly TEMPLATE_REPO_DEFAULT="samyakjhaveri/project-seed-framework"
 
 # ----- Helpers --------------------------------------------------------------
 die() { printf 'init-project: %s\n' "$*" >&2; exit 1; }
@@ -150,7 +150,7 @@ if [[ -e "$PROJECT_PATH" ]]; then
   fi
 fi
 
-[[ -d "$TEMPLATE_ROOT/.claude" ]] || die "template root '$TEMPLATE_ROOT' has no .claude/ — wrong location?"
+[[ -d "$TEMPLATE_ROOT/template/.claude" ]] || die "template root '$TEMPLATE_ROOT' has no template/.claude/ — wrong location?"
 
 command -v git >/dev/null || die "git not found on PATH"
 command -v python3 >/dev/null || die "python3 not found on PATH"
@@ -173,7 +173,7 @@ mkdir -p "$PROJECT_PATH"
 # 1. Generic .claude/ core
 info "copying generic core (.claude/)"
 mkdir -p "$PROJECT_PATH/.claude"
-cp -R "$TEMPLATE_ROOT/.claude/." "$PROJECT_PATH/.claude/"
+cp -R "$TEMPLATE_ROOT/template/.claude/." "$PROJECT_PATH/.claude/"
 rm -rf "$PROJECT_PATH/.claude/worktrees" 2>/dev/null || true
 # Remove transient/machine-local files that shouldn't propagate
 rm -f "$PROJECT_PATH/.claude/.local-paths" \

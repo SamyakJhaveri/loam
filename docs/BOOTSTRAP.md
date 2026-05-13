@@ -1,9 +1,30 @@
 # Bootstrap a new project
 
-The only supported way to create a new project from this template is `bin/init-project.sh`.
-Manual `git clone` is unsupported because it preserves the template's git identity inside the new project.
+Two bootstrap methods are available: **Copier** (recommended) and **shell scripts** (fallback).
 
-## Quick start
+## Via Copier (recommended)
+
+Copier works from any machine — no local clone needed:
+
+```bash
+# Default (research flavor)
+uvx copier copy gh:samyakjhaveri/project-seed-framework ./my-project
+
+# Pick a specific version
+uvx copier copy --vcs-ref v1.0.0 gh:samyakjhaveri/project-seed-framework ./my-project
+
+# Non-interactive with explicit options
+uvx copier copy --defaults \
+  --data "project_name=my-project" \
+  --data 'flavors=["research","software-eng"]' \
+  gh:samyakjhaveri/project-seed-framework ./my-project
+```
+
+Copier creates `.copier-answers.yml` in the project root (equivalent to `template-manifest.json`).
+
+## Via shell scripts (fallback)
+
+Requires a local clone of this template repo:
 
 ```bash
 ~/Desktop/project_template/bin/init-project.sh ~/code/my-new-project --flavor research
@@ -35,7 +56,7 @@ For a project that combines both:
 ## What `init-project.sh` does
 
 1. Creates the target directory (refuses if non-empty).
-2. Copies the generic core (`.claude/`).
+2. Copies the generic core (`template/.claude/`).
 3. Materialises empty `seed-folders/` (archive, config, internal_docs, meeting_notes, presentations, results, scripts, submission_artifacts, submission_docs, files_from_team) with `.gitkeep` files.
 4. Renders `seed-docs/*.tmpl` and `seed-config/*.tmpl` into the project root, substituting `{{PROJECT_NAME}}`, `{{DATE}}`, `{{YEAR}}`, `{{FLAVORS}}`.
 5. Overlays each `--flavor` (skills/agents/hooks/rules merged into `.claude/`; flavor `seed-config/settings-hooks.json` deep-merged into settings; flavor seed-docs added to root).
