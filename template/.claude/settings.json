@@ -1,0 +1,110 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(grep:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(sed:*)",
+      "Bash(echo:*)",
+      "Bash(wc:*)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(rm -fr:*)",
+      "Bash(git push --force:*)",
+      "Bash(git reset --hard:*)",
+      "Read(.env*)",
+      "Edit(.env*)"
+    ],
+    "ask": [
+      "Bash(mkdir:*)",
+      "Bash(git push:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PAYLOAD=$(cat); if printf '%s' \"$PAYLOAD\" | grep -qE 'rm -rf|rm -fr'; then echo 'BLOCKED: rm -rf not allowed' >&2 && exit 2; fi",
+            "timeout": 15
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/bash-audit-log.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/result-immutability.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-compact-recovery.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(cat | python3 -c \"import sys,json; d=json.load(sys.stdin); print(d.get('file_path',''))\" 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.py$'; then python3 -m ruff check --fix \"$FILE\" 2>/dev/null || true; fi"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-test.sh",
+            "timeout": 35
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/sentinel-cleanup.sh",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/context-budget.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/dream-hook.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

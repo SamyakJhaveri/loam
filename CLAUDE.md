@@ -8,21 +8,37 @@ Reusable Claude Code template: bootstrap source + sync buffer for all projects.
 ## What this is
 
 This is NOT a project — it's the **template** that bootstraps new projects. It contains:
-- Generic Claude Code agents, skills, hooks, and rules (`.claude/`)
-- Stackable flavor packs (`flavors/research/`, `flavors/software-eng/`)
+- Copier template subdirectory with generic core (`template/.claude/`)
+- Stackable flavor packs (`flavors/`, `template/_research/`, `template/_software-eng/`)
 - Seed docs and folder skeletons (`seed-docs/`, `seed-folders/`, `seed-config/`)
 - Bootstrap + sync scripts (`bin/`)
 
 ## How to use
 
+### Via Copier (recommended)
+
 ```bash
-# Create a new project
+# Bootstrap — no local clone needed
+uvx copier copy gh:samyakjhaveri/project-seed-framework ./my-project
+
+# Update an existing project from latest template
+cd my-project && uvx copier update
+```
+
+### Via shell scripts (fallback)
+
+```bash
+# Create a new project (requires local clone)
 bin/init-project.sh ~/code/my-project --flavor research
 
 # Add a flavor to an existing project
 bin/add-flavor.sh research --project ~/code/my-project
+```
 
-# Promote a reusable asset back to this template (from inside a project)
+### Promote assets back
+
+```bash
+# From inside a project — works with both Copier and shell-bootstrapped projects
 /template-sync promote <asset>
 ```
 
@@ -40,12 +56,16 @@ bin/add-flavor.sh research --project ~/code/my-project
 
 | Path | Purpose |
 |------|---------|
-| `.claude/` | Generic core (agents, skills, hooks, rules) |
-| `flavors/` | Stackable flavor packs |
-| `seed-docs/` | Template docs rendered at bootstrap |
-| `seed-config/` | Template config files rendered at bootstrap |
+| `.claude/` | Template-dev Claude Code config (NOT distributed to projects) |
+| `template/` | Copier template subdirectory — generic core + flavor overlays |
+| `template/.claude/` | Generic core distributed to projects (agents, skills, hooks, rules) |
+| `copier.yml` | Copier template configuration |
+| `VERSION` | Semver version for releases |
+| `flavors/` | Stackable flavor packs (source of truth; copied into `template/`) |
+| `seed-docs/` | Template docs rendered at bootstrap (shell fallback) |
+| `seed-config/` | Template config files rendered at bootstrap (shell fallback) |
 | `seed-folders/` | Empty dirs created at bootstrap |
-| `bin/` | Bootstrap + sync scripts |
+| `bin/` | Bootstrap + sync + release scripts |
 | `docs/` | Template documentation |
 
 ## Reference Docs (Read When Relevant)

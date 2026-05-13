@@ -1,0 +1,61 @@
+# Experiment Protocol — {{ project_name }}
+
+> How to run structured, reproducible experiments in this project.
+> Generated on {{ "%Y-%m-%dT%H:%M:%SZ" | strftime }}.
+
+## Research ↔ Claude Code Mapping
+
+| Research Activity | Claude Code Command |
+|---|---|
+| Form hypothesis | `/hypothesis-tree add` |
+| Validate hypothesis | `/grill-research` |
+| Design experiment | `/experiment init` + `/experiment plan` |
+| Run experiment | `/experiment run` |
+| Analyze results | `/interpret-results` |
+| Track evidence | `/hypothesis-tree update` |
+| Evolve experiment | `/experiment evolve` |
+| Record learnings | MEMORY.md with `[LEARN:tag]` |
+
+## Directory Structure
+
+Created on first `/experiment init` (not at bootstrap):
+
+```
+experiments/
+├── registry.md      ← master index of all experiments
+├── specs/            ← versioned experiment specs (one per experiment)
+├── runs/             ← timestamped, immutable run snapshots
+└── eval-scripts/     ← deterministic evaluation scripts
+```
+
+## Quick Start — Your First Experiment
+
+```bash
+# 1. Form your hypothesis
+/hypothesis-tree add "H: <your hypothesis>"
+
+# 2. Validate it's testable
+/grill-research
+
+# 3. Set up the experiment
+/experiment init my-first-experiment
+
+# 4. Plan the execution (includes mandatory pre-flight)
+/experiment plan my-first-experiment
+
+# 5. Run it (after approving the plan)
+/experiment run my-first-experiment
+```
+
+After results come in:
+- `/interpret-results` — hypothesis-first analysis
+- `/hypothesis-tree update H1 --evidence-for "..." --file results/...` — track evidence
+- `/experiment evolve my-first-experiment` — when your understanding changes
+
+## Key Principles
+
+1. **Hypothesis first** — no experiment without a stated expectation and null hypothesis
+2. **Immutable runs** — once written, run data is never modified (append-only)
+3. **Reproducibility** — every run records git commit, config hash, seed, and environment
+4. **Evolution tracking** — when specs change, the changelog captures what and why
+5. **Cross-session memory** — use `[LEARN:tag]` in MEMORY.md for research corrections

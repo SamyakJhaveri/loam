@@ -5,12 +5,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE_ROOT="$(dirname "$SCRIPT_DIR")"
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
+COPIER_TMP=""
+trap 'rm -rf "$TMP" ${COPIER_TMP:+"$COPIER_TMP"}' EXIT
 
 cd "$TEMPLATE_ROOT"
 
 if command -v shellcheck >/dev/null; then
-  shellcheck bin/*.sh .claude/hooks/*.sh || { echo "FAIL: shellcheck"; exit 1; }
+  shellcheck bin/*.sh .claude/hooks/*.sh template/.claude/hooks/*.sh template/_research/hooks/*.sh || { echo "FAIL: shellcheck"; exit 1; }
   echo "OK: shellcheck"
 else
   echo "SKIP: shellcheck not installed"
@@ -71,6 +72,37 @@ if bash "$SCRIPT_DIR/lint-skill-descriptions.sh" >/dev/null 2>&1; then
   echo "OK: skill descriptions"
 else
   echo "WARN: skill description lint has warnings (run bin/lint-skill-descriptions.sh for details)"
+fi
+
+# --- Copier tests (if copier is available) ---
+if command -v copier >/dev/null 2>&1 || command -v uvx >/dev/null 2>&1; then
+  COPIER_CMD="${COPIER_OVERRIDE:-$(command -v copier 2>/dev/null || echo 'uvx copier')}"
+
+  echo "--- Copier bootstrap tests ---"
+
+  COPIER_TEST="$(mktemp -d)"; COPIER_TMP="$COPIER_TEST"
+
+  COPIER_FLAGS="--trust --defaults --vcs-ref HEAD"
+
+  $COPIER_CMD copy $COPIER_FLAGS --data "project_name=copier-test" . "$COPIER_TEST/copier-test" 2>&1
+  test -d "$COPIER_TEST/copier-test/.claude"                 || { echo "FAIL: copier bootstrap: .claude/ missing"; exit 1; }
+  test -f "$COPIER_TEST/copier-test/.copier-answers.yml"     || { echo "FAIL: copier bootstrap: .copier-answers.yml missing"; exit 1; }
+  echo "OK: copier bootstrap with defaults"
+
+  $COPIER_CMD copy $COPIER_FLAGS --data "project_name=both-test" --data 'flavors=["research","software-eng"]' . "$COPIER_TEST/both-test" 2>&1
+  test -f "$COPIER_TEST/both-test/.claude/rules/architecture.md"       || { echo "FAIL: copier both-flavors: software-eng rules missing"; exit 1; }
+  test -d "$COPIER_TEST/both-test/.claude/skills/experiment"           || { echo "FAIL: copier both-flavors: research skills missing"; exit 1; }
+  echo "OK: copier bootstrap with both flavors"
+
+  $COPIER_CMD copy $COPIER_FLAGS --data "project_name=none-test" --data 'flavors=[]' . "$COPIER_TEST/none-test" 2>&1
+  test ! -d "$COPIER_TEST/none-test/_research"      || { echo "FAIL: copier no-flavors: _research overlay not cleaned up"; exit 1; }
+  test ! -d "$COPIER_TEST/none-test/_software-eng"  || { echo "FAIL: copier no-flavors: _software-eng overlay not cleaned up"; exit 1; }
+  echo "OK: copier bootstrap with no flavors"
+
+  rm -r "$COPIER_TEST"
+  echo "OK: copier tests passed"
+else
+  echo "SKIP: copier not installed; skipping copier tests"
 fi
 
 echo "ALL OK"

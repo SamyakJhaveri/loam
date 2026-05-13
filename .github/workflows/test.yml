@@ -1,0 +1,27 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Copier
+        run: pip install copier
+
+      - name: Verify template
+        run: bin/verify-template.sh
+
+      - name: Shellcheck
+        run: |
+          sudo apt-get install -y shellcheck
+          shellcheck bin/*.sh .claude/hooks/*.sh template/.claude/hooks/*.sh template/_research/hooks/*.sh

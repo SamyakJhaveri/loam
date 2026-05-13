@@ -4,16 +4,30 @@ Reusable Claude Code template that serves as both a **bootstrap source** for new
 
 ## Quick Start
 
+### Via Copier (recommended)
+
 ```bash
-# Bootstrap a new research project
-~/Desktop/project_template/bin/init-project.sh ~/code/my-research --flavor research
+# No installation needed — uvx runs copier on-the-fly
+uvx copier copy gh:samyakjhaveri/project-seed-framework ./my-project
 
-# Bootstrap a software engineering project
-~/Desktop/project_template/bin/init-project.sh ~/code/my-app --flavor software-eng
+# Or with a specific version
+uvx copier copy --vcs-ref v1.0.0 gh:samyakjhaveri/project-seed-framework ./my-project
+```
 
-# Stack both flavors
-~/Desktop/project_template/bin/init-project.sh ~/code/my-tool \
-  --flavor research --flavor software-eng
+### Via shell script (fallback)
+
+```bash
+# Requires cloning this repo locally
+bin/init-project.sh ~/code/my-research --flavor research
+bin/init-project.sh ~/code/my-app --flavor software-eng
+bin/init-project.sh ~/code/my-tool --flavor research --flavor software-eng
+```
+
+## Updating a project
+
+```bash
+cd my-project
+uvx copier update  # pulls latest template changes, resolves conflicts
 ```
 
 ## What you get
@@ -40,7 +54,7 @@ Flavors stack — pass multiple `--flavor` flags.
 When you build a generally-useful skill/agent/hook in a project, promote it back:
 
 ```bash
-# Inside your project (requires template-manifest.json)
+# Inside your project (requires template-manifest.json or .copier-answers.yml)
 /template-sync promote skills/my-new-skill
 ```
 
@@ -48,6 +62,7 @@ This creates a PR branch in the template repo — never pushes to main directly.
 
 ## Documentation
 
+- [Copier distribution](docs/COPIER.md)
 - [Bootstrap guide](docs/BOOTSTRAP.md)
 - [Sync mechanism](docs/SYNC.md)
 - [Flavors reference](docs/FLAVORS.md)
