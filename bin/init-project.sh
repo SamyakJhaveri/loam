@@ -214,6 +214,41 @@ GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-$PROJECT_NAME@local}" \
   git -C "$PROJECT_PATH" -c commit.gpgsign=false commit -q \
     -m "Initial commit from project-template @ $TEMPLATE_SHA${FLAVORS_CSV:+ (flavors: $FLAVORS_CSV)}"
 
+# 7.5. Install recommended tools (optional, non-fatal)
+info "installing recommended development tools..."
+
+# Memsearch — persistent session memory
+if command -v uv >/dev/null 2>&1 || command -v uvx >/dev/null 2>&1; then
+    uvx --from 'memsearch[onnx]' memsearch --version >/dev/null 2>&1 && \
+        ok "memsearch installed (persistent session memory)" || \
+        warn "memsearch install failed (optional — will auto-install on first Claude Code session)"
+else
+    warn "uv/uvx not found — memsearch will auto-install via uvx on first Claude Code session"
+    warn "  Install uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
+fi
+
+# Graphify — codebase knowledge graph
+if command -v uv >/dev/null 2>&1; then
+    uv tool install graphifyy 2>/dev/null && \
+        ok "graphify installed (codebase knowledge graph)" || \
+        warn "graphify install failed (optional — install manually: uv tool install graphifyy)"
+elif command -v pip3 >/dev/null 2>&1; then
+    pip3 install --user graphifyy 2>/dev/null && \
+        ok "graphify installed (codebase knowledge graph)" || \
+        warn "graphify install failed (optional — install manually: pip install graphifyy)"
+else
+    warn "uv/pip3 not found — install graphify manually: pip install graphifyy"
+fi
+
+# CodeBurn — AI cost observability (no global install — use npx)
+if command -v npx >/dev/null 2>&1; then
+    ok "codeburn available via npx (run: npx codeburn)"
+elif command -v npm >/dev/null 2>&1; then
+    ok "codeburn available (run: npx codeburn — or install globally: npm install -g codeburn)"
+else
+    warn "npm/npx not found — install Node.js 20+ for codeburn cost tracking"
+fi
+
 # 8. Optional GitHub remote for the new PROJECT (separate from the template repo)
 if [[ -n "$GITHUB_REPO" ]]; then
   if command -v gh >/dev/null; then
@@ -239,6 +274,13 @@ $(if [[ -z "$GITHUB_REPO" ]]; then
   printf '  git remote add origin git@github.com:<owner>/%s.git\n' "$PROJECT_NAME"
   printf '  git push -u origin main\n'
 fi)
+
+  # Enable persistent session memory (one-time, in Claude Code):
+  #   /plugin marketplace add zilliztech/memsearch
+  # Build codebase knowledge graph:
+  #   graphify .
+  # View AI spending:
+  #   npx codeburn
 
 The template is remembered via template-manifest.json — there is NO git remote
 pointing at project-template. To promote a project asset back to the template,

@@ -1,4 +1,10 @@
 {
-  "_comment": "{{PROJECT_NAME}} MCP server config. Add servers here. The default has no servers configured — projects opt in.",
-  "mcpServers": {}
+  "_comment": "{{PROJECT_NAME}} MCP server config. Graphify is pre-configured; enable after running: graphify .",
+  "mcpServers": {
+    "graphify": {
+      "type": "stdio",
+      "command": "python3",
+      "args": ["-m", "graphify.serve", "graphify-out/graph.json"]
+    }
+  }
 }
