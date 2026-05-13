@@ -18,7 +18,7 @@ Adds tooling for research-style projects: hypothesis-driven investigation, exper
 - `skills/paper-review-sim/`            — conference-style peer review simulation
 - `skills/rebuttal/`                    — reviewer rebuttal pipeline
 - `skills/auto-paper-improvement-loop/` — iterative review-fix-recompile loop
-- `skills/aris-shared-references/`      — academic writing standards and protocols
+- `skills/shared-references/`            — academic writing standards and protocols
 - `skills/cuda-omp-translator/`         — CUDA↔OpenMP translation pattern guide
 - `skills/hpc-code-reviewer/`           — parallel-correctness checklist (data races, memory model, atomics)
 

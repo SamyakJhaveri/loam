@@ -34,6 +34,7 @@ bin/add-flavor.sh research --project ~/code/my-project
 | `docs/SYNC.md` | How the sync skill works |
 | `docs/FLAVORS.md` | What each flavor adds |
 | `docs/ASSET-LAYERS.md` | Generic vs flavor vs project-local |
+| `docs/MEMORY.md` | 3-layer memory architecture |
 
 ## Layout
 
