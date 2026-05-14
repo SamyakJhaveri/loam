@@ -48,6 +48,9 @@ then NOT available for implementation quality. The user reviews all output line-
 - Work through the plan step by step
 - Use subagents for independent subtasks (worktree isolation for parallel changes)
 - Verify each step before moving on
+- For non-trivial changes, pause before presenting: "Is there a simpler or more elegant approach?"
+- If a fix feels hacky, reconsider with full context — don't present the first thing that works
+- Skip this for obvious, straightforward fixes — don't over-think simple changes
 - If anything breaks, STOP — re-enter plan mode and re-plan
 
 ### 5. Record
