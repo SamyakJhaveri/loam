@@ -1,27 +1,24 @@
-4.5: Where This Goes
+# 4.5: Where This Goes
 
-What You'll Get From This 
+## What You'll Get From This 
 
 You will see how the CLAUDE.md scales from one project to a full workspace architecture. You will set up two scoped contexts and watch Claude behave differently in each one. And you will know exactly where to go next.
 
-Video: Session 5 — Where This Goes
+## The Lesson
 
-Coming Soon
-The Lesson
-
-What you have built so far
+**What you have built so far**
 
 Across the first four sessions, you set up three interfaces (Desktop, VS Code, Terminal), ran real tasks on your own files, used Desktop for thinking and Code for building, and wrote a CLAUDE.md that gives Claude project-level context.
 
 That is more than most people will ever set up. And it works.
 
-But what if...
+## But what if...
 
 You have 10 projects. Or a complex workflow with different types of tasks. Or a team that needs the same quality from Claude across everyone's work.
 
 One CLAUDE.md per project still works. But there is a level above that.
 
-Task routing
+## Task routing
 
 In my workspace, different tasks load different context. Automatically.
 
@@ -31,15 +28,15 @@ Same Claude. Same context window. Different context per task. The routing table 
 
 This is the three-layer architecture from Section 3 in full operation:
 
-Layer 1 (CLAUDE.md) — The map. Routes every task to the right workspace.
+- Layer 1 (CLAUDE.md) — The map. Routes every task to the right workspace.
 
-Layer 2 (Workspace context files) — The rooms. Each workspace has its own CONTEXT.md describing what happens there.
+- Layer 2 (Workspace context files) — The rooms. Each workspace has its own CONTEXT.md describing what happens there.
 
-Layer 3 (Skills and tools) — Plug-and-play. Loaded per workspace, not globally.
+- Layer 3 (Skills and tools) — Plug-and-play. Loaded per workspace, not globally.
 
 If you went through Section 3, this is what it looks like when you run it with Claude Code. If you skipped Section 3 and jumped straight to the Claude Code sessions, this is your introduction to the architecture. Go back to Section 3.1 for the full walkthrough.
 
-Why this matters at scale
+## Why this matters at scale
 
 200K tokens sounds huge until you fill it with irrelevant files. If Claude is writing a blog post but also reading your animation specs and your client contracts, you are burning tokens on context that has nothing to do with the task. The output gets noisier. The quality drops.
 
@@ -47,19 +44,21 @@ Task routing solves this. Each task loads only the context it needs. Clean input
 
 Three principles that make it work:
 
-One fact, one location. Information lives in one place. No duplication across context files. No drift where one file says one thing and another says something different.
+1. One fact, one location. Information lives in one place. No duplication across context files. No drift where one file says one thing and another says something different.
 
-New sessions start clean. When you start a new conversation in Claude Code, it reads the CLAUDE.md fresh. The routing table sends it to the right workspace. No leftover context from a previous task bleeding into the current one.
+2. New sessions start clean. When you start a new conversation in Claude Code, it reads the CLAUDE.md fresh. The routing table sends it to the right workspace. No leftover context from a previous task bleeding into the current one.
 
-Hand it to a team and everyone gets the same quality. When the context lives in files, not in someone's head, anyone who opens the folder gets the same Claude experience. This is how you scale from one person to a team without losing consistency.
+3. Hand it to a team and everyone gets the same quality. When the context lives in files, not in someone's head, anyone who opens the folder gets the same Claude experience. This is how you scale from one person to a team without losing consistency.
 
 [📌 JAKE: Screenshot or screen recording of the workspace demo. Show 2-3 tasks being routed to different contexts. "Write a script" loads one context. "Build an animation" loads a different one. The visual should make automatic routing obvious.]
-Try the smallest version
+
+## Try the smallest version
 
 You do not need the full architecture to start. Here is the lightest way to test workspace routing.
 
 If you have two distinct areas in your work, create two separate folders. Give each one its own CLAUDE.md with context specific to that area.
 
+```
 area-a/
 ├── CLAUDE.md  (context for Area A)
 └── [your files]
@@ -67,48 +66,21 @@ area-a/
 area-b/
 ├── CLAUDE.md  (context for Area B)
 └── [your files]
+```
+
 Run a task in Area A. Then run a task in Area B. Watch Claude behave differently in each one. That difference is workspace routing at its simplest.
 
 When you are ready to put both under one roof with a single routing table, that is the full architecture from 3.1. You already have the pieces. You just need to combine them.
 
-What you have now
+## What you have now
 
 Across five sessions, you built:
 
-Three interfaces installed and working 
-
-Real tasks completed with your own files 
-
- Desktop for thinking, Code for building 
-
- A CLAUDE.md that gives Claude project-level understanding 
-
-Two scoped context setups (basic workspace routing)
+- Three interfaces installed and working
+- Real tasks completed with your own files
+- Desktop for thinking, Code for building
+- A CLAUDE.md that gives Claude project-level understanding
+- Two scoped context setups (basic workspace routing)
 
 That is a working system. You can stop here and use it as-is. Most people who get this far are already getting more out of Claude than 95% of users.
 
-Where to go next
-
-If you looked at the workspace demo and thought "I want that for my whole workflow," the full architecture is in Section 3: Folder Architecture. Three lessons: the full walkthrough (3.1), customizing for your use case (3.2), and common mistakes (3.3). That section takes you from what you built here to the complete system.
-
-If you want to build animations, the Building Animations course (Level 2) picks up from 4.1 and walks through the full Remotion pipeline.
-
-If you want structured courses, production-grade templates, and the Workspace Blueprint, those are in The Vault (Premium).
-
-If you want live sessions, bespoke workspace builds, and behind-the-scenes access, that is The Drawing Room (VIP).
-
-Go Deeper
-
-3.1: The Full Walkthrough — The complete three-layer architecture: routing tables, naming conventions, workspace context, skills, and the research behind it.
-
-3.2: Customizing for Your Use Case — Three real examples (content creator, freelancer, developer) showing how the architecture adapts to different kinds of work.
-
-2.5: Clawdbot Has 100K Stars — The orchestration-vs-intelligence distinction. What you built in these five sessions is a personal orchestration layer. Claude is the intelligence. Your folders and context files are the orchestration.
-
-The Vault — Workspace Blueprint, structured courses, docs, and resources.
-
-The Drawing Room (VIP) — Live sessions, bespoke builds, behind the scenes.
-
-Next Up: Section 5 — Your Path From Here 
-
-A roadmap of everything available to you across the community: free courses, Level 2 and 3, Premium, VIP. Which path fits what you want to build.

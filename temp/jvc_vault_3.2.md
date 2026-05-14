@@ -1,0 +1,273 @@
+Course Companion
+
+
+You just watched me tear apart a real system I built for a mining compliance client in the DRC. Five agents, most of them traditional code. $30 billion problem, $7,500 retainer. Every decision shaped by the same ratio.
+
+ 
+
+This companion isn't a recap. It's a set of exercises you run with Claude using your own work. Your actual systems, your actual pricing questions, your actual contracts. The same process I walked through with VigilOre, applied to whatever you're building.
+
+
+How to use the Exercises Below. 
+
+
+
+
+
+If you're building a system and need to understand what you actually have: do Exercise 1 (break it down).
+
+
+
+If you're already using AI and suspect you're over-relying on it: do Exercise 2 (find the AI that shouldn't be AI).
+
+
+
+If you're trying to figure out what to charge: do Exercise 3 (price it).
+
+
+
+If you're about to sign a contract or scope a deal: do Exercise 4 (contract clauses).
+
+
+
+If you just want a quick gut check on how replaceable your system is: do Exercise 5 (fragility test).
+
+Exercise 2 is the one that changes how you think. Once you start seeing work that looks like AI but is actually orchestration or infrastructure, you stop defaulting to "throw a model at it." You start building the layers that make the model useful. That's the shift. Not better prompts. Better architecture around the prompts.
+
+The ratio isn't a formula you apply once. It's a lens that sharpens every time you use it on something real.
+
+ Exercise 1: Break Down Your System
+
+ 
+
+In the video I broke VigilOre into five agents and showed how each one maps to the 60/30/10 layers. The input parser, the framework loader, the comparator, the aggregator, the interview agent. Every one mostly traditional code.
+
+ 
+
+Now do yours. Pick a system you've built or a workflow you run, and break it apart.
+
+```
+
+
+
+I want to break down a system or workflow I've built using the 60/30/10 framework from the VigilOre example.
+
+Here's what I built or manage: [describe the system, product, or workflow — e.g. "a client onboarding pipeline that takes intake forms, runs background checks, generates a risk score, and produces an approval recommendation" or "a content production workflow that takes briefs, researches competitors, drafts copy, formats it, and schedules it"]
+
+Break this into its components the way Jake broke VigilOre into five agents. For each component:
+
+1. What does it actually do?
+
+2. Is it traditional code/systems (the 60%), rule-based logic and routing (the 30%), or AI calls (the 10%)?
+
+3. How many lines of code or minutes of work is the AI part versus everything else?
+
+After the breakdown, give me the honest ratio. What percentage is infrastructure, what percentage is orchestration, what percentage is AI? If the AI portion is more than 15%, push back on me and ask whether some of that work could be handled by rules or templates instead.
+
+Be specific to my system. Don't give generic examples.
+
+```
+
+What you'll get back: A component-by-component breakdown that reveals where the actual complexity lives. Most people are surprised to find that what they think of as "the AI part" is maybe 10-15% of the total system.
+
+ 
+
+What to do with it: Look at the biggest component. That's your 60%. If it's fragile or poorly built, no amount of AI will save the system. That's where your time should go first.
+
+ 
+
+Exercise 2: Find the AI That Shouldn't Be AI
+
+The comparator in VigilOre had a scoring system. Zero to one. Violation, warning, compliant. The thresholds, the weighting of regulatory articles, all of that was rule-based. The AI just read the document and gave an assessment. Maybe 20 lines.
+
+Most people over-assign work to AI. They use a model where a template would do. They prompt where they should parse. This exercise finds those spots.
+
+
+
+```
+
+
+
+I'm going to describe three places where I currently use AI (or plan to). For each one, I want you to challenge whether AI is actually the right tool or whether I'm using a model to do work that belongs in the 60% or 30% layer.
+
+1. [e.g. "I use GPT-4 to categorize incoming support tickets by severity"]
+
+2. [e.g. "I use Claude to generate weekly status reports from my project notes"]
+
+3. [e.g. "I use AI to compare documents against a compliance standard"]
+
+ 
+
+For each one, tell me:
+
+- Could this be done with rules, templates, or structured logic instead?
+
+- If AI is the right call, how small can the AI part actually be? (Think VigilOre: the comparator's AI was 20 lines inside hundreds of lines of scoring logic)
+
+- What would the 60% and 30% layers need to look like for the AI to work well in the 10% slot?
+
+ 
+
+If all three genuinely need AI, that's fine. But prove it to me. Don't just agree.
+
+```
+
+ 
+
+What you'll get back: An honest assessment of where you're leaning on AI out of convenience versus necessity. The "prove it to me" instruction matters because Claude will default to validating your choices unless you tell it not to.
+
+What to do with it: For anything that comes back as "this could be rules," build the rules first. When you add AI later, it'll be doing the right job instead of papering over missing infrastructure.
+
+ 
+
+Exercise 3: Price It Like the Ratio Says
+
+ 
+
+The VigilOre engagement went from a $39,000-$59,000 traditional team cost to $7,500 a month. That wasn't a guess. The 60% and 30% were built once. The AI costs pennies per document. The margin is almost entirely the architecture.
+
+Most people price based on time spent or what feels fair. This exercise prices based on what the system actually does.
+
+```
+
+
+
+I want to figure out how to price a product, service, or tool I've built using the value-anchoring approach from the VigilOre example.
+
+ 
+
+Here's what I built: [describe the system or service]
+
+Here's what it replaces: [describe what the client would otherwise pay for — a team, a vendor, a manual process]
+
+Here's the rough cost of that alternative: [e.g. "$X/month in salaries" or "Y hours per week at $Z/hour"]
+
+ 
+
+Now help me think through:
+
+ 
+
+1. What does my system actually cost to run? Break it down: infrastructure costs (hosting, tools), maintenance time, and AI token costs per unit of work.
+
+2. What's the value gap between what they'd pay for the alternative and what it costs me to deliver?
+
+3. Where should I price within that gap? Factor in that I want the gap to be obvious enough to sell easily but large enough to sustain my business.
+
+4. Should I use a flat retainer, revenue share, per-unit pricing, or some combination? Think about what makes sense given how much of my system is deterministic (runs without me) versus what requires ongoing work.
+
+ 
+
+Don't just give me a number. Walk me through the logic the way the VigilOre pricing was structured: salary anchor, cost reduction percentage, margin from architecture.
+
+```
+
+ 
+
+What you'll get back: A pricing framework anchored to real numbers instead of gut feelings. The exercise mirrors how I priced VigilOre, where the 81-87% cost reduction for the client was the selling point and my margin came from the architecture I'd already built.
+
+ 
+
+What to do with it: Run the numbers yourself after Claude gives you the framework. The model doesn't know your costs. You do. Use its structure, plug in your reality.
+
+
+
+  Exercise 4: Draft Your Contract Clause
+
+I signed away the IP on the VigilOre deliverables but kept the methodologies, the routing logic, the parser architecture. The 30% layer stayed mine. That was the moat.
+
+The contract also had a 90-day initial term, month-to-month after that, 30-day notice. I could make that bet because the system was 90% deterministic. If it were a thin wrapper around AI calls, I'd need a long lock-in because it's fragile.
+
+This exercise helps you think about what to protect and what to release.
+
+```
+
+
+
+I'm building or delivering a technical product/service and need to think through the contract structure. Help me work through these questions.
+
+ 
+
+What I'm delivering: [describe the product or service]
+
+Who the client is: [type of company, size, what they need]
+
+How much of my system is deterministic vs. AI-dependent: [rough estimate]
+
+ 
+
+Walk me through these decisions one at a time. Ask me each question, let me answer, then move to the next.
+
+ 
+
+1. What parts of what I've built are the methodology (my moat) versus the deliverable (what the client licenses)?
+
+2. Given how deterministic my system is, can I afford short-term contracts or do I need lock-in?
+
+3. Does a revenue share component make sense? Under what conditions?
+
+4. What's the minimum monthly that protects me if the client's usage is low?
+
+5. What should happen to the IP when the contract ends?
+
+ 
+
+Don't give me legal advice. Give me strategic thinking about what the architecture of my system means for how I should structure the deal.
+
+```
+
+ 
+
+What you'll get back: A structured walkthrough of the same contract decisions I made with VigilOre. The one-at-a-time instruction keeps it grounded in your specifics.
+
+What to do with it: Take the strategic framework and bring it to a lawyer. This exercise tells you what to ask for. The lawyer tells you how to write it.
+
+
+
+Exercise 5: The Fragility Test
+
+The video ended with the contrast between building on architecture versus building a thin wrapper. 90% deterministic means the code doesn't break when OpenAI pushes an update. A thin wrapper means you need a long lock-in because it could get replaced by a feature update.
+
+This exercise tests how fragile your own system is.
+
+```
+
+
+
+I want to test how fragile or resilient my system is using the thin wrapper vs. architecture framework.
+
+ 
+
+Here's my system: [describe what you built or run]
+
+ 
+
+Answer these questions honestly:
+
+ 
+
+1. If OpenAI, Anthropic, or whatever model provider I use shut down tomorrow, what percentage of my system still works?
+
+2. If the model I use gets 10x better, does my system get better automatically or do I have to rebuild?
+
+3. If a competitor copies my AI prompts exactly, what do they still not have?
+
+4. Could I swap one model for another in under a day?
+
+5. If I stopped actively working on this for three months, would it keep running and earning?
+
+ 
+
+Based on my answers, rate my system: Thin Wrapper (fragile, replaceable, needs lock-in to protect), Hybrid (some structural advantage but still exposed), or Architectured (deterministic core, AI is replaceable, month-to-month confidence).
+
+ 
+
+Then tell me the one thing I should build or change to move one level up.
+
+```
+
+ 
+
+What you'll get back: A clear-eyed assessment of where your system sits on the fragility spectrum. The five questions mirror the exact logic I used when deciding contract terms for VigilOre.
+
+What to do with it: If you're a "thin wrapper," don't panic. The 60% and 30% are buildable. You just have to build them before you price like you already have them.

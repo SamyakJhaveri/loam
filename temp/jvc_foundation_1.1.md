@@ -1,17 +1,9 @@
-3.1 The Full Walkthrough (23 Min Video)
-
-23:19
-
-
- What You'll Get From This 
+# 3.1 The Full Walkthrough
+##  What You'll Get From This 
 
 A working folder system that tells Claude where it is, what to do, and where to put the work. Three layers. Plain English. No code, no frameworks, no agents.
 
-Video: Folder Architecture (23 Min)
-
-If you want the written version first, keep reading. If you learn better by watching, start the video above and come back here for reference. Both cover the same ground.
-
-The Lesson
+## The Lesson
 
 The problem with how most people use AI
 
@@ -21,7 +13,7 @@ That works for quick questions. It falls apart the moment you try to do real, on
 
 The folder structure fixes all of that.
 
-What tokens are and why this matters
+## What tokens are and why this matters
 
 Before we get into the structure, you need to understand one thing: tokens.
 
@@ -31,38 +23,35 @@ There are only so many tokens an AI can hold in its context window before it sta
 
 So if you dump everything into one conversation, an AI writing a blog post is also reading your video production notes. You are wasting tokens on information that has nothing to do with the task. The folder structure solves this by separating your work into areas and only loading what is needed for the task at hand.
 
-The workspace blueprint: three workspaces for three kinds of work
+## The workspace blueprint: three workspaces for three kinds of work
 
 Here is the concept. Instead of one giant conversation or one massive file, you break your work into separate workspaces. Each workspace handles a different kind of work.
 
 For example:
 
-Community — content, docs, community management
+* **Community** — content, docs, community management
 
-Production — scripts, animations, code, builds
+* **Production** — scripts, animations, code, builds
 
-Writing Room — blog posts, newsletters, thinking, client work
+* **Writing Room** — blog posts, newsletters, thinking, client work
 
 These are just examples. Your workspaces will look different depending on what you do. A freelancer might have Client Intake, Delivery, and Admin. A developer might have Frontend, Backend, and Docs. The names change. The structure stays the same.
 
-image.png
+![workspace blueprint](/Users/samyakjhaveri/Desktop/project_seed_framework/temp/foundation_1.1_img1.png)
 
-
-What VS Code is (and why you do not need it)
+## What VS Code is (and why you do not need it)
 
 In the video, you will see me working inside VS Code. VS Code is an IDE, a developer environment that lets you see all your folders and files in a sidebar and open them without double-clicking through your file system. It makes it easier to bounce between files.
 
 You do not need VS Code to do any of this. You can work inside your regular file explorer, create folders, create text files, and edit them in Notepad or any text editor. You can also use Claude Cowork, which operates inside folders the same way. VS Code is just cleaner for managing lots of files. If it feels overwhelming, skip it for now and use whatever you are comfortable with.
 
-What markdown is and why we use it
+## What markdown is and why we use it
 
 Every file in this system is a markdown file (.md). If you have never seen one before, markdown is just a text file with some lightweight formatting.
 
-Dashes make bullets
-
-Hashtags (pound signs) make headers
-
-Asterisks make bold or italic
+- Dashes make bullets
+- Hashtags (pound signs) make headers
+- Asterisks make **bold** or *italic*
 
 That is it. When you talk to Claude and see its responses with bolding, headers, and clean formatting, it is already writing in markdown. Copy a Claude response and paste it into a plain text file. All the formatting turns into markdown symbols. That is how it was making it look that way.
 
@@ -70,51 +59,43 @@ A man named John Gruber created markdown in 2004. The idea was: write something 
 
 Claude reads markdown cleanly. That is why we use it for every file in the system.
 
-The three layer routing system
+## The three layer routing system
 
 This is the core of the whole thing. Three layers. Each one has a job.
 
-Layer 1: The Map (CLAUDE.md)
+### Layer 1: The Map (CLAUDE.md)
 
 This is the top-level file. It sits at the root of your project folder. Every time Claude enters this workspace, it reads this file first.
 
 Think of it as the floor plan. You walk into any building, the floor plan is on the wall, and you know where to go. The CLAUDE.md file tells the AI:
 
-What this project is
-
-What the folder structure looks like
-
-Naming conventions for files
-
-Where things go
+- What this project is
+- What the folder structure looks like
+- Naming conventions for files
+- Where things go
 
 This is the most important pattern in the whole system. Inside it, you put a simple table that tells the AI: for this task, read these files, skip those files, you might need these skills.
 
 Without this, the AI either reads everything and wastes tokens, guesses wrong about what matters, or produces work you cannot edit along the way. This table eliminates all of those problems.
 
-image.png
+![the map](foundation_1.1_img2.png)
 
 
-Layer 2: The Rooms (Workspace Context Files)
+### Layer 2: The Rooms (Workspace Context Files)
 
 Each workspace has its own context file. When you tell Claude to work in the Writing Room, it reads the Writing Room context file. When you are in Production, it reads the Production context file. It only loads what it needs for where it is.
 
 These context files describe:
-
-What this workspace is for
-
-What the process looks like (first I do this, then I do that)
-
-What files are in here and how they are organized
-
-What skills or tools to use in this workspace
+- What this workspace is for
+- What the process looks like (first I do this, then I do that)
+- What files are in here and how they are organized
+- What skills or tools to use in this workspace
 
 You can write these by hand or have Claude help you write them. They are plain English. Short documents. A few paragraphs.
 
 In the video, you can see what happens with almost no prompting at all. You say "go to writing room, let's start making something" and the AI immediately reads the context file, understands the workspace, loads the right voice and style, and asks what you want to build. One prompt. That is the power of Layer 2.
 
-image.png
-Layer 3: The Tools (Skills, MCP Servers, and Plug-and-Play)
+### Layer 3: The Tools (Skills, MCP Servers, and Plug-and-Play)
 
 Layer 3 is where skills and tools live. Skills are processes that someone figured out and packaged into a set of files that tell Claude how to do a specific thing. A PowerPoint skill. A humanizer skill. A doc co-authoring skill.
 
@@ -122,7 +103,7 @@ The key here: you do not load every skill into every workspace. You wire skills 
 
 You can reference 15, 20, or 100 skills in a project, but each workspace only loads the ones it needs. That is the plug-and-play idea. And if you need Claude to find a new skill or create one, you can wire that ability in too.
 
-Naming conventions that replace databases
+## Naming conventions that replace databases
 
 One more thing that makes this system work without any code or databases. In your CLAUDE.md, you add naming conventions.
 
@@ -130,25 +111,23 @@ If a blog draft is created, it gets named like: api-auth-guide_draft.md If it is
 
 The AI knows how to find, organize, and move files because the naming tells it everything. You can say "pull my demo v2 and build a spec from it" and Claude knows exactly where to look, what to pull, and what to do next. No SQL. No vector database. No Python injection. Just naming conventions.
 
-How to make this yours
+## How to make this yours
 
 The template in the video uses a fake project with fake blog posts and demo scripts. That is intentional. You swap the names and rewrite the context files for your own work. The layers stay the same.
 
-If you are a content creator:
+**If you are a content creator:**
 
-Writing Room → Script Lab
+- Writing Room → Script Lab
+- Production → Edit Bay
+- Community → Distribution Hub
 
-Production → Edit Bay
-
-Community → Distribution Hub
-
-If you are a freelancer:
+**If you are a freelancer:**
 
 Swap workspaces for: Client Intake, Delivery, Admin
 
 Your context files describe your client process instead of content production
 
-If you are a developer:
+**If you are a developer:**
 
 Swap workspaces for: Frontend, Backend, Docs
 
@@ -156,23 +135,20 @@ Wire in the skills you actually use (testing, deployment, code review)
 
 The three-layer routing system (map → rooms → tools) works the same way no matter what you do. You change the labels and the context. The architecture holds.
 
-image.png
 
-
-The research behind this
+## The research behind this
 
 This is not a prompt trick. The thinking behind it comes from decades of software engineering, all the way back to 1972. Separation of concerns. Modular composition. The idea that systems work better when each part does one job and the routing between parts is clear.
 
 There is a full research paper on this if you want to go deep. It traces the history from early programming principles through to modern AI workflows and lays out a five-layer architecture (this video covers the three most important layers). You can download it and give it to Claude to explain it to you.
 
-Research Paper: [ ICM PAPER ]
-
-Quick start: your first three files
+### Quick start: your first three files
 
 If you want to start right now with the simplest possible version, here it is. Make a folder. Put three files in it.
 
-CLAUDE.md — Tell Claude who you are, what this project is, and where things go.
+**CLAUDE.md** — Tell Claude who you are, what this project is, and where things go.
 
+```
 # Identity
 You are helping [YOUR NAME] with [WHAT YOU DO].
 
@@ -185,9 +161,11 @@ You are helping [YOUR NAME] with [WHAT YOU DO].
 - Read this file first on every new task
 - Ask before creating files outside of /drafts
 - When unsure, ask
+```
 
-CONTEXT.md — Describe the current project.
+**CONTEXT.md** — Describe the current project.
 
+```
 # Current Project
 [What you are building or working on. 2-3 sentences.]
 
@@ -196,29 +174,13 @@ CONTEXT.md — Describe the current project.
 
 # What to avoid
 [Common mistakes or things you do not want.]
+```
 
-REFERENCES.md — Background material Claude should know about.
+**REFERENCES.md** — Background material Claude should know about.
 
+```
 # References
 [Examples, links, style guides, notes. Anything Claude should have access to but does not need to act on directly.]
+```
 
 Point Claude at the folder (using Claude Code, or upload the files to a Claude Project, or paste the contents into your first message). Ask it something related to your project. Notice the difference.
-
-image.png
-
-
- Go Deeper
-
-Want to customize this for your specific use case? 3.2: Customizing for Your Use Case walks through three real examples.
-
-Want to understand why structured context changes AI output at a fundamental level? 2.3: How a 1953 Word Game Explains AI Memory traces it back to Mad Libs.
-
-The concept of "value lives above whatever just got commoditized" shows up in 2.4: The Ladder That Explains Every AI Failure.
-
-Ready to see this running in the terminal? 4.1: Install and First Use gets you into Claude Code.
-
-Premium and VIP members: the full Workspace Blueprint template (the one from the video) is in The Vault. 
-
-Next Up: 3.2 Customizing for Your Use Case
-
-You will see how the three-layer folder architecture changes shape for three different kinds of work. The layers stay the same. The names, the context files, and the routing all change. You will walk away knowing how to build yours.
