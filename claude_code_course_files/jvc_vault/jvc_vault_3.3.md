@@ -1,259 +1,157 @@
-Course Companion
+# Course Companion
 
 You just watched me break down a real partnership with a $31 million AI consulting firm that started from a cold LinkedIn message. Five revenue streams, $300K+ a year, roughly 20 hours a month. The 60/30/10 mapped onto a business deal, not a codebase.
 
 This companion takes the methodology from that story and turns it into exercises for your actual situation. Your real services, your real client relationships, your real revenue. Same thinking I used when I structured the NLP Logix deal, applied to whatever you're building.
 
-How to use the exercises below. 
-
-
-
-
-
-If you're trying to figure out what your business structure actually looks like: do Exercise 1 (map your layers).
-
-
-
-If you know you're undercharging and need to understand why: do Exercise 3 (in-house comparison).
-
-
-
-If you have one revenue stream and want more: do Exercise 2 (revenue streams).
-
-
-
-If you're heading into a client meeting or partnership conversation: do Exercise 5 (sell architecture).
+## How to use the exercises below.
+1. If you're trying to figure out what your business structure actually looks like: do Exercise 1 (map your layers).
+2. If you know you're undercharging and need to understand why: do Exercise 3 (in-house comparison).
+3. If you have one revenue stream and want more: do Exercise 2 (revenue streams).
+4. If you're heading into a client meeting or partnership conversation: do Exercise 5 (sell architecture).
 
 Exercise 4 is the one that compounds. Every time you finish a project, run through the loop questions again. Eventually you stop losing byproducts and start routing them. That's when one client becomes three, not because you hustled harder but because the structure did the work.
 
 The NLP Logix deal didn't happen because I'm good at AI. It happened because I asked questions about a business and saw where architecture was missing. That skill is practicable. These exercises are how you practice it.
 
- 
-
-Exercise 1: Map Your Partnership Layers
-
+## Exercise 1: Map Your Partnership Layers
 In the video I showed how the 60/30/10 applies to the deal itself. The retainer, day rates, contracts, invoicing is the 60%. The way each stream feeds the next is the 30%. The AI capabilities are the 10%. If you removed the AI, the structure still works 
 
 Now map yours.
 
- 
-
 ```
-
-
-
-I want to map a professional relationship or service offering using the 60/30/10 framework applied to business structure (not code).
-
-Here's what I do: [your role or service, e.g. "I run a freelance design practice" or "I manage a SaaS product" or "I consult on data strategy for mid-size companies"]
-
-Here's who I serve or partner with: [your clients, partners, or employer]
-
-Break my business relationship into the three layers:
-
-60% (Infrastructure): What are the contract terms, payment structures, invoicing systems, deliverable templates, content libraries, and operational foundations that make the relationship function? These should work regardless of what technology I'm using.
-
-30% (Orchestration): How does one piece of work lead to the next? If I deliver training, does that surface consulting opportunities? If I build something, does it generate case studies? Map the connections between everything I do. Show me where the routing is intentional and where it's accidental.
-
-10% (AI): What part of what I actually deliver relies on AI? Be honest about how small this probably is relative to the business structure around it.
-
-Then run the removal test: if I swapped the AI for any other technology, does my business model still work? If yes, I have architecture. If no, I have a feature demo.
-
-Be specific to my situation. Don't give me a template answer.
-
+    I want to map a professional relationship or service offering using the 60/30/10 framework applied to business structure (not code).
+    
+    Here's what I do: [your role or service, e.g. "I run a freelance design practice" or "I manage a SaaS product" or "I consult on data strategy for mid-size companies"]
+    
+    Here's who I serve or partner with: [your clients, partners, or employer]
+    Break my business relationship into the three layers:
+    
+    60% (Infrastructure): What are the contract terms, payment structures, invoicing systems, deliverable templates, content libraries, and operational foundations that make the relationship function? These should work regardless of what technology I'm using.
+    
+    30% (Orchestration): How does one piece of work lead to the next? If I deliver training, does that surface consulting opportunities? If I build something, does it generate case studies? Map the connections between everything I do. Show me where the routing is intentional and where it's accidental.
+    
+    10% (AI): What part of what I actually deliver relies on AI? Be honest about how small this probably is relative to the business structure around it.
+    
+    Then run the removal test: if I swapped the AI for any other technology, does my business model still work? If yes, I have architecture. If no, I have a feature demo.
+    Be specific to my situation. Don't give me a template answer.
 ```
-
- 
 
 What you'll get back: A structural view of your professional life that separates what makes money from what makes noise. Most people discover their business model (or lack of one) has almost nothing to do with AI, even if AI is what they talk about.
 
 What to do with it: Look at the 30% layer. That's where most people have gaps. The connections between streams either compound or they don't. If your flywheel leaks, it doesn't matter how good the 10% is.
 
-
-
-Exercise 2: Build Your Revenue Streams
-
- 
-
+## Exercise 2: Build Your Revenue Streams
 I showed five revenue streams from one partnership: retainer, day rates, revenue share, course delivery, and CRO consulting. Each one exists because of how the deal was structured, not because I sell five different products.
 
 Most people have one stream. Maybe two. This exercise finds the others.
 
 ```
-
-
-
-I want to identify potential revenue streams from my existing work using the multi-stream model from the NLP Logix partnership.
-
-Here's what I currently get paid for: [describe your primary income, e.g. "project-based web development" or "monthly retainer for marketing strategy" or "salary as a senior analyst"]
-
-Here's what I know how to do that I'm not currently charging for: [e.g. "I train junior devs informally" or "I create internal docs that others find valuable" or "I troubleshoot problems outside my scope because people ask"]
-
-Here's who I work with or could work with: [describe your client base, employer, or audience]
-
-Based on this, map out potential revenue streams. For each one:
-
-1. What is it? (retainer, day rate, revenue share, licensing, course delivery, consulting, content)
-
-2. What infrastructure already exists for it? What would I need to build?
-
-3. How does it connect to my other streams? Does doing this one make the others better?
-
-I want at minimum three streams. If you can find five, show me five. But don't force streams that don't make sense. If something only works in theory, say so.
-
-For each stream, give me a rough annual range based on what I told you. Conservative numbers, not aspirational ones.
-
+    I want to identify potential revenue streams from my existing work using the multi-stream model from the NLP Logix partnership.
+    
+    Here's what I currently get paid for: [describe your primary income, e.g. "project-based web development" or "monthly retainer for marketing strategy" or "salary as a senior analyst"]
+    
+    Here's what I know how to do that I'm not currently charging for: [e.g. "I train junior devs informally" or "I create internal docs that others find valuable" or "I troubleshoot problems outside my scope because people ask"]
+    
+    Here's who I work with or could work with: [describe your client base, employer, or audience]
+    
+    Based on this, map out potential revenue streams. For each one:
+    1. What is it? (retainer, day rate, revenue share, licensing, course delivery, consulting, content)
+    
+    2. What infrastructure already exists for it? What would I need to build?
+    
+    3. How does it connect to my other streams? Does doing this one make the others better?
+    
+    I want at minimum three streams. If you can find five, show me five. But don't force streams that don't make sense. If something only works in theory, say so.
+    
+    For each stream, give me a rough annual range based on what I told you. Conservative numbers, not aspirational ones.
 ```
-
- 
 
 What you'll get back: A map of revenue streams you probably haven't formalized. The connections between streams matter more than the individual numbers. A retainer that feeds consulting that feeds content that feeds the next retainer is worth more than five disconnected income sources.
 
-What to do with it: Pick the one stream that would be easiest to formalize with what you already have. Build the infrastructure for that one first. Don't try to launch all five.
+What to do with it: Pick the one stream that would be easiest to formalize with what you already have. Build the infrastructure for that one first. Don't try to launch all five
 
- 
-
-Exercise 3: The In-House Comparison
-
- 
-
+## Exercise 3: The In-House Comparison
 In the video I showed how NLP Logix would have spent $200-250K a year plus three to six months of ramp time to build in-house what my retainer delivers for under $96K with finished courses from day one. That comparison is how you sell architecture, not AI.
 
 Most people pitch what they can do. This exercise builds the comparison that sells it.
-
- 
-
 ```
+    I want to build an in-house cost comparison for a service I offer or want to offer.
+    Here's what I deliver: [describe the output, e.g. "AI-integrated workflow automations for sales teams" or "custom training programs for enterprise clients" or "content production pipeline for a marketing department"]
+    If my client did this themselves, they would need to hire: [your best guess at the roles, e.g. "a learning designer, a content developer, and someone technical to build the integrations"]
 
+    Help me build the comparison:
 
-
-I want to build an in-house cost comparison for a service I offer or want to offer.
-
-Here's what I deliver: [describe the output, e.g. "AI-integrated workflow automations for sales teams" or "custom training programs for enterprise clients" or "content production pipeline for a marketing department"]
-
-If my client did this themselves, they would need to hire: [your best guess at the roles, e.g. "a learning designer, a content developer, and someone technical to build the integrations"]
-
-Help me build the comparison:
-
-Left side (In-house):
-
-- What roles would they need? Estimate salaries.
-
-- How long before they deliver anything? (ramp time)
-
-- What ongoing costs exist? (management overhead, tools, iteration)
-
-- Total annual cost.
-
-Right side (Me):
-
-- What do I charge? [your actual or target rate]
-
-- When do they get the first deliverable?
-
-- What's included that they wouldn't get building in-house? (experience, existing templates, proven process)
-
-Then tell me: what's the cost reduction percentage? And what makes this comparison honest vs. misleading? I don't want to build a slide deck lie. I want to understand the real advantage.
-
+    Left side (In-house):
+    - What roles would they need? Estimate salaries.
+    - How long before they deliver anything? (ramp time)
+    - What ongoing costs exist? (management overhead, tools, iteration)
+    - Total annual cost.
+    
+    Right side (Me):
+    - What do I charge? [your actual or target rate]
+    - When do they get the first deliverable?
+    - What's included that they wouldn't get building in-house? (experience, existing templates, proven process)
+    
+    Then tell me: what's the cost reduction percentage? And what makes this comparison honest vs. misleading? I don't want to build a slide deck lie. I want to understand the real advantage.
 ```
-
- 
 
 What you'll get back: The same kind of value anchor I used with NLP Logix. The numbers won't be perfect because Claude doesn't know salary data for your industry. But the structure of the comparison is what matters. You fill in the real numbers.
 
 What to do with it: Use this in your next client conversation. Not as a slide. As a way of thinking through why you're worth what you charge. When you can explain the 81% cost reduction clearly, the retainer sells itself.
-
 ---
-
- 
-
-Exercise 4: Design Your Orchestration Loop
-
- 
-
+## Exercise 4: Design Your Orchestration Loop
 The flywheel in the deal was: training surfaces pain points, pain points become build specs, builds create case studies, case studies become content, content brings the next client. Each stage feeds the next. The 30% layer.
 
 You have a version of this. It's just probably not designed.
 
 ```
-
-
-
-Help me design my orchestration loop. I want to find where my work compounds and where it leaks.
-
-What I do: [your work in one sentence]
-
-Who pays me: [clients, employer, audience]
-
-What I produce as a byproduct of my main work: [e.g. "training materials, internal docs, process templates, case data"]
-
-Walk me through these questions one at a time. Don't answer them all at once. Ask me one, let me respond, then move to the next.
-
-1. When I finish a piece of work, what proof exists that I did it well?
-
-2. Does that proof currently reach anyone who might hire me next?
-
-3. What data or insight do I generate during my work that I'm currently throwing away?
-
-4. Could that data become the starting point for a different kind of engagement?
-
-5. If a client finishes working with me, what's their natural next problem? Am I positioned to solve it?
-
-6. Where in my current process am I starting from scratch when I could be starting from a previous output?
-
-After we go through all six, map it as a loop. Show me where it compounds and where it leaks. Then give me the one structural change that would close the biggest leak.
-
+    Help me design my orchestration loop. I want to find where my work compounds and where it leaks.
+    What I do: [your work in one sentence]
+    Who pays me: [clients, employer, audience]
+    What I produce as a byproduct of my main work: [e.g. "training materials, internal docs, process templates, case data"]
+    
+    Walk me through these questions one at a time. Don't answer them all at once. Ask me one, let me respond, then move to the next.
+    
+    1. When I finish a piece of work, what proof exists that I did it well?
+    2. Does that proof currently reach anyone who might hire me next?
+    3. What data or insight do I generate during my work that I'm currently throwing away?
+    4. Could that data become the starting point for a different kind of engagement?
+    5. If a client finishes working with me, what's their natural next problem? Am I positioned to solve it?
+    6. Where in my current process am I starting from scratch when I could be starting from a previous output?
+    
+    After we go through all six, map it as a loop. Show me where it compounds and where it leaks. Then give me the one structural change that would close the biggest leak.
 ```
-
- 
 
 The one-at-a-time instruction keeps this honest. When Claude asks and you answer from your real experience, the loop it maps back will reflect what actually happens, not what sounds good on paper.
 
 What to do with it: The leak is the thing to fix first. Most people discover they're creating valuable byproducts and never routing them anywhere. A case study you don't publish, training data you don't reuse, a relationship you don't follow up on. Closing one leak often fixes the whole loop.
-
- 
-
-Exercise 5: Sell Architecture, Not AI
-
- 
-
+---
+# Exercise 5: Sell Architecture, Not AI
 This is the negotiation exercise. In the video I went in with no deck, no demo. I asked questions about their business. What are the bottlenecks? What does delivery look like? Where are clients asking for more than you can give? The AI conversation happened naturally once the foundation was visible.
 
 Most people pitch the 10%. This exercise practices pitching the 90%.
-
- 
-
 ```
-
-
-
-I'm preparing for a conversation with a potential client or partner. I want to practice the "sell architecture, not AI" approach.
-
-Here's who I'm talking to: [role, company type, what they do]
-
-Here's what I think they need: [your assumption about the opportunity]
-
-Here's what I would normally pitch: [be honest about your default approach]
-
-Now challenge my approach. Help me prepare differently:
-
-1. Give me five questions I should ask about THEIR business before I mention anything about what I do. Focus on infrastructure and orchestration problems, not AI capabilities.
-
-2. For each question, tell me what the answer would reveal about where the real opportunity is.
-
-3. Based on typical answers to questions like these, show me how the conversation naturally leads to my offering without me ever having to pitch it.
-
-Then rewrite my pitch. Not as a "here's what AI can do" pitch. As a "here's how your business actually works, and here's where the structure breaks" conversation. The AI part should come up only after the 60% and 30% are already on the table.
-
-Don't make it sound polished. Make it sound like a real conversation.
-
+    I'm preparing for a conversation with a potential client or partner. I want to practice the "sell architecture, not AI" approach.
+    
+    Here's who I'm talking to: [role, company type, what they do]
+    
+    Here's what I think they need: [your assumption about the opportunity]
+    
+    Here's what I would normally pitch: [be honest about your default approach]
+    
+    Now challenge my approach. Help me prepare differently:
+    1. Give me five questions I should ask about THEIR business before I mention anything about what I do. Focus on infrastructure and orchestration problems, not AI capabilities.
+    
+    2. For each question, tell me what the answer would reveal about where the real opportunity is.
+    
+    3. Based on typical answers to questions like these, show me how the conversation naturally leads to my offering without me ever having to pitch it.
+    
+    Then rewrite my pitch. Not as a "here's what AI can do" pitch. As a "here's how your business actually works, and here's where the structure breaks" conversation. The AI part should come up only after the 60% and 30% are already on the table.
+    
+    Don't make it sound polished. Make it sound like a real conversation.
 ```
-
- 
 
 What you'll get back: A reframed approach to your next client conversation. The shift from "let me show you what I can do" to "let me understand what you actually need" is the difference between a feature demo that gets forgotten and a structural conversation that becomes a partnership.
 
-
-
 What to do with it: Practice this on a real upcoming conversation. If you don't have one scheduled, use it on a past conversation where you pitched the 10% and lost. Run it back through this lens and see where the 90% was sitting in plain sight.
-
- 

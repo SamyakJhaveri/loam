@@ -1,333 +1,214 @@
-# HANDOFF: Research Experiment Pipeline (Stage 13)
+# HANDOFF: Fix JVC Course Markdown References for Claude Code Navigation
 
 > **For the next Claude Code session.** This document is self-contained — you don't
-> need any prior conversation context. Read this, then implement.
+> need any prior conversation context. Read this, then implement the plan at the bottom.
+>
+> **Written for clarity:** Explanations are included so you understand the *why* behind
+> every decision, not just the *what*.
+
+---
 
 ## Goal
 
-Add experiment orchestration to the project-template's **research flavor** so that
-every new research project bootstraps with a structured way to:
+Make every internal cross-reference in the JVC course markdown files navigable by Claude Code.
 
-1. Design experiments (with forced hypothesis validation)
-2. Run experiments (with reproducibility enforcement)
-3. Track how experiments evolve over time (the key innovation)
-4. Connect to existing research skills that already handle analysis
+**What that means in practice:** When Claude Code reads one of these course files and encounters a reference like "see Section 3.1" or a link to a resource PDF, it should be able to follow that reference with its Read tool to open the target file. Right now, it can't — the references are broken.
 
-**Think of it like this:** The research flavor already has a brain (analysis tools).
-We're adding the hands (execution + tracking).
+**Working directory:** `/Users/samyakjhaveri/Desktop/project_seed_framework`
+**All course files live under:** `claude_code_course_files/` (abbreviated `ccf/` throughout)
 
 ---
 
-## Background (What You Need to Know)
+## What Are These Files?
 
-### What is this project?
+These are markdown-based course materials from Jake Van Clief's Claude Code courses:
 
-`project-template` is a reusable template that bootstraps new Claude Code projects.
-It has **flavors** — stackable packs of skills, hooks, rules, and seed docs. The
-`research` flavor adds tools for research workflows.
+- **The Foundation** (free course, 6 lessons): Teaches folder architecture, Claude Desktop usage, writing CLAUDE.md files, and scaling workspace context. Lives in `ccf/jvc_foundation/`.
+- **The Vault** (premium course, 14 lessons): Provides toolkit, templates, prompt library, and an applied 60/30/10 framework series. Lives in `ccf/jvc_vault/` with supporting files in `ccf/jvc_vault/jvc_vault_files/`.
 
-Key paths:
-- `flavors/research/skills/` — research-specific skills (copied to `.claude/skills/` at bootstrap)
-- `flavors/research/hooks/` — research-specific hooks (copied to `.claude/hooks/`)
-- `flavors/research/rules/` — research-specific rules (copied to `.claude/rules/`)
-- `flavors/research/seed-docs/` — template docs rendered at project root during bootstrap
-- `flavors/research/README.md` — inventory of everything the flavor adds
-- `bin/init-project.sh` — the bootstrap script (DO NOT modify)
-
-### What the research flavor already has
-
-These skills **already exist** — DO NOT rebuild or duplicate them:
-
-| Skill | What it does | Path |
-|-------|-------------|------|
-| `/grill-research` | Forces you to state hypothesis + null hypothesis before running anything | `.claude/skills/grill-research/SKILL.md` |
-| `/interpret-results` | Hypothesis-first analysis of experiment results | `flavors/research/skills/interpret-results/SKILL.md` |
-| `/hypothesis-tree` | Tracks hypotheses with evidence for/against | `flavors/research/skills/hypothesis-tree/SKILL.md` |
-| `protect-results.sh` | Hook that blocks deletion/overwriting of files in `results/` | `flavors/research/hooks/protect-results.sh` |
-
-These seed docs **already exist** — the experiment skill should reference them:
-- `EXPERIMENTS.md.tmpl` — running ledger of experiments (append-only)
-- `FINDINGS.md.tmpl` — distilled insights from experiments
-- `RESULTS.md.tmpl` — index of result artifacts
-
-### The core insight driving this work
-
-An experiment is just three things:
-
-1. **A spec** — what you're testing, with what parameters and metrics
-2. **Runs** — immutable snapshots of executing that spec
-3. **A changelog** — why the spec changed between versions
-
-Most experiment trackers capture what ran. This system also captures **why the
-experiment changed** — so six months from now you can read the version history
-and understand the research narrative, not just data points.
-
-### What was explicitly ruled out (don't build these)
-
-| Thing | Why not |
-|-------|---------|
-| SLURM/HPC job submission skill | User decided to skip it |
-| Separate metrics registry file | Metrics tracked per-spec; a global registry drifts |
-| `/experiment compare` subcommand | Just diff two reports manually |
-| `/experiment status` subcommand | Just read registry.md |
-| `/experiment list` subcommand | Just `ls experiments/specs/` |
-| Separate `config-schema.md` file | Inline in SKILL.md instead |
-| Separate `spec-template.md` file | Inline in SKILL.md instead |
+The user's long-term intention is to use the knowledge from these courses to improve their Claude Code workflows for software engineering and research. This task is the prerequisite: making the files internally consistent so Claude Code can use them as a navigable knowledge base.
 
 ---
 
-## What Was Done So Far
+## What Was Done in This Session (Planning Only — No Edits Made)
 
-- [x] Read Stage 13 from the reference doc (`[HUMAN]_claude-code-deep-reference.md`)
-- [x] Audited all existing research flavor assets (12 skills, 2 agents, 1 hook, 6 seed docs)
-- [x] Identified gaps: experiment execution layer + reproducibility enforcement + evolution tracking
-- [x] Researched best practices from MLflow, DVC, and electronic lab notebook literature
-- [x] Designed architecture: pipeline hub pattern (experiment skill connects existing skills)
-- [x] Trimmed over-engineering: 8 deliverables → 5, 7 subcommands → 4
-- [x] Wrote detailed implementation plan (see plan file below)
-- [ ] **Implementation not started** — that's your job
+### Exploration phase (5 parallel agents)
+- Read every markdown file in both directories (20 files total)
+- Cataloged every internal reference, cross-reference, and file link
+- Mapped all supporting files in `jvc_vault_files/` (PDFs, templates, toolkit directories)
+- Validated which references point to existing files and which are broken
+- Identified three systemic issues (explained below)
 
-### What worked during design
+### Design phase
+- Ran adversarial plan review (plan-reviewer agent) — caught 3 critical issues, 5 important issues
+- Consulted the user on 4 design decisions (see "Design Decisions" below)
+- Revised the plan to address all reviewer critiques
 
-- **Pipeline hub pattern**: Instead of building everything from scratch, the experiment
-  skill acts as a connector between existing skills. grill-research does pre-flight,
-  interpret-results does post-analysis, hypothesis-tree tracks evidence. The experiment
-  skill just orchestrates the flow between them.
-- **Inline everything**: Putting the config schema and spec template directly in the
-  SKILL.md instead of separate files reduces cognitive load. One file to read, not three.
-- **Modeling the hook after protect-results.sh**: Same structure, same conventions,
-  same exit codes. Consistency matters.
-
-### What didn't work / was rejected
-
-- **Original 8-deliverable plan**: Too many files, too many subcommands. Three of the
-  seven subcommands were just "read a file" wrapped in a skill. Separate schema and
-  template files split one concept across three files.
-- **METRICS-REGISTRY.md.tmpl**: A global registry of metrics that must be kept in sync
-  with per-spec metric definitions. Two sources of truth = drift. Eliminated.
-- **Per-run evolution.md**: Each run would have a file explaining what changed from
-  the previous version. But the spec's Version History section already captures this.
-  Duplication eliminated.
+### What was NOT done
+- **Zero files were edited.** All work is in this handoff + the detailed plan file.
 
 ---
 
-## Next Steps — The 5 Deliverables to Build
+## The Three Problems (Why References Are Broken)
 
-Build these **in this order** (dependencies noted):
+### Problem 1: Wrong Markdown Syntax for Non-Image Files
 
-### Step 1: `flavors/research/skills/experiment/SKILL.md` (the big one)
+**What's happening:** In Markdown, `![alt text](path)` means "embed this as an image." But the course files use this syntax for `.md` files, `.pdf` files, and even directories. Claude Code sees `![Skills Manual](path.pdf)` and tries to render it as an image — which fails.
 
-A single self-contained skill file with 4 subcommands: `init`, `plan`, `run`, `evolve`.
+**The fix:** Change `![text](path)` to `[text](path)` (remove the `!`) for all non-image references. Keep `![alt](path)` only for actual `.png` images.
 
-**Key design details:**
-
-The skill creates the directory structure on first `/experiment init` (not at bootstrap):
+**Example:**
 ```
-experiments/
-├── registry.md      ← master index of all experiments
-├── specs/           ← versioned experiment specs
-├── runs/            ← timestamped, immutable run directories
-└── eval-scripts/    ← user-written deterministic eval scripts
+BEFORE: ![Claude Skills Field Manual](/Users/.../clief_notes_skills_field_manual_v1.pdf)
+AFTER:  [Claude Skills Field Manual](./jvc_vault_files/clief_notes_skills_field_manual_v1.pdf)
 ```
 
-**Experiment spec format** (embed this as a template in the skill):
-```markdown
-# Experiment: <name>
+### Problem 2: Broken File Paths
 
-## Current Version: v1 (<date>)
+Two sub-problems:
 
-**Hypothesis:** <what you expect and why>
-**Null hypothesis:** <what result would disprove your expectation>
-**Parameters:**
-  - <param>: <value>
-**Metrics:** [<metric1>, <metric2>]
-**Eval Script:** experiments/eval-scripts/<script>.py (or "manual")
-**Parent Version:** none
+**a) Foundation images reference a `/temp/` directory that doesn't exist.** The images were moved to `jvc_foundation/` but the links still point to the old location.
 
-## Version History
+**b) Vault resource links are missing the `jvc_vault_files/` subdirectory.** For example, `jvc_vault_2.5.md` links to `jvc_vault/folder-organization-guide.md` but the file actually lives at `jvc_vault/jvc_vault_files/folder-organization-guide.md`. Looks like the files were reorganized into a subdirectory but the links weren't updated.
 
-### v1 (<date>) — Initial design
-- Created after /grill-research pre-flight
-```
+### Problem 3: Absolute Paths Are Non-Portable
 
-**Reproducibility config schema** (embed in skill, enforced by hook):
-```json
-{
-  "schema_version": 1,
-  "experiment_name": "...",
-  "spec_version": "v1",
-  "timestamp": "ISO-8601",
-  "git_commit": "<HEAD SHA>",
-  "config_hash": "<SHA-256 of spec file>",
-  "seed": 42,
-  "parameters": {},
-  "metrics": [],
-  "eval_script": "path or null",
-  "environment": { "python_version": "...", "os": "..." }
-}
-```
+Every reference uses the full path: `/Users/samyakjhaveri/Desktop/project_seed_framework/...`. This is:
+- Unnecessarily long (clutters the files)
+- Non-portable (breaks if the repo is moved or cloned elsewhere)
+- Harder for Claude Code to work with (relative paths are simpler)
 
-**Subcommand details:**
-
-| Subcommand | Phases | Integrates with | Hard gates |
-|------------|--------|-----------------|------------|
-| `init <name>` | Create dirs + spec from template | — | — |
-| `plan <name>` | 1) Mandatory `/grill-research` pre-flight, 2) ultrathink batch planning | grill-research | Cannot skip pre-flight; stops for user approval |
-| `run <name>` | Execute plan, write config.json + results, aggregate, write report | agent teams, eval scripts | Hook validates config.json; protect-results guards results/ |
-| `evolve <name>` | Ask what changed + why, bump version, update changelog | — | Must state rationale; suggests /experiment plan next |
-
-**Anti-rationalization rules to embed:**
-- Cannot skip pre-flight ("just run it quick")
-- Cannot overwrite existing run results (append-only)
-- Cannot claim results without citing actual file paths
-- Cannot evolve without stating what changed and why
-- Cannot run without user-approved plan
-
-**YAML frontmatter gotcha:** Descriptions with colons must use folded scalar (`>`).
-See `.claude/rules/known-issues.md` for details.
-
-**Reference skills for style/structure:**
-- `flavors/research/skills/interpret-results/SKILL.md` — similar complexity, good model
-- `flavors/research/skills/hypothesis-tree/SKILL.md` — subcommand pattern to follow
+**The fix:** Convert all absolute paths to relative paths from each file's location. Use `./` prefix consistently (e.g., `./foundation_1.1_img1.png`).
 
 ---
 
-### Step 2: `flavors/research/hooks/validate-experiment-config.sh` (parallel with 3, 4)
+## Design Decisions (Already Made by the User)
 
-A PreToolUse hook on Write that blocks writes to `experiments/runs/*/config.json`
-unless the JSON contains all required reproducibility fields.
+These were explicitly decided during the planning session — do NOT re-ask:
 
-**Model it directly after** `flavors/research/hooks/protect-results.sh` — same
-structure, same exit code convention (0 = allow, 2 = BLOCK), same python3 JSON
-parsing pattern.
-
-**What to validate:**
-- Required fields present: `experiment_name`, `spec_version`, `timestamp`, `git_commit`, `config_hash`, `seed`
-- `timestamp` matches ISO 8601 pattern
-- `git_commit` is hex, 7+ characters
-- `schema_version` is a positive integer
-- Target file doesn't already exist (append-only enforcement)
-
-**Scope:** Only fires on paths matching `experiments/runs/*/config.json`. Don't
-interfere with other writes.
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Directory references (the_full_toolkit/, workspace-blueprint/) | Link to entry-point files (README.md, START-HERE.md) | Claude Code can Read files but not directories |
+| INDEX.md entries | Clickable markdown links | Enables Claude Code to follow links directly |
+| Prose references like "go back to Section 3.1" | Convert to markdown links where target exists | Makes every navigable reference clickable |
+| External references (Session 1, Section 2.6, etc.) | Leave as plain prose | Target files don't exist in this collection |
+| Top-level PDF (Claude Folder Setup.pdf) | Include in top-level INDEX.md | Part of the course materials |
+| Relative path prefix | Always use `./` | Consistency across all files |
 
 ---
 
-### Step 3: `flavors/research/seed-docs/EXPERIMENT-PROTOCOL.md.tmpl` (parallel with 2, 4)
+## Critical Background: Section-to-File Mapping
 
-A template doc rendered at bootstrap. Contains:
+The foundation file names DON'T match the section numbers in the content. This is confusing but intentional — we're NOT renaming files (that would break git history). Instead, the INDEX.md documents the mapping:
 
-1. The research ↔ Claude Code mapping table:
+| File Name | Section in Content | Title |
+|-----------|--------------------|-------|
+| jvc_foundation_1.1.md | 3.1 | The Full Walkthrough |
+| jvc_foundation_1.2.md | 3.2 | Customizing for Your Use Case |
+| jvc_foundation_1.3.md | 3.3 | Common Mistakes and How to Fix Them |
+| jvc_foundation_2.1.md | 4.3 | Claude Desktop as a Thinking Partner |
+| jvc_foundation_2.2.md | 4.4 | Making Claude Understand your Project |
+| jvc_foundation_2.3.md | 4.5 | Where This Goes |
 
-| Research Activity | Claude Code Primitive |
-|---|---|
-| Form hypothesis | `/hypothesis-tree add` |
-| Validate hypothesis | `/grill-research` |
-| Design experiment | `/experiment init` + `/experiment plan` |
-| Run experiment | `/experiment run` |
-| Analyze results | `/interpret-results` |
-| Track evidence | `/hypothesis-tree update` |
-| Evolve experiment | `/experiment evolve` |
-| Record learnings | MEMORY.md with `[LEARN:tag]` |
-
-2. Directory structure explanation (what goes where)
-3. Quick-start: the 5 commands to run your first experiment
-4. Uses `{{PROJECT_NAME}}` and `{{DATE}}` template variables (see other .tmpl files for pattern)
+**Why this matters:** When a file says "Section 3.1", the link target is `jvc_foundation_1.1.md` (not `jvc_foundation_3.1.md`, which doesn't exist). The plan's edit table uses this mapping throughout.
 
 ---
 
-### Step 4: `flavors/research/rules/research-memory.md` (parallel with 2, 3)
+## What Worked During Planning
 
-A rule file documenting the `[LEARN:tag]` convention for cross-session memory:
+- **5-agent parallel exploration** surfaced all issues in one pass — no surprises during design
+- **Adversarial plan review** caught 3 critical issues the original plan missed:
+  1. Verification grep pattern would have missed absolute paths in `[]()`  link syntax (was only checking `![]()`  image syntax)
+  2. Two references target directories, not files — needed entry-point files
+  3. Plan lacked the absolute working directory path for the implementing session
+- **User design consultations** prevented assumptions about 4 ambiguous decisions
+- **Session critique (2-agent team)** verified all 33 OLD strings match actual files, caught 3 fixable issues:
+  1. Edits 25 & 26 target the same line — sequential dependency warning added
+  2. Edit 22 had misleading link text — rewritten for clarity
+  3. Step 4 verification used macOS-incompatible `grep -P` — changed to `grep -E`
+
+## What Didn't Work / Was Ruled Out
+
+| Approach | Why It Was Rejected |
+|----------|---------------------|
+| `sed` script for all replacements | Fragile for prose conversions (each is contextually unique). Edit tool is safer and more auditable. |
+| Renaming foundation files to match section numbers | Breaks git history. INDEX.md solves the discoverability problem without renaming. |
+| Creating placeholder files for missing course sections | Over-engineering. Those sections simply aren't in this collection yet. Plain prose is fine. |
+| Adding HTML comments `<!-- Not in this collection -->` next to unlinkable refs | Adds clutter. The INDEX files already show what's available. |
+| A single top-level INDEX.md instead of three | Loses the per-directory navigation. Three indexes (top, foundation, vault) let Claude Code discover context at the right level. |
+
+---
+
+## Next Steps — The Implementation Plan
+
+The detailed plan with **every exact edit** (OLD string → NEW string, with line numbers) is at:
 
 ```
-[LEARN:method]     — methodological corrections
-[LEARN:data]       — data handling surprises
-[LEARN:tool]       — tool/environment gotchas
-[LEARN:claim]      — claims that turned out wrong
-[LEARN:metric]     — metric definition changes
-[LEARN:experiment] — experiment design evolution decisions
+~/.claude/plans/read-the-files-and-vivid-peacock.md
 ```
 
-Also document conventions for "Key Facts" and "Active Experiments" sections in MEMORY.md.
+### Quick summary of the 7 steps:
 
-**Note:** This is a `.claude/rules/` file, which means it auto-loads. Keep it concise —
-rules are loaded into every conversation.
+| Step | What | Files | Edits |
+|------|------|-------|-------|
+| 0 | Pre-flight: run grep commands to verify baseline | — | 0 (read-only) |
+| 1 | Fix foundation image paths (`/temp/` → `./`) | 2 | 5 |
+| 2 | Fix vault resource links (syntax + path + directory targets) | 7 | 8 |
+| 3 | Fix vault 2.8 links (syntax + absolute → relative) | 1 | 3 |
+| 4 | Convert foundation prose refs to markdown links | 5 | 11 |
+| 5 | Convert vault prose refs to markdown links | 4 | 7 |
+| 6 | Create 3 INDEX.md files (top-level, foundation, vault) | 3 new | — |
+| 7 | Final verification: grep for zero broken references | — | 0 (read-only) |
+| **Total** | | **15 edited + 3 new** | **34 edits** |
+
+### How to execute efficiently
+
+- **Use the `dispatching-parallel-agents` skill** to parallelize Steps 1–3. They touch completely different files and have zero dependencies between them.
+- Steps 4 and 5 (prose conversions) should run **sequentially** — read each file first to verify the exact text matches the plan's `OLD:` strings, since line numbers may shift if files were modified after 2026-05-15.
+- Step 6 (create INDEX files) can run **in parallel** with Steps 4–5 since it creates new files.
+- Step 7 runs last (verification).
+
+### Important implementation notes
+
+1. Every `OLD:` string in the plan is the **exact text** from the file as of 2026-05-15. Use it directly as the `old_string` parameter for the Edit tool.
+2. `ccf/` in the plan means `claude_code_course_files/` relative to the working directory.
+3. Each step has its own verification commands — **run them before moving to the next step**.
+4. There is a nested `.git` directory at `ccf/jvc_vault/jvc_vault_files/workspace-blueprint/claude-office-skills-ref/.git/`. Use `--exclude-dir=.git` in grep commands to avoid false matches.
+5. Supporting files inside `jvc_vault_files/` were audited and their internal links are correct — no fixes needed there.
 
 ---
 
-### Step 5: Update `flavors/research/README.md` (after 1-4)
+## Not in Scope
 
-Add new assets to the existing inventory. Read the current README first
-(`flavors/research/README.md`) — it has clear sections for Skills, Hooks, Seeds,
-and Rules. Add one entry per new asset in the appropriate section.
+These were explicitly scoped out:
 
----
-
-## The Pipeline (How Everything Connects)
-
-```
-  /hypothesis-tree add ──── "I have a hypothesis"
-          │
-          ▼
-  /grill-research ───────── "Is it testable?"
-          │
-          ▼
-  /experiment init ──────── "Set up the experiment"
-          │
-          ▼
-  /experiment plan ──────── "Plan the batches" (ultrathink)
-          │                    ↓ user approves plan
-          ▼
-  /experiment run ───────── "Run it" (agent teams)
-          │                    ↓ validate-experiment-config.sh (GATE)
-          │                    ↓ protect-results.sh (GATE)
-          ▼
-  /interpret-results ────── "Analyze results"
-          │
-          ▼
-  /hypothesis-tree update ── "Update evidence"
-          │
-          ├──→ EXPERIMENTS.md ─── ledger entry
-          ├──→ FINDINGS.md ────── distilled insight
-          └──→ MEMORY.md ─────── [LEARN:tag] corrections
-
-  ── When understanding changes: ──
-
-  /experiment evolve ────── "Update spec + rationale"
-          │
-          └──→ back to /experiment plan
-```
-
-Skills on the LEFT already exist. The `/experiment` skill (center) is what you're
-building. It's the hub that connects the existing tools into a coherent workflow.
+- **Renaming foundation files** (1.1→3.1) — INDEX.md documents the mapping instead
+- **External section references** (Session 1, Section 1.2, Section 2.6, Clawdbot 2.5, Ethics Engine 2.7) — not in this collection
+- **Author production notes** (`[📌 JAKE: ...]` in foundation 2.2 and 2.3) — part of the source material
+- **Links inside `jvc_vault_files/` supporting files** — audited, all correct
 
 ---
 
-## Verification Checklist
+## Verification Checklist (Run After All Edits)
 
-After implementation, run these checks:
+```bash
+# All of these should return 0:
+grep -rn --include='*.md' --exclude-dir=.git '/Users/samyakjhaveri' ccf/ | wc -l
+grep -rn --exclude-dir=.git '/temp/' ccf/ | wc -l
+grep -rn '!\[.*\](.*\.md)' ccf/jvc_vault/*.md | wc -l
+grep -rn '!\[.*\](.*\.pdf)' ccf/jvc_vault/*.md | wc -l
 
-- [ ] SKILL.md YAML frontmatter parses without error (test: no unquoted colons)
-- [ ] Hook exits 0 for valid config.json, 2 for missing required fields
-- [ ] Hook blocks overwrites of existing config.json files
-- [ ] Seed doc renders correctly: `{{PROJECT_NAME}}` and `{{DATE}}` get substituted
-- [ ] Bootstrap test passes:
-  ```bash
-  bin/init-project.sh /tmp/test-experiment --flavor research
-  # Then verify these exist in the test project:
-  # - EXPERIMENT-PROTOCOL.md (at project root)
-  # - .claude/skills/experiment/SKILL.md
-  # - .claude/hooks/validate-experiment-config.sh
-  # - .claude/rules/research-memory.md
-  ```
-- [ ] `bin/verify-template.sh` outputs ALL OK
+# This should return exactly 5 (the foundation images):
+grep -rn '!\[' ccf/jvc_foundation/*.md | wc -l
+
+# All three index files exist:
+ls ccf/INDEX.md ccf/jvc_foundation/INDEX.md ccf/jvc_vault/INDEX.md
+```
 
 ---
 
 ## Detailed Plan File
 
-The full implementation plan with schemas, formats, and anti-patterns is at:
-`~/.claude/plans/ultrathink-brainstorming-16-stage-tingly-piglet.md`
+**Path:** `~/.claude/plans/read-the-files-and-vivid-peacock.md`
 
-Read it before starting implementation — it has details this handoff summarizes.
+Read this file before starting. It contains every edit with exact OLD/NEW strings, organized by step.

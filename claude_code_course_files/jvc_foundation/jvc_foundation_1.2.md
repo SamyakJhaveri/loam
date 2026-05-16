@@ -1,13 +1,11 @@
 # 3.2 Customizing for Your Use Case
 
 ## What You'll Get From This 
-
 You will see how the three-layer folder architecture changes shape for three different kinds of work. The layers stay the same. The names, the context files, and the routing all change. You will walk away knowing how to build yours.
 
 ## The Lesson
 
 **One structure, every use case**
-
 In Section 3.1 you saw the full architecture: a top-level identity file (CLAUDE.md), workspace-level context files, and skills or tools that plug in where needed. The example in the video used a fake project with a community workspace, a production workspace, and a writing room.
 
 That example was intentional. It is close enough to real work that you can see the logic, but generic enough that you have to make it your own. This lesson shows you how.
@@ -17,7 +15,6 @@ The principle is short: the layers do not change. The labels do. Your CLAUDE.md 
 Here are three real examples. Find the one closest to your situation, study it, then build your own.
 
 ## Example 1: Content Creator
-
 You make videos, write posts, manage a social presence, and probably do it mostly alone or with a very small team. Your work moves through a cycle: come up with ideas, write scripts or outlines, produce the content, publish it.
 
 Your workspaces:
@@ -43,7 +40,6 @@ my-content-project/
 ```
 
 ### What each workspace does:
-
 **🟠 Script Lab** — This is where thinking happens. Ideas go in. Drafts come out. The CONTEXT.md in this folder describes your voice, your audience, the kind of content you make, and the process you follow from idea to finished script. (could also reference separate MD files, if there is a lot of info in these) If you have a style guide or a list of topics you keep coming back to, that goes in here. Claude reads this context and writes in your voice from the first line.
 
 **🟡 Production** — This is where content gets built. If you are making animations (like the pipeline in Section 2.6), this is where your briefs, specs, and build files live. If you are making simple videos, this might be where your shot lists, thumbnails, and description templates go. The CONTEXT.md here describes your production process, your tools, your visual standards.
@@ -51,7 +47,6 @@ my-content-project/
 **🟢 Distribution** — This is where finished content goes out. Platform-specific formatting (what works on Instagram vs LinkedIn vs YouTube), scheduling, repurposing long content into short clips. The CONTEXT.md describes your platforms, posting cadence, and any rules about how content should be adapted per channel.
 
 ### What the CLAUDE.md looks like:
-
 Your top-level file tells Claude what this project is and how to route between the three workspaces. Something like:
 
 ```
@@ -80,7 +75,6 @@ I create [TYPE OF CONTENT] for [AUDIENCE].
 ![content_creation_setup](/Users/samyakjhaveri/Desktop/project_seed_framework/temp/foundation_1.2_img1.png)
 
 ## Example 2: Freelancer / Consultant
-
 You work with multiple clients. Each engagement has a lifecycle: intake, scoping, delivery, follow-up. You need Claude to shift between clients without bleeding context. You also need your own internal workspace for business development, templates, and admin.
 
 Your workspaces:
@@ -110,7 +104,6 @@ my-consulting-practice/
 ```
 
 ### What each workspace does:
-
 **🟠 Client workspaces (one per client)** — Each client gets their own folder with their own CONTEXT.md. That file describes who the client is, what the engagement is, what phase you are in, what the deliverables are, and any client-specific rules (tone of voice, terminology they use, things to avoid). When you tell Claude "let's work on Alpha," it reads Alpha's context and nothing from Beta. No bleed. No confusion.
 
 **🟡 Templates** — Your reusable frameworks. Proposal templates, report structures, analysis frameworks. The CONTEXT.md here describes what each template is for and how to use it. When you start a new engagement, you pull from templates into the client folder and customize.
@@ -149,7 +142,6 @@ The key for freelancers: the client folders multiply. When you onboard a new cli
 ![consulting_setup](/Users/samyakjhaveri/Desktop/project_seed_framework/temp/foundation_1.2_img2.png)
 
 ## Example 3: Developer
-
 You build software. You might work on one project or several. Your work involves planning, writing code, testing, deploying, and documenting. You probably already have opinions about folder structure. The difference here is that Claude reads it.
 
 Your workspaces:
@@ -180,7 +172,6 @@ my-app/
 ```
 
 ### What each workspace does:
-
 **🟠 Planning** — Specs, architecture decisions, design docs. The CONTEXT.md describes the app, the tech stack, the current priorities, and any architectural principles you follow. When you tell Claude to help you spec a new feature, it reads this context and works within your existing architecture.
 
 **🟡 Src** — The actual codebase. The CONTEXT.md here describes the code structure, naming conventions, patterns you use (and patterns you avoid), testing requirements, and any libraries or frameworks that are standard in the project. Claude writes code that fits your codebase because it read the rules first.
@@ -228,7 +219,6 @@ Developers will notice the routing table has a Skills column. This is Layer 3 fr
 
 
 ## How to build yours
-
 You do not need to match any of these exactly. The process is the same regardless of what you do.
 
 **Step 1:** List your workspaces. Think about the 2-4 major areas of your work. What are the modes you shift between? Writing and building are different workspaces. Client A and Client B are different workspaces. Planning and executing might be different workspaces. If you find yourself wishing Claude would "forget" what it was just doing and focus on something else, that is a workspace boundary.
