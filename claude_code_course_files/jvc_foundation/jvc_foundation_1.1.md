@@ -34,7 +34,7 @@ For example:
 
 These are just examples. Your workspaces will look different depending on what you do. A freelancer might have Client Intake, Delivery, and Admin. A developer might have Frontend, Backend, and Docs. The names change. The structure stays the same.
 
-![workspace blueprint](/Users/samyakjhaveri/Desktop/project_seed_framework/temp/foundation_1.1_img1.png)
+![workspace blueprint](./foundation_1.1_img1.png)
 
 ## What VS Code is (and why you do not need it)
 In the video, you will see me working inside VS Code. VS Code is an IDE, a developer environment that lets you see all your folders and files in a sidebar and open them without double-clicking through your file system. It makes it easier to bounce between files.
@@ -71,7 +71,7 @@ This is the most important pattern in the whole system. Inside it, you put a sim
 
 Without this, the AI either reads everything and wastes tokens, guesses wrong about what matters, or produces work you cannot edit along the way. This table eliminates all of those problems.
 
-![the map](foundation_1.1_img2.png)
+![the map](./foundation_1.1_img2.png)
 
 
 ### Layer 2: The Rooms (Workspace Context Files)

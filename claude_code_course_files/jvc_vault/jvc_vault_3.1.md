@@ -8,11 +8,11 @@ Three lessons, each one showing a different face of the same framework.
 
 ## How to go through this series
 
-If you're building software or scoping a technical project, start with Lesson 1. The VigilOre breakdown will change how you think about what to build versus what to let AI handle.
+If you're building software or scoping a technical project, start with [Lesson 1](./jvc_vault_3.2.md). The VigilOre breakdown will change how you think about what to build versus what to let AI handle.
 
-If you're building a business, freelancing, or trying to structure client relationships, start with Lesson 2. The partnership model is directly applicable whether you're charging $5,000 or $500,000.
+If you're building a business, freelancing, or trying to structure client relationships, start with [Lesson 2](./jvc_vault_3.3.md). The partnership model is directly applicable whether you're charging $5,000 or $500,000.
 
-If you want the big picture first, start with Lesson 3. It's the system view that connects everything. Then go back to Lessons 1 and 2 to see the system applied to specific engagements.
+If you want the big picture first, start with [Lesson 3](./jvc_vault_3.4.md). It's the system view that connects everything. Then go back to [Lesson 1](./jvc_vault_3.2.md) and [Lesson 2](./jvc_vault_3.3.md) to see the system applied to specific engagements.
 
 Every lesson has a course companion with exercises you run in Claude using your own real work. Not hypotheticals. Your actual role, your actual bottlenecks. The framework becomes yours through practice, not through watching me use it.
 

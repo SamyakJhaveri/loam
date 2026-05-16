@@ -63,4 +63,4 @@ The constraint files reference real tools and skills by name with links. The arc
 The Vault Toolkit will be updated as new tools, skills, and constraints are developed. What you download today gets better over time.
 
 **Resources:**
-![The Full Toolkit](/Users/samyakjhaveri/Desktop/project_seed_framework/claude_code_course_files/jvc_vault/the_full_toolkit)
+[The Full Toolkit](./jvc_vault_files/the_full_toolkit/README.md)

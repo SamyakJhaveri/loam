@@ -6,7 +6,7 @@ A complete reference for structuring folders for AI workflows. The three layers,
 
 ## What This Is
 
-This is the reference companion to the Folder Architecture lessons in The Foundation Module (Section 3). It covers:
+This is the reference companion to the Folder Architecture lessons in [The Foundation Module (Section 3)](../jvc_foundation/jvc_foundation_1.1.md). It covers:
 
 - The three-layer system (map, rooms, tools) and what goes in each
 - How to build and use routing tables
@@ -19,4 +19,4 @@ You can read it as a reference, hand it to Claude to design a custom folder stru
 **Pro tip:** Upload this document into a Claude conversation and say: "Read the Folder Organization Guide. I am a [your role]. Help me design my folder structure based on what I do." Claude will use the examples and principles to build something custom for you.
 
 **Resources:**
-![Folder Organization Guide](/Users/samyakjhaveri/Desktop/project_seed_framework/claude_code_course_files/jvc_vault/folder-organization-guide.md)
+[Folder Organization Guide](./jvc_vault_files/folder-organization-guide.md)

@@ -40,7 +40,7 @@ Claude Desktop has a feature called Projects. You can give a Project your key do
 
 This is the lightest version of "giving AI context about your work." If you did 1.2: Your First Folder, you already understand the concept. Projects are the browser-based version of the same idea: persistent context that stays across conversations.
 
-Think of Projects as the seed for what comes next in Session 4. They give Claude background. Session 4 (CLAUDE.md) gives Claude deep project understanding.
+Think of Projects as the seed for what comes next in Session 4. They give Claude background. [Session 4 (CLAUDE.md)](./jvc_foundation_2.2.md) gives Claude deep project understanding.
 
 ## Tips
 **Desktop for decisions. Code for execution.** If you are deciding what to build, use Desktop. If you are building it, use Code. If you try to decide and build at the same time, both suffer.

@@ -29,4 +29,4 @@ If you are going through the Building Animations course (Level 2), these templat
 Do not put code, frame numbers, or pixel positions in the spec. Keep it in plain English. Giving Claude creative room within clear boundaries produces better results than controlling every detail. The templates are designed this way on purpose.
 
 **Resources:**
-![Spec Templates](/Users/samyakjhaveri/Desktop/project_seed_framework/claude_code_course_files/jvc_vault/animation-spec-templates.md)
+[Spec Templates](./jvc_vault_files/animation-spec-templates.md)

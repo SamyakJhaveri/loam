@@ -11,4 +11,4 @@ This manual covers what skills are, how Claude reads and uses them, and how to w
 You do not need to read this front to back. Download it, give it to Claude, and ask it to explain any section. Or ask Claude to help you find the right skill for a task you are working on.
 
 **Resources:**
-![Claude Skills Field Manual](/Users/samyakjhaveri/Desktop/project_seed_framework/claude_code_course_files/jvc_vault/clief_notes_skills_field_manual_v1.pdf)
+[Claude Skills Field Manual](./jvc_vault_files/clief_notes_skills_field_manual_v1.pdf)

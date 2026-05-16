@@ -55,7 +55,7 @@ That is it. Fifteen lines. Ten minutes. The difference in Claude's behavior is i
 ## Tips
 **Write it for a smart person who just joined your project.** That is literally what Claude is. If a new team member would need to know it on day one, put it in the CLAUDE.md.
 
-**Update it when your project changes.** The CLAUDE.md is a living document. When you add a new convention, change a library, or shift your architecture, update the file. This is the same advice from 3.3 (Common Mistakes): stale context files are the most common reason Claude starts "getting worse."
+**Update it when your project changes.** The CLAUDE.md is a living document. When you add a new convention, change a library, or shift your architecture, update the file. This is the same advice from [3.3 (Common Mistakes)](./jvc_foundation_1.3.md): stale context files are the most common reason Claude starts "getting worse."
 
 **Do not overthink it.** A mediocre CLAUDE.md beats no CLAUDE.md every time. You can always improve it later. The first version takes 10 minutes. Each edit takes 30 seconds. Start now.
 

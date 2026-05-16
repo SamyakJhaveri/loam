@@ -39,6 +39,6 @@ For developers. Four workspaces: Planning (specs, architecture, decisions), Src 
 If none of these match your work exactly, they still give you the structure. Edit the workspace names, change the routing table, and rewrite the context files. The three-layer pattern (map → rooms → tools) holds regardless of what you do.
 
 **Resources:**
-![Content Pipeline](/Users/samyakjhaveri/Desktop/project_seed_framework/claude_code_course_files/jvc_vault/jvc_vault_files/workflow-starter-content-pipeline.md)
-![Code Project](/Users/samyakjhaveri/Desktop/project_seed_framework/claude_code_course_files/jvc_vault/jvc_vault_files/workflow-starter-code-project.md)
-![Client Management](/Users/samyakjhaveri/Desktop/project_seed_framework/claude_code_course_files/jvc_vault/jvc_vault_files/workflow-starter-client-management.md)
+[Content Pipeline](./jvc_vault_files/workflow-starter-content-pipeline.md)
+[Code Project](./jvc_vault_files/workflow-starter-code-project.md)
+[Client Management](./jvc_vault_files/workflow-starter-client-management.md)

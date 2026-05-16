@@ -10,4 +10,4 @@ Give this to Claude and ask: "What tools or repos in here would help me with [yo
 Claude will scan the index and recommend the relevant ones.
 
 **Resources:**
-![Resource Index](/Users/samyakjhaveri/Desktop/project_seed_framework/claude_code_course_files/jvc_vault/clief_notes_resource_index_v1.pdf)
+[Resource Index](./jvc_vault_files/clief_notes_resource_index_v1.pdf)

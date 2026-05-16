@@ -6,7 +6,7 @@ You will see how the three-layer folder architecture changes shape for three dif
 ## The Lesson
 
 **One structure, every use case**
-In Section 3.1 you saw the full architecture: a top-level identity file (CLAUDE.md), workspace-level context files, and skills or tools that plug in where needed. The example in the video used a fake project with a community workspace, a production workspace, and a writing room.
+In [Section 3.1](./jvc_foundation_1.1.md) you saw the full architecture: a top-level identity file (CLAUDE.md), workspace-level context files, and skills or tools that plug in where needed. The example in the video used a fake project with a community workspace, a production workspace, and a writing room.
 
 That example was intentional. It is close enough to real work that you can see the logic, but generic enough that you have to make it your own. This lesson shows you how.
 
@@ -72,7 +72,7 @@ I create [TYPE OF CONTENT] for [AUDIENCE].
 - Published: YYYY-MM-platform-topic.md
 ```
 
-![content_creation_setup](/Users/samyakjhaveri/Desktop/project_seed_framework/temp/foundation_1.2_img1.png)
+![content_creation_setup](./foundation_1.2_img1.png)
 
 ## Example 2: Freelancer / Consultant
 You work with multiple clients. Each engagement has a lifecycle: intake, scoping, delivery, follow-up. You need Claude to shift between clients without bleeding context. You also need your own internal workspace for business development, templates, and admin.
@@ -139,7 +139,7 @@ I am a [TYPE] consultant working with [TYPES OF CLIENTS].
 
 The key for freelancers: the client folders multiply. When you onboard a new client, you copy the structure, write a new CONTEXT.md, and Claude is ready. The CLAUDE.md at the top gets one new line in the routing table. That is it.
 ```
-![consulting_setup](/Users/samyakjhaveri/Desktop/project_seed_framework/temp/foundation_1.2_img2.png)
+![consulting_setup](./foundation_1.2_img2.png)
 
 ## Example 3: Developer
 You build software. You might work on one project or several. Your work involves planning, writing code, testing, deploying, and documenting. You probably already have opinions about folder structure. The difference here is that Claude reads it.
@@ -213,9 +213,9 @@ my-app/
 - Decision records: YYYY-MM-DD-decision-title.md
 ```
 
-Developers will notice the routing table has a Skills column. This is Layer 3 from 3.1. You can wire testing skills, documentation skills, or code review skills into specific workspaces so they only load when relevant. Your planning workspace does not need the testing skill. Your src workspace does
+Developers will notice the routing table has a Skills column. This is Layer 3 from [3.1](./jvc_foundation_1.1.md). You can wire testing skills, documentation skills, or code review skills into specific workspaces so they only load when relevant. Your planning workspace does not need the testing skill. Your src workspace does
 
-![developer_setup](/Users/samyakjhaveri/Desktop/project_seed_framework/temp/foundation_1.2_img3.png)
+![developer_setup](./foundation_1.2_img3.png)
 
 
 ## How to build yours

@@ -21,7 +21,7 @@ In my workspace, different tasks load different context. Automatically.
 
 Same Claude. Same context window. Different context per task. The routing table in the CLAUDE.md decides what loads based on what you ask for.
 
-This is the three-layer architecture from Section 3 in full operation:
+This is the three-layer architecture from [Section 3](./jvc_foundation_1.1.md) in full operation:
 
 - Layer 1 (CLAUDE.md) — The map. Routes every task to the right workspace.
 
@@ -29,7 +29,7 @@ This is the three-layer architecture from Section 3 in full operation:
 
 - Layer 3 (Skills and tools) — Plug-and-play. Loaded per workspace, not globally.
 
-If you went through Section 3, this is what it looks like when you run it with Claude Code. If you skipped Section 3 and jumped straight to the Claude Code sessions, this is your introduction to the architecture. Go back to Section 3.1 for the full walkthrough.
+If you went through [Section 3](./jvc_foundation_1.1.md), this is what it looks like when you run it with Claude Code. If you skipped Section 3 and jumped straight to the Claude Code sessions, this is your introduction to the architecture. Go back to [Section 3.1](./jvc_foundation_1.1.md) for the full walkthrough.
 
 ## Why this matters at scale
 200K tokens sounds huge until you fill it with irrelevant files. If Claude is writing a blog post but also reading your animation specs and your client contracts, you are burning tokens on context that has nothing to do with the task. The output gets noisier. The quality drops.
@@ -63,7 +63,7 @@ area-b/
 
 Run a task in Area A. Then run a task in Area B. Watch Claude behave differently in each one. That difference is workspace routing at its simplest.
 
-When you are ready to put both under one roof with a single routing table, that is the full architecture from 3.1. You already have the pieces. You just need to combine them.
+When you are ready to put both under one roof with a single routing table, that is the full architecture from [3.1](./jvc_foundation_1.1.md). You already have the pieces. You just need to combine them.
 
 ## What you have now
 Across five sessions, you built:

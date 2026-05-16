@@ -6,7 +6,7 @@ Five complete, production-grade CLAUDE.md files for five different use cases. Pi
 
 ## What This Is
 
-In The Foundation (4.4), you wrote a basic CLAUDE.md. These are the advanced versions. Five real setups, each with full routing tables, naming conventions, workspace descriptions, and rules.
+In [The Foundation (4.4)](../jvc_foundation/jvc_foundation_2.2.md), you wrote a basic CLAUDE.md. These are the advanced versions. Five real setups, each with full routing tables, naming conventions, workspace descriptions, and rules.
 
 ### The five examples:
 
@@ -37,4 +37,4 @@ Read through all five. Find the closest match. Copy it into a new file called CL
 These are more detailed than the starter version from the free course. The difference is production-grade routing tables, real naming conventions, and context that has been tested across actual workflows.
 
 **Resources:**
-![Five Production Examples](/Users/samyakjhaveri/Desktop/project_seed_framework/claude_code_course_files/jvc_vault/production-claude-md-examples.md)
+[Five Production Examples](./jvc_vault_files/production-claude-md-examples.md)
