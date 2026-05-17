@@ -57,3 +57,8 @@ graphify-out/cache/
 
 # Personal reference docs — not part of the template (audit Session C)
 internal_docs/
+# Brainstorm / scratch outputs from Cowork sessions
+outputs/
+# Image pollution (Mac screenshots / pasted images)
+IMG_*
+

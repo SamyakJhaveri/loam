@@ -1,16 +1,49 @@
 _min_copier_version: "9.4.0"
-_subdirectory: template
+_subdirectory: "."
 _templates_suffix: .jinja
 _envops:
   keep_trailing_newline: true
 
-# Files/patterns to never copy
+# Files/patterns to never copy into rendered projects.
+# These are template-author working files, internal references,
+# and pollution that should not propagate.
 _exclude:
+  # Generic VCS / build noise
   - ".DS_Store"
   - "*.pyc"
   - "__pycache__"
   - "*.bak"
-  - "seed-folders"
+  - ".git"
+
+  # Template-author working files (this repo's own dogfooded config
+  # has both the working CLAUDE.md/README.md/HANDOFF.md and the
+  # .jinja-suffixed versions that ship to projects; only the .jinja
+  # versions should propagate).
+  - "TEMPLATE-CLAUDE.md"
+  - "TEMPLATE-README.md"
+  - "TEMPLATE-HANDOFF.md"
+  - ".claudeignore"
+  - "template-manifest.schema.json"
+  - ".github"
+  - ".gitignore"
+
+  # Internal-only references and pollution
+  - "claude_code_course_files"
+  - "internal_docs"
+  - "outputs"
+  - "IMG_*"
+  - ".claude/audit.log"
+  - ".claude/.local-paths"
+  - ".claude/settings.local.json"
+  - ".claude/worktrees"
+
+  # Framework machinery — do not ship to rendered projects
+  - "bin"
+  - "docs"
+  - "copier.yml"
+  - "VERSION"
+  - "LICENSE"
+  - "seed-skills"
 
 # Questions asked during `copier copy`
 project_name:
@@ -18,15 +51,10 @@ project_name:
   help: "What is your project name?"
   validator: "{% if not project_name %}Project name is required{% endif %}"
 
-flavors:
-  type: str
-  help: "Which flavor packs to include?"
-  multiselect: true
-  choices:
-    "Research (experiments, papers, HPC)": research
-    "Software Engineering (architecture, frontend)": software-eng
-  default:
-    - research
+is_research:
+  type: bool
+  help: "Include the research flavor (papers, experiments, HPC, citation-audit, paper-write, etc.)?"
+  default: false
 
 github_repo:
   type: str
@@ -36,35 +64,25 @@ github_repo:
 
 # Post-generation tasks (run in the generated project directory)
 _tasks:
-  # Merge research flavor if selected
+  # Apply research flavor if selected
   - >-
-    {% if 'research' in flavors %}
+    {% if is_research %}
     echo '[copier] Applying research flavor...' &&
     cp -R _research/agents/* .claude/agents/ 2>/dev/null || true &&
     cp -R _research/skills/* .claude/skills/ 2>/dev/null || true &&
     cp -R _research/hooks/* .claude/hooks/ 2>/dev/null || true &&
     cp -R _research/rules/* .claude/rules/ 2>/dev/null || true &&
-    cp _research/docs/* . 2>/dev/null || true &&
-    python3 _copier_merge_hooks.py _research/settings-hooks.json .claude/settings.json &&
+    cp _research/seed-docs/* . 2>/dev/null || true &&
+    python3 _copier_merge_hooks.py _research/settings-hooks.json .claude/settings.json 2>/dev/null || true &&
     rm -r _research &&
     echo '[copier] Research flavor applied.'
     {% endif %}
 
-  # Merge software-eng flavor if selected
-  - >-
-    {% if 'software-eng' in flavors %}
-    echo '[copier] Applying software-eng flavor...' &&
-    cp -R _software-eng/rules/* .claude/rules/ 2>/dev/null || true &&
-    cp _software-eng/docs/* . 2>/dev/null || true &&
-    rm -r _software-eng &&
-    echo '[copier] Software-eng flavor applied.'
-    {% endif %}
-
-  # Clean up any unselected flavor directories and helper script
-  - "rm -r _research _software-eng 2>/dev/null || true"
+  # Always remove the research flavor overlay and helper script after render
+  - "rm -r _research 2>/dev/null || true"
   - "rm -f _copier_merge_hooks.py"
 
-  # Create seed folders with .gitkeep
+  # Create seed working directories with .gitkeep
   - "for dir in archive config files_from_team internal_docs meeting_notes presentations results scripts submission_artifacts submission_docs; do mkdir -p \"$dir\" && touch \"$dir/.gitkeep\"; done"
 
   # Initialize git repo (skip on copier update — .git already exists)

@@ -1,84 +1,77 @@
-# Copier Distribution
+# Copier distribution
 
-This template uses [Copier](https://copier.readthedocs.io/) as its primary distribution mechanism. Copier enables remote bootstrapping (no local clone needed), built-in downstream sync, and semver versioning via Git tags.
+This template uses [Copier](https://copier.readthedocs.io/) as its only distribution mechanism. The previous shell bootstrap (`bin/init-project.sh`) was removed in v2.0. Copier enables remote bootstrapping (no local clone), built-in three-way merge on updates, and semver versioning via Git tags.
 
 ## How it works
 
-The template content lives in `template/` (a Copier subdirectory). When you run `copier copy`, Copier:
+The template content lives at the repo root (`_subdirectory: "."` in `copier.yml`). When you run `copier copy`:
 
-1. Clones the template repo (or uses a local path)
-2. Asks interactive questions (project name, flavors, GitHub repo)
-3. Renders `.jinja` files with your answers (substituting `{{ project_name }}`, etc.)
-4. Copies everything from `template/` into your new project
-5. Runs post-tasks: merges selected flavor overlays into `.claude/`, creates seed folders, initializes git
+1. Copier clones the template repo (or uses a local path).
+2. Asks the three questions: `project_name`, `is_research`, `github_repo`.
+3. Renders `.jinja` files, substituting `{{ project_name }}` and other answers.
+4. Copies everything from the template root into the new project, excluding patterns from `_exclude:`.
+5. Runs post-tasks: applies the research flavor if `is_research=true`, removes the `_research/` overlay, creates seed working directories, runs `git init`, makes the initial commit.
 
 ## Questions
 
-| Question | Type | Default | Description |
-|----------|------|---------|-------------|
-| `project_name` | string | (required) | Project name, used in docs and config |
-| `flavors` | multiselect | `[research]` | Which flavor packs to include |
-| `github_repo` | string | `""` | GitHub repo (owner/repo) to create via `gh` |
+| Question | Type | Default | Effect |
+|----------|------|---------|--------|
+| `project_name` | string | (required) | Substituted into top-level `.md.jinja` files and `.mcp.json.jinja` |
+| `is_research` | bool | `false` | Overlay `_research/` onto `.claude/` and add research seed-docs |
+| `github_repo` | string `owner/name` | `""` | `gh repo create` after init if non-empty |
 
 ## Updating a project
 
 ```bash
 cd my-project
-uvx copier update           # pull latest template changes
-uvx copier update --pretend # dry-run: see what would change
+uvx copier update                # apply latest template, three-way merge on conflicts
+uvx copier update --pretend      # dry-run; show what would change
 ```
 
-Copier tracks the template version in `.copier-answers.yml`. On update, it diffs between the version you generated from and the current template, applies changes, and lets you resolve conflicts.
+Copier reads `.copier-answers.yml` to know which template ref the project was last rendered against, fetches the current template, and diffs.
 
 ## Versioning
 
-Template versions are Git tags (e.g., `v1.0.0`). To pin a version:
+Template versions are Git tags (e.g. `v2.0.0`). Pin a specific version at bootstrap:
 
 ```bash
-uvx copier copy --vcs-ref v1.0.0 gh:samyakjhaveri/project-seed-framework ./my-project
+uvx copier copy --vcs-ref v2.0.0 gh:samyakjhaveri/project-seed-framework ./my-project
 ```
 
-New releases are created via `bin/release.sh`:
+New releases via `bin/release.sh`:
 
 ```bash
-bin/release.sh 1.1.0  # updates VERSION, commits, tags, pushes
+bin/release.sh 2.1.0
 ```
+
+The script bumps `VERSION`, commits, tags, and pushes.
 
 ## `.copier-answers.yml`
 
-Copier creates this file in your project root. It records:
-- Your answers to the questions
-- The template source (`_src_path`)
-- The template commit (`_commit`)
+Created in the project root at bootstrap. Records:
 
-This is the Copier equivalent of `template-manifest.json`. Both `template-sync promote` and `template-sync status` work with either file.
+- The user's answers to the questions
+- `_src_path` — the template source URL or local path
+- `_commit` — the exact commit SHA the project was rendered from
 
-## Migration from shell-bootstrapped projects
+Both `template-sync promote` and `template-sync status` read this file. Do not delete it; `copier update` will fail without it.
 
-```bash
-cd my-existing-project
+## Single-tree structure (v2.0)
 
-# Re-initialize with Copier (preserves existing files, adds .copier-answers.yml)
-uvx copier copy --overwrite gh:samyakjhaveri/project-seed-framework .
+The repo IS the Copier template. The previous `template/` subdirectory was deleted in v2.0; everything Copier ships now lives at root. The `_exclude:` list in `copier.yml` keeps framework machinery (`bin/`, `docs/`, `copier.yml`, `VERSION`, `LICENSE`) and template-author working files (root `CLAUDE.md`, `README.md`, `HANDOFF.md`) from propagating.
 
-# Future updates
-uvx copier update
-```
-
-## Relationship to shell scripts
-
-| Shell script | Copier equivalent |
-|---|---|
-| `bin/init-project.sh` | `copier copy` |
-| `bin/template-sync.sh pull` | `copier update` |
-| `bin/template-sync.sh sync-from-buffer` | `copier update` |
-| `bin/template-sync.sh status` | `copier update --pretend` |
-| `bin/add-flavor.sh` | `copier update --data` (approximate — re-runs all post-tasks) |
-
-Shell scripts remain functional as fallback for environments without Copier/Python.
+See `docs/ASSET-LAYERS.md` for the layer-by-layer breakdown of what ships and where.
 
 ## Known limitation: flavor files on update
 
-When running `copier update`, the post-tasks unconditionally re-copy flavor files (rules, hooks, agents, skills) into `.claude/`. If you have customized a flavor-originated file (e.g., `.claude/rules/python.md`), your changes will be overwritten. Copier's built-in merge only protects files it directly copies from `template/`, not files moved by post-tasks.
+When running `copier update`, the post-tasks unconditionally re-overlay `_research/` files into `.claude/` if `is_research=true`. If you customize a research-flavor file (for example `.claude/rules/research-memory.md`), your edit is overwritten on next update. Copier's built-in three-way merge protects files it directly renders from the template root, not files moved into place by the `_tasks` step.
 
-**Workaround:** After `copier update`, check `git diff` for unwanted overwrites and restore your customizations via `git checkout HEAD -- <file>`.
+Workaround: after `copier update`, check `git diff` for unwanted overwrites and restore customizations via `git checkout HEAD -- <file>`. A more principled fix (move the research overlay into a properly-Jinja-rendered tree rather than a `_tasks` shell copy) is open as future work.
+
+## What changed in v2.0
+
+- `_subdirectory: template` → `_subdirectory: "."` (single-tree)
+- `flavors` multi-select → `is_research` boolean
+- `_software-eng` flavor folded into the default seed
+- Removed `bin/init-project.sh`, `bin/add-flavor.sh`, `seed-docs/`, `seed-config/`, `seed-folders/` (shell bootstrap deleted)
+- `_exclude:` expanded to handle the larger surface area now at repo root

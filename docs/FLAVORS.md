@@ -1,41 +1,57 @@
 # Flavors
 
-Flavors are opt-in packs that layer additional skills/agents/hooks/rules and seed-docs onto the generic core at bootstrap time. They stack — pass multiple `--flavor` flags.
+In v2.0 the framework has a default seed (engineering-oriented) and one opt-in flavor (`research`). The previous `software-eng` flavor is folded into the default — its rules and seed-docs ship to every project regardless of choice.
 
-## Available flavors
+## Toggle
 
-| Flavor | Adds | Pick when |
-|--------|------|-----------|
-| `research`     | Hypothesis workflow, paper-writing, citation audit, result protection, CUDA/OpenMP guides, HPC code review | Research projects, papers, ML experiments, HPC work |
-| `software-eng` | Design records, architecture docs, frontend rules | Building software products, tools, websites |
+The `is_research` boolean question in `copier.yml` decides at bootstrap whether the research overlay applies. Default is `false`.
 
-## Usage examples
+```bash
+# Engineering project — default
+uvx copier copy gh:samyakjhaveri/project-seed-framework ./my-app
 
-| Project type | Recommended flavors |
-|--------------|---------------------|
-| ML/HPC research with paper    | `research` |
-| Greenfield SaaS               | `software-eng` |
-| Personal tool with research   | `research --flavor software-eng` |
-
-## What each flavor adds
-
-See each flavor's `README.md`:
-
-- `flavors/research/README.md`
-- `flavors/software-eng/README.md`
-
-## Layering semantics
-
-When `init-project.sh` applies multiple flavors, they're overlaid in the order passed. Same-path collisions: later overlays win, with a warning. In practice, the two flavors don't collide today (they touch disjoint skill/agent/hook names).
-
-If you discover a collision while developing flavors, prefer renaming over silently letting one win — overlap usually means a skill should live in `generic` instead of any specific flavor.
-
-## Promoting a new flavor-specific asset
-
-When you build a skill/agent/hook in a project that's clearly flavor-specific, promote it via:
-
-```
-template-sync promote <relpath>
+# Research project — opt-in
+uvx copier copy --data "is_research=true" gh:samyakjhaveri/project-seed-framework ./my-paper
 ```
 
-Pick the target layer when prompted. Don't promote into `generic` to "save effort" — flavors exist to keep the generic core lean.
+## What the default seed includes
+
+Loaded into every project, research or not:
+
+- The 18 core skills (`.claude/skills/`)
+- The 7 core agents (`.claude/agents/`)
+- All hooks including the SessionStart brief
+- All four ICM routing rules (`L0-budget.md`, `context-md-anatomy.md`, `stage-contract.md`, `layer-triage.md`)
+- Engineering-oriented path-scoped rules (`architecture.md`, `python.md`, `tech-stack.md`, `frontend-design.md`)
+- Top-level docs `ARCHITECTURE.md` and `DESIGN.md`
+
+## What the research flavor adds
+
+When `is_research=true`, the Copier `_tasks` step overlays the contents of `_research/` onto the rendered project, then removes `_research/` itself. Specifically:
+
+| Path | Contents | What |
+|------|----------|------|
+| `.claude/skills/` (additions) | `auto-paper-improvement-loop`, `citation-audit`, `cite-check`, `cuda-omp-translator`, `experiment`, `hpc-code-reviewer`, `hypothesis-tree`, `interpret-results`, `paper-claim-audit`, `paper-review-sim`, `paper-write`, `rebuttal`, `shared-references/` | Research and paper-writing skills |
+| `.claude/agents/` (additions) | `paper-assembly-team.md`, `regression-checker.md` | Research-specific agents |
+| `.claude/hooks/` (additions) | `protect-results.sh`, `validate-experiment-config.sh` | Result-protection and experiment-config validation |
+| `.claude/rules/` (addition) | `research-memory.md` | Research-specific memory conventions |
+| Project root (additions) | `REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md` | Paper-writing seed-docs |
+| `.claude/settings.json` | Deep-merged hooks | `protect-results.sh` and `validate-experiment-config.sh` registered |
+
+## Promotion target for new flavor-specific assets
+
+If you build a skill in a project that's clearly research-only:
+
+```bash
+template-sync promote --layer flavor:research <relpath>
+```
+
+This writes to `_research/<relpath-stripped>` in the template (e.g., `.claude/skills/foo/SKILL.md` → `_research/skills/foo/SKILL.md`). If the skill is general enough to belong in the default seed, use `--layer generic` instead — that writes to `.claude/<relpath>`.
+
+Default to `generic` only when the skill is useful regardless of project type. The flavor exists to keep the default seed lean.
+
+## Why software-eng was folded
+
+The audit established that the previous `software-eng` flavor carried 4 rule files, 3 seed-docs templates, and 0 skills / agents / hooks — a thin layer whose entire content was useful to almost every engineering project. The cost of the abstraction (two parallel template directories, a "must-stay-identical" duplication guard for `python.md` and `tech-stack.md`) was higher than the value of keeping it optional. Folding it into the default removes the dual-tree maintenance burden.
+
+The research flavor remains a flavor: 13 skills + 2 agents + 2 hooks + 1 rule + 5 docs is substantial, and not every engineering project wants citation auditing or HPC code review.

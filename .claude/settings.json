@@ -79,7 +79,7 @@
           {
             "type": "command",
             "command": ".claude/hooks/post-edit-test.sh",
-            "timeout": 35
+            "timeout": 10
           },
           {
             "type": "command",
@@ -109,6 +109,18 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/session-start.sh",
+            "timeout": 5
+          }
+        ]
+      }
     ]
-  }
+  },
+  "_dream_hook_note": "The Stop hook .claude/hooks/dream-hook.sh fires but its stdout is logged rather than surfaced. Dream-due notification is duplicated in .claude/hooks/session-start.sh whose stdout IS injected."
 }

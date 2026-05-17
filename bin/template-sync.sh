@@ -14,7 +14,7 @@
 #
 # Environment:
 #   TEMPLATE_PATH    overrides the template clone location
-#                    (default: ~/Desktop/project_template, or value from manifest)
+#                    (default: ~/Desktop/project_seed_framework, or value from manifest)
 
 set -euo pipefail
 
@@ -50,19 +50,15 @@ resolve_template_path() {
     p=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("template",{}).get("path",""))' "$MANIFEST")
     [[ -n "$p" && -d "$p" ]] && { echo "$p"; return; }
   fi
-  echo "$HOME/Desktop/project_template"
+  echo "$HOME/Desktop/project_seed_framework"
 }
 
 # Resolve the .claude/ comparison root inside the template repo.
-# After the Copier split, the generic core lives at template/.claude/
-# (not .claude/ at repo root, which is the template-dev config).
+# After the v2.0 single-tree collapse, the .claude/ at template root IS
+# the canonical config (no more nested template/.claude/ mirror).
 resolve_template_claude_root() {
   local tpl="$1"
-  if [[ -d "$tpl/template/.claude" ]]; then
-    echo "$tpl/template"
-  else
-    echo "$tpl"
-  fi
+  echo "$tpl"
 }
 
 project_name() {
@@ -75,20 +71,18 @@ project_name() {
 
 # Map (layer, relpath-relative-to-project-root) → template-relpath.
 # Project relpath is e.g. ".claude/skills/handoff/SKILL.md".
+# v2.0 single-tree: generic writes to .claude/ at template root; flavor
+# writes to _<FLAVOR>/ at template root (e.g. _research/).
 template_path_for() {
   local layer="$1" relpath="$2" tpl="$3"
   case "$layer" in
     generic)
       [[ "$relpath" == .claude/* ]] || die "generic layer expects path under .claude/, got: $relpath"
-      if [[ -d "$tpl/template/.claude" ]]; then
-        echo "template/$relpath"
-      else
-        echo "$relpath"
-      fi;;
+      echo "$relpath";;
     flavor:*)
       local flavor="${layer#flavor:}"
       local stripped="${relpath#.claude/}"
-      echo "flavors/$flavor/$stripped";;
+      echo "_$flavor/$stripped";;
     *) die "unknown layer: $layer";;
   esac
 }

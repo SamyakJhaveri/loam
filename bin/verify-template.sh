@@ -1,108 +1,124 @@
 #!/usr/bin/env bash
 # verify-template.sh — sanity-check that bootstrapping produces valid projects.
+#
+# v2.0 single-tree: the repo itself is the Copier template. This script
+# checks invariants that protect the rework's structural properties:
+# 1. The legacy template/ subdir does not return.
+# 2. The mirror cannot drift (no template/.claude/ to differ from .claude/).
+# 3. Every SKILL.md parses as agentskills.io-conformant (name + description
+#    in front-matter).
+# 4. Copier render produces a project whose .claude/ is structurally valid
+#    in both default and research-flavor variants.
+# 5. Template-author working files do not leak into rendered projects.
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 TEMPLATE_ROOT="$(dirname "$SCRIPT_DIR")"
 TMP=$(mktemp -d)
-COPIER_TMP=""
-trap 'rm -rf "$TMP" ${COPIER_TMP:+"$COPIER_TMP"}' EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 cd "$TEMPLATE_ROOT"
 
+fail() { echo "FAIL: $*" >&2; exit 1; }
+pass() { echo "OK: $*"; }
+
+# --- Invariant 1: single-tree (template/ subdir must not exist) -------------
+test ! -d template || fail "template/ subdirectory exists — single-tree invariant broken"
+pass "single-tree (no template/ subdir)"
+
+# --- Invariant 2: .claude/settings.json is valid JSON -----------------------
+python3 -m json.tool .claude/settings.json >/dev/null || fail "invalid .claude/settings.json"
+pass ".claude/settings.json is valid JSON"
+
+# --- Invariant 3: shellcheck on .sh files -----------------------------------
 if command -v shellcheck >/dev/null; then
-  shellcheck bin/*.sh .claude/hooks/*.sh template/.claude/hooks/*.sh template/_research/hooks/*.sh || { echo "FAIL: shellcheck"; exit 1; }
-  echo "OK: shellcheck"
+  shellcheck bin/*.sh .claude/hooks/*.sh _research/hooks/*.sh 2>&1 || fail "shellcheck failed"
+  pass "shellcheck"
 else
   echo "SKIP: shellcheck not installed"
 fi
 
-bin/init-project.sh "$TMP/no-flavor" >/dev/null
-test -f "$TMP/no-flavor/CLAUDE.md"              || { echo "FAIL: no CLAUDE.md (no-flavor)"; exit 1; }
-test -f "$TMP/no-flavor/.claude/settings.json"   || { echo "FAIL: no settings.json (no-flavor)"; exit 1; }
-python3 -m json.tool "$TMP/no-flavor/.claude/settings.json" >/dev/null || { echo "FAIL: invalid settings.json (no-flavor)"; exit 1; }
-test ! -f "$TMP/no-flavor/.claude/audit.log"     || { echo "FAIL: audit.log propagated (no-flavor)"; exit 1; }
-for rule in python.md tech-stack.md architecture.md frontend-design.md; do
-  test ! -f "$TMP/no-flavor/.claude/rules/$rule" || { echo "FAIL: $rule leaked to no-flavor"; exit 1; }
-done
-echo "OK: flavor (none)"
+# --- Invariant 4: agentskills.io schema (name + description present) --------
+SKILL_ERRORS=0
+while IFS= read -r -d '' skill; do
+  # Extract front-matter (between first --- and second ---)
+  if ! head -20 "$skill" | grep -q '^---$'; then
+    echo "WARN: $skill has no front-matter"
+    SKILL_ERRORS=$((SKILL_ERRORS+1))
+    continue
+  fi
+  if ! awk '/^---$/{n++; if(n==2) exit} n==1 && /^name:/{found=1} END{exit !found}' "$skill"; then
+    echo "FAIL: $skill missing name in front-matter"
+    SKILL_ERRORS=$((SKILL_ERRORS+1))
+  fi
+  if ! awk '/^---$/{n++; if(n==2) exit} n==1 && /^description:/{found=1} END{exit !found}' "$skill"; then
+    echo "FAIL: $skill missing description in front-matter"
+    SKILL_ERRORS=$((SKILL_ERRORS+1))
+  fi
+done < <(find .claude/skills _research/skills seed-skills -name SKILL.md -print0 2>/dev/null)
+[[ $SKILL_ERRORS -eq 0 ]] || fail "$SKILL_ERRORS SKILL.md files violate agentskills.io schema"
+pass "agentskills.io schema (every SKILL.md has name + description)"
 
-for flavor in research software-eng; do
-  bin/init-project.sh "$TMP/$flavor" --flavor "$flavor" >/dev/null
-  test -f "$TMP/$flavor/.claude/settings.json"   || { echo "FAIL: $flavor missing settings.json"; exit 1; }
-  python3 -m json.tool "$TMP/$flavor/.claude/settings.json" >/dev/null || { echo "FAIL: $flavor invalid settings.json"; exit 1; }
-  echo "OK: flavor $flavor"
-done
-
-# Rule placement assertions
-test -f "$TMP/research/.claude/rules/python.md"          || { echo "FAIL: research missing python.md"; exit 1; }
-test -f "$TMP/research/.claude/rules/tech-stack.md"       || { echo "FAIL: research missing tech-stack.md"; exit 1; }
-test ! -f "$TMP/research/.claude/rules/architecture.md"   || { echo "FAIL: research has architecture.md"; exit 1; }
-test ! -f "$TMP/research/.claude/rules/frontend-design.md" || { echo "FAIL: research has frontend-design.md"; exit 1; }
-echo "OK: research rules"
-
-for rule in python.md tech-stack.md architecture.md frontend-design.md; do
-  test -f "$TMP/software-eng/.claude/rules/$rule" || { echo "FAIL: software-eng missing $rule"; exit 1; }
-done
-echo "OK: software-eng rules"
-
-# HPC skills are now part of research
-test -f "$TMP/research/.claude/skills/cuda-omp-translator/SKILL.md" || { echo "FAIL: research missing cuda-omp-translator"; exit 1; }
-test -f "$TMP/research/.claude/skills/hpc-code-reviewer/SKILL.md"   || { echo "FAIL: research missing hpc-code-reviewer"; exit 1; }
-echo "OK: research HPC skills"
-
-# Duplication guard — python.md and tech-stack.md must be identical across flavors
-cmp --silent "$TEMPLATE_ROOT/flavors/research/rules/python.md" "$TEMPLATE_ROOT/flavors/software-eng/rules/python.md" \
-  || { echo "FAIL: python.md diverged between research and software-eng"; exit 1; }
-cmp --silent "$TEMPLATE_ROOT/flavors/research/rules/tech-stack.md" "$TEMPLATE_ROOT/flavors/software-eng/rules/tech-stack.md" \
-  || { echo "FAIL: tech-stack.md diverged between research and software-eng"; exit 1; }
-echo "OK: duplicated rules identical"
-
-# Skill placement assertions (Session H) — skills in generic core, available to all bootstraps
-SESSION_H_SKILLS="council create-skill decision-matrix frontend-design know-me process-optimizer prompt-improver researcher scalability security self-healing sop-writer weekly-review workflow-mapper"
-for skill in $SESSION_H_SKILLS; do
-  test -d "$TMP/no-flavor/.claude/skills/$skill"    || { echo "FAIL: no-flavor missing skill $skill"; exit 1; }
-  test -d "$TMP/research/.claude/skills/$skill"     || { echo "FAIL: research missing skill $skill"; exit 1; }
-  test -d "$TMP/software-eng/.claude/skills/$skill" || { echo "FAIL: software-eng missing skill $skill"; exit 1; }
-done
-echo "OK: Session H skills in generic core"
-
-# Skill description quality (Session I) — warn-only, does not block
-if bash "$SCRIPT_DIR/lint-skill-descriptions.sh" >/dev/null 2>&1; then
-  echo "OK: skill descriptions"
-else
-  echo "WARN: skill description lint has warnings (run bin/lint-skill-descriptions.sh for details)"
+# --- Invariant 5: skill description quality (warn-only) ---------------------
+if [[ -x "$SCRIPT_DIR/lint-skill-descriptions.sh" ]]; then
+  if bash "$SCRIPT_DIR/lint-skill-descriptions.sh" >/dev/null 2>&1; then
+    pass "skill descriptions"
+  else
+    echo "WARN: skill description lint has warnings (run bin/lint-skill-descriptions.sh for details)"
+  fi
 fi
 
-# --- Copier tests (if copier is available) ---
-if command -v copier >/dev/null 2>&1 || command -v uvx >/dev/null 2>&1; then
-  COPIER_CMD="${COPIER_OVERRIDE:-$(command -v copier 2>/dev/null || echo 'uvx copier')}"
-
-  echo "--- Copier bootstrap tests ---"
-
-  COPIER_TEST="$(mktemp -d)"; COPIER_TMP="$COPIER_TEST"
-
-  COPIER_FLAGS="--trust --defaults --vcs-ref HEAD"
-
-  $COPIER_CMD copy $COPIER_FLAGS --data "project_name=copier-test" . "$COPIER_TEST/copier-test" 2>&1
-  test -d "$COPIER_TEST/copier-test/.claude"                 || { echo "FAIL: copier bootstrap: .claude/ missing"; exit 1; }
-  test -f "$COPIER_TEST/copier-test/.copier-answers.yml"     || { echo "FAIL: copier bootstrap: .copier-answers.yml missing"; exit 1; }
-  echo "OK: copier bootstrap with defaults"
-
-  $COPIER_CMD copy $COPIER_FLAGS --data "project_name=both-test" --data 'flavors=["research","software-eng"]' . "$COPIER_TEST/both-test" 2>&1
-  test -f "$COPIER_TEST/both-test/.claude/rules/architecture.md"       || { echo "FAIL: copier both-flavors: software-eng rules missing"; exit 1; }
-  test -d "$COPIER_TEST/both-test/.claude/skills/experiment"           || { echo "FAIL: copier both-flavors: research skills missing"; exit 1; }
-  echo "OK: copier bootstrap with both flavors"
-
-  $COPIER_CMD copy $COPIER_FLAGS --data "project_name=none-test" --data 'flavors=[]' . "$COPIER_TEST/none-test" 2>&1
-  test ! -d "$COPIER_TEST/none-test/_research"      || { echo "FAIL: copier no-flavors: _research overlay not cleaned up"; exit 1; }
-  test ! -d "$COPIER_TEST/none-test/_software-eng"  || { echo "FAIL: copier no-flavors: _software-eng overlay not cleaned up"; exit 1; }
-  echo "OK: copier bootstrap with no flavors"
-
-  rm -r "$COPIER_TEST"
-  echo "OK: copier tests passed"
-else
-  echo "SKIP: copier not installed; skipping copier tests"
+# --- Copier render tests ----------------------------------------------------
+COPIER_CMD=""
+if command -v copier >/dev/null 2>&1; then
+  COPIER_CMD="copier"
+elif command -v uvx >/dev/null 2>&1; then
+  COPIER_CMD="uvx copier"
 fi
+
+if [[ -z "$COPIER_CMD" ]]; then
+  echo "SKIP: copier not installed; skipping render tests"
+  echo "ALL OK"
+  exit 0
+fi
+
+echo "--- Copier render tests ---"
+COPIER_FLAGS="--trust --defaults --vcs-ref HEAD"
+
+# Default flavor (is_research=false)
+$COPIER_CMD copy $COPIER_FLAGS --data "project_name=default-test" . "$TMP/default" 2>&1 | tail -5
+test -f "$TMP/default/CLAUDE.md"                       || fail "default: CLAUDE.md missing"
+test -f "$TMP/default/.claude/settings.json"           || fail "default: .claude/settings.json missing"
+test -f "$TMP/default/.claude/rules/L0-budget.md"      || fail "default: L0-budget rule missing"
+test -f "$TMP/default/.claude/rules/stage-contract.md" || fail "default: stage-contract rule missing"
+test -f "$TMP/default/.claude/hooks/session-start.sh"  || fail "default: session-start hook missing"
+test -d "$TMP/default/.claude/skills/validate"         || fail "default: validate skill missing"
+test -d "$TMP/default/.claude/skills/template-sync"    || fail "default: template-sync skill missing"
+test ! -d "$TMP/default/_research"                     || fail "default: _research overlay not cleaned up"
+test ! -d "$TMP/default/template"                      || fail "default: template/ leaked"
+test ! -d "$TMP/default/seed-skills"                   || fail "default: seed-skills/ leaked into rendered project"
+test ! -d "$TMP/default/claude_code_course_files"      || fail "default: course files leaked"
+# internal_docs/ is created by _tasks mkdir as a seed dir; check it's empty (no source content propagated)
+test -d "$TMP/default/internal_docs"                   || fail "default: internal_docs seed dir missing"
+count_internal=$(find "$TMP/default/internal_docs" -type f ! -name .gitkeep 2>/dev/null | wc -l)
+[[ "$count_internal" -eq 0 ]]                          || fail "default: internal_docs has $count_internal non-gitkeep files (source leaked)"
+test ! -f "$TMP/default/HANDOFF.md.jinja"              || fail "default: HANDOFF.md.jinja not rendered"
+# Top-level CLAUDE.md/README.md/HANDOFF.md should be rendered from .jinja
+test -f "$TMP/default/CLAUDE.md"                       || fail "default: CLAUDE.md not rendered from .jinja"
+test -f "$TMP/default/README.md"                       || fail "default: README.md not rendered from .jinja"
+test -f "$TMP/default/HANDOFF.md"                      || fail "default: HANDOFF.md not rendered from .jinja"
+test ! -f "$TMP/default/.claude/audit.log"             || fail "default: audit.log leaked"
+pass "Copier render (default)"
+
+# Research flavor (is_research=true)
+$COPIER_CMD copy $COPIER_FLAGS --data "project_name=research-test" --data "is_research=true" . "$TMP/research" 2>&1 | tail -5
+test -d "$TMP/research/.claude/skills/paper-write"     || fail "research: paper-write skill missing"
+test -d "$TMP/research/.claude/skills/citation-audit"  || fail "research: citation-audit skill missing"
+test -f "$TMP/research/.claude/rules/research-memory.md" || fail "research: research-memory rule missing"
+test -f "$TMP/research/REFERENCES.md"                  || fail "research: REFERENCES.md not rendered"
+test -f "$TMP/research/EXPERIMENT-PROTOCOL.md"         || fail "research: EXPERIMENT-PROTOCOL.md not rendered"
+test ! -d "$TMP/research/_research"                    || fail "research: _research overlay not cleaned up"
+pass "Copier render (research)"
 
 echo "ALL OK"

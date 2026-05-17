@@ -1,103 +1,119 @@
-# 3-Layer Memory Architecture
+# Memory architecture (engineering + research)
 
-Claude Code projects benefit from three complementary memory layers that cover different aspects of project knowledge.
+Three complementary memory layers plus two adjacent tools. Each layer answers a different question; they do not overlap.
 
-## The Three Layers
+## The layers
 
-| Layer | Tool | What it stores | How it helps |
-|-------|------|----------------|-------------|
-| **1. Static knowledge** | Built-in (CLAUDE.md + `.claude/rules/` + auto memory) | Project conventions, coding standards, known issues | "Always use pytest, never mock the database" |
-| **2. Session memory** | [Memsearch](https://github.com/zilliztech/memsearch) | Temporal decisions, what was worked on each day | "Last Tuesday we decided to switch from REST to GraphQL" |
-| **3. Codebase map** | [Graphify](https://github.com/safishamsi/graphify) | Module relationships, dependency graphs, hub detection | "The auth module connects to 15 other modules (god node)" |
+| Layer | Tool | What it stores | Question it answers |
+|-------|------|----------------|---------------------|
+| L1 — Static knowledge | Built-in (CLAUDE.md + `.claude/rules/` + Anthropic native memory tool) | Project conventions, coding standards, known issues, durable cross-session facts | What are our rules? |
+| L2 — Structured facts | [Knowledge-Graph Memory MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/memory) (Anthropic reference server, JSONL-backed Entities/Relations/Observations) | Explicit claims, decisions, observed behaviors, named entities | What do we know about X, and how does it connect to Y? |
+| L3 — Codebase map | [Graphify](https://github.com/safishamsi/graphify) | Module relationships, dependency graphs, AST-derived structure | How is the code organized; what depends on what? |
 
-### Why three layers?
+Adjacent (not memory, but related):
 
-They don't overlap — each answers different questions:
-- Layer 1: "What are our rules?" (static, curated by humans)
-- Layer 2: "What happened recently?" (temporal, auto-captured per session)
-- Layer 3: "How is the code structured?" (structural, derived from AST)
+| Tool | Role |
+|------|------|
+| [Superpowers](https://github.com/obra/superpowers) | Process scaffolding (TDD discipline, brainstorming, journaling). The journal it produces becomes L1/L2 input over time. |
+| [CodeBurn](https://github.com/anthropic-experimental/codeburn) | Cost / token observability. Not a memory layer. |
 
-## Layer 1: Built-in Memory (already configured)
+## Layer 1 — built-in (always on)
 
-No setup needed. Claude Code automatically uses:
-- `CLAUDE.md` at project root — top-level rules and conventions
-- `.claude/rules/*.md` — path-scoped rules (load only when matching files are touched)
-- `~/.claude/projects/<key>/memory/` — auto memory (cross-session facts, max 200 lines loaded)
+Three sub-channels, all configured by default:
 
-## Layer 2: Memsearch (session memory)
+- `CLAUDE.md` at project root — the L0 entry, ~800-token budget. See `.claude/rules/L0-budget.md`.
+- `.claude/rules/*.md` — path-scoped rules that load only when matching files are touched (the L3 of ICM routing).
+- **Anthropic native memory tool** — built into Claude Code v2.1.59+. The model can create / read / update / delete files in a session-persistent memory directory under `~/.claude/projects/<key>/memory/`. No installation required.
 
-Automatically captures what you work on each session and enables semantic recall.
+The `know-me` skill (in core 18) is what writes durable user-preference and project-fact entries to this directory. Run `/know-me` after the user states a preference, decision, or fact you want to recall in future sessions.
 
-### How it works
-1. After each Claude response, a Haiku model summarizes the conversation turn
-2. Summary is appended to `.memsearch/memory/YYYY-MM-DD.md` (human-readable Markdown)
-3. At session start, recent memories are injected as context
-4. Semantic search via ONNX embeddings + Milvus Lite (100% local, no API key)
+## Layer 2 — Knowledge-Graph Memory MCP
 
-### Setup
-```bash
-# Install the plugin (one-time, in Claude Code):
-/plugin marketplace add zilliztech/memsearch
-```
+Ships enabled in `.mcp.json` of every project bootstrapped from this template. The MCP server runs locally via `npx @modelcontextprotocol/server-memory` and stores entities + relations + observations in a JSONL file under `.claude-memory/knowledge-graph.json`.
 
-### Storage
-- Memories: `.memsearch/memory/*.md` (Markdown, human-readable and editable)
-- Vector DB: `.memsearch/milvus.db` (local Milvus Lite file)
-- Config: `.memsearch.toml` (at project root)
+When to use vs L1 native memory:
+- **L1 native memory** is for free-form text the model writes naturally during sessions (preferences, gotchas, recent decisions in prose).
+- **L2 Knowledge-Graph MCP** is for structured facts you want to query: "what entities relate to X?" "what observations contradict claim Y?" Use when the project accumulates a body of named entities (modules, experiments, papers, people) with explicit relationships.
 
-### Cost
-Free for embeddings (ONNX runs locally). Summarization uses Haiku via your Claude CLI subscription.
-
-## Layer 3: Graphify (codebase knowledge graph)
-
-Parses your codebase using Tree-sitter and builds a knowledge graph showing how modules connect.
-
-### How it works
-1. Parses source files across 29 languages using Tree-sitter ASTs
-2. Builds a NetworkX knowledge graph of modules, functions, and dependencies
-3. Identifies "god nodes" (modules everything depends on)
-4. Outputs `graphify-out/graph.json` + interactive `graphify-out/graph.html`
-5. Runs as an MCP server so Claude can query the graph directly
+Both can coexist. Native memory is the default workspace; the KG server is a queryable index of structured claims.
 
 ### Setup
+
+Zero setup if `npx` is available — `.mcp.json` invokes it on session start. To verify:
+
 ```bash
-# Install graphify
-uv tool install graphifyy  # or: pip install graphifyy
-
-# Build the knowledge graph
-graphify .
-
-# (Optional) Install as Claude Code MCP server for direct querying
-graphify claude install
+npx -y @modelcontextprotocol/server-memory --help
 ```
 
-### Storage
-- Graph: `graphify-out/graph.json`
-- Visualization: `graphify-out/graph.html`
-- Report: `graphify-out/GRAPH_REPORT.md`
+The first run will pull the package; subsequent runs are cached.
 
-### Cost
-Free for AST parsing. Optional API key for semantic analysis of docs/images.
+Storage: `.claude-memory/knowledge-graph.json` (gitignored by default; rebuild from session evidence if lost).
 
-## Bonus: CodeBurn (AI cost observability)
+## Layer 3 — Graphify (codebase map)
 
-Not a memory layer, but useful for tracking AI token spending:
+AST-derived knowledge graph of the codebase across 29 languages (Tree-sitter). Identifies "god nodes" (modules everything depends on), generates an interactive HTML graph, and runs as an MCP server so the model can query the structure directly.
+
+### Setup
+
 ```bash
-npx codeburn  # Terminal dashboard — no install needed
+uv tool install graphifyy   # or: pip install graphifyy
+graphify .                  # build the graph; produces graphify-out/
+graphify claude install     # register as MCP server (optional; .mcp.json already wires it)
 ```
-Reads local session data from 19 tools (Claude Code, Cursor, Copilot, etc.). No proxy, no API keys. MIT license.
 
-## What goes in `.gitignore`
+Storage:
+- `graphify-out/graph.json` — the queryable graph
+- `graphify-out/graph.html` — interactive visualization
+- `graphify-out/GRAPH_REPORT.md` — human-readable summary
 
-Both `.memsearch/` and `graphify-out/` are in `.gitignore` by default:
-- `.memsearch/` — machine-local session memory, not shared
-- `graphify-out/` — derived from source, rebuild with `graphify .`
+The graph is derived from source; rebuild with `graphify .` after significant refactors. `graphify-out/` is gitignored.
 
-## Troubleshooting
+## Adjacent — Superpowers (process scaffolding)
 
-| Problem | Fix |
-|---------|-----|
-| Memsearch not capturing | Check plugin is installed: `/plugin list` |
-| Memsearch memories stale | Delete old entries in `.memsearch/memory/` |
-| Graphify graph outdated | Re-run `graphify .` to rebuild |
-| Graphify MCP not responding | Check `.mcp.json` has the graphify server config |
+Not a memory layer. Installed as a Claude Code plugin:
+
+```bash
+/plugin marketplace add obra/superpowers
+/plugin install superpowers
+```
+
+Provides the brainstorming, journaling, and TDD-discipline skills that Jesse Vincent's Superpowers framework uses. Worth installing for the journaling skill alone — the entries it writes feed Layer 1 native memory over time.
+
+## Adjacent — CodeBurn (cost observability)
+
+```bash
+npx codeburn
+```
+
+Terminal dashboard for token / cost spend across 19 AI coding tools (Claude Code, Cursor, Copilot, etc.). Reads local session data; no proxy, no API keys. MIT.
+
+Not memory — included here because the user runs it alongside the memory stack to track the cost of leaving multiple MCPs active.
+
+## What to .gitignore
+
+Already in the template's `.gitignore.jinja`:
+
+- `.claude-memory/` — Knowledge-Graph MCP storage (machine-local, ungitable across machines without conflict)
+- `graphify-out/` — derived; rebuild from source
+- `~/.claude/projects/<key>/memory/` — actually outside the repo, no gitignore needed
+
+## Skills that wire into the memory layers
+
+| Skill | Wires to | When |
+|-------|----------|------|
+| `know-me` | L1 native memory | After a user states a preference, decision, or project-fact worth recalling |
+| `reflect` | L1 native memory | At session end, to consolidate what was learned |
+| `dream` | L1 native memory (consolidation pass) | Manual `/dream`; also notified at SessionStart if ≥24h since last consolidation |
+| `researcher` | L2 KG MCP + L1 native | Research projects — captures hypotheses, claims, citations as structured entities |
+
+## Memsearch — explicitly NOT in this stack
+
+Memsearch was in earlier iterations. Removed in v2.0 of the framework — the user prefers the lighter L1+L2+L3 set, and Memsearch's Markdown-first session journal duplicates what the `reflect` + `dream` skills produce against the native memory tool.
+
+## claude-mem — explicitly REJECTED
+
+Two unresolved issues per `docs/SESSION-P-HANDOFF.md:103-108` and ongoing community reports:
+1. The HTTP server binds to `0.0.0.0` — exposed on shared/networked machines.
+2. Issue #618 (open): context injection volume exhausts Claude Code session limits in <10 messages on medium projects.
+
+Revisit if upstream resolves both.

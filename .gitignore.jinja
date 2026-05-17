@@ -1,0 +1,60 @@
+# {{ project_name }} .gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.venv/
+env*/
+venv/
+
+# IDE / editors
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+.directory
+
+# Build / packaging
+build/
+dist/
+*.egg
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Logs / local data
+*.log
+logs/
+.local/
+
+# Claude Code session artifacts
+.validation_passed
+.codex_review_done
+.claude/audit.log
+.claude/worktrees/
+
+# Knowledge-Graph Memory MCP (machine-local, JSONL-backed)
+.claude-memory/
+
+# Graphify (codebase knowledge graph — rebuild from source)
+graphify-out/
+
+# Native memory tool persists under ~/.claude/projects/<key>/memory/, outside the repo
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+secrets/

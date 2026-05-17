@@ -58,13 +58,20 @@ then NOT available for implementation quality. The user reviews all output line-
 - Write session notes for complex multi-step work
 - "Update your CLAUDE.md so you don't make that mistake again"
 
-### 6. Verify (Post-Session Validation Loop)
-- **Run `/validate`** — validation loop
-- On FAIL → fix loop: plan mode → user approval → implement → re-validate (max 3 iterations)
-- On PASS → `.validation_passed` sentinel written → `git commit` unblocked
-- See `.claude/rules/validation-loop.md` for full protocol
+### 6. Verify (Post-Session Validation Loop — the Pipeline Gate)
 
-**Critical ordering:** Implement → `/multi-review` → `/validate` → commit → push
+`/validate` is this project's **Pipeline Gate**, in the sense of JVC's skill-wiring patterns (`_examples/02-skill-integration-patterns.md`). A Pipeline Gate is a skill that MUST run before work transitions to the next stage — here, between implement and commit. It is non-negotiable, not a suggestion. The pre-commit hook enforces it.
+
+Differences from JVC's content-pipeline Pipeline Gate:
+- The gate is **iterative**: on FAIL → fix loop → re-validate, up to 3 iterations. Content pipelines run a gate once per transition; engineering loops run it N times until pass.
+- If `/validate` fails after 3 iterations on the same task, the issue is the **stage contract**, not the implementation. Stop iterating; revisit `Inputs / Process / Output / Must NOT / Done` per `.claude/rules/stage-contract.md`.
+
+Mechanics:
+- On PASS → `.validation_passed` sentinel written → `git commit` unblocked
+- On any file edit after PASS → sentinel deleted → next commit re-runs the gate
+- See `.claude/rules/validation-loop.md` for the wave-by-wave protocol
+
+**Critical ordering:** Implement → `/multi-review` → `/validate` (Pipeline Gate) → commit → push
 
 ## Context Management
 
