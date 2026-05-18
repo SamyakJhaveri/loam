@@ -13,11 +13,11 @@ cat <<'BRIEF'
 
 You are working in a project bootstrapped from project_seed_framework.
 
-CORE SKILLS (.claude/skills/ — 18 total):
+CORE SKILLS (.claude/skills/ — 19 total):
   Daily loop:    catchup, feature-dev, fix-bug, multi-review, validate, commit, pr, handoff
   Memory/style:  know-me, reflect, dream, karpathy-guidelines
   Research:      researcher
-  Framework:     create-skill, template-sync
+  Framework:     create-skill, template-sync, scaffold-context
   Quality gate:  security, scalability, techdebt
 
 PIPELINE GATE: /validate is non-negotiable before every commit. The pre-commit

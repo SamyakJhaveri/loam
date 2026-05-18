@@ -1,6 +1,9 @@
 ---
 name: navigate
-description: Tool recommender — takes freeform intent and returns the best skill/agent/command to use. Use when unsure which tool to invoke next.
+description: >
+  Tool recommender — takes freeform intent and returns the best skill/agent/command to use.
+  Use when unsure which tool to invoke next.
+  NOT for: executing tasks directly — only recommending which skill, agent, or command to use next.
 ---
 
 # Navigate: Intent → Right Tool

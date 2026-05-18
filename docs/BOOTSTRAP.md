@@ -41,7 +41,7 @@ After Copier finishes, the project has:
 - **L0 entry**: `CLAUDE.md` (sized to the ~800-token L0 budget; see `.claude/rules/L0-budget.md`)
 - **Top-level docs**: `README.md`, `MEMORY.md`, `HANDOFF.md`, `AGENTS.md`, `CONTEXT.md`, `SCRIPTS_DIRECTORY.md`, plus `ARCHITECTURE.md` and `DESIGN.md`
 - **Research-only docs** (if `is_research=true`): `REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`
-- **`.claude/`**: 18 core skills, 7 agents, 11 hooks (including the new `session-start.sh`), 11 rule files (the four ICM routing rules `L0-budget.md`, `context-md-anatomy.md`, `stage-contract.md`, `layer-triage.md`, plus `workflow.md`, `known-issues.md`, `validation-loop.md`, and the path-scoped `architecture.md`, `python.md`, `tech-stack.md`, `frontend-design.md`), `settings.json` with the SessionStart hook wired
+- **`.claude/`**: 19 core skills, 7 agents, 11 hooks (including the new `session-start.sh`), 11 rule files (the four ICM routing rules `L0-budget.md`, `context-md-anatomy.md`, `stage-contract.md`, `layer-triage.md`, plus `workflow.md`, `known-issues.md`, `validation-loop.md`, and the path-scoped `architecture.md`, `python.md`, `tech-stack.md`, `frontend-design.md`), `settings.json` with the SessionStart hook wired
 - **MCP**: `.mcp.json` registers Graphify and the Knowledge-Graph Memory MCP
 - **Config**: `.gitignore`, `.editorconfig`, `pyproject.toml`, `.copier-answers.yml`
 - **Seed working directories**: `archive/`, `config/`, `files_from_team/`, `internal_docs/`, `meeting_notes/`, `presentations/`, `results/`, `scripts/`, `submission_artifacts/`, `submission_docs/` (each with `.gitkeep`)
@@ -78,7 +78,7 @@ Asserts: single-tree invariant (no `template/` subdir), valid JSON in `settings.
 
 ## After bootstrap — first session
 
-1. Open the project in Claude Code. The `SessionStart` hook fires and injects the framework brief (18 core skills, Pipeline Gate ordering, four ICM routing layers).
+1. Open the project in Claude Code. The `SessionStart` hook fires and injects the framework brief (19 core skills, Pipeline Gate ordering, four ICM routing layers).
 2. Replace placeholder content in `CLAUDE.md` with project specifics. Stay within ~800 tokens (`.claude/rules/L0-budget.md`).
 3. If using the Knowledge-Graph Memory MCP, let the model populate `.claude-memory/knowledge-graph.json` during sessions; the `/know-me` skill writes structured facts.
 4. If using Graphify, run `graphify .` after the first non-trivial commit to seed the codebase map.

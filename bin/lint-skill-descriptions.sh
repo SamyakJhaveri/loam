@@ -37,7 +37,9 @@ if len(parts) >= 3:
   fi
 
   # Extract description (handles both single-line and multi-line YAML)
-  desc=$(echo "$frontmatter" | sed -n '/^description:/,/^[a-z]/p' | sed '$d' | sed 's/^description: *//' | sed 's/^  *//' | tr '\n' ' ' | sed 's/  */ /g')
+  # Use awk to handle end-of-frontmatter correctly (sed '$d' strips the last
+  # description line when description is the final key in frontmatter).
+  desc=$(echo "$frontmatter" | awk '/^description:/{found=1; sub(/^description: */, ""); if($0 != "" && $0 != ">") print; next} found && /^[a-z]/{exit} found{print}' | sed 's/^  *//' | tr '\n' ' ' | sed 's/  */ /g')
   if [ -z "$desc" ]; then
     desc=$(echo "$frontmatter" | grep -m1 '^description:' | sed 's/description: *//' || true)
   fi
@@ -65,7 +67,7 @@ if len(parts) >= 3:
     echo "WARN [$name]: description under 30 chars ($desc_len)"
     WARN=$((WARN + 1))
   fi
-done < <(find "$ROOT/.claude/skills" "$ROOT/flavors" -name "SKILL.md" 2>/dev/null | sort)
+done < <(find "$ROOT/.claude/skills" "$ROOT/_research/skills" "$ROOT/seed-skills" -name "SKILL.md" 2>/dev/null | sort)
 
 echo ""
 echo "Total warnings: $WARN"

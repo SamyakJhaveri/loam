@@ -1,7 +1,7 @@
 ---
 name: prompt-improver
 description: >
-  Invoked automatically by the UserPromptSubmit hook when a prompt is flagged as vague.
+  Use when invoked automatically by the UserPromptSubmit hook after a prompt is flagged as vague.
   Researches context, then generates 1-6 targeted clarifying questions before executing.
   Do NOT invoke this manually — it is triggered by the hook in .claude/hooks/improve-prompt.py.
 auto-activate: false

@@ -18,7 +18,7 @@ uvx copier copy --data "is_research=true" gh:samyakjhaveri/project-seed-framewor
 
 Loaded into every project, research or not:
 
-- The 18 core skills (`.claude/skills/`)
+- The 19 core skills (`.claude/skills/`)
 - The 7 core agents (`.claude/agents/`)
 - All hooks including the SessionStart brief
 - All four ICM routing rules (`L0-budget.md`, `context-md-anatomy.md`, `stage-contract.md`, `layer-triage.md`)

@@ -27,6 +27,25 @@ pass() { echo "OK: $*"; }
 test ! -d template || fail "template/ subdirectory exists — single-tree invariant broken"
 pass "single-tree (no template/ subdir)"
 
+# --- Invariant 1b: TEMPLATE-CLAUDE.md exists (session-start.sh depends on it)
+test -f TEMPLATE-CLAUDE.md || fail "TEMPLATE-CLAUDE.md missing — session-start.sh injection will silently fail"
+test -s TEMPLATE-CLAUDE.md || fail "TEMPLATE-CLAUDE.md is empty"
+pass "TEMPLATE-CLAUDE.md exists and is non-empty"
+
+# --- Invariant 1c: session-start.sh skill count matches actual ---------------
+ACTUAL_SKILL_COUNT=$(find .claude/skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+BRIEF_SKILL_COUNT=$(grep -oE '[0-9]+ total' .claude/hooks/session-start.sh 2>/dev/null | grep -oE '[0-9]+' || echo "0")
+if [[ "$ACTUAL_SKILL_COUNT" != "$BRIEF_SKILL_COUNT" ]]; then
+  fail "session-start.sh says $BRIEF_SKILL_COUNT skills but .claude/skills/ has $ACTUAL_SKILL_COUNT"
+fi
+pass "session-start.sh skill count matches actual ($ACTUAL_SKILL_COUNT)"
+
+# --- Invariant 1d: pre-commit-gate.sh is registered in settings.json --------
+if ! grep -q 'pre-commit-gate.sh' .claude/settings.json; then
+  fail "pre-commit-gate.sh not registered in settings.json — Pipeline Gate is unenforced"
+fi
+pass "pre-commit-gate.sh registered in settings.json"
+
 # --- Invariant 2: .claude/settings.json is valid JSON -----------------------
 python3 -m json.tool .claude/settings.json >/dev/null || fail "invalid .claude/settings.json"
 pass ".claude/settings.json is valid JSON"
