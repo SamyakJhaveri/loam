@@ -44,6 +44,16 @@ When stuck, default sequence:
 === end brief ===
 BRIEF
 
+# Inject TEMPLATE-CLAUDE.md (the renamed working CLAUDE.md) into context
+# since the file rename means Claude Code no longer auto-loads it.
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -n "$REPO_ROOT" ] && [ -f "$REPO_ROOT/TEMPLATE-CLAUDE.md" ]; then
+    echo ""
+    echo "=== TEMPLATE-CLAUDE.md (detailed framework map) ==="
+    cat "$REPO_ROOT/TEMPLATE-CLAUDE.md"
+    echo "=== end TEMPLATE-CLAUDE.md ==="
+fi
+
 # Dream-due check: stop-hook stdout is not user-visible in Claude Code, so
 # the check is duplicated here in the SessionStart brief (whose stdout
 # IS injected into the model's context). The dream-hook.sh Stop hook
