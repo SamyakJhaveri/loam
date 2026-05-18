@@ -1,6 +1,9 @@
 ---
 name: commit
-description: Create a conventional commit. Use when user says "commit", "make a commit", or "save changes".
+description: >
+  Create a conventional commit. Use when user says "commit", "make a commit",
+  or "save changes". NOT for: drafting code, running tests, or anything that
+  changes files — this skill only stages and commits already-finished work.
 model: haiku
 allowed-tools:
   - Bash(git add:*)

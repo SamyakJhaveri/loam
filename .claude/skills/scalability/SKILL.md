@@ -1,6 +1,13 @@
 ---
 name: scalability
-description: Design and build scalable software systems. Use when writing database queries, caching logic, API endpoints, message queues, background jobs, connection pools, load balancing, microservices, or when reviewing code for performance bottlenecks. Covers database scaling, caching strategies, async processing, API design for scale, concurrency, frontend performance, observability, and infrastructure patterns.
+description: >
+  Design and build scalable software systems. Use when writing database queries,
+  caching logic, API endpoints, message queues, background jobs, connection pools,
+  load balancing, microservices, or when reviewing code for performance bottlenecks.
+  Covers database scaling, caching strategies, async processing, API design for
+  scale, concurrency, frontend performance, observability, and infrastructure
+  patterns. NOT for: correctness bugs, security vulnerabilities, or UI polish —
+  only throughput, latency, and resource-efficiency concerns.
 argument-hint: [area to scale or optimize]
 ---
 

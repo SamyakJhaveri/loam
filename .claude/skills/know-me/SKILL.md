@@ -1,6 +1,11 @@
 ---
 name: know-me
-description: Learn about the user across sessions. Observe preferences, habits, corrections, and context. Save to memory topic files. Reference stored knowledge to personalize responses. Auto-activates when the user shares personal info, corrects Claude, or expresses preferences.
+description: >
+  Use when the user shares personal info, corrects Claude, or expresses preferences.
+  Learn about the user across sessions. Observe preferences, habits, corrections,
+  and context. Save to memory topic files. Reference stored knowledge to personalize
+  responses. NOT for: project-level decisions, codebase conventions, or task-specific
+  context — only user identity, preferences, and working style.
 auto-activate: true
 ---
 

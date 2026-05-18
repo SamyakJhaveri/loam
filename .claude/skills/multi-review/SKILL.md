@@ -1,6 +1,6 @@
 ---
 name: multi-review
-description: Multi-agent parallel code review with 4 reviewers (style, correctness, security, performance). Use before merging a feature branch, before committing a non-trivial change, or when a second pair of eyes is needed. Complements /validate (which checks pipeline correctness); review checks code quality.
+description: "Multi-agent parallel code review with 4 reviewers (style, correctness, security, performance). Use before merging a feature branch, before committing a non-trivial change, or when a second pair of eyes is needed. Complements /validate (which checks pipeline correctness); review checks code quality. NOT for: single-line trivial changes, commit-message review, or replacing /validate — use both, not either."
 ---
 
 # Multi-Agent Code Review

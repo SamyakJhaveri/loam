@@ -1,6 +1,6 @@
 ---
 name: fix-bug
-description: Bug fix workflow — reproduce, diagnose, plan, fix, verify, record. Use when a test fails, a build step fails, or results show an unexpected pattern. Mandates reproduction before diagnosis. Integrates with /validate on exit.
+description: "Bug fix workflow — reproduce, diagnose, plan, fix, verify, record. Use when a test fails, a build step fails, or results show an unexpected pattern. Mandates reproduction before diagnosis. Integrates with /validate on exit. NOT for: feature additions, refactors, or while-we're-here cleanups — only the named bug's minimal fix."
 ---
 
 # Bug Fix Workflow

@@ -1,6 +1,11 @@
 ---
 name: scaffold-context
-description: Author a CONTEXT.md routing file for a specified project subdirectory using the canonical ICM anatomy (.claude/rules/context-md-anatomy.md). Use when adding a new high-traffic area whose routing logic the root CLAUDE.md cannot describe economically. Skip for trivial directories.
+description: >
+  Author a CONTEXT.md routing file for a specified project subdirectory using
+  the canonical ICM anatomy (.claude/rules/context-md-anatomy.md). Use when
+  adding a new high-traffic area whose routing logic the root CLAUDE.md cannot
+  describe economically. Skip for trivial directories.
+  NOT for: editing existing CONTEXT.md files, authoring CLAUDE.md, or documenting project architecture — only new L1 routing files.
 auto-activate: true
 ---
 

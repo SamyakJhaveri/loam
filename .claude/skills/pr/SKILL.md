@@ -1,6 +1,9 @@
 ---
 name: pr
-description: Push and open a GitHub PR. Use when user says "open a PR", "create a pull request", or "push and PR".
+description: >
+  Push and open a GitHub PR. Use when user says "open a PR", "create a pull
+  request", or "push and PR". NOT for: committing changes (use /commit),
+  running validation (use /validate), or reviewing code (use /multi-review) — only the push-and-PR step.
 model: haiku
 allowed-tools:
   - Bash(git push:*)

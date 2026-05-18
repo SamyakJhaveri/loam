@@ -1,6 +1,6 @@
 ---
 name: catchup
-description: Fast 30s session bootstrap briefing. Use when resuming work after any break, at the start of a fresh session, or when unsure of current project state. Reports git status, recent commits, env state, memory staleness, pending tasks, and red flags (uncommitted changes, detached HEAD, stale memory).
+description: "Fast 30s session bootstrap briefing. Use when resuming work after any break, at the start of a fresh session, or when unsure of current project state. Reports git status, recent commits, env state, memory staleness, pending tasks, and red flags (uncommitted changes, detached HEAD, stale memory). NOT for: deep codebase exploration, implementing changes, or running tests — only a read-only status snapshot."
 ---
 
 # Session Catchup Briefing

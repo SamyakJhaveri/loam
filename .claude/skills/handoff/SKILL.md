@@ -1,6 +1,6 @@
 ---
 name: handoff
-description: Write or update a handoff document so the next agent with fresh context can continue this work.
+description: "Use when ending a session with unfinished work, switching context, or preparing for another agent to continue. Write or update a handoff document so the next agent with fresh context can continue this work. NOT for: session notes, commit messages, or PR descriptions — only structured handoffs for agent continuity."
 ---
 
 Write or update a handoff document so the next agent with fresh context can continue this work.

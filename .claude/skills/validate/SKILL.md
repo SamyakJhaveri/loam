@@ -1,6 +1,6 @@
 ---
 name: validate
-description: Post-session validation loop — multi-wave checks before commit. Use before every git commit. Writes .validation_passed sentinel on success.
+description: "Post-session validation loop — multi-wave checks before commit. Use before every git commit. Writes .validation_passed sentinel on success. NOT for: ad-hoc test runs, code review, or implementation work — only the Pipeline Gate between implement and commit."
 ---
 
 # Post-Session Validation Loop
