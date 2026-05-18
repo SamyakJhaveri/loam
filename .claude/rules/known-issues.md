@@ -7,7 +7,7 @@
 
 **What:** Skills are tiered by `auto-activate` field to control auto-invocation.
 **Don't:** Add new skills without deciding their tier first. Don't leave specialized/heavy skills at default (auto-activate: true).
-**Do:** Core workflow skills (commit, validate, fix-bug, feature-dev, catchup, navigate, karpathy-guidelines, security, scalability, frontend-design, handoff, pr, multi-review, know-me) keep default. Specialized skills use `auto-activate: false` — user invokes with `/skill-name`.
+**Do:** Core workflow skills (catchup, commit, create-skill, dream, feature-dev, fix-bug, handoff, karpathy-guidelines, know-me, multi-review, pr, reflect, researcher, scaffold-context, scalability, security, techdebt, template-sync, validate) keep default. Specialized skills use `auto-activate: false` — user invokes with `/skill-name`.
 **Why:** With 60+ skills competing for auto-invocation, false positives waste tokens and confuse sessions. See `.claude/skills/create-skill/reference.md:19-31` for the invocation control matrix.
 
 ## YAML colons in skill descriptions
