@@ -81,13 +81,15 @@ Provides the brainstorming, journaling, and TDD-discipline skills that Jesse Vin
 
 ## Adjacent — CodeBurn (cost observability)
 
-```bash
-npx codeburn
-```
-
 Terminal dashboard for token / cost spend across 19 AI coding tools (Claude Code, Cursor, Copilot, etc.). Reads local session data; no proxy, no API keys. MIT.
 
 Not memory — included here because the user runs it alongside the memory stack to track the cost of leaving multiple MCPs active.
+
+### Quick start (no install)
+
+```bash
+npx codeburn       # opens the dashboard; persists nothing to the repo
+```
 
 ## What to .gitignore
 
