@@ -1,0 +1,50 @@
+{
+  "name": "seed-skills",
+  "description": "Optional skill bundles from the project-seed-framework. Install on demand — not shipped to bootstrapped projects by default.",
+  "owner": {
+    "name": "Samyak Jhaveri",
+    "email": "samyakjhaveri2799@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "team-deliberation",
+      "description": "Multi-agent deliberation skills (agent-team, council, session-critique)",
+      "version": "0.1.0",
+      "source": "./team-deliberation",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "samyakjhaveri2799@gmail.com"
+      }
+    },
+    {
+      "name": "meta-improvement",
+      "description": "Self-healing and meta-improvement skills",
+      "version": "0.1.0",
+      "source": "./meta-improvement",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "samyakjhaveri2799@gmail.com"
+      }
+    },
+    {
+      "name": "helpers",
+      "description": "Utility skills (decision-matrix, navigate, model-route, prompt-improver, frontend-design, grill-research)",
+      "version": "0.1.0",
+      "source": "./helpers",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "samyakjhaveri2799@gmail.com"
+      }
+    },
+    {
+      "name": "business-process",
+      "description": "Business process skills (process-optimizer, sop-writer, workflow-mapper, weekly-review)",
+      "version": "0.1.0",
+      "source": "./business-process",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "samyakjhaveri2799@gmail.com"
+      }
+    }
+  ]
+}
