@@ -87,6 +87,8 @@ echo "--- Copier render tests ---"
 COPIER_FLAGS="--trust --defaults --vcs-ref HEAD"
 
 # Default flavor (is_research=false)
+# COPIER_FLAGS contains multiple args that must word-split
+# shellcheck disable=SC2086
 $COPIER_CMD copy $COPIER_FLAGS --data "project_name=default-test" . "$TMP/default" 2>&1 | tail -5
 test -f "$TMP/default/CLAUDE.md"                       || fail "default: CLAUDE.md missing"
 test -f "$TMP/default/.claude/settings.json"           || fail "default: .claude/settings.json missing"
@@ -112,6 +114,8 @@ test ! -f "$TMP/default/.claude/audit.log"             || fail "default: audit.l
 pass "Copier render (default)"
 
 # Research flavor (is_research=true)
+# COPIER_FLAGS contains multiple args that must word-split
+# shellcheck disable=SC2086
 $COPIER_CMD copy $COPIER_FLAGS --data "project_name=research-test" --data "is_research=true" . "$TMP/research" 2>&1 | tail -5
 test -d "$TMP/research/.claude/skills/paper-write"     || fail "research: paper-write skill missing"
 test -d "$TMP/research/.claude/skills/citation-audit"  || fail "research: citation-audit skill missing"

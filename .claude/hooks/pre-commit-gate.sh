@@ -107,7 +107,7 @@ fi
 
 # ── 5. Check sentinel is not outdated by new file changes ─────────────────────
 # Find the most recently modified tracked file in the diff
-NEWEST_CHANGE=$(git -C "$PROJECT_ROOT" diff --name-only HEAD 2>/dev/null | while read f; do
+NEWEST_CHANGE=$(git -C "$PROJECT_ROOT" diff --name-only HEAD 2>/dev/null | while read -r f; do
     FULL="$PROJECT_ROOT/$f"
     if [ -f "$FULL" ]; then
         if [ "$IS_LINUX" = "1" ]; then
