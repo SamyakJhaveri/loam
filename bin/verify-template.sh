@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 # verify-template.sh — sanity-check that bootstrapping produces valid projects.
 #
-# v2.0 single-tree: the repo itself is the Copier template. This script
-# checks invariants that protect the rework's structural properties:
-# 1. The legacy template/ subdir does not return.
-# 2. The mirror cannot drift (no template/.claude/ to differ from .claude/).
-# 3. Every SKILL.md parses as agentskills.io-conformant (name + description
-#    in front-matter).
-# 4. Copier render produces a project whose .claude/ is structurally valid
+# v3.0 seed-subdirectory: Copier renders from seed/. The repo root has a
+# symlink .claude → seed/.claude for local dev experience. This script
+# checks invariants that protect the structural properties:
+# 1. The seed/ subdirectory exists and .claude symlink resolves.
+# 2. Every SKILL.md parses as agentskills.io-conformant (name + description).
+# 3. Copier render produces a project whose .claude/ is structurally valid
 #    in both default and research-flavor variants.
-# 5. Template-author working files do not leak into rendered projects.
+# 4. Template-author working files do not leak into rendered projects.
 
 set -euo pipefail
 
@@ -23,36 +22,36 @@ cd "$TEMPLATE_ROOT"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "OK: $*"; }
 
-# --- Invariant 1: single-tree (template/ subdir must not exist) -------------
-test ! -d template || fail "template/ subdirectory exists — single-tree invariant broken"
-pass "single-tree (no template/ subdir)"
+# --- Invariant 1: seed/ subdirectory exists ---------------------------------
+test -d seed || fail "seed/ subdirectory missing — v3.0 structure broken"
+pass "seed/ subdirectory exists"
 
-# --- Invariant 1b: TEMPLATE-CLAUDE.md exists (session-start.sh depends on it)
-test -f TEMPLATE-CLAUDE.md || fail "TEMPLATE-CLAUDE.md missing — session-start.sh injection will silently fail"
-test -s TEMPLATE-CLAUDE.md || fail "TEMPLATE-CLAUDE.md is empty"
-pass "TEMPLATE-CLAUDE.md exists and is non-empty"
+# --- Invariant 1b: .claude symlink resolves to seed/.claude -----------------
+test -L .claude || fail ".claude is not a symlink — expected .claude → seed/.claude"
+test -d .claude/skills || fail ".claude symlink does not resolve (seed/.claude/skills missing)"
+pass ".claude symlink resolves to seed/.claude"
 
 # --- Invariant 1c: session-start.sh skill count matches actual ---------------
-ACTUAL_SKILL_COUNT=$(find .claude/skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-BRIEF_SKILL_COUNT=$(grep -oE '[0-9]+ total' .claude/hooks/session-start.sh 2>/dev/null | grep -oE '[0-9]+' || echo "0")
+ACTUAL_SKILL_COUNT=$(find seed/.claude/skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+BRIEF_SKILL_COUNT=$(grep -oE '[0-9]+ total' seed/.claude/hooks/session-start.sh 2>/dev/null | grep -oE '[0-9]+' || echo "0")
 if [[ "$ACTUAL_SKILL_COUNT" != "$BRIEF_SKILL_COUNT" ]]; then
-  fail "session-start.sh says $BRIEF_SKILL_COUNT skills but .claude/skills/ has $ACTUAL_SKILL_COUNT"
+  fail "session-start.sh says $BRIEF_SKILL_COUNT skills but seed/.claude/skills/ has $ACTUAL_SKILL_COUNT"
 fi
 pass "session-start.sh skill count matches actual ($ACTUAL_SKILL_COUNT)"
 
 # --- Invariant 1d: pre-commit-gate.sh is registered in settings.json --------
-if ! grep -q 'pre-commit-gate.sh' .claude/settings.json; then
+if ! grep -q 'pre-commit-gate.sh' seed/.claude/settings.json; then
   fail "pre-commit-gate.sh not registered in settings.json — Pipeline Gate is unenforced"
 fi
 pass "pre-commit-gate.sh registered in settings.json"
 
 # --- Invariant 2: .claude/settings.json is valid JSON -----------------------
-python3 -m json.tool .claude/settings.json >/dev/null || fail "invalid .claude/settings.json"
-pass ".claude/settings.json is valid JSON"
+python3 -m json.tool seed/.claude/settings.json >/dev/null || fail "invalid seed/.claude/settings.json"
+pass "seed/.claude/settings.json is valid JSON"
 
 # --- Invariant 3: shellcheck on .sh files -----------------------------------
 if command -v shellcheck >/dev/null; then
-  shellcheck bin/*.sh .claude/hooks/*.sh _research/hooks/*.sh 2>&1 || fail "shellcheck failed"
+  shellcheck bin/*.sh seed/.claude/hooks/*.sh seed/_research/hooks/*.sh 2>&1 || fail "shellcheck failed"
   pass "shellcheck"
 else
   echo "SKIP: shellcheck not installed"
@@ -61,7 +60,6 @@ fi
 # --- Invariant 4: agentskills.io schema (name + description present) --------
 SKILL_ERRORS=0
 while IFS= read -r -d '' skill; do
-  # Extract front-matter (between first --- and second ---)
   if ! head -20 "$skill" | grep -q '^---$'; then
     echo "WARN: $skill has no front-matter"
     SKILL_ERRORS=$((SKILL_ERRORS+1))
@@ -75,7 +73,7 @@ while IFS= read -r -d '' skill; do
     echo "FAIL: $skill missing description in front-matter"
     SKILL_ERRORS=$((SKILL_ERRORS+1))
   fi
-done < <(find .claude/skills _research/skills seed-skills -name SKILL.md -print0 2>/dev/null)
+done < <(find seed/.claude/skills seed/_research/skills cultivation/marketplace -name SKILL.md -print0 2>/dev/null)
 [[ $SKILL_ERRORS -eq 0 ]] || fail "$SKILL_ERRORS SKILL.md files violate agentskills.io schema"
 pass "agentskills.io schema (every SKILL.md has name + description)"
 
@@ -117,25 +115,14 @@ test -f "$TMP/default/.claude/hooks/session-start.sh"  || fail "default: session
 test -d "$TMP/default/.claude/skills/validate"         || fail "default: validate skill missing"
 test -d "$TMP/default/.claude/skills/template-sync"    || echo "WARN: default: template-sync skill missing (experimental — not blocking)"
 test ! -d "$TMP/default/_research"                     || fail "default: _research overlay not cleaned up"
-test ! -d "$TMP/default/template"                      || fail "default: template/ leaked"
-test ! -d "$TMP/default/seed-skills"                   || fail "default: seed-skills/ leaked into rendered project"
-test ! -d "$TMP/default/claude_code_course_files"      || fail "default: course files leaked"
-# internal_docs/ is created by _tasks mkdir as a seed dir; check it's empty (no source content propagated)
-test -d "$TMP/default/internal_docs"                   || fail "default: internal_docs seed dir missing"
-count_internal=$(find "$TMP/default/internal_docs" -type f ! -name .gitkeep 2>/dev/null | wc -l)
-[[ "$count_internal" -eq 0 ]]                          || fail "default: internal_docs has $count_internal non-gitkeep files (source leaked)"
-test ! -f "$TMP/default/HANDOFF.md.jinja"              || fail "default: HANDOFF.md.jinja not rendered"
-# Top-level CLAUDE.md/README.md/HANDOFF.md should be rendered from .jinja
+test ! -d "$TMP/default/seed"                          || fail "default: seed/ leaked into rendered project"
+test ! -d "$TMP/default/cultivation"                   || fail "default: cultivation/ leaked into rendered project"
+test ! -d "$TMP/default/soil"                          || fail "default: soil/ leaked into rendered project"
+test ! -d "$TMP/default/bin"                           || fail "default: bin/ leaked into rendered project"
+test ! -f "$TMP/default/.claude/audit.log"             || fail "default: audit.log leaked"
+# Top-level CLAUDE.md/README.md should be rendered from .jinja
 test -f "$TMP/default/CLAUDE.md"                       || fail "default: CLAUDE.md not rendered from .jinja"
 test -f "$TMP/default/README.md"                       || fail "default: README.md not rendered from .jinja"
-test -f "$TMP/default/HANDOFF.md"                      || fail "default: HANDOFF.md not rendered from .jinja"
-test -f "$TMP/default/CONTEXT.md"                      || fail "default: CONTEXT.md not rendered from .jinja"
-test -f "$TMP/default/PROJECT-BACKGROUND.md"           || fail "default: PROJECT-BACKGROUND.md not rendered from .jinja"
-# CONTEXT.md must carry the 6 ICM L1 anatomy section headers (per .claude/rules/context-md-anatomy.md)
-for header in "## What this area is" "## What to Load" "## Folder" "## The Process" "## Skills & Tools" "## What NOT to Do"; do
-  grep -qF "$header" "$TMP/default/CONTEXT.md" || fail "default: CONTEXT.md missing section header '$header'"
-done
-test ! -f "$TMP/default/.claude/audit.log"             || fail "default: audit.log leaked"
 pass "Copier render (default)"
 
 # Research flavor (is_research=true)

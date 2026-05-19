@@ -67,7 +67,7 @@ if len(parts) >= 3:
     echo "WARN [$name]: description under 30 chars ($desc_len)"
     WARN=$((WARN + 1))
   fi
-done < <(find "$ROOT/.claude/skills" "$ROOT/_research/skills" "$ROOT/seed-skills" -name "SKILL.md" 2>/dev/null | sort)
+done < <(find "$ROOT/seed/.claude/skills" "$ROOT/seed/_research/skills" "$ROOT/cultivation/marketplace" -name "SKILL.md" 2>/dev/null | sort)
 
 echo ""
 echo "Total warnings: $WARN"

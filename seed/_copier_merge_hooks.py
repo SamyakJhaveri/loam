@@ -5,7 +5,8 @@ Usage: python3 _copier_merge_hooks.py <fragment.json> <target.json>
 
 Appends hook entries from fragment into target without replacing existing entries.
 """
-import json, sys
+import json
+import sys
 
 if len(sys.argv) != 3:
     print(f"Usage: {sys.argv[0]} <fragment.json> <target.json>", file=sys.stderr)

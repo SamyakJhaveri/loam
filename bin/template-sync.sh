@@ -54,11 +54,11 @@ resolve_template_path() {
 }
 
 # Resolve the .claude/ comparison root inside the template repo.
-# After the v2.0 single-tree collapse, the .claude/ at template root IS
-# the canonical config (no more nested template/.claude/ mirror).
+# v3.0: deliverables live under seed/. The .claude/ at template root is a
+# symlink to seed/.claude/, so the canonical location is $tpl/seed.
 resolve_template_claude_root() {
   local tpl="$1"
-  echo "$tpl"
+  echo "$tpl/seed"
 }
 
 project_name() {
@@ -71,18 +71,18 @@ project_name() {
 
 # Map (layer, relpath-relative-to-project-root) → template-relpath.
 # Project relpath is e.g. ".claude/skills/handoff/SKILL.md".
-# v2.0 single-tree: generic writes to .claude/ at template root; flavor
-# writes to _<FLAVOR>/ at template root (e.g. _research/).
+# v3.0: generic writes to seed/.claude/ in template; flavor writes to
+# seed/_<FLAVOR>/ in template (e.g. seed/_research/).
 template_path_for() {
   local layer="$1" relpath="$2" tpl="$3"
   case "$layer" in
     generic)
       [[ "$relpath" == .claude/* ]] || die "generic layer expects path under .claude/, got: $relpath"
-      echo "$relpath";;
+      echo "seed/$relpath";;
     flavor:*)
       local flavor="${layer#flavor:}"
       local stripped="${relpath#.claude/}"
-      echo "_$flavor/$stripped";;
+      echo "seed/_$flavor/$stripped";;
     *) die "unknown layer: $layer";;
   esac
 }

@@ -1,50 +1,21 @@
 _min_copier_version: "9.4.0"
-_subdirectory: "."
+_subdirectory: "seed"
 _templates_suffix: .jinja
 _envops:
   keep_trailing_newline: true
 
-# Files/patterns to never copy into rendered projects.
-# These are template-author working files, internal references,
-# and pollution that should not propagate.
+# With _subdirectory: "seed", only seed/ contents are rendered.
+# These exclusions cover generic noise inside seed/.
 _exclude:
-  # Generic VCS / build noise
   - ".DS_Store"
   - "*.pyc"
   - "__pycache__"
   - "*.bak"
   - ".git"
-
-  # Template-author working files (this repo's own dogfooded config
-  # has both the working CLAUDE.md/README.md/HANDOFF.md and the
-  # .jinja-suffixed versions that ship to projects; only the .jinja
-  # versions should propagate).
-  - "TEMPLATE-CLAUDE.md"
-  - "TEMPLATE-README.md"
-  - "TEMPLATE-HANDOFF.md"
-  - "V2.0-HANDOFF-SUMMARY.md"
-  - ".claudeignore"
-  - "template-manifest.schema.json"
-  - ".github"
-  - ".gitignore"
-
-  # Internal-only references and pollution
-  - "claude_code_course_files"
-  - "internal_docs"
-  - "outputs"
-  - "IMG_*"
   - ".claude/audit.log"
   - ".claude/.local-paths"
   - ".claude/settings.local.json"
   - ".claude/worktrees"
-
-  # Framework machinery — do not ship to rendered projects
-  - "bin"
-  - "docs"
-  - "copier.yml"
-  - "VERSION"
-  - "LICENSE"
-  - "seed-skills"
 
 # Questions asked during `copier copy`
 project_name:
