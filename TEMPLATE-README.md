@@ -8,10 +8,10 @@ Reusable Claude Code template that serves as both a **bootstrap source** for new
 
 ```bash
 # No installation needed — uvx runs copier on-the-fly
-uvx copier copy gh:samyakjhaveri/project-seed-framework ./my-project
+uvx copier copy gh:samyakjhaveri/loam ./my-project
 
 # Or with a specific version
-uvx copier copy --vcs-ref v1.0.0 gh:samyakjhaveri/project-seed-framework ./my-project
+uvx copier copy --vcs-ref v1.0.0 gh:samyakjhaveri/loam ./my-project
 ```
 
 ### Via shell script (fallback)

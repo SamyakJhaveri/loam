@@ -8,7 +8,7 @@ These are skills that were removed from the default `.claude/skills/` set during
 
 ```bash
 # From a project bootstrapped from this template:
-/plugin marketplace add /path/to/project_seed_framework/seed-skills
+/plugin marketplace add /path/to/loam/seed-skills
 /plugin install team-deliberation    # or: meta-improvement, helpers, business-process
 ```
 

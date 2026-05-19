@@ -1,6 +1,6 @@
 {
   "name": "seed-skills",
-  "description": "Optional skill bundles from the project-seed-framework. Install on demand — not shipped to bootstrapped projects by default.",
+  "description": "Optional skill bundles from the Loam. Install on demand — not shipped to bootstrapped projects by default.",
   "owner": {
     "name": "Samyak Jhaveri",
     "email": "samyakjhaveri2799@gmail.com"

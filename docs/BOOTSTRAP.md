@@ -1,18 +1,18 @@
 # Bootstrap a new project
 
-`project_seed_framework` is a Copier template. Bootstrapping a new project is one command from anywhere on your machine — no local clone required. The previous shell bootstrap (`init-project.sh`) was removed in v2.0; Copier is the only path.
+`loam` is a Copier template. Bootstrapping a new project is one command from anywhere on your machine — no local clone required. The previous shell bootstrap (`init-project.sh`) was removed in v2.0; Copier is the only path.
 
 ## New project from the latest template
 
 ```bash
-uvx copier copy gh:samyakjhaveri/project-seed-framework ./my-project
+uvx copier copy gh:samyakjhaveri/loam ./my-project
 cd ./my-project
 ```
 
 To pin to a specific version:
 
 ```bash
-uvx copier copy --vcs-ref v2.0.0 gh:samyakjhaveri/project-seed-framework ./my-project
+uvx copier copy --vcs-ref v2.0.0 gh:samyakjhaveri/loam ./my-project
 ```
 
 To run non-interactively:
@@ -21,7 +21,7 @@ To run non-interactively:
 uvx copier copy --defaults \
   --data "project_name=my-project" \
   --data "is_research=true" \
-  gh:samyakjhaveri/project-seed-framework ./my-project
+  gh:samyakjhaveri/loam ./my-project
 ```
 
 Copier writes `.copier-answers.yml` at the project root recording the template ref applied; do not delete it. It is what `copier update` reads to diff against newer template revisions.
@@ -45,7 +45,7 @@ After Copier finishes, the project has:
 - **MCP**: `.mcp.json` registers Graphify and the Knowledge-Graph Memory MCP
 - **Config**: `.gitignore`, `.editorconfig`, `pyproject.toml`, `.copier-answers.yml`
 - **Seed working directories**: `archive/`, `config/`, `files_from_team/`, `internal_docs/`, `meeting_notes/`, `presentations/`, `results/`, `scripts/`, `submission_artifacts/`, `submission_docs/` (each with `.gitkeep`)
-- **First commit**: "Initial commit from project-seed-framework"
+- **First commit**: "Initial commit from loam"
 
 ## Pull future template updates into an existing project
 

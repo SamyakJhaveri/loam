@@ -14,7 +14,7 @@
 #
 # Environment:
 #   TEMPLATE_PATH    overrides the template clone location
-#                    (default: ~/Desktop/project_seed_framework, or value from manifest)
+#                    (default: ~/Desktop/loam, or value from manifest)
 
 set -euo pipefail
 
@@ -50,7 +50,7 @@ resolve_template_path() {
     p=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("template",{}).get("path",""))' "$MANIFEST")
     [[ -n "$p" && -d "$p" ]] && { echo "$p"; return; }
   fi
-  echo "$HOME/Desktop/project_seed_framework"
+  echo "$HOME/Desktop/loam"
 }
 
 # Resolve the .claude/ comparison root inside the template repo.
@@ -228,7 +228,7 @@ cmd_promote() {
   if [[ -f "$MANIFEST" ]]; then
     repo=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("template",{}).get("repo","<owner>/project-template"))' "$MANIFEST")
   else
-    repo="samyakjhaveri/project-seed-framework"
+    repo="samyakjhaveri/loam"
   fi
   cat <<EOF
 

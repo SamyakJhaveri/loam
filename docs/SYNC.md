@@ -35,7 +35,7 @@ Choose the layer deliberately:
 The skill walks a ten-step flow:
 
 1. Validates `.copier-answers.yml` (or legacy `template-manifest.json`) exists.
-2. Resolves the template path (`$TEMPLATE_PATH` → `_src_path` from `.copier-answers.yml` → manifest entry → default `~/Desktop/project_seed_framework`).
+2. Resolves the template path (`$TEMPLATE_PATH` → `_src_path` from `.copier-answers.yml` → manifest entry → default `~/Desktop/loam`).
 3. Verifies the template's working tree is clean.
 4. Scans the asset for project-specific names, hardcoded paths, secrets, legacy references.
 5. Maps the asset to its template path via `template_path_for` (`.claude/X` for generic, `_<flavor>/X-stripped` for flavor:NAME).
@@ -89,5 +89,5 @@ Each hit stops the flow and asks: abort / generalize the asset / promote anyway.
 
 - The previous `template/.claude/` mirror is gone. `template_path_for "generic" "<relpath>"` now returns `<relpath>` directly (no `template/` prefix). Single-tree.
 - Flavor promotion target changed: `flavors/<NAME>/<relpath-stripped>` is now `_<NAME>/<relpath-stripped>`. Only `_research/` exists today; `_software-eng/` is gone (folded into default).
-- The default template path is `~/Desktop/project_seed_framework`, not `~/Desktop/project_template`.
+- The default template path is `~/Desktop/loam`, not `~/Desktop/project_template`.
 - Status of the promote workflow as of v2.0 release: zero promote commits exist in `main` history. The workflow is wired but unproven end-to-end. Dogfood it once with a real skill before relying on it.

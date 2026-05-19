@@ -14,7 +14,7 @@ Make every internal cross-reference in the JVC course markdown files navigable b
 
 **What that means in practice:** When Claude Code reads one of these course files and encounters a reference like "see Section 3.1" or a link to a resource PDF, it should be able to follow that reference with its Read tool to open the target file. Right now, it can't — the references are broken.
 
-**Working directory:** `/Users/samyakjhaveri/Desktop/project_seed_framework`
+**Working directory:** `/Users/samyakjhaveri/Desktop/loam`
 **All course files live under:** `claude_code_course_files/` (abbreviated `ccf/` throughout)
 
 ---
@@ -73,7 +73,7 @@ Two sub-problems:
 
 ### Problem 3: Absolute Paths Are Non-Portable
 
-Every reference uses the full path: `/Users/samyakjhaveri/Desktop/project_seed_framework/...`. This is:
+Every reference uses the full path: `/Users/samyakjhaveri/Desktop/loam/...`. This is:
 - Unnecessarily long (clutters the files)
 - Non-portable (breaks if the repo is moved or cloned elsewhere)
 - Harder for Claude Code to work with (relative paths are simpler)

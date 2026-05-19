@@ -35,7 +35,7 @@ Copier reads `.copier-answers.yml` to know which template ref the project was la
 Template versions are Git tags (e.g. `v2.0.0`). Pin a specific version at bootstrap:
 
 ```bash
-uvx copier copy --vcs-ref v2.0.0 gh:samyakjhaveri/project-seed-framework ./my-project
+uvx copier copy --vcs-ref v2.0.0 gh:samyakjhaveri/loam ./my-project
 ```
 
 New releases via `bin/release.sh`:

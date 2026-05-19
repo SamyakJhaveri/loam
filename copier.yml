@@ -87,7 +87,7 @@ _tasks:
   - "for dir in archive config files_from_team internal_docs meeting_notes presentations results scripts submission_artifacts submission_docs; do mkdir -p \"$dir\" && touch \"$dir/.gitkeep\"; done"
 
   # Initialize git repo (skip on copier update — .git already exists)
-  - "if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git commit -m 'Initial commit from project-seed-framework'; fi"
+  - "if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git commit -m 'Initial commit from loam'; fi"
 
   # Optional: create GitHub repo
   - >-

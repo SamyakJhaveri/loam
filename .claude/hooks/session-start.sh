@@ -9,9 +9,9 @@
 set -euo pipefail
 
 cat <<'BRIEF'
-=== project_seed_framework session brief ===
+=== loam session brief ===
 
-You are working in a project bootstrapped from project_seed_framework.
+You are working in a project bootstrapped from Loam.
 
 CORE SKILLS (.claude/skills/ — 19 total):
   Daily loop:    catchup, feature-dev, fix-bug, multi-review, validate, commit, pr, handoff

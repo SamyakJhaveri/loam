@@ -5,7 +5,7 @@
 
 ## Goal
 
-Bootstrap a new distributed systems benchmarking project ("distbench") from the project_seed_framework Copier template. Four sequential phases: commit pending fixes, rename framework to "Loam", port skills from parbench, render distbench.
+Bootstrap a new distributed systems benchmarking project ("distbench") from the Loam Copier template. Four sequential phases: commit pending fixes, rename framework to "Loam", port skills from parbench, render distbench.
 
 ## Current Progress
 

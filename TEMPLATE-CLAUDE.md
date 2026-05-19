@@ -1,4 +1,4 @@
-# CLAUDE.md — project_seed_framework
+# CLAUDE.md — Loam
 
 This repo IS a Copier template AND a Claude Code project (single-tree, v2.0). The author IS a project user — same `.claude/` config that ships to bootstrapped projects is what activates in this repo.
 
@@ -14,7 +14,7 @@ A personal Claude Code starter that bootstraps every new project and absorbs imp
 
 ```bash
 # Bootstrap a new project (anywhere — no local clone)
-uvx copier copy gh:samyakjhaveri/project-seed-framework ./my-project
+uvx copier copy gh:samyakjhaveri/loam ./my-project
 
 # Pull template updates into an existing project
 cd my-project && uvx copier update
