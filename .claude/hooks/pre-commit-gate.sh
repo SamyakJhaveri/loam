@@ -98,8 +98,7 @@ if [ -n "$WAVES" ] && [ "$WAVES" -lt 3 ] 2>/dev/null; then
     echo "║  BLOCKED: Only ${WAVES}/3 required validation waves passed.       ║" >&2
     echo "║                                                              ║" >&2
     echo "║  /validate quick is not sufficient for committing.          ║" >&2
-    echo "║  Run /validate for at least waves 1-3.                      ║" >&2
-    echo "║  Wave 4 (self-critic) is optional for commits.              ║" >&2
+    echo "║  Run full /validate (all 3 waves) before committing.         ║" >&2
     echo "╚══════════════════════════════════════════════════════════════╝" >&2
     echo "" >&2
     exit 2
@@ -107,7 +106,7 @@ fi
 
 # ── 5. Check sentinel is not outdated by new file changes ─────────────────────
 # Find the most recently modified tracked file in the diff
-NEWEST_CHANGE=$(git -C "$PROJECT_ROOT" diff --name-only HEAD 2>/dev/null | while read -r f; do
+NEWEST_MTIME=$(git -C "$PROJECT_ROOT" diff --name-only HEAD 2>/dev/null | while read -r f; do
     FULL="$PROJECT_ROOT/$f"
     if [ -f "$FULL" ]; then
         if [ "$IS_LINUX" = "1" ]; then
@@ -118,7 +117,7 @@ NEWEST_CHANGE=$(git -C "$PROJECT_ROOT" diff --name-only HEAD 2>/dev/null | while
     fi
 done | sort -rn | head -1)
 
-if [ -n "$NEWEST_CHANGE" ] && [ "$NEWEST_CHANGE" -gt "$SENTINEL_MTIME" ]; then
+if [ -n "$NEWEST_MTIME" ] && [ "$NEWEST_MTIME" -gt "$SENTINEL_MTIME" ]; then
     echo "" >&2
     echo "╔══════════════════════════════════════════════════════════════╗" >&2
     echo "║  BLOCKED: Files changed after validation passed.            ║" >&2
