@@ -13,12 +13,14 @@ cat <<'BRIEF'
 
 You are working in a project bootstrapped from Loam.
 
-CORE SKILLS (.claude/skills/ — 19 total):
+CORE SKILLS (.claude/skills/ — 25 total):
   Daily loop:    catchup, feature-dev, fix-bug, multi-review, validate, commit, pr, handoff
   Memory/style:  know-me, reflect, dream, karpathy-guidelines
   Research:      researcher
   Framework:     create-skill, template-sync, scaffold-context
   Quality gate:  security, scalability, techdebt
+  Spec workflow: gen-spec, spec-check, spec-validator
+  Agent tooling: agent-team, model-route, session-critique
 
 PIPELINE GATE: /validate is non-negotiable before every commit. The pre-commit
 hook enforces a .validation_passed sentinel. Critical ordering:
