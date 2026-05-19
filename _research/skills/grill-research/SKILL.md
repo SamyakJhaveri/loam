@@ -5,6 +5,7 @@ description: >
   claim. Use before /overnight-eval, before adding a claim to a paper, or when a
   reviewer-style stress test is needed. 4 waves: basics, clarifications, deep probes,
   assessment. Stops you from running expensive batches on shaky premises.
+auto-activate: false
 ---
 
 # Research Interrogation

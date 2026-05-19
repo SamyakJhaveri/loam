@@ -4,6 +4,7 @@ description: >
   Post-batch analysis pipeline that runs after an eval batch completes. Use after
   /eval-run or /overnight-eval finishes. Verifies results, runs analysis scripts,
   refreshes dashboard, writes summary. Does NOT launch new eval runs.
+auto-activate: false
 ---
 
 # Post-Eval Pipeline

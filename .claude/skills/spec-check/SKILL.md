@@ -55,7 +55,21 @@ Check each acceptance criterion:
 - Is it specific? (No "should work well" or "be fast enough")
 - Is it independent? (Doesn't depend on other unwritten specs)
 
-### Step 5: Report
+### Step 5: Naming Convention
+
+Verify the spec filename and identity:
+- Filename uses kebab-case (e.g., `user-auth.md`, not `userAuth.md`)
+- Name in the Identity section matches the filename
+- No special characters beyond hyphens
+
+### Step 6: Constraint Completeness
+
+Verify the "Constraints" or "Must NOT" section:
+- Section exists and is non-empty
+- Constraints are specific to this spec (not generic "don't do bad things")
+- Constraints prevent documented failure modes, not hypothetical ones
+
+### Step 7: Report
 
 ```
 === SPEC CHECK: <spec-name> ===
@@ -64,7 +78,8 @@ Status: PASS / FAIL
 Structure:    [PASS/FAIL] — missing sections: <list>
 References:   [PASS/FAIL] — broken refs: <list>
 Criteria:     [PASS/FAIL] — vague criteria: <list>
-Conventions:  [PASS/FAIL] — naming issues: <list>
+Naming:       [PASS/FAIL] — kebab-case violations: <list>
+Constraints:  [PASS/FAIL] — missing or generic constraints: <list>
 
 Result: N PASS, M FAIL, K WARN
 ```

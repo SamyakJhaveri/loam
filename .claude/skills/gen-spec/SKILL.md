@@ -29,7 +29,7 @@ implementation code. Specs-before-code prevents scope drift and makes review che
 - Link to related specs, ADRs, or design docs
 
 ### Phase 3: Validate
-- Run `/spec-validator <name>` to check against conventions
+- Run `/spec-check <name>` to check against conventions
 - Verify all referenced files and resources exist
 - Ensure acceptance criteria are verifiable (not vague)
 

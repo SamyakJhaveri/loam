@@ -5,6 +5,7 @@ description: >
   sections, cross-reference validity, and acceptance criteria quality. Use after generating
   or modifying multiple spec files, or as a periodic health check.
 tools: Read, Glob, Grep, Bash
+permissionMode: dontAsk
 model: sonnet
 maxTurns: 15
 ---

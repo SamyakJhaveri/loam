@@ -6,6 +6,7 @@ description: >
   computing pass rates with proper exclusions, or preparing result tables for papers.
   Handles the grading pipeline: load results, apply exclusions, classify failure modes,
   compute statistics, generate summary tables.
+auto-activate: false
 ---
 
 # Eval Result Grader

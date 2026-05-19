@@ -83,7 +83,7 @@ Mechanics:
 
 ## Model Selection
 
-- **All modes** → use Opus exclusively. Exception: user may switch to Haiku for commit/push (faster, cheaper for transactional git ops).
+- **All modes** → use Opus exclusively.
 - Subagents: always Opus. Agent team teammates: advisor pattern by default (Opus advisor + Sonnet workers). Use `--all-opus` for tasks requiring deep reasoning from all teammates.
 
 ## Subagent Patterns

@@ -4,6 +4,7 @@ description: >
   Data augmentation testing workflow. Use when testing a new augmentation transform,
   diagnosing transform failures on a specific input, or validating transforms against
   known-good baselines. Runs augmentation pipeline and reports pass/fail per transform.
+auto-activate: false
 ---
 
 # Augmentation Testing Workflow
@@ -55,5 +56,5 @@ Transforms Applied: <list or "none">
 
 If the failure doesn't match any known bug:
 1. Document the new bug with reproduction steps
-2. Add it to `.claude/rules/known-issues.md`
+2. Add it to `docs/known-failures.md`
 3. Create a minimal reproduction case

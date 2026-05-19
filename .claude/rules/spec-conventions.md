@@ -39,7 +39,7 @@ Criteria must be:
 ## Spec Lifecycle
 
 1. **Draft** — created via `/gen-spec`, not yet validated
-2. **Ready** — passed `/spec-validator`, reviewed by spec-auditor, approved by user
+2. **Ready** — passed `/spec-check`, reviewed by spec-auditor, approved by user
 3. **Implemented** — code exists that satisfies all acceptance criteria
 4. **Deprecated** — superseded by a newer spec or no longer relevant
 

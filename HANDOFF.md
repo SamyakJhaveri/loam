@@ -13,7 +13,7 @@ Bootstrap a new distributed systems benchmarking project ("distbench") from the 
 - [x] **Phase 2: Rename to Loam** — DONE (prior session, commit `31a19e69`)
 - [x] **Phase 3: Port + merge parbench skills** — DONE (this session, 3 commits)
 - [x] **Phase 3.5: Session critique** — DONE (findings below, awaiting user decisions)
-- [ ] **Phase 3.6: Apply critique fixes** — NOT STARTED (next session)
+- [x] **Phase 3.6: Apply critique fixes** — DONE (this session)
 - [ ] **Phase 4: Render distbench** — NOT STARTED
 - [ ] **Push to remote** — NOT DONE (intentionally held until Phase 4 succeeds)
 
