@@ -24,4 +24,4 @@ jobs:
       - name: Shellcheck
         run: |
           sudo apt-get install -y shellcheck
-          shellcheck bin/*.sh .claude/hooks/*.sh template/.claude/hooks/*.sh template/_research/hooks/*.sh
+          shellcheck bin/*.sh .claude/hooks/*.sh _research/hooks/*.sh

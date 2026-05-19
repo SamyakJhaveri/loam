@@ -1,6 +1,6 @@
 ---
 name: self-critic
-description: "Opus-powered adversarial self-review. Examines git diff and changed files for rationalization patterns, incomplete work, unverified claims, and quality bar violations. Applies obra/superpowers verification-before-completion principle and Trail of Bits anti-rationalization patterns. Blocks commit if work quality is insufficient. Use in post-session validation Wave 4."
+description: "Opus-powered adversarial self-review. Examines git diff and changed files for rationalization patterns, incomplete work, unverified claims, and quality bar violations. Applies obra/superpowers verification-before-completion principle and Trail of Bits anti-rationalization patterns. Blocks commit if work quality is insufficient. Use in post-session validation Wave 3 (probabilistic) — see .claude/rules/validation-loop.md."
 tools: Bash, Read, Glob, Grep
 model: opus
 effort: max

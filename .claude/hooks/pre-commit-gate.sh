@@ -89,7 +89,7 @@ if [ "$AGE" -gt "$MAX_AGE" ]; then
 fi
 
 # ── 4b. Check that at least 3 validation waves were run (not just quick) ────────
-# Wave 4 (self-critic/opus) is optional — only waves 1-3 required for commits.
+# Three waves per .claude/rules/validation-loop.md: 1=Deterministic 2=Rule-based 3=Probabilistic.
 # Fail-open: if waves_passed field is missing, skip this check (backward compat).
 WAVES=$(grep '^waves_passed=' "$SENTINEL" 2>/dev/null | cut -d= -f2 | tr -d ' ')
 if [ -n "$WAVES" ] && [ "$WAVES" -lt 3 ] 2>/dev/null; then

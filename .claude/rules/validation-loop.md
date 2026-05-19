@@ -3,6 +3,9 @@ paths:
   - ".claude/hooks/**"
   - ".claude/skills/validate/**"
   - ".claude/agents/self-critic.md"
+  - ".claude/agents/verification-lead.md"
+  - ".claude/agents/code-simplifier.md"
+  - ".claude/agents/plan-reviewer.md"
 ---
 
 # Post-Session Validation Loop
@@ -13,19 +16,22 @@ paths:
 ## Quick Reference
 
 ```bash
-/validate          # Full validation (~2 min)
-/validate quick    # Wave 1 only (~30s: code quality + diff review + self-critic)
+/validate          # Full validation (~2-3 min, all 3 waves)
+/validate quick    # Wave 1 only (~30s, deterministic — INSUFFICIENT for commit)
 /validate fix      # Re-run failed waves after implementing fixes
 ```
 
-## Wave Structure
+## Wave Structure (60/30/10 layer-triage applied)
 
-| Wave | Agents (parallel) | Gate | ~Time |
-|------|-------------------|------|-------|
-| 1 | code-simplifier†, plan-reviewer, self-critic | self-critic or plan-reviewer FAIL blocks | 30s |
-| 2 | project tests, linter, shell syntax checks | Test failures or syntax errors block | 60s |
+| Wave | Layer | Checks | Gate | ~Time |
+|------|-------|--------|------|-------|
+| 1 | **Deterministic** | ruff, mypy, `git diff --check`, regex grep for new TODO/FIXME/XXX, `bash -n` on changed `.sh` | Any FAIL blocks; no LLM calls | 10–30s |
+| 2 | **Rule-based** | pytest, project-specific validation scripts | Any FAIL blocks; no LLM calls | 30–90s |
+| 3 | **Probabilistic** *(only if W1+W2 pass)* | code-simplifier† (advisory), plan-reviewer (drift from L2 Done), self-critic (rationalization, incomplete work) | plan-reviewer or self-critic FAIL blocks; code-simplifier WARN doesn't | 60–90s |
 
 †code-simplifier: advisory — WARN, not blocking
+
+This ordering follows `.claude/rules/layer-triage.md`: deterministic checks fire first because they're cheapest and produce the highest-confidence verdicts. Probabilistic LLM work runs last — and only after Wave 1+2 pass, so we never spend LLM budget reviewing code that already failed lint or tests.
 
 ## Fix Loop Protocol
 
@@ -34,20 +40,24 @@ paths:
 3. **Wait for user approval** — no implementation before approval
 4. Implement fixes (targeted only — no scope creep)
 5. Re-run `/validate fix` (failed wave + downstream only)
-6. Max 3 iterations. After 3 fails → escalate to user.
+6. Max 3 iterations. After 3 fails → escalate to user; the L2 stage contract is probably the issue, not the implementation.
 
 ## Commit Gate Enforcement
 
 `.validation_passed` sentinel in project root:
-- Written by `/validate` after waves pass
-- Checked by `.claude/hooks/pre-commit-gate.sh` before `git commit`
+- Written by `/validate` (or `verification-lead` agent) after waves pass
+- **Includes `waves_passed=N`** field — N is the highest wave that passed (1 for `quick`, 2 if Wave 3 skipped, 3 for full)
+- Checked by `.claude/hooks/pre-commit-gate.sh` before `git commit`:
+  - Sentinel must exist
+  - Age < 30 minutes (re-validate if stale)
+  - `waves_passed >= 3` (rejects `/validate quick` results)
+  - No tracked file edited after sentinel mtime
 - **Invalidated** (deleted) by `.claude/hooks/sentinel-cleanup.sh` whenever any file is edited
-- TTL: 30 minutes — re-validate if sentinel is older than that
 - Listed in `.gitignore` (never committed)
 
 ## Context Budget
 
-Each agent returns max 50 lines structured verdict.
+Each Wave 3 agent returns max 50 lines structured verdict.
 Main session receives ~50-line aggregated report.
 Subagent isolation: no raw test output, no verbose logs in main context.
 

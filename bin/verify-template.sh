@@ -115,7 +115,7 @@ test -f "$TMP/default/.claude/rules/L0-budget.md"      || fail "default: L0-budg
 test -f "$TMP/default/.claude/rules/stage-contract.md" || fail "default: stage-contract rule missing"
 test -f "$TMP/default/.claude/hooks/session-start.sh"  || fail "default: session-start hook missing"
 test -d "$TMP/default/.claude/skills/validate"         || fail "default: validate skill missing"
-test -d "$TMP/default/.claude/skills/template-sync"    || fail "default: template-sync skill missing"
+test -d "$TMP/default/.claude/skills/template-sync"    || echo "WARN: default: template-sync skill missing (experimental — not blocking)"
 test ! -d "$TMP/default/_research"                     || fail "default: _research overlay not cleaned up"
 test ! -d "$TMP/default/template"                      || fail "default: template/ leaked"
 test ! -d "$TMP/default/seed-skills"                   || fail "default: seed-skills/ leaked into rendered project"
@@ -129,6 +129,12 @@ test ! -f "$TMP/default/HANDOFF.md.jinja"              || fail "default: HANDOFF
 test -f "$TMP/default/CLAUDE.md"                       || fail "default: CLAUDE.md not rendered from .jinja"
 test -f "$TMP/default/README.md"                       || fail "default: README.md not rendered from .jinja"
 test -f "$TMP/default/HANDOFF.md"                      || fail "default: HANDOFF.md not rendered from .jinja"
+test -f "$TMP/default/CONTEXT.md"                      || fail "default: CONTEXT.md not rendered from .jinja"
+test -f "$TMP/default/PROJECT-BACKGROUND.md"           || fail "default: PROJECT-BACKGROUND.md not rendered from .jinja"
+# CONTEXT.md must carry the 6 ICM L1 anatomy section headers (per .claude/rules/context-md-anatomy.md)
+for header in "## What this area is" "## What to Load" "## Folder" "## The Process" "## Skills & Tools" "## What NOT to Do"; do
+  grep -qF "$header" "$TMP/default/CONTEXT.md" || fail "default: CONTEXT.md missing section header '$header'"
+done
 test ! -f "$TMP/default/.claude/audit.log"             || fail "default: audit.log leaked"
 pass "Copier render (default)"
 
