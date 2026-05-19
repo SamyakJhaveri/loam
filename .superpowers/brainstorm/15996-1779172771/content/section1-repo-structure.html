@@ -1,0 +1,82 @@
+<h2>Section 1: Repository Structure</h2>
+<p class="subtitle">Current (v2.0) vs Proposed (v3.0) — side by side</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Current v2.0 (Single-Tree + 36 Exclusions)</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.5;">
+      <div style="color: #ef4444;">⚠ Everything at root — Copier must exclude 36 patterns</div>
+      <br>
+      <div><span style="color:#f97316;">.claude/</span>            ← shared: dev AND deliverable</div>
+      <div style="padding-left:16px;">skills/ (24)</div>
+      <div style="padding-left:16px;">agents/ (11)</div>
+      <div style="padding-left:16px;">rules/ (12)</div>
+      <div style="padding-left:16px;">hooks/ (12)</div>
+      <div style="color:#ef4444;">_research/          ← excluded, merged by _tasks</div>
+      <div style="color:#ef4444;">seed-skills/        ← excluded (14 skills)</div>
+      <div style="color:#ef4444;">bin/                ← excluded</div>
+      <div style="color:#ef4444;">docs/               ← excluded</div>
+      <div style="color:#ef4444;">claude_code_course_files/ ← excluded</div>
+      <div style="color:#ef4444;">internal_docs/      ← excluded</div>
+      <div style="color:#ef4444;">outputs/            ← excluded</div>
+      <div style="color:#ef4444;">TEMPLATE-*.md       ← excluded (3 files)</div>
+      <div style="color:#4ade80;">CLAUDE.md.jinja     ← rendered</div>
+      <div style="color:#4ade80;">AGENTS.md.jinja     ← rendered</div>
+      <div style="color:#4ade80;">+ 12 more .jinja    ← rendered</div>
+      <div style="color:#ef4444;">copier.yml          ← excluded</div>
+      <div style="color:#ef4444;">VERSION, LICENSE    ← excluded</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Proposed v3.0 (Clean Subdirectory)</div>
+    <div class="mockup-body" style="font-family: monospace; font-size: 12px; line-height: 1.5;">
+      <div style="color: #4ade80;">✓ Only seed/ is visible to Copier — zero exclusions</div>
+      <br>
+      <div style="color:#4ade80; font-weight:bold;">seed/               ← _subdirectory (ALL deliverables)</div>
+      <div style="color:#4ade80; padding-left:16px;">.claude/</div>
+      <div style="color:#4ade80; padding-left:32px;">skills/ (~13 curated)</div>
+      <div style="color:#4ade80; padding-left:32px;">agents/ (~6 focused)</div>
+      <div style="color:#4ade80; padding-left:32px;">rules/ (JVC routing)</div>
+      <div style="color:#4ade80; padding-left:32px;">hooks/ (essential only)</div>
+      <div style="color:#4ade80; padding-left:16px;">CLAUDE.md.jinja</div>
+      <div style="color:#4ade80; padding-left:16px;">AGENTS.md.jinja</div>
+      <div style="color:#4ade80; padding-left:16px;">README.md.jinja</div>
+      <div style="color:#4ade80; padding-left:16px;">+ minimal .jinja files</div>
+      <br>
+      <div style="color:#60a5fa;">research/           ← flavor overlay (moved)</div>
+      <div style="color:#a78bfa;">cultivation/        ← skill dev & staging</div>
+      <div style="color:#fbbf24;">soil/               ← JVC + knowledge base</div>
+      <div style="color:#94a3b8;">bin/ docs/          ← template tooling</div>
+      <div style="color:#94a3b8;">copier.yml VERSION  ← template config</div>
+      <div style="color:#94a3b8;">CLAUDE.md           ← template's own config</div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 32px;">Key Design Decisions</h3>
+
+<div class="section">
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px;">
+      <div class="label">Dev Experience</div>
+      <p style="margin:8px 0;"><code>.claude/</code> at repo root is a <strong>symlink</strong> to <code>seed/.claude/</code></p>
+      <p style="margin:0; color: #94a3b8; font-size: 13px;">Claude Code works normally in the template repo. Edits to .claude/ are edits to seed/.claude/. One source of truth.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px;">
+      <div class="label">CLAUDE.md Split</div>
+      <p style="margin:8px 0;">Root <code>CLAUDE.md</code> = template dev docs<br><code>seed/CLAUDE.md.jinja</code> = project template</p>
+      <p style="margin:0; color: #94a3b8; font-size: 13px;">No more TEMPLATE-CLAUDE.md confusion. Each file describes its own context.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px;">
+      <div class="label">Soil Metaphor</div>
+      <p style="margin:8px 0;"><strong>seed</strong> → planted in projects<br><strong>cultivation</strong> → skills grow here<br><strong>soil</strong> → knowledge base</p>
+      <p style="margin:0; color: #94a3b8; font-size: 13px;">Natural naming aligned with "Loam" identity. Replaces cryptic _research, seed-skills, claude_code_course_files.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 16px;">
+      <div class="label">Jinja Files Reduced</div>
+      <p style="margin:8px 0;">14 .jinja → ~7 essential templates</p>
+      <p style="margin:0; color: #94a3b8; font-size: 13px;">ARCHITECTURE.md, DESIGN.md, PROJECT-BACKGROUND.md, SCRIPTS_DIRECTORY.md, CONTEXT.md can be generated by skills on demand rather than shipped as templates.</p>
+    </div>
+  </div>
+</div>

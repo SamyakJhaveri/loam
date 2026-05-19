@@ -1,0 +1,123 @@
+<h2>Section 4: Content Architecture</h2>
+<p class="subtitle">CLAUDE.md (L0) + AGENTS.md (persistent) + .claude/rules/ (L1/L2)</p>
+
+<div class="section">
+  <h3>The Three-Layer Content Stack</h3>
+  <p>Following JVC's ICM routing model, content lives in three layers with distinct roles and budgets.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+
+  <div class="mockup">
+    <div class="mockup-header" style="background: #f97316; color: #000;">CLAUDE.md — L0 (~800 tokens) — "Where am I?"</div>
+    <div class="mockup-body" style="font-size: 13px; line-height: 1.7;">
+      <div style="color: #f97316; font-weight: bold;">Always loaded. Map, not manual. Claude-specific features.</div>
+      <br>
+      <div><strong>Contains:</strong></div>
+      <ul style="margin: 4px 0;">
+        <li>What this project is (1-2 sentences)</li>
+        <li>Folder map (navigation table)</li>
+        <li>Reference doc index (.claude/rules/ pointers)</li>
+        <li>Workflow anchor (implement → review → validate → commit)</li>
+        <li>Claude-specific: permissions, hook behavior, session rules</li>
+      </ul>
+      <div style="color: #ef4444; margin-top: 8px;"><strong>Does NOT contain:</strong> instructions, patterns, checklists, architecture decisions</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header" style="background: #4ade80; color: #000;">AGENTS.md — Persistent Context (~8KB) — "How do we work?"</div>
+    <div class="mockup-body" style="font-size: 13px; line-height: 1.7;">
+      <div style="color: #4ade80; font-weight: bold;">Always loaded. Universal guidance. Works in Claude Code, Cursor, Copilot, Codex.</div>
+      <br>
+      <div><strong>Sections (content from dissolved skills):</strong></div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px;">
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 10px;">
+          <div class="label">Coding Patterns</div>
+          <div style="color:#94a3b8; font-size: 12px;">← karpathy-guidelines</div>
+          <div style="font-size: 12px; margin-top: 4px;">Surgical changes, YAGNI, verify before claiming done, make assumptions explicit</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 10px;">
+          <div class="label">Model Selection</div>
+          <div style="color:#94a3b8; font-size: 12px;">← model-route</div>
+          <div style="font-size: 12px; margin-top: 4px;">When to use Opus vs Sonnet, subagent allocation rules, cost awareness</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 10px;">
+          <div class="label">Security Practices</div>
+          <div style="color:#94a3b8; font-size: 12px;">← security skill</div>
+          <div style="font-size: 12px; margin-top: 4px;">OWASP top 10 awareness, input validation, auth patterns, XSS/CSRF/SQLi prevention</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 10px;">
+          <div class="label">Scalability Practices</div>
+          <div style="color:#94a3b8; font-size: 12px;">← scalability skill</div>
+          <div style="font-size: 12px; margin-top: 4px;">DB query patterns, caching, async processing, API design for scale</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 10px;">
+          <div class="label">Context Architecture</div>
+          <div style="color:#94a3b8; font-size: 12px;">← scaffold-context</div>
+          <div style="font-size: 12px; margin-top: 4px;">When to add CONTEXT.md, the 6 required sections, the Skip column rule, sizing</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.03); border-radius: 6px; padding: 10px;">
+          <div class="label">Project Conventions</div>
+          <div style="color:#94a3b8; font-size: 12px;">← new (project-specific)</div>
+          <div style="font-size: 12px; margin-top: 4px;">Naming, file organization, commit style, PR conventions — each project fills this in</div>
+        </div>
+      </div>
+      <div style="margin-top: 12px; color: #94a3b8; font-size: 12px;">
+        <strong>Why ~8KB?</strong> Vercel found this size range achieves near-perfect task success. Larger adds noise; smaller misses coverage.
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header" style="background: #60a5fa; color: #000;">.claude/rules/ — L1/L2 (~300 tok each) — "What do I do here?"</div>
+    <div class="mockup-body" style="font-size: 13px; line-height: 1.7;">
+      <div style="color: #60a5fa; font-weight: bold;">Loaded on demand. JVC routing rules. Path-scoped and task-scoped.</div>
+      <br>
+      <div><strong>Always loaded (2):</strong></div>
+      <ul style="margin: 4px 0;">
+        <li><code>workflow.md</code> — 6-stage session workflow + anti-patterns</li>
+        <li><code>known-issues.md</code> — active guardrails</li>
+      </ul>
+      <div><strong>On-demand JVC rules (5):</strong></div>
+      <ul style="margin: 4px 0;">
+        <li><code>L0-budget.md</code> — when editing CLAUDE.md</li>
+        <li><code>context-md-anatomy.md</code> — when writing CONTEXT.md</li>
+        <li><code>stage-contract.md</code> — when planning tasks</li>
+        <li><code>layer-triage.md</code> — when scoping new tasks</li>
+        <li><code>validation-loop.md</code> — when running /validate</li>
+      </ul>
+      <div><strong>Path-scoped (loaded by file type):</strong></div>
+      <ul style="margin: 4px 0;">
+        <li><code>python.md</code> — when editing .py files</li>
+        <li><code>frontend-design.md</code> — when editing frontend files</li>
+        <li><code>architecture.md</code> — when editing arch docs</li>
+        <li><code>tech-stack.md</code> — when editing build/config files</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>JVC Integration Deepened</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); border-radius: 8px; padding: 16px;">
+      <div class="label" style="color:#4ade80;">Already Operationalized (5)</div>
+      <ul style="margin:8px 0; font-size: 12px;">
+        <li>60/30/10 Layer Triage ✓</li>
+        <li>ICM L0 (CLAUDE.md budget) ✓</li>
+        <li>ICM L1 (CONTEXT.md anatomy) ✓</li>
+        <li>ICM L2 (Stage contracts) ✓</li>
+        <li>Pipeline Gate + 3-wave validation ✓</li>
+      </ul>
+    </div>
+    <div style="background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.3); border-radius: 8px; padding: 16px;">
+      <div class="label" style="color:#60a5fa;">NEW in v3.0 (3)</div>
+      <ul style="margin:8px 0; font-size: 12px;">
+        <li><strong>Always-On Reference</strong> → AGENTS.md IS this pattern<br><span style="color:#94a3b8;">Persistent ~8KB context = JVC's Always-On Reference realized</span></li>
+        <li><strong>Context Hygiene Practices</strong> → workflow.md enhanced<br><span style="color:#94a3b8;">Token allocation rules, "remove before you add", active cleanup</span></li>
+        <li><strong>Output Drift Detection</strong> → self-critic agent enhanced<br><span style="color:#94a3b8;">Checks Must-NOT violations, scope drift, inference gap detection</span></li>
+      </ul>
+    </div>
+  </div>
+</div>

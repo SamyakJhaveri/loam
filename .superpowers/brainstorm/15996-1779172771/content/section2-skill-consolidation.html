@@ -1,0 +1,117 @@
+<h2>Section 2: Skill Consolidation</h2>
+<p class="subtitle">24 core skills → 13 callable + AGENTS.md persistent context</p>
+
+<div class="section">
+  <h3>The Principle</h3>
+  <p>Vercel's research found that <strong>persistent context (AGENTS.md) achieves 100% task success vs 79% for skills</strong>. The insight: guidance that's always available beats guidance that must be discovered and loaded on demand.</p>
+  <p><strong>Rule of thumb:</strong> If a skill is mostly <em>guidance</em> (rules, patterns, checklists), fold it into AGENTS.md. If it's a <em>procedure</em> (multi-step execution with state), keep it as a callable skill.</p>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header" style="background: #4ade80; color: #000;">KEEP as Callable Skills (13)</div>
+    <div class="mockup-body" style="font-size: 13px; line-height: 2;">
+      <div><strong style="color:#4ade80;">Session lifecycle:</strong></div>
+      <div style="padding-left:16px;">📋 <code>/catchup</code> — session bootstrap briefing</div>
+      <div style="padding-left:16px;">📝 <code>/commit</code> — stage, message, commit</div>
+      <div style="padding-left:16px;">🚀 <code>/pr</code> — push + open PR</div>
+      <div style="padding-left:16px;">📤 <code>/handoff</code> — structured session handoff</div>
+      <br>
+      <div><strong style="color:#4ade80;">Development flow:</strong></div>
+      <div style="padding-left:16px;">🏗️ <code>/feature-dev</code> — plan → implement → verify</div>
+      <div style="padding-left:16px;">🐛 <code>/fix-bug</code> — reproduce → diagnose → fix</div>
+      <div style="padding-left:16px;">📐 <code>/gen-spec</code> — spec generation wizard</div>
+      <br>
+      <div><strong style="color:#4ade80;">Quality gate:</strong></div>
+      <div style="padding-left:16px;">✅ <code>/validate</code> — 3-wave pipeline gate</div>
+      <div style="padding-left:16px;">👁️ <code>/multi-review</code> — 4-reviewer code review</div>
+      <br>
+      <div><strong style="color:#4ade80;">Knowledge:</strong></div>
+      <div style="padding-left:16px;">🔍 <code>/researcher</code> — structured web research</div>
+      <div style="padding-left:16px;">🧠 <code>/dream</code> — memory consolidation</div>
+      <br>
+      <div><strong style="color:#4ade80;">Meta:</strong></div>
+      <div style="padding-left:16px;">⚡ <code>/create-skill</code> — author new skills</div>
+      <div style="padding-left:16px;">🔄 <code>/template-sync</code> — asset sync</div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header" style="background: #f97316; color: #000;">FOLD into AGENTS.md (11 skills dissolved)</div>
+    <div class="mockup-body" style="font-size: 13px; line-height: 2;">
+      <div><strong style="color:#f97316;">→ AGENTS.md "Coding Patterns" section:</strong></div>
+      <div style="padding-left:16px; color:#94a3b8;">karpathy-guidelines (rules, not procedure)</div>
+      <br>
+      <div><strong style="color:#f97316;">→ AGENTS.md "Model Selection" section:</strong></div>
+      <div style="padding-left:16px; color:#94a3b8;">model-route (decision table, not procedure)</div>
+      <br>
+      <div><strong style="color:#f97316;">→ AGENTS.md "Security Practices" section:</strong></div>
+      <div style="padding-left:16px; color:#94a3b8;">security (checklist, not multi-step)</div>
+      <br>
+      <div><strong style="color:#f97316;">→ AGENTS.md "Scalability Practices" section:</strong></div>
+      <div style="padding-left:16px; color:#94a3b8;">scalability (checklist, not multi-step)</div>
+      <br>
+      <div><strong style="color:#f97316;">→ AGENTS.md "Context Architecture" section:</strong></div>
+      <div style="padding-left:16px; color:#94a3b8;">scaffold-context (rules for CONTEXT.md)</div>
+      <br>
+      <div><strong style="color:#f97316;">→ AGENTS.md "Agent Teams" section:</strong></div>
+      <div style="padding-left:16px; color:#94a3b8;">agent-team (guidance on when/how)</div>
+      <br>
+      <div><strong style="color:#f97316;">→ Merged into /validate:</strong></div>
+      <div style="padding-left:16px; color:#94a3b8;">session-critique (overlapping scope)</div>
+      <div style="padding-left:16px; color:#94a3b8;">techdebt (becomes a review lens)</div>
+      <br>
+      <div><strong style="color:#f97316;">→ Merged into /dream:</strong></div>
+      <div style="padding-left:16px; color:#94a3b8;">reflect (overlapping purpose)</div>
+      <div style="padding-left:16px; color:#94a3b8;">know-me (user memory → native memory)</div>
+      <br>
+      <div><strong style="color:#f97316;">→ Merged into /gen-spec:</strong></div>
+      <div style="padding-left:16px; color:#94a3b8;">spec-check (now a sub-step)</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Agent Consolidation: 11 → 6</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+    <div style="background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.3); border-radius: 8px; padding: 16px;">
+      <div class="label" style="color:#4ade80;">Keep (6)</div>
+      <ul style="margin:8px 0; font-size: 13px;">
+        <li><strong>verification-lead</strong> — orchestrates validation waves</li>
+        <li><strong>plan-reviewer</strong> — adversarial plan review</li>
+        <li><strong>self-critic</strong> — code quality review</li>
+        <li><strong>diff-reviewer</strong> — PR diff analysis</li>
+        <li><strong>explorer</strong> — codebase navigation</li>
+        <li><strong>security-scanner</strong> — focused security audit</li>
+      </ul>
+    </div>
+    <div style="background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3); border-radius: 8px; padding: 16px;">
+      <div class="label" style="color:#f97316;">Merge (5)</div>
+      <ul style="margin:8px 0; font-size: 13px;">
+        <li><strong>code-simplifier</strong> → merge into self-critic</li>
+        <li><strong>consistency-checker</strong> → merge into verification-lead</li>
+        <li><strong>regression-checker</strong> → merge into verification-lead</li>
+        <li><strong>test-synthesizer</strong> → merge into verification-lead</li>
+        <li><strong>spec-auditor</strong> → merge into plan-reviewer</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <h3>Net Result</h3>
+  <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; text-align: center;">
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 20px;">
+      <div style="font-size: 32px; font-weight: bold; color: #4ade80;">13</div>
+      <div class="label">Skills (was 24)</div>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 20px;">
+      <div style="font-size: 32px; font-weight: bold; color: #60a5fa;">6</div>
+      <div class="label">Agents (was 11)</div>
+    </div>
+    <div style="background: rgba(255,255,255,0.05); border-radius: 8px; padding: 20px;">
+      <div style="font-size: 32px; font-weight: bold; color: #f97316;">~8KB</div>
+      <div class="label">AGENTS.md context</div>
+    </div>
+  </div>
+</div>
