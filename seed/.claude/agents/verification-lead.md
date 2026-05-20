@@ -1,6 +1,6 @@
 ---
 name: verification-lead
-description: "Hierarchical validation coordinator. Spawns three waves (Deterministic / Rule-based / Probabilistic) sequentially per .claude/rules/validation-loop.md, returning a single structured report. Keeps main session context clean. Use when running full post-session validation."
+description: "Hierarchical validation coordinator. Spawns three waves (Deterministic / Rule-based / Probabilistic) sequentially per .claude/rules/validation-loop.md, returning a single structured report. Absorbs consistency-checker, regression-checker, and test-synthesizer. Use when running full post-session validation."
 tools: Bash, Read, Glob, Grep, Agent
 model: opus
 effort: max
@@ -73,6 +73,24 @@ git diff HEAD | grep -nE '^\+.*\b(TODO|FIXME|XXX)\b' || true
 for f in $(git diff --name-only HEAD | grep '\.sh$'); do
     [ -f "$f" ] && bash -n "$f" 2>&1 || echo "SYNTAX ERROR: $f"
 done
+
+# Key infrastructure files present (from regression-checker)
+for f in .claude/hooks/pre-commit-gate.sh \
+         .claude/hooks/session-start.sh \
+         .claude/rules/workflow.md \
+         .claude/rules/known-issues.md \
+         .claude/rules/validation-loop.md \
+         CLAUDE.md; do
+    [ ! -f "$f" ] && echo "MISSING KEY FILE: $f"
+done
+
+# SKILL.md frontmatter validity (from regression-checker + test-synthesizer)
+for skill in .claude/skills/*/SKILL.md; do
+    if [ -f "$skill" ]; then
+        head -20 "$skill" | grep -q '^name:' || echo "MISSING name: in $skill"
+        head -20 "$skill" | grep -q '^description:' || echo "MISSING description: in $skill"
+    fi
+done
 ```
 
 **Wave 1 Gate:** Any FAIL → record `waves_passed=0`, skip Waves 2-3, go to Fix Loop.
@@ -91,6 +109,19 @@ fi
 
 # Project-specific validation scripts
 [ -x bin/validate.sh ] && bin/validate.sh 2>&1 | tail -10
+
+# Python import check on changed .py files (from test-synthesizer)
+for py in $(git diff --name-only HEAD | grep '\.py$' | grep -v 'test_'); do
+    if [ -f "$py" ]; then
+        python3 -c "import ast; ast.parse(open('$py').read())" 2>&1 || echo "PARSE ERROR: $py"
+    fi
+done
+
+# Doc-vs-code consistency (from consistency-checker)
+# Verify referenced files in CLAUDE.md actually exist
+grep -oE '\.[a-z]+/[a-zA-Z0-9_/-]+\.(md|sh|yml)' CLAUDE.md 2>/dev/null | sort -u | while read -r ref; do
+    [ ! -f "$ref" ] && echo "BROKEN REF in CLAUDE.md: $ref"
+done
 ```
 
 **Wave 2 Gate:** Test failures block. → record `waves_passed=1`, skip Wave 3, go to Fix Loop.
@@ -99,19 +130,19 @@ fi
 
 ## WAVE 3 — Probabilistic (~60–90s; ONLY if Waves 1+2 pass)
 
-**Launch 3 sub-agents IN PARALLEL:**
+**Launch 2 sub-agents IN PARALLEL:**
 
-1. **code-simplifier** — Code quality check on changed files: duplication,
-   dead code, unclear names, over-engineering. Advisory only (WARN).
+1. **plan-reviewer** — Does the diff match the L2 stage contract's Done
+   sentence? Detect drift, regressions, partial implementations. Also audits
+   any spec documents changed. BLOCKING.
 
-2. **plan-reviewer** — Does the diff match the L2 stage contract's Done
-   sentence? Detect drift, regressions, partial implementations. BLOCKING.
-
-3. **self-critic** — Adversarial self-review: rationalization patterns,
-   incomplete work, unverified claims, quality bar violations. BLOCKING.
+2. **self-critic** — Adversarial self-review: rationalization patterns,
+   incomplete work, unverified claims, quality bar violations. Also includes
+   code simplification checks (duplication, dead code, over-engineering) as
+   advisory WARN. BLOCKING on quality issues, advisory on simplification.
 
 **Wave 3 Gate:** plan-reviewer or self-critic FAIL → record `waves_passed=2`,
-go to Fix Loop. code-simplifier WARN → record, don't block.
+go to Fix Loop. self-critic code-simplification WARN → record, don't block.
 
 ---
 
@@ -171,9 +202,8 @@ WAVE 2 (Rule-based): PASS/FAIL/SKIP ~Xs
   project:      PASS/FAIL/SKIP
 
 WAVE 3 (Probabilistic): PASS/FAIL/SKIP ~Xs
-  code-simplifier:  WARN/PASS (N suggestions)
   plan-reviewer:    PASS/FAIL
-  self-critic:      PASS/FAIL
+  self-critic:      PASS/FAIL (code-simplify: WARN/PASS)
 
 OVERALL: PASS/FAIL
 Sentinel: .validation_passed written (waves_passed=N) / NOT written

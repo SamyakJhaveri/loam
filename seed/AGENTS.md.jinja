@@ -1,22 +1,148 @@
 # AGENTS.md — {{ project_name }}
 
-> Mirror of CLAUDE.md for non-Claude agents (Codex, Cursor, etc.).
+> Persistent engineering guidance. Loaded every session by Claude Code, Cursor, Copilot, Codex.
+> This file replaces four former skills (karpathy-guidelines, model-route, security, scalability)
+> with always-available context. ~4,500 tokens — an intentional trade-off for consistent quality.
 
-## Quick context
+---
 
-(One paragraph about what this project does.)
+## §1 Engineering Principles
 
-## Mandatory invariants
+Behavioral guidelines to reduce common LLM coding mistakes, derived from
+[Andrej Karpathy's observations](https://x.com/karpathy/status/2015883857489522876)
+on LLM coding pitfalls.
 
-(Same hard rules as in CLAUDE.md — restate them here so non-Claude agents see them.)
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-## Conventions
+### Think Before Coding
 
-- `python3` always, never `python`.
-- Conventional commit style.
-- Test before claiming done.
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
 
-## Pointers
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them — don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
 
-- Architecture: see `CLAUDE.md` and `.claude/rules/` (if loaded by your agent).
-- Active session state: `HANDOFF.md`.
+### Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it — don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+### Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+## §2 Output Patterns
+
+### Model Selection
+
+Two tiers only. Ultrathink is always on.
+
+| Tier | When | Examples |
+|------|------|---------|
+| **Opus** (default) | Architecture, debugging, security review, planning, self-critique, anything uncertain | All tasks unless Sonnet clearly suffices |
+| **Sonnet** | ALL of: well-defined plan exists, mechanical/pattern-following, subagent work, cheap to retry | Routine refactoring with explicit instructions, bulk file reads, format conversion |
+
+**Haiku is never used.** If ANY dimension (reasoning depth, blast radius, domain expertise, correctness cost) is high → Opus.
+
+### Security Practices
+
+When writing or reviewing code, always ask: What can an attacker control? What's the blast radius? Am I validating at the boundary?
+
+**Non-negotiables:**
+- NEVER concatenate user input into SQL, HTML, shell commands, or URLs
+- NEVER use eval(), Function(), innerHTML with untrusted data
+- NEVER store secrets in code, localStorage, or client-accessible locations
+- ALWAYS use parameterized queries (prepared statements, ORMs)
+- ALWAYS set HttpOnly, Secure, SameSite on auth cookies
+- ALWAYS escape output in the context it's rendered
+- ALWAYS validate and sanitize input at system boundaries
+
+**Vulnerability response:** SQL injection → parameterized queries. XSS → escape output + CSP. Command injection → spawn() with array args. Path traversal → resolve path, verify prefix. SSRF → URL allowlist, block private ranges. Hardcoded secret → env var, rotate immediately.
+
+### Scalability Practices
+
+**Rule #1:** Don't optimize what you haven't measured. Profile first, then fix the actual bottleneck.
+
+**Quick wins (solve most problems):**
+
+| Symptom | First Try | Then Try |
+|---------|-----------|----------|
+| Slow queries | Add indexes, fix N+1 | Read replicas, caching |
+| High DB connections | Connection pooling | PgBouncer/ProxySQL |
+| API response time | Caching, pagination | Async processing |
+| Traffic spikes | Rate limiting, CDN | Auto-scaling |
+| CPU saturation | Worker threads | Horizontal scaling |
+| Memory pressure | Stream large data | Increase instance size |
+
+**Critical patterns:** Cursor pagination over offset. Pool connections (size = cores × 2 + 1). Cache reads, queue writes. Stateless services (session state in Redis/DB). Index surgically (every index costs write performance).
+
+### Project Conventions
+
+<!-- Project-specific conventions go here. Fill in during bootstrap or as conventions emerge. -->
+
+---
+
+## §3 Hard Constraints
+
+These are the highest-impact-per-token rules. Violating any of these is a session failure.
+
+1. **Don't skip verification.** Never claim "done" without running the actual test/check. `pytest` output, `bin/verify-template.sh`, build logs — evidence before assertions.
+
+2. **Don't write giant CLAUDE.md files.** L0 is a map (~800 tokens), not a manual. Move detail to `.claude/rules/` or `docs/`. If it answers "what do I do when…" it belongs in L1 or L2, not L0.
+
+3. **Don't create skills without triggers.** Every skill needs a concrete trigger condition ("when the user types X", "before committing", "after editing files matching Y"). "Available" and "useful for X" are not triggers.
+
+4. **Don't hand off without documentation.** Every session break with unfinished work needs a structured handoff (inputs, status, next steps, blockers). "I'll remember" is not a handoff.
+
+5. **Test deterministically before LLM validation.** Layer triage: 60% deterministic (tests, linters, formatters) → 30% rule-based (skills, hooks, configs) → 10% probabilistic (LLM judgment). If the AI portion exceeds ~15%, the design is over-assigning.
+
+6. **Don't rationalize incomplete work as complete.** If something isn't done, say so explicitly: "X is not yet done because Y." Never frame partial work as sufficient.
+
+7. **Don't treat documentation as ground truth for code.** Source code and test outputs are authoritative. If docs contradict source, verify against source and update docs.
+
+8. **Don't commit without validation.** The pipeline gate (`/validate`) must pass before every commit. The pre-commit hook enforces this. If tempted to skip, the session scope is too large.
+
+9. **Don't bundle unrelated changes.** One behavior change per session/PR. Mixing features, fixes, and refactors in one diff makes review impossible and rollback dangerous.
+
+10. **Don't explore broadly without permission.** Surgical exploration (Glob, Grep, targeted Read) is always fine. Broad sweeps (2+ Explore agents, "understand the codebase") require asking the user first.

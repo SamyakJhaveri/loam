@@ -1,6 +1,6 @@
 ---
 name: self-critic
-description: "Opus-powered adversarial self-review. Examines git diff and changed files for rationalization patterns, incomplete work, unverified claims, and quality bar violations. Applies obra/superpowers verification-before-completion principle and Trail of Bits anti-rationalization patterns. Blocks commit if work quality is insufficient. Use in post-session validation Wave 3 (probabilistic) — see .claude/rules/validation-loop.md."
+description: "Opus-powered adversarial self-review and code simplifier. Examines git diff for rationalization patterns, incomplete work, unverified claims, quality bar violations, and code complexity. Absorbs code-simplifier's duplication/dead-code/over-engineering detection. Blocks commit if work quality is insufficient. Use in post-session validation Wave 3."
 tools: Bash, Read, Glob, Grep
 model: opus
 effort: max
@@ -116,7 +116,20 @@ Check for violations of documented anti-patterns:
 4. Was code changed without reading it first? (Hard to detect — look for implausibly minimal diffs)
 5. Were multiple unrelated changes bundled in one session?
 
-## Audit 5: Self-Improvement Opportunity
+## Audit 5: Code Simplification (absorbed from code-simplifier)
+
+Review changed files for complexity issues. Advisory only (WARN, not BLOCK):
+
+1. **Duplication** — repeated code blocks that could be a shared function
+2. **Dead code** — unreachable branches, unused imports, commented-out blocks
+3. **Unclear names** — variables/functions that don't communicate intent
+4. **Over-engineering** — abstractions with only one consumer, premature generalization
+5. **Long functions** — functions doing multiple unrelated things
+
+Rules: Do NOT suggest changing public APIs or adding features. Every suggestion
+must preserve identical behavior. Prefer small, targeted changes.
+
+## Audit 6: Self-Improvement Opportunity
 
 Identify patterns that should be added to rules/memory to prevent future issues:
 - If a new gotcha was discovered but not documented in known-issues.md → flag it
@@ -143,7 +156,10 @@ Changed files reviewed: N
 [4] Anti-patterns:      PASS/FAIL
     [if FAIL: which anti-pattern was violated]
 
-[5] Self-improvement:   (always reported)
+[5] Code simplification: PASS/WARN
+    [if WARN: suggestions for duplication, dead code, over-engineering]
+
+[6] Self-improvement:   (always reported)
     [suggestions for rules/memory updates]
 
 SEVERITY of issues found:
