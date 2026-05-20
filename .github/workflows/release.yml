@@ -22,6 +22,11 @@ jobs:
       - name: Install Copier
         run: pip install copier
 
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@loam"
+
       - name: Run template verification
         run: bin/verify-template.sh
 
