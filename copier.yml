@@ -47,6 +47,8 @@ _tasks:
     cp _research/seed-docs/* . 2>/dev/null || true &&
     python3 _copier_merge_hooks.py _research/settings-hooks.json .claude/settings.json 2>/dev/null || true &&
     rm -r _research &&
+    python3 -c "import json; f=open('.claude/settings.json'); s=json.load(f); f.close(); [e.__setitem__('hooks',[h for h in e.get('hooks',[]) if 'result-immutability.sh' not in h.get('command','')]) for e in s.get('hooks',{}).get('PreToolUse',[])]; f=open('.claude/settings.json','w'); json.dump(s,f,indent=2); f.write('\n'); f.close()" 2>/dev/null || true &&
+    rm -f .claude/hooks/result-immutability.sh &&
     echo '[copier] Research flavor applied.'
     {% endif %}
 

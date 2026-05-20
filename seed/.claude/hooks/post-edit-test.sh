@@ -3,35 +3,24 @@
 #
 # PostToolUse hook — runs lightweight tests after edits based on which file was changed.
 #
-# Osmani principle: Continuous verification — move testing earlier, not just pre-commit.
-# Instead of waiting for /validate or pre-commit, this hook gives Claude immediate
-# feedback when edits break tests, enabling faster iteration loops.
-#
 # Triggered by: PostToolUse on Edit|Write tools
 # Always exits 0 (advisory only — never blocks edits)
 
 set -euo pipefail
 
-# Consume stdin to prevent SIGPIPE
-cat > /dev/null
+# Read hook payload from stdin (Claude Code hook protocol — do NOT use
+# CLAUDE_TOOL_INPUT env var, it is not populated; see GitHub #9567)
+PAYLOAD="$(cat)"
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 
-# Try common venv locations
-for VENV_PATH in "$PROJECT_ROOT/.venv/bin/activate" "$PROJECT_ROOT/venv/bin/activate" "$PROJECT_ROOT/env/bin/activate"; do
-    if [ -f "$VENV_PATH" ]; then
-        # shellcheck disable=SC1090
-        source "$VENV_PATH"
-        break
-    fi
-done
-
-# Extract file_path from tool input
-FILE_PATH=$(python3 -c "
-import sys, json, os
+# Extract file_path from tool input JSON
+FILE_PATH=$(printf '%s' "$PAYLOAD" | python3 -c "
+import sys, json
 try:
-    d = json.loads(os.environ.get('CLAUDE_TOOL_INPUT', '{}'))
-    print(d.get('file_path', ''))
+    d = json.load(sys.stdin)
+    ti = d.get('tool_input', d)
+    print(ti.get('file_path', ''))
 except Exception:
     print('')
 " 2>/dev/null)
@@ -41,11 +30,20 @@ if [ -z "$FILE_PATH" ]; then
     exit 0
 fi
 
-# Run pytest if the edited file is a Python file and a tests/ directory exists
+# Run pytest if the edited file is Python and a tests/ directory exists
 if echo "$FILE_PATH" | grep -qE '\.py$'; then
     if [ -d "$PROJECT_ROOT/tests" ]; then
+        # Try common venv locations
+        for VENV_PATH in "$PROJECT_ROOT/.venv/bin/activate" "$PROJECT_ROOT/venv/bin/activate" "$PROJECT_ROOT/env/bin/activate"; do
+            if [ -f "$VENV_PATH" ]; then
+                # shellcheck disable=SC1090
+                source "$VENV_PATH"
+                break
+            fi
+        done
         echo "[post-edit-test] Running tests..."
-        timeout 30 python3 -m pytest "$PROJECT_ROOT/tests/" -x -q --tb=line 2>&1 | tail -5 || true
+        # timeout 8s — must be under the 10s outer hook timeout in settings.json
+        timeout 8 python3 -m pytest "$PROJECT_ROOT/tests/" -x -q --tb=line 2>&1 | tail -5 || true
     fi
 fi
 

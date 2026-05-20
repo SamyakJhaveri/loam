@@ -137,4 +137,9 @@ test -f "$TMP/research/EXPERIMENT-PROTOCOL.md"         || fail "research: EXPERI
 test ! -d "$TMP/research/_research"                    || fail "research: _research overlay not cleaned up"
 pass "Copier render (research)"
 
+# Research-specific: protect-results.sh must be registered in settings.json
+grep -q 'protect-results.sh' "$TMP/research/.claude/settings.json" || fail "research: protect-results.sh not registered in settings.json"
+test ! -f "$TMP/research/.claude/hooks/result-immutability.sh" || echo "WARN: research: base result-immutability.sh still present (should be removed by research overlay)"
+pass "Copier render (research hook wiring)"
+
 echo "ALL OK"
