@@ -30,7 +30,7 @@ is_research:
 
 github_repo:
   type: str
-  help: "GitHub repo (owner/repo) for this project? Leave empty to skip."
+  help: "GitHub repo (owner/repo) for this project? Leave empty to skip. Trailing .git is stripped automatically."
   default: ""
   validator: "{% if github_repo and not (github_repo | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')) %}Invalid repo format — use owner/repo{% endif %}"
 
@@ -60,13 +60,15 @@ _tasks:
   # Initialize git repo (skip on copier update — .git already exists)
   - "if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git commit -m 'Initial commit from loam'; fi"
 
-  # Optional: create GitHub repo
+  # Optional: create or connect GitHub repo (skip on copier update)
   - >-
     {% if github_repo %}
-    if command -v gh >/dev/null 2>&1; then
-      gh repo create "{{ github_repo }}" --private --source=. --remote=origin --push ||
-        echo '[copier] Warning: gh repo create failed. Add remote manually.'
+    if ! git remote get-url origin >/dev/null 2>&1; then
+      bash _gh_setup.sh "{{ github_repo }}"
     else
-      echo '[copier] Warning: gh CLI not found. Add GitHub remote manually.'
+      echo '[copier] Remote origin already configured — skipping GitHub setup.'
     fi
     {% endif %}
+
+  # Clean up helper scripts
+  - "rm -f _gh_setup.sh"
