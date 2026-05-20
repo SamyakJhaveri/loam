@@ -20,7 +20,7 @@ if [ ! -f "$LAST_DREAM" ]; then
     SHOULD_DREAM=true
 else
     LAST_TS=$(head -1 "$LAST_DREAM")
-    LAST_EPOCH=$(python3 -c "from datetime import datetime; print(int(datetime.fromisoformat('$LAST_TS'.replace('Z','+00:00')).timestamp()))" 2>/dev/null || echo 0)
+    LAST_EPOCH=$(python3 -c "import sys; from datetime import datetime; print(int(datetime.fromisoformat(sys.argv[1].replace('Z','+00:00')).timestamp()))" "$LAST_TS" 2>/dev/null || echo 0)
     NOW_EPOCH=$(date +%s)
     HOURS_SINCE=$(( (NOW_EPOCH - LAST_EPOCH) / 3600 ))
     if [ "$HOURS_SINCE" -ge 24 ]; then

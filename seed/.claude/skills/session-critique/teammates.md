@@ -28,7 +28,7 @@ violations. Reports findings for Bucket A. Fixes ONLY after user approval.
 
 ### Skills to invoke
 
-- `karpathy-guidelines` — Think Before Coding, Simplicity First, Surgical Changes
+- AGENTS.md §1 Engineering Principles — Think Before Coding, Simplicity First, Surgical Changes (always loaded, no skill invocation needed)
 - `superpowers:verification-before-completion` — evidence before claiming
   any fix is correct
 - `superpowers:test-driven-development` — verify state BEFORE each fix
@@ -40,7 +40,7 @@ violations. Reports findings for Bucket A. Fixes ONLY after user approval.
 
 - `diff-reviewer` agent — scan git diff for regressions, partial
   implementations, accidental file changes
-- `consistency-checker` agent — cross-check CLAUDE.md tables, rules
+- `verification-lead` agent — cross-check CLAUDE.md tables, rules
   files, known-issues.md against actual filesystem
 - `explorer` agent — bulk-read files to keep own context lean
 
@@ -69,15 +69,15 @@ Reports findings for Bucket B + CLAUDE.md. Fixes ONLY after user approval.
 
 ### Skills to invoke
 
-- `karpathy-guidelines` — same behavioral guardrails
+- AGENTS.md §1 Engineering Principles — same behavioral guardrails (always loaded, no skill invocation needed)
 - `superpowers:verification-before-completion` — same evidence requirement
 - `superpowers:test-driven-development` — same before/after verification
 - `superpowers:systematic-debugging` — same root-cause protocol
 
 ### Subagents to spawn (parallel)
 
-- `code-simplifier` agent — find duplication, dead code, over-engineering,
-  unclear names
+- `self-critic` agent — find duplication, dead code, over-engineering,
+  unclear names (code simplification mode)
 - `security-scanner` agent — scan for secrets, injection, unsafe patterns
 - `explorer` agent — bulk-read reference files to verify entries against
   actual filesystem

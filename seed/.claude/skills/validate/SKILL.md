@@ -79,13 +79,12 @@ done
 
 ### WAVE 3 — Probabilistic (~60–90s; only if W1+W2 pass)
 
-**Launch agents IN PARALLEL:**
+**Launch 2 agents IN PARALLEL:**
 
-1. **code-simplifier** — advisory; duplication, dead code, unclear names. WARN only.
-2. **plan-reviewer** — does the diff match the L2 stage contract's Done sentence? Detect drift, regressions, partial implementations. BLOCKING.
-3. **self-critic** — adversarial self-review for rationalization patterns, incomplete work, unverified claims. BLOCKING.
+1. **plan-reviewer** — does the diff match the L2 stage contract's Done sentence? Detect drift, regressions, partial implementations. BLOCKING.
+2. **self-critic** — adversarial self-review for rationalization patterns, incomplete work, unverified claims (BLOCKING) + code simplification: duplication, dead code, unclear names (advisory WARN only).
 
-**Wave 3 Gate:** plan-reviewer or self-critic returns FAIL → Fix Loop. code-simplifier WARN → record, don't block.
+**Wave 3 Gate:** plan-reviewer or self-critic returns FAIL → Fix Loop. self-critic code-simplification WARN → record, don't block.
 
 ---
 

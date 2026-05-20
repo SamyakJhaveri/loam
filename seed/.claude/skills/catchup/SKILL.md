@@ -43,7 +43,7 @@ the normal status report.
 
 ## Project Context
 
-- **Project root:** `{{PROJECT_ROOT}}`
+- **Project root:** auto-detect via `git rev-parse --show-toplevel`
 - **Venv:** auto-detect (`.venv/`, `venv/`, `env/`)
 - **Memory directory:** auto-detect from `~/.claude/projects/` (based on project root path)
 - Check CLAUDE.md for project-specific context (key counts, models, etc.)
@@ -56,7 +56,7 @@ Run these commands and capture output — do NOT guess or use cached data:
 
 ```bash
 # Current branch and dirty state
-cd {{PROJECT_ROOT}} && git status
+cd "$(git rev-parse --show-toplevel)" && git status
 
 # Recent commits (default 10, or user-specified count)
 git log --oneline -<N>

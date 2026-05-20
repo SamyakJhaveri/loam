@@ -19,7 +19,7 @@ will be caught immediately. No shortcuts. No partial implementations."
 
 ## Setup
 ```bash
-cd {{PROJECT_ROOT}}
+cd "$(git rev-parse --show-toplevel)"
 
 # Get all changed files and the full diff
 CHANGED=$(git diff --name-only HEAD; git diff --cached --name-only | sort -u)
@@ -63,7 +63,7 @@ Common rationalization patterns to detect:
 - "Fixed X" but no test exercises the fix — check if a test was added or an existing test covers it
 - "Passes all validation" but no evidence of running `validate_schema.py` in the session
 - "Updated docs" but table row count unchanged (grep before/after)
-- "No regressions" but regression-checker wasn't run (it runs as part of this validation loop — verify it passed)
+- "No regressions" but verification-lead regression checks weren't run (Wave 1/2 of the validation loop — verify they passed)
 - "Works for the common case" in a comment — red flag for unhandled edge cases
 
 ```bash
@@ -74,7 +74,7 @@ echo "Files in diff: $CHANGED_COUNT unstaged, $STAGED_COUNT staged"
 if [ "$CHANGED_COUNT" -eq 0 ] && [ "$STAGED_COUNT" -eq 0 ]; then
     echo "WARNING: No files in git diff — this session has no changes to validate"
 fi
-# Note: test-synthesizer (Wave 2) cleans up /tmp/validate_* on exit.
+# Note: /tmp/validate_* files are cleaned up by verification-lead during Wave 2.
 # By Wave 4, those files are always gone. Do not check /tmp for evidence.
 ```
 
@@ -141,7 +141,7 @@ Identify patterns that should be added to rules/memory to prevent future issues:
 ```
 SELF-CRITIC REVIEW: PASS/FAIL
 
-Audited by: claude-opus (most capable model — this is the adversarial gate; Opus 4.7 as of 2026-04-16)
+Audited by: claude-opus (most capable model — this is the adversarial gate)
 Changed files reviewed: N
 
 [1] Completeness:       PASS/FAIL

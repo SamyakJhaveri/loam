@@ -113,7 +113,7 @@ fi
 # Python import check on changed .py files (from test-synthesizer)
 for py in $(git diff --name-only HEAD | grep '\.py$' | grep -v 'test_'); do
     if [ -f "$py" ]; then
-        python3 -c "import ast; ast.parse(open('$py').read())" 2>&1 || echo "PARSE ERROR: $py"
+        python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$py" 2>&1 || echo "PARSE ERROR: $py"
     fi
 done
 
