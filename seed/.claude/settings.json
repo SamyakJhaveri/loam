@@ -94,17 +94,6 @@
         ]
       }
     ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/dream-hook.sh",
-            "timeout": 10
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
         "hooks": [
@@ -116,6 +105,5 @@
         ]
       }
     ]
-  },
-  "_dream_hook_note": "The Stop hook .claude/hooks/dream-hook.sh fires but its stdout is logged rather than surfaced. Dream-due notification is duplicated in .claude/hooks/session-start.sh whose stdout IS injected."
+  }
 }

@@ -29,6 +29,16 @@ else
     IS_LINUX=0
 fi
 
+# Unified failure handler — replaces 4 box-drawing blocks
+gate_fail() {
+    local title="$1" detail="$2"
+    echo "" >&2
+    echo "BLOCKED: $title" >&2
+    echo "  $detail" >&2
+    echo "" >&2
+    exit 2
+}
+
 # ── 1. Read and parse the hook event JSON ────────────────────────────────────
 INPUT=$(cat)
 
@@ -50,18 +60,7 @@ fi
 
 # ── 3. Check sentinel exists ─────────────────────────────────────────────────
 if [ ! -f "$SENTINEL" ]; then
-    echo "" >&2
-    echo "╔══════════════════════════════════════════════════════════════╗" >&2
-    echo "║  BLOCKED: Post-session validation has not been run.         ║" >&2
-    echo "║                                                              ║" >&2
-    echo "║  Run /validate before committing.                           ║" >&2
-    echo "║  This gate enforces the validation loop protocol.           ║" >&2
-    echo "║                                                              ║" >&2
-    echo "║  Quick check (Wave 1 only, ~30s): /validate quick           ║" >&2
-    echo "║  Full check (all waves, ~3min):   /validate                 ║" >&2
-    echo "╚══════════════════════════════════════════════════════════════╝" >&2
-    echo "" >&2
-    exit 2
+    gate_fail "Post-session validation has not been run." "Run /validate before committing. Quick: /validate quick (~30s). Full: /validate (~3min)."
 fi
 
 # ── 4. Check sentinel is not stale (< 30 minutes old) ────────────────────────
@@ -77,15 +76,7 @@ AGE=$(( NOW - SENTINEL_MTIME ))
 MAX_AGE=1800  # 30 minutes
 
 if [ "$AGE" -gt "$MAX_AGE" ]; then
-    echo "" >&2
-    echo "╔══════════════════════════════════════════════════════════════╗" >&2
-    echo "║  BLOCKED: Validation sentinel is stale.                     ║" >&2
-    echo "║  Age: ${AGE}s  Limit: ${MAX_AGE}s                                   ║" >&2
-    echo "║                                                              ║" >&2
-    echo "║  Re-run /validate — files may have changed since last run.  ║" >&2
-    echo "╚══════════════════════════════════════════════════════════════╝" >&2
-    echo "" >&2
-    exit 2
+    gate_fail "Validation sentinel is stale (age: ${AGE}s, limit: ${MAX_AGE}s)." "Re-run /validate — files may have changed since last run."
 fi
 
 # ── 4b. Check that at least 3 validation waves were run (not just quick) ────────
@@ -93,15 +84,7 @@ fi
 # Fail-open: if waves_passed field is missing, skip this check (backward compat).
 WAVES=$(grep '^waves_passed=' "$SENTINEL" 2>/dev/null | cut -d= -f2 | tr -d ' ')
 if [ -n "$WAVES" ] && [ "$WAVES" -lt 3 ] 2>/dev/null; then
-    echo "" >&2
-    echo "╔══════════════════════════════════════════════════════════════╗" >&2
-    echo "║  BLOCKED: Only ${WAVES}/3 required validation waves passed.       ║" >&2
-    echo "║                                                              ║" >&2
-    echo "║  /validate quick is not sufficient for committing.          ║" >&2
-    echo "║  Run full /validate (all 3 waves) before committing.         ║" >&2
-    echo "╚══════════════════════════════════════════════════════════════╝" >&2
-    echo "" >&2
-    exit 2
+    gate_fail "Only ${WAVES}/3 required validation waves passed." "/validate quick is insufficient for committing. Run full /validate (all 3 waves)."
 fi
 
 # ── 5. Check sentinel is not outdated by new file changes ─────────────────────
@@ -118,15 +101,7 @@ NEWEST_MTIME=$(git -C "$PROJECT_ROOT" diff --name-only HEAD 2>/dev/null | while 
 done | sort -rn | head -1)
 
 if [ -n "$NEWEST_MTIME" ] && [ "$NEWEST_MTIME" -gt "$SENTINEL_MTIME" ]; then
-    echo "" >&2
-    echo "╔══════════════════════════════════════════════════════════════╗" >&2
-    echo "║  BLOCKED: Files changed after validation passed.            ║" >&2
-    echo "║                                                              ║" >&2
-    echo "║  Re-run /validate to cover the latest changes.              ║" >&2
-    echo "║  Quick re-check: /validate fix                              ║" >&2
-    echo "╚══════════════════════════════════════════════════════════════╝" >&2
-    echo "" >&2
-    exit 2
+    gate_fail "Files changed after validation passed." "Re-run /validate to cover the latest changes."
 fi
 
 # ── 6. All checks passed — allow the commit ───────────────────────────────────
