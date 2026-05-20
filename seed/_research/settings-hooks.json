@@ -2,17 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/protect-results.sh",
-            "timeout": 10
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write",
+        "matcher": "Bash|Edit|Write",
         "hooks": [
           {
             "type": "command",
