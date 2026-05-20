@@ -9,7 +9,7 @@ The template content lives in `seed/` (`_subdirectory: "seed"` in `copier.yml`).
 1. Copier clones the template repo (or uses a local path).
 2. Asks the three questions: `project_name`, `is_research`, `github_repo`.
 3. Renders `.jinja` files, substituting `{{ project_name }}` and other answers.
-4. Copies everything from the template root into the new project, excluding patterns from `_exclude:`.
+4. Copies everything from `seed/` into the new project, excluding patterns from `_exclude:`.
 5. Runs post-tasks: applies the research flavor if `is_research=true`, removes the `seed/_research/` overlay, creates seed working directories, runs `git init`, makes the initial commit.
 
 ## Questions

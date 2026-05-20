@@ -33,7 +33,7 @@ Copier tracks which files it rendered from the template. When `_subdirectory` ch
 
 ### 5. Verify
 
-Open in Claude Code. Run `/catchup` — should show 17 skills, correct framework version.
+Open in Claude Code. Run `/catchup` — should show all core skills and the correct framework version.
 
 ## What changed in v3.0
 

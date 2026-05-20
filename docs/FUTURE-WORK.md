@@ -21,6 +21,6 @@ Items identified during v3.0 implementation. Address as we go.
 
 ## Skill Composition / Middleware Pattern
 
-**Context:** The 24-skill Unix-philosophy design had composition overhead in an LLM context. Skills can't pipe into each other like Unix tools because each load costs tokens.
+**Context:** The original 24-skill Unix-philosophy design (v2.0) had composition overhead in an LLM context. Skills can't pipe into each other like Unix tools because each load costs tokens.
 
 **Future exploration:** If Claude Code adds skill composition (skill-within-skill loading), revisit whether some AGENTS.md sections should become composable micro-skills again. Monitor Claude Code release notes for this feature.

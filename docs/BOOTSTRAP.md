@@ -31,7 +31,7 @@ Copier writes `.copier-answers.yml` at the project root recording the template r
 | Question | Type | Effect |
 |----------|------|--------|
 | `project_name` | string (required) | Substituted into `CLAUDE.md`, `README.md`, `.mcp.json`, and other rendered top-level files. |
-| `is_research` | bool, default `false` | If `true`, the research flavor merges in: `seed/_research/{skills,agents,hooks,rules}/*` overlays onto `.claude/{skills,agents,hooks,rules}/`, `seed/_research/docs/*.md.jinja` becomes paper-writing seed-docs at project root (`REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`), and `seed/_research/settings-hooks.json` deep-merges into `.claude/settings.json`. Then `seed/_research/` itself is removed from the rendered project. |
+| `is_research` | bool, default `false` | If `true`, the research flavor merges in: `seed/_research/{skills,agents,hooks,rules}/*` overlays onto `.claude/{skills,agents,hooks,rules}/`, `seed/_research/seed-docs/*.md.jinja` becomes paper-writing seed-docs at project root (`REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`), and `seed/_research/settings-hooks.json` deep-merges into `.claude/settings.json`. Then `seed/_research/` itself is removed from the rendered project. |
 | `github_repo` | string `owner/name`, default empty | If set, runs `gh repo create --private --source=. --remote=origin --push` after init. Skip if you'll add the remote manually. |
 
 ## What you get
@@ -56,13 +56,15 @@ uvx copier update
 
 Copier renders the latest template against the recorded answers, diffs against the current project state, and offers a three-way merge for conflicts. Local edits that don't conflict are preserved. The `.copier-answers.yml` is updated to record the new ref.
 
+> **v2.0 projects:** `copier update` will not work across the v2.0 → v3.0 boundary. Re-bootstrap instead — see `docs/MIGRATION-v3.md`.
+
 ## What gets excluded from the rendered project
 
 The exclusion list lives in `copier.yml` (`_exclude:`). Reasons content does not propagate, grouped:
 
 - **Framework machinery** — `bin/`, `docs/`, `copier.yml`, `VERSION`, `LICENSE`. These run the template, not the rendered project.
 - **Template-author working files** — root `CLAUDE.md`, `README.md`, `.gitignore`, `.claudeignore`, `template-manifest.schema.json`, `.github/`. The Jinja-suffixed versions of CLAUDE.md/README.md ship instead.
-- **Internal references** — `claude_code_course_files/`, `internal_docs/`, `outputs/`, `IMG_*`. Reference material the template author studies; not part of what every project inherits.
+- **Internal references** — `IMG_*`. Reference material the template author studies; not part of what every project inherits.
 - **Marketplace candidates** — `cultivation/marketplace/` (skills cut from default core). Available for reference; install via plugin marketplace post-bootstrap if needed.
 - **Local-only Claude Code state** — `.claude/audit.log`, `.claude/.local-paths`, `.claude/settings.local.json`, `.claude/worktrees/`.
 
@@ -80,5 +82,4 @@ Asserts: single-tree invariant (no `template/` subdir), valid JSON in `settings.
 
 1. Open the project in Claude Code. The `SessionStart` hook fires and injects the framework brief (17 core skills, Pipeline Gate ordering, four ICM routing layers).
 2. Replace placeholder content in `CLAUDE.md` with project specifics. Stay within ~800 tokens (`.claude/rules/L0-budget.md`).
-3. If using the Knowledge-Graph Memory MCP, let the model populate `.claude-memory/knowledge-graph.json` during sessions; the `/know-me` skill writes structured facts.
-4. If using Graphify, run `graphify .` after the first non-trivial commit to seed the codebase map.
+3. If using Graphify, run `graphify .` after the first non-trivial commit to seed the codebase map.
