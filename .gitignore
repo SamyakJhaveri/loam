@@ -28,7 +28,7 @@ env/
 .claude/worktrees/
 # Post-session validation sentinel (written by /validate, never committed)
 .validation_passed
-# Codex review sentinel (written by codex-review-reminder.sh hook, never committed)
+# Codex review sentinel (written/cleaned by sentinel-cleanup.sh hook, never committed)
 .codex_review_done
 # Bash audit log (written by bash-audit-log.sh hook, grows unbounded)
 .claude/audit.log

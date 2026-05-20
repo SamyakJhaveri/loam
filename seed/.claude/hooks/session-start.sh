@@ -45,7 +45,8 @@ When stuck, default sequence:
 === end brief ===
 BRIEF
 
-# Dream-due check (inlined from former should-dream.sh)
+# Dream-due check (sole location — former dream-hook.sh Stop hook was removed
+# because Stop hook stdout is not surfaced to users in Claude Code)
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 LOCAL_PATHS="$PROJECT_ROOT/.claude/.local-paths"
 MEMORY_DIR="$(grep '^MEMORY_DIR=' "$LOCAL_PATHS" 2>/dev/null | cut -d= -f2)"
