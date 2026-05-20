@@ -71,7 +71,7 @@ Mechanics:
 - On any file edit after PASS → sentinel deleted → next commit re-runs the gate
 - See `.claude/rules/validation-loop.md` for the wave-by-wave protocol
 
-**Critical ordering:** Implement → `/multi-review` → `/validate` (Pipeline Gate) → commit → push
+**Critical ordering:** Implement → `/session-critique` → `/validate` (Pipeline Gate) → `/commit` → `/pr` (or use `/ship` to enforce this automatically)
 
 ## Context Management
 

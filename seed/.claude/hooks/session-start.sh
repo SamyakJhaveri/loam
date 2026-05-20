@@ -13,17 +13,20 @@ cat <<'BRIEF'
 
 You are working in a project bootstrapped from Loam.
 
-CORE SKILLS (.claude/skills/ — 17 total):
+CORE SKILLS (.claude/skills/ — 21 total):
   Daily loop:    catchup, feature-dev, fix-bug, multi-review, validate, commit, pr, handoff
+  Ship pipeline: ship (orchestrates critique→validate→commit→PR)
   Knowledge:     researcher, dream
   Framework:     create-skill, template-sync, scaffold-context
   Quality gate:  session-critique, techdebt
   Spec workflow: gen-spec
   Agent tooling: agent-team
+  Specialized:   critique-swarm, render-gate, auto-phase (invoke with /name)
 
 PIPELINE GATE: /validate is non-negotiable before every commit. The pre-commit
 hook enforces a .validation_passed sentinel. Critical ordering:
-  Implement → /multi-review → /validate (Pipeline Gate) → commit → push
+  Implement → /session-critique → /validate (Pipeline Gate) → /commit → /pr
+  Use /ship to enforce this ordering automatically.
 
 ICM ROUTING (.claude/rules/):
   L0  CLAUDE.md            always loaded   ~800 tok    "where am I?"

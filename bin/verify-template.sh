@@ -40,9 +40,9 @@ fi
 pass "session-start.sh skill count matches actual ($ACTUAL_SKILL_COUNT)"
 
 # --- Invariant 1e: CLAUDE.md.jinja skill count matches actual ----------------
-JINJA_SKILL_COUNT=$(grep -oE '[0-9]+ core skills' seed/CLAUDE.md.jinja 2>/dev/null | grep -oE '[0-9]+' || echo "0")
+JINJA_SKILL_COUNT=$(grep -oE '[0-9]+ (core )?skills' seed/CLAUDE.md.jinja 2>/dev/null | grep -oE '[0-9]+' | head -1 || echo "0")
 if [[ "$ACTUAL_SKILL_COUNT" != "$JINJA_SKILL_COUNT" ]]; then
-  fail "CLAUDE.md.jinja says $JINJA_SKILL_COUNT core skills but seed/.claude/skills/ has $ACTUAL_SKILL_COUNT"
+  fail "CLAUDE.md.jinja says $JINJA_SKILL_COUNT skills but seed/.claude/skills/ has $ACTUAL_SKILL_COUNT"
 fi
 pass "CLAUDE.md.jinja skill count matches actual ($ACTUAL_SKILL_COUNT)"
 
