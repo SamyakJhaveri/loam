@@ -61,4 +61,6 @@ internal_docs/
 outputs/
 # Image pollution (Mac screenshots / pasted images)
 IMG_*
+# Superpowers brainstorm/scratch outputs
+.superpowers/
 
