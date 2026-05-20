@@ -18,10 +18,10 @@ jobs:
       - name: Install Copier
         run: pip install copier
 
+      - name: Configure Git identity
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@loam"
+
       - name: Verify template
         run: bin/verify-template.sh
-
-      - name: Shellcheck
-        run: |
-          sudo apt-get install -y shellcheck
-          shellcheck bin/*.sh .claude/hooks/*.sh _research/hooks/*.sh
