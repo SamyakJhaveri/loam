@@ -1,13 +1,13 @@
 # Asset layers
 
-Every Claude Code asset (agent / skill / hook / rule) belongs to exactly one of three layers. In v2.0, the layers are simpler than they were under the dual-tree (`.claude/` + `template/.claude/`) regime — there is no separate generic-core mirror; the template's own `.claude/` IS what ships.
+Every Claude Code asset (agent / skill / hook / rule) belongs to exactly one of three layers. In v3.0, the layers are simpler than they were under the dual-tree (`.claude/` + `template/.claude/`) regime — there is no separate generic-core mirror; the template's own `.claude/` IS what ships.
 
 | Layer | Where it lives in the template | Where it lives in a rendered project |
 |-------|--------------------------------|--------------------------------------|
-| `generic`         | `.claude/<relpath>` (template root) | `.claude/<relpath>` (always) |
-| `flavor:research` | `_research/<relpath-stripped>`      | `.claude/<relpath>` (only if `is_research=true` at bootstrap) |
+| `generic`         | `seed/.claude/<relpath>` | `.claude/<relpath>` (always) |
+| `flavor:research` | `seed/_research/<relpath-stripped>`      | `.claude/<relpath>` (only if `is_research=true` at bootstrap) |
 | `project-local`   | (does not exist in the template)    | `.claude/<relpath>` (added by the project, never promoted up) |
-| `marketplace-candidate` | `seed-skills/<name>/`         | Not shipped — install post-bootstrap via plugin marketplace |
+| `marketplace-candidate` | `cultivation/marketplace/<name>/`         | Not shipped — install post-bootstrap via plugin marketplace |
 
 ## How `template-sync` decides the layer
 
@@ -24,7 +24,7 @@ Every Claude Code asset (agent / skill / hook / rule) belongs to exactly one of 
 
 Default to the flavor. The generic core stays lean precisely because flavors absorb domain-specific content. An asset belongs in `generic` only if every project — including a fresh greenfield SaaS that has nothing to do with research — would benefit.
 
-Examples of correctly-`generic` assets in v2.0:
+Examples of correctly-`generic` assets in v3.0:
 
 - Session bootstrap (`catchup`)
 - Bug-fix workflow (`fix-bug`)
@@ -34,7 +34,7 @@ Examples of correctly-`generic` assets in v2.0:
 - Memory consolidation (`dream`)
 - The four ICM routing rules (`L0-budget`, `context-md-anatomy`, `stage-contract`, `layer-triage`)
 - The SessionStart hook
-- The `know-me` skill (user-preference recall is universally useful)
+- The `catchup` skill (session orientation is universally useful)
 
 Examples of correctly-`flavor:research` assets:
 
@@ -50,14 +50,14 @@ Note on path-scoped rules: `python.md`, `tech-stack.md`, `architecture.md`, `fro
 
 Assets that only make sense for one project stay in that project's `.claude/` and are never promoted. The promote-time safety scan flags candidates containing the project name or absolute paths. If you intentionally want to promote a localized version (rare), generalize it first — replace local references with placeholders or environment variables.
 
-## `seed-skills/` — marketplace-candidate layer
+## `cultivation/marketplace/` — marketplace-candidate layer
 
-A new layer in v2.0. Fourteen skills were cut from the default `.claude/skills/` set during the v2.0 rework (audit traces: skill bloat, false-positive auto-activation, business-process focus, meta-meta function). They live in `seed-skills/` in the template repo for two reasons:
+A new layer in v3.0. Multiple skills are housed in the marketplace layer during the v3.0 rework (audit traces: skill bloat, false-positive auto-activation, business-process focus, meta-meta function). They live in `cultivation/marketplace/` in the template repo for two reasons:
 
 1. **Reference**: if a future project needs one, copy it back into `.claude/skills/` or install as a plugin.
-2. **Future plugin marketplace**: Phase-4 of the rework wires `seed-skills/` as an installable plugin marketplace via `.claude-plugin/marketplace.json`. Projects then `/plugin install <name>` on demand rather than carrying every skill at bootstrap.
+2. **Future plugin marketplace**: Phase-4 of the rework wires `cultivation/marketplace/` as an installable plugin marketplace via `.claude-plugin/marketplace.json`. Projects then `/plugin install <name>` on demand rather than carrying every skill at bootstrap.
 
-`seed-skills/` is in the Copier `_exclude` list — it does not ship to rendered projects.
+`cultivation/marketplace/` is outside `seed/` and invisible to Copier.
 
 ## The `asset_overrides` field (legacy)
 

@@ -3,7 +3,7 @@ name: dream
 description: Memory consolidation for ~/.claude/projects memory files. Use after major milestones, after 5+ sessions without consolidation, when memory feels stale, or before long breaks. Runs 4-phase audit→plan→approval→execute; subcommands `audit` (read-only) and `prune <file>` (targeted).
 auto-activate: false
 ---
-ultrathink
+
 # Memory Consolidation (Dream)
 
 Performs a reflective consolidation pass over auto-memory files — the manual
@@ -13,7 +13,7 @@ learnings into durable, well-organized memories so future sessions orient quickl
 Based on: Anthropic's `agent-prompt-dream-memory-consolidation.md` (v2.1.83)
 Reference: github.com/grandamenium/dream-skill
 
-**Trigger:** `/dream`, `/dream audit`, or `/dream prune <file>`
+**Trigger:** `/dream`, `/dream audit`, `/dream prune <file>`, or `/dream reflect`
 
 ## Arguments
 
@@ -21,6 +21,7 @@ Reference: github.com/grandamenium/dream-skill
   - (empty) or `full` — Full 4-phase consolidation (read-only until user approves)
   - `audit` — Phases 1-2 only: read-only health report
   - `prune <filename>` — Targeted prune of a single memory file
+  - `reflect` or `reflect <topic>` — Post-session structured reflection (see Reflection Mode below)
 
 ## Configuration
 
@@ -229,6 +230,37 @@ Run these checks and report pass/fail:
 - [ ] All dates are absolute (no "yesterday", "last week", "recently")
 - [ ] `.last-dream` file exists with current UTC timestamp
 - [ ] Key information still accessible: spec counts, model selection, hard rules, user prefs
+
+---
+
+## Reflection Mode (`/dream reflect`)
+
+Structured post-session reflection — captures surprises, patterns, and gotchas as durable
+knowledge. Derived from the former `/reflect` skill.
+
+### When to use
+After completing a significant task, a debugging marathon, or when patterns emerged that
+should update CLAUDE.md or `.claude/rules/`.
+
+### Workflow
+
+1. **Gather context**: Read `git diff --stat HEAD` and recent commits to understand session work.
+
+2. **Derive topic**: Use `$ARGUMENTS` topic if provided, otherwise derive from most-changed
+   directory or nature of work (2-4 words, hyphenated).
+
+3. **Generate reflection** with exactly four sections:
+   - **What Surprised Me** — 1-3 unexpected findings, with file paths and specifics
+   - **Pattern Proposal** — ONE concrete pattern to codify, with target file path and ready-to-paste text
+   - **Prompt Improvement** — ONE way the task prompt could have been better
+   - **Gotcha Discovered** — ONE non-obvious issue: symptom, root cause, fix. Flag as NEW or already documented.
+
+4. **Write** to `docs/reflections/YYYY-MM-DD-<topic>.md`.
+
+5. **Suggest actions** — Review pattern proposal, add gotcha to known-issues.md if new,
+   consider running `/dream` full consolidation.
+
+**The reflection skill NEVER auto-updates CLAUDE.md or rules files.** It only suggests.
 
 ---
 

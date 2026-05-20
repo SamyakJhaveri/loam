@@ -196,10 +196,10 @@ Teammates should reuse these rather than building from scratch:
 | Agent/Skill | Use for |
 |------------|---------|
 | `explorer` agent | Read-only codebase exploration |
-| `spec-auditor` agent | Auditing spec documents |
+| `plan-reviewer` agent (spec audit mode) | Auditing spec documents |
 | `plan-reviewer` agent | Adversarial plan review |
 | `self-critic` agent | Adversarial self-review |
-| `consistency-checker` agent | Cross-checking docs vs code |
+| `verification-lead` agent | Cross-checking docs vs code |
 | `/writing-plans` skill | Creating implementation plans |
 | `/validate` skill | Post-session validation |
 | `/multi-review` skill | Multi-agent code review |

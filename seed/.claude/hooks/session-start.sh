@@ -13,14 +13,13 @@ cat <<'BRIEF'
 
 You are working in a project bootstrapped from Loam.
 
-CORE SKILLS (.claude/skills/ — 24 total):
+CORE SKILLS (.claude/skills/ — 17 total):
   Daily loop:    catchup, feature-dev, fix-bug, multi-review, validate, commit, pr, handoff
-  Memory/style:  know-me, reflect, dream, karpathy-guidelines
-  Research:      researcher
+  Knowledge:     researcher, dream
   Framework:     create-skill, template-sync, scaffold-context
-  Quality gate:  security, scalability, techdebt
-  Spec workflow: gen-spec, spec-check
-  Agent tooling: agent-team, model-route, session-critique
+  Quality gate:  session-critique, techdebt
+  Spec workflow: gen-spec
+  Agent tooling: agent-team
 
 PIPELINE GATE: /validate is non-negotiable before every commit. The pre-commit
 hook enforces a .validation_passed sentinel. Critical ordering:
@@ -46,12 +45,30 @@ When stuck, default sequence:
 === end brief ===
 BRIEF
 
-# Dream-due check: stop-hook stdout is not user-visible in Claude Code, so
-# the check is duplicated here in the SessionStart brief (whose stdout
-# IS injected into the model's context). The dream-hook.sh Stop hook
-# remains in place as a no-op fallback for the log.
-HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
-if [ -x "$HOOK_DIR/should-dream.sh" ] && bash "$HOOK_DIR/should-dream.sh" 2>/dev/null; then
+# Dream-due check (inlined from former should-dream.sh)
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+LOCAL_PATHS="$PROJECT_ROOT/.claude/.local-paths"
+MEMORY_DIR="$(grep '^MEMORY_DIR=' "$LOCAL_PATHS" 2>/dev/null | cut -d= -f2)"
+if [ -z "$MEMORY_DIR" ]; then
+    PROJ_KEY="$(echo "$PROJECT_ROOT" | tr '/_' '--')"
+    MEMORY_DIR="$HOME/.claude/projects/$PROJ_KEY/memory"
+fi
+LAST_DREAM="$MEMORY_DIR/.last-dream"
+
+SHOULD_DREAM=false
+if [ ! -f "$LAST_DREAM" ]; then
+    SHOULD_DREAM=true
+else
+    LAST_TS=$(head -1 "$LAST_DREAM")
+    LAST_EPOCH=$(python3 -c "import sys; from datetime import datetime; print(int(datetime.fromisoformat(sys.argv[1].replace('Z','+00:00')).timestamp()))" "$LAST_TS" 2>/dev/null || echo 0)
+    NOW_EPOCH=$(date +%s)
+    HOURS_SINCE=$(( (NOW_EPOCH - LAST_EPOCH) / 3600 ))
+    if [ "$HOURS_SINCE" -ge 24 ]; then
+        SHOULD_DREAM=true
+    fi
+fi
+
+if [ "$SHOULD_DREAM" = true ]; then
     echo ""
     echo "NOTE: Memory consolidation is due (24+ hours since last /dream)."
     echo "Run /dream when convenient — see .claude/skills/dream/SKILL.md."

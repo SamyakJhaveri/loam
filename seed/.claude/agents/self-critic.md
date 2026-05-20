@@ -1,6 +1,6 @@
 ---
 name: self-critic
-description: "Opus-powered adversarial self-review. Examines git diff and changed files for rationalization patterns, incomplete work, unverified claims, and quality bar violations. Applies obra/superpowers verification-before-completion principle and Trail of Bits anti-rationalization patterns. Blocks commit if work quality is insufficient. Use in post-session validation Wave 3 (probabilistic) — see .claude/rules/validation-loop.md."
+description: "Opus-powered adversarial self-review and code simplifier. Examines git diff for rationalization patterns, incomplete work, unverified claims, quality bar violations, and code complexity. Absorbs code-simplifier's duplication/dead-code/over-engineering detection. Blocks commit if work quality is insufficient. Use in post-session validation Wave 3."
 tools: Bash, Read, Glob, Grep
 model: opus
 effort: max
@@ -19,7 +19,7 @@ will be caught immediately. No shortcuts. No partial implementations."
 
 ## Setup
 ```bash
-cd {{PROJECT_ROOT}}
+cd "$(git rev-parse --show-toplevel)"
 
 # Get all changed files and the full diff
 CHANGED=$(git diff --name-only HEAD; git diff --cached --name-only | sort -u)
@@ -63,7 +63,7 @@ Common rationalization patterns to detect:
 - "Fixed X" but no test exercises the fix — check if a test was added or an existing test covers it
 - "Passes all validation" but no evidence of running `validate_schema.py` in the session
 - "Updated docs" but table row count unchanged (grep before/after)
-- "No regressions" but regression-checker wasn't run (it runs as part of this validation loop — verify it passed)
+- "No regressions" but verification-lead regression checks weren't run (Wave 1/2 of the validation loop — verify they passed)
 - "Works for the common case" in a comment — red flag for unhandled edge cases
 
 ```bash
@@ -74,7 +74,7 @@ echo "Files in diff: $CHANGED_COUNT unstaged, $STAGED_COUNT staged"
 if [ "$CHANGED_COUNT" -eq 0 ] && [ "$STAGED_COUNT" -eq 0 ]; then
     echo "WARNING: No files in git diff — this session has no changes to validate"
 fi
-# Note: test-synthesizer (Wave 2) cleans up /tmp/validate_* on exit.
+# Note: /tmp/validate_* files are cleaned up by verification-lead during Wave 2.
 # By Wave 4, those files are always gone. Do not check /tmp for evidence.
 ```
 
@@ -116,7 +116,20 @@ Check for violations of documented anti-patterns:
 4. Was code changed without reading it first? (Hard to detect — look for implausibly minimal diffs)
 5. Were multiple unrelated changes bundled in one session?
 
-## Audit 5: Self-Improvement Opportunity
+## Audit 5: Code Simplification (absorbed from code-simplifier)
+
+Review changed files for complexity issues. Advisory only (WARN, not BLOCK):
+
+1. **Duplication** — repeated code blocks that could be a shared function
+2. **Dead code** — unreachable branches, unused imports, commented-out blocks
+3. **Unclear names** — variables/functions that don't communicate intent
+4. **Over-engineering** — abstractions with only one consumer, premature generalization
+5. **Long functions** — functions doing multiple unrelated things
+
+Rules: Do NOT suggest changing public APIs or adding features. Every suggestion
+must preserve identical behavior. Prefer small, targeted changes.
+
+## Audit 6: Self-Improvement Opportunity
 
 Identify patterns that should be added to rules/memory to prevent future issues:
 - If a new gotcha was discovered but not documented in known-issues.md → flag it
@@ -128,7 +141,7 @@ Identify patterns that should be added to rules/memory to prevent future issues:
 ```
 SELF-CRITIC REVIEW: PASS/FAIL
 
-Audited by: claude-opus (most capable model — this is the adversarial gate; Opus 4.7 as of 2026-04-16)
+Audited by: claude-opus (most capable model — this is the adversarial gate)
 Changed files reviewed: N
 
 [1] Completeness:       PASS/FAIL
@@ -143,7 +156,10 @@ Changed files reviewed: N
 [4] Anti-patterns:      PASS/FAIL
     [if FAIL: which anti-pattern was violated]
 
-[5] Self-improvement:   (always reported)
+[5] Code simplification: PASS/WARN
+    [if WARN: suggestions for duplication, dead code, over-engineering]
+
+[6] Self-improvement:   (always reported)
     [suggestions for rules/memory updates]
 
 SEVERITY of issues found:

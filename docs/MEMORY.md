@@ -25,7 +25,7 @@ Three sub-channels, all configured by default:
 - `.claude/rules/*.md` — path-scoped rules that load only when matching files are touched (the L3 of ICM routing).
 - **Anthropic native memory tool** — built into Claude Code v2.1.59+. The model can create / read / update / delete files in a session-persistent memory directory under `~/.claude/projects/<key>/memory/`. No installation required.
 
-The `know-me` skill (in core 18) is what writes durable user-preference and project-fact entries to this directory. Run `/know-me` after the user states a preference, decision, or fact you want to recall in future sessions.
+Claude Code's built-in memory tool writes durable user-preference and project-fact entries to this directory automatically during sessions.
 
 ## Layer 2 — Knowledge-Graph Memory MCP
 
@@ -103,18 +103,16 @@ Already in the template's `.gitignore.jinja`:
 
 | Skill | Wires to | When |
 |-------|----------|------|
-| `know-me` | L1 native memory | After a user states a preference, decision, or project-fact worth recalling |
-| `reflect` | L1 native memory | At session end, to consolidate what was learned |
 | `dream` | L1 native memory (consolidation pass) | Manual `/dream`; also notified at SessionStart if ≥24h since last consolidation |
 | `researcher` | L2 KG MCP + L1 native | Research projects — captures hypotheses, claims, citations as structured entities |
 
 ## Memsearch — explicitly NOT in this stack
 
-Memsearch was in earlier iterations. Removed in v2.0 of the framework — the user prefers the lighter L1+L2+L3 set, and Memsearch's Markdown-first session journal duplicates what the `reflect` + `dream` skills produce against the native memory tool.
+Memsearch was in earlier iterations. Removed in v2.0 of the framework — the user prefers the lighter L1+L2+L3 set, and Memsearch's Markdown-first session journal duplicates what the `dream` skill produces against the native memory tool.
 
 ## claude-mem — explicitly REJECTED
 
-Two unresolved issues per `docs/SESSION-P-HANDOFF.md:103-108` and ongoing community reports:
+Two unresolved issues (documented in v2.0's SESSION-P-HANDOFF.md, removed in v3.0) and ongoing community reports:
 1. The HTTP server binds to `0.0.0.0` — exposed on shared/networked machines.
 2. Issue #618 (open): context injection volume exhausts Claude Code session limits in <10 messages on medium projects.
 
