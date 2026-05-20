@@ -8,12 +8,14 @@
 
 set -euo pipefail
 
-cat <<'BRIEF'
+SKILL_COUNT=$(find .claude/skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+
+cat <<BRIEF
 === loam session brief ===
 
 You are working in a project bootstrapped from Loam.
 
-CORE SKILLS (.claude/skills/ — 21 total):
+CORE SKILLS (.claude/skills/ — ${SKILL_COUNT} total):
   Daily loop:    catchup, feature-dev, fix-bug, multi-review, validate, commit, pr, handoff
   Ship pipeline: ship (orchestrates critique→validate→commit→PR)
   Knowledge:     researcher, dream

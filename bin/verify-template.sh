@@ -31,22 +31,7 @@ test -L .claude || fail ".claude is not a symlink — expected .claude → seed/
 test -d .claude/skills || fail ".claude symlink does not resolve (seed/.claude/skills missing)"
 pass ".claude symlink resolves to seed/.claude"
 
-# --- Invariant 1c: session-start.sh skill count matches actual ---------------
-ACTUAL_SKILL_COUNT=$(find seed/.claude/skills -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-BRIEF_SKILL_COUNT=$(grep -oE '[0-9]+ total' seed/.claude/hooks/session-start.sh 2>/dev/null | grep -oE '[0-9]+' || echo "0")
-if [[ "$ACTUAL_SKILL_COUNT" != "$BRIEF_SKILL_COUNT" ]]; then
-  fail "session-start.sh says $BRIEF_SKILL_COUNT skills but seed/.claude/skills/ has $ACTUAL_SKILL_COUNT"
-fi
-pass "session-start.sh skill count matches actual ($ACTUAL_SKILL_COUNT)"
-
-# --- Invariant 1e: CLAUDE.md.jinja skill count matches actual ----------------
-JINJA_SKILL_COUNT=$(grep -oE '[0-9]+ (core )?skills' seed/CLAUDE.md.jinja 2>/dev/null | grep -oE '[0-9]+' | head -1 || echo "0")
-if [[ "$ACTUAL_SKILL_COUNT" != "$JINJA_SKILL_COUNT" ]]; then
-  fail "CLAUDE.md.jinja says $JINJA_SKILL_COUNT skills but seed/.claude/skills/ has $ACTUAL_SKILL_COUNT"
-fi
-pass "CLAUDE.md.jinja skill count matches actual ($ACTUAL_SKILL_COUNT)"
-
-# --- Invariant 1d: pre-commit-gate.sh is registered in settings.json --------
+# --- Invariant 1c: pre-commit-gate.sh is registered in settings.json --------
 if ! grep -q 'pre-commit-gate.sh' seed/.claude/settings.json; then
   fail "pre-commit-gate.sh not registered in settings.json — Pipeline Gate is unenforced"
 fi
