@@ -1,9 +1,0 @@
-{
-  "name": "team-deliberation",
-  "version": "0.1.0",
-  "description": "Multi-agent deliberation skills (agent-team, council, session-critique). Useful for high-stakes plan review and adversarial critique. NOT for: simple code review (use /multi-review) or single-agent tasks.",
-  "author": {
-    "name": "Samyak Jhaveri",
-    "email": "samyakjhaveri2799@gmail.com"
-  }
-}

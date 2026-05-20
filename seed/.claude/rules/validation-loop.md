@@ -4,7 +4,6 @@ paths:
   - ".claude/skills/validate/**"
   - ".claude/agents/self-critic.md"
   - ".claude/agents/verification-lead.md"
-  - ".claude/agents/code-simplifier.md"
   - ".claude/agents/plan-reviewer.md"
 ---
 
@@ -27,9 +26,9 @@ paths:
 |------|-------|--------|------|-------|
 | 1 | **Deterministic** | ruff, mypy, `git diff --check`, regex grep for new TODO/FIXME/XXX, `bash -n` on changed `.sh` | Any FAIL blocks; no LLM calls | 10–30s |
 | 2 | **Rule-based** | pytest, project-specific validation scripts | Any FAIL blocks; no LLM calls | 30–90s |
-| 3 | **Probabilistic** *(only if W1+W2 pass)* | code-simplifier† (advisory), plan-reviewer (drift from L2 Done), self-critic (rationalization, incomplete work) | plan-reviewer or self-critic FAIL blocks; code-simplifier WARN doesn't | 60–90s |
+| 3 | **Probabilistic** *(only if W1+W2 pass)* | plan-reviewer (drift from L2 Done), self-critic (rationalization, incomplete work, code simplification†) | plan-reviewer or self-critic FAIL blocks; code-simplification WARN doesn't | 60–90s |
 
-†code-simplifier: advisory — WARN, not blocking
+†code simplification: absorbed into self-critic as advisory WARN, not blocking
 
 This ordering follows `.claude/rules/layer-triage.md`: deterministic checks fire first because they're cheapest and produce the highest-confidence verdicts. Probabilistic LLM work runs last — and only after Wave 1+2 pass, so we never spend LLM budget reviewing code that already failed lint or tests.
 

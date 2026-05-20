@@ -1,9 +1,0 @@
-{
-  "name": "helpers",
-  "version": "0.1.0",
-  "description": "Utility skills (decision-matrix, navigate, model-route, prompt-improver, frontend-design, grill-research). Useful for specialized one-off tasks like structured decisions, adversarial research grilling, or frontend guidance. NOT for: daily development workflow — these are situational tools, not always-on skills.",
-  "author": {
-    "name": "Samyak Jhaveri",
-    "email": "samyakjhaveri2799@gmail.com"
-  }
-}

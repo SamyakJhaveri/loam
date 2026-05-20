@@ -1,6 +1,6 @@
 # Flavors
 
-In v2.0 the framework has a default seed (engineering-oriented) and one opt-in flavor (`research`). The previous `software-eng` flavor is folded into the default — its rules and seed-docs ship to every project regardless of choice.
+In v3.0 the framework has a default seed (engineering-oriented) and one opt-in flavor (`research`). The previous `software-eng` flavor is folded into the default — its rules and seed-docs ship to every project regardless of choice.
 
 ## Toggle
 
@@ -18,8 +18,8 @@ uvx copier copy --data "is_research=true" gh:samyakjhaveri/loam ./my-paper
 
 Loaded into every project, research or not:
 
-- The 19 core skills (`.claude/skills/`)
-- The 7 core agents (`.claude/agents/`)
+- The 17 core skills (`.claude/skills/`)
+- The 6 core agents (`.claude/agents/`)
 - All hooks including the SessionStart brief
 - All four ICM routing rules (`L0-budget.md`, `context-md-anatomy.md`, `stage-contract.md`, `layer-triage.md`)
 - Engineering-oriented path-scoped rules (`architecture.md`, `python.md`, `tech-stack.md`, `frontend-design.md`)
@@ -27,7 +27,7 @@ Loaded into every project, research or not:
 
 ## What the research flavor adds
 
-When `is_research=true`, the Copier `_tasks` step overlays the contents of `_research/` onto the rendered project, then removes `_research/` itself. Specifically:
+When `is_research=true`, the Copier `_tasks` step overlays the contents of `seed/_research/` onto the rendered project, then removes `seed/_research/` itself. Specifically:
 
 | Path | Contents | What |
 |------|----------|------|
@@ -46,7 +46,7 @@ If you build a skill in a project that's clearly research-only:
 template-sync promote --layer flavor:research <relpath>
 ```
 
-This writes to `_research/<relpath-stripped>` in the template (e.g., `.claude/skills/foo/SKILL.md` → `_research/skills/foo/SKILL.md`). If the skill is general enough to belong in the default seed, use `--layer generic` instead — that writes to `.claude/<relpath>`.
+This writes to `seed/_research/<relpath-stripped>` in the template (e.g., `.claude/skills/foo/SKILL.md` → `seed/_research/skills/foo/SKILL.md`). If the skill is general enough to belong in the default seed, use `--layer generic` instead — that writes to `seed/.claude/<relpath>`.
 
 Default to `generic` only when the skill is useful regardless of project type. The flavor exists to keep the default seed lean.
 

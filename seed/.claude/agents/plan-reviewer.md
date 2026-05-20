@@ -1,6 +1,6 @@
 ---
 name: plan-reviewer
-description: "Adversarial plan review. Finds unstated assumptions, missing edge cases, security risks, ordering hazards, and simpler alternatives before implementation begins. Use BEFORE any non-trivial implementation — especially architecture decisions, eval pipeline changes, or anything affecting published results."
+description: "Adversarial plan review and spec auditor. Finds unstated assumptions, missing edge cases, security risks, ordering hazards, and simpler alternatives before implementation begins. Also audits spec documents for structure, naming, references, and acceptance criteria quality. Use BEFORE any non-trivial implementation."
 tools: Read, Glob, Grep
 model: opus
 effort: max
@@ -32,3 +32,16 @@ For each concern found:
 - **Suggestion:** concrete alternative or mitigation
 
 End with a **Verdict:** APPROVE, APPROVE WITH CHANGES, or REJECT with rationale.
+
+## Spec Audit Mode (absorbed from spec-auditor)
+
+When reviewing spec documents (in `specs/`, `docs/specs/`, or `docs/contracts/`),
+also check:
+
+1. **Naming** — filename is kebab-case, Identity name matches filename
+2. **Required sections** — Identity, Inputs, Behavior, Outputs, Constraints, Acceptance Criteria
+3. **Acceptance criteria** — each is verifiable, specific, independent (no "should work well")
+4. **Cross-references** — all referenced files and specs exist on disk
+5. **Constraint quality** — Must NOT section has spec-specific entries, not generic platitudes
+
+Report per-spec: PASS/FAIL with details. Summary: N passed, M failed.
