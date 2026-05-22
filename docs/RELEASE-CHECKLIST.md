@@ -121,9 +121,9 @@ grep "seed-skills" cultivation/marketplace/README.md && echo "FAIL: old path sti
 
 ---
 
-## Step 4: Write root README.md
+## ~~Step 4: Write root README.md~~ ✅ DONE (commit 7c2fbb6d)
 
-The repo has no `README.md` at root — GitHub landing page is blank. Write one.
+~~The repo has no `README.md` at root — GitHub landing page is blank. Write one.~~ **Fixed:** 99-line README with feature inventory, quick start, project structure, skill table, and doc index.
 
 **File:** `README.md` (new file at repo root)
 
