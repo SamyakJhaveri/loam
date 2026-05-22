@@ -16,6 +16,7 @@ save it to MEMORY.md with a tag prefix:
 | `[LEARN:claim]` | A claim that turned out wrong — "we said X but the data shows Y" |
 | `[LEARN:metric]` | A metric definition change — "pass_rate now excludes KNOWN_FAIL pairs" |
 | `[LEARN:experiment]` | An experiment design evolution — "added temperature sweep after v1 showed sensitivity" |
+| `[LEARN:pipeline]` | A pipeline/methodology change that invalidates prior results (also record in `CHANGELOG.research.md`) |
 
 ## When to Save vs. Not Save
 

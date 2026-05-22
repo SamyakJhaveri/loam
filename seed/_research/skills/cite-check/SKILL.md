@@ -57,15 +57,11 @@ Claims are checked against 5 categories:
 ## Project Context
 
 - **Paper draft:** `docs/paper_draft.md` (default) or user-specified path
-- **Result directories:**
-  - `results/evaluation/claude-sonnet/` — Claude Sonnet eval results
-  - `results/evaluation/gemini-2.5-flash-lite/` — Gemini Flash Lite results
-  - `results/evaluation/groq-llama-3.3-70b/` — Groq Llama results
-  - `results/evaluation/together-qwen-3.5-397b-a17b/` — Qwen results (newest)
-- **Analysis outputs:** `analysis/data/`, `analysis/reports/`
-- **Results:** `results/` directory (check CLAUDE.md for structure)
-- Check CLAUDE.md for canonical counts, baselines, and known caveats
+- **Result directories:** `results/evaluation/*/` — organized by model/configuration
+- **Analysis outputs:** `analysis/` — computed tables, figures, reports
+- Check CLAUDE.md for canonical directory structure and known caveats
 - Check `.claude/rules/known-issues.md` for exclusions and known failures
+- If `CHANGELOG.research.md` exists, read it before verifying — it documents which results are current
 
 ## Workflow
 
@@ -115,10 +111,10 @@ For each claim, perform category-specific verification:
 1. Check if the claim cites a specific paper or system
 2. If the claim makes a comparison ("unlike X, we...") without citing X: MISSING_CITE
 
-**Kernel/spec claims:**
-1. Verify kernel names exist in `specs/` directory
-2. Verify API claims match actual spec files (e.g., "backprop has CUDA and OMP variants")
-3. Cross-check any per-kernel results against actual result JSONs
+**Domain-specific claims:**
+1. Verify named entities (modules, components, datasets) exist in the project
+2. Verify capability claims match actual implementation or spec files
+3. Cross-check any per-entity results against actual result files
 
 **Verification gate:** Every claim must receive a verdict. No claim is skipped.
 
