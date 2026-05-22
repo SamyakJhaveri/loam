@@ -48,7 +48,7 @@ SOFTWARE.
 
 ---
 
-## Step 2: Fix seed/README.md.jinja (2 bugs on 1 line)
+## ~~Step 2: Fix seed/README.md.jinja (2 bugs on 1 line)~~ ✅ DONE (commit 95f30b31)
 
 **File:** `seed/README.md.jinja`, line 3
 
