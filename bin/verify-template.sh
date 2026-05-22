@@ -126,6 +126,8 @@ test -d "$TMP/research/.claude/skills/citation-audit"  || fail "research: citati
 test -f "$TMP/research/.claude/rules/research-memory.md" || fail "research: research-memory rule missing"
 test -f "$TMP/research/REFERENCES.md"                  || fail "research: REFERENCES.md not rendered"
 test -f "$TMP/research/EXPERIMENT-PROTOCOL.md"         || fail "research: EXPERIMENT-PROTOCOL.md not rendered"
+test -f "$TMP/research/.claude/rules/research-consistency.md" || fail "research: research-consistency rule missing"
+test -f "$TMP/research/CHANGELOG.research.md"          || fail "research: CHANGELOG.research.md not rendered"
 test ! -d "$TMP/research/_research"                    || fail "research: _research overlay not cleaned up"
 pass "Copier render (research)"
 

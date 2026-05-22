@@ -31,7 +31,7 @@ Copier writes `.copier-answers.yml` at the project root recording the template r
 | Question | Type | Effect |
 |----------|------|--------|
 | `project_name` | string (required) | Substituted into `CLAUDE.md`, `README.md`, `.mcp.json`, and other rendered top-level files. |
-| `is_research` | bool, default `false` | If `true`, the research flavor merges in: `seed/_research/{skills,agents,hooks,rules}/*` overlays onto `.claude/{skills,agents,hooks,rules}/`, `seed/_research/seed-docs/*.md.jinja` becomes paper-writing seed-docs at project root (`REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`), and `seed/_research/settings-hooks.json` deep-merges into `.claude/settings.json`. Then `seed/_research/` itself is removed from the rendered project. |
+| `is_research` | bool, default `false` | If `true`, the research flavor merges in: `seed/_research/{skills,agents,hooks,rules}/*` overlays onto `.claude/{skills,agents,hooks,rules}/`, `seed/_research/seed-docs/*.md.jinja` becomes paper-writing seed-docs at project root (`REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`, `CHANGELOG.research.md`), and `seed/_research/settings-hooks.json` deep-merges into `.claude/settings.json`. Then `seed/_research/` itself is removed from the rendered project. |
 | `github_repo` | string `owner/repo`, default empty | If set, creates (as private) or connects to the GitHub repo after init. Handles existing repos (adds remote + push), strips trailing `.git`, checks `gh` auth. Skipped on `copier update` if origin is already configured. |
 
 ## What you get
@@ -40,7 +40,7 @@ After Copier finishes, the project has:
 
 - **L0 entry**: `CLAUDE.md` (sized to the ~800-token L0 budget; see `.claude/rules/L0-budget.md`)
 - **Top-level docs**: `README.md`, `AGENTS.md`
-- **Research-only docs** (if `is_research=true`): `REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`
+- **Research-only docs** (if `is_research=true`): `REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`, `CHANGELOG.research.md`
 - **`.claude/`**: 17 core skills, 6 agents, 8 hooks, 12 rule files, `settings.json` with the SessionStart hook wired
 - **MCP**: `.mcp.json` registers CodeGraphContext, Semble, and the Knowledge-Graph Memory MCP
 - **Config**: `.gitignore`, `.editorconfig`, `pyproject.toml`, `.copier-answers.yml`
