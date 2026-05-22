@@ -1,4 +1,4 @@
-# seed-skills
+# Marketplace Skills
 
 Marketplace-candidate skills. **Not shipped to projects bootstrapped from this template** — `_exclude` in `copier.yml` keeps them out of `copier copy`.
 
@@ -8,7 +8,7 @@ These are skills that were removed from the default `.claude/skills/` set during
 
 ```bash
 # From a project bootstrapped from this template:
-/plugin marketplace add /path/to/loam/seed-skills
+/plugin marketplace add /path/to/loam/cultivation/marketplace
 /plugin install team-deliberation    # or: meta-improvement, helpers, business-process
 ```
 
