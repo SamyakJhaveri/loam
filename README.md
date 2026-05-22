@@ -18,7 +18,7 @@ When you run `copier copy`, Loam generates a project with:
 uvx copier copy gh:samyakjhaveri/loam ./my-project
 
 # With the research flavor
-uvx copier copy gh:samyakjhaveri/loam ./my-project  # answer "yes" to is_research
+uvx copier copy -d is_research=true gh:samyakjhaveri/loam ./my-project
 
 # Pull template updates into an existing project
 cd my-project && uvx copier update
@@ -93,6 +93,10 @@ paper-write, cite-check, eval-run, experiment, hypothesis-tree, interpret-result
 
 - [Copier](https://copier.readthedocs.io/) >= 9.4.0 (`pip install copier` or `uvx copier`)
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI
+
+## Contributing
+
+Issues and pull requests are welcome.
 
 ## License
 
