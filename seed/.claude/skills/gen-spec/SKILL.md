@@ -4,6 +4,7 @@ description: >
   Guided specification generation wizard. Use when adding a new feature, API endpoint,
   or component — forces a written spec before implementation. Validates scope, drafts
   a structured spec, checks it against conventions, and registers it in the project.
+  NOT for: single-file bug fixes, refactors with no new behavior, or documentation-only changes.
 ---
 
 # Spec Generation Workflow

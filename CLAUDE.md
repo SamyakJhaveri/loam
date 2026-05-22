@@ -58,13 +58,13 @@ Operational:
 `/validate` is this project's Pipeline Gate. Critical ordering:
 
 ```
-Implement → /multi-review → /validate (Pipeline Gate) → commit → push
+Implement → /session-critique → /validate (Pipeline Gate) → /commit → /pr (or `/ship`)
 ```
 
 ## Rules when editing this template
 
 - Don't add project-specific content. Everything here is generic or scoped to a flavor.
-- Don't push to main directly. Use `rework/<topic>` branches + squash-merge.
+- Commit directly to main. Only use branches when explicitly requested.
 - Test changes by running `bin/verify-template.sh`.
 - Skills for ANY project go in `seed/.claude/skills/`. Research-specific go in `seed/_research/skills/`. Cut skills go in `cultivation/marketplace/`.
 

@@ -1,10 +1,10 @@
 ---
 name: overnight-eval
 description: >
-  Long-running evaluation campaign with tmux isolation. Use for any eval batch
-  exceeding ~30 minutes, for canonical benchmark runs, or when the user will be
-  away during execution. Pre-flight verification, tmux launch, monitoring,
-  post-flight analysis. For short interactive runs use eval-run instead.
+  Long-running evaluation campaign with tmux isolation. Use when running any eval batch
+  exceeding ~30 minutes, canonical benchmark runs, or when the user will be away during
+  execution. Pre-flight verification, tmux launch, monitoring, post-flight analysis.
+  NOT for: short interactive runs (use eval-run instead).
 auto-activate: false
 ---
 

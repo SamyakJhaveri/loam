@@ -63,4 +63,6 @@ outputs/
 IMG_*
 # Superpowers brainstorm/scratch outputs
 .superpowers/
+# Generated course output from codebase-to-course skill testing
+*-course/
 

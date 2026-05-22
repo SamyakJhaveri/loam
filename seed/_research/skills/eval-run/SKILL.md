@@ -1,9 +1,9 @@
 ---
 name: eval-run
 description: >
-  Launch a model evaluation batch. Use for interactive/foreground eval runs — parameter
-  collection, pre-flight checks, execution, and post-run analysis. For long-running
-  batches that need tmux isolation, use overnight-eval instead.
+  Launch a model evaluation batch. Use when running interactive/foreground eval runs — parameter
+  collection, pre-flight checks, execution, and post-run analysis. NOT for: long-running
+  batches that need tmux isolation (use overnight-eval instead).
 auto-activate: false
 ---
 
