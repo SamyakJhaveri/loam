@@ -53,7 +53,7 @@ env/
 *_key*
 *_secret*
 *credentials*
-graphify-out/cache/
+.codegraphcontext/
 
 # Personal reference docs — not part of the template (audit Session C)
 internal_docs/

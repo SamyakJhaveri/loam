@@ -8,7 +8,7 @@ Three complementary memory layers plus two adjacent tools. Each layer answers a 
 |-------|------|----------------|---------------------|
 | L1 — Static knowledge | Built-in (CLAUDE.md + `.claude/rules/` + Anthropic native memory tool) | Project conventions, coding standards, known issues, durable cross-session facts | What are our rules? |
 | L2 — Structured facts | [Knowledge-Graph Memory MCP](https://github.com/modelcontextprotocol/servers/tree/main/src/memory) (Anthropic reference server, JSONL-backed Entities/Relations/Observations) | Explicit claims, decisions, observed behaviors, named entities | What do we know about X, and how does it connect to Y? |
-| L3 — Codebase map | [Graphify](https://github.com/safishamsi/graphify) | Module relationships, dependency graphs, AST-derived structure | How is the code organized; what depends on what? |
+| L3 — Codebase map | [CodeGraphContext](https://github.com/CodeGraphContext/CodeGraphContext) + [Semble](https://github.com/MinishLab/semble) | Structural code graph (call chains, hierarchies) + semantic code search (embedding similarity) | How is the code organized; what depends on what? What code is related to X? |
 
 Adjacent (not memory, but related):
 
@@ -49,24 +49,30 @@ The first run will pull the package; subsequent runs are cached.
 
 Storage: `.claude-memory/knowledge-graph.json` (gitignored by default; rebuild from session evidence if lost).
 
-## Layer 3 — Graphify (codebase map)
+## Layer 3 — CodeGraphContext + Semble (code intelligence)
 
-AST-derived knowledge graph of the codebase across 29 languages (Tree-sitter). Identifies "god nodes" (modules everything depends on), generates an interactive HTML graph, and runs as an MCP server so the model can query the structure directly.
+Two complementary MCP servers providing structural and semantic code intelligence.
+
+**CodeGraphContext** — AST-derived code graph stored in embedded KuzuDB. Provides call-chain traversal, class hierarchies, symbol resolution, and relationship analysis across 20 languages. Runs as a pure MCP server; never writes project files beyond `.codegraphcontext/`.
+
+**Semble** — Semantic code search using embeddings (model2vec) with tree-sitter code-aware chunking. Finds code similar to natural-language queries. In-memory indexes, session-scoped. Runs as a pure MCP server; writes no project files.
 
 ### Setup
 
-```bash
-uv tool install graphifyy   # or: pip install graphifyy
-graphify .                  # build the graph; produces graphify-out/
-graphify claude install     # register as MCP server (optional; .mcp.json already wires it)
-```
+CodeGraphContext:
 
-Storage:
-- `graphify-out/graph.json` — the queryable graph
-- `graphify-out/graph.html` — interactive visualization
-- `graphify-out/GRAPH_REPORT.md` — human-readable summary
+    pip install codegraphcontext   # or: uv tool install codegraphcontext
+    cgc setup                      # index the codebase; produces .codegraphcontext/
 
-The graph is derived from source; rebuild with `graphify .` after significant refactors. `graphify-out/` is gitignored.
+Semble:
+
+    pip install semble             # or: uv tool install semble
+    # No setup needed — indexes on first MCP query. Optional pre-index:
+    semble /path/to/project
+
+Both are wired in `.mcp.json` by default. Storage:
+- `.codegraphcontext/` — graph database (gitignored, rebuild with `cgc setup`)
+- Semble indexes are in-memory (no persistent files)
 
 ## Adjacent — Superpowers (process scaffolding)
 
@@ -96,7 +102,7 @@ npx codeburn       # opens the dashboard; persists nothing to the repo
 Already in the template's `.gitignore.jinja`:
 
 - `.claude-memory/` — Knowledge-Graph MCP storage (machine-local, ungitable across machines without conflict)
-- `graphify-out/` — derived; rebuild from source
+- `.codegraphcontext/` — derived; rebuild with `cgc setup`
 - `~/.claude/projects/<key>/memory/` — actually outside the repo, no gitignore needed
 
 ## Skills that wire into the memory layers

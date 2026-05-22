@@ -42,7 +42,7 @@ After Copier finishes, the project has:
 - **Top-level docs**: `README.md`, `AGENTS.md`
 - **Research-only docs** (if `is_research=true`): `REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`
 - **`.claude/`**: 17 core skills, 6 agents, 8 hooks, 12 rule files, `settings.json` with the SessionStart hook wired
-- **MCP**: `.mcp.json` registers Graphify and the Knowledge-Graph Memory MCP
+- **MCP**: `.mcp.json` registers CodeGraphContext, Semble, and the Knowledge-Graph Memory MCP
 - **Config**: `.gitignore`, `.editorconfig`, `pyproject.toml`, `.copier-answers.yml`
 - **Seed working directories**: `archive/`, `config/`, `files_from_team/`, `internal_docs/`, `meeting_notes/`, `presentations/`, `results/`, `scripts/`, `submission_artifacts/`, `submission_docs/` (each with `.gitkeep`)
 - **First commit**: "Initial commit from loam"
@@ -82,4 +82,4 @@ Asserts: single-tree invariant (no `template/` subdir), valid JSON in `settings.
 
 1. Open the project in Claude Code. The `SessionStart` hook fires and injects the framework brief (17 core skills, Pipeline Gate ordering, four ICM routing layers).
 2. Replace placeholder content in `CLAUDE.md` with project specifics. Stay within ~800 tokens (`.claude/rules/L0-budget.md`).
-3. If using Graphify, run `graphify .` after the first non-trivial commit to seed the codebase map.
+3. Run `cgc setup` after the first non-trivial commit to build the code graph index.

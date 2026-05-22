@@ -1,10 +1,19 @@
 {
-  "_comment": "{{ project_name }} MCP servers. Graphify and the Knowledge-Graph Memory server ship enabled. CodeBurn and Superpowers are plugins installed via /plugin marketplace add — see docs/MEMORY.md.",
+  "_comment": "{{ project_name }} MCP servers. CodeGraphContext (code graph) and Semble (semantic search) provide code intelligence. Memory MCP stores structured facts. See docs/MEMORY.md.",
   "mcpServers": {
-    "graphify": {
+    "codegraphcontext": {
       "type": "stdio",
-      "command": "python3",
-      "args": ["-m", "graphify.serve", "graphify-out/graph.json"]
+      "command": "cgc",
+      "args": ["mcp-server"],
+      "env": {
+        "CGC_DB_TYPE": "kuzu",
+        "CGC_DB_PATH": ".codegraphcontext/db"
+      }
+    },
+    "semble": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["--from", "semble[mcp]", "semble"]
     },
     "memory": {
       "type": "stdio",
