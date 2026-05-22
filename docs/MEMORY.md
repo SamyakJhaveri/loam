@@ -62,7 +62,7 @@ Two complementary MCP servers providing structural and semantic code intelligenc
 CodeGraphContext:
 
     pip install codegraphcontext   # or: uv tool install codegraphcontext
-    cgc setup                      # index the codebase; produces .codegraphcontext/
+    cgc index .                     # index the codebase
 
 Semble:
 
@@ -71,7 +71,7 @@ Semble:
     semble /path/to/project
 
 Both are wired in `.mcp.json` by default. Storage:
-- `.codegraphcontext/` — graph database (gitignored, rebuild with `cgc setup`)
+- `.codegraphcontext/` — graph database (gitignored, rebuild with `cgc index .`)
 - Semble indexes are in-memory (no persistent files)
 
 ## Adjacent — Superpowers (process scaffolding)
@@ -102,7 +102,7 @@ npx codeburn       # opens the dashboard; persists nothing to the repo
 Already in the template's `.gitignore.jinja`:
 
 - `.claude-memory/` — Knowledge-Graph MCP storage (machine-local, ungitable across machines without conflict)
-- `.codegraphcontext/` — derived; rebuild with `cgc setup`
+- `.codegraphcontext/` — derived; rebuild with `cgc index .`
 - `~/.claude/projects/<key>/memory/` — actually outside the repo, no gitignore needed
 
 ## Skills that wire into the memory layers

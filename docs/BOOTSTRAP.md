@@ -82,4 +82,4 @@ Asserts: single-tree invariant (no `template/` subdir), valid JSON in `settings.
 
 1. Open the project in Claude Code. The `SessionStart` hook fires and injects the framework brief (17 core skills, Pipeline Gate ordering, four ICM routing layers).
 2. Replace placeholder content in `CLAUDE.md` with project specifics. Stay within ~800 tokens (`.claude/rules/L0-budget.md`).
-3. Run `cgc setup` after the first non-trivial commit to build the code graph index.
+3. Run `cgc index .` after the first non-trivial commit to build the code graph index.
