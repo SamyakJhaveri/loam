@@ -75,7 +75,7 @@ grep "is_research" seed/README.md.jinja          # Expected: 1 result (line 3)
 
 ---
 
-## Step 3: Clean up stale artifacts
+## ~~Step 3: Clean up stale artifacts~~ ✅ DONE (commit f57246c1)
 
 Delete these files/directories — all are in git history and no longer needed:
 
