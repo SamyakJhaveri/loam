@@ -6,16 +6,27 @@ Setup guides, usage patterns, and technical details for the 4-tool visual stack.
 
 | Tool | Type | Best For | Setup Required |
 |------|------|----------|----------------|
-| [excalidraw-diagram-skill](https://github.com/coleam00/excalidraw-diagram-skill) | Claude Code skill | Hand-drawn diagrams, concept maps, architecture sketches | Clone + Playwright |
+| Excalidraw (cloud MCP) | claude.ai MCP | Hand-drawn diagrams, concept maps, architecture sketches | None (auto on claude.ai) |
+| [excalidraw-diagram-skill](https://github.com/coleam00/excalidraw-diagram-skill) | Claude Code skill (fallback) | Hand-drawn diagrams via local Playwright rendering | Clone + Playwright |
 | [drawio-mcp](https://github.com/jgraph/drawio-mcp) | MCP server or CLI skill | Flowcharts, ER diagrams, sequence diagrams, formal architecture | MCP config or draw.io Desktop |
 | [PaperBanana](https://github.com/dwzhu-pku/PaperBanana) | External CLI/web app | Academic illustrations, research figures, publication diagrams | API keys (Gemini/OpenRouter) |
 | [gitdiagram](https://github.com/ahmedkhaleel2004/gitdiagram) | Web service | GitHub repo → interactive architecture diagram | None (gitdiagram.com) |
 
 ---
 
-## 1. Excalidraw Diagram Skill
+## 1. Excalidraw
 
-### Setup
+### Cloud Excalidraw MCP (claude.ai — no setup)
+
+Available automatically in claude.ai sessions. Provides:
+- `create_view` — create diagrams with streaming animation and camera control
+- `export_to_excalidraw` — upload to excalidraw.com for a shareable/editable link
+- `read_me` — load the complete element format reference (call once per session)
+- `read_checkpoint` / `save_checkpoint` — state management for iterative refinement
+
+Call `read_me` first to get the color palette, element types, arrow bindings, camera sizes, and dark mode guide. The MCP handles rendering — no Playwright or local dependencies needed.
+
+### Local skill setup (coleam00 — fallback)
 
 ```bash
 git clone https://github.com/coleam00/excalidraw-diagram-skill.git /tmp/eds

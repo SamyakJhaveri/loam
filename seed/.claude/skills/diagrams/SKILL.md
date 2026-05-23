@@ -42,11 +42,23 @@ Subcommand dispatch is deterministic — do not use LLM reasoning when a keyword
 
 ---
 
-## Phase 2A: Excalidraw (skill — Layer 3)
+## Phase 2A: Excalidraw (Layer 3)
 
-Generate hand-drawn style Excalidraw diagrams with a visual self-validation loop.
+Generate hand-drawn style Excalidraw diagrams. Two integration paths:
 
-**Prerequisite:** The excalidraw-diagram skill must be installed. Check:
+### Path 1: Cloud Excalidraw MCP (if available — no setup required)
+
+Check if Excalidraw MCP tools are available in the current environment (look for `create_view`, `export_to_excalidraw`). These are provided automatically by claude.ai — no local setup needed.
+
+If available:
+1. Call the MCP's `read_me` tool once to load the element format reference (color palette, element types, camera control, dark mode)
+2. Use `create_view` to generate the diagram — elements stream in with draw-on animations
+3. Optionally use `export_to_excalidraw` to upload to excalidraw.com for a shareable/editable link
+4. Use `save_checkpoint` / `read_checkpoint` for iterative refinement across turns
+
+### Path 2: Local excalidraw-diagram skill (fallback)
+
+If no cloud MCP is available, check for the local skill:
 ```bash
 ls .claude/skills/excalidraw-diagram/SKILL.md 2>/dev/null || echo "Not installed"
 ```
