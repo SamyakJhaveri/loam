@@ -32,6 +32,8 @@ template-sync promote --layer generic .claude/skills/<name>/SKILL.md
 | `soil/`                  | Knowledge base: `jvc/`, `foundation/`, `playbooks/`, `reference/` |
 | `bin/`                   | `verify-template.sh`, `template-sync.sh`, `lint-skill-descriptions.sh`, `release.sh` |
 | `docs/`                  | Template documentation |
+| `docs/plans/`            | Session plans and handoffs |
+| `docs/specs/`            | Design specifications |
 | `copier.yml`             | Copier config: `_subdirectory: "seed"`, questions, `_tasks` |
 | `VERSION`                | Semver for releases |
 

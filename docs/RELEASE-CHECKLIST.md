@@ -82,7 +82,7 @@ Delete these files/directories — all are in git history and no longer needed:
 ```bash
 git rm -rf better_use_of_graphify/    # 5 files, ~125KB — research for completed Graphify->CGC+Semble migration
 git rm HANDOFF.md                     # References work already done in commit 5e85654a
-git rm -rf docs/superpowers/          # Session artifacts from 2026-05-20, internal-only
+# (plugin session artifacts already restructured into docs/specs/)
 ```
 
 Also fix the marketplace README:
@@ -115,7 +115,7 @@ Also fix the marketplace README:
 ```bash
 ls better_use_of_graphify/ 2>/dev/null && echo "FAIL: directory still exists" || echo "OK"
 ls HANDOFF.md 2>/dev/null && echo "FAIL: file still exists" || echo "OK"
-ls docs/superpowers/ 2>/dev/null && echo "FAIL: directory still exists" || echo "OK"
+ls docs/specs/ >/dev/null && echo "OK: docs/specs/ exists" || echo "FAIL: docs/specs/ missing"
 grep "seed-skills" cultivation/marketplace/README.md && echo "FAIL: old path still present" || echo "OK"
 ```
 

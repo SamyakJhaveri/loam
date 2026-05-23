@@ -25,7 +25,7 @@ Every additional token in `CLAUDE.md` is paid by every session, including ones t
 - Architectural decisions in narrative form (those live in `docs/` or ADRs)
 - Code style rules (those live in path-scoped `.claude/rules/python.md`, `.claude/rules/architecture.md`, etc.)
 - Worked examples (those live in skill `examples.md` or `reference.md`)
-- Project history, session logs, or "what we tried" notes (those live in `docs/multi_session_prompts/` or session handoffs)
+- Project history, session logs, or "what we tried" notes (those live in `docs/plans/` or session handoffs)
 
 ## When `CLAUDE.md` is over budget
 
