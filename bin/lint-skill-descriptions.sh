@@ -48,7 +48,7 @@ if len(parts) >= 3:
   auto_activate=$(echo "$frontmatter" | grep -m1 'auto-activate:' | awk '{print $2}' || true)
 
   # Check 1: Missing conditional language
-  if ! echo "$desc" | grep -qi "Use when\|Use ONLY when\|Use before\|Use after\|Use at\|Invoke when\|Use this"; then
+  if ! echo "$desc" | grep -qi "Use when\|Use ONLY when\|Use before\|Use after\|Use at\|Use for\|Invoke when\|Use this"; then
     echo "WARN [$name]: missing 'Use when...' conditional language"
     WARN=$((WARN + 1))
   fi
