@@ -110,6 +110,6 @@ seed/_research/skills/diagrams-research/
 
 | Session | Scope | Deliverables |
 |---------|-------|-------------|
-| **1** | Evaluate structured renderers + pyreverse | Renderer winner chosen, pyreverse verified, skeleton skill with `extract` + `render` subcommands |
-| **2** | Evaluate Gemini MCPs + wire winners + full skill | Gemini winner chosen, both MCP servers in `.mcp.json.jinja`, `visualize` subcommand, mingrammer/diagrams, free-form fallback |
+| **1** | Evaluate structured renderers + pyreverse | Renderer winner chosen (claude-mermaid), pyreverse verified, winner wired into `.mcp.json.jinja` |
+| **2** | Skeleton skill + Gemini MCPs + full skill | Skeleton `/diagrams` skill with `extract` + `render` subcommands, Gemini winner chosen, image gen MCP in `.mcp.json.jinja`, `visualize` subcommand, mingrammer/diagrams, free-form fallback |
 | **3** | Research flavor + polish | PaperBanana in `_research/`, `paper` subcommand, end-to-end test suite, BOOTSTRAP.md updates |

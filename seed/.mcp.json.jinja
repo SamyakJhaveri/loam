@@ -1,5 +1,5 @@
 {
-  "_comment": "{{ project_name }} MCP servers. CodeGraphContext (code graph) and Semble (semantic search) provide code intelligence. Memory MCP stores structured facts. See docs/MEMORY.md.",
+  "_comment": "{{ project_name }} MCP servers. CodeGraphContext (code graph) and Semble (semantic search) provide code intelligence. Memory MCP stores structured facts. Mermaid renders diagrams. See docs/MEMORY.md.",
   "mcpServers": {
     "codegraphcontext": {
       "type": "stdio",
@@ -18,6 +18,10 @@
       "env": {
         "MEMORY_FILE_PATH": "${PWD}/.claude-memory/knowledge-graph.json"
       }
+    },
+    "mermaid": {
+      "type": "stdio",
+      "command": "claude-mermaid"
     }
   }
 }
