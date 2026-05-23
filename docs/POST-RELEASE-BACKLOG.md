@@ -13,12 +13,12 @@ Full analysis of [mattpocock/skills](https://github.com/mattpocock/skills) (100k
 
 | # | Skill | What it does | Lines | Why adopt | Loam placement |
 |---|-------|-------------|-------|----------|----------------|
-| 2 | **triage** | Issue state machine: needs-triage -> needs-info -> ready-for-agent -> ready-for-human -> wontfix. Agent-brief template | 140 + 180 ref | Fills genuine gap — no Loam issue management skill. `ready-for-agent` concept key for AFK work | `seed/.claude/skills/` (core) |
-| 3 | **to-issues** | Decompose plan/spec/PRD into vertical-slice GitHub issues. HITL vs AFK classification | 100 | Pairs with `gen-spec` + `feature-dev`. No Loam equivalent | `seed/.claude/skills/` (core) |
-| 4 | **grill-with-docs** | Grilling session that challenges plans against domain model, updates CONTEXT.md + ADRs inline | 100 + 80 ref | Highest architectural impact — ties grilling to living domain glossary. Closes the CONTEXT.md-as-routing-only gap | `seed/.claude/skills/` (core) |
-| 5 | **improve-codebase-architecture** | Find "deepening opportunities" via Ousterhout vocabulary (Module, Interface, Seam, Depth, Leverage). HTML report | 190 + 250 ref | Superior to surface-level techdebt scanning. "Deletion test" heuristic | `seed/.claude/skills/` (complement to techdebt) |
-| 6 | **tdd** | Red-green-refactor with vertical slices. Anti-horizontal-slice discipline. Mocking guidelines + deep-modules reference | 130 + 100 ref | Loam has no core TDD skill (only superpowers plugin). Better version | `seed/.claude/skills/` (core) |
-| 7 | **prototype** | Throwaway prototypes. Routes to LOGIC (terminal apps) or UI (multiple radical variations). "Delete when done" discipline | 95 + 190 ref | Research-relevant design-space exploration | `seed/.claude/skills/` or marketplace |
+| 2 | **triage** | Issue state machine: needs-triage -> needs-info -> ready-for-agent -> ready-for-human -> wontfix. Agent-brief template | 140 + 180 ref | Fills genuine gap — no Loam issue management skill. `ready-for-agent` concept key for AFK work | `[DONE] cultivation/marketplace/pocock-engineering/` |
+| 3 | **to-issues** | Decompose plan/spec/PRD into vertical-slice GitHub issues. HITL vs AFK classification | 100 | Pairs with `gen-spec` + `feature-dev`. No Loam equivalent | `[DONE] cultivation/marketplace/pocock-engineering/` |
+| 4 | **grill-with-docs** | Grilling session that challenges plans against domain model, updates CONTEXT.md + ADRs inline | 100 + 80 ref | Highest architectural impact — ties grilling to living domain glossary. Closes the CONTEXT.md-as-routing-only gap | `[DONE] cultivation/marketplace/pocock-engineering/` (uses DOMAIN.md, not CONTEXT.md) |
+| 5 | **improve-codebase-architecture** | Find "deepening opportunities" via Ousterhout vocabulary (Module, Interface, Seam, Depth, Leverage). HTML report | 190 + 250 ref | Superior to surface-level techdebt scanning. "Deletion test" heuristic | `[DONE] cultivation/marketplace/pocock-engineering/` |
+| 6 | **tdd** | Red-green-refactor with vertical slices. Anti-horizontal-slice discipline. Mocking guidelines + deep-modules reference | 130 + 100 ref | Loam has no core TDD skill (only superpowers plugin). Better version | `[DONE] cultivation/marketplace/pocock-engineering/` |
+| 7 | **prototype** | Throwaway prototypes. Routes to LOGIC (terminal apps) or UI (multiple radical variations). "Delete when done" discipline | 95 + 190 ref | Research-relevant design-space exploration | `[DONE] cultivation/marketplace/pocock-engineering/` |
 https://github.com/mattpocock/skills/tree/main/skills/engineering/diagnose
 https://github.com/mattpocock/skills/tree/main/skills/engineering/grill-with-docs
 https://github.com/mattpocock/skills/tree/main/skills/engineering/to-prd
@@ -29,12 +29,12 @@ https://github.com/mattpocock/skills/tree/main/skills/engineering/zoom-out
 
 | Pattern | Source skill | Absorb into |
 |---------|-------------|-------------|
-| Living domain glossary in CONTEXT.md | grill-with-docs | `scaffold-context` — upgrade from routing-only to domain glossary |
+| Living domain glossary in CONTEXT.md | grill-with-docs | `[DONE] DOMAIN.md format via grill-with-docs (not CONTEXT.md)` |
 | `disable-model-invocation: true` flag | zoom-out | New micro-skill tier in Loam |
-| ADR three-part test (hard to reverse + surprising + real trade-off) | grill-with-docs | `gen-spec` |
+| ADR three-part test (hard to reverse + surprising + real trade-off) | grill-with-docs | `[DONE] absorbed into gen-spec Phase 1` |
 | Vertical slices / tracer bullets | tdd, to-issues | `feature-dev`, `gen-spec` |
 | Standards + Spec dual-axis review | review (in-progress) | `multi-review` |
-| "Build a feedback loop" as explicit debugging phase | diagnose | `fix-bug` |
+| "Build a feedback loop" as explicit debugging phase | diagnose | `[DONE] absorbed into fix-bug Phase 1` |
 
 ### Architectural Insights
 
@@ -47,7 +47,7 @@ https://github.com/mattpocock/skills/tree/main/skills/engineering/zoom-out
 
 | Skill | What to learn | Absorb into |
 |-------|--------------|-------------|
-| **diagnose** | 6-phase debugging with "Build a feedback loop" phase (10 concrete strategies). Deeper than `fix-bug`'s reproduce step | `fix-bug` |
+| **diagnose** | 6-phase debugging with "Build a feedback loop" phase (10 concrete strategies). Deeper than `fix-bug`'s reproduce step | `[DONE] fix-bug Phase 1 (feedback loop); full skill in cultivation/marketplace/pocock-engineering/` |
 | **to-prd** | Synthesize conversation context into a PRD without interviewing. Complement to `gen-spec` (which interviews) | `gen-spec` |
 | **zoom-out** | 10-line micro-skill — pure behavioral nudge. Uses `disable-model-invocation: true` to inject context without consuming an invocation | New micro-skill tier |
 | **grill-me** | 15-line Socratic method skill. Matt's self-reported most popular skill. No output artifact, just pure questioning | Reference for simplicity |

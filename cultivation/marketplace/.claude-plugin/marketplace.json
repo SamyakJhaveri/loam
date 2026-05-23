@@ -45,6 +45,16 @@
         "name": "Samyak Jhaveri",
         "email": "samyakjhaveri2799@gmail.com"
       }
+    },
+    {
+      "name": "pocock-engineering",
+      "description": "Engineering workflow skills adapted from mattpocock/skills (triage, to-issues, tdd, prototype, diagnose, grill-with-docs, improve-codebase-architecture)",
+      "version": "0.1.0",
+      "source": "./pocock-engineering",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "samyakjhaveri2799@gmail.com"
+      }
     }
   ]
 }

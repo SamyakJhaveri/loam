@@ -63,10 +63,10 @@ Present team design table to user. **WAIT for approval before launching.**
 | Teammate      | Model  | Role                           | Owns        |
 |---------------|--------|--------------------------------|-------------|
 | advisor       | opus   | Strategic direction, read-only | All (read)  |
-| self-critic   | sonnet | Adversarial self-review        | Bucket A    |
+| self-critic   | opus   | Adversarial self-review        | Bucket A    |
 | code-reviewer | sonnet | Code quality + structural      | Bucket B    |
 
-Cost: ~45-55% of all-Opus equivalent
+Cost: ~65-75% of all-Opus equivalent
 ```
 
 ### Phase 2: Launch (advisor pattern)

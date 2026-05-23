@@ -16,6 +16,7 @@ Structured workflow for diagnosing and fixing a bug.
 - Identify the failing command or test
 - Run it and capture the exact error output
 - Check `.claude/rules/known-issues.md` — is this a known bug?
+- **Build a feedback loop**: before diagnosing, establish a fast, deterministic, repeatable pass/fail signal (failing test, curl script, CLI invocation with fixture input, or headless browser script). If you cannot build a loop after trying multiple approaches, stop and say so — do not proceed to diagnose without one.
 
 ### Phase 2: Diagnose
 Use subagents to explore the relevant code paths in parallel:

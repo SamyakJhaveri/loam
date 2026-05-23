@@ -24,6 +24,7 @@ implementation code. Specs-before-code prevents scope drift and makes review che
 - Identify dependencies and integration points
 - Check for existing specs that overlap (avoid duplication)
 - Review related stage contracts if any exist
+- If a decision warrants an ADR, apply the three-part test: is it (1) hard to reverse, (2) surprising to future readers, and (3) a genuine trade-off with real alternatives? Skip ADRs for trivial or self-evident decisions.
 
 ### Phase 2: Draft Spec
 - Create `specs/<name>.md` (or `.yaml` / `.json` per project convention)

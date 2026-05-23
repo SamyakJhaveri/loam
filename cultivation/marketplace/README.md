@@ -20,6 +20,7 @@ These are skills that were removed from the default `.claude/skills/` set during
 | `meta-improvement` | self-healing | Autonomous error recovery and session self-correction |
 | `helpers` | decision-matrix, navigate, model-route, prompt-improver, frontend-design, grill-research | Situational utility skills for specialized one-off tasks |
 | `business-process` | process-optimizer, sop-writer, workflow-mapper, weekly-review | Operational documentation and workflow analysis |
+| `pocock-engineering` | triage, to-issues, tdd, prototype, diagnose, grill-with-docs, improve-codebase-architecture | Engineering workflow skills adapted from [mattpocock/skills](https://github.com/mattpocock/skills) — issue lifecycle, TDD, architectural review, domain grilling |
 
 ## Why these skills were cut from default
 
@@ -41,3 +42,10 @@ The cut was driven by `.claude/rules/known-issues.md`: with 60+ skills competing
 | `sop-writer` | Same — business-process focus |
 | `workflow-mapper` | Same — business-process focus |
 | `weekly-review` | Personal-productivity meta-skill; orthogonal to a starter template |
+| `triage` | New adoption — evaluate before promoting to core |
+| `to-issues` | New adoption — evaluate before promoting to core |
+| `tdd` | New adoption — coexists with superpowers:test-driven-development |
+| `prototype` | New adoption — specialized, disposable-code workflow |
+| `diagnose` | New adoption — heavyweight diagnostic for hard bugs |
+| `grill-with-docs` | New adoption — domain grilling, evaluate DOMAIN.md pattern first |
+| `improve-codebase-architecture` | New adoption — heavy Ousterhout-based review with HTML reports |
