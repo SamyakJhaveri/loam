@@ -2,156 +2,130 @@
 name: diagrams
 description: >
   Generate diagrams and visuals from code or descriptions.
-  Subcommands: extract (pyreverse), render (Mermaid), visualize (AI image gen), arch (Python diagrams).
-  Use when the user needs a rendered diagram, code visualization, or architecture image.
-  NOT for interactive canvas drawing (use tldraw/excalidraw MCPs directly).
+  Use when the user needs a rendered diagram, code visualization,
+  or architecture image. Subcommands — excalidraw (hand-drawn),
+  drawio (formal XML), paper (academic illustrations),
+  gitdiagram (repo architecture).
 auto-activate: false
-argument-hint: <subcommand> <args>
+argument-hint: excalidraw|drawio|paper|gitdiagram <description>
 ---
 
-# Diagrams & Visual Stack
+# Diagrams — 4-Tool Visual Stack
 
-Generate rendered diagrams from Python source, structured descriptions, or natural language.
+Generate diagrams using one of four specialized tools, each suited to different use cases.
 
 ## Arguments
 
 `$ARGUMENTS` — one of:
 
-- `extract <module>` — extract class/dependency diagrams from Python via pyreverse
-- `render <type> <description>` — render a structured diagram via Mermaid
-- `visualize <description>` — generate an AI-styled visual via Gemini image generation
-- `arch <description>` — generate an architecture diagram via mingrammer/diagrams
-- `<free-form text>` — auto-classify intent and route to the appropriate handler above
+- `excalidraw <description>` — hand-drawn Excalidraw diagrams with visual self-validation
+- `drawio [format] <description>` — native draw.io XML diagrams with optional PNG/SVG/PDF export
+- `paper <description>` — publication-quality academic illustrations via PaperBanana
+- `gitdiagram <github-url>` — interactive architecture diagram from any GitHub repo
+- `<free-form text>` — auto-classify intent and route to the appropriate tool
 
 ## Output Convention
 
-All outputs go to `docs/diagrams/<type>-<subject>-<YYYY-MM-DD>.<ext>`.
-Run `mkdir -p docs/diagrams` before writing any output.
+All outputs go to `docs/diagrams/`. Run `mkdir -p docs/diagrams` before writing any output.
 
 ## Phase 1: Parse & Route
 
-Parse `$ARGUMENTS` to determine the subcommand. Match the FIRST word:
+Parse `$ARGUMENTS` and match the FIRST word:
 
-1. `extract` → Phase 2A
-2. `render` → Phase 2B
-3. `visualize` → Phase 2C
-4. `arch` → Phase 2D
+1. `excalidraw` → Phase 2A
+2. `drawio` → Phase 2B
+3. `paper` → Phase 2C
+4. `gitdiagram` → Phase 2D
 5. Anything else → Phase 2E (free-form classification)
 
-**Do NOT use LLM reasoning for routing when a subcommand keyword is present.** Subcommand dispatch is deterministic.
+Subcommand dispatch is deterministic — do not use LLM reasoning when a keyword is present.
 
 ---
 
-## Phase 2A: Extract (pyreverse — deterministic, Layer 1)
+## Phase 2A: Excalidraw (skill — Layer 3)
 
-Extract class hierarchies and dependency graphs from Python source code.
+Generate hand-drawn style Excalidraw diagrams with a visual self-validation loop.
 
-1. Check pyreverse is available:
+**Prerequisite:** The excalidraw-diagram skill must be installed. Check:
+```bash
+ls .claude/skills/excalidraw-diagram/SKILL.md 2>/dev/null || echo "Not installed"
+```
+
+If not installed, tell the user:
+> Install with: `git clone https://github.com/coleam00/excalidraw-diagram-skill.git /tmp/eds && mkdir -p .claude/skills/excalidraw-diagram && cp -r /tmp/eds/SKILL.md /tmp/eds/references .claude/skills/excalidraw-diagram/ && cd .claude/skills/excalidraw-diagram/references && uv sync && uv run playwright install chromium`
+
+If installed, delegate to the excalidraw-diagram skill directly — it handles the full workflow: concept mapping → JSON generation → PNG rendering → visual validation → iterative refinement.
+
+---
+
+## Phase 2B: Draw.io (MCP or CLI — Layer 1/2)
+
+Generate native `.drawio` XML diagrams. Two integration paths:
+
+### Path 1: MCP server (if `drawio` MCP is configured)
+
+Generate the XML, then open it in the draw.io editor using MCP tools:
+- `open_drawio_xml` — opens native draw.io/mxGraph XML in the editor
+- `open_drawio_csv` — converts CSV tabular data into a diagram
+- `open_drawio_mermaid` — converts Mermaid syntax into an editable draw.io diagram
+
+All three accept a `content` string and optional `lightbox` (read-only) and `dark` mode params.
+
+### Path 2: Direct XML generation (no MCP needed)
+
+1. Generate draw.io mxGraphModel XML directly.
+2. Write to `docs/diagrams/<subject>.drawio`.
+3. If the user requested a format (png, svg, pdf), export:
    ```bash
-   which pyreverse || echo "Not found. Install: pip install pylint"
+   # macOS
+   /Applications/draw.io.app/Contents/MacOS/draw.io --export --format png --embed-diagram docs/diagrams/<subject>.drawio
+   # Linux
+   drawio --export --format png --embed-diagram docs/diagrams/<subject>.drawio
    ```
-   If missing, tell the user and stop.
+4. The `--embed-diagram` flag keeps the XML inside the exported file so it remains editable in draw.io.
 
-2. Run extraction:
-   ```bash
-   mkdir -p docs/diagrams
-   pyreverse -o mmd -d docs/diagrams <module>
-   ```
+**Critical draw.io XML rules:**
+- Never include XML comments
+- Escape special characters: `&amp;`, `&lt;`, `&gt;`, `&quot;`
+- Unique `id` for every `mxCell`
+- Every edge needs a child `<mxGeometry>` element
+- Root requires cells `id="0"` (root) and `id="1"` (default parent)
 
-3. Report the output `.mmd` file path. Suggest follow-up:
-   > "Mermaid file saved. Render it with `/diagrams render class <path-to-mmd>`"
+See `reference.md` for the XML generation guide and shape reference.
 
 ---
 
-## Phase 2B: Render (Mermaid via claude-mermaid MCP — deterministic, Layer 1)
+## Phase 2C: PaperBanana (external tool — Layer 3)
 
-Render a structured diagram to SVG or PNG using the `mermaid` MCP server.
-
-**Supported types:** sequence, class, ERD, state, architecture, flowchart, C4, dependency
-
-1. Generate valid Mermaid syntax for the requested `<type>` and `<description>`.
-   See `${CLAUDE_SKILL_DIR}/reference.md` for syntax templates per type.
-
-2. Use the `mermaid` MCP server's render tool to produce SVG/PNG output.
-
-3. Save to `docs/diagrams/<type>-<subject>-<YYYY-MM-DD>.<ext>`.
-
-4. Report the file path and diagram type.
+**External tool — Claude Code cannot run it directly.** Direct the user to the [HuggingFace Space](https://huggingface.co/spaces/dwzhu/PaperBanana) for zero-setup use, or to the [GitHub repo](https://github.com/dwzhu-pku/PaperBanana) for self-hosting. See `reference.md` §3.
 
 ---
 
-## Phase 2C: Visualize (Gemini image gen — probabilistic, Layer 3)
+## Phase 2D: GitDiagram (web service — Layer 1)
 
-Generate an AI-styled visual from a natural language description.
-
-**Prerequisite check:** If the `image-gen` MCP server's `generate_image` tool is not available, inform the user:
-> "The visualize subcommand requires the image-gen MCP server with GEMINI_API_KEY configured.
-> Set it with: `export GEMINI_API_KEY=your-key` and restart Claude Code."
-
-1. Craft a detailed image generation prompt from the user's description. The MCP server
-   auto-optimizes prompts via a Subject-Context-Style framework, so focus on technical
-   accuracy over artistic direction. Include:
-   - The specific system components and their relationships
-   - The type of visualization desired (architecture, data flow, overview)
-
-2. Call the `image-gen` MCP server's `generate_image` tool with:
-   - `prompt`: the crafted description
-   - `fileName`: `visual-<subject>-<YYYY-MM-DD>`
-   - `quality`: `"balanced"` (default) or `"quality"` for polished output
-   - `aspectRatio`: `"16:9"` for wide diagrams, `"1:1"` for square
-
-   The output directory is pre-configured to `docs/diagrams/` via `IMAGE_OUTPUT_DIR`.
-
-3. Report the file path.
+**External web service — Claude Code cannot run it directly.** Tell the user to replace `hub` with `diagram` in any GitHub URL (e.g. `gitdiagram.com/user/repo`). See `reference.md` §4.
 
 ---
 
-## Phase 2D: Architecture (mingrammer/diagrams — hybrid, Layer 1/3)
+## Phase 2E: Free-form Classification (Layer 3)
 
-Generate architecture diagrams using the Python `diagrams` library.
-
-1. Check the library is available:
-   ```bash
-   python3 -c "import diagrams" 2>/dev/null || echo "Not found. Install: pip install diagrams"
-   ```
-   If missing, tell the user and stop.
-
-2. Generate a Python script using the `diagrams` library based on the user's description.
-   See `${CLAUDE_SKILL_DIR}/reference.md` for API patterns.
-
-3. **STOP. Present the generated script to the user and wait for explicit approval before executing.**
-   This is a hard safety gate — never skip it.
-
-4. On approval, execute:
-   ```bash
-   mkdir -p docs/diagrams
-   python3 <script_path>
-   ```
-
-5. Save output to `docs/diagrams/arch-<subject>-<YYYY-MM-DD>.png`.
-
----
-
-## Phase 2E: Free-form Classification (probabilistic, Layer 3)
-
-When no subcommand prefix is matched, classify the user's intent:
+When no subcommand prefix is matched, classify intent:
 
 | Signal | Route to |
 |--------|----------|
-| Code structure keywords: class, hierarchy, dependency, module, import | `extract` |
-| Diagram type keywords: sequence, ERD, flowchart, state machine, C4 | `render` |
-| Visual/style keywords: visualize, show me, explain visually, styled, pretty | `visualize` |
-| Architecture keywords: architecture, system, infrastructure, cloud, AWS, GCP | `arch` |
+| Hand-drawn, sketch, whiteboard, Excalidraw | `excalidraw` |
+| Flowchart, ER, sequence, architecture, export to PNG/SVG/PDF, draw.io | `drawio` |
+| Academic, paper, publication, scientific illustration, research figure | `paper` |
+| GitHub repo URL, repo architecture, codebase overview | `gitdiagram` |
 
-If intent is ambiguous, ask the user to clarify rather than guessing.
-After classification, re-enter the appropriate Phase 2 handler.
+If ambiguous, ask the user to clarify.
 
 ---
 
 ## Rules
 
-1. Never execute user-generated or AI-generated Python scripts without explicit user confirmation
+1. Never execute user-generated or AI-generated scripts without explicit user confirmation
 2. All diagram outputs go to `docs/diagrams/` — create the directory if it doesn't exist
 3. Subcommand dispatch is deterministic — do not use LLM reasoning when a keyword is present
-4. If a required tool (pyreverse, diagrams library, MCP server) is missing, tell the user how to install it and stop — do not attempt workarounds
-5. For `render`, always validate Mermaid syntax before sending to the MCP — catch syntax errors early
+4. If a required tool is not installed, tell the user how to install it and stop — do not attempt workarounds
+5. For draw.io XML, validate structure before writing (unique IDs, proper escaping, required root cells)

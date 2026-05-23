@@ -63,6 +63,8 @@ outputs/
 IMG_*
 # Superpowers brainstorm/scratch outputs
 .superpowers/
+# MCP server config (may contain env var references to API keys)
+.mcp.json
 # Generated course output from codebase-to-course skill testing
 *-course/
 
