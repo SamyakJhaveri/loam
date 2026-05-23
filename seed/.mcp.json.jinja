@@ -1,5 +1,5 @@
 {
-  "_comment": "{{ project_name }} MCP servers. CodeGraphContext (code graph) and Semble (semantic search) provide code intelligence. Memory MCP stores structured facts. Mermaid renders diagrams. See docs/MEMORY.md.",
+  "_comment": "{{ project_name }} MCP servers. CodeGraphContext (code graph) and Semble (semantic search) provide code intelligence. Memory MCP stores structured facts. Mermaid renders diagrams. Image-gen produces AI visuals — if GEMINI_API_KEY is unset it fails to start and its tools are simply unavailable; the /diagrams skill handles this gracefully. See docs/MEMORY.md.",
   "mcpServers": {
     "codegraphcontext": {
       "type": "stdio",
@@ -22,6 +22,14 @@
     "mermaid": {
       "type": "stdio",
       "command": "claude-mermaid"
+    },
+    "image-gen": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "mcp-image"],
+      "env": {
+        "IMAGE_OUTPUT_DIR": "${PWD}/docs/diagrams"
+      }
     }
   }
 }

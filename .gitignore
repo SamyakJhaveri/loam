@@ -15,6 +15,7 @@ build/
 .venv/
 venv/
 env/
+.env
 .pytest_cache/
 # IDE
 .idea/
@@ -46,7 +47,6 @@ env/
 *.a
 *.so
 *.d
-.env
 
 # ANL credentials — never commit
 *.pem
