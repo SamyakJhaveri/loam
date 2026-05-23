@@ -101,7 +101,7 @@ See `reference.md` for the XML generation guide and shape reference.
 
 ---
 
-## Phase 2D: GitDiagram (web service — Layer 1)
+## Phase 2D: GitDiagram (web service — Layer 3)
 
 **External web service — Claude Code cannot run it directly.** Tell the user to replace `hub` with `diagram` in any GitHub URL (e.g. `gitdiagram.com/user/repo`). See `reference.md` §4.
 
@@ -115,7 +115,7 @@ When no subcommand prefix is matched, classify intent:
 |--------|----------|
 | Hand-drawn, sketch, whiteboard, Excalidraw | `excalidraw` |
 | Flowchart, ER, sequence, architecture, export to PNG/SVG/PDF, draw.io | `drawio` |
-| Academic, paper, publication, scientific illustration, research figure | `paper` |
+| Academic, paper, publication, scientific illustration, research figure | `paper` (research projects only — ask user to confirm) |
 | GitHub repo URL, repo architecture, codebase overview | `gitdiagram` |
 
 If ambiguous, ask the user to clarify.

@@ -42,7 +42,7 @@ After Copier finishes, the project has:
 - **Top-level docs**: `README.md`, `AGENTS.md`
 - **Research-only docs** (if `is_research=true`): `REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`, `CHANGELOG.research.md`
 - **`.claude/`**: 17 core skills, 6 agents, 8 hooks, 12 rule files, `settings.json` with the SessionStart hook wired
-- **MCP**: `.mcp.json` registers CodeGraphContext, Semble, and the Knowledge-Graph Memory MCP
+- **MCP**: `.mcp.json` registers CodeGraphContext, Semble, the Knowledge-Graph Memory MCP, and draw.io (diagram editor)
 - **Config**: `.gitignore`, `.editorconfig`, `pyproject.toml`, `.copier-answers.yml`
 - **Seed working directories**: `archive/`, `config/`, `files_from_team/`, `internal_docs/`, `meeting_notes/`, `presentations/`, `results/`, `scripts/`, `submission_artifacts/`, `submission_docs/` (each with `.gitkeep`)
 - **First commit**: "Initial commit from loam"
