@@ -84,8 +84,6 @@ https://github.com/mattpocock/skills/tree/main/skills/engineering/zoom-out
 | [GitMCP](https://gitmcp.io) | Read 3rd-party repo docs via llms.txt. Zero config, no auth | Useful for skill reference loading? |
 | [Repomix](https://github.com/yamadashy/repomix) | Pack entire repo into LLM-friendly file. Tree-sitter compression | Worth documenting in BOOTSTRAP.md? |
 | [DeepWiki](https://deepwiki.com) | Pre-indexed wiki + Q&A for 50k+ repos. MCP server available | Try the MCP server |
-| [claude-mermaid MCP](https://github.com/bstephens-tos1/claude-mermaid) | Live-preview Mermaid from Claude. PNG/SVG/PDF export | Wire into `.mcp.json.jinja`? |
-| [pyreverse](https://pylint.readthedocs.io/) | Class diagrams from Python. Ships with pylint. Emits .dot/.puml/.mmd | Use for project architecture diagrams |
 | [madge](https://github.com/pahen/madge) | JS/TS dependency graph. Circular dependency detection. CommonJS/AMD/ES6 | Useful for JS/TS projects bootstrapped from Loam |
 
 ### Completed evaluations
@@ -93,6 +91,14 @@ https://github.com/mattpocock/skills/tree/main/skills/engineering/zoom-out
 | Tool | Status | Notes |
 |------|--------|-------|
 | [Semble](https://github.com/MinishLab/semble) | **Done** — wired in `seed/.mcp.json.jinja` | Semantic code search MCP. Verify CLI invocation works in a bootstrapped project |
+| [drawio-mcp](https://github.com/jgraph/drawio-mcp) | **Done** — wired in `seed/.mcp.json.jinja` + `/diagrams drawio` subcommand | Official draw.io MCP (opens XML/CSV/Mermaid in editor). Replaces claude-mermaid |
+| [excalidraw-diagram-skill](https://github.com/coleam00/excalidraw-diagram-skill) | **Done** — `/diagrams excalidraw` subcommand | Hand-drawn diagrams with Playwright visual self-validation. External skill (user clones) |
+| [PaperBanana](https://github.com/dwzhu-pku/PaperBanana) | **Done** — `/diagrams paper` subcommand | Academic illustrations. External tool (HuggingFace Space or self-host) |
+| [GitDiagram](https://github.com/ahmedkhaleel2004/gitdiagram) | **Done** — `/diagrams gitdiagram` subcommand | Repo → interactive Mermaid architecture diagram. External web service |
+| claude-mermaid MCP | **Replaced** by drawio-mcp | Removed from `.mcp.json.jinja` |
+| pyreverse | **Replaced** by excalidraw-diagram-skill | Removed from `/diagrams` skill |
+| mcp-image (Gemini image gen) | **Replaced** by PaperBanana | Removed from `.mcp.json.jinja` |
+| mingrammer/diagrams | **Replaced** by drawio-mcp | Removed from `/diagrams` skill |
 
 ### P1 — Worth evaluating
 
@@ -101,15 +107,9 @@ https://github.com/mattpocock/skills/tree/main/skills/engineering/zoom-out
 | [code-review-graph](https://github.com/tirth8205/code-review-graph) | 17k | GraphRAG code review MCP + VSCode ext. Claims 6.8x fewer tokens on reviews | Complements multi-review? |
 | [planning-with-files](https://github.com/othmanadi/planning-with-files) | 22k | Manus-style persistent markdown planning. Claude Code skill + multi-editor | Overlaps feature-dev + plan mode? |
 | [claude-task-master](https://github.com/eyaltoledano/claude-task-master) | 27k | Task management MCP server + CLI. TypeScript monorepo | Overlaps TaskCreate/TaskUpdate? |
-| [PaperBanana](https://github.com/llmsresearch/paperbanana) | — | 5-agent pipeline for academic figures. VLM-as-Judge | Research flavor addition? |
-| [CodeBoarding](https://github.com/CodeBoarding/CodeBoarding) | — | Hybrid static+LLM diagrams. Validates LLM output against control-flow graph. GH Action | Best-of-both-worlds diagramming? |
 | [Understand-Anything](https://github.com/Lum1104/Understand-Anything) | — | Codebase -> interactive knowledge graph dashboard. 5-agent pipeline. Semantic search | Very new, very capable |
 | [UI-UX Pro Max](https://www.claudepluginhub.com/plugins/nextlevelbuilder-ui-ux-pro-max) | — | UI/UX design skill from Claude Plugin Hub | Marketplace candidate? |
 | [Impeccable](https://www.claudepluginhub.com/plugins/pbakaus-impeccable) | — | Design quality/polish skill | Marketplace candidate? |
-| [Structurizr DSL](https://structurizr.com/) | — | C4 architecture models. One model -> Context/Container/Component diagrams. Official MCP server | Architecture documentation? |
-| [mingrammer/diagrams](https://github.com/mingrammer/diagrams) | — | Cloud architecture diagrams via Python. AWS/Azure/GCP icons. Claude can generate the Python | Cloud project bootstraps? |
-| [D2 MCP](https://github.com/i2y/d2mcp) | — | D2 diagrams from Claude. Oracle API for incremental edits, 20 themes, ELK layout | Higher quality than Mermaid for complex diagrams? |
-| [UML MCP](https://github.com/antoinebou12/uml-mcp) | — | 30+ diagram types via Kroki: PlantUML, Mermaid, D2, Graphviz, ERD, BPMN, C4, TikZ | Swiss-army knife for diagrams? |
 
 ### P2 — Explore when time permits
 
@@ -118,8 +118,6 @@ https://github.com/mattpocock/skills/tree/main/skills/engineering/zoom-out
 | [STORM](https://github.com/stanford-oval/storm) | 28k | LLM-powered knowledge curation, Wikipedia-quality articles with citations | Sheet 1 priority: 10/10. Research lit review + background writing |
 | [GPT-Researcher](https://github.com/assafelovic/gpt-researcher) | 20.5k | Autonomous deep-research agent, $0.10/task, Claude MCP integration | Sheet 1 priority: 9/10. Rapid literature surveys |
 | [Code2Tutorial](https://github.com/PocketFlow-AI/code2tutorial) | 6k | Codebase -> shareable tutorial. Compare with codebase-to-course in `cultivation/wip/` | Most mature tutorial option |
-| [GitDiagram](https://github.com/ahmedkhaleel2004/gitdiagram) | 15k | Auto architecture diagram from any repo. Clickable Mermaid. May hallucinate | Quick first look only |
-| Gemini image gen MCPs | — | Stylized diagrams via Nano Banana / Imagen 4 ($0.02-$0.24/image) | For marketing/hero visuals |
 
 ### Existing WIP — Decision needed
 
