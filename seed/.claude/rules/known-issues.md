@@ -24,6 +24,13 @@
 **Do:** After pushing significant changes, bump `VERSION`, create a tag (`git tag v<version>`), and push the tag (`git push origin v<version>`). Use `bin/release.sh <version>` which automates this.
 **Why:** In v3.1.0 release, the diagrams skill and drawio MCP were committed and pushed but the `v3.0.0` tag pointed 28 commits behind. Smoke tests failed because Copier fetched the old tag.
 
+## Upstream skill adoption: verify all linked files exist
+
+**What:** When replacing skill files with upstream originals, the new SKILL.md may reference sibling `.md` files (e.g., `[tests.md](tests.md)`) that weren't pulled locally.
+**Don't:** Adopt a SKILL.md without checking that every relative markdown link in it resolves to an existing local file.
+**Do:** After replacing, run: `grep -oE '\([^)]+\.md\)' SKILL.md | tr -d '()' | while read f; do test -f "$f" || echo "MISSING: $f"; done`
+**Why:** In the Pocock upstream replacement (2026-05-23), 6 broken links were caught only by Wave 3 self-critic. TDD's SKILL.md linked to tests.md, mocking.md, etc. that hadn't been fetched.
+
 ## Copier `--trust` flag required for this template
 
 **What:** This template uses `_tasks` in `copier.yml` (post-generation shell commands). Copier refuses to run tasks without `--trust`.

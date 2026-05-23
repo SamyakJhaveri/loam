@@ -27,7 +27,8 @@
     ],
     "ask": [
       "Bash(mkdir:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "mcp__drawio"
     ]
   },
   "hooks": {
