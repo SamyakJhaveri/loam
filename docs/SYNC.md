@@ -53,7 +53,7 @@ After a PR merges into the template's `main`, propagate to existing projects:
 
 ```bash
 cd <my-project>
-uvx copier update
+uvx copier update --trust
 ```
 
 Copier renders the new template against the recorded answers, diffs against current project state, and offers a three-way merge for any conflict. Local changes that don't conflict are preserved. `.copier-answers.yml` records the new ref.

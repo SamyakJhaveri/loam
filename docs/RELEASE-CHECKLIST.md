@@ -147,13 +147,13 @@ When you run `copier copy`, Loam generates a project with:
 
 \```bash
 # Bootstrap a new project
-uvx copier copy gh:samyakjhaveri/loam ./my-project
+uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 
 # With the research flavor
-uvx copier copy gh:samyakjhaveri/loam ./my-project  # answer "yes" to is_research
+uvx copier copy --trust gh:samyakjhaveri/loam ./my-project  # answer "yes" to is_research
 
 # Pull template updates into an existing project
-cd my-project && uvx copier update
+cd my-project && uvx copier update --trust
 \```
 
 ## Project structure
@@ -249,13 +249,13 @@ bin/verify-template.sh
 # Expected: ALL OK
 
 # 2. Test fresh copier copy (default flavor)
-tmpdir=$(mktemp -d) && uvx copier copy --defaults . "$tmpdir/test-default" && echo "OK: default render" && rm -rf "$tmpdir"
+tmpdir=$(mktemp -d) && uvx copier copy --trust --defaults . "$tmpdir/test-default" && echo "OK: default render" && rm -r "$tmpdir"
 
 # 3. Test fresh copier copy (research flavor)
-tmpdir=$(mktemp -d) && uvx copier copy --defaults -d is_research=true . "$tmpdir/test-research" && echo "OK: research render" && rm -rf "$tmpdir"
+tmpdir=$(mktemp -d) && uvx copier copy --trust --defaults -d is_research=true . "$tmpdir/test-research" && echo "OK: research render" && rm -r "$tmpdir"
 
 # 4. Test copier update (exercises conflict resolution + .copier-answers.yml merge)
-tmpdir=$(mktemp -d) && uvx copier copy --defaults . "$tmpdir/test-update" && cd "$tmpdir/test-update" && uvx copier update --defaults && echo "OK: copier update" && cd - && rm -rf "$tmpdir"
+tmpdir=$(mktemp -d) && uvx copier copy --trust --defaults . "$tmpdir/test-update" && cd "$tmpdir/test-update" && uvx copier update --trust --defaults && echo "OK: copier update" && cd - && rm -r "$tmpdir"
 ```
 
 Then: `/validate` -> `/commit` -> make the repo public.

@@ -18,7 +18,7 @@ Copier tracks which files it rendered from the template. When `_subdirectory` ch
 ### 2. Re-bootstrap from v3.0 template
 
     cd ..
-    uvx copier copy gh:samyakjhaveri/loam ./my-project-v3
+    uvx copier copy --trust gh:samyakjhaveri/loam ./my-project-v3
 
 ### 3. Restore customizations
 

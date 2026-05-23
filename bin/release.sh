@@ -37,4 +37,4 @@ git push origin HEAD
 git push origin "v$VERSION"
 
 ok "released v$VERSION"
-echo "Copier users can now: copier copy --vcs-ref v$VERSION gh:samyakjhaveri/loam ./my-project"
+echo "Copier users can now: copier copy --trust --vcs-ref v$VERSION gh:samyakjhaveri/loam ./my-project"

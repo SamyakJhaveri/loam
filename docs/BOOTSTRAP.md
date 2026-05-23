@@ -5,20 +5,22 @@
 ## New project from the latest template
 
 ```bash
-uvx copier copy gh:samyakjhaveri/loam ./my-project
+uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 cd ./my-project
 ```
+
+> **`--trust` is required.** This template uses `_tasks` in `copier.yml` for post-generation steps (research flavor overlay, `git init`, seed directories). Without `--trust`, Copier skips all tasks silently, producing an incomplete project.
 
 To pin to a specific version:
 
 ```bash
-uvx copier copy --vcs-ref v3.0.0 gh:samyakjhaveri/loam ./my-project
+uvx copier copy --trust --vcs-ref v3.1.0 gh:samyakjhaveri/loam ./my-project
 ```
 
 To run non-interactively:
 
 ```bash
-uvx copier copy --defaults \
+uvx copier copy --trust --defaults \
   --data "project_name=my-project" \
   --data "is_research=true" \
   gh:samyakjhaveri/loam ./my-project
@@ -51,7 +53,7 @@ After Copier finishes, the project has:
 
 ```bash
 cd ./my-project
-uvx copier update
+uvx copier update --trust
 ```
 
 Copier renders the latest template against the recorded answers, diffs against the current project state, and offers a three-way merge for conflicts. Local edits that don't conflict are preserved. The `.copier-answers.yml` is updated to record the new ref.
@@ -77,6 +79,33 @@ bin/verify-template.sh
 ```
 
 Asserts: single-tree invariant (no `template/` subdir), valid JSON in `settings.json`, agentskills.io schema for every `SKILL.md` (name + description present in front-matter), Copier render produces a valid project in both `default` and `is_research=true` variants, no template-author files leak. Exits non-zero on any violation.
+
+## Post-release smoke test
+
+After tagging and pushing a new release, verify the full Copier flow produces a working project:
+
+```bash
+tmpdir=$(mktemp -d)
+uvx copier copy --trust \
+  -d project_name=smoke-test \
+  -d is_research=false \
+  -d github_repo="" \
+  gh:samyakjhaveri/loam "$tmpdir/smoke-test"
+
+cd "$tmpdir/smoke-test"
+
+# Core assertions
+ls .claude/skills/diagrams/SKILL.md && echo "OK: diagrams skill present" || echo "FAIL: diagrams missing"
+python3 -c "import json; d=json.load(open('.mcp.json')); assert 'drawio' in d['mcpServers']; print('OK: drawio MCP wired')"
+python3 -c "import json; d=json.load(open('.mcp.json')); assert 'codegraphcontext' in d['mcpServers']; print('OK: CGC MCP wired')"
+ls .claude/settings.json && echo "OK: settings.json present" || echo "FAIL: settings missing"
+test -d .git && echo "OK: git initialized" || echo "FAIL: git not initialized"
+
+# Clean up
+cd - && rm -r "$tmpdir"
+```
+
+> **Common failure:** If assertions fail but `copier copy` reported a valid version, check that the git tag points to HEAD — Copier resolves the latest tag, not the latest commit. See `.claude/rules/known-issues.md` for details.
 
 ## After bootstrap — first session
 

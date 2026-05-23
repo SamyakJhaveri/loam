@@ -53,7 +53,7 @@ Render from **committed git state** (not working tree) to match Copier's behavio
 
 ```bash
 TMPDIR=$(mktemp -d)
-uvx copier copy --vcs-ref HEAD --defaults . "$TMPDIR/test-default" 2>&1
+uvx copier copy --trust --vcs-ref HEAD --defaults . "$TMPDIR/test-default" 2>&1
 echo "Exit code: $?"
 ls -la "$TMPDIR/test-default/"
 ```

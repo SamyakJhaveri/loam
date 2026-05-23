@@ -1,6 +1,6 @@
 # CLAUDE.md — Loam
 
-This repo IS a Copier template AND a Claude Code project (v3.0). The `.claude/` symlink points to `seed/.claude/`, so the same config that ships to bootstrapped projects activates here.
+This repo IS a Copier template AND a Claude Code project (v3.1). The `.claude/` symlink points to `seed/.claude/`, so the same config that ships to bootstrapped projects activates here.
 
 User preferences:
 - Challenge assumptions or offer corrections anytime
@@ -10,10 +10,10 @@ User preferences:
 
 ```bash
 # Bootstrap a new project
-uvx copier copy gh:samyakjhaveri/loam ./my-project
+uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 
 # Pull template updates into an existing project
-cd my-project && uvx copier update
+cd my-project && uvx copier update --trust
 
 # Promote a project-built skill back to this template
 template-sync promote --layer generic .claude/skills/<name>/SKILL.md
@@ -43,7 +43,7 @@ Always loaded:
 - `.claude/rules/workflow.md` — 6-stage session workflow + anti-patterns
 - `.claude/rules/known-issues.md` — recurring gotchas
 
-ICM routing (v3.0):
+ICM routing:
 - `.claude/rules/L0-budget.md` — when authoring CLAUDE.md
 - `.claude/rules/context-md-anatomy.md` — when authoring CONTEXT.md
 - `.claude/rules/stage-contract.md` — when invoking feature-dev / fix-bug / `/validate`

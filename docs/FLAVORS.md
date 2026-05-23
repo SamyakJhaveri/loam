@@ -8,10 +8,10 @@ The `is_research` boolean question in `copier.yml` decides at bootstrap whether 
 
 ```bash
 # Engineering project — default
-uvx copier copy gh:samyakjhaveri/loam ./my-app
+uvx copier copy --trust gh:samyakjhaveri/loam ./my-app
 
 # Research project — opt-in
-uvx copier copy --data "is_research=true" gh:samyakjhaveri/loam ./my-paper
+uvx copier copy --trust --data "is_research=true" gh:samyakjhaveri/loam ./my-paper
 ```
 
 ## What the default seed includes

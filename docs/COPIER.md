@@ -24,27 +24,31 @@ The template content lives in `seed/` (`_subdirectory: "seed"` in `copier.yml`).
 
 ```bash
 cd my-project
-uvx copier update                # apply latest template, three-way merge on conflicts
-uvx copier update --pretend      # dry-run; show what would change
+uvx copier update --trust              # apply latest template, three-way merge on conflicts
+uvx copier update --trust --pretend    # dry-run; show what would change
 ```
 
 Copier reads `.copier-answers.yml` to know which template ref the project was last rendered against, fetches the current template, and diffs.
 
 ## Versioning
 
-Template versions are Git tags (e.g. `v3.0.0`). Pin a specific version at bootstrap:
+Template versions are Git tags (e.g. `v3.1.0`). **Copier always resolves to the latest tag, not the latest commit on main.** If you push features without tagging, `copier copy` will not include them.
+
+Pin a specific version at bootstrap:
 
 ```bash
-uvx copier copy --vcs-ref v3.0.0 gh:samyakjhaveri/loam ./my-project
+uvx copier copy --trust --vcs-ref v3.1.0 gh:samyakjhaveri/loam ./my-project
 ```
 
 New releases via `bin/release.sh`:
 
 ```bash
-bin/release.sh 2.1.0
+bin/release.sh 3.2.0
 ```
 
 The script bumps `VERSION`, commits, tags, and pushes.
+
+> **Gotcha:** Always create a new tag after pushing significant changes. Without a tag update, `copier copy` silently serves the old version. Use `--vcs-ref=HEAD` for testing unreleased changes.
 
 ## `.copier-answers.yml`
 

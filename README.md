@@ -15,13 +15,13 @@ When you run `copier copy`, Loam generates a project with:
 
 ```bash
 # Bootstrap a new project
-uvx copier copy gh:samyakjhaveri/loam ./my-project
+uvx copier copy --trust gh:samyakjhaveri/loam ./my-project
 
 # With the research flavor
-uvx copier copy -d is_research=true gh:samyakjhaveri/loam ./my-project
+uvx copier copy --trust -d is_research=true gh:samyakjhaveri/loam ./my-project
 
 # Pull template updates into an existing project
-cd my-project && uvx copier update
+cd my-project && uvx copier update --trust
 ```
 
 ## Project structure
