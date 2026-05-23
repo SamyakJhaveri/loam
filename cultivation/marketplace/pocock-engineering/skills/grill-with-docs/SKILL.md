@@ -1,55 +1,89 @@
 ---
 name: grill-with-docs
-description: >
-  Stress-test plans against the project's domain model through relentless
-  questioning. Updates DOMAIN.md glossary and creates ADRs inline as decisions
-  crystallize. Use before implementation when the domain language is fuzzy
-  or the plan has implicit assumptions. NOT for: code review (use /multi-review),
-  spec generation (use /gen-spec), or editing CONTEXT.md routing files.
+description: Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation (DOMAIN.md, ADRs) inline as decisions crystallise. Use when user wants to stress-test a plan against their project's language and documented decisions.
 auto-activate: false
 ---
 
-# Grill With Docs
+<what-to-do>
 
-Stress-test plans against existing domain models and documentation through relentless questioning.
+Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
 
-## Arguments
+Ask the questions one at a time, waiting for feedback on each question before continuing.
 
-`$ARGUMENTS` — the plan, proposal, or design to grill (free-form description or file path)
+If a question can be answered by exploring the codebase, explore the codebase instead.
 
-## Workflow
+</what-to-do>
 
-### Phase 1: Load Domain Context
+<supporting-info>
 
-- Look for existing `DOMAIN.md` or `DOMAIN-MAP.md` at the project root or in the relevant subdirectory
-- Check for ADRs in `docs/adr/` if the directory exists
-- Read the relevant codebase area to understand current behavior
+## Domain awareness
 
-**Important:** This skill works with `DOMAIN.md` for domain glossary. It does NOT read or write `CONTEXT.md`, which is reserved for ICM L1 routing.
+During codebase exploration, also look for existing documentation:
 
-### Phase 2: Grill
+### File structure
 
-Ask one question at a time. Wait for feedback before proceeding.
+Most repos have a single context:
 
-- Challenge vague terminology against the glossary: "Your glossary defines 'cancellation' as X, but you seem to mean Y"
-- Probe edge cases with concrete scenarios, not abstract "what ifs"
-- Surface contradictions between stated intent and code behavior
-- Explore the codebase when answers are available there instead of asking the user
+```
+/
+├── DOMAIN.md
+├── docs/
+│   └── adr/
+│       ├── 0001-event-sourced-orders.md
+│       └── 0002-postgres-for-write-model.md
+└── src/
+```
 
-### Phase 3: Capture (inline, as decisions crystallize)
+If a `DOMAIN-MAP.md` exists at the root, the repo has multiple contexts. The map points to where each one lives:
 
-**Naming a concept not in the glossary?** Add the term to `DOMAIN.md` with a definition and _Avoid_ aliases. Create `DOMAIN.md` lazily if it doesn't exist — see `DOMAIN-FORMAT.md` for the structure.
+```
+/
+├── DOMAIN-MAP.md
+├── docs/
+│   └── adr/                          ← system-wide decisions
+├── src/
+│   ├── ordering/
+│   │   ├── DOMAIN.md
+│   │   └── docs/adr/                 ← context-specific decisions
+│   └── billing/
+│       ├── DOMAIN.md
+│       └── docs/adr/
+```
 
-**Sharpening a fuzzy term?** Update the definition in `DOMAIN.md` right there.
+Create files lazily — only when you have something to write. If no `DOMAIN.md` exists, create one when the first term is resolved. If no `docs/adr/` exists, create it when the first ADR is needed.
 
-**User rejects a direction with a load-bearing reason?** Offer an ADR:
-> "Want me to record this as an ADR so future reviews don't re-suggest it?"
+## During the session
 
-Only offer when the reason would be needed by a future explorer. Skip ephemeral reasons ("not worth it right now") and self-evident ones. See `ADR-FORMAT.md` for the format and the three-part test.
+### Challenge against the glossary
 
-## Rules
+When the user uses a term that conflicts with the existing language in `DOMAIN.md`, call it out immediately. "Your glossary defines 'cancellation' as X, but you seem to mean Y — which is it?"
 
-1. One question at a time — never a batch of questions
-2. Never write to `CONTEXT.md` — domain glossary lives in `DOMAIN.md`
-3. Create files lazily — only when there's content to capture
-4. ADRs only when the decision is hard to reverse, surprising, AND a genuine trade-off (three-part test)
+### Sharpen fuzzy language
+
+When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
+
+### Discuss concrete scenarios
+
+When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
+
+### Cross-reference with code
+
+When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
+
+### Update DOMAIN.md inline
+
+When a term is resolved, update `DOMAIN.md` right there. Don't batch these up — capture them as they happen. Use the format in [DOMAIN-FORMAT.md](./DOMAIN-FORMAT.md).
+
+`DOMAIN.md` should be totally devoid of implementation details. Do not treat `DOMAIN.md` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
+
+### Offer ADRs sparingly
+
+Only offer to create an ADR when all three are true:
+
+1. **Hard to reverse** — the cost of changing your mind later is meaningful
+2. **Surprising without context** — a future reader will wonder "why did they do it this way?"
+3. **The result of a real trade-off** — there were genuine alternatives and you picked one for specific reasons
+
+If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).
+
+</supporting-info>

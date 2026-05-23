@@ -1,76 +1,84 @@
 ---
 name: to-issues
-description: >
-  Decompose a plan, spec, or PRD into independently-grabbable GitHub issues
-  using tracer-bullet vertical slices. Classifies each as HITL or AFK.
-  Use after /gen-spec produces a spec, or when a plan needs decomposition.
-  NOT for: writing specs (use /gen-spec), implementing features (use /feature-dev).
+description: Break a plan, spec, or PRD into independently-grabbable issues on the project issue tracker using tracer-bullet vertical slices. Use when user wants to convert a plan into issues, create implementation tickets, or break down work into issues.
 auto-activate: false
 ---
 
-# Plan to Issues
+# To Issues
 
-Convert plans, specs, or PRDs into independently-grabbable issues using tracer-bullet vertical slices.
+Break a plan into independently-grabbable issues using vertical slices (tracer bullets).
 
-## Arguments
+The issue tracker and triage label vocabulary should have been provided to you.
 
-`$ARGUMENTS` — path to spec/plan file, or issue/PR URL to decompose
+## Process
 
-## Core Principle
+### 1. Gather context
 
-Each slice delivers a narrow but COMPLETE path through every layer (schema, API, UI, tests). A completed slice is demoable or verifiable on its own. Never decompose horizontally (all models first, then all views, then all tests).
+Work from whatever is already in the conversation context. If the user passes an issue reference (issue number, URL, or path) as an argument, fetch it from the issue tracker and read its full body and comments.
 
-## Workflow
+### 2. Explore the codebase (optional)
 
-### Phase 1: Gather Context
+If you have not already explored the codebase, do so to understand the current state of the code. Issue titles and descriptions should use the project's domain glossary vocabulary, and respect ADRs in the area you're touching.
 
-- Read the spec/plan/PRD (if `$ARGUMENTS` is a file path, read it; if a URL, fetch it)
-- If no spec exists, suggest running `/gen-spec` first
-- Explore the codebase to understand current state and conventions
+### 3. Draft vertical slices
 
-### Phase 2: Draft Vertical Slices
+Break the plan into **tracer bullet** issues. Each issue is a thin vertical slice that cuts through ALL integration layers end-to-end, NOT a horizontal slice of one layer.
 
-For each slice, draft:
+Slices may be 'HITL' or 'AFK'. HITL slices require human interaction, such as an architectural decision or a design review. AFK slices can be implemented and merged without human interaction. Prefer AFK over HITL where possible.
 
-- **Title** — short, action-oriented (e.g., "Add user signup endpoint with validation")
-- **Scope** — what this slice touches across ALL layers
-- **Acceptance criteria** — specific, testable conditions
-- **Classification:**
-  - **HITL** (Human In The Loop) — requires human judgment: architectural decisions, design reviews, access permissions
-  - **AFK** (Away From Keyboard) — can be implemented and merged autonomously. Preferred when scope is clear and testable.
-- **Blocking** — which other slices must complete first (if any)
+<vertical-slice-rules>
+- Each slice delivers a narrow but COMPLETE path through every layer (schema, API, UI, tests)
+- A completed slice is demoable or verifiable on its own
+- Prefer many thin slices over few thick ones
+</vertical-slice-rules>
 
-### Phase 3: Quiz the User
+### 4. Quiz the user
 
-Present the slices and ask:
-- Is the granularity right? (Too big = hard to review. Too small = overhead.)
-- Are dependencies correctly identified?
-- Are HITL/AFK classifications correct?
-- Any slices that should be merged or split?
+Present the proposed breakdown as a numbered list. For each slice, show:
 
-### Phase 4: Publish
+- **Title**: short descriptive name
+- **Type**: HITL / AFK
+- **Blocked by**: which other slices (if any) must complete first
+- **User stories covered**: which user stories this addresses (if the source material has them)
 
-Publish issues in dependency order using the project's issue tracker. Each issue includes:
+Ask the user:
 
-```
-## Scope
-<what this slice touches>
+- Does the granularity feel right? (too coarse / too fine)
+- Are the dependency relationships correct?
+- Should any slices be merged or split further?
+- Are the correct slices marked as HITL and AFK?
 
-## Acceptance Criteria
-- [ ] <criterion 1>
-- [ ] <criterion 2>
+Iterate until the user approves the breakdown.
 
-## Classification: AFK | HITL
-<reason for classification>
+### 5. Publish the issues to the issue tracker
 
-## Blocks / Blocked By
-- Blocks: #<issue>
-- Blocked by: #<issue>
-```
+For each approved slice, publish a new issue to the issue tracker. Use the issue body template below. These issues are considered ready for AFK agents, so publish them with the correct triage label unless instructed otherwise.
 
-## Rules
+Publish issues in dependency order (blockers first) so you can reference real issue identifiers in the "Blocked by" field.
 
-1. Every slice must be a vertical tracer bullet — never a horizontal layer
-2. Completed slices must be independently verifiable
-3. Prefer AFK classification when the scope is unambiguous
-4. Publish in dependency order so blocked issues are created after their blockers
+<issue-template>
+## Parent
+
+A reference to the parent issue on the issue tracker (if the source was an existing issue, otherwise omit this section).
+
+## What to build
+
+A concise description of this vertical slice. Describe the end-to-end behavior, not layer-by-layer implementation.
+
+Avoid specific file paths or code snippets — they go stale fast. Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it here and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+
+## Acceptance criteria
+
+- [ ] Criterion 1
+- [ ] Criterion 2
+- [ ] Criterion 3
+
+## Blocked by
+
+- A reference to the blocking ticket (if any)
+
+Or "None - can start immediately" if no blockers.
+
+</issue-template>
+
+Do NOT close or modify any parent issue.

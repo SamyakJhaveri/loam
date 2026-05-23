@@ -1,18 +1,16 @@
 # DOMAIN.md Format
 
-The domain glossary lives in `DOMAIN.md` (NOT `CONTEXT.md`, which is reserved for ICM L1 routing). This file captures the project's ubiquitous language — the terms that mean something specific in this codebase.
-
 ## Structure
 
 ```md
-# Domain Language — {Project Name}
+# {Context Name}
 
-{One or two sentence description of what domain this covers.}
+{One or two sentence description of what this context is and why it exists.}
 
 ## Language
 
 **Order**:
-A confirmed purchase request from a customer, containing one or more line items.
+{A one or two sentence description of the term}
 _Avoid_: Purchase, transaction
 
 **Invoice**:
@@ -22,36 +20,28 @@ _Avoid_: Bill, payment request
 **Customer**:
 A person or organization that places orders.
 _Avoid_: Client, buyer, account
-
-## Flagged Ambiguities
-
-- **"Event"** — currently used for both domain events (OrderPlaced) and UI events (onClick). Needs disambiguation.
-
-## Example Dialogue
-
-> **Dev:** "When a customer cancels, do we void the invoice?"
-> **Domain expert:** "Only if it hasn't been sent. Once sent, we issue a credit note instead."
 ```
 
 ## Rules
 
-- **Be opinionated.** When multiple words exist for the same concept, pick the best one and list others as _Avoid_.
-- **Flag conflicts explicitly.** If a term is used ambiguously, call it out in "Flagged Ambiguities."
-- **Keep definitions tight.** One or two sentences max. What it IS, not what it does.
-- **Only include terms specific to this project's domain.** General programming concepts don't belong.
-- **Group terms under subheadings** when natural clusters emerge.
-- **Write an example dialogue** demonstrating how terms interact.
+- **Be opinionated.** When multiple words exist for the same concept, pick the best one and list the others as aliases to avoid.
+- **Flag conflicts explicitly.** If a term is used ambiguously, call it out in "Flagged ambiguities" with a clear resolution.
+- **Keep definitions tight.** One or two sentences max. Define what it IS, not what it does.
+- **Show relationships.** Use bold term names and express cardinality where obvious.
+- **Only include terms specific to this project's context.** General programming concepts (timeouts, error types, utility patterns) don't belong even if the project uses them extensively. Before adding a term, ask: is this a concept unique to this context, or a general programming concept? Only the former belongs.
+- **Group terms under subheadings** when natural clusters emerge. If all terms belong to a single cohesive area, a flat list is fine.
+- **Write an example dialogue.** A conversation between a dev and a domain expert that demonstrates how the terms interact naturally and clarifies boundaries between related concepts.
 
-## Single vs Multi-Domain Repos
+## Single vs multi-context repos
 
-**Single domain (most repos):** One `DOMAIN.md` at the repo root.
+**Single context (most repos):** One `DOMAIN.md` at the repo root.
 
-**Multiple domains:** A `DOMAIN-MAP.md` at the repo root lists the domains and their relationships:
+**Multiple contexts:** A `DOMAIN-MAP.md` at the repo root lists the contexts, where they live, and how they relate to each other:
 
 ```md
-# Domain Map
+# Context Map
 
-## Domains
+## Contexts
 
 - [Ordering](./src/ordering/DOMAIN.md) — receives and tracks customer orders
 - [Billing](./src/billing/DOMAIN.md) — generates invoices and processes payments
@@ -59,12 +49,15 @@ _Avoid_: Client, buyer, account
 
 ## Relationships
 
-- **Ordering → Fulfillment**: Ordering emits `OrderPlaced` events; Fulfillment consumes them
-- **Fulfillment → Billing**: Fulfillment emits `ShipmentDispatched`; Billing generates invoices
+- **Ordering → Fulfillment**: Ordering emits `OrderPlaced` events; Fulfillment consumes them to start picking
+- **Fulfillment → Billing**: Fulfillment emits `ShipmentDispatched` events; Billing consumes them to generate invoices
 - **Ordering ↔ Billing**: Shared types for `CustomerId` and `Money`
 ```
 
 The skill infers which structure applies:
-- If `DOMAIN-MAP.md` exists, read it to find domains
-- If only a root `DOMAIN.md` exists, single domain
+
+- If `DOMAIN-MAP.md` exists, read it to find contexts
+- If only a root `DOMAIN.md` exists, single context
 - If neither exists, create a root `DOMAIN.md` lazily when the first term is resolved
+
+When multiple contexts exist, infer which one the current topic relates to. If unclear, ask.
