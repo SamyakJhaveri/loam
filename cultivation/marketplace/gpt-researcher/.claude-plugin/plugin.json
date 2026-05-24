@@ -1,0 +1,9 @@
+{
+  "name": "gpt-researcher",
+  "version": "0.1.0",
+  "description": "Autonomous multi-source research agent with MCP server integration. Planner/executor architecture, parallel source gathering. Requires 3 API keys (Tavily + Anthropic + embeddings). MCP server is v0.0.1 — expect rough edges. Research-flavor tool. NOT for: quick searches (use /researcher) or non-research projects.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "email": "samyakjhaveri2799@gmail.com"
+  }
+}

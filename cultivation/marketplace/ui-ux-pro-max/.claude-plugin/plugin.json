@@ -1,0 +1,9 @@
+{
+  "name": "ui-ux-pro-max",
+  "version": "0.1.0",
+  "description": "Design system generator with curated palettes, font pairings, UI styles, and UX guidelines. Installs via Claude Plugin Hub or npm (uipro-cli). Frontend-focused — install for web/mobile UI projects. NOT for: backend-only or CLI projects.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "email": "samyakjhaveri2799@gmail.com"
+  }
+}

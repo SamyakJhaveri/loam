@@ -1,0 +1,9 @@
+{
+  "name": "nature-skills",
+  "version": "0.1.0",
+  "description": "9 Nature-journal skills: nature-figure (Matplotlib SVG), nature-polishing (prose refinement), nature-writing (manuscript drafting), nature-citation (CNS-family citations), nature-data (FAIR metadata), nature-reader (bilingual paper conversion), nature-response (reviewer response letters), nature-paper2ppt (PPTX decks), nature-academic-search (MCP multi-source). MIT license. Research-flavor tool. NOT for: non-academic projects.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "email": "samyakjhaveri2799@gmail.com"
+  }
+}

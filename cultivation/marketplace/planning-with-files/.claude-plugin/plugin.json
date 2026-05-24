@@ -1,0 +1,9 @@
+{
+  "name": "planning-with-files",
+  "version": "0.1.0",
+  "description": "Manus-style persistent markdown planning. Creates task_plan.md, findings.md, progress.md for cross-session persistence. Hook-based re-injection after /compact. NOTE: overlaps with Loam's feature-dev, plan mode, and handoff skills — install only if you prefer file-based planning over Loam's built-in approach.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "email": "samyakjhaveri2799@gmail.com"
+  }
+}

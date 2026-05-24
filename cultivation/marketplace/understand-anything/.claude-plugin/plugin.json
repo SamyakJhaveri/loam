@@ -1,0 +1,9 @@
+{
+  "name": "understand-anything",
+  "version": "0.1.0",
+  "description": "Multi-agent codebase analysis pipeline with interactive React knowledge graph dashboard. Commands: /understand, /understand-dashboard, /understand-chat, /understand-diff, /understand-domain. NOTE: overlaps with Semble + CodeGraphContext — best for onboarding and visual architecture exploration. LLM cost during initial scan.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "email": "samyakjhaveri2799@gmail.com"
+  }
+}

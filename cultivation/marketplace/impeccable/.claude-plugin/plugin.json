@@ -1,0 +1,9 @@
+{
+  "name": "impeccable",
+  "version": "0.1.0",
+  "description": "Design polish with deterministic anti-pattern rules + LLM critique. By Paul Bakaus (jQuery UI creator). Commands: polish, audit, critique, typeset, animate, colorize, layout, delight. Detects AI-generated design fingerprints. Apache-2.0. NOT for: backend-only projects.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "email": "samyakjhaveri2799@gmail.com"
+  }
+}

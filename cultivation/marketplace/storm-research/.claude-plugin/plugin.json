@@ -1,0 +1,9 @@
+{
+  "name": "storm-research",
+  "version": "0.1.0",
+  "description": "Stanford STORM — LLM research pipeline for Wikipedia-quality articles with citations. Multi-perspective research, Co-STORM collaborative mode. Requires Python + search engine API key. Research-flavor tool — complements /researcher with systematic literature review. NOT for: quick lookups (use /researcher) or non-research projects.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "email": "samyakjhaveri2799@gmail.com"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "academic-research",
+  "version": "0.1.0",
+  "description": "Academic research pipeline — deep research (multi-agent team, PRISMA support), academic paper (LaTeX/DOCX output), peer review (multi-perspective rubrics), pipeline orchestrator (multi-stage with integrity gates). CC BY-NC 4.0 license. Research-flavor tool. NOT for: non-academic projects or commercial use (license restriction).",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "email": "samyakjhaveri2799@gmail.com"
+  }
+}

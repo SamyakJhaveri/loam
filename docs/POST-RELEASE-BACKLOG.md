@@ -7,6 +7,8 @@
 
 ## Matt Pocock Skills — Deep Dive Results
 
+> **Upstream replacement completed 2026-05-23.** All 7 adopted skills replaced with upstream originals (DOMAIN.md rename + auto-activate only). to-prd and zoom-out adopted. 4 high-impact reference files pulled. Cross-skill references restored.
+
 Full analysis of [mattpocock/skills](https://github.com/mattpocock/skills) (100k+ stars, 26 skills). Seven recommended for adoption, eight for pattern study, eleven to skip.
 
 ### Skills to ADOPT (7) — in priority order
@@ -100,24 +102,26 @@ https://github.com/mattpocock/skills/tree/main/skills/engineering/zoom-out
 | mcp-image (Gemini image gen) | **Replaced** by PaperBanana | Removed from `.mcp.json.jinja` |
 | mingrammer/diagrams | **Replaced** by drawio-mcp | Removed from `/diagrams` skill |
 
-### P1 — Worth evaluating
+### P1 — Evaluated (2026-05-23)
 
-| Tool | Stars | What | Question |
-|------|-------|------|----------|
-| [code-review-graph](https://github.com/tirth8205/code-review-graph) | 17k | GraphRAG code review MCP + VSCode ext. Claims 6.8x fewer tokens on reviews | Complements multi-review? |
-| [planning-with-files](https://github.com/othmanadi/planning-with-files) | 22k | Manus-style persistent markdown planning. Claude Code skill + multi-editor | Overlaps feature-dev + plan mode? |
-| [claude-task-master](https://github.com/eyaltoledano/claude-task-master) | 27k | Task management MCP server + CLI. TypeScript monorepo | Overlaps TaskCreate/TaskUpdate? |
-| [Understand-Anything](https://github.com/Lum1104/Understand-Anything) | — | Codebase -> interactive knowledge graph dashboard. 5-agent pipeline. Semantic search | Very new, very capable |
-| [UI-UX Pro Max](https://www.claudepluginhub.com/plugins/nextlevelbuilder-ui-ux-pro-max) | — | UI/UX design skill from Claude Plugin Hub | Marketplace candidate? |
-| [Impeccable](https://www.claudepluginhub.com/plugins/pbakaus-impeccable) | — | Design quality/polish skill | Marketplace candidate? |
+| Tool | Status | Notes |
+|------|--------|-------|
+| [code-review-graph](https://github.com/tirth8205/code-review-graph) | **Done** — marketplace bundle | MCP server, blast-radius analysis. 17k stars, MIT |
+| [planning-with-files](https://github.com/othmanadi/planning-with-files) | **Done** — marketplace bundle | Persistent markdown planning. 22k stars, MIT. Heavy overlap with Loam |
+| [claude-task-master](https://github.com/eyaltoledano/claude-task-master) | **Skipped** | MIT + Commons Clause license, native Tasks supersede |
+| [Understand-Anything](https://github.com/Lum1104/Understand-Anything) | **Done** — marketplace bundle | Knowledge graph dashboard. 21k stars, MIT |
+| [UI-UX Pro Max](https://www.claudepluginhub.com/plugins/nextlevelbuilder-ui-ux-pro-max) | **Done** — marketplace bundle | Design system generator. 82k stars (possibly inflated), MIT |
+| [Impeccable](https://www.claudepluginhub.com/plugins/pbakaus-impeccable) | **Done** — marketplace bundle | Design polish, Paul Bakaus. 30k stars, Apache-2.0 |
 
-### P2 — Explore when time permits
+### P2 — Evaluated (2026-05-23)
 
-| Tool | Stars | What | Notes |
-|------|-------|------|-------|
-| [STORM](https://github.com/stanford-oval/storm) | 28k | LLM-powered knowledge curation, Wikipedia-quality articles with citations | Sheet 1 priority: 10/10. Research lit review + background writing |
-| [GPT-Researcher](https://github.com/assafelovic/gpt-researcher) | 20.5k | Autonomous deep-research agent, $0.10/task, Claude MCP integration | Sheet 1 priority: 9/10. Rapid literature surveys |
-| [Code2Tutorial](https://github.com/PocketFlow-AI/code2tutorial) | 6k | Codebase -> shareable tutorial. Compare with codebase-to-course in `cultivation/wip/` | Most mature tutorial option |
+| Tool | Status | Notes |
+|------|--------|-------|
+| [STORM](https://github.com/stanford-oval/storm) | **Done** — marketplace bundle | Stanford research pipeline. 28k stars, MIT. Python package only |
+| [GPT-Researcher](https://github.com/assafelovic/gpt-researcher) | **Done** — marketplace bundle | MCP server, autonomous research. 27k stars, Apache-2.0 |
+| [academic-research-skills](https://github.com/imbad0202/academic-research-skills) | **Done** — marketplace bundle | 4-skill academic pipeline. 20k stars, **CC BY-NC 4.0** |
+| [nature-skills](https://github.com/yuan1z0825/nature-skills) | **Done** — marketplace bundle | 9 Nature-journal skills. 11k stars, MIT |
+| [Code2Tutorial](https://github.com/PocketFlow-AI/code2tutorial) | Not yet evaluated | Codebase → shareable tutorial. Compare with codebase-to-course in `cultivation/wip/` |
 
 ### Existing WIP — Decision needed
 
