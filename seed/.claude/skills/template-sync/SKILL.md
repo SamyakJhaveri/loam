@@ -1,6 +1,6 @@
 ---
 name: template-sync
-description: Sync Claude Code assets between this project and the project-template buffer. Use when promoting a generally-useful agent/skill/hook/rule from this project back to the template, when pulling a template-side update down into this project, or when checking what has diverged. Subcommands - status, diff, pull, promote, sync-from-buffer. Refuses to operate without template-manifest.json. Promotion is always opt-in - never automatic.
+description: Sync Claude Code assets between this project and the project-template buffer. Use when promoting a generally-useful agent/skill/hook/rule from this project back to the template, when pulling a template-side update down into this project, or when checking what has diverged. Subcommands - status, diff, pull, promote, trial, sync-from-buffer. Refuses to operate without template-manifest.json. Promotion is always opt-in - never automatic.
 auto-activate: false
 ---
 
@@ -16,6 +16,9 @@ auto-activate: false
 - "What's different from the template?" — `template-sync status`
 - "Pull the latest version of skill X from the template" — `template-sync pull`
 - "Bring this project up to date with template main" — `template-sync sync-from-buffer`
+- "Install this skill into my project" — `template-sync trial`
+- "Try that skill from cultivation" — `template-sync trial /path/to/skill`
+- "Grab the catchup skill from loam" — `template-sync trial catchup`
 
 ## Pre-flight (always)
 
@@ -40,6 +43,8 @@ Before running:
 - Confirm with the user: "About to overwrite local `<relpath>` with template version. Proceed?"
 
 Then run `bin/template-sync.sh pull <relpath>`.
+
+Supports both files and directories. For pulling an entire skill: `template-sync pull .claude/skills/<name>`.
 
 ### `promote <relpath>`  ← the key flow
 
@@ -80,6 +85,22 @@ This is the 10-step flow. **Never skip the questions.**
 
 Run `bin/template-sync.sh sync-from-buffer`. For any reported "conflict (skipped)" lines, suggest the user run `template-sync diff <path>` to inspect, then `template-sync pull <path>` if they want to take the template version.
 
+### `trial [--name NAME] [--force] <source-or-skill-name>`
+
+Install a skill from any source into this project's `.claude/skills/`.
+
+1. **Validate source.** If the argument contains no slashes, resolve it as a skill name from the template's `seed/.claude/skills/`. Otherwise treat as a literal path.
+
+2. **Check source is valid.** The source must be a directory containing `SKILL.md`. If not, stop with an error.
+
+3. **Check destination.** If `.claude/skills/<name>/` already exists and `--force` was not passed, refuse. Tell the user to use `--force`.
+
+4. **Copy.** Run the script: `bin/template-sync.sh trial [--name NAME] [--force] <source>`.
+
+5. **Confirm.** Show the user what was installed and how to remove it.
+
+**Note on cultivation/ bundles:** Skills in `cultivation/marketplace/` are nested: `<bundle>/skills/<skill-name>/`. Point `trial` at the individual skill directory, not the bundle root. Example: `template-sync trial /path/to/loam/cultivation/marketplace/pocock-engineering/skills/tdd`
+
 ## Output style
 
 - Brief. The user is making decisions; show them the relevant diffs and questions, not your reasoning.
@@ -93,3 +114,4 @@ Run `bin/template-sync.sh sync-from-buffer`. For any reported "conflict (skipped
 - Do not promote without the generality scan in step 3.
 - Do not push to the template's `main` directly. Always via a `sync/...` branch + PR.
 - Do not promote `.env`, `secrets/`, or any file matching the secret regex without an explicit user override.
+- Do not modify or add provenance metadata files (.source.json or similar). Provenance is tracked via git commit messages only.

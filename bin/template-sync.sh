@@ -10,6 +10,7 @@
 #   template-sync.sh diff <relpath>                                  # show file-level diff
 #   template-sync.sh pull <relpath>                                  # copy from template into project
 #   template-sync.sh promote --layer <generic|flavor:NAME> <relpath> # promote project -> template branch
+#   template-sync.sh trial [--name NAME] [--force] <source-or-name>   # install skill from any path
 #   template-sync.sh sync-from-buffer                                # bulk pull updates from template main
 #
 # Environment:
@@ -138,13 +139,69 @@ cmd_pull() {
   local tpl; tpl="$(resolve_template_path)"
   local tpl_root; tpl_root="$(resolve_template_claude_root "$tpl")"
   local src="$tpl_root/$relpath" dst="$PROJECT_DIR/$relpath"
-  [[ -f "$src" ]] || die "no such file in template: $relpath"
-  if [[ -f "$dst" ]] && ! cmp -s "$src" "$dst"; then
-    warn "local file $relpath differs from template; overwriting"
+
+  if [[ -d "$src" ]]; then
+    if [[ -d "$dst" ]]; then
+      warn "local directory $relpath exists; overwriting"
+      rm -rf "$dst"
+    fi
+    mkdir -p "$dst"
+    cp -r "$src/." "$dst/"
+    ok "pulled directory $relpath"
+  elif [[ -f "$src" ]]; then
+    if [[ -f "$dst" ]] && ! cmp -s "$src" "$dst"; then
+      warn "local file $relpath differs from template; overwriting"
+    fi
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+    ok "pulled $relpath"
+  else
+    die "no such file or directory in template: $relpath"
   fi
-  mkdir -p "$(dirname "$dst")"
-  cp "$src" "$dst"
-  ok "pulled $relpath"
+}
+
+# ----- Subcommand: trial ----------------------------------------------------
+cmd_trial() {
+  local src="" name="" force=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --name)  [[ $# -ge 2 ]] || die "--name requires arg"; name="$2"; shift 2;;
+      --force) force=true; shift;;
+      -*)      die "unknown trial flag: $1";;
+      *)       [[ -z "$src" ]] || die "extra positional: $1"; src="$1"; shift;;
+    esac
+  done
+  [[ -n "$src" ]] || die "usage: template-sync.sh trial [--name NAME] [--force] <source-path-or-skill-name>"
+
+  # Bare name (no slashes) → resolve from template's seed/.claude/skills/
+  if [[ "$src" != */* ]]; then
+    local tpl; tpl="$(resolve_template_path)"
+    [[ -d "$tpl" ]] || die "template not found at $tpl"
+    src="$tpl/seed/.claude/skills/$src"
+  fi
+
+  [[ -d "$src" ]] || die "source is not a directory: $src"
+  [[ -f "$src/SKILL.md" ]] || die "no SKILL.md found in $src — not a valid skill directory"
+
+  [[ -z "$name" ]] && name="$(basename "$src")"
+  [[ "$name" == */* ]] && die "skill name must not contain slashes: $name"
+  local dst=".claude/skills/$name"
+
+  if [[ -d "$dst" ]]; then
+    if [[ "$force" == true ]]; then
+      warn "overwriting existing skill at $dst"
+      rm -rf "$dst"
+    else
+      die "skill already exists at $dst (use --force to overwrite)"
+    fi
+  fi
+
+  [[ -d ".claude/skills" ]] || die "no .claude/skills/ directory found — is this a Claude Code project?"
+
+  mkdir -p "$dst"
+  cp -r "$src/." "$dst/"
+  ok "installed skill '$name' from $src"
+  info "to remove: rm -rf $dst"
 }
 
 # ----- Subcommand: promote --------------------------------------------------
@@ -167,7 +224,7 @@ cmd_promote() {
   [[ -d "$tpl" ]] || die "template not found at $tpl"
 
   local src="$PROJECT_DIR/$relpath"
-  [[ -f "$src" ]] || die "project file does not exist: $relpath"
+  [[ -f "$src" || -d "$src" ]] || die "project path does not exist: $relpath"
 
   local tpl_relpath
   tpl_relpath="$(template_path_for "$layer" "$relpath" "$tpl")"
@@ -192,9 +249,15 @@ cmd_promote() {
   git -C "$tpl" fetch origin main --quiet || warn "fetch origin failed (offline?); proceeding with local main"
   local base; base="$(git -C "$tpl" rev-parse --verify origin/main 2>/dev/null || git -C "$tpl" rev-parse --verify main)"
   git -C "$tpl" checkout -q -b "$branch" "$base"
-  mkdir -p "$(dirname "$dst")"
-  cp "$src" "$dst"
-  git -C "$tpl" add -- "$tpl_relpath"
+  if [[ -d "$src" ]]; then
+    mkdir -p "$dst"
+    cp -r "$src/." "$dst/"
+    git -C "$tpl" add -- "$tpl_relpath"
+  else
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+    git -C "$tpl" add -- "$tpl_relpath"
+  fi
   if git -C "$tpl" diff --cached --quiet; then
     warn "no changes vs $base after copy; nothing to commit"
     git -C "$tpl" checkout -q main
@@ -287,8 +350,9 @@ case "$sub" in
   promote)           cmd_promote "$@";;
   sync-from-buffer)  cmd_sync_from_buffer "$@";;
   update)            cmd_update "$@";;
+  trial)             cmd_trial "$@";;
   ""|-h|--help)
-    sed -n '2,16p' "$0" | sed 's/^# *//'
+    sed -n '2,18p' "$0" | sed 's/^# *//'
     exit 0;;
   *) die "unknown subcommand: $sub";;
 esac
