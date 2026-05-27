@@ -39,22 +39,12 @@ _tasks:
   # Apply research flavor if selected
   - >-
     {% if is_research %}
-    echo '[copier] Applying research flavor...' &&
-    cp -R _research/agents/* .claude/agents/ 2>/dev/null || true &&
-    cp -R _research/skills/* .claude/skills/ 2>/dev/null || true &&
-    cp -R _research/hooks/* .claude/hooks/ 2>/dev/null || true &&
-    cp -R _research/rules/* .claude/rules/ 2>/dev/null || true &&
-    cp _research/seed-docs/* . 2>/dev/null || true &&
-    python3 _copier_merge_hooks.py _research/settings-hooks.json .claude/settings.json 2>/dev/null || true &&
-    rm -r _research &&
-    python3 -c "import json; f=open('.claude/settings.json'); s=json.load(f); f.close(); [e.__setitem__('hooks',[h for h in e.get('hooks',[]) if 'result-immutability.sh' not in h.get('command','')]) for e in s.get('hooks',{}).get('PreToolUse',[])]; f=open('.claude/settings.json','w'); json.dump(s,f,indent=2); f.write('\n'); f.close()" 2>/dev/null || true &&
-    rm -f .claude/hooks/result-immutability.sh &&
-    echo '[copier] Research flavor applied.'
+    bash _apply_research_overlay.sh
     {% endif %}
 
-  # Always remove the research flavor overlay and helper script after render
+  # Always remove the research flavor overlay and helper scripts after render
   - "rm -r _research 2>/dev/null || true"
-  - "rm -f _copier_merge_hooks.py"
+  - "rm -f _copier_merge_hooks.py _apply_research_overlay.sh"
 
   # Create seed working directories with .gitkeep
   - "for dir in archive config files_from_team internal_docs meeting_notes presentations results scripts submission_artifacts submission_docs; do mkdir -p \"$dir\" && touch \"$dir/.gitkeep\"; done"
