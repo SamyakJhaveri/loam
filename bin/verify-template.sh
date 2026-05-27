@@ -71,13 +71,15 @@ done < <(find seed/.claude/skills seed/_research/skills cultivation/marketplace 
 [[ $SKILL_ERRORS -eq 0 ]] || fail "$SKILL_ERRORS SKILL.md files violate agentskills.io schema"
 pass "agentskills.io schema (every SKILL.md has name + description)"
 
-# --- Invariant 5: skill description quality (warn-only) ---------------------
+# --- Invariant 5: skill description quality ---------------------------------
 if [[ -x "$SCRIPT_DIR/lint-skill-descriptions.sh" ]]; then
-  if bash "$SCRIPT_DIR/lint-skill-descriptions.sh" >/dev/null 2>&1; then
-    pass "skill descriptions"
+  if bash "$SCRIPT_DIR/lint-skill-descriptions.sh" seed >/dev/null; then
+    pass "skill descriptions (seed)"
   else
-    echo "WARN: skill description lint has warnings (run bin/lint-skill-descriptions.sh for details)"
+    fail "seed skill descriptions have lint errors (run: bin/lint-skill-descriptions.sh seed)"
   fi
+  bash "$SCRIPT_DIR/lint-skill-descriptions.sh" marketplace >/dev/null 2>&1 || \
+    echo "WARN: marketplace skill descriptions have lint warnings (run: bin/lint-skill-descriptions.sh marketplace)"
 fi
 
 # --- Copier render tests ----------------------------------------------------

@@ -6,6 +6,14 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$SCRIPT_DIR")"
 WARN=0
 
+SCOPE="${1:-all}"
+case "$SCOPE" in
+  seed)        SEARCH_DIRS=("$ROOT/seed/.claude/skills" "$ROOT/seed/_research/skills");;
+  marketplace) SEARCH_DIRS=("$ROOT/cultivation/marketplace");;
+  all)         SEARCH_DIRS=("$ROOT/seed/.claude/skills" "$ROOT/seed/_research/skills" "$ROOT/cultivation/marketplace");;
+  *)           echo "Usage: $(basename "$0") [seed|marketplace|all]" >&2; exit 1;;
+esac
+
 # shellcheck source=bin/lib.sh
 source "$(dirname "$0")/lib.sh"
 
@@ -65,7 +73,7 @@ if len(parts) >= 3:
     echo "WARN [$name]: description under 30 chars ($desc_len)"
     WARN=$((WARN + 1))
   fi
-done < <(find "$ROOT/seed/.claude/skills" "$ROOT/seed/_research/skills" "$ROOT/cultivation/marketplace" -name "SKILL.md" 2>/dev/null | sort)
+done < <(find "${SEARCH_DIRS[@]}" -name "SKILL.md" 2>/dev/null | sort)
 
 echo ""
 echo "Total warnings: $WARN"
