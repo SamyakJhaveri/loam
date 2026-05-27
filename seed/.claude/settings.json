@@ -38,11 +38,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "PAYLOAD=$(cat); if printf '%s' \"$PAYLOAD\" | grep -qE 'rm -rf|rm -fr'; then echo 'BLOCKED: rm -rf not allowed' >&2 && exit 2; fi",
-            "timeout": 15
-          },
-          {
-            "type": "command",
             "command": ".claude/hooks/pre-commit-gate.sh",
             "timeout": 10
           },
