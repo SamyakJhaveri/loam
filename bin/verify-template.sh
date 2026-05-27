@@ -19,8 +19,10 @@ trap 'rm -rf "$TMP"' EXIT
 
 cd "$TEMPLATE_ROOT"
 
-fail() { echo "FAIL: $*" >&2; exit 1; }
-pass() { echo "OK: $*"; }
+# shellcheck disable=SC2034
+LIB_PREFIX="verify"
+# shellcheck source=bin/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 # --- Invariant 1: seed/ subdirectory exists ---------------------------------
 test -d seed || fail "seed/ subdirectory missing — v3.0 structure broken"
@@ -57,11 +59,11 @@ while IFS= read -r -d '' skill; do
     SKILL_ERRORS=$((SKILL_ERRORS+1))
     continue
   fi
-  if ! awk '/^---$/{n++; if(n==2) exit} n==1 && /^name:/{found=1} END{exit !found}' "$skill"; then
+  if ! extract_frontmatter "$skill" | grep -q '^name:'; then
     echo "FAIL: $skill missing name in front-matter"
     SKILL_ERRORS=$((SKILL_ERRORS+1))
   fi
-  if ! awk '/^---$/{n++; if(n==2) exit} n==1 && /^description:/{found=1} END{exit !found}' "$skill"; then
+  if ! extract_frontmatter "$skill" | grep -q '^description:'; then
     echo "FAIL: $skill missing description in front-matter"
     SKILL_ERRORS=$((SKILL_ERRORS+1))
   fi

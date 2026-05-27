@@ -7,9 +7,10 @@
 
 set -euo pipefail
 
-die() { printf 'release: %s\n' "$*" >&2; exit 1; }
-info() { printf '\033[36m[release]\033[0m %s\n' "$*"; }
-ok() { printf '\033[32m[ok]\033[0m %s\n' "$*"; }
+# shellcheck disable=SC2034
+LIB_PREFIX="release"
+# shellcheck source=bin/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 VERSION="${1:-}"
 [[ -n "$VERSION" ]] || die "usage: bin/release.sh <version> (e.g., 1.1.0)"

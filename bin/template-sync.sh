@@ -23,10 +23,10 @@ PROJECT_DIR="$PWD"
 MANIFEST="$PROJECT_DIR/template-manifest.json"
 COPIER_ANSWERS="$PROJECT_DIR/.copier-answers.yml"
 
-die()  { printf 'template-sync: %s\n' "$*" >&2; exit 1; }
-info() { printf '\033[36m[sync]\033[0m %s\n' "$*"; }
-warn() { printf '\033[33m[warn]\033[0m %s\n' "$*"; }
-ok()   { printf '\033[32m[ok]\033[0m   %s\n' "$*"; }
+# shellcheck disable=SC2034
+LIB_PREFIX="sync"
+# shellcheck source=bin/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 require_manifest() {
   [[ -f "$MANIFEST" || -f "$COPIER_ANSWERS" ]] ||

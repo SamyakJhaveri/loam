@@ -6,10 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$SCRIPT_DIR")"
 WARN=0
 
-extract_frontmatter() {
-  # Extract content between first and second --- delimiters only
-  awk 'BEGIN{in_fm=0; count=0} /^---$/{count++; if(count==1){in_fm=1; next} if(count==2){exit}} in_fm{print}' "$1"
-}
+# shellcheck source=bin/lib.sh
+source "$(dirname "$0")/lib.sh"
 
 while IFS= read -r skill_file; do
   frontmatter=$(extract_frontmatter "$skill_file")
