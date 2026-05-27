@@ -6,6 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$SCRIPT_DIR")"
 WARN=0
 
+# shellcheck source=bin/lib.sh
+source "$(dirname "$0")/lib.sh"
+
 SCOPE="${1:-all}"
 case "$SCOPE" in
   seed)        SEARCH_DIRS=("$ROOT/seed/.claude/skills" "$ROOT/seed/_research/skills");;
@@ -13,9 +16,6 @@ case "$SCOPE" in
   all)         SEARCH_DIRS=("$ROOT/seed/.claude/skills" "$ROOT/seed/_research/skills" "$ROOT/cultivation/marketplace");;
   *)           echo "Usage: $(basename "$0") [seed|marketplace|all]" >&2; exit 1;;
 esac
-
-# shellcheck source=bin/lib.sh
-source "$(dirname "$0")/lib.sh"
 
 while IFS= read -r skill_file; do
   frontmatter=$(extract_frontmatter "$skill_file")

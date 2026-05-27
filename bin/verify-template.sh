@@ -45,7 +45,7 @@ pass "seed/.claude/settings.json is valid JSON"
 
 # --- Invariant 3: shellcheck on .sh files -----------------------------------
 if command -v shellcheck >/dev/null; then
-  shellcheck bin/*.sh seed/.claude/hooks/*.sh seed/_research/hooks/*.sh 2>&1 || fail "shellcheck failed"
+  shellcheck bin/*.sh seed/*.sh seed/.claude/hooks/*.sh seed/_research/hooks/*.sh 2>&1 || fail "shellcheck failed"
   pass "shellcheck"
 else
   echo "SKIP: shellcheck not installed"
