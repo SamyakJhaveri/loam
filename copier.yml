@@ -37,10 +37,7 @@ github_repo:
 # Post-generation tasks (run in the generated project directory)
 _tasks:
   # Apply research flavor if selected
-  - >-
-    {% if is_research %}
-    bash _apply_research_overlay.sh
-    {% endif %}
+  - "{% if is_research %}bash _apply_research_overlay.sh{% else %}true{% endif %}"
 
   # Always remove the research flavor overlay and helper scripts after render
   - "rm -r _research 2>/dev/null || true"
@@ -60,6 +57,8 @@ _tasks:
     else
       echo '[copier] Remote origin already configured — skipping GitHub setup.'
     fi
+    {% else %}
+    true
     {% endif %}
 
   # Clean up helper scripts
