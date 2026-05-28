@@ -56,7 +56,7 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
 LOCAL_PATHS="$PROJECT_ROOT/.claude/.local-paths"
 MEMORY_DIR="$(grep '^MEMORY_DIR=' "$LOCAL_PATHS" 2>/dev/null | cut -d= -f2)"
 if [ -z "$MEMORY_DIR" ]; then
-    PROJ_KEY="$(echo "$PROJECT_ROOT" | tr '/_' '--')"
+    PROJ_KEY=$(echo -n "$PROJECT_ROOT" | (md5sum 2>/dev/null || md5) | cut -c1-16)
     MEMORY_DIR="$HOME/.claude/projects/$PROJ_KEY/memory"
 fi
 LAST_DREAM="$MEMORY_DIR/.last-dream"
