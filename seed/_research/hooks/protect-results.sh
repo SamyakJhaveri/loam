@@ -23,8 +23,15 @@ set -euo pipefail
 
 INPUT=$(cat)
 
-# Detect which tool is being used
-TOOL_NAME="${CLAUDE_TOOL_NAME:-}"
+# Detect which tool is being used (parsed from JSON envelope on stdin)
+TOOL_NAME=$(python3 -c "
+import sys, json
+try:
+    d = json.loads(sys.stdin.read())
+    print(d.get('tool_name', ''))
+except Exception:
+    print('')
+" <<< "$INPUT" 2>/dev/null)
 
 # --- Bash command checks ---
 if [ "$TOOL_NAME" = "Bash" ] || [ -z "$TOOL_NAME" ]; then
