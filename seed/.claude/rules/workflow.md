@@ -41,8 +41,28 @@ then NOT available for implementation quality. The user reviews all output line-
 ### 3. Plan
 - Enter plan mode for non-trivial changes
 - Use ultrathink for complex analysis
-- Get adversarial review via `plan-reviewer` agent
 - **Wait for user approval before implementing**
+
+#### Plan Review Sub-Workflow
+
+For non-trivial plans (especially those intended for cross-session execution):
+
+1. **Draft** — Create the plan in plan mode
+2. **Review** — In a fresh session, invoke `plan-reviewer` agent. It will:
+   - Read every file the plan references before critiquing (Prerequisite rule)
+   - Run the 6-point generic checklist + plan-review addendum (codebase grounding, repo rules, over-engineering, missing decisions, completeness)
+   - Produce an APPROVE / APPROVE WITH CHANGES / REJECT verdict
+3. **Incorporate** — Address REJECT or CHANGES feedback, re-review if needed
+4. **Handoff** (if executing in a fresh session) — Use `/writing-plans` to produce the final handoff plan. The plan must be self-contained:
+   - Every file path must be repo-relative — no "the file we discussed"
+   - Every task must state what to do, which files to touch, and how to verify
+   - Include which skills the new session should use for each task
+   - Include relevant repo rules inline so the new session doesn't rediscover them
+
+For same-session execution: skip step 4, proceed directly to Stage 4 (Implement).
+
+For high-stakes changes: use a fresh session for step 2 — genuine adversarial
+review without sunk-cost bias from the planning session.
 
 ### 4. Implement
 - Work through the plan step by step
