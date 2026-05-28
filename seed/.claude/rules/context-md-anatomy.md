@@ -72,6 +72,17 @@ If you cannot write a trigger that another reader (or the model in a fresh sessi
 
 Stable knowledge — design docs, architecture rationale, glossaries — belongs in `docs/`. The CONTEXT.md is routing and process, not encyclopedia.
 
+## Routing tables vs. reference tables
+
+Task routing tables (`Task | Go to | Read | Skills`) are an L1 pattern.
+They belong in CONTEXT.md files, not in the root CLAUDE.md.
+
+CLAUDE.md uses a *reference* routing table (`File | Read when`) that points
+to on-demand docs. This is navigation (L0), not task routing (L1).
+
+If you find yourself adding task-specific routing to CLAUDE.md, move it to the
+relevant subdirectory's CONTEXT.md instead.
+
 ## Source
 
 JVC `_examples/03-context-md-anatomy.md` (the canonical template); JVC `_examples/02-skill-integration-patterns.md` (the five skill-wiring patterns referenced in the Skills table).

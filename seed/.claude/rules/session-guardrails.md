@@ -43,3 +43,13 @@ prior state.
 Place `/commit`, `/pr`, and other repo workflow skills inside the git repo
 (under `.claude/skills/`), not at user level (`~/.claude/skills/`). Default to
 generic-core placement rather than duplicating skills across flavors.
+
+## 6. Context Freshness
+
+At session end, check these files for staleness before committing:
+- `CLAUDE.md` — does the reference table match the actual rules that exist?
+- Active `CONTEXT.md` files — do they reflect current directory contents?
+- `known-issues.md` — any new gotchas discovered this session?
+- Relevant rule files — if a convention changed, update the rule, not just the code.
+
+Anti-pattern: "I'll update the docs later" — you won't. Update in the same session.

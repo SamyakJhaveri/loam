@@ -53,6 +53,22 @@ Three patterns:
 
 If a task fits none of these and still has >15% LLM portion, redesign before automating it.
 
+## Self-audit
+
+Periodically audit your project's `.claude/` setup against the 60/30/10 framework.
+Run this diagnostic:
+
+1. **Inventory**: List every rule, skill, agent, and hook in `.claude/`.
+2. **Classify**: For each, assign to deterministic (60%), rule-based (30%),
+   or probabilistic (10%) based on what the asset actually does.
+3. **Flag**: Identify items where an LLM is used but a deterministic tool could
+   do the job (the "LLM where a regex would do" anti-pattern above).
+4. **Report**: Show the current ratio and specific recommendations.
+
+If the probabilistic portion exceeds ~15%, look for items to move to Layer 1 or 2.
+
+Source: JVC Vault Course 4.2 ("The Build — VigilOre"), Exercise 2 — "Find the AI that shouldn't be AI."
+
 ## Source
 
 JVC `constraints/06-layer-triage.md` (the canonical framework); `the_full_toolkit/README.md:46` (the 60/30/10 origin statement); case studies in `jvc_vault_3.2.md` (VigilOre) and `jvc_vault_3.3.md` (NLP Logix) for worked examples of the diagnostic in practice.

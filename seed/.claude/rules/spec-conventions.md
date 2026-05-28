@@ -36,6 +36,19 @@ Criteria must be:
 - **Independent**: Each criterion is testable on its own
 - **Atomic**: One condition per criterion, not compound statements
 
+## The Stranger Test
+
+Before finalizing any spec or task description, apply this gate: could a stranger
+(or a fresh Claude Code session with zero context) start working on this without
+asking follow-up questions? If not, the spec is incomplete. Check:
+
+- Can you describe the expected output in one sentence?
+- Are acceptance criteria verifiable by reading the output alone?
+- Would removing any section cause ambiguity about what "done" means?
+
+Source: JVC Constraint 02 ("If you cannot describe your expected output in one
+sentence, the model cannot hit it") and Foundation Course 1.3 (the stranger test).
+
 ## Spec Lifecycle
 
 1. **Draft** — created via `/gen-spec`, not yet validated

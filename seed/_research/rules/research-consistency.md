@@ -30,3 +30,11 @@ When you cannot find a number or verify a claim, say so:
 - "The changelog doesn't mention when this metric was added. Can you confirm?"
 
 Never fill gaps with plausible-sounding guesses. Asking takes seconds; guessing wrong costs hours of rework.
+
+## 5. Scaffold routing for research directories
+
+After bootstrapping a research project, run `/scaffold-context` on high-traffic
+research directories (`results/`, `scripts/`, `submission_docs/`) to create
+per-directory CONTEXT.md routing files. These directories ship without routing —
+each project's content is different enough that pre-built CONTEXT.md files would
+be too generic to meet the 25-line minimum in `context-md-anatomy.md`.

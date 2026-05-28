@@ -50,6 +50,8 @@ ICM routing:
 - `.claude/rules/layer-triage.md` — when scoping a new task (60/30/10)
 
 Operational:
+- `.claude/rules/scaling-vs-automating.md` — when creating new skills or deciding whether to automate
+- `.claude/rules/naming-conventions.md` — when creating files/directories or authoring CONTEXT.md
 - `.claude/rules/validation-loop.md` — when working on hooks or the `validate` skill
 - `docs/ASSET-LAYERS.md` — when adding or moving assets
 - `docs/BOOTSTRAP.md`, `docs/SYNC.md`, `docs/COPIER.md`, `docs/FLAVORS.md`, `docs/MEMORY.md`
