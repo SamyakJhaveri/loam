@@ -18,18 +18,32 @@ Work through each check in order. For each, state your finding and whether the p
 
 1. CODEBASE GROUNDING: Does every task in the plan reference specific, real file paths? Read those files. Does the plan accurately describe what's there? Flag any task that operates on assumptions instead of verified code.
 
-2. REPOSITORY RULES: Read CLAUDE.md, any linter configs, test conventions, and CI scripts in this repo. Does the plan follow them? If not, list the corrective actions.
+2. REPOSITORY RULES: Read every file in `.claude/rules/`, then read CLAUDE.md, linter configs, test conventions, and CI scripts. These define the project's enforceable conventions — folder structure, naming, patterns, and constraints. Check two things separately: (a) Does the plan conform to these rules? (b) Does any implementation already done in this session violate them? For each violation, list the specific rule broken and the corrective action needed.
 
 3. OVER-ENGINEERING: For each task, ask: "Is this the simplest change that solves the stated problem?" Flag any unnecessary abstractions, premature generalizations, new files that could be avoided, or flexibility that wasn't requested. Opus 4.6 tends to overengineer — actively look for this.
 
 4. MISSING DECISIONS: Are there design choices the plan made silently that should have been my call? List them and stop to ask me before proceeding.
 
-5. SIMPLER ALTERNATIVE: Before writing the final plan, pause. Is there a more direct approach that achieves the same outcome with fewer files touched, fewer abstractions, or a well-known pattern? If yes, present it as a counter-proposal with tradeoffs. Search the web for established patterns or solutions if the task domain warrants it.
+5. COMPLETENESS: Does each task have (a) the exact files to modify/create, (b) what the change is, and (c) a verification command or test to confirm it worked? If any task is missing these, add them.
 
-6. COMPLETENESS: Does each task have (a) the exact files to modify/create, (b) what the change is, and (c) a verification command or test to confirm it worked? If any task is missing these, add them.
-
-7. ORDERING AND DEPENDENCIES: Are tasks sequenced so each one can be verified independently before moving to the next? Flag circular dependencies or tasks that can't be tested in isolation.
+6. ORDERING AND DEPENDENCIES: Are tasks sequenced so each one can be verified independently before moving to the next? Flag circular dependencies or tasks that can't be tested in isolation.
 </review_checklist>
+
+<elegance_gate>
+This step is mandatory. Do it after the checklist and before writing the final plan.
+
+Pause. Step back from the plan entirely. Forget the current approach for a moment and look at the underlying problem the plan is trying to solve. Ask yourself:
+
+- Is the plan solving the right problem, or has it drifted into solving a side-effect?
+- Is there a completely different approach — a different architecture, a built-in framework feature, an existing library, a well-known pattern — that would make most of this plan unnecessary?
+- Would an experienced engineer look at this plan and say "why not just do X instead?"
+
+Search the web for how others have solved this class of problem. Look at existing documentation, established open-source patterns, and projects on GitHub. The goal is not to validate the current plan — it is to discover whether a fundamentally better approach exists that the planning session didn't consider.
+
+If you find a more elegant approach, present it as a concrete counter-proposal: what the alternative is, why it's better, what its tradeoffs are, and what it would replace in the current plan. If after genuine investigation the current approach is the best one, say so and explain why the alternatives you considered were worse.
+
+Do not skip this step. Do not treat it as a formality.
+</elegance_gate>
 
 <handoff_requirements>
 I will be pasting the final plan to a new Claude Code session with fresh context. That session will have zero knowledge of this conversation, the decisions we made, or the files we looked at. It should not have to waste time or tokens searching for files or rediscovering what needs to be done. This means:
@@ -42,56 +56,60 @@ I will be pasting the final plan to a new Claude Code session with fresh context
 </handoff_requirements>
 
 <final_output>
-Use the /writing-plans skill to create the final plan verbatim to hand off to a new Claude Code session. Alongside the plan, include a detailed breakdown and explanation of your findings — what you investigated, what you changed from the original plan and why, what tradeoffs you considered, and what decisions you deferred to me. This must be intuitive to read and provide enough context to take the right decisions based on it. No summarization. Complete context.
+Use the /writing-plans skill to create the final plan verbatim to hand off to a new Claude Code session. Alongside the plan, include a detailed breakdown and explanation of your findings — what you investigated, what you changed from the original plan and why, what alternatives you considered in the elegance gate and why you chose or rejected them, and what decisions you deferred to me. This must be intuitive to read and provide enough context to take the right decisions based on it. No summarization. Complete context.
 </final_output>
 ```
 
 ---
 
-## What Changed and Why
+## What Changed From Version 1 and Why
 
-### Changes grounded in the official Anthropic prompting docs for Opus 4.6
+### The elegance gate: what was wrong and what's different now
 
-**1. Added the `<investigate_before_answering>` block from Anthropic's recommended patterns.**
+**The problem with v1:** Checklist item #5 in the first version read: "SIMPLER ALTERNATIVE: Before writing the final plan, pause. Is there a more direct approach that achieves the same outcome with fewer files touched, fewer abstractions, or a well-known pattern?" This was a *simplicity* check — it only asked whether the same approach could be made leaner. It did not ask the model to step outside the current approach and reconsider the problem from scratch.
 
-The official best practices page includes this exact pattern as a recommended prompt snippet for Opus 4.6, specifically designed to "minimize hallucinations in agentic coding." Your original prompt said "explore and research first and then ground this plan in the actual codebase" — which is directionally correct but vague. Opus 4.6 interprets vague exploration mandates as license to do broad, expensive context-gathering. The `<investigate_before_answering>` pattern is sharper: it says "don't talk about code you haven't opened," which is a constraint rather than an invitation to explore everything. This is a meaningful distinction because at "high" effort, Opus 4.6 will happily read dozens of files if you give it an open-ended exploration mandate, burning tokens on files that aren't relevant to the plan.
+This matters in practice. Consider a plan that implements custom retry logic across four service files. A simplicity check might trim it to three files and remove an unnecessary abstraction. An elegance check would recognize that the HTTP client library already has a built-in retry mechanism and the entire plan should be replaced with a three-line configuration change. The first optimizes within the frame; the second breaks the frame. These are fundamentally different cognitive operations for the model.
 
-**2. Replaced motivational language with a concrete checklist.**
+**What changed:** The elegance check is now a standalone `<elegance_gate>` block, separated from and sequenced after the review checklist. This matters for three reasons:
 
-Your original had "be critical. be honest. be transparent." The Anthropic docs say: "Be specific about the desired output format and constraints" and "Think of Claude as a brilliant but new employee who lacks context on your norms and workflows." Opus 4.6 doesn't modulate its honesty based on encouragement — it needs a specific list of what to check for. The seven-point `<review_checklist>` gives it exactly that. Each check has a pass/fail gate, which makes the output verifiable rather than subjective. This also helps *you* evaluate whether the review was thorough: you can scan seven findings instead of parsing a wall of prose trying to figure out if the model actually challenged the plan or just said "looks good" with extra words.
+1. **Sequencing.** The original prompt said "Before you write the final plan: is there a more elegant approach?" — this is a positional instruction that says "do this as the last analytical step before producing output." Burying it as item #5 of 7 in a checklist lost that sequencing. The `<elegance_gate>` block is now positioned between `<review_checklist>` and `<handoff_requirements>`, which preserves the original's intent: finish your review, then pause and reconsider, then write the output.
 
-**3. Removed the blanket "search for inspiration online" instruction and scoped it.**
+2. **Scope of thinking.** The block now explicitly tells the model to "forget the current approach for a moment and look at the underlying problem." This is important for Opus 4.6 because by the time it reaches this step, it has just done a detailed seven-point review of the plan — it's deep in the details. Without an explicit instruction to step back, it will naturally continue optimizing within the current frame. The instruction to "step back from the plan entirely" forces a context switch.
 
-The docs explicitly warn: "Claude Opus 4.6 does significantly more upfront exploration than previous models. If your prompts previously encouraged the model to be more thorough, you should tune that guidance." And separately: "Remove over-prompting. Tools that undertriggered in previous models are likely to trigger appropriately now." Your original said to "find inspiration from existing documentation, AI research papers and projects on github online" — at "high" effort, this is a recipe for Opus 4.6 spending thousands of tokens on web searches before it even reads your plan. The rewrite limits web research to checklist item #5: "Search the web for established patterns or solutions if the task domain warrants it." This scopes it to a specific decision point (is there a simpler alternative?) rather than a blanket mandate to go research broadly. If the plan is implementing a well-known pattern like OAuth or a state machine, Opus 4.6 will search. If the plan is renaming a set of files, it won't waste time searching for "best practices for file renaming."
+3. **Active research.** The original prompt said "you can find inspiration from existing documentation, AI research papers and projects on github online." In v1, I scoped this down to "search the web if the task domain warrants it" — which effectively made it optional. The v1 reasoning was that Opus 4.6 at "high" effort would over-explore if given an open research mandate. But the original prompt's web research instruction isn't about broad exploration — it's specifically about discovering whether a better approach exists. The `<elegance_gate>` now includes an explicit web search step: "Search the web for how others have solved this class of problem." This is scoped to the elegance check (not the entire review) and has a specific purpose (find alternatives, not gather general context), which addresses the over-exploration concern while preserving the original intent.
 
-**4. Used XML tags for structure instead of prose bullets.**
+4. **Non-skippable.** The block ends with "Do not skip this step. Do not treat it as a formality." This is necessary because Opus 4.6 at "high" effort can sometimes rush through steps that feel like they won't change the outcome — especially when the preceding checklist already produced a "looks good" result. The explicit non-skip instruction forces the model to actually do the work.
 
-The docs recommend: "XML tags help Claude parse complex prompts unambiguously, especially when your prompt mixes instructions, context, examples, and variable inputs." Your original prompt was a single block of prose with dashes. The rewrite uses four distinct XML blocks — `<investigate_before_answering>`, `<review_checklist>`, `<handoff_requirements>`, and `<final_output>` — to separate the four distinct concerns: investigation behavior, review criteria, output constraints for the next session, and the final deliverable format. This matters because Opus 4.6 processes these as separate instruction sets rather than trying to hold one long paragraph in working memory. When it gets to the output phase, the `<handoff_requirements>` block reads as a standalone spec rather than something it has to extract from the middle of a run-on instruction.
+### The three questions in the elegance gate
 
-**5. Explicitly called out Opus 4.6's over-engineering tendency as a review criterion.**
+The gate asks three specific questions rather than the open-ended "is there a more elegant approach?":
 
-The docs say: "Claude Opus 4.5 and Claude Opus 4.6 have a tendency to overengineer by creating extra files, adding unnecessary abstractions, or building in flexibility that wasn't requested." This is listed as checklist item #3 with the note "Opus 4.6 tends to overengineer — actively look for this" and with specific things to flag: unnecessary abstractions, premature generalizations, new files that could be avoided, or flexibility that wasn't requested. Your original prompt mentioned "make sure the plan is NOT over-engineering" but didn't anchor it to specific patterns to look for. Telling Opus 4.6 *what* over-engineering looks like in concrete terms is much more effective than telling it not to over-engineer in the abstract.
+- **"Is the plan solving the right problem, or has it drifted into solving a side-effect?"** — This catches plans that started with a clear goal but drifted during the planning session. Common with Opus 4.6, which explores broadly and can accidentally redefine the problem scope during exploration.
 
-**6. Preserved the handoff context as a motivation block, not just a spec.**
+- **"Is there a completely different approach — a different architecture, a built-in framework feature, an existing library, a well-known pattern — that would make most of this plan unnecessary?"** — This is the core elegance question. It explicitly names the categories of alternatives to look for, which prevents the model from doing a surface-level "I considered alternatives and the current approach is best" without actually investigating.
 
-Your original text about "the new claude code session should not have to waste time or tokens looking for files" is doing something important: it's explaining *why* the output needs to be precise. The Anthropic docs specifically recommend this under "Add context to improve performance" — providing the motivation behind an instruction helps Claude understand the goal and deliver more targeted responses. I kept this framing in `<handoff_requirements>` and then listed the concrete requirements that follow from it. The original version had the motivation and the spec interleaved in prose; the rewrite separates the "why" (opening sentence) from the "what" (bullet list), which is cleaner for Opus 4.6 to parse.
+- **"Would an experienced engineer look at this plan and say 'why not just do X instead?'"** — This reframes the question from the model's perspective to an external perspective, which helps counteract the bias toward its own earlier reasoning.
 
-**7. Preserved the /writing-plans instruction as a distinct final step.**
+### Other changes from v1
 
-Your original instruction to "use the /writing-plans skill to create the final plan verbatim" is a specific tool invocation — it's telling the model *how* to produce the output, not just what the output should contain. In my first version I folded this into the generic output requirements, which lost the explicit skill reference and the "verbatim" constraint. The `<final_output>` block now preserves the full instruction, including the requirement for a detailed breakdown of findings alongside the plan, and the "no summarization, complete context" constraint. Keeping this as a separate tagged block ensures Opus 4.6 treats it as the final action to take after completing the review, not as one more bullet in a list of things to remember.
+**Checklist item #2 now explicitly targets `.claude/rules/` as the primary source of project conventions.** The original prompt's "repository's rules" specifically means the rule files in `.claude/rules/` — these are Claude Code's contextual rule files that define enforceable conventions per file-pattern (folder structure, naming, patterns, constraints). They're more prescriptive than CLAUDE.md, which is broad guidance. v1 said "read CLAUDE.md, linter configs, test conventions, and CI scripts" — a generic list that didn't mention `.claude/rules/` at all. The updated version reads `.claude/rules/` *first*, then CLAUDE.md and other config files. It also separates the two checks explicitly: (a) does the plan conform, and (b) does implementation already done in this session violate the rules. Each violation must cite the specific rule and corrective action, not just flag a generic "doesn't follow conventions."
 
-### What was removed and why
+### What was preserved from v1
 
-**"you can find inspiration from existing documentation, AI research papers and projects on github online"** — Replaced with the scoped trigger in checklist item #5. The blanket version caused unnecessary token burn at "high" effort. The scoped version still gets you web research when it matters (comparing approaches, finding established patterns) without the model doing speculative research on every task in the plan.
+Everything else from v1 remains unchanged. The `<investigate_before_answering>` block, the XML structure, the concrete over-engineering criteria, the `<handoff_requirements>` motivation-then-spec pattern, and the `<final_output>` block with the /writing-plans skill invocation all carry forward. The analysis of why those changes were made (documented in v1) still applies.
 
-**"be critical. be honest. be transparent."** — Removed because it's motivational rather than instructional. Opus 4.6 doesn't modulate its critical thinking based on encouragement. The seven-point checklist provides the actual critical framework, and the pass/fail requirement on each check ensures the model can't hand-wave through the review.
+### Structural overview of the final prompt
 
-**"make sure that you explore and research first"** — Replaced with `<investigate_before_answering>`, which is Anthropic's own recommended pattern for this exact behavior. The replacement is both shorter and more precise: instead of "explore and research" (which Opus 4.6 interprets as "read everything you can find"), it says "read the actual files the plan references before critiquing them" (which scopes the investigation to what's relevant).
+The prompt now has five distinct phases, each in its own XML block:
 
-### A workflow note worth considering
+1. `<investigate_before_answering>` — Sets the ground rule: read before you speak.
+2. `<review_checklist>` — Six concrete pass/fail checks on the plan's quality.
+3. `<elegance_gate>` — Step back, reconsider the whole approach, research alternatives.
+4. `<handoff_requirements>` — Constraints on the output format for the next session.
+5. `<final_output>` — How to produce and deliver the final plan.
 
-Your current workflow is: create plan in session → review plan in same session → copy reviewed plan to new session. This works, and the structured checklist in the rewrite mitigates the main risk (the model defending its own earlier reasoning instead of truly challenging it). But if you're working on high-stakes changes, consider a three-session approach: Session 1 creates the plan and exports it to a file. Session 2 (fresh context) receives only the plan file and runs the review prompt. Session 3 (fresh context) receives the reviewed plan and executes.
+This sequencing mirrors the original prompt's intended workflow: investigate → critique → rethink → format → deliver. The XML tags make this sequence explicit for Opus 4.6, which processes tagged sections as distinct instruction sets rather than trying to hold a single long paragraph in working memory.
 
-The reason this matters comes from the Claude Code docs: "LLM performance degrades as context fills" and "Claude's context window holds your entire conversation, including every message, every file Claude reads, and every command output." By the time you ask for the review in Session 1, the context already holds the full planning conversation. The model is reviewing its own reasoning while still holding that reasoning in memory, which biases it toward defending rather than challenging earlier decisions. A fresh Session 2 has no sunk-cost attachment to the plan's approach and can be genuinely adversarial.
+### Workflow note (unchanged from v1)
 
-That said, the checklist structure helps significantly even in a single-session workflow because it forces the model through specific pass/fail gates rather than open-ended self-reflection. The gates create external structure that partially compensates for the internal bias.
+Your current workflow is: create plan in session → review plan in same session → copy reviewed plan to new session. The structured checklist and elegance gate mitigate the main risk (the model defending its own earlier reasoning), but for high-stakes changes, consider: Session 1 creates the plan → Session 2 (fresh context) reviews it → Session 3 (fresh context) executes it. A fresh session doing the review has no sunk-cost attachment to the plan's approach and can be more genuinely adversarial, especially during the elegance gate.
