@@ -6,7 +6,7 @@ description: >
   NOT for reviewing only recently changed code (use /simplify).
 auto-activate: false
 model: opus
-allowed-tools: [Read, Grep, Glob, Edit, Bash(bun run typecheck:*)]
+allowed-tools: [Read, Grep, Glob, Edit, Bash(*)]
 ---
  
 Scan recently changed files (git diff --name-only HEAD~5) for:
@@ -18,4 +18,4 @@ Scan recently changed files (git diff --name-only HEAD~5) for:
  
 For each finding: file:line, category, description, proposed fix
 Ask before applying fixes that touch >3 files.
-After fixes: run bun run typecheck to confirm no regressions.
+After fixes: run the project's type checker or linter to confirm no regressions.
