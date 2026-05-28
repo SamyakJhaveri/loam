@@ -6,6 +6,8 @@ argument-hint: [venue-or-section]
 allowed-tools: Bash(*), Read, Write, Edit, Grep, Glob, Agent, WebSearch, WebFetch, mcp__codex__codex, mcp__codex__codex-reply
 ---
 
+> **Requires:** Codex MCP server configured in `.mcp.json` (for cross-model review via REVIEWER_MODEL). Without it, the review step is skipped.
+
 # Paper Write: Section-by-Section LaTeX Generation
 
 Draft a LaTeX paper based on: **$ARGUMENTS**
