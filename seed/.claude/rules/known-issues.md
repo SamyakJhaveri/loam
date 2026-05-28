@@ -3,6 +3,13 @@
 > Always loaded. Add active guardrails here to prevent recurring mistakes.
 > Keep entries actionable — each should describe what NOT to do and why.
 
+## Claude Code hooks receive JSON on stdin, not env vars
+
+**What:** Hooks receive a JSON envelope on stdin (`{"tool_name": "Write", "tool_input": {...}}`). There is no `CLAUDE_TOOL_NAME` environment variable.
+**Don't:** Use `TOOL_NAME="${CLAUDE_TOOL_NAME:-}"` or any env-var-based tool detection in hooks.
+**Do:** Parse `tool_name` from the JSON envelope: `TOOL_NAME=$(python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('tool_name',''))" <<< "$INPUT" 2>/dev/null)`. See `pre-commit-gate.sh` for the reference pattern.
+**Why:** Two research hooks (`validate-experiment-config.sh`, `protect-results.sh`) were completely inert for months because they read an env var that doesn't exist. Fixed in the 16-bug session (2026-05-28).
+
 ## Skill Tiering Convention (Session I)
 
 **What:** Skills are tiered by `auto-activate` field to control auto-invocation.
@@ -30,6 +37,13 @@
 **Don't:** Adopt a SKILL.md without checking that every relative markdown link in it resolves to an existing local file.
 **Do:** After replacing, run: `grep -oE '\([^)]+\.md\)' SKILL.md | tr -d '()' | while read f; do test -f "$f" || echo "MISSING: $f"; done`
 **Why:** In the Pocock upstream replacement (2026-05-23), 6 broken links were caught only by Wave 3 self-critic. TDD's SKILL.md linked to tests.md, mocking.md, etc. that hadn't been fetched.
+
+## Verification greps must be case-insensitive
+
+**What:** When replacing a string (model ID, skill name, etc.) across the repo, the verification `grep` that confirms "zero remaining" can give a false all-clear if it's case-sensitive.
+**Don't:** Write `grep -rn 'old-string' seed/` as the verification step. Don't scope the grep to only the file where the bug was reported.
+**Do:** Always use `grep -rni 'old-string' seed/` (case-insensitive, repo-wide). For model IDs, also check prose variants (e.g., `GPT-5.4` vs `gpt-5.4`).
+**Why:** In the 16-bug fix session (2026-05-28), `grep -rn 'gpt-5\.4'` passed but 5 uppercase `GPT-5.4` survived. Similarly, `/experiment-audit` was fixed in one file but 7 references survived in other files. The session critique caught both.
 
 ## Copier `--trust` flag required for this template
 
