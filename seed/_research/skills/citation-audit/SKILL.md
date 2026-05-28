@@ -39,7 +39,7 @@ The dangerous citation problems are **not** wildly fake citations — those are 
 
 ## Constants
 
-- **REVIEWER_MODEL = `gpt-5.4`** — Used via Codex MCP. Default for cross-model review with web access.
+- **REVIEWER_MODEL = `o3`** — Used via Codex MCP. Default for cross-model review with web access.
 - **CONTEXT_POLICY = `fresh`** — Each audit run uses a new reviewer thread (REVIEWER_BIAS_GUARD). Never `codex-reply`.
 - **WEB_SEARCH = required** — The reviewer must perform real web/DBLP/arXiv lookups, not pattern-match from memory.
 - **OUTPUT = `CITATION_AUDIT.md`** — Human-readable per-entry verdict report.
@@ -74,7 +74,7 @@ For each bib entry, invoke `mcp__codex__codex` (NOT `codex-reply` — fresh thre
 
 ```
 mcp__codex__codex:
-  model: gpt-5.4
+  model: o3
   config: {"model_reasoning_effort": "xhigh"}
   sandbox: read-only
   prompt: |
@@ -275,7 +275,7 @@ The artifact conforms to the schema in `shared-references/assurance-contract.md`
   },
   "trace_path":       ".aris/traces/citation-audit/<date>_run<NN>/",
   "thread_id":        "<codex mcp thread id>",
-  "reviewer_model":   "gpt-5.4",
+  "reviewer_model":   "o3",
   "reviewer_reasoning": "xhigh",
   "generated_at":     "<UTC ISO-8601>",
   "details": {

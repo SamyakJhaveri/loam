@@ -19,7 +19,7 @@ Unlike `/auto-review-loop` (which iterates on **research** — running experimen
 ## Constants
 
 - **MAX_ROUNDS = 2** — Two rounds of review→fix→recompile. Empirically, Round 1 catches structural issues (4→6/10), Round 2 catches remaining presentation issues (6→7/10). Diminishing returns beyond 2 rounds for writing-only improvements.
-- **REVIEWER_MODEL = `gpt-5.4`** — Model used via Codex MCP for paper review.
+- **REVIEWER_MODEL = `o3`** — Model used via Codex MCP for paper review.
 - **REVIEWER_BIAS_GUARD = true** — When `true`, every review round uses a fresh `mcp__codex__codex` thread with no prior review context. Never use `mcp__codex__codex-reply` for review rounds. Set to `false` only for deliberate debugging of the legacy behavior. **Empirical evidence (April 2026):** running the same paper with `codex-reply` + "since last round we did X" prompts inflated scores from real 3/10 → fake 8/10 across 5 rounds; switching to fresh threads recovered the true 3/10 assessment.
 - **REVIEW_LOG = `PAPER_IMPROVEMENT_LOG.md`** — Cumulative log of all rounds, stored in paper directory.
 - **HUMAN_CHECKPOINT = false** — When `true`, pause after each round's review and present score + weaknesses to the user. The user can approve fixes, provide custom modification instructions, skip specific fixes, or stop early. When `false` (default), runs fully autonomously.
@@ -89,7 +89,7 @@ Send the full paper text AND compiled PDF to GPT-5.4 xhigh:
 
 ```
 mcp__codex__codex:
-  model: gpt-5.4
+  model: o3
   config: {"model_reasoning_effort": "xhigh"}
   prompt: |
     You are reviewing a [VENUE] paper. Please provide a detailed, structured review.
@@ -216,7 +216,7 @@ If `REVIEWER_BIAS_GUARD = true` (default), use a **fresh** `mcp__codex__codex` t
 
 ```
 mcp__codex__codex:
-  model: gpt-5.4
+  model: o3
   config: {"model_reasoning_effort": "xhigh"}
   prompt: |
     You are reviewing a [VENUE] paper. This is a fresh, zero-context review.

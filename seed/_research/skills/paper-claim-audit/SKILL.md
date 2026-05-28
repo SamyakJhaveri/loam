@@ -77,13 +77,13 @@ NARRATIVE_REPORT.md, PAPER_PLAN.md, findings.md
 Any .md file that is an executor-written summary
 ```
 
-### Step 2: Fresh Reviewer Audit (GPT-5.4 — NEW thread, no reply)
+### Step 2: Fresh Reviewer Audit (o3 — NEW thread, no reply)
 
 **CRITICAL: Use `mcp__codex__codex` (new thread), NEVER `mcp__codex__codex-reply`.** Every run must be a fresh context.
 
 ```
 mcp__codex__codex:
-  model: gpt-5.4
+  model: o3
   config: {"model_reasoning_effort": "xhigh"}
   prompt: |
     You are a paper-to-evidence auditor. You have ZERO prior context about
@@ -164,7 +164,7 @@ Parse the reviewer's response and write `PAPER_CLAIM_AUDIT.md`:
 # Paper Claim Audit Report
 
 **Date**: [today]
-**Auditor**: GPT-5.4 xhigh (fresh zero-context thread)
+**Auditor**: o3 xhigh (fresh zero-context thread)
 **Paper**: [paper title from tex]
 
 ## Overall Verdict: [PASS | WARN | FAIL]
@@ -271,7 +271,7 @@ The artifact conforms to the schema in `shared-references/assurance-contract.md`
   },
   "trace_path":       ".aris/traces/paper-claim-audit/<date>_run<NN>/",
   "thread_id":        "<codex mcp thread id>",
-  "reviewer_model":   "gpt-5.4",
+  "reviewer_model":   "o3",
   "reviewer_reasoning": "xhigh",
   "generated_at":     "<UTC ISO-8601>",
   "details": {
