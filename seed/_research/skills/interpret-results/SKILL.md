@@ -2,8 +2,8 @@
 name: interpret-results
 description: Hypothesis-first interpretation of eval results. Use after an eval batch completes, after /post-eval populates analyses, or when preparing paper narrative from result JSONs. Phase 1 requires a prior hypothesis (prevents post-hoc rationalization); Phase 2 compares to actual data.
 auto-activate: false
+model: opus
 ---
-ultrathink
 # Hypothesis-First Result Interpreter
 
 Use when analyzing evaluation or augmentation results. Prevents post-hoc rationalization
