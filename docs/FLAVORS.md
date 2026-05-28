@@ -18,7 +18,7 @@ uvx copier copy --trust --data "is_research=true" gh:samyakjhaveri/loam ./my-pap
 
 Loaded into every project, research or not:
 
-- The 17 core skills (`.claude/skills/`)
+- The 24 core skills (`.claude/skills/`)
 - The 6 core agents (`.claude/agents/`)
 - All hooks including the SessionStart brief
 - All four ICM routing rules (`L0-budget.md`, `context-md-anatomy.md`, `stage-contract.md`, `layer-triage.md`)
@@ -35,7 +35,7 @@ When `is_research=true`, the Copier `_tasks` step overlays the contents of `seed
 | `.claude/agents/` (additions) | `eval-batcher.md`, `paper-assembly-team.md`, `regression-checker.md` | Research-specific agents |
 | `.claude/hooks/` (additions) | `protect-results.sh`, `validate-experiment-config.sh` | Result-protection and experiment-config validation |
 | `.claude/rules/` (addition) | `research-memory.md` | Research-specific memory conventions |
-| Project root (additions) | `REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md` | Paper-writing seed-docs |
+| Project root (additions) | `REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`, `CHANGELOG.research.md` | Paper-writing seed-docs |
 | `.claude/settings.json` | Deep-merged hooks | `protect-results.sh` and `validate-experiment-config.sh` registered |
 
 ## Promotion target for new flavor-specific assets
