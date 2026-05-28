@@ -94,6 +94,7 @@ cmd_status() {
   local tpl; tpl="$(resolve_template_path)"
   [[ -d "$tpl" ]] || die "template not found at $tpl"
   local tpl_root; tpl_root="$(resolve_template_claude_root "$tpl")"
+  local rel
 
   printf 'Comparing %s/.claude  ↔  %s/.claude\n\n' "$PROJECT_DIR" "$tpl_root"
   printf '%-12s  %s\n' "STATUS" "PATH"
@@ -313,6 +314,7 @@ cmd_sync_from_buffer() {
   [[ -d "$tpl" ]] || die "template not found at $tpl"
   local tpl_root; tpl_root="$(resolve_template_claude_root "$tpl")"
   [[ -d "$tpl_root/.claude" ]] || die "template .claude/ not found at $tpl_root/.claude"
+  local rel
   info "fetching template main"
   (cd "$tpl" && git fetch origin main --quiet 2>/dev/null) || warn "fetch failed (offline?)"
   info "scanning for template-side updates not yet in this project"
