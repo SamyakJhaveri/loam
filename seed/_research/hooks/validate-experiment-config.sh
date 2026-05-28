@@ -13,7 +13,14 @@
 set -euo pipefail
 
 INPUT=$(cat)
-TOOL_NAME="${CLAUDE_TOOL_NAME:-}"
+TOOL_NAME=$(python3 -c "
+import sys, json
+try:
+    d = json.loads(sys.stdin.read())
+    print(d.get('tool_name', ''))
+except Exception:
+    print('')
+" <<< "$INPUT" 2>/dev/null)
 
 # Only check Write tool
 if [ "$TOOL_NAME" != "Write" ]; then
