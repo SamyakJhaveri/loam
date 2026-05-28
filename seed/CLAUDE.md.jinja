@@ -41,18 +41,24 @@ Path-scoped rules in `.claude/rules/` load only when matching files are touched.
 | `session-guardrails.md`    | Always — behavioral constraints (workflow ordering, plan vs execute, elegance) |
 | `L0-budget.md`             | Authoring or refactoring this `CLAUDE.md` |
 | `context-md-anatomy.md`    | Authoring a `CONTEXT.md` for a subdirectory (or filling the root `CONTEXT.md` skeleton) |
-| `PROJECT-BACKGROUND.md`    | When you need the "why" of the project — problem framing, stakeholders, glossary |
+| `PROJECT-BACKGROUND.md`    | (Create this file) — the "why" of the project: problem framing, stakeholders, glossary |
 | `stage-contract.md`        | Invoking `feature-dev`, `fix-bug`, `/validate`, or any planning skill |
 | `layer-triage.md`          | Scoping a new task; deciding deterministic vs rule-based vs LLM |
 | `validation-loop.md`       | Working on hooks or the `validate` skill |
 | `architecture.md`          | Authoring architecture decisions |
 | `python.md`, `tech-stack.md` | Touching Python files / build config |
 | `frontend-design.md`       | Touching frontend files |
+{% if is_research %}
 | `research-memory.md`       | Research flavor only — experiments and citations |
+{% endif %}
 
 ## Project skills
 
 See `.claude/skills/` for available skills. Core skills auto-activate; specialized skills require `/skill-name`. `template-sync` is an **experimental** workflow for moving Claude Code assets between this project and the Loam template — currently untested end-to-end; treat as a design sketch, not a production tool. `create-skill` authors new skills following the agentskills.io schema.
+
+## Required Plugins
+
+- **superpowers** (`obra/superpowers`) — provides `/writing-plans`, `/brainstorming`, `/executing-plans`, and plan-mode workflow support. Install: `claude plugins install obra/superpowers`
 
 ## Date
 
