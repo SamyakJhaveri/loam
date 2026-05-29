@@ -56,6 +56,7 @@ Operational:
 - `docs/ASSET-LAYERS.md` — when adding or moving assets
 - `docs/BOOTSTRAP.md`, `docs/SYNC.md`, `docs/COPIER.md`, `docs/FLAVORS.md`, `docs/MEMORY.md`
 - `.claude/reference/Claude Code Operational Playbook.md` — when designing new skills/agents
+- `docs/plan-reviewer-design.md` — when invoking the plan-reviewer agent (full reference prompt)
 
 ## Pipeline Gate
 

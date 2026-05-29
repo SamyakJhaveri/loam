@@ -1,4 +1,6 @@
-# Plan Reviewer Prompt — Rewritten for Claude Opus 4.6
+# Plan Reviewer Prompt — Rewritten for Claude Opus 4.7
+
+> **This is a design rationale document, not a specification.** The authoritative agent definition is `seed/.claude/agents/plan-reviewer.md`. This document preserves the full reference prompt and the reasoning behind each design choice.
 
 ## The Prompt
 
@@ -20,7 +22,7 @@ Work through each check in order. For each, state your finding and whether the p
 
 2. REPOSITORY RULES: Read every file in `.claude/rules/`, then read CLAUDE.md, linter configs, test conventions, and CI scripts. These define the project's enforceable conventions — folder structure, naming, patterns, and constraints. Check two things separately: (a) Does the plan conform to these rules? (b) Does any implementation already done in this session violate them? For each violation, list the specific rule broken and the corrective action needed.
 
-3. OVER-ENGINEERING: For each task, ask: "Is this the simplest change that solves the stated problem?" Flag any unnecessary abstractions, premature generalizations, new files that could be avoided, or flexibility that wasn't requested. Opus 4.6 tends to overengineer — actively look for this.
+3. OVER-ENGINEERING: For each task, ask: "Is this the simplest change that solves the stated problem?" Flag any unnecessary abstractions, premature generalizations, new files that could be avoided, or flexibility that wasn't requested. Opus 4.7 tends to overengineer — actively look for this.
 
 4. MISSING DECISIONS: Are there design choices the plan made silently that should have been my call? List them and stop to ask me before proceeding.
 
@@ -74,17 +76,17 @@ This matters in practice. Consider a plan that implements custom retry logic acr
 
 1. **Sequencing.** The original prompt said "Before you write the final plan: is there a more elegant approach?" — this is a positional instruction that says "do this as the last analytical step before producing output." Burying it as item #5 of 7 in a checklist lost that sequencing. The `<elegance_gate>` block is now positioned between `<review_checklist>` and `<handoff_requirements>`, which preserves the original's intent: finish your review, then pause and reconsider, then write the output.
 
-2. **Scope of thinking.** The block now explicitly tells the model to "forget the current approach for a moment and look at the underlying problem." This is important for Opus 4.6 because by the time it reaches this step, it has just done a detailed seven-point review of the plan — it's deep in the details. Without an explicit instruction to step back, it will naturally continue optimizing within the current frame. The instruction to "step back from the plan entirely" forces a context switch.
+2. **Scope of thinking.** The block now explicitly tells the model to "forget the current approach for a moment and look at the underlying problem." This is important for Opus 4.7 because by the time it reaches this step, it has just done a detailed seven-point review of the plan — it's deep in the details. Without an explicit instruction to step back, it will naturally continue optimizing within the current frame. The instruction to "step back from the plan entirely" forces a context switch.
 
-3. **Active research.** The original prompt said "you can find inspiration from existing documentation, AI research papers and projects on github online." In v1, I scoped this down to "search the web if the task domain warrants it" — which effectively made it optional. The v1 reasoning was that Opus 4.6 at "high" effort would over-explore if given an open research mandate. But the original prompt's web research instruction isn't about broad exploration — it's specifically about discovering whether a better approach exists. The `<elegance_gate>` now includes an explicit web search step: "Search the web for how others have solved this class of problem." This is scoped to the elegance check (not the entire review) and has a specific purpose (find alternatives, not gather general context), which addresses the over-exploration concern while preserving the original intent.
+3. **Active research.** The original prompt said "you can find inspiration from existing documentation, AI research papers and projects on github online." In v1, I scoped this down to "search the web if the task domain warrants it" — which effectively made it optional. The v1 reasoning was that Opus 4.7 at "high" effort would over-explore if given an open research mandate. But the original prompt's web research instruction isn't about broad exploration — it's specifically about discovering whether a better approach exists. The `<elegance_gate>` now includes an explicit web search step: "Search the web for how others have solved this class of problem." This is scoped to the elegance check (not the entire review) and has a specific purpose (find alternatives, not gather general context), which addresses the over-exploration concern while preserving the original intent.
 
-4. **Non-skippable.** The block ends with "Do not skip this step. Do not treat it as a formality." This is necessary because Opus 4.6 at "high" effort can sometimes rush through steps that feel like they won't change the outcome — especially when the preceding checklist already produced a "looks good" result. The explicit non-skip instruction forces the model to actually do the work.
+4. **Non-skippable.** The block ends with "Do not skip this step. Do not treat it as a formality." This is necessary because Opus 4.7 at "high" effort can sometimes rush through steps that feel like they won't change the outcome — especially when the preceding checklist already produced a "looks good" result. The explicit non-skip instruction forces the model to actually do the work.
 
 ### The three questions in the elegance gate
 
 The gate asks three specific questions rather than the open-ended "is there a more elegant approach?":
 
-- **"Is the plan solving the right problem, or has it drifted into solving a side-effect?"** — This catches plans that started with a clear goal but drifted during the planning session. Common with Opus 4.6, which explores broadly and can accidentally redefine the problem scope during exploration.
+- **"Is the plan solving the right problem, or has it drifted into solving a side-effect?"** — This catches plans that started with a clear goal but drifted during the planning session. Common with Opus 4.7, which explores broadly and can accidentally redefine the problem scope during exploration.
 
 - **"Is there a completely different approach — a different architecture, a built-in framework feature, an existing library, a well-known pattern — that would make most of this plan unnecessary?"** — This is the core elegance question. It explicitly names the categories of alternatives to look for, which prevents the model from doing a surface-level "I considered alternatives and the current approach is best" without actually investigating.
 
@@ -108,7 +110,7 @@ The prompt now has five distinct phases, each in its own XML block:
 4. `<handoff_requirements>` — Constraints on the output format for the next session.
 5. `<final_output>` — How to produce and deliver the final plan.
 
-This sequencing mirrors the original prompt's intended workflow: investigate → critique → rethink → format → deliver. The XML tags make this sequence explicit for Opus 4.6, which processes tagged sections as distinct instruction sets rather than trying to hold a single long paragraph in working memory.
+This sequencing mirrors the original prompt's intended workflow: investigate → critique → rethink → format → deliver. The XML tags make this sequence explicit for Opus 4.7, which processes tagged sections as distinct instruction sets rather than trying to hold a single long paragraph in working memory.
 
 ### Workflow note (unchanged from v1)
 

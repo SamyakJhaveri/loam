@@ -48,9 +48,9 @@ then NOT available for implementation quality. The user reviews all output line-
 For non-trivial plans (especially those intended for cross-session execution):
 
 1. **Draft** — Create the plan in plan mode
-2. **Review** — In a fresh session, invoke `plan-reviewer` agent. It will:
-   - Read every file the plan references before critiquing (Prerequisite rule)
-   - Run the 6-point generic checklist + plan-review addendum (codebase grounding, repo rules, over-engineering, missing decisions, completeness)
+2. **Review** — In a fresh session, invoke `plan-reviewer` agent using the reference prompt from `docs/plan-reviewer-design.md`. The agent will:
+   - Run the 6-point generic checklist + 6-point plan-review addendum
+   - Execute the mandatory Elegance Gate (searches for better approaches)
    - Produce an APPROVE / APPROVE WITH CHANGES / REJECT verdict
 3. **Incorporate** — Address REJECT or CHANGES feedback, re-review if needed
 4. **Handoff** (if executing in a fresh session) — Use `/writing-plans` to produce the final handoff plan. The plan must be self-contained:
