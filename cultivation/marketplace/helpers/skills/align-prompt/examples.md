@@ -54,7 +54,7 @@ with a digit-bearing skill name.
 - Do not touch any helper function not directly invoked by the `name:` validator.
 - Preserve the existing exit-code behaviour (0 on success, 1 on any failure).
 
-Apply the regex fix, then run `bin/lint-skill-descriptions.sh seed cultivation` and
+Apply the regex fix, then run `bin/lint-skill-descriptions.sh all` and
 confirm zero errors. Direct technical prose in the response — no emoji, no validation-forward phrasing.
 ```
 

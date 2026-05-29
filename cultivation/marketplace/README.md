@@ -18,7 +18,7 @@ Includes skills removed from the default `.claude/skills/` set during the v2.0 s
 |--------|--------|---------|
 | `team-deliberation` | agent-team, council, session-critique | Multi-agent deliberation and adversarial critique |
 | `meta-improvement` | self-healing | Autonomous error recovery and session self-correction |
-| `helpers` | decision-matrix, navigate, model-route, prompt-improver, frontend-design, grill-research | Situational utility skills for specialized one-off tasks |
+| `helpers` | decision-matrix, navigate, model-route, prompt-improver, frontend-design, grill-research, align-prompt | Situational utility skills for specialized one-off tasks |
 | `business-process` | process-optimizer, sop-writer, workflow-mapper, weekly-review | Operational documentation and workflow analysis |
 | `pocock-engineering` | triage, to-issues, to-prd, tdd, prototype, diagnose, grill-with-docs, improve-codebase-architecture, zoom-out | Engineering workflow skills from [mattpocock/skills](https://github.com/mattpocock/skills) — issue lifecycle, TDD, prototyping, architectural review, domain grilling, PRD generation |
 | `code-review-graph` | code-review-graph | GraphRAG-powered code review with blast-radius analysis. [Upstream](https://github.com/tirth8205/code-review-graph). MCP server, recommended for 500+ file codebases |

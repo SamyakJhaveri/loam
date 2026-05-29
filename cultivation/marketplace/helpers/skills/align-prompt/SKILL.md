@@ -52,16 +52,16 @@ These are the spec. Apply them.
 
 ## Phase 3: Apply the Six Moves to the draft
 
-Per `reference.md` § 4, in order:
+Full move definitions and rationale live in `reference.md` § 4 (loaded in Phase 2) and § 1. Below is the per-target **gating** only — apply in order:
 
-1. **Lead with intent** — one-sentence intent + success criterion as the first line.
-2. **Name the role** — only if the task is domain-specific; skip for mechanical/single-shot.
-3. **Surface scope** — `## Constraints` section always; `## Must NOT include` only if (target=4.8 AND task is planning) OR the draft explicitly hints at exclusions. For target=4.6, ALSO add an explicit anti-generalization scope statement ("Apply to X ONLY, do not generalize to siblings") because 4.6 silently generalizes — see `reference.md` § 1.
-4. **Specify Done** — artifact + verification, one section.
-5. **Adaptive-thinking-eliciting language** — only when target=4.8. 4.6 does NOT have adaptive thinking; eliciting it in the prompt body is inert on 4.6. NEVER mention `effort`, `thinking.budget_tokens`, or any API parameter.
-6. **Compress + tone-anchor** — strip filler, hedges, second-person scaffolding. For target=4.6, also add "Direct technical prose. No emoji." if the draft implies a technical voice — 4.6's baseline tone is warmer and includes more emoji than 4.8's.
+1. **Lead with intent** — always.
+2. **Name the role** — only if the task is domain-specific.
+3. **Surface scope** — `## Constraints` always; `## Must NOT include` only if (target=4.8 AND task is planning) OR the draft hints at exclusions; for target=4.6, ALSO add an anti-generalization scope statement.
+4. **Specify Done** — always (artifact + verification).
+5. **Adaptive-thinking cues** — target=4.8 only; skip for 4.6 (see `reference.md` § 1).
+6. **Compress + tone-anchor** — always; add the "Direct technical prose. No emoji." tone-anchor for target=4.6 only.
 
-Use the three pairs in `examples.md` as your few-shot anchor. The rewrite must be predictable session-to-session.
+Never mention API parameters (`effort`, `thinking.budget_tokens`, etc.). Use the three pairs in `examples.md` as your few-shot anchor. The rewrite must be predictable session-to-session.
 
 ## Phase 4: Output
 

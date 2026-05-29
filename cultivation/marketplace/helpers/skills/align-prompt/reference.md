@@ -8,7 +8,7 @@ These characterize what 4.6 does that 4.8 does NOT, and what the rewrite must ac
 
 - **Manual extended-thinking API is supported but caller-controlled.** `thinking: {type: "enabled", budget_tokens: N}` works on 4.6 (it returns 400 on 4.7+). Adaptive thinking is a 4.7+ feature that 4.6 does NOT have. Rewrite implication: the prompt body **cannot** elicit reasoning depth on 4.6 — thinking is set at the API layer by the caller. Move 5 (adaptive-thinking cues) is therefore skipped for target=4.6 not because "execution doesn't need it" but because 4.6 cannot act on it.
 - **Sampling parameters supported.** `temperature`, `top_p`, `top_k` work on 4.6 (they return 400 on 4.7+). NEVER mention them in the rewrite body — they are caller-controlled.
-- **Older tokenizer (less bloat).** 4.6's tokenizer emits roughly 0.74×–1.0× the tokens that 4.7+ does for the same input (equivalently, 4.7+ emits ~1.0×–1.35× as many tokens as 4.6). This is the structural reason 4.6 is the execution target: lower token volume per turn, amortized over many execution turns. Per-token rate-card pricing is flat across the Opus tier — the savings come from emission count, not unit price.
+- **Older tokenizer (less bloat).** 4.6's tokenizer emits roughly 0.74×–1.0× the tokens that 4.7+ does for the same input (the 0.74× lower bound is the reciprocal of the sourced ~35% / 1.35× figure, not a directly-quoted number; equivalently, 4.7+ emits ~1.0×–1.35× as many tokens as 4.6). This is the structural reason 4.6 is the execution target: lower token volume per turn, amortized over many execution turns. Per-token rate-card pricing is flat across the Opus tier — the savings come from emission count, not unit price.
 - **Will silently generalize an instruction from one item to others.** Unlike 4.7+ (literal), 4.6 may infer requests not made and apply instructions to siblings of the named target. Rewrite implication: **explicit scope statements are MORE valuable on 4.6 than on 4.8** ("Apply to file X ONLY, do not touch siblings"; "Modify ONLY the regex at line N, do not generalize the fix"). State the exact items; do not rely on inference.
 - **Fixed-ish verbosity baseline.** 4.6 does not calibrate response length to task complexity the way 4.7+ does. If the draft implies a short answer, state "Be concise." explicitly.
 - **Warmer, more validation-forward tone with more emoji.** If the draft wants direct technical prose, state it (e.g., "Direct technical prose. No emoji.").
@@ -64,3 +64,13 @@ Re-curate this file from these three URLs when a new Opus model drops:
 1. https://platform.claude.com/docs/en/about-claude/models/migration-guide — read both §"Migrating from Claude Opus 4.7 to <NextOpus>" (forward: what 4.8 adds over 4.7) and §"Migrating to Claude Opus 4.7" (reverse: what 4.6 does that 4.7+ doesn't). One page covers both targets.
 2. https://platform.claude.com/docs/en/about-claude/models/whats-new-claude-4-8 — 4.8 feature summary.
 3. https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/claude-prompting-best-practices — universal prompting principles, model-agnostic.
+
+## Re-curation checklist (when a new Opus model drops)
+
+Models rotate ~quarterly. A transition (the planning target ages into the execution slot; a newer model becomes the planning target) touches the sites below. After editing, grep the old model numbers to confirm nothing was missed.
+
+- **reference.md** — § 1 (execution-target facts), § 2 (planning-target facts), Source URLs (migration-guide section names).
+- **SKILL.md** — `description` + `argument-hint` (model tokens); Phase 1 dispatch tokens + Phase 1A question + Phase 1B refusal; Critical Rule 8 + Out-of-scope (the chucked model).
+- **examples.md** — the three `target=` labels and the "Notes on the moves applied" table.
+
+Sanity grep: `grep -rn '4\.6\|4\.7\|4\.8' <skill-dir>` — every remaining hit should be intentional after re-curation.
