@@ -85,7 +85,7 @@ alias zc="cd $(git rev-parse --show-toplevel)/.claude/worktrees/analysis && clau
 ```bash
 /statusline
 # Generates something like:
-# [Opus 4.6] 📁 myrepo | 🌿 feat-auth | ████░░ 42% | $1.23 | 🕐 14m
+# [Opus 4.7] 📁 myrepo | 🌿 feat-auth | ████░░ 42% | $1.23 | 🕐 14m
 ```
 
 The **context percentage is the most important number on your screen.** When it hits 50%, run `/compact`. When switching tasks, run `/clear`.
@@ -876,7 +876,7 @@ Include `ultrathink` in any skill's content to automatically enable maximum reas
 
 | Model | Input/Output per 1M tokens | Best For |
 |-------|---------------------------|----------|
-| Opus 4.6 | $5 / $25 | Planning, architecture, complex implementation |
+| Opus 4.7 | $5 / $25 | Planning, architecture, complex implementation |
 | Sonnet 4.6 | $3 / $15 | Day-to-day coding, subagent tasks |
 | Haiku 4.5 | ~$0.80 / $4 | Commits, formatting, simple lookups |
 
