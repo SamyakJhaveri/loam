@@ -29,7 +29,8 @@ template-sync promote --layer generic .claude/skills/<name>/SKILL.md
 | `seed/*.jinja`           | Copier-rendered files (CLAUDE.md, AGENTS.md, README.md, etc.) |
 | `.claude → seed/.claude` | Symlink for local dev experience |
 | `cultivation/`           | Skill staging: `wip/`, `marketplace/` (cut from default), `retired/` |
-| `soil/`                  | Knowledge base: `jvc/`, `foundation/`, `playbooks/`, `reference/` |
+| `soil/`                  | Knowledge base: `jvc/`, `foundation/`, `playbooks/` |
+| `_archive/`              | Human-only reference docs; not loaded into Claude context |
 | `bin/`                   | `verify-template.sh`, `template-sync.sh`, `lint-skill-descriptions.sh`, `release.sh` |
 | `docs/`                  | Template documentation |
 | `docs/plans/`            | Session plans and handoffs |
