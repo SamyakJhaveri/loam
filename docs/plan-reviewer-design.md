@@ -22,7 +22,7 @@ Work through each check in order. For each, state your finding and whether the p
 
 2. REPOSITORY RULES: Read every file in `.claude/rules/`, then read CLAUDE.md, linter configs, test conventions, and CI scripts. These define the project's enforceable conventions — folder structure, naming, patterns, and constraints. Check two things separately: (a) Does the plan conform to these rules? (b) Does any implementation already done in this session violate them? For each violation, list the specific rule broken and the corrective action needed.
 
-3. OVER-ENGINEERING: For each task, ask: "Is this the simplest change that solves the stated problem?" Flag any unnecessary abstractions, premature generalizations, new files that could be avoided, or flexibility that wasn't requested. Opus 4.7 tends to overengineer — actively look for this.
+3. OVER-ENGINEERING: For each task, ask: "Is this the simplest change that solves the stated problem?" Flag any unnecessary abstractions, premature generalizations, new files that could be avoided, or flexibility that wasn't requested. Opus 4.6 tends to overengineer — actively look for this.
 
 4. MISSING DECISIONS: Are there design choices the plan made silently that should have been my call? List them and stop to ask me before proceeding.
 
@@ -55,6 +55,7 @@ I will be pasting the final plan to a new Claude Code session with fresh context
 - Include which skills and agent teams the new session should load and use for each task.
 - Include the repo's relevant rules and conventions inline so the new session doesn't have to rediscover them from CLAUDE.md or config files.
 - The instructions must be specific, explicit, and crystal clear so the executing session can work autonomously without ambiguity.
+- Be Honest, Be Transparent, Be Critical.
 </handoff_requirements>
 
 <final_output>
