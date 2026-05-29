@@ -27,7 +27,7 @@ to design the placement. Run plan-reviewer agent before implementing.
 Verify with bin/verify-template.sh. Follow §5 universal protocol.
 
 Also read the mastery doc at:
-  .claude/reference/-[HUMAN]_claude-code-mastery-reference.docx
+  _archive/claude-code-mastery/-[HUMAN]_claude-code-mastery-reference.docx
 Section 7b ("Progressive Disclosure via .claude/rules/") — apply any
 insights about path-scoped rule design to the moved rules.
 ```
