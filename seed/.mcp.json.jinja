@@ -1,4 +1,4 @@
-{# {{ project_name }} MCP servers. CodeGraphContext (code graph) and Semble (semantic search) provide code intelligence. Memory MCP stores structured facts. Draw.io MCP opens generated XML, CSV, or Mermaid content in the draw.io browser editor. See docs/MEMORY.md. #}
+{# {{ project_name }} MCP servers. CodeGraphContext (code graph) and Semble (semantic search) provide code intelligence. Memory MCP stores structured facts. Draw.io MCP opens generated XML, CSV, or Mermaid content in the draw.io browser editor. Sequential-thinking MCP provides a step-by-step reasoning scratchpad (tool calls pre-allowed in settings.json; project MCP trust still confirmed once on first launch). See docs/MEMORY.md. #}
 {
   "mcpServers": {
     "codegraphcontext": {
@@ -23,6 +23,11 @@
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@drawio/mcp"]
+    },
+    "sequential-thinking": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
     }
   }
 }

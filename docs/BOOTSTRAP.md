@@ -44,7 +44,7 @@ After Copier finishes, the project has:
 - **Top-level docs**: `README.md`, `AGENTS.md`
 - **Research-only docs** (if `is_research=true`): `REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`, `CHANGELOG.research.md`
 - **`.claude/`**: 24 core skills, 6 agents, 7 hooks, 13 rule files, `settings.json` with the SessionStart hook wired
-- **MCP**: `.mcp.json` registers CodeGraphContext, Semble, the Knowledge-Graph Memory MCP, and draw.io (diagram editor)
+- **MCP**: `.mcp.json` registers CodeGraphContext, Semble, the Knowledge-Graph Memory MCP, draw.io (diagram editor), and sequential-thinking (reasoning scratchpad; tool calls pre-allowed in `settings.json`, project MCP trust confirmed once on first launch)
 - **Config**: `.gitignore`, `.editorconfig`, `pyproject.toml`, `.copier-answers.yml`
 - **Seed working directories**: `archive/`, `config/`, `files_from_team/`, `internal_docs/`, `meeting_notes/`, `presentations/`, `results/`, `scripts/`, `submission_artifacts/`, `submission_docs/` (each with `.gitkeep`)
 - **First commit**: "Initial commit from loam"
@@ -98,6 +98,7 @@ cd "$tmpdir/smoke-test"
 ls .claude/skills/diagrams/SKILL.md && echo "OK: diagrams skill present" || echo "FAIL: diagrams missing"
 python3 -c "import json; d=json.load(open('.mcp.json')); assert 'drawio' in d['mcpServers']; print('OK: drawio MCP wired')"
 python3 -c "import json; d=json.load(open('.mcp.json')); assert 'codegraphcontext' in d['mcpServers']; print('OK: CGC MCP wired')"
+python3 -c "import json; d=json.load(open('.mcp.json')); assert 'sequential-thinking' in d['mcpServers']; print('OK: sequential-thinking MCP wired')"
 ls .claude/settings.json && echo "OK: settings.json present" || echo "FAIL: settings missing"
 test -d .git && echo "OK: git initialized" || echo "FAIL: git not initialized"
 
