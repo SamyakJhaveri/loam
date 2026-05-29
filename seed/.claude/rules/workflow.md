@@ -103,8 +103,15 @@ Mechanics:
 
 ## Model Selection
 
-- **All modes** → use Opus exclusively.
-- Subagents: always Opus. Agent team teammates: advisor pattern by default (Opus advisor + Sonnet workers). Use `--all-opus` for tasks requiring deep reasoning from all teammates.
+Single **Opus** model for primary reasoning — **Opus 4.8** — differentiated by **effort**, not by version (Sonnet only for delegated mechanical work, per the bullets below). (`opus` resolves to Opus 4.8 on the Anthropic API; aliases roll forward on other providers.)
+
+- **Planning / brainstorming** → `opus` at `xhigh` effort (deepest reasoning for hard plans). Set with `/effort xhigh`.
+- **Execution** → `opus` at `medium` or `high` effort. Lower effort here is a feature: the model scopes to what was asked instead of expanding scope (anti-over-engineering).
+- **Minimal / simple execution** → `opusplan` (Opus 4.8 plans, Sonnet 4.6 executes — automatic phase switch, cost-efficient). Use when the plan is explicit and the work is mechanical.
+- **Subagents / agent teams**: advisor pattern — Opus advisor + Sonnet workers. Use `--all-opus` when every teammate needs deep reasoning.
+- **Never Haiku.** **Ultrathink stays on** for one-off deep reasoning (a per-turn keyword; it does not change the session effort level).
+
+Why effort over versions: `low`, `medium`, `high`, `xhigh`, and `max` are all available on Opus 4.8, so capability is a dial on one model — no need to pin older Opus versions. See Anthropic's [effort docs](https://platform.claude.com/docs/en/build-with-claude/effort) and [model-config](https://code.claude.com/docs/en/model-config).
 
 ## Subagent Patterns
 
