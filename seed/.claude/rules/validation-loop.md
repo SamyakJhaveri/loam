@@ -60,6 +60,6 @@ Each Wave 3 agent returns max 50 lines structured verdict.
 Main session receives ~50-line aggregated report.
 Subagent isolation: no raw test output, no verbose logs in main context.
 
-## Override
+## No commit-message override
 
-User says "skip validation" → acknowledge, document in commit message: `[skip-validate: reason]`.
+`pre-commit-gate.sh` enforces the gate solely via the `.validation_passed` sentinel; it does NOT parse commit messages, so there is no `[skip-validate]` escape hatch. The gate is intentionally unconditional. Even a docs-only edit must pass full `/validate` (all three waves) before it can be committed — the gate requires `waves_passed>=3`, so anything short of all three waves (e.g., `/validate quick`) leaves the commit blocked. To bypass deliberately, disable the hook in `settings.json`.

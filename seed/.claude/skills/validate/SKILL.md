@@ -131,8 +131,8 @@ fi
 
 Each Wave 3 agent returns max 50 lines. The aggregated report (~50 lines) is all that enters the main context. Do NOT read agent output files into main context.
 
-## Override
+## No commit-message override
 
-If validation is not applicable (e.g., docs-only change):
-1. User explicitly says "skip validation for this commit"
-2. Document reason in commit message: `[skip-validate: reason]`
+`pre-commit-gate.sh` enforces the gate solely via the `.validation_passed` sentinel — it does NOT parse the commit message, so there is no `[skip-validate]` escape hatch. The gate is intentionally unconditional.
+
+Even a change that seems to need no checks (e.g., a docs-only edit) must pass full `/validate` (all three waves) before committing: the gate requires `waves_passed>=3`, so anything short of all three waves (e.g., `/validate quick`) leaves the commit blocked. To bypass deliberately, disable the hook in `settings.json` — there is no per-commit skip flag.
