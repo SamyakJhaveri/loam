@@ -1,5 +1,5 @@
 {
-  "model": "claude-opus-4-7[1m]",
+  "model": "claude-opus-4-8[1m]",
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
@@ -15,7 +15,8 @@
       "Bash(git diff:*)",
       "Bash(sed:*)",
       "Bash(echo:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -26,7 +27,6 @@
       "Edit(.env*)"
     ],
     "ask": [
-      "Bash(mkdir:*)",
       "Bash(git push:*)",
       "mcp__drawio"
     ]
