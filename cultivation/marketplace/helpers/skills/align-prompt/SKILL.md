@@ -7,12 +7,12 @@ description: >
   "tune prompt for claude". NOT for planning itself, code implementation, or
   validation. Pre-planning / pre-execution only.
 auto-activate: false
-argument-hint: 4.6|4.8 <draft prompt>
+argument-hint: 4.6|4.8 <draft prompt | path/to/draft-file>
 ---
 
 # align-prompt
 
-You rewrite the user's free-form draft prompt into the form Claude Opus 4.6 or 4.8 responds best to. Output is one fenced code block containing the rewritten prompt and nothing else — no preamble, no commentary, no model-name header. The user pastes it into a fresh session.
+You rewrite the user's free-form draft prompt into the form Claude Opus 4.6 or 4.8 responds best to. The draft can be supplied inline or as a path to a draft file. In **inline mode** the output is one fenced code block containing the rewritten prompt and nothing else — no preamble, no commentary, no model-name header — and the user pastes it into a fresh session. In **file mode** the supplied file is overwritten in place with the raw rewritten prompt, so a fresh session can be pointed straight at the file.
 
 ## Phase 1: Parse `$ARGUMENTS`
 
@@ -23,7 +23,20 @@ Parse the FIRST whitespace-delimited token. Dispatch is deterministic — do not
 3. `4.7` → Phase 1B (explicit refusal — 4.7 is chucked from this skill's target set per user policy)
 4. Anything else (or no first token) → Phase 1A
 
-Everything AFTER the first token (or the entire `$ARGUMENTS` if Phase 1A fires) is the draft prompt body, preserved verbatim for transformation.
+Everything AFTER the first token (or the entire `$ARGUMENTS` if Phase 1A fires) is `ARG`, preserved verbatim. Once a target is resolved (4.6 or 4.8 — NOT 4.7, NOT missing), detect the mode in Phase 1C.
+
+### Phase 1C: Detect mode (deterministic)
+
+Only reached after a target resolves to 4.6 or 4.8. The 4.7-refuse (Phase 1B) and missing-target (Phase 1A) paths NEVER reach this step — no Read-probe fires for them.
+
+Take `ARG` = everything after the first token, trimmed of leading/trailing whitespace, and detect mode deterministically by probing it with the `Read` tool:
+
+1. `Read(ARG)` **succeeds** → **file mode**: the draft body is the file's contents; remember `ARG` as the write-back path for Phase 4.
+2. `Read(ARG)` **fails** (not found / directory / unreadable) → **inline mode**: the draft body is `ARG` verbatim (current behaviour). An existing directory path also fails `Read` and routes to inline — surprising but non-destructive, since nothing is written.
+
+Rationale: `Read` is already the only always-permitted tool, so the probe adds no new dependency. A multi-line pasted draft naturally fails `Read` and routes to inline; an existing single-line path routes to file. Dispatch stays deterministic — the file either exists or it does not, a fact rather than an LLM judgement.
+
+Edge case (accepted): file mode overwrites the supplied path in place with no backup, so a filename collision is destructive — inline text mistaken for a file would be clobbered by the rewrite. A collision can only happen when the entire trimmed `ARG` is a single token that is also an existing readable path; a normal multi-word draft is not a valid path, `Read` fails on it, and it routes to inline. The alternative (fuzzy path-sniffing) is worse and violates the no-guessing principle.
 
 ### Phase 1A: Missing target
 
@@ -65,6 +78,10 @@ Never mention API parameters (`effort`, `thinking.budget_tokens`, etc.). Use the
 
 ## Phase 4: Output
 
+Branch on the mode detected in Phase 1C.
+
+### Inline mode
+
 Output the rewritten prompt as a single fenced block with language hint `text`:
 
 ````text
@@ -73,12 +90,20 @@ Output the rewritten prompt as a single fenced block with language hint `text`:
 
 NOTHING outside the fence. No preamble like "Here is your rewritten prompt:". No trailing notes. No model-name header. Paste-ready.
 
+### File mode
+
+Use the `Write` tool to overwrite `ARG` (the write-back path from Phase 1C) with the rewritten prompt. The written content is **raw aligned prompt text — NO code fences, no preamble, no commentary, no model-name header** (it is a prompt file, not a display block). Then print to the terminal exactly ONE line:
+
+> Aligned prompt (target <resolved 4.6|4.8>) written to `<ARG>`.
+
+(Substitute the resolved target and the actual path.) Nothing else on the terminal.
+
 ## Critical Rules
 
-1. Output is the rewrite and nothing else. Paste-ready.
+1. In inline mode the output is the rewrite and nothing else, paste-ready. In file mode the raw rewrite is written to the file and the terminal shows only the single confirmation line.
 2. Preserve the user's task content; transform style only. Never invent technical requirements not in the draft.
-3. Never call any tool other than `Read` (for `reference.md` and `examples.md`). No `Edit`, no `Write`, no `Bash`, no `WebFetch`. The skill is a pure prompt transform.
-4. Never modify the user's project files.
+3. Permitted tools: `Read` always (for `reference.md`, `examples.md`, and the Phase 1C mode probe) and `Write` only in file mode (to overwrite `ARG`). No `Edit`, no `Bash`, no `WebFetch`.
+4. Never write to any path other than the exact `ARG` the user supplied — no derived filenames, no `.bak`, no new files; the only write is an in-place overwrite of the supplied path.
 5. Never mention API parameters (`effort`, `thinking`, `max_tokens`, `temperature`). Those are caller-controlled.
 6. When target=4.6, omit Move 5 entirely. 4.6 does NOT support adaptive thinking — the prompt body cannot elicit per-turn reasoning depth. Thinking on 4.6 is set at the API layer by the caller via the legacy `thinking: {type: "enabled", budget_tokens: N}` field. Prompt-body reasoning invitations are inert.
 7. When the draft is < 20 words AND obviously simple (e.g., "fix typo in README"), output it largely unchanged — over-formalizing a trivial prompt is itself a failure mode.
@@ -90,5 +115,5 @@ NOTHING outside the fence. No preamble like "Here is your rewritten prompt:". No
 - **Sonnet / Haiku targets** — ruled out by user's Opus-only policy.
 - **Opus 4.7 target** — explicitly chucked from this skill's target set (user policy decision codified 2026-05-28). 4.7's tokenizer emits ~1.0×–1.35× as many tokens as 4.6 for the same input at the same rate-card price, and 4.8 already supersedes 4.7 on reasoning quality. 4.7 is dominated on both dimensions.
 - **Calling Anthropic's Prompt Improver API** — keeps skill self-contained and Loam-aware; revisit if pure-prompt-driven quality proves insufficient.
-- **Clipboard / file output** — terminal-only in v1.
+- **Clipboard output** — file overwrite and terminal paste-block are the only output modes.
 - **Rewrite logging / A-B comparison** — no persistence in v1.
