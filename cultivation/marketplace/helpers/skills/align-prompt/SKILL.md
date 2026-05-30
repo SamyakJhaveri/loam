@@ -23,7 +23,7 @@ Parse the FIRST whitespace-delimited token. Dispatch is deterministic — do not
 3. `4.7` → Phase 1B (explicit refusal — 4.7 is chucked from this skill's target set per user policy)
 4. Anything else (or no first token) → Phase 1A
 
-Everything AFTER the first token (or the entire `$ARGUMENTS` if Phase 1A fires) is `ARG`, preserved verbatim. Once a target is resolved (4.6 or 4.8 — NOT 4.7, NOT missing), detect the mode in Phase 1C.
+Everything AFTER the first token (or the entire `$ARGUMENTS` if Phase 1A fires) is `ARG`. Once a target is resolved (4.6 or 4.8 — NOT 4.7, NOT missing), detect the mode in Phase 1C.
 
 ### Phase 1C: Detect mode (deterministic)
 
@@ -32,7 +32,7 @@ Only reached after a target resolves to 4.6 or 4.8. The 4.7-refuse (Phase 1B) an
 Take `ARG` = everything after the first token, trimmed of leading/trailing whitespace, and detect mode deterministically by probing it with the `Read` tool:
 
 1. `Read(ARG)` **succeeds** → **file mode**: the draft body is the file's contents; remember `ARG` as the write-back path for Phase 4.
-2. `Read(ARG)` **fails** (not found / directory / unreadable) → **inline mode**: the draft body is `ARG` verbatim (current behaviour). An existing directory path also fails `Read` and routes to inline — surprising but non-destructive, since nothing is written.
+2. `Read(ARG)` **fails** (not found / directory / unreadable) → **inline mode**: the draft body is the trimmed `ARG` (current behaviour). An existing directory path also fails `Read` and routes to inline — surprising but non-destructive, since nothing is written.
 
 Rationale: `Read` is already the only always-permitted tool, so the probe adds no new dependency. A multi-line pasted draft naturally fails `Read` and routes to inline; an existing single-line path routes to file. Dispatch stays deterministic — the file either exists or it does not, a fact rather than an LLM judgement.
 
