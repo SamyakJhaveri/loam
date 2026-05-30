@@ -1,10 +1,11 @@
-You are a contributor to the Loam Copier template (this repo). Codify the remaining JVC
-constraint learnings into Loam's rule files, reference docs, and one skill. Done = the 11
-file changes below are applied exactly, `bin/verify-template.sh` prints `ALL OK`, both Copier
-smoke tests pass every check, and one conventional commit lands on `main`.
+Codify the remaining JVC constraint learnings into the Loam Copier template (this repo) — its
+rule files, reference docs, and one skill. Done = the 11 file changes below are applied exactly
+as written, `bin/verify-template.sh` prints `ALL OK`, both Copier smoke tests pass every check,
+and one conventional commit lands on `main`.
 
-All paths are repo-relative. New-file bodies and insert snippets are given verbatim — write
-them as-is. This prompt is self-contained; no external plan is required.
+You are a contributor to this template. All paths are repo-relative. New-file bodies and insert
+snippets are verbatim — write them exactly as given. This prompt is self-contained; no external
+plan is required.
 
 ## Files to create (write the fenced body verbatim)
 
