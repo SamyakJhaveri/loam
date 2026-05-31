@@ -11,7 +11,7 @@ When you run `copier copy`, Loam generates a project with:
 - **25 core skills** — feature-dev, fix-bug, commit, validate, ship, multi-review, session-critique, and more
 - **7 hooks** — pre-commit validation gate, post-edit test runner, session-start context, audit logging, result immutability, sentinel cleanup, compact recovery
 - **Structured memory** — 3-layer routing stack (CLAUDE.md → CONTEXT.md → stage contracts) + MCP tools (CodeGraphContext, Semble, Knowledge Graph)
-- **Research flavor** (optional) — paper-write, cite-check, eval-run, experiment, hypothesis-tree, and 19 research-specific skills total
+- **Research flavor** (optional) — paper-write, cite-check, eval-run, experiment, hypothesis-tree, and 18 research-specific skills total
 
 ## Quick start
 
@@ -37,7 +37,7 @@ loam/
 │   │   ├── hooks/           # Pre-commit gate, post-edit tests, etc.
 │   │   └── rules/           # Workflow, guardrails, known issues
 │   ├── _research/           # Research flavor overlay (optional)
-│   │   ├── skills/          # 19 research-specific skills
+│   │   ├── skills/          # 18 research-specific skills
 │   │   └── rules/           # Research consistency, memory rules
 │   └── *.jinja              # Template files (CLAUDE.md, README.md, etc.)
 ├── cultivation/             # Skill lifecycle management
