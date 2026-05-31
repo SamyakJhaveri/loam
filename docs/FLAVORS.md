@@ -18,7 +18,7 @@ uvx copier copy --trust --data "is_research=true" gh:samyakjhaveri/loam ./my-pap
 
 Loaded into every project, research or not:
 
-- The 25 core skills (`.claude/skills/`)
+- The 26 core skills (`.claude/skills/`)
 - The 6 core agents (`.claude/agents/`)
 - All hooks including the SessionStart brief
 - All four ICM routing rules (`L0-budget.md`, `context-md-anatomy.md`, `stage-contract.md`, `layer-triage.md`)

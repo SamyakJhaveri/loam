@@ -43,7 +43,7 @@ After Copier finishes, the project has:
 - **L0 entry**: `CLAUDE.md` (sized to the ~800-token L0 budget; see `.claude/rules/L0-budget.md`)
 - **Top-level docs**: `README.md`, `AGENTS.md`
 - **Research-only docs** (if `is_research=true`): `REFERENCES.md`, `EXPERIMENT-PROTOCOL.md`, `EXPERIMENTS.md`, `FINDINGS.md`, `RESULTS.md`, `CHANGELOG.research.md`
-- **`.claude/`**: 25 core skills, 6 agents, 7 hooks, 16 rule files, `settings.json` with the SessionStart hook wired
+- **`.claude/`**: 26 core skills, 6 agents, 7 hooks, 16 rule files, `settings.json` with the SessionStart hook wired
 - **MCP**: `.mcp.json` registers CodeGraphContext, Semble, the Knowledge-Graph Memory MCP, draw.io (diagram editor), and sequential-thinking (reasoning scratchpad; tool calls pre-allowed in `settings.json`, project MCP trust confirmed once on first launch)
 - **Config**: `.gitignore`, `.editorconfig`, `pyproject.toml`, `.copier-answers.yml`
 - **Seed working directories**: `archive/`, `config/`, `files_from_team/`, `internal_docs/`, `meeting_notes/`, `presentations/`, `results/`, `scripts/`, `submission_artifacts/`, `submission_docs/` (each with `.gitkeep`)
@@ -110,6 +110,6 @@ cd - && rm -r "$tmpdir"
 
 ## After bootstrap — first session
 
-1. Open the project in Claude Code. The `SessionStart` hook fires and injects the framework brief (25 core skills, Pipeline Gate ordering, four ICM routing layers).
+1. Open the project in Claude Code. The `SessionStart` hook fires and injects the framework brief (26 core skills, Pipeline Gate ordering, four ICM routing layers).
 2. Replace placeholder content in `CLAUDE.md` with project specifics. Stay within ~800 tokens (`.claude/rules/L0-budget.md`).
 3. Run `cgc index .` after the first non-trivial commit to build the code graph index.
