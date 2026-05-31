@@ -2,14 +2,16 @@
 
 A Copier template that bootstraps Claude Code projects with battle-tested skills, hooks, agents, and a structured memory stack. Built for researchers and software engineers working on advanced projects.
 
+**📊 [Visual Overview](docs/VISUAL-OVERVIEW.md)** — diagrams of Loam's architecture, lifecycle, and workflow.
+
 ## What you get
 
 When you run `copier copy`, Loam generates a project with:
 
-- **21 skills** — feature-dev, fix-bug, commit, validate, ship, multi-review, session-critique, and more
+- **25 core skills** — feature-dev, fix-bug, commit, validate, ship, multi-review, session-critique, and more
 - **7 hooks** — pre-commit validation gate, post-edit test runner, session-start context, audit logging, result immutability, sentinel cleanup, compact recovery
 - **Structured memory** — 3-layer routing stack (CLAUDE.md → CONTEXT.md → stage contracts) + MCP tools (CodeGraphContext, Semble, Knowledge Graph)
-- **Research flavor** (optional) — paper-write, cite-check, eval-run, experiment, hypothesis-tree, and 18 research-specific skills total
+- **Research flavor** (optional) — paper-write, cite-check, eval-run, experiment, hypothesis-tree, and 19 research-specific skills total
 
 ## Quick start
 
@@ -30,12 +32,12 @@ cd my-project && uvx copier update --trust
 loam/
 ├── seed/                    # Copier subdirectory — everything rendered to projects
 │   ├── .claude/             # Skills, agents, hooks, rules, settings
-│   │   ├── skills/          # 21 core skills
+│   │   ├── skills/          # 25 core skills
 │   │   ├── agents/          # Specialized subagents
 │   │   ├── hooks/           # Pre-commit gate, post-edit tests, etc.
 │   │   └── rules/           # Workflow, guardrails, known issues
 │   ├── _research/           # Research flavor overlay (optional)
-│   │   ├── skills/          # 18 research-specific skills
+│   │   ├── skills/          # 19 research-specific skills
 │   │   └── rules/           # Research consistency, memory rules
 │   └── *.jinja              # Template files (CLAUDE.md, README.md, etc.)
 ├── cultivation/             # Skill lifecycle management

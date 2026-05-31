@@ -18,7 +18,7 @@ uvx copier copy --trust --data "is_research=true" gh:samyakjhaveri/loam ./my-pap
 
 Loaded into every project, research or not:
 
-- The 24 core skills (`.claude/skills/`)
+- The 25 core skills (`.claude/skills/`)
 - The 6 core agents (`.claude/agents/`)
 - All hooks including the SessionStart brief
 - All four ICM routing rules (`L0-budget.md`, `context-md-anatomy.md`, `stage-contract.md`, `layer-triage.md`)
@@ -54,4 +54,4 @@ Default to `generic` only when the skill is useful regardless of project type. T
 
 The audit established that the previous `software-eng` flavor carried 4 rule files, 3 seed-docs templates, and 0 skills / agents / hooks — a thin layer whose entire content was useful to almost every engineering project. The cost of the abstraction (two parallel template directories, a "must-stay-identical" duplication guard for `python.md` and `tech-stack.md`) was higher than the value of keeping it optional. Folding it into the default removes the dual-tree maintenance burden.
 
-The research flavor remains a flavor: 19 skills + 3 agents + 2 hooks + 1 rule + 5 docs is substantial, and not every engineering project wants citation auditing or HPC code review.
+The research flavor remains a flavor: 19 skills + 3 agents + 2 hooks + 2 rules + 5 docs is substantial, and not every engineering project wants citation auditing or HPC code review.
