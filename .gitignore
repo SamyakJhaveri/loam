@@ -71,3 +71,10 @@ IMG_*
 *.zip
 2026-*
 
+# Copyrighted Yoshida reference scans — never commit (style refs only, local-only)
+yoshida_hiroshi/
+
+# Track-B proof renders (large 4K candidates) — judge locally, commit chosen winners deliberately.
+# Scoped to loam-hero-*.png so committed *.drawio.png diagrams are unaffected.
+docs/diagrams/loam-hero-*.png
+

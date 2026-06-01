@@ -5,14 +5,15 @@ description: >
   Use when the user needs a rendered diagram, code visualization,
   or architecture image. Subcommands — excalidraw (hand-drawn),
   drawio (formal XML), paper (academic illustrations),
-  gitdiagram (repo architecture).
+  gitdiagram (repo architecture),
+  yoshida (atmospheric Hiroshi Yoshida woodblock hero art).
 auto-activate: false
-argument-hint: excalidraw|drawio|paper|gitdiagram <description>
+argument-hint: excalidraw|drawio|paper|gitdiagram|yoshida <description>
 ---
 
-# Diagrams — 4-Tool Visual Stack
+# Diagrams — The Visual Stack
 
-Generate diagrams using one of four specialized tools, each suited to different use cases.
+Generate diagrams using one of several specialized tools, each suited to different use cases.
 
 ## Arguments
 
@@ -22,6 +23,7 @@ Generate diagrams using one of four specialized tools, each suited to different 
 - `drawio [format] <description>` — native draw.io XML diagrams with optional PNG/SVG/PDF export
 - `paper <description>` — publication-quality academic illustrations via PaperBanana
 - `gitdiagram <github-url>` — interactive architecture diagram from any GitHub repo
+- `yoshida <concept-slug>` — render a Yoshida-style Track B atmospheric hero image for a concept defined in `docs/diagrams/concepts.yaml`
 - `<free-form text>` — auto-classify intent and route to the appropriate tool
 
 ## Output Convention
@@ -36,7 +38,8 @@ Parse `$ARGUMENTS` and match the FIRST word:
 2. `drawio` → Phase 2B
 3. `paper` → Phase 2C
 4. `gitdiagram` → Phase 2D
-5. Anything else → Phase 2E (free-form classification)
+5. `yoshida` → Phase 2F
+6. Anything else → Phase 2E (free-form classification)
 
 Subcommand dispatch is deterministic — do not use LLM reasoning when a keyword is present.
 
@@ -107,7 +110,7 @@ See `reference.md` for the XML generation guide and shape reference.
 
 ---
 
-## Phase 2C: PaperBanana (external tool — Layer 3)
+## Phase 2C: PaperBanana (Track A — manual, external tool — Layer 3)
 
 **External tool — Claude Code cannot run it directly.** Direct the user to the [HuggingFace Space](https://huggingface.co/spaces/dwzhu/PaperBanana) for zero-setup use, or to the [GitHub repo](https://github.com/dwzhu-pku/PaperBanana) for self-hosting. See `reference.md` §3.
 
@@ -131,6 +134,38 @@ When no subcommand prefix is matched, classify intent:
 | GitHub repo URL, repo architecture, codebase overview | `gitdiagram` |
 
 If ambiguous, ask the user to clarify.
+
+---
+
+## Phase 2F: Yoshida (Track B — Layer 3)
+
+The **automated Track B** path: atmospheric hero art in Hiroshi Yoshida's shin-hanga
+woodblock style, rendered via the Gemini Image API (`gemini-3-pro-image`). This is the
+automated counterpart to PaperBanana's manual Track A in Phase 2C — here the render runs from
+a committed repo script rather than a human in a browser.
+
+Invocation:
+
+```bash
+uv run .claude/skills/diagrams/scripts/render-yoshida.py --concept <slug> --candidates 2
+```
+
+- **`GEMINI_API_KEY` must be set.** If it is unset, the script prints a clear `SKIP` line and
+  exits cleanly with no render (the scaffold stays intact). Set the key before a real render.
+- **References are optional.** They come from a local `yoshida_hiroshi/` directory (gitignored)
+  — the prose prompt carries the style on its own, but local references boost fidelity when
+  present. The model accepts at most 6 references per concept; the script hard-fails rather
+  than silently truncate a longer list, and warns (without failing) on a missing file.
+- **Label discipline.** Yoshida prints carry almost no text. For label-heavy concepts, get the
+  labels from Track A (PaperBanana) or a `drawio` / `excalidraw` vector overlay, not the image
+  model — deterministic text belongs in a deterministic layer.
+- **Full method.** See [`design-language.md`](design-language.md) for the two-track design
+  language, the canonical Yoshida preamble, the style principles, label discipline, the
+  reference-image guidance, and the Track A 3-field recipe.
+
+`render-yoshida.py` is a committed repo script, not generated at runtime, so invoking it does
+not trip Rule 1 below. It does make a real, paid Gemini API call once `GEMINI_API_KEY` is set
+— run it only with the user's awareness.
 
 ---
 

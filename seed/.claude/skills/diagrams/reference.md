@@ -1,6 +1,6 @@
 # Diagrams Reference
 
-Setup guides, usage patterns, and technical details for the 4-tool visual stack.
+Setup guides, usage patterns, and technical details for the diagrams visual stack.
 
 ## Tool Overview
 

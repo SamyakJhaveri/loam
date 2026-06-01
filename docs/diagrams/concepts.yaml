@@ -1,0 +1,128 @@
+# concepts.yaml — Loam's diagram design-language registry (source of truth).
+#
+# This is Loam's own dogfood content. The render script reads this file, finds a
+# concept by `slug`, and assembles a Gemini image prompt as:
+# preamble + track_b.prompt + " Palette: " + palette + ".". So `track_b.prompt` must
+# contain ONLY the concept's subject (positive-framing, label-light) — never style boilerplate.
+#
+# Two tracks per concept:
+#   Track A = the research/academic figure (matplotlib chart, labeled diagram).
+#   Track B = the Hiroshi-Yoshida-style woodblock "hero" illustration.
+#
+# Schema is documented in seed/.claude/skills/diagrams/concepts.template.yaml.
+# Fully authored here: #1, #3, #4. All others are stubs (status todo, expand later).
+# Root is a YAML list. Exactly 16 entries.
+
+- id: 1
+  slug: identity
+  name: "Identity (grows itself)"
+  palette: "single tonal key — sap green on warm cream"
+  track_b:
+    prompt: "A self-renewing flowering vine curving back on itself in an ouroboros loop, where a ripe fruit at the tip opens into a seed that sprouts fresh new growth feeding back to the root, the plant continuously growing itself in one closed circle of life"
+    refs:
+      - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
+      - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
+      - "Rapids,_Hiroshi_Yoshida,_渓流,_吉田博.jpg"
+      - "Bamboo_Grove_(5759026915).jpg"
+  track_a:
+    source_context: "The template ⊕ project composition: this repo IS the Copier template AND a Claude Code project at the same time, joined by the `.claude → seed/.claude` symlink so the shipped config also activates here. Labels to carry: 'template', 'project', 'seed/.claude', '.claude (symlink)'."
+    figure_caption: "Loam is both the template and a project running on its own output, joined by a symlink."
+    visual_intent: "Academic composition figure; two overlapping sets joined by an arrow standing for the symlink; on-figure labels kept to 2-3 words each."
+  status: { track_a: todo, track_b: rendered }
+
+- id: 2
+  slug: lifecycle
+  name: "Lifecycle (seed exchange)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 3
+  slug: context-routing
+  name: "Context routing (L0/L1/L2)"
+  palette: "blueprint mono — indigo on cream"
+  track_b:
+    prompt: "Three stacked horizontal strata of soil seen in cross-section, each layer a distinct depth, with a single circular gate ring set into the ground where the layers meet, sunlight catching the rim of the ring"
+    refs:
+      - "Lake_Kawaguchi_by_Yoshida_Hiroshi,_1926,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
+      - "Morning_Mist_in_Taj_Mahal,_no._5,_Hiroshi_yoshida.jpg"
+      - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
+      - "Yōmeimon,_Hiroshi_Yoshida,_陽明門,_吉田博.jpg"
+  track_a:
+    source_context: "The three context-load layers with their token budgets: L0 = CLAUDE.md (~800 tokens, always loaded, 'where am I'); L1 = CONTEXT.md (~300 tokens, on entry to a subdir, 'where do I go'); L2 = stage contract (200-500 tokens, per task, 'what do I do'). Labels: 'L0 CLAUDE.md ~800', 'L1 CONTEXT.md ~300', 'L2 stage contract 200-500'."
+    figure_caption: "Context routes through three layers, each loaded at a different time with its own token budget."
+    visual_intent: "Academic stacked-layer diagram; three bands top to bottom; on-figure labels kept to 2-3 words plus the budget number each."
+  status: { track_a: todo, track_b: rendered }
+
+- id: 4
+  slug: layer-triage
+  name: "Layer triage (60/30/10)"
+  palette: "earth tones — ochre, umber, sienna"
+  track_b:
+    prompt: "A vertical cross-section of a plant's root mass spreading through three unequal zones of earth, the topmost zone densely packed with the bulk of the roots, the middle zone moderately filled, the deepest zone holding only a few fine taproots"
+    refs:
+      - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
+      - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
+  track_a:
+    source_context: "A proportion chart of the 60/30/10 layer split: deterministic 60% (functions, scripts, validators), rule-based 30% (skills, hooks, configured workflows), probabilistic 10% (open-ended LLM reasoning). Labels with percentages: 'deterministic 60%', 'rule-based 30%', 'probabilistic 10%'. This is the REAL proof render — a matplotlib proportion chart via PaperBanana."
+    figure_caption: "Roughly 60% of work is deterministic, 30% rule-based, and only 10% needs probabilistic reasoning."
+    visual_intent: "Academic proportion chart (stacked bar or three-segment split); each segment labeled with its name and percentage; matplotlib-clean styling."
+  status: { track_a: todo, track_b: todo }
+
+- id: 5
+  slug: workflow
+  name: "Workflow (6 stages)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 6
+  slug: repo-anatomy
+  name: "Repo anatomy (garden map)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 7
+  slug: fan-out
+  name: "Fan-out (one to many)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 8
+  slug: cultivation
+  name: "Cultivation (greenhouse)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 9
+  slug: flavors
+  name: "Flavors (cultivars)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 10
+  slug: validation
+  name: "Validation (three sieves)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 11
+  slug: soil
+  name: "Soil (knowledge base)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 12
+  slug: memory
+  name: "Memory (compost)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 13
+  slug: agent-teams
+  name: "Agent teams (pollination)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 14
+  slug: toolkit
+  name: "Toolkit (the tools)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 15
+  slug: cover-art
+  name: "Cover art (Track B only)"
+  status: { track_a: todo, track_b: todo }
+
+- id: 16
+  slug: reserved
+  name: "Reserved"
+  status: { track_a: todo, track_b: todo }
