@@ -1,0 +1,17 @@
+# Repo-local Codex config for working ON the Loam template.
+# Committed so the Codex setup is reproducible and the network policy is visible/intentional.
+# Schema verified against https://developers.openai.com/codex/config-basic (June 2026).
+
+# Ask before non-trivial actions; you (the human) stay in the loop on a creative re-run.
+approval_policy = "on-request"
+
+# Let Codex read/write within the workspace; commands run sandboxed.
+sandbox_mode = "workspace-write"
+
+# Deep reasoning for a design-heavy task.
+model_reasoning_effort = "high"
+
+# render-yoshida.py makes a LIVE Gemini API call. The workspace-write sandbox blocks
+# network by default, so renders fail without this. Enabling it is a deliberate policy.
+[sandbox_workspace_write]
+network_access = true

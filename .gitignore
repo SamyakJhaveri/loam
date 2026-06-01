@@ -37,8 +37,10 @@ env/
 .claude/.local-paths
 # User-local settings (generated from .claude/settings.local.json.template)
 .claude/settings.local.json
-# Codex CLI local state (config lives at ~/.codex/config.toml)
+# Codex CLI local state; repo policy config is intentionally committed.
 .codex/
+!.codex/
+!.codex/config.toml
 # File ownership tracking (session-ephemeral, written by file-ownership.sh hook)
 .file-owners.json
 # Build artifacts
@@ -70,6 +72,7 @@ IMG_*
 # Ad-hoc conversation exports / archives
 *.zip
 2026-*
+!docs/plans/2026-06-01-codex-diagram-rerun-brief.md
 
 # Copyrighted Yoshida reference scans — never commit (style refs only, local-only)
 yoshida_hiroshi/
@@ -77,4 +80,4 @@ yoshida_hiroshi/
 # Track-B proof renders (large 4K candidates) — judge locally, commit chosen winners deliberately.
 # Scoped to loam-hero-*.png so committed *.drawio.png diagrams are unaffected.
 docs/diagrams/loam-hero-*.png
-
+docs/diagrams/loam-hero-*.qa.yaml
