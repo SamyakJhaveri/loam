@@ -16,17 +16,86 @@ from PIL import Image
 
 MODEL = "gemini-3-pro-image"
 MAX_REFS = 6  # gemini-3-pro-image accepts at most 6 reference images.
+LABEL_STRATEGIES = {"track-a", "vector-overlay", "label-light", "label-free"}
 
 PREAMBLE = (
-    "Japanese shin-hanga woodblock print in the style of Hiroshi Yoshida (1876–1950): "
-    "atmospheric and luminous, built from many layered transparent color impressions; a single "
+    "Japanese shin-hanga woodblock print: atmospheric and luminous, built from many layered "
+    "transparent color impressions; a single "
     "harmonious tonal key per image; soft graded skies (bokashi) suggesting dawn, dusk, or mist; "
     "fine hand-carved directional linework; calm, centered, contemplative composition, often with "
-    "a still-water reflection; matte, slightly grainy printed texture on fine paper; restrained "
-    "palette, soft natural light, soft even tonal transitions with a gentle contrast range. Wide "
-    "16:9 landscape banner. Keep any text to at most two short words, cleanly lettered in a simple "
-    "serif. Subject:"
+    "a still-water reflection; matte, slightly grainy printed texture on fine paper; fresh, bright, "
+    "inviting color; clear luminous daylight; soft even tonal transitions with a gentle contrast "
+    "range. Wide 16:9 landscape banner. Use clean blank paper margins and let the composition "
+    "communicate pictorially. Subject:"
 )
+
+LABEL_GUIDANCE = {
+    "label-free": (
+        "Label treatment: wide plain cream paper margins, the lower-right margin stays plain cream "
+        "paper texture, pictorial plant forms carry the meaning."
+    ),
+    "label-light": (
+        "Label treatment: one small decorative title of at most two short words may sit in the margin."
+    ),
+    "vector-overlay": (
+        "Label treatment: leave calm open bands and clear destination areas for deterministic vector labels added later."
+    ),
+    "track-a": (
+        "Label treatment: keep the hero image pictorial; exact labels belong in the separate Track A figure."
+    ),
+}
+
+
+def write_qa_manifest(out_path, concept, full_prompt, attached, missing, size, render_status):
+    manifest_path = out_path.with_suffix(".qa.yaml")
+    manifest = {
+        "concept": {
+            "id": concept.get("id"),
+            "slug": concept.get("slug"),
+            "name": concept.get("name"),
+            "viewer_should_understand": concept.get("viewer_should_understand"),
+            "must_show": concept.get("must_show", []),
+            "label_strategy": concept.get("label_strategy"),
+        },
+        "render": {
+            "model": MODEL,
+            "size": size,
+            "output": str(out_path),
+            "status": render_status,
+            "prompt": full_prompt,
+            "refs_attached": [str(p) for p in attached],
+            "refs_missing": missing,
+        },
+        "qa": {
+            "status": "needs_review",
+            "keep": None,
+            "rubric": [
+                "concept clarity",
+                "required visual evidence",
+                "taste and coherence",
+                "bright inviting palette",
+                "label strategy",
+            ],
+            "notes": "",
+        },
+    }
+    manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+    print(f"manifest: {manifest_path}")
+
+
+def validate_concept_contract(concept, slug):
+    errors = []
+    if not str(concept.get("viewer_should_understand", "")).strip():
+        errors.append("missing non-empty viewer_should_understand")
+    must_show = concept.get("must_show")
+    if not isinstance(must_show, list) or not any(str(item).strip() for item in must_show):
+        errors.append("must_show must be a non-empty list")
+    label_strategy = concept.get("label_strategy")
+    if label_strategy not in LABEL_STRATEGIES:
+        allowed = ", ".join(sorted(LABEL_STRATEGIES))
+        errors.append(f"label_strategy must be one of: {allowed}")
+    if errors:
+        sys.exit(f"ERROR: concept '{slug}' has an invalid quality-gate contract: " + "; ".join(errors))
 
 
 def main() -> int:
@@ -54,6 +123,8 @@ def main() -> int:
     if "track_b" not in concept or "palette" not in concept:
         sys.exit(f"ERROR: concept '{args.concept}' is a stub, not yet authored (no track_b/palette).")
 
+    validate_concept_contract(concept, args.concept)
+
     cid = concept["id"]
     listed_refs = concept["track_b"].get("refs", [])
 
@@ -76,7 +147,16 @@ def main() -> int:
             print(f"WARNING: reference image missing, skipping: {p}", file=sys.stderr)
 
     # 6. Assemble prompt.
-    full_prompt = PREAMBLE + " " + concept["track_b"]["prompt"] + " Palette: " + concept["palette"] + "."
+    label_guidance = LABEL_GUIDANCE[concept["label_strategy"]]
+    full_prompt = (
+        PREAMBLE
+        + " "
+        + concept["track_b"]["prompt"]
+        + " Palette: "
+        + concept["palette"]
+        + ". "
+        + label_guidance
+    )
 
     # 7. Reproducibility log.
     out_dir = Path(args.out)
@@ -116,10 +196,12 @@ def main() -> int:
             if part.inline_data and part.inline_data.data:
                 Image.open(io.BytesIO(part.inline_data.data)).save(out_path)
                 print(f"saved: {out_path}")
+                write_qa_manifest(out_path, concept, full_prompt, attached, missing, args.size, "saved")
                 saved = True
                 break
         if not saved:
             print(f"WARNING: no image data returned for {out_path}", file=sys.stderr)
+            write_qa_manifest(out_path, concept, full_prompt, attached, missing, args.size, "no_image_data")
 
     return 0
 

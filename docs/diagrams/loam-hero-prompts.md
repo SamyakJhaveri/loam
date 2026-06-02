@@ -12,8 +12,9 @@ The design language runs on **two tracks**:
 - **Track B — atmospheric Hiroshi Yoshida woodblock hero art**, produced via the automated
   `render-yoshida.py` engine, which optimizes for evocative shin-hanga mood.
 
-The full method (preamble assembly, palettes, reference handling) lives in the design-language
-spec; this dashboard stays a thin index and points there for detail.
+The full method (preamble assembly, palettes, reference handling, and candidate QA) lives in
+the design-language spec and quality gate; this dashboard stays a thin index and points there
+for detail.
 
 ## Two tracks
 
@@ -29,10 +30,12 @@ registry, assembles the prompt, and calls the model.
 ## Pointers
 
 - **Design-language spec (authoritative method):** [`../../seed/.claude/skills/diagrams/design-language.md`](../../seed/.claude/skills/diagrams/design-language.md)
+- **Quality gate (concept contract + candidate QA):** [`../../seed/.claude/skills/diagrams/quality-gate.md`](../../seed/.claude/skills/diagrams/quality-gate.md)
 - **Concept registry (source of truth for all prompts):** [`concepts.yaml`](concepts.yaml) (sibling file)
 
 **Verbatim prompts live in `concepts.yaml` — the single source.** They are NOT duplicated here.
-This dashboard names concepts and tracks; the registry holds the exact prompt text per concept.
+This dashboard names concepts and tracks; the registry holds the exact prompt text and
+acceptance criteria per concept.
 
 ## Catalog (16 concepts)
 
@@ -44,7 +47,7 @@ concepts are authored this round — **#1 and #3 on Track B (Gemini) and #4 on T
 |---|---------|---------------------------|------------------------|----------------------|
 | 1 | Identity (grows itself) | template ⊕ project; .claude→seed/.claude symlink | ouroboros vine, fruit→seed | Yes — Track B proof |
 | 2 | Lifecycle (seed exchange, 4-beat) | drop→expand-to-fill→upgrade-in-place→sync-back | seed in crate ⇄ "New Project" bed | stub |
-| 3 | Context routing (L0/L1/L2) | 3 load layers + token budgets | 3 soil strata + "gate" ring | Yes — Track B proof |
+| 3 | Context routing (L0/L1/L2) | 3 load layers + token budgets | dispatch paths routing into L0/L1/L2 destinations | Yes — Track B proof |
 | 4 | Layer triage (60/30/10) | deterministic/rule/probabilistic split (proportion chart) | root mass in 3 unequal zones | Yes — Track A proof |
 | 5 | Workflow (6 stages) | Orient→…→Verify (gate = #10) | seasonal tending cycle on a ring | stub |
 | 6 | Repo anatomy (garden map) | labeled tree: seed/ soil/ cultivation/ docs/ bin/ | terrarium cross-section | stub |
@@ -59,7 +62,8 @@ concepts are authored this round — **#1 and #3 on Track B (Gemini) and #4 on T
 | 15 | Cover art (Track B only) | — | seed-packet · roots-as-circuitry | stub |
 | 16 | Reserved | — | — | stub |
 
-The ids and slugs match `concepts.yaml` exactly (16 entries, ids 1–16).
+The ids and slugs match `concepts.yaml` exactly (16 entries, ids 1–16). Each entry also carries
+`viewer_should_understand`, `must_show`, and `label_strategy` fields used by the quality gate.
 
 ## Render / judging tracking
 
@@ -69,8 +73,8 @@ this round. Renders are produced separately; the Keep? column fills once they la
 
 | # | Slug | Track | Rendered? | Keep? | Notes |
 |---|------|-------|-----------|-------|-------|
-| 1 | identity | B | rendered (c1, c2) | | sap-green ouroboros, still-water reflection; model added 2-word titles |
-| 3 | context-routing | B | rendered (c1, c2) | | indigo strata + gate ring; c1 has a faux signature + seal (see design-language "drop hanko"), c2 is clean |
+| 1 | identity | B | rendered (c1, c2) | KEEP c1 | c1 best satisfies the registry contract: closed self-renewing vine loop, fruit-to-seed-to-sprout renewal, bright palette, clean label-free margins; c2 is usable alternate |
+| 3 | context-routing | B | rendered (c1, c2) | KEEP c2 | c2 best satisfies the routing contract: one dispatch basin, three directional channels, three destination beds, clean space for vector labels; c1 is usable alternate |
 | 4 | layer-triage | A | todo | | proof target this round (manual PaperBanana, human-in-browser) |
 | 1 | identity | A | SKIPPED | | not run this round |
 | 3 | context-routing | A | SKIPPED | | not run this round |

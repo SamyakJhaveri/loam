@@ -8,6 +8,11 @@
 #   id            integer, unique, stable.
 #   slug          kebab-case identifier; how the render script finds this concept.
 #   name          human-readable display name (quote it).
+#   viewer_should_understand
+#                 one plain-language sentence defining the image's intended takeaway.
+#   must_show     concrete visual evidence required before a candidate can be kept.
+#   label_strategy
+#                 track-a | vector-overlay | label-light | label-free.
 #   palette       single tonal/color key for the illustration, e.g.
 #                 "blueprint mono — indigo on cream".
 #   track_b:      the illustrated "hero" image.
@@ -30,6 +35,12 @@
 - id: 1
   slug: system-overview
   name: "System Overview"
+  viewer_should_understand: "A viewer should understand that the system is one connected whole made from four cooperating parts."
+  must_show:
+    - "four distinct modules"
+    - "visible connections between the modules"
+    - "one coherent overall system boundary"
+  label_strategy: vector-overlay
   palette: "blueprint mono — slate blue on warm white"
   track_b:
     prompt: "A single interconnected machine viewed from above, its modules linked by clean lines into one working whole, gears and conduits flowing between the parts in steady motion"

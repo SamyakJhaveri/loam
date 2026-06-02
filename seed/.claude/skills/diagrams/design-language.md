@@ -40,7 +40,7 @@ The prose preamble below is the canonical human-readable copy of the Track B sty
 > test enforces this; it is manual discipline.
 
 ```
-Japanese shin-hanga woodblock print in the style of Hiroshi Yoshida (1876–1950): atmospheric and luminous, built from many layered transparent color impressions; a single harmonious tonal key per image; soft graded skies (bokashi) suggesting dawn, dusk, or mist; fine hand-carved directional linework; calm, centered, contemplative composition, often with a still-water reflection; matte, slightly grainy printed texture on fine paper; restrained palette, soft natural light, soft even tonal transitions with a gentle contrast range. Wide 16:9 landscape banner. Keep any text to at most two short words, cleanly lettered in a simple serif. Subject:
+Japanese shin-hanga woodblock print: atmospheric and luminous, built from many layered transparent color impressions; a single harmonious tonal key per image; soft graded skies (bokashi) suggesting dawn, dusk, or mist; fine hand-carved directional linework; calm, centered, contemplative composition, often with a still-water reflection; matte, slightly grainy printed texture on fine paper; fresh, bright, inviting color; clear luminous daylight; soft even tonal transitions with a gentle contrast range. Wide 16:9 landscape banner. Use clean blank paper margins and let the composition communicate pictorially. Subject:
 ```
 
 ## Style principles
@@ -71,6 +71,23 @@ atmosphere; exact labels are a deterministic concern. See
 [`.claude/rules/layer-triage.md`](../../rules/layer-triage.md) for the 60/30/10 framework that
 makes this a routing rule rather than a preference.
 
+## Quality gate
+
+Every authored concept should define what a viewer must understand, what the image must show,
+and how labels are routed. Use [`quality-gate.md`](quality-gate.md) as the reusable pass/fail
+contract before writing prompts and before marking candidates as keep.
+
+The concept registry fields are:
+
+- `viewer_should_understand` — one plain-language sentence describing the intended takeaway.
+- `must_show` — concrete visual evidence required in the render.
+- `label_strategy` — one of `track-a`, `vector-overlay`, `label-light`, or `label-free`.
+
+`render-yoshida.py` appends label-strategy-specific guidance to the prompt. `label-free` asks for
+blank margins and pictorial communication, `label-light` allows one small decorative title,
+`vector-overlay` reserves calm space for deterministic callouts, and `track-a` keeps the hero
+image pictorial because exact labels belong in the separate Track A figure.
+
 ## Drop, don't adopt
 
 Adopt only Yoshida's *pictorial* language. Drop the literal textual marginalia:
@@ -82,6 +99,10 @@ Adopt only Yoshida's *pictorial* language. Drop the literal textual marginalia:
 Reason: the image model renders literal glyphs as garbled, fake characters. Keep the
 woodblock light, palette, composition, and texture; leave the writing to a deterministic
 layer.
+
+The live render prompt names the concrete shin-hanga traits instead of naming the artist.
+Local reference images carry the Yoshida style signal; direct artist-name prompting made the
+model more likely to copy signatures and seals into otherwise strong candidates.
 
 ## Positive-framing lint note
 

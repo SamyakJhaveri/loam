@@ -162,6 +162,8 @@ uv run .claude/skills/diagrams/scripts/render-yoshida.py --concept <slug> --cand
 - **Full method.** See [`design-language.md`](design-language.md) for the two-track design
   language, the canonical Yoshida preamble, the style principles, label discipline, the
   reference-image guidance, and the Track A 3-field recipe.
+- **Quality gate.** See [`quality-gate.md`](quality-gate.md) for the concept contract,
+  label-strategy routing, and candidate critique rubric used before marking renders as keep.
 
 `render-yoshida.py` is a committed repo script, not generated at runtime, so invoking it does
 not trip Rule 1 below. It does make a real, paid Gemini API call once `GEMINI_API_KEY` is set

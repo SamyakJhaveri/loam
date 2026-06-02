@@ -16,7 +16,13 @@
 - id: 1
   slug: identity
   name: "Identity (grows itself)"
-  palette: "single tonal key — sap green on warm cream"
+  viewer_should_understand: "A viewer should understand that Loam is both the template and a project growing from its own shipped output."
+  must_show:
+    - "a closed self-renewing loop"
+    - "fruit or seed becoming new growth"
+    - "one continuous living system"
+  label_strategy: label-free
+  palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
   track_b:
     prompt: "A self-renewing flowering vine curving back on itself in an ouroboros loop, where a ripe fruit at the tip opens into a seed that sprouts fresh new growth feeding back to the root, the plant continuously growing itself in one closed circle of life"
     refs:
@@ -33,14 +39,26 @@
 - id: 2
   slug: lifecycle
   name: "Lifecycle (seed exchange)"
+  viewer_should_understand: "A viewer should understand that Loam projects cycle from template seed to project growth to update and sync-back."
+  must_show:
+    - "four distinct lifecycle beats"
+    - "movement from seed to project"
+    - "a return path back to the source"
+  label_strategy: vector-overlay
   status: { track_a: todo, track_b: todo }
 
 - id: 3
   slug: context-routing
   name: "Context routing (L0/L1/L2)"
-  palette: "blueprint mono — indigo on cream"
+  viewer_should_understand: "A viewer should understand that context is routed through L0, L1, and L2 layers by dispatch paths with different destinations."
+  must_show:
+    - "three distinct destination layers"
+    - "directional paths or flow"
+    - "a visible routing gate or dispatch point"
+  label_strategy: vector-overlay
+  palette: "clear routing key — bright indigo, pale sky blue, and warm cream"
   track_b:
-    prompt: "Three stacked horizontal strata of soil seen in cross-section, each layer a distinct depth, with a single circular gate ring set into the ground where the layers meet, sunlight catching the rim of the ring"
+    prompt: "A luminous cutaway garden arranged like a routing diagram, with one central circular dispatch basin at the left feeding three bright irrigation streams that split upward, straight across, and downward into three separate horizontal destination beds; each stream carries carved ripple marks in the direction of travel and ends in a bright endpoint pool in its own layer"
     refs:
       - "Lake_Kawaguchi_by_Yoshida_Hiroshi,_1926,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
       - "Morning_Mist_in_Taj_Mahal,_no._5,_Hiroshi_yoshida.jpg"
@@ -55,7 +73,13 @@
 - id: 4
   slug: layer-triage
   name: "Layer triage (60/30/10)"
-  palette: "earth tones — ochre, umber, sienna"
+  viewer_should_understand: "A viewer should understand that most work belongs to deterministic tools, less to rule-based systems, and only a small share to probabilistic reasoning."
+  must_show:
+    - "three unequal proportions"
+    - "the 60 percent, 30 percent, and 10 percent relationship"
+    - "clear separation between deterministic, rule-based, and probabilistic work"
+  label_strategy: track-a
+  palette: "sunlit earth key — ochre, umber, sienna, and clear cream"
   track_b:
     prompt: "A vertical cross-section of a plant's root mass spreading through three unequal zones of earth, the topmost zone densely packed with the bulk of the roots, the middle zone moderately filled, the deepest zone holding only a few fine taproots"
     refs:
@@ -70,59 +94,130 @@
 - id: 5
   slug: workflow
   name: "Workflow (6 stages)"
+  viewer_should_understand: "A viewer should understand that Loam work moves through a six-stage workflow ending in verification."
+  must_show:
+    - "six ordered stages"
+    - "a final verification gate"
+    - "a visible progression from start to finish"
+  label_strategy: vector-overlay
   status: { track_a: todo, track_b: todo }
 
 - id: 6
   slug: repo-anatomy
   name: "Repo anatomy (garden map)"
+  viewer_should_understand: "A viewer should understand which top-level areas make up the Loam repository and which area ships to projects."
+  must_show:
+    - "separate repo regions"
+    - "seed as the shipped region"
+    - "supporting areas for docs, soil, cultivation, and tools"
+  label_strategy: track-a
   status: { track_a: todo, track_b: todo }
 
 - id: 7
   slug: fan-out
   name: "Fan-out (one to many)"
+  viewer_should_understand: "A viewer should understand that one Loam template can generate many downstream projects."
+  must_show:
+    - "one source seed or template"
+    - "many distinct project outputs"
+    - "outward distribution from the source"
+  label_strategy: label-light
   status: { track_a: todo, track_b: todo }
 
 - id: 8
   slug: cultivation
   name: "Cultivation (greenhouse)"
+  viewer_should_understand: "A viewer should understand that skills move through cultivation stages before becoming reusable or retired."
+  must_show:
+    - "staged areas for work in progress, marketplace, and retired skills"
+    - "movement between stages"
+    - "a greenhouse or nursery metaphor"
+  label_strategy: vector-overlay
   status: { track_a: todo, track_b: todo }
 
 - id: 9
   slug: flavors
   name: "Flavors (cultivars)"
+  viewer_should_understand: "A viewer should understand that Loam can graft flavor-specific overlays, such as research, onto the base template."
+  must_show:
+    - "one base template"
+    - "a visible flavor overlay or graft"
+    - "a distinct research cultivar"
+  label_strategy: vector-overlay
   status: { track_a: todo, track_b: todo }
 
 - id: 10
   slug: validation
   name: "Validation (three sieves)"
+  viewer_should_understand: "A viewer should understand that validation passes work through deterministic, rule-based, and probabilistic checks."
+  must_show:
+    - "three sequential checks or sieves"
+    - "work passing through a gate"
+    - "clear final pass/fail outcome"
+  label_strategy: vector-overlay
   status: { track_a: todo, track_b: todo }
 
 - id: 11
   slug: soil
   name: "Soil (knowledge base)"
+  viewer_should_understand: "A viewer should understand that soil is Loam's knowledge base feeding the template and its projects."
+  must_show:
+    - "knowledge layers or beds"
+    - "sources feeding growth"
+    - "connection from soil to project growth"
+  label_strategy: vector-overlay
   status: { track_a: todo, track_b: todo }
 
 - id: 12
   slug: memory
   name: "Memory (compost)"
+  viewer_should_understand: "A viewer should understand that project memory is collected, consolidated, and pruned into reusable nourishment."
+  must_show:
+    - "incoming memory material"
+    - "a consolidation or composting stage"
+    - "renewed output feeding future work"
+  label_strategy: label-light
   status: { track_a: todo, track_b: todo }
 
 - id: 13
   slug: agent-teams
   name: "Agent teams (pollination)"
+  viewer_should_understand: "A viewer should understand that an advisor coordinates worker agents that spread work across subtasks."
+  must_show:
+    - "one coordinating advisor"
+    - "multiple worker paths"
+    - "distributed transfer of work or information"
+  label_strategy: vector-overlay
   status: { track_a: todo, track_b: todo }
 
 - id: 14
   slug: toolkit
   name: "Toolkit (the tools)"
+  viewer_should_understand: "A viewer should understand that skills, hooks, agents, and rules form Loam's reusable toolkit."
+  must_show:
+    - "several distinct tool categories"
+    - "a shared organizing system"
+    - "tools ready for repeated use"
+  label_strategy: track-a
   status: { track_a: todo, track_b: todo }
 
 - id: 15
   slug: cover-art
   name: "Cover art (Track B only)"
+  viewer_should_understand: "A viewer should understand Loam as a living template system where seeds, roots, and circuitry belong to one identity."
+  must_show:
+    - "seed-packet or cover composition"
+    - "roots and circuitry integrated together"
+    - "a bright inviting identity image"
+  label_strategy: label-light
   status: { track_a: todo, track_b: todo }
 
 - id: 16
   slug: reserved
   name: "Reserved"
+  viewer_should_understand: "A viewer should understand that this slot is intentionally reserved for a future Loam concept."
+  must_show:
+    - "reserved placeholder treatment"
+    - "clear distinction from active concepts"
+  label_strategy: label-light
   status: { track_a: todo, track_b: todo }
