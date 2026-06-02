@@ -77,6 +77,8 @@ Every authored concept should define what a viewer must understand, what the ima
 and how labels are routed. Use [`quality-gate.md`](quality-gate.md) as the reusable pass/fail
 contract before writing prompts and before marking candidates as keep.
 
+Every concept's prompt should depict the project's value proposition, not an incidental implementation detail; distinguish sibling concepts by the facet each isolates.
+
 The concept registry fields are:
 
 - `viewer_should_understand` — one plain-language sentence describing the intended takeaway.

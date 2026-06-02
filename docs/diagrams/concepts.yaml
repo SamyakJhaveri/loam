@@ -12,34 +12,42 @@
 # Schema is documented in seed/.claude/skills/diagrams/concepts.template.yaml.
 # Fully authored here: #1, #3, #4. All others are stubs (status todo, expand later).
 # Root is a YAML list. Exactly 16 entries.
+# Design principles (Loam-specific):
+#  1. Depict Loam's value proposition (portable, evolving, cross-project workflow), not incidental mechanics (the symlink).
+#  2. The seed = the user's Claude Code operation (skills, hooks, rules, slash commands), not a generic botanical seed.
+#  3. Loam is a persistent store/hub, not a closed self-loop; where Loam itself appears, show store + outward reach + return/accumulation.
+#  4. Distinguish concepts by the facet each isolates (identity = whole system out-and-back; fan-out = outward only; lifecycle = one project over time).
+#  5. Many projects at different growth stages is Loam's natural multiplicity — reuse seedling / bamboo / fruiting vocabulary where multiplicity matters.
 
 - id: 1
   slug: identity
-  name: "Identity (grows itself)"
-  viewer_should_understand: "A viewer should understand that Loam is both the template and a project growing from its own shipped output."
+  name: "Identity (the living seed-store)"
+  viewer_should_understand: "A viewer should understand that Loam is one evolving seed-store that sends its workflow out to many projects and grows richer from what each project sends back."
   must_show:
-    - "a closed self-renewing loop"
-    - "fruit or seed becoming new growth"
-    - "one continuous living system"
+    - "a luminous cutaway cross-section showing the four plants above ground and the dark soil below"
+    - "a single central clear rectangular glass box (a cuboid case with flat faces and softly rounded edges) holding the glowing seed cache as the sole source — a box, not a pot or pile"
+    - "exactly four underground channels carrying seeds from the central glass box to the roots of the four plants, each channel marked with small bidirectional arrows showing seeds flowing out and back, so each plant rises from seeds at its own roots"
+    - "a calm lake and soft layered hills in the background"
   label_strategy: label-free
   palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
   track_b:
-    prompt: "A self-renewing flowering vine curving back on itself in an ouroboros loop, where a ripe fruit at the tip opens into a seed that sprouts fresh new growth feeding back to the root, the plant continuously growing itself in one closed circle of life"
+    prompt: "A luminous cutaway cross-section of a riverside garden, showing both the world above the ground and the dark earth below it. Above ground, four distinct plants stand in a row across the foreground — a tender green seedling, a tall stand of green bamboo, a large tomato plant heavy with ripe red fruit, and a broad-leafed plant bearing golden gourds; beyond them a calm still lake mirrors soft layered hills under a graded dawn sky. Below ground at the centre stands a single clear rectangular glass box — a cuboid glass case with flat upright faces and softly rounded edges and corners — its interior holding a glowing cache of golden seeds, the sole living source; exactly four slender underground channels connect this glass box through the soil, one channel to the root-ball of each of the four plants, so every plant rises directly from the seeds delivered into its own roots; along each channel small directional arrows point both ways, marking the golden seeds flowing out of the box to the roots and flowing back again, the box holding visibly more seeds with each return"
     refs:
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
       - "Rapids,_Hiroshi_Yoshida,_渓流,_吉田博.jpg"
       - "Bamboo_Grove_(5759026915).jpg"
+      - "Lake_Kawaguchi_by_Yoshida_Hiroshi,_1926,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
   track_a:
-    source_context: "The template ⊕ project composition: this repo IS the Copier template AND a Claude Code project at the same time, joined by the `.claude → seed/.claude` symlink so the shipped config also activates here. Labels to carry: 'template', 'project', 'seed/.claude', '.claude (symlink)'."
-    figure_caption: "Loam is both the template and a project running on its own output, joined by a symlink."
-    visual_intent: "Academic composition figure; two overlapping sets joined by an arrow standing for the symlink; on-figure labels kept to 2-3 words each."
+    source_context: "Loam as a hub-and-spoke system. A central store 'loam' holds the seed (= the shipped Claude Code workflow: skills, hooks, rules, slash commands). The seed is copied OUT to many concurrent/future projects ('copier copy'); each project sends improvements BACK ('promote' / 'copier update') so the seed accumulates. Labels to carry: 'loam (seed-store)', 'seed = your Claude Code setup (skills · hooks · rules · commands)', 'project A/B/C', 'copy out', 'promote back'."
+    figure_caption: "Loam is one seed-store that ports your workflow out to every project and grows richer from what each sends back."
+    visual_intent: "Academic hub-and-spoke figure: a central store node on the left, several project nodes at right at different maturity; outward arrows labeled 'copy', return arrows labeled 'promote'; on-figure labels kept to 2-3 words each."
   status: { track_a: todo, track_b: rendered }
 
 - id: 2
   slug: lifecycle
   name: "Lifecycle (seed exchange)"
-  viewer_should_understand: "A viewer should understand that Loam projects cycle from template seed to project growth to update and sync-back."
+  viewer_should_understand: "A viewer should understand that a single Loam project moves through four ordered beats over time: seeded from the template, grown in place, upgraded by syncing template updates, and its own improvements promoted back to the seed."
   must_show:
     - "four distinct lifecycle beats"
     - "movement from seed to project"
@@ -121,6 +129,7 @@
     - "one source seed or template"
     - "many distinct project outputs"
     - "outward distribution from the source"
+    - "no return path back to the source"
   label_strategy: label-light
   status: { track_a: todo, track_b: todo }
 

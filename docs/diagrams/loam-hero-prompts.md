@@ -41,11 +41,11 @@ acceptance criteria per concept.
 
 The shared design vocabulary. Each concept can be expressed on both tracks. Only the proof
 concepts are authored this round — **#1 and #3 on Track B (Gemini) and #4 on Track A
-(PaperBanana)**; every other entry is a stub, filled during iteration.
+(PaperBanana)** (#1 was redefined this session to the seed-store model and is queued for re-render); every other entry is a stub, filled during iteration.
 
 | # | Concept | Track A — research figure | Track B — Yoshida hero | Authored this round? |
 |---|---------|---------------------------|------------------------|----------------------|
-| 1 | Identity (grows itself) | template ⊕ project; .claude→seed/.claude symlink | ouroboros vine, fruit→seed | Yes — Track B proof |
+| 1 | Identity (the living seed-store) | central store → many staged projects, copy out + promote back | central seed-bed feeding staged plants, seeds returning | redefined |
 | 2 | Lifecycle (seed exchange, 4-beat) | drop→expand-to-fill→upgrade-in-place→sync-back | seed in crate ⇄ "New Project" bed | stub |
 | 3 | Context routing (L0/L1/L2) | 3 load layers + token budgets | dispatch paths routing into L0/L1/L2 destinations | Yes — Track B proof |
 | 4 | Layer triage (60/30/10) | deterministic/rule/probabilistic split (proportion chart) | root mass in 3 unequal zones | Yes — Track A proof |
@@ -73,7 +73,7 @@ this round. Renders are produced separately; the Keep? column fills once they la
 
 | # | Slug | Track | Rendered? | Keep? | Notes |
 |---|------|-------|-----------|-------|-------|
-| 1 | identity | B | rendered (c1, c2) | KEEP c1 | c1 best satisfies the registry contract: closed self-renewing vine loop, fruit-to-seed-to-sprout renewal, bright palette, clean label-free margins; c2 is usable alternate |
+| 1 | identity | B | rendered (c1–c4, glass-box cross-section) | KEEP c3 (+ label overlay) | c3 best fits the seed-store philosophy: cutaway with one glass-box loam source, four root-channels carrying in-render bidirectional arrows, varied plants (seedling/bamboo/tomato/gourd) in the foreground, calm Yoshida lake. Exact labels added as a vector overlay → `loam-hero-01-identity-c3-labeled.png` (gitignored). Taste captured in `design-philosophy.md` |
 | 3 | context-routing | B | rendered (c1, c2) | KEEP c2 | c2 best satisfies the routing contract: one dispatch basin, three directional channels, three destination beds, clean space for vector labels; c1 is usable alternate |
 | 4 | layer-triage | A | todo | | proof target this round (manual PaperBanana, human-in-browser) |
 | 1 | identity | A | SKIPPED | | not run this round |
