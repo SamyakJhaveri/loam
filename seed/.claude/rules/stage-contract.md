@@ -1,3 +1,10 @@
+---
+paths:
+  - ".claude/skills/validate/**"
+  - ".claude/skills/feature-dev/**"
+  - ".claude/skills/fix-bug/**"
+---
+
 # Stage contract (L2)
 
 > Read when: invoking `/validate`, `feature-dev`, `fix-bug`, or any skill that opens a planning sub-session. Also when authoring the contract for a new skill.

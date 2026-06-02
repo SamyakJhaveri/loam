@@ -1,3 +1,9 @@
+---
+paths:
+  - ".claude/skills/**"
+  - ".claude/hooks/**"
+---
+
 # Scaling vs. Automating
 
 > Read when: creating new skills, deciding whether to automate a process, or evaluating

@@ -1,3 +1,9 @@
+---
+paths:
+  - ".claude/skills/**"
+  - ".claude/hooks/**"
+---
+
 # Layer triage — the 60/30/10 diagnostic
 
 > Read when: scoping a new task, evaluating an existing skill, or proposing a new automation. Use as a triage filter before any task routes work to an LLM.
