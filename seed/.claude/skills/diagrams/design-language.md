@@ -40,7 +40,7 @@ The prose preamble below is the canonical human-readable copy of the Track B sty
 > test enforces this; it is manual discipline.
 
 ```
-Japanese shin-hanga woodblock print: atmospheric and luminous, built from many layered transparent color impressions; a single harmonious tonal key per image; soft graded skies (bokashi) suggesting dawn, dusk, or mist; fine hand-carved directional linework; calm, centered, contemplative composition beside gently moving water; matte, slightly grainy printed texture on fine paper; fresh, bright, inviting color; clear luminous daylight; soft even tonal transitions with a gentle contrast range. Wide 16:9 landscape banner. Use clean blank paper margins and let the composition communicate pictorially. Subject:
+Japanese shin-hanga woodblock print: atmospheric and luminous, built from many layered transparent color impressions; a single harmonious tonal key per image; soft graded skies (bokashi) suggesting dawn, dusk, or mist; fine hand-carved directional linework; calm, centered, contemplative composition beside gently moving water; matte, slightly grainy printed texture on fine paper; fresh, bright, inviting color; clear luminous daylight; soft even tonal transitions with a gentle contrast range. Wide 16:9 landscape banner. Use clean blank paper margins with no seal, stamp, signature, date column, lettering, or ruled border anywhere, and let the composition communicate pictorially. Subject:
 ```
 
 ## Style principles

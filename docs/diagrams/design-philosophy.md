@@ -149,6 +149,17 @@ the next prompt-author understands the intent, not just the instruction).
   is welcome; clip-art flatness is not). *Why:* the mood is the brand; "fresh, not washed" is a
   move *within* shin-hanga, not away from it. (Note the tension: keep the calm lake and soft
   layered hills, but drop the literal mirror-reflection on the water that looked washed.)
+- **The seed grows as it feeds (accumulation).** Along a *maturation or accumulation* progression
+  — lifecycle's one plant over time, or identity's returning seeds — render the seed (and the
+  seed-nodes travelling the channel) **increasing in size and glowing brightness** as they reach
+  more mature plants. The seed is not a fixed pellet: it *swells and brightens* the further it has
+  travelled. *Why:* the seed = your Claude Code setup, which gets **richer at every project**; a
+  seed that visibly grows encodes that accumulation directly (the same enrichment the *returning*
+  glow encodes for `identity`). This is the rule that won the lifecycle keeper — your words:
+  "I like how the seed's size and glowing brightness increases as the plant evolves; the seed here
+  also grows with every project (i.e. plant)." **Do NOT apply to `fan-out`:** its seeds are uniform
+  and outward-only; a growing/brightening seed there would imply an enrichment that fan-out must
+  never show (accumulation is identity's facet, not fan-out's).
 
 ## 4. Labeling
 
@@ -223,6 +234,49 @@ Apply this checklist to every concept (and especially wherever Loam-as-a-system 
    the 5 Loam design principles. Committed (`7d882800`) and released **v3.6.1** (`63db791c`).
    **Phase B — re-aligning all 15 other concepts' prompts — is NOT yet done.**
 
+### 2026-06-03 — Phase B render loop begins (lifecycle keeper)
+
+1. **Method change.** The autonomous self-critic loop was too strict to ever return "aligned," and
+   its auto-rewrites drifted (it added a confusing second glass box to lifecycle). Switched to
+   **"critic advises, you keep"**: render 5 once from the authored prompt, an Opus critic ranks +
+   diagnoses (no auto-rewrite), and *you* pick the keeper at the per-concept gate. The authored
+   prompts are the starting point; they are not edited unless you ask.
+2. **New principle — the seed grows as it accumulates** (folded into §3, fidelity row in §7). Your
+   first-round preference (c1/c3 over the critic's round-1 pick c4) turned on the seed-nodes visibly swelling and
+   brightening as they reach more mature plants — encoding "the seed grows richer with every
+   project." Apply on maturation/accumulation concepts only (not fan-out; see §3).
+3. **Lifecycle keeper: c5** — re-rolled with the growing-seed rule written into the prompt (the
+   2-box auto-drift was reverted first). c5 shows the seed swelling + brightening from a dim
+   pinpoint at the box to a large radiant bulb returning at the right. Recorded in
+   `loam-hero-prompts.md`.
+4. **Context-routing keeper: c2** — user kept a round glass dispatch basin (an accepted deviation
+   from the cuboid glass-box vocabulary for this concept); its blank label bands suit its
+   `vector-overlay` strategy.
+5. **Layer-triage reframed + kept (c3, cropped).** Confirmed against source that layer-triage =
+   the **60/30/10 work-split** (deterministic 60% / rule-based 30% / AI 10%;
+   `soil/jvc/constraints/06-layer-triage.md:52`), NOT context-attention routing — a Google
+   AI-overview had conflated it with ICM Layer-1 routing, which is really concept #3
+   (context-routing). At the user's direction this concept **drops the atmospheric lake/hills hero
+   for an UP-CLOSE botanical xylem/phloem cross-section**: golden sap apportioned across three
+   unequal vessel-clusters (~6/3/1) — large central core (deterministic) / side cluster (rule) / a
+   few fine vessels to one small glowing bud (AI). The up-close framing was achieved by forceful
+   "fill the frame, no sky/horizon/water" language overriding the byte-locked Yoshida PREAMBLE
+   (so: a concept MAY drop the atmosphere when its meaning needs a close-up). **Reproducibility
+   caveat:** because the prompt fights the PREAMBLE's wide-banner / blank-margins / water framing,
+   layer-triage is NOT cleanly reproducible from `concepts.yaml` alone — the keeper needed a manual
+   border crop (kept as `loam-hero-04-layer-triage-c3-cropped.png`), and a future re-render must
+   expect to crop the keyline again. A proper fix would be a per-concept PREAMBLE override in the
+   engine (out of scope here).
+6. **Recurring artifact — reference-print seals (FIXED at the source).** The Yoshida reference
+   prints carry signatures + red seals, and the model kept copying them into renders (seen on
+   lifecycle, context-routing, layer-triage candidates). Fixed at the source: the clause
+   "no seal, stamp, signature, date column, lettering, or ruled border anywhere" was folded into
+   the Yoshida **PREAMBLE itself** — both byte-twins (`scripts/render-yoshida.py` and the prose
+   copy in `design-language.md`), kept byte-identical — so every concept inherits the guard. The
+   redundant per-prompt guard tails were then removed from the four prompts that had them
+   (layer-triage, workflow, repo-anatomy, fan-out), keeping `track_b.prompt` positive-framed.
+   NOTE: this edits `seed/` (shipped), so the next release needs a tag (Copier resolves from tags).
+
 ## 7. Fidelity check — rule ↔ source (so this file matches what you said)
 
 | Rule (§) | Your source | Anchor |
@@ -240,6 +294,7 @@ Apply this checklist to every concept (and especially wherever Loam-as-a-system 
 | Yoshida lake + layered hills (§3) | Round-2 critique ("bring back the lake") | §6.4 |
 | Labels via overlay/Track A, never the model (§4) | critique ("add labels") + label discipline | §0.2 |
 | Tags hover over their plant; no text overlap (§4) | this session, live | §6.7 |
+| Seed grows in size + glow as it accumulates (§3) | lifecycle keeper pick, your verbatim words | §6 (2026-06-03) |
 
 If a future change can't be traced to a row here, add the row (and the source) before folding the
 rule into §1–§5 — that keeps the file honest to *your* intent.

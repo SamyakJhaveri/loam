@@ -49,7 +49,7 @@
     source_context: "Loam as a hub-and-spoke system. A central store 'loam' holds the seed (= the shipped Claude Code workflow: skills, hooks, rules, slash commands). The seed is copied OUT to many concurrent/future projects ('copier copy'); each project sends improvements BACK ('promote' / 'copier update') so the seed accumulates. Labels to carry: 'loam (seed-store)', 'seed = your Claude Code setup (skills · hooks · rules · commands)', 'project A/B/C', 'copy out', 'promote back'."
     figure_caption: "Loam is one seed-store that ports your workflow out to every project and grows richer from what each sends back."
     visual_intent: "Academic hub-and-spoke figure: a central store node on the left, several project nodes at right at different maturity; outward arrows labeled 'copy', return arrows labeled 'promote'; on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: rendered }
+  status: { track_a: todo, track_b: keep }
 
 - id: 2
   slug: lifecycle
@@ -63,7 +63,7 @@
   label_strategy: vector-overlay
   palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
   track_b:
-    prompt: "A luminous cutaway cross-section of one single garden bed, read from left to right as four ordered moments in the life of the very same plant. At the left a clear rectangular glass box with flat faces and softly rounded edges, holding a glowing cache of golden seeds, sends one seed down a slender underground channel into fresh dark soil. Next, a young shoot rises in place from that seed. Then the same plant stands taller and fuller, refreshed, as a few new golden seeds arrive at its roots from the box along the channel. Finally one ripe glowing seed travels back along the channel to the glass box. The scene holds one plant in one bed throughout, the same plant maturing through its four moments; beyond it a calm lake mirrors soft layered hills under a fresh bright sky"
+    prompt: "A luminous cutaway cross-section of one single long garden bed, read from left to right as four ordered moments in the life of the very same plant — the same kind of plant at four successive ages, not a row of different plants. At the far left a single clear rectangular glass box with flat upright faces and softly rounded edges holds a glowing cache of golden seeds. From the box one slender underground channel runs the whole length of the bed, and along it the travelling seeds visibly grow: a small plain seed sets out, and at each successive stage the seed resting at the plant's roots is larger and glows more brightly than the one before, swelling and brightening the further it has travelled. Above the channel the same plant rises in place at four ages — first bare dark soil holding the small seed, then a tender shoot, then a fuller leafy plant, then a tall mature plant — each fed at its roots by its own correspondingly larger, brighter seed. At the far right the ripest, largest, most brightly glowing seed turns and travels back along the channel toward the glass box, returning richer than it set out. Small directional arrows on the channel point outward from the box through the growing stages and inward only at the very end. Beyond the bed a calm bright lake lies still under soft layered hills and a fresh clear sky"
     refs:
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
@@ -73,7 +73,7 @@
     source_context: "One project's four ordered beats over time: (1) seeded from the template ('copier copy'); (2) grown in place; (3) upgraded by syncing template updates ('copier update'); (4) its own improvements promoted back to the seed ('promote'). Labels: 'seeded', 'grown', 'upgraded (sync)', 'promoted back'."
     figure_caption: "A single Loam project moves through four ordered beats: seeded, grown, upgraded by sync, and promoted back."
     visual_intent: "Academic four-panel horizontal time strip of one project; left-to-right ordering with a single return arrow at the end; on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  status: { track_a: todo, track_b: keep }
 
 - id: 3
   slug: context-routing
@@ -96,8 +96,8 @@
     source_context: "The three context-load layers with their token budgets: L0 = CLAUDE.md (~800 tokens, always loaded, 'where am I'); L1 = CONTEXT.md (~300 tokens, on entry to a subdir, 'where do I go'); L2 = stage contract (200-500 tokens, per task, 'what do I do'). Labels: 'L0 CLAUDE.md ~800', 'L1 CONTEXT.md ~300', 'L2 stage contract 200-500'."
     figure_caption: "Context routes through three layers, each loaded at a different time with its own token budget."
     visual_intent: "Academic stacked-layer diagram; three bands top to bottom; on-figure labels kept to 2-3 words plus the budget number each."
-  # prompt re-aligned this round to the glass-box/cutaway vocabulary — prior c1/c2 renders are void; re-render before judging.
-  status: { track_a: todo, track_b: todo }
+  # re-rendered this round; user kept c2 — a round glass dispatch basin (an accepted deviation from the cuboid glass-box vocabulary for this concept).
+  status: { track_a: todo, track_b: keep }
 
 - id: 4
   slug: layer-triage
@@ -108,9 +108,9 @@
     - "the 60 percent, 30 percent, and 10 percent relationship"
     - "clear separation between deterministic, rule-based, and probabilistic work"
   label_strategy: track-a
-  palette: "sunlit earth key — ochre, umber, sienna, and clear cream"
+  palette: "luminous garden key — fresh sap green, warm earth-brown, and glowing gold"
   track_b:
-    prompt: "A luminous vertical cutaway of a single plant's root mass spreading down through three unequal bands of fresh dark earth: the broad topmost band densely packed with the bulk of the roots, the middle band moderately filled, and the deepest band holding only a few fine taproots, the three proportions clearly unequal from top to bottom. Clear daylight rests on the healthy plant above the soil line, with soft layered hills on the horizon under a fresh bright sky"
+    prompt: "An extreme up-close, frame-filling botanical cross-section of a plant's vascular system, drawn with the clarity of a textbook xylem-and-phloem transport diagram — distinct bundles of many fine parallel vessel-tubes running through living green tissue, each tube carrying glowing golden sap with small directional flow-marks showing the material moving along it. The vessel-tubes are gathered into three clearly unequal bundle-clusters: by far the largest central cluster — roughly six parts in ten of all the vessels — forms the thick sturdy structural core that carries the bulk of the flow; a clearly smaller cluster — roughly three parts in ten — runs to one side; and only a tiny cluster of a few fine vessels — roughly one part in ten — climbs to feed a single small bright glowing bud at the growing tip. The three clusters read as plainly unequal in size — central core largest, side cluster medium, bud cluster a mere few vessels — so the six-three-one apportioning of the vessels and their flow reads at a glance. Clean botanical-illustration clarity, the magnified tissue fresh and luminous in sap green, warm tissue-brown, and glowing gold, filling the entire frame with no empty background"
     refs:
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
@@ -118,7 +118,8 @@
     source_context: "A proportion chart of the 60/30/10 layer split: deterministic 60% (functions, scripts, validators), rule-based 30% (skills, hooks, configured workflows), probabilistic 10% (open-ended LLM reasoning). Labels with percentages: 'deterministic 60%', 'rule-based 30%', 'probabilistic 10%'. This is the REAL proof render — a matplotlib proportion chart via PaperBanana."
     figure_caption: "Roughly 60% of work is deterministic, 30% rule-based, and only 10% needs probabilistic reasoning."
     visual_intent: "Academic proportion chart (stacked bar or three-segment split); each segment labeled with its name and percentage; matplotlib-clean styling."
-  status: { track_a: todo, track_b: todo }
+  # Track B reframed (2026-06-03): up-close xylem/phloem cross-section (NOT the atmospheric hero) — golden sap in three unequal vessel-clusters (~6/3/1). See design-philosophy.md §6.
+  status: { track_a: todo, track_b: keep }
 
 - id: 5
   slug: workflow
@@ -131,7 +132,7 @@
   label_strategy: vector-overlay
   palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
   track_b:
-    prompt: "A luminous garden laid out as one curving tended path that passes through six successive planting beds, each bed a little further along in cultivation than the one before it — from freshly turned dark soil at the start, through sprouting and growing beds, to a ripe full bed near the end — and the path finishes at a simple wooden garden gate where the final harvest is checked before it leaves. The six beds read in clear order along the single path; beyond them a calm lake and soft layered hills rest under a fresh bright sky"
+    prompt: "A luminous garden laid out along one curving tended path that passes in clear order through exactly six separate rectangular planting beds, each bed divided from the next by a narrow bare-earth walking strip so all six beds can be counted at a glance. The six beds progress in cultivation along the path: the first bed freshly turned dark soil, the second just sprouting, the third young leafy growth, the fourth fuller foliage, the fifth budding, and the sixth ripe and full of fruit. After the sixth bed the single path curves to a simple wooden garden gate where the final harvest is checked in a basket before it leaves. Beyond the beds a calm bright lake lies still under soft layered hills and a fresh clear sky"
     refs:
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
       - "Lake_Kawaguchi_by_Yoshida_Hiroshi,_1926,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
@@ -141,7 +142,7 @@
     source_context: "The six-stage session workflow ending in a gate: Orient -> Explore -> Plan -> Implement -> Record -> Verify (the verification gate). Labels: 'Orient', 'Explore', 'Plan', 'Implement', 'Record', 'Verify (gate)'."
     figure_caption: "Loam work moves through six ordered stages, ending at the verification gate."
     visual_intent: "Academic ordered-step diagram (a numbered ring or left-to-right pipeline); the sixth node marked as the gate; on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  status: { track_a: todo, track_b: keep }
 
 - id: 6
   slug: repo-anatomy
@@ -154,7 +155,7 @@
   label_strategy: track-a
   palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
   track_b:
-    prompt: "A luminous map of one walled garden seen slightly from above, divided into clearly bordered plots of different planting. One central, especially well-cultivated seed-bed plot stands out as the source, with young plants being carried out of it through the garden gate; around it sit several supporting plots, each visibly distinct in its planting — a quiet reading arbor, a deep compost-rich soil bed, a nursery of seedling trays, and a tidy tool corner. The plots are cleanly separated by low paths so the garden's regions read at a glance, with soft layered hills beyond under a fresh bright sky"
+    prompt: "A luminous map of one walled garden seen slightly from above, divided into clearly bordered plots so the regions read at a glance. At the centre one especially well-cultivated seed-bed plot glows a warm luminous gold, standing out unmistakably as the single source plot; from it several figures actively carry trays of young seedlings out through an open wooden garden gate toward the foreground, a clear procession leaving the garden. Around the glowing central plot sit four visibly distinct supporting plots, each different in its planting: a quiet reading arbor with a bench, a deep compost-rich dark soil bed, a nursery of seedling trays in rows, and a tidy tool corner with a rack of garden tools. Low stone-edged paths cleanly separate every plot. Beyond the garden wall a calm bright lake winds under soft layered hills and a fresh clear sky"
     refs:
       - "Arashiyama_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
       - "Yoshida_Hiroshi_Small_town_in_Chugoku.jpg"
@@ -164,7 +165,7 @@
     source_context: "The Loam repository's top-level areas as a labeled map, with the shipped region marked: 'seed/ (ships to projects)', 'soil/ (knowledge base)', 'cultivation/ (skill staging)', 'docs/', 'bin/', 'cultivation/marketplace/'. Mark seed/ as the one region that renders into bootstrapped projects."
     figure_caption: "The Loam repo's areas; only seed/ ships to bootstrapped projects."
     visual_intent: "Academic labeled tree or plot map; the shipped region visually distinguished; on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  status: { track_a: todo, track_b: keep }
 
 - id: 7
   slug: fan-out
@@ -178,7 +179,7 @@
   label_strategy: label-light
   palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
   track_b:
-    prompt: "A luminous cutaway cross-section of a sunlit garden. Below ground at the left a single clear rectangular glass box with flat faces and softly rounded edges holds a glowing cache of golden seeds — the one source. From it, many slender underground channels fan outward through the dark soil, each carrying golden seeds to the roots of its own young plant; above ground a wide spread of distinct seedlings rises across the foreground. Every channel runs strictly one way, carrying the golden seeds outward from the box to the plants. Beyond them a calm lake mirrors soft layered hills under a fresh bright dawn sky"
+    prompt: "A luminous cutaway cross-section of a sunlit garden. Below ground at the left a single clear rectangular glass box with flat faces and softly rounded edges holds a glowing cache of golden seeds — the one source. From it, many slender underground channels fan outward through the dark soil, each carrying golden seeds to the roots of its own young plant; above ground a wide spread of distinct seedlings rises across the foreground. Every channel runs strictly one way, carrying the golden seeds outward from the box to the plants. Beyond them a calm bright lake lies still under soft layered hills and a fresh clear dawn sky"
     refs:
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"

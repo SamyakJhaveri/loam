@@ -25,7 +25,8 @@ PREAMBLE = (
     "fine hand-carved directional linework; calm, centered, contemplative composition beside "
     "gently moving water; matte, slightly grainy printed texture on fine paper; fresh, bright, "
     "inviting color; clear luminous daylight; soft even tonal transitions with a gentle contrast "
-    "range. Wide 16:9 landscape banner. Use clean blank paper margins and let the composition "
+    "range. Wide 16:9 landscape banner. Use clean blank paper margins with no seal, stamp, "
+    "signature, date column, lettering, or ruled border anywhere, and let the composition "
     "communicate pictorially. Subject:"
 )
 
