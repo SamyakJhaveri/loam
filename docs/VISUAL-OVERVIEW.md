@@ -135,21 +135,20 @@ flowchart TD
   impl --> record["5. Record"]
   record --> verify["6. Verify"]
 
-  impl --> crit["/session-critique"]
-  crit --> validate
+  impl --> validate
+  impl -.->|"optional, manual"| crit["/session-critique"]
 
   subgraph validate["/validate (Pipeline Gate)"]
     w1["Wave 1 Deterministic<br/>ruff / mypy / git diff --check / bash -n"]
     w2["Wave 2 Rule-based<br/>pytest / validators"]
-    w3["Wave 3 Probabilistic<br/>plan-reviewer / self-critic"]
-    w1 --> w2 --> w3
+    w1 --> w2
   end
 
   validate -->|"FAIL"| fix["fix loop (max 3)"]
   fix --> validate
-  validate -->|"PASS (waves_passed &gt;= 3)"| sentinel[".validation_passed sentinel"]
+  validate -->|"PASS (waves_passed &gt;= 2)"| sentinel[".validation_passed sentinel"]
   sentinel --> commit["/commit"]
   commit --> pr["/pr"]
 ```
 
-_Source:_ `seed/.claude/rules/workflow.md` (6 stages, ordering); `validation-loop.md` (wave contents, fix loop max 3, `waves_passed` field); `seed/.claude/hooks/pre-commit-gate.sh:82-88` (`waves_passed >= 3` gate).
+_Source:_ `seed/.claude/rules/workflow.md` (6 stages, ordering); `validation-loop.md` (wave contents, fix loop max 3, `waves_passed` field); `seed/.claude/hooks/pre-commit-gate.sh:82-88` (`waves_passed >= 2` gate). Deep adversarial review (`/session-critique`) is manual and not part of the gate.

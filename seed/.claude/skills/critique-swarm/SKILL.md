@@ -104,4 +104,4 @@ decides which fixes to apply.
 |-------|---------|---------------|
 | `/multi-review` | Code quality (style, correctness, security, performance) | Yes — complementary |
 | `/session-critique` | Session work (regressions, scope, dangling refs) | Either/or — critique-swarm is more specialized |
-| `/validate` | Deterministic + rule-based + probabilistic checks | Yes — different layer |
+| `/validate` | Deterministic + rule-based checks | Yes — different layer |

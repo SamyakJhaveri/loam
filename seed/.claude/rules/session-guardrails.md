@@ -6,12 +6,14 @@
 
 ## 1. Workflow Ordering
 
-Run `/session-critique` BEFORE committing or pushing. Never commit until both
-critique and `/validate` have passed. The correct sequence is:
+Run `/validate` before committing or pushing — that is the required gate. The
+correct sequence is:
 
-**Implement → `/session-critique` → `/validate` → `/commit` → `/pr`**
+**Implement → `/validate` → `/commit` → `/pr`**
 
-If `/ship` is available, use it — it enforces this ordering automatically.
+`/session-critique` is available to invoke manually when you want adversarial
+review; it is **not** required before commit and does not auto-run. If `/ship`
+is available, it runs critique → validate → commit → PR when you choose it.
 
 See also: `workflow.md` §6 (Pipeline Gate) for the validation loop protocol.
 

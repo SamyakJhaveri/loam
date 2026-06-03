@@ -48,7 +48,7 @@ then NOT available for implementation quality. The user reviews all output line-
 For non-trivial plans (especially those intended for cross-session execution):
 
 1. **Draft** — Create the plan in plan mode
-2. **Review** — In a fresh session, run `/plan-review-invoke <path-to-plan>`. The skill loads the canonical reference prompt from `docs/plan-reviewer-design.md` and invokes the `plan-reviewer` agent. The agent will:
+2. **Review** — In a fresh session, run `/plan-review-invoke <path-to-plan>`. The skill loads the canonical reference prompt from `seed/plan-reviewer-design.md` and invokes the `plan-reviewer` agent. The agent will:
    - Run the 6-point generic checklist + 6-point plan-review addendum
    - Execute the mandatory Elegance Gate (searches for better approaches)
    - Produce an APPROVE / APPROVE WITH CHANGES / REJECT verdict + handoff plan via `/writing-plans`
@@ -91,7 +91,7 @@ Mechanics:
 - On any file edit after PASS → sentinel deleted → next commit re-runs the gate
 - See `.claude/rules/validation-loop.md` for the wave-by-wave protocol
 
-**Critical ordering:** Implement → `/session-critique` → `/validate` (Pipeline Gate) → `/commit` → `/pr` (or use `/ship` to enforce this automatically)
+**Critical ordering:** Implement → `/validate` (Pipeline Gate) → `/commit` → `/pr`. `/session-critique` is optional — invoke it manually when you want adversarial review. `/ship` runs critique → validate → commit → PR when you choose to use it.
 
 ## Context Management
 

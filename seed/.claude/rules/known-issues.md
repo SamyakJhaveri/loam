@@ -14,7 +14,7 @@
 
 **What:** Skills are tiered by `auto-activate` field to control auto-invocation.
 **Don't:** Add new skills without deciding their tier first. Don't leave specialized/heavy skills at default (auto-activate: true).
-**Do:** Core workflow skills (agent-team, align-prompt, catchup, commit, feature-dev, fix-bug, gen-spec, handoff, multi-review, pr, scaffold-context, session-critique, ship, validate) keep default (no `auto-activate` field). Specialized skills (auto-phase, create-skill, critique-swarm, diagrams, dream, grill-with-docs, improve-codebase-architecture, plan-review-invoke, render-gate, researcher, techdebt, template-sync) use `auto-activate: false` — user invokes with `/skill-name`.
+**Do:** Core workflow skills (agent-team, align-prompt, catchup, commit, feature-dev, fix-bug, gen-spec, handoff, multi-review, pr, scaffold-context, ship, validate) keep default (no `auto-activate` field). Specialized skills (auto-phase, create-skill, critique-swarm, diagrams, dream, grill-with-docs, improve-codebase-architecture, plan-review-invoke, render-gate, researcher, session-critique, techdebt, template-sync) use `auto-activate: false` — user invokes with `/skill-name`. (`session-critique` was moved to manual-only on 2026-06-03 by user request — it runs adversarial review on demand, not before every commit.)
 **Why:** With 60+ skills competing for auto-invocation, false positives waste tokens and confuse sessions. See `.claude/skills/create-skill/reference.md:19-31` for the invocation control matrix.
 
 ## YAML colons in skill descriptions

@@ -69,7 +69,7 @@ files, modify configurations — whatever the stage specifies.
 
 #### 2c. Run validation pipeline
 
-Invoke `/validate` (full 3-wave). If validation fails:
+Invoke `/validate` (full — both waves). If validation fails:
 
 - **First failure:** Fix the issues and re-run `/validate`.
 - **Second failure on same stage:** HALT. Report the failure and ask the user.

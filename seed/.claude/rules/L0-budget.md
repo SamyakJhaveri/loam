@@ -17,7 +17,7 @@ Every additional token in `CLAUDE.md` is paid by every session, including ones t
 1. **What this project is** — one or two sentences. Not marketing.
 2. **Folder map** — top-level layout, with one-line purpose per entry. Treat as a navigation table, not a description.
 3. **Reference doc index** — `.claude/rules/*.md` and `docs/*.md` pointers with a single-clause description of when to read each. Use a "load on demand" framing.
-4. **Workflow anchor** — one sentence stating the canonical sequence (e.g., "implement → /session-critique → /validate → /commit → /pr") and where the full version lives.
+4. **Workflow anchor** — one sentence stating the canonical sequence (e.g., "implement → /validate → /commit → /pr") and where the full version lives.
 
 ## What `CLAUDE.md` must NOT contain
 

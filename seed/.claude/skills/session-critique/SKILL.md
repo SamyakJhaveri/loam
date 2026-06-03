@@ -1,11 +1,13 @@
 ---
 name: session-critique
+auto-activate: false
 description: >
-  Use when a session's implementation work is complete and needs adversarial critique
-  and code quality review before committing. Triggers — after multi-file changes, after
-  feature implementation, before final commit on significant work, when independent review
-  of own work is needed. NOT for single-file trivial edits (use /validate directly) or
-  standard code review without fixes (use /multi-review).
+  Use when you explicitly want adversarial critique and code quality review of a
+  session's completed work — invoke it manually with /session-critique. Fits after
+  multi-file changes, feature implementation, or when you want independent review of
+  your own work. It does not auto-run and is not required before commit. NOT for
+  single-file trivial edits (use /validate directly) or standard code review without
+  fixes (use /multi-review).
 ---
 
 # Session Critique: Adversarial Review via Agent Team

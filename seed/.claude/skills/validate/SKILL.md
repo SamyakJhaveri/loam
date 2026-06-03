@@ -1,17 +1,17 @@
 ---
 name: validate
-description: "Post-session validation loop — three-wave checks (Deterministic / Rule-based / Probabilistic) before commit. Use before every git commit. Writes .validation_passed sentinel with waves_passed field on success. NOT for: ad-hoc test runs, code review, or implementation work — only the Pipeline Gate between implement and commit."
+description: "Post-session validation loop — two-wave checks (Deterministic / Rule-based) before commit. Use before every git commit. Writes .validation_passed sentinel with waves_passed field on success. NOT for: ad-hoc test runs, code review, or implementation work — only the Pipeline Gate between implement and commit."
 ---
 
 # Post-Session Validation Loop
 
 **Trigger:** When user types `/validate`, `/validate quick`, or `/validate fix`
 
-Runs a three-wave validation loop after implementation, before commit. Wave layers follow `.claude/rules/layer-triage.md` (60/30/10): deterministic first, rule-based second, probabilistic last.
+Runs a two-wave validation loop after implementation, before commit. Wave layers follow `.claude/rules/layer-triage.md` (60/30/10): deterministic first, rule-based second. Both waves are LLM-free. Deep adversarial review (the probabilistic Layer 3) is not part of the gate — invoke `/session-critique` manually when you want it.
 
 ## Arguments
 
-- (none) or `full` → all three waves (recommended)
+- (none) or `full` → both waves (recommended)
 - `quick` → Wave 1 only (~30s deterministic; writes `waves_passed=1` — INSUFFICIENT for commit)
 - `fix` → re-run failed waves only (after implementing fixes)
 
@@ -30,7 +30,7 @@ echo "Changed files: $(git diff --name-only HEAD | wc -l)"
 git diff --name-only HEAD
 ```
 
-If no files changed → write sentinel with `waves_passed=3` and exit (nothing to validate).
+If no files changed → write sentinel with `waves_passed=2` and exit (nothing to validate).
 
 ---
 
@@ -77,17 +77,6 @@ done
 
 ---
 
-### WAVE 3 — Probabilistic (~60–90s; only if W1+W2 pass)
-
-**Launch 2 agents IN PARALLEL:**
-
-1. **plan-reviewer** — does the diff match the L2 stage contract's Done sentence? Detect drift, regressions, partial implementations. BLOCKING.
-2. **self-critic** — adversarial self-review for rationalization patterns, incomplete work, unverified claims (BLOCKING) + code simplification: duplication, dead code, unclear names (advisory WARN only).
-
-**Wave 3 Gate:** plan-reviewer or self-critic returns FAIL → Fix Loop. self-critic code-simplification WARN → record, don't block.
-
----
-
 ### Fix Loop (triggered when any wave FAILs)
 
 1. **Collect** all FAIL verdicts from the current wave
@@ -106,10 +95,9 @@ After waves pass, write the sentinel with `waves_passed` set to the highest wave
 
 ```bash
 # WAVES_PASSED is set by the wave executor:
-#   quick                          → 1
-#   full (Wave 3 skipped via flag) → 2
-#   full (all waves green)         → 3
-WAVES_PASSED=${WAVES_PASSED:-3}
+#   quick                 → 1
+#   full (both waves green) → 2
+WAVES_PASSED=${WAVES_PASSED:-2}
 
 cat > .validation_passed << SENTINEL
 timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -120,19 +108,15 @@ validated_by=validate-skill
 SENTINEL
 
 echo ".validation_passed written (waves_passed=$WAVES_PASSED)"
-if [ "$WAVES_PASSED" -lt 3 ]; then
-    echo "Note: commit gate requires waves_passed>=3 — run full /validate before commit"
+if [ "$WAVES_PASSED" -lt 2 ]; then
+    echo "Note: commit gate requires waves_passed>=2 — run full /validate before commit"
 fi
 ```
 
 **Then report the full validation summary.**
 
-## Context Management Protocol
-
-Each Wave 3 agent returns max 50 lines. The aggregated report (~50 lines) is all that enters the main context. Do NOT read agent output files into main context.
-
 ## No commit-message override
 
 `pre-commit-gate.sh` enforces the gate solely via the `.validation_passed` sentinel — it does NOT parse the commit message, so there is no `[skip-validate]` escape hatch. The gate is intentionally unconditional.
 
-Even a change that seems to need no checks (e.g., a docs-only edit) must pass full `/validate` (all three waves) before committing: the gate requires `waves_passed>=3`, so anything short of all three waves (e.g., `/validate quick`) leaves the commit blocked. To bypass deliberately, disable the hook in `settings.json` — there is no per-commit skip flag.
+Even a change that seems to need no checks (e.g., a docs-only edit) must pass full `/validate` (both waves) before committing: the gate requires `waves_passed>=2`, so anything short of both waves (e.g., `/validate quick`) leaves the commit blocked. To bypass deliberately, disable the hook in `settings.json` — there is no per-commit skip flag.

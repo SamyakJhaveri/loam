@@ -2,7 +2,7 @@
 name: plan-review-invoke
 description: >
   Invoke the plan-reviewer agent using the canonical reference prompt from
-  docs/plan-reviewer-design.md. Use when reviewing a plan in a fresh Claude Code
+  seed/plan-reviewer-design.md. Use when reviewing a plan in a fresh Claude Code
   session (after the plan was created in a prior session) and you want adversarial
   review (checklist + Elegance Gate + handoff plan) without manually copy-pasting
   the reference prompt. Accepts the plan path as an argument.
@@ -15,7 +15,7 @@ auto-activate: false
 
 # plan-review-invoke
 
-Closes the loop between `docs/plan-reviewer-design.md` (canonical reference prompt) and the `plan-reviewer` agent (behavior definition). The reference prompt contains three sections — `<investigate_before_answering>`, `<handoff_requirements>`, and `<final_output>` — that are operative ONLY when the prompt is actually run. The agent's own system prompt has the checklist and Elegance Gate baked in but does NOT enforce the handoff-plan output format on its own.
+Closes the loop between `seed/plan-reviewer-design.md` (canonical reference prompt) and the `plan-reviewer` agent (behavior definition). The reference prompt contains three sections — `<investigate_before_answering>`, `<handoff_requirements>`, and `<final_output>` — that are operative ONLY when the prompt is actually run. The agent's own system prompt has the checklist and Elegance Gate baked in but does NOT enforce the handoff-plan output format on its own.
 
 This skill bridges the gap: it reads the design doc at invocation time, extracts the prompt, and runs it.
 
@@ -35,12 +35,12 @@ Skip if:
 
 1. **Resolve the plan path.** If the user supplied a path as an argument, verify the file exists with `Read`. If no path was supplied, ask: "Which plan should I review? Paste the path." Confirm before proceeding.
 
-2. **Extract the reference prompt.** Read `docs/plan-reviewer-design.md`. Locate the prompt with this anchor-based algorithm (no hardcoded line numbers — the skill must survive doc edits):
+2. **Extract the reference prompt.** Read `seed/plan-reviewer-design.md`. Locate the prompt with this anchor-based algorithm (no hardcoded line numbers — the skill must survive doc edits):
    - Find the line that starts with `## The Prompt` (H2 heading).
    - From that line, find the FIRST triple-backtick code fence (```` ``` ````) that opens — this is the start-of-prompt.
    - Find the matching closing triple-backtick code fence — this is the end-of-prompt.
    - The prompt body is everything between (exclusive of) those two fences.
-   - If the algorithm fails to find these anchors, ABORT with a clear error and ask the user to verify `docs/plan-reviewer-design.md` still follows the documented structure (H2 "The Prompt" → fenced code block).
+   - If the algorithm fails to find these anchors, ABORT with a clear error and ask the user to verify `seed/plan-reviewer-design.md` still follows the documented structure (H2 "The Prompt" → fenced code block).
 
 3. **Invoke the agent.** Spawn the plan-reviewer agent via `Agent(subagent_type: "plan-reviewer", ...)`. The agent's prompt should be:
    ```
@@ -62,7 +62,7 @@ Skip if:
 
 ## Why the skill (not just docs)
 
-Before this skill existed, the workflow was: human reads `workflow.md` → opens `docs/plan-reviewer-design.md` → copies prompt → pastes into fresh session → main Claude invokes agent. Four manual steps, each with drift risk. The skill collapses it to one command and guarantees the doc's prompt is the source of truth (read at invocation time, not snapshotted).
+Before this skill existed, the workflow was: human reads `workflow.md` → opens `seed/plan-reviewer-design.md` → copies prompt → pastes into fresh session → main Claude invokes agent. Four manual steps, each with drift risk. The skill collapses it to one command and guarantees the doc's prompt is the source of truth (read at invocation time, not snapshotted).
 
 ## Skip / NOT for
 
@@ -73,5 +73,5 @@ Before this skill existed, the workflow was: human reads `workflow.md` → opens
 ## See also
 
 - `seed/.claude/agents/plan-reviewer.md` — agent behavior definition (system prompt, checklist, Elegance Gate, modes)
-- `docs/plan-reviewer-design.md` — canonical reference prompt + design rationale
+- `seed/plan-reviewer-design.md` — canonical reference prompt + design rationale
 - `seed/.claude/rules/workflow.md` Stage 3 — where this skill plugs into the 6-stage session workflow

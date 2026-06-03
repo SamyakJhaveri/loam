@@ -2,7 +2,7 @@
 name: ship
 description: >
   Orchestrates the full shipping pipeline in strict order. Runs session-critique,
-  then validate (full 3-wave), then commit, then PR. Use when work is complete
+  then validate (both waves), then commit, then PR. Use when work is complete
   and ready to ship. Enforces ordering to prevent premature commits and skipped
   critiques. Accepts optional argument 'critique-only' to run just the critique
   step. NOT for mid-implementation checks (use /validate), code review without
@@ -41,9 +41,9 @@ This spawns an advisor-pattern agent team that adversarially reviews all work in
 
 ### Stage 2: Validate
 
-Invoke `/validate` (full — all 3 waves, NOT quick).
+Invoke `/validate` (full — both waves, NOT quick).
 
-This runs the three-wave validation loop: deterministic checks, rule-based tests, probabilistic review. Must produce `.validation_passed` sentinel with `waves_passed=3`.
+This runs the two-wave validation loop: deterministic checks, rule-based tests. Must produce `.validation_passed` sentinel with `waves_passed=2`.
 
 **Gate:** All waves must pass. On failure, enter the fix loop per `.claude/rules/validation-loop.md`. Max 3 iterations. After 3 fails, halt and escalate to user.
 
@@ -51,7 +51,7 @@ This runs the three-wave validation loop: deterministic checks, rule-based tests
 
 Invoke `/commit`.
 
-**Pre-check:** Confirm `.validation_passed` exists and `waves_passed=3` before proceeding. If sentinel is missing or stale, return to Stage 2.
+**Pre-check:** Confirm `.validation_passed` exists and `waves_passed=2` before proceeding. If sentinel is missing or stale, return to Stage 2.
 
 Split commits by scope if the session produced multiple logical changes. Never bundle unrelated changes into a single commit.
 

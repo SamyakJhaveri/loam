@@ -60,7 +60,7 @@ fi
 
 # ── 3. Check sentinel exists ─────────────────────────────────────────────────
 if [ ! -f "$SENTINEL" ]; then
-    gate_fail "Post-session validation has not been run." "Run /validate before committing. Quick: /validate quick (~30s). Full: /validate (~3min)."
+    gate_fail "Post-session validation has not been run." "Run /validate before committing. Quick: /validate quick (~30s). Full: /validate (~1-2min, both waves)."
 fi
 
 # ── 4. Check sentinel is not stale (< 30 minutes old) ────────────────────────
@@ -79,12 +79,12 @@ if [ "$AGE" -gt "$MAX_AGE" ]; then
     gate_fail "Validation sentinel is stale (age: ${AGE}s, limit: ${MAX_AGE}s)." "Re-run /validate — files may have changed since last run."
 fi
 
-# ── 4b. Check that at least 3 validation waves were run (not just quick) ────────
-# Three waves per .claude/rules/validation-loop.md: 1=Deterministic 2=Rule-based 3=Probabilistic.
+# ── 4b. Check that both validation waves were run (not just quick) ─────────────
+# Two waves per .claude/rules/validation-loop.md: 1=Deterministic 2=Rule-based.
 # Fail-open: if waves_passed field is missing, skip this check (backward compat).
 WAVES=$(grep '^waves_passed=' "$SENTINEL" 2>/dev/null | cut -d= -f2 | tr -d ' ')
-if [ -n "$WAVES" ] && [ "$WAVES" -lt 3 ] 2>/dev/null; then
-    gate_fail "Only ${WAVES}/3 required validation waves passed." "/validate quick is insufficient for committing. Run full /validate (all 3 waves)."
+if [ -n "$WAVES" ] && [ "$WAVES" -lt 2 ] 2>/dev/null; then
+    gate_fail "Only ${WAVES}/2 required validation waves passed." "/validate quick is insufficient for committing. Run full /validate (both waves)."
 fi
 
 # ── 5. Check sentinel is not outdated by new file changes ─────────────────────

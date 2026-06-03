@@ -188,7 +188,7 @@ loam/
 |-------|---------|
 | `/feature-dev` | Feature development: explore -> plan -> implement -> verify |
 | `/fix-bug` | Bug fix: reproduce -> diagnose -> plan -> fix -> verify |
-| `/validate` | Pipeline gate — 3-wave checks before commit |
+| `/validate` | Pipeline gate — 2-wave checks (Deterministic / Rule-based) before commit; deep review via `/session-critique` is manual |
 | `/ship` | Full pipeline: critique -> validate -> commit -> PR |
 | `/commit` | Conventional commit with staging |
 | `/pr` | Push and open GitHub PR |

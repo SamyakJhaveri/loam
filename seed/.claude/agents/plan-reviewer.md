@@ -64,9 +64,9 @@ genuine investigation, say so and explain why the alternatives were worse.
 
 Do not skip this step. Do not treat it as a formality.
 
-## For Validation Wave 3 (Drift Detection)
+## For Drift Detection
 
-When invoked during `/validate` Wave 3 to check for drift from an L2 stage contract:
+When invoked to check for drift from an L2 stage contract (e.g. during `/session-critique` or a plan review):
 
 1. **Done-sentence alignment** — Does the implementation's output match the L2 "Done looks like" anchor sentence? Check by reading the output artifact.
 2. **Scope drift** — Are there changes outside the stage contract's Inputs/Process/Output? Flag anything not on the critical path.

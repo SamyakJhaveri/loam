@@ -56,15 +56,16 @@ Operational:
 - `.claude/rules/validation-loop.md` — when working on hooks or the `validate` skill
 - `docs/ASSET-LAYERS.md` — when adding or moving assets
 - `docs/BOOTSTRAP.md`, `docs/SYNC.md`, `docs/COPIER.md`, `docs/FLAVORS.md`, `docs/MEMORY.md`
-- `docs/plan-reviewer-design.md` — when invoking the plan-reviewer agent (full reference prompt)
+- `seed/plan-reviewer-design.md` — when invoking the plan-reviewer agent (full reference prompt)
 
 ## Pipeline Gate
 
 `/validate` is this project's Pipeline Gate. Critical ordering:
 
 ```
-Implement → /session-critique → /validate (Pipeline Gate) → /commit → /pr (or `/ship`)
+Implement → /validate (Pipeline Gate) → /commit → /pr (or `/ship`)
 ```
+`/session-critique` is optional — invoke it manually when you want adversarial review.
 
 ## Rules when editing this template
 

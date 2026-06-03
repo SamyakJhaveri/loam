@@ -2,9 +2,7 @@
 paths:
   - ".claude/hooks/**"
   - ".claude/skills/validate/**"
-  - ".claude/agents/self-critic.md"
   - ".claude/agents/verification-lead.md"
-  - ".claude/agents/plan-reviewer.md"
 ---
 
 # Post-Session Validation Loop
@@ -15,7 +13,7 @@ paths:
 ## Quick Reference
 
 ```bash
-/validate          # Full validation (~2-3 min, all 3 waves)
+/validate          # Full validation (~1-2 min, both waves)
 /validate quick    # Wave 1 only (~30s, deterministic — INSUFFICIENT for commit)
 /validate fix      # Re-run failed waves after implementing fixes
 ```
@@ -26,11 +24,10 @@ paths:
 |------|-------|--------|------|-------|
 | 1 | **Deterministic** | ruff, mypy, `git diff --check`, regex grep for new TODO/FIXME/XXX, `bash -n` on changed `.sh` | Any FAIL blocks; no LLM calls | 10–30s |
 | 2 | **Rule-based** | pytest, project-specific validation scripts | Any FAIL blocks; no LLM calls | 30–90s |
-| 3 | **Probabilistic** *(only if W1+W2 pass)* | plan-reviewer (drift from L2 Done + rollback safety), self-critic (rationalization, incomplete work, code simplification†) | plan-reviewer or self-critic FAIL blocks; code-simplification WARN doesn't | 60–90s |
 
-†code simplification: absorbed into self-critic as advisory WARN, not blocking
+This ordering follows `.claude/rules/layer-triage.md`: deterministic checks fire first because they're cheapest and produce the highest-confidence verdicts, rule-based tests second. Both waves are LLM-free.
 
-This ordering follows `.claude/rules/layer-triage.md`: deterministic checks fire first because they're cheapest and produce the highest-confidence verdicts. Probabilistic LLM work runs last — and only after Wave 1+2 pass, so we never spend LLM budget reviewing code that already failed lint or tests.
+The probabilistic layer (Layer 3 of 60/30/10) is **not** part of the commit gate — deep adversarial review (drift detection, rationalization, code simplification) is invoked manually via `/session-critique` when you want it, not forced on every commit.
 
 ## Fix Loop Protocol
 
@@ -45,21 +42,15 @@ This ordering follows `.claude/rules/layer-triage.md`: deterministic checks fire
 
 `.validation_passed` sentinel in project root:
 - Written by `/validate` (or `verification-lead` agent) after waves pass
-- **Includes `waves_passed=N`** field — N is the highest wave that passed (1 for `quick`, 2 if Wave 3 skipped, 3 for full)
+- **Includes `waves_passed=N`** field — N is the highest wave that passed (1 for `quick`, 2 for full)
 - Checked by `.claude/hooks/pre-commit-gate.sh` before `git commit`:
   - Sentinel must exist
   - Age < 30 minutes (re-validate if stale)
-  - `waves_passed >= 3` (rejects `/validate quick` results)
+  - `waves_passed >= 2` (rejects `/validate quick` results)
   - No tracked file edited after sentinel mtime
 - **Invalidated** (deleted) by `.claude/hooks/sentinel-cleanup.sh` whenever any file is edited
 - Listed in `.gitignore` (never committed)
 
-## Context Budget
-
-Each Wave 3 agent returns max 50 lines structured verdict.
-Main session receives ~50-line aggregated report.
-Subagent isolation: no raw test output, no verbose logs in main context.
-
 ## No commit-message override
 
-`pre-commit-gate.sh` enforces the gate solely via the `.validation_passed` sentinel; it does NOT parse commit messages, so there is no `[skip-validate]` escape hatch. The gate is intentionally unconditional. Even a docs-only edit must pass full `/validate` (all three waves) before it can be committed — the gate requires `waves_passed>=3`, so anything short of all three waves (e.g., `/validate quick`) leaves the commit blocked. To bypass deliberately, disable the hook in `settings.json`.
+`pre-commit-gate.sh` enforces the gate solely via the `.validation_passed` sentinel; it does NOT parse commit messages, so there is no `[skip-validate]` escape hatch. The gate is intentionally unconditional. Even a docs-only edit must pass full `/validate` (both waves) before it can be committed — the gate requires `waves_passed>=2`, so anything short of both waves (e.g., `/validate quick`) leaves the commit blocked. To bypass deliberately, disable the hook in `settings.json`.

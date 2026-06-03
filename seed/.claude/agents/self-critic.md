@@ -1,6 +1,6 @@
 ---
 name: self-critic
-description: "Opus-powered adversarial self-review and code simplifier. Examines git diff for rationalization patterns, incomplete work, unverified claims, quality bar violations, and code complexity. Absorbs code-simplifier's duplication/dead-code/over-engineering detection. Blocks commit if work quality is insufficient. Use in post-session validation Wave 3."
+description: "Opus-powered adversarial self-review and code simplifier. Examines git diff for rationalization patterns, incomplete work, unverified claims, quality bar violations, and code complexity. Absorbs code-simplifier's duplication/dead-code/over-engineering detection. Used by /session-critique for adversarial review on demand (no longer wired into the /validate gate)."
 tools: Bash, Read, Glob, Grep
 model: opus
 effort: max
@@ -74,8 +74,6 @@ echo "Files in diff: $CHANGED_COUNT unstaged, $STAGED_COUNT staged"
 if [ "$CHANGED_COUNT" -eq 0 ] && [ "$STAGED_COUNT" -eq 0 ]; then
     echo "WARNING: No files in git diff — this session has no changes to validate"
 fi
-# Note: /tmp/validate_* files are cleaned up by verification-lead during Wave 2.
-# By Wave 4, those files are always gone. Do not check /tmp for evidence.
 ```
 
 ## Audit 3: Quality Bar Compliance (from CLAUDE.md)
