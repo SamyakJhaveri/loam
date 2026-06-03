@@ -40,7 +40,7 @@ The prose preamble below is the canonical human-readable copy of the Track B sty
 > test enforces this; it is manual discipline.
 
 ```
-Japanese shin-hanga woodblock print: atmospheric and luminous, built from many layered transparent color impressions; a single harmonious tonal key per image; soft graded skies (bokashi) suggesting dawn, dusk, or mist; fine hand-carved directional linework; calm, centered, contemplative composition, often with a still-water reflection; matte, slightly grainy printed texture on fine paper; fresh, bright, inviting color; clear luminous daylight; soft even tonal transitions with a gentle contrast range. Wide 16:9 landscape banner. Use clean blank paper margins and let the composition communicate pictorially. Subject:
+Japanese shin-hanga woodblock print: atmospheric and luminous, built from many layered transparent color impressions; a single harmonious tonal key per image; soft graded skies (bokashi) suggesting dawn, dusk, or mist; fine hand-carved directional linework; calm, centered, contemplative composition beside gently moving water; matte, slightly grainy printed texture on fine paper; fresh, bright, inviting color; clear luminous daylight; soft even tonal transitions with a gentle contrast range. Wide 16:9 landscape banner. Use clean blank paper margins and let the composition communicate pictorially. Subject:
 ```
 
 ## Style principles
@@ -51,8 +51,8 @@ State these as positive descriptions — describe what to depict.
 - **Bokashi graded skies.** Soft graded skies suggesting dawn, dusk, or mist.
 - **Layered transparent color.** Built from many layered transparent color impressions.
 - **Fine carved linework.** Fine hand-carved directional linework.
-- **Calm centered composition.** Calm, centered, contemplative framing, often with a
-  still-water reflection.
+- **Calm centered composition.** Calm, centered, contemplative framing beside gently
+  moving water.
 - **Matte grainy print texture.** Matte, slightly grainy printed texture on fine paper.
 - **Soft, even tonal transitions.** Soft, even tonal transitions held within a gentle
   contrast range.

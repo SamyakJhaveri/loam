@@ -77,11 +77,9 @@ renders are produced separately by the per-concept render-judge loop, and the Ke
 once they land. `todo` = prompt ready, render pending; `VOID` = a prior keeper whose prompt has
 since changed (must be re-rendered before re-judging).
 
-> **⚠ Before running any Phase B render:** soften the engine PREAMBLE's hardcoded "still-water
-> reflection" clause (in `seed/.claude/skills/diagrams/scripts/render-yoshida.py` and its
-> byte-twin in `design-language.md`) — it fights the no-reflection rule in
-> [`design-philosophy.md`](design-philosophy.md) §3 on every render. Separate commit + release
-> tag (shipped file). See memory `preamble-reflection-fix`.
+> **Preamble softened.** The engine PREAMBLE and its `design-language.md` byte-twin now read
+> "calm, centered, contemplative composition beside gently moving water" (per
+> [`design-philosophy.md`](design-philosophy.md) §3). Phase B renders are unblocked.
 
 | # | Slug | Track | Rendered? | Keep? | Notes |
 |---|------|-------|-----------|-------|-------|
