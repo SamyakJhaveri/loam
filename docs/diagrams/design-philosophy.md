@@ -11,19 +11,94 @@
 > [`../../seed/.claude/skills/diagrams/design-language.md`](../../seed/.claude/skills/diagrams/design-language.md)
 > (that file stays project-agnostic — Loam-specific taste belongs here).
 
+> **Provenance (so this file is auditable against the source).** Distilled from the
+> identity art-direction work captured in session `1e5975fc-e1c7-423b-a92d-6daa6f1f039f`
+> and its inputs:
+> - **Your hand sketch** `IMG_9389.JPG` (repo root) — the origin mental model.
+> - **Your own words** in `loam_scratchpad.md` — the conceptual brief and the image critique
+>   (reproduced verbatim in §0).
+> - **The reviewed plan** [`../plans/2026-06-01-identity-concept-realign-reviewed.md`](../plans/2026-06-01-identity-concept-realign-reviewed.md)
+>   — the nine resolved decisions and the concept taxonomy.
+>
+> §7 maps every rule below back to the exact source line, so anyone can confirm this file
+> reflects what *you* put into the image-creation process, not a paraphrase.
+
+---
+
+## 0. In your own words (the primary source)
+
+Everything below is a distillation of these two passages. They are reproduced here, lightly
+normalized for spelling (with light emphasis added and the occasional bracketed gloss for
+direction), so the rules in §1–§5 can always be checked against intent.
+
+### 0.1 The conceptual brief (`loam_scratchpad.md`, the "identity" brief)
+
+> Some additional notes about the conceptual idea behind Loam, to help write better prompts:
+>
+> 1. **"Seed" evolves at every project, for all kinds of projects.** "Seed" is a metaphor for
+>    the Claude Code operation — the user's engineering practices and workflow within Claude Code.
+> 2. When working on any project, the user **adds a new skill, a workflow of their own, or new
+>    project-specific tools** to their Claude Code operational workflow. The seed captures this
+>    and puts it into their **"loam."**
+> 3. **"Loam" lets users take their updated "seed" into the other projects** they're currently
+>    working on and into future projects. The goal and intent behind Loam is to **solve the pain
+>    point of having to manually "port" your workflow from one project to another.** Loam helps
+>    port your Claude Code workflow — your slash commands, custom skills, hooks, and engineering
+>    best practices.
+> 4. **Loam already has one of the best-practice Claude Code setups**, based on my own
+>    experiments and projects as a researcher of software engineering and AI. Start with the
+>    "identity" image, and we shall then propagate these ideas through all the prompts.
+
+### 0.2 The image critique that fixed the taste (`loam_scratchpad.md`, "describing loam and its philosophy")
+
+> Keeper: **c3** (recommendation). Criticisms:
+> - **Get rid of the reflection in the water** — it does not look good.
+> - The colors are **muted** and the image seems **"washed."** Change that — the colors should be
+>   **brighter**; the image should look **fresh and new, not washed and worn out.**
+> - The plants should be **more spread out** so that **none of the plants are in the background —
+>   they should all be in the foreground.**
+> - Add **arrows and sharp, clear trajectories** for the seeds going from "loam" to the plants and
+>   back. There should be an **intuitive understanding that the seeds start the plants and keep
+>   coming back to loam, enriched.**
+> - Seeds going **out** (loam → plants) should be **normal**; seeds coming **back** (plants → loam)
+>   should be **glowing.**
+> - Add **labels** for what the seed means — **Claude workflows, setups, and the user's
+>   infrastructure for creating projects**; the **projects are the plants.**
+> - The **variety of plants** was chosen to show that the seeds may look the **same and
+>   standardized**, but they are capable of seeding **various kinds of projects.** This is
+>   essentially **harness engineering and harness porting.**
+
+### 0.3 The sketch (`IMG_9389.JPG`)
+
+A labelled **"loam"** box (soft-cornered) holding a single **"seed"** on the left;
+**bidirectional arrows** reaching out to a row of plants at different stages —
+**"maturing plant," a bamboo, a fruit plant** — each annotated as a **"project"** at the
+**"current time."** Margin notes restate the brief: the seed is standardized yet seeds varied
+project kinds; this is harness porting. The soft-cornered box is the origin of the later
+"glass box with curved edges" decision; the row of staged plants is the origin of the
+"variety of plant kinds in the foreground" rule.
+
 ---
 
 ## 1. The core mental model of Loam
 
 - **Loam is one evolving seed-store** — a persistent hub/store, not a closed self-loop.
-- **The seed = the user's Claude Code operation**: their workflow, setup, and infrastructure —
-  skills, hooks, rules, slash commands. It is *not* a generic botanical seed.
+- **The seed = your Claude Code operation**: your workflow, setup, and engineering practices —
+  skills, hooks, rules, slash commands, project-specific tools. It is *not* a generic botanical
+  seed. The seed **evolves at every project**: when you build a new skill/workflow/tool, the seed
+  captures it.
+- **Loam exists to kill one pain point: manual porting.** Without Loam you re-port your workflow
+  from project to project by hand. Loam ports it for you — your slash commands, custom skills,
+  hooks, and best practices travel automatically.
 - **Loam ports that seed OUT to many projects, and grows richer from what each sends BACK.**
   Improvements return via `promote` / `copier update`, so the store *accumulates* over time.
 - **Projects are the plants.** The seed is *standardized*; the projects it grows are *varied kinds*.
-  One standardized seed → many different kinds of project. This is harness engineering / harness
-  porting: the same Claude Code harness, ported out to seed every project.
+  One standardized seed → many different kinds of project. This is **harness engineering / harness
+  porting**: the same Claude Code harness, ported out to seed every project.
 - **The relationship is bidirectional and cross-project**: out (copy) and back (promote, enriched).
+- **Loam is opinionated.** It already encodes a best-practice Claude Code setup drawn from the
+  author's experiments as a researcher of software engineering and AI — so the imagery should feel
+  *cultivated and abundant*, not tentative.
 
 ## 2. What Loam is NOT (rejected framings)
 
@@ -31,30 +106,49 @@
   dogfood detail — an implementation mechanic, a lonely closed loop — not the value proposition.
 - **Not the symlink mechanic** of "the repo runs on its own output."
 - **Not a generic seed**, and **not a single project** (that conflates `identity` with `lifecycle`).
+- **Not seeds showered on top of the plants.** Loam seeds each plant *at its roots, underground*.
 
 ## 3. Visual taste & rules (Track B hero art)
 
-Crystallized from the art-direction sessions:
+Crystallized from the art-direction sessions. Each rule carries *why* (the rule is only useful if
+the next prompt-author understands the intent, not just the instruction).
 
 - **The source is a glass box.** Depict loam's seed-store as a clear **rectangular glass box** —
   a cuboid case with flat upright faces and softly rounded edges/corners — holding the glowing
   seeds *inside* it. **Not** a dirt pile; **not** a rounded pot / jar / bowl.
+  *Why:* the store is a deliberate, engineered container (your standardized setup), not loose
+  earth; the soft-cornered box in the sketch became the glass box.
 - **Cross-section / cutaway.** Show **above ground and below ground** at once. Loam seeds each plant
   **at its roots, underground** — seeds travel through the soil to the root-ball, *not* showered
-  on top of the plants.
+  on top of the plants. *Why:* the seed *originates* the plant; it feeds the roots, it is not
+  fertilizer sprinkled on a finished plant.
 - **One source, N channels.** Exactly **one** central loam box; **one channel per plant**
-  (N plants → N channels). For the identity hero: 4 plants → 4 channels.
+  (N plants → N channels). For the identity hero: 4 plants → 4 channels. *Why:* there is a single
+  store, and each project draws from it on its own line.
 - **Directional flow, rendered in-image.** Each channel carries **bidirectional arrows** (rendered
-  by the model, pictorially) showing seeds flowing *out* to the roots and *back* to the box. The
-  returning seeds are the enrichment — the store ends up holding more.
-- **Variety of plants = variety of project kinds.** Use distinct plant *kinds* (seedling, bamboo,
-  fruiting tomato, gourd) to show one standardized seed growing different *kinds* of project.
-  All plants sit in the **foreground**, spread out — none in the background.
+  by the model, pictorially) showing seeds flowing *out* to the roots and *back* to the box.
+  **Outbound seeds are plain; returning seeds glow.** The returning glow *is* the enrichment — the
+  store ends up holding visibly more. *Why:* this is the one rule that makes `identity` legible as
+  give-and-replenish rather than one-way fan-out (and it is what your critique asked for most
+  forcefully).
+- **Variety of plants = variety of project kinds.** Use distinct plant *kinds* to show one
+  standardized seed growing different *kinds* of project. (The specific four — **seedling, bamboo,
+  fruiting tomato, gourd** — are an art-direction crystallization from the identity render; your
+  verbatim source gives the *principle* (variety = project kinds) and the sketch's three kinds
+  "maturing plant / bamboo / fruit plant" (§0.3) — the exact species are a rendering choice.)
+  All plants sit in the **foreground**, spread out — **none in the background.**
+  *Why:* the seed looks the same everywhere; the *projects* differ. Foreground spread says every
+  project is first-class, none is secondary.
+- **Fresh and bright, never washed.** Aim **fresh, not washed/worn**; brighter, clearer color;
+  **no still-water reflection** (it muddied the image and read as tired). *Why:* Loam is alive and
+  growing; a washed/worn palette reads as decay.
 - **Yoshida shin-hanga, per the reference images.** Atmospheric woodblock; include the calm
   **lake / water + soft layered hills** background. Adhere to the local `yoshida_hiroshi/`
-  references. Aim **fresh, not washed/worn**, but stay inside the Yoshida idiom — do *not*
-  over-saturate into a non-Yoshida brightness, and do *not* drift into a flat "textbook" look
-  (structural clarity — the cutaway, the channels — is welcome; clip-art flatness is not).
+  references. Stay inside the Yoshida idiom — do *not* over-saturate into a non-Yoshida brightness,
+  and do *not* drift into a flat "textbook" look (structural clarity — the cutaway, the channels —
+  is welcome; clip-art flatness is not). *Why:* the mood is the brand; "fresh, not washed" is a
+  move *within* shin-hanga, not away from it. (Note the tension: keep the calm lake and soft
+  layered hills, but drop the literal mirror-reflection on the water that looked washed.)
 
 ## 4. Labeling
 
@@ -82,16 +176,17 @@ Apply this checklist to every concept (and especially wherever Loam-as-a-system 
 
 1. Positive framing only; **subject-only** (no style boilerplate — the `PREAMBLE` supplies the
    Yoshida style); **≤ 6 refs**; **no artist name**; no literal marginalia / date column / red seal.
-2. If Loam itself appears: show the **glass-box store + outward reach + return/accumulation**.
+2. If Loam itself appears: show the **glass-box store + outward reach + return/accumulation**, with
+   **outbound seeds plain and returning seeds glowing.**
 3. Distinguish sibling concepts by the **facet each isolates**:
    `identity` = the whole system, out *and* back; `fan-out` = outward only; `lifecycle` = one
    project over time.
 4. Prefer the **cutaway / cross-section + root-channel** vocabulary wherever the *seeding mechanic*
-   matters.
+   matters (seeds reach the plant at its roots, underground).
 5. Reuse the **seedling / bamboo / fruiting tomato / gourd** vocabulary to express multiplicity of
-   project *kinds*.
-6. Keep the **lake + layered hills** background and the **luminous garden** palette family for
-   Loam-system scenes.
+   project *kinds*, all spread across the **foreground**.
+6. Keep the **lake + layered hills** background and the **luminous, fresh (never washed)** garden
+   palette family for Loam-system scenes.
 
 ## 6. Decision Log
 
@@ -101,14 +196,14 @@ Apply this checklist to every concept (and especially wherever Loam-as-a-system 
 
 1. **Reframe.** Identity moves from the ouroboros (self-eating loop = symlink dogfood detail) to the
    **seed-store** model: one store ports the workflow out to many projects and grows richer from
-   each. (Plan `2026-06-01-identity-concept-realign-reviewed.md`, decisions table.)
+   each. (Plan `2026-06-01-identity-concept-realign-reviewed.md`, decisions table; sketch `IMG_9389.JPG`.)
 2. **Render in Phase A**, with the user gating each paid render.
-3. **Round-1 critique** (first seed-store render): remove the water reflection; brighter/fresher,
-   not washed/worn; plants spread across the foreground (none in background); add arrows + clear
-   seed trajectories; outbound seeds plain, **returning seeds glowing**; add labels
-   (seed = Claude workflows/setups/infrastructure; plants = projects); the *variety* of plants
-   shows a standardized seed growing **various kinds** of project (harness porting). Chose **both
-   tracks** (Track B atmosphere + Track A labels).
+3. **Round-1 critique** (`loam_scratchpad.md` §0.2; keeper c3): remove the water reflection;
+   brighter/fresher, not washed/worn; plants spread across the foreground (none in background);
+   add arrows + clear seed trajectories; outbound seeds plain, **returning seeds glowing**; add
+   labels (seed = Claude workflows/setups/infrastructure; plants = projects); the *variety* of
+   plants shows a standardized seed growing **various kinds** of project (harness porting). Chose
+   **both tracks** (Track B atmosphere + Track A labels).
 4. **Round-2 critique:** keep the tall **bamboo** + big fruitful **tomato**; only **one** loam
    (not multiple seed piles); switch to a **cross-section** view where loam seeds the plants at
    their **roots underground**, not on top; bring back the **lake** (liked c4's lake); **more
@@ -120,17 +215,44 @@ Apply this checklist to every concept (and especially wherever Loam-as-a-system 
 6. **Round-4** (glass-box render): preferred the **c3** serene-lake composition; reiterated **glass
    box, not a rounded pot**; **arrows must be rendered in the image** by the model (not overlaid);
    overlaid **labels are fine**.
-7. **Overlay refinement:** each `project` tag must **hover precisely over its plant**; **no text
-   may overlap other text**.
+7. **Overlay refinement** (this session, your live input): each `project` tag must **hover
+   precisely over its plant**; **no text may overlap other text**.
+8. **Outcome.** Phase A shipped: identity redefined to the seed-store/glass-box cutaway, c3 kept
+   (`loam-hero-01-identity-c3-labeled.png`), `loam-identity.drawio` updated with promote-back
+   arrows, one generic sentence added to the shipped `design-language.md`, registry header gained
+   the 5 Loam design principles. Committed (`7d882800`) and released **v3.6.1** (`63db791c`).
+   **Phase B — re-aligning all 15 other concepts' prompts — is NOT yet done.**
 
-## 7. How to use this file
+## 7. Fidelity check — rule ↔ source (so this file matches what you said)
+
+| Rule (§) | Your source | Anchor |
+|---|---|---|
+| Seed = your Claude Code operation, not botanical (§1) | brief pt. 1–2 | §0.1 |
+| Exists to kill manual porting (§1) | brief pt. 3 | §0.1 |
+| One standardized seed → varied project kinds = harness porting (§1, §3) | brief pt. 1 + critique | §0.1 / §0.2 |
+| Opinionated / best-practice setup (§1) | brief pt. 4 | §0.1 |
+| Glass box, not pot/pile (§3) | sketch soft box → Rounds 3–4 | §0.3 / §6.5–6 |
+| Cutaway, seeds reach roots underground (§3) | Round-2 critique | §6.4 |
+| One source, N channels; 4 plants → 4 channels (§3) | Round-2 critique | §6.4 |
+| Bidirectional arrows; **returning seeds glow** = enrichment (§3) | critique | §0.2 / §6.3 |
+| Plants spread, all foreground, varied kinds (§3) | critique | §0.2 |
+| Fresh & bright, no washed reflection (§3) | critique | §0.2 |
+| Yoshida lake + layered hills (§3) | Round-2 critique ("bring back the lake") | §6.4 |
+| Labels via overlay/Track A, never the model (§4) | critique ("add labels") + label discipline | §0.2 |
+| Tags hover over their plant; no text overlap (§4) | this session, live | §6.7 |
+
+If a future change can't be traced to a row here, add the row (and the source) before folding the
+rule into §1–§5 — that keeps the file honest to *your* intent.
+
+## 8. How to use this file
 
 - This is the **taste reference for updating all concept prompts** in `concepts.yaml` (the Phase B
-  re-alignment of the other concepts). Read §1–§5 before editing any `track_b.prompt`. Phase B
+  re-alignment of the other concepts). Read §0–§5 before editing any `track_b.prompt`. Phase B
   re-aligns all 15 non-identity concepts — **including #3 (context-routing) and #4 (layer-triage),
-  whose existing renders go stale** and must be re-authored and re-rendered; follow the plan's
-  Phase B section for the per-concept loop.
-- When a new art-direction decision lands, **append to §6** and update the affected rule in §1–§5.
+  whose existing renders/prompts go stale** and must be re-authored; follow the plan's Phase B
+  section for the per-concept loop.
+- When a new art-direction decision lands, **append to §6**, add a **§7 fidelity row**, and update
+  the affected rule in §1–§5.
 - Keep it consistent with its siblings:
   - [`concepts.yaml`](concepts.yaml) — the actual prompts (source of truth for prompt text).
   - [`loam-hero-prompts.md`](loam-hero-prompts.md) — the render/keeper dashboard.
