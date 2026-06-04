@@ -119,6 +119,9 @@ test ! -f "$TMP/default/.claude/audit.log"             || fail "default: audit.l
 # Top-level CLAUDE.md/README.md should be rendered from .jinja
 test -f "$TMP/default/CLAUDE.md"                       || fail "default: CLAUDE.md not rendered from .jinja"
 test -f "$TMP/default/README.md"                       || fail "default: README.md not rendered from .jinja"
+test -x "$TMP/default/.claude/hooks/superpowers-plan-location.sh" || fail "default: superpowers-plan-location hook missing"
+grep -q 'superpowers-plan-location.sh' "$TMP/default/.claude/settings.json" || fail "default: superpowers-plan-location hook not registered"
+grep -qF '.superpowers/' "$TMP/default/.gitignore" || fail "default: .superpowers/ not gitignored"
 pass "Copier render (default)"
 
 # Research flavor (is_research=true)
@@ -138,6 +141,9 @@ pass "Copier render (research)"
 # Research-specific: protect-results.sh must be registered in settings.json
 grep -q 'protect-results.sh' "$TMP/research/.claude/settings.json" || fail "research: protect-results.sh not registered in settings.json"
 test ! -f "$TMP/research/.claude/hooks/result-immutability.sh" || echo "WARN: research: base result-immutability.sh still present (should be removed by research overlay)"
+test -x "$TMP/research/.claude/hooks/superpowers-plan-location.sh" || fail "research: superpowers-plan-location hook missing"
+grep -q 'superpowers-plan-location.sh' "$TMP/research/.claude/settings.json" || fail "research: superpowers-plan-location hook not registered"
+grep -qF '.superpowers/' "$TMP/research/.gitignore" || fail "research: .superpowers/ not gitignored"
 pass "Copier render (research hook wiring)"
 
 echo "ALL OK"

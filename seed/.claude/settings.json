@@ -56,6 +56,11 @@
             "type": "command",
             "command": ".claude/hooks/result-immutability.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/superpowers-plan-location.sh",
+            "timeout": 10
           }
         ]
       }

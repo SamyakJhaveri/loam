@@ -61,6 +61,7 @@ See `.claude/skills/` for available skills. Core skills auto-activate; specializ
 ## Required Plugins
 
 - **superpowers** (`obra/superpowers`) — provides `/writing-plans`, `/brainstorming`, `/executing-plans`, and plan-mode workflow support. Install: `claude plugin install obra/superpowers`
+  - **Plan & spec location (overrides plugin default):** plans → `.superpowers/plans/`, specs → `.superpowers/specs/` (project-root, gitignored). Do NOT write under `docs/superpowers/` — `docs/` stays human-curated. Enforced by `.claude/hooks/superpowers-plan-location.sh`.
 
 ## Date
 

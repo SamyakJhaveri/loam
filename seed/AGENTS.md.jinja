@@ -123,6 +123,12 @@ When writing or reviewing code, always ask: What can an attacker control? What's
 
 <!-- Project-specific conventions go here. Fill in during bootstrap or as conventions emerge. -->
 
+### Plan & Spec Output
+
+Superpowers (and any plan/spec authoring) writes to `.superpowers/plans/` and `.superpowers/specs/`
+at the project root — NOT `docs/superpowers/` (the plugin default). Keep `docs/` human-curated.
+The `superpowers-plan-location.sh` PreToolUse hook enforces this.
+
 ---
 
 ## §3 Hard Constraints
