@@ -277,6 +277,39 @@ Apply this checklist to every concept (and especially wherever Loam-as-a-system 
    (layer-triage, workflow, repo-anatomy, fan-out), keeping `track_b.prompt` positive-framed.
    NOTE: this edits `seed/` (shipped), so the next release needs a tag (Copier resolves from tags).
 
+### 2026-06-03 (later) — Phase B render loop completes (#7–#15)
+
+1. **Phase B done.** #7–#15 rendered (5 candidates each) and kept: fan-out c1, cultivation c4,
+   flavors c1, validation c3, soil c3, memory c1, agent-teams c1, toolkit c5, cover-art c5. All 15
+   active concepts now carry `status.track_b: keep`.
+2. **Diagnosis — subject-prompt density, not the preamble, governs Yoshida craft.** A held-aside A/B
+   worktree (the parked Yoshida experiment) showed two renders sharing the *same* preamble could be
+   richly atmospheric or flatly "textbook" purely by their *subject-prompt* style: short, scene-led
+   prompts let the woodblock craft flourish; long, schema-dense prompts ("arranged like a routing
+   diagram", "so it reads clearly") pull toward infographic flatness. The worktree was kept only as a
+   visual-fidelity reference; its renders are superseded by the main line.
+3. **Tic-trim (repo-local).** Removed the "so it reads clearly / at a glance / read in clear order"
+   legibility tics from #7–#15 `track_b.prompt` (reinforces §3 "more Yoshida, less textbook"),
+   keeping each composition and its refs intact.
+4. **Narrow preamble contrast edit (shipped).** "soft even tonal transitions with a gentle contrast
+   range" → "…with a fresh, clear contrast range within the Yoshida idiom", in BOTH byte-twins
+   (`scripts/render-yoshida.py`, `design-language.md`). Serves §3 "fresh, not washed". NOTE: edits
+   `seed/` → the next release needs a tag.
+5. **Brightness push (repo-local).** Per your repeated "colours brighter" direction (§0.2), brightness
+   was added at the per-concept prompt opening ("painted in bright, vivid, freshly-printed colour")
+   and palette level for #7–#15 — deliberately NOT in the shipped preamble (the A/B proved the
+   preamble is not the craft differentiator, and keeping it repo-local avoids imposing loam's
+   brightness taste on every bootstrapped project).
+6. **fan-out art-direction (your live input on #7).** Three corrections folded into its prompt:
+   (a) brighter colour; (b) **varied plant KINDS** — bamboo, oak sapling, mint, fruiting tomato,
+   gourd vine — not uniform seedlings (reinforces §3 "variety of plants = variety of project kinds";
+   fan-out is the one→many facet, so it shows the most kinds); (c) seed channels kept in clean,
+   evenly-spaced, non-overlapping lanes.
+7. **Recurring artifact — fake lettering/seals (mitigated by selection).** The seal-guard PREAMBLE
+   clause largely held, but fake Japanese lettering still bled into fan-out c4 and memory c5, and a
+   garbled-shape artifact into toolkit c2; all three were disqualified at the gate. The kept set is
+   clean. Small ≤2-word English margin titles (within `label-light`) are cropped/overlaid at finishing.
+
 ## 7. Fidelity check — rule ↔ source (so this file matches what you said)
 
 | Rule (§) | Your source | Anchor |
@@ -295,6 +328,9 @@ Apply this checklist to every concept (and especially wherever Loam-as-a-system 
 | Labels via overlay/Track A, never the model (§4) | critique ("add labels") + label discipline | §0.2 |
 | Tags hover over their plant; no text overlap (§4) | this session, live | §6.7 |
 | Seed grows in size + glow as it accumulates (§3) | lifecycle keeper pick, your verbatim words | §6 (2026-06-03) |
+| Brighter colour, fresh not washed — pushed per-concept (§3) | your repeated critique | §0.2 / §6 (2026-06-03 later) |
+| More Yoshida, less textbook — legibility tics trimmed (§3) | §3 rule + this round | §6 (2026-06-03 later) |
+| fan-out = varied plant kinds, outward only (§1, §3) | your live #7 critique | §6 (2026-06-03 later) |
 
 If a future change can't be traced to a row here, add the row (and the source) before folding the
 rule into §1–§5 — that keeps the file honest to *your* intent.

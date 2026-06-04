@@ -40,10 +40,9 @@ acceptance criteria per concept.
 ## Catalog (16 concepts)
 
 The shared design vocabulary. Each concept can be expressed on both tracks. **Track B prompts
-are now authored (v1) for all 15 active concepts (#1–#15)**, grounded in
+are authored and (Track B) rendered-and-kept for all 15 active concepts (#1–#15)**, grounded in
 [`design-philosophy.md`](design-philosophy.md) and dry-run-verified against the render engine;
-#16 is an intentional reserved stub. So far #1–#6 have been rendered and kept this round — the remaining v1 prompts are the consistent starting point for the per-concept
-render-judge loop (renders pending). They share one visual vocabulary: glass-box loam source, cutaway with
+#16 is an intentional reserved stub. **All 15 active concepts (#1–#15) have now been rendered and kept this round** (#7–#15 added 2026-06-03, with brighter colour throughout and varied plant *kinds* for fan-out). They share one visual vocabulary: glass-box loam source, cutaway with
 root-channels, varied plant kinds in the foreground, calm Yoshida lake + layered hills, fresh and
 bright (never washed); the glowing return loop belongs to identity only.
 
@@ -55,15 +54,15 @@ bright (never washed); the glowing return loop belongs to identity only.
 | 4 | Layer triage (60/30/10) | deterministic/rule/probabilistic split (proportion chart) | up-close xylem/phloem cross-section; golden sap in 3 unequal vessel-clusters (~6/3/1): core / branches / one bud | **keep c3 (cropped)** |
 | 5 | Workflow (6 stages) | Orient→…→Verify (gate) | one tended path through 6 beds ending at a harvest gate | **keep c5** |
 | 6 | Repo anatomy (garden map) | labeled tree: seed/ soil/ cultivation/ docs/ bin/ | walled-garden map of plots; glowing-gold seed-bed = shipped region, plants carried out the gate | **keep c5** |
-| 7 | Fan-out (one→many) | one template → N projects, outward only | glass box → many outward channels to seedlings, no return | authored (v1, tuned; render pending) |
-| 8 | Cultivation (greenhouse) | wip→marketplace→retired staging | greenhouse with 3 staging areas, plants moving between | authored (v1) |
-| 9 | Flavors (cultivars) | base template + research overlay graft | one base plant with a grafted research cultivar | authored (v1) |
-| 10 | Validation (three sieves) | 3-wave gate (Det/Rule/Prob) | harvest poured through 3 stacked sieves at a gate | authored (v1) |
-| 11 | Soil (knowledge base) | jvc/foundation/playbooks sources | layered living-soil cutaway feeding one plant's roots | authored (v1) |
-| 12 | Memory (compost) | write→index→consolidate(dream)→prune | compost cycle: gathered → broken down → returned as nourishment | authored (v1) |
-| 13 | Agent teams (pollination) | advisor(Opus)+worker(Sonnet) topology | one coordinator bee directing several worker bees | authored (v1) |
-| 14 | Toolkit (the tools) | skills/hooks/agents/rules taxonomy | 4 grouped tool sets in one tidy garden rack | authored (v1) |
-| 15 | Cover art (Track B only) | — | seed opening into roots that resolve into circuitry | authored (v1) |
+| 7 | Fan-out (one→many) | one template → N projects, outward only | glass box → many outward channels to varied plant kinds, no return | **keep c1** |
+| 8 | Cultivation (greenhouse) | wip→marketplace→retired staging | greenhouse with 3 staging areas, plants moving between | **keep c4** |
+| 9 | Flavors (cultivars) | base template + research overlay graft | one base plant with a grafted research cultivar | **keep c1** |
+| 10 | Validation (three sieves) | 3-wave gate (Det/Rule/Prob) | harvest poured through 3 stacked sieves at a gate | **keep c3** |
+| 11 | Soil (knowledge base) | jvc/foundation/playbooks sources | layered living-soil cutaway feeding one plant's roots | **keep c3** |
+| 12 | Memory (compost) | write→index→consolidate(dream)→prune | compost cycle: gathered → broken down → returned as nourishment | **keep c1** |
+| 13 | Agent teams (pollination) | advisor(Opus)+worker(Sonnet) topology | one coordinator bee directing several worker bees | **keep c1** |
+| 14 | Toolkit (the tools) | skills/hooks/agents/rules taxonomy | 4 grouped tool sets in one tidy garden rack | **keep c5** |
+| 15 | Cover art (Track B only) | — | seed opening into roots that resolve into circuitry | **keep c5** |
 | 16 | Reserved | — | — | reserved stub |
 
 The ids and slugs match `concepts.yaml` exactly (16 entries, ids 1–16). Each entry also carries
@@ -71,14 +70,17 @@ The ids and slugs match `concepts.yaml` exactly (16 entries, ids 1–16). Each e
 
 ## Render / judging tracking
 
-Per concept × track. **Track B prompts are authored (v1) for all active concepts (#1–#15);**
-renders are produced separately by the per-concept render-judge loop, and the Keep? column fills
-once they land. `todo` = prompt ready, render pending; `VOID` = a prior keeper whose prompt has
-since changed (must be re-rendered before re-judging).
+Per concept × track. **Track B is rendered and kept for all 15 active concepts (#1–#15)** via the
+per-concept render-judge loop (render 5 candidates → Opus critic ranks vs `design-philosophy.md` →
+human keeps). `todo` = render pending; `VOID` = a prior keeper whose prompt has since changed
+(must be re-rendered before re-judging). Track A is `todo` for every concept (not run this round).
 
-> **Preamble softened.** The engine PREAMBLE and its `design-language.md` byte-twin now read
-> "calm, centered, contemplative composition beside gently moving water" (per
-> [`design-philosophy.md`](design-philosophy.md) §3). Phase B renders are unblocked.
+> **Preamble (2026-06-03).** The engine PREAMBLE + `design-language.md` byte-twin read "calm,
+> centered, contemplative composition beside gently moving water" and "soft even tonal transitions
+> with a fresh, clear contrast range within the Yoshida idiom" (per
+> [`design-philosophy.md`](design-philosophy.md) §3) — the latter the narrow contrast edit this
+> round. Brightness for #7–#15 was pushed at the per-concept prompt/palette level (repo-local).
+> Phase B (#7–#15) is complete; all 15 active concepts are kept.
 
 | # | Slug | Track | Rendered? | Keep? | Notes |
 |---|------|-------|-----------|-------|-------|
@@ -88,7 +90,15 @@ since changed (must be re-rendered before re-judging).
 | 4 | layer-triage | B | rendered (5 rounds; final: textbook xylem/phloem) | KEEP c3 (border cropped → `-c3-cropped.png`) | REFRAMED: dropped the atmospheric hero for an up-close botanical xylem/phloem cross-section (user direction); golden sap in 3 unequal vessel-clusters ~6/3/1 = core (deterministic) / side cluster (rule) / few vessels to one bud (AI). Confirmed layer-triage = 60/30/10, not context-routing. See `design-philosophy.md` §6 |
 | 5 | workflow | B | rendered (re-roll for exactly 6 beds) | KEEP c5 | six countable planting beds (bare-soil→ripe) along one path divided by bare-earth strips, ending at a simple wooden gate where the harvest is checked; fresh, clean, calm lake + hills; open bands for later vector labels |
 | 6 | repo-anatomy | B | rendered (merged re-roll) | KEEP c5 | walled-garden map; glowing-gold central seed-bed = the shipped `seed/` source, figures carry seedling trays out the open gate; 4 distinct stone-bordered plots (arbor=docs / compost=soil / nursery=cultivation / tools=bin); fresh, clean |
-| 7–15 | (all other active concepts) | B | todo | | track_b prompt authored (v1) + dry-run-verified; renders pending. Method this round: render 5 candidates → Opus critic ranks vs `design-philosophy.md` → human keeps (no auto-rewrite); per-concept gate |
+| 7 | fan-out | B | rendered (re-rolled: brighter, varied kinds, non-overlapping channels) | KEEP c1 | one glass-box source, many one-way channels in clean separate lanes to a varied foreground (bamboo / oak / mint / tomato / gourd); bright fresh colour; no return loop (fan-out's facet). 2026-06-03 |
+| 8 | cultivation | B | rendered (c1–c5) | KEEP c4 | bright greenhouse, three legible stages (seedling tray → mature bench → spent shelf); left blank label bands for the vector-overlay strategy |
+| 9 | flavors | B | rendered (c1–c5) | KEEP c1 | one base plant with a bound grafted branch of a clearly different cultivar (green base + yellow maple-leaf/acorn graft); strongest graft contrast |
+| 10 | validation | B | rendered (c1–c5) | KEEP c3 | brightest; three stacked sieves at a gate sorting a golden harvest into a basket. (c1 disqualified — only one sieve) |
+| 11 | soil | B | rendered (c1–c5) | KEEP c3 | bright cutaway of distinct living-soil strata feeding one plant's roots that draw down through every layer |
+| 12 | memory | B | rendered (c1–c5) | KEEP c1 | bold compost cycle L→R: leaf pile → dark broken-down earth → vigorous new seedlings. (c5 disqualified — fake Japanese lettering) |
+| 13 | agent-teams | B | rendered (c1–c5) | KEEP c1 | brightest; one coordinator bee + worker bees on clear flight paths to many flowers (advisor/worker dispatch) |
+| 14 | toolkit | B | rendered (c1–c5) | KEEP c5 | four distinct tool groups in one shared rack, well-spaced and legible. (c2 disqualified — garbled-shape artifact) |
+| 15 | cover-art | B | rendered (c1–c5) | KEEP c5 | bright; a glowing seed opening into roots that resolve into circuit traces — growth and engineered system as one identity |
 | 1–15 | (all active concepts) | A | todo | | Track A (PaperBanana, manual human-in-browser) not run this round |
 | 16 | reserved | A + B | — | — | intentional reserved stub; no track_b prompt |
 

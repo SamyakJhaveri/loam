@@ -177,9 +177,9 @@
     - "outward distribution from the source"
     - "no return path back to the source"
   label_strategy: label-light
-  palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
+  palette: "bright, vivid luminous garden key — vivid sap green, clear leaf yellow, glowing gold, and warm cream"
   track_b:
-    prompt: "A luminous cutaway cross-section of a sunlit garden. Below ground at the left a single clear rectangular glass box with flat faces and softly rounded edges holds a glowing cache of golden seeds — the one source. From it, many slender underground channels fan outward through the dark soil, each carrying golden seeds to the roots of its own young plant; above ground a wide spread of distinct seedlings rises across the foreground. Every channel runs strictly one way, carrying the golden seeds outward from the box to the plants. Beyond them a calm bright lake lies still under soft layered hills and a fresh clear dawn sky"
+    prompt: "A luminous cutaway cross-section of a sunlit garden, painted in bright, vivid, freshly-printed colour under clear morning light. Below ground at the left a single clear rectangular glass box with flat faces and softly rounded edges holds a glowing cache of golden seeds — the one source. From it, many slender underground channels fan outward through the dark soil, each running to the roots of its own plant along its own separate, evenly-spaced path, the channels kept clearly apart and parallel so each keeps to its own clean lane. Above ground a wide spread of clearly different kinds of plant rises across the foreground — a tall green bamboo, a young oak sapling, a leafy mint plant, a fruiting tomato, a broad-leaved gourd vine, and more — each a distinct kind, lush, healthy and vigorous with finely detailed leaves, showing one standardized seed growing many different kinds of plant. Every channel runs strictly one way, carrying the golden seeds outward from the box to the plants. Beyond them a calm bright lake lies still under soft layered hills and a fresh, clear, brightly-lit dawn sky"
     refs:
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
@@ -189,7 +189,8 @@
     source_context: "One source template fanning out to many projects, outward only (no return — that distinguishes fan-out from identity). One node 'loam template' on the left; many project nodes on the right; outward arrows labeled 'copier copy'. No return arrows."
     figure_caption: "One Loam template generates many downstream projects."
     visual_intent: "Academic one-to-many figure; a single source on the left branching to many outputs; outward arrows only; on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  # render-judge round 2026-06-03: user kept c1 (brighter re-render; varied plant KINDS; non-overlapping channels).
+  status: { track_a: todo, track_b: keep }
 
 - id: 8
   slug: cultivation
@@ -202,7 +203,7 @@
   label_strategy: vector-overlay
   palette: "luminous greenhouse key — fresh sap green, glasshouse teal, and warm cream"
   track_b:
-    prompt: "A luminous cutaway of one bright greenhouse with three clearly separated staging areas in a row: a near tray of tender new seedlings just starting out, a central display bench of strong mature potted plants ready to be taken up and used, and a far shelf of spent plants set gently aside to rest. A few plants are shown mid-move, carried from the seedling tray to the display bench and from the bench to the resting shelf, so the ordered movement through the three stages reads clearly. Soft daylight fills the glasshouse and soft layered hills show through the glass under a fresh bright sky"
+    prompt: "A luminous cutaway of one greenhouse, painted in bright, vivid, freshly-printed colour, with three clearly separated staging areas in a row: a near tray of tender new seedlings just starting out, a central display bench of strong mature potted plants ready to be taken up and used, and a far shelf of spent plants set gently aside to rest. A few plants are shown mid-move, carried from the seedling tray to the display bench and from the bench to the resting shelf. Soft daylight fills the glasshouse and soft layered hills show through the glass under a fresh bright sky"
     refs:
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
@@ -211,7 +212,8 @@
     source_context: "Skill staging stages: 'wip/' (work in progress) -> 'marketplace/' (reusable, available) -> 'retired/' (set aside). Show movement between the three stages. Labels: 'wip', 'marketplace', 'retired'."
     figure_caption: "Skills move through cultivation stages: work-in-progress, marketplace, retired."
     visual_intent: "Academic three-stage pipeline; arrows between stages; on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  # render-judge round 2026-06-03: user kept c4 (bright; 3 stages legible; blank vector-overlay label bands).
+  status: { track_a: todo, track_b: keep }
 
 - id: 9
   slug: flavors
@@ -224,7 +226,7 @@
   label_strategy: vector-overlay
   palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
   track_b:
-    prompt: "A luminous study of one strong base plant growing from rich dark soil, with a single grafted branch bound at its stem and clearly taking hold — the graft bearing visibly different leaves and fruit from the base, a distinct cultivar living on the same plant. The bound graft point is shown clearly, so the act of adding a new variety onto the established base reads at a glance; a calm lake and soft layered hills sit beyond under a fresh bright sky"
+    prompt: "A luminous study, painted in bright, vivid, freshly-printed colour, of one strong base plant growing from rich dark soil, with a single grafted branch bound at its stem and visibly taking hold — the graft bearing different leaves and fruit from the base, a distinct cultivar living on the same plant, its bound graft point clear among the foliage; a calm lake and soft layered hills sit beyond under a fresh bright sky"
     refs:
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
@@ -234,7 +236,8 @@
     source_context: "A base template with a flavor overlay grafted on. One 'base template' node; a 'research overlay' grafted onto it producing a 'research cultivar'. Labels: 'base', 'research overlay', 'research cultivar'."
     figure_caption: "Loam grafts flavor overlays, such as research, onto the base template."
     visual_intent: "Academic base-plus-overlay figure showing a graft; on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  # render-judge round 2026-06-03: user kept c1 (clearest cultivar graft contrast).
+  status: { track_a: todo, track_b: keep }
 
 - id: 10
   slug: validation
@@ -247,7 +250,7 @@
   label_strategy: vector-overlay
   palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
   track_b:
-    prompt: "A luminous garden gate where a fresh harvest of golden seeds is poured through three sieves stacked one above the next in sequence, each sieve finer than the one above it; clean sorted seeds collect in a bright basket below the lowest sieve while a small amount is set aside, so the three ordered sorting stages and the clear final outcome read plainly. The gate stands in an open garden with a calm lake and soft layered hills beyond under a fresh bright sky"
+    prompt: "A luminous garden gate, painted in bright, vivid, freshly-printed colour, where a fresh harvest of golden seeds is poured through three sieves stacked one above the next in sequence, each sieve finer than the one above it; clean sorted seeds collect in a bright basket below the lowest sieve while a small amount is set aside. The gate stands in an open garden with a calm lake and soft layered hills beyond under a fresh bright sky"
     refs:
       - "Yōmeimon,_Hiroshi_Yoshida,_陽明門,_吉田博.jpg"
       - "Toshogu_Shrine_(5759027311).jpg"
@@ -257,7 +260,8 @@
     source_context: "The three-wave validation gate: deterministic checks, then rule-based checks, then probabilistic checks, in sequence, with a final pass/fail. Labels: 'deterministic', 'rule-based', 'probabilistic', 'pass/fail'."
     figure_caption: "Validation passes work through deterministic, rule-based, and probabilistic checks before a final verdict."
     visual_intent: "Academic three-stage sieve/gate diagram in sequence; a final pass/fail node; on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  # render-judge round 2026-06-03: user kept c3 (brightest; three stacked sieves legible).
+  status: { track_a: todo, track_b: keep }
 
 - id: 11
   slug: soil
@@ -270,7 +274,7 @@
   label_strategy: vector-overlay
   palette: "rich loam key — deep umber, warm sienna, fresh sap green, and clear cream"
   track_b:
-    prompt: "A luminous cutaway of deep rich living soil shown in several clearly distinct fertile layers, each layer a different texture and tone, together feeding the roots of one strong healthy plant that rises into clear daylight above. Fine root threads reach down and visibly draw nourishment from every layer, so the connection from the layered knowledge-rich soil below to the thriving growth above reads clearly; soft layered hills sit on the horizon under a fresh bright sky"
+    prompt: "A luminous cutaway of deep rich living soil, painted in bright, vivid, freshly-printed colour, shown in several distinct fertile layers, each layer a different texture and tone, together feeding the roots of one strong, healthy plant that rises into clear daylight above. Fine root threads reach down and draw nourishment from every layer, the thriving growth above rising from the layered, knowledge-rich soil below; soft layered hills sit on the horizon under a fresh bright sky"
     refs:
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
@@ -280,7 +284,8 @@
     source_context: "Soil = Loam's knowledge base feeding template and projects. Three source layers: 'jvc/', 'foundation/', 'playbooks/'. Show them as layered beds whose nourishment connects up to a growing project. Labels: 'jvc', 'foundation', 'playbooks'."
     figure_caption: "Soil is Loam's layered knowledge base, feeding the template and its projects."
     visual_intent: "Academic layered-strata figure with an upward connection to growth; on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  # render-judge round 2026-06-03: user kept c3 (bright; distinct strata; roots draw down clearly).
+  status: { track_a: todo, track_b: keep }
 
 - id: 12
   slug: memory
@@ -293,7 +298,7 @@
   label_strategy: label-light
   palette: "luminous garden key — warm compost umber, fresh sap green, and clear cream"
   track_b:
-    prompt: "A luminous garden corner shown as a cycle of renewal read left to right: fallen leaves and spent cuttings gathered into a compost bed at the left, the heap turned and broken down into dark crumbly rich earth in the middle, and that finished earth spread at the right to feed a bed of vigorous new seedlings. The three moments — gathered, broken down, and returned as nourishment — read in clear order; a calm lake and soft layered hills sit beyond under a fresh bright sky"
+    prompt: "A luminous garden corner, painted in bright, vivid, freshly-printed colour, as a cycle of renewal from left to right: fallen leaves and spent cuttings gathered into a compost bed at the left, the heap turned and broken down into dark crumbly rich earth in the middle, and that finished earth spread at the right to feed a bed of vigorous new seedlings — gathered, broken down, and returned as nourishment; a calm lake and soft layered hills sit beyond under a fresh bright sky"
     refs:
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
@@ -302,7 +307,8 @@
     source_context: "Project memory lifecycle: write -> index -> consolidate (the 'dream' step) -> prune, producing reusable nourishment for future sessions. Labels: 'write', 'index', 'consolidate (dream)', 'prune'."
     figure_caption: "Memory is collected, consolidated, and pruned into reusable nourishment."
     visual_intent: "Academic cycle diagram (write/index/consolidate/prune) feeding future work; on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  # render-judge round 2026-06-03: user kept c1 (boldest woodblock; three stages crystal clear).
+  status: { track_a: todo, track_b: keep }
 
 - id: 13
   slug: agent-teams
@@ -315,7 +321,7 @@
   label_strategy: vector-overlay
   palette: "luminous garden key — fresh sap green, clear honey gold, and warm cream"
   track_b:
-    prompt: "A luminous flowering garden where one larger central bee hovers as the coordinator above a broad open blossom, while several smaller worker bees set out from it along clear flight paths to many separate flowers, carrying pollen between them. The one coordinating bee and the several spreading workers read clearly, the work plainly distributed across the blossoms; a calm lake and soft layered hills sit beyond under a fresh bright sky"
+    prompt: "A luminous flowering garden, painted in bright, vivid, freshly-printed colour, where one larger central bee hovers as the coordinator above a broad open blossom, while several smaller worker bees set out from it along clear flight paths to many separate flowers, carrying pollen between them, the work spread across the blossoms; a calm lake and soft layered hills sit beyond under a fresh bright sky"
     refs:
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
@@ -325,7 +331,8 @@
     source_context: "An advisor coordinates worker agents. Topology: one 'advisor (Opus)' node directing several 'worker (Sonnet)' nodes, each working a subtask. Labels: 'advisor (Opus)', 'workers (Sonnet)', 'subtasks'."
     figure_caption: "An advisor coordinates worker agents that spread work across subtasks."
     visual_intent: "Academic hub-and-spoke topology (one advisor, many workers); on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  # render-judge round 2026-06-03: user kept c1 (brightest; coordinator + worker flight-paths read clearly).
+  status: { track_a: todo, track_b: keep }
 
 - id: 14
   slug: toolkit
@@ -338,7 +345,7 @@
   label_strategy: track-a
   palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
   track_b:
-    prompt: "A luminous, tidy garden tool corner where four distinct kinds of well-kept implement hang in their own clearly grouped sets on a wooden wall — each group plainly different in shape from the others — all arranged within one shared, orderly rack, clean and ready to be taken up and used. The four separate categories and the single organizing rack read clearly; soft daylight falls across the corner with soft layered hills visible beyond under a fresh bright sky"
+    prompt: "A luminous, tidy garden tool corner, painted in bright, vivid, freshly-printed colour, where four distinct kinds of well-kept implement hang in their own grouped sets on a wooden wall — each group different in shape from the others — all arranged within one shared, orderly rack, clean and ready to be taken up and used; soft daylight falls across the corner with soft layered hills visible beyond under a fresh bright sky"
     refs:
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
@@ -348,7 +355,8 @@
     source_context: "Loam's reusable toolkit, four categories: 'skills', 'hooks', 'agents', 'rules', organized in one shared system under .claude/. Labels: 'skills', 'hooks', 'agents', 'rules'."
     figure_caption: "Skills, hooks, agents, and rules form Loam's reusable toolkit."
     visual_intent: "Academic taxonomy figure (four labeled categories in one organizing frame); on-figure labels kept to 2-3 words each."
-  status: { track_a: todo, track_b: todo }
+  # render-judge round 2026-06-03: user kept c5 (four distinct tool groups, one rack, read clearly).
+  status: { track_a: todo, track_b: keep }
 
 - id: 15
   slug: cover-art
@@ -361,14 +369,15 @@
   label_strategy: label-light
   palette: "luminous identity key — fresh sap green, glowing gold, and warm cream"
   track_b:
-    prompt: "A luminous hero cover image: a single bright seed at the centre opening into fine glowing roots that flow downward and gracefully resolve into clean circuit traces, the living roots and the circuitry reading as one continuous pattern — growing nature and engineered system as a single identity. The composition is centred, bright and inviting; a calm lake and soft layered hills rest behind under a fresh bright dawn sky"
+    prompt: "A luminous hero cover image, painted in bright, vivid, freshly-printed colour: a single bright seed at the centre opening into fine glowing roots that flow downward and gracefully resolve into clean circuit traces, the living roots and the circuitry forming one continuous pattern — growing nature and engineered system as a single identity. The composition is centred, bright and inviting; a calm lake and soft layered hills rest behind under a fresh bright dawn sky"
     refs:
       - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
       - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
       - "Lake_Kawaguchi_by_Yoshida_Hiroshi,_1926,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
       - "Rapids,_Hiroshi_Yoshida,_渓流,_吉田博.jpg"
   # Cover art is Track B only — no track_a block; track_a: SKIPPED by design (see status note in header).
-  status: { track_a: SKIPPED, track_b: todo }
+  # render-judge round 2026-06-03: user kept c5 (bright; seed→roots→circuitry as one identity).
+  status: { track_a: SKIPPED, track_b: keep }
 
 - id: 16
   slug: reserved
