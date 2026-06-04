@@ -82,3 +82,14 @@ yoshida_hiroshi/
 # Scoped to loam-hero-*.png so committed *.drawio.png diagrams are unaffected.
 docs/diagrams/loam-hero-*.png
 docs/diagrams/loam-hero-*.qa.yaml
+
+# Track-B hero WINNERS are committed via git-LFS (carve-out from the ignore above). See .gitattributes.
+!docs/diagrams/loam-hero-07-fan-out-c1.png
+!docs/diagrams/loam-hero-08-cultivation-c4.png
+!docs/diagrams/loam-hero-09-flavors-c1.png
+!docs/diagrams/loam-hero-10-validation-c3.png
+!docs/diagrams/loam-hero-11-soil-c3.png
+!docs/diagrams/loam-hero-12-memory-c1.png
+!docs/diagrams/loam-hero-13-agent-teams-c1.png
+!docs/diagrams/loam-hero-14-toolkit-c5.png
+!docs/diagrams/loam-hero-15-cover-art-c5.png

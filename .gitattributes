@@ -1,0 +1,4 @@
+# Track-B Yoshida hero WINNERS (~20MB 4K PNGs) are versioned via git-LFS.
+# Only the winners are un-ignored in .gitignore; the pattern below LFS-tracks any
+# committed loam-hero PNG, so non-winner candidates (still gitignored) are unaffected.
+docs/diagrams/loam-hero-*.png filter=lfs diff=lfs merge=lfs -text
