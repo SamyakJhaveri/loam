@@ -42,7 +42,7 @@ acceptance criteria per concept.
 The shared design vocabulary. Each concept can be expressed on both tracks. **Track B prompts
 are authored and (Track B) rendered-and-kept for all 15 active concepts (#1–#15)**, grounded in
 [`design-philosophy.md`](design-philosophy.md) and dry-run-verified against the render engine;
-#16 is an intentional reserved stub. **All 15 active concepts (#1–#15) have now been rendered and kept this round** (#7–#15 added 2026-06-03, with brighter colour throughout and varied plant *kinds* for fan-out). They share one visual vocabulary: glass-box loam source, cutaway with
+#16 plan-review is authored (render pending). **All 15 active concepts (#1–#15) have now been rendered and kept this round** (#7–#15 added 2026-06-03, with brighter colour throughout and varied plant *kinds* for fan-out). They share one visual vocabulary: glass-box loam source, cutaway with
 root-channels, varied plant kinds in the foreground, calm Yoshida lake + layered hills, fresh and
 bright (never washed); the glowing return loop belongs to identity only.
 
@@ -63,7 +63,7 @@ bright (never washed); the glowing return loop belongs to identity only.
 | 13 | Agent teams (pollination) | advisor(Opus)+worker(Sonnet) topology | one coordinator bee directing several worker bees | **keep c1** |
 | 14 | Toolkit (the tools) | skills/hooks/agents/rules taxonomy | 4 grouped tool sets in one tidy garden rack | **keep c5** |
 | 15 | Cover art (Track B only) | — | seed opening into roots that resolve into circuitry | **keep c5** |
-| 16 | Reserved | — | — | reserved stub |
+| 16 | Plan-first review (the pruning bench) | plan → review (Elegance Gate) → approve → implement | gardeners at a bench pruning weak seedlings, only the approved planted | authored · render pending |
 
 The ids and slugs match `concepts.yaml` exactly (16 entries, ids 1–16). Each entry also carries
 `viewer_should_understand`, `must_show`, and `label_strategy` fields used by the quality gate.
@@ -99,8 +99,8 @@ human keeps). `todo` = render pending; `VOID` = a prior keeper whose prompt has 
 | 13 | agent-teams | B | rendered (c1–c5) | KEEP c1 | brightest; one coordinator bee + worker bees on clear flight paths to many flowers (advisor/worker dispatch) |
 | 14 | toolkit | B | rendered (c1–c5) | KEEP c5 | four distinct tool groups in one shared rack, well-spaced and legible. (c2 disqualified — garbled-shape artifact) |
 | 15 | cover-art | B | rendered (c1–c5) | KEEP c5 | bright; a glowing seed opening into roots that resolve into circuit traces — growth and engineered system as one identity |
-| 1–15 | (all active concepts) | A | todo | | Track A (PaperBanana, manual human-in-browser) not run this round |
-| 16 | reserved | A + B | — | — | intentional reserved stub; no track_b prompt |
+| 1–16 | (all active concepts) | A | todo | | Track A (PaperBanana, manual human-in-browser) not run this round |
+| 16 | plan-review | B | todo | | authored 2026-06-03 (plan-first / adversarial-review facet); render pending |
 
 When a parked concept is rendered, split it out of the summary row into its own per-track row
 (same columns as the proof rows above) and record its result there.

@@ -10,8 +10,8 @@
 #   Track B = the Hiroshi-Yoshida-style woodblock "hero" illustration.
 #
 # Schema is documented in seed/.claude/skills/diagrams/concepts.template.yaml.
-# track_b prompts authored (v1, pending render-judge): #1–#15. #16 reserved is an
-# intentional placeholder stub. Root is a YAML list. Exactly 16 entries.
+# track_b prompts authored for all 16 concepts: #1–#15 rendered-and-kept; #16 plan-review
+# authored (v1, render pending). Root is a YAML list. Exactly 16 entries.
 # Taste/intent reference for every prompt: docs/diagrams/design-philosophy.md (read §0–§5 before editing).
 # Design principles (Loam-specific):
 #  1. Depict Loam's value proposition (portable, evolving, cross-project workflow), not incidental mechanics (the symlink).
@@ -380,11 +380,24 @@
   status: { track_a: SKIPPED, track_b: keep }
 
 - id: 16
-  slug: reserved
-  name: "Reserved"
-  viewer_should_understand: "A viewer should understand that this slot is intentionally reserved for a future Loam concept."
+  slug: plan-review
+  name: "Plan-first review (the pruning bench)"
+  viewer_should_understand: "A viewer should understand that Loam scrutinizes and prunes a plan adversarially — keeping only the strong ideas — before any implementation begins."
   must_show:
-    - "reserved placeholder treatment"
-    - "clear distinction from active concepts"
-  label_strategy: label-light
+    - "a long inspection bench where several gardeners examine young seedlings together before planting"
+    - "weak seedlings pruned and set aside while strong ones are selected and marked"
+    - "only the approved seedlings carried onward to a prepared empty planting bed"
+  label_strategy: vector-overlay
+  palette: "luminous garden key — fresh sap green, clear leaf yellow, and warm cream"
+  track_b:
+    prompt: "A luminous open-air garden potting bench, painted in bright, vivid, freshly-printed colour, where several gardeners gather closely around one long wooden inspection table to examine a tray of young seedlings before any are planted. On the table the seedlings are sorted with care — weak and crooked sprouts are pruned away and set gently aside, while the strong, healthy seedlings are marked and gathered together. From the table a few of the chosen seedlings are carried onward toward a freshly prepared empty planting bed waiting at the right, ready to receive only the approved plants, so all the scrutiny happens here at the bench before anything goes into the ground. Beyond them a calm bright lake lies still under soft layered hills and a fresh clear sky"
+    refs:
+      - "Cryptomeria_Avenue_by_Yoshida_Hiroshi,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
+      - "Bamboo Grove, by Yoshida Hiroshi, 1939.jpg"
+      - "Yoshida_Hiroshi_Small_town_in_Chugoku.jpg"
+      - "Lake_Kawaguchi_by_Yoshida_Hiroshi,_1926,_woodblock_print,_Honolulu_Museum_of_Art.jpg"
+  track_a:
+    source_context: "Loam's plan-first discipline: draft a plan, then the plan-reviewer agent runs its checklist + Elegance Gate and the critique team stress-tests it adversarially; only an approved plan proceeds to implementation. Beats: 'plan' -> 'review (Elegance Gate)' -> 'approve' -> 'implement'. Labels: 'plan', 'review', 'approve', 'implement'."
+    figure_caption: "Loam stress-tests and prunes a plan before any code is written — only an approved plan proceeds to implementation."
+    visual_intent: "Academic checkpoint figure: a draft plan entering an adversarial review step (checklist + Elegance Gate), rejected branches pruned off to the side, an approved plan passing on to implement; on-figure labels kept to 2-3 words each."
   status: { track_a: todo, track_b: todo }

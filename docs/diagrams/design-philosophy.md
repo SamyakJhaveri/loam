@@ -310,6 +310,21 @@ Apply this checklist to every concept (and especially wherever Loam-as-a-system 
    garbled-shape artifact into toolkit c2; all three were disqualified at the gate. The kept set is
    clean. Small ≤2-word English margin titles (within `label-light`) are cropped/overlaid at finishing.
 
+### 2026-06-03 (later still) — reserved slot #16 authored as `plan-review`
+
+1. **#16 authored.** The deliberately-reserved #16 slot was authored as a real concept,
+   `plan-review` ("Plan-first review (the pruning bench)"), at the user's direction. Facet:
+   **adversarial scrutiny BEFORE growth** — Loam plans first and stress-tests the plan
+   (the plan-reviewer's checklist + Elegance Gate + the critique team) before any implementation.
+2. **Metaphor.** An open-air inspection/pruning bench where gardeners examine a tray of young
+   seedlings, prune the weak, mark the strong, and carry only the approved ones to a prepared empty
+   bed — all the scrutiny happens *before* anything is planted.
+3. **Distinctness held.** Kept clear of `#10 validation` (sieves at the harvest/output gate) and
+   `#5 workflow` (the whole 6-stage path): plan-review is input-side selection, before planting. No
+   glowing return loop (that is `identity`'s facet only). `track_b: todo` — authored, render pending;
+   the render is a separate user-gated paid step. No §1–§5 rule change (a new concept, not a new
+   visual rule), so no §7 row.
+
 ## 7. Fidelity check — rule ↔ source (so this file matches what you said)
 
 | Rule (§) | Your source | Anchor |
