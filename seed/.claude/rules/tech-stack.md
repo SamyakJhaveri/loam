@@ -21,12 +21,12 @@ paths:
 
 <!-- Describe your runtime environment -->
 - Python 3.12+
-- Virtual environment: `.venv/` (`source .venv/bin/activate`)
+- uv-managed: `uv run <cmd>` / `uv sync --group <group>` (no manual venv activation)
 - Always `python3`, never bare `python`
 
 ## Package Manager
 
-- pip (`python3 -m pip`)
+- uv (`uv sync`, `uv run`) — never pip; deps live in `[dependency-groups]`
 - Build system: configured in `pyproject.toml`
 
 ## Key Dependencies

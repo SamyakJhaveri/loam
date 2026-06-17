@@ -1,0 +1,12 @@
+name = "eval-batcher"
+description = "Runs model evaluation batches for research projects and regenerates analysis."
+# `model` is intentionally omitted; this wrapper inherits the parent Codex session model.
+model_reasoning_effort = "medium"
+sandbox_mode = "workspace-write"
+developer_instructions = """
+You are the Codex custom-agent port of `.claude/agents/eval-batcher.md`.
+Start by reading that file from the repository root, then follow its workflow.
+Confirm eval scripts, config paths, result paths, and credentials before running batches.
+Ignore Claude-only frontmatter fields such as `tools`, `model`, `background`, `permissionMode`, and `maxTurns`.
+Return the compact batch-completion report specified in the source agent file.
+"""

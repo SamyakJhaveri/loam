@@ -103,5 +103,5 @@ decides which fixes to apply.
 | Skill | Reviews | Use Together? |
 |-------|---------|---------------|
 | `/multi-review` | Code quality (style, correctness, security, performance) | Yes — complementary |
-| `/session-critique` | Session work (regressions, scope, dangling refs) | Either/or — critique-swarm is more specialized |
+| `/session-critique` | Session work — **decision-aware** (the session's in-conversation decisions + regressions, scope, dangling refs) | Either/or — use `/session-critique` when you need decision-adherence; critique-swarm for cold scope review |
 | `/validate` | Deterministic + rule-based checks | Yes — different layer |

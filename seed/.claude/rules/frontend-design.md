@@ -34,3 +34,11 @@ When writing or editing HTML/CSS/JS:
 5. **No Tailwind CDN** — plain CSS with custom properties for single-file HTML pages
 6. **Accessibility** — ARIA roles on interactive elements. No color-only status indication.
 7. **Error handling** — if a page depends on external data, show a visible fallback on failure
+
+## Verifying visual changes
+
+For any change to a rendered page, close the loop with a visual check rather than asserting "looks done" (best-practices ["verify UI changes visually"](https://code.claude.com/docs/en/best-practices)):
+
+1. **Screenshot-vs-design** — capture the rendered result (the `impeccable` skill's browser screenshotting, or a manual screenshot from a local preview) and compare it against the target design/mock; list the differences and fix them.
+2. **Layout assertions** — run your project's layout/structure tests for deterministic checks.
+3. **Show the evidence** — paste the before/after (or the diff), not just a "done."

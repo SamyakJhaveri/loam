@@ -51,6 +51,25 @@ The probabilistic layer (Layer 3 of 60/30/10) is **not** part of the commit gate
 - **Invalidated** (deleted) by `.claude/hooks/sentinel-cleanup.sh` whenever any file is edited
 - Listed in `.gitignore` (never committed)
 
+## Turn-end gate (Stop hook)
+
+`.claude/hooks/stop-verify-gate.sh` (wired as a `Stop` hook in `settings.json`) is the
+deterministic **turn-end** rung of the best-practices ["give Claude a way to verify its
+work"](https://code.claude.com/docs/en/best-practices) ladder. It complements — does not
+replace — the commit-time `pre-commit-gate.sh`:
+
+- Fires at the end of every turn and **blocks** it from ending (exit 2, evidence on stderr)
+  when a fast Layer-1 check fails on **changed files only**: `git diff --check`,
+  `ruff check` on changed `*.py`, `bash -n` on changed `*.sh`.
+- **No-ops** (exit 0) when nothing relevant changed — docs/conversation turns pass
+  instantly — and when `stop_hook_active` is set (loop guard).
+- Deliberately excludes `mypy`/`pytest`: too slow for every turn-end and already covered
+  by Wave 2 and `post-edit-test.sh`. This is the *fast* signal; `/validate` stays the *full* one.
+- Claude Code auto-overrides the hook after 8 consecutive blocks (built-in escape hatch).
+
+Why both gates: the commit gate only fires when you commit; the Stop gate closes the
+"looks done" gap during long or unattended runs, before any commit is attempted.
+
 ## No commit-message override
 
 `pre-commit-gate.sh` enforces the gate solely via the `.validation_passed` sentinel; it does NOT parse commit messages, so there is no `[skip-validate]` escape hatch. The gate is intentionally unconditional. Even a docs-only edit must pass full `/validate` (both waves) before it can be committed — the gate requires `waves_passed>=2`, so anything short of both waves (e.g., `/validate quick`) leaves the commit blocked. To bypass deliberately, disable the hook in `settings.json`.

@@ -10,13 +10,13 @@ paths:
 ## Interpreter
 
 - Always `python3`, never bare `python`
-- Venv: `source .venv/bin/activate` (or project-specific venv name)
-- Install: `python3 -m pip install <pkg>` inside activated venv
+- uv-managed repo: prefix commands with `uv run` (no manual venv activation)
+- Install: add to a `[dependency-groups]` group in `pyproject.toml`, then `uv sync --group <group>` — never pip
 
 ## Testing
 
 ```bash
-python3 -m pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
 ## Style & Formatting

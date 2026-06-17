@@ -33,9 +33,9 @@ Strict-ordering orchestrator. Runs four stages in sequence, halting on failure.
 
 Invoke `/session-critique`.
 
-This spawns an advisor-pattern agent team that adversarially reviews all work in the current session. It surfaces findings for regressions, over-engineering, dangling references, and scope hygiene.
+This spawns an advisor-pattern agent team that adversarially reviews all work in the current session **against the decisions the user made during it**. It surfaces findings for decision-drift, regressions, over-engineering, dangling references, and scope hygiene.
 
-**Gate:** All HIGH and MEDIUM findings must be resolved (fixed or explicitly dismissed by user) before proceeding. If the user dismisses a finding, record the dismissal reason.
+**Gate:** All BLOCK/HIGH/MEDIUM findings must be resolved (fixed or explicitly dismissed by user) before proceeding; an unresolved BLOCK halts the pipeline. If the user dismisses a finding, record the dismissal reason.
 
 **If `critique-only` was passed:** Stop here. Report findings and exit. Do not proceed to Stage 2.
 

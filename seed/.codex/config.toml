@@ -1,0 +1,57 @@
+# Repo-scoped Codex configuration for this project.
+# This ports the MCP servers and agent defaults from the Claude Code setup.
+
+default_permissions = "project-workspace"
+
+[features]
+# Gates the Codex multi-agent tools used by .agents/skills/agent-team.
+# Enabling requires restarting Codex; confirm with /status.
+multi_agent = true
+
+[agents]
+max_threads = 6
+max_depth = 1
+
+[permissions.project-workspace]
+description = "Workspace editing with project secret-file denies."
+extends = ":workspace"
+
+[permissions.project-workspace.filesystem.":workspace_roots"]
+".env" = "deny"
+".env*" = "deny"
+".env.*" = "deny"
+".envrc" = "deny"
+".envrc.*" = "deny"
+"**/.env" = "deny"
+"**/.env*" = "deny"
+"**/.env.*" = "deny"
+"**/.envrc" = "deny"
+"**/.envrc.*" = "deny"
+
+[mcp_servers.codegraphcontext]
+# Optional local code graph MCP. Disabled because `cgc` is not installed on this
+# machine during this migration pass.
+enabled = false
+command = "cgc"
+args = ["mcp", "start"]
+
+[mcp_servers.semble]
+command = "uvx"
+args = ["--from", "semble[mcp]", "semble"]
+
+[mcp_servers.memory]
+command = "bash"
+args = ["-lc", "exec \"$(git rev-parse --show-toplevel)/.codex/mcp/memory-server.sh\""]
+
+[mcp_servers.memory.tools.search_nodes]
+approval_mode = "approve"
+
+[mcp_servers.drawio]
+command = "npx"
+args = ["-y", "@drawio/mcp"]
+default_tools_approval_mode = "prompt"
+
+[mcp_servers.sequential-thinking]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+default_tools_approval_mode = "auto"

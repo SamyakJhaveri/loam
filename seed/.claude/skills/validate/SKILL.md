@@ -40,7 +40,7 @@ Pure tooling. **Zero LLM calls.**
 
 ```bash
 # Lint
-command -v ruff >/dev/null && ruff check . 2>&1 | tail -20
+uv run ruff check . 2>&1 | tail -20
 
 # Type check
 command -v mypy >/dev/null && mypy . 2>&1 | tail -20
@@ -67,7 +67,7 @@ done
 
 ```bash
 # Unit tests
-[ -d tests ] && python3 -m pytest tests/ -v 2>&1 | tail -20
+[ -d tests ] && uv run pytest tests/ -v 2>&1 | tail -20
 
 # Project-specific validation scripts
 [ -x bin/validate.sh ] && bin/validate.sh 2>&1 | tail -10

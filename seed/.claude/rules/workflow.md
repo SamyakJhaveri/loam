@@ -93,6 +93,8 @@ Mechanics:
 
 **Critical ordering:** Implement → `/validate` (Pipeline Gate) → `/commit` → `/pr`. `/session-critique` is optional — invoke it manually when you want adversarial review. `/ship` runs critique → validate → commit → PR when you choose to use it.
 
+**Unattended / long runs — the `/goal` rung.** The commit-time gate and the turn-end `stop-verify-gate.sh` Stop hook are not the only verification options. For runs you walk away from, set a [`/goal` condition](https://code.claude.com/docs/en/goal) so a separate evaluator re-checks it after every turn and Claude keeps working until it holds — the best-practices "across a session" rung. Use it for autonomous campaigns alongside `/overnight-eval`.
+
 ## Context Management
 
 - `/compact` at ~50% context usage (don't wait until 100%)

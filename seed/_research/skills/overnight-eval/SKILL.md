@@ -60,11 +60,13 @@ If `--dry-run`, stop after displaying summary.
 ### Phase 2: Launch in tmux
 
 ```bash
+mkdir -p <project-root>/logs/eval-staging
 tmux new-session -d -s <session-name> -c <project-root>
-tmux send-keys -t <session-name> "<eval-command> 2>&1 | tee results/campaign_$(date +%Y%m%d_%H%M%S).log" Enter
+tmux send-keys -t <session-name> "<eval-command> 2>&1 | tee logs/eval-staging/campaign_$(date +%Y%m%d_%H%M%S).log" Enter
 ```
 
-Verify tmux session is running before proceeding.
+Verify tmux session is running before proceeding. Do not write campaign logs
+directly under `results/`; keep raw run logs in staging until post-flight review.
 
 ### Phase 3: Monitor (Periodic)
 
@@ -78,14 +80,14 @@ The user can check progress at any time:
 
 After completion:
 1. Run analysis scripts
-2. Write structured campaign log
+2. Review staged campaign log for anomalies
 3. Generate summary with results table
 4. Alert user (desktop notification if available)
 
 ### Phase 5: Handoff
 
 Present results summary and recommended next steps:
-1. Review campaign log for anomalies
+1. Promote reviewed artifacts into `results/` only through the approved results ingestion path
 2. Refresh dashboard if applicable
 3. Commit results
 4. Update paper sections if relevant

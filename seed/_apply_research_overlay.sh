@@ -10,6 +10,8 @@ cp -R _research/agents/* .claude/agents/ 2>/dev/null || true
 cp -R _research/skills/* .claude/skills/ 2>/dev/null || true
 cp -R _research/hooks/*  .claude/hooks/  2>/dev/null || true
 cp -R _research/rules/*  .claude/rules/  2>/dev/null || true
+mkdir -p .codex/agents 2>/dev/null || true
+cp -R _research/.codex/agents/* .codex/agents/ 2>/dev/null || true
 cp _research/seed-docs/* . 2>/dev/null || true
 
 # 2. Deep-merge research hook registrations into settings.json
