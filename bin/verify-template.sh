@@ -97,6 +97,12 @@ if [[ -z "$COPIER_CMD" ]]; then
 fi
 
 echo "--- Copier render tests ---"
+# Copier clones the repo at --vcs-ref HEAD before rendering; that clone smudges the
+# LFS-tracked docs/diagrams/loam-hero-*.png (~20MB 4K art). The render verification never
+# inspects image bytes — and in CI the runner holds only LFS pointers (actions/checkout does
+# not fetch LFS by default), so the smudge filter fails and, under `set -o pipefail`, exits 1.
+# Skip the smudge: the clone carries pointers, the render still validates structure.
+export GIT_LFS_SKIP_SMUDGE=1
 COPIER_FLAGS="--trust --defaults --vcs-ref HEAD"
 
 # Default flavor (is_research=false)
