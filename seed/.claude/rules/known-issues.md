@@ -56,7 +56,7 @@
 
 **What:** A skill is a directory containing a `SKILL.md`. Some directories under `skills/` are support bundles, not skills — e.g. `seed/_research/skills/shared-references/` holds shared reference docs and has NO `SKILL.md`.
 **Don't:** Count skills with `ls -d seed/.../skills/*/ | wc -l` — it counts support directories as skills, inflating the number.
-**Do:** Count with `find seed/.../skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l`. (Core `seed/.claude/skills/` = 26; research `seed/_research/skills/` = 18 skills + 1 `shared-references/` support dir = 19 raw dirs.)
+**Do:** Count with `find seed/.../skills -mindepth 2 -maxdepth 2 -name SKILL.md | wc -l`. (Core `seed/.claude/skills/` = 27 — impeccable was vendored in v4.0.0; research `seed/_research/skills/` = 18 skills + 1 `shared-references/` support dir = 19 raw dirs.)
 **Why:** In the visual-overview session (2026-05-31), the raw `ls -d */` count reported 19 research skills; the doc was "corrected" 18→19 and three reviewers (incl. two Wave 3 agents) confirmed it — all using the same flawed command. The true count is 18. A count is only as trustworthy as the definition baked into the command; when every reviewer shares one method, they share its blind spot.
 
 ## `paths:` frontmatter fires on Read, not Write
