@@ -70,7 +70,7 @@ Implement → /validate (Pipeline Gate) → /commit → /pr (or `/ship`)
 ## Rules when editing this template
 
 - Don't add project-specific content. Everything here is generic or scoped to a flavor.
-- Commit directly to main. Only use branches when explicitly requested.
+- **Hybrid branch policy:** commit directly to main for docs, content, and small fixes; branch + PR for `seed/` behavior changes, hooks, `copier.yml`, and releases.
 - Test changes by running `bin/verify-template.sh`.
 - Skills for ANY project go in `seed/.claude/skills/`. Research-specific go in `seed/_research/skills/`. Cut skills go in `cultivation/marketplace/`.
 
