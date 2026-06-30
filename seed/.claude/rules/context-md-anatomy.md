@@ -4,7 +4,7 @@
 
 ## What CONTEXT.md is
 
-In the ICM routing model (JVC `_examples/03-context-md-anatomy.md`), a `CONTEXT.md` is the L1 routing file for a specific subdirectory. It answers: **where do I go inside this area?** Target budget: ~300 tokens, 25-80 lines. Above 80 lines, suspect bloat. Above 120 lines, split or move detail to `docs/`.
+In the context-routing model (L0/L1/L2), a `CONTEXT.md` is the L1 routing file for a specific subdirectory. It answers: **where do I go inside this area?** Target budget: ~300 tokens, 25-80 lines. Above 80 lines, suspect bloat. Above 120 lines, split or move detail to `docs/`.
 
 A subdirectory does not need a `CONTEXT.md`. Add one only when the area has its own routing logic — distinct skills, distinct load rules, distinct process — that the root `CLAUDE.md` cannot economically describe in a single map row.
 
@@ -43,7 +43,7 @@ A subdirectory does not need a `CONTEXT.md`. Add one only when the area has its 
 
 ## The Skip column is load-bearing
 
-This is the part most authors get wrong. From JVC source: "Loading the right thing is good. NOT loading the wrong thing is critical — it saves tokens and prevents confusion." The Skip column is what makes the table earn its keep over an unconstrained Read tool.
+This is the part most authors get wrong. Deciding what to load is the easy half; the harder, higher-value half is deciding what to withhold. Every file kept out of context is tokens reclaimed and one fewer chance for the model to anchor on something irrelevant. That deliberate exclusion is what makes the table earn its keep over an unconstrained Read tool.
 
 Examples of useful Skip entries:
 - "Skip: the legacy `./old/` directory — superseded by `./current/` in v2."
@@ -82,7 +82,3 @@ to on-demand docs. This is navigation (L0), not task routing (L1).
 
 If you find yourself adding task-specific routing to CLAUDE.md, move it to the
 relevant subdirectory's CONTEXT.md instead.
-
-## Source
-
-JVC `_examples/03-context-md-anatomy.md` (the canonical template); JVC `_examples/02-skill-integration-patterns.md` (the five skill-wiring patterns referenced in the Skills table).

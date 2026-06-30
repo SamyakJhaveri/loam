@@ -51,5 +51,4 @@ Before creating a new skill, run the diagnostic above. Common mistakes:
 
 ## Source
 
-JVC `constraints/07-scaling-vs-automating.md` (Brooks's *Mythical Man-Month*, Toyota
-Production System, Paul Graham's "Do Things That Don't Scale").
+Brooks's *The Mythical Man-Month*, the Toyota Production System, and Paul Graham's "Do Things That Don't Scale".

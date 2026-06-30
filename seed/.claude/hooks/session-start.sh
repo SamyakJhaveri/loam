@@ -30,7 +30,7 @@ hook enforces a .validation_passed sentinel. Critical ordering:
   Implement → /session-critique → /validate (Pipeline Gate) → /commit → /pr
   Use /ship to enforce this ordering automatically.
 
-ICM ROUTING (.claude/rules/):
+CONTEXT ROUTING (.claude/rules/):
   L0  CLAUDE.md            always loaded   ~800 tok    "where am I?"
   L1  <subdir>/CONTEXT.md  on entry        ~300 tok    "where do I go?"
   L2  stage contract       per task        200-500 tok "what do I do?"

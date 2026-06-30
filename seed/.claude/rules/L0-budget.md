@@ -4,7 +4,7 @@
 
 ## What L0 is
 
-In the ICM routing model (JVC `constraints/03-context-hygiene.md:48-55`), L0 is the always-loaded entry file at the project root. For Claude Code, that file is `CLAUDE.md`. It answers exactly one question: **where am I?** It is a map, not a manual.
+In the context-routing model (L0/L1/L2), L0 is the always-loaded entry file at the project root. For Claude Code, that file is `CLAUDE.md`. It answers exactly one question: **where am I?** It is a map, not a manual.
 
 ## Budget
 
@@ -50,7 +50,3 @@ Replace the moved content in `CLAUDE.md` with a single line: "See `.claude/rules
 | L2 | Stage contract | What do I do for this task? | Per task | 200-500 tokens |
 
 If you find yourself writing a section in `CLAUDE.md` that answers "what do I do when…" rather than "where do I look for…", that section belongs in L1 or L2, not L0.
-
-## Source
-
-JVC `constraints/03-context-hygiene.md` lines 48-83 (ICM layers + token-budget heuristic); `_examples/03-context-md-anatomy.md` (companion anatomy for L1 files).

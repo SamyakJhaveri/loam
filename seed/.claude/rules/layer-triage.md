@@ -10,9 +10,7 @@ paths:
 
 ## The framework
 
-JVC's central thesis (`constraints/06-layer-triage.md:52-70`, repeated in `the_full_toolkit/README.md:46`):
-
-> Roughly 60% of the problems people throw at AI are better solved by traditional tools, databases, or established writing principles. Another 30% are handled well by rule-based systems, existing skills, or purpose-built software. Only about 10% genuinely benefit from the probabilistic reasoning that a language model provides.
+The triage rests on a single observation: most problems handed to an AI don't actually need one. Picture the work as a 60/30/10 split. Around 60% is better served by conventional tools — databases, scripts, and well-worn engineering or writing practice. Another 30% is a good fit for rule-based systems: existing skills, configured workflows, or purpose-built software. Only the remaining ~10% truly benefits from the open-ended, probabilistic reasoning a language model brings.
 
 The numbers are not literal frequencies. Treat them as a budget heuristic: when designing a task that routes work to an LLM, the LLM-handled portion should rarely exceed ~15% of the total work; if it does, the design is likely over-assigning to the wrong layer.
 
@@ -34,9 +32,9 @@ Answer in order. The first "yes" routes the task:
 
 ## Engineering-research adaptations
 
-The framework was authored for consulting / content workflows. Translation:
+These layers were first framed for consulting / content workflows. Translation:
 
-| JVC framing | Engineering / research equivalent |
+| Consulting/content framing | Engineering / research equivalent |
 |---|---|
 | "Pricing logic is deterministic" | Build pipelines, dependency resolution, code formatting, type checking, test running — all deterministic. |
 | "Brand voice is rule-based" | Style guides, lint rules, API contracts, schema validation, test gates. |
@@ -72,9 +70,3 @@ Run this diagnostic:
 4. **Report**: Show the current ratio and specific recommendations.
 
 If the probabilistic portion exceeds ~15%, look for items to move to Layer 1 or 2.
-
-Source: JVC Vault Course 4.2 ("The Build — VigilOre"), Exercise 2 — "Find the AI that shouldn't be AI."
-
-## Source
-
-JVC `constraints/06-layer-triage.md` (the canonical framework); `the_full_toolkit/README.md:46` (the 60/30/10 origin statement); case studies in `jvc_vault_3.2.md` (VigilOre) and `jvc_vault_3.3.md` (NLP Logix) for worked examples of the diagnostic in practice.

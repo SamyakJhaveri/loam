@@ -2,7 +2,7 @@
 name: scaffold-context
 description: >
   Author a CONTEXT.md routing file for a specified project subdirectory using
-  the canonical ICM anatomy (.claude/rules/context-md-anatomy.md). Use when
+  the canonical CONTEXT.md anatomy (.claude/rules/context-md-anatomy.md). Use when
   adding a new high-traffic area whose routing logic the root CLAUDE.md cannot
   describe economically. Skip for trivial directories.
   NOT for: editing existing CONTEXT.md files, authoring CLAUDE.md, or documenting project architecture — only new L1 routing files.
@@ -11,14 +11,14 @@ auto-activate: true
 
 # scaffold-context
 
-Generate a CONTEXT.md for a specified subdirectory following the canonical anatomy in `.claude/rules/context-md-anatomy.md`. The skill exists because authoring per-area CONTEXT.md files by hand often produces stubs that violate ICM's own constraints — empty Skip columns, vague "Use when needed" triggers, sizes outside the 25-80 line band.
+Generate a CONTEXT.md for a specified subdirectory following the canonical anatomy in `.claude/rules/context-md-anatomy.md`. The skill exists because authoring per-area CONTEXT.md files by hand often produces stubs that violate the anatomy's own constraints — empty Skip columns, vague "Use when needed" triggers, sizes outside the 25-80 line band.
 
 ## When to fire
 
 User names a subdirectory and requests a CONTEXT.md, with phrasings such as:
 - "Author a CONTEXT.md for `src/payments/`"
 - "scaffold-context for `experiments/2026-05-baseline`"
-- "Add ICM routing to `tests/integration/`"
+- "Add context routing to `tests/integration/`"
 
 Skip if:
 - The subdirectory has fewer than ~5 files and one obvious purpose (over-routing).
@@ -46,7 +46,7 @@ Skip if:
 
 ## Must NOT include
 
-- **Empty stubs.** ICM constraint: CONTEXT.md must be 25-80 lines of real content. Stubs invite the model to read them as authoritative when they are not.
+- **Empty stubs.** Anatomy constraint: CONTEXT.md must be 25-80 lines of real content. Stubs invite the model to read them as authoritative when they are not.
 - **Mirrored content from root CLAUDE.md.** If the routing is identical, the subdirectory should not have its own CONTEXT.md.
 - **Vague "When" triggers.** Each Skill row must have a condition like "Before validate runs" or "After every edit to `src/payments/`". Triggers like "Available", "Useful for X", "Use when you need" are rejected.
 - **Folder section that duplicates the project tree.** The Folder section is for *this area's* layout only.
@@ -62,4 +62,4 @@ Skip if:
 
 ## Source
 
-`.claude/rules/context-md-anatomy.md` (canonical template); JVC `_examples/03-context-md-anatomy.md` (the source ICM document this skill operationalizes).
+`.claude/rules/context-md-anatomy.md` (the canonical template this skill operationalizes).

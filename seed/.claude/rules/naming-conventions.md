@@ -5,7 +5,7 @@
 
 ## Load-bearing names
 
-Naming conventions are load-bearing documentation (JVC Constraint 08). A folder called
+Naming conventions are load-bearing documentation. A folder called
 `01_research` tells you two things: this is the first stage, and it contains research.
 A folder called `stuff` tells you nothing. Consistent, descriptive naming reduces the
 need for external documentation because the structure self-documents.
@@ -26,7 +26,3 @@ need for external documentation because the structure self-documents.
 - Acronyms without context: `pba/` (what does PBA stand for?)
 - Mixed conventions in the same directory level
 - CamelCase for non-code files (use kebab-case for markdown, configs, docs)
-
-## Source
-
-JVC `constraints/08-handoff-readiness.md` (naming as self-documenting structure).

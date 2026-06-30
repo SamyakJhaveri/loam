@@ -48,7 +48,7 @@ From the prompt-engineering best-practices doc, ordered by rewrite-time impact:
 The transformations every rewrite applies. These are deterministic; the only LLM creativity is in *how* each move's content is phrased for the user's specific draft.
 
 1. **Lead with intent.** Convert leading "I want…" / "help me…" / "can you…" into a one-sentence statement of the task + the success criterion. The first line of the rewrite is what Done looks like.
-2. **Name the role *if domain-specific*.** Prepend a one-sentence role frame ONLY when the task is in a specific domain (Copier templates, ML eval, JVC analysis, etc.). Skip for generic or single-shot tasks — unconditional role-prepending adds bloat.
+2. **Name the role *if domain-specific*.** Prepend a one-sentence role frame ONLY when the task is in a specific domain (Copier templates, ML eval, log analysis, etc.). Skip for generic or single-shot tasks — unconditional role-prepending adds bloat.
 3. **Surface scope (constraints + must-NOTs + explicit anti-generalization on 4.6).** Pull implicit constraints into a `## Constraints` section. Add a `## Must NOT include` list when:
    - target=4.8 AND task is planning/brainstorming (drift risk is highest in open-ended planning), OR
    - the draft explicitly hints at exclusions ("don't refactor X", "keep Y untouched").

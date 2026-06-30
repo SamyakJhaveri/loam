@@ -11,7 +11,7 @@ paths:
 
 ## What a stage contract is
 
-In the ICM routing model (JVC `constraints/02-output-drift.md:54-76`), an L2 stage contract is a per-task agreement loaded only for that task. It answers: **what do I do for this specific task, and what does done look like?** Budget: 200-500 tokens.
+In the context-routing model (L0/L1/L2), an L2 stage contract is a per-task agreement loaded only for that task. It answers: **what do I do for this specific task, and what does done look like?** Budget: 200-500 tokens.
 
 The contract exists to prevent "filling gaps with inference" — the failure mode where the model invents requirements that weren't stated, because the prompt was specific about what to do but silent about what NOT to do, and the model treats absence as permission.
 
@@ -60,10 +60,6 @@ The anchor is what `/validate` checks. If the anchor cannot be objectively verif
 
 ## Applies to engineering loops, not just one-pass pipelines
 
-In JVC's source (content production, client delivery), a stage runs once and hands off. In an engineering loop, the same stage runs N times until the gate (`/validate`) passes — that's the **Pipeline Gate pattern** with iteration. The contract still applies: each iteration's Output must satisfy "Done looks like" before the next gate firing.
+In its original content-production setting, a stage runs once and hands off. In an engineering loop, the same stage runs N times until the gate (`/validate`) passes — that's the **Pipeline Gate pattern** with iteration. The contract still applies: each iteration's Output must satisfy "Done looks like" before the next gate firing.
 
 If `/validate` fails after 3 iterations on the same contract, the issue is the contract, not the implementation. Stop iterating; re-author the contract with more specific Inputs / tighter Must NOT / sharper Done.
-
-## Source
-
-JVC `constraints/02-output-drift.md:54-76` (contract structure); `constraints/08-handoff-readiness.md:51-69` (Pipeline Gate pattern and iteration semantics adapted from the source).
