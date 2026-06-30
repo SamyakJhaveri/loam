@@ -1,6 +1,6 @@
 # Marketplace Skills
 
-Marketplace-candidate skills. **Not shipped to projects bootstrapped from this template** — `_exclude` in `copier.yml` keeps them out of `copier copy`.
+Marketplace-candidate skills. **Not shipped to projects bootstrapped from this template** — `_subdirectory: "seed"` in `copier.yml` renders only `seed/`, so `cultivation/` (a repo-root sibling of `seed/`) is never copied.
 
 Includes skills removed from the default `.claude/skills/` set during the v2.0 single-tree rework, plus external tool and plugin adoptions bundled for easy installation. All kept here as installable plugin bundles.
 
@@ -30,6 +30,10 @@ Includes skills removed from the default `.claude/skills/` set during the v2.0 s
 | `gpt-researcher` | gpt-researcher | Autonomous multi-source research agent with MCP server. [Upstream](https://github.com/assafelovic/gpt-researcher). Research-flavor, 3 API keys required |
 | `academic-research` | academic-research | 4-skill academic pipeline — research, paper writing, peer review, orchestrator. [Upstream](https://github.com/imbad0202/academic-research-skills). **CC BY-NC 4.0** |
 | `nature-skills` | nature-skills | 9 Nature-journal skills — figures, polishing, citations, writing, data, search. [Upstream](https://github.com/yuan1z0825/nature-skills). MIT, research-flavor |
+| `web-frontend-anthropics` | web-artifacts-builder, webapp-testing, theme-factory | Vetted web/UI skills from [anthropics/skills](https://github.com/anthropics/skills), SHA-pinned via `git-subdir`. Apache-2.0. Installs disabled (`defaultEnabled:false`). `theme-factory` is a **challenger** awaiting head-to-head trial vs `ui-ux-pro-max` |
+| `web-frontend-vercel` | react-best-practices, react-view-transitions, composition-patterns, web-design-guidelines | Vetted React/UI skills from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills), SHA-pinned via `git-subdir`. MIT. Installs disabled. `web-design-guidelines` is a **challenger** awaiting trial vs `impeccable` |
+| `web-frontend-find-skills` | find-skills | On-demand skill discovery/loader from [vercel-labs/skills](https://github.com/vercel-labs/skills), SHA-pinned via `git-subdir`. License unspecified upstream. Installs disabled |
+| `web-frontend-taste` | design-taste-frontend | Anti-slop frontend (v2-experimental) from [Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill), SHA-pinned via `git-subdir`. MIT. Landing pages/portfolios/redesigns only, **NOT** dashboards/product UI. **Challenger** awaiting trial vs `impeccable`. Installs disabled |
 
 ## Why these skills were cut from default
 
