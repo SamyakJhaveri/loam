@@ -80,7 +80,7 @@ review without sunk-cost bias from the planning session.
 
 ### 6. Verify (Post-Session Validation Loop — the Pipeline Gate)
 
-`/validate` is this project's **Pipeline Gate**: a skill that MUST run before work transitions to the next stage — here, between implement and commit. It is non-negotiable, not a suggestion. The pre-commit hook enforces it.
+`/validate` is this project's **Pipeline Gate** — the checkpoint that has to pass before work is allowed to advance from one stage to the next; here, from implement to commit. It is non-negotiable, not a suggestion. The pre-commit hook enforces it.
 
 Differences from a content-pipeline Pipeline Gate:
 - The gate is **iterative**: on FAIL → fix loop → re-validate, up to 3 iterations. Content pipelines run a gate once per transition; engineering loops run it N times until pass.

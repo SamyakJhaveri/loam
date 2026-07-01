@@ -5,10 +5,11 @@
 
 ## Load-bearing names
 
-Naming conventions are load-bearing documentation. A folder called
-`01_research` tells you two things: this is the first stage, and it contains research.
-A folder called `stuff` tells you nothing. Consistent, descriptive naming reduces the
-need for external documentation because the structure self-documents.
+A name is the cheapest documentation you have. `01_research/` packs two facts into a
+handful of characters — it runs first, and it holds research — while `stuff/` packs none.
+When names encode order, role, and content, the directory tree explains itself and you
+write less prose to make up for it. That is the whole game: let the structure do the
+documenting so a reader — or a fresh agent — can navigate without a separate guide.
 
 ## Patterns
 

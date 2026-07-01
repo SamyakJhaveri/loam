@@ -11,44 +11,52 @@ paths:
 
 ## The distinction
 
-Automation means a task runs without human involvement. Scaling means your capacity
-increases without proportional increase in effort. These overlap but are not identical.
-You can automate something that doesn't scale (an automated response that annoys people
-faster). You can scale something without automating it (a well-documented process a new
-team member can follow on day one).
+Two different problems wear the same disguise. *Automating* a step means taking your
+hands off it — it runs without you in the loop. *Scaling* means getting more output
+without paying proportionally more effort for it. The two are orthogonal, not synonyms: a
+step can be fully automated and still refuse to scale (a bot that mass-produces replies
+nobody asked for just makes noise faster), and a step can scale beautifully with zero
+automation (a checklist precise enough that a new teammate hits your quality bar on day
+one). Reaching for automation when the real gap is scale — or the reverse — is exactly
+why "I automated it and it got worse" happens.
 
-The fix is different for each:
-- **Automation problems** → deterministic tools, hooks, skills (Layer 1-2 of 60/30/10)
-- **Scaling problems** → documentation, context files, stage contracts (make judgment transferable)
+Match the fix to the gap:
+- **Can't take your hands off it** (automation gap) → deterministic tools, hooks, skills (Layer 1-2 of 60/30/10).
+- **Effort climbs with every extra unit of output** (scaling gap) → write the judgment down: documentation, context files, stage contracts that let someone else repeat your decisions.
 
 ## The four-question diagnostic
 
-For each step in your workflow, ask:
+Walk each step of the workflow through these; the answers route the step:
 
-1. **Does this step require my specific judgment?**
-   If yes → scales by documentation (make judgment criteria explicit), not automation.
+1. **Is the value here your judgment, or your throughput?**
+   Judgment → the lever is documentation (make the criteria explicit), not a script.
 
-2. **Would this step produce the same output regardless of who does it?**
-   If yes → automate or delegate with minimal documentation.
+2. **Would any competent person reach the same result from the same inputs?**
+   Yes → it's mechanical; hand it to a tool or a lightly-documented delegate.
 
-3. **Does the quality of this step affect everything downstream?**
-   If yes → this is a leverage point. Invest in quality, not speed.
+3. **Does a mistake here contaminate everything after it?**
+   Yes → it's a leverage point; spend on getting it right, not on getting it fast.
 
-4. **Am I the bottleneck on this step?**
-   If yes → document well enough to delegate, or restructure the workflow.
+4. **Is forward progress gated on you personally?**
+   Yes → either write it down well enough that someone else can own it, or reshape the workflow so it no longer routes through you.
 
-**Rule of thumb**: If #1 and #3 are "yes," this is scaling work — document it,
-don't automate it. If #2 is "yes" and #4 is "yes," this is automation work —
-make it a skill or hook.
+**Reading the answers**: judgment-heavy and high-leverage (1 and 3) is *scaling* work —
+capture it in writing, don't script it. Mechanical and stuck-on-you (2 and 4) is
+*automation* work — make it a skill or a hook.
 
 ## Anti-pattern: premature skill creation
 
-Before creating a new skill, run the diagnostic above. Common mistakes:
-- Automating a task you don't yet understand well enough (Paul Graham: "do things that
-  don't scale" until you understand the work deeply)
-- Creating a skill for a one-off task (a skill's value comes from reuse frequency)
-- Automating the judgment part instead of the throughput part
+Before you build a skill, run the diagnostic. The recurring mistakes:
+- Encoding a task you don't yet understand well enough — do it by hand until its shape is
+  obvious, *then* automate (understand the work before you mechanize it).
+- Building a skill for something you'll do once — a skill earns its cost through repetition.
+- Automating the judgment and leaving the drudgery, when it should be the other way around.
 
-## Source
+## Attribution
 
-Brooks's *The Mythical Man-Month*, the Toyota Production System, and Paul Graham's "Do Things That Don't Scale".
+The automation-vs-scaling split and the "understand the work before you mechanize it"
+principle are long-standing ideas in software and operations. Fred Brooks's *The Mythical
+Man-Month* is the canonical text on why adding people to a late project makes it later;
+lean manufacturing (Taiichi Ohno's system at Toyota) draws the efficiency-versus-effectiveness
+line; and "do things that don't scale" is Paul Graham's phrasing. This file is an original
+synthesis of those public ideas, applied to template work.

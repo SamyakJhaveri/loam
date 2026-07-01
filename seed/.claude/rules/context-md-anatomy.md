@@ -51,7 +51,7 @@ Examples of useful Skip entries:
 
 ## "When" triggers must be conditions, not statuses
 
-The Skills column needs a real trigger. "Available" is not a trigger. "Useful for X" is not a trigger.
+The Skills column needs a real trigger — a firing condition, not a status label. "Available" tells a reader nothing about *when* to reach for the skill; neither does "Useful for X."
 
 | Bad trigger | Good trigger |
 |-------------|--------------|
@@ -70,7 +70,7 @@ If you cannot write a trigger that another reader (or the model in a fresh sessi
 | 80-120 | Bloated — move detail to sibling docs |
 | >120 | Split into two CONTEXT.md files for distinct sub-areas |
 
-Stable knowledge — design docs, architecture rationale, glossaries — belongs in `docs/`. The CONTEXT.md is routing and process, not encyclopedia.
+Stable knowledge — design docs, architecture rationale, glossaries — belongs in `docs/`. A CONTEXT.md is a router and a short checklist, not a reference manual.
 
 ## Routing tables vs. reference tables
 

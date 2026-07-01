@@ -60,6 +60,6 @@ The anchor is what `/validate` checks. If the anchor cannot be objectively verif
 
 ## Applies to engineering loops, not just one-pass pipelines
 
-In its original content-production setting, a stage runs once and hands off. In an engineering loop, the same stage runs N times until the gate (`/validate`) passes — that's the **Pipeline Gate pattern** with iteration. The contract still applies: each iteration's Output must satisfy "Done looks like" before the next gate firing.
+In a one-pass content pipeline, a stage runs once and hands off. In an engineering loop, the same stage runs N times until the gate (`/validate`) passes — that's the **Pipeline Gate pattern** with iteration. The contract still applies: each iteration's Output must satisfy "Done looks like" before the next gate firing.
 
 If `/validate` fails after 3 iterations on the same contract, the issue is the contract, not the implementation. Stop iterating; re-author the contract with more specific Inputs / tighter Must NOT / sharper Done.
