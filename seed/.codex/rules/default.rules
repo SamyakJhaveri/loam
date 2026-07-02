@@ -1,0 +1,68 @@
+# Command execution policy translated from .claude/settings.json.
+# Argument-order-sensitive policy, including force-push blocking, is enforced
+# by .codex/hooks/pre-tool-policy.py. Prefix rules here are defense-in-depth for
+# simple command shapes and user prompting.
+
+prefix_rule(
+    pattern = [["cat", "ls", "grep", "rg", "head", "tail", "sed", "echo", "wc", "mkdir"]],
+    decision = "allow",
+    justification = "Read-oriented shell helpers and mkdir are allowed for local repo work.",
+    match = [
+        "cat AGENTS.md",
+        "rg validate .claude/skills",
+        "mkdir -p .codex/agents",
+    ],
+)
+
+prefix_rule(
+    pattern = ["git", ["status", "log", "diff"]],
+    decision = "allow",
+    justification = "Git inspection commands are allowed.",
+    match = [
+        "git status --short",
+        "git log --oneline -5",
+        "git diff HEAD",
+    ],
+)
+
+prefix_rule(
+    pattern = ["rm", "-rf"],
+    decision = "forbidden",
+    justification = "Destructive recursive deletion is blocked. Use a targeted non-recursive cleanup after review.",
+    match = ["rm -rf results"],
+)
+
+prefix_rule(
+    pattern = ["rm", "-fr"],
+    decision = "forbidden",
+    justification = "Destructive recursive deletion is blocked. Use a targeted non-recursive cleanup after review.",
+    match = ["rm -fr results"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", "--force"],
+    decision = "forbidden",
+    justification = "Defense-in-depth: force pushes are blocked by the pre-tool hook; use a normal push or ask for a reviewed recovery plan.",
+    match = ["git push --force origin main"],
+)
+
+prefix_rule(
+    pattern = ["git", "push", "--force-with-lease"],
+    decision = "forbidden",
+    justification = "Defense-in-depth: force pushes are blocked by the pre-tool hook; use a normal push or ask for a reviewed recovery plan.",
+    match = ["git push --force-with-lease origin main"],
+)
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "Hard resets are blocked because they can destroy local work. Use non-destructive inspection or ask the user.",
+    match = ["git reset --hard HEAD"],
+)
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "Publishing changes requires explicit user approval.",
+    match = ["git push origin codex-claude-port"],
+)

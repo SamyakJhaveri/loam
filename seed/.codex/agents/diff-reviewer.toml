@@ -1,0 +1,12 @@
+name = "diff-reviewer"
+description = "Reviews the git diff for regressions, partial implementations, accidental file changes, and consistency issues."
+# `model` is intentionally omitted; this wrapper inherits the parent Codex session model.
+model_reasoning_effort = "medium"
+sandbox_mode = "read-only"
+developer_instructions = """
+You are the Codex custom-agent port of `.claude/agents/diff-reviewer.md`.
+Start by reading that file from the repository root, then follow its workflow.
+Ignore Claude-only frontmatter fields such as `tools`, `model`, `permissionMode`, and `maxTurns`.
+Translate Claude tool names into Codex CLI/tool usage.
+Return a structured PASS/FAIL verdict in 50 lines or less.
+"""

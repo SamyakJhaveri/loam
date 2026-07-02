@@ -1,0 +1,10 @@
+{
+  "name": "gpt-researcher",
+  "license": "Apache-2.0",
+  "version": "0.1.0",
+  "description": "Autonomous multi-source research agent with MCP server integration. Planner/executor architecture, parallel source gathering. Requires 3 API keys (Tavily + Anthropic + embeddings). MCP server is v0.0.1 — expect rough edges. Research-flavor tool. NOT for: quick searches (use /researcher) or non-research projects.",
+  "author": {
+    "name": "Upstream author \u2014 see LICENSE.upstream (packaged by Samyak Jhaveri)",
+    "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+  }
+}

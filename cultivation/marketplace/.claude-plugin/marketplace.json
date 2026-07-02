@@ -1,0 +1,120 @@
+{
+  "name": "seed-skills",
+  "description": "Optional skill bundles from the Loam. Install on demand — not shipped to bootstrapped projects by default.",
+  "owner": {
+    "name": "Samyak Jhaveri",
+    "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+  },
+  "plugins": [
+    {
+      "name": "team-deliberation",
+      "description": "Multi-agent deliberation skills (agent-team, council, session-critique)",
+      "version": "0.1.0",
+      "source": "./team-deliberation",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+      }
+    },
+    {
+      "name": "meta-improvement",
+      "description": "Self-healing and meta-improvement skills",
+      "version": "0.1.0",
+      "source": "./meta-improvement",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+      }
+    },
+    {
+      "name": "helpers",
+      "description": "Utility skills (decision-matrix, navigate, model-route, prompt-improver, grill-research)",
+      "version": "0.1.0",
+      "source": "./helpers",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+      }
+    },
+    {
+      "name": "business-process",
+      "description": "Business process skills (process-optimizer, sop-writer, workflow-mapper, weekly-review)",
+      "version": "0.1.0",
+      "source": "./business-process",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+      }
+    },
+    {
+      "name": "pocock-engineering",
+      "description": "Engineering workflow skills adapted from mattpocock/skills (triage, to-issues, tdd, prototype, diagnose, grill-with-docs, improve-codebase-architecture)",
+      "version": "0.1.0",
+      "source": "./pocock-engineering",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+      }
+    },
+    {
+      "name": "web-frontend-anthropics",
+      "description": "Vetted web/UI skills from anthropics/skills, SHA-pinned via git-subdir: web-artifacts-builder (claude.ai bundle.html artifacts), webapp-testing (Playwright UI verification), theme-factory (challenger vs ui-ux-pro-max). Installs DISABLED (defaultEnabled:false) — enable to trial.",
+      "strict": false,
+      "defaultEnabled": false,
+      "license": "Apache-2.0",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/anthropics/skills.git",
+        "path": "skills",
+        "ref": "main",
+        "sha": "35414756ca55738e050562e272a6bbc6273aa926"
+      },
+      "skills": ["./web-artifacts-builder", "./webapp-testing", "./theme-factory"]
+    },
+    {
+      "name": "web-frontend-vercel",
+      "description": "Vetted React/UI skills from vercel-labs/agent-skills, SHA-pinned via git-subdir: react-best-practices, react-view-transitions (view-transition animation), composition-patterns, web-design-guidelines (challenger vs impeccable). Installs DISABLED (defaultEnabled:false) — enable to trial.",
+      "strict": false,
+      "defaultEnabled": false,
+      "license": "MIT",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/vercel-labs/agent-skills.git",
+        "path": "skills",
+        "ref": "main",
+        "sha": "f8a72b9603728bb92a217a879b7e62e43ad76c81"
+      },
+      "skills": ["./react-best-practices", "./react-view-transitions", "./composition-patterns", "./web-design-guidelines"]
+    },
+    {
+      "name": "web-frontend-find-skills",
+      "description": "Vetted: find-skills (on-demand skill discovery/loader) from vercel-labs/skills, SHA-pinned via git-subdir. Installs DISABLED (defaultEnabled:false) — enable to trial.",
+      "strict": false,
+      "defaultEnabled": false,
+      "license": "Unspecified — vercel-labs/skills declares no LICENSE",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/vercel-labs/skills.git",
+        "path": "skills",
+        "ref": "main",
+        "sha": "2adcfe5a4cce0ce5f4d5547a997b2a161ec5d127"
+      },
+      "skills": ["./find-skills"]
+    },
+    {
+      "name": "web-frontend-taste",
+      "description": "Vetted: design-taste-frontend v2-experimental (challenger vs impeccable; landing pages/portfolios/redesigns only, NOT dashboards/product UI) from Leonxlnx/taste-skill, SHA-pinned via git-subdir. Folder taste-skill maps to install name design-taste-frontend. Installs DISABLED (defaultEnabled:false) — enable to trial.",
+      "strict": false,
+      "defaultEnabled": false,
+      "license": "MIT",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/Leonxlnx/taste-skill.git",
+        "path": "skills",
+        "ref": "main",
+        "sha": "06d6028b5c623016c59ce8536f578e5a1127b499"
+      },
+      "skills": ["./taste-skill"]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "team-deliberation",
+  "license": "MIT",
+  "version": "0.1.0",
+  "description": "Multi-agent deliberation skills (agent-team, council, session-critique). Useful for high-stakes plan review and adversarial critique. NOT for: simple code review (use /multi-review) or single-agent tasks.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "license": "MIT",
+    "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+  }
+}

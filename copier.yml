@@ -1,0 +1,65 @@
+_min_copier_version: "9.4.0"
+_subdirectory: "seed"
+_templates_suffix: .jinja
+_envops:
+  keep_trailing_newline: true
+
+# With _subdirectory: "seed", only seed/ contents are rendered.
+# These exclusions cover generic noise inside seed/.
+_exclude:
+  - ".DS_Store"
+  - "*.pyc"
+  - "__pycache__"
+  - "*.bak"
+  - ".git"
+  - ".claude/audit.log"
+  - ".claude/.local-paths"
+  - ".claude/settings.local.json"
+  - ".claude/worktrees"
+
+# Questions asked during `copier copy`
+project_name:
+  type: str
+  help: "What is your project name?"
+  validator: "{% if not project_name %}Project name is required{% endif %}"
+
+is_research:
+  type: bool
+  help: "Include the research flavor (papers, experiments, HPC, citation-audit, paper-write, etc.)?"
+  default: false
+
+github_repo:
+  type: str
+  help: "GitHub repo (owner/repo) for this project? Leave empty to skip. Trailing .git is stripped automatically."
+  default: ""
+  validator: "{% if github_repo and not (github_repo | regex_search('^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$')) %}Invalid repo format — use owner/repo{% endif %}"
+
+# Post-generation tasks (run in the generated project directory)
+_tasks:
+  # Apply research flavor if selected
+  - "{% if is_research %}bash _apply_research_overlay.sh{% else %}true{% endif %}"
+
+  # Always remove the research flavor overlay and helper scripts after render
+  - "rm -r _research 2>/dev/null || true"
+  - "rm -f _copier_merge_hooks.py _apply_research_overlay.sh"
+
+  # Create seed working directories with .gitkeep
+  - "for dir in archive config files_from_team internal_docs meeting_notes presentations results scripts submission_artifacts submission_docs; do mkdir -p \"$dir\" && touch \"$dir/.gitkeep\"; done"
+
+  # Initialize git repo (skip on copier update — .git already exists)
+  - "if [ ! -d .git ]; then (git init -b main 2>/dev/null || git init) && git add . && git commit -m 'Initial commit from loam'; fi"
+
+  # Optional: create or connect GitHub repo (skip on copier update)
+  - >-
+    {% if github_repo %}
+    if ! git remote get-url origin >/dev/null 2>&1; then
+      bash _gh_setup.sh "{{ github_repo }}"
+    else
+      echo '[copier] Remote origin already configured — skipping GitHub setup.'
+    fi
+    {% else %}
+    true
+    {% endif %}
+
+  # Clean up helper scripts
+  - "rm -f _gh_setup.sh"

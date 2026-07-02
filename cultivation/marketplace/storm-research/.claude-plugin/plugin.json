@@ -1,0 +1,10 @@
+{
+  "name": "storm-research",
+  "license": "MIT",
+  "version": "0.1.0",
+  "description": "Stanford STORM — LLM research pipeline for Wikipedia-quality articles with citations. Multi-perspective research, Co-STORM collaborative mode. Requires Python + search engine API key. Research-flavor tool — complements /researcher with systematic literature review. NOT for: quick lookups (use /researcher) or non-research projects.",
+  "author": {
+    "name": "Stanford Open Virtual Assistant Lab (packaged by Samyak Jhaveri)",
+    "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "pocock-engineering",
+  "license": "MIT",
+  "version": "0.2.0",
+  "description": "Engineering workflow skills from Matt Pocock's skills repo (triage, to-issues, to-prd, tdd, prototype, diagnose, grill-with-docs, improve-codebase-architecture, zoom-out). Covers issue lifecycle, TDD, prototyping, architectural review, domain grilling, and PRD generation. NOT for: daily development workflow — install individual skills as needed.",
+  "author": {
+    "name": "Matt Pocock (packaged by Samyak Jhaveri)",
+    "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+  }
+}

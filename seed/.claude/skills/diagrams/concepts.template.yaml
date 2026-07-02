@@ -1,0 +1,54 @@
+# concepts.template.yaml — copy-and-fill registry for your project's diagram design language.
+#
+# Copy this file to docs/diagrams/concepts.yaml in your project and replace the example
+# below with your own concepts. A render script reads it, finds a concept by `slug`, and
+# builds an image prompt as: shared_preamble + track_b.prompt + palette.
+#
+# Root is a YAML LIST. Each entry has these fields:
+#   id            integer, unique, stable.
+#   slug          kebab-case identifier; how the render script finds this concept.
+#   name          human-readable display name (quote it).
+#   viewer_should_understand
+#                 one plain-language sentence defining the image's intended takeaway.
+#   must_show     concrete visual evidence required before a candidate can be kept.
+#   label_strategy
+#                 track-a | vector-overlay | label-light | label-free.
+#   palette       single tonal/color key for the illustration, e.g.
+#                 "blueprint mono — indigo on cream".
+#   track_b:      the illustrated "hero" image.
+#     prompt      SUBJECT ONLY — describe what to depict. POSITIVE FRAMING ONLY:
+#                 say what is present, never "no X", "without X", or "avoid X".
+#                 Label-light. This text is concatenated AFTER a shared style
+#                 preamble, so do NOT repeat style boilerplate here.
+#     refs        list of ≤6 style-reference image filenames that exist in your
+#                 local reference folder; quote each, copy odd characters exactly.
+#   track_a:      the research/academic figure.
+#     source_context  the structure plus ALL text labels the figure must carry.
+#     figure_caption  one sentence describing the figure.
+#     visual_intent   academic figure style; on-figure labels ≤2-3 words each.
+#   status:       { track_a: ..., track_b: ... } where each is one of
+#                 todo | rendered | keep | reject.
+#
+# A concept may carry both tracks or be authored as a stub (id, slug, name, status only)
+# until you fill it in. Below is one fully-worked generic example.
+
+- id: 1
+  slug: system-overview
+  name: "System Overview"
+  viewer_should_understand: "A viewer should understand that the system is one connected whole made from four cooperating parts."
+  must_show:
+    - "four distinct modules"
+    - "visible connections between the modules"
+    - "one coherent overall system boundary"
+  label_strategy: vector-overlay
+  palette: "blueprint mono — slate blue on warm white"
+  track_b:
+    prompt: "A single interconnected machine viewed from above, its modules linked by clean lines into one working whole, gears and conduits flowing between the parts in steady motion"
+    refs:
+      - "reference-architecture-sketch.jpg"
+      - "machine-overview-plate.jpg"
+  track_a:
+    source_context: "A high-level block diagram of the system's main components and the data that flows between them. Labels: 'frontend', 'API', 'database', 'worker queue'."
+    figure_caption: "The system's four core components and the data flowing between them."
+    visual_intent: "Academic block-and-arrow diagram; on-figure labels kept to 2-3 words each."
+  status: { track_a: todo, track_b: todo }

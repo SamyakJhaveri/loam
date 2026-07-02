@@ -1,0 +1,11 @@
+{
+  "name": "helpers",
+  "license": "MIT",
+  "version": "0.1.0",
+  "description": "Utility skills (decision-matrix, navigate, model-route, prompt-improver, grill-research, align-prompt). Useful for specialized one-off tasks like structured decisions, adversarial research grilling, or aligning a draft prompt to an Opus model. NOT for: daily development workflow — these are situational tools, not always-on skills.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "license": "MIT",
+    "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+  }
+}

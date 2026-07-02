@@ -1,0 +1,10 @@
+{
+  "name": "code-review-graph",
+  "license": "MIT",
+  "version": "0.1.0",
+  "description": "GraphRAG-powered code review via Tree-sitter AST analysis. Blast-radius scoping for diffs, architectural hotspot detection. Recommended for 500+ file codebases. Requires Python 3.10+. NOT for: small projects — graph overhead exceeds savings below ~200 files.",
+  "author": {
+    "name": "Tirth Kanani (packaged by Samyak Jhaveri)",
+    "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+  }
+}

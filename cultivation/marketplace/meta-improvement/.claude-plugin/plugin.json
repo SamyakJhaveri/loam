@@ -1,0 +1,11 @@
+{
+  "name": "meta-improvement",
+  "license": "MIT",
+  "version": "0.1.0",
+  "description": "Self-healing and meta-improvement skills. Useful for autonomous error recovery and session self-correction. NOT for: manual debugging (use /fix-bug) or memory consolidation (use /dream).",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "license": "MIT",
+    "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+  }
+}

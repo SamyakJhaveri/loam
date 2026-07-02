@@ -1,0 +1,70 @@
+# CLAUDE.md — {{ project_name }}
+
+> Bootstrapped from Loam on {{ "%Y-%m-%dT%H:%M:%SZ" | strftime }}. {% if is_research %}Research flavor enabled.{% else %}Default (engineering) flavor.{% endif %}
+
+## What this project is
+
+(One paragraph. The reader of this file is Claude — frame the sentence as "what should I keep in mind when working on this codebase?")
+
+## Environment
+
+- `python3` always, never `python`. Venv: (path to venv if any).
+- Platform: (macOS / Linux / both).
+- (Any non-standard toolchain paths.)
+
+## Key Architecture
+
+| Path | Purpose |
+|------|---------|
+| (Add the few paths a fresh agent needs to know.) | |
+
+## Invariants
+
+(Things that must NEVER be violated. Hard rules with one-line justifications.)
+1. (e.g., "Never modify files under `results/` — they are immutable.")
+2. (e.g., "Never push directly to `main` — always via PR.")
+
+## Quality
+
+- Read before editing. No partial implementations. Verify before reporting done.
+- `/validate` is the **Pipeline Gate** before every commit. The pre-commit hook checks for a `.validation_passed` sentinel (created by `/validate`, deleted on any file edit). Missing sentinel → commit blocked. See `.claude/rules/validation-loop.md`.
+- If unsure, say so explicitly — never guess silently.
+
+## Reference Docs (read on demand)
+
+Path-scoped rules in `.claude/rules/` load only when matching files are touched.
+
+| File | Read when |
+|------|-----------|
+| `workflow.md`              | Always — 6-stage workflow + anti-patterns |
+| `known-issues.md`          | Always — recurring gotchas |
+| `session-guardrails.md`    | Always — behavioral constraints (workflow ordering, plan vs execute, elegance) |
+| `L0-budget.md`             | Authoring or refactoring this `CLAUDE.md` |
+| `context-md-anatomy.md`    | Authoring a `CONTEXT.md` for a subdirectory (or filling the root `CONTEXT.md` skeleton) |
+| `PROJECT-BACKGROUND.md`    | (Create this file) — the "why" of the project: problem framing, stakeholders, glossary |
+| `stage-contract.md`        | Invoking `feature-dev`, `fix-bug`, `/validate`, or any planning skill |
+| `layer-triage.md`          | Scoping a new task; deciding deterministic vs rule-based vs LLM |
+| `scaling-vs-automating.md` | Creating new skills or deciding whether to automate a process |
+| `naming-conventions.md`    | Creating files/directories or authoring CONTEXT.md |
+| `validation-loop.md`       | Working on hooks or the `validate` skill |
+| `architecture.md`          | Authoring architecture decisions |
+| `python.md`, `tech-stack.md` | Touching Python files / build config |
+| `frontend-design.md`       | Touching frontend files |
+{% if is_research %}
+| `research-memory.md`       | Research flavor only — experiments and citations |
+{% endif %}
+
+## Project skills
+
+See `.claude/skills/` for available skills. Core skills auto-activate; specialized skills require `/skill-name`. `template-sync` is an **experimental** workflow for moving Claude Code assets between this project and the Loam template — currently untested end-to-end; treat as a design sketch, not a production tool. `create-skill` authors new skills following the agentskills.io schema.
+
+## Required Plugins
+
+- **superpowers** (`obra/superpowers`) — provides `/writing-plans`, `/brainstorming`, `/executing-plans`, and plan-mode workflow support. Install: `claude plugin install obra/superpowers`
+  - **Plan & spec location (overrides plugin default):** plans → `.superpowers/plans/`, specs → `.superpowers/specs/` (project-root, gitignored). Do NOT write under `docs/superpowers/` — `docs/` stays human-curated. Enforced by `.claude/hooks/superpowers-plan-location.sh`.
+- **Code-intelligence LSP** (`claude-plugins-official`) — `pyright-lsp` (Python) + `clangd-lsp` (C/C++): go-to-definition, find-references, post-edit diagnostics via `.claude/settings.json` `enabledPlugins`, replacing grep-then-read sweeps. ⚠️ Without a `compile_commands.json`, clangd reports **false** errors on C/C++ (missing headers, unknown macros) — ignore those diagnostics or generate a compile DB. Binary prereqs, collaborator enablement, and setup: `.claude/rules/tech-stack.md`.
+- **ponytail** (`DietrichGebert/ponytail`) — "lazy senior dev" optimization plugin (YAGNI, stdlib-first, no unrequested abstractions). Enabled by default via `.claude/settings.json` `enabledPlugins` + `extraKnownMarketplaces` (third-party marketplace, so it must be declared there — unlike the official-marketplace LSP plugins); fresh checkouts are zero-touch. Costs ~904 always-on tok/session and **intentionally overlaps** the always-loaded Karpathy guidelines (`engineering-principles.md`). Needs Node.js on PATH for its hooks. Remove the `enabledPlugins` line to opt out. Manual install: `claude plugin marketplace add DietrichGebert/ponytail` + `claude plugin install ponytail@ponytail`.
+
+## Date
+
+Today's date is {{ "%Y-%m-%dT%H:%M:%SZ" | strftime }}.

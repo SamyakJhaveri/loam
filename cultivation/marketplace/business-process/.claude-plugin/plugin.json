@@ -1,0 +1,11 @@
+{
+  "name": "business-process",
+  "license": "MIT",
+  "version": "0.1.0",
+  "description": "Business process skills (process-optimizer, sop-writer, workflow-mapper, weekly-review). Useful for operational documentation, SOP generation, and workflow analysis. NOT for: software engineering tasks — these target organizational processes, not code.",
+  "author": {
+    "name": "Samyak Jhaveri",
+    "license": "MIT",
+    "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+  }
+}
