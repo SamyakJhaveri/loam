@@ -7,7 +7,7 @@
 
 - **Name:** archive-consolidation
 - **Owner:** Sam
-- **Status:** draft (review change-set applied; awaiting Sam's sign-off to mark `ready`)
+- **Status:** ready (Sam signed off; Ticket 01 executed + verified 2026-07-18, Ticket 02 pending)
 - **Scope:** safe harvest of two scratchpads + reversible deletion of stale branches, stash, and one remote branch in the private `loam-dev-archive` repo. Nothing in the public `loam` repo is modified.
 - **Tickets:** `docs/specs/archive-consolidation-ticket-01.md`, `docs/specs/archive-consolidation-ticket-02.md`
 
@@ -66,4 +66,4 @@ Runs in strict order. A reversibility net (tags) is created before any deletion,
 
 ## Review gate (before implementation)
 
-Adversarial spec review completed 2026-07-18 (APPROVE WITH CHANGES; this revision applies the full change-set: tag-then-delete, split `-d`/`feat-lsp`, full-file harvest, recorded go-signals, robust criteria #4/#9). Remaining gate: Sam's sign-off → mark `Status: ready`, then a later session implements the two tickets in order.
+Adversarial spec review completed 2026-07-18 (APPROVE WITH CHANGES; this revision applies the full change-set: tag-then-delete, split `-d`/`feat-lsp`, full-file harvest, recorded go-signals, robust criteria #4/#9). Sam signed off - spec is `ready`. Ticket 01 executed + verified 2026-07-18 (5 `archive/pre-cleanup/*` tags created, four branches + stash + working-tree scratchpad cleaned, quarantine `main` untouched at `d132c23c`). Ticket 02 (guarded remote deletion) remains; on its completion, mark `Status: implemented`.
