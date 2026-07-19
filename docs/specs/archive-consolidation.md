@@ -7,7 +7,7 @@
 
 - **Name:** archive-consolidation
 - **Owner:** Sam
-- **Status:** ready (Sam signed off; Ticket 01 executed + verified 2026-07-18, Ticket 02 pending)
+- **Status:** implemented (both tickets executed + verified 2026-07-18; remote branch `web-frontend-bundle` deleted, 5-tag reversibility net intact, archive `main` untouched at `d132c23c`)
 - **Scope:** safe harvest of two scratchpads + reversible deletion of stale branches, stash, and one remote branch in the private `loam-dev-archive` repo. Nothing in the public `loam` repo is modified.
 - **Tickets:** `docs/specs/archive-consolidation-ticket-01.md`, `docs/specs/archive-consolidation-ticket-02.md`
 
