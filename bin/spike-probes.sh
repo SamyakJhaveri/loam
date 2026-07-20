@@ -19,11 +19,10 @@
 # targeting, the single line to update is the grep in ASSERTION 2 below
 # (search for "CHANGE HERE"); its source of truth is bin/template-sync.sh:295.
 #
-# EXPECTED RED: on current main, EXACTLY ONE assertion (#8, the timestamp
-# defect) FAILS by design; the script stops there with exit 1. Any OTHER
-# assertion failing is a REAL regression, not expected. #8 flips green when
-# copier-update-timestamp-conflict lands — with no other edit to this script
-# (spec acceptance #5), and the whole script then exits 0.
+# RED/GREEN CONTRACT: #8 is expected RED only when validating the pre-fix
+# timestamp baseline. Once copier-update-timestamp-conflict lands, any #8
+# failure is a regression. The fix flips #8 green with no other edit to this
+# script (spec acceptance #5), and the whole script then exits 0.
 #
 # Version pins (findings were Verified against these; drift warns, never fails):
 #   copier 9.17.0, git 2.55.0
@@ -45,6 +44,8 @@ source "$(dirname "$0")/lib.sh"
 LOAM="$(cd "$(dirname "$0")/.." && pwd)"
 CANONICAL_HEAD="$(git -C "$LOAM" rev-parse HEAD)"
 STATUS_BEFORE="$(git -C "$LOAM" status --porcelain)"
+[[ -z "$STATUS_BEFORE" ]] || die "canonical working tree must be clean before running probes"
+BRANCHES_BEFORE="$(git -C "$LOAM" for-each-ref --format='%(objectname) %(refname)' refs/heads/)"
 
 # Copier can install as a bare command or via uvx; mirror verify-template.sh.
 if command -v copier >/dev/null 2>&1; then
@@ -65,24 +66,25 @@ SCRATCH="$(mktemp -d 2>/dev/null || mktemp -d -t spike-probes)"
 # and must preserve the original exit code (spec acceptance #2, #3).
 on_exit() {
   local rc=$?
-  rm -rf "$SCRATCH" 2>/dev/null || true
-  local head_after status_after problems=""
+  local head_after status_after branches_after problems=""
+  if ! rm -rf "$SCRATCH" 2>/dev/null; then
+    problems="$problems scratch-cleanup-failed"
+  fi
+  if [[ -d "$SCRATCH" ]]; then
+    problems="$problems scratch-survived($SCRATCH)"
+  fi
   head_after="$(git -C "$LOAM" rev-parse HEAD 2>/dev/null || echo UNKNOWN)"
   status_after="$(git -C "$LOAM" status --porcelain 2>/dev/null || echo UNKNOWN)"
+  branches_after="$(git -C "$LOAM" for-each-ref --format='%(objectname) %(refname)' refs/heads/ 2>/dev/null || echo UNKNOWN)"
   if [[ "$head_after" != "$CANONICAL_HEAD" ]]; then problems="$problems HEAD($CANONICAL_HEAD->$head_after)"; fi
   if [[ "$status_after" != "$STATUS_BEFORE" ]]; then problems="$problems working-tree"; fi
-  # Findings manually verified "0 leaked sync/* branches"; assert it here too —
-  # promote runs against the scratch clone, so a sync/* in $LOAM means a real leak.
-  if git -C "$LOAM" for-each-ref --format='%(refname:short)' refs/heads/ 2>/dev/null | grep -q '^sync/'; then
-    problems="$problems leaked-sync/*-branch"
-  fi
+  if [[ "$branches_after" != "$BRANCHES_BEFORE" ]]; then problems="$problems branches-changed"; fi
   if [[ -n "$problems" ]]; then
     echo "FAIL: canonical repo at $LOAM was modified by this run:$problems" >&2
     [[ $rc -eq 0 ]] && rc=1
   else
-    echo "OK: canonical untouched ($LOAM HEAD $CANONICAL_HEAD, tree unchanged, no leaked sync/* branch)"
+    echo "OK: canonical untouched ($LOAM HEAD $CANONICAL_HEAD, tree and branches unchanged)"
   fi
-  [[ -d "$SCRATCH" ]] && echo "WARN: scratch dir survived: $SCRATCH" >&2
   exit "$rc"
 }
 trap on_exit EXIT
@@ -99,7 +101,11 @@ gitc() { git -C "$1" -c user.email=spike@local -c user.name=spike-probes -c comm
 fresh_tpl() {
   local dst="$SCRATCH/$1"
   git clone -q "$LOAM" "$dst"
-  git -C "$dst" remote remove origin 2>/dev/null || true
+  git -C "$dst" remote remove origin 2>/dev/null \
+    || fail "scratch isolation: could not remove origin from $dst"
+  if git -C "$dst" remote get-url origin >/dev/null 2>&1; then
+    fail "scratch isolation: origin still present in $dst"
+  fi
   git -C "$dst" checkout -q -B main "$CANONICAL_HEAD"
   echo "$dst"
 }
@@ -108,6 +114,13 @@ copier_copy() { # <src> <dst> <project_name>
   # shellcheck disable=SC2086
   $COPIER copy --trust --defaults --vcs-ref "$CANONICAL_HEAD" \
     --data "project_name=$3" "$1" "$2" >/dev/null 2>&1
+}
+
+copier_commit_sha() { # <template-repo> <answers-file>
+  local ref
+  ref="$(sed -n 's/^_commit: //p' "$2")"
+  [[ -n "$ref" ]] || return 1
+  git -C "$1" rev-parse "${ref}^{commit}" 2>/dev/null
 }
 
 # ---------------------------------------------------------------------------
@@ -178,12 +191,17 @@ pass "#3 skill pre-flight still refuses without template-manifest.json (static)"
 UP="$(fresh_tpl a4up)"
 PERSONAL="$SCRATCH/personal"
 git clone -q "$UP" "$PERSONAL"
-git -C "$PERSONAL" remote remove origin 2>/dev/null || true
+git -C "$PERSONAL" remote remove origin 2>/dev/null \
+  || fail "#4: could not remove origin from personal scratch clone"
+if git -C "$PERSONAL" remote get-url origin >/dev/null 2>&1; then
+  fail "#4: origin still present in personal scratch clone"
+fi
 git -C "$PERSONAL" remote add upstream "$UP"
 test ! -f "$PERSONAL/.copier-answers.yml" || fail "#4: personal fork unexpectedly has .copier-answers.yml"
 # shellcheck disable=SC2086
-EDGEA_ERR="$(cd "$PERSONAL" && $COPIER update --defaults 2>&1)" \
-  && fail "#4: copier update on a fork unexpectedly succeeded (expected structural failure)" || true
+if EDGEA_ERR="$(cd "$PERSONAL" && $COPIER update --defaults 2>&1)"; then
+  fail "#4: copier update on a fork unexpectedly succeeded (expected structural failure)"
+fi
 grep -qiE 'Cannot obtain old template references|Template not found' <<<"$EDGEA_ERR" \
   || fail "#4: copier update on fork failed with an unexpected error:"$'\n'"$EDGEA_ERR"
 pass "#4 Edge A broken — copier update on a fork errors (no .copier-answers baseline)"
@@ -212,7 +230,14 @@ PROJ2="$SCRATCH/proj2"
 PERSONAL_HEAD1="$(git -C "$PERSONAL" rev-parse HEAD)"
 # shellcheck disable=SC2086
 $COPIER copy --trust --defaults --vcs-ref "$PERSONAL_HEAD1" --data project_name=proj2 "$PERSONAL" "$PROJ2" >/dev/null 2>&1
-COMMIT_BEFORE="$(grep '^_commit:' "$PROJ2/.copier-answers.yml")" || fail "#6: no _commit line in proj2 .copier-answers.yml (before update)"
+COMMIT_BEFORE_SHA="$(copier_commit_sha "$PERSONAL" "$PROJ2/.copier-answers.yml")" \
+  || fail "#6: cannot resolve initial _commit in proj2 .copier-answers.yml"
+[[ "$COMMIT_BEFORE_SHA" == "$PERSONAL_HEAD1" ]] \
+  || fail "#6: initial _commit resolves to $COMMIT_BEFORE_SHA, expected $PERSONAL_HEAD1"
+grep -qx 'personal divergence' "$PROJ2/.claude/rules/personal-note.md" \
+  || fail "#6: personal template divergence missing before update"
+test ! -e "$PROJ2/.claude/rules/edge-b-new.md" \
+  || fail "#6: edge-b-new.md unexpectedly present before template update"
 printf 'proj2 local divergence\n' > "$PROJ2/proj2-local.md"
 gitc "$PROJ2" add -A
 gitc "$PROJ2" commit -q -m "proj2: local divergence"
@@ -223,10 +248,16 @@ PERSONAL_HEAD2="$(git -C "$PERSONAL" rev-parse HEAD)"
 # shellcheck disable=SC2086
 (cd "$PROJ2" && $COPIER update --trust --defaults --vcs-ref "$PERSONAL_HEAD2" >/dev/null 2>&1) \
   || fail "#6: copier update exited non-zero"
-COMMIT_AFTER="$(grep '^_commit:' "$PROJ2/.copier-answers.yml")" || fail "#6: no _commit line in proj2 .copier-answers.yml (after update)"
-[[ "$COMMIT_BEFORE" != "$COMMIT_AFTER" ]] || fail "#6: _commit did not advance ($COMMIT_AFTER)"
-test -f "$PROJ2/.claude/rules/edge-b-new.md" || fail "#6: new template file not pulled on update"
-test -f "$PROJ2/proj2-local.md"              || fail "#6: project divergence lost on update"
+COMMIT_AFTER_SHA="$(copier_commit_sha "$PERSONAL" "$PROJ2/.copier-answers.yml")" \
+  || fail "#6: cannot resolve updated _commit in proj2 .copier-answers.yml"
+[[ "$COMMIT_AFTER_SHA" == "$PERSONAL_HEAD2" ]] \
+  || fail "#6: updated _commit resolves to $COMMIT_AFTER_SHA, expected $PERSONAL_HEAD2"
+grep -qx 'personal divergence' "$PROJ2/.claude/rules/personal-note.md" \
+  || fail "#6: personal template divergence lost after update"
+grep -qx 'edge-b new template file' "$PROJ2/.claude/rules/edge-b-new.md" \
+  || fail "#6: new template file missing or changed after update"
+grep -qx 'proj2 local divergence' "$PROJ2/proj2-local.md" \
+  || fail "#6: project-local divergence lost after update"
 pass "#6 Edge B — copier update advances _commit, pulls new file, preserves divergence"
 
 # ===========================================================================
@@ -247,7 +278,9 @@ gitc "$M1" commit -q -am "sideX edit"
 gitc "$M1" checkout -q main
 printf 'main heading\n' > "$M1/seed/.claude/rules/conflict-probe.md"
 gitc "$M1" commit -q -am "main edit"
-gitc "$M1" merge --no-edit sideX >/dev/null 2>&1 && fail "#7a: same-line merge unexpectedly clean" || true
+if gitc "$M1" merge --no-edit sideX >/dev/null 2>&1; then
+  fail "#7a: same-line merge unexpectedly clean"
+fi
 git -C "$M1" status --porcelain | grep -q '^UU seed/.claude/rules/conflict-probe.md' \
   || fail "#7a: expected UU on same-line merge, got:"$'\n'"$(git -C "$M1" status --porcelain)"
 pass "#7a same-line git merge → UU"
@@ -263,7 +296,9 @@ gitc "$M2" commit -q -m "sideDel removes md-probe"
 gitc "$M2" checkout -q main
 printf 'main modifies\n' > "$M2/seed/.claude/rules/md-probe.md"
 gitc "$M2" commit -q -am "main modifies md-probe"
-gitc "$M2" merge --no-edit sideDel >/dev/null 2>&1 && fail "#7b: modify/delete merge unexpectedly clean" || true
+if gitc "$M2" merge --no-edit sideDel >/dev/null 2>&1; then
+  fail "#7b: modify/delete merge unexpectedly clean"
+fi
 git -C "$M2" status --porcelain | grep -q '^UD seed/.claude/rules/md-probe.md' \
   || fail "#7b: expected UD (modify/delete), got:"$'\n'"$(git -C "$M2" status --porcelain)"
 pass "#7b modify/delete git merge → UD"
@@ -304,16 +339,16 @@ pass "#7d template file deletion propagates to project on update"
 # different wall-clock times yields different bytes. That non-reproducibility is
 # exactly why `copier update` spuriously conflicts on those two files.
 #
-# We test the root cause directly (deterministic) instead of the downstream
-# merge conflict. The conflict is a sub-second RACE: copier update conflicts only
-# when its two internal re-renders (old + new) straddle a %S boundary, so a fast
-# harness false-greens against buggy main (observed during implementation). Two
-# renders + a >=2s gap make the strftime difference deterministic.
+# We test the root cause directly first because the downstream conflict is a
+# sub-second RACE: copier update conflicts only when its two internal re-renders
+# (old + new) straddle a %S boundary, so a fast update can false-green against
+# buggy main. Two renders + a >=2s gap make the strftime difference deterministic.
+# Once that oracle is green, an empty template commit forces a real no-content
+# update and guards the end-to-end zero-conflict behavior too.
 #
 # Pre-fix: the two renders differ (RED). Post-fix (strftime removed): byte-
 # identical (GREEN) — with no other edit to this script (spec acceptance #5).
-# The spec's literal "copier update -> zero UU" is proven separately, as
-# deterministic manual evidence, when copier-update-timestamp-conflict lands.
+# The literal "copier update -> zero conflicts" check follows the render oracle.
 # ===========================================================================
 TS="$(fresh_tpl a8)"
 TS_A="$(git -C "$TS" rev-parse HEAD)"
@@ -328,10 +363,38 @@ for f in CLAUDE.md README.md; do
   cmp -s "$R1/$f" "$R2/$f" || TS_UNSTABLE="$TS_UNSTABLE $f"
 done
 if [[ -n "$TS_UNSTABLE" ]]; then
-  warn "#8 RED (expected until copier-update-timestamp-conflict lands): non-reproducible render in:$TS_UNSTABLE"
+  warn "#8 RED (expected only on the pre-fix baseline): non-reproducible render in:$TS_UNSTABLE"
   diff "$R1/CLAUDE.md" "$R2/CLAUDE.md" >&2 || true
   fail "#8: rendered$TS_UNSTABLE differ across two renders of the same version (volatile strftime timestamp)"
 fi
-pass "#8 render reproducible — CLAUDE.md/README.md byte-identical across renders (no volatile timestamp)"
+
+# Force Copier to execute its update path without changing any rendered
+# template content. Copier requires a clean destination, so commit any cleanup
+# that its post-generation tasks performed after the bootstrap commit first.
+# This complements the deterministic red/green oracle above.
+gitc "$R1" add -A
+if ! gitc "$R1" diff --cached --quiet; then
+  gitc "$R1" commit -q -m "a8: commit post-bootstrap cleanup"
+fi
+gitc "$TS" commit --allow-empty -q -m "a8: no-content template revision"
+TS_NEXT="$(git -C "$TS" rev-parse HEAD)"
+# shellcheck disable=SC2086
+if ! TS_UPDATE_OUT="$(cd "$R1" && $COPIER update --trust --defaults --vcs-ref "$TS_NEXT" 2>&1)"; then
+  fail "#8: no-content copier update exited non-zero:"$'\n'"$TS_UPDATE_OUT"
+fi
+TS_COMMIT_AFTER_SHA="$(copier_commit_sha "$TS" "$R1/.copier-answers.yml")" \
+  || fail "#8: cannot resolve _commit after no-content update"
+[[ "$TS_COMMIT_AFTER_SHA" == "$TS_NEXT" ]] \
+  || fail "#8: no-content update _commit resolves to $TS_COMMIT_AFTER_SHA, expected $TS_NEXT"
+TS_STATUS="$(git -C "$R1" status --porcelain)"
+if grep -Eq '^(DD|AU|UD|UA|DU|AA|UU) ' <<<"$TS_STATUS"; then
+  fail "#8: no-content copier update left unmerged files:"$'\n'"$TS_STATUS"
+fi
+for f in CLAUDE.md README.md; do
+  if grep -Eq '^(<<<<<<<|>>>>>>>)' "$R1/$f"; then
+    fail "#8: no-content copier update left conflict markers in $f"
+  fi
+done
+pass "#8 render reproducible + no-content copier update conflict-free"
 
 echo "ALL PROBES PASSED"
