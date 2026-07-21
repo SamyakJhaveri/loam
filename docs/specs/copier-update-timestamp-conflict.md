@@ -10,7 +10,7 @@
 - **Name:** copier-update-timestamp-conflict
 - **Owner:** Sam
 - **Status:** ready (grilled 2026-07-19)
-- **Scope:** Eliminate the merge conflict that `copier update` produces on **every** run because the rendered `CLAUDE.md` and `README.md` embed a render-time timestamp. Touches only two seed jinja files (and possibly `copier.yml`). No change to any other bootstrapped content.
+- **Scope:** Eliminate the spurious merge conflict that `copier update` can produce because the rendered `CLAUDE.md` and `README.md` embed a render-time timestamp. Touches only two seed jinja files (and possibly `copier.yml`). No change to any other bootstrapped content.
 - **Related:** `mechanism-spike-regression-test.md` (its acceptance test #5 is the red→green proof for this fix).
 
 ## Inputs
@@ -19,7 +19,7 @@
   - `seed/CLAUDE.md.jinja:3` — `> Bootstrapped from Loam on {{ "%Y-%m-%dT%H:%M:%SZ" | strftime }}. …`
   - `seed/CLAUDE.md.jinja:70` — `Today's date is {{ "%Y-%m-%dT%H:%M:%SZ" | strftime }}.`
   - `seed/README.md.jinja:3` — `> Created from [loam](…) on {{ "%Y-%m-%dT%H:%M:%SZ" | strftime }}. …`
-- **Why it conflicts:** Copier's `.copier-answers.yml` persists *answers* across updates, but a `strftime` call re-evaluates on every render. So `copier update` regenerates a different timestamp than the one committed at copy time, and Copier's three-way merge marks those lines as conflicts (`UU`). Observed twice in the spike (verbatim):
+- **Why it conflicts:** Copier's `.copier-answers.yml` persists *answers* across updates, but a `strftime` call re-evaluates on every render. Copier internally renders the old and new template revisions during update; when those renders cross a one-second boundary, the timestamps differ and its three-way merge marks those lines as conflicts (`UU`). Fast runs can therefore false-green, while two same-version renders separated by ≥2 seconds expose the root non-determinism reliably. The downstream conflict was observed twice in the spike (verbatim):
   ```
   <<<<<<< before updating
   > Bootstrapped from Loam on 2026-07-19T11:20:02Z …
@@ -72,7 +72,7 @@ This line is **independently wrong**: a static render date frozen at copy time i
 
 ## Acceptance Criteria
 
-1. Bootstrap a project, commit it, then run `copier update --defaults` with **no** template content change → `git status --porcelain` shows **zero** conflicted (`UU`) files; specifically neither `CLAUDE.md` nor `README.md` conflicts.
+1. Bootstrap a project and commit it; create an empty template commit so the template revision advances with **no rendered content change**; then run `copier update --defaults` to that revision. The persisted `_commit` advances, `git status --porcelain` shows zero unmerged files, and neither `CLAUDE.md` nor `README.md` contains conflict markers.
 2. `bin/verify-template.sh` prints `ALL OK` for both the default and research flavors.
 3. `grep -nE '%Y-%m-%dT%H:%M:%SZ" \| strftime' seed/CLAUDE.md.jinja seed/README.md.jinja` returns **no** match inside a Copier-merged region (either removed, or replaced by a persisted answer).
 4. **N/A — Option A chosen (D2).** No persisted bootstrap-date answer exists, so there is nothing to prove. (Original Option-B persistence criterion retained for history.)

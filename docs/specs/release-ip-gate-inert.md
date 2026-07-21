@@ -31,16 +31,16 @@
 
 ## Behavior
 
-**Grill decision D4 (Sam, 2026-07-19): Option 1a — restore the archive `ip-sweep.sh` verbatim (zero script edits).**
+**Grill decision D4 (Sam, 2026-07-19): Option 1a — restore the archive `ip-sweep.sh` after read-first review. Keep it byte-identical unless the review proves its missing-terms failure lacks the required actionable message; in that one case, permit only that message patch.**
 
-- Copy `~/Desktop/loam-dev-archive/bin/ip-sweep.sh` **verbatim** to `bin/ip-sweep.sh` (executable) — after reading it in full for private paths/leaks (the constraint below stands).
+- Copy `~/Desktop/loam-dev-archive/bin/ip-sweep.sh` to `bin/ip-sweep.sh` (executable) after reading it in full for private paths/leaks (the constraint below stands). Preserve it byte-for-byte unless the missing-terms message patch described above is necessary.
 - The blocklist of IP terms lives **outside** the script in `bin/.ip-terms`, which is **gitignored** (never committed).
 - Commit `bin/.ip-terms.example` (a redacted template) — read it in full first to confirm it leaks no real terms.
 - Sam copies the real `.ip-terms` from the archive to his local `bin/.ip-terms` (gitignored, never committed).
 - **Missing-terms behavior:** in strict mode, an absent `bin/.ip-terms` is a **hard FAIL**, not a silent skip — the honest gate. (This is the archive script's existing behavior; Session 2 confirms it when reading the script in full, and adds only the actionable "copy `.ip-terms.example`" message if the archive script does not already emit one.)
 - **No `bin/release.sh` edit needed:** the existing `if [[ -x …/ip-sweep.sh ]]` conditional already runs the sweep in strict mode once the script is present.
 
-**Rationale:** the script embeds no IP terms itself (they are external + gitignored), so restoring it verbatim leaks nothing; the strict hard-fail on missing terms is the honest behavior for maintainer tooling; the author/LFS checks already pass today (Verified 2026-07-19: all public-repo commit identities are the single noreply address, and `git lfs ls-files` count is 0).
+**Rationale:** the script embeds no IP terms itself (they are external + gitignored), so restoring the reviewed script leaks nothing; the strict hard-fail on missing terms is the honest behavior for maintainer tooling; the author/LFS checks already pass today (Verified 2026-07-19: all public-repo commit identities are the single noreply address, and `git lfs ls-files` count is 0).
 
 **Original options (historical — superseded by D4 = Option 1a):**
 
@@ -52,7 +52,7 @@ Whichever: `release.sh` must not end in a state where it *appears* to gate but s
 
 ## Outputs (D4 — Option 1a)
 
-- **Added:** `bin/ip-sweep.sh` — restored **verbatim** from the archive, executable, read-first.
+- **Added:** `bin/ip-sweep.sh` — restored from the archive, executable, read-first, and unchanged except for the single permitted missing-terms message patch if required.
 - **Added:** `bin/.ip-terms.example` — redacted template, committed after a full leak-check read.
 - **Modified:** `.gitignore` — add `bin/.ip-terms`.
 - **Not modified:** `bin/release.sh` — its existing `if [[ -x …/ip-sweep.sh ]]` conditional already gates strict once the script is present.
@@ -70,7 +70,7 @@ Whichever: `release.sh` must not end in a state where it *appears* to gate but s
 
 ## Acceptance Criteria
 
-1. Running `bin/release.sh <version>` from `~/Desktop/loam` executes an actual IP sweep (or, if Option 3, contains no reference to a missing script) — proven by the transcript showing the gate ran, not the `skipping IP gate` warning.
+1. Run `IP_SWEEP_STRICT=1 bash bin/ip-sweep.sh` directly in a disposable clone configured with test terms; the transcript shows the actual strict sweep ran. Separately inspect `bin/release.sh` and prove its existing executable check invokes that script with `IP_SWEEP_STRICT=1`. **Do not run `bin/release.sh` as verification:** it commits, tags, and pushes after the gate.
 2. `grep -n 'ip-sweep' bin/release.sh` resolves to a script that exists in the repo, OR the block is removed (no dangling reference).
 3. (Option 1a) `bin/ip-sweep.sh` exists in the public repo, is executable, and in **strict** mode **hard-fails with an actionable message** (copy `bin/.ip-terms.example` → `bin/.ip-terms`) when `bin/.ip-terms` is absent — verified by running it without the terms file. (Supersedes the original "skips cleanly" criterion: the honest gate fails loudly for the maintainer.)
 4. `bin/verify-template.sh` → `ALL OK` (release.sh change did not break the template).
