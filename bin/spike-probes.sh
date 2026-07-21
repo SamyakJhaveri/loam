@@ -22,6 +22,11 @@
 # targeting, the single line to update is the grep in ASSERTION 2 below
 # (search for "CHANGE HERE").
 #
+# IP GATE (ASSERTION 9): also guards bin/ip-sweep.sh, the release-time IP/secret
+# sweep. It has no other automated coverage (release.sh runs it manually; CI can't,
+# since release.yml fires post-tag-push), so a grep typo could silently re-inert the
+# gate. #9 runs the real script against a scratch repo and asserts red/green.
+#
 # RED/GREEN CONTRACT: #8 is expected RED only when validating the pre-fix
 # timestamp baseline. Once copier-update-timestamp-conflict lands, any #8
 # failure is a regression. The fix flips #8 green with no other edit to this
@@ -404,5 +409,65 @@ for f in CLAUDE.md README.md; do
   fi
 done
 pass "#8 render reproducible + no-content copier update conflict-free"
+
+# ===========================================================================
+# ASSERTION 9 — IP gate (bin/ip-sweep.sh): red/green + author detection
+# Guards the release-time IP/secret sweep (its only automated coverage). Runs the
+# REAL bin/ip-sweep.sh against a throwaway git repo — the script cd's to the git
+# toplevel of CWD, so pointing CWD at the scratch repo exercises it in isolation
+# with no copy. Asserts: a planted term in a tracked file is caught under strict
+# (RED); a clean tree passes (GREEN); a foreign AUTHOR email is still caught (the
+# W1 author-only check was not weakened); and a GitHub web-merge COMMITTER
+# (noreply@github.com) with a clean author PASSES (the %ce false positive that
+# blocked release is fixed).
+# ===========================================================================
+IPS="$SCRATCH/ipsweep"
+mkdir -p "$IPS/bin"
+git init -q "$IPS"
+NOREPLY="1+tester@users.noreply.github.com"
+# commit in the scratch repo with an explicit committer + author identity.
+ips_commit() { # <committer-email> <author-email> <git-args...>
+  GIT_COMMITTER_EMAIL="$1" GIT_COMMITTER_NAME=tester \
+  GIT_AUTHOR_EMAIL="$2"    GIT_AUTHOR_NAME=tester \
+  git -C "$IPS" -c commit.gpgsign=false "${@:3}"
+}
+# term file: present on disk (as in real use it's gitignored), never committed.
+printf 'SECRETTOKEN\n' > "$IPS/bin/.ip-terms"
+
+# 9a RED — a tracked file contains the planted term → strict must fail.
+printf 'leak marker: SECRETTOKEN lives here\n' > "$IPS/leak.md"
+git -C "$IPS" add leak.md
+ips_commit "$NOREPLY" "$NOREPLY" commit -q -m "9a: planted leak"
+if (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >/dev/null 2>&1; then
+  fail "#9a: strict sweep PASSED despite a planted term in a tracked file (leak detection broken)"
+fi
+pass "#9a RED — planted term in a tracked file is caught under strict"
+
+# 9b GREEN — remove the term from the tracked file → strict must pass (exit 0).
+printf 'leak marker: nothing here now\n' > "$IPS/leak.md"
+ips_commit "$NOREPLY" "$NOREPLY" commit -q -am "9b: remove planted term"
+(cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >/dev/null 2>&1 \
+  || fail "#9b: strict sweep FAILED on a clean tree (expected exit 0)"
+pass "#9b GREEN — clean tree passes strict"
+
+# 9d web-merge committer — COMMITTER noreply@github.com, AUTHOR clean → must PASS
+# (the exact %ce false positive that hard-failed release before W1). Runs BEFORE 9c
+# so its clean author history isn't contaminated by 9c's foreign author.
+printf 'benign\n' > "$IPS/webmerge.md"
+git -C "$IPS" add webmerge.md
+ips_commit "noreply@github.com" "$NOREPLY" commit -q -m "9d: web-merge style (committer noreply@github.com)"
+(cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >/dev/null 2>&1 \
+  || fail "#9d: strict sweep FAILED on a clean author with a GitHub web-merge committer (W1 false positive not fixed)"
+pass "#9d web-merge committer (noreply@github.com) + clean author passes strict"
+
+# 9c foreign AUTHOR — a commit authored by a non-noreply address → must be caught.
+# Last, because it permanently dirties this scratch repo's author history.
+printf 'benign2\n' > "$IPS/foreign.md"
+git -C "$IPS" add foreign.md
+ips_commit "$NOREPLY" "evil@example.com" commit -q -m "9c: foreign author"
+if (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >/dev/null 2>&1; then
+  fail "#9c: strict sweep PASSED despite a foreign AUTHOR email (author detection weakened by W1)"
+fi
+pass "#9c foreign author email is caught under strict (author-only check intact)"
 
 echo "ALL PROBES PASSED"
