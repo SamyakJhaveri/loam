@@ -2,14 +2,14 @@
 
 > Spec derived from the mechanism spike (Part 0.5 of the Phase-1 campaign, `~/.claude/plans/so-i-want-to-dazzling-manatee.md`).
 > Evidence: `~/.claude/plans/2026-07-19-mechanism-spike-findings.md` §3 ("The perpetual timestamp conflict").
-> Generated via `/gen-spec`, 2026-07-19. **Status: ready (grilled 2026-07-19).**
+> Generated via `/gen-spec`, 2026-07-19. **Status: implemented (2026-07-20, PRs #1/#2, main bc4ae34).**
 > Decided (a bug, no architecture dependency). Safe to implement independently of the Part 2 debate.
 
 ## Identity
 
 - **Name:** copier-update-timestamp-conflict
 - **Owner:** Sam
-- **Status:** ready (grilled 2026-07-19)
+- **Status:** implemented (2026-07-20, PRs #1/#2, main bc4ae34)
 - **Scope:** Eliminate the spurious merge conflict that `copier update` can produce because the rendered `CLAUDE.md` and `README.md` embed a render-time timestamp. Touches only two seed jinja files (and possibly `copier.yml`). No change to any other bootstrapped content.
 - **Related:** `mechanism-spike-regression-test.md` (its acceptance test #5 is the red→green proof for this fix).
 
