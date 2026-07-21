@@ -1,6 +1,6 @@
 ---
 name: template-sync
-description: Sync Claude Code assets between this project and the project-template buffer. Use when promoting a generally-useful agent/skill/hook/rule from this project back to the template, when pulling a template-side update down into this project, or when checking what has diverged. Subcommands - status, diff, pull, promote, trial, sync-from-buffer. Refuses to operate without template-manifest.json. Promotion is always opt-in - never automatic.
+description: Sync Claude Code assets between this project and the project-template buffer. Use when promoting a generally-useful agent/skill/hook/rule from this project back to the template, when pulling a template-side update down into this project, or when checking what has diverged. Subcommands - status, diff, pull, promote, trial, sync-from-buffer. Promotion is always opt-in - never automatic.
 auto-activate: false
 ---
 
@@ -22,9 +22,16 @@ auto-activate: false
 
 ## Pre-flight (always)
 
-1. Verify `template-manifest.json` exists at the project root. If missing, stop and tell the user this project wasn't bootstrapped via `init-project.sh` and the skill cannot operate.
-2. Resolve the template clone location: prefer `$TEMPLATE_PATH`, then `template.path` from manifest, then `~/Desktop/project_template`. Confirm the directory exists.
-3. Read `template-manifest.json` to know the project name and applied flavors — these inform layer suggestions.
+1. Verify the project is bootstrapped: `.copier-answers.yml` **or** (legacy) `template-manifest.json` exists at the project root. A copier-bootstrapped project has `.copier-answers.yml` and satisfies this on its own — do not require the manifest. If neither is present, stop and tell the user this project wasn't bootstrapped from the template and the skill cannot operate.
+2. Resolve the template clone location: prefer `$TEMPLATE_PATH`, then `_src_path` from `.copier-answers.yml`, then `~/Desktop/loam`. Confirm the directory exists.
+3. Read `.copier-answers.yml` (or legacy `template-manifest.json`) to know the project name and applied flavors — these inform layer suggestions.
+
+> **Running the script from a project without `bin/`.** Copier renders only `seed/` into a project, so a bootstrapped project has no `bin/template-sync.sh`. Drive the script from a local `loam` clone with the project as the working directory:
+>
+> ```bash
+> cd <my-project>
+> bash ~/Desktop/loam/bin/template-sync.sh promote --layer generic .claude/skills/<name>/SKILL.md
+> ```
 
 ## Subcommands
 

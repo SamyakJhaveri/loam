@@ -27,6 +27,8 @@ template-sync promote --layer generic .claude/skills/<name>/SKILL.md
 template-sync promote --layer flavor:research .claude/skills/<name>/SKILL.md
 ```
 
+> Copier renders only `seed/` into a project, so a bootstrapped project has no `bin/`. The skill drives `bin/template-sync.sh` from a local `loam` clone with the project as the working directory (e.g. `bash ~/Desktop/loam/bin/template-sync.sh promote …`), not a copy shipped into the project.
+
 Choose the layer deliberately:
 
 - `--layer generic` writes to `seed/.claude/<relpath>` in the template — ships to every future project. Use when the skill is useful regardless of project type.
