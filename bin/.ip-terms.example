@@ -1,0 +1,8 @@
+# TEMPLATE for bin/.ip-terms (which is gitignored — the real blocklist must not be
+# tracked, or it re-leaks the scrubbed names). Copy this to bin/.ip-terms and fill in
+# the real terms. One extended-regex term per line; lines starting with '#' are ignored.
+# Keep the real bin/.ip-terms in your password manager or private notes so a fresh
+# clone can recreate it — ip-sweep WARNs (and fails under STRICT) when it is missing.
+example-project-name
+another vendored term
+\bacronym\b
