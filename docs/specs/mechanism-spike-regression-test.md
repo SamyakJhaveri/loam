@@ -3,14 +3,14 @@
 > Spec derived from the mechanism spike (Part 0.5 of the Phase-1 campaign).
 > Turns the one-off manual probes into a re-runnable regression guard, so the findings stay true as Copier/Loam evolve.
 > Evidence + probe sequence: `~/.claude/plans/2026-07-19-mechanism-spike-findings.md` (per-probe commands + Appendix verdict table).
-> Generated via `/gen-spec`, 2026-07-19. **Status: ready (grilled 2026-07-19).**
+> Generated via `/gen-spec`, 2026-07-19. **Status: implemented (2026-07-20, PRs #1/#2, main bc4ae34).**
 > Decided (high value, no architecture dependency). This is "put the probes into practice" made literal.
 
 ## Identity
 
 - **Name:** mechanism-spike-regression-test
 - **Owner:** Sam
-- **Status:** ready (grilled 2026-07-19)
+- **Status:** implemented (2026-07-20, PRs #1/#2, main bc4ae34)
 - **Scope:** A reproducible, version-pinned end-to-end script that recreates the spike's probe chain in a disposable scratch dir and asserts each finding. New file(s) under `bin/` (plus optional wiring). Read-only on canonical (clones into scratch, exactly like the spike). Encodes the current behavior as assertions so a future Copier/Loam change that alters it fails loudly.
 - **Related:** `copier-update-timestamp-conflict.md` (its fix flips assertion #8 red→green); `template-sync-promote-generic-user.md` (its fix updates the PR-target assertion).
 
