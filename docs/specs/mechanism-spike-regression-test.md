@@ -32,7 +32,7 @@ A single script (proposed `bin/spike-probes.sh`) that runs the full chain in a s
 5. **Edge A fallback works:** `git merge upstream/main` of a non-overlapping canonical change is clean (exit 0) and preserves the personal divergence file.
 6. **Edge B works:** `copier update --defaults` in a project made from the personal Loam advances `_commit`, pulls the new file, preserves divergence, exit 0.
 7. **Conflict shapes:** same-line git merge → `UU`; modify/delete → `UD`; `copier update` overlap → in-file `before/after updating` markers; a template file deletion propagates to the project on update.
-8. **Timestamp assertion (the red one):** `copier copy` then `copier update --defaults` with **no** content change → assert **zero** conflicts. On current `main` this FAILS (red); after `copier-update-timestamp-conflict` lands it PASSES (green). The single test that proves that fix.
+8. **Timestamp assertion (the red one, then the end-to-end guard):** first render the same template commit twice with the same answers and a ≥2-second gap, then assert `CLAUDE.md` and `README.md` are byte-identical. This deterministic root-cause oracle FAILS on the pre-fix baseline and PASSES after `copier-update-timestamp-conflict` lands. Once it is green, create an empty template commit (a new revision with **no rendered content change**), run `copier update --defaults` to that revision, and assert `_commit` advances with zero unmerged files or conflict markers. The render comparison supplies deterministic red→green proof; the forced update guards the promised Copier behavior.
 
 ## Outputs
 

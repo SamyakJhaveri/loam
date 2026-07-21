@@ -60,6 +60,8 @@ bin/release.sh 3.2.0
 
 The script bumps `VERSION`, commits, tags, and pushes.
 
+Before a release (and on any Copier/Loam version bump), run `bin/spike-probes.sh` — a standalone regression guard that re-verifies the mechanism-spike findings (copy/promote/fork/update/conflict behavior) against the current Copier and git. It is intentionally **not** wired into the `/validate` gate or `bin/verify-template.sh` (it clones + runs Copier several times and is slow); run it manually. It exits non-zero if any spike verdict has regressed. At PR #1's pre-fix baseline, assertion #8 is intentionally red; after the timestamp fix lands, any #8 failure is a regression.
+
 > **Gotcha:** Always create a new tag after pushing significant changes. Without a tag update, `copier copy` silently serves the old version. Use `--vcs-ref=HEAD` for testing unreleased changes.
 
 ## `.copier-answers.yml`
