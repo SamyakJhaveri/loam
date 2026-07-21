@@ -27,11 +27,12 @@ IP_TERMS_FILE="${IP_TERMS_FILE:-bin/.ip-terms}"
 # (the greps exit 1 when they match nothing).
 TERMS="$(grep -vE '^[[:space:]]*#' "$IP_TERMS_FILE" 2>/dev/null | grep -vE '^[[:space:]]*$' | paste -sd '|' - || true)"
 
-# Exclude private-only paths that never export to the public repo: session plans,
-# ADRs, human-only reference material, and hero-art/diagram sources. These live in
-# this archive only (the public repo is a separate clean cut and is verified term-
-# free), so terms appearing here are expected history, not a leak.
-EXCLUDE='^docs/(plans|adr)/|^_archive/|^cultivation/wip/|^docs/POST-RELEASE-BACKLOG|^docs/diagrams/(design-philosophy\.md|concepts\.yaml|loam-hero-)'
+# Exclude private-archive-only paths + the binary hero-art renders (loam-hero-*,
+# which grep -I skips as binary anyway): session plans, ADRs, human-only reference
+# material. Public text docs (POST-RELEASE-BACKLOG, design-philosophy.md,
+# concepts.yaml) are deliberately NOT excluded — if ever tracked they must be
+# scanned. Terms under these paths are expected private history, not a leak.
+EXCLUDE='^docs/(plans|adr)/|^_archive/|^cultivation/wip/|^docs/diagrams/loam-hero-'
 FAIL=0
 
 # Content check: decide on the OUTPUT (matching filenames), not on xargs' exit
@@ -53,11 +54,32 @@ if command -v git-lfs >/dev/null 2>&1 && [ -n "$(git lfs ls-files 2>/dev/null)" 
   [[ "$STRICT" = 1 ]] && FAIL=1
 fi
 
-BAD_AUTHORS=$(git log --format='%ae%n%ce' | sort -u | grep -v 'users.noreply.github.com' || true)
+# Inspect the AUTHOR (%ae) only. An IP leak can only ride in on the author identity;
+# the committer (%ce) on a GitHub web "Merge pull request" is GitHub's own server
+# identity (noreply@github.com), never a leak. Unioning %ce here only minted false
+# positives that hard-failed release under strict. (Matches this script's header:
+# "commit authors are the GitHub noreply only".)
+BAD_AUTHORS=$(git log --format='%ae' | sort -u | grep -v 'users.noreply.github.com' || true)
 if [ -n "$BAD_AUTHORS" ]; then
   echo "WARN: non-noreply commit identities (must be clean in the public repo):"
   echo "$BAD_AUTHORS"
   [[ "$STRICT" = 1 ]] && FAIL=1
+fi
+
+# Footgun guard: bin/.ip-terms (gitignored, the REAL blocklist) and
+# bin/.ip-terms.example (tracked, placeholders) are look-alikes. Editing the wrong
+# one either leaks real terms into the tracked example or silently no-ops. Flag any
+# non-comment, non-placeholder line that has crept into the tracked example.
+# Keep PLACEHOLDERS in sync with the terms shipped in bin/.ip-terms.example.
+EXAMPLE_FILE="bin/.ip-terms.example"
+if [[ -f "$EXAMPLE_FILE" ]]; then
+  PLACEHOLDERS='^(example-project-name|another vendored term|\\bacronym\\b)$'
+  STRAY="$(grep -vE '^[[:space:]]*#' "$EXAMPLE_FILE" | grep -vE '^[[:space:]]*$' | grep -vE "$PLACEHOLDERS" || true)"
+  if [ -n "$STRAY" ]; then
+    echo "WARN: $EXAMPLE_FILE has non-placeholder line(s) — real terms belong ONLY in the gitignored bin/.ip-terms:"
+    echo "$STRAY"
+    [[ "$STRICT" = 1 ]] && FAIL=1
+  fi
 fi
 
 if [ "$FAIL" -eq 0 ]; then
