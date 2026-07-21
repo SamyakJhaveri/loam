@@ -62,7 +62,7 @@ This is the 10-step flow. **Never skip the questions.**
 2. **Read the file.** Use the Read tool to load the asset.
 
 3. **Generality scan.** Look for and quote any of:
-   - Project-specific names (the value of `project_name` in manifest, or any `~/Desktop/<other-project>/` path)
+   - Project-specific names (the value of `project_name` in `.copier-answers.yml` (or legacy manifest), or any `~/Desktop/<other-project>/` path)
    - Hardcoded absolute paths under `/Users/...` or `/home/...` outside generic placeholders
    - Likely secrets: tokens, API keys, OAuth tokens, .env file contents (regex-style scan: `(?i)(api[_-]?key|secret|token|password|bearer)\s*[:=]\s*['"]?[A-Za-z0-9_\-]{16,}`)
    - References to a prior project's benchmarks, papers, or venues (e.g. Rodinia, HeCBench, XSBench, RSBench, mixbench, NeurIPS, SC26)
