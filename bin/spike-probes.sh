@@ -15,9 +15,12 @@
 # Pointer lives in docs/COPIER.md §Versioning.
 #
 # CHANGE-DETECTOR (spec acceptance #6): assertion #2 asserts the promote PR
-# target is `samyakjhaveri/loam`. When template-sync-promote-generic-user reworks
+# target is `samyakjhaveri/loam`. That hardcode (bin/template-sync.sh:295, the
+# no-manifest else branch) is unchanged by template-sync-promote-generic-user
+# Part A — the PR-target rework is deferred to the fork-vs-data divergence
+# decision (three-tier-divergence-decision.md, Part B). When it reworks
 # targeting, the single line to update is the grep in ASSERTION 2 below
-# (search for "CHANGE HERE"); its source of truth is bin/template-sync.sh:295.
+# (search for "CHANGE HERE").
 #
 # RED/GREEN CONTRACT: #8 is expected RED only when validating the pre-fix
 # timestamp baseline. Once copier-update-timestamp-conflict lands, any #8
@@ -153,8 +156,9 @@ mkdir -p "$PROJ1/.claude/rules"
 printf '# spike probe asset\n' > "$PROJ1/.claude/rules/spike-probe.md"
 PROMOTE_OUT="$(cd "$PROJ1" && bash "$T1/bin/template-sync.sh" promote --layer generic .claude/rules/spike-probe.md 2>&1)" \
   || fail "#2: promote exited non-zero:"$'\n'"$PROMOTE_OUT"
-# CHANGE HERE when template-sync-promote-generic-user reworks PR targeting
-# (source of truth: bin/template-sync.sh:295, the no-manifest else branch).
+# CHANGE HERE when the divergence decision reworks PR targeting
+# (three-tier-divergence-decision.md / Part B; source of truth:
+# bin/template-sync.sh:295, the no-manifest else branch — unchanged in Part A).
 grep -q -- '--repo samyakjhaveri/loam' <<<"$PROMOTE_OUT" \
   || fail "#2: promote PR command no longer targets samyakjhaveri/loam:"$'\n'"$PROMOTE_OUT"
 SYNC_BRANCH="$(git -C "$T1" for-each-ref --format='%(refname:short)' refs/heads/ | grep '^sync/' | head -1 || true)"
@@ -165,19 +169,23 @@ pass "#2 upward promote (script) — $SYNC_BRANCH + asset committed, PR target s
 
 # ===========================================================================
 # ASSERTION 3 — Skill precondition (static)
-# The SKILL.md pre-flight refuses without template-manifest.json, so a copier
-# project (which has none) can never satisfy the documented skill path.
-# Updated/removed once template-sync-promote-generic-user aligns the skill.
+# template-sync-promote-generic-user (Part A) aligned the skill with the script:
+# the SKILL.md pre-flight now accepts .copier-answers.yml as a sufficient
+# precondition, so a copier project (which has one, no manifest) satisfies the
+# documented skill path. This guards that alignment — a revert to "refuses
+# without template-manifest.json" (dropping .copier-answers.yml, or re-adding
+# the removed init-project.sh / ~/Desktop/project_template) fails here.
 # ===========================================================================
 SKILL="$T1/seed/.claude/skills/template-sync/SKILL.md"
-grep -q 'template-manifest.json' "$SKILL" || fail "#3: SKILL.md no longer references the template-manifest.json precondition"
-# Require the refusal ('cannot operate') and the manifest token on the SAME line,
-# so a reword that keeps both substrings but severs the tie is caught (harder to
-# false-pass than two independent whole-file greps). Known-weak static proxy per
-# spec; updated/removed when template-sync-promote-generic-user aligns the skill.
-grep -i 'cannot operate' "$SKILL" | grep -qi 'template-manifest' \
-  || fail "#3: SKILL.md pre-flight no longer ties 'cannot operate' to a missing template-manifest.json"
-pass "#3 skill pre-flight still refuses without template-manifest.json (static)"
+grep -q '\.copier-answers\.yml' "$SKILL" \
+  || fail "#3: SKILL.md pre-flight no longer names .copier-answers.yml as a sufficient precondition"
+if grep -q 'init-project.sh' "$SKILL"; then
+  fail "#3: SKILL.md still cites the removed init-project.sh (Part A drops it)"
+fi
+if grep -q 'project_template' "$SKILL"; then
+  fail "#3: SKILL.md still defaults the template path to ~/Desktop/project_template (Part A → ~/Desktop/loam)"
+fi
+pass "#3 skill pre-flight accepts .copier-answers.yml (aligned with the promote script)"
 
 # ===========================================================================
 # ASSERTION 4 — Edge A broken: copier update on a fork
