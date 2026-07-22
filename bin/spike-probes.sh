@@ -533,13 +533,16 @@ pass "#9j spoofed author identity is caught"
 # 9k W5 — exercise the tracked example placeholder guard itself.
 printf 'example-project-name\nanother vendored term\n\\bacronym\\b\nCLIENTCODENAME\n' \
   > "$IPS/bin/.ip-terms.example"
+git -C "$IPS" add bin/.ip-terms.example
+ips_commit "$NOREPLY" "$NOREPLY" commit -q -m "9k: tracked example footgun"
 if (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >"$IPS/9k.out" 2>&1; then
   fail "#9k: strict sweep PASSED with a stray tracked example term"
 fi
 grep -q 'CLIENTCODENAME' "$IPS/9k.out" \
   || fail "#9k: W5 did not name the stray example term"
 pass "#9k tracked example footgun guard catches stray terms"
-rm -f "$IPS/bin/.ip-terms.example"
+git -C "$IPS" rm -q bin/.ip-terms.example
+ips_commit "$NOREPLY" "$NOREPLY" commit -q -m "9k: remove tracked example footgun"
 
 # 9c foreign AUTHOR — a commit authored by a non-noreply address → must be caught.
 # Last, because it permanently dirties this scratch repo's author history.
