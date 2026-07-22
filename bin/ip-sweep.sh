@@ -50,14 +50,14 @@ if [[ -n "$TERMS" ]]; then
 
   HITS=""
   if [[ "$FAIL" -eq 0 ]]; then
-    while IFS=$'\t' read -r -d '' META PATH; do
+    while IFS=$'\t' read -r -d '' META FILE_PATH; do
       [[ "$META" =~ ^([0-9]{6})[[:space:]]([0-9a-f]{40})[[:space:]][0-3]$ ]] || continue
       MODE="${BASH_REMATCH[1]}"
       OID="${BASH_REMATCH[2]}"
       [[ "$MODE" == 160000 ]] && continue
-      [[ "$PATH" =~ $EXCLUDE ]] && continue
+      [[ "$FILE_PATH" =~ $EXCLUDE ]] && continue
       if git cat-file blob "$OID" | grep -niE "$TERMS" >/dev/null; then
-        HITS+="$PATH"$'\n'
+        HITS+="$FILE_PATH"$'\n'
       fi
     done < <(git ls-files -z --stage)
   fi
