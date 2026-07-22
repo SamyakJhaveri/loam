@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ip-sweep.sh — repeatable IP gate before any public push.
 #
-# PRIVATE-DEV TOOLING: this script is NOT shipped to the public repo — a tracked
-# blocklist would leak the very names it scrubs. The blocklist itself lives in a
-# gitignored term file (see IP_TERMS_FILE), never in this tracked script.
+# This gate is tracked in the public Loam repo but is not rendered into projects.
+# The blocklist itself lives in a gitignored term file (see IP_TERMS_FILE), never
+# in this tracked script.
 #
 # Checks:
 #   (1) no foreign-IP terms in tracked text files   — hard FAIL
 #   (2) no git-LFS objects                           — WARN; FAIL under STRICT
-#   (3) commit authors are the GitHub noreply only   — WARN; FAIL under STRICT
+#   (3) public author/committer identities only        — WARN; FAIL under STRICT
 #
 # The private dev archive has legitimately dirty authors/LFS, so (2) and (3) are
 # WARN by default. Set IP_SWEEP_STRICT=1 (release.sh does, and any public run
@@ -32,14 +32,40 @@ TERMS="$(grep -vE '^[[:space:]]*#' "$IP_TERMS_FILE" 2>/dev/null | grep -vE '^[[:
 # material. Public text docs (POST-RELEASE-BACKLOG, design-philosophy.md,
 # concepts.yaml) are deliberately NOT excluded — if ever tracked they must be
 # scanned. Terms under these paths are expected private history, not a leak.
-EXCLUDE='^docs/(plans|adr)/|^_archive/|^cultivation/wip/|^docs/diagrams/loam-hero-'
+EXCLUDE='^docs/(plans|adr)/|^_archive/|^cultivation/wip/|^docs/diagrams/loam-hero-.*\.(png|qa\.yaml)$'
 FAIL=0
 
-# Content check: decide on the OUTPUT (matching filenames), not on xargs' exit
-# code — a multi-batch xargs can return non-zero from a later empty batch and mask
-# a real match found in an earlier one.
+# Content check: validate the assembled ERE before scanning. A malformed term
+# must fail closed instead of being mistaken for a clean no-match result.
 if [[ -n "$TERMS" ]]; then
-  HITS="$(git ls-files | grep -vE "$EXCLUDE" | xargs grep -lniIE "$TERMS" 2>/dev/null || true)"
+  if grep -E "$TERMS" </dev/null >/dev/null 2>&1; then
+    :
+  else
+    REGEX_RC=$?
+    if [[ "$REGEX_RC" -gt 1 ]]; then
+      echo "FAIL: invalid extended regex in $IP_TERMS_FILE; content sweep aborted."
+      FAIL=1
+    fi
+  fi
+
+  HITS=""
+  if [[ "$FAIL" -eq 0 ]]; then
+    while IFS=$'\t' read -r -d '' META FILE_PATH; do
+      [[ "$META" =~ ^([0-9]{6})[[:space:]]([0-9a-f]{40})[[:space:]][0-3]$ ]] || continue
+      MODE="${BASH_REMATCH[1]}"
+      OID="${BASH_REMATCH[2]}"
+      [[ "$MODE" == 160000 ]] && continue
+      [[ "$FILE_PATH" =~ $EXCLUDE ]] && continue
+      if [[ "$MODE" == 120000 ]]; then
+        MATCH_CMD=(grep -niE "$TERMS")
+      else
+        MATCH_CMD=(grep -niIE "$TERMS")
+      fi
+      if git cat-file blob "$OID" | "${MATCH_CMD[@]}" >/dev/null; then
+        HITS+="$FILE_PATH"$'\n'
+      fi
+    done < <(git ls-files -z --stage)
+  fi
   if [[ -n "$HITS" ]]; then
     echo "FAIL: foreign-IP terms found in tracked files:"; echo "$HITS"; FAIL=1
   fi
@@ -54,15 +80,21 @@ if command -v git-lfs >/dev/null 2>&1 && [ -n "$(git lfs ls-files 2>/dev/null)" 
   [[ "$STRICT" = 1 ]] && FAIL=1
 fi
 
-# Inspect the AUTHOR (%ae) only. An IP leak can only ride in on the author identity;
-# the committer (%ce) on a GitHub web "Merge pull request" is GitHub's own server
-# identity (noreply@github.com), never a leak. Unioning %ce here only minted false
-# positives that hard-failed release under strict. (Matches this script's header:
-# "commit authors are the GitHub noreply only".)
-BAD_AUTHORS=$(git log --format='%ae' | sort -u | grep -v 'users.noreply.github.com' || true)
+# Authors must use a complete GitHub noreply address. Committers may additionally
+# be GitHub's exact web-merge identity; checking both fields preserves the public
+# history identity boundary without rejecting GitHub's merge commits.
+NOREPLY_AUTHOR_RE='^[^@[:space:]]+@users\.noreply\.github\.com$'
+NOREPLY_COMMITTER_RE='^([^@[:space:]]+@users\.noreply\.github\.com|noreply@github\.com)$'
+BAD_AUTHORS=$(git log --format='%ae' | sort -u | grep -vE "$NOREPLY_AUTHOR_RE" || true)
 if [ -n "$BAD_AUTHORS" ]; then
-  echo "WARN: non-noreply commit identities (must be clean in the public repo):"
+  echo "WARN: non-noreply author identities (must be clean in the public repo):"
   echo "$BAD_AUTHORS"
+  [[ "$STRICT" = 1 ]] && FAIL=1
+fi
+BAD_COMMITTERS=$(git log --format='%ce' | sort -u | grep -vE "$NOREPLY_COMMITTER_RE" || true)
+if [ -n "$BAD_COMMITTERS" ]; then
+  echo "WARN: non-noreply committer identities (must be clean in the public repo):"
+  echo "$BAD_COMMITTERS"
   [[ "$STRICT" = 1 ]] && FAIL=1
 fi
 
