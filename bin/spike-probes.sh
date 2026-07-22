@@ -450,6 +450,54 @@ ips_commit "$NOREPLY" "$NOREPLY" commit -q -am "9b: remove planted term"
   || fail "#9b: strict sweep FAILED on a clean tree (expected exit 0)"
 pass "#9b GREEN — clean tree passes strict"
 
+# 9e malformed ERE — an invalid term must fail closed, not become an empty scan.
+printf '[\n' > "$IPS/bin/.ip-terms"
+if (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >"$IPS/9e.out" 2>&1; then
+  fail "#9e: strict sweep PASSED with a malformed term regex"
+fi
+grep -q 'invalid extended regex' "$IPS/9e.out" \
+  || fail "#9e: malformed term failure lacked the actionable regex diagnostic"
+pass "#9e malformed term regex fails closed"
+
+# Restore a valid term list before the content-path fixtures.
+printf 'SECRETTOKEN\n' > "$IPS/bin/.ip-terms"
+
+# 9f whitespace path — tracked Git pathnames must not be split by xargs.
+printf 'SECRETTOKEN\n' > "$IPS/release notes.md"
+git -C "$IPS" add 'release notes.md'
+ips_commit "$NOREPLY" "$NOREPLY" commit -q -m "9f: whitespace pathname leak"
+if (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >/dev/null 2>&1; then
+  fail "#9f: strict sweep PASSED with a term in a whitespace-bearing tracked path"
+fi
+pass "#9f whitespace-bearing tracked path is scanned"
+git -C "$IPS" rm -q 'release notes.md'
+ips_commit "$NOREPLY" "$NOREPLY" commit -q -m "9f: remove whitespace pathname fixture"
+
+# 9g symlink blob — scan the published Git blob, even when its target is absent.
+printf 'SYMLINKTOKEN\n' > "$IPS/bin/.ip-terms"
+ln -s SYMLINKTOKEN "$IPS/dangling-link"
+git -C "$IPS" add dangling-link
+ips_commit "$NOREPLY" "$NOREPLY" commit -q -m "9g: symlink blob leak"
+if (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >/dev/null 2>&1; then
+  fail "#9g: strict sweep PASSED with a term in a tracked symlink blob"
+fi
+pass "#9g tracked symlink blob is scanned"
+git -C "$IPS" rm -q dangling-link
+ips_commit "$NOREPLY" "$NOREPLY" commit -q -m "9g: remove symlink fixture"
+
+# 9h hero text — only ignored binary hero artifacts may be excluded.
+printf 'HEROTOKEN\n' > "$IPS/bin/.ip-terms"
+mkdir -p "$IPS/docs/diagrams"
+printf 'HEROTOKEN\n' > "$IPS/docs/diagrams/loam-hero-private.md"
+git -C "$IPS" add docs/diagrams/loam-hero-private.md
+ips_commit "$NOREPLY" "$NOREPLY" commit -q -m "9h: hero text leak"
+if (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >/dev/null 2>&1; then
+  fail "#9h: strict sweep PASSED with a term in tracked hero text"
+fi
+pass "#9h tracked hero text is scanned"
+git -C "$IPS" rm -q docs/diagrams/loam-hero-private.md
+ips_commit "$NOREPLY" "$NOREPLY" commit -q -m "9h: remove hero text fixture"
+
 # 9d web-merge committer — COMMITTER noreply@github.com, AUTHOR clean → must PASS
 # (the exact %ce false positive that hard-failed release before W1). Runs BEFORE 9c
 # so its clean author history isn't contaminated by 9c's foreign author.
@@ -459,6 +507,39 @@ ips_commit "noreply@github.com" "$NOREPLY" commit -q -m "9d: web-merge style (co
 (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >/dev/null 2>&1 \
   || fail "#9d: strict sweep FAILED on a clean author with a GitHub web-merge committer (W1 false positive not fixed)"
 pass "#9d web-merge committer (noreply@github.com) + clean author passes strict"
+
+# 9i private committer — committer metadata is public identity and must be gated.
+printf 'benign-private-committer\n' > "$IPS/private-committer.md"
+git -C "$IPS" add private-committer.md
+ips_commit "private-person@example.com" "$NOREPLY" commit -q -m "9i: private committer"
+if (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >"$IPS/9i.out" 2>&1; then
+  fail "#9i: strict sweep PASSED with a private committer identity"
+fi
+grep -q 'private-person@example.com' "$IPS/9i.out" \
+  || fail "#9i: private committer was not named in the failure"
+pass "#9i private committer identity is caught"
+
+# 9j spoofed author — the allowlist must match the complete email address.
+printf 'benign-spoof\n' > "$IPS/spoof-author.md"
+git -C "$IPS" add spoof-author.md
+ips_commit "$NOREPLY" 'attacker@usersXnoreplyYgithubZcom.evil' commit -q -m "9j: spoofed author"
+if (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >"$IPS/9j.out" 2>&1; then
+  fail "#9j: strict sweep PASSED with a spoofed noreply-looking author"
+fi
+grep -q 'attacker@usersXnoreplyYgithubZcom.evil' "$IPS/9j.out" \
+  || fail "#9j: spoofed author was not named in the failure"
+pass "#9j spoofed author identity is caught"
+
+# 9k W5 — exercise the tracked example placeholder guard itself.
+printf 'example-project-name\nanother vendored term\n\\bacronym\\b\nCLIENTCODENAME\n' \
+  > "$IPS/bin/.ip-terms.example"
+if (cd "$IPS" && IP_SWEEP_STRICT=1 bash "$LOAM/bin/ip-sweep.sh") >"$IPS/9k.out" 2>&1; then
+  fail "#9k: strict sweep PASSED with a stray tracked example term"
+fi
+grep -q 'CLIENTCODENAME' "$IPS/9k.out" \
+  || fail "#9k: W5 did not name the stray example term"
+pass "#9k tracked example footgun guard catches stray terms"
+rm -f "$IPS/bin/.ip-terms.example"
 
 # 9c foreign AUTHOR — a commit authored by a non-noreply address → must be caught.
 # Last, because it permanently dirties this scratch repo's author history.
