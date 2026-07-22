@@ -23,9 +23,9 @@
 # (search for "CHANGE HERE").
 #
 # IP GATE (ASSERTION 9): also guards bin/ip-sweep.sh, the release-time IP/secret
-# sweep. It has no other automated coverage (release.sh runs it manually; CI can't,
-# since release.yml fires post-tag-push), so a grep typo could silently re-inert the
-# gate. #9 runs the real script against a scratch repo and asserts red/green.
+# sweep. It is not currently wired into CI (release.yml fires post-tag-push), so a
+# grep typo could silently re-inert the gate. #9 runs the real script against a
+# scratch repo and asserts red/green.
 #
 # RED/GREEN CONTRACT: #8 is expected RED only when validating the pre-fix
 # timestamp baseline. Once copier-update-timestamp-conflict lands, any #8
