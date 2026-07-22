@@ -56,7 +56,12 @@ if [[ -n "$TERMS" ]]; then
       OID="${BASH_REMATCH[2]}"
       [[ "$MODE" == 160000 ]] && continue
       [[ "$FILE_PATH" =~ $EXCLUDE ]] && continue
-      if git cat-file blob "$OID" | grep -niE "$TERMS" >/dev/null; then
+      if [[ "$MODE" == 120000 ]]; then
+        MATCH_CMD=(grep -niE "$TERMS")
+      else
+        MATCH_CMD=(grep -niIE "$TERMS")
+      fi
+      if git cat-file blob "$OID" | "${MATCH_CMD[@]}" >/dev/null; then
         HITS+="$FILE_PATH"$'\n'
       fi
     done < <(git ls-files -z --stage)
