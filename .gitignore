@@ -93,3 +93,4 @@ docs/plans/
 docs/adr/
 _archive/
 cultivation/wip/
+.sync-state
