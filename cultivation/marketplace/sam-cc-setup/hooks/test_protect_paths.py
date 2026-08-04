@@ -27,7 +27,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as td:
         root = os.path.realpath(td)
         os.makedirs(os.path.join(root, "results/evaluation"), exist_ok=True)
-        patterns = ["results/evaluation/*", "vendor/upstream"]
+        patterns = ["results/evaluation/*", "vendor/upstream", "*.secret"]
 
         # (label, tool, tool_input, expect_block)
         cases = [
@@ -63,6 +63,16 @@ def main() -> int:
              {"command": "ls results/evaluation/"}, False),
             ("rm of something else, path in other segment", "Bash",
              {"command": "rm /tmp/scratch.txt && cat results/evaluation/x.json"}, False),
+            ("rm of extension-glob protected file", "Bash",
+             {"command": "rm foo.secret"}, True),
+            ("rm of ANCESTOR dir of a protected path", "Bash",
+             {"command": "rm -rf results"}, True),
+            ("prefix sibling dir is NOT blocked", "Bash",
+             {"command": "rm results/evaluation2/x.json"}, False),
+            ("absolute-path rm target inside repo", "Bash",
+             {"command": f"rm {root}/results/evaluation/x.json"}, True),
+            ("unlink via indirection backstop", "Bash",
+             {"command": "echo `unlink results/evaluation/x.json`"}, True),
             # --- Bash redirects -----------------------------------------------
             ("redirect overwrite", "Bash",
              {"command": "echo '{}' > results/evaluation/x.json"}, True),
@@ -70,6 +80,8 @@ def main() -> int:
              {"command": "echo '{}' >> results/evaluation/x.json"}, True),
             ("redirect elsewhere", "Bash",
              {"command": "echo hi > /tmp/out.txt"}, False),
+            ("absolute-path redirect inside repo", "Bash",
+             {"command": f"echo x > {root}/results/evaluation/x.json"}, True),
             # --- other tools --------------------------------------------------
             ("Read is never blocked", "Read",
              {"file_path": "results/evaluation/x.json"}, False),

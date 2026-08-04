@@ -39,11 +39,14 @@ state can only ever confirm the current state.
 
 ## Step 1: setup
 
-Run the `setup` command if declared (venv activation, cd, environment).
+If `setup` is declared (venv activation, cd, environment), prefix it to EVERY
+command you run in the same Bash invocation (`<setup> && <command>`) - shell
+state does not persist between separate Bash calls, so a standalone setup call
+silently does nothing for the commands that follow.
 
 ## Step 2: the test command
 
-Run `test_command`. Report the pass/fail counts it prints.
+Run `test_command` (with the setup prefix). Report the pass/fail counts it prints.
 
 ## Step 3: each declared check
 

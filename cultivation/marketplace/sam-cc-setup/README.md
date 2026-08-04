@@ -36,8 +36,11 @@ Two more hooks and a checker ship inert; each activates only when its repo-local
 config file exists, so these v0.2.0 additions change nothing until you opt in.
 (The plugin as a whole is NOT behavior-neutral on install: the Pipeline Gate above
 blocks commits from the moment the plugin loads, by design.)
-All were generalized 2026-08-04 from upstream-project-proven originals; each carries its own
-control suite (positive AND negative controls - a guard that has never fired proves nothing).
+All come from upstream-project-proven originals. The two generalized ones (`protect-paths`,
+`check_stale_counts`) each carry a control suite with positive AND negative controls -
+a guard that has never fired proves nothing. `generated-file-guard.sh` was vendored
+as-is (already registry-driven, proven in use upstream) and has no shipped suite;
+exercise it with a seeded registry row after install.
 
 | Guard | Config file | What it does |
 |---|---|---|

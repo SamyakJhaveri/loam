@@ -97,6 +97,18 @@ def main() -> int:
         r = run(pathlib.Path(td))
         check("no config is dormant (exit 0)", r.returncode == 0, r.stdout + r.stderr)
 
+    # Two stale assertions on ONE line: both must be found (finditer, not search).
+    with tempfile.TemporaryDirectory() as td:
+        r = run(build_repo(td, "was 8 KNOWN_FAIL specs, then 9 KNOWN_FAIL specs\n"))
+        check("both assertions on one line flagged",
+              r.returncode == 1 and r.stdout.count("KNOWN_FAIL specs") >= 2,
+              r.stdout + r.stderr)
+
+    # Empty-but-present config: a mistake, must abort loudly, never report clean.
+    with tempfile.TemporaryDirectory() as td:
+        r = run(build_repo(td, "clean\n", {}))
+        check("empty config aborts (exit 3)", r.returncode == 3, r.stdout + r.stderr)
+
     # Broken truth command: must abort loudly, never report clean.
     with tempfile.TemporaryDirectory() as td:
         bad = dict(CONFIG, truths={"kf_total": "false", "spec_total": "printf 60"})

@@ -135,11 +135,13 @@ def scan(cfg: dict, checks, root: pathlib.Path):
             if exempt(lines, i, markers):
                 continue
             for rx, truth, msg in checks:
-                m = rx.search(line)
-                if m and int(m.group(1)) != truth:
-                    findings.append(
-                        (path.relative_to(root), i + 1, m.group(0).strip(), truth, msg)
-                    )
+                # finditer, not search: one line can assert the same count twice
+                # and the second assertion is just as capable of being stale.
+                for m in rx.finditer(line):
+                    if int(m.group(1)) != truth:
+                        findings.append(
+                            (path.relative_to(root), i + 1, m.group(0).strip(), truth, msg)
+                        )
     return findings
 
 
@@ -155,6 +157,16 @@ def main() -> int:
         if not args.quiet:
             print("no .claude/stale-counts.json - nothing declared, nothing checked")
         return 0
+
+    # A config that exists but declares nothing is a mistake, not a clean run:
+    # someone intended checks and got silence.
+    for key in ("truths", "checks", "search"):
+        if not cfg.get(key):
+            print(f"INVALID CONFIG: .claude/stale-counts.json has no usable '{key}'.",
+                  file=sys.stderr)
+            print("Declare it or delete the file; an empty screen must not report clean.",
+                  file=sys.stderr)
+            return 3
 
     truths = resolve_truths(cfg, root)
     findings = scan(cfg, build_checks(cfg, truths), root)

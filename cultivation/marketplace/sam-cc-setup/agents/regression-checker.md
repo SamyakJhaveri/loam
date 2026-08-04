@@ -60,10 +60,12 @@ regression by declaration.
 For each entry in `append_only`:
 
 ```bash
-git diff HEAD -- <file> | grep '^-[^-]' | wc -l
+git diff HEAD -- <file> | grep '^-' | grep -cv '^---'
 ```
 
-Any deleted line = FAIL (append-only violation).
+Any deleted line = FAIL (append-only violation). The second grep excludes only
+the `--- a/file` diff header - a plain `^-[^-]` filter would also miss real
+deleted lines whose content begins with `-`.
 
 ## Output format
 

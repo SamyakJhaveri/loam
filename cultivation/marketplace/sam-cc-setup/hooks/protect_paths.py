@@ -19,8 +19,13 @@ Blocks:
     protected path appear in the SAME command segment (tokenized, not regexed:
     a regex cannot tell a shell separator from the same byte inside a quoted
     argument - this design survived five adversarial review rounds in the
-    source repo's protect-eval-results.sh)
-  - Bash redirects (> or >>) onto a protected path
+    source repo's protect-eval-results.sh). Delete operands are normalized and
+    glob-matched, and deleting an ANCESTOR directory of a protected path also
+    blocks (rm -rf on the parent deletes the protected children).
+  - Bash redirects (> or >>) onto a protected path, absolute or relative
+
+Known static-analysis gaps, accepted: shell variables ($PWD/...) and arithmetic
+the tokenizer cannot resolve; the INDIRECT backstop catches the common wrappers.
 
 Testable directly:  python3 protect_paths.py --config FILE  < hook.json
 """
@@ -45,6 +50,7 @@ SHELLS = {"bash", "sh", "dash", "zsh", "ksh"}
 INDIRECT = re.compile(
     r"<<<|<<|\$\(|`|\$'|\|\s*(?:/\S*/)?(?:" + "|".join(sorted(SHELLS)) + r")\b"
 )
+DELETE_VERB = re.compile(r"\b(?:" + "|".join(sorted(DELETERS)) + r")\b")
 
 
 def load_patterns(config_path: str) -> list[str]:
@@ -58,6 +64,22 @@ def load_patterns(config_path: str) -> list[str]:
     return patterns
 
 
+def normalize(path_str: str, root: str) -> str | None:
+    """Repo-relative normalized form of a path token, or None if outside/empty.
+
+    realpath, never prefix-stripping: ./x, a/../x, //x, absolute paths into the
+    repo, and symlinks all evaded a plain "${FILE#$ROOT/}" strip in an earlier
+    hook.
+    """
+    if not path_str:
+        return None
+    real_root = os.path.realpath(root)
+    rel = os.path.relpath(os.path.realpath(os.path.join(real_root, path_str)), real_root)
+    if rel.startswith("..") or os.path.isabs(rel):
+        return None
+    return rel
+
+
 def path_matches(rel: str, patterns: list[str]) -> bool:
     """Does repo-relative path `rel` fall under any protected glob?"""
     return any(
@@ -66,14 +88,31 @@ def path_matches(rel: str, patterns: list[str]) -> bool:
     )
 
 
-def _prefixes(patterns: list[str]) -> list[str]:
-    """Static prefix of each glob, for substring matching inside command tokens."""
+def _static_prefixes(patterns: list[str]) -> list[str]:
+    """Static (pre-wildcard) prefix of each glob, for ancestor/fallback checks."""
     out = []
     for p in patterns:
         pref = re.split(r"[*?\[]", p)[0].rstrip("/")
         if pref:
             out.append(pref)
     return out
+
+
+def delete_target_matches(token: str, patterns: list[str], root: str) -> bool:
+    """Would deleting `token` remove a protected path?
+
+    True when the normalized token matches a protected glob, or is an ancestor
+    directory of one (deleting the parent deletes the protected children).
+    """
+    rel = normalize(token, root)
+    if rel is None:
+        return False
+    if path_matches(rel, patterns):
+        return True
+    return any(
+        pref == rel or pref.startswith(rel + "/")
+        for pref in _static_prefixes(patterns)
+    )
 
 
 def _tokenize(cmd: str) -> list[str]:
@@ -96,23 +135,25 @@ def _segments(tokens: list[str]):
     yield current
 
 
-def _loose(cmd: str, prefixes: list[str]) -> bool:
+def _loose(cmd: str, patterns: list[str]) -> bool:
     """Last resort (unbalanced quotes, nesting past the depth cap): err toward blocking."""
-    return bool(re.search(r"\brm\b", cmd)) and any(p in cmd for p in prefixes)
+    return bool(DELETE_VERB.search(cmd)) and any(
+        p in cmd for p in _static_prefixes(patterns)
+    )
 
 
-def bash_delete_hits(cmd: str, prefixes: list[str], depth: int = 0) -> bool:
+def bash_delete_hits(cmd: str, patterns: list[str], root: str, depth: int = 0) -> bool:
     if depth > 4:  # cheap cycle guard on nested -c strings
-        return _loose(cmd, prefixes)
+        return _loose(cmd, patterns)
     try:
         tokens = _tokenize(cmd)
     except ValueError:
-        return _loose(cmd, prefixes)
+        return _loose(cmd, patterns)
 
     for segment in _segments(tokens):
         names = [t.rsplit("/", 1)[-1] for t in segment]
         if any(n in DELETERS for n in names) and any(
-            p in t for t in segment for p in prefixes
+            delete_target_matches(t, patterns, root) for t in segment
         ):
             return True
         # Indirection: the delete verb is inside a quoted string, so the
@@ -123,18 +164,19 @@ def bash_delete_hits(cmd: str, prefixes: list[str], depth: int = 0) -> bool:
                 arg = segment[i + 2]  # bash -c '...', combined flags like -lc
             elif name == "eval":
                 arg = " ".join(segment[i + 1:])
-            if arg and bash_delete_hits(arg, prefixes, depth + 1):
+            if arg and bash_delete_hits(arg, patterns, root, depth + 1):
                 return True
 
     # Backstop: the deletion may hide in something we cannot statically read.
-    return bool(INDIRECT.search(cmd)) and _loose(cmd, prefixes)
+    return bool(INDIRECT.search(cmd)) and _loose(cmd, patterns)
 
 
-def bash_redirect_hits(cmd: str, patterns: list[str]) -> str | None:
+def bash_redirect_hits(cmd: str, patterns: list[str], root: str) -> str | None:
     """Return the redirect target if the command redirects onto a protected path."""
     for m in re.finditer(r">>?\s*([^\s;&|<>]+)", cmd):
-        target = m.group(1).strip("'\"").lstrip("./")
-        if path_matches(target, patterns):
+        target = m.group(1).strip("'\"")
+        rel = normalize(target, root)
+        if rel is not None and path_matches(rel, patterns):
             return target
     return None
 
@@ -144,15 +186,9 @@ def verdict(hook_input: dict, patterns: list[str], root: str) -> str:
     ti = hook_input.get("tool_input", hook_input)
 
     if tool in ("Edit", "Write"):
-        p = ti.get("file_path", "")
-        if not p:
-            return "allow"
-        # Normalize, never prefix-strip: ./x, a/../x, //x and symlinks all
-        # evaded a plain "${FILE#$ROOT/}" strip in an earlier hook.
-        real_root = os.path.realpath(root)
-        rel = os.path.relpath(os.path.realpath(os.path.join(real_root, p)), real_root)
-        if rel.startswith("..") or os.path.isabs(rel):
-            return "allow"  # outside the repo - not ours
+        rel = normalize(ti.get("file_path", ""), root)
+        if rel is None:
+            return "allow"  # empty, or outside the repo - not ours
         if path_matches(rel, patterns):
             return f"block\t{rel} is protected (.claude/protected-paths.txt)"
         return "allow"
@@ -161,9 +197,9 @@ def verdict(hook_input: dict, patterns: list[str], root: str) -> str:
         cmd = ti.get("command", "")
         if not cmd:
             return "allow"
-        if bash_delete_hits(cmd, _prefixes(patterns)):
+        if bash_delete_hits(cmd, patterns, root):
             return "block\tdelete verb and a protected path in the same command segment"
-        target = bash_redirect_hits(cmd, patterns)
+        target = bash_redirect_hits(cmd, patterns, root)
         if target:
             return f"block\tredirect onto protected path {target}"
         return "allow"
