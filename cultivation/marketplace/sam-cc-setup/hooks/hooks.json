@@ -18,6 +18,21 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/concurrent-checkout-guard.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/protect-paths.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/generated-file-guard.sh",
+            "timeout": 10
           }
         ]
       }

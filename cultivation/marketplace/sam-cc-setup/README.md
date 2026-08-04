@@ -24,9 +24,26 @@ installing this plugin there would duplicate skill names.
   `reflect`, `sam_handoff`, `mode-routing`, `unknowns`, `bootstrap-cc-setup`.
 - **Agents:** `diff-reviewer`, `security-scanner`, `code-simplifier`, `consistency-checker`,
   `test-synthesizer`, `self-critic`, `pr-review`, `code-architect`, `build-validator`,
-  `read-only`.
+  `read-only`, plus two baseline-driven skeletons: `verify-app` and `regression-checker`
+  read their expected values from a repo-local `.claude/baselines.json` and report
+  NO-BASELINE rather than inventing numbers when it is absent.
 - **Workflows:** `plan-review-fanout` (grounded adversarial plan review),
   `codebase-review-fanout` (multi-lens code review).
+
+## Opt-in guards (v0.2.0) - dormant until you declare their config
+
+Two more hooks and a checker ship inert; each activates only when its repo-local
+config file exists, so these v0.2.0 additions change nothing until you opt in.
+(The plugin as a whole is NOT behavior-neutral on install: the Pipeline Gate above
+blocks commits from the moment the plugin loads, by design.)
+All were generalized 2026-08-04 from upstream-project-proven originals; each carries its own
+control suite (positive AND negative controls - a guard that has never fired proves nothing).
+
+| Guard | Config file | What it does |
+|---|---|---|
+| `protect-paths.sh` | `.claude/protected-paths.txt` (one glob per line) | Blocks Edit/Write to matching paths, Bash deletes (`rm`/`rmdir`/`shred`/`unlink` in the same command segment as a protected path, tokenized not regexed), and redirects onto them |
+| `generated-file-guard.sh` | `.claude/generated-outputs.tsv` (`glob<TAB>generator<TAB>block\|warn`) | Routes edits of generator output back to the generator - a doc-only fix to a generated file survives exactly one rerun |
+| `check_stale_counts.py` | `.claude/stale-counts.json` | Fails when prose asserts a number that disagrees with its declared source-of-truth command; a broken truth command aborts loudly rather than reporting clean. Not hook-wired - run it from `/validate` or CI |
 
 ## What it cannot ship, and the workaround
 
