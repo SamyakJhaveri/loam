@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Verdict engine for protect-paths.sh - deny writes/deletes to a declared path set.
 
-Generalized 2026-08-04 from three upstream-project hooks (protect-eval-results,
+Generalized 2026-08-04 from three upstream project hooks (protect-eval-results,
 result-immutability, protect-benchmark-sources): the pattern travels, the path
 set is repo-local config.
 

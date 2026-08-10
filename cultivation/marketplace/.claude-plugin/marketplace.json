@@ -138,6 +138,26 @@
       "skills": [
         "./taste-skill"
       ]
+    },
+    {
+      "name": "deer-flow-public",
+      "description": "Deer Flow public skills (SHA-pinned via git-subdir; SkillSpector-vetted 2026-08-10, static scan - evidence recorded in the private setup log). Only vetted-clean, collision-free skills enabled; 16 flagged + 3 name-collided skills withheld pending owner verdicts. claude-to-deerflow (withheld) additionally requires a running DeerFlow backend. Installs DISABLED (defaultEnabled:false) - enable to trial.",
+      "strict": false,
+      "defaultEnabled": false,
+      "license": "MIT",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/bytedance/deer-flow.git",
+        "path": "skills/public",
+        "ref": "main",
+        "sha": "feaf48358140a6af1c22729863a6c3f7e77bb7ec"
+      },
+      "skills": [
+        "./academic-paper-review",
+        "./bootstrap",
+        "./code-documentation",
+        "./newsletter-generation"
+      ]
     }
   ]
 }
