@@ -9,7 +9,7 @@
     {
       "name": "sam-cc-setup",
       "description": "Portable core setup: validation Pipeline Gate (pre-commit hook + 72-case detector tests), generic review agents, Codex cross-model review, /bootstrap-cc-setup for the rules layer",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./sam-cc-setup",
       "author": {
         "name": "Samyak Jhaveri",
@@ -59,7 +59,7 @@
     {
       "name": "pocock-engineering",
       "description": "Engineering workflow skills adapted from mattpocock/skills (triage, to-issues, tdd, prototype, diagnose, grill-with-docs, improve-codebase-architecture)",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./pocock-engineering",
       "author": {
         "name": "Samyak Jhaveri",
