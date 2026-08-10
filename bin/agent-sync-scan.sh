@@ -1,0 +1,431 @@
+#!/usr/bin/env bash
+# sync.sh — sync project's .claude/ INTO the loam repo's cultivation/marketplace/sam-cc-setup/.
+# Invoked by the /sync-to-hub skill (or directly for testing).
+#
+# Direction: project → hub, ADDITIVE ONLY.
+# The hub is the curated master set. Files that exist in hub but not in the
+# project are NEVER touched — projects are allowed to be a subset of hub.
+# Only NEW or CHANGED files are candidates for sync, and each one is presented
+# to the user with a 3-way prompt: y=sync now, d=defer (default), n=never.
+#
+# State persistence: <hub>/.sync-state tracks decisions per file across runs.
+# - "defer" remembers an ask_again_at session number; the file is skipped
+#   silently until that session is reached.
+# - "never" suppresses prompts forever (until state cleared manually).
+# - "synced" records when a file was promoted into the hub.
+# Threshold for defer expiration: env SAM_CC_DEFER_SESSIONS, default 4.
+set -euo pipefail
+
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+  echo "Error: run from inside the project's git repo." >&2
+  exit 1
+}
+HUB_REPO="${SAM_CC_HUB_REPO:-$HOME/Desktop/loam}"
+DEFER_SESSIONS="${SAM_CC_DEFER_SESSIONS:-4}"
+STATE_FILE="$HUB_REPO/.sync-state"
+
+# 1. Verify hub repo exists and is a git repo
+if [ ! -d "$HUB_REPO/.git" ]; then
+  echo "Error: Hub repo not found at $HUB_REPO. Set SAM_CC_HUB_REPO to point at it." >&2
+  exit 1
+fi
+
+# 2. Verify project's .claude/ is committed
+if [ -n "$(git -C "$PROJECT_ROOT" status --porcelain .claude 2>/dev/null)" ]; then
+  echo "Error: Project's .claude/ has uncommitted changes. Commit or stash before syncing." >&2
+  exit 1
+fi
+
+# 3. Verify hub working tree is clean (warn if not).
+#    .sync-state is sync.sh's own state file and is excluded from the cleanliness
+#    check (it is expected to be untracked and is added to the hub's .gitignore).
+HUB_DIRTY=$(git -C "$HUB_REPO" status --porcelain 2>/dev/null \
+  | grep -v -E ' \.sync-state$' || true)
+if [ -n "$HUB_DIRTY" ]; then
+  echo "Warning: Hub has uncommitted changes — sync may overwrite WIP." >&2
+  printf "Continue? [y/N] " >&2
+  read -r response || response=""
+  case "$response" in
+    [yY]|[yY][eE][sS]) ;;
+    *) echo "Aborted." >&2; exit 1 ;;
+  esac
+fi
+
+# Load state file (associative array path → decision-string).
+declare -A STATE_DECISIONS
+PRIOR_SESSION=0
+if [ -f "$STATE_FILE" ]; then
+  while IFS= read -r line; do
+    [ -z "$line" ] && continue
+    case "$line" in
+      session=*) PRIOR_SESSION="${line#session=}" ;;
+      never:*)
+        path="${line#never:}"
+        STATE_DECISIONS["$path"]="never"
+        ;;
+      defer:*)
+        rest="${line#defer:}"
+        path="${rest%:*}"
+        ask_at="${rest##*:}"
+        STATE_DECISIONS["$path"]="defer:$ask_at"
+        ;;
+      synced:*)
+        rest="${line#synced:}"
+        path="${rest%:*}"
+        at_session="${rest##*:}"
+        STATE_DECISIONS["$path"]="synced:$at_session"
+        ;;
+    esac
+  done < "$STATE_FILE"
+fi
+CURRENT_SESSION=$((PRIOR_SESSION + 1))
+
+# 4. Compute additive diff via rsync --dry-run (no --delete).
+PROJECT_CLAUDE="$PROJECT_ROOT/.claude/"
+HUB_PLUGIN="$HUB_REPO/cultivation/marketplace/sam-cc-setup/"
+mkdir -p "$HUB_PLUGIN"
+
+RSYNC_EXCLUDES=(
+  --exclude=audit.log
+  --exclude=.validation_passed
+  --exclude=settings.local.json
+  --exclude='*.local.*'
+)
+
+# --checksum forces content comparison (slower but accurate). Without it,
+# rsync uses size+mtime, which produces false-positive prompts for files
+# touched but unchanged (common after a fresh git clone).
+set +e
+RSYNC_DIFF=$(rsync --dry-run -a --checksum --itemize-changes \
+  "${RSYNC_EXCLUDES[@]}" \
+  "$PROJECT_CLAUDE" "$HUB_PLUGIN" 2>&1)
+RSYNC_STATUS=$?
+set -e
+if [ "$RSYNC_STATUS" -ne 0 ]; then
+  echo "Error: rsync dry-run failed (exit $RSYNC_STATUS); refusing to report 'no changes'." >&2
+  echo "$RSYNC_DIFF" >&2
+  exit 1
+fi
+
+CHANGES=$(echo "$RSYNC_DIFF" | grep -E '^(>f|<f|cf|hf)' || true)
+
+# Helper: write current state back to disk.
+write_state() {
+  {
+    echo "session=$CURRENT_SESSION"
+    for p in "${!STATE_DECISIONS[@]}"; do
+      local dec="${STATE_DECISIONS[$p]}"
+      case "$dec" in
+        never) echo "never:$p" ;;
+        defer:*) echo "defer:$p:${dec#defer:}" ;;
+        synced:*) echo "synced:$p:${dec#synced:}" ;;
+      esac
+    done
+  } > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
+}
+
+if [ -z "$CHANGES" ]; then
+  echo "No changes — hub is in sync with project."
+  write_state
+  exit 0
+fi
+
+# 5. Categorize.
+# The itemize-changes attribute field is NOT a fixed 9 chars everywhere:
+# GNU rsync emits 9 attribute chars (11 total incl. YX), but macOS ships
+# BSD openrsync, which emits only 7 (9 total) - a `{9}` literal count matched
+# zero lines there, silently reporting "0 new files" on every run. Match by
+# shape instead: an all-'+' run after ">f" is a brand-new file; any other
+# non-space run is a changed file. Width-independent, so it works under
+# either rsync implementation.
+ADDED_PATHS=()
+CHANGED_PATHS=()
+while IFS= read -r line; do
+  [ -z "$line" ] && continue
+  if [[ "$line" =~ ^\>f\++\ (.*)$ ]]; then
+    ADDED_PATHS+=("${BASH_REMATCH[1]}")
+  elif [[ "$line" =~ ^\>f[^+\ ][^\ ]*\ (.*)$ ]]; then
+    CHANGED_PATHS+=("${BASH_REMATCH[1]}")
+  fi
+done <<< "$CHANGES"
+
+PROJ_NAME=$(basename "$PROJECT_ROOT")
+
+# Helper: should we prompt for this path? Returns 0 (prompt) or 1 (skip silently).
+should_prompt() {
+  local path="$1"
+  local prior="${STATE_DECISIONS[$path]:-}"
+  case "$prior" in
+    never) return 1 ;;
+    defer:*)
+      local ask_at="${prior#defer:}"
+      [ "$CURRENT_SESSION" -lt "$ask_at" ] && return 1
+      return 0
+      ;;
+    *) return 0 ;;
+  esac
+}
+
+# Helper: prompt user, record decision into state, return 0 if approved.
+prompt_for() {
+  local action="$1" path="$2"
+  printf "%s %s to hub? [y=sync now / d=defer (default) / n=never] " "$action" "$path" >&2
+  local resp; read -r resp || resp=""
+  case "$resp" in
+    y|Y|yes|YES|sync)
+      STATE_DECISIONS["$path"]="synced:$CURRENT_SESSION"
+      return 0
+      ;;
+    n|N|never|NEVER)
+      STATE_DECISIONS["$path"]="never"
+      return 1
+      ;;
+    *)
+      local ask_at=$((CURRENT_SESSION + DEFER_SESSIONS))
+      STATE_DECISIONS["$path"]="defer:$ask_at"
+      return 1
+      ;;
+  esac
+}
+
+# Portability manifest guard (2026-08-02). The manifest classifies every asset
+# as travels/stays/rework; anything marked "stays" must never be offered to the
+# hub — the hub is a curated subset, and an additive project→hub sync is
+# otherwise a one-way ratchet toward the project's dialect.
+MANIFEST_TSV="$PROJECT_ROOT/.claude/reference/portability-manifest.tsv"
+manifest_verdict() {
+  # Longest-prefix match: "skills/codex-review/SKILL.md" matches row "skills/codex-review".
+  local path="$1" probe
+  [ -f "$MANIFEST_TSV" ] || { echo ""; return; }
+  probe="$path"
+  while [ -n "$probe" ] && [ "$probe" != "." ]; do
+    local v
+    v=$(awk -F'\t' -v p="$probe" '$1 == p { print $3; exit }' "$MANIFEST_TSV")
+    if [ -n "$v" ]; then echo "$v"; return; fi
+    probe="$(dirname "$probe")"
+  done
+  echo ""
+}
+
+# Filter to paths that need prompting (not silently-skipped by state or manifest).
+# Fail-closed when a manifest exists (Codex review 2026-08-02): only 'travels'
+# paths may be offered. 'stays' is project-local by declaration; 'rework' is
+# upstream-project-hardcoded and must be generalized before it may enter the hub; a
+# path with NO verdict is unclassified (plans, transcripts, __pycache__, ...)
+# and is exactly the noise an additive sync must not offer. Without a manifest
+# (other projects), behavior is unchanged: everything is offered.
+SKIPPED_STAYS=0; SKIPPED_REWORK=0; SKIPPED_UNKNOWN=0
+manifest_allows() {
+  [ -f "$MANIFEST_TSV" ] || return 0
+  case "$(manifest_verdict "$1")" in
+    travels) return 0 ;;
+    stays)   SKIPPED_STAYS=$((SKIPPED_STAYS+1));   return 1 ;;
+    rework)  SKIPPED_REWORK=$((SKIPPED_REWORK+1)); return 1 ;;
+    *)       SKIPPED_UNKNOWN=$((SKIPPED_UNKNOWN+1)); return 1 ;;
+  esac
+}
+
+# Dependency-integrity guard (added for the Phase-1A tiered gate; made
+# transitive + hub-presence-aware 2026-08-05). A 'travels' consumer whose
+# `requires` graph reaches a helper that is not itself 'travels', has no
+# manifest row, or is not yet PRESENT in the hub would ship a half-broken
+# gate to the hub (e.g. pre-commit-gate.sh without gate_tier.py). The guard
+# resolves the COMPLETE transitive closure of column-5 `requires` cells, so
+# requires cells only need to name direct deps. Fail-closed on every gap:
+# missing manifest row, dependency cycle (diagnosed, never looped), non-
+# 'travels' verdict, and hub absence. Hub presence is EXISTENCE ONLY, never
+# byte identity - hub copies intentionally diverge after de-projectization.
+# When a portable dep is merely absent from the hub, the consumer is withheld
+# with a sync-the-dependency-first message; the user syncs the dep and reruns.
+# Column 5 is optional; 4-column rows leave it empty and manifest_verdict
+# (reads $3 only) is unaffected.
+SKIPPED_DEPS=0
+
+# Resolve a path to its manifest row key via the same longest-prefix walk as
+# manifest_verdict: a file under a directory row (skills/validate/SKILL.md ->
+# row skills/validate) inherits that row, including its `requires` cell
+# (exact-match-only here was a fail-open hole, Codex review 2026-08-05 High).
+manifest_rowkey() {
+  local path="$1" probe="$1"
+  [ -f "$MANIFEST_TSV" ] || { echo ""; return; }
+  while [ -n "$probe" ] && [ "$probe" != "." ]; do
+    if [ -n "$(awk -F'\t' -v p="$probe" '$1 == p { print "1"; exit }' "$MANIFEST_TSV")" ]; then
+      echo "$probe"; return
+    fi
+    probe="$(dirname "$probe")"
+  done
+  echo ""
+}
+
+manifest_field() { # $1=row key, $2=column number
+  awk -F'\t' -v p="$1" -v c="$2" '$1 == p { print $c; exit }' "$MANIFEST_TSV"
+}
+
+# DFS over the requires graph, run in two modes (Codex review 2026-08-05
+# Medium: graph structure must validate BEFORE presence, or an absent cycle
+# member masks the cycle diagnostic):
+#   graph    - manifest rows, non-'travels' verdicts, cycles, malformed paths
+#   presence - every closure dep must exist in the hub's committed HEAD
+# Presence means hub HEAD, not the working tree (Codex High: `-e` accepted an
+# untracked/dirty hub file that the scoped sync commit would not include).
+# $1 = current path, $2 = space-separated row keys on the current DFS chain
+# (cycle detector), $3 = mode. On failure sets DEP_FAIL_REASON, returns 1.
+HUB_PLUGIN_REL="cultivation/marketplace/sam-cc-setup/"
+check_dep_closure() {
+  local path="$1" chain="$2" mode="$3" rowkey requires dep dep_row dep_verdict
+  rowkey="$(manifest_rowkey "$path")"
+  [ -z "$rowkey" ] && return 0   # entry paths without a row never get here (manifest_allows)
+  chain="$chain $rowkey"
+  requires="$(manifest_field "$rowkey" 5)"
+  [ -z "$requires" ] && return 0
+  for dep in $requires; do
+    # Reject non-normalized dep paths before any lookup (Codex High: an
+    # absolute path loops the dirname walk forever, and `..` segments could
+    # escape the plugin root at the presence check).
+    case "/$dep/" in
+      *"/../"*|*"/./"*|//*)
+        DEP_FAIL_REASON="requires $dep - malformed dependency path (fail closed)"
+        return 1 ;;
+    esac
+    dep_row="$(manifest_rowkey "$dep")"
+    if [ -z "$dep_row" ]; then
+      DEP_FAIL_REASON="requires $dep, which has no manifest row (fail closed)"
+      return 1
+    fi
+    case " $chain " in *" $dep_row "*)
+      if [ "$mode" = graph ]; then
+        DEP_FAIL_REASON="requires $dep - dependency cycle detected (${chain# } -> $dep_row)"
+        return 1
+      fi
+      continue ;;  # presence mode: graph mode already proved acyclicity
+    esac
+    if [ "$mode" = graph ]; then
+      dep_verdict="$(manifest_field "$dep_row" 3)"
+      if [ "$dep_verdict" != "travels" ]; then
+        DEP_FAIL_REASON="requires $dep (${dep_verdict:-unclassified}, not travels)"
+        return 1
+      fi
+    elif ! git -C "$HUB_REPO" cat-file -e "HEAD:${HUB_PLUGIN_REL}${dep}" 2>/dev/null; then
+      DEP_FAIL_REASON="requires $dep, which is not yet in the hub's committed HEAD - sync the dependency first, then rerun"
+      return 1
+    fi
+    check_dep_closure "$dep" "$chain" "$mode" || return 1
+  done
+  return 0
+}
+
+deps_satisfied() {
+  local path="$1"
+  [ -f "$MANIFEST_TSV" ] || return 0
+  DEP_FAIL_REASON=""
+  if ! check_dep_closure "$path" "" graph || ! check_dep_closure "$path" "" presence; then
+    echo "  withheld: $path $DEP_FAIL_REASON" >&2
+    SKIPPED_DEPS=$((SKIPPED_DEPS+1))
+    return 1
+  fi
+  return 0
+}
+
+PROMPT_ADDS=()
+for path in "${ADDED_PATHS[@]:-}"; do
+  [ -z "${path:-}" ] && continue
+  manifest_allows "$path" || continue
+  deps_satisfied "$path" || continue
+  should_prompt "$path" && PROMPT_ADDS+=("$path")
+done
+PROMPT_CHANGES=()
+for path in "${CHANGED_PATHS[@]:-}"; do
+  [ -z "${path:-}" ] && continue
+  manifest_allows "$path" || continue
+  deps_satisfied "$path" || continue
+  should_prompt "$path" && PROMPT_CHANGES+=("$path")
+done
+if [ -f "$MANIFEST_TSV" ]; then
+  echo "  manifest guard: $SKIPPED_STAYS 'stays', $SKIPPED_REWORK 'rework' (generalize first), $SKIPPED_UNKNOWN unclassified, $SKIPPED_DEPS dep-withheld paths"
+fi
+
+echo "Sync from $PROJ_NAME (session $CURRENT_SESSION):"
+echo "  ${#PROMPT_ADDS[@]} new files to ask about (${#ADDED_PATHS[@]} total — others suppressed by prior decisions)"
+echo "  ${#PROMPT_CHANGES[@]} changed files to ask about (${#CHANGED_PATHS[@]} total — others suppressed by prior decisions)"
+
+# 6. Prompt only the non-suppressed entries.
+APPROVED_ADDS=()
+for path in "${PROMPT_ADDS[@]:-}"; do
+  [ -z "${path:-}" ] && continue
+  if prompt_for "Add" "$path"; then APPROVED_ADDS+=("$path"); fi
+done
+
+APPROVED_CHANGES=()
+if [ "${#PROMPT_CHANGES[@]}" -gt 0 ]; then
+  echo "CAUTION: hub copies in this plugin are GENERALIZED variants (de-projectized" >&2
+  echo "paths, different gate thresholds). Overwriting one reverts that generalization." >&2
+  echo "Answer y only if you intend to re-generalize the hub copy afterwards." >&2
+fi
+for path in "${PROMPT_CHANGES[@]:-}"; do
+  [ -z "${path:-}" ] && continue
+  if prompt_for "Update" "$path"; then APPROVED_CHANGES+=("$path"); fi
+done
+
+# Persist updated state regardless of whether anything was approved.
+write_state
+
+TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} ))
+if [ "$TOTAL_APPROVED" -eq 0 ]; then
+  echo "Nothing approved — exiting."
+  exit 0
+fi
+
+# 7. Apply approved adds + changes via rsync --files-from.
+NONEMPTY=()
+for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}"; do
+  [ -n "$p" ] && NONEMPTY+=("$p")
+done
+
+TMPLIST=$(mktemp)
+printf '%s\n' "${NONEMPTY[@]}" > "$TMPLIST"
+rsync -a --files-from="$TMPLIST" "$PROJECT_CLAUDE" "$HUB_PLUGIN"
+rm -f "$TMPLIST"
+
+# 8. Show resulting git status in hub
+echo "---"
+echo "Hub status after apply:"
+git -C "$HUB_REPO" status --short
+
+# 9. Prompt commit + push (default Y).
+printf "Commit synced files? [Y/n] " >&2
+read -r commit_resp || commit_resp=""
+case "$commit_resp" in
+  n|N|no|NO)
+    echo "Skipped commit. Hub working tree has changes you can review."
+    exit 0
+    ;;
+esac
+
+# 10. Commit + push.
+#     SCOPED: only the approved synced files are added. Pre-existing dirty
+#     hub WIP (if user continued through the warning) and runtime artifacts
+#     (.sync-state) MUST NOT be swept into the sync commit.
+DATE=$(date -u +%Y-%m-%d)
+HUB_RELPATHS=()
+for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}"; do
+  [ -n "$p" ] && HUB_RELPATHS+=("cultivation/marketplace/sam-cc-setup/$p")
+done
+
+if [ "${#HUB_RELPATHS[@]}" -eq 0 ]; then
+  echo "Internal error: TOTAL_APPROVED>0 but no hub relpaths to commit." >&2
+  exit 1
+fi
+
+git -C "$HUB_REPO" add -- "${HUB_RELPATHS[@]}"
+git -C "$HUB_REPO" commit -m "sync: from $PROJ_NAME on $DATE"
+# Push is outward-facing and the hub is a general-purpose repo — separate confirm.
+printf "Push %s to its origin now? [y/N] " "$HUB_REPO" >&2
+read -r push_resp || push_resp=""
+case "$push_resp" in
+  y|Y|yes|YES) ;;
+  *) echo "Commit kept local. Push later with: cd $HUB_REPO && git push"; exit 0 ;;
+esac
+if ! git -C "$HUB_REPO" push 2>&1; then
+  echo "Push failed. Run: cd $HUB_REPO && git pull --rebase && git push" >&2
+  exit 1
+fi
