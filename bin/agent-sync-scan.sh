@@ -210,7 +210,7 @@ manifest_verdict() {
 # Filter to paths that need prompting (not silently-skipped by state or manifest).
 # Fail-closed when a manifest exists (Codex review 2026-08-02): only 'travels'
 # paths may be offered. 'stays' is project-local by declaration; 'rework' is
-# upstream-project-hardcoded and must be generalized before it may enter the hub; a
+# project-hardcoded and must be generalized before it may enter the hub; a
 # path with NO verdict is unclassified (plans, transcripts, __pycache__, ...)
 # and is exactly the noise an additive sync must not offer. Without a manifest
 # (other projects), behavior is unchanged: everything is offered.

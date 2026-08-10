@@ -61,7 +61,7 @@ build_proj_real() {
   echo "t" > "$proj/.claude/hooks/gate_tier.py"
   printf 'path\tkind\tverdict\treason\trequires\n' > "$proj/.claude/reference/portability-manifest.tsv"
   printf 'hooks/pre-commit-gate.sh\thook\ttravels\ttest\thooks/gate_tier.py\n' >> "$proj/.claude/reference/portability-manifest.tsv"
-  printf 'hooks/gate_tier.py\thook\trework\ttest, upstream-project prefixes hardcoded\t\n' >> "$proj/.claude/reference/portability-manifest.tsv"
+  printf 'hooks/gate_tier.py\thook\trework\ttest, project prefixes hardcoded\t\n' >> "$proj/.claude/reference/portability-manifest.tsv"
   (cd "$proj" && git init -q && git add -A && \
     git -c user.email=t@t -c user.name=t commit -q -m init)
 }
@@ -96,7 +96,7 @@ build_proj_dirrow() {
   echo "t" > "$proj/.claude/hooks/gate_tier.py"
   printf 'path\tkind\tverdict\treason\trequires\n' > "$proj/.claude/reference/portability-manifest.tsv"
   printf 'skills/validate\tskill\ttravels\ttest dir row\thooks/gate_tier.py\n' >> "$proj/.claude/reference/portability-manifest.tsv"
-  printf 'hooks/gate_tier.py\thook\trework\ttest, upstream-project prefixes hardcoded\t\n' >> "$proj/.claude/reference/portability-manifest.tsv"
+  printf 'hooks/gate_tier.py\thook\trework\ttest, project prefixes hardcoded\t\n' >> "$proj/.claude/reference/portability-manifest.tsv"
   (cd "$proj" && git init -q && git add -A && \
     git -c user.email=t@t -c user.name=t commit -q -m init)
 }
