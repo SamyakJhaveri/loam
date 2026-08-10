@@ -9,7 +9,7 @@
 #   template-sync.sh status                                          # classify diffs
 #   template-sync.sh diff <relpath>                                  # show file-level diff
 #   template-sync.sh pull <relpath>                                  # copy from template into project
-#   template-sync.sh promote --layer <generic|flavor:NAME> <relpath> # promote project -> template branch
+#   template-sync.sh promote --layer <generic|flavor:NAME> [--push] <relpath> # promote project -> template branch (requires your git identity; pushes only with --push)
 #   template-sync.sh trial [--name NAME] [--force] <source-or-name>   # install skill from any path
 #   template-sync.sh sync-from-buffer                                # bulk pull updates from template main
 #
@@ -207,11 +207,12 @@ cmd_trial() {
 
 # ----- Subcommand: promote --------------------------------------------------
 cmd_promote() {
-  local layer="" relpath=""
+  local layer="" relpath="" do_push=0
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --layer) [[ $# -ge 2 ]] || die "--layer requires arg"
                layer="$2"; shift 2;;
+      --push)  do_push=1; shift;;
       -*)      die "unknown promote flag: $1";;
       *)       [[ -z "$relpath" ]] || die "extra positional: $1"
                relpath="$1"; shift;;
@@ -265,23 +266,26 @@ cmd_promote() {
     git -C "$tpl" branch -D "$branch" >/dev/null
     return 0
   fi
-  GIT_AUTHOR_NAME="${GIT_AUTHOR_NAME:-template-sync}" \
-  GIT_AUTHOR_EMAIL="${GIT_AUTHOR_EMAIL:-template-sync@local}" \
-  GIT_COMMITTER_NAME="${GIT_COMMITTER_NAME:-template-sync}" \
-  GIT_COMMITTER_EMAIL="${GIT_COMMITTER_EMAIL:-template-sync@local}" \
-    git -C "$tpl" -c commit.gpgsign=false commit -q \
-      -m "promote($layer): $tpl_relpath from $pname"
+  if ! git -C "$tpl" config user.email >/dev/null 2>&1; then
+    die "git user.email is not set in $tpl - set a real identity; refusing to fabricate template-sync@local"
+  fi
+  git -C "$tpl" -c commit.gpgsign=false commit -q \
+    -m "promote($layer): $tpl_relpath from $pname"
 
-  # Push branch
-  if git -C "$tpl" remote get-url origin >/dev/null 2>&1; then
-    info "pushing branch to origin"
-    if git -C "$tpl" push -u origin "$branch"; then
-      ok "branch pushed"
+  # Push branch (opt-in: --push)
+  if [[ "$do_push" = 1 ]]; then
+    if git -C "$tpl" remote get-url origin >/dev/null 2>&1; then
+      info "pushing branch to origin"
+      if git -C "$tpl" push -u origin "$branch"; then
+        ok "branch pushed"
+      else
+        warn "push failed; the branch is local in $tpl. Push manually when ready."
+      fi
     else
-      warn "push failed; the branch is local in $tpl. Push manually when ready."
+      warn "no origin remote on template repo; branch is local-only at $tpl"
     fi
   else
-    warn "no origin remote on template repo; branch is local-only at $tpl"
+    info "branch created locally; not pushing (pass --push to push)"
   fi
 
   # Restore main (don't leave the template on the sync branch)

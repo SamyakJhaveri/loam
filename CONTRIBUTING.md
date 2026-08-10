@@ -21,6 +21,10 @@ Rendered projects are unaffected — Copier writes real directories.
 - **Docs, content, small fixes** → commit directly to `main` (or open a PR if you're external).
 - **Behavior changes** (`seed/` skills/hooks/rules, `copier.yml`, release tooling) → branch + PR, always.
 - Run `bin/verify-template.sh` before every PR. CI runs it too; a red render blocks merge.
+- Before merging any PR: `bash bin/verify-template.sh && bash bin/ip-sweep.sh` (non-strict;
+  the identity WARNs are known - see the release blocker note in any open consolidation PR.
+  As of 2026-08-10 check 1 also FAILs on pre-existing term hits in `cultivation/marketplace/
+  sam-cc-setup/` - a standing finding awaiting an owner ruling, not a new-PR regression).
 - Skills follow the [agentskills.io](https://agentskills.io/specification) SKILL.md format.
   Generic skills go in `seed/.claude/skills/`, research-only skills in `seed/_research/skills/`.
 - Check `seed/.claude/rules/known-issues.md` first — many gotchas (YAML colons in
