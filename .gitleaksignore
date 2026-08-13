@@ -1,0 +1,10 @@
+# .gitleaksignore - allowlist of confirmed false positives.
+#
+# gitleaks' generic-api-key rule matches the JSON field name "key" inside a
+# documentation example. The flagged value is a BibTeX citation key
+# (madaan2023selfrefine, the "Self-Refine" paper), not a credential.
+# Confirmed false positives on 2026-08-13 (Samyak ruling). No real secrets.
+#
+# Fingerprint format: <commit>:<file>:<ruleID>:<startLine>
+6601e8cc201680c7631de9024f40284235666a47:seed/_research/skills/citation-audit/SKILL.md:generic-api-key:137
+6601e8cc201680c7631de9024f40284235666a47:seed/_research/skills/citation-audit/SKILL.md:generic-api-key:283
