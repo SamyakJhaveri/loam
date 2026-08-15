@@ -1,19 +1,24 @@
 ---
 name: validate
-description: "Post-session validation loop — two-wave checks (Deterministic / Rule-based) before commit. Use before every git commit. Writes .validation_passed sentinel with waves_passed field on success. NOT for: ad-hoc test runs, code review, or implementation work — only the Pipeline Gate between implement and commit."
+description: "Deterministic pre-commit validation - two waves (Deterministic / Rule-based) run on demand. Use when a change is risky and before every substantive commit. Enforcement is a native git pre-commit hook, not a sentinel. NOT for: ad-hoc test runs, code review, or implementation work."
 ---
 
-# Post-Session Validation Loop
+# Deterministic validation
 
-**Trigger:** When user types `/validate`, `/validate quick`, or `/validate fix`
+**Trigger:** When user types `/validate` or `/validate fix`
 
-Runs a two-wave validation loop after implementation, before commit. Wave layers follow `.claude/rules/layer-triage.md` (60/30/10): deterministic first, rule-based second. Both waves are LLM-free. Deep adversarial review (the probabilistic Layer 3) is not part of the gate — invoke `/session-critique` manually when you want it.
+Runs a two-wave validation pass after implementation, before commit. Both waves are LLM-free.
+Deep adversarial review is not part of this pass - invoke a reviewer agent manually when you want it.
+
+Enforcement model: a native git pre-commit hook (installed by `/bootstrap-cc-setup` at
+`.git/hooks/pre-commit`) runs the fast deterministic checks on every commit and fails the
+commit if any fail. There is no sentinel file and no PreToolUse commit gate. This skill is
+the on-demand superset of what the hook enforces.
 
 ## Arguments
 
-- (none) or `full` → both waves (recommended)
-- `quick` → Wave 1 only (~30s deterministic; writes `waves_passed=1` — INSUFFICIENT for commit)
-- `fix` → re-run failed waves only (after implementing fixes)
+- (none) → both waves
+- `fix` → after a targeted repair, re-run the same waves
 
 ## Prerequisites
 
@@ -22,17 +27,14 @@ Runs a two-wave validation loop after implementation, before commit. Wave layers
 
 ## Workflow
 
-### Step 0: Snapshot (before any wave)
+### Step 0: Snapshot
 
 ```bash
 echo "=== PRE-VALIDATION SNAPSHOT ==="
-echo "Changed files: $(git diff --name-only HEAD | wc -l)"
 git diff --name-only HEAD
 ```
 
-If no files changed → write sentinel with `waves_passed=2` and exit (nothing to validate).
-
----
+If no files changed → report "nothing to validate" and exit.
 
 ### WAVE 1 — Deterministic (~10–30s)
 
@@ -57,13 +59,9 @@ for f in $(git diff --name-only HEAD | grep '\.sh$'); do
 done
 ```
 
-**Wave 1 Gate:** Any check fails → skip remaining waves, go to Fix Loop.
-
----
+**Wave 1 Gate:** Any check fails → skip Wave 2, go to Fix Loop.
 
 ### WAVE 2 — Rule-based (~30–90s)
-
-**Skip if `/validate quick` was requested.**
 
 ```bash
 # Unit tests
@@ -75,48 +73,17 @@ done
 
 **Wave 2 Gate:** Any check fails → go to Fix Loop. LLM-free.
 
----
-
 ### Fix Loop (triggered when any wave FAILs)
 
-1. **Collect** all FAIL verdicts from the current wave
-2. **Enter plan mode** with a targeted fix plan
-3. **Wait for user approval** — do not implement before approval
-4. **Implement fixes** — targeted only, no scope creep
-5. **Re-validate** with `/validate fix`
+1. **Record** the exact failed check and evidence
+2. **Write** the smallest targeted repair plan
+3. **Obtain approval** when the repair changes the agreed scope
+4. **Implement** the repair and re-run `/validate fix`
 
-**Maximum iterations:** 3. After 3 fails → escalate to user; the L2 stage contract is probably the issue.
+**Maximum iterations:** 3. After 3 fails on the same issue → stop and escalate.
+Never bypass a failing check.
 
----
+### Completion
 
-### Completion: Write Sentinel
-
-After waves pass, write the sentinel with `waves_passed` set to the highest wave that passed:
-
-```bash
-# WAVES_PASSED is set by the wave executor:
-#   quick                 → 1
-#   full (both waves green) → 2
-WAVES_PASSED=${WAVES_PASSED:-2}
-
-cat > .validation_passed << SENTINEL
-timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-git_hash=$(git rev-parse HEAD 2>/dev/null || echo "none")
-changed_files=$(git diff --name-only HEAD | wc -l | tr -d ' ')
-waves_passed=$WAVES_PASSED
-validated_by=validate-skill
-SENTINEL
-
-echo ".validation_passed written (waves_passed=$WAVES_PASSED)"
-if [ "$WAVES_PASSED" -lt 2 ]; then
-    echo "Note: commit gate requires waves_passed>=2 — run full /validate before commit"
-fi
-```
-
-**Then report the full validation summary.**
-
-## No commit-message override
-
-`pre-commit-gate.sh` enforces the gate solely via the `.validation_passed` sentinel — it does NOT parse the commit message, so there is no `[skip-validate]` escape hatch. The gate is intentionally unconditional.
-
-Even a change that seems to need no checks (e.g., a docs-only edit) must pass full `/validate` (both waves) before committing: the gate requires `waves_passed>=2`, so anything short of both waves (e.g., `/validate quick`) leaves the commit blocked. To bypass deliberately, disable the hook in `settings.json` — there is no per-commit skip flag.
+Report every check with its exit status. No sentinel is written; the native pre-commit
+hook independently re-runs the fast checks at commit time.

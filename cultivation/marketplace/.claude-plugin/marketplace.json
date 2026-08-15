@@ -8,9 +8,19 @@
   "plugins": [
     {
       "name": "sam-cc-setup",
-      "description": "Portable core setup: validation Pipeline Gate (pre-commit hook + 72-case detector tests), generic review agents, Codex cross-model review, /bootstrap-cc-setup for the rules layer",
-      "version": "0.2.0",
+      "description": "Portable core setup: native pre-commit hook + on-demand /validate (sentinel gate retired), generic review agents, Codex cross-model review, /bootstrap-cc-setup for the rules layer",
+      "version": "0.3.0",
       "source": "./sam-cc-setup",
+      "author": {
+        "name": "Samyak Jhaveri",
+        "email": "39847642+SamyakJhaveri@users.noreply.github.com"
+      }
+    },
+    {
+      "name": "sam-superpowers",
+      "description": "Fork of obra/superpowers 5.0.7: the 14 core skills with the mandatory-gate SessionStart injection replaced by a short judgment-based router",
+      "version": "1.0.0",
+      "source": "./sam-superpowers",
       "author": {
         "name": "Samyak Jhaveri",
         "email": "39847642+SamyakJhaveri@users.noreply.github.com"

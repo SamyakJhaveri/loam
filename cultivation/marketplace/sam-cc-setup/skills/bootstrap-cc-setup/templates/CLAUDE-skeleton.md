@@ -7,12 +7,12 @@
 
 {{PROJECT_NAME}}: <purpose - fill in one or two sentences>.
 
-## Pipeline gate
+## Validation
 
-- `/validate` must pass before every commit.
-  The sam-cc-setup plugin's pre-commit hook enforces this via the `.validation_passed`
-  sentinel, which is deleted on any edit.
-- Add `.validation_passed` to `.gitignore`.
+- Run `/validate` before every substantive commit.
+  A native git pre-commit hook (`scripts/pre-commit.sh`, symlinked at
+  `.git/hooks/pre-commit`) runs the fast deterministic checks on every commit.
+  Install once per clone: `ln -sf ../../scripts/pre-commit.sh .git/hooks/pre-commit`.
 
 ## Gotchas
 

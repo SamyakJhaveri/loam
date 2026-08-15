@@ -43,41 +43,28 @@ subagent use and self-verification, and following the wrong one is costly both w
 three, and all three survivors were incidents local to the source repo. A new repo
 starts with zero and earns its own.
 
-### 4. Prove the gate works here
+### 4. Install the native pre-commit hook
 
-Run the shipped detector test suite from the plugin, in this repo:
-
-```bash
-rm -f "$ROOT/.validation_passed"   # suite refuses to run if a sentinel exists
-python3 "${CLAUDE_PLUGIN_ROOT}/hooks/test_pre_commit_gate.py"
-```
-
-Every case must pass (the suite prints `N/N passed` and exits 0). If it fails,
-report the failing cases and stop - do not leave a half-proven gate.
-
-### 5. (Optional, on request) Vendor the hooks into the repo
-
-Default is NOT to do this: the plugin's own hooks already gate commits wherever the
-plugin is enabled. Vendor only if the user wants enforcement that travels with the
-repo via git to collaborators who do not have the plugin:
+Commit enforcement is a plain git pre-commit hook, not a sentinel or PreToolUse gate
+(the gate design was retired 2026-08-14: it blocked every commit until a sentinel
+matched, which fought the tool; a native hook runs inside git, where no compound
+command can outrun it).
 
 ```bash
-mkdir -p "$ROOT/.claude/hooks"
-cp "${CLAUDE_PLUGIN_ROOT}"/hooks/{pre-commit-gate.sh,gate_detect.py,test_pre_commit_gate.py,sentinel-cleanup.sh,concurrent-checkout-guard.sh} "$ROOT/.claude/hooks/"
+mkdir -p "$ROOT/scripts"
+cp "${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit.sh" "$ROOT/scripts/pre-commit.sh"
+chmod +x "$ROOT/scripts/pre-commit.sh"
+ln -sf ../../scripts/pre-commit.sh "$ROOT/.git/hooks/pre-commit"
 ```
 
-Then add the three hook entries to `$ROOT/.claude/settings.json` (PreToolUse Bash →
-pre-commit-gate.sh; PreToolUse Bash|Edit|Write → concurrent-checkout-guard.sh;
-PostToolUse Edit|Write → sentinel-cleanup.sh), using
-`$CLAUDE_PROJECT_DIR/.claude/hooks/...` paths. Warn that with both plugin and vendored
-hooks enabled the gate fires twice (harmless - same verdict - but noisy).
+Prove it works: make a scratch commit with a deliberate conflict marker in a staged
+file and confirm the commit fails, then clean up. The hook is per-clone; tell the
+user each new clone needs the `ln -sf` line once.
 
-### 6. Report
+### 5. Report
 
-Print exactly what was written, what was skipped and why, the test result, and:
+Print exactly what was written, what was skipped and why, the hook-proof result, and:
 
 ```
-Undo: rm CLAUDE.md .claude/rules/workflow.md   # plus .claude/hooks/* if vendored
+Undo: rm CLAUDE.md .claude/rules/workflow.md scripts/pre-commit.sh .git/hooks/pre-commit
 ```
-
-Also remind: add `.validation_passed` to `.gitignore`.

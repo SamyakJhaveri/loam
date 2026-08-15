@@ -10,6 +10,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 sub="${1:-}"; shift 2>/dev/null || true
 case "$sub" in
   scan)    exec bash "$here/agent-sync-scan.sh" "$@";;
+  prune)   exec bash "$here/agent-sync-prune.sh" "$@";;
   promote) exec bash "$here/template-sync.sh" promote "$@";;
-  *) echo "usage: agent-sync.sh {scan|promote [--push]}" >&2; exit 1;;
+  *) echo "usage: agent-sync.sh {scan|prune|promote [--push]}" >&2; exit 1;;
 esac

@@ -10,32 +10,29 @@ installing this plugin there would duplicate skill names.
 
 ## What installing it gives you, immediately
 
-- **The Pipeline Gate.** A `PreToolUse` hook blocks any `git commit` until `/validate`
-  has passed and written a fresh `.validation_passed` sentinel.
-  The commit detector (`hooks/gate_detect.py`) survived five adversarial review rounds
-  on 2026-08-02; its 72-case test suite (`hooks/test_pre_commit_gate.py`) documents every
-  bypass class found and the four accepted gaps.
-  A `PostToolUse` hook deletes the sentinel on any edit, forcing re-validation.
-  Note: this plugin's gate requires `waves_passed>=2` (the two-wave LLM-free `/validate`
-  it ships); the upstream research repo runs a four-wave variant.
+- **Native pre-commit enforcement.** `/bootstrap-cc-setup` installs a plain git
+  pre-commit hook (`hooks/pre-commit.sh`, symlinked at `.git/hooks/pre-commit`) that
+  runs fast deterministic checks on every commit. The earlier sentinel-based Pipeline
+  Gate (`PreToolUse` hook + `.validation_passed` sentinel) was retired 2026-08-14: it
+  blocked every commit until a sentinel matched, which fought the tool; a native hook
+  runs inside git, where no compound command can outrun it.
 - **A concurrent-checkout guard** that blocks two sessions from racing on one working tree.
-- **Skills:** `validate` (two-wave gate front door), `codex-review` and `codex-plan-review`
-  (cross-model second opinions - require the Codex CLI), `create-skill`, `techdebt`,
-  `reflect`, `sam_handoff`, `mode-routing`, `unknowns`, `bootstrap-cc-setup`.
+- **Skills:** `validate` (on-demand two-wave deterministic pass), `codex-review` and
+  `codex-plan-review` (cross-model second opinions - require the Codex CLI),
+  `reflect`, `sam_handoff`, `unknowns`, `bootstrap-cc-setup`.
 - **Agents:** `diff-reviewer`, `security-scanner`, `code-simplifier`, `consistency-checker`,
-  `test-synthesizer`, `self-critic`, `pr-review`, `code-architect`, `build-validator`,
+  `test-synthesizer`, `self-critic`, `code-architect`, `build-validator`,
   `read-only`, plus two baseline-driven skeletons: `verify-app` and `regression-checker`
   read their expected values from a repo-local `.claude/baselines.json` and report
   NO-BASELINE rather than inventing numbers when it is absent.
-- **Workflows:** `plan-review-fanout` (grounded adversarial plan review),
-  `codebase-review-fanout` (multi-lens code review).
+- **Workflows:** `plan-review-fanout` (grounded adversarial plan review).
 
 ## Opt-in guards (v0.2.0) - dormant until you declare their config
 
 Two more hooks and a checker ship inert; each activates only when its repo-local
 config file exists, so these v0.2.0 additions change nothing until you opt in.
-(The plugin as a whole is NOT behavior-neutral on install: the Pipeline Gate above
-blocks commits from the moment the plugin loads, by design.)
+(The plugin is behavior-neutral on install since v0.3.0: commit enforcement starts
+only when `/bootstrap-cc-setup` installs the native pre-commit hook.)
 All come from originals proven in daily use upstream. The two generalized ones (`protect-paths`,
 `check_stale_counts`) each carry a control suite with positive AND negative controls -
 a guard that has never fired proves nothing. `generated-file-guard.sh` was vendored
@@ -57,13 +54,15 @@ touching anything that exists, and prints how to undo everything it wrote.
 
 ## Honesty labels
 
-- `mode-routing` and `unknowns` shipped 2026-08-02 with **zero usage evidence** at
-  extraction time. They encode published guidance, not proven local habit.
-- `codebase-review-fanout` was un-exercised end-to-end as of 2026-06-22.
+- `unknowns` shipped 2026-08-02 with **zero usage evidence** at extraction time.
+  It encodes published guidance, not proven local habit.
 - Everything else ran in anger for weeks in the source repo.
+- Removed in v0.3.0 (2026-08-14 teardown rulings): the sentinel gate family,
+  `create-skill`, `mode-routing`, `techdebt`, the `pr-review` agent, and
+  `codebase-review-fanout` (never exercised end-to-end).
 
 ## Versioning
 
-Semver in `.claude-plugin/plugin.json`. Behaviour changes (gate thresholds, detector
-rules) bump minor at least - a gate that silently changes across machines is worse
-than none.
+Semver in `.claude-plugin/plugin.json`. Behaviour changes (enforcement model, check
+sets) bump minor at least - enforcement that silently changes across machines is
+worse than none.

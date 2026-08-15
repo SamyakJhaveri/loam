@@ -2,16 +2,6 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-commit-gate.sh",
-            "timeout": 10
-          }
-        ]
-      },
-      {
         "matcher": "Bash|Edit|Write",
         "hooks": [
           {
@@ -33,18 +23,6 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/generated-file-guard.sh",
             "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/sentinel-cleanup.sh",
-            "timeout": 5
           }
         ]
       }
