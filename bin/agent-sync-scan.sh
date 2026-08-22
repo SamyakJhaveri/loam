@@ -22,6 +22,12 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 }
 HUB_REPO="${SAM_CC_HUB_REPO:-$HOME/Desktop/loam}"
 DEFER_SESSIONS="${SAM_CC_DEFER_SESSIONS:-4}"
+# H5 (Codex pass 2 High): the defer counter feeds Bash arithmetic; bound it to a
+# 1-9 digit decimal (<= 999999999) so it can never overflow or inject.
+[[ "$DEFER_SESSIONS" =~ ^[0-9]{1,9}$ ]] || {
+  echo "Error: SAM_CC_DEFER_SESSIONS must be a decimal number of 1 to 9 digits (got '$DEFER_SESSIONS')" >&2
+  exit 1
+}
 STATE_FILE="$HUB_REPO/.sync-state"
 
 # --bootstrap-bases (R5): a one-time, non-interactive pass that records a merge
@@ -108,7 +114,7 @@ if [ -f "$STATE_FILE" ]; then
         # C3 (Codex Critical): the session value feeds `$((PRIOR_SESSION + 1))`,
         # where a crafted `a[$(cmd)]` runs the command on older bash. Accept only
         # a decimal count; anything else warns and leaves PRIOR_SESSION=0.
-        if [[ "$sess" =~ ^[0-9]+$ ]]; then
+        if [[ "$sess" =~ ^[0-9]{1,9}$ ]]; then
           PRIOR_SESSION="$sess"
         else
           echo "warning: ignoring malformed .sync-state session: $sess" >&2
@@ -127,7 +133,7 @@ if [ -f "$STATE_FILE" ]; then
         # C3: ask_at feeds `[ "$CURRENT_SESSION" -lt "$ask_at" ]` (arithmetic), so
         # a non-decimal counter is malformed and could smuggle a subscript on
         # older bash; drop the whole defer record.
-        [[ "$ask_at" =~ ^[0-9]+$ ]] || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
+        [[ "$ask_at" =~ ^[0-9]{1,9}$ ]] || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_DECISIONS["$path"]="defer:$ask_at"
         ;;
       base:*)
