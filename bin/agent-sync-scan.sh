@@ -85,7 +85,8 @@ if [ -f "$STATE_FILE" ]; then
         rest="${line#base:}"
         path="${rest%:*}"
         base_sha="${rest##*:}"
-        STATE_BASES["$path"]="$base_sha"
+        # Ignore a malformed base: line with an empty sha (defensive).
+        [ -n "$base_sha" ] && STATE_BASES["$path"]="$base_sha"
         ;;
       synced:*)
         rest="${line#synced:}"
@@ -135,7 +136,18 @@ write_state() {
 # its blob into the hub object store and remember the sha. Content-addressed, so
 # the value is the same whether computed before or after the file is installed.
 record_base() {
-  STATE_BASES["$1"]=$(git -C "$HUB_REPO" hash-object -w "$PROJECT_CLAUDE$1")
+  local sha
+  if ! sha=$(git -C "$HUB_REPO" hash-object -w "$PROJECT_CLAUDE$1" 2>/dev/null); then
+    echo "  warning: hash-object failed for $1; base left unchanged" >&2
+    return 0
+  fi
+  # Only store a real 40-hex blob sha; never let an empty/garbled value become a
+  # `base:<path>:` line that the EXIT trap would persist (Codex High).
+  if [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+    STATE_BASES["$1"]="$sha"
+  else
+    echo "  warning: hash-object gave no valid sha for $1; base left unchanged" >&2
+  fi
 }
 
 # Is $1 a base sha that resolves to a BLOB in the hub object store? cat-file -e
@@ -616,6 +628,10 @@ done
 if [ "${#NONEMPTY[@]}" -gt 0 ]; then
   TMPLIST=$(mktemp "$WORKDIR/files.XXXXXX")
   printf '%s\n' "${NONEMPTY[@]}" > "$TMPLIST"
+  # Accepted residual (lead ruling): a bulk rsync can install several files
+  # before failing on a later one; on that abort none of them are recorded. Rerun
+  # `agent-sync-scan.sh --bootstrap-bases` afterward to re-record bases for any
+  # shared identical path, then re-scan.
   rsync -a --files-from="$TMPLIST" "$PROJECT_CLAUDE" "$HUB_PLUGIN"
   rm -f "$TMPLIST"
   # rsync succeeded for the whole list: record each installed path now.
