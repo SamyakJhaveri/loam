@@ -172,6 +172,44 @@ if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
   exit 0
 fi
 
+# Helper: should we prompt for this path? Returns 0 (prompt) or 1 (skip silently).
+should_prompt() {
+  local path="$1"
+  local prior="${STATE_DECISIONS[$path]:-}"
+  case "$prior" in
+    never) return 1 ;;
+    defer:*)
+      local ask_at="${prior#defer:}"
+      [ "$CURRENT_SESSION" -lt "$ask_at" ] && return 1
+      return 0
+      ;;
+    *) return 0 ;;
+  esac
+}
+
+# R6 prune fold-in: collect hub files whose project source is gone. A candidate
+# has a synced: OR base: ledger record, its hub copy still exists, its project
+# source does not, and it is not suppressed by a prior never/defer. Collected
+# BEFORE the no-changes early-exit so a retired-file-only run still offers the
+# deletion (lead-approved refinement inside R6).
+PRUNE_CANDIDATES=()
+declare -A _prune_seen
+consider_prune() {
+  local p="$1"
+  [ -n "${_prune_seen[$p]:-}" ] && return
+  _prune_seen[$p]=1
+  [ -f "$HUB_PLUGIN$p" ] || return          # nothing in the hub to prune
+  [ -e "$PROJECT_CLAUDE$p" ] && return       # project source still exists
+  should_prompt "$p" || return               # suppressed by a prior never/defer
+  PRUNE_CANDIDATES+=("$p")
+}
+for p in "${!STATE_DECISIONS[@]}"; do
+  case "${STATE_DECISIONS[$p]}" in synced:*) consider_prune "$p" ;; esac
+done
+for p in "${!STATE_BASES[@]}"; do
+  consider_prune "$p"
+done
+
 # 4. Compute additive diff via rsync --dry-run (no --delete).
 # --checksum forces content comparison (slower but accurate). Without it,
 # rsync uses size+mtime, which produces false-positive prompts for files
@@ -190,7 +228,9 @@ fi
 
 CHANGES=$(echo "$RSYNC_DIFF" | grep -E '^(>f|<f|cf|hf)' || true)
 
-if [ -z "$CHANGES" ]; then
+# Exit early only when there is genuinely nothing to do: no adds/changes AND no
+# retired files to prune. The message and behavior here are unchanged.
+if [ -z "$CHANGES" ] && [ "${#PRUNE_CANDIDATES[@]}" -eq 0 ]; then
   echo "No changes — hub is in sync with project."
   write_state
   exit 0
@@ -216,21 +256,6 @@ while IFS= read -r line; do
 done <<< "$CHANGES"
 
 PROJ_NAME=$(basename "$PROJECT_ROOT")
-
-# Helper: should we prompt for this path? Returns 0 (prompt) or 1 (skip silently).
-should_prompt() {
-  local path="$1"
-  local prior="${STATE_DECISIONS[$path]:-}"
-  case "$prior" in
-    never) return 1 ;;
-    defer:*)
-      local ask_at="${prior#defer:}"
-      [ "$CURRENT_SESSION" -lt "$ask_at" ] && return 1
-      return 0
-      ;;
-    *) return 0 ;;
-  esac
-}
 
 # Helper: prompt user, record decision into state, return 0 if approved.
 prompt_for() {
@@ -488,10 +513,36 @@ for path in "${PROMPT_CHANGES[@]:-}"; do
   fi
 done
 
+# R6 prune fold-in: offer to delete each retired hub file (project source gone).
+# Reads from STDIN like the other prompts (prune.sh reads /dev/tty, which is why
+# it cannot be tested and is not reused verbatim). On y, git rm stages the
+# deletion and the path's synced/base records are dropped; d/n record defer/never
+# exactly as prompt_for does.
+PRUNED_PATHS=()
+for p in "${PRUNE_CANDIDATES[@]:-}"; do
+  [ -z "${p:-}" ] && continue
+  printf "Delete %s from hub? [y=delete now / d=defer (default) / n=never] " "$p" >&2
+  read -r presp || presp=""
+  case "$presp" in
+    y|Y|yes|YES)
+      git -C "$HUB_REPO" rm -r --quiet "cultivation/marketplace/sam-cc-setup/$p"
+      unset 'STATE_DECISIONS[$p]'
+      unset 'STATE_BASES[$p]'
+      PRUNED_PATHS+=("$p")
+      ;;
+    n|N|never|NEVER)
+      STATE_DECISIONS["$p"]="never"
+      ;;
+    *)
+      STATE_DECISIONS["$p"]="defer:$((CURRENT_SESSION + DEFER_SESSIONS))"
+      ;;
+  esac
+done
+
 # Persist updated state regardless of whether anything was approved.
 write_state
 
-TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} + ${#MERGED_PATHS[@]} ))
+TOTAL_APPROVED=$(( ${#APPROVED_ADDS[@]} + ${#APPROVED_CHANGES[@]} + ${#MERGED_PATHS[@]} + ${#PRUNED_PATHS[@]} ))
 if [ "$TOTAL_APPROVED" -eq 0 ]; then
   echo "Nothing approved — exiting."
   exit 0
@@ -543,12 +594,16 @@ for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-
   [ -n "$p" ] && HUB_RELPATHS+=("cultivation/marketplace/sam-cc-setup/$p")
 done
 
-if [ "${#HUB_RELPATHS[@]}" -eq 0 ]; then
+if [ "${#HUB_RELPATHS[@]}" -eq 0 ] && [ "${#PRUNED_PATHS[@]}" -eq 0 ]; then
   echo "Internal error: TOTAL_APPROVED>0 but no hub relpaths to commit." >&2
   exit 1
 fi
 
-git -C "$HUB_REPO" add -- "${HUB_RELPATHS[@]}"
+# Stage adds/changes/merges (scoped). Pruned paths are already staged as
+# deletions by git rm, so they need no add (git add on a removed path errors).
+if [ "${#HUB_RELPATHS[@]}" -gt 0 ]; then
+  git -C "$HUB_REPO" add -- "${HUB_RELPATHS[@]}"
+fi
 git -C "$HUB_REPO" commit -m "sync: from $PROJ_NAME on $DATE"
 # Push is outward-facing and the hub is a general-purpose repo — separate confirm.
 printf "Push %s to its origin now? [y/N] " "$HUB_REPO" >&2
