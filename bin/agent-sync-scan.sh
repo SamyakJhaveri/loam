@@ -96,16 +96,15 @@ if [ -f "$STATE_FILE" ]; then
     esac
   done < "$STATE_FILE"
 fi
+# The ledger is now loaded; the EXIT trap below may persist it. Guarding on this
+# flag means an early abort BEFORE the parse never overwrites .sync-state with an
+# empty state (High 1, Codex).
+STATE_LOADED=1
 CURRENT_SESSION=$((PRIOR_SESSION + 1))
 
 # Resolve the project and hub trees (shared by bootstrap and the scan below).
 PROJECT_CLAUDE="$PROJECT_ROOT/.claude/"
 HUB_PLUGIN="$HUB_REPO/cultivation/marketplace/sam-cc-setup/"
-
-# All temp files live under one directory removed by a single EXIT trap, so a
-# base, merge, or file-list temp never leaks on an error or signal (Codex Low).
-WORKDIR=$(mktemp -d)
-trap 'rm -rf "$WORKDIR"' EXIT
 
 RSYNC_EXCLUDES=(
   --exclude=audit.log
@@ -158,6 +157,18 @@ bootstrap_excluded() {
   esac
   return 1
 }
+
+# One EXIT trap covers both concerns: it persists the ledger (so per-item
+# records survive even a mid-batch cp/git rm abort) and removes all temp files
+# (base/merge/file-list) so none leak on an error or signal. The write_state is
+# guarded by STATE_LOADED so an abort before the parse cannot clobber .sync-state
+# with an empty state. Registered here, after write_state is defined.
+WORKDIR=$(mktemp -d)
+cleanup() {
+  [ "${STATE_LOADED:-0}" -eq 1 ] && write_state
+  rm -rf "$WORKDIR"
+}
+trap cleanup EXIT
 
 # --bootstrap-bases (R5): record a base for every regular file present in BOTH
 # trees at the same relative path, using the PROJECT blob sha, skipping paths
@@ -595,33 +606,39 @@ for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}"; do
   [ -n "$p" ] && NONEMPTY+=("$p")
 done
 
+# High 1 (Codex): record synced:/base: per item, IMMEDIATELY after that item is
+# installed - never in a single deferred pass - so a mid-batch cp/git rm abort
+# leaves every earlier success already recorded. rsync installs the adds/changes
+# atomically (it returns success only when the whole list transferred), so their
+# records are written right after it returns; merged and pruned items are
+# recorded one at a time inside their own loops. The EXIT trap then persists the
+# ledger even on an abort.
 if [ "${#NONEMPTY[@]}" -gt 0 ]; then
   TMPLIST=$(mktemp "$WORKDIR/files.XXXXXX")
   printf '%s\n' "${NONEMPTY[@]}" > "$TMPLIST"
   rsync -a --files-from="$TMPLIST" "$PROJECT_CLAUDE" "$HUB_PLUGIN"
   rm -f "$TMPLIST"
+  # rsync succeeded for the whole list: record each installed path now.
+  for p in "${NONEMPTY[@]}"; do
+    STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"
+    record_base "$p"
+  done
 fi
 
 # Merged results are installed by direct copy - NEVER rsync, which would
 # re-overwrite the hub copy with the raw project file and discard the merge.
+# Record each right after its own cp succeeds.
 for p in "${MERGED_PATHS[@]:-}"; do
   [ -z "${p:-}" ] && continue
   cp "${MERGED_TMP[$p]}" "$HUB_PLUGIN$p"
-  rm -f "${MERGED_TMP[$p]}"
-done
-
-# High 1 (Codex): record synced:/base: ONLY now, after the file is installed, so
-# a failed rsync/cp never leaves a synced ledger entry for a file that is not in
-# the hub. The base is the PROJECT content that was copied or merged in.
-for p in "${APPROVED_ADDS[@]:-}" "${APPROVED_CHANGES[@]:-}" "${MERGED_PATHS[@]:-}"; do
-  [ -z "${p:-}" ] && continue
   STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"
   record_base "$p"
+  rm -f "${MERGED_TMP[$p]}"
 done
 
 # High 3 (Codex): apply prune deletions now, each preflighted so git rm cannot
 # fail mid-loop. A candidate whose hub copy is not tracked (e.g. never committed)
-# is skipped, not aborted. Ledger records drop only for deletions that succeed.
+# is skipped, not aborted. Each successful deletion drops its records right away.
 PRUNED_PATHS=()
 for p in "${PRUNE_APPROVED[@]:-}"; do
   [ -z "${p:-}" ] && continue
@@ -636,7 +653,8 @@ for p in "${PRUNE_APPROVED[@]:-}"; do
   fi
 done
 
-# Persist the ledger now that installs and prunes have actually happened.
+# Persist the ledger now that installs and prunes have happened (the EXIT trap
+# also persists it, so a mid-batch abort still records the completed items).
 write_state
 
 # 8. Show resulting git status in hub
