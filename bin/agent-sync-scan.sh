@@ -513,11 +513,20 @@ for path in "${PROMPT_CHANGES[@]:-}"; do
       else
         rm -f "$merged_tmp"
       fi
+    elif [ "$mrc" -eq 255 ]; then
+      # Operational error (High 2, Codex): git merge-file returns 255 when it
+      # cannot complete - e.g. an unreadable input file - which is NOT a content
+      # conflict and must never be offered a destructive overwrite. Skip the path
+      # safely: warn and continue, with no prompt and no state change.
+      handled=1
+      rm -f "$merged_tmp"
+      printf 'Merge error %s: git merge-file failed (exit %s); skipped\n' "$path" "$mrc" >&2
+      continue
     else
-      # Conflict (mrc>0) or merge error (255): base present, but hub and project
-      # diverge on the same lines. Never auto-install; surface both versions,
-      # then take the overwrite prompt (default defer). On y the rsync overwrite
-      # applies and the base is re-recorded per R2.
+      # Conflict (mrc in 1..254): base present, but hub and project diverge on the
+      # same lines. Never auto-install; surface both versions, then take the
+      # overwrite prompt (default defer). On y the rsync overwrite applies and the
+      # base is re-recorded per R2.
       handled=1
       rm -f "$merged_tmp"
       printf 'Conflict %s: base, hub, and project all differ on the same lines; showing both versions\n' "$path" >&2
