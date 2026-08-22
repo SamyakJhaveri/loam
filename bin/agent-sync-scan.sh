@@ -721,12 +721,27 @@ fi
 # leftover can never collide with a real path (none is left on success).
 install_file() {
   local src="$1" dst="$2" rel="$3" dstdir tmp
+  # H4 (Codex High): refuse to install over a directory. `mv -f "$tmp" "$dst"`
+  # would move the temp file INTO an existing directory and return 0, so the scan
+  # would record a phantom synced:/base: and could commit a stray .sync-install.*
+  # file. Fail closed before the copy.
+  if [ -d "$dst" ]; then
+    echo "Error: install failed for $rel (destination is a directory)" >&2
+    exit 1
+  fi
   dstdir="$(dirname "$dst")"
   mkdir -p "$dstdir" || { echo "Error: install failed for $rel" >&2; exit 1; }
   tmp="$(mktemp "$dstdir/.sync-install.XXXXXX")" || { echo "Error: install failed for $rel" >&2; exit 1; }
   if ! cp -p "$src" "$tmp" || ! mv -f "$tmp" "$dst"; then
     rm -f "$tmp"
     echo "Error: install failed for $rel" >&2
+    exit 1
+  fi
+  # H4 belt-and-suspenders: a TOCTOU race could make $dst a directory after the
+  # pre-check, so the mv would land inside it; require a regular file at $dst.
+  if [ ! -f "$dst" ]; then
+    rm -f "$tmp"
+    echo "Error: install failed for $rel (destination is a directory)" >&2
     exit 1
   fi
 }
