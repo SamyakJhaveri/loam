@@ -187,6 +187,19 @@ should_prompt() {
   esac
 }
 
+# Critical-1 (Codex): a changed candidate whose project content still equals its
+# recorded base has NOT changed since the last sync - the hub-vs-project delta is
+# only the hub's own generalization, so it must not be re-offered. Returns 0
+# (suppress) only when a valid base blob is present AND the project blob matches
+# it; otherwise 1 (let normal handling proceed).
+project_unchanged_since_base() {
+  local path="$1" base_sha
+  base_sha="${STATE_BASES[$path]:-}"
+  [ -n "$base_sha" ] || return 1
+  git -C "$HUB_REPO" cat-file -e "$base_sha" 2>/dev/null || return 1
+  [ "$(git hash-object "$PROJECT_CLAUDE$path")" = "$base_sha" ]
+}
+
 # R6 prune fold-in: collect hub files whose project source is gone. A candidate
 # has a synced: OR base: ledger record, its hub copy still exists, its project
 # source does not, and it is not suppressed by a prior never/defer. Collected
@@ -429,7 +442,9 @@ for path in "${CHANGED_PATHS[@]:-}"; do
   [ -z "${path:-}" ] && continue
   manifest_allows "$path" || continue
   deps_satisfied "$path" || continue
-  should_prompt "$path" && PROMPT_CHANGES+=("$path")
+  should_prompt "$path" || continue
+  project_unchanged_since_base "$path" && continue   # Critical-1: no-op, suppress
+  PROMPT_CHANGES+=("$path")
 done
 if [ -f "$MANIFEST_TSV" ]; then
   echo "  manifest guard: $SKIPPED_STAYS 'stays', $SKIPPED_REWORK 'rework' (generalize first), $SKIPPED_UNKNOWN unclassified, $SKIPPED_DEPS dep-withheld paths"
