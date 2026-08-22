@@ -733,8 +733,10 @@ done
 # BSD/GNU stat). Record each right after its own install succeeds.
 for p in "${MERGED_PATHS[@]:-}"; do
   [ -z "${p:-}" ] && continue
-  merged_mode=$(stat -f '%Lp' "$PROJECT_CLAUDE$p" 2>/dev/null \
-    || stat -c '%a' "$PROJECT_CLAUDE$p" 2>/dev/null || echo 644)
+  # GNU stat treats -f as --file-system (it prints a multi-line dump, not the
+  # mode), so -f must run AFTER -c; BSD stat has no -c and falls through to -f.
+  merged_mode=$(stat -c '%a' "$PROJECT_CLAUDE$p" 2>/dev/null \
+    || stat -f '%Lp' "$PROJECT_CLAUDE$p" 2>/dev/null || echo 644)
   chmod "$merged_mode" "${MERGED_TMP[$p]}" 2>/dev/null || true
   install_file "${MERGED_TMP[$p]}" "$HUB_PLUGIN$p" "$p"
   STATE_DECISIONS["$p"]="synced:$CURRENT_SESSION"

@@ -23,9 +23,13 @@ printf 'alpha GENERALIZED\nbeta\ngamma\ndelta\n' > "$HUB_SETUP/$REL"
   git -c user.email=t@t -c user.name=t add -A && \
   git -c user.email=t@t -c user.name=t commit -q -m init)
 
-# Project copy = base + an unrelated project edit on the last line.
+# Project copy = base + an unrelated project edit on the last line. Marked +x so
+# the merged result must arrive executable (H3: the merged temp's mode is set
+# from the project file via stat before install_file's cp -p - GNU stat -c must
+# run before BSD stat -f, else the mode is a multi-line dump and chmod no-ops).
 mkdir -p "$TMP/proj/.claude/skills/foo"
 printf 'alpha\nbeta\ngamma\ndelta PROJECTEDIT\n' > "$TMP/proj/.claude/$REL"
+chmod 755 "$TMP/proj/.claude/$REL"
 (cd "$TMP/proj" && git init -q && \
   git -c user.email=t@t -c user.name=t add -A && \
   git -c user.email=t@t -c user.name=t commit -q -m init)
@@ -65,6 +69,15 @@ printf 'alpha GENERALIZED\nbeta\ngamma\ndelta PROJECTEDIT\n' > "$EXPECT"
 if ! cmp -s "$EXPECT" "$HUB_FILE"; then
   echo "FAIL: hub copy is not the exact expected merge"
   echo "--- expected ---"; cat "$EXPECT"; echo "--- got ---"; cat "$HUB_FILE"; exit 1
+fi
+
+# Assertion 2 (+x leg, H3): the merged result carries the project file's +x bit.
+# On macOS (BSD stat) both stat orders yield the mode, so this stays green; it
+# locks the GNU-stat-first ordering for Linux CI, where the wrong order no-ops
+# the chmod and the merged file would land 0600.
+if [ ! -x "$HUB_FILE" ]; then
+  echo "FAIL: merged hub copy lost the project's executable bit"
+  ls -l "$HUB_FILE"; exit 1
 fi
 
 # Assertion 3: a fresh base: line records the project content as the new base.
