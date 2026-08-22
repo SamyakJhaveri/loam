@@ -103,7 +103,17 @@ if [ -f "$STATE_FILE" ]; then
   while IFS= read -r line; do
     [ -z "$line" ] && continue
     case "$line" in
-      session=*) PRIOR_SESSION="${line#session=}" ;;
+      session=*)
+        sess="${line#session=}"
+        # C3 (Codex Critical): the session value feeds `$((PRIOR_SESSION + 1))`,
+        # where a crafted `a[$(cmd)]` runs the command on older bash. Accept only
+        # a decimal count; anything else warns and leaves PRIOR_SESSION=0.
+        if [[ "$sess" =~ ^[0-9]+$ ]]; then
+          PRIOR_SESSION="$sess"
+        else
+          echo "warning: ignoring malformed .sync-state session: $sess" >&2
+        fi
+        ;;
       never:*)
         path="${line#never:}"
         state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
@@ -114,6 +124,10 @@ if [ -f "$STATE_FILE" ]; then
         path="${rest%:*}"
         ask_at="${rest##*:}"
         state_path_ok "$path" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
+        # C3: ask_at feeds `[ "$CURRENT_SESSION" -lt "$ask_at" ]` (arithmetic), so
+        # a non-decimal counter is malformed and could smuggle a subscript on
+        # older bash; drop the whole defer record.
+        [[ "$ask_at" =~ ^[0-9]+$ ]] || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_DECISIONS["$path"]="defer:$ask_at"
         ;;
       base:*)
@@ -138,7 +152,9 @@ fi
 # flag means an early abort BEFORE the parse never overwrites .sync-state with an
 # empty state (High 1, Codex).
 STATE_LOADED=1
-CURRENT_SESSION=$((PRIOR_SESSION + 1))
+# 10# forces base-10 so a validated leading-zero count (e.g. 08) never trips the
+# octal parser; PRIOR_SESSION is guaranteed decimal by the session=* guard above.
+CURRENT_SESSION=$((10#$PRIOR_SESSION + 1))
 
 # Resolve the project and hub trees (shared by bootstrap and the scan below).
 PROJECT_CLAUDE="$PROJECT_ROOT/.claude/"
