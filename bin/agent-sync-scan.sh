@@ -737,6 +737,26 @@ if [ "$TOTAL_APPROVED" -eq 0 ]; then
   exit 0
 fi
 
+# reject_symlink_path <rel>: C5 (Codex pass 2 Critical). install_file's mkdir -p,
+# mktemp and cp would FOLLOW a committed hub symlink ancestor (e.g. a symlink
+# `skills -> ../../../outside`) and write OUTSIDE the plugin tree. Walk every
+# cumulative component of $rel under HUB_PLUGIN and refuse if any EXISTING one is
+# a symlink (`[ -L ]` tests the link itself, never follows it). A fresh path,
+# whose components do not exist yet, passes cleanly.
+reject_symlink_path() {
+  local rel="$1" prefix="" remainder="$1" component
+  while [ -n "$remainder" ]; do
+    component="${remainder%%/*}"
+    if [ "$component" = "$remainder" ]; then remainder=""; else remainder="${remainder#*/}"; fi
+    [ -z "$component" ] && continue
+    prefix="${prefix:+$prefix/}$component"
+    if [ -L "$HUB_PLUGIN$prefix" ]; then
+      echo "Error: install failed for $rel (symlink in destination path: $prefix)" >&2
+      exit 1
+    fi
+  done
+}
+
 # install_file <src> <dst> <rel>: install one file atomically. H3 (Codex High):
 # a bulk rsync could leave earlier files installed with no ledger record when a
 # later one fails, and a direct cp can truncate the destination on an I/O error.
@@ -749,6 +769,7 @@ fi
 # leftover can never collide with a real path (none is left on success).
 install_file() {
   local src="$1" dst="$2" rel="$3" dstdir tmp
+  reject_symlink_path "$rel"   # C5: no symlink ancestor may redirect the write
   # H4 (Codex High): refuse to install over a directory. `mv -f "$tmp" "$dst"`
   # would move the temp file INTO an existing directory and return 0, so the scan
   # would record a phantom synced:/base: and could commit a stray .sync-install.*
@@ -823,6 +844,7 @@ for p in "${PRUNE_APPROVED[@]:-}"; do
   # H1 second line of defense: a crafted key cannot reach here after the parser
   # guard drops it, but the git-rm is destructive so re-check before it.
   state_path_ok "$p" || { echo "  prune skipped (malformed state key): $p" >&2; continue; }
+  reject_symlink_path "$p"   # C5: no symlink ancestor may redirect the git rm
   hub_rel="cultivation/marketplace/sam-cc-setup/$p"
   if git -C "$HUB_REPO" ls-files --error-unmatch -- "$hub_rel" >/dev/null 2>&1; then
     git -C "$HUB_REPO" rm -r --quiet "$hub_rel"
