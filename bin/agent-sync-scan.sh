@@ -43,7 +43,19 @@ if [ -n "$(git -C "$PROJECT_ROOT" status --porcelain .claude 2>/dev/null)" ]; th
   exit 1
 fi
 
-# 3. Verify hub working tree is clean (warn if not).
+# 3. Verify the hub is safe to commit into.
+# 3a. C2 (Codex Critical): refuse a non-empty hub index. The final `git commit`
+#     has no pathspec, so anything already staged in the hub index would be swept
+#     into the sync/prune commit and could be pushed to the public repo. Fail
+#     closed here, BEFORE the unstaged-WIP prompt below and with no prompt of its
+#     own. Bootstrap never commits, so it stays exempt.
+if [ "$BOOTSTRAP_BASES" -eq 0 ] && ! git -C "$HUB_REPO" diff --cached --quiet 2>/dev/null; then
+  echo "Error: hub index has staged changes; commit or unstage them before syncing:" >&2
+  git -C "$HUB_REPO" diff --cached --name-only >&2
+  exit 1
+fi
+
+# 3b. Verify hub working tree is clean (warn if not).
 #    .sync-state is sync.sh's own state file and is excluded from the cleanliness
 #    check (it is expected to be untracked and is added to the hub's .gitignore).
 HUB_DIRTY=$(git -C "$HUB_REPO" status --porcelain 2>/dev/null \
