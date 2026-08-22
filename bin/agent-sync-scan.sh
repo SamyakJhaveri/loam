@@ -24,6 +24,13 @@ HUB_REPO="${SAM_CC_HUB_REPO:-$HOME/Desktop/loam}"
 DEFER_SESSIONS="${SAM_CC_DEFER_SESSIONS:-4}"
 STATE_FILE="$HUB_REPO/.sync-state"
 
+# --bootstrap-bases (R5): a one-time, non-interactive pass that records a merge
+# base for every path already shared by project and hub. It never prompts, never
+# copies, and touches only .sync-state, so it skips the hub-dirty prompt and the
+# rsync diff below and short-circuits before the main scan flow.
+BOOTSTRAP_BASES=0
+[ "${1:-}" = "--bootstrap-bases" ] && BOOTSTRAP_BASES=1
+
 # 1. Verify hub repo exists and is a git repo
 if [ ! -d "$HUB_REPO/.git" ]; then
   echo "Error: Hub repo not found at $HUB_REPO. Set SAM_CC_HUB_REPO to point at it." >&2
@@ -41,7 +48,7 @@ fi
 #    check (it is expected to be untracked and is added to the hub's .gitignore).
 HUB_DIRTY=$(git -C "$HUB_REPO" status --porcelain 2>/dev/null \
   | grep -v -E ' \.sync-state$' || true)
-if [ -n "$HUB_DIRTY" ]; then
+if [ "$BOOTSTRAP_BASES" -eq 0 ] && [ -n "$HUB_DIRTY" ]; then
   echo "Warning: Hub has uncommitted changes — sync may overwrite WIP." >&2
   printf "Continue? [y/N] " >&2
   read -r response || response=""
@@ -91,7 +98,7 @@ if [ -f "$STATE_FILE" ]; then
 fi
 CURRENT_SESSION=$((PRIOR_SESSION + 1))
 
-# 4. Compute additive diff via rsync --dry-run (no --delete).
+# Resolve the project and hub trees (shared by bootstrap and the scan below).
 PROJECT_CLAUDE="$PROJECT_ROOT/.claude/"
 HUB_PLUGIN="$HUB_REPO/cultivation/marketplace/sam-cc-setup/"
 mkdir -p "$HUB_PLUGIN"
@@ -102,23 +109,6 @@ RSYNC_EXCLUDES=(
   --exclude=settings.local.json
   --exclude='*.local.*'
 )
-
-# --checksum forces content comparison (slower but accurate). Without it,
-# rsync uses size+mtime, which produces false-positive prompts for files
-# touched but unchanged (common after a fresh git clone).
-set +e
-RSYNC_DIFF=$(rsync --dry-run -a --checksum --itemize-changes \
-  "${RSYNC_EXCLUDES[@]}" \
-  "$PROJECT_CLAUDE" "$HUB_PLUGIN" 2>&1)
-RSYNC_STATUS=$?
-set -e
-if [ "$RSYNC_STATUS" -ne 0 ]; then
-  echo "Error: rsync dry-run failed (exit $RSYNC_STATUS); refusing to report 'no changes'." >&2
-  echo "$RSYNC_DIFF" >&2
-  exit 1
-fi
-
-CHANGES=$(echo "$RSYNC_DIFF" | grep -E '^(>f|<f|cf|hf)' || true)
 
 # Helper: write current state back to disk.
 write_state() {
@@ -144,6 +134,61 @@ write_state() {
 record_base() {
   STATE_BASES["$1"]=$(git -C "$HUB_REPO" hash-object -w "$PROJECT_CLAUDE$1")
 }
+
+# Should the relative path be skipped for bootstrap? Honors the same RSYNC_EXCLUDES
+# patterns and always skips the state file itself.
+bootstrap_excluded() {
+  local rel="$1" base
+  base=$(basename "$rel")
+  [ "$rel" = ".sync-state" ] && return 0
+  case "$base" in
+    audit.log|.validation_passed|settings.local.json) return 0 ;;
+    *.local.*) return 0 ;;
+  esac
+  return 1
+}
+
+# --bootstrap-bases (R5): record a base for every regular file present in BOTH
+# trees at the same relative path, using the PROJECT blob sha, skipping paths
+# that already have one. Never prompts, never copies, touches only .sync-state,
+# and does not bump the session counter.
+if [ "$BOOTSTRAP_BASES" -eq 1 ]; then
+  bs_recorded=0
+  bs_present=0
+  while IFS= read -r pf; do
+    rel="${pf#"$PROJECT_CLAUDE"}"
+    bootstrap_excluded "$rel" && continue
+    [ -f "$HUB_PLUGIN$rel" ] || continue
+    if [ -n "${STATE_BASES[$rel]:-}" ]; then
+      bs_present=$((bs_present + 1))
+      continue
+    fi
+    record_base "$rel"
+    bs_recorded=$((bs_recorded + 1))
+  done < <(find "$PROJECT_CLAUDE" -type f)
+  CURRENT_SESSION="$PRIOR_SESSION"   # never bump the session on a bootstrap
+  write_state
+  echo "bootstrap: $bs_recorded bases recorded, $bs_present already present"
+  exit 0
+fi
+
+# 4. Compute additive diff via rsync --dry-run (no --delete).
+# --checksum forces content comparison (slower but accurate). Without it,
+# rsync uses size+mtime, which produces false-positive prompts for files
+# touched but unchanged (common after a fresh git clone).
+set +e
+RSYNC_DIFF=$(rsync --dry-run -a --checksum --itemize-changes \
+  "${RSYNC_EXCLUDES[@]}" \
+  "$PROJECT_CLAUDE" "$HUB_PLUGIN" 2>&1)
+RSYNC_STATUS=$?
+set -e
+if [ "$RSYNC_STATUS" -ne 0 ]; then
+  echo "Error: rsync dry-run failed (exit $RSYNC_STATUS); refusing to report 'no changes'." >&2
+  echo "$RSYNC_DIFF" >&2
+  exit 1
+fi
+
+CHANGES=$(echo "$RSYNC_DIFF" | grep -E '^(>f|<f|cf|hf)' || true)
 
 if [ -z "$CHANGES" ]; then
   echo "No changes — hub is in sync with project."
