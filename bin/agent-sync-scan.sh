@@ -739,8 +739,10 @@ install_file() {
   fi
   # H4 belt-and-suspenders: a TOCTOU race could make $dst a directory after the
   # pre-check, so the mv would land inside it; require a regular file at $dst.
+  # On that race the temp was moved to $dst/<tempname>, so clean up there too -
+  # never leave a stray .sync-install.* the sync commit could sweep up.
   if [ ! -f "$dst" ]; then
-    rm -f "$tmp"
+    rm -f "$tmp" "$dst/$(basename "$tmp")"
     echo "Error: install failed for $rel (destination is a directory)" >&2
     exit 1
   fi
