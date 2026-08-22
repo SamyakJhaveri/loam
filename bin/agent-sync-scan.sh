@@ -24,9 +24,18 @@ HUB_REPO="${SAM_CC_HUB_REPO:-$HOME/Desktop/loam}"
 DEFER_SESSIONS="${SAM_CC_DEFER_SESSIONS:-4}"
 # H5 (Codex pass 2 High): the defer counter feeds Bash arithmetic; bound it to a
 # 1-9 digit decimal (<= 999999999) so it can never overflow or inject.
-[[ "$DEFER_SESSIONS" =~ ^[0-9]{1,9}$ ]] || {
-  echo "Error: SAM_CC_DEFER_SESSIONS must be a decimal number of 1 to 9 digits (got '$DEFER_SESSIONS')" >&2
+[[ "$DEFER_SESSIONS" =~ ^[0-9]{1,6}$ ]] || {
+  echo "Error: SAM_CC_DEFER_SESSIONS must be a decimal number of 1 to 6 digits (got '$DEFER_SESSIONS')" >&2
   exit 1
+}
+# Ledger counters (session=, defer ask_at) are accepted only below a ceiling
+# that keeps every value the scan can DERIVE from them re-readable: a session
+# < 900000000 advances to at most 900000000, and ask_at = session +
+# DEFER_SESSIONS (<= 999999) stays below 999999999. A value at or past the
+# ceiling is treated as malformed (Codex pass 3 Medium: the old 9-digit check
+# let 999999999 advance to a 10-digit value that the next run rejected).
+counter_ok() {
+  [[ "$1" =~ ^[0-9]{1,9}$ ]] && [ "$1" -lt 900000000 ]
 }
 STATE_FILE="$HUB_REPO/.sync-state"
 
@@ -114,7 +123,7 @@ if [ -f "$STATE_FILE" ]; then
         # C3 (Codex Critical): the session value feeds `$((PRIOR_SESSION + 1))`,
         # where a crafted `a[$(cmd)]` runs the command on older bash. Accept only
         # a decimal count; anything else warns and leaves PRIOR_SESSION=0.
-        if [[ "$sess" =~ ^[0-9]{1,9}$ ]]; then
+        if counter_ok "$sess"; then
           PRIOR_SESSION="$sess"
         else
           echo "warning: ignoring malformed .sync-state session: $sess" >&2
@@ -133,7 +142,7 @@ if [ -f "$STATE_FILE" ]; then
         # C3: ask_at feeds `[ "$CURRENT_SESSION" -lt "$ask_at" ]` (arithmetic), so
         # a non-decimal counter is malformed and could smuggle a subscript on
         # older bash; drop the whole defer record.
-        [[ "$ask_at" =~ ^[0-9]{1,9}$ ]] || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
+        counter_ok "$ask_at" || { echo "warning: ignoring malformed .sync-state key: $path" >&2; continue; }
         STATE_DECISIONS["$path"]="defer:$ask_at"
         ;;
       base:*)
@@ -165,6 +174,7 @@ CURRENT_SESSION=$((10#$PRIOR_SESSION + 1))
 # Resolve the project and hub trees (shared by bootstrap and the scan below).
 PROJECT_CLAUDE="$PROJECT_ROOT/.claude/"
 HUB_PLUGIN="$HUB_REPO/cultivation/marketplace/sam-cc-setup/"
+HUB_PLUGIN_REL="cultivation/marketplace/sam-cc-setup/"
 
 RSYNC_EXCLUDES=(
   --exclude=audit.log
@@ -178,10 +188,18 @@ write_state() {
   # C4 (Codex pass 2 Critical): return 1 on a genuine failure to persist the
   # ledger or the base ref, so the normal-path callers can abort BEFORE the
   # commit; a normal run returns 0. The EXIT-trap caller uses `|| true`.
-  local rc=0
+  local rc=0 state_tmp=""
+  # Codex pass 3 Critical: a predictable ${STATE_FILE}.tmp could be pre-planted
+  # as a symlink and followed; mktemp gives an unpredictable name in the hub
+  # root, and the rename onto .sync-state never follows a symlink at the target.
+  if ! state_tmp=$(mktemp "$HUB_REPO/.sync-state.XXXXXX" 2>/dev/null); then
+    echo "  warning: could not create a temp file for $STATE_FILE" >&2
+    state_tmp=""
+    rc=1
+  fi
   # Explicit if/else, NOT `if ! group > tmp && mv` (that binds as
   # `(! group>tmp) && mv`, so mv never runs on the success path).
-  if { echo "session=$CURRENT_SESSION"
+  if [ -n "$state_tmp" ] && { echo "session=$CURRENT_SESSION"
     for p in "${!STATE_DECISIONS[@]}"; do
       local dec="${STATE_DECISIONS[$p]}"
       case "$dec" in
@@ -193,11 +211,10 @@ write_state() {
     for p in "${!STATE_BASES[@]}"; do
       echo "base:$p:${STATE_BASES[$p]}"
     done
-     } > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"; then
+     } > "$state_tmp" && mv -f "$state_tmp" "$STATE_FILE"; then
     :   # state written
   else
-    echo "  warning: could not write $STATE_FILE" >&2
-    rm -f "${STATE_FILE}.tmp" 2>/dev/null || true
+    [ -n "$state_tmp" ] && { echo "  warning: could not write $STATE_FILE" >&2; rm -f "$state_tmp" 2>/dev/null || true; }
     rc=1
   fi
 
@@ -218,7 +235,11 @@ write_state() {
     # expected"). WORKDIR is a private mktemp -d, so a fixed name is safe here.
     base_index="$WORKDIR/base-index"
     rm -f "$base_index"
+    # Codex pass 3 High: a base whose blob is gone (stale or pruned sha) must
+    # not enter the tree - a reachable tree with a missing blob fails git fsck.
+    # The ledger line is kept; --bootstrap-bases re-records it.
     if ! { for p in "${!STATE_BASES[@]}"; do
+             base_blob_present "${STATE_BASES[$p]}" || continue
              printf '100644 %s\t%s\n' "${STATE_BASES[$p]}" "$p"
            done; } | GIT_INDEX_FILE="$base_index" \
              git -C "$HUB_REPO" update-index --index-info 2>/dev/null; then
@@ -550,7 +571,6 @@ manifest_field() { # $1=row key, $2=column number
 # untracked/dirty hub file that the scoped sync commit would not include).
 # $1 = current path, $2 = space-separated row keys on the current DFS chain
 # (cycle detector), $3 = mode. On failure sets DEP_FAIL_REASON, returns 1.
-HUB_PLUGIN_REL="cultivation/marketplace/sam-cc-setup/"
 check_dep_closure() {
   local path="$1" chain="$2" mode="$3" rowkey requires dep dep_row dep_verdict
   rowkey="$(manifest_rowkey "$path")"
@@ -750,14 +770,19 @@ fi
 # a symlink (`[ -L ]` tests the link itself, never follows it). A fresh path,
 # whose components do not exist yet, passes cleanly.
 reject_symlink_path() {
-  local rel="$1" prefix="" remainder="$1" component
+  # Walk from the HUB ROOT (Codex pass 3 Critical): cultivation/, marketplace/
+  # and sam-cc-setup/ themselves could be symlinks, not only the components
+  # below the plugin root. The message names the component relative to the
+  # plugin root when it lies below it.
+  local rel="$1" prefix="" remainder="${HUB_PLUGIN_REL}$1" component shown
   while [ -n "$remainder" ]; do
     component="${remainder%%/*}"
     if [ "$component" = "$remainder" ]; then remainder=""; else remainder="${remainder#*/}"; fi
     [ -z "$component" ] && continue
     prefix="${prefix:+$prefix/}$component"
-    if [ -L "$HUB_PLUGIN$prefix" ]; then
-      echo "Error: install failed for $rel (symlink in destination path: $prefix)" >&2
+    if [ -L "$HUB_REPO/$prefix" ]; then
+      shown="${prefix#"$HUB_PLUGIN_REL"}"
+      echo "Error: install failed for $rel (symlink in destination path: $shown)" >&2
       exit 1
     fi
   done

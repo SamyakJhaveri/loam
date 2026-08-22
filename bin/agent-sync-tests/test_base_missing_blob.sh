@@ -61,4 +61,11 @@ if [ "$(cat "$HUB_FILE")" != "hub content" ]; then
   echo "FAIL: hub copy changed on defer"; cat "$HUB_FILE"; exit 1
 fi
 
+# Assertion 4 (Codex pass 3 High): the stale sha must NOT enter the bases tree,
+# so the hub object graph stays fsck-clean.
+if ! git -C "$TMP/hub" fsck --no-dangling >/dev/null 2>&1; then
+  echo "FAIL: git fsck fails after the scan (stale base sha written into refs/agent-sync/bases)"
+  git -C "$TMP/hub" fsck --no-dangling 2>&1 | head -5; exit 1
+fi
+
 echo "PASS: test_base_missing_blob"

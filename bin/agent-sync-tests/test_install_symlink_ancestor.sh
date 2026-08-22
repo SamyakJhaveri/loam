@@ -38,4 +38,21 @@ if [ -f "$STATE" ] && grep -qE "^(synced|base):skills/x/SKILL.md:" "$STATE"; the
 if find "$H" -name '.sync-install.*' | grep -q .; then
   echo "FAIL: leftover .sync-install.* under hub"; find "$H" -name '.sync-install.*'; exit 1; fi
 
+# ---- Leg 2: the symlink is the plugin root itself (Codex pass 3 Critical):
+# cultivation/marketplace/sam-cc-setup -> ../../outside. ----
+H2="$TMP/hub2"
+mkdir -p "$H2/cultivation/marketplace" "$H2/outside"
+echo marker > "$H2/outside/marker.txt"
+ln -s ../../outside "$H2/cultivation/marketplace/sam-cc-setup"
+(cd "$H2" && git init -q && git -c user.email=t@t -c user.name=t add -A && git -c user.email=t@t -c user.name=t commit -q -m init)
+cd "$TMP/proj"
+set +e
+out2=$(printf 'y\ny\n' | SAM_CC_HUB_REPO="$H2" bash "$SYNC_SH" 2>&1)
+rc2=$?
+set -e
+if [ "$rc2" -eq 0 ]; then echo "FAIL(2): scan exited 0; expected abort on a plugin-root symlink"; echo "$out2"; exit 1; fi
+if ! echo "$out2" | grep -qF "symlink in destination path: cultivation/marketplace/sam-cc-setup"; then
+  echo "FAIL(2): missing/incorrect symlink Error (should name the plugin root)"; echo "$out2"; exit 1; fi
+if [ -e "$H2/outside/skills" ]; then echo "FAIL(2): wrote OUTSIDE the plugin tree ($H2/outside/skills)"; exit 1; fi
+
 echo "PASS: test_install_symlink_ancestor"
