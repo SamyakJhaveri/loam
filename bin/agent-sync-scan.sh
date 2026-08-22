@@ -493,6 +493,16 @@ for path in "${PROMPT_CHANGES[@]:-}"; do
     rm -f "$base_tmp"
     if [ "$mrc" -eq 0 ]; then
       handled=1
+      # Critical-2 (Codex): a clean merge whose output equals the hub copy is a
+      # no-op (the project independently made the same edit the hub already had).
+      # State-only base advance: record the base so the next scan sees
+      # project==base and Critical 1 suppresses it; do NOT offer, install, set
+      # synced:, or commit.
+      if cmp -s "$merged_tmp" "$HUB_PLUGIN$path"; then
+        rm -f "$merged_tmp"
+        record_base "$path"
+        continue
+      fi
       # Clean three-way merge: hub generalization and project edit coexist.
       printf 'Merge %s: clean three-way merge (hub generalization kept, project edit applied)\n' "$path" >&2
       diff -u "$HUB_PLUGIN$path" "$merged_tmp" >&2 || true
