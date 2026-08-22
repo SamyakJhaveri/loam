@@ -419,12 +419,22 @@ for path in "${PROMPT_CHANGES[@]:-}"; do
         rm -f "$merged_tmp"
       fi
     else
+      # Conflict (mrc>0) or merge error (255): base present, but hub and project
+      # diverge on the same lines. Never auto-install; surface both versions,
+      # then take the overwrite prompt (default defer). On y the rsync overwrite
+      # applies and the base is re-recorded per R2.
+      handled=1
       rm -f "$merged_tmp"
+      printf 'Conflict %s: base, hub, and project all differ on the same lines; showing both versions\n' "$path" >&2
+      diff -u "$HUB_PLUGIN$path" "$PROJECT_CLAUDE$path" >&2 || true
+      if prompt_for "Update" "$path"; then
+        APPROVED_CHANGES+=("$path")
+        record_base "$path"
+      fi
     fi
   fi
-  # Legacy overwrite fallthrough (default defer): no base, pruned blob, or a
-  # non-clean merge. Record a base on y so the path joins the merge regime next
-  # time (R4).
+  # Legacy overwrite fallthrough (default defer): no base or a pruned base blob.
+  # Record a base on y so the path joins the merge regime next time (R4).
   if [ "$handled" -eq 0 ]; then
     if prompt_for "Update" "$path"; then
       APPROVED_CHANGES+=("$path")
